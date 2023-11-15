@@ -356,8 +356,8 @@ row		equ	$24	; w
 delay		equ	$26	; w
 char_pos	equ	$28	; l
 
-_DelayVal	= 3
-_DelayVal_Sh	= 1
+_DelayVal	= 0
+_DelayVal_Sh	= 0
 
 	move.l	#@ProcessChar,obj(a0)	; set main routine
 	move.w	#_DelayVal,delay(a0)	; set delay
@@ -400,10 +400,11 @@ _DelayVal_Sh	= 1
 
 ; ---------------------------------------------------------------
 @ProcessChar:
-	tst.b	Joypad|Press		; START pressed?
-	bmi.s	@InstantWrite
+	move.b	Joypad|Press,d0
+	andi.b	#A+B+C+START,d0		; A/B/C/START pressed?
+	bne.s	@InstantWrite		; if yes, branch
 	subq.w	#1,delay(a0)		; decrease delay counter
-	bne.w	@Return			; if time remains, branch
+	bpl.w	@Return			; if time remains, branch
 
 	move.w	#_DelayVal,delay(a0)	; restore delay
 	move.b	Joypad|Held,d0
@@ -620,29 +621,6 @@ Hint_Pre:
 	dc.b	'WITH YOUR FAVORITE',_br
 	dc.b	'BLUE HEDGEHOG!',_br
 	dc.b	_pause,_cls
-
-	dc.b	'I KNOW YOU WANT TO',_br
-	dc.b	'DIVE RIGHT INTO THE',_br
-	dc.b	'ACTION AND GET YOUR',_br
-	dc.b	'BRAIN BLOWN APART BY',_br
-	dc.b	'BY INSANITY AND',_br
-	dc.b	'EXPLOSIVE MADNESS.',_br
-	dc.b	_pause,_cls
-	
-	dc.b	'BUT, FOR YOUR OWN',_br
-	dc.b	'SAFETY, THERE ARE A',_br
-	dc.b	'FEW THINGS YOU',_br
-	dc.b	'SHOULD GET YOURSELF',_br
-	dc.b	'COMFORTABLE WITH',_br
-	dc.b	'FIRST!',_br
-	dc.b	_pause,_cls
-
-	dc.b	'FIRST OFF, THIS GAME',_br
-	dc.b	'REQUIRES MORE THAN',_br
-	dc.b	'HOLDING RIGHT AND',_br
-	dc.b	'JUMPING FROM TIME TO',_br
-	dc.b	'TIME.',_br
-	dc.b	_pause,_cls
 	
 	dc.b	'YOU WILL FACE SOME',_br
 	dc.b	'OF THE MOST RAGE',_br
@@ -681,235 +659,89 @@ Hint_1:
 	dc.b	'MONITORS LIKE THESE',_br
 	dc.b	'ARE SPREAD AROUND',_br
 	dc.b	'THIS LEVEL AND WILL',_br
-	dc.b	'TELL YOU A LOT OF',_br
-	dc.b	'HELPFUL INFORMATION,',_br
-	dc.b	'SO BE SURE TO KEEP',_br
-	dc.b	'AN EYE OUT FOR',_br
-	dc.b	'THEM!',_br
+	dc.b	'GIVE ALL SORTS OF',_br
+	dc.b	'HELPFUL INFORMATION.',_br
 	dc.b	_pause,_cls
 
-	dc.b	'HOWEVER, IF YOU FEEL',_br
-	dc.b	'LIKE YOU ALREADY',_br
-	dc.b	'KNOW EVERYTHING YOU',_br
-	dc.b	'NEED TO, JUST JUMP',_br
-	dc.b	'INTO THE RING TO',_br
-	dc.b	'YOUR LEFT AND ENTER',_br
-	dc.b	'THE INSANITY RIGHT',_br
-	dc.b	'AWAY!',_br
-	dc.b	_pause,_cls
-
+	dc.b	'TO SKIP THE TUTORIAL',_br
+	dc.b    'JUMP INTO THE RING',_br
+	dc.b	'ON YOUR LEFT.',_br
+	dc.b	_br
 	dc.b	'OTHERWISE, GO TO THE',_br
-	dc.b	'RIGHT AND START THE',_br
-	dc.b	'TUTORIAL!',_br
+	dc.b	'RIGHT TO BEGIN!',_br
 	dc.b	_pause,_end
 
 ;		 --------------------
 Hint_2:
-	dc.b	'AHEAD OF YOU IS A',_br
-	dc.b	'SMALL OBSTACLE',_br
-	dc.b	'COURSE WHICH WILL',_br
-	dc.b	'REQUIRE SOME OF THE',_br
-	dc.b	'ABILITIES I AM ABOUT',_br
-	dc.b	'TO EXPLAIN.',_br
-	dc.b	_pause,_cls
-
-	dc.b	'YOU CAN ONLY JUMP',_br
-	dc.b	'WITH b AND c, AS a',_br
-	dc.b	'IS REQUIRED FOR SOME',_br
-	dc.b	'MISCELLANEOUS',_br
-	dc.b	'ACTIONS I WILL',_br
-	dc.b	'EXPLAIN LATER.',_br
-	dc.b	_pause,_cls
-
-	dc.b	'ON THE GROUND YOU',_br
-	dc.b	'CAN PERFORM A SPIN',_br
-	dc.b	'DASH BY PRESSING',_br
-	dc.b	'down AND b OR c.',_br
-	dc.b	_pause,_cls
-	
-	dc.b	'SIMILAR RULES APPLY',_br
-	dc.b	'TO THE SUPER PEEL',_br
-	dc.b	'OUT, WHICH CAN BE',_br
-	dc.b	'BE PERFORMED BY',_br
-	dc.b	'PRESSING up AND b OR',_br
-	dc.b	'c.',_br
-	dc.b	_pause,_cls
-
-	dc.b	'WHILE JUMPING YOU',_br
-	dc.b	'CAN DASH FORWARD AND',_br
-	dc.b	'PERFORM A HOMING',_br
-	dc.b	'ATTACK BY PRESSING',_br
-	dc.b	'THE c BUTTON.',_br
-	dc.b	_pause,_cls
-
-	dc.b	'BUT MORE IMPORTANT',_br
-	dc.b	'THAN FORWARD DASHING',_br
-	dc.b	'IS DOUBLE JUMPING,',_br
-	dc.b	'WHICH CAN BE DONE BY',_br
-	dc.b	'PRESSING c AND up',_br
-	dc.b	'WHILE IN AIR OR',_br
-	dc.b	'SIMPLY BY PRESSING',_br
-	dc.b	'THE b BUTTON.',_br
-	dc.b	_pause,_cls
-	
-	dc.b	'YOU MAY ALSO DASH',_br
-	dc.b	'DOWNWARDS BY HOLDING',_br
-	dc.b	'THE down BUTTON',_br
-	dc.b	'WHILE PRESSING THE',_br
-	dc.b	'b OR c BUTTON.',_br
-	dc.b	_pause,_cls
-	
+	dc.b	'BASIC CONTROLS',_br
 	dc.b	_br
-	dc.b	' go ahead and',_br
-	dc.b	' experiment with',_br
-	dc.b	' these abilities to',_br
-	dc.b	' get to the next',_br
-	dc.b	' room1',_br
+	dc.b	'dpad - TAKE A GUESS',_br
+	dc.b	'a - SPECIAL POWER',_br
+	dc.b	'b/c - JUMP',_br
+	dc.b	'down+jump - SPINDASH',_br
+	dc.b	'up+jump - PEELOUT',_br
+	dc.b	_pause,_cls
+	
+	dc.b	'WHILE IN AIR',_br
+	dc.b	_br
+	;	'                    '
+	dc.b	'a - SPECIAL POWER',_br
+	dc.b	'b - DOUBLE JUMP',_br
+	dc.b	'c - HOMING ATTACK',_br
+	dc.b	_br
+	dc.b	'dpad AND jump -',_br
+	dc.b    '  DIRECTIONAL JUMP',_br
 	dc.b	_pause,_end
 
 ;		 --------------------
 Hint_3:
-	dc.b	'DESTROYING THIS',_br
-	dc.b	'MONITOR LETS SONIC',_br
-	dc.b	'ENTER THE SO-CALLED',_br
-	dc.b	_br
 	dc.b	'    inhuman mode',_br
-	dc.b	_pause,_cls
-
-	dc.b	'IT WILL MAKE YOU',_br
-	dc.b	'FULLY INVULNERABLE,',_br
+	dc.b	_br
+	dc.b	'YOU CANNOT DIE,',_br
 	dc.b	'EVEN TO BOTTOMLESS',_br
 	dc.b	'PITS AND BEING',_br
 	dc.b	'CRUSHED TO DEATH!',_br
 	dc.b	_pause,_cls
 
-	dc.b	'ADDITIONALLY, BY',_br
-	dc.b	'PRESSING a YOU CAN',_br
-	dc.b	'SHOOT A SMALL BULLET',_br
-	dc.b	'WHICH, IF YOU TOUCH',_br
-	dc.b	'IT, WILL PROPEL YOU',_br
-	dc.b	'IN THE AIR. YOU CAN',_br
-	dc.b	'CHANGE THE DIRECTION',_br
-	dc.b	'WITH YOUR d_pad.',_br
-	dc.b	_pause,_cls
-
+	dc.b	'a AND dpad',_br
 	dc.b	_br
-	dc.b	' have a little fly',_br
-	dc.b	' around and find',_br
-	dc.b	' another s_monitor',_br
-	dc.b	' in the upper part',_br
-	dc.b	' of this room to',_br
-	dc.b	' continue1',_br
+	dc.b	'SHOOTS A MISSILE',_br
+	dc.b	'YOU CAN PROPEL',_br
+	dc.b	'YOURSELF IN THE AIR',_br
+	dc.b	'WITH!',_br
 	dc.b	_pause,_end
 
 ;		 --------------------
 Hint_4:
-	dc.b	'THIS S-MONITOR IS',_br
-	dc.b	'DIFFERENT. IT WILL',_br
-	dc.b	'STILL MAKE YOU',_br
-	dc.b	'INVINCIBLE AND YOU',_br
-	dc.b	'CAN STILL SHOOT',_br
-	dc.b	'BULLETS, BUT YOU',_br
-	dc.b	'WILL LOSE ALL YOUR',_br
-	dc.b	'OTHER ABILITIES.',_br
-	dc.b	_pause,_cls
-
-	dc.b	'HOWEVER, MORE',_br
-	dc.b	'IMPORTANTLY, YOU',_br
-	dc.b	'WILL SLOWLY LOSE',_br
-	dc.b	'RINGS OVER TIME AND',_br
-	dc.b	'RAPIDLY WHEN YOU',_br
-	dc.b	'ARE TOUCHING THE',_br
-	dc.b	'GROUND, UNTIL YOU',_br
-	dc.b	'REACH ZERO AND DIE!',_br
-	dc.b	_pause,_cls
-
-	dc.b	'THESE ARE VERY RARE',_br
-	dc.b	'AND YOU SHOULD ONLY',_br
-	dc.b	'FIND THEM IN VERY,',_br
-	dc.b	'VERY OLD AND RUINED',_br
-	dc.b	'PLACES.',_br
-	dc.b	_pause,_cls
-
-	dc.b	_br,_br
-	dc.b	' go through that',_br
-	dc.b	' narrow spot to',_br
-	dc.b	' get to the next',_br
-	dc.b	' room and continue1',_br
-	dc.b	_pause,_cls
-
-	dc.b	' normally you would',_br
-	dc.b	' need to hurry up',_br
-	dc.b	' before your rings',_br
-	dc.b	' run out; but for',_br
-	dc.b	' the sake of this',_br
-	dc.b	' tutorial it has',_br
-	dc.b	' been disabled for',_br
-	dc.b	' now:',_br
+	dc.b	'YOU SHOULD NOT BE',_br
+	dc.b	'ABLE TO READ THIS',_br
+	dc.b	'LOL',_br
 	dc.b	_pause,_end
 
 ;		 --------------------
 Hint_5:
 	dc.b	'TOUCHING SPIKES',_br
-	dc.b	'DURING THIS SPECIAL',_br
-	dc.b	'INHUMAN MODE WILL',_br
-	dc.b	'TELEPORT YOU BACK TO',_br
-	dc.b	'WHERE YOU STARTED,',_br
-	dc.b	'AT THE COST OF A FEW',_br
-	dc.b	'RINGS, SO YOU SHOULD',_br
-	dc.b	'COLLECT MANY!',_br
+	dc.b	'DURING inhuman mode',_br
+	dc.b	'TELEPORTS YOU BACK',_br
+	dc.b	'TO THE START!',_br
 	dc.b	_pause,_end
 
 ;		 --------------------
 Hint_6:
-	dc.b	'THIS DEVICE IS A',_br
-	dc.b	'SO-CALLED',_br,_br
-	dc.b	' hard part skipper1',_br
-	dc.b	_pause,_cls
-
-	dc.b	'IF A CHALLENGE IS',_br
-	dc.b	'SIMPLY TOO HARD FOR',_br
-	dc.b	'YOU, BUT YOU DO NOT',_br
-	dc.b	'WANT TO USE CHEATS,',_br
-	dc.b	'YOU CAN ALWAYS USE',_br
-	dc.b	'THIS DEVICE INSTEAD!',_br
-	dc.b	_pause,_cls
-
-	dc.b	'ONCE YOU HAVE MADE',_br
-	dc.b	'YOUR DECISION, JUST',_br
-	dc.b	'POSITION YOURSELF IN',_br
-	dc.b	'FRONT OF ONE AND',_br
-	dc.b	'PRESS THE a, b, AND',_br
-	dc.b	'c BUTTONS AT THE',_br
-	dc.b	'SAME TIME.',_br
-	dc.b	_pause,_cls
-
-	dc.b	'THIS ALSO WORKS FOR',_br
-	dc.b	'SPECIAL STAGES,',_br
-	dc.b	'ALTHOUGH YOU CAN DO',_br
-	dc.b	'THIS AT ANY TIME IN',_br
-	dc.b	'THE LEVEL JUST BY',_br
-	dc.b	'PRESSING a, b, AND c',_br
-	dc.b	'AT THE SAME TIME.',_br
-	dc.b	_pause,_cls
-
-	dc.b	'KEEP IN MIND THAT',_br
-	dc.b	'YOU WILL LOSE ALL OF',_br
-	dc.b	'YOUR RINGS, SHIELDS,',_br
-	dc.b	'AND INVINCIBILITY',_br
-	dc.b	'IN THE PROCESS!',_br
-	dc.b	_pause,_cls
-
+	dc.b	' hard part skipper',_br
 	dc.b	_br
+	dc.b	'PRESS a AND b AND c',_br
+	dc.b	'TO SKIP CHALLENGES',_br
+	dc.b	'THAT ARE SIMPLY TOO',_br
+	dc.b	'HARD FOR YOU.',_br
 	dc.b	_br
-	dc.b	' come on; try it on',_br
-	dc.b	' this ridiculously',_br
-	dc.b	' spiked tube1',_br
+	dc.b	'COST: YOUR RINGS',_br
 	dc.b	_pause,_end
 
 ;		 --------------------
 Hint_7:
-	dc.b	'IT SOUNDS EVIL, BUT',_br
+	dc.b	'   trial and error',_br
+	dc.b	_br
 	dc.b	'SOME CHALLENGES',_br
 	dc.b	'SIMPLY CANNOT BE',_br
 	dc.b	'COMPLETED WITHOUT',_br
@@ -917,49 +749,25 @@ Hint_7:
 	dc.b	_pause,_cls
 
 	dc.b	'DO NOT WORRY THOUGH,',_br
-	dc.b	'REAL GAME OVERS DO',_br
-	dc.b	'NOT EXIST ANYWHERE',_br
-	dc.b	'IN THIS GAME, SO DO',_br
-	dc.b	'NOT BE AFRAID TO BE',_br
-	dc.b	'A MANIAC!',_br
-	dc.b	_pause,_cls
-
-	dc.b	_br
-	dc.b	_br
-	dc.b	' find a way through',_br
-	dc.b	' this room to',_br
-	dc.b	' continue1',_br
+	dc.b	'THERE ARE NO LIVES',_br
+	dc.b	'SO DO NOT BE AFRAID',_br
+	dc.b	'TO BE A MANIAC!',_br
 	dc.b	_pause,_end
 
 ;		 --------------------
 Hint_8:
-	dc.b	'AT SOME POINT IN',_br
-	dc.b	'THIS GAME IT WILL BE',_br
-	dc.b	'POSSIBLE TO CONTROL',_br
-	dc.b	'THE GRAVITY OF SONIC',_br
-	dc.b	'AND THUS HIS FALLING',_br
-	dc.b	'DIRECTION.',_br
-	dc.b	_pause,_cls
-
-	dc.b	'THIS CAN BE DONE BY',_br
-	dc.b	'HOLDING DOWN THE',_br
-	dc.b	'a BUTTON WHILE IN',_br
-	dc.b	'AIR.',_br
-	dc.b	_pause,_cls
-
+	dc.b	'   gravity control',_br
 	dc.b	_br
-	dc.b	_br
-	dc.b	' fly around to get',_br
-	dc.b	' to the final',_br
-	dc.b	' monitor and finish',_br
-	dc.b	' this tutorial1',_br
+	dc.b	'HOLD a WHILE IN AIR',_br
+	dc.b	'TO CONTROL THE',_br
+	dc.b	'GRAVITY OF SONIC!',_br
 	dc.b	_pause,_end
 
 ;		 --------------------
 Hint_9:
 	dc.b	'AND THAT CONCLUDES',_br
-	dc.b	'THIS TUTORIAL!',_br
-	dc.b	_delay,20,_br
+	dc.b	'THE TUTORIAL!',_br
+	dc.b	_br
 	dc.b	'YOU SHOULD BE ABLE',_br
 	dc.b	'TO FIGURE OUT THE',_br
 	dc.b	'REST ON YOUR OWN.',_br
@@ -977,7 +785,7 @@ Hint_9:
 	dc.b	'HAVE FUN WITH',_br
 	dc.b	_br
 	dc.b	'    sonic erazor',_br
-	dc.b	_br,_delay,30
+	dc.b	_br
 	dc.b	'I HOPE YOU WILL HAVE',_br
 	dc.b	'AS MUCH FUN AS I HAD',_br
 	dc.b	'CREATING IT!',_br

@@ -45,7 +45,7 @@ Samples:
 		dc.b $9A,$AB,$4E,  5,$24,  0, AlignValue,  0
 		dc.b $9A,$AB,$4E,  5,$17,  0, AlignValue,  0
 		dc.b $88,$D2,$21,  6,$14,  0, AlignValue,  0
-		dc.b $88,$D2,$21,  6,  6,  0, AlignValue+7,0
+		dc.b $88,$D2,  0,  0,  6,  0, AlignValue,  0 ; silenced (this used to cause glitchy sounds)
 		dc.b $88,$D2,$21,  6,$16,  0, AlignValue,  0
 		dc.b $AA,$D8,$5A,  9,  9,  0, AlignValue,  0
 		dc.b $AA,$D8,$5A,  9,$14,  0, AlignValue,  0

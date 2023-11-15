@@ -1,3 +1,0 @@
-- Add sounds and music.
-- Add a menu.
-- Add some more graphics, like a background.

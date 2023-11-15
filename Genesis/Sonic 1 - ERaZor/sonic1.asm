@@ -68,7 +68,7 @@ AutoDEMO = 0
 ;If 1, the doors in the SYZ are always open.
 ; 0 - Closed, you need to play the levels first
 ; 1 - Opened
-DoorsAlwaysOpen = 0
+DoorsAlwaysOpen = 1
 ;=================================================
 
 ; ---------------------------------------------------------------------------
@@ -95,7 +95,7 @@ StartOfRom:
 
 Console:	dc.b 'SEGA MEGA DRIVE ' ; Hardware system ID
 
-Date:		dc.b '(C)SELBI 2012   ' ; Release date
+Date:		dc.b '(C)SELBI 2023   ' ; Release date
 Title_Local:	dc.b 'Sonic ERaZor                                    ' ; Domestic name
 Title_Int:	dc.b 'Sonic ERaZor                                    ' ; International name
 Serial:		dc.b 'SP 18201337-00' 	; Serial/version number
@@ -6342,11 +6342,6 @@ Obj81_Main:				; XREF: Obj81_Index
 		move.w	#$A0,8(a0)
 		move.w	#$C0,$C(a0)
 		move.l	#Map_Sonic,4(a0)
-		tst.b	($FFFFFF94).w
-		beq.s	@cont
-		move.l	#Map_Sonic3,4(a0)
-		
-@cont:
 		move.w	#$780,2(a0)
 		move.b	#4,1(a0)
 		move.b	#2,$18(a0)
@@ -6380,11 +6375,6 @@ Obj81_Animate:				; XREF: Obj81_Index
 Obj81_GetUp:				; XREF: Obj81_Animate
 		addq.b	#2,$24(a0)
 		move.l	#Map_Sonic,4(a0)
-		tst.b	($FFFFFF94).w
-		beq.s	@cont
-		move.l	#Map_Sonic3,4(a0)
-		
-@cont:
 		move.w	#$780,2(a0)
 		move.b	#$1E,$1C(a0)	; use "getting up" animation
 		clr.w	$14(a0)
@@ -7837,7 +7827,7 @@ DTS_Loop:
 ; ===========================================================================
 
 Deform_LZ:
-		bra.s	Deform_LZ_Extended
+	;	bra.s	Deform_LZ_Extended
 	; original code, takes MUCH less RAM than the extended code
 		move.w	($FFFFF73A).w,d4
 		ext.l	d4
@@ -16659,7 +16649,8 @@ Obj2E_ChkSonic:
 		bne.w	Obj2E_ChkShoes
 
 ExtraLife:
-		addq.b	#1,($FFFFFE1C).w ; add 1 to the	lives counter
+		bra.s	@cont2		 ; extra lives are disabled
+		addq.b	#1,($FFFFFE1C).w ; update life counter
 		cmpi.b	#0,($FFFFFE12).w
 		beq.s	@cont2
 		subq.b	#1,($FFFFFE12).w ; add 1 to the	number of lives	you have
@@ -29716,6 +29707,9 @@ Obj06_InfoBox:
 		addi.w	#$20,d0			; add $10 to it
 		cmpi.w	#$40,d0			; is Sonic within $40 pixels of that object?
 		bhi.s	Obj06_NoA		; if not, branch
+		
+	;	tst.b	($FFFFD040).w		; is HUD already loaded?
+	;	beq.w	Obj06_NoA		
 
 Obj06_ChkA:
 		move.b	($FFFFF603).w,d0	; is A pressed? (part 1)
@@ -29731,7 +29725,7 @@ Obj06_ChkA:
 
 Obj06_NoA:
 		move.b	#1,$1A(a0)		; don't show A button
-		bra.s	Obj06_Display
+		bra.w	Obj06_Display
 ; ---------------------------------------------------------------------------
 
 Obj06_Locations:	;XXXX   YYYY
@@ -29950,11 +29944,6 @@ Obj01_Main:				; XREF: Obj01_Index
 		move.b	#$13,$16(a0)
 		move.b	#9,$17(a0)
 		move.l	#Map_Sonic,4(a0)
-		tst.b	($FFFFFF94).w
-		beq.s	@cont
-		move.l	#Map_Sonic3,4(a0)
-		
-@cont:
 		move.w	#$780,2(a0)
 		move.b	#2,$18(a0)
 		move.b	#$18,$19(a0)
@@ -32158,7 +32147,7 @@ FWJB_End:
 
 Sonic_Fire:
 		tst.b	($FFFFFFE7).w		; is inhuman mode enabled?
-		beq.w	S_F_End			; is not, don't do anything
+		beq.w	S_F_End			; if not, don't do anything
 		move.b	($FFFFF603).w,d0	; move button press to d0
 		andi.b	#$40,d0			; and it by $40 (B)
 		beq.w	S_F_End			; if A is not being pressed, branch
@@ -32195,6 +32184,11 @@ S_F_NoUP:
 		btst	#1,($FFFFF602).w	; check if down is being held
 		beq.s	S_F_NoDown		; if not, branch
 		addi.w	#$200,$12(a1)		; add $200 to Y-speed
+		move.w	$12(a0),d1		; get Sonic's Y-speed
+		cmpi.w	#$800,d1		; is Sonic falling faster than $800?
+		bmi.s	S_F_WithinTolerance	; if not,  branch
+		add.w	d1,$12(a1)		; if yes, add his speed that to the total Y-speed of the bullet (so we don't outrun the missiles while falling down)
+S_F_WithinTolerance:
 		move.w	#0,$10(a1)		; don't move missile to the right
 		moveq	#0,d0			; don't move missile to the right
 
@@ -33150,15 +33144,7 @@ locret_139C2:
 
 
 Sonic_Animate:				; XREF: Obj01_Control; et al
-		tst.b	($FFFFFF94).w
-		bne.s	@cont
 		lea	(SonicAniData).l,a1
-		bra.s	@cont2
-
-@cont:
-		lea	(SonicAniData3).l,a1
-
-@cont2:
 		moveq	#0,d0
 		move.b	$1C(a0),d0
 		cmp.b	$1D(a0),d0	; is animation set to restart?
@@ -33252,8 +33238,6 @@ loc_13A78:
 		
 ;loc_13A9C:
 Sonic_TestSpeed:
-		tst.b	($FFFFFF94).w
-		bne.s	@cont
 		lea	(SonAni_FastRunning).l,a1 ; use sprinting animation
 		cmpi.w	#$A00,d2		; is Sonic running really fast?
 		bcc.s	loc_13AB4	; if carry clear, branch
@@ -33264,17 +33248,6 @@ Sonic_TestSpeed:
 		move.b	d0,d1
 		lsr.b	#1,d1
 		add.b	d1,d0
-		bra.s	loc_13AB4
-
-@cont:
-		lea	(SonAni3_FastRunning).l,a1 ; use sprinting animation
-		cmpi.w	#$A00,d2		; is Sonic running really fast?
-		bcc.s	loc_13AB4	; if carry clear, branch
-		lea	(SonAni3_Run).l,a1 ; use	running	animation
-		cmpi.w	#$600,d2	; is Sonic at running speed?
-		bcc.s	loc_13AB4	; if yes, branch
-		lea	(SonAni3_Walk).l,a1 ; use walking animation
-		add.b	d0,d0
 
 loc_13AB4:
 		add.b	d0,d0
@@ -33300,18 +33273,10 @@ SAnim_RollJump:				; XREF: SAnim_WalkRun
 		neg.w	d2
 
 loc_13ADE:
-		tst.b	($FFFFFF94).w
-		bne.s	@cont
 		lea	(SonAni_Roll2).l,a1 ; use fast animation
 		cmpi.w	#$600,d2	; is Sonic moving fast?
 		bcc.s	loc_13AF0	; if yes, branch
 		lea	(SonAni_Roll).l,a1 ; use slower	animation
-		bra.s	loc_13AF0
-@cont:
-		lea	(SonAni3_Roll2).l,a1 ; use fast animation
-		cmpi.w	#$600,d2	; is Sonic moving fast?
-		bcc.s	loc_13AF0	; if yes, branch
-		lea	(SonAni3_Roll).l,a1 ; use slower	animation
 
 loc_13AF0:
 		neg.w	d2
@@ -33349,15 +33314,7 @@ loc_13B1E:
 loc_13B26:
 		lsr.w	#6,d2
 		move.b	d2,$1E(a0)	; modify frame duration
-		tst.b	($FFFFFF94).w
-		bne.s	@cont
 		lea	(SonAni_Push).l,a1
-		bra.s	@cont2
-
-@cont:
-		lea	(SonAni3_Push).l,a1
-
-@cont2:
 		move.b	$22(a0),d1
 		andi.b	#1,d1
 		andi.b	#$FC,1(a0)
@@ -33368,9 +33325,7 @@ loc_13B26:
 ; ===========================================================================
 SonicAniData:
 		include	"_anim\Sonic.asm"
-
-SonicAniData3:
-		include	"_anim\s3_Sonic.asm"
+		
 ; ---------------------------------------------------------------------------
 ; Sonic	pattern	loading	subroutine
 ; ---------------------------------------------------------------------------
@@ -33385,11 +33340,6 @@ LoadSonicDynPLC:			; XREF: Obj01_Control; et al
 		beq.s	locret_13C96
 		move.b	d0,($FFFFF766).w
 		lea	(SonicDynPLC).l,a2
-		tst.b	($FFFFFF94).w
-		beq.s	@cont
-		lea	(SonicDynPLC3).l,a2
-		
-@cont:
 		add.w	d0,d0
 		adda.w	(a2,d0.w),a2
 		moveq	#0,d5
@@ -33398,9 +33348,6 @@ LoadSonicDynPLC:			; XREF: Obj01_Control; et al
 		bmi.s	locret_13C96
 		move.w	#$F000,d4
 		move.l	#Art_Sonic,d6
-		tst.b	($FFFFFF94).w
-		beq.s	SPLC_ReadEntry
-		move.l	#Art_Sonic3,d6
 
 SPLC_ReadEntry:
 		moveq	#0,d1
@@ -44369,11 +44316,6 @@ Obj09_Main:				; XREF: Obj09_Index
 		move.b	#$E,$16(a0)
 		move.b	#7,$17(a0)
 		move.l	#Map_Sonic,4(a0)
-		tst.b	($FFFFFF94).w
-		beq.s	@cont
-		move.l	#Map_Sonic3,4(a0)
-		
-@cont:
 		move.w	#$780,2(a0)
 		move.b	#4,1(a0)
 		move.b	#1,$18(a0)
@@ -47223,11 +47165,6 @@ Debug_Exit:
 		moveq	#0,d0
 		move.w	d0,($FFFFFE08).w ; deactivate debug mode
 		move.l	#Map_Sonic,($FFFFD004).w
-		tst.b	($FFFFFF94).w
-		beq.s	@cont
-		move.l	#Map_Sonic3,($FFFFD004).w
-		
-@cont:
 		move.w	#$780,($FFFFD002).w
 		move.b	d0,($FFFFD01C).w
 		move.w	d0,$A(a0)
@@ -47239,11 +47176,6 @@ Debug_Exit:
 	;	clr.w	($FFFFF780).w
 	;	move.w	#$40,($FFFFF782).w ; set new level rotation speed
 		move.l	#Map_Sonic,($FFFFD004).w
-		tst.b	($FFFFFF94).w
-		beq.s	@cont2
-		move.l	#Map_Sonic3,($FFFFD004).w
-		
-@cont2:
 		move.w	#$780,($FFFFD002).w
 		move.b	#2,($FFFFD01C).w
 		bset	#2,($FFFFD022).w
@@ -47354,14 +47286,6 @@ Map_Sonic:	include	"_maps\Sonic.asm"
 SonicDynPLC:	include	"_inc\Sonic dynamic pattern load cues.asm"
 		even
 Art_Sonic:	incbin	artunc\sonic.bin	; Sonic Normal
-		even
-		
-Map_Sonic3:	include	"_maps\s3_Sonic.asm"
-		even
-SonicDynPLC3:	include	"_inc\s3_Sonic dynamic pattern load cues.asm"
-		even
-		align	$20000
-Art_Sonic3:	incbin	artunc\s3_sonic.bin	; Sonic S3 Style
 		even
 
 ; ---------------------------------------------------------------------------

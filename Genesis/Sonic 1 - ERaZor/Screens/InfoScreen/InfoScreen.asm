@@ -66,6 +66,8 @@ Info_LoadText:
 		move.b	#1,($A130F1).l		; enable SRAM
 		move.b	($200007).l,($FFFFFF9C).w	; get number for text
 		move.b	#0,($A130F1).l		; disable SRAM
+		tst.b	($FFFFFF9C).w	; failsafe when SRAM is unavailable
+		beq.w	Info_NoBlack
 		
 		lea	($FFFFCA00).w,a1	; set location for the text
 		moveq	#0,d0

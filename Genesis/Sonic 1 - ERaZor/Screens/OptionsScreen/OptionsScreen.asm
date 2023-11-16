@@ -931,7 +931,7 @@ OpText_Extended:
 		even
 
 OpText_AutoSkipText:
-		dc.b	'AUTO SKIP TEXT       ', $FF
+		dc.b	'STORY TEXT SCREENS   ', $FF
 		even
 
 OpText_EasterEgg_Locked:

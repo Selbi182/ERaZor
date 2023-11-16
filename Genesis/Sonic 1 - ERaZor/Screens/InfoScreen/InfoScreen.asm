@@ -27,6 +27,13 @@ Info_ClrObjRam:
 		move.l	d0,(a1)+
 		dbf	d1,Info_ClrObjRam ; fill object RAM ($D000-$EFFF) with $0
 		
+		tst.b	($FFFFFF94).w		; is auto-skip-text enabled?
+		beq.s	@cont			; if not, branch
+		cmpi.b	#9,($FFFFFF9E).w	; is this the easter egg?
+		beq.s	@cont			; if not, don't skip
+		bra.w	Info_AutoSkip		; otherwise, auto-skip the cringe
+
+@cont:
 		move	#$2700,sr
 		move.l	#$40000001,($C00004).l
 		lea	(Nem_InfoBG).l,a0 ; load Info	screen patterns
@@ -139,6 +146,7 @@ Info_NoTextChange:
 		andi.b	#$80,d1
 		beq.s	InfoScreen_MainLoop	; if not, branch
 
+Info_AutoSkip:
 		cmpi.b	#1,($FFFFFF9E).w	; is this the intro-dialouge?
 		bne.s	Info_NoIntro		; if not, branch
 		move.b	#1,($A130F1).l		; enable SRAM

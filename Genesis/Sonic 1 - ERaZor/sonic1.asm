@@ -12054,13 +12054,13 @@ loc_7EE0:
 		bsr	PlatformObject
 
 Obj18_Action:				; XREF: Obj18_Index
-		cmpi.w	#$101,($FFFFFE10).w	; is level LZ2?
-		bne.s	@cont			; if not, branch
-		tst.b	($FFFFFFE7).w		; is Sonic inhuman?
-		beq.s	@cont
-		move.w	($FFFFD008).w,8(a0)	; set platforms X-location to Sonic's one
+	;	cmpi.w	#$101,($FFFFFE10).w	; is level LZ2?
+	;	bne.s	@cont			; if not, branch
+	;	tst.b	($FFFFFFE7).w		; is Sonic inhuman?
+	;	beq.s	@cont
+	;	move.w	($FFFFD008).w,8(a0)	; set platforms X-location to Sonic's one
 
-@cont:
+;@cont:
 		jsr	obj18_Move
 		jsr	obj18_Nudge
 		bsr	DisplaySprite
@@ -20911,6 +20911,8 @@ locret_D180:
 Obj3C_ChkRoll:				; XREF: Obj3C_Solid
 		tst.b	($FFFFFFE7).w
 		bne.s	Obj3C_Ok
+		cmpi.w	#$001,($FFFFFE10).w	; is this GHZ2 (intro level)?
+		beq.s	Obj3C_Ok 		; if yes, branch
 		cmpi.b	#2,$1C(a1)	; is Sonic rolling?
 		bne.s	locret_D180	; if not, branch
 		move.w	$30(a0),d0
@@ -29839,8 +29841,8 @@ Obj07_Index:	dc.w Obj07_Setup-Obj07_Index	; Set up the object (art etc.)	[$0]
 o7art = $877B
 
 Obj07_Setup:
-		tst.b	($FFFFD340).w
-		bne.w	DeleteObject
+	;	tst.b	($FFFFD340).w		; are underwater bubbles visible?
+	;	bne.w	DeleteObject		; if yes, delete crop bars (why???)
 
 Obj07_SkipCheck:
 		addq.b	#2,$24(a0)		; set to "Obj07_Display"
@@ -31350,9 +31352,9 @@ Boundary_Bottom_locret:
 		rts
 
 KillSonic_JMP:
-		cmpi.b	#0,($FFFFFE10).w	; is level GHZ 1?
-		beq.s	NoSBBDead
-		move.b	#1,($FFFFFFA1).w
+		cmpi.w	#$601,($FFFFFE10).w	; is this the ending sequence?
+		bne.s	NOSBBDead		; if not, branch
+		move.b	#1,($FFFFFFA1).w	; make sure Sonic dies from boundary bottom, even during inhuman mode
 
 NOSBBDead:
 		jmp	KillSonic
@@ -33637,7 +33639,8 @@ Obj0A_Countdown:			; XREF: Obj0A_Index
 
 		cmpi.b	#4,($FFFFFF97).w	; was fourth lamppost passed?
 		bhs.w	locret_1408C		; if yes, disable drowning
-	
+		tst.b	($FFFFFFE7).w		; is Sonic inhuman?
+		bne.w	locret_1408C		; if yes, disable drowning
 
 		subq.w	#1,$38(a0)
 		bpl.w	loc_13FAC
@@ -43657,9 +43660,9 @@ Kill_PlaySound:
 		jsr	(PlaySound_Special).l	; play the selected sound
 
 Kill_End:
-		cmpi.w	#$302,($FFFFFE10).w	; is level SlZ3?
-		bne.s	@cont			; if not, branch
-		addq.w	#4,sp			; make sure game branches back to the correct routine
+	;	cmpi.w	#$302,($FFFFFE10).w	; is level SlZ3?
+	;	bne.s	@cont			; if not, branch
+	;	addq.w	#4,sp			; make sure game branches back to the correct routine (whatever the fuck I meant with that)
 
 @cont:
 		moveq	#-1,d0			; sub 1 from d0, although I don't know why...

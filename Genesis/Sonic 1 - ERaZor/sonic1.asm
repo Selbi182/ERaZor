@@ -15722,6 +15722,17 @@ Obj37_MoveRing:
 Obj37_NoRingsMove:
 		move.b	($FFFFFEC7).w,$1A(a0)
 		bsr	SpeedToPos
+		
+		cmpi.w	#$000,($FFFFFE10).w	; is level GHZ1?
+		bne.s	@noceiling		; if not, branch
+		cmpi.b	#1,($FFFFFFAA).w	; is Sonic fighting against the crabmeat?
+		bne.s	@noceiling		; if not, branch
+		move.w	$C(a0),d0		; get Y position of ring
+		cmpi.w	#$440,d0		; is it above Y pos $440? (ceiling position of the arena)
+		bge.s	@noceiling		; if not, branch
+		clr.w	$12(a0)			; if yes, make the rings fall down so they don't get stuck in the ceiling
+				
+@noceiling:
 		addi.w	#$18,$12(a0)
 		bmi.s	Obj37_ChkDel
 		move.b	($FFFFFE0F).w,d0
@@ -16374,11 +16385,6 @@ Obj26_Solid_Rest:
 		subq.b	#2,d0
 		bne.s	Obj26_Fall
 		moveq	#0,d1
-		btst	#1,($FFFFF602).w	; is down pressed?
-		beq.w	Obj26_NoDown		; if not, branch
-		move.b	#2,$1C(a0)
-		
-Obj26_NoDown:
 		move.b	$19(a0),d1
 		addi.w	#$B,d1
 		bsr	ExitPlatform
@@ -16427,7 +16433,7 @@ loc_A20A:
 		bpl.s	loc_A220
 		sub.w	d3,$C(a1)
 		bsr	loc_74AE
-	;	move.b	#2,$25(a0)
+		move.b	#2,$25(a0)	; no idea why I originally commented this out, cause without it Sonic is glued to the monitor and can walk on air
 		bra.w	Obj26_Animate
 ; ===========================================================================
 

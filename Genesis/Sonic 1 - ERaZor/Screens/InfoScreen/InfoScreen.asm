@@ -64,10 +64,9 @@ Info_LoadText:
 		clr.w	($FFFFFF9C).w
 
 		move.b	#1,($A130F1).l		; enable SRAM
-		move.b	($200007).l,($FFFFFF9C).w	; get number for text
+		move.b	($FFFFFF9E).w,d0	; get current level number
+		move.b	d0,($200007).l		; store it in SRAM (this is basically the progress of the game)
 		move.b	#0,($A130F1).l		; disable SRAM
-		tst.b	($FFFFFF9C).w	; failsafe when SRAM is unavailable
-		beq.w	Info_NoBlack
 		
 		lea	($FFFFCA00).w,a1	; set location for the text
 		moveq	#0,d0
@@ -140,25 +139,26 @@ Info_NoTextChange:
 		andi.b	#$80,d1
 		beq.s	InfoScreen_MainLoop	; if not, branch
 
-		cmpi.b	#1,($FFFFFF9C).w	; is this the intro-dialouge?
+		cmpi.b	#1,($FFFFFF9E).w	; is this the intro-dialouge?
 		bne.s	Info_NoIntro		; if not, branch
 		move.b	#1,($A130F1).l		; enable SRAM
-		cmpi.b	#1,($200001).l
+		cmpi.b	#1,($FFFFFFA7).w
 		bgt.s	@conty
-		move.b	#1,($200001).l		; run first chapter screen
+		move.b	#1,($FFFFFFA7).w	; run first chapter screen
+		move.b	#1,($200001).l
 @conty:
 		move.b	#0,($A130F1).l		; disable SRAM
 		move.b	#$28,($FFFFF600).w	; set to chapters screen ($28)
 		rts
 
 Info_NoIntro:
-		cmpi.b	#8,($FFFFFF9C).w	; is this the ending sequence?
+		cmpi.b	#8,($FFFFFF9E).w	; is this the ending sequence?
 		bne.s	Info_NoEnding		; if not, branch
 		move.b	#$18,($FFFFF600).w	; set to ending sequence ($18)
 		rts
 
 Info_NoEnding:
-		cmpi.b	#9,($FFFFFF9C).w	; is this the easter egg?
+		cmpi.b	#9,($FFFFFF9E).w	; is this the easter egg?
 		bne.s	Info_NoEaster		; if not, branch
 		move.w	#$302,($FFFFFE10).w	; set level to SLZ3
 		move.b	#$C,($FFFFF600).w
@@ -166,7 +166,7 @@ Info_NoEnding:
 		rts
 
 Info_NoEaster:
-		cmpi.b	#$A,($FFFFFF9C).w	; is this the black special stage?
+		cmpi.b	#$A,($FFFFFF9E).w	; is this the black special stage?
 		bne.s	Info_NoBlack		; if not, branch
 		move.b	#$00,($FFFFF600).w	; set to sega screen ($00)
 		rts
@@ -371,7 +371,7 @@ Info_NoNumber2XX:
 Info_SetMainText:
 		moveq	#0,d0			; clear d0
 		lea	(InfoText_1).l,a2	; get text location 1 (which is also the start of the text locations in general)
-		move.b	($FFFFFF9C).w,d0 	; get text ID
+		move.b	($FFFFFF9E).w,d0 	; get text ID
 		subq.b	#1,d0			; sub 1 from it, because we want to use 0 as base, not 1
 		move.w	d0,d1			; copy to d1 (for H-scroll)
 		mulu.w	#422,d0			; multiply it by 422 (number of chars for a single block of text including the $FF)

@@ -40,13 +40,11 @@ CS_ClrObjRam:
 		dbf	d1,CS_ClrObjRam
 
 		move.b	#1,($A130F1).l			; enable SRAM
-		move.b	($200001).l,($FFFFFFA0).w	; get current chaper number
-		bpl.s	@cont
-		move.b	#0,($FFFFFFA0).w
-
-@cont:
+		move.b	($FFFFFFA7).w,($200001).l	; save current chaper number
 		move.b	#0,($A130F1).l			; disable SRAM
-
+		
+		move.b	($FFFFFFA7).w,($FFFFFFA0).w
+		
 		cmpi.w	#$501,($FFFFFE10).w
 		beq.s	@contGHZ
 

@@ -257,6 +257,11 @@ GameClrRAM:
 		bra.w	NoSRAM
 
 SRAMFound:
+		move.b	$1(a1),($FFFFFFA7).w
+		bpl.s	@cont0
+		move.b	#1,($FFFFFFA7).w
+
+@cont0:
 		move.b	$3(a1),($FFFFFE12).w
 		bpl.s	@cont1
 		clr.b	($FFFFFE12).w
@@ -268,9 +273,9 @@ SRAMFound:
 		andi.b	#1,($FFFFFF92).w
 
 @cont2:
-		move.b	$7(a1),($FFFFFF9C).w
+		move.b	$7(a1),($FFFFFF9E).w
 		bpl.s	@cont3
-		clr.b	($FFFFFF9C).w
+		clr.b	($FFFFFF9E).w
 
 @cont3:
 		move.b	$9(a1),($FFFFFF93).w
@@ -1286,9 +1291,7 @@ loc_13BE:
 		bne.s	PG_ChkHUD		; if not, branch
 		bsr	ClearEverySpecialFlag	; clear flags
 		move.b	#$20,($FFFFF600).w	; set screen mode to $20 (Info Screen)
-		move.b	#1,($A130F1).l		; enable SRAM
-		move.b	#1,($200007).l		; set number for text to 1
-		move.b	#0,($A130F1).l		; disable SRAM
+		move.b	#1,($FFFFFF9E).w	; set number for text to 1
 		clr.b	($FFFFFFE7).w		; make sure Sonic is not inhuman
 		rts
 ; ===========================================================================
@@ -3764,11 +3767,10 @@ StartGame:
 		cmpi.b	#$6B,($20001B).l	; does SRAM exist?
 		beq.s	T_NoSRAM		; if not, branch
 
-		move.b	#1,($A130F1).l		; enable SRAM
-		move.b	#1,($200001).l		; set number for text to 1
-		move.b	#0,($A130F1).l		; disable SRAM
-
-
+		move.b	#1,($FFFFFF9E).w	; set number for text to 1
+		move.b	#1,($200007).l	; save number for text to 1
+		move.b	#1,($FFFFFFA7).w	; set number for chapter to 1
+		move.b	#1,($200001).l	; save number for chapter to 1
 
 		move.b	#$E0,d0
 		jsr	PlaySound
@@ -3777,19 +3779,13 @@ StartGame:
 		move.w	#$501,($FFFFFE10).w	; set level to SBZ2
 		move.b	#$C,($FFFFF600).w	; set to level
 		move.w	#1,($FFFFFE02).w	; restart level
+		move.b	#0,($A130F1).l		; disable SRAM
 		rts
-
 
 T_NoSRAM:
 		move.b	#$28,($FFFFF600).w	; set to Chapters Screen
 		move.b	#0,($A130F1).l		; disable SRAM
 		rts				; return
-
-
-	;	move.b	#0,($A130F1).l		; disable SRAM
-		move.b	#$95,d0
-		bsr	PlaySound
-		move.w	#$001,($FFFFFE10).w	; load GHZ2
 ; ===========================================================================
 
 PlayLevelX:
@@ -5249,7 +5245,8 @@ ClearEverySpecialFlag:
 		clr.b	($FFFFFFEB).w
 		clr.b	($FFFFFF91).w
 		clr.l	($FFFFFFA0).w	; clear RAM adresses $FFA0-$FFA3 (4 flags)
-		clr.l	($FFFFFFA4).w	; $FFA4-$FFA7	(4)
+		clr.w	($FFFFFFA4).w	; $FFA4-$FFA5	(2)
+		clr.b	($FFFFFFA6).w	; $FFA6		(1)
 		clr.l	($FFFFFFA8).w	; $FFA8-$FFAB	(4)
 		clr.l	($FFFFFFAC).w	; $FFAC-$FFAF	(4)
 		clr.l	($FFFFFFB0).w	; $FFB0-$FFB3	(4)
@@ -5856,17 +5853,15 @@ SS_EndClrObjRamX:
 		bset	#1,($FFFFFF8B).w	; open second door
 
 @cont2:
-		move.b	#1,($A130F1).l		; enable SRAM
-		move.b	#3,($200007).l		; set number for text to 3
+		move.b	#3,($FFFFFF9E).w	; set number for text to 3
 		cmpi.w	#$401,($FFFFFE10).w
 		bne.s	@cont3
-		move.b	#6,($200007).l		; set number for text to 6
+		move.b	#6,($FFFFFF9E).w	; set number for text to 6
 		tst.b	($FFFFFF5F).w
 		beq.s	@cont3
-		move.b	#$A,($200007).l		; set number for text to A
+		move.b	#$A,($FFFFFF9E).w	; set number for text to A
 
 @cont3:
-		move.b	#0,($A130F1).l		; disable SRAM
 		move.b	#$20,($FFFFF600).w	; set to info screen
 
 		clr.b	($FFFFFF5F).w
@@ -16050,19 +16045,14 @@ Obj4B_SNZ:
 		cmpi.w	#$302,($FFFFFE10).w
 		bne.s	Obj4B_ChkOptions
 		move.b	#$20,($FFFFF600).w	; load info screen
-		move.b	#1,($A130F1).l		; enable SRAM
-		move.b	#9,($200007).l		; set number for text to 8
-		move.b	#0,($A130F1).l		; disable SRAM
+		move.b	#9,($FFFFFF9E).w	; set number for text to 9
 		move.b	#$9D,d0
 		jmp	PlaySound
-
-
 
 Obj4B_ChkOptions:
 		cmpi.w	#$0020,$8(a0)
 		bne.s	Obj4B_ChkIntro
 		move.b	#$24,($FFFFF600).w	; load options menu
-		move.b	#1,($FFFFFF9E).w
 		rts
 
 Obj4B_ChkIntro:
@@ -16146,9 +16136,7 @@ Obj4B_ChkEnding:
 		cmpi.w	#$125C,$8(a0)
 		bne.w	Obj4B_Return
 		move.b	#$20,($FFFFF600).w	; load info screen
-		move.b	#1,($A130F1).l		; enable SRAM
-		move.b	#8,($200007).l		; set number for text to 8
-		move.b	#0,($A130F1).l		; disable SRAM
+		move.b	#8,($FFFFFF9E).w	; set number for text to 8
 		move.b	#$9D,d0
 		jmp	PlaySound
 
@@ -16189,20 +16177,8 @@ Obj4B_ChkGHZ2:
 		clr.b	($FFFFFFB8).w
 		clr.b	($FFFFFFB7).w
 		clr.b	($FFFFFFB6).w
-
-		move.b	#1,($A130F1).l		; enable SRAM
-	;	cmpi.b	#$6B,($20001B).l	; does SRAM exist?
-	;	bne.s	Obj4B_NoSRAM		; if not, branch
-	;	move.b	#0,($A130F1).l		; disable SRAM
-
-	;	move.w	#$400,($FFFFFE10).w	; set level to SYZ1
-	;	move.b	#$C,($FFFFF600).w	; set to level
-	;	move.w	#1,($FFFFFE02).w	; restart level
-	;	rts
-
-Obj4B_NoSRAM:
-		move.b	#1,($200007).l		; set number for text to 1
-		move.b	#0,($A130F1).l		; disable SRAM
+		
+		move.b	#1,($FFFFFF9E).w	; set number for text to 1
 		move.b	#$20,($FFFFF600).w	; set screen mode to info screen
 		rts
 ; ---------------------------------------------------------------------------
@@ -16220,11 +16196,10 @@ Obj4B_Return:
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 MakeChapterScreen:
-		move.b	#1,($A130F1).l
 		jsr	CheckIfMainLevel
 		tst.b	d5
 		bmi.s	MCS_NotSpecial
-		cmp.b	($200001).l,d5
+		cmp.b	($FFFFFFA7).w,d5
 		bgt.s	MCS_DoChapter
 		cmpi.w	#$301,($FFFFFE10).w
 		bne.s	@cont
@@ -16238,19 +16213,16 @@ MakeChapterScreen:
 
 MCS_Special:
 		move.b	#$10,($FFFFF600).w
-		move.b	#0,($A130F1).l
 		rts
 
 MCS_NotSpecial:
 		move.b	#$C,($FFFFF600).w
 		move.w	#1,($FFFFFE02).w
-		move.b	#0,($A130F1).l
 		rts
 
 MCS_DoChapter:
-		move.b	d5,($200001).l
+		move.b	d5,($FFFFFFA7).w
 		move.b	#$28,($FFFFF600).w
-		move.b	#0,($A130F1).l
 		rts
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
@@ -23367,33 +23339,30 @@ loc_EC86:
 
 
 GotThroughAct:				; XREF: Obj3E_EndAct
-		move.b	#1,($A130F1).l		; enable SRAM
-
 		cmpi.w	#$002,($FFFFFE10).w	; is level GHZ3?
 		bne.s	GTA_ChkMZ1		; if not, branch
 		bset	#0,($FFFFFF8B).w	; unlock first door
-		move.b	#2,($200007).l		; set number for text to 2
+		move.b	#2,($FFFFFF9E).w	; set number for text to 2
 
 GTA_ChkMZ1:
 		cmpi.w	#$200,($FFFFFE10).w	; is level MZ1?
 		bne.s	GTA_ChkLZ2		; if not, branch
 		bset	#2,($FFFFFF8B).w	; unlock third door
-		move.b	#4,($200007).l		; set number for text to 4
+		move.b	#4,($FFFFFF9E).w	; set number for text to 4
 
 GTA_ChkLZ2:
 		cmpi.w	#$101,($FFFFFE10).w	; is level LZ2?
 		bne.s	GTA_ChkSLZ2		; if not, branch
 		bset	#3,($FFFFFF8B).w	; unlock fourth door
-		move.b	#5,($200007).l		; set number for text to 5
+		move.b	#5,($FFFFFF9E).w	; set number for text to 5
 
 GTA_ChkSLZ2:
 		cmpi.w	#$302,($FFFFFE10).w	; is level SLZ3?
 		bne.s	GTA_NoDoor		; if not, branch
 		bset	#5,($FFFFFF8B).w	; unlock fifth door
-		move.b	#7,($200007).l		; set number for text to 7
+		move.b	#7,($FFFFFF9E).w	; set number for text to 7
 
 GTA_NoDoor:
-		move.b	#0,($A130F1).l		; disable SRAM
 		move.b	#$20,($FFFFF600).w	; set to Info Screen
 
 locret_ECEE:
@@ -43170,9 +43139,7 @@ Obj3E_FindObj28:
 		adda.w	d2,a1		; next object RAM
 		dbf	d0,Obj3E_FindObj28 ; repeat $3E	times
 
-		move.b	#1,($A130F1).l		; enable SRAM
-		move.b	#2,($200007).l		; set number for text to 2
-		move.b	#0,($A130F1).l		; disable SRAM
+		move.b	#2,($FFFFFF9E).w	; set number for text to 2
 		move.b	#$20,($FFFFF600).w	; run info screen
 		rts
 ; ===========================================================================

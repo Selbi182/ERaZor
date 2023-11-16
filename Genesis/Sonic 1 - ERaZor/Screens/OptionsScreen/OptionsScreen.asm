@@ -380,17 +380,10 @@ Options_Not16:
 		move.b	#$B6,$1B(a1)		; make sure SRAM will be created at the correct size
 		move.b	#0,($A130F1).l		; disable SRAM
 
-		tst.b	($FFFFFF9E).w
-		beq.s	Options_NoSYZ1
 		jsr	Pal_FadeOut		; fade out palette
 		move.w	#$400,($FFFFFE10).w
 		move.b	#$C,($FFFFF600).w	; set screen mode to level ($C)
-		rts				; return
-
-Options_NoSYZ1:
-		jsr	Pal_FadeOut		; fade out palette
-		move.b	#$28,($FFFFF600).w	; set screen mode to chapter screen ($28)
-		rts				; return
+		rts
 ; ===========================================================================
 
 Options_Error:

@@ -54,9 +54,9 @@ Align:		macro
 ;Don't allow debug mode, not even with Game Genie.
 ; 0 - No
 ; 1 - Yes
-DebugModeDefault = 0
+DebugModeDefault = 1
 DontAllowDebug = 0
-DebugHUD = 1
+DebugHUD = 0
 ;=================================================
 ;Enable Demo Recording. (In RAM at $FFFFD200)
 ;Also disables Stars and Shields
@@ -3416,6 +3416,8 @@ Angle_Data:	incbin	misc\angles.bin
 	;include "SSRGSplash.asm"
 
 SineWavePalette:
+		rts	; disabled because this was seizure-inducing with fast foward lmao
+		
 		addq.w	#2,($FFFFFE04).w
 		move.w	($FFFFFE04).w,d0
 		jsr	CalcSine
@@ -5207,6 +5209,7 @@ ClearEverySpecialFlag:
 		clr.l	($FFFFFF60).w
 		clr.l	($FFFFFF64).w
 		clr.l	($FFFFFF68).w
+		clr.l	($FFFFFF6C).w
 		clr.w	($FFFFFF74).w
 		clr.b	($FFFFFF76).w
 		clr.b	($FFFFFF77).w
@@ -7309,7 +7312,7 @@ LevSz_ChkLamp:				; XREF: LevelSizeLoad
 		jsr	obj79_LoadInfo
 		move.w	($FFFFD008).w,d1
 		move.w	($FFFFD00C).w,d0
-		bra.s	loc_60D0
+		bra.w	loc_60D0
 ; ===========================================================================
 
 LevSz_StartLoc:				; XREF: LevelSizeLoad
@@ -7323,8 +7326,28 @@ LevSz_StartLoc:				; XREF: LevelSizeLoad
 		subq.w	#1,d0
 		lsl.w	#2,d0
 		lea	EndingStLocArray(pc,d0.w),a1 ; load Sonic's start location
+		bra.s	LevSz_SonicPos
+
+; ---------------------------------------------------------------------------
+; Sonic	start location array
+; ---------------------------------------------------------------------------
+StartLocArray:	include "misc\sloc_lev.asm"
+; ---------------------------------------------------------------------------
+
 
 LevSz_SonicPos:
+		cmpi.w	#$400,($FFFFFE10).w	; is level SYZ?
+		bra.s 	@cont			; if not, branch
+	;	move.w	#$04A0,($FFFFD008).w ; set Sonic's position on x-axis
+	;	move.w	#$00A0,($FFFFD00C).w ; set Sonic's position on y-axis
+		
+		move.w	#$04A0,($FFFFF700).w ; set Sonic's position on x-axis
+		move.w	#$00A0,($FFFFF704).w ; set Sonic's position on y-axis
+		
+		move.w	#-$800,($FFFFD012).w
+		bra.s	loc_60D0
+
+@cont:
 		moveq	#0,d1
 		move.w	(a1)+,d1
 		move.w	d1,($FFFFD008).w ; set Sonic's position on x-axis
@@ -7371,13 +7394,6 @@ loc_60F8:
 		move.l	LoopTileNums(pc,d0.w),($FFFFF7AC).w
 		bra.w	LevSz_Unk
 ; ===========================================================================
-; ---------------------------------------------------------------------------
-; Sonic	start location array
-; ---------------------------------------------------------------------------
-StartLocArray:	include "misc\sloc_lev.asm"
-	;	incbin	misc\sloc_lev.bin
-	;	even
-
 ; ---------------------------------------------------------------------------
 ; Which	256x256	tiles contain loops or roll-tunnels
 ; ---------------------------------------------------------------------------
@@ -16650,6 +16666,7 @@ Obj2E_ChkSonic:
 
 ExtraLife:
 		bra.s	@cont2		 ; extra lives are disabled
+		
 		addq.b	#1,($FFFFFE1C).w ; update life counter
 		cmpi.b	#0,($FFFFFE12).w
 		beq.s	@cont2
@@ -16662,11 +16679,11 @@ ExtraLife:
 		bne.s	@cont
 
 @contx:
-		addi.w	#30,($FFFFFE20).w
+		addi.w	#30,($FFFFFE20).w	; add 30 rings
 		addq.b	#1,($FFFFFE1D).w 
 
 @cont:
-		moveq	#10,d0		; add 100 ...
+		move.w	#1000,d0	; add 10000 ...
 		jsr	AddPoints	; ... points
 
 		move.w	#$C5,d0
@@ -16827,8 +16844,8 @@ Obj2E_ChkS:
 
 		cmpi.w	#$001,($FFFFFE10).w
 		beq.s	@cont2
-		add.w	#100,($FFFFFE20).w	; be kind and give you 100 rings
-		ori.b	#1,($FFFFFE1D).w ; update the ring counter
+	;	add.w	#100,($FFFFFE20).w	; be kind and give you 100 rings
+	;	ori.b	#1,($FFFFFE1D).w ; update the ring counter
 		moveq	#100,d0		; add 1000 ...
 		jsr	AddPoints	; ... points
 @cont2:
@@ -18563,7 +18580,7 @@ Obj45_Var:	dc.b	2,   4,	  0	; routine number, x-position, frame number
 		dc.b	6, $28,	  2
 
 word_B9BE:	dc.w $3800
-		dc.w -$6000
+		dc.w $A000
 		dc.w $5000
 ; ===========================================================================
 
@@ -18574,7 +18591,7 @@ Obj45_Main:				; XREF: Obj45_Index
 		move.w	word_B9BE(pc,d0.w),d2
 		lea	(Obj45_Var).l,a2
 		movea.l	a0,a1
-		moveq	#3,d1
+		moveq	#1,d1
 		bra.s	Obj45_Load
 ; ===========================================================================
 
@@ -18607,6 +18624,7 @@ loc_BA40:
 		move.b	(a2)+,$1A(a1)
 		move.l	a0,$3C(a1)
 		dbf	d1,Obj45_Loop	; repeat 3 times
+		
 
 		move.b	#3,$18(a1)
 
@@ -18645,6 +18663,11 @@ Obj45_Display:				; XREF: Obj45_Index
 		bsr	DisplaySprite
 
 Obj45_ChkDel:				; XREF: Obj45_Solid
+		btst	#0,($FFFFFF6C).w ; was switch in MZ pressed?
+		beq.s	@cont		; if not, branch
+		bra.w	DeleteObject	; delete object
+		
+@cont:
 		move.w	$3A(a0),d0
 		andi.w	#$FF80,d0
 		move.w	($FFFFF700).w,d1
@@ -18659,6 +18682,8 @@ Obj45_ChkDel:				; XREF: Obj45_Solid
 
 
 Obj45_Move:				; XREF: Obj45_Solid
+		rts	; no movement
+		
 		moveq	#0,d0
 		move.b	$28(a0),d0
 		add.w	d0,d0
@@ -18842,6 +18867,12 @@ DelFirstLine_Loop:
 		dbf	d2,DelFirstLine_Loop	; loop
 
 loc_BDD6:
+		cmpi.w	#$200,($FFFFFE10).w ; is level MZ1?
+		bne.s	@notmzswitch	; if not, branch
+		bset	#0,($FFFFFF6C).w	; set the "switch in MZ was pressed flag"
+		bra.w	@cont
+
+@notmzswitch:
 		cmpi.w	#$302,($FFFFFE10).w
 		bne.w	@cont
 		tst.b	($FFFFFF77).w
@@ -18850,8 +18881,8 @@ loc_BDD6:
 		move.b	#$96,d0			; play music
 		jsr	PlaySound
 		
-		addi.w	#100,($FFFFFE20).w
-		move.b	#1,($FFFFFE1D).w ; update rings	counter
+	;	addi.w	#100,($FFFFFE20).w
+	;	move.b	#1,($FFFFFE1D).w ; update rings	counter
 
 		lea	($FFFFDFC0).w,a1
 		move.b	#$7D,(a1)
@@ -20559,8 +20590,8 @@ Obj36_Hurt:				; XREF: Obj36_SideWays; Obj36_Upright
 		move.w	#$C3,d0			; set giant ring sound
 		jsr	PlaySound		; play it
 		
-		cmpi.w	#10,($FFFFFE20).w	; got at least 10 rings?
-		blo.s	@conto
+	;	cmpi.w	#10,($FFFFFE20).w	; got at least 10 rings?
+	;	blo.s	@conto
 		jsr	WhiteFlash2		; make a white flash
 
 @conto:
@@ -20591,16 +20622,16 @@ Obj36_Hurt:				; XREF: Obj36_SideWays; Obj36_Upright
 		move.w	#$C3,d0			; set giant ring sound
 		jsr	PlaySound		; play it
 		cmpi.w	#10,($FFFFFE20).w	; got at least 10 rings?
-		blo.s	@contoo
+	;	blo.s	@contoo
 		jsr	WhiteFlash2		; make a white flash
 
 @contoo:
 		jsr	FixLevel
-		subi.w	#10,($FFFFFE20).w ; remove 10 rings
-		bpl.s	@contyy
-		move.w	#0,($FFFFFE20).w
+	;	subi.w	#10,($FFFFFE20).w ; remove 10 rings
+	;	bpl.s	@contyy
+	;	move.w	#0,($FFFFFE20).w
 @contyy:
-		addq.b	#1,($FFFFFE1D).w ; update
+	;	addq.b	#1,($FFFFFE1D).w ; update
 
 	;	clr.w	($FFFFFE20).w		; clear rings
 
@@ -30227,7 +30258,7 @@ S_D_TeleNoInhuman:
 		cmpi.w	#$4E0,$C(a0)		; is Sonic above the Y-location $3E0?
 		bmi.s	S_D_NoTeleport		; if yes, branch
 		cmpi.w	#10,($FFFFFE20).w	; do you have at least 10 rings?
-		bge.s	S_D_20Rings		; if yes, branch
+		bra.s	S_D_20Rings		; if yes, branch
 		clr.w	($FFFFFE10).w		; clear rings
 		ori.b	#$81,($FFFFFE1D).w	; update ring counter
 		move.b	#1,($FFFFFF95).w	; make Sonic die
@@ -30235,8 +30266,8 @@ S_D_TeleNoInhuman:
 ; ===========================================================================
 
 S_D_20Rings:
-		subi.w	#10,($FFFFFE20).w	; substract 10 rings
-		move.b	#$80,($FFFFFE1D).w	; update ring counter
+	;	subi.w	#10,($FFFFFE20).w	; substract 10 rings
+	;	move.b	#$80,($FFFFFE1D).w	; update ring counter
 		move.b	#$1C,$1C(a0)		; make Sonic invisible
 		move.w	#$12A0,8(a0)		; set new location for Sonic's X-pos
 		move.w	#$21A,$C(a0)		; set new location for Sonic's Y-pos
@@ -30412,21 +30443,21 @@ Obj01_S_NotOnGround:
 
 Obj01_S_RemoveShield:
 		move.b	#0,($FFFFFE2C).w	; make sure sonic has no shield
-		bra.s	Obj01_ChkInvin		; skip Obj01_Reset
+	;	bra.s	Obj01_ChkInvin		; skip Obj01_Reset
 		
 Obj01_Reset:
-		cmpi.w	#$000,($FFFFFE10).w	; is level GHZ1?
-		beq.s	Obj01_S_NoRingLoose	; if yes, don't reduce rings
-		subi.w	#1,($FFFFFE20).w	; sub 1 ring
-		ori.b	#$81,($FFFFFE1D).w	; update the ring counter
+	;	cmpi.w	#$000,($FFFFFE10).w	; is level GHZ1?
+	;	beq.s	Obj01_S_NoRingLoose	; if yes, don't reduce rings
+	;	subi.w	#1,($FFFFFE20).w	; sub 1 ring
+	;	ori.b	#$81,($FFFFFE1D).w	; update the ring counter
 
 Obj01_S_NoRingLoose:
-		move.b	#30,($FFFFFFA2).w	; reset the timer to 60
-		cmpi.w	#$200,($FFFFFE10).w	; is level MZ1?
-		bne.s	Obj01_ChkInvin		; if not, branch
-		btst	#1,$22(a0)
-		bne.s	Obj01_ChkInvin
-		move.b	#5,($FFFFFFA2).w	; reset the timer to 5
+	;	move.b	#30,($FFFFFFA2).w	; reset the timer to 60
+	;	cmpi.w	#$200,($FFFFFE10).w	; is level MZ1?
+	;	bne.s	Obj01_ChkInvin		; if not, branch
+	;	btst	#1,$22(a0)
+	;	bne.s	Obj01_ChkInvin
+	;	move.b	#5,($FFFFFFA2).w	; reset the timer to 5
 ; End of S monitor code
 
 Obj01_ChkInvin:
@@ -32448,14 +32479,14 @@ SLZHitWall:
 		bne.w	@cont
 
 		cmpi.w	#5,($FFFFFE20).w
-		bge.s	@yesrings
+		bra.s	@yesrings
 		move.b	#0,($FFFFFE20).w
 		move.b	#$80,($FFFFFE1D).w
 		jmp	KillSonic
 
 @yesrings:
-		subi.w	#5,($FFFFFE20).w
-		move.b	#$80,($FFFFFE1D).w
+	;	subi.w	#5,($FFFFFE20).w
+	;	move.b	#$80,($FFFFFE1D).w
 
 		move.w	#$0C40,($FFFFD008).w
 		move.w	#$0470,($FFFFD00C).w
@@ -46270,16 +46301,16 @@ Obj21_NoUpdate:
 		tst.w	($FFFFFE20).w		; do you have any rings?
 		beq.s	Obj21_Flash2		; if not, branch
 
-		cmpi.w	#$302,($FFFFFE10).w	; is level SLZ3?
-		bne.s	Obj21_Contx		; if not, branch
-		tst.b	($FFFFFF77).w		; floating mode on?
-		bne.s	Obj21_Flash2		; if yes, branch
+	;	cmpi.w	#$302,($FFFFFE10).w	; is level SLZ3?
+	;	bne.s	Obj21_Contx		; if not, branch
+	;	tst.b	($FFFFFF77).w		; floating mode on?
+	;	bne.s	Obj21_Flash2		; if yes, branch
 
 Obj21_Contx:
-		cmpi.w	#$200,($FFFFFE10).w	; is level MZ1?
-		bne.s	Obj21_Cont		; if not, branch
-		tst.b	($FFFFFFE7).w		; inhuman mode on?
-		bne.s	Obj21_Flash2		; if yes, branch
+	;	cmpi.w	#$200,($FFFFFE10).w	; is level MZ1?
+	;	bne.s	Obj21_Cont		; if not, branch
+	;	tst.b	($FFFFFFE7).w		; inhuman mode on?
+	;	bne.s	Obj21_Flash2		; if yes, branch
 
 		bra.s	Obj21_Cont
 ; ---------------------------------------------------------------------------

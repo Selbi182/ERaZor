@@ -149,15 +149,15 @@ StartText:
 	; 8
 	dc.b	$0D						; Number of lines
 	dc.b	"                    ",$FF
-	dc.b	"  ADDITIONAL TEXT   ",$FF
+	dc.b	"   REAL HARDWARE    ",$FF
 	dc.b	"                    ",$FF
-	dc.b	"      HELP BY       ",$FF
+	dc.b	"    TESTING BY      ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
-	dc.b	"       KAIDAN       ",$FF
+	dc.b	"    REDHOTSONIC     ",$FF
 	dc.b	"                    ",$FF
-	dc.b	"       ABCRON       ",$FF
+	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF

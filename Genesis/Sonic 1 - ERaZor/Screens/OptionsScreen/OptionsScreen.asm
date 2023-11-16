@@ -573,7 +573,7 @@ GOT_NoEaster:
 
 		adda.w	#(2*24),a1			; make two empty lines
 
-		lea	(OpText_SonicArt).l,a2		; set text location
+		lea	(OpText_AutoSkipText).l,a2	; set text location
 		bsr.w	OW_Loop				; write text
 		moveq	#3,d2				; set d2 to 3
 		bsr.w	GOT_ChkOption			; check if option is ON or OFF
@@ -645,8 +645,8 @@ GOTSUP_Index:	dc.w	GOTSUP_Header1-GOTSUP_Index	; [$0] "=" Headers
 		dc.w	GOTSUP_Header2-GOTSUP_Index	; [$2] "SONIC ERAZOR" Header
 		dc.w	GOTSUP_Options-GOTSUP_Index	; [$4] The 4 options itself
 		dc.w	GOTSUP_ONOFF1-GOTSUP_Index	; [$6] Write "ON" or "OFF" text for Extended Camera
-		dc.w	GOTSUP_ONOFF2-GOTSUP_Index	; [$8] Write "ON" or "OFF" text for Sonic Art
-		dc.w	GOTSUP_ONOFF3-GOTSUP_Index	; [$A] Write "S2B" or "S3" text for Hard Part Skipper
+		dc.w	GOTSUP_ONOFF2-GOTSUP_Index	; [$8] Write "ON" or "OFF" text for Auto-Skip-Text
+		dc.w	GOTSUP_ONOFF3-GOTSUP_Index	; [$A] Write "ON" or "OFF" text for hidden setting
 		dc.w	GOTSUP_Delay-GOTSUP_Index	; [$C] Delay
 		dc.w	GOTSUP_Delay-GOTSUP_Index	; [$E] Delay
 		dc.w	GOTSUP_SoundTest-GOTSUP_Index	; [$10] Write "SOUND TEST"
@@ -683,7 +683,7 @@ GOTSUP_Options:
 
 		lea	($FFFFCA00+(7*24)).w,a1		; set destination
 		adda.w	($FFFFFF9A).w,a1
-		lea	(OpText_SonicArt).l,a2		; set text location
+		lea	(OpText_AutoSkipText).l,a2	; set text location
 		bsr.w	OW_NoIncrease			; write text
 
 		lea	($FFFFCA00+(10*24)).w,a1	; set destination
@@ -716,7 +716,7 @@ GOTSUP_ONOFF2:
 		moveq	#0,d1				; clear d1
 		moveq	#3,d2				; set d2 to 3
 		bsr.w	GOT_ChkOption			; check if option is ON or OFF
-		lea	($FFFFCA00+(7*24)+21-4).w,a1	; set destination
+		lea	($FFFFCA00+(7*24)+21).w,a1	; set destination
 		bsr.w	OW_Loop				; write text
 		bsr.w	GOTSUP_CheckEnd			; check if we reached the end
 		rts					; return
@@ -887,7 +887,7 @@ GOT_ChkOption:
 
 GOTCO_ChkExtCam:
 		cmpi.b	#2,d2				; is d2 set to 2?
-		bne.s	GOTCO_ChkSonArt			; if not, branch
+		bne.s	GOTCO_ChkAutoSkipText		; if not, branch
 		lea	(OpText_OFF).l,a2		; use "OFF" text
 		tst.b	($FFFFFF93).w			; is Extended Camera disabled?
 		bne.s	GOTCO_Return			; if not, branch
@@ -895,13 +895,13 @@ GOTCO_ChkExtCam:
 		rts					; return
 ; ---------------------------------------------------------------------------
 
-GOTCO_ChkSonArt:
+GOTCO_ChkAutoSkipText:
 		cmpi.b	#3,d2				; is d2 set to 3?
 		bne.s	GOTCO_ChkEasterEgg		; if not, branch
-		lea	(OpText_S2B).l,a2		; use "S2B" text
-		tst.b	($FFFFFF94).w			; is art set to S3?
-		beq.s	GOTCO_Return			; if not, branch
-		lea	(OpText_S3).l,a2		; otherwise use "ON" text
+		lea	(OpText_OFF).l,a2		; use "OFF" text
+		tst.b	($FFFFFF94).w			; is Auto-Skip-Text disabled?
+		bne.s	GOTCO_Return			; if not, branch
+		lea	(OpText_ON).l,a2		; otherwise use "ON" text
 		rts					; return
 ; ---------------------------------------------------------------------------
 
@@ -937,9 +937,8 @@ OpText_Extended:
 		dc.b	'EXTENDED CAMERA      ', $FF
 		even
 
-OpText_SonicArt:
-		dc.b	'SONIC ART        ', $FF
-		dc.b	'  ', $FF
+OpText_AutoSkipText:
+		dc.b	'AUTO SKIP TEXT       ', $FF
 		even
 
 OpText_EasterEgg_Locked:
@@ -966,8 +965,6 @@ OpText_Exit:	dc.b	'      EXIT OPTIONS      ', $FF
 
 OpText_ON:	dc.b	' ON', $FF
 OpText_OFF:	dc.b	'OFF', $FF
-OpText_S2B:	dc.b	' ERAZOR', $FF
-OpText_S3:	dc.b	'SONIC 3', $FF
 		even
 ; ---------------------------------------------------------------------------
 ; ===========================================================================

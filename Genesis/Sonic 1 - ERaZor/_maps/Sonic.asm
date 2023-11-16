@@ -1,528 +1,2205 @@
 ; --------------------------------------------------------------------------------
-; Sprite mappings - output from SonMapEd - Sonic 1 format
+; Sprite mappings - output from ClownMapEd - Sonic 1/CD format
 ; --------------------------------------------------------------------------------
 
-SME_JpoOi:	
-		dc.w SME_JpoOi_EA-SME_JpoOi, SME_JpoOi_EB-SME_JpoOi	
-		dc.w SME_JpoOi_100-SME_JpoOi, SME_JpoOi_110-SME_JpoOi	
-		dc.w SME_JpoOi_120-SME_JpoOi, SME_JpoOi_130-SME_JpoOi	
-		dc.w SME_JpoOi_140-SME_JpoOi, SME_JpoOi_155-SME_JpoOi	
-		dc.w SME_JpoOi_160-SME_JpoOi, SME_JpoOi_16B-SME_JpoOi	
-		dc.w SME_JpoOi_180-SME_JpoOi, SME_JpoOi_18B-SME_JpoOi	
-		dc.w SME_JpoOi_19B-SME_JpoOi, SME_JpoOi_1B5-SME_JpoOi	
-		dc.w SME_JpoOi_1D4-SME_JpoOi, SME_JpoOi_1E9-SME_JpoOi	
-		dc.w SME_JpoOi_203-SME_JpoOi, SME_JpoOi_218-SME_JpoOi	
-		dc.w SME_JpoOi_232-SME_JpoOi, SME_JpoOi_247-SME_JpoOi	
-		dc.w SME_JpoOi_252-SME_JpoOi, SME_JpoOi_25D-SME_JpoOi	
-		dc.w SME_JpoOi_272-SME_JpoOi, SME_JpoOi_27D-SME_JpoOi	
-		dc.w SME_JpoOi_28D-SME_JpoOi, SME_JpoOi_2AC-SME_JpoOi	
-		dc.w SME_JpoOi_2CB-SME_JpoOi, SME_JpoOi_2E0-SME_JpoOi	
-		dc.w SME_JpoOi_2FA-SME_JpoOi, SME_JpoOi_30F-SME_JpoOi	
-		dc.w SME_JpoOi_329-SME_JpoOi, SME_JpoOi_334-SME_JpoOi	
-		dc.w SME_JpoOi_33F-SME_JpoOi, SME_JpoOi_34A-SME_JpoOi	
-		dc.w SME_JpoOi_355-SME_JpoOi, SME_JpoOi_36A-SME_JpoOi	
-		dc.w SME_JpoOi_37A-SME_JpoOi, SME_JpoOi_38F-SME_JpoOi	
-		dc.w SME_JpoOi_39F-SME_JpoOi, SME_JpoOi_3AA-SME_JpoOi	
-		dc.w SME_JpoOi_3B5-SME_JpoOi, SME_JpoOi_3C0-SME_JpoOi	
-		dc.w SME_JpoOi_3CB-SME_JpoOi, SME_JpoOi_3E0-SME_JpoOi	
-		dc.w SME_JpoOi_3EB-SME_JpoOi, SME_JpoOi_400-SME_JpoOi	
-		dc.w SME_JpoOi_40B-SME_JpoOi, SME_JpoOi_411-SME_JpoOi	
-		dc.w SME_JpoOi_417-SME_JpoOi, SME_JpoOi_41D-SME_JpoOi	
-		dc.w SME_JpoOi_423-SME_JpoOi, SME_JpoOi_429-SME_JpoOi	
-		dc.w SME_JpoOi_434-SME_JpoOi, SME_JpoOi_43A-SME_JpoOi	
-		dc.w SME_JpoOi_445-SME_JpoOi, SME_JpoOi_44B-SME_JpoOi	
-		dc.w SME_JpoOi_456-SME_JpoOi, SME_JpoOi_46B-SME_JpoOi	
-		dc.w SME_JpoOi_476-SME_JpoOi, SME_JpoOi_486-SME_JpoOi	
-		dc.w SME_JpoOi_496-SME_JpoOi, SME_JpoOi_4A6-SME_JpoOi	
-		dc.w SME_JpoOi_4B1-SME_JpoOi, SME_JpoOi_4C1-SME_JpoOi	
-		dc.w SME_JpoOi_4D1-SME_JpoOi, SME_JpoOi_4E1-SME_JpoOi	
-		dc.w SME_JpoOi_4F6-SME_JpoOi, SME_JpoOi_50B-SME_JpoOi	
-		dc.w SME_JpoOi_525-SME_JpoOi, SME_JpoOi_53F-SME_JpoOi	
-		dc.w SME_JpoOi_54A-SME_JpoOi, SME_JpoOi_55A-SME_JpoOi	
-		dc.w SME_JpoOi_565-SME_JpoOi, SME_JpoOi_575-SME_JpoOi	
-		dc.w SME_JpoOi_580-SME_JpoOi, SME_JpoOi_590-SME_JpoOi	
-		dc.w SME_JpoOi_5A0-SME_JpoOi, SME_JpoOi_5BA-SME_JpoOi	
-		dc.w SME_JpoOi_5D4-SME_JpoOi, SME_JpoOi_5DF-SME_JpoOi	
-		dc.w SME_JpoOi_5EF-SME_JpoOi, SME_JpoOi_5F5-SME_JpoOi	
-		dc.w SME_JpoOi_5FB-SME_JpoOi, SME_JpoOi_601-SME_JpoOi	
-		dc.w SME_JpoOi_611-SME_JpoOi, SME_JpoOi_621-SME_JpoOi	
-		dc.w SME_JpoOi_631-SME_JpoOi, SME_JpoOi_641-SME_JpoOi	
-		dc.w SME_JpoOi_64C-SME_JpoOi, SME_JpoOi_652-SME_JpoOi	
-		dc.w SME_JpoOi_658-SME_JpoOi, SME_JpoOi_65E-SME_JpoOi	
-		dc.w SME_JpoOi_664-SME_JpoOi, SME_JpoOi_66A-SME_JpoOi	
-		dc.w SME_JpoOi_670-SME_JpoOi, SME_JpoOi_67B-SME_JpoOi	
-		dc.w SME_JpoOi_686-SME_JpoOi, SME_JpoOi_691-SME_JpoOi	
-		dc.w SME_JpoOi_69C-SME_JpoOi, SME_JpoOi_6B6-SME_JpoOi	
-		dc.w SME_JpoOi_6C6-SME_JpoOi, SME_JpoOi_6E0-SME_JpoOi	
-		dc.w SME_JpoOi_6F0-SME_JpoOi, SME_JpoOi_6FB-SME_JpoOi	
-		dc.w SME_JpoOi_706-SME_JpoOi, SME_JpoOi_711-SME_JpoOi	
-		dc.w SME_JpoOi_71C-SME_JpoOi, SME_JpoOi_731-SME_JpoOi	
-		dc.w SME_JpoOi_741-SME_JpoOi, SME_JpoOi_75B-SME_JpoOi	
-		dc.w SME_JpoOi_76B-SME_JpoOi, SME_JpoOi_785-SME_JpoOi	
-		dc.w SME_JpoOi_79F-SME_JpoOi, SME_JpoOi_7B9-SME_JpoOi	
-		dc.w SME_JpoOi_7D3-SME_JpoOi, SME_JpoOi_7ED-SME_JpoOi	
-		dc.w SME_JpoOi_807-SME_JpoOi	
-SME_JpoOi_EA:	dc.b 0	
-SME_JpoOi_EB:	dc.b 4	
-		dc.b $EC, 8, 0, 0, $F0	
-		dc.b $F4, $D, 0, 3, $F0	
-		dc.b 4, 8, 0, $B, $F0	
-		dc.b $C, 8, 0, $E, $F8	
-SME_JpoOi_100:	dc.b 3	
-		dc.b $EC, 9, 0, 0, $F0	
-		dc.b $FC, 9, 0, 6, $F0	
-		dc.b $C, 8, 0, $C, $F8	
-SME_JpoOi_110:	dc.b 3	
-		dc.b $EC, 9, 0, 0, $F0	
-		dc.b $FC, 9, 0, 6, $F0	
-		dc.b $C, 8, 0, $C, $F8	
-SME_JpoOi_120:	dc.b 3	
-		dc.b $EC, 9, 0, 0, $F0	
-		dc.b $FC, 9, 0, 6, $F0	
-		dc.b $C, 8, 0, $C, $F8	
-SME_JpoOi_130:	dc.b 3	
-		dc.b $EC, $A, 0, 0, $F0	
-		dc.b 4, 8, 0, 9, $F0	
-		dc.b $C, 8, 0, $C, $F8	
-SME_JpoOi_140:	dc.b 4	
-		dc.b $EB, $D, 0, 0, $EC	
-		dc.b $FB, 9, 0, 8, $EC	
-		dc.b $FB, 6, 0, $E, 4	
-		dc.b $B, 4, 0, $14, $EC	
-SME_JpoOi_155:	dc.b 2	
-		dc.b $EC, $D, 0, 0, $ED	
-		dc.b $FC, $E, 0, 8, $F5	
-SME_JpoOi_160:	dc.b 2	
-		dc.b $ED, 9, 0, 0, $F3	
-		dc.b $FD, $A, 0, 6, $F3	
-SME_JpoOi_16B:	dc.b 4	
-		dc.b $EB, 9, 0, 0, $F4	
-		dc.b $FB, 9, 0, 6, $EC	
-		dc.b $FB, 6, 0, $C, 4	
-		dc.b $B, 4, 0, $12, $EC	
-SME_JpoOi_180:	dc.b 2	
-		dc.b $EC, 9, 0, 0, $F3	
-		dc.b $FC, $E, 0, 6, $EB	
-SME_JpoOi_18B:	dc.b 3	
-		dc.b $ED, $D, 0, 0, $EC	
-		dc.b $FD, $C, 0, 8, $F4	
-		dc.b 5, 9, 0, $C, $F4	
-SME_JpoOi_19B:	dc.b 5	
-		dc.b $EB, 9, 0, 0, $EB	
-		dc.b $EB, 6, 0, 6, 3	
-		dc.b $FB, 8, 0, $C, $EB	
-		dc.b 3, 9, 0, $F, $F3	
-		dc.b $13, 0, 0, $15, $FB	
-SME_JpoOi_1B5:	dc.b 6	
-		dc.b $EC, 9, 0, 0, $EC	
-		dc.b $EC, 1, 0, 6, 4	
-		dc.b $FC, $C, 0, 8, $EC	
-		dc.b 4, 9, 0, $C, $F4	
-		dc.b $FC, 5, 0, $12, $C	
-		dc.b $F4, 0, 0, $16, $14	
-SME_JpoOi_1D4:	dc.b 4	
-		dc.b $ED, 9, 0, 0, $ED	
-		dc.b $ED, 1, 0, 6, 5	
-		dc.b $FD, $D, 0, 8, $F5	
-		dc.b $D, 8, 0, $10, $FD	
-SME_JpoOi_1E9:	dc.b 5	
-		dc.b $EB, 9, 0, 0, $EB	
-		dc.b $EB, 5, 0, 6, 3	
-		dc.b $FB, $D, 0, $A, $F3	
-		dc.b $B, 8, 0, $12, $F3	
-		dc.b $13, 4, 0, $15, $FB	
-SME_JpoOi_203:	dc.b 4	
-		dc.b $EC, 9, 0, 0, $EC	
-		dc.b $EC, 1, 0, 6, 4	
-		dc.b $FC, $D, 0, 8, $F4	
-		dc.b $C, 8, 0, $10, $FC	
-SME_JpoOi_218:	dc.b 5	
-		dc.b $ED, 9, 0, 0, $ED	
-		dc.b $ED, 1, 0, 6, 5	
-		dc.b $FD, 0, 0, 8, $ED	
-		dc.b $FD, $D, 0, 9, $F5	
-		dc.b $D, 8, 0, $11, $FD	
-SME_JpoOi_232:	dc.b 4	
-		dc.b $F4, 7, 0, 0, $EB	
-		dc.b $EC, 9, 0, 8, $FB	
-		dc.b $FC, 4, 0, $E, $FB	
-		dc.b 4, 9, 0, $10, $FB	
-SME_JpoOi_247:	dc.b 2	
-		dc.b $F4, 7, 0, 0, $EC	
-		dc.b $EC, $B, 0, 8, $FC	
-SME_JpoOi_252:	dc.b 2	
-		dc.b $F4, 6, 0, 0, $ED	
-		dc.b $F4, $A, 0, 6, $FD	
-SME_JpoOi_25D:	dc.b 4	
-		dc.b $F4, 6, 0, 0, $EB	
-		dc.b $EC, 9, 0, 6, $FB	
-		dc.b $FC, 4, 0, $C, $FB	
-		dc.b 4, 9, 0, $E, $FB	
-SME_JpoOi_272:	dc.b 2	
-		dc.b $F4, 6, 0, 0, $EC	
-		dc.b $F4, $B, 0, 6, $FC	
-SME_JpoOi_27D:	dc.b 3	
-		dc.b $F4, 7, 0, 0, $ED	
-		dc.b $EC, 0, 0, 8, $FD	
-		dc.b $F4, $A, 0, 9, $FD	
-SME_JpoOi_28D:	dc.b 6	
-		dc.b $FD, 6, 0, 0, $EB	
-		dc.b $ED, 4, 0, 6, $F3	
-		dc.b $F5, 4, 0, 8, $EB	
-		dc.b $F5, $A, 0, $A, $FB	
-		dc.b $D, 0, 0, $13, $FB	
-		dc.b $FD, 0, 0, $14, $13	
-SME_JpoOi_2AC:	dc.b 6	
-		dc.b $FC, 6, 0, 0, $EC	
-		dc.b $E4, 8, 0, 6, $F4	
-		dc.b $EC, 4, 0, 9, $FC	
-		dc.b $F4, 4, 0, $B, $EC	
-		dc.b $F4, $A, 0, $D, $FC	
-		dc.b $C, 0, 0, $16, $FC	
-SME_JpoOi_2CB:	dc.b 4	
-		dc.b $FB, 6, 0, 0, $ED	
-		dc.b $F3, 4, 0, 6, $ED	
-		dc.b $EB, $A, 0, 8, $FD	
-		dc.b 3, 4, 0, $11, $FD	
-SME_JpoOi_2E0:	dc.b 5	
-		dc.b $FD, 6, 0, 0, $EB	
-		dc.b $ED, 8, 0, 6, $F3	
-		dc.b $F5, 4, 0, 9, $EB	
-		dc.b $F5, $D, 0, $B, $FB	
-		dc.b 5, 8, 0, $13, $FB	
-SME_JpoOi_2FA:	dc.b 4	
-		dc.b $FC, 6, 0, 0, $EC	
-		dc.b $F4, 4, 0, 6, $EC	
-		dc.b $EC, $A, 0, 8, $FC	
-		dc.b 4, 4, 0, $11, $FC	
-SME_JpoOi_30F:	dc.b 5	
-		dc.b $FB, 6, 0, 0, $ED	
-		dc.b $EB, $A, 0, 6, $FD	
-		dc.b $F3, 4, 0, $F, $ED	
-		dc.b 3, 4, 0, $11, $FD	
-		dc.b $B, 0, 0, $13, $FD	
-SME_JpoOi_329:	dc.b 2	
-		dc.b $EE, 9, 0, 0, $F4	
-		dc.b $FE, $E, 0, 6, $EC	
-SME_JpoOi_334:	dc.b 2	
-		dc.b $EE, 9, 0, 0, $F4	
-		dc.b $FE, $E, 0, 6, $EC	
-SME_JpoOi_33F:	dc.b 2	
-		dc.b $EE, 9, 0, 0, $F4	
-		dc.b $FE, $E, 0, 6, $EC	
-SME_JpoOi_34A:	dc.b 2	
-		dc.b $EE, 9, 0, 0, $F4	
-		dc.b $FE, $E, 0, 6, $EC	
-SME_JpoOi_355:	dc.b 4	
-		dc.b $EE, 9, 0, 0, $EE	
-		dc.b $EE, 1, 0, 6, 6	
-		dc.b $FE, $E, 0, 8, $F6	
-		dc.b $FE, 0, 0, $14, $EE	
-SME_JpoOi_36A:	dc.b 3	
-		dc.b $EE, 9, 0, 0, $EE	
-		dc.b $EE, 1, 0, 6, 6	
-		dc.b $FE, $E, 0, 8, $F6	
-SME_JpoOi_37A:	dc.b 4	
-		dc.b $EE, 9, 0, 0, $EE	
-		dc.b $EE, 1, 0, 6, 6	
-		dc.b $FE, $E, 0, 8, $F6	
-		dc.b $FE, 0, 0, $14, $EE	
-SME_JpoOi_38F:	dc.b 3	
-		dc.b $EE, 9, 0, 0, $EE	
-		dc.b $EE, 1, 0, 6, 6	
-		dc.b $FE, $E, 0, 8, $F6	
-SME_JpoOi_39F:	dc.b 2	
-		dc.b $F4, 6, 0, 0, $EE	
-		dc.b $F4, $B, 0, 6, $FE	
-SME_JpoOi_3AA:	dc.b 2	
-		dc.b $F4, 6, 0, 0, $EE	
-		dc.b $F4, $B, 0, 6, $FE	
-SME_JpoOi_3B5:	dc.b 2	
-		dc.b $F4, 6, 0, 0, $EE	
-		dc.b $F4, $B, 0, 6, $FE	
-SME_JpoOi_3C0:	dc.b 2	
-		dc.b $F4, 6, 0, 0, $EE	
-		dc.b $F4, $B, 0, 6, $FE	
-SME_JpoOi_3CB:	dc.b 4	
-		dc.b $FA, 6, 0, 0, $EE	
-		dc.b $F2, 4, 0, 6, $EE	
-		dc.b $EA, $B, 0, 8, $FE	
-		dc.b $A, 0, 0, $14, $FE	
-SME_JpoOi_3E0:	dc.b 2	
-		dc.b $F2, 7, 0, 0, $EE	
-		dc.b $EA, $B, 0, 8, $FE	
-SME_JpoOi_3EB:	dc.b 4	
-		dc.b $FA, 6, 0, 0, $EE	
-		dc.b $F2, 4, 0, 6, $EE	
-		dc.b $EA, $B, 0, 8, $FE	
-		dc.b $A, 0, 0, $14, $FE	
-SME_JpoOi_400:	dc.b 2	
-		dc.b $F2, 7, 0, 0, $EE	
-		dc.b $EA, $B, 0, 8, $FE	
-SME_JpoOi_40B:	dc.b 1	
-		dc.b $F0, $F, 0, 0, $F0	
-SME_JpoOi_411:	dc.b 1	
-		dc.b $F0, $F, 0, 0, $F0	
-SME_JpoOi_417:	dc.b 1	
-		dc.b $F0, $F, 0, 0, $F0	
-SME_JpoOi_41D:	dc.b 1	
-		dc.b $F0, $F, 0, 0, $F0	
-SME_JpoOi_423:	dc.b 1	
-		dc.b $F0, $F, 0, 0, $F0	
-SME_JpoOi_429:	dc.b 2	
-		dc.b $F4, $E, 0, 0, $EC	
-		dc.b $F4, 2, 0, $C, $C	
-SME_JpoOi_434:	dc.b 1	
-		dc.b $F0, $F, 0, 0, $F0	
-SME_JpoOi_43A:	dc.b 2	
-		dc.b $EC, $B, 0, 0, $F4	
-		dc.b $C, 8, 0, $C, $F4	
-SME_JpoOi_445:	dc.b 1	
-		dc.b $F0, $F, 0, 0, $F0	
-SME_JpoOi_44B:	dc.b 2	
-		dc.b $ED, 9, 0, 0, $F0	
-		dc.b $FD, $E, 0, 6, $F0	
-SME_JpoOi_456:	dc.b 4	
-		dc.b $ED, 9, 0, 0, $F0	
-		dc.b $FD, $D, 0, 6, $F0	
-		dc.b $D, 4, 0, $E, 0	
-		dc.b 5, 0, 0, $10, $E8	
-SME_JpoOi_46B:	dc.b 2	
-		dc.b $F4, $B, 0, 0, $F8	
-		dc.b $FC, 2, 0, $C, $F0	
-SME_JpoOi_476:	dc.b 3	
-		dc.b $EC, 8, 8, 0, $E8	
-		dc.b $F4, 2, 8, 3, 0	
-		dc.b $F4, $F, 8, 6, $E0	
-SME_JpoOi_486:	dc.b 3	
-		dc.b $EC, $E, 8, 0, $E8	
-		dc.b 4, $D, 8, $C, $E0	
-		dc.b $C, 0, $18, $14, 0	
-SME_JpoOi_496:	dc.b 3	
-		dc.b $F4, $D, 0, 0, $FC	
-		dc.b $FC, 5, 0, 8, $EC	
-		dc.b 4, 8, 0, $C, $FC	
-SME_JpoOi_4A6:	dc.b 2	
-		dc.b $F4, $A, 0, 0, $E8	
-		dc.b $F4, $A, 8, 0, 0	
-SME_JpoOi_4B1:	dc.b 3	
-		dc.b $F4, $D, 0, 0, $E4	
-		dc.b $FC, 0, 0, 8, 4	
-		dc.b 4, $C, 0, 9, $EC	
-SME_JpoOi_4C1:	dc.b 3	
-		dc.b $F4, $D, 0, 0, $FC	
-		dc.b $FC, 5, 0, 8, $EC	
-		dc.b 4, 8, 0, $C, $FC	
-SME_JpoOi_4D1:	dc.b 3	
-		dc.b $E8, $B, 0, 0, $F0	
-		dc.b 8, 4, 0, $C, $F8	
-		dc.b $10, 0, 0, $E, $F8	
-SME_JpoOi_4E1:	dc.b 4	
-		dc.b $F8, $E, 0, 0, $E8	
-		dc.b 0, 5, 0, $C, 8	
-		dc.b $F8, 0, 0, $10, 8	
-		dc.b $F0, 0, 0, $11, $F8	
-SME_JpoOi_4F6:	dc.b 4	
-		dc.b $F8, $E, 0, 0, $E8	
-		dc.b 0, 5, 0, $C, 8	
-		dc.b $F8, 0, 0, $10, 8	
-		dc.b $F0, 0, 0, $11, $F8	
-SME_JpoOi_50B:	dc.b 5	
-		dc.b $E8, $A, 0, 0, $F4	
-		dc.b $F0, 1, 0, 9, $C	
-		dc.b 0, 9, 0, $B, $F4	
-		dc.b $10, 4, 0, $11, $F4	
-		dc.b 0, 0, 0, $13, $EC	
-SME_JpoOi_525:	dc.b 5	
-		dc.b $E8, $A, 0, 0, $F4	
-		dc.b $E8, 1, 0, 9, $C	
-		dc.b 0, 9, 0, $B, $F4	
-		dc.b $10, 4, 0, $11, $F4	
-		dc.b 0, 0, 0, $13, $EC	
-SME_JpoOi_53F:	dc.b 2	
-		dc.b $ED, $A, 0, 0, $F3	
-		dc.b 5, $D, 0, 9, $EB	
-SME_JpoOi_54A:	dc.b 3	
-		dc.b $EC, $A, 0, 0, $F3	
-		dc.b 4, 8, 0, 9, $F3	
-		dc.b $C, 4, 0, $C, $F3	
-SME_JpoOi_55A:	dc.b 2	
-		dc.b $ED, $A, 0, 0, $F3	
-		dc.b 5, $D, 0, 9, $EB	
-SME_JpoOi_565:	dc.b 3	
-		dc.b $EC, $A, 0, 0, $F3	
-		dc.b 4, 8, 0, 9, $F3	
-		dc.b $C, 4, 0, $C, $F3	
-SME_JpoOi_575:	dc.b 2	
-		dc.b $EC, 9, 0, 0, $F0	
-		dc.b $FC, $E, 0, 6, $F0	
-SME_JpoOi_580:	dc.b 3	
-		dc.b $EC, $A, 0, 0, $F0	
-		dc.b 4, 5, 0, 9, $F8	
-		dc.b $E4, 0, 0, $D, $F8	
-SME_JpoOi_590:	dc.b 3	
-		dc.b $E8, $D, 0, 0, $EC	
-		dc.b $E8, 1, 0, 8, $C	
-		dc.b $F8, $B, 0, $A, $F4	
-SME_JpoOi_5A0:	dc.b 5	
-		dc.b $E8, $D, 0, 0, $EC	
-		dc.b $E8, 1, 0, 8, $C	
-		dc.b $F8, 9, 0, $A, $F4	
-		dc.b 8, $C, 0, $10, $F4	
-		dc.b $10, 0, 0, $14, $F4	
-SME_JpoOi_5BA:	dc.b 5	
-		dc.b $E8, $D, 0, 0, $EC	
-		dc.b $E8, 1, 0, 8, $C	
-		dc.b $F8, 9, 0, $A, $F4	
-		dc.b 8, $C, 0, $10, $F4	
-		dc.b $10, 0, 0, $14, $F4	
-SME_JpoOi_5D4:	dc.b 2	
-		dc.b $EC, 8, 0, 0, $F0	
-		dc.b $F4, $F, 0, 3, $F0	
-SME_JpoOi_5DF:	dc.b 3	
-		dc.b $EC, 8, 0, 0, $F0	
-		dc.b $F4, $E, 0, 3, $F0	
-		dc.b $C, 8, 0, $F, $F8	
-SME_JpoOi_5EF:	dc.b 1	
-		dc.b $F0, $B, 0, 0, $F4	
-SME_JpoOi_5F5:	dc.b 1	
-		dc.b $F4, 6, 0, 0, $F8	
-SME_JpoOi_5FB:	dc.b 1	
-		dc.b $F8, 1, 0, 0, $FC	
-SME_JpoOi_601:	dc.b 3	
-		dc.b $F4, $D, 8, 0, $E4	
-		dc.b $FC, 5, 8, 8, 4	
-		dc.b 4, 8, 8, $C, $EC	
-SME_JpoOi_611:	dc.b 3	
-		dc.b $F4, $D, 8, 0, $FC	
-		dc.b $FC, 0, 8, 8, $F4	
-		dc.b 4, $C, 8, 9, $F4	
-SME_JpoOi_621:	dc.b 3	
-		dc.b $F0, $E, 0, 0, $EC	
-		dc.b $F8, 1, 0, $C, $C	
-		dc.b 8, $C, 0, $E, $F4	
-SME_JpoOi_631:	dc.b 3	
-		dc.b $EB, 9, 0, 0, $F4	
-		dc.b $FB, $E, 0, 6, $EC	
-		dc.b 3, 1, 0, $12, $C	
-SME_JpoOi_641:	dc.b 2	
-		dc.b $F0, $F, 0, 0, $EC	
-		dc.b $F8, 2, 0, $10, $C	
-SME_JpoOi_64C:	dc.b 1	
-		dc.b $F8, $F, 0, 0, $F4	
-SME_JpoOi_652:	dc.b 1	
-		dc.b $F8, $F, 0, 0, $F4	
-SME_JpoOi_658:	dc.b 1	
-		dc.b $F8, $F, 0, 0, $F4	
-SME_JpoOi_65E:	dc.b 1	
-		dc.b $F8, $F, 0, 0, $F4	
-SME_JpoOi_664:	dc.b 1	
-		dc.b $F8, $F, 0, 0, $F4	
-SME_JpoOi_66A:	dc.b 1	
-		dc.b $F8, $F, 0, 0, $F4	
-SME_JpoOi_670:	dc.b 2	
-		dc.b $FC, 2, 0, 0, $EC	
-		dc.b $F4, $F, 0, 3, $F4	
-SME_JpoOi_67B:	dc.b 2	
-		dc.b $FC, 2, 0, 0, $EC	
-		dc.b $F4, $F, 0, 3, $F4	
-SME_JpoOi_686:	dc.b 2	
-		dc.b $FC, 2, 0, 0, $EC	
-		dc.b $F4, $F, 0, 3, $F4	
-SME_JpoOi_691:	dc.b 2	
-		dc.b $FC, 1, 0, 0, $EC	
-		dc.b $F4, $F, 0, 2, $F4	
-SME_JpoOi_69C:	dc.b 5	
-		dc.b $EF, 8, 0, 0, $F8	
-		dc.b $F7, $E, 0, 3, $F0	
-		dc.b $F7, 2, 0, $F, $10	
-		dc.b $F, 5, 0, $12, $F0	
-		dc.b $F, 0, 0, $16, 0	
-SME_JpoOi_6B6:	dc.b 3	
-		dc.b $F0, 8, 0, 0, $F8	
-		dc.b $F8, $F, 0, 3, $F0	
-		dc.b 0, 1, 0, $13, $10	
-SME_JpoOi_6C6:	dc.b 5	
-		dc.b $F0, 8, 0, 0, $F7	
-		dc.b $F8, $E, 0, 3, $F7	
-		dc.b 1, 2, 0, $F, $EF	
-		dc.b $10, 5, 0, $12, $F7	
-		dc.b $10, 0, 0, $16, 7	
-SME_JpoOi_6E0:	dc.b 3	
-		dc.b $EF, 8, 0, 0, $F8	
-		dc.b $F7, $F, 0, 3, $F0	
-		dc.b $FF, 1, 0, $13, $10	
-SME_JpoOi_6F0:	dc.b 2	
-		dc.b $EC, $F, 0, 0, $F4	
-		dc.b $C, 8, 0, $10, $FC	
-SME_JpoOi_6FB:	dc.b 2	
-		dc.b $EC, $F, 0, 0, $F4	
-		dc.b $C, 8, 0, $10, $FC	
-SME_JpoOi_706:	dc.b 2	
-		dc.b $EC, $F, 0, 0, $F4	
-		dc.b $C, 8, 0, $10, $FC	
-SME_JpoOi_711:	dc.b 2	
-		dc.b $EC, $F, 0, 0, $F4	
-		dc.b $C, 4, 0, $10, $FC	
-SME_JpoOi_71C:	dc.b 4	
-		dc.b $E8, 9, 0, 0, $F7	
-		dc.b $F0, 2, 0, 6, $EF	
-		dc.b $F8, $E, 0, 9, $F7	
-		dc.b 0, 1, 0, $15, $17	
-SME_JpoOi_731:	dc.b 3	
-		dc.b $E8, 4, 0, 0, 0	
-		dc.b $F0, 2, 0, 2, $F0	
-		dc.b $F0, $F, 0, 5, $F8	
-SME_JpoOi_741:	dc.b 5	
-		dc.b $E9, 8, 0, 0, $F8	
-		dc.b $F1, 2, 0, 3, $F0	
-		dc.b $F1, $E, 0, 6, $F8	
-		dc.b $F9, 1, 0, $12, $18	
-		dc.b 9, 8, 0, $14, 0	
-SME_JpoOi_75B:	dc.b 3	
-		dc.b $E8, 4, 0, 0, $FF	
-		dc.b $F0, 2, 0, 2, $EF	
-		dc.b $F0, $F, 0, 5, $F7	
-SME_JpoOi_76B:	dc.b 5	
-		dc.b $E8, 8, 0, 0, $EF	
-		dc.b $F0, $E, 0, 3, $E7	
-		dc.b 0, 4, 0, $F, 7	
-		dc.b 8, 4, 0, $11, $F7	
-		dc.b $10, 0, 0, $13, $FF	
-SME_JpoOi_785:	dc.b 5	
-		dc.b $E8, 7, 0, 0, $E7	
-		dc.b 8, 4, 0, 8, $E7	
-		dc.b $F0, $A, 0, $A, $F7	
-		dc.b $F8, 1, 0, $13, $F	
-		dc.b $E8, 4, 0, $15, 7	
-SME_JpoOi_79F:	dc.b 5	
-		dc.b $F0, $E, 0, 0, $E7	
-		dc.b 8, 8, 0, $C, $EF	
-		dc.b $F0, 1, 0, $F, 7	
-		dc.b $F0, 0, 0, $11, $F	
-		dc.b $E0, 1, 0, $12, $FF	
-SME_JpoOi_7B9:	dc.b 5	
-		dc.b 0, $D, $18, 0, $EC	
-		dc.b 0, 1, $18, 8, $E4	
-		dc.b $F0, 9, $18, $A, $EC	
-		dc.b $E8, $C, $18, $10, $E4	
-		dc.b $E0, 0, $18, $14, $FC	
-SME_JpoOi_7D3:	dc.b 5	
-		dc.b 8, 8, $18, 0, $EF	
-		dc.b $F0, $E, $18, 3, $EF	
-		dc.b $F0, 4, $18, $F, $DF	
-		dc.b $E8, 4, $18, $11, $EF	
-		dc.b $E0, 0, $18, $13, $EF	
-SME_JpoOi_7ED:	dc.b 5	
-		dc.b $E8, 7, $18, 0, 7	
-		dc.b $E0, 4, $18, 8, 7	
-		dc.b $E8, $A, $18, $A, $EF	
-		dc.b $E8, 1, $18, $13, $E7	
-		dc.b 0, 4, $18, $15, $E7	
-SME_JpoOi_807:	dc.b 5	
-		dc.b $E8, $E, $18, 0, $F7	
-		dc.b $E0, 8, $18, $C, $F7	
-		dc.b $F0, 1, $18, $F, $EF	
-		dc.b $F8, 0, $18, $11, $E7	
-		dc.b 0, 1, $18, $12, $F7	
-		even
+.sonic_map_frame_offsets:
+	dc.w	.sonic_map_frame0-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame1-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame2-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame3-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame4-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame5-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame6-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame7-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame8-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame9-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame10-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame11-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame12-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame13-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame14-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame15-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame16-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame17-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame18-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame19-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame20-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame21-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame22-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame23-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame24-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame25-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame26-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame27-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame28-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame29-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame30-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame31-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame32-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame33-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame34-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame35-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame36-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame37-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame38-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame39-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame40-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame41-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame42-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame43-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame44-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame45-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame46-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame47-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame48-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame49-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame50-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame51-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame52-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame53-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame54-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame55-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame56-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame57-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame58-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame59-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame60-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame61-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame62-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame63-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame64-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame65-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame66-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame67-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame68-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame69-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame70-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame71-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame72-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame73-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame74-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame75-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame76-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame77-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame78-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame79-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame80-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame81-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame82-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame83-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame84-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame85-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame86-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame87-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame88-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame89-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame90-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame91-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame92-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame93-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame94-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame95-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame96-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame97-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame98-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame99-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame100-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame101-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame102-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame103-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame104-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame105-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame106-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame107-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame108-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame109-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame110-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame111-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame112-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame113-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame114-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame115-.sonic_map_frame_offsets
+	dc.w	.sonic_map_frame116-.sonic_map_frame_offsets
+
+.sonic_map_frame0:
+	dc.b	0
+
+.sonic_map_frame1:
+	dc.b	4
+
+	dc.b	-20
+	dc.b	$08
+	dc.w	$0000
+	dc.b	-16
+
+	dc.b	-12
+	dc.b	$0D
+	dc.w	$0003
+	dc.b	-16
+
+	dc.b	4
+	dc.b	$08
+	dc.w	$000B
+	dc.b	-16
+
+	dc.b	12
+	dc.b	$08
+	dc.w	$000E
+	dc.b	-8
+
+.sonic_map_frame2:
+	dc.b	3
+
+	dc.b	-20
+	dc.b	$09
+	dc.w	$0000
+	dc.b	-16
+
+	dc.b	-4
+	dc.b	$09
+	dc.w	$0006
+	dc.b	-16
+
+	dc.b	12
+	dc.b	$08
+	dc.w	$000C
+	dc.b	-8
+
+.sonic_map_frame3:
+	dc.b	3
+
+	dc.b	-20
+	dc.b	$09
+	dc.w	$0009
+	dc.b	-16
+
+	dc.b	-4
+	dc.b	$09
+	dc.w	$0000
+	dc.b	-16
+
+	dc.b	12
+	dc.b	$08
+	dc.w	$0006
+	dc.b	-8
+
+.sonic_map_frame4:
+	dc.b	3
+
+	dc.b	-20
+	dc.b	$09
+	dc.w	$0006
+	dc.b	-16
+
+	dc.b	-4
+	dc.b	$09
+	dc.w	$0000
+	dc.b	-16
+
+	dc.b	12
+	dc.b	$08
+	dc.w	$000C
+	dc.b	-8
+
+.sonic_map_frame5:
+	dc.b	3
+
+	dc.b	-20
+	dc.b	$0A
+	dc.w	$0006
+	dc.b	-16
+
+	dc.b	4
+	dc.b	$08
+	dc.w	$0000
+	dc.b	-16
+
+	dc.b	12
+	dc.b	$08
+	dc.w	$0003
+	dc.b	-8
+
+.sonic_map_frame6:
+	dc.b	4
+
+	dc.b	-21
+	dc.b	$0D
+	dc.w	$0000
+	dc.b	-20
+
+	dc.b	-5
+	dc.b	$09
+	dc.w	$0008
+	dc.b	-20
+
+	dc.b	-5
+	dc.b	$06
+	dc.w	$000E
+	dc.b	4
+
+	dc.b	11
+	dc.b	$04
+	dc.w	$0014
+	dc.b	-20
+
+.sonic_map_frame7:
+	dc.b	2
+
+	dc.b	-20
+	dc.b	$0D
+	dc.w	$0000
+	dc.b	-19
+
+	dc.b	-4
+	dc.b	$0E
+	dc.w	$0008
+	dc.b	-11
+
+.sonic_map_frame8:
+	dc.b	2
+
+	dc.b	-19
+	dc.b	$09
+	dc.w	$0000
+	dc.b	-13
+
+	dc.b	-3
+	dc.b	$0A
+	dc.w	$0006
+	dc.b	-13
+
+.sonic_map_frame9:
+	dc.b	4
+
+	dc.b	-21
+	dc.b	$09
+	dc.w	$0000
+	dc.b	-12
+
+	dc.b	-5
+	dc.b	$09
+	dc.w	$0006
+	dc.b	-20
+
+	dc.b	-5
+	dc.b	$06
+	dc.w	$000C
+	dc.b	4
+
+	dc.b	11
+	dc.b	$04
+	dc.w	$0012
+	dc.b	-20
+
+.sonic_map_frame10:
+	dc.b	2
+
+	dc.b	-20
+	dc.b	$09
+	dc.w	$0000
+	dc.b	-13
+
+	dc.b	-4
+	dc.b	$0E
+	dc.w	$0006
+	dc.b	-21
+
+.sonic_map_frame11:
+	dc.b	3
+
+	dc.b	-19
+	dc.b	$0D
+	dc.w	$0000
+	dc.b	-20
+
+	dc.b	-3
+	dc.b	$0C
+	dc.w	$0008
+	dc.b	-12
+
+	dc.b	5
+	dc.b	$09
+	dc.w	$000C
+	dc.b	-12
+
+.sonic_map_frame12:
+	dc.b	5
+
+	dc.b	-21
+	dc.b	$09
+	dc.w	$0000
+	dc.b	-21
+
+	dc.b	-21
+	dc.b	$06
+	dc.w	$0006
+	dc.b	3
+
+	dc.b	-5
+	dc.b	$08
+	dc.w	$000C
+	dc.b	-21
+
+	dc.b	3
+	dc.b	$09
+	dc.w	$000F
+	dc.b	-13
+
+	dc.b	19
+	dc.b	$00
+	dc.w	$0015
+	dc.b	-5
+
+.sonic_map_frame13:
+	dc.b	6
+
+	dc.b	-20
+	dc.b	$09
+	dc.w	$0000
+	dc.b	-20
+
+	dc.b	-20
+	dc.b	$01
+	dc.w	$0006
+	dc.b	4
+
+	dc.b	-4
+	dc.b	$0C
+	dc.w	$0008
+	dc.b	-20
+
+	dc.b	4
+	dc.b	$09
+	dc.w	$000C
+	dc.b	-12
+
+	dc.b	-4
+	dc.b	$05
+	dc.w	$0012
+	dc.b	12
+
+	dc.b	-12
+	dc.b	$00
+	dc.w	$0016
+	dc.b	20
+
+.sonic_map_frame14:
+	dc.b	4
+
+	dc.b	-19
+	dc.b	$09
+	dc.w	$0000
+	dc.b	-19
+
+	dc.b	-19
+	dc.b	$01
+	dc.w	$0006
+	dc.b	5
+
+	dc.b	-3
+	dc.b	$0D
+	dc.w	$0008
+	dc.b	-11
+
+	dc.b	13
+	dc.b	$08
+	dc.w	$0010
+	dc.b	-3
+
+.sonic_map_frame15:
+	dc.b	5
+
+	dc.b	-21
+	dc.b	$09
+	dc.w	$0000
+	dc.b	-21
+
+	dc.b	-21
+	dc.b	$05
+	dc.w	$0006
+	dc.b	3
+
+	dc.b	-5
+	dc.b	$0D
+	dc.w	$000A
+	dc.b	-13
+
+	dc.b	11
+	dc.b	$08
+	dc.w	$0012
+	dc.b	-13
+
+	dc.b	19
+	dc.b	$04
+	dc.w	$0015
+	dc.b	-5
+
+.sonic_map_frame16:
+	dc.b	4
+
+	dc.b	-20
+	dc.b	$09
+	dc.w	$0000
+	dc.b	-20
+
+	dc.b	-20
+	dc.b	$01
+	dc.w	$0006
+	dc.b	4
+
+	dc.b	-4
+	dc.b	$0D
+	dc.w	$0008
+	dc.b	-12
+
+	dc.b	12
+	dc.b	$08
+	dc.w	$0010
+	dc.b	-4
+
+.sonic_map_frame17:
+	dc.b	5
+
+	dc.b	-19
+	dc.b	$09
+	dc.w	$0000
+	dc.b	-19
+
+	dc.b	-19
+	dc.b	$01
+	dc.w	$0007
+	dc.b	5
+
+	dc.b	-3
+	dc.b	$00
+	dc.w	$0006
+	dc.b	-19
+
+	dc.b	-3
+	dc.b	$0D
+	dc.w	$0009
+	dc.b	-11
+
+	dc.b	13
+	dc.b	$08
+	dc.w	$0011
+	dc.b	-3
+
+.sonic_map_frame18:
+	dc.b	4
+
+	dc.b	-12
+	dc.b	$07
+	dc.w	$0000
+	dc.b	-21
+
+	dc.b	-20
+	dc.b	$09
+	dc.w	$0008
+	dc.b	-5
+
+	dc.b	-4
+	dc.b	$04
+	dc.w	$000E
+	dc.b	-5
+
+	dc.b	4
+	dc.b	$09
+	dc.w	$0010
+	dc.b	-5
+
+.sonic_map_frame19:
+	dc.b	2
+
+	dc.b	-12
+	dc.b	$07
+	dc.w	$0000
+	dc.b	-20
+
+	dc.b	-20
+	dc.b	$0B
+	dc.w	$0008
+	dc.b	-4
+
+.sonic_map_frame20:
+	dc.b	2
+
+	dc.b	-12
+	dc.b	$06
+	dc.w	$0000
+	dc.b	-19
+
+	dc.b	-12
+	dc.b	$0A
+	dc.w	$0006
+	dc.b	-3
+
+.sonic_map_frame21:
+	dc.b	4
+
+	dc.b	-12
+	dc.b	$06
+	dc.w	$0000
+	dc.b	-21
+
+	dc.b	-20
+	dc.b	$09
+	dc.w	$0006
+	dc.b	-5
+
+	dc.b	-4
+	dc.b	$04
+	dc.w	$000C
+	dc.b	-5
+
+	dc.b	4
+	dc.b	$09
+	dc.w	$000E
+	dc.b	-5
+
+.sonic_map_frame22:
+	dc.b	2
+
+	dc.b	-12
+	dc.b	$06
+	dc.w	$0000
+	dc.b	-20
+
+	dc.b	-12
+	dc.b	$0B
+	dc.w	$0006
+	dc.b	-4
+
+.sonic_map_frame23:
+	dc.b	3
+
+	dc.b	-12
+	dc.b	$07
+	dc.w	$0000
+	dc.b	-19
+
+	dc.b	-20
+	dc.b	$00
+	dc.w	$0008
+	dc.b	-3
+
+	dc.b	-12
+	dc.b	$0A
+	dc.w	$0009
+	dc.b	-3
+
+.sonic_map_frame24:
+	dc.b	6
+
+	dc.b	-3
+	dc.b	$06
+	dc.w	$0000
+	dc.b	-21
+
+	dc.b	-19
+	dc.b	$04
+	dc.w	$0006
+	dc.b	-13
+
+	dc.b	-11
+	dc.b	$04
+	dc.w	$0008
+	dc.b	-21
+
+	dc.b	-11
+	dc.b	$0A
+	dc.w	$000A
+	dc.b	-5
+
+	dc.b	13
+	dc.b	$00
+	dc.w	$0013
+	dc.b	-5
+
+	dc.b	-3
+	dc.b	$00
+	dc.w	$0014
+	dc.b	19
+
+.sonic_map_frame25:
+	dc.b	6
+
+	dc.b	-4
+	dc.b	$06
+	dc.w	$0000
+	dc.b	-20
+
+	dc.b	-28
+	dc.b	$08
+	dc.w	$0007
+	dc.b	-12
+
+	dc.b	-20
+	dc.b	$04
+	dc.w	$000A
+	dc.b	-4
+
+	dc.b	-12
+	dc.b	$04
+	dc.w	$000C
+	dc.b	-20
+
+	dc.b	-12
+	dc.b	$0A
+	dc.w	$000E
+	dc.b	-4
+
+	dc.b	12
+	dc.b	$00
+	dc.w	$0006
+	dc.b	-4
+
+.sonic_map_frame26:
+	dc.b	4
+
+	dc.b	-5
+	dc.b	$06
+	dc.w	$0000
+	dc.b	-19
+
+	dc.b	-13
+	dc.b	$04
+	dc.w	$0006
+	dc.b	-19
+
+	dc.b	-21
+	dc.b	$0A
+	dc.w	$0008
+	dc.b	-3
+
+	dc.b	3
+	dc.b	$04
+	dc.w	$0011
+	dc.b	-3
+
+.sonic_map_frame27:
+	dc.b	5
+
+	dc.b	-3
+	dc.b	$06
+	dc.w	$0000
+	dc.b	-21
+
+	dc.b	-19
+	dc.b	$08
+	dc.w	$0006
+	dc.b	-13
+
+	dc.b	-11
+	dc.b	$04
+	dc.w	$0009
+	dc.b	-21
+
+	dc.b	-11
+	dc.b	$0D
+	dc.w	$000B
+	dc.b	-5
+
+	dc.b	5
+	dc.b	$08
+	dc.w	$0013
+	dc.b	-5
+
+.sonic_map_frame28:
+	dc.b	4
+
+	dc.b	-4
+	dc.b	$06
+	dc.w	$0000
+	dc.b	-20
+
+	dc.b	-12
+	dc.b	$04
+	dc.w	$0006
+	dc.b	-20
+
+	dc.b	-20
+	dc.b	$0A
+	dc.w	$0008
+	dc.b	-4
+
+	dc.b	4
+	dc.b	$04
+	dc.w	$0011
+	dc.b	-4
+
+.sonic_map_frame29:
+	dc.b	5
+
+	dc.b	-5
+	dc.b	$06
+	dc.w	$0000
+	dc.b	-19
+
+	dc.b	-21
+	dc.b	$0A
+	dc.w	$0009
+	dc.b	-3
+
+	dc.b	-13
+	dc.b	$04
+	dc.w	$0007
+	dc.b	-19
+
+	dc.b	3
+	dc.b	$04
+	dc.w	$0012
+	dc.b	-3
+
+	dc.b	11
+	dc.b	$00
+	dc.w	$0006
+	dc.b	-3
+
+.sonic_map_frame30:
+	dc.b	2
+
+	dc.b	-18
+	dc.b	$09
+	dc.w	$0000
+	dc.b	-12
+
+	dc.b	-2
+	dc.b	$0E
+	dc.w	$0006
+	dc.b	-20
+
+.sonic_map_frame31:
+	dc.b	2
+
+	dc.b	-18
+	dc.b	$09
+	dc.w	$0000
+	dc.b	-12
+
+	dc.b	-2
+	dc.b	$0E
+	dc.w	$0006
+	dc.b	-20
+
+.sonic_map_frame32:
+	dc.b	2
+
+	dc.b	-18
+	dc.b	$09
+	dc.w	$0000
+	dc.b	-12
+
+	dc.b	-2
+	dc.b	$0E
+	dc.w	$0006
+	dc.b	-20
+
+.sonic_map_frame33:
+	dc.b	2
+
+	dc.b	-18
+	dc.b	$09
+	dc.w	$0000
+	dc.b	-12
+
+	dc.b	-2
+	dc.b	$0E
+	dc.w	$0006
+	dc.b	-20
+
+.sonic_map_frame34:
+	dc.b	4
+
+	dc.b	-18
+	dc.b	$09
+	dc.w	$0000
+	dc.b	-18
+
+	dc.b	-18
+	dc.b	$01
+	dc.w	$0006
+	dc.b	6
+
+	dc.b	-2
+	dc.b	$0E
+	dc.w	$0008
+	dc.b	-10
+
+	dc.b	-2
+	dc.b	$00
+	dc.w	$0014
+	dc.b	-18
+
+.sonic_map_frame35:
+	dc.b	3
+
+	dc.b	-18
+	dc.b	$09
+	dc.w	$0000
+	dc.b	-18
+
+	dc.b	-18
+	dc.b	$01
+	dc.w	$0006
+	dc.b	6
+
+	dc.b	-2
+	dc.b	$0E
+	dc.w	$0008
+	dc.b	-10
+
+.sonic_map_frame36:
+	dc.b	4
+
+	dc.b	-18
+	dc.b	$09
+	dc.w	$0000
+	dc.b	-18
+
+	dc.b	-18
+	dc.b	$01
+	dc.w	$0007
+	dc.b	6
+
+	dc.b	-2
+	dc.b	$0E
+	dc.w	$0009
+	dc.b	-10
+
+	dc.b	-2
+	dc.b	$00
+	dc.w	$0006
+	dc.b	-18
+
+.sonic_map_frame37:
+	dc.b	3
+
+	dc.b	-18
+	dc.b	$09
+	dc.w	$0000
+	dc.b	-18
+
+	dc.b	-18
+	dc.b	$01
+	dc.w	$0006
+	dc.b	6
+
+	dc.b	-2
+	dc.b	$0E
+	dc.w	$0008
+	dc.b	-10
+
+.sonic_map_frame38:
+	dc.b	2
+
+	dc.b	-12
+	dc.b	$06
+	dc.w	$0000
+	dc.b	-18
+
+	dc.b	-12
+	dc.b	$0B
+	dc.w	$0006
+	dc.b	-2
+
+.sonic_map_frame39:
+	dc.b	2
+
+	dc.b	-12
+	dc.b	$06
+	dc.w	$0000
+	dc.b	-18
+
+	dc.b	-12
+	dc.b	$0B
+	dc.w	$0006
+	dc.b	-2
+
+.sonic_map_frame40:
+	dc.b	2
+
+	dc.b	-12
+	dc.b	$06
+	dc.w	$0000
+	dc.b	-18
+
+	dc.b	-12
+	dc.b	$0B
+	dc.w	$0006
+	dc.b	-2
+
+.sonic_map_frame41:
+	dc.b	2
+
+	dc.b	-12
+	dc.b	$06
+	dc.w	$0000
+	dc.b	-18
+
+	dc.b	-12
+	dc.b	$0B
+	dc.w	$0006
+	dc.b	-2
+
+.sonic_map_frame42:
+	dc.b	4
+
+	dc.b	-6
+	dc.b	$06
+	dc.w	$0000
+	dc.b	-18
+
+	dc.b	-14
+	dc.b	$04
+	dc.w	$0006
+	dc.b	-18
+
+	dc.b	-22
+	dc.b	$0B
+	dc.w	$0008
+	dc.b	-2
+
+	dc.b	10
+	dc.b	$00
+	dc.w	$0014
+	dc.b	-2
+
+.sonic_map_frame43:
+	dc.b	2
+
+	dc.b	-14
+	dc.b	$07
+	dc.w	$0000
+	dc.b	-18
+
+	dc.b	-22
+	dc.b	$0B
+	dc.w	$0008
+	dc.b	-2
+
+.sonic_map_frame44:
+	dc.b	4
+
+	dc.b	-6
+	dc.b	$06
+	dc.w	$0000
+	dc.b	-18
+
+	dc.b	-14
+	dc.b	$04
+	dc.w	$0007
+	dc.b	-18
+
+	dc.b	-22
+	dc.b	$0B
+	dc.w	$0009
+	dc.b	-2
+
+	dc.b	10
+	dc.b	$00
+	dc.w	$0006
+	dc.b	-2
+
+.sonic_map_frame45:
+	dc.b	2
+
+	dc.b	-14
+	dc.b	$07
+	dc.w	$0000
+	dc.b	-18
+
+	dc.b	-22
+	dc.b	$0B
+	dc.w	$0008
+	dc.b	-2
+
+.sonic_map_frame46:
+	dc.b	1
+
+	dc.b	-16
+	dc.b	$0F
+	dc.w	$0000
+	dc.b	-16
+
+.sonic_map_frame47:
+	dc.b	1
+
+	dc.b	-16
+	dc.b	$0F
+	dc.w	$0000
+	dc.b	-16
+
+.sonic_map_frame48:
+	dc.b	1
+
+	dc.b	-16
+	dc.b	$0F
+	dc.w	$0000
+	dc.b	-16
+
+.sonic_map_frame49:
+	dc.b	1
+
+	dc.b	-16
+	dc.b	$0F
+	dc.w	$0000
+	dc.b	-16
+
+.sonic_map_frame50:
+	dc.b	1
+
+	dc.b	-16
+	dc.b	$0F
+	dc.w	$0000
+	dc.b	-16
+
+.sonic_map_frame51:
+	dc.b	2
+
+	dc.b	-12
+	dc.b	$0E
+	dc.w	$0000
+	dc.b	-20
+
+	dc.b	-12
+	dc.b	$02
+	dc.w	$000C
+	dc.b	12
+
+.sonic_map_frame52:
+	dc.b	1
+
+	dc.b	-16
+	dc.b	$0F
+	dc.w	$0000
+	dc.b	-16
+
+.sonic_map_frame53:
+	dc.b	2
+
+	dc.b	-20
+	dc.b	$0B
+	dc.w	$0000
+	dc.b	-12
+
+	dc.b	12
+	dc.b	$08
+	dc.w	$000C
+	dc.b	-12
+
+.sonic_map_frame54:
+	dc.b	1
+
+	dc.b	-16
+	dc.b	$0F
+	dc.w	$0000
+	dc.b	-16
+
+.sonic_map_frame55:
+	dc.b	2
+
+	dc.b	-19
+	dc.b	$09
+	dc.w	$0000
+	dc.b	-16
+
+	dc.b	-3
+	dc.b	$0E
+	dc.w	$0006
+	dc.b	-16
+
+.sonic_map_frame56:
+	dc.b	4
+
+	dc.b	-19
+	dc.b	$09
+	dc.w	$0000
+	dc.b	-16
+
+	dc.b	-3
+	dc.b	$0D
+	dc.w	$0006
+	dc.b	-16
+
+	dc.b	13
+	dc.b	$04
+	dc.w	$000E
+	dc.b	0
+
+	dc.b	5
+	dc.b	$00
+	dc.w	$0010
+	dc.b	-24
+
+.sonic_map_frame57:
+	dc.b	2
+
+	dc.b	-12
+	dc.b	$0B
+	dc.w	$0000
+	dc.b	-8
+
+	dc.b	-4
+	dc.b	$02
+	dc.w	$000C
+	dc.b	-16
+
+.sonic_map_frame58:
+	dc.b	3
+
+	dc.b	-20
+	dc.b	$08
+	dc.w	$0800
+	dc.b	-24
+
+	dc.b	-12
+	dc.b	$02
+	dc.w	$0803
+	dc.b	0
+
+	dc.b	-12
+	dc.b	$0F
+	dc.w	$0806
+	dc.b	-32
+
+.sonic_map_frame59:
+	dc.b	3
+
+	dc.b	-20
+	dc.b	$0E
+	dc.w	$0801
+	dc.b	-24
+
+	dc.b	4
+	dc.b	$0D
+	dc.w	$080D
+	dc.b	-32
+
+	dc.b	12
+	dc.b	$00
+	dc.w	$1800
+	dc.b	0
+
+.sonic_map_frame60:
+	dc.b	3
+
+	dc.b	-12
+	dc.b	$0D
+	dc.w	$0000
+	dc.b	-4
+
+	dc.b	-4
+	dc.b	$05
+	dc.w	$0008
+	dc.b	-20
+
+	dc.b	4
+	dc.b	$08
+	dc.w	$000C
+	dc.b	-4
+
+.sonic_map_frame61:
+	dc.b	2
+
+	dc.b	-12
+	dc.b	$0A
+	dc.w	$0000
+	dc.b	-24
+
+	dc.b	-12
+	dc.b	$0A
+	dc.w	$0800
+	dc.b	0
+
+.sonic_map_frame62:
+	dc.b	3
+
+	dc.b	-12
+	dc.b	$0D
+	dc.w	$0000
+	dc.b	-28
+
+	dc.b	-4
+	dc.b	$00
+	dc.w	$0008
+	dc.b	4
+
+	dc.b	4
+	dc.b	$0C
+	dc.w	$0009
+	dc.b	-20
+
+.sonic_map_frame63:
+	dc.b	3
+
+	dc.b	-12
+	dc.b	$0D
+	dc.w	$0000
+	dc.b	-4
+
+	dc.b	-4
+	dc.b	$05
+	dc.w	$0008
+	dc.b	-20
+
+	dc.b	4
+	dc.b	$08
+	dc.w	$000C
+	dc.b	-4
+
+.sonic_map_frame64:
+	dc.b	3
+
+	dc.b	-24
+	dc.b	$0B
+	dc.w	$0000
+	dc.b	-16
+
+	dc.b	8
+	dc.b	$04
+	dc.w	$000C
+	dc.b	-8
+
+	dc.b	16
+	dc.b	$00
+	dc.w	$000E
+	dc.b	-8
+
+.sonic_map_frame65:
+	dc.b	4
+
+	dc.b	-8
+	dc.b	$0E
+	dc.w	$0000
+	dc.b	-24
+
+	dc.b	0
+	dc.b	$05
+	dc.w	$000C
+	dc.b	8
+
+	dc.b	-8
+	dc.b	$00
+	dc.w	$0010
+	dc.b	8
+
+	dc.b	-16
+	dc.b	$00
+	dc.w	$0011
+	dc.b	-8
+
+.sonic_map_frame66:
+	dc.b	4
+
+	dc.b	-8
+	dc.b	$0E
+	dc.w	$0000
+	dc.b	-24
+
+	dc.b	0
+	dc.b	$05
+	dc.w	$000C
+	dc.b	8
+
+	dc.b	-8
+	dc.b	$00
+	dc.w	$0010
+	dc.b	8
+
+	dc.b	-16
+	dc.b	$00
+	dc.w	$0011
+	dc.b	-8
+
+.sonic_map_frame67:
+	dc.b	5
+
+	dc.b	-24
+	dc.b	$0A
+	dc.w	$0000
+	dc.b	-12
+
+	dc.b	-16
+	dc.b	$01
+	dc.w	$0009
+	dc.b	12
+
+	dc.b	0
+	dc.b	$09
+	dc.w	$000B
+	dc.b	-12
+
+	dc.b	16
+	dc.b	$04
+	dc.w	$0011
+	dc.b	-12
+
+	dc.b	0
+	dc.b	$00
+	dc.w	$0013
+	dc.b	-20
+
+.sonic_map_frame68:
+	dc.b	5
+
+	dc.b	-24
+	dc.b	$0A
+	dc.w	$0009
+	dc.b	-12
+
+	dc.b	-24
+	dc.b	$01
+	dc.w	$0012
+	dc.b	12
+
+	dc.b	0
+	dc.b	$09
+	dc.w	$0000
+	dc.b	-12
+
+	dc.b	16
+	dc.b	$04
+	dc.w	$0006
+	dc.b	-12
+
+	dc.b	0
+	dc.b	$00
+	dc.w	$0008
+	dc.b	-20
+
+.sonic_map_frame69:
+	dc.b	2
+
+	dc.b	-19
+	dc.b	$0A
+	dc.w	$0000
+	dc.b	-13
+
+	dc.b	5
+	dc.b	$0D
+	dc.w	$0009
+	dc.b	-21
+
+.sonic_map_frame70:
+	dc.b	3
+
+	dc.b	-20
+	dc.b	$0A
+	dc.w	$0000
+	dc.b	-13
+
+	dc.b	4
+	dc.b	$08
+	dc.w	$0009
+	dc.b	-13
+
+	dc.b	12
+	dc.b	$04
+	dc.w	$000C
+	dc.b	-13
+
+.sonic_map_frame71:
+	dc.b	2
+
+	dc.b	-19
+	dc.b	$0A
+	dc.w	$0000
+	dc.b	-13
+
+	dc.b	5
+	dc.b	$0D
+	dc.w	$0009
+	dc.b	-21
+
+.sonic_map_frame72:
+	dc.b	3
+
+	dc.b	-20
+	dc.b	$0A
+	dc.w	$0000
+	dc.b	-13
+
+	dc.b	4
+	dc.b	$08
+	dc.w	$0009
+	dc.b	-13
+
+	dc.b	12
+	dc.b	$04
+	dc.w	$000C
+	dc.b	-13
+
+.sonic_map_frame73:
+	dc.b	2
+
+	dc.b	-20
+	dc.b	$09
+	dc.w	$0000
+	dc.b	-16
+
+	dc.b	-4
+	dc.b	$0E
+	dc.w	$0006
+	dc.b	-16
+
+.sonic_map_frame74:
+	dc.b	3
+
+	dc.b	-20
+	dc.b	$0A
+	dc.w	$0000
+	dc.b	-16
+
+	dc.b	4
+	dc.b	$05
+	dc.w	$0009
+	dc.b	-8
+
+	dc.b	-28
+	dc.b	$00
+	dc.w	$000D
+	dc.b	-8
+
+.sonic_map_frame75:
+	dc.b	3
+
+	dc.b	-24
+	dc.b	$0D
+	dc.w	$0000
+	dc.b	-20
+
+	dc.b	-24
+	dc.b	$01
+	dc.w	$0008
+	dc.b	12
+
+	dc.b	-8
+	dc.b	$0B
+	dc.w	$000A
+	dc.b	-12
+
+.sonic_map_frame76:
+	dc.b	5
+
+	dc.b	-24
+	dc.b	$0D
+	dc.w	$0000
+	dc.b	-20
+
+	dc.b	-24
+	dc.b	$01
+	dc.w	$0008
+	dc.b	12
+
+	dc.b	-8
+	dc.b	$09
+	dc.w	$000A
+	dc.b	-12
+
+	dc.b	8
+	dc.b	$0C
+	dc.w	$0010
+	dc.b	-12
+
+	dc.b	16
+	dc.b	$00
+	dc.w	$0014
+	dc.b	-12
+
+.sonic_map_frame77:
+	dc.b	5
+
+	dc.b	-24
+	dc.b	$0D
+	dc.w	$0007
+	dc.b	-20
+
+	dc.b	-24
+	dc.b	$01
+	dc.w	$0000
+	dc.b	12
+
+	dc.b	-8
+	dc.b	$09
+	dc.w	$000F
+	dc.b	-12
+
+	dc.b	8
+	dc.b	$0C
+	dc.w	$0002
+	dc.b	-12
+
+	dc.b	16
+	dc.b	$00
+	dc.w	$0006
+	dc.b	-12
+
+.sonic_map_frame78:
+	dc.b	2
+
+	dc.b	-20
+	dc.b	$08
+	dc.w	$0000
+	dc.b	-16
+
+	dc.b	-12
+	dc.b	$0F
+	dc.w	$0003
+	dc.b	-16
+
+.sonic_map_frame79:
+	dc.b	3
+
+	dc.b	-20
+	dc.b	$08
+	dc.w	$0000
+	dc.b	-16
+
+	dc.b	-12
+	dc.b	$0E
+	dc.w	$0003
+	dc.b	-16
+
+	dc.b	12
+	dc.b	$08
+	dc.w	$000F
+	dc.b	-8
+
+.sonic_map_frame80:
+	dc.b	1
+
+	dc.b	-16
+	dc.b	$0B
+	dc.w	$0000
+	dc.b	-12
+
+.sonic_map_frame81:
+	dc.b	1
+
+	dc.b	-12
+	dc.b	$06
+	dc.w	$0000
+	dc.b	-8
+
+.sonic_map_frame82:
+	dc.b	1
+
+	dc.b	-8
+	dc.b	$01
+	dc.w	$0000
+	dc.b	-4
+
+.sonic_map_frame83:
+	dc.b	3
+
+	dc.b	-12
+	dc.b	$0D
+	dc.w	$0800
+	dc.b	-28
+
+	dc.b	-4
+	dc.b	$05
+	dc.w	$0808
+	dc.b	4
+
+	dc.b	4
+	dc.b	$08
+	dc.w	$080C
+	dc.b	-20
+
+.sonic_map_frame84:
+	dc.b	3
+
+	dc.b	-12
+	dc.b	$0D
+	dc.w	$0800
+	dc.b	-4
+
+	dc.b	-4
+	dc.b	$00
+	dc.w	$0808
+	dc.b	-12
+
+	dc.b	4
+	dc.b	$0C
+	dc.w	$0809
+	dc.b	-12
+
+.sonic_map_frame85:
+	dc.b	3
+
+	dc.b	-16
+	dc.b	$0E
+	dc.w	$0000
+	dc.b	-20
+
+	dc.b	-8
+	dc.b	$01
+	dc.w	$000C
+	dc.b	12
+
+	dc.b	8
+	dc.b	$0C
+	dc.w	$000E
+	dc.b	-12
+
+.sonic_map_frame86:
+	dc.b	3
+
+	dc.b	-21
+	dc.b	$09
+	dc.w	$0002
+	dc.b	-12
+
+	dc.b	-5
+	dc.b	$0E
+	dc.w	$0008
+	dc.b	-20
+
+	dc.b	3
+	dc.b	$01
+	dc.w	$0000
+	dc.b	12
+
+.sonic_map_frame87:
+	dc.b	2
+
+	dc.b	-16
+	dc.b	$0F
+	dc.w	$0000
+	dc.b	-20
+
+	dc.b	-8
+	dc.b	$02
+	dc.w	$0010
+	dc.b	12
+
+.sonic_map_frame88:
+	dc.b	1
+
+	dc.b	-8
+	dc.b	$0F
+	dc.w	$0000
+	dc.b	-12
+
+.sonic_map_frame89:
+	dc.b	1
+
+	dc.b	-8
+	dc.b	$0F
+	dc.w	$0000
+	dc.b	-12
+
+.sonic_map_frame90:
+	dc.b	1
+
+	dc.b	-8
+	dc.b	$0F
+	dc.w	$0000
+	dc.b	-12
+
+.sonic_map_frame91:
+	dc.b	1
+
+	dc.b	-8
+	dc.b	$0F
+	dc.w	$0000
+	dc.b	-12
+
+.sonic_map_frame92:
+	dc.b	1
+
+	dc.b	-8
+	dc.b	$0F
+	dc.w	$0000
+	dc.b	-12
+
+.sonic_map_frame93:
+	dc.b	1
+
+	dc.b	-8
+	dc.b	$0F
+	dc.w	$0000
+	dc.b	-12
+
+.sonic_map_frame94:
+	dc.b	2
+
+	dc.b	-4
+	dc.b	$02
+	dc.w	$0000
+	dc.b	-20
+
+	dc.b	-12
+	dc.b	$0F
+	dc.w	$0003
+	dc.b	-12
+
+.sonic_map_frame95:
+	dc.b	2
+
+	dc.b	-4
+	dc.b	$02
+	dc.w	$0000
+	dc.b	-20
+
+	dc.b	-12
+	dc.b	$0F
+	dc.w	$0003
+	dc.b	-12
+
+.sonic_map_frame96:
+	dc.b	2
+
+	dc.b	-4
+	dc.b	$02
+	dc.w	$0000
+	dc.b	-20
+
+	dc.b	-12
+	dc.b	$0F
+	dc.w	$0003
+	dc.b	-12
+
+.sonic_map_frame97:
+	dc.b	2
+
+	dc.b	-4
+	dc.b	$01
+	dc.w	$0000
+	dc.b	-20
+
+	dc.b	-12
+	dc.b	$0F
+	dc.w	$0002
+	dc.b	-12
+
+.sonic_map_frame98:
+	dc.b	5
+
+	dc.b	-17
+	dc.b	$08
+	dc.w	$0000
+	dc.b	-8
+
+	dc.b	-9
+	dc.b	$0E
+	dc.w	$0003
+	dc.b	-16
+
+	dc.b	-9
+	dc.b	$02
+	dc.w	$000F
+	dc.b	16
+
+	dc.b	15
+	dc.b	$05
+	dc.w	$0012
+	dc.b	-16
+
+	dc.b	15
+	dc.b	$00
+	dc.w	$0016
+	dc.b	0
+
+.sonic_map_frame99:
+	dc.b	3
+
+	dc.b	-16
+	dc.b	$08
+	dc.w	$0000
+	dc.b	-8
+
+	dc.b	-8
+	dc.b	$0F
+	dc.w	$0003
+	dc.b	-16
+
+	dc.b	0
+	dc.b	$01
+	dc.w	$0013
+	dc.b	16
+
+.sonic_map_frame100:
+	dc.b	5
+
+	dc.b	-16
+	dc.b	$08
+	dc.w	$0000
+	dc.b	-9
+
+	dc.b	-8
+	dc.b	$0E
+	dc.w	$0003
+	dc.b	-9
+
+	dc.b	1
+	dc.b	$02
+	dc.w	$000F
+	dc.b	-17
+
+	dc.b	16
+	dc.b	$05
+	dc.w	$0012
+	dc.b	-9
+
+	dc.b	16
+	dc.b	$00
+	dc.w	$0016
+	dc.b	7
+
+.sonic_map_frame101:
+	dc.b	3
+
+	dc.b	-17
+	dc.b	$08
+	dc.w	$0000
+	dc.b	-8
+
+	dc.b	-9
+	dc.b	$0F
+	dc.w	$0003
+	dc.b	-16
+
+	dc.b	-1
+	dc.b	$01
+	dc.w	$0013
+	dc.b	16
+
+.sonic_map_frame102:
+	dc.b	2
+
+	dc.b	-20
+	dc.b	$0F
+	dc.w	$0000
+	dc.b	-12
+
+	dc.b	12
+	dc.b	$08
+	dc.w	$0010
+	dc.b	-4
+
+.sonic_map_frame103:
+	dc.b	2
+
+	dc.b	-20
+	dc.b	$0F
+	dc.w	$0000
+	dc.b	-12
+
+	dc.b	12
+	dc.b	$08
+	dc.w	$0010
+	dc.b	-4
+
+.sonic_map_frame104:
+	dc.b	2
+
+	dc.b	-20
+	dc.b	$0F
+	dc.w	$0000
+	dc.b	-12
+
+	dc.b	12
+	dc.b	$08
+	dc.w	$0010
+	dc.b	-4
+
+.sonic_map_frame105:
+	dc.b	2
+
+	dc.b	-20
+	dc.b	$0F
+	dc.w	$0000
+	dc.b	-12
+
+	dc.b	12
+	dc.b	$04
+	dc.w	$0010
+	dc.b	-4
+
+.sonic_map_frame106:
+	dc.b	4
+
+	dc.b	-24
+	dc.b	$09
+	dc.w	$0000
+	dc.b	-9
+
+	dc.b	-16
+	dc.b	$02
+	dc.w	$0006
+	dc.b	-17
+
+	dc.b	-8
+	dc.b	$0E
+	dc.w	$0009
+	dc.b	-9
+
+	dc.b	0
+	dc.b	$01
+	dc.w	$0015
+	dc.b	23
+
+.sonic_map_frame107:
+	dc.b	3
+
+	dc.b	-24
+	dc.b	$04
+	dc.w	$0000
+	dc.b	0
+
+	dc.b	-16
+	dc.b	$02
+	dc.w	$0002
+	dc.b	-16
+
+	dc.b	-16
+	dc.b	$0F
+	dc.w	$0005
+	dc.b	-8
+
+.sonic_map_frame108:
+	dc.b	5
+
+	dc.b	-23
+	dc.b	$08
+	dc.w	$0000
+	dc.b	-8
+
+	dc.b	-15
+	dc.b	$02
+	dc.w	$0003
+	dc.b	-16
+
+	dc.b	-15
+	dc.b	$0E
+	dc.w	$0006
+	dc.b	-8
+
+	dc.b	-7
+	dc.b	$01
+	dc.w	$0012
+	dc.b	24
+
+	dc.b	9
+	dc.b	$08
+	dc.w	$0014
+	dc.b	0
+
+.sonic_map_frame109:
+	dc.b	3
+
+	dc.b	-24
+	dc.b	$04
+	dc.w	$0000
+	dc.b	-1
+
+	dc.b	-16
+	dc.b	$02
+	dc.w	$0002
+	dc.b	-17
+
+	dc.b	-16
+	dc.b	$0F
+	dc.w	$0005
+	dc.b	-9
+
+.sonic_map_frame110:
+	dc.b	5
+
+	dc.b	-24
+	dc.b	$08
+	dc.w	$0000
+	dc.b	-17
+
+	dc.b	-16
+	dc.b	$0E
+	dc.w	$0003
+	dc.b	-25
+
+	dc.b	0
+	dc.b	$04
+	dc.w	$000F
+	dc.b	7
+
+	dc.b	8
+	dc.b	$04
+	dc.w	$0011
+	dc.b	-9
+
+	dc.b	16
+	dc.b	$00
+	dc.w	$0013
+	dc.b	-1
+
+.sonic_map_frame111:
+	dc.b	5
+
+	dc.b	-24
+	dc.b	$07
+	dc.w	$0000
+	dc.b	-25
+
+	dc.b	8
+	dc.b	$04
+	dc.w	$0008
+	dc.b	-25
+
+	dc.b	-16
+	dc.b	$0A
+	dc.w	$000A
+	dc.b	-9
+
+	dc.b	-8
+	dc.b	$01
+	dc.w	$0013
+	dc.b	15
+
+	dc.b	-24
+	dc.b	$04
+	dc.w	$0015
+	dc.b	7
+
+.sonic_map_frame112:
+	dc.b	5
+
+	dc.b	-16
+	dc.b	$0E
+	dc.w	$0000
+	dc.b	-25
+
+	dc.b	8
+	dc.b	$08
+	dc.w	$000C
+	dc.b	-17
+
+	dc.b	-16
+	dc.b	$01
+	dc.w	$000F
+	dc.b	7
+
+	dc.b	-16
+	dc.b	$00
+	dc.w	$0011
+	dc.b	15
+
+	dc.b	-32
+	dc.b	$01
+	dc.w	$0012
+	dc.b	-1
+
+.sonic_map_frame113:
+	dc.b	5
+
+	dc.b	0
+	dc.b	$0D
+	dc.w	$1800
+	dc.b	-20
+
+	dc.b	0
+	dc.b	$01
+	dc.w	$1808
+	dc.b	-28
+
+	dc.b	-16
+	dc.b	$09
+	dc.w	$180A
+	dc.b	-20
+
+	dc.b	-24
+	dc.b	$0C
+	dc.w	$1810
+	dc.b	-28
+
+	dc.b	-32
+	dc.b	$00
+	dc.w	$1814
+	dc.b	-4
+
+.sonic_map_frame114:
+	dc.b	5
+
+	dc.b	8
+	dc.b	$08
+	dc.w	$1800
+	dc.b	-17
+
+	dc.b	-16
+	dc.b	$0E
+	dc.w	$1803
+	dc.b	-17
+
+	dc.b	-16
+	dc.b	$04
+	dc.w	$180F
+	dc.b	-33
+
+	dc.b	-24
+	dc.b	$04
+	dc.w	$1811
+	dc.b	-17
+
+	dc.b	-32
+	dc.b	$00
+	dc.w	$1813
+	dc.b	-17
+
+.sonic_map_frame115:
+	dc.b	5
+
+	dc.b	-24
+	dc.b	$07
+	dc.w	$1800
+	dc.b	7
+
+	dc.b	-32
+	dc.b	$04
+	dc.w	$1808
+	dc.b	7
+
+	dc.b	-24
+	dc.b	$0A
+	dc.w	$180A
+	dc.b	-17
+
+	dc.b	-24
+	dc.b	$01
+	dc.w	$1813
+	dc.b	-25
+
+	dc.b	0
+	dc.b	$04
+	dc.w	$1815
+	dc.b	-25
+
+.sonic_map_frame116:
+	dc.b	5
+
+	dc.b	-24
+	dc.b	$0E
+	dc.w	$1800
+	dc.b	-9
+
+	dc.b	-32
+	dc.b	$08
+	dc.w	$180C
+	dc.b	-9
+
+	dc.b	-16
+	dc.b	$01
+	dc.w	$180F
+	dc.b	-17
+
+	dc.b	-8
+	dc.b	$00
+	dc.w	$1811
+	dc.b	-25
+
+	dc.b	0
+	dc.b	$01
+	dc.w	$1812
+	dc.b	-9
+
+	even

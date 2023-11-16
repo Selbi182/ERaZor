@@ -615,6 +615,7 @@ loc_BFE:				; XREF: loc_BC8
 
 loc_C22:				; XREF: loc_BC8
 		move.w	($FFFFF624).w,(a5)
+		move.b	($FFFFF625).w,($FFFFFE07).w
 		move.w	#0,($A11100).l
 		bra.w	loc_B5E
 ; ===========================================================================
@@ -682,6 +683,7 @@ loc_CB0:				; XREF: loc_C76
 
 loc_CD4:				; XREF: loc_C76
 		move.w	($FFFFF624).w,(a5)
+		move.b	($FFFFF625).w,($FFFFFE07).w
 		lea	($C00004).l,a5
 		move.l	#$940193C0,(a5)
 		move.l	#$96E69500,(a5)
@@ -803,6 +805,7 @@ loc_EB4:				; XREF: loc_E7A
 
 loc_ED8:				; XREF: loc_E7A
 		move.w	($FFFFF624).w,(a5)
+		move.b	($FFFFF625).w,($FFFFFE07).w
 		lea	($C00004).l,a5
 		move.l	#$940193C0,(a5)
 		move.l	#$96E69500,(a5)
@@ -844,6 +847,7 @@ loc_F8A:				; XREF: off_B6E
 loc_F9A:				; XREF: off_B6E
 		bsr	sub_106E
 		move.w	($FFFFF624).w,(a5)
+		move.b	($FFFFF625).w,($FFFFFE07).w
 		bra.w	sub_1642
 ; ===========================================================================
 
@@ -944,48 +948,49 @@ loc_10D4:				; XREF: sub_106E
 
 
 PalToCRAM:
-		move	#$2700,sr
 		tst.w	($FFFFF644).w
 		beq.s	locret_119C
 		move.w	#0,($FFFFF644).w
-		movem.l	a0-a1,-(sp)
+		movem.l	d0-d1/a0-a2,-(sp)
+
 		lea	($C00000).l,a1
-		lea	($FFFFFA80).w,a0 ; load	pallet from RAM
-		move.l	#$C0000000,4(a1) ; set VDP to CRAM write
-		move.l	(a0)+,(a1)	; move pallet to CRAM
-		move.l	(a0)+,(a1)
-		move.l	(a0)+,(a1)
-		move.l	(a0)+,(a1)
-		move.l	(a0)+,(a1)
-		move.l	(a0)+,(a1)
-		move.l	(a0)+,(a1)
-		move.l	(a0)+,(a1)
-		move.l	(a0)+,(a1)
-		move.l	(a0)+,(a1)
-		move.l	(a0)+,(a1)
-		move.l	(a0)+,(a1)
-		move.l	(a0)+,(a1)
-		move.l	(a0)+,(a1)
-		move.l	(a0)+,(a1)
-		move.l	(a0)+,(a1)
-		move.l	(a0)+,(a1)
-		move.l	(a0)+,(a1)
-		move.l	(a0)+,(a1)
-		move.l	(a0)+,(a1)
-		move.l	(a0)+,(a1)
-		move.l	(a0)+,(a1)
-		move.l	(a0)+,(a1)
-		move.l	(a0)+,(a1)
-		move.l	(a0)+,(a1)
-		move.l	(a0)+,(a1)
-		move.l	(a0)+,(a1)
-		move.l	(a0)+,(a1)
-		move.l	(a0)+,(a1)
-		move.l	(a0)+,(a1)
-		move.l	(a0)+,(a1)
-		move.l	(a0)+,(a1)
-		move.w	#$8ADF,4(a1)
-		movem.l	(sp)+,a0-a1
+		move.w	#$8ADF,4(a1)        ; Reset HInt timing
+		move.w	#$100,($A11100).l ; stop the Z80
+@z80loop:
+		btst	#0,($A11100).l
+		bne.s	@z80loop 	; loop until it says it's stopped
+		movea.l	($FFFFF610).w,a2
+		moveq	#$F,d0        ; adjust to push artifacts off screen
+@loop:
+		dbf	d0,@loop    ; waste a few cycles here
+
+		move.w	(a2)+,d1
+		move.b	($FFFFFE07).w,d0
+		subi.b	#200,d0    ; is H-int occuring below line 200?
+		bcs.s	@transferColors    ; if it is, branch
+		sub.b	d0,d1
+		bcs.s	@skipTransfer
+
+@transferColors:
+		move.w	(a2)+,d0
+		lea	($FFFFFA80).w,a0
+		adda.w	d0,a0
+		addi.w	#$C000,d0
+		swap	d0
+		move.l	d0,4(a1)    ; write to CRAM at appropriate address
+		move.l	(a0)+,(a1)    ; transfer two colors
+		move.w	(a0)+,(a1)    ; transfer the third color
+		nop
+		nop
+		moveq	#$24,d0
+
+@wasteSomeCycles:
+		dbf    d0,@wasteSomeCycles
+		dbf    d1,@transferColors    ; repeat for number of colors
+
+@skipTransfer:
+		move.w	#0,($A11100).l    ; start the Z80
+		movem.l	(sp)+,d0-d1/a0-a2
 		tst.b	($FFFFF64F).w
 		bne.s	loc_119E
 
@@ -1805,7 +1810,6 @@ RunPLC_RAM:				; XREF: Pal_FadeTo
 
 loc_160E:
 		andi.w	#$7FFF,d2
-		move.w	d2,($FFFFF6F8).w
 		bsr	NemDec4
 		move.b	(a0)+,d5
 		asl.w	#8,d5
@@ -1819,6 +1823,7 @@ loc_160E:
 		move.l	d0,($FFFFF6EC).w
 		move.l	d5,($FFFFF6F0).w
 		move.l	d6,($FFFFF6F4).w
+		move.w	d2,($FFFFF6F8).w	; https://info.sonicretro.org/SCHG_How-to:Fix_a_race_condition_with_Pattern_Load_Cues
 
 locret_1640:
 		rts	
@@ -4175,7 +4180,8 @@ Level_ClrVars3:
 	;	move.b	#$10,($FFFFD4C0).w	; load camera shaking object
 
 		cmpi.b	#1,($FFFFFE10).w ; is level LZ?
-		bne.s	Level_LoadPal	; if not, branch
+		bne.s	Level_LoadPal	; if not, branch 
+		move.l	#WaterTransition_LZ,($FFFFF610).w
 		move.w	#$8014,(a6)
 		moveq	#0,d0
 		move.b	($FFFFFE11).w,d0
@@ -4381,7 +4387,7 @@ Level_ChkWater:
 		move.w	#0,($FFFFF604).w
 		cmpi.b	#1,($FFFFFE10).w ; is level LZ?
 		bne.s	Level_LoadObj	; if not, branch
-		move.b	#$1B,($FFFFD780).w ; load water	surface	object
+	;	move.b	#$1B,($FFFFD780).w ; load water	surface	object
 		move.w	#$60,($FFFFD788).w
 		move.b	#$1B,($FFFFD7C0).w
 		move.w	#$120,($FFFFD7C8).w
@@ -4581,6 +4587,28 @@ loc_3BC8:
 		tst.w	($FFFFF614).w
 		bne.s	loc_3B98
 		rts	
+; ===========================================================================
+WaterTransition_LZ:	dc.w $13    ; # of entries - 1
+		dc.w $62
+		dc.w $68
+		dc.w $7A
+		dc.w $6E
+		dc.w $74
+		dc.w $42
+		dc.w $48
+		dc.w $4E
+		dc.w $54
+		dc.w $5A
+		dc.w 2
+		dc.w 8
+		dc.w $E
+		dc.w $14
+		dc.w $1A
+		dc.w $34
+		dc.w $22
+		dc.w $3A
+		dc.w $2E
+		dc.w $28
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Subroutine to	do special water effects in Labyrinth Zone
@@ -8570,9 +8598,9 @@ S_H_CameraMove_End:
 S_H_NoExtendedCam:
 		sub.w	($FFFFF700).w,d0
 		subi.w	#$90,d0
-		blt.s	loc_65F6
+		bmi.s	loc_65F6
 		subi.w	#$10,d0
-		bge.s	loc_65CC
+		bpl.s	loc_65CC
 		clr.w	($FFFFF73A).w
 		rts
 ; ===========================================================================
@@ -8599,7 +8627,7 @@ loc_65E4:
 
 loc_65F6:				; XREF: ScrollHoriz2
 		cmpi.w	#-$10,d0
-		bgt.s	@cont
+		bcc.s	@cont
 		move.w	#-$10,d0	
 		
 @cont:
@@ -14184,8 +14212,8 @@ locret_955A:
 
 Obj1F_Action:				; XREF: Obj1F_Index
 		cmpi.w	#$000,($FFFFFE10).w	; is level GHZ1?
-		beq.s	Obj1F_NoHome		; if yes, branch
-		bra.s	Obj1F_NotInhumanCrush	; skip
+	;	beq.s	Obj1F_NoHome		; if yes, branch
+		beq.s	Obj1F_NotInhumanCrush	; if yes, branch
 
 Obj1F_NoHome:
 		tst.b	($FFFFFFE7).w		; is inhuman mode on?
@@ -15640,13 +15668,23 @@ Obj37_ContX:
 		move.b	#$47,$20(a1)
 		move.b	#8,$19(a1)
 Obj37_ContXX:
-		move.b	#-1,($FFFFFEC6).w
+		move.b	#$FF,($FFFFFEC6).w	; set time before scattered rings disappear to $FF frames
 		tst.w	d4
 		bmi.s	loc_9D62
 		move.w	d4,d0
 		jsr	CalcSine
 		move.w	d4,d2
 		lsr.w	#8,d2
+		
+		tst.b	($FFFFF64C).w		; Does the level have water?
+		beq.s	@skiphalvingvel		; If not, branch and skip underwater checks
+		move.w	($FFFFF646).w,d6	; Move water level to d6
+		cmp.w	$C(a0),d6		; Is the ring object underneath the water level?
+		bgt.s	@skiphalvingvel		; If not, branch and skip underwater commands
+		asr.w	d0			; Half d0. Makes the ring's x_vel bounce to the left/right slower
+		asr.w	d1			; Half d1. Makes the ring's y_vel bounce up/down slower
+@skiphalvingvel:
+	
 		asl.w	d2,d0
 		asl.w	d2,d1
 		move.w	d0,d2
@@ -15696,6 +15734,9 @@ CheckA7:
 		bra.s	Obj37_Bounce
 		
 Obj37_Play:
+		moveq	#-1,d0			; Move #-1 to d0
+		move.b	d0,$1F(a0)		; Move d0 to new timer
+		move.b	d0,($FFFFFEC6).w	; Move d0 to old timer (for animated purposes)
 		move.w	#$C6,d0			; move $C6 to d0
 		jsr	(PlaySound_Special).l 	; play ring loss sound
 ; ---------------------------------------------------------------------------
@@ -15734,6 +15775,15 @@ Obj37_NoRingsMove:
 				
 @noceiling:
 		addi.w	#$18,$12(a0)
+		
+		tst.b	($FFFFF64C).w		; Does the level have water?
+		beq.s	@skipbounceslow		; If not, branch and skip underwater checks
+		move.w	($FFFFF646).w,d6	; Move water level to d6
+		cmp.w	$C(a0),d6		; Is the ring object underneath the water level?
+		bgt.s	@skipbounceslow		; If not, branch and skip underwater commands
+		subi.w	#$E,$12(a0)		; Reduce gravity by $E ($18-$E=$A), giving the underwater effect
+@skipbounceslow:
+	
 		bmi.s	Obj37_ChkDel
 		move.b	($FFFFFE0F).w,d0
 		add.b	d7,d0
@@ -15765,8 +15815,8 @@ Obj37_ChkDel:
 		bne.s	Obj37_NoCheck	; if yes, branch
 		tst.b	$33(a0)		
 		bne.s	Obj37_NoCheck2
-		tst.b	($FFFFFEC6).w
-		beq.s	Obj37_Delete
+		subq.b	#1,$1F(a0)	; Subtract 1 from timer
+		beq.w	DeleteObject	; If 0, delete
 		bra.s	Obj37_NoCheck2
 
 Obj37_NoCheck:
@@ -16471,6 +16521,10 @@ loc_A25C:
 Obj26_NoHome:
 		btst	#5,$22(a0)
 		beq.s	Obj26_Animate
+		cmp.b	#2,$1C(a1)	; check if in jumping/rolling animation
+		beq.s	loc_A26A
+		cmp.b	#$17,$1C(a1)	; check if in drowning animation
+		beq.s	loc_A26A
 		move.w	#1,$1C(a1)
 
 loc_A26A:
@@ -19895,6 +19949,7 @@ Obj39_ChgMode:				; XREF: Obj39_Wait
 ; ===========================================================================
 
 Obj39_ResetLvl:				; XREF: Obj39_ChgMode
+		clr.l	($FFFFFE38).w
 		move.w	#1,($FFFFFE02).w ; restart level
 
 Obj39_Display:				; XREF: Obj39_ChgMode
@@ -21033,6 +21088,8 @@ loc_D358:
 ; ===========================================================================
 
 loc_D362:
+		cmpi.b	#$A,($FFFFD000+$24).w	; Has Sonic drowned?
+		beq.s	loc_D348		; If so, run objects a little longer
 		moveq	#$1F,d7
 		bsr.s	loc_D348
 		moveq	#$5F,d7
@@ -21068,19 +21125,15 @@ Obj_Index:
 
 
 ObjectFall:
-		move.l	8(a0),d2
-		move.l	$C(a0),d3
 		move.w	$10(a0),d0
 		ext.l	d0
-		asl.l	#8,d0
-		add.l	d0,d2
+		lsl.l	#8,d0
+		add.l	d0,8(a0)
 		move.w	$12(a0),d0
 		addi.w	#$38,$12(a0)	; increase vertical speed
 		ext.l	d0
-		asl.l	#8,d0
-		add.l	d0,d3
-		move.l	d2,8(a0)
-		move.l	d3,$C(a0)
+		lsl.l	#8,d0
+		add.l	d0,$C(a0)
 		rts	
 ; End of function ObjectFall
 
@@ -21734,7 +21787,10 @@ loc_DA02:
 loc_DA10:
 		bsr	loc_DA3C
 		beq.s	loc_DA02
-
+		tst.b	$04(a0)		; was this object a remember state?
+		bpl.s	loc_DA16	; if not, branch
+		subq.b	#1,(a2)		; move right counter back
+		
 loc_DA16:
 		move.l	a0,($FFFFF770).w
 		movea.l	($FFFFF774).w,a0
@@ -21763,7 +21819,7 @@ locret_DA3A:
 loc_DA3C:
 		tst.b	4(a0)
 		bpl.s	OPL_MakeItem
-		bset	#7,2(a2,d2.w)
+		btst	#7,2(a2,d2.w)
 		beq.s	OPL_MakeItem
 		addq.w	#6,a0
 		moveq	#0,d0
@@ -21784,6 +21840,7 @@ OPL_MakeItem:
 		move.b	d1,$22(a1)
 		move.b	(a0)+,d0
 		bpl.s	loc_DA80
+		bset	#7,$02(a2,d2.w)		; set as removed
 		andi.b	#$7F,d0
 		move.b	d2,$23(a1)
 
@@ -24427,6 +24484,10 @@ loc_FB92:
 		beq.s	loc_FBAC
 		cmp.b	#2,$1C(a1)	; check if in jumping/rolling animation
 		beq.s	loc_FBA0
+		cmp.b	#$17,$1C(a1)	; check if in drowning animation
+		beq.s	loc_FBA0
+		cmp.b	#$1A,$1C(a1)	; check if in hurt animation
+		beq.s	loc_FBA0
 		move.w	#1,$1C(a1)	; use walking animation
 
 
@@ -26530,6 +26591,7 @@ Map_obj5C:
 ; ---------------------------------------------------------------------------
 
 Obj1B:					; XREF: Obj_Index
+		jmp	DeleteObject
 		rts		; disabled, don't ask why
 
 		moveq	#0,d0
@@ -29974,6 +30036,7 @@ Obj01_Index:	dc.w Obj01_Main-Obj01_Index
 		dc.w Obj01_Hurt-Obj01_Index
 		dc.w Obj01_Death-Obj01_Index
 		dc.w Obj01_ResetLevelX-Obj01_Index
+		dc.w Sonic_Drowned-Obj01_Index
 ; ===========================================================================
 
 Obj01_Main:				; XREF: Obj01_Index
@@ -30712,7 +30775,7 @@ Obj01_NotRight:
 		add.w	8(a0),d1
 		sub.w	8(a1),d1
 		cmpi.w	#4,d1
-		blt.s	loc_12F6A
+	;	blt.s	loc_12F6A
 		cmp.w	d2,d1
 		bge.s	loc_12F5A
 		bra.s	Sonic_LookUp
@@ -30726,7 +30789,7 @@ Sonic_Balance:
 		bne.s	loc_12F62
 
 loc_12F5A:
-		bclr	#0,$22(a0)
+	;	bclr	#0,$22(a0)
 		bra.s	loc_12F70
 ; ===========================================================================
 
@@ -30734,12 +30797,12 @@ loc_12F62:
 		cmpi.b	#3,$37(a0)
 		bne.s	Sonic_LookUp
 
-loc_12F6A:
-		bset	#0,$22(a0)
+;loc_12F6A:
+;		bset	#0,$22(a0)
 
 loc_12F70:
 		move.b	#6,$1C(a0)	; use "balancing" animation
-		bra.s	Obj01_ResetScr
+	;	bra.s	Obj01_ResetScr
 ; ===========================================================================
 
 Sonic_LookUp:
@@ -32890,6 +32953,7 @@ loc_1380C:
 		bsr	Sonic_HurtStop
 		bsr	Sonic_LevelBound
 		bsr	Sonic_RecordPos
+		bsr	Sonic_Water
 		bsr	Sonic_Animate
 		bsr	LoadSonicDynPLC
 		jmp	DisplaySprite
@@ -32996,10 +33060,10 @@ Obj01_NoOF:
 
 
 GameOver:				; XREF: Obj01_Death
-		move.w	($FFFFF72E).w,d0
+		move.w	($FFFFF704).w,d0
 		addi.w	#$100,d0
 		cmp.w	$C(a0),d0
-		bcc.w	locret_13900
+		bge.w	locret_13900
 	;	move.w	#-$38,$12(a0)
 		move.b	#$A3,d0
 		jsr	PlaySound_Special ; play death sound
@@ -33095,6 +33159,20 @@ Obj01_Death_ES:
 		move.b	#$97,d0
 		jsr	PlaySound_Special ; play credits music
 		rts
+		
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Sonic when he's drowning
+; ---------------------------------------------------------------------------
+ 
+Sonic_Drowned:
+		jsr	SpeedToPos	; Make Sonic able to move
+		addi.w	#$10,$12(a0)	; Apply gravity
+		bsr.w	Sonic_RecordPos	; Record position
+		jsr	Sonic_Animate	; Animate Sonic
+		bsr.w	LoadSonicDynPLC	; Load Sonic's DPLCs
+		jsr	DisplaySprite	; And finally, display Sonic
+; ===========================================================================
 
 ; ---------------------------------------------------------------------------
 ; Subroutine to	make Sonic run around loops (GHZ/SLZ)
@@ -33643,25 +33721,18 @@ Obj0A_ReduceAir:
 		move.w	#0,$12(a0)
 		move.w	#0,$10(a0)
 		move.w	#0,$14(a0)
+		move.b	#$A,$24(a0)		; Force the character to drown
 		move.b	#1,($FFFFF744).w
+		move.b	#0,($FFFFFE1E).w	; Stop the timer immediately
 		movea.l	(sp)+,a0
 		rts	
 ; ===========================================================================
 
 loc_13F86:
 		subq.w	#1,$2C(a0)
-		bne.s	loc_13F94
-		move.b	#6,($FFFFD024).w
-		rts	
-; ===========================================================================
-
-loc_13F94:
-		move.l	a0,-(sp)
-		lea	($FFFFD000).w,a0
-		jsr	SpeedToPos
-		addi.w	#$10,$12(a0)
-		movea.l	(sp)+,a0
-		bra.s	loc_13FAC
+		bne.s	loc_13FAC	; Make it jump straight to this location
+		move.b	#6,($FFFFD000+$24).w
+		rts
 ; ===========================================================================
 
 Obj0A_GoMakeItem:			; XREF: Obj0A_ReduceAir
@@ -34913,7 +34984,10 @@ loc_14D24:
 		andi.b	#$38,d1
 		bne.s	loc_14D3C
 		addq.w	#8,d2
-
+		btst	#2,$22(a0)    ; Is Sonic rolling?
+		beq.s	loc_14D3C          ; If not, branch
+		subq.w	#5,d2              ; If so, move push sensor up a bit
+        
 loc_14D3C:
 		cmpi.b	#$40,d0
 		beq.w	loc_1504A
@@ -38115,6 +38189,7 @@ BossDefeated:
 		lsr.w	#8,d0
 		lsr.b	#3,d0
 		add.w	d0,$C(a1)
+		clr.b	($FFFFFE1E).w	; stop time counter
 
 locret_178A2:
 		rts	
@@ -41823,17 +41898,17 @@ loc_19EA8:				; XREF: off_19E80
 		bpl.s	loc_19F10
 		clr.w	$30(a0)
 		jsr	(RandomNumber).l
-		andi.w	#$C,d0
+		andi.w	#$14,d0		; changed from $C
 		move.w	d0,d1
 		addq.w	#2,d1
-		tst.l	d0
+		tst.l	d0		; adds small chance for Robotnik's position in the pillars to swap
 		bpl.s	loc_19EC6
 		exg	d1,d0
 
 loc_19EC6:
 		lea	word_19FD6(pc),a1
-		move.w	(a1,d0.w),d0
-		move.w	(a1,d1.w),d1
+		move.w	(a1,d0.w),d0	; the pillar Robotnik will be in
+		move.w	(a1,d1.w),d1	; the other (empty) pillar
 		move.w	d0,$30(a0)
 		moveq	#-1,d2
 		move.w	$38(a0,d0.w),d2
@@ -41949,7 +42024,27 @@ loc_19FBC:
 		move.b	#$14,$16(a0)
 		rts	
 ; ===========================================================================
-word_19FD6:	dc.w 0,	2, 2, 4, 4, 6, 6, 0
+; possible pillar selections
+; 2-based, two words each
+; in order from left to right: 4, 0, 6, 2
+pillar1 = 4
+pillar2 = 0
+pillar3 = 6
+pillar4 = 2
+
+;word_19FD6:	dc.w pillar2, pillar4
+;		dc.w pillar4, pillar1
+;		dc.w pillar1, pillar3
+;		dc.w pillar3, pillar2
+
+word_19FD6:
+		dc.w pillar1, pillar2	; 00
+		dc.w pillar1, pillar3	; 04
+		dc.w pillar1, pillar4	; 08
+		dc.w pillar2, pillar3	; 0C
+		dc.w pillar2, pillar4	; 10
+		dc.w pillar3, pillar4	; 14
+
 ; ===========================================================================
 
 loc_19FE6:				; XREF: off_19E80
@@ -42730,7 +42825,7 @@ Obj86_Loop:
 		move.l	a0,$34(a1)
 		jsr	(RandomNumber).l
 		move.w	$32(a0),d1
-		muls.w	#-$4F,d1	; horizontal spacing for ammount of balls (3=6F, 4=4F, 5=3F, 6=2F)
+		muls.w	#-$59,d1	; horizontal spacing for ammount of balls (3=6F, 4=4F, 5=3F, 6=2F)
 		addi.w	#$2578,d1
 		andi.w	#$1F,d0
 		subi.w	#$10,d0
@@ -42793,7 +42888,7 @@ loc_1A9C0:				; XREF: Obj86_Index2
 		sub.w	$30(a0),d0
 		bcc.s	loc_1A9E6
 		clr.w	$10(a0)
-		add.w	d0,8(a0)
+		sub.w	d0,8(a0)
 		movea.l	$34(a0),a1
 		subq.w	#1,$32(a1)
 
@@ -44614,7 +44709,7 @@ Obj09_Jump:				; XREF: Obj09_OnWall
 
 Obj09_Jump_NoDebug:
 		move.b	($FFFFF780).w,d0
-		andi.b	#$FC,d0
+	;	andi.b	#$FC,d0
 		neg.b	d0
 		subi.b	#$40,d0
 		jsr	(CalcSine).l
@@ -44794,7 +44889,7 @@ Obj09_Fall:				; XREF: Obj09_OnWall; Obj09_InAir
 		move.l	$C(a0),d2
 		move.l	8(a0),d3
 		move.b	($FFFFF780).w,d0
-		andi.b	#$FC,d0
+	;	andi.b	#$FC,d0
 		jsr	(CalcSine).l
 		move.w	$10(a0),d4
 		ext.l	d4
@@ -45553,8 +45648,8 @@ Obj10_NoCamShake:
 
 
 AniArt_Load:				; XREF: Demo_Time; loc_F54
-		tst.w	($FFFFF63A).w	; is the game paused?
-		bne.s	AniArt_Pause	; if yes, branch
+	;	tst.w	($FFFFF63A).w	; is the game paused?
+	;	bne.s	AniArt_Pause	; if yes, branch
 		lea	($C00000).l,a6
 		bsr	AniArt_GiantRing
 		moveq	#0,d0
@@ -49486,7 +49581,16 @@ loc_726CC:
 loc_726D6:
 		bclr	#2,$40(a6)
 		clr.b	$24(a6)
-		rts	
+
+		tst.b	$40(a6)					; is the DAC channel running?
+		bpl.s	Resume_NoDAC				; if not, branch
+
+		moveq	#$FFFFFFB6,d0				; prepare FM channel 3/6 L/R/AMS/FMS address
+		move.b	$4A(a6),d1				; load DAC channel's L/R/AMS/FMS value
+		jmp	sub_72764(pc)				; write to FM 6
+
+Resume_NoDAC:
+		rts
 ; End of function sub_7267C
 
 ; ===========================================================================
@@ -49991,6 +50095,15 @@ loc_72B78:
 		adda.w	#$30,a5
 		dbf	d7,loc_72B66
 		movea.l	a3,a5
+		
+		tst.b	$40(a6)			; is the DAC channel running?
+		bmi.s	Restore_NoFM6		; if it is, branch
+
+		moveq	#$2B,d0			; DAC enable/disable register
+		moveq	#0,d1			; Disable DAC
+		jsr	sub_7272E(pc)
+Restore_NoFM6:
+
 		move.b	#$80,$24(a6)
 		move.b	#$28,$26(a6)
 		clr.b	$27(a6)

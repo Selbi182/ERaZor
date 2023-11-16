@@ -158,7 +158,7 @@ O_PalSkip_2:
 
 ; LevelSelect:
 OptionsScreen_MainLoop:
-		move.b	#4,($FFFFF62A).w
+		move.b	#2,($FFFFF62A).w
 		jsr	DelayProgram
 
 		tst.w	($FFFFF614).w		; is timer empty?

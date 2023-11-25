@@ -2,6 +2,7 @@
 ; ---------------------------------------------------------------------------
 ; Chapter Screens
 ; ---------------------------------------------------------------------------
+; $FFFFFFA7
 ; 1: Run To The Hills
 ; 2: Special Frustration
 ; 3: Inhuman Through The Ruins
@@ -38,21 +39,14 @@ ChapterScreen:
 CS_ClrObjRam:
 		move.l	d0,(a1)+
 		dbf	d1,CS_ClrObjRam
-
-		move.b	#1,($A130F1).l			; enable SRAM
-		move.b	($FFFFFFA7).w,($200001).l	; save current chaper number
-		move.b	#0,($A130F1).l			; disable SRAM
 		
-		move.b	($FFFFFFA7).w,($FFFFFFA0).w
-		
-		cmpi.w	#$501,($FFFFFE10).w
-		beq.s	@contGHZ
+		cmpi.w	#$501,($FFFFFE10).w		; is this the tutorial?
+		beq.s	CS_LoadIntroCutscene		; if yes, branch
 
-		tst.b	($FFFFFFA0).w			; is chapter ID 0?
+		tst.b	($FFFFFFA7).w			; is chapter ID 0 (first start)?
 		bne.s	CS_NotOHDIGHZ			; if not, branch
 
-@contGHZ:
-		move.b	#0,($FFFFFFA0).w
+CS_LoadIntroCutscene:
 		move.l	#$40000000,($C00004).l		; Load art
 		lea	($C00000).l,a6
 		lea	(Art_OHDIGHZ).l,a1		; load art
@@ -80,7 +74,6 @@ CS_PalLoopOHD:
 ; ---------------------------------------------------------------------------
 
 CS_NotOHDIGHZ:
-		subq.b	#1,($FFFFFFA0).w
 		move.l	#$40000000,($C00004).l		; Load art
 		lea	($C00000).l,a6
 		lea	(Art_ChapterHeader).l,a1	; load chapter header
@@ -116,7 +109,8 @@ CS_PalLoop1:
 ; ---------------------------------------------------------------------------
 
 		moveq	#0,d0
-		move.b	($FFFFFFA0).w,d0
+		move.b	($FFFFFFA7).w,d0
+		subq	#1,d0
 		add.b	d0,d0
 		move.w	CS_Tiles_Index(pc,d0.w),d1
 		jmp	CS_Tiles_Index(pc,d1.w)
@@ -159,7 +153,8 @@ CS_Tiles_Load:
 
 		lea	(Map_Chapter1).l,a1		; load chapter 1
 		moveq	#0,d0				; clear d0
-		move.b	($FFFFFFA0).w,d0		; get chapter ID
+		move.b	($FFFFFFA7).w,d0		; get chapter ID
+		subq	#1,d0
 		mulu.w	#1520,d0			; multiply it by 1520 bytes
 		adda.w	d0,a1				; add result to a1
 		move.l	#$44800003,d0
@@ -169,7 +164,8 @@ CS_Tiles_Load:
 
 		lea	(Pal_Chapter1).l,a1		; load chapter 1 palette
 		moveq	#0,d0				; clear d0
-		move.b	($FFFFFFA0).w,d0		; get chapter ID
+		move.b	($FFFFFFA7).w,d0		; get chapter ID
+		subq	#1,d0
 		mulu.w	#32,d0				; multiply it by 32 bytes
 		adda.w	d0,a1				; add result to a1
 		lea	($FFFFFBA0).w,a2
@@ -177,8 +173,6 @@ CS_Tiles_Load:
 CS_PalLoop2:
 		move.l	(a1)+,(a2)+
 		dbf	d0,CS_PalLoop2
-
-		addq.b	#1,($FFFFFFA0).w
 ; ---------------------------------------------------------------------------
 
 		move.w	#$000F,($FFFFF626).w		; start at palette line 1, 16 colours ($F + 1)
@@ -195,15 +189,16 @@ CS_SetUpLoop:
 
 ; ---------------------------------------------------------------------------
 CS_Loop:
-		tst.b	($FFFFFFA0).w
-		bne.s	@cont
-		cmpi.w	#$30,($FFFFF614).w
-		bne.s	@cont
-		move.b	#$95,d0
+		cmpi.w	#$501,($FFFFFE10).w	; is this the tutorial?
+		bne.s	@nottutorial		; if not, branch
+		cmpi.w	#$30,($FFFFF614).w	; wait $30 frames before starting the intro cutscene music
+		bne.s	@nottutorial
+		move.b	#$95,d0			; play intro cutscene music
 		jsr	PlaySound
-		move.w	#$001,($FFFFFE10).w
+		move.w	#$001,($FFFFFE10).w	; load intro cutscene
+		bra.w	CS_PlayLevel
 
-@cont:
+@nottutorial:
 		jsr	ObjectsLoad
 		jsr	BuildSprites
 		move.b	#4,($FFFFF62A).w
@@ -215,62 +210,48 @@ CS_Loop:
 ; ---------------------------------------------------------------------------
 
 CS_EndLoop:
-	;	tst.b	($FFFFFFA0).w
-	;	beq.s	CS_PlayLevel
-
-		tst.b	($FFFFFFA0).w
-		bne.s	@cont
-		cmpi.w	#$30,($FFFFF614).w
-		bmi.w	CS_PlayLevel
-		move.b	#$95,d0
-		jsr	PlaySound
-		move.w	#$001,($FFFFFE10).w
-		bra.w	CS_PlayLevel
-
-@cont:
 		move.w	#$400,($FFFFFE10).w	; set level to SYZ1
-		tst.b	($FFFFFF7D).w
-		beq.s	CS_PlayLevel
+		tst.b	($FFFFFF7D).w		; has chapters screen been entered through a giant ring SYZ?
+		beq.s	CS_PlayLevel		; if not, branch
 
-		cmpi.b	#2,($FFFFFFA0).w	; is this chapter 2?
+		cmpi.b	#2,($FFFFFFA7).w	; is this chapter 2?
 		bne.s	CS_ChkChapter3		; if not, branch
 		move.w	#$300,($FFFFFE10).w	; use correct stage
 		move.b	#$10,($FFFFF600).w	; set to special stage
 		rts
 
 CS_ChkChapter3:
-		cmpi.b	#3,($FFFFFFA0).w	; is this chapter 3?
+		cmpi.b	#3,($FFFFFFA7).w	; is this chapter 3?
 		bne.s	CS_ChkChapter4		; if not, branch
 		move.w	#$200,($FFFFFE10).w	; set level to MZ1
 		bra.s 	CS_PlayLevel
 
 CS_ChkChapter4:
-		cmpi.b	#4,($FFFFFFA0).w	; is this chapter 4?
+		cmpi.b	#4,($FFFFFFA7).w	; is this chapter 4?
 		bne.s	CS_ChkChapter5		; if not, branch
 		move.w	#$101,($FFFFFE10).w	; set level to LZ2
 		bra.s 	CS_PlayLevel
 
 CS_ChkChapter5:
-		cmpi.b	#5,($FFFFFFA0).w	; is this chapter 5?
+		cmpi.b	#5,($FFFFFFA7).w	; is this chapter 5?
 		bne.s	CS_ChkChapter6		; if not, branch
 		move.w	#$401,($FFFFFE10).w	; use correct stage
 		move.b	#$10,($FFFFF600).w	; set to special stage
 		rts
 CS_ChkChapter6:
-		cmpi.b	#6,($FFFFFFA0).w	; is this chapter 6?
+		cmpi.b	#6,($FFFFFFA7).w	; is this chapter 6?
 		bne.s	CS_ChkChapter7		; if not, branch
 		move.w	#$500,($FFFFFE10).w	; set level to SBZ1
 		bra.s 	CS_PlayLevel
 
 CS_ChkChapter7:
-		cmpi.b	#7,($FFFFFFA0).w	; is this chapter 7?
+		cmpi.b	#7,($FFFFFFA7).w	; is this chapter 7?
 		bne.s	CS_PlayLevel		; if not, branch
 		move.w	#$502,($FFFFFE10).w	; set level to FZ
 
 CS_PlayLevel:
 		move.b	#$C,($FFFFF600).w	; set to level
 		move.w	#1,($FFFFFE02).w	; restart level
-		clr.b	($FFFFFF7D).w
 		rts
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
@@ -299,7 +280,9 @@ Obj04_Setup:
 		move.w	#$0100,2(a0)		; set art tile, use first palette line
 		move.w	#$123,8(a0)		; set X-position
 		move.w	#$C5,$A(a0)		; set Y-position
-		move.b	($FFFFFFA0).w,$1A(a0)	; set chapter number to frame
+		move.b	($FFFFFFA7).w,d0	; set chapter number to frame
+		subq	#1,d0
+		move.b	d0,$1A(a0)
 
 Obj04_Display:
 		jmp	DisplaySprite		; jump to DisplaySprite

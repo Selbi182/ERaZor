@@ -26,12 +26,13 @@ InfoScreen:				; XREF: GameModeArray
 Info_ClrObjRam:
 		move.l	d0,(a1)+
 		dbf	d1,Info_ClrObjRam ; fill object RAM ($D000-$EFFF) with $0
-		
-		tst.b	($FFFFFF94).w		; is auto-skip-text enabled?
-		beq.s	@cont			; if not, branch
+				
+		btst	#1,($FFFFFF92).w	; are story text screens enabled?
+		bne.s	@cont			; if yes, branch
 		cmpi.b	#9,($FFFFFF9E).w	; is this the easter egg?
-		beq.s	@cont			; if not, don't skip
-		bra.w	Info_AutoSkip		; otherwise, auto-skip the cringe
+		beq.s	@cont			; if not, don't skip cause that's the whole point lmao
+		move.b	#1,($FFFFFF7D).w	; make sure the chapters screen leads us to the correct level
+		bra.w	Info_ExitScreen		; auto-skip the cringe
 
 @cont:
 		move	#$2700,sr
@@ -68,13 +69,8 @@ Info_LoadText:
 		clr.w	($FFFFFF96).w
 		clr.w	($FFFFFF98).w
 		clr.w	($FFFFFF9A).w
-		clr.w	($FFFFFF9C).w
-
-		move.b	#1,($A130F1).l		; enable SRAM
-		move.b	($FFFFFF9E).w,d0	; get current level number
-		move.b	d0,($200007).l		; store it in SRAM (this is basically the progress of the game)
-		move.b	#0,($A130F1).l		; disable SRAM
-		
+		clr.w	($FFFFFF9C).w		
+				
 		lea	($FFFFCA00).w,a1	; set location for the text
 		moveq	#0,d0
 		move.w	#559,d1			; do it for all 504 chars
@@ -142,19 +138,20 @@ Info_NoStart:
 ; ===========================================================================
 
 Info_NoTextChange:
-		move.b	($FFFFF605).w,d1
-		andi.b	#$80,d1
+		move.b	($FFFFF605).w,d1	; get button presses
+		andi.b	#$80,d1			; was start pressed?
 		beq.s	InfoScreen_MainLoop	; if not, branch
+; ===========================================================================
 
-Info_AutoSkip:
+Info_ExitScreen:
 		cmpi.b	#1,($FFFFFF9E).w	; is this the intro-dialouge?
 		bne.s	Info_NoIntro		; if not, branch
 		move.b	#1,($A130F1).l		; enable SRAM
-		cmpi.b	#1,($FFFFFFA7).w
-		bgt.s	@conty
+		cmpi.b	#1,($FFFFFFA7).w	; is this the first time visiting the tutorial?
+		bgt.s	@notfirstvisit		; if not, branch
 		move.b	#1,($FFFFFFA7).w	; run first chapter screen
-		move.b	#1,($200001).l
-@conty:
+		move.b	#1,($200003).l		; save chapter to SRAM
+@notfirstvisit:
 		move.b	#0,($A130F1).l		; disable SRAM
 		move.b	#$28,($FFFFF600).w	; set to chapters screen ($28)
 		rts
@@ -185,8 +182,6 @@ Info_NoBlack:
 		clr.w	($FFFFFF98).w
 		clr.w	($FFFFFF9A).w
 		clr.w	($FFFFFF9C).w
-		move.w	#$400,($FFFFFE10).w	; set level to SYZ1
-		move.b	#$C,($FFFFF600).w
 		jmp	NextLevelX
 ; ===========================================================================
 

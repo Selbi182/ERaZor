@@ -111,7 +111,7 @@ Options_ClrScroll:
 Options_ClrVram:
 		move.l	d0,(a6)
 		dbf	d1,Options_ClrVram	; fill	VRAM with 0
-		move.w	#19,($FFFFFF82).w	; set position to 4
+		move.w	#18,($FFFFFF82).w	; set default selected entry to exit
 
 		jsr	Pal_FadeTo
 		bra.w	OptionsScreen_MainLoop
@@ -155,6 +155,15 @@ O_PalSkip_2:
 ; ---------------------------------------------------------------------------
 ; Options Screen - Main Loop
 ; ---------------------------------------------------------------------------
+; $04 = Extended Camera
+; $06 = Story Text Screens
+; $08 = Skip Uberhub Place
+; $0A = Cinematic HUD
+; $0C = Nonstop Inhuman
+; $0E = Delete Save Game
+; $10 = Sound Text
+; $12 = Exit Options
+; ---------------------------------------------------------------------------
 
 ; LevelSelect:
 OptionsScreen_MainLoop:
@@ -171,199 +180,178 @@ O_DontResetTimer:
 		
 		bsr.w	Options_PalCycle
 
-		tst.l	($FFFFF680).w
-		bne.s	OptionsScreen_MainLoop
+		tst.l	($FFFFF680).w		; are pattern load cues empty?
+		bne.s	OptionsScreen_MainLoop	; if not, branch
 
 		tst.b	($FFFFFF9C).w		; is building-up-sequence done?
-		bne.s	Options_NoTextChange	; if yes, branch
+		bne.s	Options_HandleChange	; if yes, branch
 
-		tst.b	($FFFFF605).w
-		beq.s	Options_NoStart
-		move.b	#1,($FFFFFF9C).w
+		tst.b	($FFFFF605).w		; has any button been pressed?
+		beq.s	Options_NoSkip		; if not, branch
+		move.b	#1,($FFFFFF9C).w	; if yes, skip the intro animation
 		bsr	OptionsTextLoad		; update text
 		bra.s	OptionsScreen_MainLoop	; if not, branch
 
-Options_NoStart:
+Options_NoSkip:
 		move.w	($FFFFF614).w,d0	; get timer
-		cmpi.b	#6,($FFFFFF98).w	; check if ON/OFF are being written now
-		blt.s	Options_NoSlowDown	; if not, branch
-		cmpi.b	#$E,($FFFFFF98).w	; check if ON/OFF are being written now
-		bgt.s	Options_NoSlowDown	; if not, branch
-		andi.w	#7,d0			; and by 6
-		bne.s	Options_NoTextChange	; if result ain't 0, don't write text
+		cmpi.b	#4,($FFFFFF98).w	; check if ON/OFF are being written now
+		ble.s	Options_NoSlowDown	; if not, branch
+		cmpi.b	#$12,($FFFFFF98).w	; check if ON/OFF are being written now
+		bge.s	Options_NoSlowDown	; if not, branch
+		andi.w	#7,d0			; slow down the writing for 7 frames
+		bne.s	Options_HandleChange	; if result ain't 0, don't write text
 		bra.s	Options_StartUpWrite
 
 Options_NoSlowDown:
-		andi.w	#0,d0			; and by 0
-		bne.s	Options_NoTextChange	; if result ain't 0, don't write text
+		andi.w	#0,d0			; no slow down
+		bne.s	Options_HandleChange	; if result ain't 0, don't write text
 
 Options_StartUpWrite:
 		bsr	OptionsTextLoad		; update text
-		tst.b	($FFFFFF9C).w	; is routine counter at $12 (Options_NoMore)?
-		bne.s	Options_NoTextChange	; if yes, branch
+		tst.b	($FFFFFF9C).w		; is routine counter at $12 (Options_NoMore)?
+		bne.s	Options_HandleChange	; if yes, branch
 		bra.w	OptionsScreen_MainLoop
+; ===========================================================================
+; All options are kept in a single byte to save space (it's all flags anyway)
+; RAM location: $FFFFFF92
+;  bit 0 = Extended Camera
+;  bit 1 = Story Text Screens
+;  bit 2 = Skip Uberhub Place
+;  bit 3 = Cinematic HUD
+;  bit 4 = Nonstop Inhuman
+
+Options_HandleChange:
+		moveq	#0,d0			; make sure d0 is empty
+		move.w	($FFFFFF82).w,d0	; get current selection
 ; ---------------------------------------------------------------------------
 
-Options_NoTextChange:
+Options_HandleExtendedCamera:
+		cmpi.w	#4,d0
+		bne.s	Options_HandleStoryTextScreens
 		move.b	($FFFFF605).w,d1	; get button presses
-		cmpi.w	#13,($FFFFFF82).w	; is selected line DELETE SRAM?
-		bne.s	Options_NotDltSRAM	; if not, branch
-		andi.b	#$80,d1			; is Start pressed?
-		beq.w	OptionsScreen_MainLoop	; if not, return
+		andi.b	#$FC,d1			; is left, right, A, B, C, or Start pressed?
+		beq.w	Options_Return		; if not, branch
+		bchg	#0,($FFFFFF92).w	; toggle extended camera
+		bra.w	Options_UpdateTextAfterChange
+; ---------------------------------------------------------------------------
+
+Options_HandleStoryTextScreens:
+		cmpi.w	#6,d0
+		bne.s	Options_HandleSkipUberhub
+		move.b	($FFFFF605).w,d1	; get button presses
+		andi.b	#$FC,d1			; is left, right, A, B, C, or Start pressed?
+		beq.w	Options_Return		; if not, branch
+		bchg	#1,($FFFFFF92).w	; toggle text screens
+		bra.w	Options_UpdateTextAfterChange
+; ---------------------------------------------------------------------------
+
+Options_HandleSkipUberhub:
+		cmpi.w	#8,d0
+		bne.s	Options_HandleCinematicHud
+		move.b	($FFFFF605).w,d1	; get button presses
+		andi.b	#$FC,d1			; is left, right, A, B, C, or Start pressed?
+		beq.w	Options_Return		; if not, branch
+		bchg	#2,($FFFFFF92).w	; toggle Uberhub autoskip
+		bra.w	Options_UpdateTextAfterChange
+; ---------------------------------------------------------------------------
+
+Options_HandleCinematicHud:
+		cmpi.w	#10,d0
+		bne.s	Options_HandleNonstopInhuman
+		move.b	($FFFFF605).w,d1	; get button presses
+		andi.b	#$FC,d1			; is left, right, A, B, C, or Start pressed?
+		beq.w	Options_Return		; if not, branch
+		bchg	#3,($FFFFFF92).w	; toggle cinematic HUD
+		bra.w	Options_UpdateTextAfterChange
+; ---------------------------------------------------------------------------
+
+Options_HandleNonstopInhuman:
+		cmpi.w	#12,d0	
+		bne.s	Options_HandleDeleteSaveGame
+		move.b	($FFFFF605).w,d1	; get button presses
+		andi.b	#$FC,d1			; is left, right, A, B, C, or Start pressed?
+		beq.w	Options_Return		; if not, branch
+		tst.b	($FFFFFF93).w		; has the player beaten the game?
+		bne.s	@nonstopinhumanallowed	; if yes, branch
+		move.w	#$DA,d0			; play option disallowed sound
+		jsr	PlaySound_Special
+		bra.w	Options_UpdateTextAfterChange_NoSound
+		
+@nonstopinhumanallowed:
+		bchg	#4,($FFFFFF92).w	; toggle nonstop inhuman
+		clr.b	($FFFFFFE7).w		; make sure inhuman is disabled if this option is as well
+		bra.w	Options_UpdateTextAfterChange
+; ---------------------------------------------------------------------------
+
+Options_HandleDeleteSaveGame:
+		cmpi.w	#14,d0
+		bne.s	Options_HandleSoundTest
+		move.b	($FFFFF605).w,d1	; get button presses
+		andi.b	#$80,d1			; is Start pressed? (this option only works on start because of how delicate it is)
+		beq.w	Options_Return		; if not, return
 
 		move.b	#1,($A130F1).l		; enable SRAM
-		lea	($200000).l,a1
-		moveq	#0,d0			; set d0 to 0
-		movep.l	d0,$01(a1)		; clear SRAM
-		movep.l	d0,$09(a1)		; clear SRAM
-		movep.l	d0,$11(a1)		; clear SRAM
-		movep.l	d0,$19(a1)		; clear SRAM
-		move.b	#0,$19(a1)		; clear SRAM
-		clr.b	($FFFFFF8B).w
-		clr.b	($FFFFFFBC).w
-		clr.b	($FFFFFF92).w
-		clr.b	($FFFFFF9C).w
-		clr.b	($FFFFFF93).w
-		clr.b	($FFFFFFBC).w
-		clr.w	($FFFFFE20).w
-		clr.l	($FFFFFE26).w
-		clr.b	($FFFFFE12).w
-
+		jsr	SRAM_Delete		; delete SRAM
 		move.b	#0,($A130F1).l		; disable SRAM
-
-		jmp	EntryPoint
-
-Options_NotDltSRAM:
-		cmpi.w	#16,($FFFFFF82).w	; is selected line SOUND TEST?
-		bne.s	Options_NotSndTst	; if not, branch
-		andi.b	#$6C,d1			; is left, right, A or C pressed?
-	;	bne.s	Options_OK		; if yes, branch
-		bne.s	Options_OK_NoSound	; if yes, branch
-		bra.w	OptionsScreen_MainLoop	; otherwise return
-
-Options_NotSndTst:
-		cmpi.w	#19,($FFFFFF82).w	; is selected line EXIT?
-		beq.s	Options_NoLR		; if yes, don't check for Left/Right buttons
-		andi.b	#$C,d1			; is left/right	pressed?
-		bne.s	Options_OK		; if yes, branch
-
-Options_NoLR:
-		andi.b	#$F0,d1			; is A, B, C or Start pressed?
-		beq.w	OptionsScreen_MainLoop	; if not, branch
-
-Options_OK:
-		cmpi.w	#10,($FFFFFF82).w	; have you selected item 10 (EASTER EGG)?
-		bne.s	OOK_NoEaster		; if not, check for next numbers
-		move.b	#1,($A130F1).l			; enable SRAM
-		tst.b	($20001D).l			; has easter egg button been pressed?
-		bne.s	OOK_NoEaster
-		move.b	#0,($A130F1).l			; disable SRAM
-		bra.s	Options_OK_NoSound
-OOK_NoEaster:
-		move.b	#0,($A130F1).l			; disable SRAM
-
-		move.w	#$D9,d0
-		jsr	PlaySound_Special
-
-Options_OK_NoSound:
-		moveq	#0,d0
-		move.w	($FFFFFF82).w,d0
-; ===========================================================================
-
-Options_Check4:
-		cmpi.w	#4,d0		; have you selected item 4 (EXTENDED CAMERA)?
-		bne.s	Options_Not7	; if not, check for next numbers
-		bchg	#0,($FFFFFF93).w	; enable/disable extended camera
-		andi.b	#1,($FFFFFF93).w
-		bsr	OptionsTextLoad
-		bra.w	OptionsScreen_MainLoop
-; ===========================================================================
-
-Options_Not7:
-		cmpi.w	#7,d0		; have you selected item 7 (SONIC ART)?
-		bne.s	Options_Not10	; if not, check for next numbers
-		bchg	#0,($FFFFFF94).w	; change art style flag
-		andi.b	#1,($FFFFFF94).w
-		bsr	OptionsTextLoad
-		bra.w	OptionsScreen_MainLoop
-; ===========================================================================
-
-Options_Not10:
-		cmpi.w	#10,d0		; have you selected item 10 (HARD PART SKIPPER)?
-		bne.s	Options_Not13	; if not, check for next numbers
-
-		move.b	#1,($A130F1).l			; enable SRAM
-		tst.b	($20001D).l			; has easter egg button been pressed?
-		bne.s	Opt10_YesEaster
-
-@cont:
-		move.b	#0,($A130F1).l			; disable SRAM
-		bra.w	OptionsScreen_MainLoop
-
-Opt10_YesEaster:
-		move.b	#0,($A130F1).l			; disable SRAM
-
-		bchg	#0,($FFFFFF92).w	; enable/disable hard part skipper
-		move.b	($FFFFFF92).w,($FFFFFFE7).w
-		andi.b	#1,($FFFFFF92).w
-		tst.b	($FFFFFF92).w
-		bne.s	@contx
-
-		moveq	#2,d0		; load Options screen pallet
-		jsr	PalLoad1
-		moveq	#3,d0		; load Sonic screen pallet
-		jsr	PalLoad2
-
-@contx:
-		bsr	OptionsTextLoad
-		bra.w	OptionsScreen_MainLoop
-; ===========================================================================
-
-Options_Not13:
-		cmpi.w	#16,d0		; have you selected item 16 (SOUND TEST)?
-		bne.s	Options_Not16	; if not, check for next numbers
 		
+		lea	($FFFFD000).w,a1	; get start of object RAM
+		moveq	#0,d0			; overwrite everything with 0
+		move.w	#$BFF,d1		; $BFF iterations to cover the entirety of the RAM
+@clear_ram:	move.l	d0,(a1)+		; clear four bytes of RAM
+		dbf	d1,@clear_ram		; clear	the RAM
+		; TODO smooth fadeout
+		jmp	EntryPoint		; restart the game
 ; ---------------------------------------------------------------------------
-		btst	#5,($FFFFF605).w	; has C been pressed?
-		beq.s	OptSndTst_NotC		; if not, branch
+
+Options_HandleSoundTest:
+		cmpi.w	#16,d0
+		bne.s	Options_HandleExit
+		move.b	($FFFFF605).w,d1	; get button presses
+		andi.b	#$EC,d1			; is left, right, A, C, or Start pressed?
+		beq.w	Options_Return		; if not, branch
+		
+		move.b	($FFFFF605).w,d1	; get button presses
+		andi.b	#$A0,d1			; is C or Start pressed?
+		beq.s	@soundtest_checkL	; if not, branch
 		move.b	($FFFFFF84).w,d0	; move sound test ID to d0
 		jsr	PlaySound_Special	; play music
 
-OptSndTst_NotC:
+@soundtest_checkL:
 		btst	#2,($FFFFF605).w	; has left been pressed?
-		beq.s	OptSndTst_NotLeft	; if not, branch
+		beq.s	@soundtest_checkR	; if not, branch
 		subq.b	#1,($FFFFFF84).w	; decrease sound test ID by 1
 		cmpi.b	#$7F,($FFFFFF84).w	; is ID now $7F?
-		bne.s	OptSndTst_NotLeft	; if not, branch
+		bne.s	@soundtest_checkR	; if not, branch
 		move.b	#$DF,($FFFFFF84).w	; set ID to $DF
 
-OptSndTst_NotLeft:
+@soundtest_checkR:
 		btst	#3,($FFFFF605).w	; has right been pressed?
-		beq.s	OptSndTst_NotRight	; if not, branch
+		beq.s	@soundtest_checkA	; if not, branch
 		addq.b	#1,($FFFFFF84).w	; increase sound test ID by 1
 		cmpi.b	#$E0,($FFFFFF84).w	; is ID now $E0?
-		bne.s	OptSndTst_NotRight	; if not, branch
+		bne.s	@soundtest_checkA	; if not, branch
 		move.b	#$80,($FFFFFF84).w	; set ID to $80
 
-OptSndTst_NotRight:
+@soundtest_checkA:
 		btst	#6,($FFFFF605).w	; has A been pressed?
-		beq.s	OptSndTst_NotA		; if not, branch
+		beq.s	@soundtest_end		; if not, branch
 		addi.b	#$10,($FFFFFF84).w	; increase sound test ID by $10
 		cmpi.b	#$E0,($FFFFFF84).w	; is ID over or at $E0 now?
-		blt.s	OptSndTst_NotA		; if not, branch
+		blt.s	@soundtest_end		; if not, branch
 		subi.b	#$60,($FFFFFF84).w	; restart on the other side
 
-OptSndTst_NotA:
+@soundtest_end:
+		bra.w	Options_UpdateTextAfterChange_NoSound
 ; ---------------------------------------------------------------------------
 
-		bsr	OptionsTextLoad
-		bra.w	OptionsScreen_MainLoop
-; ===========================================================================
+Options_HandleExit:
+		cmpi.w	#18,d0
+		bne.s	Options_Return
 
-Options_Not16:
-		cmpi.w	#19,d0		; have you selected item 19 (EXIT)?
-		bne.s	Options_Error	; if not, something went wrong
-
+		move.b	($FFFFF605).w,d1	; get button presses
+		andi.b	#$80,d1			; is start pressed?
+		beq.s	Options_Return		; if not, branch
+		
 		clr.b	($FFFFFF95).w
 		clr.w	($FFFFFF96).w
 		clr.w	($FFFFFF98).w
@@ -372,22 +360,24 @@ Options_Not16:
 
 		moveq	#0,d0			; clear d0
 		move.b	#1,($A130F1).l		; enable SRAM
-		lea	($200000).l,a1		; base of SRAM
-		move.b	($FFFFFFBC).w,$3(a1)	; backup air move flag
-		move.b	($FFFFFF92).w,$5(a1)	; backup easter egg flag
-		move.b	($FFFFFF93).w,$9(a1)	; backup extended camera flag
-		move.b	($FFFFFF94).w,$B(a1)	; backup art style flag
-		move.b	#$B6,$1B(a1)		; make sure SRAM will be created at the correct size
+		move.b	($FFFFFF92).w,($200001).l	; backup options flags
 		move.b	#0,($A130F1).l		; disable SRAM
 
 		jsr	Pal_FadeOut		; fade out palette
 		move.w	#$400,($FFFFFE10).w
 		move.b	#$C,($FFFFF600).w	; set screen mode to level ($C)
 		rts
-; ===========================================================================
+; ---------------------------------------------------------------------------
 
-Options_Error:
-		rts			; return
+Options_UpdateTextAfterChange:
+		move.w	#$D9,d0			; play option toggled sound
+		jsr	PlaySound_Special
+
+Options_UpdateTextAfterChange_NoSound:
+		bsr	OptionsTextLoad
+
+Options_Return:
+		bra.w	OptionsScreen_MainLoop	; return
 ; ===========================================================================
 
 ; ---------------------------------------------------------------------------
@@ -419,18 +409,18 @@ Options_UpDown:
 		move.w	($FFFFFF82).w,d0
 		btst	#0,d1		; is up	pressed?
 		beq.s	Options_Down	; if not, branch
-		subq.w	#3,d0		; move up 1 selection
+		subq.w	#2,d0		; move up 1 selection
 		cmpi.w	#4,d0
 		bcc.s	Options_Down
-		moveq	#$13,d0		; if selection moves below 0, jump to selection	$14
+		moveq	#$12,d0		; if selection moves below 4, jump to selection	$12 (exit)
 
 Options_Down:
 		btst	#1,d1		; is down pressed?
 		beq.s	Options_Refresh	; if not, branch
-		addq.w	#3,d0		; move down 1 selection
+		addq.w	#2,d0		; move down 1 selection
 		cmpi.w	#$14,d0
 		bcs.s	Options_Refresh
-		moveq	#4,d0		; if selection moves above $14,	jump to	selection 0
+		moveq	#4,d0		; if selection moves above $14,	jump to	selection 4 (first option)
 
 Options_Refresh:
 		move.w	d0,($FFFFFF82).w ; set new selection
@@ -463,7 +453,7 @@ OptionsTextLoad:				; XREF: TitleScreen
 		move.w	#$E570,d3	; VRAM setting
 		moveq	#$14,d1		; number of lines of text
 
-loc2_34FE:				; XREF: OptionsTextLoad+26j
+loc2_34FE:				; XREF: OptionsTextLoad
 		move.l	d4,4(a6)
 		bsr	Options_ChgLine
 		addi.l	#$800000,d4
@@ -483,24 +473,13 @@ loc2_34FE:				; XREF: OptionsTextLoad+26j
 		adda.w	d1,a1
 		move.w	#$C570,d3
 		move.l	d4,4(a6)
-
-Options_SetCorrectLocation:
-		tst.b	($FFFFFF9C).w		; is routine counter at $12 (Options_NoMore)?
-		bne.s	Options_Finished	; if yes, branch
-		move.w	#$E570,d3
-
-Options_Finished:
+		
 		lea	($FFFFCA00).w,a1	; set location
 		move.w	($FFFFFF82).w,d5	; get current selection
 		mulu.w	#24,d5			; multiply it by 24 (number of characters per line)
 		adda.w	d5,a1			; add result to pointer
 		
 		bsr	Options_ChgLine
-		move.w	#$E570,d3
-		cmpi.w	#$14,($FFFFFF82).w
-		bne.s	loc2_3550
-		move.w	#$C570,d3
-
 loc2_3550:
 		rts	
 ; End of function OptionsTextLoad
@@ -529,19 +508,10 @@ loc2_3598:				; XREF: Options_ChgLine
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Subroutine to write the options text.
+; Subroutine to write the options text completely at once.
 ; ---------------------------------------------------------------------------
 
 GetOptionsText:
-		move.l	#OpText_EasterEgg_Locked,d6	; set locked text location
-		move.b	#1,($A130F1).l			; enable SRAM
-		tst.b	($20001D).l			; has easter egg button been pressed?
-		beq.s	GOT_NoEaster			; if not, branch
-		move.l	#OpText_EasterEgg_Unlocked,d6	; set unlocked text location
-
-GOT_NoEaster:
-		move.b	#0,($A130F1).l			; disable SRAM
-
 		tst.b	($FFFFFF9C).w			; has start been pressed?
 		beq.w	GOT_StartUpWrite		; if not, continue start-up-sequence
 ; ---------------------------------------------------------------------------
@@ -564,36 +534,56 @@ GOT_NoEaster:
 		bsr.w	GOT_ChkOption			; check if option is ON or OFF
 		bsr.w	OW_Loop				; write text
 
-		adda.w	#(2*24),a1			; make two empty lines
+		adda.w	#(1*24),a1			; make one empty line
 
-		lea	(OpText_AutoSkipText).l,a2	; set text location
+		lea	(OpText_StoryTextScreens).l,a2	; set text location
 		bsr.w	OW_Loop				; write text
 		moveq	#3,d2				; set d2 to 3
 		bsr.w	GOT_ChkOption			; check if option is ON or OFF
 		bsr.w	OW_Loop				; write text
 
-		adda.w	#(2*24),a1			; make two empty lines
-
-	;	lea	(OpText_EasterEgg).l,a2		; set text location
-		movea.l	d6,a2				; set text location
+		adda.w	#(1*24),a1			; make one empty line
+		
+		lea	(OpText_SkipUberhub).l,a2	; set text location
 		bsr.w	OW_Loop				; write text
-		moveq	#4,d2				; set d2 to 4
+		moveq	#4,d2				; set d2 to 3
 		bsr.w	GOT_ChkOption			; check if option is ON or OFF
 		bsr.w	OW_Loop				; write text
 
-		adda.w	#(2*24),a1			; make two empty lines
+		adda.w	#(1*24),a1			; make one empty line
+		
+		lea	(OpText_CinematicMode).l,a2	; set text location
+		bsr.w	OW_Loop				; write text
+		moveq	#5,d2				; set d2 to 3
+		bsr.w	GOT_ChkOption			; check if option is ON or OFF
+		bsr.w	OW_Loop				; write text
+
+		adda.w	#(1*24),a1			; make one empty line
+		
+		move.l	#OpText_EasterEgg_Locked,d6	; set locked text location	
+		tst.b	($FFFFFF93).w			; has the player beaten the game?
+		beq.s	@uselockedtext			; if not, branch
+		move.l	#OpText_EasterEgg_Unlocked,d6	; set unlocked text location
+@uselockedtext:
+		movea.l	d6,a2				; set text location
+		bsr.w	OW_Loop				; write text
+		moveq	#6,d2				; set d2 to 4
+		bsr.w	GOT_ChkOption			; check if option is ON or OFF
+		bsr.w	OW_Loop				; write text
+
+		adda.w	#(1*24),a1			; make one empty line
 
 		lea	(OpText_DeleteSRAM).l,a2	; set text location
 		bsr.w	OW_Loop				; write text
-	;	moveq	#1,d2				; set d2 to 1
-	;	bsr.w	GOT_ChkOption			; check if option is ON or OFF
-	;	bsr.w	OW_Loop				; write text
 
-		adda.w	#(2*24+3),a1			; make two empty lines + 3 characters
+		adda.w	#(1*24+3),a1			; make one empty line + 3 characters (because the delete save option is a one-time action button)
 
 ; ---------------------------------------------------------------------------
 		lea	(OpText_SoundTest).l,a2		; set text location
 		bsr.w	OW_Loop				; write text
+		
+		move.b	#$0D,-3(a1)			; write < before the ID
+		move.b	#$0E,2(a1)			; write > after the ID
 
 		move.b	($FFFFFF84).w,d0		; get sound test ID
 		lsr.b	#4,d0				; swap first and second short
@@ -603,7 +593,7 @@ GOT_NoEaster:
 		addi.b	#5,d0				; skip the special chars (!, ?, etc.)
 
 GOT_Snd_Skip1:
-		move.b	d0,-4(a1)			; set result to first digit ("8" 1)
+		move.b	d0,-1(a1)			; set result to first digit ("8" 1)
 
 		move.b	($FFFFFF84).w,d0		; get sound test ID
 		andi.b	#$0F,d0				; clear first short
@@ -612,10 +602,10 @@ GOT_Snd_Skip1:
 		addi.b	#5,d0				; skip the special chars (!, ?, etc.)
 
 GOT_Snd_Skip2:
-		move.b	d0,-3(a1)			; set result to second digit (8 "1")
+		move.b	d0,0(a1)			; set result to second digit (8 "1")
 ; ---------------------------------------------------------------------------
 
-		adda.w	#(2*24),a1			; make two empty lines
+		adda.w	#(1*24+3),a1			; make one empty line and adjust for the earlier sound test offset
 
 		lea	(OpText_Exit).l,a2		; set text location
 		bsr.w	OW_Loop				; write text
@@ -639,11 +629,13 @@ GOTSUP_Index:	dc.w	GOTSUP_Header1-GOTSUP_Index	; [$0] "=" Headers
 		dc.w	GOTSUP_Options-GOTSUP_Index	; [$4] The 4 options itself
 		dc.w	GOTSUP_ONOFF1-GOTSUP_Index	; [$6] Write "ON" or "OFF" text for Extended Camera
 		dc.w	GOTSUP_ONOFF2-GOTSUP_Index	; [$8] Write "ON" or "OFF" text for Auto-Skip-Text
-		dc.w	GOTSUP_ONOFF3-GOTSUP_Index	; [$A] Write "ON" or "OFF" text for hidden setting
-		dc.w	GOTSUP_Delay-GOTSUP_Index	; [$C] Delay
-		dc.w	GOTSUP_Delay-GOTSUP_Index	; [$E] Delay
-		dc.w	GOTSUP_SoundTest-GOTSUP_Index	; [$10] Write "SOUND TEST"
-		dc.w	GOTSUP_ExitOptions-GOTSUP_Index	; [$12] Write "EXIT OPTIONS"
+		dc.w	GOTSUP_ONOFF3-GOTSUP_Index	; [$A] Write "ON" or "OFF" text for Skip Uberhub Place
+		dc.w	GOTSUP_ONOFF4-GOTSUP_Index	; [$10] Write "ON" or "OFF" text for hidden setting (Cinematic HUD)
+		dc.w	GOTSUP_ONOFF5-GOTSUP_Index	; [$12] Write "ON" or "OFF" text for hidden setting (Nonstop Inhuman)
+		dc.w	GOTSUP_SoundTest-GOTSUP_Index	; [$14] Write the sound test song ID
+		dc.w	GOTSUP_ExitOptions-GOTSUP_Index	; [$16] Write exit text
+		dc.w	GOTSUPE_Finalize-GOTSUP_Index	; [$18] Finalize intro sequence
+		dc.w	GOTSUPE_Return-GOTSUP_Index	; [$1A] End
 ; ===========================================================================
 
 GOTSUP_Header1:
@@ -674,20 +666,39 @@ GOTSUP_Options:
 		lea	(OpText_Extended).l,a2		; set text location
 		bsr.w	Options_Write			; write text
 
-		lea	($FFFFCA00+(7*24)).w,a1		; set destination
+		lea	($FFFFCA00+(6*24)).w,a1		; set destination
 		adda.w	($FFFFFF9A).w,a1
-		lea	(OpText_AutoSkipText).l,a2	; set text location
+		lea	(OpText_StoryTextScreens).l,a2	; set text location
 		bsr.w	OW_NoIncrease			; write text
 
+		lea	($FFFFCA00+(8*24)).w,a1		; set destination
+		adda.w	($FFFFFF9A).w,a1
+		lea	(OpText_SkipUberhub).l,a2	; set text location
+		bsr.w	OW_NoIncrease			; write text
+		
 		lea	($FFFFCA00+(10*24)).w,a1	; set destination
 		adda.w	($FFFFFF9A).w,a1
-		movea.l	d6,a2				; set text location
-	;	lea	(OpText_EasterEgg).l,a2		; set text location
+		lea	(OpText_CinematicMode).l,a2	; set text location
+		bsr.w	OW_NoIncrease			; write text
+		
+		lea	($FFFFCA00+(12*24)).w,a1	; set destination
+		adda.w	($FFFFFF9A).w,a1	
+		move.l	#OpText_EasterEgg_Locked,d6	; set locked text location
+		tst.b	($FFFFFF93).w			; has the player beaten the game?
+		beq.s	@uselockedtext2			; if not, branch
+		move.l	#OpText_EasterEgg_Unlocked,d6	; set unlocked text location
+@uselockedtext2:
+		movea.l	d6,a2
 		bsr.w	OW_NoIncrease			; write text
 
-		lea	($FFFFCA00+(13*24)).w,a1	; set destination
+		lea	($FFFFCA00+(14*24)).w,a1	; set destination
 		adda.w	($FFFFFF9A).w,a1
 		lea	(OpText_DeleteSRAM).l,a2	; set text location
+		bsr.w	OW_NoIncrease			; write text
+		
+		lea	($FFFFCA00+(16*24)).w,a1	; set destination
+		adda.w	($FFFFFF9A).w,a1
+		lea	(OpText_SoundTest).l,a2		; set text location
 		bsr.w	OW_NoIncrease			; write text
 		
 		subq.w	#1,($FFFFFF9A).w
@@ -709,7 +720,7 @@ GOTSUP_ONOFF2:
 		moveq	#0,d1				; clear d1
 		moveq	#3,d2				; set d2 to 3
 		bsr.w	GOT_ChkOption			; check if option is ON or OFF
-		lea	($FFFFCA00+(7*24)+21).w,a1	; set destination
+		lea	($FFFFCA00+(6*24)+21).w,a1	; set destination
 		bsr.w	OW_Loop				; write text
 		bsr.w	GOTSUP_CheckEnd			; check if we reached the end
 		rts					; return
@@ -718,37 +729,52 @@ GOTSUP_ONOFF3:
 		moveq	#0,d1				; clear d1
 		moveq	#4,d2				; set d2 to 4
 		bsr.w	GOT_ChkOption			; check if option is ON or OFF
+		lea	($FFFFCA00+(8*24)+21).w,a1	; set destination
+		bsr.w	OW_Loop				; write text
+		bsr.w	GOTSUP_CheckEnd			; check if we reached the end
+		rts					; return
+
+GOTSUP_ONOFF4:
+		moveq	#0,d1				; clear d1
+		moveq	#5,d2				; set d2 to 4
+		bsr.w	GOT_ChkOption			; check if option is ON or OFF
 		lea	($FFFFCA00+(10*24)+21).w,a1	; set destination
+		bsr.w	OW_Loop				; write text
+		bsr.w	GOTSUP_CheckEnd			; check if we reached the end
+		rts					; return
+
+GOTSUP_ONOFF5:
+		moveq	#0,d1				; clear d1
+		moveq	#6,d2				; set d2 to 4
+		bsr.w	GOT_ChkOption			; check if option is ON or OFF
+		lea	($FFFFCA00+(12*24)+21).w,a1	; set destination
+		bsr.w	OW_Loop				; write text
+		bsr.w	GOTSUP_CheckEnd			; check if we reached the end
+		rts					; return
+
+GOTSUP_SoundTest:
+		moveq	#0,d1				; clear d1
+		moveq	#7,d2				; set d2 to 4
+		bsr.w	GOT_ChkOption			; get text
+		lea	($FFFFCA00+(16*24)+21-3).w,a1	; set destination
 		bsr.w	OW_Loop				; write text
 		bsr.w	GOTSUP_CheckEnd			; check if we reached the end
 		rts					; return
 ; ---------------------------------------------------------------------------
 
-GOTSUP_Delay:
-		clr.b	($FFFFFF96).w			; clear counter
-		addq.b	#2,($FFFFFF98).w		; increase pointer
-		rts					; return
-; ---------------------------------------------------------------------------
-
-GOTSUP_SoundTest:
-		lea	($FFFFCA00+(16*24)).w,a1	; set destination
-		lea	(OpText_SoundTest).l,a2		; set text location
+GOTSUP_ExitOptions:
+		moveq	#0,d1				; clear d1
+		lea	($FFFFCA00+(18*24)).w,a1	; set destination
+		lea	(OpText_Exit).l,a2		; set text location
 		bsr.w	Options_Write			; write text
-
 		bsr.w	GOTSUP_CheckEnd			; check if we reached the end
 		rts
 ; ---------------------------------------------------------------------------
 
-GOTSUP_ExitOptions:
-		lea	($FFFFCA00+(19*24)).w,a1	; set destination
-		lea	(OpText_Exit).l,a2		; set text location
-		bsr.w	Options_Write			; write text
-
-		tst.b	-1(a2)				; is current entry $FF?
-		bpl.s	GOTSUPE_Return			; if not, branch
-		move.b	#1,($FFFFFF9C).w		; set to "building-up-sequence" done
-		bsr	OptionsTextLoad			; update text
-
+GOTSUPE_Finalize:
+		move.b	#1,($FFFFFF9C).w		; notify the main loop that we're done
+		addq.b	#2,($FFFFFF98).w		; increase pointer
+		
 GOTSUPE_Return:
 		rts					; return
 
@@ -869,42 +895,59 @@ OW_DoWrite:
 ; ---------------------------------------------------------------------------
 
 GOT_ChkOption:
-		cmpi.b	#1,d2				; is d2 set to 1?
-		bne.s	GOTCO_ChkExtCam			; if not, branch
-		lea	(OpText_OFF).l,a2		; use "OFF" text
-		tst.b	($FFFFFFBC).w			; is Air Move on B enabled?
-		beq.s	GOTCO_Return			; if not, branch
-		lea	(OpText_ON).l,a2		; otherwise use "ON" text
-		rts					; return
-; ---------------------------------------------------------------------------
-
-GOTCO_ChkExtCam:
 		cmpi.b	#2,d2				; is d2 set to 2?
 		bne.s	GOTCO_ChkAutoSkipText		; if not, branch
 		lea	(OpText_OFF).l,a2		; use "OFF" text
-		tst.b	($FFFFFF93).w			; is Extended Camera disabled?
-		bne.s	GOTCO_Return			; if not, branch
+		btst	#0,($FFFFFF92).w		; is Extended Camera enabled?
+		beq.w	GOTCO_Return			; if not, branch
 		lea	(OpText_ON).l,a2		; otherwise use "ON" text
 		rts					; return
 ; ---------------------------------------------------------------------------
 
 GOTCO_ChkAutoSkipText:
 		cmpi.b	#3,d2				; is d2 set to 3?
+		bne.s	GOTCO_ChkSkipUberhub		; if not, branch
+		lea	(OpText_OFF).l,a2		; use "OFF" text
+		btst	#1,($FFFFFF92).w		; is Auto-Skip-Text enabled?
+		beq.s	GOTCO_Return			; if not, branch
+		lea	(OpText_ON).l,a2		; otherwise use "ON" text
+		rts					; return
+; ---------------------------------------------------------------------------
+
+GOTCO_ChkSkipUberhub:
+		cmpi.b	#4,d2				; is d2 set to 4?
+		bne.s	GOTCO_ChkCinematicHud		; if not, branch
+		lea	(OpText_OFF).l,a2		; use "OFF" text
+		btst	#2,($FFFFFF92).w		; is Skip Uberhub enabled?
+		beq.s	GOTCO_Return			; if not, branch
+		lea	(OpText_ON).l,a2		; otherwise use "ON" text
+		rts					; return
+; ---------------------------------------------------------------------------
+
+GOTCO_ChkCinematicHud:
+		cmpi.b	#5,d2				; is d2 set to 5?
 		bne.s	GOTCO_ChkEasterEgg		; if not, branch
 		lea	(OpText_OFF).l,a2		; use "OFF" text
-		tst.b	($FFFFFF94).w			; is Auto-Skip-Text disabled?
-		bne.s	GOTCO_Return			; if not, branch
+		btst	#3,($FFFFFF92).w		; is Cinematic HUD enabled?
+		beq.s	GOTCO_Return			; if not, branch
 		lea	(OpText_ON).l,a2		; otherwise use "ON" text
 		rts					; return
 ; ---------------------------------------------------------------------------
 
 GOTCO_ChkEasterEgg:
-		cmpi.b	#4,d2				; is d2 set to 4?
-		bne.s	GOTCO_Return			; if not, branch
+		cmpi.b	#6,d2				; is d2 set to 6?
+		bne.s	GOTCO_SoundTest			; if not, branch
 		lea	(OpText_OFF).l,a2		; use "OFF" text
-		tst.b	($FFFFFF92).w			; is flag set?
+		btst	#4,($FFFFFF92).w		; is Nonstop Inhuman enabled?
 		beq.s	GOTCO_Return			; if not, branch
 		lea	(OpText_ON).l,a2		; otherwise use "ON" text
+		rts					; return
+; ---------------------------------------------------------------------------
+
+GOTCO_SoundTest:
+		cmpi.b	#7,d2				; is d2 set to 7?
+		bne.s	GOTCO_Return			; if not, branch
+		lea	(OpText_SoundTestDefault).l,a2	; use default sound test text
 
 GOTCO_Return:
 		rts					; return
@@ -930,10 +973,18 @@ OpText_Extended:
 		dc.b	'EXTENDED CAMERA      ', $FF
 		even
 
-OpText_AutoSkipText:
+OpText_StoryTextScreens:
 		dc.b	'STORY TEXT SCREENS   ', $FF
 		even
 
+OpText_SkipUberhub:
+		dc.b	'SKIP UBERHUB PLACE   ', $FF
+		even
+		
+OpText_CinematicMode:
+		dc.b	'CINEMATIC HUD        ', $FF
+		even
+		
 OpText_EasterEgg_Locked:
 		dc.b	'???????????????      ', $FF
 		even
@@ -948,15 +999,19 @@ OpText_DeleteSRAM:
 ; ---------------------------------------------------------------------------
 
 OpText_SoundTest:
-		dc.b	'SOUND TEST        < 81 >', $FF
+		dc.b	'SOUND TEST           ', $FF
+		even
+OpText_SoundTestDefault:
+		dc.b	'< 81 >', $FF
 		even
 ; ---------------------------------------------------------------------------
 
-OpText_Exit:	dc.b	'      EXIT OPTIONS      ', $FF
+OpText_Exit:	dc.b	'      EXIT OPTIONS   ', $FF
 		even
 ; ---------------------------------------------------------------------------
 
 OpText_ON:	dc.b	' ON', $FF
+		even
 OpText_OFF:	dc.b	'OFF', $FF
 		even
 ; ---------------------------------------------------------------------------

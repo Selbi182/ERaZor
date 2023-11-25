@@ -220,9 +220,6 @@ CJML_FinalLoop:
 		andi.w	#$01FF,d0				; keep within the X line
 		cmp.w	#$0000,d0				; has it reached in screen?
 		bne	ycont
-		move.b	#1,($A130F1).l				; enable SRAM
-		move.b	#1,($20001D).l				; unlock hidden feature
-		move.b	#0,($A130F1).l				; disable SRAM
 		bra	CJML_FinalLoop2				; if so, branch
 
 ycont:

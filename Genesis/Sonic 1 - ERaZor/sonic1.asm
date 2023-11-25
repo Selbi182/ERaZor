@@ -57,14 +57,7 @@ Align:		macro
 DebugModeDefault = 1
 DontAllowDebug = 0
 DebugHUD = 0
-DieInDebug = 1
-;=================================================
-;Enable Demo Recording. (In RAM at $FFFFD200)
-;Also disables Stars and Shields
-; 0 - Disabled
-; 1 - Enabled
-RecordDemo = 0
-AutoDEMO = 0
+DieInDebug = 0
 ;=================================================
 ;If 1, the doors in the SYZ are always open.
 ; 0 - Closed, you need to play the levels first
@@ -96,7 +89,7 @@ StartOfRom:
 
 Console:	dc.b 'SEGA MEGA DRIVE ' ; Hardware system ID
 
-Date:		dc.b '(C)SELBI 2023   ' ; Release date
+Date:		dc.b '(C)SELBI 2024   ' ; Release date
 Title_Local:	dc.b 'Sonic ERaZor                                    ' ; Domestic name
 Title_Int:	dc.b 'Sonic ERaZor                                    ' ; International name
 Serial:		dc.b 'SP 18201337-00' 	; Serial/version number
@@ -243,78 +236,101 @@ GameClrRAM:
 		bsr	JoypadInit
 		move.b	#0,($FFFFF600).w ; set Game Mode to Sega Screen
 
+; ===========================================================================
+; SRAM Loading Routine
+; ---------------------------------------------------------------------------
+; Format (note, SRAM can only be written to odd addresses):
+; 00 op 00 ch  00 do 00 lv  00 r1 00 r2  00 s1 00 s2  00 s3 00 s4  00 cm 00 mg
+;    01    03     05    07     09    0B     0D    0F     11    13     15    17
+;
+;  op = Options Flags ($FFFFFF92)
+;  ch = Current Chapter ($FFFFFFA7)
+;  do = Open Doors Bitset ($FFFFFF8B)
+;  lv = Lives (or Deaths, rather lol) ($FFFFFE12)
+;  r_ = Rings ($FFFFFE20-FFFFFE21)
+;  s_ = Score ($FFFFFE26-FFFFFE29)
+;  cm = Complete (saw final custscene at least once) ($FFFFFF93)
+;  mg = Magic Number (always set to 182, absence implies no SRAM)
+SRAM_MagicNumber = 182
+; ---------------------------------------------------------------------------
+
+LoadSRAM:
 		moveq	#0,d0			; clear d0
 		move.b	#1,($A130F1).l		; enable SRAM
 		lea	($200000).l,a1		; base of SRAM
-		cmpi.b	#$6B,$1B(a1)		; does SRAM exist?
+		cmpi.b	#SRAM_MagicNumber,$17(a1) ; does SRAM exist?
 		beq.s	SRAMFound		; if yes, branch
 		
-		moveq	#$00,d0
-		move.b	#3,d1
-@ForceSRAMToZero:
-		movep.l	d0,1(a1)
-		adda.w	#8,a1
-		dbf	d1,@ForceSRAMToZero
-		bra.w	NoSRAM
+		bsr.s	SRAM_Delete		; clear any existing SRAM
+		bra.w	SRAMEnd
 
 SRAMFound:
-		move.b	$1(a1),($FFFFFFA7).w
-		bpl.s	@cont0
-		move.b	#1,($FFFFFFA7).w
+		lea	($200000).l,a1		; base of SRAM
+		move.b	$1(a1),($FFFFFF92).w	; load options flags
+		move.b	$3(a1),($FFFFFFA7).w	; load current chapter
+		move.b	$5(a1),($FFFFFF8B).w	; load open doors bitset
+		move.b	$7(a1),($FFFFFE12).w	; load lives/deaths counter
+		movep.w	$9(a1),d0		; load...
+		move.w	d0,($FFFFFE20).w	; ...rings
+		movep.l	$D(a1),d0		; load...
+		move.l	d0,($FFFFFE26).w	; ...score
+		move.b	$15(a1),($FFFFFF93).w	; load game beaten state
 
-@cont0:
-		move.b	$3(a1),($FFFFFE12).w
-		bpl.s	@cont1
-		clr.b	($FFFFFE12).w
-
-@cont1:
-		move.b	$5(a1),($FFFFFF92).w
-		bpl.s	@cont2
-		clr.b	($FFFFFF92).w
-		andi.b	#1,($FFFFFF92).w
-
-@cont2:
-		move.b	$7(a1),($FFFFFF9E).w
-		bpl.s	@cont3
-		clr.b	($FFFFFF9E).w
-
-@cont3:
-		move.b	$9(a1),($FFFFFF93).w
-		bpl.s	@cont4
-		clr.b	($FFFFFF93).w
-		andi.b	#1,($FFFFFF93).w
-
-@cont4:
-		move.b	$B(a1),($FFFFFF94).w
-		bpl.s	@cont5
-		clr.b	($FFFFFF94).w
-		andi.b	#1,($FFFFFF94).w
-
-@cont5:
-		movep.w	$D(a1),d0
-		move.w	d0,($FFFFFE20).w
-		bpl.s	@cont6
-		clr.w	($FFFFFE20).w
-
-@cont6:
-		movep.l	$11(a1),d0
-		move.l	d0,($FFFFFE26).w
-		bpl.s	@cont7
-		clr.l	($FFFFFE26).w
-
-@cont7:
-		move.b	$19(a1),($FFFFFF8B).w	; otherwise update check value
-		bpl.s	@cont8
-		clr.b	($FFFFFF8B).w
-
-@cont8:
-	;	move.b	$1D(a1),($FFFFFF92).w
-	;	bpl.s	NoSRAM
-	;	clr.b	($FFFFFF92).w
-
-NoSRAM:
+SRAMEnd:
 		move.b	#0,($A130F1).l		; disable SRAM
+		bra.w	MainGameLoop		; continue to main game loop
+; ===========================================================================
 
+SRAM_Delete:
+		moveq	#$00,d0			; if not, set the whole SRAM to 0 for safety
+		move.b	#2,d1
+@ClearSRAM:	movep.l	d0,1(a1)
+		adda.w	#8,a1
+		dbf	d1,@ClearSRAM
+
+		lea	($200000).l,a1		; base of SRAM
+		move.b	#SRAM_MagicNumber,$17(a1) ; set magic number ("SRAM exists")
+		move.b	#%00000011,d0		; set default options (extended camera and story text screens)
+		move.b	d0,($FFFFFF92).w	; ^
+		move.b	d0,$1(a1)		; ^
+		
+		moveq	#0,d0
+		move.b	d0,($FFFFFFA7).w	; clear current chapter
+		move.b	d0,($FFFFFF8B).w	; clear open doors bitset
+		move.b	d0,($FFFFFE12).w	; clear lives/deaths counter
+		move.w	d0,($FFFFFE20).w	; clear rings
+		move.l	d0,($FFFFFE26).w	; clear score
+		move.l	d0,($FFFFFF93).w	; clear game beaten state
+		rts
+
+; ===========================================================================
+
+SRAM_SaveNow:
+		move.b	#1,($A130F1).l			; enable SRAM
+		lea	($200000).l,a1			; base of SRAM
+		cmpi.b	#SRAM_MagicNumber,$17(a1)	; does SRAM exist?
+		bne.s	SRAM_SaveNow_End		; if not, branch
+		
+		moveq	#0,d0				; clear d0
+		
+		move.b	($FFFFFF92).w,d0		; move option flags to d0
+		move.b	d0,$1(a1)			; backup option flags
+		move.b	($FFFFFFA7).w,d0		; move current chapter to d0
+		move.b	d0,$3(a1)			; backup current chapter
+		move.b	($FFFFFF8B).w,d0		; move open doors bitset to d0
+		move.b	d0,$5(a1)			; backup open doors bitset
+		move.b	($FFFFFE12).w,d0		; move lives/deaths to d0
+		move.b	d0,$7(a1)			; backup lives/deaths
+		move.w	($FFFFFE20).w,d0		; move rings to d0
+		movep.w	d0,$9(a1)			; backup rings
+		move.l	($FFFFFE26).w,d0		; move score to d0
+		movep.l	d0,$D(a1)			; backup score
+		move.b	($FFFFFF93).w,d0		; move game beaten state to d0
+		move.b	d0,$15(a1)			; backup option flags
+
+SRAM_SaveNow_End:
+		move.b	#0,($A130F1).l			; disable SRAM
+		rts
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Main Game Loop, everything before this is only done on startup.
@@ -1300,8 +1316,8 @@ loc_13BE:
 PG_ChkHUD:
 		cmpi.w	#$501,($FFFFFE10).w
 		beq.s	PG_NotGHZ2
-		tst.b	($FFFFFF92).w
-		bne.s	PG_NotGHZ2
+		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
+		bne.s	PG_NotGHZ2		; if yes, branch
 		tst.b	($FFFFD040).w		; is HUD already loaded?
 		bne.s	PG_NotGHZ2		; if yes, allow to pause
 		cmpi.b	#$10,($FFFFF600).w
@@ -1310,7 +1326,6 @@ PG_ChkHUD:
 ; ===========================================================================
 
 PG_NotGHZ2:
-
 		move.w	#1,($FFFFF63A).w	; freeze time
 		tst.b	($FFFFFFB5).w		; is flag set?
 		bne.s	loc_13CA		; if yes, branch
@@ -3567,12 +3582,10 @@ Sega_GotoTitle:
 		tst.b	($FFFFFE12).w
 		bne.s	@cont
 		move.b	#0,($FFFFFE12).w ; set lives to	3
-	;	move.b	#3,($FFFFFE12).w ; set lives to	3
 @cont:
 		clr.b	($FFFFFFBE).w
 		jmp	SelbiSplash
-	;	jmp	SSRGSplash
-	;	move.b	#4,($FFFFF600).w ; go to title screen
+	;	move.b	#$24,($FFFFF600).w ; go to options screen
 		rts	
 ; ===========================================================================
 
@@ -3617,11 +3630,7 @@ Title_ClrObjRam:
 
 		move.b	#0,($FFFFFE30).w ; clear lamppost counter
 		move.w	#0,($FFFFFE08).w ; disable debug item placement	mode
-	if AutoDEMO=1
-		move.w	#1,($FFFFFFF0).w ; enable demo mode
-	else
 		move.w	#0,($FFFFFFF0).w ; disable demo mode
-	endif
 		move.w	#0,($FFFFFFEA).w
 		move.w	#0,($FFFFFE10).w ; set level to	GHZ (00)
 		move.w	#0,($FFFFF634).w ; disable pallet cycling
@@ -3764,28 +3773,25 @@ T_PalSkip_2:
 		bne.w	Title_MainLoop		; if not, branch
 
 StartGame:
-		move.b	#1,($A130F1).l		; enable SRAM
-		cmpi.b	#$6B,($20001B).l	; does SRAM exist?
-		beq.s	T_NoSRAM		; if not, branch
-
+		tst.b	($FFFFFFA7).w		; is this the first time the game is being played?
+		bne.s	SG_ResumeFromSaveGame	; if not, load whatever was in the SRAM at the time
+		
+		; first start
+		move.b	#%00000011,($FFFFFF92).w ; load default options (extended camera and story text screens)
 		move.b	#1,($FFFFFF9E).w	; set number for text to 1
-		move.b	#1,($200007).l	; save number for text to 1
 		move.b	#1,($FFFFFFA7).w	; set number for chapter to 1
-		move.b	#1,($200001).l	; save number for chapter to 1
 
-		move.b	#$E0,d0
+		move.b	#$E0,d0			; fade out music
 		jsr	PlaySound
-		jsr	Pal_MakeWhite			; Fade out previous palette
+		jsr	Pal_MakeWhite		; Fade out previous palette
 		
 		move.w	#$501,($FFFFFE10).w	; set level to SBZ2
 		move.b	#$C,($FFFFF600).w	; set to level
 		move.w	#1,($FFFFFE02).w	; restart level
-		move.b	#0,($A130F1).l		; disable SRAM
 		rts
 
-T_NoSRAM:
+SG_ResumeFromSaveGame:
 		move.b	#$28,($FFFFF600).w	; set to Chapters Screen
-		move.b	#0,($A130F1).l		; disable SRAM
 		rts				; return
 ; ===========================================================================
 
@@ -4074,7 +4080,7 @@ loc_3598:				; XREF: LevSel_ChgLine
 ; ---------------------------------------------------------------------------
 LevelMenuText:	incbin	misc\menutext.bin
 		even
-
+		
 ; ---------------------------------------------------------------------------
 ; Level
 ; ---------------------------------------------------------------------------
@@ -4102,21 +4108,11 @@ Level:					; XREF: GameModeArray
 		bsr	LoadPLC		; load level patterns
 
 loc_37FC:
-		cmpi.w	#$001,($FFFFFE10).w	; is level GHZ2?
-		beq.s	Level_NoSRAM		; if yes, branch
-
-		moveq	#0,d0			; clear d0
-		move.b	#1,($A130F1).l		; enable SRAM
-		lea	($200000).l,a1		; base of SRAM
-		move.w	($FFFFFE20).w,d0	; move rings to d0
-		movep.w	d0,$D(a1)		; backup rings
-		move.l	($FFFFFE26).w,d0	; move rings to d0
-		movep.l	d0,$11(a1)		; backup rings
-		move.b	($FFFFFE12).w,d0
-		move.b	d0,$3(a1)
-		move.b	($FFFFFF8B).w,$19(a1)	; otherwise update check value
-		move.b	#$6B,$1B(a1)		; set "SRAM exists" flag
-		move.b	#0,($A130F1).l		; disable SRAM
+		cmpi.w	#$001,($FFFFFE10).w	; is level intro cutscene?
+		beq.s	Level_NoSRAM		; if yes, don't save anything
+		cmpi.w	#$501,($FFFFFE10).w	; is this the tutorial?
+		beq.s	Level_NoSRAM		; if yes, don't save anything
+		jsr	SRAM_SaveNow		; save our progress
 
 Level_NoSRAM:
 		moveq	#1,d0
@@ -4258,8 +4254,8 @@ Level_NoMusic2:
 
 		cmpi.w	#$001,($FFFFFE10).w
 		beq.s	Level_NoTitleCard
-		tst.b	($FFFFFF92).w
-		bne.s	Level_NoTitleCard2
+		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
+		bne.s	Level_NoTitleCard2	; if yes, branch
 		cmpi.w	#$500,($FFFFFE10).w
 		bne.s	@cont
 		move.b	#1,($FFFFF7CC).w
@@ -4420,7 +4416,6 @@ loc_39E8:
 		lsl.w	#2,d0
 		movea.l	(a1,d0.w),a1
 
-	if RecordDemo=0
 		move.b	1(a1),($FFFFF792).w ; load key press duration
 		subq.b	#1,($FFFFF792).w ; subtract 1 from duration
 		bcc.s	Level_Demo_NullPress
@@ -4428,7 +4423,6 @@ loc_39E8:
 		addq.w	#2,($FFFFF790).w
 
 Level_Demo_NullPress:
-	endif
 		move.w	#1800,($FFFFF614).w
 		tst.w	($FFFFFFF0).w
 		beq.s	Level_ChkWaterPal
@@ -5040,103 +5034,6 @@ byte_3FCF:	dc.b 0			; XREF: LZWaterSlides
 		even
 ; ===========================================================================
 
-
-; ===========================================================================
-; ---------------------------------------------------------------------------
-EasterEgg:
-
-
-		tst.b	($FFFFFF5F).w
-		beq.s	EEGP_EndX
-		cmpi.b	#$10,($FFFFF600).w
-		bne.s	EEGP_EndX
-
-
-		movem.l	d0-a1,-(sp)
-		lea	($FFFFFB4E).w,a1 	; get palette
-		moveq	#0,d3			; clear d3
-	;	move.b	#$CF,d3			; set d3 to $2F (+1 for the first run)
-		move.b	#$7,d3			; set d3 to $2F (+1 for the first run)
-
-Pal_MBW_LoopXXXX:
-		moveq	#0,d0			; clear d0
-		move.w	(a1),d0			; get colour
-		moveq	#0,d1			; clear d1
-		move.b	d0,d1 			; copy Green and Red of colour to d1
-		lsr.b	#4,d1 			; get only Green amount
-		move.b	d0,d2 			; copy Green and Red of colour to d2
-		and.b	#$E,d2 			; get only Red amount
-		lsr.w	#8,d0 			; get only Blue amount of d0
-		add.b	d1,d0 			; add Green amount to Blue amount
-		add.b	d2,d0 			; then add Red to the amount
-		divu.w	#3,d0 			; divide by 3
-		and.b	#$E,d0 			; keep it an even value (Keep 9-bit VDP)
-		move.b	d0,d1 			; copy to d1
-		lsl.b	#4,d1 			; shift to left nybble
-		add.b	d1,d0 			; add to d0 (Setting the green)
-		lsl.w	#4,d1 			; shift to next left nybble
-		add.w	d1,d0			; add to d0 (Setting the blue)
-		move.w	d0,(a1)+		; set new colour
-		dbf	d3,Pal_MBW_LoopXXXX		; loop for each colour
-		movem.l	(sp)+,d0-a1
-EEGP_EndX:
-		rts
-
-
-	;	tst.b	($FFFFFF92).w
-	;	beq.s	EEGP_End
-; bra TrippyEgg
-; bra eegp_end
-
-		movem.l	d0-a1,-(sp)
-		lea	($FFFFFB00).w,a1 	; get palette
-		moveq	#0,d3			; clear d3
-	;	move.b	#$CF,d3			; set d3 to $2F (+1 for the first run)
-		move.b	#$3F,d3			; set d3 to $2F (+1 for the first run)
-
-Pal_MBW_LoopXXX:
-		moveq	#0,d0			; clear d0
-		move.w	(a1),d0			; get colour
-		moveq	#0,d1			; clear d1
-		move.b	d0,d1 			; copy Green and Red of colour to d1
-		lsr.b	#4,d1 			; get only Green amount
-		move.b	d0,d2 			; copy Green and Red of colour to d2
-		and.b	#$E,d2 			; get only Red amount
-		lsr.w	#8,d0 			; get only Blue amount of d0
-		add.b	d1,d0 			; add Green amount to Blue amount
-		add.b	d2,d0 			; then add Red to the amount
-		divu.w	#3,d0 			; divide by 3
-		and.b	#$E,d0 			; keep it an even value (Keep 9-bit VDP)
-		move.b	d0,d1 			; copy to d1
-		lsl.b	#4,d1 			; shift to left nybble
-		add.b	d1,d0 			; add to d0 (Setting the green)
-		lsl.w	#4,d1 			; shift to next left nybble
-		add.w	d1,d0			; add to d0 (Setting the blue)
-		move.w	d0,(a1)+		; set new colour
-		dbf	d3,Pal_MBW_LoopXXX		; loop for each colour
-		movem.l	(sp)+,d0-a1
-		rts
-
-TrippyEgg:
-		move.b	#10,($FFFFFF64).w
-
-		movem.l	d0-a1,-(sp)
-		lea	($FFFFFB00).w,a1 	; get palette
-		moveq	#0,d2			; clear d3
-		move.b	#$3F,d2			; set d3 to $3F (+1 for the first run)
-
-EEGP_Loop:
-		jsr	RandomNumber
-		andi.w	#$0EEE,d0
-		move.w	d0,(a1)+		; set new colour
-		dbf	d2,EEGP_Loop	; loop for each colour
-		movem.l	(sp)+,d0-a1
-
-EEGP_End:
-		rts
-; ---------------------------------------------------------------------------
-; ===========================================================================
-
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Subroutine to play level music.
@@ -5162,7 +5059,7 @@ MusicList:
 		dc.b	$94	; Green Hill Place
 		dc.b	$89	; Special Stage (Unused)
 		dc.b	$83	; Ruined Place
-		dc.b	$82	; Labyrinth Place
+		dc.b	$82	; Labyrinthy Place
 		dc.b	$89	; Special Stage 2 (Unused)
 		dc.b	$84	; Scar Night Place
 		dc.b	$8D	; Finalor Place
@@ -5209,9 +5106,9 @@ CIML_Error:
 MainLevelArray:
 		dc.w	$000	; Night Hill Place
 		dc.w	$002	; Green Hill Place
-		dc.w	$300	; Special Stage (Yes, it uses SLZ's ID)
+		dc.w	$300	; Special Place (Yes, it uses SLZ's ID)
 		dc.w	$200	; Ruined Place
-		dc.w	$101	; Labyrinth Place
+		dc.w	$101	; Labyrinthy Place
 		dc.w	$401	; Unreal Place
 		dc.w	$301	; Scar Night Place
 		dc.w	$502	; Finalor Place
@@ -5240,6 +5137,7 @@ ClearEverySpecialFlag:
 		clr.b	($FFFFFF77).w
 		clr.l	($FFFFFF78).w
 		clr.l	($FFFFFF7C).w
+		clr.b	($FFFFFF7D).w
 		clr.b	($FFFFFF7F).w
 		clr.w	($FFFFFF86).w
 		clr.w	($FFFFFF88).w
@@ -5311,11 +5209,9 @@ MBH_Array:	; 13 entries
 
 
 MoveSonicInDemo:			; XREF: Level_MainLoop; et al
-	if RecordDemo=0
 		tst.w	($FFFFFFF0).w	; is demo mode on?
 		bne.s	MoveDemo_On	; if yes, branch
 		rts
-	endif
 
 MoveDemo_Record:
 	;	lea	($80000).l,a1
@@ -5602,8 +5498,8 @@ Demo_SS:	incbin	demodata\i_ss.bin
 ; ---------------------------------------------------------------------------
 
 SpecialStage:				; XREF: GameModeArray
-		tst.b	($FFFFFF5F).w
-		beq.s	@conty
+		tst.b	($FFFFFF5F).w	; is this the blackout special stage?
+		beq.s	@conty		; if not, branch
 		move.w	#$E4,d0
 		bsr	PlaySound_Special ; play special stage entry sound
 		moveq	#0,d1
@@ -5623,6 +5519,8 @@ SpecialStage:				; XREF: GameModeArray
 		bsr	Pal_MakeFlash
 
 @cont:
+		jsr	SRAM_SaveNow		; save our progress on entering a special stage
+		
 		move	#$2700,sr
 		lea	($C00004).l,a6
 		move.w	#$8B03,(a6)
@@ -5687,7 +5585,7 @@ SS_ClrNemRam:
 		clr.b	($FFFFFE57).w
 
 		moveq	#$A,d0
-		tst.b	($FFFFFF5F).w
+		tst.b	($FFFFFF5F).w	; is this the blackout special stage?
 		beq.s	@contx
 		moveq	#22,d0
 
@@ -5698,8 +5596,8 @@ SS_ClrNemRam:
 		move.l	#0,($FFFFF704).w
 		move.b	#9,($FFFFD000).w ; load	special	stage Sonic object
 		move.b	#$34,($FFFFD080).w ; load title	card object
-		tst.b	($FFFFFF92).w
-		beq.s	@cont
+		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
+		bne.s	@cont		; if yes, branch
 		move.b	#$07,($FFFFD380).w	; load cropped screen object
 		move.w	#$00D4,($FFFFD388).w		; set X-position
 		move.w	#$00F8,($FFFFD38A).w		; set Y-position
@@ -5712,7 +5610,7 @@ SS_ClrNemRam:
 		move.w	#0,($FFFFF782).w ; no rotation speed
 	;	move.w	#$40,($FFFFF782).w ; set stage rotation	speed
 		move.w	#$89,d0
-		tst.b	($FFFFFF5F).w
+		tst.b	($FFFFFF5F).w	; is this the blackout special stage?
 		beq.s	@conto
 		move.w	#$9C,d0
 
@@ -5751,16 +5649,7 @@ SS_NoDebug:
 ; ---------------------------------------------------------------------------
 
 SS_MainLoop:
-	;	move.l	#$4A200001,($C00004).l ; set VRAM address $4A20
-	;	moveq	#7,d1
-	;	lea	(Art_Text).l,a1
-	;	jsr	LoadTiles
-
-	;	tst.b	($FFFFFF92).w		; is hard part skipper enabled?
-	;	beq.s	SS_NoSkip		; if not, branch
-	
-	
-		tst.b	($FFFFFF5F).w
+		tst.b	($FFFFFF5F).w	;  is this the blackout special stage?
 		beq.s	@contyyy
 		cmpi.b	#4,($FFFFD024).w	; is special stage exiting routine being run?
 		bge.s	SS_NoPauseGame		; if yes, branch
@@ -5796,7 +5685,6 @@ SS_NoSkip:
 		bsr	PauseGame		; make the game pausing when pressing start
 
 SS_NoPauseGame:
-		bsr.w	EasterEgg
 		move.b	#$A,($FFFFF62A).w
 		bsr	DelayProgram
 		bsr	MoveSonicInDemo
@@ -5858,14 +5746,14 @@ SS_EndClrObjRamX:
 		cmpi.w	#$401,($FFFFFE10).w
 		bne.s	@cont3
 		move.b	#6,($FFFFFF9E).w	; set number for text to 6
-		tst.b	($FFFFFF5F).w
+		tst.b	($FFFFFF5F).w	;  is this the blackout special stage?
 		beq.s	@cont3
 		move.b	#$A,($FFFFFF9E).w	; set number for text to A
 
 @cont3:
 		move.b	#$20,($FFFFF600).w	; set to info screen
 
-		clr.b	($FFFFFF5F).w
+		clr.b	($FFFFFF5F).w	; clear blackout special stage flag
 		clr.b	($FFFFFFE7).w	; make sonic mortal
 		clr.b	($FFFFFFE1).w	; make sonic not being on the foreground
 		clr.b	($FFFFFFAA).w		; clear crabmeat boss flag 1
@@ -6439,8 +6327,9 @@ Map_obj80:
 ; ---------------------------------------------------------------------------
 
 EndingSequence:				; XREF: GameModeArray
-	;	move.b	#$E4,d0
-	;	bsr	PlaySound_Special ; stop music
+		move.b	#1,($FFFFFF93).w	; you have beaten the game, congrats
+		jsr	SRAM_SaveNow		; save
+		
 		bsr	Pal_FadeFrom
 		lea	($FFFFD000).w,a1
 		moveq	#0,d0
@@ -8515,8 +8404,8 @@ S_H_NoEnding:
 ; ===========================================================================
 
 S_H_NotGHZ2:
-		tst.b	($FFFFFF93).w		; has extended cam been disabled via options?
-		bne.w	S_H_NoExtendedCam	; if yes, branch
+		btst	#0,($FFFFFF92).w	; is extended camera enabled?
+		beq.w	S_H_NoExtendedCam	; if not, branch
 		cmpi.w	#$302,($FFFFFE10).w	; is this SLZ3?
 		bne.s	S_H_BuzzIgnore		; if not, branch
 		tst.b	($FFFFFF77).w		; is special mode enabled?
@@ -14153,9 +14042,6 @@ Map_obj29:
 ; Speed for the Crabmeat
 CMSpeed = $120
 ;===================================
-;If 1, Crabmeat has only one life
-CrabmeatOneHit = 0
-;===================================
 
 Obj1F:					; XREF: Obj_Index
 		moveq	#0,d0
@@ -14181,13 +14067,12 @@ Obj1F_Main:				; XREF: Obj1F_Index
 		cmpi.w	#$000,($FFFFFE10).w	; is level GHZ1?
 		bne.s	Obj01_NotGHZ1_Main2	; if not, branch
 		move.b	#$F,$20(a0)		; use boss touch response
-	if CrabmeatOneHit=1
+	if DebugModeDefault=1
 		move.b	#1,$21(a0)		; set number of	hits to	1
-		move.b	$21(a0),($FFFFFF68).w
 	else
 		move.b	#12,$21(a0)		; set number of	hits to	12
-		move.b	$21(a0),($FFFFFF68).w
 	endif
+		move.b	$21(a0),($FFFFFF68).w
 		bra.s	Obj1F_NotGHZ1_Cont	; skip
 
 Obj01_NotGHZ1_Main2:
@@ -15522,6 +15407,13 @@ Ring_YChk:
 
 ; ===========================================================================
 AttractedRing_Move:
+		cmpi.w	#$200,($FFFFFE10).w	; is this Ruined Place?
+		bne.s	@cont
+		tst.b	($FFFFFFE7).w		; inhuman?
+		beq.s	@cont
+		rts
+
+@cont:
 		moveq	#0,d0			; clear d0
 		moveq	#0,d1			; clear d1
 		moveq	#0,d2			; clear d2
@@ -16016,16 +15908,16 @@ Obj4B_Delete:				; XREF: Obj4B_Index
 		bne.w	Obj4B_ChkGHZ2		; if not, branch
 
 @conty:
-		tst.b	($FFFFFF7D).w
-		bne.s	@cont2
-		addi.w	#$10,$12(a0)
+		tst.b	($FFFFFF7D).w		; is ring moving up?
+		bne.s	@cont2			; if yes, branch
+		addi.w	#$10,$12(a0)		; move ring down
 		move.b	#2,$38(a0)
-		cmpi.w	#$340,$12(a0)
-		bne.s	@cont
-		move.b	#1,($FFFFFF7D).w
-		bra	@cont
+		cmpi.w	#$340,$12(a0)		; has a certain downward velocity been reached?
+		bmi.s	@cont			; if not, branch
+		move.b	#1,($FFFFFF7D).w	; make ring move upwards
+		bra.s	@cont
 @cont2:
-		subi.w	#$50,$12(a0)
+		subi.w	#$50,$12(a0)		; move ring upwards
 		move.b	#0,$38(a0)
 @cont:
 		jsr	SpeedToPos
@@ -16033,15 +15925,10 @@ Obj4B_Delete:				; XREF: Obj4B_Index
 		tst.b	1(a0)
 		bmi.w	Obj4B_Return
 		
-		cmpi.w	#$501,($FFFFFE10).w
-		bne.s	Obj4B_SNZ
-		tst.w	($FFFFFE20).w
-		bne.s	@contyy
-		move.w	#100,($FFFFFE20).w
-
-@contyy:
+		cmpi.w	#$501,($FFFFFE10).w	; is this the tutorial?
+		bne.s	Obj4B_SNZ		; if not, branch
 		move.b	#$28,($FFFFF600).w	; load chapters screen
-		move.b	#$E0,d0
+		move.b	#$E0,d0			; fade out music
 		jmp	PlaySound_Special
 
 Obj4B_SNZ:
@@ -16049,7 +15936,7 @@ Obj4B_SNZ:
 		bne.s	Obj4B_ChkOptions
 		move.b	#$20,($FFFFF600).w	; load info screen
 		move.b	#9,($FFFFFF9E).w	; set number for text to 9
-		move.b	#$9D,d0
+		move.b	#$9D,d0			; play ending sequence music (cause it fits for the easter egg lol)
 		jmp	PlaySound
 
 Obj4B_ChkOptions:
@@ -16084,7 +15971,7 @@ Obj4B_ChkSpecial:
 		cmpi.w	#$06B0,$8(a0)
 		bne.s	Obj4B_ChkMZ
 		move.w	#$300,($FFFFFE10).w	; set level to Special Stage
-		clr.b	($FFFFFF5F).w
+		clr.b	($FFFFFF5F).w	 ; clear blackout blackout special stage flag
 		bsr	MakeChapterScreen
 		rts
 
@@ -16106,7 +15993,7 @@ Obj4B_ChkSpecial2:
 		cmpi.w	#$0CB0,$8(a0)
 		bne.s	Obj4B_ChkSpecial2_Easter
 		move.w	#$401,($FFFFFE10).w	; set level to Special Stage 2
-		clr.b	($FFFFFF5F).w
+		clr.b	($FFFFFF5F).w 	; clear blackout blackout special stage flag
 		bsr	MakeChapterScreen
 		rts
 
@@ -16114,7 +16001,7 @@ Obj4B_ChkSpecial2_Easter:
 		cmpi.w	#$0280,$8(a0)
 		bne.s	Obj4B_ChkSLZ2
 		move.w	#$401,($FFFFFE10).w	; set level to Special Stage 2 Easter
-		move.b	#1,($FFFFFF5F).w
+		move.b	#1,($FFFFFF5F).w	; set blackout blackout special stage flag
 		move.b	#$10,($FFFFF600).w
 	;	bsr	MakeChapterScreen
 		rts
@@ -16140,7 +16027,7 @@ Obj4B_ChkEnding:
 		bne.w	Obj4B_Return
 		move.b	#$20,($FFFFF600).w	; load info screen
 		move.b	#8,($FFFFFF9E).w	; set number for text to 8
-		move.b	#$9D,d0
+		move.b	#$9D,d0			; play ending sequence music
 		jmp	PlaySound
 
 Obj4B_PlayLevel:
@@ -16159,24 +16046,23 @@ Obj4B_ChkGHZ2:
 	;	subq.b	#1,($FFFFFFBA).w
 	;	bpl.s	Obj4B_Return
 
-		tst.b	($FFFFFF7D).w
-		bne.s	@cont2
-		addi.w	#$10,$12(a0)
+		tst.b	($FFFFFF7D).w		; is ring moving up?
+		bne.s	@cont2			; if yes, branch
+		addi.w	#$10,$12(a0)		; move ring down
 		move.b	#2,$38(a0)
-		cmpi.w	#$340,$12(a0)
-		bne.s	@cont
-		move.b	#1,($FFFFFF7D).w
-		bra	@cont
+		cmpi.w	#$340,$12(a0)		; has a certain downward velocity been reached?
+		bmi.s	@cont			; if not, branch
+		move.b	#1,($FFFFFF7D).w	; make ring move upwards
+		bra.s	@cont
 @cont2:
-		subi.w	#$50,$12(a0)
+		subi.w	#$50,$12(a0)		; move ring upwards
 		move.b	#0,$38(a0)
 @cont:
 		jsr	SpeedToPos
 
-		tst.b	1(a0)
-		bmi.w	Obj4B_Return
+		tst.b	1(a0)			; has ring moved off screen?
+		bmi.w	Obj4B_Return		; if not, branch
 		
-		clr.b	($FFFFFF7D).w
 		clr.b	($FFFFFFB8).w
 		clr.b	($FFFFFFB7).w
 		clr.b	($FFFFFFB6).w
@@ -16753,9 +16639,7 @@ Obj2E_ChkShield:
 	;	add.b	#1,($FFFFFFFC).w ; increase shield counter X with 1
 		move.b	#1,($FFFFFE2C).w ; give	Sonic a	shield
 	
-	if RecordDemo=0
 		move.b	#$38,($FFFFD180).w ; load shield object	($38)
-	endif
 		moveq	#10,d0		; add 100 ...
 		jsr	AddPoints	; ... points
 
@@ -16766,12 +16650,11 @@ Obj2E_ChkShield:
 Obj2E_ChkInvinc:
 		cmpi.b	#5,d0		; does monitor contain invincibility?
 		bne.s	Obj2E_ChkRings
-		cmpi.b	#1,($FFFFFFE7).w	; has sonic destroyed a S monitor?
-		beq.s	Obj2E_ChkRings	; if yes, don't give sonic invinciblility
+		tst.b	($FFFFFFE7).w	; has sonic destroyed a S monitor?
+		bne.s	Obj2E_ChkRings	; if yes, don't give sonic invinciblility
 		move.b	#1,($FFFFFE2D).w ; make	Sonic invincible
 		move.w	#$4B0,($FFFFD032).w ; time limit for the power-up
 
-	if RecordDemo=0
 		move.b	#$38,($FFFFD200).w ; load stars	object ($3801)
 		move.b	#1,($FFFFD21C).w
 		move.b	#$38,($FFFFD240).w ; load stars	object ($3802)
@@ -16780,7 +16663,7 @@ Obj2E_ChkInvinc:
 		move.b	#3,($FFFFD29C).w
 		move.b	#$38,($FFFFD2C0).w ; load stars	object ($3804)
 		move.b	#4,($FFFFD2DC).w
-	endif
+		
 		moveq	#10,d0		; add 100 ...
 		jsr	AddPoints	; ... points
 
@@ -16825,76 +16708,51 @@ Obj2E_ChkS:
 		cmpi.b	#7,d0		; does monitor contain 'S'
 		bne.w	Obj2E_ChkGoggles
 
-		cmpi.w	#$501,($FFFFFE10).w
-		bne.s	@cont
-		
-		tst.b	($FFFFFFE7).w
-		beq.s	@cont
+		tst.b	($FFFFFFE7).w		; has a S monitor already been broken?
+		bne.w	Obj2E_ChkEnd		; if yes, branch
 
-
-	if RecordDemo=0
 		move.b	#$38,($FFFFD280).w ; load stars	object ($3803)
 		move.b	#1,($FFFFD29C).w
 		move.b	#$38,($FFFFD2C0).w ; load stars	object ($3804)
 		move.b	#3,($FFFFD2DC).w
-	endif
 
-		movem.l	d0-a1,-(sp)
-		move.w	#$077A,d0
-		move.w	#$027F,d1
-		move.b	#$18,d2
-		bsr.w	Sub_ChangeChunk
-		move.w	#$086D,d0
-		move.w	#$018E,d1
-		move.b	#$2F,d2
-		bsr.w	Sub_ChangeChunk
-		movem.l	(sp)+,d0-a1
-		move.b	#1,($FFFFFF74).w
+		cmpi.w	#$200,($FFFFFE10).w	; is this Ruined Place?
+		bne.s	@notruinedplace		; if not, branch
 
-@cont:
-		cmpi.w	#$200,($FFFFFE10).w
-		bne.s	@contxx
-
+		; block off a few chunks offscreen
 		movem.l	d0-a1,-(sp)		; backup a1
 
 		move.w	#$118E,d0
 		move.w	#$02D5,d1
 		move.b	#$20,d2
-		bsr	Sub_ChangeChunk
+		bsr		Sub_ChangeChunk
 
 		move.w	#$1252,d0
 		move.w	#$02D5,d1
 		move.b	#$20,d2
-		bsr	Sub_ChangeChunk
+		bsr		Sub_ChangeChunk
 
 		move.w	#$1239,d0
 		move.w	#$01AB,d1
 		move.b	#$20,d2
-		bsr	Sub_ChangeChunk
+		bsr		Sub_ChangeChunk
 
 		movem.l	(sp)+,d0-a1		; restore a1
 
-@contxx:
+@notruinedplace:
 		move.b	#1,($FFFFFFE7).w ; make sonic immortal
 
-		cmpi.w	#$001,($FFFFFE10).w
-		beq.s	@cont2
-	;	add.w	#100,($FFFFFE20).w	; be kind and give you 100 rings
-	;	ori.b	#1,($FFFFFE1D).w ; update the ring counter
-		moveq	#100,d0		; add 1000 ...
-		jsr	AddPoints	; ... points
-@cont2:
 		clr.b	($FFFFFE2D).w	; remove invinceblity
 		clr.b	($FFFFFE2C).w	; remove shield
-	;	clr.b	($FFFFFFFC).w	; clear multi shield counter
-		cmpi.w	#$001,($FFFFFE10).w
+		cmpi.w	#$001,($FFFFFE10).w	; is this the intro cutscene?
 		bne.s	Obj2E_NotGHZ2
 		move.w	#$C3,d0		
 		jmp	(PlaySound).l	; play special stage entry sound
+		rts
 
 Obj2E_NotGHZ2:
-		move.w	#$9F,d0		; set song $9E
-		jmp	PlaySound	; play FZ boss music
+		move.w	#$9F,d0		; set song $9F
+		jmp	PlaySound	; play inhuman mode music
 ; ===========================================================================
 
 Obj2E_ChkGoggles: ;Power
@@ -18856,39 +18714,6 @@ loc_BDC8:
 		tst.b	(a3)
 		bne.w	loc_BDD6
 		move.w	#$CD,d0
-
-		cmpi.w	#$400,($FFFFFE10).w
-		bne.s	@cont
-		tst.b	($FFFFFF92).w
-		beq.s	@contx
-
-		move.b	#0,($FFFFFF92).w
-
-		move.b	#0,($FFFFFFE7).w
-		jsr	PlayLevelMusic		; reload normal music
-
-
-	;	movem.l	d0-a7,-(sp)
-	;	moveq	#3,d0
-	;	jsr	PalLoad2	; load Sonic's pallet line
-	;	movem.l	(sp)+,d0-a7
-
-		bra.s	@cont
-
-@contx:
-		move.b	#1,($FFFFFF92).w
-		jsr	EasterEgg
-		move.b	#1,($A130F1).l		; enable SRAM
-		move.b	#1,($20001D).l		; enable grey mode flag
-		move.b	#0,($A130F1).l		; disable SRAM
-
-	;	bclr	#3,($FFFFD022).w
-
-		move.w	#$9F,d0
-		jsr	(PlaySound).l ;	play switch sound
-	;	jmp	DeleteObject
-
-@cont:
 		jsr	(PlaySound).l ;	play switch sound
 
 		cmpi.w	#$101,($FFFFFE10).w	; is level LZ2?
@@ -19507,7 +19332,7 @@ Obj34_NotSLZ2:
 Obj34_NotSLZ3:
 		cmpi.w	#$401,($FFFFFE10).w ; check if level is	Special Stage 2
 		bne.s	Obj34_NotSS2
-		tst.b	($FFFFFF5F).w
+		tst.b	($FFFFFF5F).w	; is this the blackout blackout special stage?
 		beq.s	@cont
 		jmp	DeleteObject
 
@@ -19799,8 +19624,8 @@ Obj34_Display:
 		rts				; otherwise don't display act number
 
 Obj34_DoDisplay:
-		tst.b	($FFFFFF92).w		; is atmospheric mode enabled?
-		beq.s	Obj34_DoDisplayX		; if not, branch
+		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
+		beq.s	Obj34_DoDisplayX	; if not, branch
 		rts
 
 Obj34_DoDisplayX:
@@ -20505,17 +20330,15 @@ Obj36_Main:				; XREF: Obj36_Index
 		move.w	$C(a0),$32(a0)
 
 Obj36_Solid:				; XREF: Obj36_Index
-	;	cmpi.b	#2,($FFFFFFAA).w ; is crabmeat object defeated?
-	;	beq.w	Obj36_Explode	; if yes, branch
 		cmpi.w	#$200,($FFFFFE10).w
 		bne.s	Obj36_NotInhuman
 		tst.b	($FFFFFFE7).w ; is inhuman mode on?
 		beq.s	Obj36_NotInhuman ; if not, branch
-		tst.b	($FFFFFF92).w
-		beq.s	@cont
-		cmpi.w	#$1190,$8(a0)
-		bne.s	@cont
-		bra.w	Obj36_Explode
+		btst	#4,($FFFFFF92).w	; is nonstop inhuman enabled?
+		bne.s	@cont			; if not, branch
+		cmpi.w	#$1190,$8(a0)	; is this that one specific spike guarding off the spikes challenge in Ruined Place?
+		bne.s	@cont		; if not, branch
+		bra.w	Obj36_Explode	; if yes, explode and delete this spike
 @cont:
 		tst.b	($FFFFFFB3).w	; was a spike already destroyed?
 		bne.s	Obj36_NotInhuman ; if yes, branch
@@ -20641,17 +20464,18 @@ Obj36_Hurt:				; XREF: Obj36_SideWays; Obj36_Upright
 		beq.s	Obj36_NotInhuman2	; if not, branch
 		cmpi.w	#$200,($FFFFFE10).w	; is level MZ1?
 		bne.s	Obj36_NotInhuman2	; if not, branch
-		tst.b	($FFFFFF92).w
+		
+		btst	#4,($FFFFFF92).w	; is nonstop inhuman enabled?
 		bne.s	Obj36_NotInhuman2
 		move.w	#$12DD,($FFFFD008).w	; teleport Sonic on X-axis
 		move.w	#$008C,($FFFFD00C).w	; teleport Sonic on Y-axis
-		tst.b	($FFFFFF73).w
-		beq.s	@cont
+		tst.b	($FFFFFF73).w		; has P monitor been broken in Ruined Place?
+		beq.s	@cont			; if not, branch
 		move.w	#$14E1,($FFFFD008).w	; teleport Sonic on X-axis
 		move.w	#$04CC,($FFFFD00C).w	; teleport Sonic on Y-axis
 
-
 @cont:
+		bclr	#0,($FFFFFF6C).w	; clear the "switch has been pressed" flag
 		clr.w	($FFFFD010).w		; clear X-speed
 		clr.w	($FFFFD012).w		; clear Y-speed
 
@@ -23201,7 +23025,7 @@ Obj0D_Index:	dc.w Obj0D_Main-Obj0D_Index
 		dc.w Obj0D_Touch-Obj0D_Index
 		dc.w Obj0D_Spin-Obj0D_Index
 		dc.w Obj0D_SonicRun-Obj0D_Index
-		dc.w locret_ED1A-Obj0D_Index
+		dc.w locret_ECEE-Obj0D_Index
 ; ===========================================================================
 
 Obj0D_Main:				; XREF: Obj0D_Index
@@ -23376,6 +23200,7 @@ locret_ECEE:
 
 ; ===========================================================================
 
+; This gets called from the Info Screen (exit)
 NextLevelX:
 		clr.b	($FFFFFFE7).w	; make sonic mortal
 		clr.b	($FFFFFFE1).w	; make sonic not being on the foreground
@@ -23393,19 +23218,43 @@ NextLevelX:
 		clr.b	($FFFFFFB6).w
 		bsr	Sonic_ResetOnFloor
 
+		btst	#2,($FFFFFF92).w	; is Skip Uberhub Place enabled?
+		beq.s	NLX_ReturnToHub		; if not, return to Uberhub every time
+			
+		move.w	($FFFFFE10).w,d1	; get current level number
+		lea	(NextLevel_Array).l,a1	; load the next level array
+@autonextlevelloop:
+		move.w	(a1)+,d2		; get the current level ID in the list (and increase pointer to next)
+		tst.w	d2			; reached end of list?
+		bmi.s	NLX_ReturnToHub		; if yes, fall back to Uberhub
+		cmp.w	d1,d2			; does ID in list match with current level?
+		bne.s	@autonextlevelloop	; if not, loop
+	
+		move.w	(a1),($FFFFFE10).w	; write next level in list to level ID RAM
+		jmp	MakeChapterScreen	; start the level, potentially play a chapter screen
+
+NLX_ReturnToHub:
 		move.w	#$400,($FFFFFE10).w	; set level to SYZ1
 		move.b	#$C,($FFFFF600).w	; set to level
 		move.w	#1,($FFFFFE02).w	; restart level
 		rts
-; ===========================================================================
 
 ; ===========================================================================
-TimeBonuses:	dc.w 5000, 5000, 1000, 500, 400, 400, 300, 300,	200, 200
-		dc.w 200, 200, 100, 100, 100, 100, 50, 50, 50, 50, 0
-; ===========================================================================
-
-locret_ED1A:				; XREF: Obj0D_Index
-		rts	
+NextLevel_Array:
+		dc.w	$501	; Tutorial Place
+		dc.w	$001	; Intro Cutscene
+		dc.w	$000	; Night Hill Place
+		dc.w	$002	; Green Hill Place
+		dc.w	$300	; Special Place (yes, it uses SLZ1's ID)
+		dc.w	$200	; Ruined Place
+		dc.w	$101	; Labyrinthy Place
+		dc.w	$401	; Unreal Place
+		dc.w	$301	; Scar Night Place
+		dc.w	$302	; Star Agony Place
+		dc.w	$502	; Finalor Place
+		dc.w	$601	; Ending Sequence
+		dc.w	$FFFF	; uhhhhhhhh
+		even
 ; ===========================================================================
 Ani_obj0D:
 		include	"_anim\obj0D.asm"
@@ -27695,7 +27544,6 @@ Obj5F_BossDelete:
 		clr.b	($FFFFFFA9).w
 		clr.b	($FFFFFF76).w
 		clr.b	($FFFFF7AA).w
-		clr.b	($FFFFFF7D).w
 		move.b	#0,($FFFFFE2D).w		; disable invincibility
 		move.b	#$84,d0
 		jsr	PlaySound
@@ -29659,11 +29507,11 @@ Obj06_ArtLocFound:
 		bra.w	Obj06_InfoBox
 
 Obj06_ChkDist:
-		tst.b	($FFFFFFB1).w
-		bpl.w	Obj06_Display
+		tst.b	($FFFFFFB1).w	; is white flash counter empty?
+		bpl.w	Obj06_Display	; if not, branch
 
-		tst.w	($FFFFFFFA).w
-		beq.s	@cont
+		tst.w	($FFFFFFFA).w	; is debug cheat enabled?
+		beq.s	@cont			; if not, branch
 		move.b	($FFFFF602).w,d0	; get button presses
 		andi.b	#$60,d0			; sort out any non A&C button presses
 		cmpi.b	#$60,d0			; is A and C pressed?
@@ -29805,8 +29653,8 @@ Obj06_Locations:	;XXXX   YYYY
 		dc.w	$18EA, $036C	; Night Hill Place
 		dc.w	$FFFF, $FFFF	; Green Hill Place	(Unused)
 		dc.w	$FFFF, $FFFF	; Special Place		(Unused)
-		dc.w	$17C0, $028F	; Ruined Place
-		dc.w	$038F, $002E	; Labyrinth Place
+		dc.w	$1C10, $02B0	; Ruined Place
+		dc.w	$038F, $002E	; Labyrinthy Place
 		dc.w	$FFFF, $FFFF	; Finalor Place		(Unused)
 		dc.w	$FFFF, $FFFF	; Spring Yard Place	(Unused)
 		dc.w	$FFFF, $FFFF	; Unreal Place		(Unused)
@@ -29861,7 +29709,7 @@ Obj07_Display:
 		beq.s	@cont2
 
 @contx:
-		tst.b	($FFFFFF92).w
+		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
 		bne.s	Obj07_MoveOn
 		tst.b	($FFFFF7CC).w
 		bne.s	Obj07_MoveOn
@@ -30429,28 +30277,15 @@ Obj01_JD_Minus:
 
 ; Start of S monitor code
 Obj01_ChkS:
-		tst.b	($FFFFFF92).w
-		beq.s	@contx
-		move.b	#1,($FFFFFFE7).w ; make sonic immortal
-		bra.s	Obj01_S_NotMZ1
+		btst	#4,($FFFFFF92).w	; is nonstop inhuman enabled?
+		beq.s	@contx			; if not, branch
+		cmpi.w	#$601,($FFFFFE10).w	; is this the ending sequence?
+		beq.s	Obj01_ChkInvin		; if yes, branch
+		move.b	#1,($FFFFFFE7).w 	; enable inhuman mode automatically. have fun, nerd
 
 @contx:
 		tst.b	($FFFFFFE7).w		; has sonic destroyed a S monitor?
-		beq.w	Obj01_ChkInvin		; if not, branch
-		tst.w	($FFFFFE20).w		; do you have any rings left?
-		bne.s	Obj01_RingsLeft		; if yes, branch
-		move.w	d7,-(sp)		; back up d7
-		moveq	#3,d0			; load Sonic's pallet
-		jsr	PalLoad2		; restore sonic's palette
-		move.w	(sp)+,d7		; restore d7
-		clr.b	($FFFFFFE7).w		; disable inhuman mode
-		cmpi.w	#$200,($FFFFFE10).w	; is level MZ1?
-		beq.s	Obj01_S_MZ1		; if yes, branch
-		jsr	PlayLevelMusic		; reload normal music
-		bra.w	Obj01_ChkInvin		; skip the rest
-
-Obj01_S_MZ1:
-		jmp	KillSonic
+		beq.s	Obj01_ChkInvin		; if not, branch
 
 Obj01_S_NotMZ1:
 	;	add.w	#$0100,($FFFFFB02)	; increase Sonic's palette (color 2)
@@ -30459,48 +30294,6 @@ Obj01_S_NotMZ1:
 		add.w	#$0100,($FFFFFB08)	; increase Sonic's palette (color 5)
 	;	add.w	#$0100,($FFFFFB0A)	; increase Sonic's palette (color 6)
 		move.b	#1,($FFFFFE2C).w	; make sure sonic has a shield
-		bra.w	Obj01_ChkInvin
-
-Obj01_RingsLeft:
-		cmpi.w	#$200,($FFFFFE10).w	; is level MZ1?
-		bne.s	Obj01_S_NotMZ1		; if not, branch
-		btst	#1,$22(a0)
-		bne.s	Obj01_S_NotOnGround
-		cmpi.b	#31,($FFFFFFA2).w
-		blt.s	Obj01_S_NotOnGround
-		move.b	#30,($FFFFFFA2).w	; reset the timer to 30
-
-Obj01_S_NotOnGround:
-		tst.b	($FFFFFFA2).w		; is there time left until rings need to be reduced?
-		bmi.s	Obj01_Reset		; if not, branch
-		subq.b	#1,($FFFFFFA2).w	; sub 1 from timer
-	;	add.w	#$0100,($FFFFFB02)	; increase Sonic's palette (color 2)
-		add.w	#$0100,($FFFFFB04)	; increase Sonic's palette (color 3)
-		add.w	#$0100,($FFFFFB06)	; increase Sonic's palette (color 4)
-		add.w	#$0100,($FFFFFB08)	; increase Sonic's palette (color 5)
-	;	add.w	#$0100,($FFFFFB0A)	; increase Sonic's palette (color 6)
-		cmpi.w	#$200,($FFFFFE10).w	; is level MZ1?
-		beq.s	Obj01_S_RemoveShield	; if yes, branch
-		move.b	#1,($FFFFFE2C).w	; make sure sonic has a shield
-		bra.s	Obj01_ChkInvin		; skip Obj01_Reset
-
-Obj01_S_RemoveShield:
-		move.b	#0,($FFFFFE2C).w	; make sure sonic has no shield
-	;	bra.s	Obj01_ChkInvin		; skip Obj01_Reset
-		
-Obj01_Reset:
-	;	cmpi.w	#$000,($FFFFFE10).w	; is level GHZ1?
-	;	beq.s	Obj01_S_NoRingLoose	; if yes, don't reduce rings
-	;	subi.w	#1,($FFFFFE20).w	; sub 1 ring
-	;	ori.b	#$81,($FFFFFE1D).w	; update the ring counter
-
-Obj01_S_NoRingLoose:
-	;	move.b	#30,($FFFFFFA2).w	; reset the timer to 60
-	;	cmpi.w	#$200,($FFFFFE10).w	; is level MZ1?
-	;	bne.s	Obj01_ChkInvin		; if not, branch
-	;	btst	#1,$22(a0)
-	;	bne.s	Obj01_ChkInvin
-	;	move.b	#5,($FFFFFFA2).w	; reset the timer to 5
 ; End of S monitor code
 
 Obj01_ChkInvin:
@@ -31516,7 +31309,7 @@ WF_Return:
 Sonic_JumpDash:
 		cmpi.w	#$200,($FFFFFE10).w	; is level MZ1?
 		bne.s	JD_NotMZ		; if not, branch
-		tst.b	($FFFFFF92).w
+		btst	#4,($FFFFFF92).w	; is nonstop inhuman enabled?
 		bne.s	JD_NotMZ
 		tst.b	($FFFFFFE7).w		; is inhuman mode on?
 		bne.w	JD_End			; if yes, branch
@@ -31539,7 +31332,7 @@ JD_NotMZ:
 		move.b	#1,($FFFFFFEB).w	; if not, set jumpdash flag
 		tst.b	($FFFFF7AA).w		; is boss mode on?
 		bne.s	JD_NoWhiteFlash		; if yes, branch
-		tst.b	($FFFFFF92).w
+		btst	#4,($FFFFFF92).w	; is nonstop inhuman enabled?
 		bne.s	@contx
 		cmpi.w	#$200,($FFFFFE10).w	; is level MZ1?
 		beq.s	JD_NoWhiteFlash		; if yes, branch
@@ -31826,7 +31619,7 @@ DD_End:
 Sonic_SuperPeelOut:
 		cmpi.w	#$200,($FFFFFE10).w	; is level MZ1?
 		bne.s	SPO_NotMZ		; if not, branch
-		tst.b	($FFFFFF92).w
+		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
 		bne.s	SPO_NotMZ
 		tst.b	($FFFFFFE7).w		; is inhuman mode on?
 		bne.w	SPO_End			; if yes, branch
@@ -31955,7 +31748,7 @@ SPO_End:
 Sonic_Spindash:
 		cmpi.w	#$200,($FFFFFE10).w	; is level MZ1?
 		bne.s	Spdsh_NotMZ		; if not, branch
-		tst.b	($FFFFFF92).w
+		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
 		bne.s	Spdsh_NotMZ
 		tst.b	($FFFFFF73).w
 		bne.s	Spdsh_NotMZ
@@ -32993,26 +32786,6 @@ KSJMP2:
 ; ---------------------------------------------------------------------------
 
 Obj01_Death:				; XREF: Obj01_Index
-
-	; WIP delete glitchy after image on death
-
-		moveq	#$5F,d2			; set d2 to $5F ($D800 to $F000 = $60 objects)
-		lea	(SH_Objects).l,a2	; set a2 to objects to be checked
-
-KS_ClearAfterLoop:
-		move.b	(a1),d0			; move current object ID to d0
-		cmpi.b	#$19,d0			; is current object after image?
-		bne.s	KS_NotAfterImage	; if not, branch
-		jsr	DeleteObject2		; delete after image
-KS_NotAfterImage:
-		adda.l	#$40,a1			; increase pointer by $40 (next object)
-		dbf	d2,KS_ClearAfterLoop	; loop
-
-		move.b	#$12,($FFFFF62A).w	; wait for V-blank to make sure the after image sprites are actually deleted
-		jsr	DelayProgram		; (this technically causes the death to be delayed by 1 frame, but who cares)
-
-
-
 		cmpi.w	#$601,($FFFFFE10).w	; is this the ending sequence?
 		bne.s	Obj01_Death_NoMS	; if not, branch
 		move.b	#$E4,d0
@@ -38039,8 +37812,8 @@ Obj3D_LoadBoss:				; XREF: Obj3D_Main
 loc_17772:
 		move.w	8(a0),$30(a0)
 		move.w	$C(a0),$38(a0)
-	;	move.b	#$F,$20(a0)
-		move.b	#20,$21(a0)	; set number of	hits to	15
+
+		move.b	#20,$21(a0)	; set number of	hits to	20
 		move.b	$21(a0),($FFFFFF68).w
 
 Obj3D_ShipMain:				; XREF: Obj3D_Index
@@ -42252,11 +42025,20 @@ loc_1A248:
 		bmi.s	loc_1A260
 
 		bset	#6,($FFFFFF8B).w	; unlock door to the credits
+		
+		
+		btst	#2,($FFFFFF92).w	; is Skip Uberhub Place enabled?
+		bne.s	@cont			; if yes, go directly to ending sequence instead of back to Uberhub
 		move.w	#$400,($FFFFFE10).w	; set level to SYZ1
 		move.b	#$C,($FFFFF600).w	; set game mdoe to level
 		move.w	#1,($FFFFFE02).w	; restart level
+		bra.w	Obj85_Delete
 
-	;	move.b	#$18,($FFFFF600).w	; set game mode to ending sequence
+@cont:
+		move.b	#$20,($FFFFF600).w	; load info screen
+		move.b	#8,($FFFFFF9E).w	; set number for text to 8
+		move.b	#$9D,d0			; play ending sequence music
+		jmp	PlaySound
 		bra.w	Obj85_Delete
 ; ===========================================================================
 
@@ -44879,7 +44661,7 @@ Obj09_EasterEggSpecial:
 ;-------------
 
 Obj09_Fall:				; XREF: Obj09_OnWall; Obj09_InAir
-		tst.b	($FFFFFF5F).w
+		tst.b	($FFFFFF5F).w	; is this the blackout blackout special stage?
 		bne.w	Obj09_EasterEggSpecial
 		tst.b	($FFFFFFBF).w
 		bne.s	O9F_Return
@@ -45086,7 +44868,7 @@ Obj09_ChkEmer:
 		addq.b	#1,($FFFFFE57).w ; add 1 to number of emeralds
 
 		move.w	#$93,d0
-		tst.b	($FFFFFF5F).w
+		tst.b	($FFFFFF5F).w	; is this the blackout blackout special stage?
 		beq.s	@cont
 		move.w	#$91,d0
 @cont:
@@ -45118,7 +44900,7 @@ Emershit:
 Obj09_NoSpecial2:
 		move.b	#1,(a2)
 		move.w	#$C5,d0
-		tst.b	($FFFFFF5F).w
+		tst.b	($FFFFFF5F).w	; is this the blackout blackout special stage?
 		beq.s	Obj09_YesEmer
 		move.w	#$A6,d0
 
@@ -45135,7 +44917,7 @@ Obj09_ChkGhost:
 
 
 		move.w	#$B2,d0			; set drown sound
-		tst.b	($FFFFFF5F).w
+		tst.b	($FFFFFF5F).w	; is this the blackout blackout special stage?
 		bne.s	@cont
 		move.w	#$A1,d0			; set checkpoint sound
 @cont:
@@ -45252,7 +45034,7 @@ Obj09_NoReplace2:
 Obj09_GoalNotSolid:
 		moveq	#0,d4			; clear d4
 		
-		tst.b	($FFFFFF5F).w
+		tst.b	($FFFFFF5F).w	; is this the blackout blackout special stage?
 		beq.s	@cont
 		move.b	#2,($FFFFFFD6).w	; make sure it doesn't happen again
 		rts
@@ -45422,7 +45204,7 @@ Obj09_CPTeleEnd:
 		move.w	d1,8(a0)		; restore X-pos
 		move.w	d2,$C(a0)		; restore Y-pos
 
-		tst.b	($FFFFFF5F).w
+		tst.b	($FFFFFF5F).w	; is this the blackout blackout special stage?
 		bne.s	@conty
 		jsr	WhiteFlash2
 
@@ -45453,7 +45235,7 @@ Obj09_NotSS1x:
 		clr.w	$12(a0)
 		clr.w	$14(a0)
 
-		tst.b	($FFFFFF5F).w
+		tst.b	($FFFFFF5F).w	; is this the blackout blackout special stage?
 		beq.s	@cont
 		move.w	#$A3,d0
 
@@ -45470,7 +45252,7 @@ Obj09_UPblock:
 		move.b	#$1E,$36(a0)
 	;	btst	#6,($FFFFF783).w
 	;	beq.s	Obj09_UPsnd
-		tst.b	($FFFFFF5F).w
+		tst.b	($FFFFFF5F).w	; is this the blackout blackout special stage?
 		bne.s	Obj09_UPsnd
 
 		move.w	#$D9,d0		; A9
@@ -45497,7 +45279,7 @@ Obj09_UPblock:
 
 
 Obj09_UPsnd:
-		tst.b	($FFFFFF5F).w
+		tst.b	($FFFFFF5F).w	; is this the blackout blackout special stage?
 		beq.s	@conty
 		addi.w	#$8000,($FFFFF780).w
 		move.w	#$BB,d0		; A9
@@ -45521,7 +45303,7 @@ Obj09_DOWNblock:
 	;	btst	#6,($FFFFF783).w
 	;	bne.s	Obj09_DOWNsnd
 		move.b	#2,($FFFFFFBF).w
-		tst.b	($FFFFFF5F).w
+		tst.b	($FFFFFF5F).w	; is this the blackout blackout special stage?
 		beq.s	@conty
 		addi.w	#$8000,($FFFFF780).w
 		move.w	#$BB,d0
@@ -46287,7 +46069,7 @@ Obj21_Display2:
 		cmpi.b	#6,($FFFFD024).w	; is Sonic dying?
 		bhs.s	@cont			; if yes, branch
 
-		tst.b	($FFFFFF92).w
+		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
 		bne.s	@cont2
 		tst.b	($FFFFF7CC).w
 		beq.s	@cont
@@ -46427,7 +46209,7 @@ Obj21_Display:
 		cmpi.b	#6,($FFFFD024).w	; is Sonic dying?
 		bhs.s	@cont			; if yes, branch
 
-		tst.b	($FFFFFF92).w
+		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
 		bne.s	@cont2
 		tst.b	($FFFFF7CC).w
 		beq.s	@cont
@@ -48154,11 +47936,6 @@ loc_71B5A:
 
 loc_71B82:
 		lea	($FFF000).l,a6
-		tst.b	($FFFFFF5F).w	; is atmospheric mode enabled?
-		bra.s	@cont		; if not, branch THE REASON WHY THIS IS COMMENTED OUT IS BECAUSE OF CRASHES
-		clr.b	$40(a6)		; mute DAC channel
-
-@cont:
 		clr.b	$E(a6)
 		tst.b	3(a6)		; is music paused?
 		bne.w	loc_71E50	; if yes, branch

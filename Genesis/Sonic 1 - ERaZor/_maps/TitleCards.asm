@@ -40,16 +40,17 @@ byte_C9FE:	dc.b $A	; GREEN HILL | NIGHT HILL
 		dc.b $F8, 5, 0, $26, $2C	;L
 		dc.b $F8, 5, 0, $26, $3C	;L
 
-byte_CA2C:	dc.b 9	;  LABYRINTH | LABYRINTH
-		dc.b $F8, 5, 0, $26, $C4	; L
-		dc.b $F8, 5, 0, 0, $D4		; A
-		dc.b $F8, 5, 0, 4, $E4		; B
-		dc.b $F8, 5, 0, $4A, $F4	; Y
-		dc.b $F8, 5, 0, $3A, $4		; R
-		dc.b $F8, 1, 0, $20, $14	; I
-		dc.b $F8, 5, 0, $2E, $1C	; N
-		dc.b $F8, 5, 0, $42, $2C	; T
-		dc.b $F8, 5, 0, $1C, $3C	; H
+byte_CA2C:	dc.b $A	;  LABYRINTH | LABYRINTHY
+		dc.b $F8, 5, 0, $26, $B4	; L
+		dc.b $F8, 5, 0, 0, $C4		; A
+		dc.b $F8, 5, 0, 4, $D4		; B
+		dc.b $F8, 5, 0, $4A, $E4	; Y
+		dc.b $F8, 5, 0, $3A, $F4	; R
+		dc.b $F8, 1, 0, $20, $4	; I
+		dc.b $F8, 5, 0, $2E, $C	; N
+		dc.b $F8, 5, 0, $42, $1C	; T
+		dc.b $F8, 5, 0, $1C, $2C	; H
+		dc.b $F8, 5, 0, $4A, $3C	; Y
 
 byte_CA5A:	dc.b 6	;  MARBLE | RUINED
 		dc.b $F8, 5, 0, $3A, $F4	; R

@@ -57,6 +57,7 @@ Align:		macro
 DebugModeDefault = 1
 DontAllowDebug = 0
 DebugHUD = 0
+DieInDebug = 1
 ;=================================================
 ;Enable Demo Recording. (In RAM at $FFFFD200)
 ;Also disables Stars and Shields
@@ -12477,8 +12478,6 @@ Obj19:
 		jmp	Obj19_Index(pc,d1.w)	; find out the current position in the index
 ; ===========================================================================
 Obj19_Index:
-	;	dc.w Obj19_Increase-Obj19_Index ; increase routine counter
-	;	dc.w Obj19_DoAfter-Obj19_Index	; create afterimage
 		dc.w Obj19_Increase-Obj19_Index ; repeat all this 2 times
 		dc.w Obj19_DoAfter-Obj19_Index
 		dc.w Obj19_Increase-Obj19_Index
@@ -12494,10 +12493,13 @@ Obj19_Return:
 ; ===========================================================================
 
 Obj19_DoAfter:
+		cmpi.b	#6,($FFFFD024).w	; is Sonic dying?
+		bhs.s	Obj19_Remove		; if yes, branch
+		
 		bclr	#7,2(a0)		; make object low plane
-		tst.b	($FFFFFFA6).w		; is flag set?
+		tst.b	($FFFFFFA6).w		; are we in the waterfall section in GHZ1?
 		beq.s	Obj19_NoHigh		; if not, branch
-		bset	#7,2(a0)		; otherwise make object high plane
+		bset	#7,2(a0)		; otherwise make object high plane (in front of the waterfall)
 
 Obj19_NoHigh:
 		addq.b	#2,$24(a0)		; increase routine counter
@@ -32988,6 +32990,26 @@ KSJMP2:
 ; ---------------------------------------------------------------------------
 
 Obj01_Death:				; XREF: Obj01_Index
+
+	; WIP delete glitchy after image on death
+
+		moveq	#$5F,d2			; set d2 to $5F ($D800 to $F000 = $60 objects)
+		lea	(SH_Objects).l,a2	; set a2 to objects to be checked
+
+KS_ClearAfterLoop:
+		move.b	(a1),d0			; move current object ID to d0
+		cmpi.b	#$19,d0			; is current object after image?
+		bne.s	KS_NotAfterImage	; if not, branch
+		jsr	DeleteObject2		; delete after image
+KS_NotAfterImage:
+		adda.l	#$40,a1			; increase pointer by $40 (next object)
+		dbf	d2,KS_ClearAfterLoop	; loop
+
+		move.b	#$12,($FFFFF62A).w	; wait for V-blank to make sure the after image sprites are actually deleted
+		jsr	DelayProgram		; (this technically causes the death to be delayed by 1 frame, but who cares)
+
+
+
 		cmpi.w	#$601,($FFFFFE10).w	; is this the ending sequence?
 		bne.s	Obj01_Death_NoMS	; if not, branch
 		move.b	#$E4,d0
@@ -43531,11 +43553,14 @@ Hurt_Sound:
 ; ===========================================================================
 
 Hurt_NoRings:
-	if DontAllowDebug=0
 		tst.b	($FFFFFFE7).w	; has sonic destroyed a S monitor?
 		bne.s	KillSonic	; if yes, branch
+		
+	if DieInDebug=0
 		tst.w	($FFFFFFFA).w	; is debug mode	cheat on?
 		bne.w	Hurt_Shield	; if yes, branch
+	else
+		nop
 	endif
 ; End of function HurtSonic
 ; Continue straight to KillSonic

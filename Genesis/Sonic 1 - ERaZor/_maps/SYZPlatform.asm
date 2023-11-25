@@ -1,19 +1,110 @@
 ; --------------------------------------------------------------------------------
-; Sprite mappings - output from SonMapEd - Sonic 1 format
+; Sprite mappings - output from ClownMapEd - Sonic 1/CD format
 ; --------------------------------------------------------------------------------
 
-SME_MdbHX:	
-		dc.w SME_MdbHX_6-SME_MdbHX, SME_MdbHX_11-SME_MdbHX	
-		dc.w SME_MdbHX_21-SME_MdbHX	
-SME_MdbHX_6:	dc.b 2	
-		dc.b $F8, $F, 0, 0, $E0	
-		dc.b $F8, $F, 0, $10, 0	
-SME_MdbHX_11:	dc.b 3	
-		dc.b $BE, 6, 0, $20, $F8	
-		dc.b $C2, 6, 0, $20, $E0	
-		dc.b $C2, 6, 0, $20, $10	
-SME_MdbHX_21:	dc.b 3	
-		dc.b $F4, 6, 0, $20, $F8	
-		dc.b $F8, 6, 0, $20, $E0	
-		dc.b $F8, 6, 0, $20, $10	
-		even
+SYZPlatformMaps:
+	dc.w	SYZPlatform_Frame0-SYZPlatformMaps
+	dc.w	SYZPlatform_Frame1-SYZPlatformMaps
+	dc.w	SYZPlatform_Frame2-SYZPlatformMaps
+
+SYZPlatform_Frame0:
+
+	dc.b	12
+
+	dc.b	-9
+	dc.b	$07
+	dc.w	$0004
+	dc.b	-16
+
+	dc.b	-9
+	dc.b	$07
+	dc.w	$0014
+	dc.b	0
+
+	dc.b	-9
+	dc.b	$00
+	dc.w	$0000
+	dc.b	-48
+
+	dc.b	-9
+	dc.b	$00
+	dc.w	$0008
+	dc.b	-40
+
+	dc.b	-9
+	dc.b	$00
+	dc.w	$0008
+	dc.b	-32
+
+	dc.b	-9
+	dc.b	$00
+	dc.w	$0008
+	dc.b	-24
+
+	dc.b	15
+	dc.b	$00
+	dc.w	$0003
+	dc.b	-24
+
+	dc.b	-9
+	dc.b	$00
+	dc.w	$0008
+	dc.b	16
+
+	dc.b	-9
+	dc.b	$00
+	dc.w	$0008
+	dc.b	24
+
+	dc.b	-9
+	dc.b	$00
+	dc.w	$0008
+	dc.b	32
+
+	dc.b	15
+	dc.b	$00
+	dc.w	$001F
+	dc.b	16
+
+	dc.b	-9
+	dc.b	$00
+	dc.w	$001C
+	dc.b	40
+
+SYZPlatform_Frame1:
+	dc.b	3
+
+	dc.b	-60
+	dc.b	$06
+	dc.w	$0020
+	dc.b	-8
+
+	dc.b	-56
+	dc.b	$06
+	dc.w	$0020
+	dc.b	-32
+
+	dc.b	-56
+	dc.b	$06
+	dc.w	$0020
+	dc.b	16
+
+SYZPlatform_Frame2:
+	dc.b	3
+
+	dc.b	-6
+	dc.b	$06
+	dc.w	$0020
+	dc.b	-8
+
+	dc.b	-2
+	dc.b	$06
+	dc.w	$0020
+	dc.b	-32
+
+	dc.b	-2
+	dc.b	$06
+	dc.w	$0020
+	dc.b	16
+
+	even

@@ -11992,7 +11992,7 @@ Obj18_NotLZ:
 		bne.s	Obj18_NotSYZ
 		move.l	#Map_obj18a,4(a0) ; SYZ	specific code
 		move.w	#$4490,2(a0)
-		move.b	#$20,$19(a0)
+		move.b	#$30,$19(a0)
 
 		jsr	SingleObjLoad
 		move.b	#$18,(a1)
@@ -12002,7 +12002,7 @@ Obj18_NotLZ:
 		move.w	$8(a0),$8(a1)
 		move.w	$C(a0),$C(a1)
 		move.b	#1,$1A(a1)
-		move.b	#$20,$19(a1)
+		move.b	#$30,$19(a1)
 		move.b	#4,1(a1)
 		move.b	#4,$18(a1)
 		move.w	$C(a0),$2C(a1)
@@ -12010,8 +12010,6 @@ Obj18_NotLZ:
 		move.w	8(a0),$32(a1)
 		move.w	#$80,$26(a1)
 		move.l	a0,$36(a1)
-
-
 
 Obj18_NotSYZ:
 		cmpi.b	#3,($FFFFFE10).w ; check if level is SLZ
@@ -12170,6 +12168,8 @@ loc_7F06:
 
 
 Obj18_Nudge:				; XREF: Obj18_Action; Obj18_Action2
+		cmpi.w	#$400,($FFFFFE10).w	; is level SYZ1?
+		beq.s	Obj18_NoNudge		; if yes, branch
 		move.b	$38(a0),d0
 		bsr	CalcSine
 		move.w	#$400,d1
@@ -12177,6 +12177,8 @@ Obj18_Nudge:				; XREF: Obj18_Action; Obj18_Action2
 		swap	d0
 		add.w	$2C(a0),d0
 		move.w	d0,$C(a0)
+
+Obj18_NoNudge:
 		rts	
 ; End of function Obj18_Nudge
 
@@ -12449,7 +12451,6 @@ Map_obj18:
 ; Sprite mappings - SYZ	platforms
 ; ---------------------------------------------------------------------------
 Map_obj18a:
-	;	include	"_maps\obj18syz.asm"
 		include	"_maps\SYZPlatform.asm"
 
 ; ---------------------------------------------------------------------------
@@ -30774,6 +30775,8 @@ loc_12F62:
 ;		bset	#0,$22(a0)
 
 loc_12F70:
+		cmpi.w	#$400,($FFFFFE10).w	; is level SYZ1?
+		beq.s	Sonic_LookUp	; if yes, branch (no balance animation)
 		move.b	#6,$1C(a0)	; use "balancing" animation
 	;	bra.s	Obj01_ResetScr
 ; ===========================================================================

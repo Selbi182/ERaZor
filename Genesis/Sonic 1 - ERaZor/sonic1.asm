@@ -56,7 +56,6 @@ Align:		macro
 ; 1 - Yes
 DebugModeDefault = 1
 DontAllowDebug = 0
-DebugHUD = 0
 DieInDebug = 0
 ;=================================================
 ;If 1, the doors in the SYZ are always open.
@@ -1374,8 +1373,10 @@ loc_13CA:
 		beq.s	Pause_ChkBC
 		cmpi.w	#$400,($FFFFFE10).w
 		beq.s	Pause_ChkBC
+		
 		btst	#6,($FFFFF605).w 	; is button A pressed?
 		beq.s	Pause_ChkBC		; if not, branch
+		move.b	#1,($FFFFFF94).w	; set "exited via Start+A" flag
 		move.w	#$400,($FFFFFE10).w	; set level to SYZ1
 		move.b	#$C,($FFFFF600).w	; set to level
 		move.w	#1,($FFFFFE02).w	; restart level
@@ -1395,7 +1396,7 @@ Pause_ChkStart:
 		beq.s	loc_13CA		; if not, branch
 
 loc_1404:
-		move.b	#$80,($FFFFF003).w	; unknown
+		move.b	#$80,($FFFFF003).w	; something with music
 
 Unpause:
 		lea	($FFFFFB00).w,a0	; get palette
@@ -1415,7 +1416,7 @@ Pause_DoNothing:
 
 Pause_SlowMo:
 		move.w	#1,($FFFFF63A).w	; delay program
-		move.b	#$80,($FFFFF003).w	; unkown
+		move.b	#$80,($FFFFF003).w	; something with music
 		rts				; return
 ; End of function PauseGame
 
@@ -3579,10 +3580,6 @@ Sega_NoSound:
 		beq.s	Sega_WaitEnd	; if not, branch
 
 Sega_GotoTitle:
-		tst.b	($FFFFFE12).w
-		bne.s	@cont
-		move.b	#0,($FFFFFE12).w ; set lives to	3
-@cont:
 		clr.b	($FFFFFFBE).w
 		jmp	SelbiSplash
 	;	move.b	#$24,($FFFFF600).w ; go to options screen
@@ -3797,11 +3794,6 @@ SG_ResumeFromSaveGame:
 
 PlayLevelX:
 		move.b	#$C,($FFFFF600).w ; set	screen mode to $0C (level)
-		tst.b	($FFFFFE12).w
-		bne.s	@cont
-	;	move.b	#3,($FFFFFE12).w ; set lives to	3
-		move.b	#0,($FFFFFE12).w ; set lives to	3
-@cont:
 		moveq	#0,d0
 	;	move.w	d0,($FFFFFE20).w ; clear rings
 		move.l	d0,($FFFFFE22).w ; clear time
@@ -3885,7 +3877,6 @@ loc_3422:
 		clr.b	($FFFFFE16).w	; clear	special	stage number
 
 Demo_LevelX:
-	;	move.b	#3,($FFFFFE12).w ; set lives to	3
 		moveq	#0,d0
 	;	move.w	d0,($FFFFFE20).w ; clear rings
 		move.l	d0,($FFFFFE22).w ; clear time
@@ -4086,6 +4077,7 @@ LevelMenuText:	incbin	misc\menutext.bin
 ; ---------------------------------------------------------------------------
 
 Level:					; XREF: GameModeArray
+		clr.b	($FFFFFF94).w
 		bset	#7,($FFFFF600).w ; add $80 to screen mode (for pre level sequence)
 		bsr	ClearPLC
 	;	bsr	ClearVRAM	; custom subroutine to clear VRAM
@@ -4189,7 +4181,7 @@ Level_ClrVars3:
 		move.b	#1,($FFFFF64C).w ; enable water
 
 Level_LoadPal:
-		move.w	#$1E,($FFFFFE14).w
+		move.w	#$1E,($FFFFFE14).w ; set oxygen timer
 		move	#$2300,sr
 		cmpi.b	#1,($FFFFFE10).w ; is level LZ?
 		bne.s	Level_GetBgm	; if not, branch
@@ -5583,6 +5575,7 @@ SS_ClrNemRam:
 		clr.b	($FFFFF64E).w
 		clr.w	($FFFFFE02).w
 		clr.b	($FFFFFE57).w
+		clr.b	($FFFFFF94).w
 
 		moveq	#$A,d0
 		tst.b	($FFFFFF5F).w	; is this the blackout special stage?
@@ -5604,6 +5597,7 @@ SS_ClrNemRam:
 		move.b	#$07,($FFFFD3C0).w	; load cropped screen object
 		move.w	#$0174,($FFFFD3C8).w		; set X-position
 		move.w	#$00F8,($FFFFD3CA).w		; set Y-position
+
 @cont:
 		bsr	PalCycle_SS
 		clr.w	($FFFFF780).w	; set stage angle to "upright"
@@ -5654,7 +5648,6 @@ SS_MainLoop:
 		cmpi.b	#4,($FFFFD024).w	; is special stage exiting routine being run?
 		bge.s	SS_NoPauseGame		; if yes, branch
 
-		; control check here somewhere
 		clr.w	($FFFFF782).w ; rotation speed
 
 		btst	#2,($FFFFF602).w ; is left being pressed?
@@ -5721,17 +5714,20 @@ loc_47D4:
 
 		moveq	#0,d0
 		bsr	LoadPLC2
-		moveq	#$1B,d0
-		bsr	LoadPLC		; load results screen patterns
 		moveq	#0,d0
 		move.w	#$7FF,d1
 
 SS_EndClrObjRamX:
 		move.l	d0,(a1)+
 		dbf	d1,SS_EndClrObjRamX ; clear object RAM
+		
+		tst.b	($FFFFFF94).w
+		beq.s	@allgood
+		bra.s	SpecialStage_Exit
 
+@allgood:
 		move.w	($FFFFFF70).w,d0	; restore the rings you had before entering special stage to d0
-		add.w	($FFFFFE20).w,d0	; add your new collected rings to it
+	;	add.w	($FFFFFE20).w,d0	; add your new collected rings to it (there are no rings in my special stages lmao)
 		move.w	d0,($FFFFFE20).w	; move result to rings counter
 
 		cmpi.w	#$401,($FFFFFE10).w
@@ -5753,6 +5749,10 @@ SS_EndClrObjRamX:
 @cont3:
 		move.b	#$20,($FFFFF600).w	; set to info screen
 
+		move.l	#10000,d0		; add 100000 ...
+		jsr	AddPoints	; ... points
+
+SpecialStage_Exit:
 		clr.b	($FFFFFF5F).w	; clear blackout special stage flag
 		clr.b	($FFFFFFE7).w	; make sonic mortal
 		clr.b	($FFFFFFE1).w	; make sonic not being on the foreground
@@ -5769,9 +5769,6 @@ SS_EndClrObjRamX:
 		clr.b	($FFFFFFBB).w
 		clr.b	($FFFFFFB6).w
 		jsr	Sonic_ResetOnFloor
-
-		move.l	#10000,d0		; add 100000 ...
-		jsr	AddPoints	; ... points
 
 		clr.b	($FFFFFFBB).w
 		move.b	#$C,($FFFFF62A).w
@@ -6119,8 +6116,7 @@ loc_4DF2:
 
 Cont_GotoLevelX:				; XREF: Cont_MainLoop
 		move.b	#$C,($FFFFF600).w ; set	screen mode to $0C (level)
-	;	move.b	#3,($FFFFFE12).w ; set lives to	3
-		move.b	#0,($FFFFFE12).w ; set lives to	3
+		move.b	#0,($FFFFFE12).w ; set deaths to 0
 		moveq	#0,d0
 	;	move.w	d0,($FFFFFE20).w ; clear rings
 		move.w	($FFFFFF88).w,($FFFFFE20).w	; set rings to that random value
@@ -6883,8 +6879,7 @@ EndingDemoLoad:				; XREF: Credits
 		rts
 	;	move.w	#$8001,($FFFFFFF0).w ; force demo mode
 		move.b	#8,($FFFFF600).w ; set game mode to 08 (demo)
-	;	move.b	#3,($FFFFFE12).w ; set lives to	3
-		move.b	#0,($FFFFFE12).w ; set lives to	3
+		move.b	#0,($FFFFFE12).w ; set deaths to 0
 		moveq	#0,d0
 	;	move.w	d0,($FFFFFE20).w ; clear rings
 		move.l	d0,($FFFFFE22).w ; clear time
@@ -10286,15 +10281,6 @@ Resize_LZ1:
 ; ===========================================================================
 
 Resize_LZ2:
-		btst	#0,($FFFFFF9A).w
-		bne.s	@contBoss
-		cmpi.w	#$0E80,($FFFFF700).w
-		bcs.s	@contBoss
-		bset	#0,($FFFFFF9A).w
-		jsr	SingleObjLoad
-		move.b	#$4F,0(a1)	; load LZ2 boss object
-
-@contBoss:
 		cmpi.b	#1,($FFFFFF97).w
 		beq.s	@cont
 		cmpi.b	#3,($FFFFFF97).w
@@ -10304,9 +10290,9 @@ Resize_LZ2:
 
 @cont:
 		move.w	#$800,($FFFFF726).w
-		cmpi.w	#$0350,($FFFFF700).w
-		bra.s	@contxx
-		move.w	#$6C9,($FFFFF726).w
+		cmpi.w	#$0C50,($FFFFF700).w
+		bcs.s	@contxx
+		move.w	#$540,($FFFFF726).w
 		rts
 
 @contx:
@@ -15336,36 +15322,7 @@ Obj25_Delete:				; XREF: Obj25_Index
 CollectRing:				; XREF: Obj25_Collect
 		addq.w	#1,($FFFFFE20).w ; add 1 to rings
 		ori.b	#1,($FFFFFE1D).w ; update the rings counter
-	;	move.w	#10,($FFFFFE26).w ; add 100 to score
-	;	bsr	Addpoints
-	;	cmpi.b	#$10,($FFFFF600).w ; is game mode special stage?
-	;	beq.s	CR_NoPoints	; if not, don't give Sonic points
-	;	bsr	Touch_KillEnemy ; add points
-
-CR_NoPoints:
 		move.w	#$B5,d0		; play ring sound
-		bra.s	Obj25_PlaySnd	; no lives on rings
-		cmpi.w	#100,($FFFFFE20).w ; do	you have < 100 rings?
-		bcs.s	Obj25_PlaySnd	; if yes, branch
-		bset	#1,($FFFFFE1B).w ; update lives	counter
-		beq.s	loc_9CA4
-		cmpi.w	#200,($FFFFFE20).w ; do	you have < 200 rings?
-		bcs.s	Obj25_PlaySnd	; if yes, branch
-		bset	#2,($FFFFFE1B).w ; update lives	counter
-		bne.s	Obj25_PlaySnd
-		cmpi.w	#300,($FFFFFE20).w ; do	you have < 200 rings?
-		bcs.s	Obj25_PlaySnd	; if yes, branch
-		bset	#3,($FFFFFE1B).w ; update lives	counter
-		bne.s	Obj25_PlaySnd
-
-loc_9CA4:
-		move.w	#$C5,d0		; play extra life music
-		addq.b	#1,($FFFFFE1C).w ; add 1 to the	lives counter
-		cmpi.b	#99,($FFFFFE12).w
-		beq.s	Obj25_PlaySnd
-		addq.b	#1,($FFFFFE12).w ; add 1 to the	number of lives	you have
-
-Obj25_PlaySnd:
 		jmp	(PlaySound_Special).l
 ; End of function CollectRing
 
@@ -15654,12 +15611,23 @@ Obj37_NoRingsMove:
 		move.b	($FFFFFEC7).w,$1A(a0)
 		bsr	SpeedToPos
 		
+		cmpi.w	#$301,($FFFFFE10).w	; is level SLZ2?
+		bne.s	@notslz			; if not, branch
+		tst.b	($FFFFFFA9).w		; is Sonic fighting against the walking bomb?
+		beq.s	@notslz			; if not, branch	
+		move.w	#$408,d1		; set ceiling height
+		bra.s	@checkceiling
+
+@notslz:
 		cmpi.w	#$000,($FFFFFE10).w	; is level GHZ1?
 		bne.s	@noceiling		; if not, branch
 		cmpi.b	#1,($FFFFFFAA).w	; is Sonic fighting against the crabmeat?
 		bne.s	@noceiling		; if not, branch
+		move.w	#$440,d1		; set ceiling height
+
+@checkceiling:
 		move.w	$C(a0),d0		; get Y position of ring
-		cmpi.w	#$440,d0		; is it above Y pos $440? (ceiling position of the arena)
+		cmp.w	d1,d0			; is it above Y pos? (ceiling position of the arena)
 		bge.s	@noceiling		; if not, branch
 		clr.w	$12(a0)			; if yes, make the rings fall down so they don't get stuck in the ceiling
 				
@@ -16586,14 +16554,6 @@ Obj2E_ChkSonic:
 		bne.w	Obj2E_ChkShoes
 
 ExtraLife:
-		bra.s	@cont2		 ; extra lives are disabled
-		
-		addq.b	#1,($FFFFFE1C).w ; update life counter
-		cmpi.b	#0,($FFFFFE12).w
-		beq.s	@cont2
-		subq.b	#1,($FFFFFE12).w ; add 1 to the	number of lives	you have
-
-@cont2:
 		cmpi.w	#$200,($FFFFFE10).w
 		beq.s	@contx
 		cmpi.w	#$302,($FFFFFE10).w
@@ -18707,7 +18667,7 @@ loc_BDBE:
 		tst.b	$25(a0)
 		bne.s	loc_BDC8
 		bclr	d3,(a3)
-		bra.w	loc_BDDE
+		bra.w	Obj32_Display
 ; ===========================================================================
 
 loc_BDC8:
@@ -18716,34 +18676,45 @@ loc_BDC8:
 		move.w	#$CD,d0
 		jsr	(PlaySound).l ;	play switch sound
 
-		cmpi.w	#$101,($FFFFFE10).w	; is level LZ2?
-		bra.s	loc_BDD6		; if not, branch
-	;	bne.s	loc_BDD6		; if not, branch
-		move.w	#$40,d2			; set number of loops
-		lea	($FFFFA400).w,a2	; set RAM location (first line of Plane A)
-
-DelFirstLine_Loop:
-		move.b	#0,(a2)+		; clear current chunk
-		dbf	d2,DelFirstLine_Loop	; loop
-
 loc_BDD6:
-		cmpi.w	#$200,($FFFFFE10).w ; is level MZ1?
-		bne.s	@notmzswitch	; if not, branch
+		cmpi.w	#$200,($FFFFFE10).w	; is level MZ1?
+		bne.s	@notmzswitch		; if not, branch
 		bset	#0,($FFFFFF6C).w	; set the "switch in MZ was pressed flag"
 		bra.w	@cont
 
 @notmzswitch:
-		cmpi.w	#$302,($FFFFFE10).w
-		bne.w	@cont
-		tst.b	($FFFFFF77).w
-		bne.w	@cont
-		move.b	#1,($FFFFFF77).w
+		cmpi.w	#$302,($FFFFFE10).w	; is this Star Agony Place?
+		bne.w	@cont			; if not, branch
+		tst.b	($FFFFFF77).w		; is antigrav already enabled?
+		bne.w	@cont			; if yes, branch
+		move.b	#1,($FFFFFF77).w	; enable antigrav ability
 		move.b	#$96,d0			; play music
 		jsr	PlaySound
 		
-	;	addi.w	#100,($FFFFFE20).w
-	;	move.b	#1,($FFFFFE1D).w ; update rings	counter
+		bsr.s	SetupSLZItems
 
+@cont:
+		bset	d3,(a3)
+		bset	#0,$1A(a0)	; use "pressed"	frame
+		cmpi.b	#$3,($FFFFFE10).w
+		bne.s	Obj32_Display
+		move.b	#4,$1A(a0)
+
+Obj32_Display:
+		bsr	DisplaySprite
+		move.w	8(a0),d0
+		andi.w	#$FF80,d0
+		move.w	($FFFFF700).w,d1
+		subi.w	#$80,d1
+		andi.w	#$FF80,d1
+		sub.w	d1,d0
+		cmpi.w	#$280,d0
+		bhi.w	Obj32_Delete
+		rts	
+; ===========================================================================
+
+SetupSLZItems:
+		; place 6th emblem in the looping section
 		lea	($FFFFDFC0).w,a1
 		move.b	#$7D,(a1)
 		move.w	#$1DB8,$8(a1)
@@ -18755,6 +18726,7 @@ loc_BDD6:
 		move.b	#3,$18(a1)
 		move.b	#0,$1A(a1)
 
+		; place P monitor required to open a door (underneath the exploding bombs)
 		lea	($FFFFDF40).w,a1
 		move.b	#$26,(a1)
 		move.w	#$17E0,$8(a1)
@@ -18770,34 +18742,8 @@ loc_BDD6:
 		move.b	#$F,$19(a1)
 		move.b	#$46,$20(a1)
 		move.b	#8,$1C(a1)
-
-@cont:
-
-		bset	d3,(a3)
-		bset	#0,$1A(a0)	; use "pressed"	frame
-		cmpi.b	#$3,($FFFFFE10).w
-		bne.s	loc_BDDE
-		move.b	#4,$1A(a0)
-
-loc_BDDE:
-	;	btst	#5,$28(a0)
-	;	beq.s	Obj32_Display
-	;	subq.b	#1,$1E(a0)
-	;	bpl.s	Obj32_Display
-	;	move.b	#7,$1E(a0)
-	;	bchg	#1,$1A(a0)
-
-Obj32_Display:
-		bsr	DisplaySprite
-		move.w	8(a0),d0
-		andi.w	#$FF80,d0
-		move.w	($FFFFF700).w,d1
-		subi.w	#$80,d1
-		andi.w	#$FF80,d1
-		sub.w	d1,d0
-		cmpi.w	#$280,d0
-		bhi.w	Obj32_Delete
-		rts	
+		
+		rts
 ; ===========================================================================
 
 Obj32_Delete:
@@ -23063,8 +23009,16 @@ Obj0D_Touch:				; XREF: Obj0D_Index
 
 
 		move.b	#1,($FFFFFFA5).w	; move HUD off screen
+		cmpi.w	#$101,($FFFFFE10).w	; is level LZ2?
+		bne.s	@cont			; if not, branch
+		move.w	#$82,d0			; resume LZ music (cause we're drowning rn)
+		jsr	(PlaySound).l
+		move.w	#$1E,($FFFFFE14).w
+
+@cont:
 		move.w	#$CF,d0
-		jsr	(PlaySound).l	; play signpost	sound
+		jsr	(PlaySound_Special).l	; play signpost	sound
+
 		clr.b	($FFFFFE1E).w	; stop time counter
 		move.w	($FFFFF72A).w,($FFFFF728).w ; lock screen position
 		addq.b	#2,$24(a0)
@@ -27514,7 +27468,7 @@ Obj5F_BossDefeatedend:
 		subq.b	#4,($FFFFFF76).w
 		subi.w	#10,($FFFFFF7A).w
 		move.w	#20,($FFFFFF7C).w
-		bra.s	locret_715Cx
+		bra.w	locret_715Cx
 
 Obj5F_BossDefeatedend2:
 		subq.w	#1,($FFFFFF7C).w
@@ -27533,7 +27487,6 @@ Obj5F_BossDelete:
 		moveq	#$10,d0				; set d0 to $10
 		jsr	(LoadPLC).l			; load title card patterns
 
-
 		move.w	#$302,($FFFFFE10).w	; change level to SLZ3
 		move.w	#$1FBF,($FFFFF72A).w
 		move.w	#$620,($FFFFF726).w
@@ -27545,6 +27498,12 @@ Obj5F_BossDelete:
 		clr.b	($FFFFFF76).w
 		clr.b	($FFFFF7AA).w
 		move.b	#0,($FFFFFE2D).w		; disable invincibility
+		
+		tst.b	($FFFFFFE7).w	; inhuman?
+		beq.s	@noearlyload
+		jsr	SetupSLZItems
+		
+@noearlyload:
 		move.b	#$84,d0
 		jsr	PlaySound
 		jmp	DeleteObject
@@ -30370,14 +30329,6 @@ locret_12D80:
 ; ===========================================================================
 
 Obj01_InWater:
-		bra.s	ChkWater_cont
-		lea	($FFFFD000).w,a2 ; load sonic object into a2
-		move.w	$10(a2),d2	; load X-yelocity into d2
-		cmpi.b	#100,$10(a2)	; is sonic fast enough to run on the water?
-		blt.s	ChkWater_cont	; if not, branch
-		clr.w	$12(a0)
-		
-ChkWater_cont:
 		move.w	($FFFFF646).w,d0
 		cmp.w	$C(a0),d0	; is Sonic above the water?
 		bge.s	Obj01_OutWater	; if yes, branch
@@ -30393,6 +30344,16 @@ ChkWater_cont:
 		asr	$12(a0)
 		asr	$12(a0)
 		beq.s	locret_12D80
+		
+		cmpi.b	#3,($FFFFFF97).w	; was third lamppost passed?
+		blt.w	@conter
+		tst.b	($FFFFFFA5).w		; was sign post already touched?
+		bne.s	@conter
+		move.w	#$B,($FFFFFE14).w	; force instant countdown when final thingy
+		move.w	#$92,d0
+		jsr	(PlaySound).l	; play countdown music $92 (speed up music $E2)
+		
+@conter:
 		move.b	#8,($FFFFD300).w ; load	splash object
 		move.w	#$AA,d0
 		jmp	(PlaySound_Special).l ;	play splash sound
@@ -32323,9 +32284,6 @@ SLZHitWall:
 		jmp	KillSonic
 
 @yesrings:
-	;	subi.w	#5,($FFFFFE20).w
-	;	move.b	#$80,($FFFFFE1D).w
-
 		move.w	#$0C40,($FFFFD008).w
 		move.w	#$0470,($FFFFD00C).w
 		tst.w	($FFFFFF86).w
@@ -32338,7 +32296,6 @@ SLZHitWall:
 		clr.w	($FFFFD012).w
 		clr.w	($FFFFD014).w
 
-	;	jsr	FixLevel
 		jsr	WhiteFlash2
 		move.b	#2,($FFFFD01C).w
 		move.b	#$C3,d0
@@ -32804,6 +32761,8 @@ Obj01_NotDrownAnim:
 		beq.s	Obj01_NoOF
 		tst.w	$12(a0)		; is Sonic moving upwards?
 		bmi.s	Obj01_NoOF	; if yes, branch
+		cmpi.w	#$101,($FFFFFE10).w	; is level LZ2?
+		beq.s	Obj01_NoOF	; if yes, branch (too many walls to make the effect not suck)
 		bsr	ObjHitFloor	; load from ObjHitFloor
 		add.w	#10,d1		; sub 10 from it
 		tst.w	d1		; did Sonic reached that position?
@@ -32844,47 +32803,15 @@ GameOver:				; XREF: Obj01_Death
 @cont:
 		clr.b	($FFFFFE1E).w	; stop time counter
 		addq.b	#1,($FFFFFE1C).w ; update lives	counter
-	;	subq.b	#1,($FFFFFE12).w ; subtract 1 from number of lives
 		cmpi.b	#99,($FFFFFE12).w
-		bhs.s	@conto
+		bge.s	loc_138D4
 		addq.b	#1,($FFFFFE12).w ; subtract 1 from number of lives
-@conto:
-		bra.s	loc_138D4	; if sonic still has lives, branch
-	;	bne.s	loc_138D4	; if sonic still has lives, branch
-
-		move.b	#$14,($FFFFF600).w
-		rts
-; ===========================================================================
-
-		move.w	#0,$3A(a0)
-		move.b	#$39,($FFFFD080).w ; load GAME object
-		move.b	#$39,($FFFFD0C0).w ; load OVER object
-		move.b	#1,($FFFFD0DA).w ; set OVER object to correct frame
-		clr.b	($FFFFFE1A).w
-
-loc_138C2:
-		move.w	#$8F,d0
-		jsr	(PlaySound).l	; play game over music
-		moveq	#3,d0
-		jmp	(LoadPLC).l	; load game over patterns
-; ===========================================================================
 
 loc_138D4:
 		move.w	#60,$3A(a0)	; set time delay to 60 frames
 		cmpi.w	#$601,($FFFFFE10).w	; is this the ending sequence?
-		bne.s	Obj01_Death_60	; if not, branch
+		bne.s	locret_13900	; if not, branch
 		move.w	#240,$3A(a0)	; set time delay to 240 frames instead
-
-Obj01_Death_60:
-		tst.b	($FFFFFE1A).w	; is TIME OVER tag set?
-		beq.s	locret_13900	; if not, branch
-		move.w	#0,$3A(a0)
-		move.b	#$39,($FFFFD080).w ; load TIME object
-		move.b	#$39,($FFFFD0C0).w ; load OVER object
-		move.b	#2,($FFFFD09A).w
-		move.b	#3,($FFFFD0DA).w
-		bra.s	loc_138C2
-; ===========================================================================
 
 locret_13900:
 		rts	
@@ -33435,8 +33362,6 @@ Obj0A_Countdown:			; XREF: Obj0A_Index
 		btst	#6,($FFFFD022).w
 		beq.w	locret_1408C
 
-		cmpi.b	#4,($FFFFFF97).w	; was fourth lamppost passed?
-		bhs.w	locret_1408C		; if yes, disable drowning
 		tst.b	($FFFFFFE7).w		; is Sonic inhuman?
 		bne.w	locret_1408C		; if yes, disable drowning
 
@@ -33586,8 +33511,6 @@ locret_1408C:
 
 
 ResumeMusic:				; XREF: Obj64_Wobble; Sonic_Water; Obj0A_ReduceAir
-		cmpi.w	#$C,($FFFFFE14).w
- 
 		jsr	PlayLevelMusic
 
 loc_140AC:
@@ -44586,8 +44509,6 @@ locret_1BBDE:
 ; ===========================================================================
 
 Obj09_ExitStage:			; XREF: Obj09_Index
-	;	move.w	($FFFFFE20+$FFFFFFE7).w,($FFFFFE20).w	; copy all your rings to your ring counter
-		
 		addi.w	#$40,($FFFFF782).w
 		cmpi.w	#$1800,($FFFFF782).w
 		bne.s	loc_1BBF4
@@ -46274,10 +46195,8 @@ HudUpdate:
 ; ===========================================================================
 
 @NoDemo:
-	if DebugHUD=1
-		tst.w	($FFFFFFFA).w	; is debug mode	on?
+		tst.w	($FFFFFE08).w	; is debug mode	being used?
 		bne.w	HudDebug	; if yes, branch
-	endif
 		tst.b	($FFFFFE1F).w	; does the score need updating?
 		beq.s	Hud_ChkRings	; if not, branch
 		clr.b	($FFFFFE1F).w
@@ -46370,7 +46289,7 @@ TimeOver:				; XREF: Hud_ChkTime
 		lea	($FFFFD000).w,a0
 		movea.l	a0,a2
 		bsr	KillSonic
-		move.b	#1,($FFFFFE1A).w
+	;	move.b	#1,($FFFFFE1A).w
 		rts	
 ; ===========================================================================
 
@@ -47065,8 +46984,9 @@ Debug_MakeItem:
 		lsl.w	#3,d0
 		move.b	4(a2,d0.w),$28(a1)
 		cmpi.b	#$26,(a1)
-		bne		Debug_NotMonitor
+		bne.s	Debug_NotMonitor
 		move.b	#9,$28(a1)
+
 Debug_NotMonitor:
 		rts	
 ; ===========================================================================
@@ -47076,6 +46996,12 @@ Debug_Exit:
 		beq.s	Debug_DoNothing	; if not, branch
 		moveq	#0,d0
 		move.w	d0,($FFFFFE08).w ; deactivate debug mode
+		
+		jsr	Hud_Base
+		move.b	#1,($FFFFFE1F).w ; update score	counter
+		clr.w	$10(a0)	; clear x-speed
+		clr.w	$12(a0)	; clear y-speed
+		clr.w	$14(a0)	; clear inertia
 		move.l	#Map_Sonic,($FFFFD004).w
 		move.w	#$780,($FFFFD002).w
 		move.b	d0,($FFFFD01C).w

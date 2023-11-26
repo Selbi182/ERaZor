@@ -5646,7 +5646,33 @@ SS_MainLoop:
 		tst.b	($FFFFFF5F).w	;  is this the blackout special stage?
 		beq.s	@contyyy
 		cmpi.b	#4,($FFFFD024).w	; is special stage exiting routine being run?
-		bge.s	SS_NoPauseGame		; if yes, branch
+		bge.w	SS_NoPauseGame		; if yes, branch
+
+		movem.l	d0-a1,-(sp)
+		lea	($FFFFFB4E).w,a1 	; get palette
+		moveq	#0,d3			; clear d3
+		move.b	#7,d3			; set d3 to 7 (+1 for the first run)
+@blackoutpalette:
+		moveq	#0,d0			; clear d0
+		move.w	(a1),d0			; get colour
+		moveq	#0,d1			; clear d1
+		move.b	d0,d1 			; copy Green and Red of colour to d1
+		lsr.b	#4,d1 			; get only Green amount
+		move.b	d0,d2 			; copy Green and Red of colour to d2
+		and.b	#$E,d2 			; get only Red amount
+		lsr.w	#8,d0 			; get only Blue amount of d0
+		add.b	d1,d0 			; add Green amount to Blue amount
+		add.b	d2,d0 			; then add Red to the amount
+		divu.w	#3,d0 			; divide by 3
+		and.b	#$E,d0 			; keep it an even value (Keep 9-bit VDP)
+		move.b	d0,d1 			; copy to d1
+		lsl.b	#4,d1 			; shift to left nybble
+		add.b	d1,d0 			; add to d0 (Setting the green)
+		lsl.w	#4,d1 			; shift to next left nybble
+		add.w	d1,d0			; add to d0 (Setting the blue)
+		move.w	d0,(a1)+		; set new colour
+		dbf	d3,@blackoutpalette	; loop for each colour
+		movem.l	(sp)+,d0-a1
 
 		clr.w	($FFFFF782).w ; rotation speed
 
@@ -10008,6 +10034,7 @@ locret_6D10:
 		rts	
 ; End of function MainLoadBlockLoad
 
+; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Level	layout loading subroutine
 ; ---------------------------------------------------------------------------
@@ -10069,6 +10096,31 @@ LevLoad_Row:
 		rts	
 ; End of function LevelLayoutLoad2
 
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Subroutine to change a single chunk in the level layout.
+;
+; Usage:
+;  d0 = rough X position of the chunk to replace
+;  d1 = rough Y position of the chunk to replace
+;  d2 = ID of the new chunk
+; ---------------------------------------------------------------------------
+
+; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+
+Sub_ChangeChunk:
+		lsr.w	#7,d0
+		lsr.w	#1,d0
+		lsr.w	#1,d1
+		andi.w	#$FF80,d1
+		add.w	d1,d0
+		lea	($FFFFA400).w,a0
+		adda.w	d0,a0
+		move.b	d2,(a0)
+		rts
+; End of function Sub_ChangeChunk
+
+; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Dynamic screen resize	loading	subroutine
 ; ---------------------------------------------------------------------------
@@ -12882,7 +12934,7 @@ Obj1D_ChkDelete:				; XREF: Obj1D_Index
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Object 2A - doors (SBZ)
+; Object 2A - doors (SLZ)
 ; ---------------------------------------------------------------------------
 
 Obj2A:					; XREF: Obj_Index
@@ -12915,9 +12967,18 @@ Obj2A_OpenShut:				; XREF: Obj2A_Index
 
 	if DoorsAlwaysOpen=0
 		move.w	#$0809,2(a0)		; use red light art
+		tst.b	$28(a0)		; is this the door leading to the blackout challenge?
+		bpl.s	@notfinaldoor	; if not, branch
+		tst.b	($FFFFFF93).w	; has the player beaten the game?
+		bne.s	@usegreendoor	; if yes, open the door
+		bra.w	Obj2A_Animate	; otherwise, keep it locked
+
+@notfinaldoor:
 		move.b	($FFFFFF8B).w,d0	; get ammount of beat levels
-		and.b	$28(a0),d0
-		beq.s	Obj2A_Animate
+		and.b	$28(a0),d0		; and it by subtype of door (always a single bit)
+		beq.s	Obj2A_Animate		; if the required level hasn't been beaten, keep door locked
+
+@usegreendoor:
 	endif
 
 		move.w	#$4801,2(a0)		; use green light art
@@ -14282,6 +14343,9 @@ loc_17F70X:
 ; ===========================================================================
 
 Obj1F_Flashing:
+		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
+		bne.s	Obj1F_NoFlash		; if yes, branch
+		
 		lea	($FFFFFB02).w,a1		; load second colour
 		moveq	#0,d1				; make sure d1 is empty
 		tst.w	(a1)				; is colour empty?
@@ -14290,6 +14354,8 @@ Obj1F_Flashing:
 
 loc_17F7EX:
 		move.w	d1,(a1)				; set colour
+
+Obj1F_NoFlash:
 		subq.b	#1,$3E(a0)			; sub 1 from flashing timer
 		bne.s	Obj1F_NotGHZ1_WF		; if it isn't empty, branch
 		move.b	#$F,$20(a0)			; set normal touch response
@@ -16685,17 +16751,17 @@ Obj2E_ChkS:
 		move.w	#$118E,d0
 		move.w	#$02D5,d1
 		move.b	#$20,d2
-		bsr		Sub_ChangeChunk
+		jsr	Sub_ChangeChunk
 
 		move.w	#$1252,d0
 		move.w	#$02D5,d1
 		move.b	#$20,d2
-		bsr		Sub_ChangeChunk
+		jsr	Sub_ChangeChunk
 
 		move.w	#$1239,d0
 		move.w	#$01AB,d1
 		move.b	#$20,d2
-		bsr		Sub_ChangeChunk
+		jsr	Sub_ChangeChunk
 
 		movem.l	(sp)+,d0-a1		; restore a1
 
@@ -16736,7 +16802,7 @@ Obj2E_Goggles_NotMZ:
 		move.w	#$1480,d0
 		move.w	#$0380,d1
 		move.b	#$31,d2
-		bsr.w	Sub_ChangeChunk
+		jsr	Sub_ChangeChunk
 		movem.l	(sp)+,d0-a1
 
 		move.w	#$A9,d0
@@ -20317,18 +20383,6 @@ Obj36_SideWays:				; XREF: Obj36_Solid
 		bra.w	Obj36_Display
 ; ===========================================================================
 
-Sub_ChangeChunk:
-		lsr.w	#7,d0
-		lsr.w	#1,d0
-		lsr.w	#1,d1
-		andi.w	#$FF80,d1
-		add.w	d1,d0
-		lea	($FFFFA400).w,a0
-		adda.w	d0,a0
-		move.b	d2,(a0)
-		rts
-; ===========================================================================
-
 Obj36_Explode:
 		move.b	#1,($FFFFFFB3).w
 		bra.s	Obj36_Explode_Spring
@@ -20337,17 +20391,17 @@ Obj36_Explode:
 		move.w	#$118E,d0
 		move.w	#$02D5,d1
 		move.b	#$20,d2
-		bsr.s	Sub_ChangeChunk
+		jsr	Sub_ChangeChunk
 
 		move.w	#$1252,d0
 		move.w	#$02D5,d1
 		move.b	#$20,d2
-		bsr.s	Sub_ChangeChunk
+		jsr	Sub_ChangeChunk
 
 		move.w	#$1239,d0
 		move.w	#$01AB,d1
 		move.b	#$20,d2
-		bsr.s	Sub_ChangeChunk
+		jsr	Sub_ChangeChunk
 
 		movem.l	(sp)+,d0-a1		; restore a1
 
@@ -30036,13 +30090,7 @@ Sonic_Display:				; XREF: loc_12C7E
 		beq.s	BranchRoutine		; if not, branch
 		tst.b	($FFFFFFB9).w		; has flag been set?	
 		beq.s	S_D_NoWF2Flag		; if not, branch
-		lea	($FFFFFA80).w,a4	; load palette location to a4
-		lea	($FFFFCA00).w,a3	; load backed up palette to a3
-		move.w	#$007F,d5		; set d3 to $7F (+1 for the first run)
-
-S_D_RestorePal_MZ1:
-		move.w	(a3)+,(a4)+		; set new palette palette
-		dbf	d5,S_D_RestorePal_MZ1	; loop
+		jsr	WhiteFlash_Restore
 		move.b	#2,($FFFFFFAE).w	; clear WF2 flag
 		bra.s	BranchRoutine		; skip
 ; ===========================================================================
@@ -30160,13 +30208,7 @@ S_D_GHZ2PalChg_Loop:
 		bra.s	S_D_NoInhumanCrush	; skip
 
 S_D_NotGHZ2_PalX:
-		lea	($FFFFFA80).w,a4	; load palette location to a4
-		lea	($FFFFCA00).w,a3	; load backed up palette to a3
-		move.w	#$007F,d5		; set d3 to $7F (+1 for the first run)
-
-S_D_RestorePal:
-		move.w	(a3)+,(a4)+		; set new palette palette
-		dbf	d5,S_D_RestorePal	; loop
+		jsr	WhiteFlash_Restore
 		clr.b	($FFFFFFAE).w		; clear WF2 flag
 
 		tst.b	($FFFFFFAA).w		; is Crabmeat boss defeated?
@@ -31242,8 +31284,8 @@ WF_DoWhiteFlashx:
 		move.b	#6,($FFFFFFB1).w	; set inhuman crush flag
 
 WF_DoWhiteFlash:
-		cmpi.l	#$0EEE0EEE,($FFFFFB00).w	; are the first two colors white?
-		beq.s	WF_Return			; if yes, assume white flashing is still in progress and therefore skip it
+		tst.l	($FFFFCA00).w		; is anything in the backup palette RAM?
+		bne.s	WF_Return		; if yes, assume white flashing is still in progress and therefore skip it
 		lea	($FFFFFA80).w,a3	; load palette location to a3
 		lea	($FFFFCA00).w,a4	; load backup location to a4
 		move.w	#$007F,d3		; set d3 to $7F (+1 for the first run)
@@ -31253,16 +31295,46 @@ WF_BackupPal_Loop:
 		dbf	d3,WF_BackupPal_Loop	; loop
 
 		lea	($FFFFFA80).w,a1	; load palette location to a3
-		move.w	#$EEE,d1		; set colour to white
 		move.w	#$007F,d3		; set d3 to $7F (+1 for the first run)
 
 WF_MakeWhite_Loop:
+		move.w	(a1),d1			; get current color in palette
+		
+		move.w	d1,d2			; copy color
+		andi.w	#$00E,d2		; filter for red
+		cmpi.w	#$00E,d2		; are we at max?
+		beq.s	@maxred			; if yes, branch
+		addi.w	#$002,d1		; otherwise, boost color
+@maxred:
+		move.w	d1,d2			; copy color
+		andi.w	#$0E0,d2		; filter for green
+		cmpi.w	#$0E0,d2		; are we at max?
+		beq.s	@maxgreen		; if yes, branch
+		addi.w	#$020,d1		; otherwise, boost color
+@maxgreen:
+		move.w	d1,d2			; copy color
+		andi.w	#$E00,d2		; filter for blue
+		cmpi.w	#$E00,d2		; are we at max?
+		beq.s	@maxblue		; if yes, branch
+		addi.w	#$200,d1		; otherwise, boost color
+@maxblue:
+
 		move.w	d1,(a1)+		; set new color
 		dbf	d3,WF_MakeWhite_Loop	; loop
 		move.b	#12,($FFFFFFB2).w	; set ScrollHoriz delay and jumpdash flag 2
 WF_Return:
 		rts
 
+WhiteFlash_Restore:
+		lea	($FFFFFA80).w,a4	; load palette location to a4
+		lea	($FFFFCA00).w,a3	; load backed up palette to a3
+		move.w	#$007F,d5		; set d3 to $7F (+1 for the first run)
+WF_Restore_Loop:
+		move.w	(a3)+,(a4)+		; set new palette palette
+		dbf	d5,WF_Restore_Loop	; loop
+		clr.l	($FFFFFA80).w		; clear the first two colors, indicating we are good for more
+		rts
+		
 ; ---------------------------------------------------------------------------
 ; Subroutine to perform a JumpDash / Homing Attack
 ; ---------------------------------------------------------------------------
@@ -41242,13 +41314,7 @@ loc_19934_2:				; XREF: Obj82_EggIndex
 		cmpi.b	#1,($FFFFFFB1).w	; sub 1 from counter
 		bge.s	S_D_NoInhumanCrushX	; is counter now empty? if not, branch
 
-		lea	($FFFFFA80).w,a4	; load palette location to a4
-		lea	($FFFFCA00).w,a3	; load backed up palette to a3
-		move.w	#$007F,d5		; set d3 to $7F (+1 for the first run)
-
-S_D_RestorePalX:
-		move.w	(a3)+,(a4)+		; set new palette palette
-		dbf	d5,S_D_RestorePalX	; loop
+		jsr	WhiteFlash_Restore
 		
 	;	move.b	#$C3,d0
 	;	jsr	PlaySound
@@ -44187,13 +44253,7 @@ Obj09_NoRot:
 		beq.s	SS_NoTeleport		; if yes, branch
 	;	subq.b	#1,($FFFFFFB1).w	; substract from counter
 	;	bpl.s	SS_NoTeleport		; if there's still something in, branch
-		lea	($FFFFFA80).w,a4	; load palette location to a4
-		lea	($FFFFCA00).w,a3	; load backed up palette to a3
-		move.w	#$007F,d5		; set d3 to $7F (+1 for the first run)
-
-SS_RestorePal:
-		move.w	(a3)+,(a4)+		; set new palette palette
-		dbf	d5,SS_RestorePal	; loop
+		jsr	WhiteFlash_Restore
 		clr.b	($FFFFFFAE).w		; clear WF2 flag
 
 SS_NoTeleport:
@@ -44742,19 +44802,6 @@ Obj09_GetCont:
 		move.b	#0,($FF24CA).l
 		move.b	#0,($FF254A).l
 		move.b	#0,($FF25CA).l
-	;	jsr	CollectRing
-		; check for SS1
-	;	bne.s	Obj09_NotSS1
-	;	move.b	#2,$3A(a0)	; mark ghost blocks as "solid"
-
-;Obj09_NotSS1:
-	;	cmpi.w	#50,($FFFFFE20).w ; check if you have 50 rings
-	;	bcs.s	Obj09_NoCont
-	;	bset	#0,($FFFFFE1B).w
-	;	bne.s	Obj09_NoCont
-	;	addq.b	#1,($FFFFFE18).w ; add 1 to number of continues
-	;	move.w	#$BF,d0
-	;	jsr	(PlaySound).l	; play extra continue sound
 
 Obj09_NoCont:
 		moveq	#0,d4
@@ -44834,28 +44881,24 @@ Obj09_YesEmer:
 Obj09_ChkGhost:
 		cmpi.b	#$41,d4			; is the item a	ghost block?
 		bne.w	Obj09_ChkGhostTag	; if not, branch
-	;	cmpi.b	#1,($FFFFFE16).w	; is current special stage number = 1?
-
-
+		
 		move.w	#$B2,d0			; set drown sound
-		tst.b	($FFFFFF5F).w	; is this the blackout blackout special stage?
+		tst.b	($FFFFFF5F).w		; is this the blackout blackout special stage?
 		bne.s	@cont
 		move.w	#$A1,d0			; set checkpoint sound
 @cont:
-
-	;	bne.s	Obj09_CG_Original	; if not, branch
 		move.w	8(a0),($FFFFFF86).w	; save Sonic's X-position
 		move.w	$C(a0),($FFFFFF88).w	; save Sonic's Y-position
 
 		jsr	(PlaySound_Special).l	; play it
 
 		bsr	SS_RemoveCollectedItem	; prepare removing code
-	;	bne.s	Obj09_CG_End		; if it's impossible branch
+	;	bne.w	Obj09_CG_End		; if it's impossible branch
+		
 		move.b	#3,(a2)			; overwrite...
 		move.l	a1,4(a2)		; ...it
+
 		moveq	#0,d4			; clear d4
-
-
 		cmpi.b	#$41,1(a1)
 		bne.s	@cont1
 		move.b	#0,1(a1)
@@ -45166,53 +45209,43 @@ Obj09_NotSS1x:
 ; ===========================================================================
 
 Obj09_UPblock:
-		cmpi.b	#$29,d0		; is the item an "UP" block?
-		bne.w	Obj09_DOWNblock
-		tst.b	$36(a0)
-		bne.w	Obj09_NoGlass
-		move.b	#$1E,$36(a0)
-	;	btst	#6,($FFFFF783).w
-	;	beq.s	Obj09_UPsnd
-		tst.b	($FFFFFF5F).w	; is this the blackout blackout special stage?
-		bne.s	Obj09_UPsnd
+		cmpi.b	#$29,d0			; is the item an "UP" block?
+		bne.w	Obj09_DOWNblock		; if not, branch
 
-		move.w	#$D9,d0		; A9
-		tst.b	($FFFFFFBF).w
-		bne.s	Obj09_UPsnd
-		move.w	#$9A,d0		; A9
-		jsr	(PlaySound).l ;	play up/down sound
-
-		move.b	#$27,($FF2AA6).l
-		move.b	#$27,($FF2B26).l
-		move.b	#$27,($FF2BA6).l
+		tst.b	$36(a0)			; has an up block been touched recently?
+		bne.w	Obj09_NoGlass		; if yes, branch
+		move.b	#$1E,$36(a0)		; disable interaction with this block $1E frames
 		
-		move.l	a0,-(sp)
-		lea	($FFFFFB20).w,a0
-		move.w	#0,$20(a0)
-		move.b	#$2F,d4
+		tst.b	($FFFFFF5F).w		; is this the blackout blackout special stage?
+		bne.s	Obj09_UPsnd		; if yes, branch
 
-@contx
-		jsr	Pal_DecColor
-		dbf	d4,@contx
-		move.l	(sp)+,a0
+		move.w	#$D9,d0			; set sound to D9 (bleep)
+		tst.b	($FFFFFFBF).w		; is Unreal Place floating challenge already active?
+		bne.s	Obj09_UPsnd		; if yes, branch
+		move.w	#$9A,d0			; set music to 9A
+		jsr	(PlaySound).l		; play
 
-		move.w	#$C3,d0		; A9
+		move.b	#$27,($FF2AA6).l	; block off the entrance you came from 1
+		move.b	#$27,($FF2B26).l	; block off the entrance you came from 2
+		move.b	#$27,($FF2BA6).l	; block off the entrance you came from 3
+		
+		move.w	#$0000,($FFFFFB40).w	; make background black
 
+		move.w	#$C3,d0			; play giant ring collected sound
 
 Obj09_UPsnd:
-		tst.b	($FFFFFF5F).w	; is this the blackout blackout special stage?
-		beq.s	@conty
-		addi.w	#$8000,($FFFFF780).w
-		move.w	#$BB,d0		; A9
-		bra.s	Obj09_UPsnd2
+		tst.b	($FFFFFF5F).w		; is this the blackout blackout special stage?
+		beq.s	@conty			; if not, branch
+		addi.w	#$8000,($FFFFF780).w	; rotate screen by 180 degrees
+		move.w	#$BB,d0			; play flip sound
+		bra.s	Obj09_UPsnd2		; go to sound
 
 @conty:
-
-		move.w	#-$160,$12(a0)
+		move.w	#-$160,$12(a0)		; move Sonic upwards
 
 Obj09_UPsnd2:
-		move.b	#1,($FFFFFFBF).w
-		jmp	(PlaySound_Special).l ;	play up/down sound
+		move.b	#1,($FFFFFFBF).w	; set Unreal Place floating challenge flag
+		jmp	(PlaySound_Special).l	; play sound
 ; ===========================================================================
 
 Obj09_DOWNblock:

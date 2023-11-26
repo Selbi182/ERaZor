@@ -291,7 +291,7 @@ Options_HandleDeleteSaveGame:
 		beq.w	Options_Return		; if not, return
 
 		move.b	#1,($A130F1).l		; enable SRAM
-		jsr	SRAM_Delete		; delete SRAM
+		clr.b	($200017).l		; unset the magic number (actual SRAM deletion happens during restart)
 		move.b	#0,($A130F1).l		; disable SRAM
 		
 		lea	($FFFFD000).w,a1	; get start of object RAM

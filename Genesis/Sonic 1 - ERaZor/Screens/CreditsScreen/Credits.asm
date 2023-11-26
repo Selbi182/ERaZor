@@ -3,6 +3,8 @@
 ; Credits Routine
 ; ---------------------------------------------------------------------------
 
+NumberOfCreditsPages = 12
+
 CreditsJest:
 		jsr	Pal_FadeFrom				; fade palette out
 		moveq	#$00,d0					; clear d0
@@ -27,7 +29,7 @@ CreditsJest:
 
 		lea	($00FF0000).l,a1			; set destination
 		lea	(Map_Credits).l,a0			; set mappings location
-		move.w	#(295*11)+11,d1				; set number of loops (10 blocks)
+		move.w	#(295*NumberOfCreditsPages)+11,d1	; set number of loops
 
 CJ_MapsLoop:
 		move.b	(a0)+,(a1)+				; load data
@@ -87,15 +89,14 @@ CJSM_Repeat2:
 		move.l	d0,(a1)+				; dump to scroll buffer
 		dbf	d1,CJSM_Repeat2				; repeat til all scanlines are written to
 
-
 		lea	(CJSM_FO_Array).l,a2	; load base address for the check array
 @FOL_FixOddLoop:
 		moveq	#0,d1			; clear d1
 		moveq	#0,d2			; clear d2
 		moveq	#0,d3			; clear d3
 
-		move.b	(a2),d1			; get current Text ID
-		cmp.b	($FFFFFF91).w,d1	; does it match with the current text ID?
+		move.b	(a2),d1			; get current page ID
+		cmp.b	($FFFFFF91).w,d1	; does it match with the current page ID?
 		bne.s	@FOL_ReLoop		; if not branch
 		move.b	1(a2),d2		; get current Row ID
 		lsl.w	#6,d2			; multiply it by $40
@@ -113,23 +114,40 @@ CJSM_Repeat2:
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 CJSM_FO_Array:
-		;	Text, Row
+; Used to properly horizontally center lines that have an odd number of characters
+; These rows will be shifted one tile to the right
+; Usage: Page (1-based), Row (0-based)
 		dc.b	 1, 8
+		
 		dc.b	 2, 1
 		dc.b	 2, 3
+		
 		dc.b	 4, 1
 		dc.b	 4, 9
+		
 		dc.b	 5, 8
+		
 		dc.b	 6, 1
 		dc.b	 6, 7
+		
+		dc.b	 7, 3
 		dc.b	 7, 9
-	;	dc.b	 8, 1
-		dc.b	 9, 8
-		dc.b	 9, 10
-		dc.b	10, 1
-		dc.b	11, 3
-		dc.b	11, 6
-		dc.b	11, 8
+		
+		dc.b	 8, 1
+		dc.b	 8, 9
+		
+		dc.b	 9, 9
+	
+		dc.b	10, 9
+		dc.b	10,13
+		
+		dc.b	11, 1
+		
+		dc.b	12, 1
+		dc.b	12, 3
+		dc.b	12, 6
+		dc.b	12, 8
+		
 		dc.b	$FF, $FF
 		even
 ; ---------------------------------------------------------------------------
@@ -141,7 +159,7 @@ CJSM_FO_Array:
 ; ---------------------------------------------------------------------------
 ; Mapping
 
-MoveOffSpeed = $0010
+MoveOffSpeed = $0020
 OffScreenPos = $0040
 ; ---------------------------------------------------------------------------
 
@@ -150,7 +168,7 @@ CJ_MapLetters:
 		move.w	($FFFFFFA0).w,d0			; load scroll position
 		andi.w	#$01FF,d0				; keep within the X line
 		cmp.w	#OffScreenPos*4,d0			; has it reached out of screen?
-		beq	CJML_WriteMappings			; if so, branch
+		ble	CJML_WriteMappings			; if so, load the next page
 		rts						; return
 
 
@@ -170,7 +188,6 @@ CJML_WriteMappings:
 		movea.l	d0,a0					; set as new address
 		moveq	#$00,d7					; clear d7
 		move.b	(a0)+,d7				; load repeat times
-
 CJML_NextCharacter:
 		moveq	#$00,d0					; clear d0
 		move.b	(a0)+,d0				; load character
@@ -193,12 +210,19 @@ CJML_RunLetter:
 		add.w	d0,d0					; ...4
 		addq.w	#$01,d0					; plus 1
 		move.l	d6,$04(a1)				; set VDP
+		
+		cmpi.b	#8,d7			; use the second palette set for lower part (where the names are)
+		bge.s	@nosecondpalset
+		addi.w	#$4000,d0		; start on palette row 3
+@nosecondpalset:
 		move.w	d0,(a1)					; save
 		addq.w	#$02,d0					; increase by 2
 		move.w	d0,(a1)					; save
 		subq.w	#$01,d0					; decrease by 1
 		add.l	d5,d6					; increase to next line
 		move.l	d6,$04(a1)				; set VDP
+		
+		addi.w	#$2000,d0		; use next palette row
 		move.w	d0,(a1)					; save
 		addq.w	#$02,d0					; increase by 2
 		move.w	d0,(a1)					; save
@@ -207,24 +231,22 @@ CJML_RunLetter:
 ; ---------------------------------------------------------------------------
 
 CJML_ScrollIn:
-		cmpi.b	#11,($FFFFFF91).w
-		bne.s	CJML_NormalScreen
+		cmpi.b	#NumberOfCreditsPages,($FFFFFF91).w	; is this the final screen? (return to sega screen)
+		bne.s	CJML_NormalScreen			; if not, branch
 
 CJML_FinalLoop:
 		addq.b	#1,($FFFFFE04).w			; increase frame counter
-	;	btst	#0,($FFFFFE04).w
-	;	bne.s	ycont
 
-		subi.w	#1,($FFFFFFA0).w			; decrease X scroll position left
 		move.w	($FFFFFFA0).w,d0			; load scroll position
 		andi.w	#$01FF,d0				; keep within the X line
-		cmp.w	#$0000,d0				; has it reached in screen?
-		bne	ycont
+		tst.w	d0				; is it at the center of the screen?
+		bne	CJML_FinalScreenScroll			; if not, branch (keep scrolling)
 		bra	CJML_FinalLoop2				; if so, branch
 
-ycont:
+CJML_FinalScreenScroll:
 		move.b	#$04,($FFFFF62A).w			; set V-Blank routine to run
 		jsr	DelayProgram				; hult main program to run V-Blank
+		subi.w	#$10,($FFFFFFA0).w			; decrease X scroll position left
 		bsr	CJ_ScrollMappings			; run scrolling/deformation
 		bra	CJML_FinalLoop				; loop
 
@@ -237,11 +259,11 @@ CJML_FinalLoop2:
 
 CJML_NormalScreen:
 		subi.w	#MoveOffSpeed,($FFFFFFA0).w		; decrease X scroll position left
-		move.b	#$60,($FFFFFF90).w
+		move.b	#$60,($FFFFFF90).w			; set slow display time to $60 frames
 		move.w	($FFFFFFA0).w,d0			; load scroll position
 		andi.w	#$01FF,d0				; keep within the X line
 		cmp.w	#OffScreenPos,d0			; has it reached in screen?
-		beq	CJML_ScrollSlow				; if so, branch
+		bmi	CJML_ScrollSlow				; if so, branch
 		move.b	#$04,($FFFFF62A).w			; set V-Blank routine to run
 		jsr	DelayProgram				; hult main program to run V-Blank
 		bsr	CJ_ScrollMappings			; run scrolling/deformation
@@ -254,7 +276,7 @@ CJML_ScrollSlow:
 		btst	#0,($FFFFFE04).w
 		bne.s	xcont
 		subq.w	#$0001,($FFFFFFA0).w			; decrease X scroll position left
-		subq.b	#$0001,($FFFFFF90).w		
+		subq.b	#$0001,($FFFFFF90).w			; is slow display time over?
 		beq	CJML_FinishUp				; if so, branch
 
 xcont:
@@ -283,11 +305,14 @@ CJML_End:
 Pal_Credits:
 		dc.w	$0000,$0000,$0444,$0EEE,$0AAA,$0000,$0000,$0000
 		dc.w	$0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
+		
+		dc.w	$0000,$0000,$0400,$0EAA,$0A66,$0000,$0000,$0000
 		dc.w	$0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
+		
+		dc.w	$0000,$0000,$0444,$0EEE,$0AAA,$0000,$0000,$0000
 		dc.w	$0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
-		dc.w	$0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
-		dc.w	$0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
-		dc.w	$0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
+		
+		dc.w	$0000,$0000,$0444,$0EEE,$0AAA,$0000,$0000,$0000
 		dc.w	$0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
 		even
 

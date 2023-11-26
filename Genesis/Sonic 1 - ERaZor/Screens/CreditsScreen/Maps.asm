@@ -105,7 +105,7 @@ StartText:
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
-	dc.b	"      EDUARDO       ",$FF
+	dc.b	"  EDUARDOKNUCKLES   ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
@@ -128,8 +128,42 @@ StartText:
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
-
+	
 	; 7
+	dc.b	$0D						; Number of lines
+	dc.b	"                    ",$FF
+	dc.b	"     ADDITIONAL     ",$FF
+	dc.b	"                    ",$FF
+	dc.b	"  BETA TESTING BY   ",$FF
+	dc.b	"                    ",$FF
+	dc.b	"                    ",$FF
+	dc.b	"                    ",$FF
+	dc.b	"                    ",$FF
+	dc.b	"   PEANUT NOCEDA    ",$FF
+	dc.b	"                    ",$FF
+	dc.b	"                    ",$FF
+	dc.b	"                    ",$FF
+	dc.b	"                    ",$FF
+	dc.b	"                    ",$FF
+
+	; 8
+	dc.b	$0D						; Number of lines
+	dc.b	"                    ",$FF
+	dc.b	"   REAL HARDWARE    ",$FF
+	dc.b	"                    ",$FF
+	dc.b	"     TESTING BY     ",$FF
+	dc.b	"                    ",$FF
+	dc.b	"                    ",$FF
+	dc.b	"                    ",$FF
+	dc.b	"    REDHOTSONIC     ",$FF
+	dc.b	"                    ",$FF
+	dc.b	"                    ",$FF
+	dc.b	"                    ",$FF
+	dc.b	"                    ",$FF
+	dc.b	"                    ",$FF
+	dc.b	"                    ",$FF
+
+	; 9
 	dc.b	$0D						; Number of lines
 	dc.b	"                    ",$FF
 	dc.b	"   SPECIAL THANKS   ",$FF
@@ -146,24 +180,7 @@ StartText:
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
 
-	; 8
-	dc.b	$0D						; Number of lines
-	dc.b	"                    ",$FF
-	dc.b	"   REAL HARDWARE    ",$FF
-	dc.b	"                    ",$FF
-	dc.b	"    TESTING BY      ",$FF
-	dc.b	"                    ",$FF
-	dc.b	"                    ",$FF
-	dc.b	"                    ",$FF
-	dc.b	"    REDHOTSONIC     ",$FF
-	dc.b	"                    ",$FF
-	dc.b	"                    ",$FF
-	dc.b	"                    ",$FF
-	dc.b	"                    ",$FF
-	dc.b	"                    ",$FF
-	dc.b	"                    ",$FF
-
-	; 9
+	; 10
 	dc.b	$0D						; Number of lines
 	dc.b	"                    ",$FF
 	dc.b	"     EASTER EGG     ",$FF
@@ -176,11 +193,11 @@ StartText:
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
-	dc.b	"                    ",$FF
+	dc.b	"   BLAME HIM LOL    ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
 
-	; 10
+	; 11
 	dc.b	$0D						; Number of lines
 	dc.b	"                    ",$FF
 	dc.b	"   ORIGINAL GAME    ",$FF
@@ -197,10 +214,10 @@ StartText:
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
 
-	; 11
+	; 12
 	dc.b	$0D						; Number of lines
 	dc.b	"                    ",$FF
-	dc.b	"     THANKS FOR     ",$FF
+	dc.b	"   THANK YOU FOR    ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"      PLAYING       ",$FF
 	dc.b	"                    ",$FF
@@ -210,6 +227,7 @@ StartText:
 	dc.b	"     TO RETURN      ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"   TO SEGA SCREEN   ",$FF
+	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF

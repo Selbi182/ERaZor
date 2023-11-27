@@ -44,6 +44,15 @@ Align:		macro
 		endm
 ; =====================
 
+; =======================================================
+; ------------------------------------------------------
+; Vladik's Debugger
+; ------------------------------------------------------
+		include	"Debugger/Debugger.asm"
+		even
+; ------------------------------------------------------
+; =======================================================
+		
 ;--------------------------------------------------------
 ; Assembly Options (NOTE: There are more spread around
 ; the disassembly! Search for " = " (without the quotes)
@@ -86,7 +95,7 @@ StartOfRom:
 		dc.l ErrorTrap,	ErrorTrap, ErrorTrap, ErrorTrap
 		dc.l ErrorTrap,	ErrorTrap, ErrorTrap, ErrorTrap
 
-Console:	dc.b 'SEGA MEGA DRIVE ' ; Hardware system ID
+		dc.b 'SEGA MEGA DRIVE ' ; Hardware system ID
 
 Date:		dc.b '(C)SELBI 2024   ' ; Release date
 Title_Local:	dc.b 'Sonic ERaZor                                    ' ; Domestic name
@@ -236,6 +245,8 @@ GameClrRAM:
 		move.b	#0,($FFFFF600).w ; set Game Mode to Sega Screen
 
 ; ===========================================================================
+
+; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; SRAM Loading Routine
 ; ---------------------------------------------------------------------------
@@ -378,183 +389,6 @@ GameModeArray:
 		dc.l	CreditsJest	; Markey's Credits	($2C)
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
-
-BusError:
-		move.b	#2,($FFFFFC44).w
-		bra.s	loc_43A
-; ===========================================================================
-
-AddressError:
-		move.b	#4,($FFFFFC44).w
-		bra.s	loc_43A
-; ===========================================================================
-
-IllegalInstr:
-		move.b	#6,($FFFFFC44).w
-		addq.l	#2,2(sp)
-		bra.s	loc_462
-; ===========================================================================
-
-ZeroDivide:
-		move.b	#8,($FFFFFC44).w
-		bra.s	loc_462
-; ===========================================================================
-
-ChkInstr:
-		move.b	#$A,($FFFFFC44).w
-		bra.s	loc_462
-; ===========================================================================
-
-TrapvInstr:
-		move.b	#$C,($FFFFFC44).w
-		bra.s	loc_462
-; ===========================================================================
-
-PrivilegeViol:
-		move.b	#$E,($FFFFFC44).w
-		bra.s	loc_462
-; ===========================================================================
-
-Trace:
-		move.b	#$10,($FFFFFC44).w
-		bra.s	loc_462
-; ===========================================================================
-
-Line1010Emu:
-		move.b	#$12,($FFFFFC44).w
-		addq.l	#2,2(sp)
-		bra.s	loc_462
-; ===========================================================================
-
-Line1111Emu:
-		move.b	#$14,($FFFFFC44).w
-		addq.l	#2,2(sp)
-		bra.s	loc_462
-; ===========================================================================
-
-ErrorExcept:
-		move.b	#0,($FFFFFC44).w
-		bra.s	loc_462
-; ===========================================================================
-
-loc_43A:
-		move	#$2700,sr
-		addq.w	#2,sp
-		move.l	(sp)+,($FFFFFC40).w
-		addq.w	#2,sp
-		movem.l	d0-a7,($FFFFFC00).w
-		bsr	ShowErrorMsg
-		move.l	2(sp),d0
-		bsr	sub_5BA
-		move.l	($FFFFFC40).w,d0
-		bsr	sub_5BA
-		bra.s	loc_478
-; ===========================================================================
-
-loc_462:
-		move	#$2700,sr
-		movem.l	d0-a7,($FFFFFC00).w
-		bsr	ShowErrorMsg
-		move.l	2(sp),d0
-		bsr	sub_5BA
-
-loc_478:
-		bsr	ErrorWaitForC
-		movem.l	($FFFFFC00).w,d0-a7
-		move	#$2300,sr
-		rte	
-
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
-
-ShowErrorMsg:				; XREF: loc_43A; loc_462
-		lea	($C00000).l,a6
-		move.l	#$78000003,($C00004).l
-		lea	(Art_Text).l,a0
-		move.w	#$27F,d1
-
-Error_LoadGfx:
-		move.w	(a0)+,(a6)
-		dbf	d1,Error_LoadGfx
-		moveq	#0,d0		; clear	d0
-		move.b	($FFFFFC44).w,d0 ; load	error code
-		move.w	ErrorText(pc,d0.w),d0
-		lea	ErrorText(pc,d0.w),a0
-		move.l	#$46040003,($C00004).l ; position
-		moveq	#$12,d1		; number of characters
-
-Error_LoopChars:
-		moveq	#0,d0
-		move.b	(a0)+,d0
-		addi.w	#$790,d0
-		move.w	d0,(a6)
-		dbf	d1,Error_LoopChars ; repeat for	number of characters
-		rts	
-; End of function ShowErrorMsg
-
-; ===========================================================================
-ErrorText:	dc.w asc_4E8-ErrorText,	asc_4FB-ErrorText ; XREF: ShowErrorMsg
-		dc.w asc_50E-ErrorText,	asc_521-ErrorText
-		dc.w asc_534-ErrorText,	asc_547-ErrorText
-		dc.w asc_55A-ErrorText,	asc_56D-ErrorText
-		dc.w asc_580-ErrorText,	asc_593-ErrorText
-		dc.w asc_5A6-ErrorText
-asc_4E8:	dc.b 'ERROR EXCEPTION    '
-asc_4FB:	dc.b 'BUS ERROR          '
-asc_50E:	dc.b 'ADDRESS ERROR      '
-asc_521:	dc.b 'ILLEGAL INSTRUCTION'
-asc_534:	dc.b '@ERO DIVIDE        '
-asc_547:	dc.b 'CHK INSTRUCTION    '
-asc_55A:	dc.b 'TRAPV INSTRUCTION  '
-asc_56D:	dc.b 'PRIVILEGE VIOLATION'
-asc_580:	dc.b 'TRACE              '
-asc_593:	dc.b 'LINE 1010 EMULATOR '
-asc_5A6:	dc.b 'LINE 1111 EMULATOR '
-		even
-
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
-
-sub_5BA:				; XREF: loc_43A; loc_462
-		move.w	#$7CA,(a6)
-		moveq	#7,d2
-
-loc_5C0:
-		rol.l	#4,d0
-		bsr.s	sub_5CA
-		dbf	d2,loc_5C0
-		rts	
-; End of function sub_5BA
-
-
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
-
-sub_5CA:				; XREF: sub_5BA
-		move.w	d0,d1
-		andi.w	#$F,d1
-		cmpi.w	#$A,d1
-		bcs.s	loc_5D8
-		addq.w	#5,d1	; changed from 7
-
-loc_5D8:
-		addi.w	#$7C0,d1
-		move.w	d1,(a6)
-		rts	
-; End of function sub_5CA
-
-
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
-
-ErrorWaitForC:				; XREF: loc_478
-		bsr	ReadJoypads
-		tst.b	($FFFFF605).w	; are any buttons being pressed?
-		beq.s	ErrorWaitForC	; if not, branch
-	;	cmpi.b	#$20,($FFFFF605).w ; is	button C pressed?
-	;	bne.w	ErrorWaitForC	; if not, branch
-		rts	
-; End of function ErrorWaitForC
 
 ; ===========================================================================
 
@@ -50486,11 +50320,27 @@ AlignValue =	$0D0000
 
 		align	AlignValue+$30000+$8000
 		incbin	sound\Driver\S1HLDACBank4.bin
+		
+		even
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
 
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Vladik's Debugging modules
+; ---------------------------------------------------------------------------
+; WARNING!
+;	DO NOT put any data from now on! DO NOT use ROM padding!
+;	Symbol data should be appended here after ROM is compiled
+;	by ConvSym utility, otherwise debugger modules won't be able
+;	to resolve symbol names.
+; ---------------------------------------------------------------------------
+		include   "Debugger/ErrorHandler.asm"
+		even
+; ---------------------------------------------------------------------------
+; ===========================================================================
 
 ; ===========================================================================
-EndOfRom:	END
+EndOfRom:	END	; it's joever
 ; ===========================================================================
 		

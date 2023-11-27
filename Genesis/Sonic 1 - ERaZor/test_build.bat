@@ -3,12 +3,23 @@ echo ============================================
 echo Sonic ERaZor is building...
 echo ============================================
 
-asm68k /o op+ /o os+ /o ow+ /o oz+ /o oaq+ /o osq+ /o omq+ /p /o ae- sonic1.asm, s1erz.bin
+asm68k /k /m /o ws+ /o op+ /o os+ /o ow+ /o oz+ /o oaq+ /o osq+ /o omq+ /o ae- /o v+ /p sonic1.asm, s1erz.bin, Debugger\Generated\s1erz.sym, Debugger\Generated\s1erz.lst
 
-echo.
-echo ============================================
-echo Built, press any button to play!
-echo ============================================
-pause
-@echo on
-s1erz.bin
+if exist s1erz.bin (
+	Debugger\convsym.exe Debugger\Generated\s1erz.sym s1erz.bin -a
+
+	echo.
+	echo ============================================
+	echo Built, press any button to play!
+	echo ============================================
+	pause
+	@echo on
+	s1erz.bin
+) else (
+	echo.
+	echo ============================================
+	echo !!! BUILD FAILED !!!
+	echo ============================================
+	pause
+)
+

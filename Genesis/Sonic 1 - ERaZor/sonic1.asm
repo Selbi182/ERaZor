@@ -15894,12 +15894,8 @@ Obj4B_ArtLoadLoop:
 Obj4B_NotGHZ1:
 		subq.b	#2,$24(a0)
 		move.b	#0,$20(a0)
-		cmpi.w	#$000,($FFFFFE10).w
-		beq.s	@cont
 		cmpi.w	#$001,($FFFFFE10).w
 		bne.s	Obj4B_NotGHZ2
-
-@cont:
 		clr.w	($FFFFF73A).w
 		jsr	WhiteFlash3		; make white flash
 
@@ -18678,17 +18674,26 @@ Obj32_Index:	dc.w Obj32_Main-Obj32_Index
 Obj32_Main:				; XREF: Obj32_Index
 		addq.b	#2,$24(a0)
 		move.l	#Map_obj32,4(a0)
-		move.w	#$4513,2(a0)	; MZ specific code
-		cmpi.b	#2,($FFFFFE10).w
-		beq.s	loc_BD60
-		move.w	#$513,2(a0)	; SYZ, LZ and SBZ specific code
 
-loc_BD60:
-		cmpi.b	#$3,($FFFFFE10).w
-		bne.s	@cont
-		move.w	#$480,2(a0)
+		move.w	#$513,2(a0)		; default maps
+		
+		cmpi.b	#5,($FFFFFE10).w	; is level SBZ?
+		bne.s	@switchcheckmz		; if not, branch
+		move.w	#$3A4,2(a0)		; SBZ maps
+@switchcheckmz:
+		cmpi.b	#2,($FFFFFE10).w	; is level MZ?
+		bne.s	@switchchecklz		; if not, branch
+		move.w	#$4513,2(a0)		; MZ maps
+@switchchecklz:	
+		cmpi.b	#1,($FFFFFE10).w	; is level LZ?
+		bne.s	@switchcheckslz		; if not, branch
+		move.w	#$513,2(a0)		; MZ maps
+@switchcheckslz:
+		cmpi.b	#3,($FFFFFE10).w	; is level SLZ?
+		bne.s	@switchcheckend		; if not, branch
+		move.w	#$480,2(a0)		; SLZ maps
 
-@cont:
+@switchcheckend:
 		move.b	#4,1(a0)
 		move.b	#$10,$19(a0)
 		move.b	#4,$18(a0)
@@ -18742,6 +18747,16 @@ loc_BDD6:
 		bra.w	@cont
 
 @notmzswitch:
+		cmpi.w	#$501,($FFFFFE10).w	; is this the tutorial?
+		bne.s	@nottutorialswitch	; if not, branch
+		tst.b	($FFFFFF77).w		; is antigrav already enabled?
+		bne.w	@cont			; if yes, branch
+		move.b	#1,($FFFFFF77).w	; enable antigrav ability
+		move.b	#$A8,d0			; play upgrade sound
+		jsr	PlaySound
+		bra.s	@cont
+
+@nottutorialswitch:
 		cmpi.w	#$302,($FFFFFE10).w	; is this Star Agony Place?
 		bne.w	@cont			; if not, branch
 		tst.b	($FFFFFF77).w		; is antigrav already enabled?
@@ -29739,8 +29754,6 @@ AfterImage:
 		bne.w	After_DoAfter		; if yes, branch
 		tst.b	($FFFFFFAD).w		; is Sonic performing a jumpdash or is on a spring?
 		bne.w	After_DoAfter		; if yes, branch
-		cmpi.w	#$302,($FFFFFE10).w
-		bne.s	@cont
 		tst.b	($FFFFFF77).w
 		beq.s	@cont
 		btst	#1,$22(a0)
@@ -31190,7 +31203,7 @@ FixLevel:
 ; ---------------------------------------------------------------------------
 
 WhiteFlash3:
-		move.b	#10,($FFFFFFB1).w	; set inhuman crush flag
+		move.b	#6,($FFFFFFB1).w	; set inhuman crush flag
 		bra.s	WF_DoWhiteFlash		; no inhuman/invin mode required
 ; ===========================================================================
 	
@@ -31893,8 +31906,6 @@ AF_Decel = $100	; deceleration speed
 AF_Limit = $700	; max speed
 
 Sonic_AirFreeze:
-		cmpi.w	#$302,($FFFFFE10).w	; is this Star Agony Place?
-		bne.w	AM_End			; if not, branch
 		tst.b	($FFFFFF77).w		; is antigrav enabled?
 		beq.w	AM_End			; if not, branch
 
@@ -31966,6 +31977,7 @@ AM_ChkDown:
 AM_ChkLeft:	
 		btst	#2,($FFFFF602).w	; is left pressed?
 		beq.s	AM_ChkRight		; if not, check if down is pressed
+		bset	#0,$22(a0)		; make Sonic fake the left
 		subi.w	#AF_Accel,$10(a0)	; move sonic left
 		cmpi.w	#-AF_Limit,$10(a0)	; has speed limit been reached?
 		bgt.s	AM_ChkRight		; if not, branch
@@ -31974,6 +31986,7 @@ AM_ChkLeft:
 AM_ChkRight:
 		btst	#3,($FFFFF602).w	; is right pressed?
 		beq.s	AM_End			; if not, branch
+		bclr	#0,$22(a0)		; make Sonic fake the right
 		addi.w	#AF_Accel,$10(a0)	; move sonic right
 		cmpi.w	#AF_Limit,$10(a0)	; has speed limit been reached?
 		blt.s	AM_End			; if not, branch
@@ -33155,6 +33168,11 @@ loc_13ADE:
 		lea	(SonAni_Roll2).l,a1 ; use fast animation
 		cmpi.w	#$600,d2	; is Sonic moving fast?
 		bcc.s	loc_13AF0	; if yes, branch
+		tst.b	($FFFFFFE5).w	; air freeze active?
+		beq.s	@cont		; if not, branch
+		move.w	#$700,d2	; always use fast rolling animation while air freezing
+		bra.s	loc_13AF0
+	@cont:
 		lea	(SonAni_Roll).l,a1 ; use slower	animation
 
 loc_13AF0:
@@ -46131,18 +46149,6 @@ Obj21_NoUpdate:
 		moveq	#2,d0			; clear d0
 		tst.w	($FFFFFE20).w		; do you have any rings?
 		beq.s	Obj21_Flash2		; if not, branch
-
-	;	cmpi.w	#$302,($FFFFFE10).w	; is level SLZ3?
-	;	bne.s	Obj21_Contx		; if not, branch
-	;	tst.b	($FFFFFF77).w		; floating mode on?
-	;	bne.s	Obj21_Flash2		; if yes, branch
-
-Obj21_Contx:
-	;	cmpi.w	#$200,($FFFFFE10).w	; is level MZ1?
-	;	bne.s	Obj21_Cont		; if not, branch
-	;	tst.b	($FFFFFFE7).w		; inhuman mode on?
-	;	bne.s	Obj21_Flash2		; if yes, branch
-
 		bra.s	Obj21_Cont
 ; ---------------------------------------------------------------------------
 

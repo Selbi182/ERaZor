@@ -210,6 +210,12 @@ CS_Loop:
 ; ---------------------------------------------------------------------------
 
 CS_EndLoop:
+		cmpi.w	#$001,($FFFFFE10).w	; is this the intro cutscene?
+		bne.s	CS_NotIntro		; if not, branch
+		move.w	#$400,($FFFFFE10).w	; set level to SYZ1
+		bra.s 	CS_PlayLevel
+		
+CS_NotIntro:
 		move.w	#$400,($FFFFFE10).w	; set level to SYZ1
 		tst.b	($FFFFFF7D).w		; has chapters screen been entered through a giant ring SYZ?
 		beq.s	CS_PlayLevel		; if not, branch

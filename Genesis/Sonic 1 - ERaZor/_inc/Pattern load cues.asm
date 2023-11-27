@@ -246,10 +246,10 @@ PLC_SBZ:	dc.w 4
 		dc.w $6E40
 		dc.l Nem_SbzDoor1	; door
 		dc.w $5500		; VLADIK => Fixed from $5D00
-		dc.l Nem_Bomb		; bomb enemy
-		dc.w $8000
 		dc.l Nem_Buzz		; buzz bomber enemy
 		dc.w $8880
+		dc.l Nem_LzSwitch	; switch
+		dc.w $7400
 PLC_SBZ2:	dc.w 2
 		dc.l Nem_Electric	; electric orb
 		dc.w $8FC0

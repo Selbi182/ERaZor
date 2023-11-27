@@ -260,6 +260,10 @@ DH_DrawChar:
 	lea	Art_DH_FontY,a1
 	move.b	#$25+$36,d0
 @NoYHyphen:
+	cmpi.b	#'+',d0
+	bne.s	@NoPlus
+	move.b	#$29+$36,d0
+@NoPlus:
 	cmpi.b	#'a',d0
 	blt.s	@NoYellow
 	cmpi.b	#'z',d0
@@ -650,52 +654,34 @@ Hint_Pre:
 
 ;		 --------------------
 Hint_1:
-	dc.b	_br,_br
-	dc.b	'   WELCOME TO THE',_br
-	dc.b	_br
-	dc.b	'   tutorial place',_br
-	dc.b	_pause,_cls
-	
-	dc.b	'MONITORS LIKE THESE',_br
-	dc.b	'ARE SPREAD AROUND',_br
-	dc.b	'THIS LEVEL AND WILL',_br
-	dc.b	'GIVE ALL SORTS OF',_br
-	dc.b	'HELPFUL INFORMATION.',_br
-	dc.b	_pause,_cls
-
-	dc.b	'TO SKIP THE TUTORIAL',_br
-	dc.b    'JUMP INTO THE RING',_br
-	dc.b	'ON YOUR LEFT.',_br
-	dc.b	_br
-	dc.b	'OTHERWISE, GO TO THE',_br
-	dc.b	'RIGHT TO BEGIN!',_br
+	dc.b	'YOU SHOULD NOT BE',_br
+	dc.b	'ABLE TO READ THIS',_br
+	dc.b	'LOL',_br
 	dc.b	_pause,_end
 
 ;		 --------------------
 Hint_2:
-	dc.b	'BASIC CONTROLS',_br
+	dc.b	'controls',_br
 	dc.b	_br
-	dc.b	'dpad - TAKE A GUESS',_br
+	dc.b	'c OR b - JUMP',_br
 	dc.b	'a - SPECIAL POWER',_br
-	dc.b	'b/c - JUMP',_br
 	dc.b	'down+jump - SPINDASH',_br
 	dc.b	'up+jump - PEELOUT',_br
 	dc.b	_pause,_cls
 	
-	dc.b	'WHILE IN AIR',_br
+	dc.b	'while in air',_br
 	dc.b	_br
-	;	'                    '
-	dc.b	'a - SPECIAL POWER',_br
-	dc.b	'b - DOUBLE JUMP',_br
 	dc.b	'c - HOMING ATTACK',_br
+	dc.b	'b - DOUBLE JUMP',_br
+	dc.b	'a - SPECIAL POWER',_br
 	dc.b	_br
-	dc.b	'dpad AND jump -',_br
+	dc.b	'd_pad + jump -',_br
 	dc.b    '  DIRECTIONAL JUMP',_br
 	dc.b	_pause,_end
 
 ;		 --------------------
 Hint_3:
-	dc.b	'    inhuman mode',_br
+	dc.b	'inhuman mode',_br
 	dc.b	_br
 	dc.b	'YOU CANNOT DIE,',_br
 	dc.b	'EVEN TO BOTTOMLESS',_br
@@ -703,7 +689,7 @@ Hint_3:
 	dc.b	'CRUSHED TO DEATH!',_br
 	dc.b	_pause,_cls
 
-	dc.b	'a AND dpad',_br
+	dc.b	'a + d_pad',_br
 	dc.b	_br
 	dc.b	'SHOOTS A MISSILE',_br
 	dc.b	'YOU CAN PROPEL',_br
@@ -720,27 +706,27 @@ Hint_4:
 
 ;		 --------------------
 Hint_5:
-	dc.b	'TOUCHING SPIKES',_br
-	dc.b	'DURING inhuman mode',_br
-	dc.b	'TELEPORTS YOU BACK',_br
-	dc.b	'TO THE START!',_br
+	dc.b	'MOST CHALLENGES IN',_br
+	dc.b	'THIS GAME WILL',_br
+	dc.b	'INSTANTLY TELEPORT',_br
+	dc.b	'YOU BACK TO THEIR',_br
+	dc.b	'START, RATHER THAN',_br
+	dc.b	'SIMPLY KILLING YOU!',_br
 	dc.b	_pause,_end
 
 ;		 --------------------
 Hint_6:
-	dc.b	' hard part skipper',_br
+	dc.b	'hard part skipper',_br
 	dc.b	_br
-	dc.b	'PRESS a AND b AND c',_br
+	dc.b	'PRESS a + b + c',_br
 	dc.b	'TO SKIP CHALLENGES',_br
 	dc.b	'THAT ARE SIMPLY TOO',_br
 	dc.b	'HARD FOR YOU.',_br
-	dc.b	_br
-	dc.b	'COST: YOUR RINGS',_br
 	dc.b	_pause,_end
 
 ;		 --------------------
 Hint_7:
-	dc.b	'   trial and error',_br
+	dc.b	'trial and error',_br
 	dc.b	_br
 	dc.b	'SOME CHALLENGES',_br
 	dc.b	'SIMPLY CANNOT BE',_br
@@ -749,18 +735,19 @@ Hint_7:
 	dc.b	_pause,_cls
 
 	dc.b	'DO NOT WORRY THOUGH,',_br
-	dc.b	'THERE ARE NO LIVES',_br
-	dc.b	'SO DO NOT BE AFRAID',_br
-	dc.b	'TO BE A MANIAC!',_br
+	dc.b	'THERE ARE NO LIVES,',_br
+	dc.b	'SO FEEL FREE TO BE',_br
+	dc.b	'A MANIAC!',_br
 	dc.b	_pause,_end
 
 ;		 --------------------
 Hint_8:
-	dc.b	'   gravity control',_br
+	dc.b	'alternative gravity',_br
 	dc.b	_br
 	dc.b	'HOLD a WHILE IN AIR',_br
+	dc.b	'AND USE THE d_pad',_br
 	dc.b	'TO CONTROL THE',_br
-	dc.b	'GRAVITY OF SONIC!',_br
+	dc.b	'MOVEMENT OF SONIC!',_br
 	dc.b	_pause,_end
 
 ;		 --------------------
@@ -775,8 +762,8 @@ Hint_9:
 
 	dc.b	'JUST ONE WORD OF',_br
 	dc.b	'ADVICE, YOU CAN',_br
-	dc.b	'ALWAYS GO BACK TO',_br
-	dc.b	'THE OVERWORLD BY',_br
+	dc.b	'ALWAYS RETURN TO',_br
+	dc.b	'THE HUB WORLD BY',_br
 	dc.b	'PRESSING a WHILE',_br
 	dc.b	'THE GAME IS PAUSED.',_br
 	dc.b	_pause,_cls

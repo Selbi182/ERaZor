@@ -236,6 +236,7 @@ GameClrRAM:
 		move.b	#0,($FFFFF600).w ; set Game Mode to Sega Screen
 
 ; ===========================================================================
+; ---------------------------------------------------------------------------
 ; SRAM Loading Routine
 ; ---------------------------------------------------------------------------
 ; Format (note, SRAM can only be written to odd addresses):
@@ -250,86 +251,99 @@ GameClrRAM:
 ;  s_ = Score ($FFFFFE26-FFFFFE29)
 ;  cm = Complete (saw final custscene at least once) ($FFFFFF93)
 ;  mg = Magic Number (always set to 182, absence implies no SRAM)
+; ---------------------------------------------------------------------------
+SRAM_Options	= $01
+SRAM_Chapter	= $03
+SRAM_Doors	= $05
+SRAM_Lives	= $07
+SRAM_Rings	= $09 ; 2 bytes
+SRAM_Score	= $0D ; 4 bytes
+SRAM_Complete	= $15
+SRAM_Exists	= $17
+
 SRAM_MagicNumber = 182
 ; ---------------------------------------------------------------------------
 
 LoadSRAM:
-		moveq	#0,d0			; clear d0
-		move.b	#1,($A130F1).l		; enable SRAM
-		lea	($200000).l,a1		; base of SRAM
-		cmpi.b	#SRAM_MagicNumber,$17(a1) ; does SRAM exist?
-		beq.s	SRAMFound		; if yes, branch
+		moveq	#0,d0					; clear d0
+		move.b	#1,($A130F1).l				; enable SRAM
+		lea	($200000).l,a1				; base of SRAM
+		cmpi.b	#SRAM_MagicNumber,SRAM_Exists(a1)	; does SRAM exist?
+		beq.s	SRAMFound				; if yes, branch
 		
-		bsr.s	SRAM_Delete		; clear any existing SRAM
+		bsr.s	SRAM_Delete				; clear any existing SRAM
 		bra.w	SRAMEnd
 
 SRAMFound:
-		lea	($200000).l,a1		; base of SRAM
-		move.b	$1(a1),($FFFFFF92).w	; load options flags
-		move.b	$3(a1),($FFFFFFA7).w	; load current chapter
-		move.b	$5(a1),($FFFFFF8B).w	; load open doors bitset
-		move.b	$7(a1),($FFFFFE12).w	; load lives/deaths counter
-		movep.w	$9(a1),d0		; load...
-		move.w	d0,($FFFFFE20).w	; ...rings
-		movep.l	$D(a1),d0		; load...
-		move.l	d0,($FFFFFE26).w	; ...score
-		move.b	$15(a1),($FFFFFF93).w	; load game beaten state
+		lea	($200000).l,a1				; base of SRAM
+		move.b	SRAM_Options(a1),($FFFFFF92).w		; load options flags
+		move.b	SRAM_Chapter(a1),($FFFFFFA7).w		; load current chapter
+		move.b	SRAM_Doors(a1),($FFFFFF8B).w		; load open doors bitset
+		move.b	SRAM_Lives(a1),($FFFFFE12).w		; load lives/deaths counter
+		movep.w	SRAM_Rings(a1),d0			; load...
+		move.w	d0,($FFFFFE20).w			; ...rings
+		movep.l	SRAM_Score(a1),d0			; load...
+		move.l	d0,($FFFFFE26).w			; ...score
+		move.b	SRAM_Complete(a1),($FFFFFF93).w		; load game beaten state
 
 SRAMEnd:
-		move.b	#0,($A130F1).l		; disable SRAM
-		bra.w	MainGameLoop		; continue to main game loop
+		move.b	#0,($A130F1).l				; disable SRAM
+		bra.w	MainGameLoop				; continue to main game loop
 ; ===========================================================================
 
 SRAM_Delete:
-		moveq	#$00,d0			; if not, set the whole SRAM to 0 for safety
+		moveq	#$00,d0					; if not, set the whole SRAM to 0 for safety
 		move.b	#2,d1
 @ClearSRAM:	movep.l	d0,1(a1)
 		adda.w	#8,a1
 		dbf	d1,@ClearSRAM
 
-		lea	($200000).l,a1		; base of SRAM
-		move.b	#SRAM_MagicNumber,$17(a1) ; set magic number ("SRAM exists")
-		move.b	#%00000011,d0		; set default options (extended camera and story text screens)
-		move.b	d0,($FFFFFF92).w	; ^
-		move.b	d0,$1(a1)		; ^
+		lea	($200000).l,a1				; base of SRAM
+		move.b	#SRAM_MagicNumber,SRAM_Exists(a1) 	; set magic number ("SRAM exists")
+		move.b	#%00000011,d0				; set default options (extended camera and story text screens)
+		move.b	d0,($FFFFFF92).w			; ^
+		move.b	d0,$1(a1)				; ^
 		
 		moveq	#0,d0
-		move.b	d0,($FFFFFFA7).w	; clear current chapter
-		move.b	d0,($FFFFFF8B).w	; clear open doors bitset
-		move.b	d0,($FFFFFE12).w	; clear lives/deaths counter
-		move.w	d0,($FFFFFE20).w	; clear rings
-		move.l	d0,($FFFFFE26).w	; clear score
-		move.l	d0,($FFFFFF93).w	; clear game beaten state
+		move.b	d0,($FFFFFFA7).w			; clear current chapter
+		move.b	d0,($FFFFFF8B).w			; clear open doors bitset
+		move.b	d0,($FFFFFE12).w			; clear lives/deaths counter
+		move.w	d0,($FFFFFE20).w			; clear rings
+		move.l	d0,($FFFFFE26).w			; clear score
+		move.l	d0,($FFFFFF93).w			; clear game beaten state
 		rts
 
 ; ===========================================================================
 
 SRAM_SaveNow:
-		move.b	#1,($A130F1).l			; enable SRAM
-		lea	($200000).l,a1			; base of SRAM
-		cmpi.b	#SRAM_MagicNumber,$17(a1)	; does SRAM exist?
-		bne.s	SRAM_SaveNow_End		; if not, branch
+		move.b	#1,($A130F1).l				; enable SRAM
+		lea	($200000).l,a1				; base of SRAM
+		cmpi.b	#SRAM_MagicNumber,SRAM_Exists(a1)	; does SRAM exist?
+		bne.s	SRAM_SaveNow_End			; if not, branch
 		
-		moveq	#0,d0				; clear d0
+		moveq	#0,d0					; clear d0
 		
-		move.b	($FFFFFF92).w,d0		; move option flags to d0
-		move.b	d0,$1(a1)			; backup option flags
-		move.b	($FFFFFFA7).w,d0		; move current chapter to d0
-		move.b	d0,$3(a1)			; backup current chapter
-		move.b	($FFFFFF8B).w,d0		; move open doors bitset to d0
-		move.b	d0,$5(a1)			; backup open doors bitset
-		move.b	($FFFFFE12).w,d0		; move lives/deaths to d0
-		move.b	d0,$7(a1)			; backup lives/deaths
-		move.w	($FFFFFE20).w,d0		; move rings to d0
-		movep.w	d0,$9(a1)			; backup rings
-		move.l	($FFFFFE26).w,d0		; move score to d0
-		movep.l	d0,$D(a1)			; backup score
-		move.b	($FFFFFF93).w,d0		; move game beaten state to d0
-		move.b	d0,$15(a1)			; backup option flags
+		move.b	($FFFFFF92).w,d0			; move option flags to d0
+		move.b	d0,SRAM_Options(a1)			; backup option flags
+		move.b	($FFFFFFA7).w,d0			; move current chapter to d0
+		move.b	d0,SRAM_Chapter(a1)			; backup current chapter
+		move.b	($FFFFFF8B).w,d0			; move open doors bitset to d0
+		move.b	d0,SRAM_Doors(a1)			; backup open doors bitset
+		move.b	($FFFFFE12).w,d0			; move lives/deaths to d0
+		move.b	d0,SRAM_Lives(a1)			; backup lives/deaths
+		move.w	($FFFFFE20).w,d0			; move rings to d0
+		movep.w	d0,SRAM_Rings(a1)			; backup rings
+		move.l	($FFFFFE26).w,d0			; move score to d0
+		movep.l	d0,SRAM_Score(a1)			; backup score
+		move.b	($FFFFFF93).w,d0			; move game beaten state to d0
+		move.b	d0,SRAM_Complete(a1)			; backup option flags
 
 SRAM_SaveNow_End:
-		move.b	#0,($A130F1).l			; disable SRAM
+		move.b	#0,($A130F1).l				; disable SRAM
 		rts
+; ---------------------------------------------------------------------------
+; ===========================================================================
+
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Main Game Loop, everything before this is only done on startup.
@@ -30523,6 +30537,8 @@ Sonic_LookUp:
 		btst	#0,($FFFFF602).w ; is up being pressed?
 		beq.s	Sonic_Duck	; if not, branch
 		move.b	#7,$1C(a0)	; use "looking up" animation
+		cmpi.w	#$101,($FFFFFE10).w	; is level LZ2?
+		beq.s	Sonic_Duck		; if yes, disable vertical camera shift
 		addq.b	#1,($FFFFC903).w
 		cmp.b	#$78,($FFFFC903).w
 		bcs.s	Obj01_ResetScr_Part2
@@ -30537,6 +30553,8 @@ Sonic_Duck:
 		btst	#1,($FFFFF602).w ; is down being pressed?
 		beq.s	Obj01_ResetScr	; if not, branch
 		move.b	#8,$1C(a0)	; use "ducking"	animation
+		cmpi.w	#$101,($FFFFFE10).w	; is level LZ2?
+		beq.s	Obj01_ResetScr		; if yes, disable vertical camera shift
 		addq.b	#1,($FFFFC903).w
 		cmpi.b	#$78,($FFFFC903).w
 		bcs.s	Obj01_ResetScr_Part2
@@ -31786,7 +31804,7 @@ loc2_1AC8E:
 		beq.s	loc2_1ACD0		; if no, branch
 		move.w	spdsh_super(pc,d0.w),$14(a0) ; get super speed
 
-loc2_1ACD0:					; TODO: figure this out
+loc2_1ACD0:
 		move.w	$14(a0),d0		; get inertia
 		subi.w	#$800,d0		; subtract $800
 		add.w	d0,d0			; double it

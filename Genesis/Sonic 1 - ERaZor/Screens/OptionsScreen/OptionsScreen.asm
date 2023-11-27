@@ -291,7 +291,7 @@ Options_HandleDeleteSaveGame:
 		beq.w	Options_Return		; if not, return
 
 		move.b	#1,($A130F1).l		; enable SRAM
-		clr.b	($200017).l		; unset the magic number (actual SRAM deletion happens during restart)
+		clr.b	($200000+SRAM_Exists).l	; unset the magic number (actual SRAM deletion happens during restart)
 		move.b	#0,($A130F1).l		; disable SRAM
 		
 		lea	($FFFFD000).w,a1	; get start of object RAM
@@ -299,7 +299,6 @@ Options_HandleDeleteSaveGame:
 		move.w	#$BFF,d1		; $BFF iterations to cover the entirety of the RAM
 @clear_ram:	move.l	d0,(a1)+		; clear four bytes of RAM
 		dbf	d1,@clear_ram		; clear	the RAM
-		; TODO smooth fadeout
 		jmp	EntryPoint		; restart the game
 ; ---------------------------------------------------------------------------
 

@@ -16474,14 +16474,30 @@ ExtraLife:
 		jmp	(PlaySound).l	; play extra life music
 ; ===========================================================================
 
+; ---------------------------------------------------------------------------
+; Sonic speed values
+; (I put them here cause this is the first instance in the code)
+Sonic_TopSpeed 			= $A00
+Sonic_Acceleration		= $F
+Sonic_Deceleration		= $80
+
+Sonic_TopSpeed_Water 		= Sonic_TopSpeed / 2
+Sonic_Acceleration_Water	= Sonic_Acceleration / 2
+Sonic_Deceleration_Water	= Sonic_Deceleration / 2
+
+Sonic_TopSpeed_Shoes		= Sonic_TopSpeed * 2
+Sonic_Acceleration_Shoes	= Sonic_Acceleration * 2
+Sonic_Deceleration_Shoes	= Sonic_Deceleration * 2
+; ---------------------------------------------------------------------------
+
 Obj2E_ChkShoes:
 		cmpi.b	#3,d0		; does monitor contain speed shoes?
 		bne.s	Obj2E_ChkShield
 		move.b	#1,($FFFFFE2E).w ; speed up the	BG music
 		move.w	#$4B0,($FFFFD034).w ; time limit for the power-up
-		move.w	#$C00,($FFFFF760).w ; change Sonic's top speed
-		move.w	#$18,($FFFFF762).w
-		move.w	#$80,($FFFFF764).w
+		move.w	#Sonic_TopSpeed_Shoes,($FFFFF760).w ; change Sonic's top speed
+		move.w	#Sonic_Acceleration_Shoes,($FFFFF762).w
+		move.w	#Sonic_Deceleration_Shoes,($FFFFF764).w
 		moveq	#10,d0		; add 100 ...
 		jsr	AddPoints	; ... points
 		move.w	#$E2,d0
@@ -20831,15 +20847,13 @@ ObjectFall_Sonic:
 
 
 SpeedToPos:
-		move.w	$10(a0),d0	; load X speed
-		ext.l	d0		; extend incase it's negative
-		asl.l	#$08,d0		; multiply by 100
-		add.l	d0,$08(a0)	; add to X position
-		move.w	$12(a0),d0	; load Y speed
-		ext.l	d0		; extend incase it's negative
-		asl.l	#$08,d0		; multiply by 100
-		add.l	d0,$0C(a0)	; add to Y position
-		rts			; return
+		; Vladik's optimized code
+		movem.w	$10(a0),d2-d3
+		asl.l	#8,d2
+		add.l	d2,8(a0)
+		asl.l	#8,d3
+		add.l	d3,$C(a0)
+		rts
 ; End of function SpeedToPos
 
 ; ---------------------------------------------------------------------------
@@ -29718,13 +29732,14 @@ Obj01_Main:				; XREF: Obj01_Index
 Obj01_M_NotGHZ2:
 		cmpi.w	#$601,($FFFFFE10).w	; is this the ending sequence?
 		beq.s	Obj01_EndingSpeed	; if yes, use different speed
-		move.w	#$800,($FFFFF760).w 	; Sonic's top speed
-		move.w	#$D,($FFFFF762).w	; Sonic's acceleration
-		move.w	#$80,($FFFFF764).w	; Sonic's deceleration
+		move.w	#Sonic_TopSpeed,($FFFFF760).w 		; Sonic's top speed
+		move.w	#Sonic_Acceleration,($FFFFF762).w	; Sonic's acceleration
+		move.w	#Sonic_Deceleration,($FFFFF764).w	; Sonic's deceleration
 		bra.s	Obj01_Speedcont		; skip
 ; ===========================================================================
 
 Obj01_EndingSpeed:
+		; custom speed values to get the timing on the cliff gag right
 		move.w	#$600,($FFFFF760).w	; Sonic's top speed (ending sequence)
 		move.w	#$C,($FFFFF762).w	; Sonic's acceleration (ending sequence)
 		move.w	#$30,($FFFFF764).w	; Sonic's deceleration (ending sequence)
@@ -30028,8 +30043,8 @@ S_D_NoSpring:
 		bra.s	S_D_NotFZ		; skip
 
 S_D_TimerEmpty:
-		move.w	#$600,($FFFFF760).w	; restore Sonic's speed
-		move.w	#$C,($FFFFF762).w	; restore Sonic's acceleration
+		move.w	#Sonic_TopSpeed,($FFFFF760).w	; restore Sonic's speed
+		move.w	#Sonic_Acceleration,($FFFFF762).w	; restore Sonic's acceleration
 
 S_D_NotFZ:
 		cmpi.w	#$202,($FFFFFE10).w	; is level MZ3?
@@ -30116,9 +30131,9 @@ Obj01_ChkShoes:
 		beq.s	Obj01_ExitChk
 		subq.w	#1,$34(a0)	; subtract 1 from time
 		bne.s	Obj01_ExitChk
-		move.w	#$600,($FFFFF760).w ; restore Sonic's speed
-		move.w	#$C,($FFFFF762).w ; restore Sonic's acceleration
-		move.w	#$80,($FFFFF764).w ; restore Sonic's deceleration
+		move.w	#Sonic_TopSpeed,($FFFFF760).w		; restore Sonic's speed
+		move.w	#Sonic_Acceleration,($FFFFF762).w	; restore Sonic's acceleration
+		move.w	#Sonic_Deceleration,($FFFFF764).w	; restore Sonic's deceleration
 		move.b	#$E3,d0
 		jsr	(PlaySound).w	; play normal music
 		move.b	#$E3,d0
@@ -30169,9 +30184,9 @@ Obj01_InWater:
 		bsr	ResumeMusic
 		move.b	#$A,($FFFFD340).w ; load bubbles object	from Sonic's mouth
 		move.b	#$81,($FFFFD368).w
-		move.w	#$300,($FFFFF760).w ; change Sonic's top speed
-		move.w	#6,($FFFFF762).w ; change Sonic's acceleration
-		move.w	#$40,($FFFFF764).w ; change Sonic's deceleration
+		move.w	#Sonic_TopSpeed_Water,($FFFFF760).w	; change Sonic's top speed
+		move.w	#Sonic_Acceleration_Water,($FFFFF762).w	; change Sonic's acceleration
+		move.w	#Sonic_Deceleration_Water,($FFFFF764).w	; change Sonic's deceleration
 		asr	$10(a0)
 		asr	$12(a0)
 		asr	$12(a0)
@@ -30195,9 +30210,9 @@ Obj01_OutWater:
 		bclr	#6,$22(a0)
 		beq.s	locret_12D80
 		bsr	ResumeMusic
-		move.w	#$600,($FFFFF760).w ; restore Sonic's speed
-		move.w	#$C,($FFFFF762).w ; restore Sonic's acceleration
-		move.w	#$80,($FFFFF764).w ; restore Sonic's deceleration
+		move.w	#Sonic_TopSpeed,($FFFFF760).w		; restore Sonic's speed
+		move.w	#Sonic_Acceleration,($FFFFF762).w	; restore Sonic's acceleration
+		move.w	#Sonic_Deceleration,($FFFFF764).w	; restore Sonic's deceleration
 		asl	$12(a0)
 		beq.w	locret_12D80
 		move.b	#8,($FFFFD300).w ; load	splash object
@@ -30500,6 +30515,10 @@ locret_1307C:
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 
 
+; d6 = ($FFFFF760).w Sonic's top speed
+; d5 = ($FFFFF762).w Sonic's acceleration
+; d4 = ($FFFFF764).w Sonic's deceleration
+	
 Sonic_MoveLeft:		   ; XREF: Sonic_Move
 		move.w	$14(a0),d0
 		beq.s	loc_13086
@@ -31131,7 +31150,6 @@ WhiteFlash_Restore:
 WF_Restore_Loop:
 		move.w	(a3)+,(a4)+		; set new palette palette
 		dbf	d5,WF_Restore_Loop	; loop
-		clr.l	($FFFFFA80).w		; clear the first two colors, indicating we are good for more
 
 WF_Restore_End:
 		rts
@@ -32548,8 +32566,8 @@ Sonic_ResetOnFloor:			; XREF: PlatformObject; et al
 		bclr	#3,$22(a0)	; clear "standing on object" flag
 		cmpi.w	#$502,($FFFFFE10).w	; is level FZ?
 		bne.s	S_ROF_NotFZ		; if not branch
-		move.w	#$600,($FFFFF760).w	; restore Sonic's speed
-		move.w	#$C,($FFFFF762).w	; restore Sonic's acceleration
+		move.w	#Sonic_TopSpeed,($FFFFF760).w	; restore Sonic's speed
+		move.w	#Sonic_Acceleration,($FFFFF762).w	; restore Sonic's acceleration
 S_ROF_NotFZ:
 		btst	#4,$22(a0)
 		beq.s	loc_137AE
@@ -41606,7 +41624,7 @@ loc_19F6A:
 		beq.s	loc_19F88	; if yes, branch
 		move.b	#5,($FFFFFFDB).w ; set max limit
 		move.w	#$1200,($FFFFF760).w ; double Sonic's speed
-		move.w	#$CC,($FFFFF762).w ; double Sonic's acceleration
+		move.w	#$CC,($FFFFF762).w ; dramatically increase Sonic's acceleration
 		bra.s	loc_19F88	; branch the next label
 		
 Eggman_0lives:
@@ -46837,6 +46855,8 @@ Debug_BackItem:
 		beq.s	Debug_MakeItem	; if not, branch
 		btst	#5,($FFFFF605).w ; is button C pressed?
 		beq.s	Debug_NextItem	; if not, branch
+		cmpi.b	#$10,($FFFFF600).w ; is	game mode = $10	(special stage)?
+		beq.s	Debug_NextItem	; if yes, branch
 		subq.b	#1,($FFFFFE06).w ; go back 1 item
 		bcc.s	Debug_NoLoop
 		add.b	d6,($FFFFFE06).w
@@ -46846,6 +46866,8 @@ Debug_BackItem:
 Debug_NextItem:
 		btst	#6,($FFFFF605).w ; is button A pressed?
 		beq.s	Debug_MakeItem	; if not, branch
+		cmpi.b	#$10,($FFFFF600).w ; is	game mode = $10	(special stage)?
+		beq.s	Debug_MakeItem	; if yes, branch
 		addq.b	#1,($FFFFFE06).w ; go forwards 1 item
 		cmp.b	($FFFFFE06).w,d6
 		bhi.s	Debug_NoLoop
@@ -46858,6 +46880,8 @@ Debug_NoLoop:
 Debug_MakeItem:
 		btst	#5,($FFFFF605).w ; is button C pressed?
 		beq.s	Debug_Exit	; if not, branch
+		cmpi.b	#$10,($FFFFF600).w ; is	game mode = $10	(special stage)?
+		beq.s	Debug_Exit	; if yes, branch
 		jsr	SingleObjLoad
 		bne.s	Debug_Exit
 		move.w	8(a0),8(a1)
@@ -46884,11 +46908,11 @@ Debug_Exit:
 		moveq	#0,d0
 		move.w	d0,($FFFFFE08).w ; deactivate debug mode
 		
-		jsr	Hud_Base
 		move.b	#1,($FFFFFE1F).w ; update score	counter
 		clr.w	$10(a0)	; clear x-speed
 		clr.w	$12(a0)	; clear y-speed
 		clr.w	$14(a0)	; clear inertia
+		
 		move.l	#Map_Sonic,($FFFFD004).w
 		move.w	#$780,($FFFFD002).w
 		move.b	d0,($FFFFD01C).w
@@ -46896,8 +46920,12 @@ Debug_Exit:
 		move.w	d0,$E(a0)
 		move.w	($FFFFFEF0).w,($FFFFF72C).w ; restore level boundaries
 		move.w	($FFFFFEF2).w,($FFFFF726).w
-		cmpi.b	#$10,($FFFFF600).w ; are you in	the special stage?
-		bne.s	Debug_DoNothing	; if not, branch
+		cmpi.b	#$10,($FFFFF600).w	; are you in the special stage?
+		beq.s	Debug_Exit_SS		; if yes, branch
+		jsr	Hud_Base		; restore HUD after using debug mode
+		bra.s	Debug_DoNothing
+
+Debug_Exit_SS:
 	;	clr.w	($FFFFF780).w
 	;	move.w	#$40,($FFFFF782).w ; set new level rotation speed
 		move.l	#Map_Sonic,($FFFFD004).w

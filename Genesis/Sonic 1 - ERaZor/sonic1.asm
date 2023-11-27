@@ -2456,6 +2456,8 @@ locret_1A80:
 		bne.s	PCSLZ_Red_End
 		tst.b	($FFFFFF77).w
 		beq.s	PCSLZ_Red_End
+		btst	#0,($FFFFFE05).w
+		beq.s	PCSLZ_Red_End
 		moveq	#0,d1
 		addq.b	#1,($FFFFFFBC).w
 		cmpi.b	#14,($FFFFFFBC).w
@@ -5148,6 +5150,7 @@ ClearEverySpecialFlag:
 		clr.b	($FFFFFFD1).w	; $FFD1		(1) needs to be splitted
 		clr.l	($FFFFFFD2).w	; $FFD2-$FFD5	(4)
 		clr.l	($FFFFFFD6).w	; $FFD6-$FFD9	(4)
+		clr.b	($FFFFFFE5).w
 		rts
 ; End of function ClearEverySpecialFlag
 	
@@ -6428,11 +6431,6 @@ End_LoadData:
 		bsr	KosDec
 		moveq	#3,d0
 		bsr	PalLoad1	; load Sonic's pallet
-	;	move.w	#$8B,d0
-	;	bsr	PlaySound	; play ending sequence music
-		btst	#6,($FFFFF604).w ; is button A pressed?
-		beq.s	End_LoadSonic	; if not, branch
-		move.b	#1,($FFFFFFFA).w ; enable debug	mode
 
 End_LoadSonic:
 		move.b	#1,($FFFFD000).w ; load	Sonic object
@@ -8347,8 +8345,6 @@ ScrollHoriz:				; XREF: DeformBgLayer
 SH_NotLZ2:
 		cmpi.w	#$200,($FFFFFE10).w	; is level MZ1?
 		beq.s	@cont1			; if yes, branch
-		tst.b	($FFFFFFB9).w		; has Sonic collected the giant ring in GHZ2?
-		bne.s	locret_65B0		; if yes, branch
 		cmpi.b	#1,($FFFFFFAA).w	; is Sonic fighting against the crabmeat?
 		bne.s	@cont1			; if not, branch
 		move.w	($FFFFF72A).w,($FFFFF728).w	; lock left screen position
@@ -15904,11 +15900,8 @@ Obj4B_NotGHZ1:
 		bne.s	Obj4B_NotGHZ2
 
 @cont:
-		move.b	#1,($FFFFFFB9).w
 		clr.w	($FFFFF73A).w
-		jsr	WhiteFlash4		; make white flash
-	;	clr.w	($FFFFFE20).w	; clear rings
-	;	clr.l	($FFFFFE26).w	; clear score
+		jsr	WhiteFlash3		; make white flash
 
 Obj4B_NotGHZ2:
 		clr.b	($FFFFFFE7).w
@@ -20947,53 +20940,24 @@ ObjectFall:
 
 
 ObjectFall_Sonic:
-		move.l	8(a0),d2
-		move.l	$C(a0),d3
-		move.w	$10(a0),d0
-		ext.l	d0
-		asl.l	#8,d0
-		add.l	d0,d2
-		move.w	$12(a0),d0
-		addi.w	#$38,$12(a0)		; increase vertical speed
-
-		cmpi.w	#$501,($FFFFFE10).w
-		bne.s	@OFS_ChkSLZ
-		cmpi.w	#$1B00,($FFFFD008).w
-		bcs.s	@OFS_FallEnd
-		cmpi.w	#$2100,($FFFFD008).w
-		bcc.s	@OFS_FallEnd
-		bra.s	@OFS_TutSpeed
-	@OFS_ChkSLZ:
-		cmpi.w	#$302,($FFFFFE10).w
-		bne.s	@OFS_FallEnd
-		tst.b	($FFFFFF77).w
-		beq.s	@OFS_FallEnd
-@OFS_TutSpeed:
-		subi.w	#$38,$12(a0)
-		btst	#6,($FFFFF602).w
-		beq.s	@OFS_NoA
-		move.b	#1,($FFFFFFEB).w
-		tst.w	$12(a0)
-		bmi.s	@OFS_Negative
-		subi.w	#$38,$12(a0)
-		bra.s	@OFS_FallEnd
-	@OFS_Negative:
-		subi.w	#$1C,$12(a0)
-		bra.s	@OFS_FallEnd
-@OFS_NoA:
-		tst.w	$12(a0)
-		bpl.s	@OFS_Positve
-		addi.w	#$38,$12(a0)
-		bra.s	@OFS_FallEnd
-	@OFS_Positve:
-		addi.w	#$1C,$12(a0)
-@OFS_FallEnd:
-		ext.l	d0
-		asl.l	#8,d0
-		add.l	d0,d3
-		move.l	d2,8(a0)
-		move.l	d3,$C(a0)
-		rts	
+		move.w	$10(a0),d0		; get Sonic's horizontal speed
+		ext.l	d0			; extend his X speed to a long
+		asl.l	#8,d0			; move one byte ahead
+		move.l	8(a0),d2		; get Sonic's X position
+		add.l	d0,d2			; add that new speed to Sonic's new X position
+		move.l	d2,8(a0)		; write new X coordinate for Sonic
+		
+		move.w	$12(a0),d0		; get Sonic's vertical speed
+		tst.b	($FFFFFFE5).w		; air freeze flag set?
+		bne.s	@nogravity		; if yes, stop gravity
+		addi.w	#$38,$12(a0)		; increase vertical speed (gravity)
+@nogravity:
+		ext.l	d0			; extend Y speed to a long
+		asl.l	#8,d0			; move one byte ahead
+		move.l	$C(a0),d2		; get Sonic's Y positon
+		add.l	d0,d2			; add that new speed to Sonic's new Y position
+		move.l	d2,$C(a0)		; write new Y coordinate for Sonic
+		rts				; return
 ; End of function ObjectFall
 
 ; ---------------------------------------------------------------------------
@@ -30082,41 +30046,6 @@ loc_12CB6:
 ; ---------------------------------------------------------------------------
 
 Sonic_Display:				; XREF: loc_12C7E
-		cmpi.w	#$200,($FFFFFE10).w	; is level MZ1?
-		bne.s	S_D_NotMZ1		; if not, branch
-	;	tst.b	($FFFFFFBE).w		; is a jumpdash being performed?
-	;	bne.w	S_D_NoTeleport		; if yes, branch
-		tst.b	($FFFFFFE7).w		; is inhuman mode on?
-		beq.s	BranchRoutine		; if not, branch
-		tst.b	($FFFFFFB9).w		; has flag been set?	
-		beq.s	S_D_NoWF2Flag		; if not, branch
-		jsr	WhiteFlash_Restore
-		move.b	#2,($FFFFFFAE).w	; clear WF2 flag
-		bra.s	BranchRoutine		; skip
-; ===========================================================================
-
-S_D_NoWF2Flag:
-		bra.s	BranchRoutine
-
-		cmpi.b	#2,($FFFFFFAE).w	; is flag set to 2?
-		beq.s	BranchRoutine		; if yes, branch
-		btst	#6,($FFFFF602).w	; check if A is being held
-		beq.s	BranchRoutine		; if not, branch
-	;	btst	#4,($FFFFF602).w	; check if B is being held
-	;	beq.s	BranchRoutine		; if not, branch
-		btst	#5,($FFFFF602).w	; check if C is being held
-		beq.s	BranchRoutine		; if not, branch
-		move.w	#$1817,8(a0)		; set new location for Sonic's X-pos
-		move.w	#$2AC,$C(a0)		; set new location for Sonic's Y-pos
-		bsr	FixLevel
-		move.w	#$C3,d0			; set giant ring sound
-		jsr	PlaySound_Special	; set giant ring sound		
-		jsr	WhiteFlash4		; make a white flash
-; ===========================================================================
-BranchRoutine:	bra.w	S_D_NoTeleport
-; ===========================================================================
-
-S_D_NotMZ1:
 		cmpi.w	#$000,($FFFFFE10).w	; is level GHZ1?
 		bne.w	S_D_NoTeleport		; if not, branch
 
@@ -30453,9 +30382,9 @@ Obj01_MdJump:				; XREF: Obj01_Modes
 		bsr	Sonic_ChgJumpDir
 		bsr	Sonic_LevelBound
 		bsr	ObjectFall_Sonic
-		btst	#6,$22(a0)
-		beq.s	loc_12E5C
-		subi.w	#$28,$12(a0)
+		btst	#6,$22(a0)	; is Sonic underwater?
+		beq.s	loc_12E5C	; if not, branch
+		subi.w	#$28,$12(a0)	; use reduced gravity
 
 loc_12E5C:
 		bsr	Sonic_JumpAngle
@@ -30487,9 +30416,9 @@ Obj01_MdJump2:				; XREF: Obj01_Modes
 		bsr	Sonic_ChgJumpDir
 		bsr	Sonic_LevelBound
 		bsr	ObjectFall_Sonic
-		btst	#6,$22(a0)
-		beq.s	loc_12EA6
-		subi.w	#$28,$12(a0)
+		btst	#6,$22(a0)	; is Sonic underwater?
+		beq.s	loc_12EA6	; if not, branch
+		subi.w	#$28,$12(a0)	; use reduced gravity
 
 loc_12EA6:
 		bsr	Sonic_JumpAngle
@@ -30960,6 +30889,9 @@ loc_13242:
 
 
 Sonic_ChgJumpDir:			; XREF: Obj01_MdJump; Obj01_MdJump2
+		tst.b	($FFFFFFE5).w		; is air freeze active?
+		bne.w	locret_132D2		; if yes, don't mess with speeds
+		
 		move.w	($FFFFF760).w,d6
 		move.w	($FFFFF762).w,d5
 		asl.w	#1,d5
@@ -31257,12 +31189,6 @@ FixLevel:
 ; Subroutine to make the palette white (and restoring it in Sonic_Display)
 ; ---------------------------------------------------------------------------
 
-WhiteFlash4:
-		move.b	#6,($FFFFFFB1).w	; set inhuman crush flag
-		move.b	#1,($FFFFFFB9).w	; make sure it actually happens
-		bra.s	WF_DoWhiteFlash		; no inhuman/invin mode required
-; ===========================================================================
-
 WhiteFlash3:
 		move.b	#10,($FFFFFFB1).w	; set inhuman crush flag
 		bra.s	WF_DoWhiteFlash		; no inhuman/invin mode required
@@ -31284,8 +31210,9 @@ WF_DoWhiteFlashx:
 		move.b	#6,($FFFFFFB1).w	; set inhuman crush flag
 
 WF_DoWhiteFlash:
-		tst.l	($FFFFCA00).w		; is anything in the backup palette RAM?
-		bne.s	WF_Return		; if yes, assume white flashing is still in progress and therefore skip it
+		tst.b	($FFFFFFB9).w		; is a white flash currently in progres?
+		bne.s	WF_Return		; if yes, skip this one
+		move.b	#1,($FFFFFFB9).w	; set white flash flag
 		lea	($FFFFFA80).w,a3	; load palette location to a3
 		lea	($FFFFCA00).w,a4	; load backup location to a4
 		move.w	#$007F,d3		; set d3 to $7F (+1 for the first run)
@@ -31300,6 +31227,8 @@ WF_BackupPal_Loop:
 WF_MakeWhite_Loop:
 		move.w	(a1),d1			; get current color in palette
 		
+		moveq	#2,d4			; set repetitions to 2 (increases white intensity)
+@wfintensity:		
 		move.w	d1,d2			; copy color
 		andi.w	#$00E,d2		; filter for red
 		cmpi.w	#$00E,d2		; are we at max?
@@ -31318,14 +31247,19 @@ WF_MakeWhite_Loop:
 		beq.s	@maxblue		; if yes, branch
 		addi.w	#$200,d1		; otherwise, boost color
 @maxblue:
+		dbf	d4,@wfintensity		; repeat for increased intensity
 
 		move.w	d1,(a1)+		; set new color
 		dbf	d3,WF_MakeWhite_Loop	; loop
 		move.b	#12,($FFFFFFB2).w	; set ScrollHoriz delay and jumpdash flag 2
 WF_Return:
 		rts
+; ---------------------------------------------------------------------------
 
 WhiteFlash_Restore:
+		tst.b	($FFFFFFB9).w		; is white flash flag set?
+		beq.s	WF_Restore_End		; if not, branch
+		clr.b	($FFFFFFB9).w		; clear white flash flag
 		lea	($FFFFFA80).w,a4	; load palette location to a4
 		lea	($FFFFCA00).w,a3	; load backed up palette to a3
 		move.w	#$007F,d5		; set d3 to $7F (+1 for the first run)
@@ -31333,6 +31267,8 @@ WF_Restore_Loop:
 		move.w	(a3)+,(a4)+		; set new palette palette
 		dbf	d5,WF_Restore_Loop	; loop
 		clr.l	($FFFFFA80).w		; clear the first two colors, indicating we are good for more
+
+WF_Restore_End:
 		rts
 		
 ; ---------------------------------------------------------------------------
@@ -31948,45 +31884,102 @@ SD_End:
 		rts				; return
 ; End of function Sonic_SpeedDash
 
+; ---------------------------------------------------------------------------
+; Subroutine to move Sonic in air while holding A (Star Agony Place)
+; ---------------------------------------------------------------------------
 
-; ---------------------------------------------------------------------------
-; Subroutine to	freeze Sonic at his current position when pressing B
-; ---------------------------------------------------------------------------
+AF_Accel =  $70	; acceleration speed
+AF_Decel = $100	; deceleration speed
+AF_Limit = $700	; max speed
 
 Sonic_AirFreeze:
-		rts
-		btst	#4,($FFFFF602).w	; is B pressed?
+		cmpi.w	#$302,($FFFFFE10).w	; is this Star Agony Place?
+		bne.w	AM_End			; if not, branch
+		tst.b	($FFFFFF77).w		; is antigrav enabled?
 		beq.w	AM_End			; if not, branch
-		
-AM_Do:
-		tst.b	($FFFFFFBC).w		; was this move disabled on the TS?
-		beq.w	AM_End			; if yes, branch
+
+		btst	#6,($FFFFF602).w	; is A pressed?
+		bne.s	AM_APressed		; if yes, branch
+		tst.b	($FFFFFFE5).w		; was air freeze already active?
+		beq.w	AM_End			; if not, branch
+		clr.b	($FFFFFFE5).w		; clear flag
+		rts				; return
+
+AM_APressed:
+		move.b	#1,($FFFFFFE5).w	; set flag
+		btst	#6,($FFFFF603).w	; was A pressed this frame?
+		beq.s	AM_Decelerate_X		; if not, branch
 		clr.w	$10(a0)			; clear X-velocity
 		clr.w	$12(a0)			; clear Y-velocity
 		clr.w	$14(a0)			; clear interia
-
+	
+AM_Decelerate_X:
+		tst.w	$10(a0)			; test X speed
+		beq.s	AM_Decelerate_Y		; is it already zero? skip
+		bpl.s	@decelxfromright	; is it positive? branch
+		btst	#2,($FFFFF602).w	; is left pressed?
+		bne.s	AM_Decelerate_Y		; if yes, don't decelerate
+		addi.w	#AF_Decel,$10(a0)	; decelerate while moving left
+		bcc.s	AM_Decelerate_Y		; did the sign change? if not, branch
+		clr.w	$10(a0)			; if it did, set speed to 0
+		bra.s	AM_Decelerate_Y
+	@decelxfromright:
+		btst	#3,($FFFFF602).w	; is right pressed?
+		bne.s	AM_Decelerate_Y		; if yes, don't decelerate
+		subi.w	#AF_Decel,$10(a0)	; decelerate while moving right
+		bcc.s	AM_Decelerate_Y		; did the sign change? if not, branch
+		clr.w	$10(a0)			; if it did, set speed to 0
+		
+AM_Decelerate_Y:
+		tst.w	$12(a0)			; test Y speed
+		beq.s	AM_ChkUp		; is it already zero? skip
+		bpl.s	@decelyfromdown		; is it positive? branch
+		btst	#0,($FFFFF602).w	; is up pressed?
+		bne.s	AM_ChkUp		; if yes, don't decelerate
+		addi.w	#AF_Decel,$12(a0)	; decelerate while moving up
+		bcc.s	AM_ChkUp		; did the sign change? if not, branch
+		clr.w	$12(a0)			; if it did, set speed to 0
+		bra.s	AM_ChkUp
+	@decelyfromdown:
+		btst	#1,($FFFFF602).w	; is down pressed?
+		bne.s	AM_ChkUp		; if yes, don't decelerate
+		subi.w	#AF_Decel,$12(a0)	; decelerate while moving down
+		bcc.s	AM_ChkUp		; did the sign change? if not, branch
+		clr.w	$12(a0)			; if it did, set speed to 0
+		
 AM_ChkUp:
-		btst.b	#0,($FFFFF602).w	; is up pressed?
-		bne.s	AM_ChkDown		; if not, check if down is pressed
-		add.w	#8,$C(a0)		; move sonic down
+		btst	#0,($FFFFF602).w	; is up pressed?
+		beq.s	AM_ChkDown		; if not, check if down is pressed
+		subi.w	#AF_Accel,$12(a0)	; move sonic up
+		cmpi.w	#-AF_Limit,$12(a0)	; has speed limit been reached?
+		bgt.s	AM_ChkDown		; if not, branch
+		move.w	#-AF_Limit,$12(a0)	; limit speed
 
 AM_ChkDown:
-		btst.b	#1,($FFFFF602).w	; is down pressed?
-		bne.s	AM_ChkLeft		; if not, branch
-		sub.w	#8,$C(a0)		; move sonic up
+		btst	#1,($FFFFF602).w	; is down pressed?
+		beq.s	AM_ChkLeft		; if not, branch
+		addi.w	#AF_Accel,$12(a0)	; move sonic down
+		cmpi.w	#AF_Limit,$12(a0)	; has speed limit been reached?
+		blt.s	AM_ChkLeft		; if not, branch
+		move.w	#AF_Limit,$12(a0)	; limit speed
 		
 AM_ChkLeft:	
-		btst.b	#2,($FFFFF602).w	; is left pressed?
-		bne.s	AM_ChkRight		; if not, check if down is pressed
-		add.w	#8,8(a0)		; move sonic down
+		btst	#2,($FFFFF602).w	; is left pressed?
+		beq.s	AM_ChkRight		; if not, check if down is pressed
+		subi.w	#AF_Accel,$10(a0)	; move sonic left
+		cmpi.w	#-AF_Limit,$10(a0)	; has speed limit been reached?
+		bgt.s	AM_ChkRight		; if not, branch
+		move.w	#-AF_Limit,$10(a0)	; limit speed
 
 AM_ChkRight:
-		btst.b	#3,($FFFFF602).w	; is right pressed?
-		bne.s	AM_End			; if not, branch
-		sub.w	#8,8(a0)		; move sonic up
-		
+		btst	#3,($FFFFF602).w	; is right pressed?
+		beq.s	AM_End			; if not, branch
+		addi.w	#AF_Accel,$10(a0)	; move sonic right
+		cmpi.w	#AF_Limit,$10(a0)	; has speed limit been reached?
+		blt.s	AM_End			; if not, branch
+		move.w	#AF_Limit,$10(a0)	; limit speed
+
 AM_End:
-		clr.b	($FFFFFFE5).w		; clear flag
 		rts				; return
 ; End of function Sonic_AirMove
 
@@ -32169,6 +32162,9 @@ loc_13490:
 
 
 Sonic_JumpHeight:			; XREF: Obj01_MdJump; Obj01_MdJump2
+		tst.b	($FFFFFFE5).w		; is air freeze active?
+		bne.s	locret_134C2		; if yes, don't mess with speeds
+		
 		tst.b	$3C(a0)
 		beq.s	loc_134C4
 		move.w	#-$400,d1
@@ -32180,7 +32176,7 @@ loc_134AE:
 		cmp.w	$12(a0),d1
 		ble.s	locret_134C2
 		move.b	($FFFFF602).w,d0
-		andi.b	#$70,d0		; is A,	B or C pressed?
+		andi.b	#$30,d0		; is B or C pressed?
 		bne.s	locret_134C2	; if yes, branch
 		move.w	d1,$12(a0)
 

@@ -119,11 +119,6 @@ Options_ClrVram:
 ; ===========================================================================
 
 Options_PalCycle:
-		jsr	SineWavePalette
-
-
-
-
 PalLocationO = $FFFFFB20
 
 		move.w	($FFFFF614).w,d0			; load remaining time into d0

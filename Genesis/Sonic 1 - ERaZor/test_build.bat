@@ -14,7 +14,7 @@ if exist s1erz.bin (
 	echo ============================================
 	pause
 	@echo on
-	s1erz.bin
+	start s1erz.bin
 ) else (
 	echo.
 	echo ============================================

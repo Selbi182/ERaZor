@@ -3288,39 +3288,6 @@ Angle_Data:	incbin	misc\angles.bin
 
 ; ===========================================================================
 
-	;include "SSRGSplash.asm"
-
-SineWavePalette:
-		rts	; disabled because this was seizure-inducing with fast foward lmao
-		
-		addq.w	#2,($FFFFFE04).w
-		move.w	($FFFFFE04).w,d0
-		jsr	CalcSine
-		cmpi.w	#$100,d0
-		bne.s	@contff
-		subq.w	#1,d0
-		
-@contff:
-		addi.w	#$100,d0
-		tst.w	d0
-		bne.s	@cont
-		cmpi.w	#12,($FFFFFF6C).w
-		beq.s	@contx
-		addq.w	#4,($FFFFFF6C).w
-		cmpi.w	#12,($FFFFFF6C).w
-		bne.s	@cont
-
-@contx:
-		clr.w	($FFFFFF6C).w
-		
-@cont:
-		lsr.w	#5,d0
-		move.w	($FFFFFF6C).w,d1
-		lsl.w	d1,d0
-		andi.w	#$EEE,d0
-		move.w	d0,($FFFFFB40).w
-		rts
-
 ; ---------------------------------------------------------------------------
 ; Sega screen
 ; ---------------------------------------------------------------------------
@@ -14709,6 +14676,8 @@ Obj22_NotGHZ1:
 		move.b	#8,$20(a0)		; make buzz bomber destroyable
 
 Obj22_NotHigher:
+		tst.w	($FFFFFE08).w	; is debug mode	on?
+		bne.w	Obj22_Return3	; if yes, make buzz bomber ignore you
 		moveq	#0,d0			; clear d0
 		move.w	($FFFFD008).w,d0	; move Sonic's X-pos to d0
 		sub.w	8(a0),d0		; substract the one from the buzz bomber from it
@@ -15152,6 +15121,12 @@ Obj25_Animate:				; XREF: Obj25_Index
 		bset	#7,2(a0)		; otherwise make object high plane
 
 Obj25_NoHigh:
+		cmpi.w	#$200,($FFFFFE10).w	; is level MZ1?
+		bne.s	@cont			; if not, branch
+		tst.b	($FFFFFFE7).w		; inhuman?
+		bne.s	Obj25_NoRingMove	; if yes, disable ring move
+
+@cont:
 		tst.b	$29(a0)			; was ring already set to follow you?
 		beq.s	Obj25_DoCheck		; if not, branch
 		tst.b	($FFFFFE2C).w		; is sonic still having a shield?
@@ -18040,7 +18015,7 @@ Obj31_Index:	dc.w Obj31_Main-Obj31_Index
 Obj31_SwchNums:	dc.b 0,	0		; switch number, obj number
 		dc.b 1,	0
 
-Obj31_Var:	dc.b 2,	0, 0		; XREF: ROM:0000B6E0o
+Obj31_Var:	dc.b 2,	0, 0
 		dc.b 4,	$1C, 1		; routine number, y-position, frame number
 		dc.b 8,	$CC, 3
 		dc.b 6,	$F0, 2
@@ -18054,7 +18029,7 @@ word_B6A4:	dc.w $7000, $A000
 Obj31_Main:				; XREF: Obj31_Index
 		moveq	#0,d0
 		move.b	$28(a0),d0
-		bpl.s	loc_B6CE
+		bpl.s	loc_B6CE	
 		andi.w	#$7F,d0
 		add.w	d0,d0
 		lea	Obj31_SwchNums(pc,d0.w),a2
@@ -18204,9 +18179,11 @@ Obj31_TypeIndex:dc.w Obj31_Type00-Obj31_TypeIndex
 Obj31_Type00:				; XREF: Obj31_TypeIndex
 		lea	($FFFFF7E0).w,a2 ; load	switch statuses
 		moveq	#0,d0
-		move.b	$3A(a0),d0	; move number 0	or 1 to	d0
-		tst.b	(a2,d0.w)	; has switch (d0) been pressed?
-		beq.s	loc_B8A8	; if not, branch
+	;	move.b	$3A(a0),d0	; move number 0	or 1 to	d0
+	;	tst.b	(a2,d0.w)	; has switch (d0) been pressed?
+	;	beq.s	loc_B8A8	; if not, branch
+		btst	#0,($FFFFFF6C).w	; has switch 1 been pressed?
+		beq.s	loc_B8A8		; if not, branch
 		tst.w	($FFFFF7A4).w
 		bpl.s	loc_B872
 		cmpi.b	#$10,$32(a0)
@@ -18435,7 +18412,7 @@ Obj45_Display:				; XREF: Obj45_Index
 		bsr	DisplaySprite
 
 Obj45_ChkDel:				; XREF: Obj45_Solid
-		btst	#0,($FFFFFF6C).w ; was switch in MZ pressed?
+		btst	#2,($FFFFFF6C).w ; was switch in MZ pressed?
 		beq.s	@cont		; if not, branch
 		bra.w	DeleteObject	; delete object
 		
@@ -18575,7 +18552,7 @@ Obj32_Pressed:				; XREF: Obj32_Index
 		cmpi.b	#$3,($FFFFFE10).w
 		bne.s	@cont
 		move.b	#1,$1A(a0)
-@cont
+@cont:
 		move.b	$28(a0),d0
 		andi.w	#$F,d0
 		lea	($FFFFF7E0).w,a3
@@ -18599,39 +18576,59 @@ loc_BDBE:
 ; ===========================================================================
 
 loc_BDC8:
-		tst.b	(a3)
-		bne.w	loc_BDD6
-		move.w	#$CD,d0
-		jsr	(PlaySound).l ;	play switch sound
+		tst.b	(a3)			; has switch already been pressed in the previous frame?
+		bne.w	Obj32_ShowPressed	; if yes, branch
+		move.w	#$CD,d0			; play switch sound
+		jsr	(PlaySound).l
 
 loc_BDD6:
 		cmpi.w	#$200,($FFFFFE10).w	; is level MZ1?
 		bne.s	@notmzswitch		; if not, branch
-		bset	#0,($FFFFFF6C).w	; set the "switch in MZ was pressed flag"
-		bra.w	@cont
+		cmpi.b	#$81,$28(a0)		; was first switch pressed? (for spiked girder)
+		bne.s	@cont1
+		bset	#0,($FFFFFF6C).w	; set the "switch in MZ was pressed flag" 1
+		bra.w	Obj32_ShowPressed
+@cont1:
+		cmpi.b	#$82,$28(a0)		; was second switch pressed? (for smashable blocks)
+		bne.s	@cont2
+		btst	#1,($FFFFFF6C).w	; is flag already set?
+		bne.s	Obj32_ShowPressed	; if yes, play regular switch sound
+		bset	#1,($FFFFFF6C).w	; set the "switch in MZ was pressed flag" 2
+		move.w	#$C3,d0			; play giant ring sound (this is when you get the stars)
+		jsr	(PlaySound).l
+		bra.s	Obj32_ShowPressed
+@cont2:
+		cmpi.b	#$83,$28(a0)		; was third switch pressed? (for horizontal stomper)
+		bne.s	@notmzswitch
+		btst	#2,($FFFFFF6C).w	; is flag already set?
+		bne.s	Obj32_ShowPressed	; if yes, play regular switch sound
+		bset	#2,($FFFFFF6C).w	; set the "switch in MZ was pressed flag" 3
+		move.w	#$B7,d0			; play LZ rumbling sound
+		jsr	(PlaySound).l
+		bra.s	Obj32_ShowPressed
 
 @notmzswitch:
 		cmpi.w	#$501,($FFFFFE10).w	; is this the tutorial?
 		bne.s	@nottutorialswitch	; if not, branch
 		tst.b	($FFFFFF77).w		; is antigrav already enabled?
-		bne.w	@cont			; if yes, branch
+		bne.w	Obj32_ShowPressed	; if yes, branch
 		move.b	#1,($FFFFFF77).w	; enable antigrav ability
 		move.b	#$A8,d0			; play upgrade sound
 		jsr	PlaySound
-		bra.s	@cont
+		bra.s	Obj32_ShowPressed
 
 @nottutorialswitch:
 		cmpi.w	#$302,($FFFFFE10).w	; is this Star Agony Place?
-		bne.w	@cont			; if not, branch
+		bne.w	Obj32_ShowPressed	; if not, branch
 		tst.b	($FFFFFF77).w		; is antigrav already enabled?
-		bne.w	@cont			; if yes, branch
+		bne.w	Obj32_ShowPressed	; if yes, branch
 		move.b	#1,($FFFFFF77).w	; enable antigrav ability
 		move.b	#$96,d0			; play music
 		jsr	PlaySound
 		
 		bsr.s	SetupSLZItems
 
-@cont:
+Obj32_ShowPressed:
 		bset	d3,(a3)
 		bset	#0,$1A(a0)	; use "pressed"	frame
 		cmpi.b	#$3,($FFFFFE10).w
@@ -20347,7 +20344,7 @@ Obj36_Hurt:				; XREF: Obj36_SideWays; Obj36_Upright
 		move.w	#$04CC,($FFFFD00C).w	; teleport Sonic on Y-axis
 
 @cont:
-		bclr	#0,($FFFFFF6C).w	; clear the "switch has been pressed" flag
+		clr.b	($FFFFFF6C).w		; clear the "switch has been pressed" flags
 		clr.w	($FFFFD010).w		; clear X-speed
 		clr.w	($FFFFD012).w		; clear Y-speed
 
@@ -23585,16 +23582,6 @@ Map_obj4E:
 ; The speed for the motobug
 MotoBugSpeed = $150
 ;==========================
-;Mine
-; 0 - Disabled
-; 1 - Enabled
-MotoBugMine = 1
-;--------------------------
-;Delay
-; The Delay for a mine
-; (not working)
-MBDelay = $59
-;==========================
 
 Obj40:					; XREF: Obj_Index
 		moveq	#0,d0
@@ -23693,9 +23680,12 @@ locret_F70A:
 ; ===========================================================================
 
 Obj40_CheckSonicPos:
-	;	lea	($FFFFD000).w,a2
+		tst.w	($FFFFFE08).w	; is debug mode	on?
+		beq.s	@cont		; if not, branch
+		clr.w	$10(a0)
+		bra.s	BugMoveEnd	; make Motobug ignore you
+@cont:
 		moveq	#0,d0
-	;	moveq	#0,d1
 		move.w	($FFFFD008).w,d0
 		sub.w	$08(a0),d0
 		bpl.s	BugMoveRight
@@ -24278,8 +24268,8 @@ Obj51:					; XREF: Obj_Index
 		moveq	#0,d0
 		move.b	$24(a0),d0
 		move.w	Obj51_Index(pc,d0.w),d1
-		jsr	obj51_Index(pc,d1.w)
-		bra.w	MarkObjGone
+		jsr	Obj51_Index(pc,d1.w)
+		jmp	MarkObjGone
 ; ===========================================================================
 Obj51_Index:	dc.w Obj51_Main-Obj51_Index
 		dc.w Obj51_Solid-Obj51_Index
@@ -24292,66 +24282,50 @@ Obj51_Main:				; XREF: Obj51_Index
 		move.w	#$42B8,2(a0)
 		move.b	#4,1(a0)
 		move.b	#$10,$19(a0)
-		move.b	#4,$18(a0)
 		move.b	$28(a0),$1A(a0)
 
 Obj51_Solid:				; XREF: Obj51_Index
-		move.w	($FFFFF7D0).w,$34(a0)
-		move.b	($FFFFD01C).w,$32(a0) ;	load Sonic's animation number
+		tst.b	$39(a0)		; already smashed?
+		beq.s	@conty
+		rts
+
+@conty:
+		btst	#1,($FFFFFF6C).w	; has switch 2 been pressed?
+		beq.s	@cont			; if not, branch
+		moveq	#$20,d2
+		move.w	d2,d3
+		add.w	d3,d3
+		lea	($FFFFD000).w,a1
+		move.w	8(a1),d0
+		sub.w	8(a0),d0
+		add.w	d2,d0
+		cmp.w	d3,d0
+		bcc.w	locret_FCFC
+		move.w	$C(a1),d1
+		sub.w	$C(a0),d1
+		add.w	d2,d1
+		cmp.w	d3,d1
+		bcc.w	locret_FCFC
+		bra.s	Obj51_Smash
+
+@cont:
 		move.w	#$1B,d1
 		move.w	#$10,d2
 		move.w	#$11,d3
 		move.w	8(a0),d4
 		bsr	SolidObject
-		btst	#3,$22(a0)
-		bne.s	Obj51_Smash
 
 locret_FCFC:
 		rts	
 ; ===========================================================================
 
 Obj51_Smash:				; XREF: Obj51_Solid
-		cmpi.b	#2,$32(a0)	; is Sonic rolling/jumping?
-		bne.s	locret_FCFC	; if not, branch
-		move.w	$34(a0),($FFFFF7D0).w
-		bset	#2,$22(a1)
-		move.b	#$E,$16(a1)
-		move.b	#7,$17(a1)
-		move.b	#2,$1C(a1)
-		move.w	#-$300,$12(a1)	; bounce Sonic upwards
-		bset	#1,$22(a1)
-		bclr	#3,$22(a1)
-		move.b	#2,$24(a1)
-		bclr	#3,$22(a0)
-		clr.b	$25(a0)
+		move.b	#1,$39(a0)	; mark as smashed
 		move.b	#1,$1A(a0)
-		lea	(Obj51_Speeds).l,a4 ; load broken	fragment speed data
+		lea	(Obj51_Speeds).l,a4 ; load broken fragment speed data
 		moveq	#3,d1		; set number of	fragments to 4
 		move.w	#$38,d2
 		bsr	SmashObject
-		bsr	SingleObjLoad
-		bne.s	Obj51_Display
-		move.b	#$29,0(a1)	; load points object
-		move.w	8(a0),8(a1)
-		move.w	$C(a0),$C(a1)
-		move.w	($FFFFF7D0).w,d2
-		addq.w	#2,($FFFFF7D0).w
-		cmpi.w	#6,d2
-		bcs.s	Obj51_Bonus
-		moveq	#6,d2
-
-Obj51_Bonus:
-		moveq	#0,d0
-		move.w	Obj51_Points(pc,d2.w),d0
-		cmpi.w	#$20,($FFFFF7D0).w ; have 16 blocks been smashed?
-		bcs.s	loc_FD98	; if not, branch
-		move.w	#1000,d0	; give higher points for 16th block
-		moveq	#10,d2
-
-loc_FD98:
-		jsr	AddPoints
-		lsr.w	#1,d2
-		move.b	d2,$1A(a1)
 
 Obj51_Display:				; XREF: Obj51_Index
 		bsr	SpeedToPos
@@ -24366,7 +24340,6 @@ Obj51_Speeds:	dc.w $FE00, $FE00	; x-speed, y-speed
 		dc.w $200, $FE00
 		dc.w $100, $FF00
 
-Obj51_Points:	dc.w 10, 20, 50, 100
 ; ---------------------------------------------------------------------------
 ; Sprite mappings - smashable green block (MZ)
 ; ---------------------------------------------------------------------------
@@ -27234,9 +27207,12 @@ Obj5F_MakeFuse:
 		cmp.w	d1,d0
 		bcc.w	locret_11B5E
 		
-		tst.w	($FFFFD030).w
-		bne.w	locret_11B5E
-
+		tst.w	($FFFFFE08).w	; is debug mode	on?
+		bne.s	@contaaa	; if yes, ignore invicibility frames
+		tst.w	($FFFFD030).w	; does Sonic have invincibility frames left?
+		bne.w	locret_11B5E	; if yes, don't explode
+		
+@contaaa:
 	;	tst.w	($FFFFFE08).w
 	;	bne.w	locret_11B5E
 		move.b	#4,$25(a0)
@@ -31966,8 +31942,12 @@ S_F_NoUP:
 		cmpi.w	#$800,d1		; is Sonic falling faster than $800?
 		bmi.s	S_F_WithinTolerance	; if not,  branch
 		add.w	d1,$12(a1)		; if yes, add his speed that to the total Y-speed of the bullet (so we don't outrun the missiles while falling down)
+
 S_F_WithinTolerance:
-		move.w	#0,$10(a1)		; don't move missile to the right
+		move.w	$10(a0),d0		; get Sonic's X-speed
+		asr.w	#1,d0			; decrease the speed a lot
+		move.w	d0,$10(a1)		; set that speed
+	;	move.w	#0,$10(a1)		; don't move missile to the right
 		moveq	#0,d0			; don't move missile to the right
 
 S_F_NoDown:
@@ -33551,7 +33531,14 @@ Obj38_Delete:
 
 Obj38_Stars:				; XREF: Obj38_Index
 		tst.b	($FFFFFFE7).w	; is inhuman mode enabled?
-		bne.s	Obj38_IfYes	; if yes, branch
+		beq.s	@cont		; if not, branch
+		cmpi.w	#$200,($FFFFFE10).w	; is level MZ1?
+		bne.s	@cont			; if yes, branch
+		btst	#1,($FFFFFF6C).w	; has switch 2 been pressed?
+		bne.s	Obj38_IfYes
+		rts
+
+@cont:
 		tst.b	($FFFFFE2D).w	; does Sonic have invincibility?
 		beq.s	Obj38_Delete2	; if not, branch
 
@@ -46743,6 +46730,9 @@ Debug_Main:				; XREF: Debug_Index
 		andi.w	#$3FF,($FFFFF70C).w
 		move.b	#0,$1A(a0)
 		move.b	#0,$1C(a0)
+		clr.w	$10(a0)	; clear x-speed
+		clr.w	$12(a0)	; clear y-speed
+		clr.w	$14(a0)	; clear inertia
 		cmpi.b	#$10,($FFFFF600).w ; is	game mode = $10	(special stage)?
 		bne.s	Debug_Zone	; if not, branch
 		move.w	#0,($FFFFF782).w ; stop	special	stage rotating

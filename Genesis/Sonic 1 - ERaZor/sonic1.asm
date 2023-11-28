@@ -5310,8 +5310,11 @@ Demo_SS:	incbin	demodata\i_ss.bin
 SpecialStage:				; XREF: GameModeArray
 		tst.b	($FFFFFF5F).w	; is this the blackout special stage?
 		beq.s	@conty		; if not, branch
-		move.w	#$E4,d0
-		bsr	PlaySound_Special ; play special stage entry sound
+		
+		move.w	#$E4,d0			; stop music
+		bsr	PlaySound_Special
+		
+		; instantly turn the entire palette black
 		moveq	#0,d1
 		lea	($FFFFFB00).w,a1
 		move.w	#$3F,d2
@@ -5319,7 +5322,7 @@ SpecialStage:				; XREF: GameModeArray
 		move.l	d1,(a1)+
 		dbf	d2,@clearpalafter
 
-		move.b	#$12,($FFFFF62A).w
+		move.b	#$12,($FFFFF62A).w	; apply palette changes before we move on
 		bsr	DelayProgram
 		bra.s	@cont
 
@@ -5424,7 +5427,8 @@ SS_ClrNemRam:
 		move.w	#$89,d0
 		tst.b	($FFFFFF5F).w	; is this the blackout special stage?
 		beq.s	@conto
-		move.w	#$9C,d0
+		move.w	#$9C,d0		; play creepy music
+		move.w	#-$1F00,($FFFFF780).w	; pre-rotate stage so that it's 45 degrees
 
 @conto:
 		bsr	PlaySound	; play special stage BG	music
@@ -5466,6 +5470,7 @@ SS_MainLoop:
 		cmpi.b	#4,($FFFFD024).w	; is special stage exiting routine being run?
 		bge.w	SS_NoPauseGame		; if yes, branch
 
+		; continously apply the red/black palette
 		movem.l	d0-a1,-(sp)
 		lea	($FFFFFB4E).w,a1 	; get palette
 		moveq	#0,d3			; clear d3
@@ -10469,13 +10474,13 @@ Resize_SLZ3:
 		bra.w	@contret
 
 @cont3:		
-		cmpi.w	#$1F00,($FFFFD008).w
-		bcs.s	locret_715C
+		cmpi.w	#$1F00,($FFFFD008).w	; is Sonic at the end of the stage?
+		bcs.w	@contret		; if not, branch
 		
-		tst.b	($FFFFF7CC).w
-		bne.s	@cont5
+		tst.b	($FFFFF7CC).w		; are controls already locked?
+		bne.s	@cont5			; if yes, branch
 		moveq	#$12,d0
-		jsr	LoadPLC2	; load signpost	patterns
+		jsr	LoadPLC2		; load signpost	patterns
 
 @cont5:
 		cmpi.w	#$1FC0,($FFFFD008).w
@@ -12745,7 +12750,7 @@ Obj1D_ChkDelete:				; XREF: Obj1D_Index
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Object 2A - doors (SLZ)
+; Object 2A - doors (SYZ)
 ; ---------------------------------------------------------------------------
 
 Obj2A:					; XREF: Obj_Index
@@ -12766,6 +12771,25 @@ Obj2A_Main:				; XREF: Obj2A_Index
 		ori.b	#4,1(a0)
 		move.b	#8,$19(a0)
 		move.b	#4,$18(a0)
+
+		cmpi.w	#$400,($FFFFFE10).w	; is level SYZ1 (overworld)?
+		bne.s	@nosoundstopper		; if not, branch
+		tst.b	$28(a0)			; is this the door leading to the blackout challenge?
+		bpl.s	@nosoundstopper		; if not, branch
+		tst.b	($FFFFFF93).w		; has the player beaten the game?
+		beq.s	@nosoundstopper		; if not, don't load sound stopper
+
+		bsr	SingleObjLoad
+		bne.s	@nosoundstopper
+		move.b	#$7D,0(a1)		; load emblem object
+		move.b	#6,$24(a1)		; set to "sound stopper" mode
+		move.w	$8(a0),d0		; copy X coordinate of door
+		subi.w	#27,d0			; move a few pixels to the left
+		move.w	d0,$8(a1)		; write to thingy
+		move.w	$C(a0),$C(a1)		; copy Y coordinate of door
+		move.l	a0,$30(a1)		; make the stopper remember the location of this door
+
+@nosoundstopper:
 		cmpi.w	#$501,($FFFFFE10).w
 		bne.s	Obj2A_OpenShut
 		addq.b	#2,$24(a0)
@@ -12778,11 +12802,17 @@ Obj2A_OpenShut:				; XREF: Obj2A_Index
 
 	if DoorsAlwaysOpen=0
 		move.w	#$0809,2(a0)		; use red light art
-		tst.b	$28(a0)		; is this the door leading to the blackout challenge?
-		bpl.s	@notfinaldoor	; if not, branch
-		tst.b	($FFFFFF93).w	; has the player beaten the game?
-		bne.s	@usegreendoor	; if yes, open the door
-		bra.w	Obj2A_Animate	; otherwise, keep it locked
+		tst.b	$28(a0)			; is this the door leading to the blackout challenge?
+		bpl.s	@notfinaldoor		; if not, branch
+		tst.b	$30(a0)			; has sound stopper been passed?
+		beq.s	@finaldoornotpassed	; if not, branch
+		clr.b	$1C(a0)			; use "closing"	animation
+		bra.w	Obj2A_Animate		; force door to be red
+
+@finaldoornotpassed:
+		tst.b	($FFFFFF93).w		; has the player beaten the game?
+		bne.s	@usegreendoor		; if yes, open the door
+		bra.w	Obj2A_Animate		; otherwise, keep it locked
 
 @notfinaldoor:
 		move.b	($FFFFFF8B).w,d0	; get ammount of beat levels
@@ -15625,9 +15655,9 @@ Obj4B_Main:				; XREF: Obj4B_Index
 		bne.s	Obj4B_Main_Cont		; if not, branch
 		move.w	#100,$30(a0)
 		move.w	#$2422,2(a0)
-		cmpi.w	#$0280,$8(a0)
-		bne.s	Obj4B_Main_Cont
-		move.w	#$0422,2(a0)
+		cmpi.w	#$0280,$8(a0)		; is this the blackout challenge ring?
+		bne.s	Obj4B_Main_Cont		; if not, branch
+		move.w	#$0422,2(a0)		; use red palette
 
 Obj4B_Main_Cont:
 		ori.b	#4,1(a0)
@@ -15654,9 +15684,9 @@ Obj4B_Animate:				; XREF: Obj4B_Index
 		move.b	$36(a0),$1A(a0)
 
 		tst.b	$3C(a0)
-		bne.s	Obj4B_NoEnemy
+		bne.s	Obj4B_DontCollect
 		tst.w	($FFFFFE08).w
-		bne.s	Obj4B_NoEnemy
+		bne.s	Obj4B_DontCollect
 
 		move.w	$8(a0),d0
 		sub.w	($FFFFD008).w,d0
@@ -15665,7 +15695,7 @@ Obj4B_Animate:				; XREF: Obj4B_Index
 
 Obj4B_XPositive:
 		cmpi.w	#$20,d0
-		bgt.s	Obj4B_NoEnemy
+		bgt.s	Obj4B_DontCollect
 
 		move.w	$C(a0),d0
 		sub.w	($FFFFD00C).w,d0
@@ -15674,12 +15704,18 @@ Obj4B_XPositive:
 
 Obj4B_YPositive:
 		cmpi.w	#$20,d0
-		bgt.s	Obj4B_NoEnemy
+		bgt.s	Obj4B_DontCollect
 		
-		move.b	#4,$24(a0)
-		move.b	#1,$3C(a0)
+		cmpi.w	#$0280,$8(a0)		; is this the ring to the blackout challenge?
+		bne.s	@contnotredaircheck	; if not, branch
+		btst	#1,($FFFFD022).w	; is Sonic in air?
+		beq.s	Obj4B_DontCollect	; if not, don't collect
+		
+@contnotredaircheck:
+		move.b	#4,$24(a0)		; mark ring as collected
+		move.b	#1,$3C(a0)		; disable interaction with ring
 
-Obj4B_NoEnemy:
+Obj4B_DontCollect:
 		move.w	8(a0),d0
 		andi.w	#$FF80,d0
 		move.w	($FFFFF700).w,d1
@@ -15707,7 +15743,12 @@ Obj4B_ArtLoadLoop:
 		move.w	(a0)+,(a6)
 		dbf	d1,Obj4B_ArtLoadLoop
 		move.l	(sp)+,a0
-
+		
+		cmpi.w	#$0280,$8(a0)		; is this the ring to the blackout challenge?
+		bne.s	@contnotred		; if not, branch
+		move.b	#60,($FFFFFF7D).w	; wait for a bit
+	@contnotred:
+		
 		cmpi.w	#$000,($FFFFFE10).w
 		bne.s	Obj4B_NotGHZ1
 		subq.b	#2,$24(a0)
@@ -15717,9 +15758,9 @@ Obj4B_ArtLoadLoop:
 Obj4B_NotGHZ1:
 		subq.b	#2,$24(a0)
 		move.b	#0,$20(a0)
-		cmpi.w	#$001,($FFFFFE10).w
-		bne.s	Obj4B_NotGHZ2
-		clr.w	($FFFFF73A).w
+		cmpi.w	#$001,($FFFFFE10).w	; is this the intro cutscene?
+		bne.s	Obj4B_NotGHZ2		; if not, branch
+		clr.w	($FFFFF73A).w		; reset BG deformation
 		jsr	WhiteFlash3		; make white flash
 
 Obj4B_NotGHZ2:
@@ -15736,24 +15777,41 @@ Obj4B_NotGHZ2:
 		bset	#0,1(a1)	; reverse flash	object
 
 Obj4B_PlaySnd:
-		move.w	#$C3,d0
-		jsr	(PlaySound_Special).l ;	play giant ring	sound
+		move.w	#$C3,d0			; play giant ring sound
+		jsr	(PlaySound).l
+		cmpi.w	#$0280,$8(a0)		; is this the ring to the blackout challenge?
+		bne.s	@contnotredx		; if not, branch
+		move.w	#$B0,d0			; play SBZ sawblade sound (for extra spoop)
+		jsr	(PlaySound_Special).l
+	@contnotredx:
 		bra.w	Obj4B_Animate
 ; ===========================================================================
 
 Obj4B_Delete:				; XREF: Obj4B_Index
 		bsr.w	Obj4B_Animate		; still animate ring
 
-		cmpi.w	#$501,($FFFFFE10).w
-		beq.s	@conty
+		cmpi.w	#$501,($FFFFFE10).w	; is this the tutorial?
+		beq.s	@conty			; if yes, branch
 
-		cmpi.w	#$302,($FFFFFE10).w
-		beq.s	@conty
+		cmpi.w	#$302,($FFFFFE10).w	; is this Star Agony Place? (easter egg ring)
+		beq.s	@conty			; if yes, branch
 
 		cmpi.w	#$400,($FFFFFE10).w	; is level SYZ 1?
 		bne.w	Obj4B_ChkGHZ2		; if not, branch
 
 @conty:
+		cmpi.w	#$0280,$8(a0)		; is this the ring to the blackout challenge?
+		bne.s	@contnotred		; if not, branch
+		addi.w	#$20,$12(a0)		; move ring down
+		jsr	SpeedToPos
+		move.b	#0,$37(a0)		; use fast animation
+		move.b	#0,$38(a0)		; use fast animation
+		tst.b	($FFFFFF7D).w
+		bmi.w	Obj4B_ChkBlackout
+		subq.b	#1,($FFFFFF7D).w
+		bra.w	Obj4B_SYZ_Return
+
+@contnotred:
 		tst.b	($FFFFFF7D).w		; is ring moving up?
 		bne.s	@cont2			; if yes, branch
 		addi.w	#$10,$12(a0)		; move ring down
@@ -15767,9 +15825,11 @@ Obj4B_Delete:				; XREF: Obj4B_Index
 		move.b	#0,$38(a0)
 @cont:
 		jsr	SpeedToPos
+; ---------------------------------------------------------------------------
 
-		tst.b	1(a0)
-		bmi.w	Obj4B_Return
+Obj4B_LoadLevel:
+		tst.b	1(a0)			; is ring still on screen?
+		bmi.w	Obj4B_Return		; if yes, branch
 		
 		cmpi.w	#$501,($FFFFFE10).w	; is this the tutorial?
 		bne.s	Obj4B_SNZ		; if not, branch
@@ -15778,103 +15838,91 @@ Obj4B_Delete:				; XREF: Obj4B_Index
 		jmp	PlaySound_Special
 
 Obj4B_SNZ:
-		cmpi.w	#$302,($FFFFFE10).w
-		bne.s	Obj4B_ChkOptions
+		cmpi.w	#$302,($FFFFFE10).w	; is this the easter egg ring in Star Agony Place?
+		bne.s	Obj4B_ChkOptions	; if not, branch
 		move.b	#$20,($FFFFF600).w	; load info screen
 		move.b	#9,($FFFFFF9E).w	; set number for text to 9
 		move.b	#$9D,d0			; play ending sequence music (cause it fits for the easter egg lol)
 		jmp	PlaySound
 
 Obj4B_ChkOptions:
-		cmpi.w	#$0020,$8(a0)
-		bne.s	Obj4B_ChkIntro
+		cmpi.w	#$0020,$8(a0)		; is this the ring to the options menu?
+		bne.s	Obj4B_ChkIntro		; if not, branch
 		move.b	#$24,($FFFFF600).w	; load options menu
 		rts
 
 Obj4B_ChkIntro:
-		cmpi.w	#$0200,$8(a0)
-		bne.s	Obj4B_ChkGHZ
-
+		cmpi.w	#$0200,$8(a0)		; is this the ring to the tutorial?
+		bne.s	Obj4B_ChkGHZ		; if not, branch
 		move.w	#$501,($FFFFFE10).w	; set level to SBZ2
-	;	move.b	#$91,d0
-	;	jsr	PlaySound
-		bra.w	Obj4B_PlayLevel
-
-
-
-		move.w	#$001,($FFFFFE10).w	; set level to GHZ2
-		move.b	#$95,d0
-		jsr	PlaySound
 		bra.w	Obj4B_PlayLevel
 
 Obj4B_ChkGHZ:
-		cmpi.w	#$04A0,$8(a0)
-		bne.s	Obj4B_ChkSpecial
+		cmpi.w	#$04A0,$8(a0)		; is this the ring to Night Hill Place?
+		bne.s	Obj4B_ChkSpecial	; if not, branch
 		move.w	#$000,($FFFFFE10).w	; set level to GHZ1
 		bra.w	Obj4B_PlayLevel
 
 Obj4B_ChkSpecial:
-		cmpi.w	#$06B0,$8(a0)
-		bne.s	Obj4B_ChkMZ
+		cmpi.w	#$06B0,$8(a0)		; is this the ring to Special Place?
+		bne.s	Obj4B_ChkMZ		; if not, branch
 		move.w	#$300,($FFFFFE10).w	; set level to Special Stage
-		clr.b	($FFFFFF5F).w	 ; clear blackout blackout special stage flag
+		clr.b	($FFFFFF5F).w		; clear blackout blackout special stage flag
 		bsr	MakeChapterScreen
 		rts
 
 Obj4B_ChkMZ:
-		cmpi.w	#$08A0,$8(a0)
-		bne.s	Obj4B_ChkLZ2
+		cmpi.w	#$08A0,$8(a0)		; is this the ring to Ruined Place?
+		bne.s	Obj4B_ChkLZ2		; if not, branch
 		move.w	#$200,($FFFFFE10).w	; set level to MZ1
 		bsr	MakeChapterScreen
 		bra.w	Obj4B_PlayLevel
 
 Obj4B_ChkLZ2:
-		cmpi.w	#$0AA0,$8(a0)
-		bne.s	Obj4B_ChkSpecial2
+		cmpi.w	#$0AA0,$8(a0)		; is this the ring to Labyrinthy Place?
+		bne.s	Obj4B_ChkSpecial2	; if not, branch
 		move.w	#$101,($FFFFFE10).w	; set level to LZ2
 		bsr	MakeChapterScreen
 		bra.w	Obj4B_PlayLevel
 
 Obj4B_ChkSpecial2:
-		cmpi.w	#$0CB0,$8(a0)
-		bne.s	Obj4B_ChkSpecial2_Easter
+		cmpi.w	#$0CB0,$8(a0)		; is this the ring to Unreal Place?
+		bne.s	Obj4B_ChkBlackout	; if not, branch
 		move.w	#$401,($FFFFFE10).w	; set level to Special Stage 2
-		clr.b	($FFFFFF5F).w 	; clear blackout blackout special stage flag
+		clr.b	($FFFFFF5F).w		; clear blackout blackout special stage flag
 		bsr	MakeChapterScreen
 		rts
 
-Obj4B_ChkSpecial2_Easter:
-		cmpi.w	#$0280,$8(a0)
-		bne.s	Obj4B_ChkSLZ2
+Obj4B_ChkBlackout:
+		cmpi.w	#$0280,$8(a0)		; is this the ring to the blackout challenge?
+		bne.s	Obj4B_ChkSLZ2		; if not, branch
 		move.w	#$401,($FFFFFE10).w	; set level to Special Stage 2 Easter
 		move.b	#1,($FFFFFF5F).w	; set blackout blackout special stage flag
-		move.b	#$10,($FFFFF600).w
-	;	bsr	MakeChapterScreen
+		move.b	#$10,($FFFFF600).w	; set game mode to special stage (needs to be done manually since no chapter screen)
 		rts
 
 Obj4B_ChkSLZ2:
-		cmpi.w	#$0EA0,$8(a0)
-		bne.s	Obj4B_ChkFZ
+		cmpi.w	#$0EA0,$8(a0)		; is this the ring to Scar Night Place?
+		bne.s	Obj4B_ChkFZ		; if not, branch
 		move.w	#$301,($FFFFFE10).w	; set level to SLZ2
-	;	move.w	#$500,($FFFFFE10).w	; set level to SBZ1
 		bsr	MakeChapterScreen
 		bra.s	Obj4B_PlayLevel
 
-
 Obj4B_ChkFZ:
-		cmpi.w	#$10A0,$8(a0)
-		bne.s	Obj4B_ChkEnding
+		cmpi.w	#$10A0,$8(a0)		; is this the ring to Finalor Place?
+		bne.s	Obj4B_ChkEnding		; if not, branch
 		move.w	#$502,($FFFFFE10).w	; set level to FZ
 		bsr	MakeChapterScreen
 		bra.s	Obj4B_PlayLevel
 
 Obj4B_ChkEnding:
-		cmpi.w	#$125C,$8(a0)
-		bne.w	Obj4B_Return
+		cmpi.w	#$125C,$8(a0)		; is this the ring to the ending sequence?
+		bne.w	Obj4B_Return		; if not, branch
 		move.b	#$20,($FFFFF600).w	; load info screen
 		move.b	#8,($FFFFFF9E).w	; set number for text to 8
 		move.b	#$9D,d0			; play ending sequence music
 		jmp	PlaySound
+; ---------------------------------------------------------------------------
 
 Obj4B_PlayLevel:
 		cmpi.b	#$28,($FFFFF600).w
@@ -16009,13 +16057,13 @@ Obj7C_ChkDel:				; XREF: Obj7C_Index
 
 Obj7C_Collect:				; XREF: Obj7C_ChkDel
 		cmpi.w	#$400,($FFFFFE10).w	; is level SYZ 1?
-		beq.s	Obj7C_NotSYZ1		; if not, branch
+		beq.s	Obj7C_SYZ1		; if yes, branch
 
 		subq.b	#1,$1E(a0)
 		bpl.s	locret_9F76
 		move.b	#1,$1E(a0)
 
-Obj7C_NotSYZ1:
+Obj7C_SYZ1:
 		addq.b	#1,$1A(a0)
 		cmpi.b	#8,$1A(a0)	; has animation	finished?
 		bcc.s	Obj7C_End	; if yes, branch
@@ -31088,6 +31136,9 @@ WF_MakeWhite_Loop:
 		move.w	(a1),d1			; get current color in palette
 		
 		moveq	#2,d4			; set repetitions to 2 (increases white intensity)
+		cmpi.w	#$302,($FFFFFE10).w	; is level SLZ3?
+		bne.s	@wfintensity		; if not, branch
+		moveq	#0,d4			; don't increase intensity for SLZ (cause of how dark it is)
 @wfintensity:		
 		move.w	d1,d2			; copy color
 		andi.w	#$00E,d2		; filter for red
@@ -31763,6 +31814,14 @@ Sonic_AirFreeze:
 		rts				; return
 
 AM_APressed:
+		cmpi.w	#$302,($FFFFFE10).w	; is level SLZ3?
+		bne.s	AM_SetFlags		; if not, branch
+		cmpi.w	#$1F00,($FFFFD008).w	; is Sonic at the end of the stage?
+		bcc.w	AM_DontForceRoll	; if not, branch
+
+AM_SetFlags:
+		move.b	#2,$1C(a0)		; use rolling animation
+AM_DontForceRoll:
 		move.b	#1,($FFFFFFE5).w	; set flag
 		btst	#6,($FFFFF603).w	; was A pressed this frame?
 		beq.s	AM_Decelerate_X		; if not, branch
@@ -32579,21 +32638,6 @@ loc_137E4:
 ; ---------------------------------------------------------------------------
 
 Obj01_Hurt:				; XREF: Obj01_Index
-		tst.b	($FFFFFFBC).w	; is AirMove enabled on TS?
-		bra.s	Obj01_Hurt_Normal ; if not, branch
-		btst	#4,($FFFFF605).w ; is button B pressed?
-		beq.s	Obj01_Hurt_Normal ; if not, branch
-		clr.b	($FFFFF7CC).w	; unlock controls
-		clr.w	$10(a0)		; clear X-speed
-		clr.w	$12(a0)		; clear Y-speed
-		clr.w	$14(a0)		; clear interia
-		move.b	#2,$24(a0)	; set to Obj01_Control
-		clr.w	$30(a0)		; don't make any flashing
-		move.b	#2,$1C(a0)	; use rolling animation
-		rts
-; ===========================================================================
-
-Obj01_Hurt_Normal:
 		cmpi.b	#$1A,$1C(a0)	; is animation $1A (hurting)?
 		beq.s	Hurt_CorrectAni	; if yes, branch
 		move.b	#$1A,$1C(a0)	; otherwise make sure the correct anim is being used
@@ -37431,7 +37475,7 @@ Map_obj79:
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Object 7D - hidden points at the end of a level
+; Object 7D - hidden points at the end of a level (emblems)
 ; ---------------------------------------------------------------------------
 
 Obj7D:					; XREF: Obj_Index
@@ -37441,11 +37485,18 @@ Obj7D:					; XREF: Obj_Index
 		jmp	Obj7D_Index(pc,d1.w)
 ; ===========================================================================
 Obj7D_Index:	dc.w Obj7D_Main-Obj7D_Index
-		dc.w Obj7D_Action-Obj7D_Index
-		dc.w Obj7D_Action2-Obj7D_Index
+		dc.w Obj7D_RightEmblem-Obj7D_Index
+		dc.w Obj7D_LeftEmblem-Obj7D_Index
+		dc.w Obj7D_SoundStopper-Obj7D_Index
 ; ===========================================================================
 
 Obj7D_Main:				; XREF: Obj7D_Index
+		cmpi.w	#$400,($FFFFFE10).w	; is level SYZ?
+		bne.s 	Obj7D_Main_SLZ		; if not, branch
+		move.b	#6,$24(a0)		; set to "sound stopper" mode
+		bra.w	Obj7D_SoundStopper
+		
+Obj7D_Main_SLZ:
 		addq.b	#2,$24(a0)
 		move.l	#Map_obj7D,4(a0)
 		move.w	#$84B6,2(a0)
@@ -37453,7 +37504,7 @@ Obj7D_Main:				; XREF: Obj7D_Index
 		move.b	#3,$18(a0)
 		move.b	#3,$1A(a0)
 
-Obj7D_Action:
+Obj7D_RightEmblem:
 		moveq	#$20,d2
 		move.w	d2,d3
 		add.w	d3,d3
@@ -37475,10 +37526,9 @@ Obj7D_Action:
 		moveq	#1,d0
 		jsr	AddPoints
 
-		cmpi.b	#6,($FFFFFFA0).w
-		bge.s	@cont
+		cmpi.b	#6,($FFFFFFA0).w	; have all six emblems been collected?
+		bge.s	@cont			; if yes, don't spawn another emblem
 
-	;	jsr	SingleObjLoad
 		lea	($FFFFDF80).w,a1
 		move.b	#$7D,(a1)
 		move.w	#$1C48,$8(a1)
@@ -37488,14 +37538,18 @@ Obj7D_Action:
 		move.w	#$84B6,2(a1)
 		ori.b	#$84,1(a1)
 		move.b	#3,$18(a1)
-		move.b	($FFFFFFA0).w,$1A(a1)
+		move.b	($FFFFFFA0).w,$1A(a1)	; set frame
 		addq.b	#1,$1A(a1)
 
 @cont:
-		addq.b	#1,($FFFFFFA0).w
-		cmpi.b	#1,($FFFFFFA0).w
-		bne.w	Obj7D_Delete
+		addq.b	#1,($FFFFFFA0).w	; increase emblems collected counter
+		cmpi.b	#1,($FFFFFFA0).w	; is this the first collected emblem?
+		bne.w	Obj7D_Delete		; if not, branch
 
+		move.w	#$B7,d0
+		jsr	(PlaySound_Special).l	; play rumbling sound
+		
+		; update layout to lock you into a loop
 		movem.l	d0-a1,-(sp)
 		move.w	#$1B80,d0
 		move.w	#$0280,d1
@@ -37513,7 +37567,7 @@ Obj7D_NoTouch:
 		jmp	DisplaySprite
 ; ===========================================================================
 
-Obj7D_Action2:
+Obj7D_LeftEmblem:
 		moveq	#$20,d2
 		move.w	d2,d3
 		add.w	d3,d3
@@ -37535,10 +37589,14 @@ Obj7D_Action2:
 		moveq	#1,d0
 		jsr	AddPoints
 
-		addq.b	#1,($FFFFFFA0).w
-		cmpi.b	#6,($FFFFFFA0).w
-		blt.s	Obj7D_No6
+		addq.b	#1,($FFFFFFA0).w	; increase emblems collected counter
+		cmpi.b	#6,($FFFFFFA0).w	; is this the sixth collected emblem?
+		blt.s	Obj7D_No6		; if not, branch
 
+		move.w	#$B7,d0
+		jsr	(PlaySound_Special).l	; play rumbling sound
+		
+		; update layout to open up the loop on the right
 		movem.l	d0-a1,-(sp)
 		move.w	#$1D80,d0
 		move.w	#$0280,d1
@@ -37552,7 +37610,6 @@ Obj7D_Action2:
 		bra.w	Obj7D_Delete
 
 Obj7D_No6:
-	;	jsr	SingleObjLoad
 		lea	($FFFFDFC0).w,a1
 		move.b	#$7D,(a1)
 		move.w	#$1DB8,$8(a1)
@@ -37567,6 +37624,33 @@ Obj7D_No6:
 
 Obj7D_NoTouch2:
 		jmp	DisplaySprite
+; ===========================================================================
+
+Obj7D_SoundStopper:
+		moveq	#$20,d2
+		move.w	d2,d3
+		add.w	d3,d3
+		lea	($FFFFD000).w,a1
+		move.w	8(a1),d0
+		sub.w	8(a0),d0
+		add.w	d2,d0
+		cmp.w	d3,d0
+		bcc.w	Obj7D_NoTouch3
+		move.w	$C(a1),d1
+		sub.w	$C(a0),d1
+		add.w	d2,d1
+		cmp.w	d3,d1
+		bcc.w	Obj7D_NoTouch3
+		move.w	#$E0,d0			; set song $E0
+		jsr	PlaySound_Special	; fade out music
+		
+		movea.l	$30(a0),a1		; get saved RAM address of the door
+		move.b	#1,$30(a1)		; turn the door red
+		
+		jmp	DeleteObject
+
+Obj7D_NoTouch3:
+		rts
 ; ===========================================================================
 
 Obj7D_Delete:

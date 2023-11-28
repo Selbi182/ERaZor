@@ -15629,7 +15629,22 @@ Obj37_Delete:				; XREF: Obj37_Index
 		bra.w	DeleteObject
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Object 4B - giant ring for entry to special stage
+; Object 4B - giant rings
+; ---------------------------------------------------------------------------
+; Subtypes for the rings in Uberhub:
+GRing_NightHill  = 1
+GRing_GreenHill  = 2
+GRing_Special    = 3
+GRing_Ruined     = 4
+GRing_Labyrinthy = 5
+GRing_Unreal     = 6
+GRing_ScarNight  = 7
+GRing_StarAgony  = 8
+GRing_Finalor    = 9
+GRing_Ending     = $A
+GRing_Options    = $81
+GRing_Tutorial   = $82
+GRing_Blackout   = $83
 ; ---------------------------------------------------------------------------
 
 Obj4B:					; XREF: Obj_Index
@@ -15651,11 +15666,29 @@ Obj4B_Main:				; XREF: Obj4B_Index
 		move.l	#Map_obj4B,4(a0)
 		move.w	#$2400,2(a0)
 
-		cmpi.w	#$400,($FFFFFE10).w	; is level SYZ 1?
+		cmpi.w	#$400,($FFFFFE10).w	; is level Uberhub?
 		bne.s	Obj4B_Main_Cont		; if not, branch
-		move.w	#100,$30(a0)
-		move.w	#$2422,2(a0)
-		cmpi.w	#$0280,$8(a0)		; is this the blackout challenge ring?
+		move.w	#$2422,2(a0)		; use yellow palette
+		
+		cmpi.b	#GRing_NightHill,$28(a0)	; is this a ring leading to Night Hill Place?
+		bne.s	@tempringcont1			; if not, branch
+		cmpi.w	#$04A0,8(a0)			; is it specifically the ring you enter from the tube?
+		bne.s	Obj4B_Main_Cont			; if not, branch
+		btst	#0,($FFFFFF8B).w		; has the player beaten this level before?
+		beq.s	Obj4B_Main_Cont			; if not, branch
+		jmp	DeleteObject			; otherwise, delete this ring to open up the selection to act 2
+		
+@tempringcont1:
+		cmpi.b	#GRing_ScarNight,$28(a0)	; is this a ring leading to Scar Night Place?
+		bne.s	@tempringcont2			; if not, branch
+		cmpi.w	#$0EA0,8(a0)			; is it specifically the ring you enter from the tube?
+		bne.s	Obj4B_Main_Cont			; if not, branch
+		btst	#5,($FFFFFF8B).w		; has the player beaten this level before?
+		beq.s	Obj4B_Main_Cont			; if not, branch
+		jmp	DeleteObject			; otherwise, delete this ring to open up the selection to act 2
+		
+@tempringcont2:
+		cmpi.b	#GRing_Blackout,$28(a0)	; is this the blackout challenge ring?
 		bne.s	Obj4B_Main_Cont		; if not, branch
 		move.w	#$0422,2(a0)		; use red palette
 
@@ -15706,7 +15739,7 @@ Obj4B_YPositive:
 		cmpi.w	#$20,d0
 		bgt.s	Obj4B_DontCollect
 		
-		cmpi.w	#$0280,$8(a0)		; is this the ring to the blackout challenge?
+		cmpi.b	#GRing_Blackout,$28(a0)	; is this the blackout challenge ring?
 		bne.s	@contnotredaircheck	; if not, branch
 		btst	#1,($FFFFD022).w	; is Sonic in air?
 		beq.s	Obj4B_DontCollect	; if not, don't collect
@@ -15744,7 +15777,7 @@ Obj4B_ArtLoadLoop:
 		dbf	d1,Obj4B_ArtLoadLoop
 		move.l	(sp)+,a0
 		
-		cmpi.w	#$0280,$8(a0)		; is this the ring to the blackout challenge?
+		cmpi.b	#GRing_Blackout,$28(a0)	; is this the blackout challenge ring?
 		bne.s	@contnotred		; if not, branch
 		move.b	#60,($FFFFFF7D).w	; wait for a bit
 	@contnotred:
@@ -15779,7 +15812,7 @@ Obj4B_NotGHZ2:
 Obj4B_PlaySnd:
 		move.w	#$C3,d0			; play giant ring sound
 		jsr	(PlaySound).l
-		cmpi.w	#$0280,$8(a0)		; is this the ring to the blackout challenge?
+		cmpi.b	#GRing_Blackout,$28(a0)	; is this the blackout challenge ring?
 		bne.s	@contnotredx		; if not, branch
 		move.w	#$B0,d0			; play SBZ sawblade sound (for extra spoop)
 		jsr	(PlaySound_Special).l
@@ -15800,7 +15833,7 @@ Obj4B_Delete:				; XREF: Obj4B_Index
 		bne.w	Obj4B_ChkGHZ2		; if not, branch
 
 @conty:
-		cmpi.w	#$0280,$8(a0)		; is this the ring to the blackout challenge?
+		cmpi.b	#GRing_Blackout,$28(a0)	; is this the blackout challenge ring?
 		bne.s	@contnotred		; if not, branch
 		addi.w	#$20,$12(a0)		; move ring down
 		jsr	SpeedToPos
@@ -15809,7 +15842,7 @@ Obj4B_Delete:				; XREF: Obj4B_Index
 		tst.b	($FFFFFF7D).w
 		bmi.w	Obj4B_ChkBlackout
 		subq.b	#1,($FFFFFF7D).w
-		bra.w	Obj4B_SYZ_Return
+		bra.w	Obj4B_Return
 
 @contnotred:
 		tst.b	($FFFFFF7D).w		; is ring moving up?
@@ -15826,6 +15859,7 @@ Obj4B_Delete:				; XREF: Obj4B_Index
 @cont:
 		jsr	SpeedToPos
 ; ---------------------------------------------------------------------------
+; Misc loading logic
 
 Obj4B_LoadLevel:
 		tst.b	1(a0)			; is ring still on screen?
@@ -15839,106 +15873,18 @@ Obj4B_LoadLevel:
 
 Obj4B_SNZ:
 		cmpi.w	#$302,($FFFFFE10).w	; is this the easter egg ring in Star Agony Place?
-		bne.s	Obj4B_ChkOptions	; if not, branch
+		bne.s	Obj4B_ChkGHZ1		; if not, branch
 		move.b	#$20,($FFFFF600).w	; load info screen
 		move.b	#9,($FFFFFF9E).w	; set number for text to 9
 		move.b	#$9D,d0			; play ending sequence music (cause it fits for the easter egg lol)
 		jmp	PlaySound
 
-Obj4B_ChkOptions:
-		cmpi.w	#$0020,$8(a0)		; is this the ring to the options menu?
-		bne.s	Obj4B_ChkIntro		; if not, branch
-		move.b	#$24,($FFFFF600).w	; load options menu
-		rts
-
-Obj4B_ChkIntro:
-		cmpi.w	#$0200,$8(a0)		; is this the ring to the tutorial?
-		bne.s	Obj4B_ChkGHZ		; if not, branch
-		move.w	#$501,($FFFFFE10).w	; set level to SBZ2
-		bra.w	Obj4B_PlayLevel
-
-Obj4B_ChkGHZ:
-		cmpi.w	#$04A0,$8(a0)		; is this the ring to Night Hill Place?
-		bne.s	Obj4B_ChkSpecial	; if not, branch
-		move.w	#$000,($FFFFFE10).w	; set level to GHZ1
-		bra.w	Obj4B_PlayLevel
-
-Obj4B_ChkSpecial:
-		cmpi.w	#$06B0,$8(a0)		; is this the ring to Special Place?
-		bne.s	Obj4B_ChkMZ		; if not, branch
-		move.w	#$300,($FFFFFE10).w	; set level to Special Stage
-		clr.b	($FFFFFF5F).w		; clear blackout blackout special stage flag
-		bsr	MakeChapterScreen
-		rts
-
-Obj4B_ChkMZ:
-		cmpi.w	#$08A0,$8(a0)		; is this the ring to Ruined Place?
-		bne.s	Obj4B_ChkLZ2		; if not, branch
-		move.w	#$200,($FFFFFE10).w	; set level to MZ1
-		bsr	MakeChapterScreen
-		bra.w	Obj4B_PlayLevel
-
-Obj4B_ChkLZ2:
-		cmpi.w	#$0AA0,$8(a0)		; is this the ring to Labyrinthy Place?
-		bne.s	Obj4B_ChkSpecial2	; if not, branch
-		move.w	#$101,($FFFFFE10).w	; set level to LZ2
-		bsr	MakeChapterScreen
-		bra.w	Obj4B_PlayLevel
-
-Obj4B_ChkSpecial2:
-		cmpi.w	#$0CB0,$8(a0)		; is this the ring to Unreal Place?
-		bne.s	Obj4B_ChkBlackout	; if not, branch
-		move.w	#$401,($FFFFFE10).w	; set level to Special Stage 2
-		clr.b	($FFFFFF5F).w		; clear blackout blackout special stage flag
-		bsr	MakeChapterScreen
-		rts
-
-Obj4B_ChkBlackout:
-		cmpi.w	#$0280,$8(a0)		; is this the ring to the blackout challenge?
-		bne.s	Obj4B_ChkSLZ2		; if not, branch
-		move.w	#$401,($FFFFFE10).w	; set level to Special Stage 2 Easter
-		move.b	#1,($FFFFFF5F).w	; set blackout blackout special stage flag
-		move.b	#$10,($FFFFF600).w	; set game mode to special stage (needs to be done manually since no chapter screen)
-		rts
-
-Obj4B_ChkSLZ2:
-		cmpi.w	#$0EA0,$8(a0)		; is this the ring to Scar Night Place?
-		bne.s	Obj4B_ChkFZ		; if not, branch
-		move.w	#$301,($FFFFFE10).w	; set level to SLZ2
-		bsr	MakeChapterScreen
-		bra.s	Obj4B_PlayLevel
-
-Obj4B_ChkFZ:
-		cmpi.w	#$10A0,$8(a0)		; is this the ring to Finalor Place?
-		bne.s	Obj4B_ChkEnding		; if not, branch
-		move.w	#$502,($FFFFFE10).w	; set level to FZ
-		bsr	MakeChapterScreen
-		bra.s	Obj4B_PlayLevel
-
-Obj4B_ChkEnding:
-		cmpi.w	#$125C,$8(a0)		; is this the ring to the ending sequence?
-		bne.w	Obj4B_Return		; if not, branch
-		move.b	#$20,($FFFFF600).w	; load info screen
-		move.b	#8,($FFFFFF9E).w	; set number for text to 8
-		move.b	#$9D,d0			; play ending sequence music
-		jmp	PlaySound
 ; ---------------------------------------------------------------------------
-
-Obj4B_PlayLevel:
-		cmpi.b	#$28,($FFFFF600).w
-		beq.s	Obj4B_SYZ_Return
-		move.b	#$C,($FFFFF600).w	; set to level
-		move.w	#1,($FFFFFE02).w	; restart level
-
-Obj4B_SYZ_Return:
-		rts
-; ---------------------------------------------------------------------------
+; Logic specific to intro cutscene
 
 Obj4B_ChkGHZ2:
-		cmpi.w	#$001,($FFFFFE10).w	; is level GHZ2?
-		bne.s	Obj4B_SetSS		; if not, branch
-	;	subq.b	#1,($FFFFFFBA).w
-	;	bpl.s	Obj4B_Return
+		cmpi.w	#$001,($FFFFFE10).w	; is level intro cutscene?
+		bne.w	Obj4B_Return		; if not, branch
 
 		tst.b	($FFFFFF7D).w		; is ring moving up?
 		bne.s	@cont2			; if yes, branch
@@ -15965,16 +15911,112 @@ Obj4B_ChkGHZ2:
 		move.b	#$20,($FFFFF600).w	; set screen mode to info screen
 		rts
 ; ---------------------------------------------------------------------------
+; Uberhub loading logic
 
-Obj4B_SetSS:
-		move.w	($FFFFFE20).w,($FFFFFF70).w	; copy your rings to $FF70
-		move.b	#$10,($FFFFF600).w ; set screen mode to $10 (special stage)
-		bra.w	DeleteObject
+Obj4B_ChkGHZ1:
+		cmpi.b	#GRing_NightHill,$28(a0)	; is this the ring to Night Hill Place?
+		bne.s	Obj4B_ChkGHZ3			; if not, branch
+		move.w	#$000,($FFFFFE10).w		; set level to GHZ1
+		bra.w	Obj4B_PlayLevel
+
+Obj4B_ChkGHZ3:
+		cmpi.b	#GRing_GreenHill,$28(a0)	; is this the ring to Green Hill Place?
+		bne.s	Obj4B_ChkSpecial1		; if not, branch
+		move.w	#$002,($FFFFFE10).w		; set level to GHZ3
+		bra.w	Obj4B_PlayLevel
+
+Obj4B_ChkSpecial1:
+		cmpi.b	#GRing_Special,$28(a0)		; is this the ring to Special Place?
+		bne.s	Obj4B_ChkMZ			; if not, branch
+		move.w	#$300,($FFFFFE10).w		; set level to Special Stage
+		clr.b	($FFFFFF5F).w			; clear blackout blackout special stage flag
+		bsr	MakeChapterScreen
+		rts
+
+Obj4B_ChkMZ:
+		cmpi.b	#GRing_Ruined,$28(a0)		; is this the ring to Ruined Place?
+		bne.s	Obj4B_ChkLZ2			; if not, branch
+		move.w	#$200,($FFFFFE10).w		; set level to MZ1
+		bsr	MakeChapterScreen
+		bra.w	Obj4B_PlayLevel
+
+Obj4B_ChkLZ2:
+		cmpi.b	#GRing_Labyrinthy,$28(a0)	; is this the ring to Labyrinthy Place?
+		bne.s	Obj4B_ChkSpecial2		; if not, branch
+		move.w	#$101,($FFFFFE10).w		; set level to LZ2
+		bsr	MakeChapterScreen
+		bra.w	Obj4B_PlayLevel
+
+Obj4B_ChkSpecial2:
+		cmpi.b	#GRing_Unreal,$28(a0)		; is this the ring to Unreal Place?
+		bne.s	Obj4B_ChkSLZ2			; if not, branch
+		move.w	#$401,($FFFFFE10).w		; set level to Special Stage 2
+		clr.b	($FFFFFF5F).w			; clear blackout blackout special stage flag
+		bsr	MakeChapterScreen
+		rts
+
+Obj4B_ChkSLZ2:
+		cmpi.b	#GRing_ScarNight,$28(a0)	; is this the ring to Scar Night Place?
+		bne.s	Obj4B_ChkSLZ3			; if not, branch
+		move.w	#$301,($FFFFFE10).w		; set level to SLZ2
+		bsr	MakeChapterScreen
+		bra.w	Obj4B_PlayLevel
+
+Obj4B_ChkSLZ3:
+		cmpi.b	#GRing_StarAgony,$28(a0)	; is this the ring to Star Agony Place?
+		bne.s	Obj4B_ChkFZ			; if not, branch
+		move.w	#$302,($FFFFFE10).w		; set level to SLZ3
+		bra.s	Obj4B_PlayLevel
+
+Obj4B_ChkFZ:
+		cmpi.b	#GRing_Finalor,$28(a0)		; is this the ring to Finalor Place?
+		bne.s	Obj4B_ChkEnding			; if not, branch
+		move.w	#$502,($FFFFFE10).w		; set level to FZ
+		bsr	MakeChapterScreen
+		bra.s	Obj4B_PlayLevel
+
+Obj4B_ChkEnding:
+		cmpi.b	#GRing_Ending,$28(a0)		; is this the ring to the ending sequence?
+		bne.s	Obj4B_ChkOptions		; if not, branch
+		move.b	#$20,($FFFFF600).w		; load info screen
+		move.b	#8,($FFFFFF9E).w		; set number for text to 8
+		move.b	#$9D,d0				; play ending sequence music
+		jmp	PlaySound
+
+Obj4B_ChkOptions:
+		cmpi.b	#GRing_Options,$28(a0)		; is this the ring to the options menu?
+		bne.s	Obj4B_ChkTutorial		; if not, branch
+		move.b	#$24,($FFFFF600).w		; load options menu
+		rts
+
+Obj4B_ChkTutorial:
+		cmpi.b	#GRing_Tutorial,$28(a0)		; is this the ring to the tutorial?
+		bne.s	Obj4B_ChkBlackout		; if not, branch
+		move.w	#$501,($FFFFFE10).w		; set level to SBZ2
+		bra.w	Obj4B_PlayLevel
+
+Obj4B_ChkBlackout:
+		cmpi.b	#GRing_Blackout,$28(a0)		; is this the blackout challenge ring?
+		bne.s	Obj4B_Fallback			; if not, branch
+		move.w	#$401,($FFFFFE10).w		; set level to Special Stage 2 Easter
+		move.b	#1,($FFFFFF5F).w		; set blackout blackout special stage flag
+		move.b	#$10,($FFFFF600).w		; set game mode to special stage (needs to be done manually since no chapter screen)
+		rts
+
+Obj4B_Fallback
+		move.w	#$400,($FFFFFE10).w		; set level to Uberhub (as fallback; this should never happen)
+; ---------------------------------------------------------------------------
+
+Obj4B_PlayLevel:
+		cmpi.b	#$28,($FFFFF600).w	
+		beq.s	Obj4B_Return
+		move.b	#$C,($FFFFF600).w	; set to level
+		move.w	#1,($FFFFFE02).w	; restart level
 
 Obj4B_Return:
 		rts
+; ---------------------------------------------------------------------------
 ; ===========================================================================
-
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------

@@ -321,7 +321,7 @@ SRAM_Delete:
 		move.b	d0,($FFFFFE12).w			; clear lives/deaths counter
 		move.w	d0,($FFFFFE20).w			; clear rings
 		move.l	d0,($FFFFFE26).w			; clear score
-		move.l	d0,($FFFFFF93).w			; clear game beaten state
+		move.b	d0,($FFFFFF93).w			; clear game beaten state
 		rts
 
 ; ===========================================================================
@@ -14888,7 +14888,8 @@ Obj23_Main:				; XREF: Obj23_Index
 		bpl.s	Obj23_ChkCancel
 		addq.b	#4,$24(a0)
 		move.l	#Map_obj23,4(a0)
-		move.w	#$2444,2(a0)
+	;	move.w	#$2444,2(a0)
+		move.w	#($D700/$20),2(a0)
 		move.b	#4,1(a0)
 		move.b	#3,$18(a0)
 		move.b	#8,$19(a0)
@@ -15151,8 +15152,6 @@ Obj25_Animate:				; XREF: Obj25_Index
 		bset	#7,2(a0)		; otherwise make object high plane
 
 Obj25_NoHigh:
-		cmpi.w	#$200,($FFFFFE10).w	; is level MZ1?
-		bne.s	@cont			; if not, branch
 		tst.b	($FFFFFFE7).w		; inhuman?
 		bne.s	Obj25_NoRingMove	; if yes, disable ring move
 
@@ -16313,6 +16312,8 @@ loc_A246:
 loc_A25C:
 		tst.b	($FFFFFFEB).w	; is homing flag set?
 		beq.s	Obj26_NoHome	; if not, branch
+		cmpi.w	#$502,($FFFFFE10).w
+		beq.s	Obj26_NoHome
 		move.b	#$41,$20(a0)	; make monitor breakable from touching it
 
 Obj26_NoHome:
@@ -18618,7 +18619,7 @@ Obj32_Main:				; XREF: Obj32_Index
 @switchchecklz:	
 		cmpi.b	#1,($FFFFFE10).w	; is level LZ?
 		bne.s	@switchcheckslz		; if not, branch
-		move.w	#$513,2(a0)		; MZ maps
+		move.w	#$513,2(a0)		; LZ maps
 @switchcheckslz:
 		cmpi.b	#3,($FFFFFE10).w	; is level SLZ?
 		bne.s	@switchcheckend		; if not, branch
@@ -19579,7 +19580,7 @@ Obj34_NoDemo:
 		move.w	d3,($FFFFD474).w		; set Y-speed
 
 Obj34_JustDelete:
-		move.b	#1,($FFFFFFD3).w		; make Sonic release the auto-peelout
+	;	move.b	#1,($FFFFFFD3).w		; make Sonic release the auto-peelout
 		bra.w	DeleteObject
 ; ===========================================================================
 
@@ -22936,6 +22937,7 @@ Obj0D:					; XREF: Obj_Index
 		move.b	$24(a0),d0
 		move.w	Obj0D_Index(pc,d0.w),d1
 		jsr	obj0D_Index(pc,d1.w)
+		jsr	Obj0D_Float
 		lea	(Ani_obj0D).l,a1
 		bsr	AnimateSprite
 		bsr	DisplaySprite
@@ -22957,13 +22959,9 @@ Obj0D_Index:	dc.w Obj0D_Main-Obj0D_Index
 ; ===========================================================================
 
 Obj0D_Main:				; XREF: Obj0D_Index
-		cmpi.w	#$200,($FFFFFE10).w
-		bne.s	@cont
-		cmpi.w	#$1200,($FFFFF700).w
-		bcc.s	@cont
-		rts
-
-@cont:
+		bclr	#2,($FFFFFF6C).w	; restore the wall blocking you off in MZ
+		move.w	$C(a0),$38(a0)
+		
 		addq.b	#2,$24(a0)
 		move.l	#Map_obj0D,4(a0)
 		move.w	#$680,2(a0)
@@ -23065,6 +23063,17 @@ Obj0D_SparkPos:	dc.b -$18,-$10		; x-position, y-position
 		dc.b  $10,   0
 		dc.b -$18,   8
 		dc.b  $18, $10
+; ===========================================================================
+
+Obj0D_Float:
+		addq.b	#1,$3F(a0)
+		move.b	$3F(a0),d0
+		bset	#0,d0
+		jsr	(CalcSine).l
+		asr.w	#5,d0
+		add.w	$38(a0),d0
+		move.w	d0,$C(a0)
+		rts
 ; ===========================================================================
 
 Obj0D_SonicRun:				; XREF: Obj0D_Index
@@ -29933,14 +29942,14 @@ Obj01_PeeloutCancel:
 		beq.s	Obj01_EndOfCutscenesX		; if yes, branch
 		cmpi.w	#$400,($FFFFFE10).w		; is level SYZ1?
 		beq.s	Obj01_EndOfCutscenesX		; if yes, branch
+		cmpi.w	#$200,($FFFFFE10).w		; is level MZ1?
+		beq.s	Obj01_EndOfCutscenesX		; if yes, branch
 		cmpi.w	#$101,($FFFFFE10).w		; is level LZ2?
 		beq.s	Obj01_EndOfCutscenesX		; if yes, branch
 		cmpi.w	#$302,($FFFFFE10).w		; is level SLZ3?
 		beq.s	Obj01_EndOfCutscenesX		; if yes, branch
 		cmpi.w	#$501,($FFFFFE10).w		; is level SBZ2?
 		beq.s	Obj01_EndOfCutscenesX		; if yes, branch
-	;	cmpi.w	#$502,($FFFFFE10).w		; is level FZ?
-	;	beq.s	Obj01_EndOfCutscenesX		; if yes, branch
 		cmpi.b	#2,($FFFFFFD3).w		; was flag in "Obj01_CancelIntroPO" set?
 		beq.s	Obj01_EndOfCutscenesX		; if yes, branch
 		cmpi.b	#1,($FFFFFFD3).w		; is title card off-screen?
@@ -31561,7 +31570,7 @@ SPO_NotMZ:
 		cmpi.b	#7,$1C(a0)		; is anim looking up?
 		bne.w	SPO_End			; if not, return
 		move.b	($FFFFF603).w,d0	; read controller
-		andi.b	#$70,d0			; pressing A/B/C ?
+		andi.b	#$30,d0			; pressing B/C ?
 		beq.w	SPO_End			; if not, return
 
 SPO_Simulated:
@@ -31688,7 +31697,7 @@ Spdsh_NotMZ:
 		cmpi.b	#8,$1C(a0)		; is anim duck
 		bne.s	locret2_1AC8C		; if not, return
 		move.b	($FFFFF603).w,d0	; read controller
-		andi.b	#$70,d0			; pressing A/B/C ?
+		andi.b	#$30,d0			; pressing B/C ?
 		beq.w	locret2_1AC8C		; if not, return
 		move.b	#$1F,$1C(a0)		; set spindash anim (9 in s2)
 		move.w	#$D1,d0			; spin sound ($E0 in s2)
@@ -31779,7 +31788,7 @@ loc2_1AD30:				; If still charging the dash...
 
 loc2_1AD48:
 		move.b	($FFFFF603).w,d0	; read controller
-		andi.b	#$70,d0			; pressing A/B/C?
+		andi.b	#$30,d0			; pressing B/C?
 		beq.w	loc2_1AD78		; if not, branch
 		move.b	#$1F,$1C(a0)		; reset spdsh animation
 		move.w	#$D1,d0			; was $E0 in sonic 2
@@ -32680,6 +32689,8 @@ loc_137E4:
 ; ---------------------------------------------------------------------------
 
 Obj01_Hurt:				; XREF: Obj01_Index
+		clr.b	($FFFFFFAF).w	; clear automatic extended camera flag
+
 		cmpi.b	#$1A,$1C(a0)	; is animation $1A (hurting)?
 		beq.s	Hurt_CorrectAni	; if yes, branch
 		move.b	#$1A,$1C(a0)	; otherwise make sure the correct anim is being used
@@ -43112,8 +43123,6 @@ loc_1AF1E:
 		cmpi.b	#2,$1C(a0)	; is Sonic rolling/jumping?
 		beq.s	Sonic_RollingYes ; if yes, branch
 		cmpi.b	#$25,$1C(a0)	; is death anim being showed (inhuman mode)?
-		beq.s	Sonic_RollingYes ; if yes, branch
-		cmpi.w	#$A00,$14(a0)	; is sonic at figure-8 speed?
 		bne.s	locret_1AF2E	; if not, branch
 
 Sonic_RollingYes:
@@ -43350,6 +43359,7 @@ KillSonic:
 	;	clr.b	($FFFFFFFC).w
 		clr.w	$14(a0)			; clear interia
 		moveq	#0,d0
+		clr.b	($FFFFFFAF).w		; clear automatic extended camera flag
 		move.w	#-$600,d0		; move sonic upwards (inhuman)
 		clr.b	($FFFFFE2D).w		; remove invincibility
 		tst.b	($FFFFFFE7).w		; has sonic destroyed a S monitor?
@@ -44502,7 +44512,7 @@ nullsub_2:				; XREF: Obj09_InAir
 
 Obj09_JumpHeight:				; XREF: Obj09_InAir
 		move.b	($FFFFF602).w,d0	; is the jump button up?
-		andi.b	#$70,d0
+		andi.b	#$30,d0
 		bne.s	locret_1BBB4		; if not, branch to return
 		btst	#7,$22(a0)		; did Sonic jump or is he just falling or hit by a bumper?
 		beq.s	locret_1BBB4		; if not, branch to return

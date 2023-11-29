@@ -45,18 +45,16 @@ PLC_Main:	dc.w 4
 		dc.w $FA80
 		dc.l Nem_Ring		; rings
 		dc.w $F640
-		dc.l Nem_ExplBall	; buzz bomber enemy
+		dc.l Nem_ExplBall	; exploding balls from Inhuman Mode
 		dc.w $D700
 ; ---------------------------------------------------------------------------
 ; Pattern load cues - standard block 2
 ; ---------------------------------------------------------------------------
-PLC_Main2:	dc.w 2
+PLC_Main2:	dc.w 1
 		dc.l Nem_Monitors	; monitors
 		dc.w $D000
 		dc.l Nem_Shield		; shield
 		dc.w $A820
-		dc.l Nem_ExplBall	; buzz bomber enemy
-		dc.w $D700
 ; ---------------------------------------------------------------------------
 ; Pattern load cues - explosion
 ; ---------------------------------------------------------------------------
@@ -279,6 +277,8 @@ PLC_Boss:	dc.w 4
 		dc.w $A300
 		dc.l Nem_Exhaust	; exhaust flame
 		dc.w $A540
+	;	dc.l Nem_ExplBall	; buzz bomber enemy
+	;	dc.w $8E00
 ; ---------------------------------------------------------------------------
 ; Pattern load cues - act 1/2 signpost
 ; ---------------------------------------------------------------------------

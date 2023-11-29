@@ -4544,17 +4544,15 @@ locret_3CF4:
 ; ===========================================================================
 
 DynWater_LZ2:				; XREF: DynWater_Index
-		move.w	($FFFFF700).w,d0
-		move.w	#$328,d1
-		cmpi.w	#$500,d0
-		bcs.s	loc_3D12
-		move.w	#$3C8,d1
-		cmpi.w	#$B00,d0
-		bcs.s	loc_3D12
-		move.w	#$428,d1
+		move.w	($FFFFF700).w,d0	; get camera X position
+		move.w	#$328,d1		; set default water level to $328
+		cmpi.w	#$A60,d0		; is camera past X coordinate $A60? (shortly before the end)
+		bcs.s	loc_3D12		; if not, branch
+		move.w	#$160,d1		; flood this place lol
+		move.b	#4,($FFFFF64C).w	; increase water rising speed
 
 loc_3D12:
-		move.w	d1,($FFFFF64A).w
+		move.w	d1,($FFFFF64A).w	; set target water level
 		rts	
 ; ===========================================================================
 
@@ -4952,6 +4950,7 @@ ClearEverySpecialFlag:
 		clr.w	($FFFFFF88).w
 		clr.b	($FFFFFFEB).w
 		clr.b	($FFFFFF91).w
+		clr.w	($FFFFFF9C).w
 		clr.l	($FFFFFFA0).w	; clear RAM adresses $FFA0-$FFA3 (4 flags)
 		clr.w	($FFFFFFA4).w	; $FFA4-$FFA5	(2)
 		clr.b	($FFFFFFA6).w	; $FFA6		(1)
@@ -8390,36 +8389,20 @@ ScrollVertical:				; XREF: DeformBgLayer
 SV_NotSLZ2:
 		cmpi.w	#$101,($FFFFFE10).w	; is level LZ2?
 		bne.s	SV_NotLZ2		; if not, branch
-		move.w	#-$250,($FFFFF73C).w
+		move.w	#-$250,($FFFFF73C).w	; move background up
 		cmpi.b	#1,($FFFFFF97).w	; was first lamppost passed?
 		beq.s	SV_Lamppost		; if yes, branch
 		cmpi.b	#3,($FFFFFF97).w	; was third lamppost passed?
 		beq.s	SV_Lamppost		; if yes, branch
-		cmpi.b	#4,($FFFFFF97).w	; was fourth lamppost passed?
-		beq.s	SV_FourthLamp		; if yes, branch
 		tst.b	($FFFFFF96).w		; Sonic on a spring?
 		bne.s	SV_NotLZ2		; if yes, branch
 		btst	#1,($FFFFD022).w	; is Sonic on the ground?
 		beq.s	SV_NotLZ2		; if yes, branch
-	;	beq.s	SV_OnTheGround		; if yes, branch
-	;	clr.w	($FFFFF73C).w
 		rts				; otherwise don't move camera
 ; ===========================================================================
-
-SV_FourthLamp:
-		move.w	#$500,($FFFFF726).w
-		bra.s	SV_NotLZ2
-
-SV_OnTheGround:
-		move.w	($FFFFF704).w,d1
-		move.w	($FFFFFF9C).w,d2
-		sub.w	d1,d2
-		bpl.s	SV_NotLZ2
-		rts
-		
 		
 SV_Lamppost:
-		move.w	#$250,($FFFFF73C).w
+		move.w	#$250,($FFFFF73C).w	; move background down
 
 SV_NotLZ2:
 		cmpi.w	#$001,($FFFFFE10).w	; is level GHZ2 (intro level)?
@@ -8436,7 +8419,7 @@ SV_NotGHZ2:
 		add.w	($FFFFD00C).w,d0	; changed from move.w
 		cmpi.w	#$101,($FFFFFE10).w	; is level LZ2?
 		bne.s	SV_NotLZ2_2		; if not, branch
-		sub.w	#$45,d0			; substract $45 pixels from Sonic's cam position
+		subi.w	#$45,d0			; substract $45 pixels from Sonic's cam position
 		cmpi.b	#1,($FFFFFF97).w
 		beq.s	@cont
 		cmpi.b	#3,($FFFFFF97).w
@@ -8444,16 +8427,16 @@ SV_NotGHZ2:
 		bra.s	SV_NotLZ2_2
 
 @cont:
-		add.w	#$65,d0
+		addi.w	#$45,d0			; vertical camera offset when moving down in LZ
 
 SV_NotLZ2_2:
 		sub.w	($FFFFF704).w,d0
-		btst	#2,($FFFFD022).w
+		btst	#2,($FFFFD022).w 	; is Sonic jumping or rolling?
 		beq.s	loc_662A
 		subq.w	#5,d0
 
 loc_662A:
-		btst	#1,($FFFFD022).w
+		btst	#1,($FFFFD022).w	; is Sonic in air?
 		beq.s	loc_664A
 		addi.w	#$20,d0
 		sub.w	($FFFFF73E).w,d0
@@ -8474,13 +8457,13 @@ loc_664A:
 loc_6656:
 		cmpi.w	#$101,($FFFFFE10).w	; is level LZ2?
 		beq.s	@cont			; if yes, branch
-		clr.w	($FFFFF73C).w
+		clr.w	($FFFFF73C).w 		; clear camera Y-shift
 
 @cont:
-		tst.b	($FFFFFF64).w
-		beq.s	@contx
+		tst.b	($FFFFFF64).w 		; is camera shaking counter empty?
+		beq.s	@contx			; if yes, branch
 		move.w	($FFFFFF60).w,d0	; backup for sprite shaking
-		add.w	d0,d1	; add to camera shaking
+		add.w	d0,d1			; add to camera shaking
 		bra	ScrVert_ShakeCam	; ~~
 @contx
 		rts	
@@ -8584,8 +8567,8 @@ loc_6720:
 
 ; ---------------------------------------------------------------------------
 loc_6724:
-		tst.b	($FFFFFF64).w
-		beq.s	contx
+		tst.b	($FFFFFF64).w 		; is camera shaking counter empty?
+		beq.s	contx			; if yes, branch
 
 ScrVert_ShakeCam2:
 		move.w	($FFFFFF60).w,d0	; backup for sprite shaking
@@ -10149,29 +10132,31 @@ Resize_LZ1:
 ; ===========================================================================
 
 Resize_LZ2:
-		cmpi.b	#1,($FFFFFF97).w
-		beq.s	@cont
-		cmpi.b	#3,($FFFFFF97).w
-		beq.s	@cont
-		cmpi.b	#4,($FFFFFF97).w
-		bne.s	@contx
+		cmpi.b	#1,($FFFFFF97).w		; has first lamppost been touched?
+		beq.s	@cont				; if yes, branch
+		cmpi.b	#3,($FFFFFF97).w		; has third lamppost been touched?
+		bne.s	@contx				; if not, branch
 
 @cont:
-		move.w	#$800,($FFFFF726).w
-		cmpi.w	#$0C50,($FFFFF700).w
+		move.w	#$800,($FFFFF726).w		; set default lower level boundary
+		move.w	#$800,($FFFFF72E).w
+		cmpi.w	#$0C50,($FFFFF700).w		
 		bcs.s	@contxx
-		move.w	#$540,($FFFFF726).w
-		rts
+		move.w	#$540,($FFFFF726).w		; set alterante lower level boundary at end of level
+		move.w	#$540,($FFFFF72E).w
+		rts					; don't mess with the camera at the end anymore
 
 @contx:
 		moveq	#0,d0
 		moveq	#0,d1
-		move.w	($FFFFF726).w,d0
-		move.w	($FFFFFF9C).w,d1
-		sub.w	d1,d0
-		bmi.s	@contXX
-		move.w	($FFFFF704).w,($FFFFF726).w
-		move.w	($FFFFF726).w,($FFFFFF9C).w
+		move.w	($FFFFF72E).w,d0		; get target lower level boundary
+		move.w	($FFFFFF9C).w,d1		; get stored LZ boundary bottom limit
+		sub.w	d1,d0				; subtract that limit from the current lower level boundary
+		bmi.s	@contXX				; is the current camera higher than 
+		move.w	($FFFFF704).w,d0		; get current Y camera position
+		move.w	d0,($FFFFF726).w		; set it to lower level boundary
+		move.w	d0,($FFFFF72E).w		; set it to lower level boundary
+		move.w	d0,($FFFFFF9C).w		; remember
 
 @contXX:
 		rts	
@@ -11858,6 +11843,8 @@ Obj18_NotSYZX:
 		bne.s	Obj18_NoMovingPlatforms	; if not, branch
 
 Obj18_LZ2:
+		tst.w	($FFFFFE08).w		; is debug mode	being used?
+		bne.w	Obj18_NoMovingPlatforms	; if yes, ignore platform
 		move.w	($FFFFD008).w,8(a0)	; set platforms X-location to Sonic's one
 		move.w	($FFFFD00C).w,$C(a0)	; set platforms Y-location to Sonic's one, but...
 		add.w	#20,$C(a0)		; ...add 20 more pixels to it
@@ -16510,34 +16497,21 @@ Obj2E_ChkRandom:
 Obj2E_ChkEggman:
 		cmpi.b	#1,d0		; does monitor contain Eggman?
 		bne.s	Obj2E_ChkSonic
-		cmpi.w	#$502,($FFFFFE10).w ; is level FZ?
-		bne.s	ChkEggman_NotFZ	; if not, branch
-		clr.w	($FFFFFE20).w	; clear rings, but don't update lives counter (to kill sonic)
-		
-ChkEggman_NotFZ:
-		jmp	Obj36_Hurt	; jump to Obj36_Hurt (spikes) to hurt sonic (or kill sonic)
+		lea	($FFFFD000).w,a0
+		jmp	KillSonic	; kill Sonic lmao
 ; ===========================================================================
 
 Obj2E_ChkSonic:
 		cmpi.b	#2,d0		; does monitor contain Sonic?
 		bne.w	Obj2E_ChkShoes
 
-ExtraLife:
-		cmpi.w	#$200,($FFFFFE10).w
-		beq.s	@contx
-		cmpi.w	#$302,($FFFFFE10).w
-		bne.s	@cont
+		move.w	#10000,d0		; hey at least you get 100000 points
+		jsr	AddPoints
+		
+		move.w	#$1E,($FFFFFE14).w	; set precise remaining air time to get comedic timing right
 
-@contx:
-		addi.w	#30,($FFFFFE20).w	; add 30 rings
-		addq.b	#1,($FFFFFE1D).w 
-
-@cont:
-		move.w	#1000,d0	; add 10000 ...
-		jsr	AddPoints	; ... points
-
-		move.w	#$C5,d0
-		jmp	(PlaySound).l	; play extra life music
+		move.w	#$8B,d0
+		jmp	(PlaySound).l	; play the old ending sequence music for maximum troll
 ; ===========================================================================
 
 ; ---------------------------------------------------------------------------
@@ -16627,22 +16601,7 @@ Obj2E_ChkRings:
 		bne.w	Obj2E_ChkS
 		addi.w	#$A,($FFFFFE20).w ; add	10 rings to the	number of rings	you have
 		ori.b	#1,($FFFFFE1D).w ; update the ring counter
-		bra.s	Obj2E_RingSound
 
-		cmpi.w	#100,($FFFFFE20).w ; check if you have 100 rings
-		bcs.s	Obj2E_RingSound
-		bset	#1,($FFFFFE1B).w
-		beq.w	ExtraLife
-		cmpi.w	#200,($FFFFFE20).w ; check if you have 200 rings
-		bcs.s	Obj2E_RingSound
-		bset	#2,($FFFFFE1B).w
-		beq.w	ExtraLife
-		cmpi.w	#300,($FFFFFE20).w ; check if you have 300 rings
-		bcs.s	Obj2E_RingSound
-		bset	#3,($FFFFFE1B).w
-		beq.w	ExtraLife
-
-Obj2E_RingSound:
 		moveq	#10,d0		; add 100 ...
 		jsr	AddPoints	; ... points
 		move.w	#$B5,d0
@@ -18270,11 +18229,13 @@ Obj31_TypeIndex:dc.w Obj31_Type00-Obj31_TypeIndex
 Obj31_Type00:				; XREF: Obj31_TypeIndex
 		lea	($FFFFF7E0).w,a2 ; load	switch statuses
 		moveq	#0,d0
-	;	move.b	$3A(a0),d0	; move number 0	or 1 to	d0
-	;	tst.b	(a2,d0.w)	; has switch (d0) been pressed?
-	;	beq.s	loc_B8A8	; if not, branch
+		move.b	$3A(a0),d0	; move number 0	or 1 to	d0
+		tst.b	(a2,d0.w)	; has switch (d0) been pressed?
+		bne.s	@cont		; if yes, branch
 		btst	#0,($FFFFFF6C).w	; has switch 1 been pressed?
 		beq.s	loc_B8A8		; if not, branch
+
+@cont:
 		tst.w	($FFFFF7A4).w
 		bpl.s	loc_B872
 		cmpi.b	#$10,$32(a0)
@@ -37386,7 +37347,6 @@ Obj79_HitLamp:
 		cmpi.W	#$101,($FFFFFE10).w
 		bne.s	@cont
 		addq.b	#1,($FFFFFF97).w
-	;	move.b	#4,($FFFFFF97).w
 
 @cont:
 		moveq	#100,d0		; add 1000 ...
@@ -43110,7 +43070,7 @@ Touch_Monitor:
 		subi.w	#$10,d0
 		cmp.w	$C(a1),d0
 		bcs.s	locret_1AF2E		
-		neg.w	$12(a0)		; reverse Sonic's y-motion		
+		neg.w	$12(a0)		; reverse Sonic's y-motion
 		move.w	#-$180,$12(a1)
 		tst.b	$25(a1)
 		bne.s	locret_1AF2E
@@ -43126,7 +43086,12 @@ loc_1AF1E:
 		bne.s	locret_1AF2E	; if not, branch
 
 Sonic_RollingYes:
-		neg.w	$12(a0)		; reverse Sonic's y-motion
+		neg.w	$12(a0)		; reverse Sonic's y-motion		
+		cmpi.w	#-$A80,$12(a0)	; limit inverse y-motion (customized for the troll room in LZ)
+		bge.s	@cont
+		move.w	#-$A80,$12(a0)
+
+@cont:		
 		addq.b	#2,$24(a1)	; advance the monitor's routine counter
 
 locret_1AF2E:

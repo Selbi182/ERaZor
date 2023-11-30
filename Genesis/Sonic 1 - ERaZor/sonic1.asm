@@ -3897,14 +3897,11 @@ Level:					; XREF: GameModeArray
 		clr.b	($FFFFFF94).w
 		bset	#7,($FFFFF600).w ; add $80 to screen mode (for pre level sequence)
 		bsr	ClearPLC
-	;	bsr	ClearVRAM	; custom subroutine to clear VRAM
 		bsr	Pal_FadeFrom
 		tst.w	($FFFFFFF0).w
 		bmi.w	Level_ClrRam
-		move	#$2700,sr
-		move.l	#$6B800002,($C00004).l		; changed from $70000003
-		lea	(Nem_TitleCard).l,a0 ; load title card patterns
-		bsr	NemDec
+		move.b	#0,($FFFFFF8A).w	; load uncompressed title card art (immediately)
+		jsr	LoadTitleCardArt
 		move	#$2300,sr
 		moveq	#0,d0
 		move.b	($FFFFFE10).w,d0
@@ -4293,7 +4290,8 @@ Level_StartGame:
 
 Level_MainLoop:
 		jsr	RandomNumber		; constantly create a new random number
-
+		jsr	LoadTitleCardArt	; check if we gotta load uncompressed title card art
+		
 		cmpi.b	#$3F,($FFFFFFF0).w		; was demo mode set to $3F for some reason?
 		bne.s	Level_DemoOK			; thanks god if no
 		clr.w	($FFFFFFF0).w			; otherwise, clear it and hope that nothing bad happened
@@ -5332,7 +5330,7 @@ SpecialStage:				; XREF: GameModeArray
 
 @cont:
 		jsr	SRAM_SaveNow		; save our progress on entering a special stage
-		
+
 		move	#$2700,sr
 		lea	($C00004).l,a6
 		move.w	#$8B03,(a6)
@@ -5397,10 +5395,10 @@ SS_ClrNemRam:
 		clr.b	($FFFFFE57).w
 		clr.b	($FFFFFF94).w
 
-		moveq	#$A,d0
+		moveq	#$A,d0		; load default palette
 		tst.b	($FFFFFF5F).w	; is this the blackout special stage?
-		beq.s	@contx
-		moveq	#22,d0
+		beq.s	@contx		; if not, branch
+		moveq	#22,d0		; load dark/red palette
 
 @contx:
 		bsr	PalLoad1	; load special stage pallet		
@@ -5442,16 +5440,6 @@ SS_ClrNemRam:
 	;	clr.b	($FFFFFE1B).w	; clear ring counter
 		move.w	#0,($FFFFFE08).w
 		move.w	#1800,($FFFFF614).w
-		tst.b	($FFFFFFE2).w	; has debug cheat been entered?
-		beq.s	SS_NoDebug	; if not, branch
-		btst	#6,($FFFFF604).w ; is A	button pressed?
-		beq.s	SS_NoDebug	; if not, branch
-		move.b	#1,($FFFFFFFA).w ; enable debug	mode
-
-SS_NoDebug:
-	;	addq.b	#2,($FFFFD0A4).w ; make	title card move
-
-
 
 		move.w	($FFFFF60C).w,d0
 		ori.b	#$40,d0
@@ -7594,7 +7582,9 @@ DTS_Loop:
 ; ===========================================================================
 
 Deform_LZ:
-	;	bra.s	Deform_LZ_Extended
+		cmpi.b	#3,($FFFFFF97).w	; was third lamppost passed?
+		beq.s	Deform_LZ_Extended	; if yes, use alternate deformation
+
 	; original code, takes MUCH less RAM than the extended code
 		move.w	($FFFFF73A).w,d4
 		ext.l	d4
@@ -14132,9 +14122,14 @@ Obj1F_BossDelete:
 
 		move.b	#$34,($FFFFD080).w 		; load title card object
 		move.b	#35,($FFFFD0B0).w
-		moveq	#$10,d0				; set d0 to $10
-		jsr	(LoadPLC).l			; load title card patterns
-
+	;	moveq	#$10,d0				; set d0 to $10
+	;	jsr	(LoadPLC).l			; load title card patterns
+		
+		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
+		bne.s	@crabbossdel		; if yes, branch
+		move.b	#30,($FFFFFF8A).w	; load uncompressed title card art in a bit
+		
+@crabbossdel:
 		bra.w	Obj1F_Delete			; delete
 ; ===========================================================================
 
@@ -14184,7 +14179,7 @@ loc_17F70X:
 
 Obj1F_Flashing:
 		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
-		bne.s	Obj1F_NoFlash		; if yes, branch
+		bne.s	Obj1F_NoFlash		; if yes, don't do palette flashing to avoid seizues
 		
 		lea	($FFFFFB02).w,a1		; load second colour
 		moveq	#0,d1				; make sure d1 is empty
@@ -19617,6 +19612,30 @@ Obj34_ConData:
 		dc.w $0214
 		dc.w $0154
 		even
+; ===========================================================================
+
+LoadTitleCardArt:		
+		movem.l	d1-a6,-(sp)
+		tst.b	($FFFFFF8A).w		; are title cards set to load?
+		bmi.s	@titlecardloadend	; if not, branch
+		subq.b	#1,($FFFFFF8A).w	; sub one from delay
+		bmi.s	@loadart
+		bra.s	@titlecardloadend
+
+@loadart:
+		; load title graphics in an uncompressed matter to speed up loading times
+		lea	($C00000).l,a6
+		move.l	#$6B800002,4(a6)
+		lea	(Art_TitleCard).l,a5
+		move.w	#$A3F,d1
+@loadtitlecardfont:
+		move.w	(a5)+,(a6)
+		dbf	d1,@loadtitlecardfont
+
+@titlecardloadend:
+		movem.l	(sp)+,d1-a6
+		rts
+
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Object 39 - "GAME OVER" and "TIME OVER"
@@ -27427,9 +27446,12 @@ Obj5F_BossDelete:
 
 		move.b	#$34,($FFFFD080).w 		; load title card object
 		move.b	#35,($FFFFD0B0).w
-		moveq	#$10,d0				; set d0 to $10
-		jsr	(LoadPLC).l			; load title card patterns
-
+	;	moveq	#$10,d0				; set d0 to $10
+	;	jsr	(LoadPLC).l			; load title card patterns
+		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
+		bne.s	@bombbossdel		; if yes, branch
+		move.b	#30,($FFFFFF8A).w	; load uncompressed title card art in a bit
+@bombbossdel:
 		move.w	#$302,($FFFFFE10).w	; change level to SLZ3
 		move.w	#$1FBF,($FFFFF72A).w
 		move.w	#$620,($FFFFF726).w
@@ -47390,6 +47412,8 @@ Nem_Cater:	incbin	artnem\caterkil.bin	; caterkiller
 ; ---------------------------------------------------------------------------
 ; Compressed graphics - various
 ; ---------------------------------------------------------------------------
+Art_TitleCard:	incbin	artunc\TitleCards.bin	; title cards (uncompressed)
+		even
 Nem_TitleCard:	incbin	artnem\ttlcards.bin	; title cards
 		even
 Nem_TCCont:	incbin	artnem\ttlcards_continue.bin	; title cards used for continue screen

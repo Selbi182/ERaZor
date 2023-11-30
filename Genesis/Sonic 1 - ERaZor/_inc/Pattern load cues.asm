@@ -261,8 +261,10 @@ PLC_SBZ2:	dc.w 2
 ; Pattern load cues - title card
 ; ---------------------------------------------------------------------------
 PLC_TitleCard:	dc.w 0
-		dc.l Nem_TitleCard
-		dc.w $AB80
+	;	dc.l Nem_TitleCard
+	;	dc.w $AB80
+		dc.l Nem_Null
+		dc.w $B000
 ; ---------------------------------------------------------------------------
 ; Pattern load cues - act 3 boss
 ; ---------------------------------------------------------------------------

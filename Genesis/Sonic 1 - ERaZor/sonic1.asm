@@ -10132,15 +10132,27 @@ Resize_LZ1:
 ; ===========================================================================
 
 Resize_LZ2:
+		tst.b	($FFFFFF97).w			; has at least one lamppost been touched?
+		beq.s	@nosubchange			; if not, branch
+		move.w	#$0200,d0
+		move.w	#$0100,d1
+		move.b	#$01,d2
+		jsr	Sub_ChangeChunk			; wall off backtracing after hitting the first lamppost
+
+@nosubchange:
 		cmpi.b	#1,($FFFFFF97).w		; has first lamppost been touched?
 		beq.s	@cont				; if yes, branch
 		cmpi.b	#3,($FFFFFF97).w		; has third lamppost been touched?
 		bne.s	@contx				; if not, branch
+		move.w	#$0900,d0
+		move.w	#$0200,d1
+		move.b	#$4F,d2
+		jsr	Sub_ChangeChunk			; wall off backtracing after hitting the third lamppost
 
 @cont:
 		move.w	#$800,($FFFFF726).w		; set default lower level boundary
 		move.w	#$800,($FFFFF72E).w
-		cmpi.w	#$0C50,($FFFFF700).w		
+		cmpi.w	#$0C50,($FFFFF700).w
 		bcs.s	@contxx
 		move.w	#$540,($FFFFF726).w		; set alterante lower level boundary at end of level
 		move.w	#$540,($FFFFF72E).w

@@ -46960,24 +46960,24 @@ loc_1D03C:
 		move.l	#$7FF0000,d2
 
 loc_1D052:
-		btst	#2,d4
-		beq.s	loc_1D05E
+		btst	#2,d4		; is left being pressed?
+		beq.s	loc_1D05E	; if not, branch
 		sub.l	d1,d3
 		bcc.s	loc_1D05E
 		moveq	#0,d3
 
 loc_1D05E:
-		btst	#3,d4
-		beq.s	loc_1D066
+		btst	#3,d4		; is right being pressed?
+		beq.s	loc_1D066	; if not, branch
 		add.l	d1,d3
 
 loc_1D066:
-		move.l	d2,$C(a0)
-		move.l	d3,8(a0)
+		move.l	d2,$C(a0)	; set final Y position of debug object
+		move.l	d3,8(a0)	; set final X position of debug object
 
 Debug_BackItem:
 		btst	#6,($FFFFF604).w ; is button A pressed?
-		beq.s	Debug_MakeItem	; if not, branch
+		bra.s	Debug_MakeItem	; if not, branch
 		btst	#5,($FFFFF605).w ; is button C pressed?
 		beq.s	Debug_NextItem	; if not, branch
 		cmpi.b	#$10,($FFFFF600).w ; is	game mode = $10	(special stage)?
@@ -46990,7 +46990,7 @@ Debug_BackItem:
 
 Debug_NextItem:
 		btst	#6,($FFFFF605).w ; is button A pressed?
-		beq.s	Debug_MakeItem	; if not, branch
+		bra.s	Debug_MakeItem	; if not, branch
 		cmpi.b	#$10,($FFFFF600).w ; is	game mode = $10	(special stage)?
 		beq.s	Debug_MakeItem	; if yes, branch
 		addq.b	#1,($FFFFFE06).w ; go forwards 1 item
@@ -47004,7 +47004,7 @@ Debug_NoLoop:
 
 Debug_MakeItem:
 		btst	#5,($FFFFF605).w ; is button C pressed?
-		beq.s	Debug_Exit	; if not, branch
+		bra.s	Debug_Exit	; if not, branch
 		cmpi.b	#$10,($FFFFF600).w ; is	game mode = $10	(special stage)?
 		beq.s	Debug_Exit	; if yes, branch
 		jsr	SingleObjLoad

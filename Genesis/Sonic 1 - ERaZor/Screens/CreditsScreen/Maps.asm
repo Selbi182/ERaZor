@@ -70,8 +70,8 @@ StartText:
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
-	dc.b	"    VLADIKCOMPER    ",$FF
 	dc.b	"                    ",$FF
+	dc.b	"    VLADIKCOMPER    ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
@@ -81,7 +81,7 @@ StartText:
 	; 4
 	dc.b	$0D						; Number of lines
 	dc.b	"                    ",$FF
-	dc.b	"   MUSIC CREATED    ",$FF
+	dc.b	"    MUSIC PORTED    ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"         BY         ",$FF
 	dc.b	"                    ",$FF
@@ -138,9 +138,9 @@ StartText:
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
-	dc.b	"                    ",$FF
 	dc.b	"   PEANUT NOCEDA    ",$FF
 	dc.b	"                    ",$FF
+	dc.b	"       FUZZY        ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
@@ -155,8 +155,8 @@ StartText:
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
-	dc.b	"    REDHOTSONIC     ",$FF
 	dc.b	"                    ",$FF
+	dc.b	"    REDHOTSONIC     ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF

@@ -79,10 +79,10 @@ long	equ		3
 ; Plain control flags: no arguments following
 endl	equ		$E0				; "End of line": flag for line break
 cr		equ		$E6				; "Carriage return": jump to the beginning of the line
-dbpal0	equ		$E8				; use palette line #0
-dbpal1	equ		$EA				; use palette line #1
-dbpal2	equ		$EC				; use palette line #2
-dbpal3	equ		$EE				; use palette line #3
+pal0	equ		$E8				; use palette line #0
+pal1	equ		$EA				; use palette line #1
+pal2	equ		$EC				; use palette line #2
+pal3	equ		$EE				; use palette line #3
 
 ; Parametrized control flags: followed by 1-byte argument
 setw	equ		$F0				; set line width: number of characters before automatic line break
@@ -169,7 +169,7 @@ RaiseError &
 ;	Console.WriteLine "...world!"
 ;	Console.SetXY #1, #4
 ;	Console.WriteLine "Your data is %<.b d0>"
-;	Console.WriteLine "%<dbpal0>Your code pointer: %<.l a0 sym>"
+;	Console.WriteLine "%<pal0>Your code pointer: %<.l a0 sym>"
 ; ---------------------------------------------------------------
 
 Console &
@@ -177,19 +177,30 @@ Console &
 
 	if strcmp("\0","write")|strcmp("\0","writeline")|strcmp("\0","Write")|strcmp("\0","WriteLine")
 		move.w	sr, -(sp)
+
 		__FSTRING_GenerateArgumentsCode \1
-		movem.l	a0-a2/d7, -(sp)
+
+		; If we have any arguments in string, use formatted string function ...
 		if (__sp>0)
+			movem.l	a0-a2/d7, -(sp)
 			lea		4*4(sp), a2
+			lea		@str\@(pc), a1
+			jsr		__global__Console_\0\_Formatted
+			movem.l	(sp)+, a0-a2/d7
+			if (__sp>8)
+				lea		__sp(sp), sp
+			else
+				addq.w	#__sp, sp
+			endc
+
+		; ... Otherwise, use direct write as an optimization
+		else
+			move.l	a0, -(sp)
+			lea		@str\@(pc), a0
+			jsr		__global__Console_\0
+			move.l	(sp)+, a0
 		endc
-		lea		@str\@(pc), a1
-		jsr		__global__Console_\0\_Formatted
-		movem.l	(sp)+, a0-a2/d7
-		if (__sp>8)
-			lea		__sp(sp), sp
-		elseif (__sp>0)
-			addq.w	#__sp, sp
-		endc
+
 		move.w	(sp)+, sr
 		bra.w	@instr_end\@
 	@str\@:

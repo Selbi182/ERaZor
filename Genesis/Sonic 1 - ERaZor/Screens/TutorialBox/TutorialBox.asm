@@ -54,10 +54,10 @@ Press		equ	1
 ; VRAM flags
 
 pri	equ	$8000
-pal0	equ	0
-pal1	equ	1<<13
-pal2	equ	2<<13
-pal3	equ	3<<13
+tutpal0	equ	0
+tutpal1	equ	1<<13
+tutpal2	equ	2<<13
+tutpal3	equ	3<<13
 
 ; IO Ports
 
@@ -312,7 +312,7 @@ _Accel = $B8
 DH_OWindow_Init:
 	st.b	(a0)				; mark slot busy
 	move.b	#$80,render(a0)			; set on-screen coords, force disp
-	move.w	#(_DH_WindowObj_Art)+pri+pal1,art(a0)
+	move.w	#(_DH_WindowObj_Art)+pri+tutpal1,art(a0)
 	move.l	#DH_WindowObj_Map,maps(a0)
 	moveq	#4,d0
 	swap	d0

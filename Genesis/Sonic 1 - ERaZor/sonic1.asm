@@ -1225,11 +1225,20 @@ loc_13CA:
 		btst	#6,($FFFFF605).w 	; is button A pressed?
 		beq.s	Pause_ChkBC		; if not, branch
 		move.b	#1,($FFFFFF94).w	; set "exited via Start+A" flag
+		cmpi.b	#$10,($FFFFF600).w	; is game mode = special stage?
+		beq.s	Pause_AExitSS		; if yes, branch
+
 		move.w	#$400,($FFFFFE10).w	; set level to SYZ1
 		move.b	#$C,($FFFFF600).w	; set to level
 		move.w	#1,($FFFFFE02).w	; restart level
 		jsr	ClearEverySpecialFlag
 		clr.b	($FFFFFFE7).w
+		bra.s	loc_1404		; skip to loc_1404
+
+Pause_AExitSS:
+		move.w	#$400,($FFFFFE10).w	; set level to SYZ1
+		move.b	#$C,($FFFFF600).w	; set to level
+		move.w	#1,($FFFFFE02).w	; restart level
 		bra.s	loc_1404		; skip to loc_1404
 ; ===========================================================================
 
@@ -3497,9 +3506,9 @@ Title_ClrObjRam:
 		move.b	#$8A,d0		; play title screen music
 		bsr	PlaySound_Special
 	if DebugModeDefault=1
-		move.b	#1,($FFFFFFFA).w ; enable debug mode
+		move.w	#1,($FFFFFFFA).w ; enable debug mode
 	else
-		move.b	#0,($FFFFFFFA).w ; disable debug mode
+		move.w	#0,($FFFFFFFA).w ; disable debug mode
 	endif
 		move.w	#$618,($FFFFF614).w ; run title screen for $618 frames
 	;	move.w	#$FFFF,($FFFFF614).w
@@ -4417,8 +4426,8 @@ LZWaterEffects:				; XREF: Level
 		bne.s	locret_3C28	; if not, branch
 		cmpi.b	#6,($FFFFD024).w
 		bcc.s	LZMoveWater
-		bsr	LZWindTunnels
-		bsr	LZWaterSlides
+	;	bsr	LZWindTunnels
+	;	bsr	LZWaterSlides
 		bsr	LZDynamicWater
 
 LZMoveWater:
@@ -5557,11 +5566,9 @@ SS_EndClrObjRamX:
 		move.l	d0,(a1)+
 		dbf	d1,SS_EndClrObjRamX ; clear object RAM
 		
-		tst.b	($FFFFFF94).w
-		beq.s	@allgood
-		bra.s	SpecialStage_Exit
+		tst.b	($FFFFFF94).w		; was special stage exited via Pause+A?
+		bne.s	SpecialStage_Exit	; if yes, don't modify progress
 
-@allgood:
 		move.w	($FFFFFF70).w,d0	; restore the rings you had before entering special stage to d0
 	;	add.w	($FFFFFE20).w,d0	; add your new collected rings to it (there are no rings in my special stages lmao)
 		move.w	d0,($FFFFFE20).w	; move result to rings counter
@@ -5601,12 +5608,15 @@ SpecialStage_Exit:
 		clr.b	($FFFFFFB7).w
 		clr.b	($FFFFFFB9).w
 		clr.b	($FFFFFE30).w	; clear	lamppost counter
-		move.b	#0,($FFFFFFD3).w	; $FFD3
+		clr.b	($FFFFFFD3).w
 		clr.b	($FFFFFFBB).w
 		clr.b	($FFFFFFB6).w
+		
+		move.l	a0,-(sp)
+		lea	($FFFFD000).w,a0
 		jsr	Sonic_ResetOnFloor
+		move.l	(sp)+,a0
 
-		clr.b	($FFFFFFBB).w
 		move.b	#$C,($FFFFF62A).w
 		bsr	DelayProgram
 		jsr	ObjectsLoad
@@ -8143,15 +8153,6 @@ Deform_SBZ_Act2_1:			; CODE XREF: Deform_SBZ+118?j
 
 
 ScrollHoriz:				; XREF: DeformBgLayer
-		cmpi.w	#$101,($FFFFFE10).w	; is level LZ2?
-		bne.s	SH_NotLZ2		; if not, branch
-		btst	#0,($FFFFFF9A).w
-		beq.s	SH_NotLZ2
-		clr.w	($FFFFF73A).w
-		rts
-; ===========================================================================
-
-SH_NotLZ2:
 		cmpi.w	#$200,($FFFFFE10).w	; is level MZ1?
 		beq.s	@cont1			; if yes, branch
 		cmpi.b	#1,($FFFFFFAA).w	; is Sonic fighting against the crabmeat?
@@ -11816,12 +11817,12 @@ Obj18_Action2:				; XREF: Obj18_Index
 		cmpi.w	#$400,($FFFFFE10).w	; is level SYZ1?
 		bne.s	Obj18_NotSYZX
 		move.b	#0,$3F(a0)
-		move.w	($FFFFD010).w,d0
+		move.w	($FFFFD010).w,d0	; get Sonic's X speed
 		bpl.s	@cont
 		neg.w	d0
 @cont:
-		cmpi.w	#$300,d0
-		bgt.s	Obj18_NotSYZX
+		cmpi.w	#$300,d0		; Sonic moving fast enough?
+		bgt.s	Obj18_NotSYZX		; if yes, don't display arrows
 		move.b	#1,$3F(a0)
 		btst	#1,($FFFFF605).w
 		beq.s	Obj18_NotSYZX
@@ -11837,7 +11838,6 @@ Obj18_Action2:				; XREF: Obj18_Index
 		move.b	#2,($FFFFD01C).w
 		jmp	DeleteObject
 
-
 Obj18_NotSYZX:
 		cmpi.w	#$101,($FFFFFE10).w	; is level LZ2?
 		beq.s	Obj18_LZ2		; if yes, branch
@@ -11850,16 +11850,6 @@ Obj18_LZ2:
 		move.w	($FFFFD008).w,8(a0)	; set platforms X-location to Sonic's one
 		move.w	($FFFFD00C).w,$C(a0)	; set platforms Y-location to Sonic's one, but...
 		add.w	#20,$C(a0)		; ...add 20 more pixels to it
-
-		btst	#1,($FFFFFF9A).w
-		beq.s	@cont2
-		bsr	SingleObjLoad
-		move.b	#$3F,0(a1)
-		move.w	$8(a0),$8(a1)
-		move.w	$C(a0),$C(a1)
-		move.b	#6,$24(a0)
-
-@cont2:
 
 Obj18_NoMovingPlatforms:
 		cmpi.w	#$302,($FFFFFE10).w
@@ -11889,8 +11879,6 @@ loc_7F06:
 		bsr	MvSonicOnPtfm2
 		bsr	DisplaySprite
 		bra.w	Obj18_ChkDel
-
-		rts
 
 ; ---------------------------------------------------------------------------
 ; Subroutine to	move platform slightly when you	stand on it
@@ -14860,7 +14848,7 @@ Obj22_Delete:				; XREF: Obj22_Index
 		rts	
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Object 23 - missile that Buzz	Bomber throws
+; Object 23 - missile that Buzz	Bomber throws + Inhuman Mode bullets
 ; ---------------------------------------------------------------------------
 
 Obj23:					; XREF: Obj_Index
@@ -14882,7 +14870,6 @@ Obj23_Main:				; XREF: Obj23_Index
 		bpl.s	Obj23_ChkCancel
 		addq.b	#4,$24(a0)
 		move.l	#Map_obj23,4(a0)
-	;	move.w	#$2444,2(a0)
 		move.w	#($D700/$20),2(a0)
 		move.b	#4,1(a0)
 		move.b	#3,$18(a0)
@@ -17358,13 +17345,6 @@ Obj2D_Jump:				; XREF: Obj2D_Index2
 		bsr	SpeedToPos
 		addi.w	#$18,$12(a0)
 		bmi.s	locret_ADF0
-		cmpi.w	#$101,($FFFFFE10).w
-		bne.s	@cont
-		move.w	#$8C,d0
-		jsr	PlaySound	; play boss music
-		bset	#1,($FFFFFF9A).w
-
-@cont:
 		move.b	#3,$1C(a0)
 		jsr	ObjHitFloor
 		tst.w	d1
@@ -30301,7 +30281,6 @@ loc_12E0E:
 ; ---------------------------------------------------------------------------
 
 Obj01_MdNormal:				; XREF: Obj01_Modes
-		bsr	Sonic_Fire
 		bsr	Sonic_SpeedDash
 		bsr	Sonic_SuperPeelOut
 		bsr	Sonic_Spindash
@@ -30313,6 +30292,7 @@ Obj01_MdNormal:				; XREF: Obj01_Modes
 		bsr	SpeedToPos
 		bsr	Sonic_AnglePos
 		bsr	Sonic_SlopeRepel
+		bsr	Sonic_Fire
 		rts	
 ; ===========================================================================
 
@@ -30322,7 +30302,6 @@ Obj01_MdJump:				; XREF: Obj01_Modes
 		bsr	Sonic_AirFreeze
 		bsr	Sonic_CheckUpBtn
 		bsr	Sonic_CheckDownBtn
-		bsr	Sonic_Fire
 		bsr	Sonic_JumpHeight
 		bsr	Sonic_FixWalkJumpBug	; branch to walk/jump fix routine
 		bsr	Sonic_ChgJumpDir
@@ -30335,6 +30314,7 @@ Obj01_MdJump:				; XREF: Obj01_Modes
 loc_12E5C:
 		bsr	Sonic_JumpAngle
 		bsr	Sonic_Floor
+		bsr	Sonic_Fire
 		rts	
 ; ===========================================================================
 
@@ -30355,7 +30335,6 @@ Obj01_MdJump2:				; XREF: Obj01_Modes
 		bsr	Sonic_AirFreeze
 		bsr	Sonic_CheckUpBtn
 		bsr	Sonic_CheckDownBtn
-		bsr	Sonic_Fire
 		bsr	Sonic_Jumpdash
 		bsr	Sonic_JumpHeight
 		bsr	Sonic_FixWalkJumpBug	; branch to walk/jump fix routine
@@ -30369,6 +30348,7 @@ Obj01_MdJump2:				; XREF: Obj01_Modes
 loc_12EA6:
 		bsr	Sonic_JumpAngle
 		bsr	Sonic_Floor
+		bsr	Sonic_Fire
 		rts	
 ; ---------------------------------------------------------------------------
 ; Subroutine to	make Sonic walk/run
@@ -31216,6 +31196,8 @@ WF_Return:
 WhiteFlash_Restore:
 		tst.b	($FFFFFFB9).w		; is white flash flag set?
 		beq.s	WF_Restore_End		; if not, branch
+		tst.b	($FFFFFFB1).w
+		bpl.s	WF_Restore_End
 		clr.b	($FFFFFFB9).w		; clear white flash flag
 		lea	($FFFFFA80).w,a4	; load palette location to a4
 		lea	($FFFFCA00).w,a3	; load backed up palette to a3
@@ -41310,20 +41292,6 @@ loc_19934_2:				; XREF: Obj82_EggIndex
 		move.w	#1,($FFFFFE02).w
 		rts
 @cont:
-		tst.b	($FFFFFFB1).w		; is white flash counter empty?
-		beq.s	S_D_NoInhumanCrushX	; if yes, branch
-		subq.b	#1,($FFFFFFB1).w	; sub 1 from counter
-		cmpi.b	#1,($FFFFFFB1).w	; sub 1 from counter
-		bge.s	S_D_NoInhumanCrushX	; is counter now empty? if not, branch
-
-		jsr	WhiteFlash_Restore
-		
-	;	move.b	#$C3,d0
-	;	jsr	PlaySound
-
-		clr.b	($FFFFFFAE).w		; clear WF2 flag
-
-S_D_NoInhumanCrushX:
 		jmp	SpeedToPos
 ; ===========================================================================
 
@@ -44849,7 +44817,7 @@ Obj09_ChkEmer:
 
 		cmpi.b	#4,($FFFFFE57).w ; do you have all the emeralds?
 		beq.s	Emershit
-		cmpi.w	#$401,($FFFFFE10).w
+		cmpi.w	#$401,($FFFFFE10).w	; is this Unreal Place?
 		bne.s	Obj09_NoSpecial2
 		cmpi.b	#2,($FFFFFE57).w ; do you have all the emeralds?
 		bne.s	Obj09_NoSpecial2
@@ -44863,7 +44831,8 @@ Emershit:
 		move.b	#$07,($FFFFD3C0).w	; load cropped screen object
 		move.w	#$0174,($FFFFD3C8).w		; set X-position
 		move.w	#$00F8,($FFFFD3CA).w		; set Y-position
-		move.b	#1,($FFFFF7CC).w
+		
+		move.b	#1,($FFFFF7CC).w		; lock controls
 		move.l	a0,-(sp)
 		move.l	#$72E00003,($C00004).l
 		lea	(Nem_CropScreen).l,a0

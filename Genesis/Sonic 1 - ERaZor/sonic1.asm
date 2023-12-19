@@ -1726,7 +1726,26 @@ sub_1642:				; XREF: loc_C44; loc_F54; loc_F9A
 
 sub_165E:				; XREF: Demo_Time
 		tst.w	($FFFFF6F8).w
-		beq.s	locret_16DA
+		beq.w	locret_16DA
+		cmpi.b	#$01,($FFFFFE10).w        ; is this LZ?
+		bne.s	.Normal                ; if not, continue normally
+		move.w	($FFFFF646).w,d0        ; load water level
+		sub.w	($FFFFF704).w,d0        ; get distance from top of screen
+		cmpi.w	#$00DF,d0            ; is the water level below the screen?
+		bhs.s	.Normal                ; if so, run normal decompression rate
+		moveq	#$07,d0            ; check if it's been 8 frames
+		and.w	($FFFFFE04).w,d0    ; ''
+		beq.s	.Slow            ; if so, continue decompression
+		rts                ; cancel
+
+.Slow:
+		moveq	#1,d0                ; set to decompress and transfer 1 tile
+		move.w	d0,($FFFFF6FA).w        ; ''
+		move.w	($FFFFF684).w,d0        ; load current VRAM address to transfer to
+		addi.w	#$20,($FFFFF684).w        ; advance to next tile (next frame)
+		bra.s	loc_1676            ; continue with decompression/transfer
+
+.Normal:
 		move.w	#3,($FFFFF6FA).w
 		moveq	#0,d0
 		move.w	($FFFFF684).w,d0
@@ -7593,7 +7612,7 @@ DTS_Loop:
 
 Deform_LZ:
 		cmpi.b	#3,($FFFFFF97).w	; was third lamppost passed?
-		beq.s	Deform_LZ_Extended	; if yes, use alternate deformation
+		bra.s	Deform_LZ_Extended	; if yes, use alternate deformation
 
 	; original code, takes MUCH less RAM than the extended code
 		move.w	($FFFFF73A).w,d4
@@ -28701,6 +28720,8 @@ Obj64_BblMaker:				; XREF: Obj64_Index
 		bcc.w	Obj64_ChkDel	; if not, branch
 		tst.b	1(a0)
 		bpl.w	Obj64_ChkDel
+		cmpi.w	#$0098,($FFFFFE04).w        ; has the level timer reached a reasonable point?
+		blo.w	loc_12914            ; if not, ignore loading bubbles
 		subq.w	#1,$38(a0)
 		bpl.w	loc_12914
 		move.w	#1,$36(a0)

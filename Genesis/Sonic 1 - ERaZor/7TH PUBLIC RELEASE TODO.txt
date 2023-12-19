@@ -1,0 +1,121 @@
+---------------------------
+Sonic ERaZor 7 - To-Do List
+---------------------------
+
+Improvements (gameplay):
+	Add time challenge to the new Star Agony
+	Return ring-based challenges, but make the rings only a penalty (they won't kill when you reach zero)
+		
+Improvements (art):
+	Get a better 7x7 font
+	Signs for Options and Tutorial and Labyrinthy (maybe redo them all from scratch)
+	Redo the text screens to not look like ass anymore
+	Update solid objects in GHZ to match the level art
+	
+Bugs:
+	Fix music not coming back when dying immediately to the spikes in final boss
+	Fix glitched after effect during some deaths
+	Fix cinematic HUD causing garbled explosions from title card graphics in GHZ2
+	Fix the garbled art when starting Star Agony
+	Fix hard crash when mashing buttons during the tutorial boxes too fast
+	Fix massive slowdowns in new MZ spike section (possibly fixable using S3's Object Manager)
+	Fix speed adjustments in intro cutscene and ending sequence
+	Fix DPLC when pausing game (see Peelout)
+	Fix game turning gray for no reason (no idea how to reproduce...)
+	Disable stage quitting in special stages during start of level and collecting the final emerald (glitchy art)
+	Fix underwater palette not turning gray when dying or pausing
+	Fix lower camera in LZ
+	Fix LZ platforms sometimes spawning multiple times
+	Fix bomb machine cutscene not loading graphics in time in cinematic mode
+	Fix title cards being broken on more advanced emulators
+
+Hardware:
+	Try and find out what that's causing the missing line in the ERaZor banner in the options menu on real hardware
+
+Misc:
+	Smooth fadeout when deleting save game
+	Bass boost the Sega sound
+	Do a massive clean-up of literally anything I don't need
+
+Hardware Testing:
+	Fix weird lock when exiting special stages via pause (might already be fixed, needs hardware testing)
+	Fix crash on time over (might be fixed, needs hardware testing)
+	Fix remaining no-SRAM bugs (technically done, but will need proper testing once I get the cartridge)
+
+---------------------------
+
+	Bug Reports from YouTube:
+		The only other bug I encountered was the slowdown/cram dot bug on rhs’ livestream of the game with the crabmeat in ghz.
+		If you leave the exploding projectiles it shoots on screen long enough it will happen. I could reproduce it on real hw, regen, and Kega. 
+
+		Btw I recently played your hack on my everdrive pro & had an issue in that water level with the camera.
+		For some reason after the first checkpoint where you’re supposed to fall down, I kept dying because the camera wasn’t scrolling down fast enough I think.
+		The only way I was able to fix it was by resetting back to my everdrive’s menu & booting it up again. It was kinda bizzare. Besides that I didn’t have any other issues besides the ones RHS mentioned.
+	
+		I also encountered another a bug with the same text screen (and this bug also happens in the tutorial with the text boxes) whilst doing an experimental TAS run.
+		The bug results in things such as graphical corruption, temporarily hanging and crashing. It's triggered by spamming start as fast as possible or in terms of TASing every 2 or 4 frames.
+		I'm guessing this is also overflow related and the game not taking account for button spam and not checking if the ID has already reached set a point on time.
+		So yeah, my suggestion would be either add some kind of delay (that can't be bypassed) before the button press is registered or somehow make so it caps using a equal to or greater than check if needed,
+		when a counter reaches the point where it's suppose to transition\finish and trigger the said transition\finish.
+		However it would be nice if you could add the option turn off the story elements and text screens but that's up to you.
+
+---------------------------
+
+-	Fix text screens hard crash
+-	Disable text screens options (new option, replaces old S3 Art option)
+-	Fix that one bug when standing on monitors
+-	Never reduce death counter / replace 1-UPs
+-	Remove Sonic 3 art?
+-	Make ring-based challenges not ring-based
+-	Make SLZ2 bomb shrapnels predictable (not needed now that there are no more rings)
+-	Fix screetch on some music tracks on certain hardware
+-	See if there are any guides to implement as well
+-	Make that one spring in LZ easier to spot
+-	Disallow Tutorial boxes until title cards have disappeared (fixed by moving the first monitor elsewhere)
+-	Make RGB gradient less obnoxious 
+-	Fix softlock when nonstop inhuman in LZ
+-	Fix dying in SLZ2 to bottomless pits even when inhuman
+-	Respawn by shooting up the tube after finishing a stage (circumvented with new Skip Uberhub option)
+-	Slight visual touchups on the black challenge (done on accident by making the goal blocks less flashy lol)
+-	Rename black challenge to blackout challenge 
+-	Rename LZ to Labyrinthy Place
+-	Remove easter egg (or do SOMETHING with it... god dammit, Tongara) (added a cheekish disclaimer in the credits)
+-	Fix the rings getting stuck during the first boss
+-	Fix slowdown in GHZ2 around that one Crabmeat (simply deleting it fixed it...)
+-	Make all pillar combinations possible to appear in the final boss
+-	Fix wrong exit text when leaving second special stage via pause+A
+-	Fix missing screens crop in nonstop inhuman LZ
+-	Disable flashing during inhuman boss fights for seizure (apparently only was the Crabmeat boss, welp)
+-	Quitting a special stage via pause+A should fail the stage
+-	Remove that pointless room from Ruined Place
+-	Add visual rings to the crossing section of Ruined Place to make it clearer
+-	Try to fix Sonic getting stuck in the wall during some deaths (only done for LZ)
+-	Get rid of pointless checkpoint at the end of LZ
+-	Apply ring ceiling logic to SLZ boss
+-	Prevent rings from falling through the floor in FZ (adjusted col, maybe that already did the trick)
+-	Make hidden stage tube locked before not having visited the final cutscene at least once
+-	Fix x-swapping in credits (masked by increased speed)
+-	Make cinematic mode its own separate option from nonstop inhuman
+-	Make that one specific tube in Ruined Place not kill you
+-	Fix hard part skipper in Ruined Place to work for new layout
+-	Fix falling through geometry in SLZ while stage is inactive (sorta. tbh if you explore this level in an unintended way it's your fault)
+-	Make upper part of credits less opaque for better visual contrast
+-	Add Peanut Noceda to beta testing credits
+-	Change title screen year to 2024
+-	Reduce white flash intensity (done by boosting the current palette instead of making it all white)
+-   Reduce flashing red speed in antigrav section in SLZ
+-	Perhaps implement 45° movement for SLZ2
+-	Dramatically reduce tutorial text amount (as of writing, still needs a better font)
+-	Fix getting stuck in that one spike in LZ when falling down after the first checkpoint and outrunning the camera
+-	Fix ring attraction being all sorts of messed up in MZ
+-	Play sound when layout changes in emblem circle section in SLZ
+-	Fade out music when passing the hidden door in SYZ for spookiness
+-	Add shortcuts to GHZ2 and SLZ3 when the stage has been beaten before
+-	Disable auto peelout in MZ and make it launch you at full speed for all the others
+-	Fix extended camera sometimes getting stuck (see RHS stream)
+-	Fix nonstop inhuman bullet graphics in other levels
+-	Fix monitor in FZ sometimes getting destroyed by speed anyway
+-	Fix LZ camera not immediately snapping into kill place
+-	Fix water levels in place in LZ
+-	Wall off backtracing after hitting the first checkpoint in LZ
+-	Use Sonic's speed to predict and move inhuman bullets ahead

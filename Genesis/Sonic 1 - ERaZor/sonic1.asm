@@ -1,5 +1,5 @@
 ; /======================================================\
-; º                     Sonic ERaZor                     º
+; ï¿½                     Sonic ERaZor                     ï¿½
 ; \======================================================/
 
 ; =======================================================
@@ -7971,9 +7971,51 @@ Deform_All_2:
 		rts	
  
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
- 
+        rsset   $FFFF8000
+DistortScrollTimer:       rs.l    1               ; scroll count
+
+Sine_SYZ:
+		moveq   #0, d4
+		moveq   #0, d5
+		lea     ($FFFFCC00).w, a1
+		move.b  ($FFFFA800).w, d6
+
+		move.w  ($FFFFF710).w, d2
+		neg.w   d2
+		swap    d2                      ;Puts plane A's X pos in topmost word
+
+		move.w  #224, d3
+
+@Deform:
+		move.b  d6, d0
+		bchg.l  #7, d4                  ;This handles flipping the sign
+		;add.w   d4, d0                  ;Adds flipped sign to wave
+		add.w   d5, d0
+		jsr     CalcSine
+		asr.w   #3, d1                  ;Increase to decrease amplitude
+		move.w  d1, (a1)+               ;Send AAAA HScroll entry
+		adda.l  #2, a1
+		add.w   d3, d5                  ;Inc wave every line (increase for higher freq.)
+		dbra    d3, @Deform
+
+		rts
  
 Deform_SYZ:
+		tst.b   ($FFFFFFD0).w
+		beq.s   @RegularDeform
+
+		lea     DistortScrollTimer, a1
+		addi.l  #65536*32/16, (a1)
+		move.w  (a1), d0
+		neg.w   d0 ; go left
+		move.w  d0, ($FFFFCC00).w
+
+		bsr.w   Sine_SYZ
+
+		add.b   #8, ($FFFFA800).w
+		rts
+
+@RegularDeform:
 		move.w	($FFFFF73C).w,d5
 		ext.l	d5
 		asl.l	#4,d5
@@ -15743,6 +15785,9 @@ Obj4B_YPositive:
 		btst	#1,($FFFFD022).w	; is Sonic in air?
 		beq.s	Obj4B_DontCollect	; if not, don't collect
 		
+		move.b  #1, ($FFFFFFD0).w       ; FUZZY: I feel very light-headed...
+		move.b  #$FF, ($FFFFFF64).w     ; ...and dizzy...
+
 @contnotredaircheck:
 		move.b	#4,$24(a0)		; mark ring as collected
 		move.b	#1,$3C(a0)		; disable interaction with ring
@@ -15917,7 +15962,7 @@ Obj4B_ChkGHZ1:
 		bne.s	Obj4B_ChkGHZ3			; if not, branch
 		move.w	#$000,($FFFFFE10).w		; set level to GHZ1
 		bra.w	Obj4B_PlayLevel
-
+	
 Obj4B_ChkGHZ3:
 		cmpi.b	#GRing_GreenHill,$28(a0)	; is this the ring to Green Hill Place?
 		bne.s	Obj4B_ChkSpecial1		; if not, branch
@@ -15930,6 +15975,16 @@ Obj4B_ChkSpecial1:
 		move.w	#$300,($FFFFFE10).w		; set level to Special Stage
 		clr.b	($FFFFFF5F).w			; clear blackout blackout special stage flag
 		bsr	MakeChapterScreen
+
+		move.b  #0, ($FFFFFFD0).w               ; FUZZY: Let's clear the distortion flag,
+		move.b  #0, ($FFFFFF64).w               ; and the shake timer.
+
+		lea     ($FFFFCC00).w, a1
+		move.w  #224, d3
+
+@ClearScroll:
+		move.w  #0, (a1)+               ;Send AAAA HScroll entry
+		dbra    d3, @ClearScroll
 		rts
 
 Obj4B_ChkMZ:

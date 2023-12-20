@@ -109,7 +109,10 @@
  ;  ($FFFFFFCE).w
  ;  ($FFFFFFCF).w
   
-    ($FFFFFFD0).w
+ ;  ($FFFFFFD0).w ; Hi, this is Fuzzy. Since Selbi didn't want to label these
+                  ; locations, I wanted to say that this is a flag specifically
+                  ; for Uberhub's deformation. Thank you for going to my TED talk.
+                  
     ($FFFFFFD1).w
  ;  ($FFFFFFD2).w
  ;  ($FFFFFFD3).w

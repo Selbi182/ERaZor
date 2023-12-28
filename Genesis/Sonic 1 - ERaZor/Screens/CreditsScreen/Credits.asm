@@ -122,31 +122,31 @@ CJSM_FO_Array:
 		dc.b	 2, 1
 		dc.b	 2, 3
 		
-		dc.b	 4, 9
+		dc.b	 4, 1
+		dc.b	 4, 3
+		dc.b	 4, 8
 		
-		dc.b	 5, 8
+		dc.b	 5, 9
 		
-		dc.b	 6, 1
-		dc.b	 6, 7
+		dc.b	 6, 8
 		
-		dc.b	 7, 3
-		dc.b	 7, 8
-		dc.b	 7,10
+		dc.b	 7, 1
+		dc.b	 7, 7
 		
-		dc.b	 8, 1
-		dc.b	 8,10
+		dc.b	 8, 3
+		dc.b	 8, 9
 		
-		dc.b	 9, 9
-	
+		dc.b	 9, 1
+		dc.b	 9,10
+		
 		dc.b	10, 9
-		dc.b	10,13
-		
+			
 		dc.b	11, 1
 		
 		dc.b	12, 1
 		dc.b	12, 3
-		dc.b	12, 6
-		dc.b	12, 8
+		dc.b	12, 7
+		dc.b	12, 9
 		
 		dc.b	$FF, $FF
 		even

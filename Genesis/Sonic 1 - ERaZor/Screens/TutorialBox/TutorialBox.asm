@@ -180,8 +180,8 @@ DH_Quit:
 	jsr	DelayProgram
 	movem.l	(sp)+,a5-a6
 	addq.w	#4,sp				; return controls to the game
-	cmp.b	#$99,($FFFFFFDE).w
-	bne.s	@cont
+	cmp.b	#$99,($FFFFFFDE).w		; are we in the opening text screen?
+	bne.s	@cont				; if not, branch
 	subq.w	#4,sp
 @cont:
 	jmp	ObjectsLoad			; reload objects
@@ -353,13 +353,16 @@ vram_pos	equ	$20	; l
 row		equ	$24	; w
 delay		equ	$26	; w
 char_pos	equ	$28	; l
+cooldown	equ	$30	; w
 
 _DelayVal	= 0
 _DelayVal_Sh	= 0
+_CooldownVal	= 2
 
 	move.l	#@ProcessChar,obj(a0)	; set main routine
 	move.w	#_DelayVal,delay(a0)	; set delay
 	move.w	#0,row(a0)		; start from the first row
+	move.w	#_CooldownVal,cooldown(a0) ; set cooldown between screens
 	bra.w	@LoadRow
 
 ; ---------------------------------------------------------------
@@ -400,7 +403,16 @@ _DelayVal_Sh	= 0
 @ProcessChar:
 	move.b	Joypad|Press,d0
 	andi.b	#A+B+C+START,d0		; A/B/C/START pressed?
-	bne.s	@InstantWrite		; if yes, branch
+	beq.s	@ContinueChar		; if not, branch
+	tst.w	cooldown(a0)		; is cooldown over?
+	beq.s	@InstantWrite		; if yes, immediately write the whole screen
+
+@ContinueChar:
+	tst.w	cooldown(a0)		; is cooldown over?
+	beq.s	@CooldownEmpty		; if yes, branch
+	subq.w	#1,cooldown(a0)		; reduce 1 from cooldown
+	
+@CooldownEmpty:
 	subq.w	#1,delay(a0)		; decrease delay counter
 	bpl.w	@Return			; if time remains, branch
 
@@ -468,6 +480,7 @@ _DelayVal_Sh	= 0
 	andi.b	#A+B+C+Start,d0		; A/B/C/Start pressed?
 	beq.s	@Return			; if not, branch
 	move.l	#@ProcessChar,obj(a0)	; set main routine
+	move.w	#_CooldownVal,cooldown(a0) ; set cooldown between screens
 	moveq	#$FFFFFFD9,d0
 	jmp	PlaySound
 

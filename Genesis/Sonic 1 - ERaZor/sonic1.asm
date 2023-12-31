@@ -1,24 +1,21 @@
 ; /======================================================\
-; �                     Sonic ERaZor                     �
+; |                     Sonic ERaZor                     |
 ; \======================================================/
 
 ; =======================================================
 ; ------------------------------------------------------
-; Leader/Programming:		Selbi
-
+; Leader/Main Programming:	Selbi
 ; Graphics/Help:		MarkeyJester
-
-; Addi. Programming:		vladikcomper
-
-; Music:			DalekSam
+; Additional Programming:	vladikcomper
+; Programming/Beta Testing:	Fuzzy
+; Music Ports:			DalekSam
 ;				Spanner
-
 ; Sound Driver:			EduardoKnuckles
-
-; Beta Testing:			SonicVaan
-
+; Main Beta Testing:		SonicVaan
+; Additional Beta Testing:	Peanut Noceda
+; Real Hardware Testing:	redhotsonic
 ; Special Thanks to:		MainMemory
-
+;				Jorge
 ; ------------------------------------------------------
 
 ; Sega Screen		($00)
@@ -4987,6 +4984,7 @@ ClearEverySpecialFlag:
 		clr.l	($FFFFFFB8).w	; $FFB8-$FFBB	(4)
 		clr.b	($FFFFFFBD).w	; $FFBD		(1)
 		clr.b	($FFFFFFBF).w	; $FFBF		(1)
+		clr.b	($FFFFFFD0).w	; $FFD0		(1)
 		clr.b	($FFFFFFD1).w	; $FFD1		(1) needs to be splitted
 		clr.l	($FFFFFFD2).w	; $FFD2-$FFD5	(4)
 		clr.l	($FFFFFFD6).w	; $FFD6-$FFD9	(4)
@@ -5335,6 +5333,9 @@ Demo_SS:	incbin	demodata\i_ss.bin
 SpecialStage:				; XREF: GameModeArray
 		tst.b	($FFFFFF5F).w	; is this the blackout special stage?
 		beq.s	@conty		; if not, branch
+		
+		clr.b	($FFFFFFD0).w	; disable distortion effect
+		clr.b	($FFFFFF64).w	; disable screen shake effect
 		
 		move.w	#$E4,d0			; stop music
 		bsr	PlaySound_Special

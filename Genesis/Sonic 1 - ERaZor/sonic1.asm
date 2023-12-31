@@ -11787,17 +11787,20 @@ Obj18_NotLZ:
 		move.w	#$4490,2(a0)
 		move.b	#$30,$19(a0)
 
+		; glowing yellow arrows when stepping on platform in Uberhub
 		jsr	SingleObjLoad
 		move.b	#$18,(a1)
 		move.b	#$A,$24(a1)
 		move.l	#Map_obj18a,4(a1) ; SYZ	specific code
 		move.w	#$6490,2(a1)
 		move.w	$8(a0),$8(a1)
-		move.w	$C(a0),$C(a1)
+		move.w	$C(a0),d0
+		addi.w	#$35,d0		; adjust Y pos
+		move.w	d0,$C(a1)
 		move.b	#1,$1A(a1)
 		move.b	#$30,$19(a1)
 		move.b	#4,1(a1)
-		move.b	#4,$18(a1)
+		move.b	#3,$18(a1)	; set priority
 		move.w	$C(a0),$2C(a1)
 		move.w	$C(a0),$34(a1)
 		move.w	8(a0),$32(a1)
@@ -15712,22 +15715,18 @@ Obj4B_Main:				; XREF: Obj4B_Index
 		bne.s	Obj4B_Main_Cont		; if not, branch
 		move.w	#$2422,2(a0)		; use yellow palette
 		
-		cmpi.b	#GRing_NightHill,$28(a0)	; is this a ring leading to Night Hill Place?
+		cmpi.b	#GRing_GreenHill,$28(a0)	; is this a ring leading to Green Hill Place (NHP act 2)?
 		bne.s	@tempringcont1			; if not, branch
-		cmpi.w	#$04A0,8(a0)			; is it specifically the ring you enter from the tube?
-		bne.s	Obj4B_Main_Cont			; if not, branch
 		btst	#0,($FFFFFF8B).w		; has the player beaten this level before?
-		beq.s	Obj4B_Main_Cont			; if not, branch
-		jmp	DeleteObject			; otherwise, delete this ring to open up the selection to act 2
+		bne.s	Obj4B_Main_Cont			; if yes, branch
+		jmp	DeleteObject			; otherwise, delete this ring
 		
 @tempringcont1:
-		cmpi.b	#GRing_ScarNight,$28(a0)	; is this a ring leading to Scar Night Place?
+		cmpi.b	#GRing_StarAgony,$28(a0)	; is this a ring leading to Star Agony Place (SNP act 2)?
 		bne.s	@tempringcont2			; if not, branch
-		cmpi.w	#$0EA0,8(a0)			; is it specifically the ring you enter from the tube?
-		bne.s	Obj4B_Main_Cont			; if not, branch
 		btst	#5,($FFFFFF8B).w		; has the player beaten this level before?
-		beq.s	Obj4B_Main_Cont			; if not, branch
-		jmp	DeleteObject			; otherwise, delete this ring to open up the selection to act 2
+		bne.s	Obj4B_Main_Cont			; if yes, branch
+		jmp	DeleteObject			; otherwise, delete this ring
 		
 @tempringcont2:
 		cmpi.b	#GRing_Blackout,$28(a0)	; is this the blackout challenge ring?
@@ -29408,13 +29407,39 @@ Obj03_Setup:
 		move.b	#4,1(a0)		; set render flag
 		move.b	#$56,$19(a0)		; set display width
 		move.w	#$0372,2(a0)		; set art, use first palette line
-		subi.w	#$10,8(a0)		; fix X-pos
 		move.b	$28(a0),$1A(a0)		; set frame to subtype ID
-		addq.w	#1,$8(a0)
-		addq.w	#1,$C(a0)
-
+		subi.w	#$C,$C(a0)		; adjust Y pos
+		
+		; "PLACE" text on level signs
+		cmpi.b	#7,$28(a0)		; is this a regular level sign? (for an act)
+		bge.s	Obj03_Display		; if not, branch
+		bsr	SingleObjLoad		; load an object
+		bne.s	Obj03_Display		; skip on fail
+		move.b	#$03,0(a1)		; load another level sign object
+		move.w	$8(a0),$8(a1)		; copy X pos
+		move.w	$C(a0),d0		; get Y pos
+		addi.w	#$18,d0			; move it $18 pixels lower
+		move.w	d0,$C(a1)		; set Y pos
+		move.b	#2,$24(a1)		; set to "Obj03_Display"
+		move.l	#Map_Obj03,4(a1)	; load mappings
+		move.b	#4,$18(a1)		; set priority
+		move.b	#4,1(a1)		; set render flag
+		move.b	#$56,$19(a1)		; set display width
+		move.w	#$0372,2(a1)		; set art, use first palette line
+		move.b	#9,$1A(a1)		; set to "PLACE" frame
+		move.w	$C(a1),$38(a1)		; remember base Y pos
+		
 Obj03_Display:
+		cmpi.b	#8,$28(a0)		; is this the sign for the options menu?
+		bne.s	Obj03_DoDisplay		; if not, branch
+		move.w	($FFFFD008).w,d0	; get Sonic's X pos
+		cmpi.w	#$0080,d0		; is he before $0080?
+		bcc.s	Obj03_NoDisplay		; if not, branch
+
+Obj03_DoDisplay:
 		bsr	DisplaySprite		; display sprite
+
+Obj03_NoDisplay:
 		move.w	8(a0),d0
 		andi.w	#$FF80,d0
 		move.w	($FFFFF700).w,d1

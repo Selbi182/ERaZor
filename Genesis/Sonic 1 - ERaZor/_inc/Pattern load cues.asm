@@ -227,8 +227,10 @@ PLC_SLZ2:	dc.w 4
 PLC_SYZ:	dc.w 1
 		dc.l Nem_SYZ		; SYZ main patterns
 		dc.w $0000
-		dc.l Nem_LevelSigns	; level signs
+		dc.l Nem_TitleCard
 		dc.w $6E40
+	;	dc.l Nem_LevelSigns	; level signs
+	;	dc.w $6E40
 PLC_SYZ2:	dc.w 2
 		dc.l Nem_SYZPlat	; platform
 		dc.w $9200

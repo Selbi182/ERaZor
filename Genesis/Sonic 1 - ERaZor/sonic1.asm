@@ -12843,7 +12843,7 @@ Obj2A_OpenShut:				; XREF: Obj2A_Index
 		bne.s	Obj2A_NotSYZ1		; if not, branch
 
 	if DoorsAlwaysOpen=0
-		move.w	#$0809,2(a0)		; use red light art
+		move.w	#$0800+($6100/$20),2(a0)	; use red light art
 		tst.b	$28(a0)			; is this the door leading to the blackout challenge?
 		bpl.s	@notfinaldoor		; if not, branch
 		tst.b	$30(a0)			; has sound stopper been passed?
@@ -12864,7 +12864,7 @@ Obj2A_OpenShut:				; XREF: Obj2A_Index
 @usegreendoor:
 	endif
 
-		move.w	#$4801,2(a0)		; use green light art
+		move.w	#$4800+($6000/$20),2(a0)	; use green light art
 
 		move.w	#$40,d1		; set minimum distance between door and Sonic
 		clr.b	$1C(a0)		; use "closing"	animation
@@ -29430,6 +29430,12 @@ Obj03_Setup:
 		move.w	$C(a1),$38(a1)		; remember base Y pos
 		
 Obj03_Display:
+		bclr	#5,2(a0)		; use first palette row
+		btst	#0,($FFFFFE05).w	; is this an odd frame?
+		beq.s	Obj03_NotOdd		; if not, branch
+		bset	#5,2(a0)		; use second palette row (gives a slight flicker effect)
+
+Obj03_NotOdd:		
 		cmpi.b	#8,$28(a0)		; is this the sign for the options menu?
 		bne.s	Obj03_DoDisplay		; if not, branch
 		move.w	($FFFFD008).w,d0	; get Sonic's X pos
@@ -47409,6 +47415,8 @@ Nem_GiantBomb:	incbin	artnem\GiantBomb.bin	; Giant Bomb
 Nem_Bumper:	incbin	artnem\syzbumpe.bin	; SYZ bumper
 		even
 Nem_LzSwitch:	incbin	artnem\switch.bin	; LZ/SYZ/SBZ switch
+		even
+Nem_SYZDoors:	incbin	artnem\SYZDoors.bin	; SYZ doors
 		even
 Nem_LevelSigns:	incbin	artnem\LevelSigns.bin	; SYZ level signs
 		even

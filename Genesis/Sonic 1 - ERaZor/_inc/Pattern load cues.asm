@@ -224,13 +224,13 @@ PLC_SLZ2:	dc.w 4
 ; ---------------------------------------------------------------------------
 ; Pattern load cues - Spring Yard
 ; ---------------------------------------------------------------------------
-PLC_SYZ:	dc.w 1
+PLC_SYZ:	dc.w 2
 		dc.l Nem_SYZ		; SYZ main patterns
 		dc.w $0000
-		dc.l Nem_TitleCard
+		dc.l Nem_SYZDoors	; SYZ doors
+		dc.w $6000
+		dc.l Nem_LevelSigns	; level signs
 		dc.w $6E40
-	;	dc.l Nem_LevelSigns	; level signs
-	;	dc.w $6E40
 PLC_SYZ2:	dc.w 2
 		dc.l Nem_SYZPlat	; platform
 		dc.w $9200

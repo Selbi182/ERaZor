@@ -7,8 +7,6 @@ Improvements (gameplay):
 	Return ring-based challenges, but make the rings only a penalty (they won't kill when you reach zero)
 		
 Improvements (art):
-	Get a better 7x7 font
-	Redo the text screens to not look like ass anymore
 	Update solid objects in GHZ to match the level art
 	
 Bugs:
@@ -30,6 +28,7 @@ Hardware:
 	Try and find out what that's causing the missing line in the ERaZor banner in the options menu on real hardware
 
 Misc:
+	Add the Samuel easter egg
 	Smooth fadeout when deleting save game
 	Bass boost the Sega sound
 	Do a massive clean-up of literally anything I don't need
@@ -118,3 +117,5 @@ Hardware Testing:
 -	Use Sonic's speed to predict and move inhuman bullets ahead
 -	Fix hard crash when mashing buttons during the tutorial boxes too fast
 -	Signs for Options and Tutorial and Labyrinthy (maybe redo them all from scratch)
+-	Get a better 7x7 font
+-	Redo the text screens to not look like ass anymore

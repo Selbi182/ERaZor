@@ -44,20 +44,24 @@ Options_LoadText:
 
 ; ---------------------------------------------------------------------------
 		move.b	#$02,($FFFFD100).w	; load ERaZor banner object
-		move.w	#$BD,($FFFFD108).w	; set X-position
+		move.w	#$120,($FFFFD108).w	; set X-position
 		move.w	#$81,($FFFFD10A).w	; set Y-position
+	
+	;	move.b	#$02,($FFFFD100).w	; load ERaZor banner object
+	;	move.w	#$BD,($FFFFD108).w	; set X-position
+	;	move.w	#$81,($FFFFD10A).w	; set Y-position
 
-		move.b	#$02,($FFFFD140).w	; load ERaZor banner object
-		move.w	#$182,($FFFFD148).w	; set X-position
-		move.w	#$81,($FFFFD14A).w	; set Y-position
+	;	move.b	#$02,($FFFFD140).w	; load ERaZor banner object
+	;	move.w	#$182,($FFFFD148).w	; set X-position
+	;	move.w	#$81,($FFFFD14A).w	; set Y-position
 
-		move.b	#$02,($FFFFD180).w	; load ERaZor banner object
-		move.w	#$BD,($FFFFD188).w	; set X-position
-		move.w	#$142,($FFFFD18A).w	; set Y-position
+	;	move.b	#$02,($FFFFD180).w	; load ERaZor banner object
+	;	move.w	#$BD,($FFFFD188).w	; set X-position
+	;	move.w	#$142,($FFFFD18A).w	; set Y-position
 
-		move.b	#$02,($FFFFD1C0).w	; load ERaZor banner object
-		move.w	#$182,($FFFFD1C8).w	; set X-position
-		move.w	#$142,($FFFFD1CA).w	; set Y-position
+	;	move.b	#$02,($FFFFD1C0).w	; load ERaZor banner object
+	;	move.w	#$182,($FFFFD1C8).w	; set X-position
+	;	move.w	#$142,($FFFFD1CA).w	; set Y-position
 
 		jsr	ObjectsLoad
 		jsr	BuildSprites

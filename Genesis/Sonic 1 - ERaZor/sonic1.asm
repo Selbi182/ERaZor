@@ -7613,7 +7613,7 @@ DTS_Loop:
 
 Deform_LZ:
 		cmpi.b	#3,($FFFFFF97).w	; was third lamppost passed?
-		bra.s	Deform_LZ_Extended	; if yes, use alternate deformation
+		beq.s	Deform_LZ_Extended	; if yes, use alternate deformation
 
 	; original code, takes MUCH less RAM than the extended code
 		move.w	($FFFFF73A).w,d4
@@ -20874,10 +20874,12 @@ ObjectsLoad:				; XREF: TitleScreen; et al
 		lea	($FFFFD000).w,a0 ; set address for object RAM
 		moveq	#$7F,d7
 		moveq	#0,d0
-		cmpi.b	#$18,($FFFFF600).w	; is this the ending sequence?
-		beq.s	loc_D348		; if yes, branch
-		cmpi.b	#6,($FFFFD024).w
-		bcc.s	loc_D362
+		
+		; disabled death check, objects now keep on running when you die (to quote Vladik: "it looks fresh")
+	;	cmpi.b	#$18,($FFFFF600).w	; is this the ending sequence?
+	;	beq.s	loc_D348		; if yes, branch
+	;	cmpi.b	#6,($FFFFD024).w	; is Sonic dying?
+	;	bcc.s	loc_D362		; if yes, branch
 
 loc_D348:
 		move.b	(a0),d0		; load object number from RAM
@@ -29320,7 +29322,7 @@ word_1E0EC:	dc 1
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Object 02 - ERaZor Banner/ U Mad Bro!? Sign
+; Object 02 - ERaZor Banner / U Mad Bro!? Sign
 ; ---------------------------------------------------------------------------
 
 Obj02:
@@ -47695,7 +47697,7 @@ Level_Index:	dc.w Level_GHZ1-Level_Index, Level_GHZbg-Level_Index, byte_68D70-Le
 		dc.w byte_69EE8-Level_Index, byte_69EE8-Level_Index, byte_69EE8-Level_Index
 		dc.w Level_SBZ1-Level_Index, Level_SBZ1bg-Level_Index, Level_SBZ1bg-Level_Index
 		dc.w Level_SBZ2-Level_Index, Level_SBZ2bg-Level_Index, Level_SBZ2bg-Level_Index
-		dc.w Level_SBZ2-Level_Index, Level_SBZ2bg-Level_Index, byte_6A2F8-Level_Index
+		dc.w Level_SBZ2-Level_Index, Level_FZbg-Level_Index, byte_6A2F8-Level_Index
 		dc.w byte_6A2FC-Level_Index, byte_6A2FC-Level_Index, byte_6A2FC-Level_Index
 		dc.w Level_End-Level_Index, Level_GHZbg-Level_Index, byte_6A320-Level_Index
 		dc.w Level_End-Level_Index, Level_GHZbg-Level_Index, byte_6A320-Level_Index
@@ -47776,6 +47778,8 @@ Level_SBZ2:	incbin	levels\sbz2.bin
 Level_SBZ1bg:	incbin	levels\sbz2bg.bin
 		even
 Level_SBZ2bg:	incbin	levels\sbz2bg.bin
+		even
+Level_FZbg:	incbin	levels\fzbg.bin
 		even
 byte_6A2F8:	dc.b 0,	0, 0, 0
 byte_6A2FC:	dc.b 0,	0, 0, 0

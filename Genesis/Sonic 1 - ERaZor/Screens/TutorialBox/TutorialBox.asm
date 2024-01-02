@@ -125,6 +125,8 @@ Tutorial_DisplayHint:
 	add.w	d0,d0
 	add.w	d0,d0
 	move.l	-4(a1,d0.w),char_pos(a0)	; load hint text
+	
+	; hacky fix required because the cropped borders objects lead to trouble
 	sf.b	(Objects+$3C1).w		; fix Selbi's bad object
 	sf.b	(Objects+$381).w		; fix Selbi's bad object
 

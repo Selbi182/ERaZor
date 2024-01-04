@@ -28,7 +28,6 @@ Bugs:
 
 Misc:
 	Add the Samuel easter egg
-	Smooth fadeout when deleting save game
 	Bass boost the Sega sound
 	Do a massive clean-up of literally anything I don't need
 
@@ -120,3 +119,4 @@ Hardware Testing:
 -	Redo the text screens to not look like ass anymore
 -	Fix glitched after effect during some deaths (fixed by no longer pausing the game when you die)
 -	Try and find out what that's causing the missing line in the ERaZor banner in the options menu on real hardware (fixed by only showing one banner)
+-	Smooth fadeout when deleting save game

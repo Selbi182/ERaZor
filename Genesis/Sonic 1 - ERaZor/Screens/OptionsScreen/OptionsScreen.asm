@@ -284,11 +284,37 @@ Options_HandleNonstopInhuman:
 
 Options_HandleDeleteSaveGame:
 		cmpi.w	#14,d0
-		bne.s	Options_HandleSoundTest
+		bne.w	Options_HandleSoundTest
 		move.b	($FFFFF605).w,d1	; get button presses
 		andi.b	#$80,d1			; is Start pressed? (this option only works on start because of how delicate it is)
 		beq.w	Options_Return		; if not, return
+		
+		
+		move.w	#90,($FFFFFF82).w	; set fade-out sequence time to 90 frames
+@delete_fadeoutloop:
+		subq.w	#1,($FFFFFF82).w	; subtract 1 from remaining time
+		bmi.s	@delete_fadeoutend	; is time over? end fade-out sequence
+		
+		jsr	RandomNumber		; get new random number
+		lea	($FFFFCC00).w,a1	; load scroll buffer address
+		move.w	#223,d2			; do it for all 224 lines
+@0		jsr	CalcSine		; further randomize the offset after every line
+		move.l	d1,(a1)+		; dump to scroll buffer
+		dbf	d2,@0			; repeat
+		
+		move.w	($FFFFFF82).w,d0	; get remaining time
+		andi.w	#7,d0			; only trigger every 7th frame
+		bne.s	@1			; is it not a 7th frame?, branch
+		jsr	Pal_FadeOut		; partially fade-out palette
+		move.b	#$C4,d0			; play explosion sound
+		jsr	PlaySound_Special	; ''
 
+@1		move.b	#2,($FFFFF62A).w	; run V-Blank
+		jsr	DelayProgram		; ''
+		bra.s	@delete_fadeoutloop	; loop
+
+
+@delete_fadeoutend:
 		move.b	#1,($A130F1).l		; enable SRAM
 		clr.b	($200000+SRAM_Exists).l	; unset the magic number (actual SRAM deletion happens during restart)
 		move.b	#0,($A130F1).l		; disable SRAM
@@ -312,6 +338,10 @@ Options_HandleSoundTest:
 		andi.b	#$A0,d1			; is C or Start pressed?
 		beq.s	@soundtest_checkL	; if not, branch
 		move.b	($FFFFFF84).w,d0	; move sound test ID to d0
+		cmpi.b	#$80,d0			; is this ID $80?
+		bne.s	@soundtest_not80	; if not, branch
+		move.b	#$E4,d0			; otherwise, make it stop all sound
+@soundtest_not80:
 		jsr	PlaySound_Special	; play music
 
 @soundtest_checkL:
@@ -361,7 +391,6 @@ Options_HandleExit:
 		move.b	($FFFFFF92).w,($200001).l	; backup options flags
 		move.b	#0,($A130F1).l		; disable SRAM
 
-		jsr	Pal_FadeOut		; fade out palette
 		move.w	#$400,($FFFFFE10).w
 		move.b	#$C,($FFFFF600).w	; set screen mode to level ($C)
 		rts

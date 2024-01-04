@@ -3398,10 +3398,10 @@ Sega_WaitPallet:
 		bne.s	Sega_WaitPallet
 
 		move.b	#$B5,d0
-		bsr	PlaySound_Special ; play "SEGA"	sound
+		bsr	PlaySound_Special ; play ring sound
 		move.b	#$14,($FFFFF62A).w
 		bsr	DelayProgram
-		move.w	#$1E,($FFFFF614).w
+		move.w	#$3F,($FFFFF614).w	; frames to wait after SEGA sound started
 		move.b	#25,($FFFFFFBD).w
 
 Sega_WaitEnd:
@@ -3410,7 +3410,7 @@ Sega_WaitEnd:
 		subq.b	#1,($FFFFFFBD).w
 		bpl.s	Sega_NoSound
 		move.b	#$E1,d0
-		bsr	PlaySound_Special ; play "SEGA"	sound
+		bsr	PlaySound_Special ; play "SEGA"	sound (featuring the beautiful voice of yours truly)
 		move.b	#1,($FFFFFFBE).w
 
 Sega_NoSound:
@@ -14308,12 +14308,6 @@ Obj1F_MakeFire_2:
 Obj1F_MakeFire2:
 		bsr	SingleObjLoad			; load from SingleObjLoad
 		bne.s	locret_9618			; if it's in use, branch
-		move.b	#$3F,0(a3)			; explosion object
-		move.w	8(a0),8(a3)			; set X-location
-		move.w	$C(a0),$C(a3)			; set Y-location
-
-		bsr	SingleObjLoad			; load from SingleObjLoad
-		bne.s	locret_9618			; if it's in use, branch
 		move.b	#$1F,0(a1)			; load right fireball
 		move.b	#6,$24(a1)			; set to fireball
 		move.w	8(a0),8(a1)			; set X-pos
@@ -15715,20 +15709,21 @@ Obj4B_Main:				; XREF: Obj4B_Index
 		bne.s	Obj4B_Main_Cont		; if not, branch
 		move.w	#$2422,2(a0)		; use yellow palette
 		
+	if DoorsAlwaysOpen=0
 		cmpi.b	#GRing_GreenHill,$28(a0)	; is this a ring leading to Green Hill Place (NHP act 2)?
 		bne.s	@tempringcont1			; if not, branch
 		btst	#0,($FFFFFF8B).w		; has the player beaten this level before?
 		bne.s	Obj4B_Main_Cont			; if yes, branch
 		jmp	DeleteObject			; otherwise, delete this ring
-		
 @tempringcont1:
 		cmpi.b	#GRing_StarAgony,$28(a0)	; is this a ring leading to Star Agony Place (SNP act 2)?
 		bne.s	@tempringcont2			; if not, branch
 		btst	#5,($FFFFFF8B).w		; has the player beaten this level before?
 		bne.s	Obj4B_Main_Cont			; if yes, branch
-		jmp	DeleteObject			; otherwise, delete this ring
-		
+		jmp	DeleteObject			; otherwise, delete this ring	
 @tempringcont2:
+	endif
+	
 		cmpi.b	#GRing_Blackout,$28(a0)	; is this the blackout challenge ring?
 		bne.s	Obj4B_Main_Cont		; if not, branch
 		move.w	#$0422,2(a0)		; use red palette
@@ -38390,7 +38385,7 @@ Obj48:					; XREF: Obj_Index
 Obj48_Index:	dc.w Obj48_Main-Obj48_Index
 		dc.w Obj48_Base-Obj48_Index
 		dc.w Obj48_Display2-Obj48_Index
-		dc.w loc_17C68-Obj48_Index
+		dc.w Obj48_Chain-Obj48_Index
 		dc.w Obj48_ChkVanish-Obj48_Index
 		dc.w Obj48_Fall-Obj48_Index
 ; ===========================================================================
@@ -38420,8 +38415,10 @@ Obj48_Do:
 Obj48_MakeLinks:
 		jsr	SingleObjLoad2
 		bne.s	Obj48_MakeBall
-		move.w	8(a0),8(a1)
-		move.w	$C(a0),$C(a1)
+	;	move.w	8(a0),8(a1)
+	;	move.w	$C(a0),$C(a1)
+		clr.w	8(a1)
+		clr.w	$10(a1)
 		move.b	#$48,0(a1)	; load chain link object
 		move.b	#6,$24(a1)
 		move.l	#Map_obj15,4(a1)
@@ -38493,7 +38490,7 @@ Obj48_Display:
 		bsr	sub_17C2A
 		move.b	$26(a0),d0
 		jsr	(Obj48_Move).l ; jsr	(Obj15_Move2).l
-		jmp	DisplaySprite
+		bra.w	Obj48_DoDisplay
 ; ===========================================================================
 
 Obj48_Display2:				; XREF: Obj48_Index
@@ -38509,7 +38506,7 @@ Obj48_Display2:				; XREF: Obj48_Index
 
 @cont
 		jsr	(Obj48_Move).l
-		jmp	DisplaySprite
+		bra.w	Obj48_DoDisplay
 
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 
@@ -38527,13 +38524,10 @@ loc_17C3C:
 		move.w	d0,$38(a0)
 		move.b	$22(a1),$22(a0)
 
-
 		move.b	$21(a1),d1
 		cmp.b	$10(a0),d1
 		bne.s	locret_17C66
 
-	;	tst.b	$22(a1)
-	;	bpl.s	locret_17C66
 		move.b	#$3F,0(a0)
 		move.b	#0,$24(a0)
 
@@ -38543,24 +38537,20 @@ locret_17C66:
 
 ; ===========================================================================
 
-loc_17C68:				; XREF: Obj48_Index
+Obj48_Chain:				; XREF: Obj48_Index
 		movea.l	$34(a0),a1
-
-
 		move.b	$21(a1),d1
 		cmp.b	$10(a0),d1
 		bne.s	Obj48_Display3
-
-	;	tst.b	$22(a1)
-	;	bpl.s	Obj48_Display3
-		jmp	DeleteObject
-	;	move.b	#$3F,0(a0)
-	;	move.b	#0,$24(a0)
+		jsr	ObjectFall		; make chain fall
+		tst.b	1(a0)			; is chain still on screen?
+		bmi.s	Obj48_Display3		; if yes, keep displaying
+		jmp	DeleteObject		; otherwise delete it
 
 Obj48_Display3:
 		jmp	DisplaySprite
 ; ===========================================================================
-
+		
 Obj48_ChkVanish:			; XREF: Obj48_Index
 		moveq	#0,d0
 		tst.b	$1A(a0)
@@ -38575,30 +38565,34 @@ Obj48_Vanish:
 		cmp.b	$3F(a0),d1
 		bne.s	Obj48_Display4
 
-	;	tst.b	$22(a1)
-	;	bpl.s	Obj48_Display4
-	;	move.b	#0,$20(a0)
 		bsr	BossDefeated
-		move.b	#$A,$24(a0)
+		move.b	#$A,$24(a0)	; set spiked ball to fall
 		
-	;	subq.b	#1,$3C(a0)
-	;	bpl.s	Obj48_Display4
-	;	move.b	#$3F,(a0)
-	;	move.b	#0,$24(a0)
+		; prevent detached ball from moving offscreen
+		move.w	$8(a0),d0
+		cmpi.w	#$5060,d0
+		bhi.s	@cont
+		move.w	#$5060,$8(a0)
+@cont:
+		cmpi.w	#$51A0,d0
+		blo.s	Obj48_Display4
+		move.w	#$51A0,$8(a0)
 
 Obj48_Display4:
-		jmp	DisplaySprite
+		bra.s	Obj48_DoDisplay
 ; ===========================================================================
 
 Obj48_Fall:
 		jsr	ObjHitFloor
 		subq.w	#4,d1
 		cmp.w	$C(a0),d1
-		bcc.s	@cont
+		bcc.s	Obj48_DoDisplay
 		clr.w	$10(a0)
 		jsr	ObjectFall
 
-@cont:
+; ===========================================================================
+
+Obj48_DoDisplay:
 		jmp	DisplaySprite
 ; ===========================================================================
 
@@ -47022,6 +47016,12 @@ loc_1D01C:
 		addq.w	#1,d1
 		swap	d1
 		asr.l	#4,d1
+		
+		; slightly increase top debug movement speed
+		move.l	d1,d2
+		asr.l	#6,d2
+		add.l	d2,d1
+		
 		move.l	$C(a0),d2
 		move.l	8(a0),d3
 		btst	#0,d4		; is up	being pressed?
@@ -50525,7 +50525,7 @@ SoundDE:	incbin	sound\soundNULL.bin
 SoundDF:	incbin	sound\soundNULL.bin
 		even
 
-SegaPCM:	incbin	sound\segapcm.bin
+SegaPCM:	incbin	sound\segapcm.wav
 		even
 
 ; ===========================================================================

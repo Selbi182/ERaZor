@@ -22,7 +22,6 @@ Bugs:
 	Fix LZ platforms sometimes spawning multiple times
 	Fix bomb machine cutscene not loading graphics in time in cinematic mode
 	Fix title cards being broken on more advanced emulators
-	Fix the spiked balls for the GHZ boss being misplaced for one frame upon spawning
 	Fix special stages not reverting white flash
 	Fix LZ flooding not counting as underwater while Sonic is on the ground
 
@@ -120,3 +119,4 @@ Hardware Testing:
 -	Fix glitched after effect during some deaths (fixed by no longer pausing the game when you die)
 -	Try and find out what that's causing the missing line in the ERaZor banner in the options menu on real hardware (fixed by only showing one banner)
 -	Smooth fadeout when deleting save game
+-	Fix the spiked balls for the GHZ boss being misplaced for one frame upon spawning

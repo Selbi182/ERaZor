@@ -5,9 +5,6 @@ Sonic ERaZor 7 - To-Do List
 Improvements (gameplay):
 	Add time challenge to the new Star Agony
 	Return ring-based challenges, but make the rings only a penalty (they won't kill when you reach zero)
-		
-Improvements (art):
-	Update solid objects in GHZ to match the level art
 	
 Bugs:
 	Fix music not coming back when dying immediately to the spikes in final boss
@@ -26,9 +23,7 @@ Bugs:
 	Fix LZ flooding not counting as underwater while Sonic is on the ground
 
 Misc:
-	Add the Samuel easter egg
-	Bass boost the Sega sound
-	Do a massive clean-up of literally anything I don't need
+	Add new easter egg in Star Agony
 
 Hardware Testing:
 	Fix weird lock when exiting special stages via pause (might already be fixed, needs hardware testing)
@@ -120,3 +115,4 @@ Hardware Testing:
 -	Try and find out what that's causing the missing line in the ERaZor banner in the options menu on real hardware (fixed by only showing one banner)
 -	Smooth fadeout when deleting save game
 -	Fix the spiked balls for the GHZ boss being misplaced for one frame upon spawning
+-	Update solid objects in GHZ to match the level art

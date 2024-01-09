@@ -1,0 +1,32 @@
+{
+    "Flex": 2,
+    "name": "",
+    "node": "87434f37-1cde-4ffa-a665-5dc8cc33caa0",
+    "objects": [
+        {
+            "format": "Sonic 1.js",
+            "name": "Hub Platforms",
+            "palettes": [
+                {
+                    "path": "pallet/syz.bin",
+                    "length": 1
+                }
+            ],
+            "art": {
+                "path": "artnem/SYZPlatform.bin",
+                "compression": "Nemesis",
+                "offset": 0
+            },
+            "mappings": {
+                "path": "_maps/SYZPlatform.asm",
+                "label": ""
+            },
+            "dplcs": {
+                "enabled": false,
+                "path": "",
+                "label": ""
+            },
+            "uuid": "87434f37-1cde-4ffa-a665-5dc8cc33caa0"
+        }
+    ]
+}

@@ -218,6 +218,7 @@ Options_StartUpWrite:
 ;  bit 2 = Skip Uberhub Place
 ;  bit 3 = Cinematic HUD
 ;  bit 4 = Nonstop Inhuman
+;  bit 5 = Photosensitive Mode
 
 Options_HandleChange:
 		moveq	#0,d0			; make sure d0 is empty
@@ -998,6 +999,10 @@ OpText_Header2:
 
 OpText_Extended:
 		dc.b	'EXTENDED CAMERA      ', $FF
+		even
+
+OpText_PhotosensitiveMode:
+		dc.b	'PHOTOSENSITIVE MODE  ', $FF
 		even
 
 OpText_StoryTextScreens:

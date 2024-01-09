@@ -44301,8 +44301,8 @@ Obj09_NoW:
 Obj09_NoRot:
 		tst.b	($FFFFFFAE).w		; is white flash counter empty?
 		beq.s	SS_NoTeleport		; if yes, branch
-	;	subq.b	#1,($FFFFFFB1).w	; substract from counter
-	;	bpl.s	SS_NoTeleport		; if there's still something in, branch
+		subq.b	#1,($FFFFFFB1).w	; substract from counter
+		bpl.s	SS_NoTeleport		; if there's still something in, branch
 		jsr	WhiteFlash_Restore
 		clr.b	($FFFFFFAE).w		; clear WF2 flag
 

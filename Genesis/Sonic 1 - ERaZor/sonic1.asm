@@ -11797,7 +11797,7 @@ Obj18_NotLZ:
 		move.w	#$6490,obGfx(a1)
 		move.w	obX(a0),obX(a1)
 		move.w	obY(a0),d0
-		addi.w	#$35,d0		; adjust Y pos
+		addi.w	#$38,d0		; adjust Y pos
 		move.w	d0,obY(a1)
 		move.b	#1,obFrame(a1)
 		move.b	#$30,obActWid(a1)
@@ -11868,6 +11868,14 @@ Obj18_Arrows:
 		movea.l	$36(a0),a1
 		tst.b	$3F(a1)
 		beq.s	@cont
+
+		; move.b	$3E(a0),d0
+		; addq.b	#3,$3E(a0)
+		; jsr	    (CalcSine).l
+		; asr.w	#2,d0
+		; move.w	d0,obVelY(a0)
+        ; jsr     SpeedToPos
+
 		move.b	obRoutine(a1),d0
 		cmpi.b	#4,d0
 		bne.s	@cont
@@ -44447,7 +44455,7 @@ loc_1BAA8:
 		movem.l	d0-d1,-(sp)
 		move.l	obY(a0),d2
 		move.l	obX(a0),d3
-		bsr	sub_1BCE8
+		bsr	Obj09_UpdCollision
 		beq.s	loc_1BAF2
 		movem.l	(sp)+,d0-d1
 		sub.l	d1,obX(a0)
@@ -44706,14 +44714,14 @@ Obj09_EasterEggSpecial:
 		muls.w	#$160,d1
 		add.l	d4,d1
 		add.l	d0,d3
-		bsr	sub_1BCE8
+		bsr	Obj09_UpdCollision
 		beq.w	loc_1BCB0
 		sub.l	d0,d3
 		moveq	#0,d0
 		move.w	d0,obVelX(a0)
 		bclr	#1,obStatus(a0)
 		add.l	d1,d2
-		bsr	sub_1BCE8
+		bsr	Obj09_UpdCollision
 		beq.w	loc_1BCC6
 		sub.l	d1,d2
 		moveq	#0,d1
@@ -44743,14 +44751,14 @@ Obj09_Fall:				; XREF: Obj09_OnWall; Obj09_InAir
 		muls.w	#$2A,d1
 		add.l	d4,d1
 		add.l	d0,d3
-		bsr	sub_1BCE8
+		bsr	Obj09_UpdCollision
 		beq.s	loc_1BCB0
 		sub.l	d0,d3
 		moveq	#0,d0
 		move.w	d0,obVelX(a0)
 		bclr	#1,obStatus(a0)
 		add.l	d1,d2
-		bsr	sub_1BCE8
+		bsr	Obj09_UpdCollision
 		beq.s	loc_1BCC6
 		sub.l	d1,d2
 		moveq	#0,d1
@@ -44761,7 +44769,7 @@ O9F_Return:
 
 loc_1BCB0:
 		add.l	d1,d2
-		bsr	sub_1BCE8
+		bsr	Obj09_UpdCollision
 		beq.s	loc_1BCD4
 		sub.l	d1,d2
 		moveq	#0,d1
@@ -44789,8 +44797,8 @@ loc_1BCD4:
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 
 
-sub_1BCE8:				; XREF: Obj09_Move; Obj09_Fall
-		lea	($FF0000).l,a1
+Obj09_UpdCollision:				; XREF: Obj09_Move; Obj09_Fall
+		lea	($FF0000).l,a1      ; the magic buffer of doom
 		moveq	#0,d4
 		swap	d2
 		move.w	d2,d4
@@ -44808,41 +44816,41 @@ sub_1BCE8:				; XREF: Obj09_Move; Obj09_Fall
 		adda.w	d4,a1
 		moveq	#0,d5
 		move.b	(a1)+,d4
-		bsr.s	sub_1BD30
+		bsr.s	CheckTheFuckingCollisionType
 		move.b	(a1)+,d4
-		bsr.s	sub_1BD30
+		bsr.s	CheckTheFuckingCollisionType
 		adda.w	#$7E,a1
 		move.b	(a1)+,d4
-		bsr.s	sub_1BD30
+		bsr.s	CheckTheFuckingCollisionType
 		move.b	(a1)+,d4
-		bsr.s	sub_1BD30
+		bsr.s	CheckTheFuckingCollisionType
 		tst.b	d5
 		rts	
-; End of function sub_1BCE8
+; End of function Obj09_UpdCollision
 
 
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 
 
-sub_1BD30:				; XREF: sub_1BCE8
-		beq.s	locret_1BD44
+CheckTheFuckingCollisionType:				; XREF: Obj09_UpdCollision
+		beq.s	locret_1BD44    ; generally not solid, unknown range because my brain hurts already
 		cmpi.b	#$28,d4
-		beq.s	locret_1BD44
+		beq.s	locret_1BD44    ; $28 is not solid
 		cmpi.b	#$3A,d4
-		bcs.s	loc_1BD46
+		bcs.s	loc_1BD46       ; $3A means the usual BIG HITBOX
 		cmpi.b	#$4B,d4
-		bcc.s	loc_1BD46
+		bcc.s	loc_1BD46       ; $4B means collectible mmm shiny
 
 locret_1BD44:
 		rts	
 ; ===========================================================================
 
 loc_1BD46:
-		move.b	d4,$30(a0)
-		move.l	a1,$32(a0)
-		moveq	#-1,d5
+		move.b	d4,$30(a0)      ; what
+		move.l	a1,$32(a0)      ; WHAT
+		moveq	#-1,d5          ; ???
 		rts	
-; End of function sub_1BD30
+; End of function CheckTheFuckingCollisionType
 
 
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||

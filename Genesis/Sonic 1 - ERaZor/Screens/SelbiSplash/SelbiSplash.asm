@@ -47,24 +47,14 @@ SelbiSplash_ShowOnVDP:
 SelbiSplash_Palette:
 		lea	(Pal_SelbiSplash).l,a1		; Load palette
 		lea	($FFFFFB80).w,a2
-		move.b	#$40,d0
+		moveq	#7,d0
 SelbiSplash_PalLoop:
 		move.l	(a1)+,(a2)+
-		tst.w	d0
-		beq.s	SelbiSplash_Music
-		sub.w	#1,d0
-		bra.s	SelbiSplash_PalLoop
-		
-SelbiSplash_Music:
-		move.w	#$0EEE,($FFFFFB88).w
-	;	move.w	#SelbiSplash_MusicID,d0		; Play music
-	;	jsr	PlaySound
+		dbf	d0,SelbiSplash_PalLoop
 		
 SelbiSplash_SetWait:
 		move.w	#SelbiSplash_Wait,($FFFFF614).w	; Wait time
 		jsr	Pal_FadeTo			; Fade palette in
-	;	move.b	#SelbiSplash_MusicID,d0		; Play music
-	;	jsr	PlaySound
 		
 		move.l	#$4E400001,($FFFFFF7A).w
 		move.w	#0,($FFFFFF7E).w
@@ -73,19 +63,19 @@ SelbiSplash_SetWait:
 ; ---------------------------------------------------------------------------------------------------------------------
 
 SelbiSplash_Sounds:
-		dc.b	$BD
-		dc.b	$B5
-		dc.b	$BC
-		dc.b	$A6
-		dc.b	$C4
+		dc.b	$BD	; S
+		dc.b	$B5	; E
+		dc.b	$BC	; L
+		dc.b	$A6	; B
+		dc.b	$C4	; I (explosion sounds)
 		even
 
 ; ---------------------------------------------------------------------------------------------------------------------
 SelbiSplash_Loop:
 		cmpi.l	#$4EE00001,($FFFFFF7A).w
 		beq.w	@cont
-		cmpi.w	#$20,($FFFFF614).w		; is time less than $40?
-		bpl	SelbiSplash_ChangePal	; if yes, branch
+		cmpi.w	#$20,($FFFFF614).w		; is time less than $20?
+		bpl	SelbiSplash_ChangePal		; if yes, branch
 
 		lea	($C00000).l,a5			; load VDP data port address to a5
 		lea	($C00004).l,a6			; load VDP address port address to a6
@@ -109,7 +99,7 @@ SelbiSplash_Loop:
 
 		cmpi.l	#$4EE00001,($FFFFFF7A).w
 		beq.s	@cont2
-		add.w	#$20,($FFFFF614).w
+		addi.w	#$20,($FFFFF614).w
 
 		bra	SelbiSplash_ChangePal
 @cont2:
@@ -120,6 +110,8 @@ SelbiSplash_Loop:
 		move.l	#$40000010,(a6)
 		move.w	#$0008,(a5)
 @cont:
+		; palette flashing effect
+		; (this is a terrible way of doing this lol)
 		sub.w	#SelbiSplash_PalChgSpeed,($FFFFFB04)
 		sub.w	#SelbiSplash_PalChgSpeed,($FFFFFB06)
 		sub.w	#SelbiSplash_PalChgSpeed,($FFFFFB08)
@@ -127,53 +119,52 @@ SelbiSplash_Loop:
 		sub.w	#SelbiSplash_PalChgSpeed,($FFFFFB0C)
 		sub.w	#SelbiSplash_PalChgSpeed,($FFFFFB0E)
 
-	cmpi.w	#$90,($FFFFF614).w		; is time less than $90?
-	bmi.w	SelbiSplash_DontChangePal	; if yes, branch
-	cmpi.w	#$D0,($FFFFF614).w		; is time more than $D0?
-	bpl.w	SelbiSplash_ChangePal		; if yes, branch
+		cmpi.w	#$90,($FFFFF614).w		; is time less than $90?
+		bmi.w	SelbiSplash_DontChangePal	; if yes, branch
+		cmpi.w	#$D0,($FFFFF614).w		; is time more than $D0?
+		bpl.w	SelbiSplash_ChangePal		; if yes, branch
 
-	; screen shake Y
-	move.w	($FFFFF5B0).w,d0
-	lsr.w	#2,d0
-	move.b	($FFFFFE0F).w,d1
-	andi.b	#1,d1
-	beq.s	@cont1x
-	neg.w	d0
+
+		; screen shake Y
+		move.w	($FFFFF5B0).w,d0
+		lsr.w	#2,d0
+		move.b	($FFFFFE0F).w,d1
+		andi.b	#1,d1
+		beq.s	@cont1x
+		neg.w	d0
 @cont1x:
-	lea	($C00000).l,a5
-	lea	$04(a5),a6
-	move.w	#$8B00,(a6)
-	move.l	#$40000010,(a6)
-	move.w	d0,(a5)
+		lea	($C00000).l,a5
+		lea	$04(a5),a6
+		move.w	#$8B00,(a6)
+		move.l	#$40000010,(a6)
+		move.w	d0,(a5)
 	
-	; screen shake X
-	move.w	($FFFFF5B0).w,d0
-	lsr.w	#3,d0
-	move.b	($FFFFFE0F).w,d1
-	andi.w	#2,d1
-	beq.s	@cont2x
-	neg.w	d0
+		; screen shake X
+		move.w	($FFFFF5B0).w,d0
+		lsr.w	#3,d0
+		move.b	($FFFFFE0F).w,d1
+		andi.w	#2,d1
+		beq.s	@cont2x
+		neg.w	d0
 @cont2x:
-	lea	($C00000).l,a5
-	lea	$04(a5),a6
-	move.w	#$8B00,(a6)
-	move.l	#$7C000003,(a6)
-	move.w	d0,(a5)
+		lea	($C00000).l,a5
+		lea	$04(a5),a6
+		move.w	#$8B00,(a6)
+		move.l	#$7C000003,(a6)
+		move.w	d0,(a5)
 
-	move.b	($FFFFFE0F).w,d0
-	andi.b	#1,d0
-	bne.s	@cont3x
-	move.w	#1,d1	; increase screen shake
-;	cmpi.w	#8,($FFFFF5B0).w
-;	beq.s	@cont3x
-	add.w	d1,($FFFFF5B0).w
+		move.b	($FFFFFE0F).w,d0
+		andi.b	#1,d0
+		bne.s	@cont3x
+		moveq	#1,d1	; increase screen shake
+		add.w	d1,($FFFFF5B0).w
 @cont3x:
+	
+		move.b	($FFFFFE0F).w,d0
+		andi.b	#3,d0
+		bne.w	SelbiSplash_ChangePal
 
-	move.b	($FFFFFE0F).w,d0
-	andi.b	#3,d0
-	bne.w	SelbiSplash_ChangePal
-	jsr	(Pal_ToWhite).l
-
+		jsr	Pal_ToWhite	; increase brightness
 
 
 		move.b	($FFFFFE0F).w,d0
@@ -185,14 +176,13 @@ SelbiSplash_Loop:
 		bra.s	SelbiSplash_ChangePal
 
 SelbiSplash_DontChangePal:
-		tst.b	($FFFFFFAF).w
-		bne.s	SelbiSplash_ChangePal
-		move.b	#$B9,d0			; play giant ring sound
+		tst.b	($FFFFFFAF).w			; has final screen already been loaded?
+		bne.s	SelbiSplash_ChangePal		; if yes, branch
+		move.b	#$B9,d0				; play massive explosion sound
 		jsr	PlaySound		
 		movem.l	d0-a6,-(sp)
 
 SelbiSplash_LoadPRESENTS:
-		move.w	#$0CEE,($FFFFFB88).w
 		lea	($FF0000).l,a1			; Load screen mappings
 		lea	(Map2_SelbiSplash).l,a0
 		move.w	#0,d0
@@ -203,17 +193,10 @@ SelbiSplash_LoadPRESENTS:
 		moveq	#$1B,d2
 		jsr	ShowVDPGraphics
 
-SelbiSplash_PalLoop2:
-		move.l	(a1)+,(a2)+
-		tst.w	d0
-		beq.s	SelbiSplash_PL2Passed
-		sub.w	#1,d0
-		bra.s	SelbiSplash_PalLoop2
-
 SelbiSplash_PL2Passed:	
-		jsr	Pal_MakeWhite
+		jsr	Pal_MakeWhite			; white flash
 		movem.l (sp)+,d0-a6
-		move.b	#1,($FFFFFFAF).w
+		move.b	#1,($FFFFFFAF).w		; set flag that we are in the final phase of the screen
 
 SelbiSplash_ChangePal:
 		move.b	#2,($FFFFF62A).w		; Function 2 in vInt
@@ -221,8 +204,9 @@ SelbiSplash_ChangePal:
 		tst.w	($FFFFF614).w			; Test wait time
 		beq.s	SelbiSplash_Next		; is it over? branch
 		
-		tst.b	($FFFFFFAF).w
-		beq.s	@cont
+		; hidden debug mode cheat
+		tst.b	($FFFFFFAF).w			; are we in the final phase of the screen?
+		beq.s	@cont				; if not, branch
 		tst.b	($FFFFF605).w			; get any button press
 		beq.s	@cont				; if none are pressed, skip
 		addq.w	#1,($FFFFFFE4).w		; increase counter
@@ -241,7 +225,6 @@ SelbiSplash_ChangePal:
 SelbiSplash_Next:
 		clr.b	($FFFFFFAF).w
 		clr.l	($FFFFFF7A).w
-	;	jmp	TongaraSplash
 		move.b	#SelbiSplash_NxtScr,($FFFFF600).w ; go to next screen
 		rts	
 		

@@ -52,15 +52,15 @@ Info_LoadText:
 		jsr	Pal_FadeFrom
 
 		move	#$2700,sr
-		lea	($FF0000).l,a1
-		lea	(Eni_InfoBG).l,a0 ; load	Info screen mappings
-		move.w	#0,d0
-		jsr	EniDec
-		lea	($FF0000).l,a1
-		move.l	#$42060003,d0
-		moveq	#$21,d1
-		moveq	#$15,d2
-		jsr	ShowVDPGraphics
+	;	lea	($FF0000).l,a1
+	;	lea	(Eni_InfoBG).l,a0 ; load	Info screen mappings
+	;	move.w	#0,d0
+	;	jsr	EniDec
+	;	lea	($FF0000).l,a1
+	;	move.l	#$42060003,d0
+	;	moveq	#$21,d1
+	;	moveq	#$15,d2
+	;	jsr	ShowVDPGraphics
 
 		moveq	#$14,d0
 		jsr	PalLoad2	; load level select pallet
@@ -200,7 +200,7 @@ InfoTextLoad:				; XREF: TitleScreen
 		moveq	#$14,d1		; number of lines of text
 
 
-loc3_34FE:				; XREF: InfoTextLoad+26j
+loc3_34FE:
 		move.l	d4,4(a6)
 		bsr	Info_ChgLine
 		addi.l	#$800000,d4
@@ -271,6 +271,23 @@ GetInfoText:
 		
 Info_Loop_Header1XX:
 		move.b	(a2)+,d3		; load current char to a1
+
+		cmpi.b	#'<',d3
+		bne.s	@0
+		move.b	#6,d3
+		bra.s	Info_Loop_H1_NoSpaceXX
+@0		cmpi.b	#'~',d3
+		bne.s	@1
+		move.b	#7,d3
+		bra.s	Info_Loop_H1_NoSpaceXX
+@1		cmpi.b	#'#',d3
+		bne.s	@2
+		move.b	#8,d3
+		bra.s	Info_Loop_H1_NoSpaceXX
+@2	
+
+
+
 		cmpi.b	#$20,d3
 		beq.s	Info_Loop_H1_SpaceXX
 		cmpi.b	#$3D,d3
@@ -451,7 +468,16 @@ Info_Loop_H1_NoSpace:
 		
 Info_Loop_Header2:
 		move.b	(a2)+,d3		; load current char to a1
-		subi.b	#$18,d3
+		cmpi.b	#'<',d3
+		bne.s	@0
+		move.b	#6,d3
+@0		cmpi.b	#'~',d3
+		bne.s	@1
+		move.b	#7,d3
+@1		cmpi.b	#'#',d3
+		bne.s	@2
+		move.b	#8,d3
+@2	
 		move.b	d3,(a1)+
 		dbf	d5,Info_Loop_Header2	; loop
 		
@@ -658,8 +684,8 @@ Info_NoMore:
 ; ===========================================================================
 ; ===========================================================================
 
-Info_HeaderX:		dc.b	'======= SONIC ERAZOR ======='
-			dc.b	'============================'
+Info_HeaderX:		dc.b	'        SONIC ERAZOR        '
+			dc.b	'<~~~~~~~~~~~~~~~~~~~~~~~~~~#'
 			dc.b	'                            '
 			even
 
@@ -669,10 +695,10 @@ Info_ContinueX:		dc.b	'                            '
 			even
 ; ---------------------------------------------------------------------------
 
-Info_HeaderText1:	dc.b	'=======              ======='
+Info_HeaderText1:	dc.b	'                            '
 			even
 
-Info_HeaderText2:	dc.b	'============================'
+Info_HeaderText2:	dc.b	'<~~~~~~~~~~~~~~~~~~~~~~~~~~#'
 			even
 
 Info_HeaderText3:	dc.b	'SONIC ERAZORX'
@@ -727,7 +753,7 @@ InfoText_3:	; text after beating Special Place
 		dc.b	'UNTIL YOU CAN DO THIS STAGE ' ;1
 		dc.b	'   WHILE YOU ARE ASLEEP!    ' ;1
 		dc.b	'                            ' ;0
-		dc.b	'ANYWAY, 4 EMERALDS OUT OF 6 ' ;1
+		dc.b	'ANYWAYS, ALREADY 4 EMERALDS ' ;1
 		dc.b	'COLLECTED AND SONIC DOES NOT' ;0
 		dc.b	'EVEN KNOW WHY HE NEEDS THEM.' ;0
 		dc.b	'                            ' ;0
@@ -839,7 +865,7 @@ InfoText_8:	; text after jumping in the ring for the Ending Sequence
 		even
 ; ---------------------------------------------------------------------------
 
-InfoText_9:	; hidden easter egg text found in Scar Night Place
+InfoText_9:	; "One Hot Night", Tongara's hidden easter egg fanfic 
 		dc.b	' I REMEMBER WHEN I STUCK MY ' ;0
 		dc.b	'DICK INSIDE TWEAKER. WHAT A ' ;1
 		dc.b	'MAGICAL DAY IT WAS! IRONFIST' ;0
@@ -854,6 +880,25 @@ InfoText_9:	; hidden easter egg text found in Scar Night Place
 		dc.b	'  A MAGICAL NIGHT OF LOVE   ' ;1
 		dc.b	' MAKING. AND THEN, TWEAKER  ' ;1
 		dc.b	'DIED AND EVERYONE WAS HAPPY.' ;0
+		dc.b	'          THE END!          ' ;0
+		dc.b	$FF
+		even
+		
+		; "The Morning After", the second half of the fanfic, for the weirdos that dig through the source in a hex editor or something lol
+		dc.b	'   THE MORNING SUN ROSE.    ' ;1
+		dc.b	'     IT WAS BEAUTIFUL.      ' ;1
+		dc.b	'  THE SUN SHONE DOWN INTO   ' ;1
+		dc.b	'  THE ROOM, WHERE ALL THE   ' ;1
+		dc.b	'     LOVE MAKERS SLEPT.     ' ;0
+		dc.b	'    SEANIE AWOKE NEXT TO    ' ;0
+		dc.b	'THE ROTTING BODY OF TWEAKER,' ;0
+		dc.b	'     BAKING IN THE SUN.     ' ;0
+		dc.b	'     IT MADE HIM HORNY.     ' ;0
+		dc.b	' HE TURNED TWEAKER OVER AND ' ;0
+		dc.b	'   MADE LOVE TO HIS ANUS.   ' ;0
+		dc.b	'WHAT A MAGICAL ANUS IT WAS! ' ;1
+		dc.b	'       HE THEN CAME.        ' ;1
+		dc.b	'                            ' ;0
 		dc.b	'          THE END!          ' ;0
 		dc.b	$FF
 		even

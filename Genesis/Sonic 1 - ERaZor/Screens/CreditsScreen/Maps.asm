@@ -64,7 +64,7 @@ StartText:
 	; 3
 	dc.b	$0D						; Number of lines
 	dc.b	"                    ",$FF
-	dc.b	"   AND ADDITIONAL   ",$FF
+	dc.b	"     ADDITIONAL     ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"   PROGRAMMING BY   ",$FF
 	dc.b	"                    ",$FF
@@ -81,6 +81,23 @@ StartText:
 	; 4
 	dc.b	$0D						; Number of lines
 	dc.b	"                    ",$FF
+	dc.b	"  PROGRAMMING AND   ",$FF
+	dc.b	"                    ",$FF
+	dc.b	"  BETA TESTING BY   ",$FF
+	dc.b	"                    ",$FF
+	dc.b	"                    ",$FF
+	dc.b	"                    ",$FF
+	dc.b	"                    ",$FF
+	dc.b	"       FUZZY        ",$FF
+	dc.b	"                    ",$FF
+	dc.b	"                    ",$FF
+	dc.b	"                    ",$FF
+	dc.b	"                    ",$FF
+	dc.b	"                    ",$FF
+
+	; 5
+	dc.b	$0D						; Number of lines
+	dc.b	"                    ",$FF
 	dc.b	"    MUSIC PORTED    ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"         BY         ",$FF
@@ -95,7 +112,7 @@ StartText:
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
 
-	; 5
+	; 6
 	dc.b	$0D						; Number of lines
 	dc.b	"                    ",$FF
 	dc.b	"  SOUND DRIVER AND  ",$FF
@@ -112,7 +129,7 @@ StartText:
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
 
-	; 6
+	; 7
 	dc.b	$0D						; Number of lines
 	dc.b	"                    ",$FF
 	dc.b	" MAIN BETA TESTING  ",$FF
@@ -129,7 +146,7 @@ StartText:
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
 	
-	; 7
+	; 8
 	dc.b	$0D						; Number of lines
 	dc.b	"                    ",$FF
 	dc.b	"     ADDITIONAL     ",$FF
@@ -138,15 +155,15 @@ StartText:
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
+	dc.b	"                    ",$FF
 	dc.b	"   PEANUT NOCEDA    ",$FF
 	dc.b	"                    ",$FF
-	dc.b	"       FUZZY        ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
 
-	; 8
+	; 9
 	dc.b	$0D						; Number of lines
 	dc.b	"                    ",$FF
 	dc.b	"   REAL HARDWARE    ",$FF
@@ -163,7 +180,7 @@ StartText:
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
 
-	; 9
+	; 10
 	dc.b	$0D						; Number of lines
 	dc.b	"                    ",$FF
 	dc.b	"   SPECIAL THANKS   ",$FF
@@ -177,23 +194,6 @@ StartText:
 	dc.b	"       JORGE        ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
-	dc.b	"                    ",$FF
-	dc.b	"                    ",$FF
-
-	; 10
-	dc.b	$0D						; Number of lines
-	dc.b	"                    ",$FF
-	dc.b	"     EASTER EGG     ",$FF
-	dc.b	"                    ",$FF
-	dc.b	"      STORY BY      ",$FF
-	dc.b	"                    ",$FF
-	dc.b	"                    ",$FF
-	dc.b	"                    ",$FF
-	dc.b	"      TONGARA       ",$FF
-	dc.b	"                    ",$FF
-	dc.b	"                    ",$FF
-	dc.b	"                    ",$FF
-	dc.b	"   BLAME HIM LOL    ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
 
@@ -222,12 +222,13 @@ StartText:
 	dc.b	"      PLAYING       ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
+	dc.b	"                    ",$FF
+	dc.b	"                    ",$FF
 	dc.b	"    PRESS START     ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"     TO RETURN      ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"   TO SEGA SCREEN   ",$FF
-	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF

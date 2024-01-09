@@ -11,8 +11,8 @@
 ; Program Setup
 ; ---------------------------------------------------------------
 
-_DH_BG_Pattern		= $77777777		; tile pattern for hint's BG
-_DH_BG_Pattern_2	= 7			;
+_DH_BG_Pattern		= $BBBBBBBB		; tile pattern for hint's BG
+_DH_BG_Pattern_2	= $B			;
 _DH_VRAM_Base		= $5800			; base VRAM address for display window
 _DH_VRAM_Border		= $5700			; VRAM address for window border
 _DH_WindowObj		= $FFFFD400		; address for window object        
@@ -125,6 +125,8 @@ Tutorial_DisplayHint:
 	add.w	d0,d0
 	add.w	d0,d0
 	move.l	-4(a1,d0.w),char_pos(a0)	; load hint text
+	
+	; hacky fix required because the cropped borders objects lead to trouble
 	sf.b	(Objects+$3C1).w		; fix Selbi's bad object
 	sf.b	(Objects+$381).w		; fix Selbi's bad object
 
@@ -180,8 +182,8 @@ DH_Quit:
 	jsr	DelayProgram
 	movem.l	(sp)+,a5-a6
 	addq.w	#4,sp				; return controls to the game
-	cmp.b	#$99,($FFFFFFDE).w
-	bne.s	@cont
+	cmp.b	#$99,($FFFFFFDE).w		; are we in the opening text screen?
+	bne.s	@cont				; if not, branch
 	subq.w	#4,sp
 @cont:
 	jmp	ObjectsLoad			; reload objects
@@ -218,6 +220,10 @@ DH_ClearWindow:
 DH_DrawChar:
 	lea	Art_DH_Font,a1
 
+	cmpi.b	#'\',d0
+	bne.s	@NoAccent
+	move.b	#$2+$36,d0
+@NoAccent:
 	cmpi.b	#'.',d0
 	bne.s	@NoDot
 	move.b	#$26+$36,d0
@@ -258,6 +264,16 @@ DH_DrawChar:
 	bne.s	@NoPlus
 	move.b	#$29+$36,d0
 @NoPlus:
+	cmpi.b	#'~',d0
+	bne.s	@NoTilde
+	move.b	#$1+$36,d0
+	lea	Art_DH_FontY,a1
+@NoTilde:
+	cmpi.b	#'^',d0
+	bne.s	@NoCircumflex
+	move.b	#$5+$36,d0
+	lea	Art_DH_FontY,a1
+@NoCircumflex:
 	cmpi.b	#'a',d0
 	blt.s	@NoYellow
 	cmpi.b	#'z',d0
@@ -265,7 +281,11 @@ DH_DrawChar:
 	lea	Art_DH_FontY,a1
 	subi.b	#$20,d0
 @NoYellow:
-
+	cmpi.b	#'?',d0
+	bne.s	@NoQuestion
+	move.b	#$28+$36,d0
+@NoQuestion:
+	
 	subi.b	#$36,d0
 	lsl.w	#5,d0			; d0 = Char*$20
 	lea	(a1,d0.w),a1		; load this char's art 
@@ -353,13 +373,16 @@ vram_pos	equ	$20	; l
 row		equ	$24	; w
 delay		equ	$26	; w
 char_pos	equ	$28	; l
+cooldown	equ	$30	; w
 
 _DelayVal	= 0
 _DelayVal_Sh	= 0
+_CooldownVal	= 2
 
 	move.l	#@ProcessChar,obj(a0)	; set main routine
 	move.w	#_DelayVal,delay(a0)	; set delay
 	move.w	#0,row(a0)		; start from the first row
+	move.w	#_CooldownVal,cooldown(a0) ; set cooldown between screens
 	bra.w	@LoadRow
 
 ; ---------------------------------------------------------------
@@ -400,7 +423,16 @@ _DelayVal_Sh	= 0
 @ProcessChar:
 	move.b	Joypad|Press,d0
 	andi.b	#A+B+C+START,d0		; A/B/C/START pressed?
-	bne.s	@InstantWrite		; if yes, branch
+	beq.s	@ContinueChar		; if not, branch
+	tst.w	cooldown(a0)		; is cooldown over?
+	beq.s	@InstantWrite		; if yes, immediately write the whole screen
+
+@ContinueChar:
+	tst.w	cooldown(a0)		; is cooldown over?
+	beq.s	@CooldownEmpty		; if yes, branch
+	subq.w	#1,cooldown(a0)		; reduce 1 from cooldown
+	
+@CooldownEmpty:
 	subq.w	#1,delay(a0)		; decrease delay counter
 	bpl.w	@Return			; if time remains, branch
 
@@ -468,6 +500,7 @@ _DelayVal_Sh	= 0
 	andi.b	#A+B+C+Start,d0		; A/B/C/Start pressed?
 	beq.s	@Return			; if not, branch
 	move.l	#@ProcessChar,obj(a0)	; set main routine
+	move.w	#_CooldownVal,cooldown(a0) ; set cooldown between screens
 	moveq	#$FFFFFFD9,d0
 	jmp	PlaySound
 
@@ -595,6 +628,7 @@ Hints_List:
 	dc.l	Hint_8
 	dc.l	Hint_9
 	dc.l	Hint_Pre
+	dc.l	Hint_Easter
 
 ; ---------------------------------------------------------------
 ; Hints Scripts
@@ -615,12 +649,12 @@ Hint_Pre:
 	dc.b	'    sonic erazor',_br
 	dc.b	                    '',_delay,10,_br
 	dc.b	'THE CRAZIEST JOURNEY',_br
-	dc.b	'YOU WILL EVER TAKE',_br
+	dc.b	'YOU\LL EVER TAKE',_br
 	dc.b	'WITH YOUR FAVORITE',_br
 	dc.b	'BLUE HEDGEHOG!',_br
 	dc.b	_pause,_cls
 	
-	dc.b	'YOU WILL FACE SOME',_br
+	dc.b	'YOU\LL FACE SOME',_br
 	dc.b	'OF THE MOST RAGE',_br
 	dc.b	'INDUCING, UNIQUE,',_br
 	dc.b	'AND EXPLOSIVE',_br
@@ -634,7 +668,7 @@ Hint_Pre:
 	dc.b	'BE KEPT TO A MINIMUM',_br
 	dc.b	'THE FOLLOWING LEVEL',_br
 	dc.b	'WILL TEACH YOU SOME',_br
-	dc.b	'OF THE BASICS YOU',_br
+	dc.b	'OF THE BASICS YOU\LL',_br
 	dc.b	'NEED TO KNOW LATER',_br
 	dc.b	'IN THE GAME.',_br
 	dc.b	_pause,_cls
@@ -648,7 +682,7 @@ Hint_Pre:
 
 ;		 --------------------
 Hint_1:
-	dc.b	'YOU SHOULD NOT BE',_br
+	dc.b	'YOU SHOULDN\T BE',_br
 	dc.b	'ABLE TO READ THIS',_br
 	dc.b	'LOL',_br
 	dc.b	_pause,_end
@@ -657,13 +691,14 @@ Hint_1:
 Hint_2:
 	dc.b	'controls',_br
 	dc.b	_br
-	dc.b	'c OR b - JUMP',_br
-	dc.b	'a - SPECIAL POWER',_br
-	dc.b	'down+jump - SPINDASH',_br
-	dc.b	'up+jump - PEELOUT',_br
+	dc.b	'  c OR b - JUMP',_br
+	dc.b	'       a - SPECIAL',_br
+	dc.b	'           POWER  ',_br
+	dc.b	'~ + jump - SPINDASH',_br
+	dc.b	'^ + jump - PEELOUT',_br
 	dc.b	_pause,_cls
 	
-	dc.b	'while in air',_br
+	dc.b	'while in the air',_br
 	dc.b	_br
 	dc.b	'c - HOMING ATTACK',_br
 	dc.b	'b - DOUBLE JUMP',_br
@@ -677,9 +712,9 @@ Hint_2:
 Hint_3:
 	dc.b	'inhuman mode',_br
 	dc.b	_br
-	dc.b	'YOU CANNOT DIE,',_br
+	dc.b	'YOU CAN\T DIE,',_br
 	dc.b	'EVEN TO BOTTOMLESS',_br
-	dc.b	'PITS AND BEING',_br
+	dc.b	'PITS OR BEING',_br
 	dc.b	'CRUSHED TO DEATH!',_br
 	dc.b	_pause,_cls
 
@@ -693,7 +728,7 @@ Hint_3:
 
 ;		 --------------------
 Hint_4:
-	dc.b	'YOU SHOULD NOT BE',_br
+	dc.b	'YOU SHOULDN\T BE',_br
 	dc.b	'ABLE TO READ THIS',_br
 	dc.b	'LOL',_br
 	dc.b	_pause,_end
@@ -716,6 +751,7 @@ Hint_6:
 	dc.b	'TO SKIP CHALLENGES',_br
 	dc.b	'THAT ARE SIMPLY TOO',_br
 	dc.b	'HARD FOR YOU.',_br
+	dc.b	'NO HARD FEELINGS!',_br
 	dc.b	_pause,_end
 
 ;		 --------------------
@@ -723,12 +759,12 @@ Hint_7:
 	dc.b	'trial and error',_br
 	dc.b	_br
 	dc.b	'SOME CHALLENGES',_br
-	dc.b	'SIMPLY CANNOT BE',_br
+	dc.b	'SIMPLY CAN\T BE',_br
 	dc.b	'COMPLETED WITHOUT',_br
 	dc.b	'TRIAL AND ERROR.',_br
 	dc.b	_pause,_cls
 
-	dc.b	'DO NOT WORRY THOUGH,',_br
+	dc.b	'DON\T WORRY THOUGH,',_br
 	dc.b	'THERE ARE NO LIVES,',_br
 	dc.b	'SO FEEL FREE TO BE',_br
 	dc.b	'A MANIAC!',_br
@@ -767,7 +803,7 @@ Hint_9:
 	dc.b	_br
 	dc.b	'    sonic erazor',_br
 	dc.b	_br
-	dc.b	'I HOPE YOU WILL HAVE',_br
+	dc.b	'I HOPE YOU\LL HAVE',_br
 	dc.b	'AS MUCH FUN AS I HAD',_br
 	dc.b	'CREATING IT!',_br
 	dc.b	_pause,_cls
@@ -781,3 +817,14 @@ Hint_9:
 	dc.b	' AND VERY SOON YOU',_br
 	dc.b	' WILL ALSO SEE WHY.',_br
 	dc.b	_pause,_end
+
+;		 --------------------
+Hint_Easter:
+	dc.b	'YOU THINK YOU\RE',_br
+	dc.b	'PRETTY CLEVER, HUH?',_br
+	dc.b	_pause,_cls
+	dc.b	'GET IN THE RING,',_br
+	dc.b	'LOSER!',_br
+	dc.b	_pause,_end
+
+; ---------------------------------------------------------------

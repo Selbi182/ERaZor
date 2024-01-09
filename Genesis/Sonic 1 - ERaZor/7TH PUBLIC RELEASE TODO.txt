@@ -5,37 +5,25 @@ Sonic ERaZor 7 - To-Do List
 Improvements (gameplay):
 	Add time challenge to the new Star Agony
 	Return ring-based challenges, but make the rings only a penalty (they won't kill when you reach zero)
-		
-Improvements (art):
-	Get a better 7x7 font
-	Signs for Options and Tutorial and Labyrinthy (maybe redo them all from scratch)
-	Redo the text screens to not look like ass anymore
-	Update solid objects in GHZ to match the level art
 	
 Bugs:
 	Fix music not coming back when dying immediately to the spikes in final boss
-	Fix glitched after effect during some deaths
 	Fix cinematic HUD causing garbled explosions from title card graphics in GHZ2
 	Fix the garbled art when starting Star Agony
-	Fix hard crash when mashing buttons during the tutorial boxes too fast
 	Fix massive slowdowns in new MZ spike section (possibly fixable using S3's Object Manager)
 	Fix speed adjustments in intro cutscene and ending sequence
 	Fix DPLC when pausing game (see Peelout)
 	Fix game turning gray for no reason (no idea how to reproduce...)
 	Disable stage quitting in special stages during start of level and collecting the final emerald (glitchy art)
 	Fix underwater palette not turning gray when dying or pausing
-	Fix lower camera in LZ
 	Fix LZ platforms sometimes spawning multiple times
 	Fix bomb machine cutscene not loading graphics in time in cinematic mode
 	Fix title cards being broken on more advanced emulators
-
-Hardware:
-	Try and find out what that's causing the missing line in the ERaZor banner in the options menu on real hardware
+	Fix special stages not reverting white flash
+	Fix LZ flooding not counting as underwater while Sonic is on the ground
 
 Misc:
-	Smooth fadeout when deleting save game
-	Bass boost the Sega sound
-	Do a massive clean-up of literally anything I don't need
+	Add new easter egg in Star Agony
 
 Hardware Testing:
 	Fix weird lock when exiting special stages via pause (might already be fixed, needs hardware testing)
@@ -119,3 +107,12 @@ Hardware Testing:
 -	Fix water levels in place in LZ
 -	Wall off backtracing after hitting the first checkpoint in LZ
 -	Use Sonic's speed to predict and move inhuman bullets ahead
+-	Fix hard crash when mashing buttons during the tutorial boxes too fast
+-	Signs for Options and Tutorial and Labyrinthy (maybe redo them all from scratch)
+-	Get a better 7x7 font
+-	Redo the text screens to not look like ass anymore
+-	Fix glitched after effect during some deaths (fixed by no longer pausing the game when you die)
+-	Try and find out what that's causing the missing line in the ERaZor banner in the options menu on real hardware (fixed by only showing one banner)
+-	Smooth fadeout when deleting save game
+-	Fix the spiked balls for the GHZ boss being misplaced for one frame upon spawning
+-	Update solid objects in GHZ to match the level art

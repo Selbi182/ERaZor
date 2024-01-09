@@ -1,24 +1,21 @@
 ; /======================================================\
-; �                     Sonic ERaZor                     �
+; |                     Sonic ERaZor                     |
 ; \======================================================/
 
 ; =======================================================
 ; ------------------------------------------------------
-; Leader/Programming:		Selbi
-
+; Leader/Main Programming:	Selbi
 ; Graphics/Help:		MarkeyJester
-
-; Addi. Programming:		vladikcomper
-
-; Music:			DalekSam
+; Additional Programming:	vladikcomper
+; Programming/Beta Testing:	Fuzzy
+; Music Ports:			DalekSam
 ;				Spanner
-
 ; Sound Driver:			EduardoKnuckles
-
-; Beta Testing:			SonicVaan
-
+; Main Beta Testing:		SonicVaan
+; Additional Beta Testing:	Peanut Noceda
+; Real Hardware Testing:	redhotsonic
 ; Special Thanks to:		MainMemory
-
+;				Jorge
 ; ------------------------------------------------------
 
 ; Sega Screen		($00)
@@ -3401,10 +3398,10 @@ Sega_WaitPallet:
 		bne.s	Sega_WaitPallet
 
 		move.b	#$B5,d0
-		bsr	PlaySound_Special ; play "SEGA"	sound
+		bsr	PlaySound_Special ; play ring sound
 		move.b	#$14,($FFFFF62A).w
 		bsr	DelayProgram
-		move.w	#$1E,($FFFFF614).w
+		move.w	#$3F,($FFFFF614).w	; frames to wait after SEGA sound started
 		move.b	#25,($FFFFFFBD).w
 
 Sega_WaitEnd:
@@ -3413,7 +3410,7 @@ Sega_WaitEnd:
 		subq.b	#1,($FFFFFFBD).w
 		bpl.s	Sega_NoSound
 		move.b	#$E1,d0
-		bsr	PlaySound_Special ; play "SEGA"	sound
+		bsr	PlaySound_Special ; play "SEGA"	sound (featuring the beautiful voice of yours truly)
 		move.b	#1,($FFFFFFBE).w
 
 Sega_NoSound:
@@ -4987,6 +4984,7 @@ ClearEverySpecialFlag:
 		clr.l	($FFFFFFB8).w	; $FFB8-$FFBB	(4)
 		clr.b	($FFFFFFBD).w	; $FFBD		(1)
 		clr.b	($FFFFFFBF).w	; $FFBF		(1)
+		clr.b	($FFFFFFD0).w	; $FFD0		(1)
 		clr.b	($FFFFFFD1).w	; $FFD1		(1) needs to be splitted
 		clr.l	($FFFFFFD2).w	; $FFD2-$FFD5	(4)
 		clr.l	($FFFFFFD6).w	; $FFD6-$FFD9	(4)
@@ -5335,6 +5333,9 @@ Demo_SS:	incbin	demodata\i_ss.bin
 SpecialStage:				; XREF: GameModeArray
 		tst.b	($FFFFFF5F).w	; is this the blackout special stage?
 		beq.s	@conty		; if not, branch
+		
+		clr.b	($FFFFFFD0).w	; disable distortion effect
+		clr.b	($FFFFFF64).w	; disable screen shake effect
 		
 		move.w	#$E4,d0			; stop music
 		bsr	PlaySound_Special
@@ -7612,7 +7613,7 @@ DTS_Loop:
 
 Deform_LZ:
 		cmpi.b	#3,($FFFFFF97).w	; was third lamppost passed?
-		bra.s	Deform_LZ_Extended	; if yes, use alternate deformation
+		beq.s	Deform_LZ_Extended	; if yes, use alternate deformation
 
 	; original code, takes MUCH less RAM than the extended code
 		move.w	($FFFFF73A).w,d4
@@ -11786,17 +11787,20 @@ Obj18_NotLZ:
 		move.w	#$4490,2(a0)
 		move.b	#$30,$19(a0)
 
+		; glowing yellow arrows when stepping on platform in Uberhub
 		jsr	SingleObjLoad
 		move.b	#$18,(a1)
 		move.b	#$A,$24(a1)
 		move.l	#Map_obj18a,4(a1) ; SYZ	specific code
 		move.w	#$6490,2(a1)
 		move.w	$8(a0),$8(a1)
-		move.w	$C(a0),$C(a1)
+		move.w	$C(a0),d0
+		addi.w	#$35,d0		; adjust Y pos
+		move.w	d0,$C(a1)
 		move.b	#1,$1A(a1)
 		move.b	#$30,$19(a1)
 		move.b	#4,1(a1)
-		move.b	#4,$18(a1)
+		move.b	#3,$18(a1)	; set priority
 		move.w	$C(a0),$2C(a1)
 		move.w	$C(a0),$34(a1)
 		move.w	8(a0),$32(a1)
@@ -12839,7 +12843,7 @@ Obj2A_OpenShut:				; XREF: Obj2A_Index
 		bne.s	Obj2A_NotSYZ1		; if not, branch
 
 	if DoorsAlwaysOpen=0
-		move.w	#$0809,2(a0)		; use red light art
+		move.w	#$0800+($6100/$20),2(a0)	; use red light art
 		tst.b	$28(a0)			; is this the door leading to the blackout challenge?
 		bpl.s	@notfinaldoor		; if not, branch
 		tst.b	$30(a0)			; has sound stopper been passed?
@@ -12860,7 +12864,7 @@ Obj2A_OpenShut:				; XREF: Obj2A_Index
 @usegreendoor:
 	endif
 
-		move.w	#$4801,2(a0)		; use green light art
+		move.w	#$4800+($6000/$20),2(a0)	; use green light art
 
 		move.w	#$40,d1		; set minimum distance between door and Sonic
 		clr.b	$1C(a0)		; use "closing"	animation
@@ -14304,12 +14308,6 @@ Obj1F_MakeFire_2:
 Obj1F_MakeFire2:
 		bsr	SingleObjLoad			; load from SingleObjLoad
 		bne.s	locret_9618			; if it's in use, branch
-		move.b	#$3F,0(a3)			; explosion object
-		move.w	8(a0),8(a3)			; set X-location
-		move.w	$C(a0),$C(a3)			; set Y-location
-
-		bsr	SingleObjLoad			; load from SingleObjLoad
-		bne.s	locret_9618			; if it's in use, branch
 		move.b	#$1F,0(a1)			; load right fireball
 		move.b	#6,$24(a1)			; set to fireball
 		move.w	8(a0),8(a1)			; set X-pos
@@ -15711,24 +15709,21 @@ Obj4B_Main:				; XREF: Obj4B_Index
 		bne.s	Obj4B_Main_Cont		; if not, branch
 		move.w	#$2422,2(a0)		; use yellow palette
 		
-		cmpi.b	#GRing_NightHill,$28(a0)	; is this a ring leading to Night Hill Place?
+	if DoorsAlwaysOpen=0
+		cmpi.b	#GRing_GreenHill,$28(a0)	; is this a ring leading to Green Hill Place (NHP act 2)?
 		bne.s	@tempringcont1			; if not, branch
-		cmpi.w	#$04A0,8(a0)			; is it specifically the ring you enter from the tube?
-		bne.s	Obj4B_Main_Cont			; if not, branch
 		btst	#0,($FFFFFF8B).w		; has the player beaten this level before?
-		beq.s	Obj4B_Main_Cont			; if not, branch
-		jmp	DeleteObject			; otherwise, delete this ring to open up the selection to act 2
-		
+		bne.s	Obj4B_Main_Cont			; if yes, branch
+		jmp	DeleteObject			; otherwise, delete this ring
 @tempringcont1:
-		cmpi.b	#GRing_ScarNight,$28(a0)	; is this a ring leading to Scar Night Place?
+		cmpi.b	#GRing_StarAgony,$28(a0)	; is this a ring leading to Star Agony Place (SNP act 2)?
 		bne.s	@tempringcont2			; if not, branch
-		cmpi.w	#$0EA0,8(a0)			; is it specifically the ring you enter from the tube?
-		bne.s	Obj4B_Main_Cont			; if not, branch
 		btst	#5,($FFFFFF8B).w		; has the player beaten this level before?
-		beq.s	Obj4B_Main_Cont			; if not, branch
-		jmp	DeleteObject			; otherwise, delete this ring to open up the selection to act 2
-		
+		bne.s	Obj4B_Main_Cont			; if yes, branch
+		jmp	DeleteObject			; otherwise, delete this ring	
 @tempringcont2:
+	endif
+	
 		cmpi.b	#GRing_Blackout,$28(a0)	; is this the blackout challenge ring?
 		bne.s	Obj4B_Main_Cont		; if not, branch
 		move.w	#$0422,2(a0)		; use red palette
@@ -20874,10 +20869,12 @@ ObjectsLoad:				; XREF: TitleScreen; et al
 		lea	($FFFFD000).w,a0 ; set address for object RAM
 		moveq	#$7F,d7
 		moveq	#0,d0
-		cmpi.b	#$18,($FFFFF600).w	; is this the ending sequence?
-		beq.s	loc_D348		; if yes, branch
-		cmpi.b	#6,($FFFFD024).w
-		bcc.s	loc_D362
+		
+		; disabled death check, objects now keep on running when you die (to quote Vladik: "it looks fresh")
+	;	cmpi.b	#$18,($FFFFF600).w	; is this the ending sequence?
+	;	beq.s	loc_D348		; if yes, branch
+	;	cmpi.b	#6,($FFFFD024).w	; is Sonic dying?
+	;	bcc.s	loc_D362		; if yes, branch
 
 loc_D348:
 		move.b	(a0),d0		; load object number from RAM
@@ -29320,7 +29317,7 @@ word_1E0EC:	dc 1
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Object 02 - ERaZor Banner/ U Mad Bro!? Sign
+; Object 02 - ERaZor Banner / U Mad Bro!? Sign
 ; ---------------------------------------------------------------------------
 
 Obj02:
@@ -29407,13 +29404,45 @@ Obj03_Setup:
 		move.b	#4,1(a0)		; set render flag
 		move.b	#$56,$19(a0)		; set display width
 		move.w	#$0372,2(a0)		; set art, use first palette line
-		subi.w	#$10,8(a0)		; fix X-pos
 		move.b	$28(a0),$1A(a0)		; set frame to subtype ID
-		addq.w	#1,$8(a0)
-		addq.w	#1,$C(a0)
-
+		subi.w	#$C,$C(a0)		; adjust Y pos
+		
+		; "PLACE" text on level signs
+		cmpi.b	#7,$28(a0)		; is this a regular level sign? (for an act)
+		bge.s	Obj03_Display		; if not, branch
+		bsr	SingleObjLoad		; load an object
+		bne.s	Obj03_Display		; skip on fail
+		move.b	#$03,0(a1)		; load another level sign object
+		move.w	$8(a0),$8(a1)		; copy X pos
+		move.w	$C(a0),d0		; get Y pos
+		addi.w	#$18,d0			; move it $18 pixels lower
+		move.w	d0,$C(a1)		; set Y pos
+		move.b	#2,$24(a1)		; set to "Obj03_Display"
+		move.l	#Map_Obj03,4(a1)	; load mappings
+		move.b	#4,$18(a1)		; set priority
+		move.b	#4,1(a1)		; set render flag
+		move.b	#$56,$19(a1)		; set display width
+		move.w	#$0372,2(a1)		; set art, use first palette line
+		move.b	#9,$1A(a1)		; set to "PLACE" frame
+		move.w	$C(a1),$38(a1)		; remember base Y pos
+		
 Obj03_Display:
+		bclr	#5,2(a0)		; use first palette row
+		btst	#0,($FFFFFE05).w	; is this an odd frame?
+		beq.s	Obj03_NotOdd		; if not, branch
+		bset	#5,2(a0)		; use second palette row (gives a slight flicker effect)
+
+Obj03_NotOdd:		
+		cmpi.b	#8,$28(a0)		; is this the sign for the options menu?
+		bne.s	Obj03_DoDisplay		; if not, branch
+		move.w	($FFFFD008).w,d0	; get Sonic's X pos
+		cmpi.w	#$0080,d0		; is he before $0080?
+		bcc.s	Obj03_NoDisplay		; if not, branch
+
+Obj03_DoDisplay:
 		bsr	DisplaySprite		; display sprite
+
+Obj03_NoDisplay:
 		move.w	8(a0),d0
 		andi.w	#$FF80,d0
 		move.w	($FFFFF700).w,d1
@@ -38356,7 +38385,7 @@ Obj48:					; XREF: Obj_Index
 Obj48_Index:	dc.w Obj48_Main-Obj48_Index
 		dc.w Obj48_Base-Obj48_Index
 		dc.w Obj48_Display2-Obj48_Index
-		dc.w loc_17C68-Obj48_Index
+		dc.w Obj48_Chain-Obj48_Index
 		dc.w Obj48_ChkVanish-Obj48_Index
 		dc.w Obj48_Fall-Obj48_Index
 ; ===========================================================================
@@ -38386,8 +38415,10 @@ Obj48_Do:
 Obj48_MakeLinks:
 		jsr	SingleObjLoad2
 		bne.s	Obj48_MakeBall
-		move.w	8(a0),8(a1)
-		move.w	$C(a0),$C(a1)
+	;	move.w	8(a0),8(a1)
+	;	move.w	$C(a0),$C(a1)
+		clr.w	8(a1)
+		clr.w	$10(a1)
 		move.b	#$48,0(a1)	; load chain link object
 		move.b	#6,$24(a1)
 		move.l	#Map_obj15,4(a1)
@@ -38459,7 +38490,7 @@ Obj48_Display:
 		bsr	sub_17C2A
 		move.b	$26(a0),d0
 		jsr	(Obj48_Move).l ; jsr	(Obj15_Move2).l
-		jmp	DisplaySprite
+		bra.w	Obj48_DoDisplay
 ; ===========================================================================
 
 Obj48_Display2:				; XREF: Obj48_Index
@@ -38475,7 +38506,7 @@ Obj48_Display2:				; XREF: Obj48_Index
 
 @cont
 		jsr	(Obj48_Move).l
-		jmp	DisplaySprite
+		bra.w	Obj48_DoDisplay
 
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 
@@ -38493,13 +38524,10 @@ loc_17C3C:
 		move.w	d0,$38(a0)
 		move.b	$22(a1),$22(a0)
 
-
 		move.b	$21(a1),d1
 		cmp.b	$10(a0),d1
 		bne.s	locret_17C66
 
-	;	tst.b	$22(a1)
-	;	bpl.s	locret_17C66
 		move.b	#$3F,0(a0)
 		move.b	#0,$24(a0)
 
@@ -38509,24 +38537,20 @@ locret_17C66:
 
 ; ===========================================================================
 
-loc_17C68:				; XREF: Obj48_Index
+Obj48_Chain:				; XREF: Obj48_Index
 		movea.l	$34(a0),a1
-
-
 		move.b	$21(a1),d1
 		cmp.b	$10(a0),d1
 		bne.s	Obj48_Display3
-
-	;	tst.b	$22(a1)
-	;	bpl.s	Obj48_Display3
-		jmp	DeleteObject
-	;	move.b	#$3F,0(a0)
-	;	move.b	#0,$24(a0)
+		jsr	ObjectFall		; make chain fall
+		tst.b	1(a0)			; is chain still on screen?
+		bmi.s	Obj48_Display3		; if yes, keep displaying
+		jmp	DeleteObject		; otherwise delete it
 
 Obj48_Display3:
 		jmp	DisplaySprite
 ; ===========================================================================
-
+		
 Obj48_ChkVanish:			; XREF: Obj48_Index
 		moveq	#0,d0
 		tst.b	$1A(a0)
@@ -38541,30 +38565,34 @@ Obj48_Vanish:
 		cmp.b	$3F(a0),d1
 		bne.s	Obj48_Display4
 
-	;	tst.b	$22(a1)
-	;	bpl.s	Obj48_Display4
-	;	move.b	#0,$20(a0)
 		bsr	BossDefeated
-		move.b	#$A,$24(a0)
+		move.b	#$A,$24(a0)	; set spiked ball to fall
 		
-	;	subq.b	#1,$3C(a0)
-	;	bpl.s	Obj48_Display4
-	;	move.b	#$3F,(a0)
-	;	move.b	#0,$24(a0)
+		; prevent detached ball from moving offscreen
+		move.w	$8(a0),d0
+		cmpi.w	#$5060,d0
+		bhi.s	@cont
+		move.w	#$5060,$8(a0)
+@cont:
+		cmpi.w	#$51A0,d0
+		blo.s	Obj48_Display4
+		move.w	#$51A0,$8(a0)
 
 Obj48_Display4:
-		jmp	DisplaySprite
+		bra.s	Obj48_DoDisplay
 ; ===========================================================================
 
 Obj48_Fall:
 		jsr	ObjHitFloor
 		subq.w	#4,d1
 		cmp.w	$C(a0),d1
-		bcc.s	@cont
+		bcc.s	Obj48_DoDisplay
 		clr.w	$10(a0)
 		jsr	ObjectFall
 
-@cont:
+; ===========================================================================
+
+Obj48_DoDisplay:
 		jmp	DisplaySprite
 ; ===========================================================================
 
@@ -46988,6 +47016,12 @@ loc_1D01C:
 		addq.w	#1,d1
 		swap	d1
 		asr.l	#4,d1
+		
+		; slightly increase top debug movement speed
+		move.l	d1,d2
+		asr.l	#6,d2
+		add.l	d2,d1
+		
 		move.l	$C(a0),d2
 		move.l	8(a0),d3
 		btst	#0,d4		; is up	being pressed?
@@ -47384,6 +47418,8 @@ Nem_Bumper:	incbin	artnem\syzbumpe.bin	; SYZ bumper
 		even
 Nem_LzSwitch:	incbin	artnem\switch.bin	; LZ/SYZ/SBZ switch
 		even
+Nem_SYZDoors:	incbin	artnem\SYZDoors.bin	; SYZ doors
+		even
 Nem_LevelSigns:	incbin	artnem\LevelSigns.bin	; SYZ level signs
 		even
 Nem_SYZPlat:	incbin	artnem\SYZPlatform.bin	; SLZ Platform
@@ -47661,7 +47697,7 @@ Level_Index:	dc.w Level_GHZ1-Level_Index, Level_GHZbg-Level_Index, byte_68D70-Le
 		dc.w byte_69EE8-Level_Index, byte_69EE8-Level_Index, byte_69EE8-Level_Index
 		dc.w Level_SBZ1-Level_Index, Level_SBZ1bg-Level_Index, Level_SBZ1bg-Level_Index
 		dc.w Level_SBZ2-Level_Index, Level_SBZ2bg-Level_Index, Level_SBZ2bg-Level_Index
-		dc.w Level_SBZ2-Level_Index, Level_SBZ2bg-Level_Index, byte_6A2F8-Level_Index
+		dc.w Level_SBZ2-Level_Index, Level_FZbg-Level_Index, byte_6A2F8-Level_Index
 		dc.w byte_6A2FC-Level_Index, byte_6A2FC-Level_Index, byte_6A2FC-Level_Index
 		dc.w Level_End-Level_Index, Level_GHZbg-Level_Index, byte_6A320-Level_Index
 		dc.w Level_End-Level_Index, Level_GHZbg-Level_Index, byte_6A320-Level_Index
@@ -47742,6 +47778,8 @@ Level_SBZ2:	incbin	levels\sbz2.bin
 Level_SBZ1bg:	incbin	levels\sbz2bg.bin
 		even
 Level_SBZ2bg:	incbin	levels\sbz2bg.bin
+		even
+Level_FZbg:	incbin	levels\fzbg.bin
 		even
 byte_6A2F8:	dc.b 0,	0, 0, 0
 byte_6A2FC:	dc.b 0,	0, 0, 0
@@ -50487,7 +50525,7 @@ SoundDE:	incbin	sound\soundNULL.bin
 SoundDF:	incbin	sound\soundNULL.bin
 		even
 
-SegaPCM:	incbin	sound\segapcm.bin
+SegaPCM:	incbin	sound\segapcm.wav
 		even
 
 ; ===========================================================================

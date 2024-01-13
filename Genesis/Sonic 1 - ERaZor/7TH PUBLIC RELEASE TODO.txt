@@ -7,10 +7,8 @@ Improvements (gameplay):
 	Return ring-based challenges, but make the rings only a penalty (they won't kill when you reach zero)
 	
 Bugs:
-	Fix music not coming back when dying immediately to the spikes in final boss
 	Fix cinematic HUD causing garbled explosions from title card graphics in GHZ2
 	Fix the garbled art when starting Star Agony
-	Fix massive slowdowns in new MZ spike section (possibly fixable using S3's Object Manager)
 	Fix speed adjustments in intro cutscene and ending sequence
 	Fix DPLC when pausing game (see Peelout)
 	Fix game turning gray for no reason (no idea how to reproduce...)
@@ -117,3 +115,5 @@ Hardware Testing:
 -	Fix the spiked balls for the GHZ boss being misplaced for one frame upon spawning
 -	Update solid objects in GHZ to match the level art
 -	Fix special stages not reverting white flash
+-	Fix music not coming back when dying immediately to the spikes in final boss (was a freebie after disabling freezing the game on dying)
+-	Fix massive slowdowns in new MZ spike section (fixed by essentially splitting the layouts into two parts)

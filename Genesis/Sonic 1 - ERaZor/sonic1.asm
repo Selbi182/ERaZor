@@ -24439,10 +24439,10 @@ Obj51_Main:				; XREF: Obj51_Index
 
 Obj51_Solid:				; XREF: Obj51_Index
 		tst.b	$39(a0)		; already smashed?
-		beq.s	@conty
-		rts
+		beq.s	Obj51_Check	; if not, branch
+		rts			; don't display
 
-@conty:
+Obj51_Check:
 		btst	#1,($FFFFFF6C).w	; has switch 2 been pressed?
 		beq.s	@cont			; if not, branch
 		moveq	#$20,d2
@@ -32868,6 +32868,11 @@ Obj01_Death_NoMS:
 		bset	#7,obGfx(a0)		; make sonic being on the foreground
 
 Obj01_NotDrownAnim:
+		tst.b	obAnim(a0)		; are we for some random reason using the walking animation?
+		bne.s	@cont			; if not, branch
+		move.b	#$18,obAnim(a0)		; force death animation
+
+@cont:
 		clr.b	($FFFFFF68).w
 		addq.b	#1,($FFFFFE1C).w ; update lives	counter
 		bsr	GameOver

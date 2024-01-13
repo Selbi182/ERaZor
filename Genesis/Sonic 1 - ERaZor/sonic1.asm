@@ -10189,9 +10189,9 @@ Resize_LZ1:
 Resize_LZ2:
 		tst.b	($FFFFFF97).w			; has at least one lamppost been touched?
 		beq.s	@nosubchange			; if not, branch
-		move.w	#$0200,d0
+		move.w	#$0100,d0
 		move.w	#$0100,d1
-		move.b	#$01,d2
+		move.b	#$E,d2
 		jsr	Sub_ChangeChunk			; wall off backtracing after hitting the first lamppost
 
 @nosubchange:
@@ -10603,7 +10603,7 @@ Resize_SYZx:	dc.w Resize_SYZ1-Resize_SYZx
 ; ===========================================================================
 
 Resize_SYZ1:
-		move.w	#$3A0,($FFFFF726).w
+		move.w	#$4A0,($FFFFF726).w
 		rts	
 ; ===========================================================================
 
@@ -11785,15 +11785,16 @@ Obj18_Main:				; XREF: Obj18_Index
 Obj18_NotLZ:
 		cmpi.b	#4,($FFFFFE10).w ; check if level is SYZ
 		bne.s	Obj18_NotSYZ
-		move.l	#Map_obj18a,obMap(a0) ; SYZ	specific code
+		move.l	#Map_obj18a,obMap(a0) ; SYZ specific code
 		move.w	#$4490,obGfx(a0)
 		move.b	#$30,obActWid(a0)
+		addq.w	#1,obY(a0)	; fix vertical pixel offset
 
 		; glowing yellow arrows when stepping on platform in Uberhub
 		jsr	SingleObjLoad
 		move.b	#$18,(a1)
 		move.b	#$A,obRoutine(a1)
-		move.l	#Map_obj18a,obMap(a1) ; SYZ	specific code
+		move.l	#Map_obj18a,obMap(a1) ; SYZ specific code
 		move.w	#$6490,obGfx(a1)
 		move.w	obX(a0),obX(a1)
 		move.w	obY(a0),d0
@@ -29408,17 +29409,17 @@ Obj03_Index:	dc.w Obj03_Setup-Obj03_Index	; Set up the object (art etc.)	[$0]
 ; ===========================================================================
 
 Obj03_Setup:
-		addq.b	#2,obRoutine(a0)		; set to "Obj03_Display"
+		addq.b	#2,obRoutine(a0)	; set to "Obj03_Display"
 		move.l	#Map_Obj03,obMap(a0)	; load mappings
-		move.b	#4,obPriority(a0)		; set priority
+		move.b	#4,obPriority(a0)	; set priority
 		move.b	#4,obRender(a0)		; set render flag
-		move.b	#$56,obActWid(a0)		; set display width
-		move.w	#$0372,obGfx(a0)		; set art, use first palette line
-		move.b	obSubtype(a0),obFrame(a0)		; set frame to subtype ID
+		move.b	#$56,obActWid(a0)	; set display width
+		move.w	#$0372,obGfx(a0)	; set art, use first palette line
+		move.b	obSubtype(a0),obFrame(a0) ; set frame to subtype ID
 		subi.w	#$C,obY(a0)		; adjust Y pos
 		
 		; "PLACE" text on level signs
-		cmpi.b	#7,obSubtype(a0)		; is this a regular level sign? (for an act)
+		cmpi.b	#7,obSubtype(a0)	; is this a regular level sign? (for an act)
 		bge.s	Obj03_Display		; if not, branch
 		bsr	SingleObjLoad		; load an object
 		bne.s	Obj03_Display		; skip on fail
@@ -29427,12 +29428,12 @@ Obj03_Setup:
 		move.w	obY(a0),d0		; get Y pos
 		addi.w	#$18,d0			; move it $18 pixels lower
 		move.w	d0,obY(a1)		; set Y pos
-		move.b	#2,obRoutine(a1)		; set to "Obj03_Display"
+		move.b	#2,obRoutine(a1)	; set to "Obj03_Display"
 		move.l	#Map_Obj03,obMap(a1)	; load mappings
-		move.b	#4,obPriority(a1)		; set priority
+		move.b	#4,obPriority(a1)	; set priority
 		move.b	#4,obRender(a1)		; set render flag
-		move.b	#$56,obActWid(a1)		; set display width
-		move.w	#$0372,obGfx(a1)		; set art, use first palette line
+		move.b	#$56,obActWid(a1)	; set display width
+		move.w	#$0372,obGfx(a1)	; set art, use first palette line
 		move.b	#9,obFrame(a1)		; set to "PLACE" frame
 		move.w	obY(a1),$38(a1)		; remember base Y pos
 		
@@ -29442,14 +29443,7 @@ Obj03_Display:
 		beq.s	Obj03_NotOdd		; if not, branch
 		bset	#5,obGfx(a0)		; use second palette row (gives a slight flicker effect)
 
-Obj03_NotOdd:		
-		cmpi.b	#8,obSubtype(a0)		; is this the sign for the options menu?
-		bne.s	Obj03_DoDisplay		; if not, branch
-		move.w	($FFFFD008).w,d0	; get Sonic's X pos
-		cmpi.w	#$0080,d0		; is he before $0080?
-		bcc.s	Obj03_NoDisplay		; if not, branch
-
-Obj03_DoDisplay:
+Obj03_NotOdd:
 		bsr	DisplaySprite		; display sprite
 
 Obj03_NoDisplay:
@@ -29673,7 +29667,7 @@ Obj06_Locations:	;XXXX   YYYY
 		dc.w	$FFFF, $FFFF	; Green Hill Place	(Unused)
 		dc.w	$FFFF, $FFFF	; Special Place		(Unused)
 		dc.w	$1C10, $02B0	; Ruined Place
-		dc.w	$038F, $002E	; Labyrinthy Place
+		dc.w	$0230, $00F0	; Labyrinthy Place
 		dc.w	$FFFF, $FFFF	; Finalor Place		(Unused)
 		dc.w	$FFFF, $FFFF	; Spring Yard Place	(Unused)
 		dc.w	$FFFF, $FFFF	; Unreal Place		(Unused)

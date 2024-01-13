@@ -19,11 +19,11 @@ Bugs:
 	Fix LZ platforms sometimes spawning multiple times
 	Fix bomb machine cutscene not loading graphics in time in cinematic mode
 	Fix title cards being broken on more advanced emulators
-	Fix special stages not reverting white flash
 	Fix LZ flooding not counting as underwater while Sonic is on the ground
 
 Misc:
-	Add new easter egg in Star Agony
+	Add new easter egg in Star Agony (maybe Peace and Tranquility?)
+	Reduced flashing lights option (currently WIP)
 
 Hardware Testing:
 	Fix weird lock when exiting special stages via pause (might already be fixed, needs hardware testing)
@@ -116,3 +116,4 @@ Hardware Testing:
 -	Smooth fadeout when deleting save game
 -	Fix the spiked balls for the GHZ boss being misplaced for one frame upon spawning
 -	Update solid objects in GHZ to match the level art
+-	Fix special stages not reverting white flash

@@ -1,3 +1,6 @@
+;	dc.w (unused), left boundary, right boundary
+;	dc.w upper boundary, lower boundary, default Y-camera position
+
 	dc.w $0004, $0000, $2185	; GHZ 1
 	dc.w $0000, $0300, $0060
 	dc.w $0004, $0000, $1E40	; GHZ 2
@@ -30,8 +33,8 @@
 	dc.w $0000, $0620, $0060
 	dc.w $0004, $0000, $1FBF	; SLZ 4
 	dc.w $0000, $0720, $0060
-	dc.w $0004, $0000, $1190	; SYZ 1
-	dc.w $0000, $0420, $0060
+	dc.w $0004, $0000, $1290	; SYZ 1
+	dc.w $0000, $0520, $0060
 	dc.w $0004, $0000, $28C0	; SYZ 2
 	dc.w $0000, $0520, $0060
 	dc.w $0004, $0000, $2C00	; SYZ 3

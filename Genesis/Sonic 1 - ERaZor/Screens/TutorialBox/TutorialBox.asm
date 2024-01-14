@@ -108,7 +108,7 @@ DCvram	macro	offset
 ; ===============================================================
 
 Tutorial_DisplayHint:
-	movem.l	a5-a6,-(sp)
+	movem.l	a0/a5-a6,-(sp)
 
 	; Setup registers for constant use
 	lea	VDP_Ctrl,a6           
@@ -178,15 +178,14 @@ DH_MainLoop:
 ; ---------------------------------------------------------------
 
 DH_Quit:
-	move.b	#2,VBlankSub
-	jsr	DelayProgram
-	movem.l	(sp)+,a5-a6
-	addq.w	#4,sp				; return controls to the game
-	cmp.b	#$99,($FFFFFFDE).w		; are we in the opening text screen?
-	bne.s	@cont				; if not, branch
-	subq.w	#4,sp
-@cont:
-	jmp	ObjectsLoad			; reload objects
+	movem.l	(sp)+,a0/a5-a6
+
+	; Display objects one final time
+	lea	Objects,a0
+	moveq	#$7F,d7
+	jsr	loc_D368
+	moveq	#0, d7				; short circuit ObjectsLoad if we're there
+	rts
 
 ; ---------------------------------------------------------------
 ; Clear/Redraw text window

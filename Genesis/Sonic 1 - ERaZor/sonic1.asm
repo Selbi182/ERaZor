@@ -5609,7 +5609,7 @@ SS_EndClrObjRamX:
 		move.b	#6,($FFFFFF9E).w	; set number for text to 6
 		tst.b	($FFFFFF5F).w	;  is this the blackout special stage?
 		beq.s	@cont3
-		move.b	#$A,($FFFFFF9E).w	; set number for text to A
+		move.b	#$B,($FFFFFF9E).w	; set number for text to A
 
 @cont3:
 		move.b	#$20,($FFFFF600).w	; set to info screen
@@ -15716,8 +15716,8 @@ Obj4B_Main:				; XREF: Obj4B_Index
 		move.l	#Map_obj4B,obMap(a0)
 		move.w	#$2400,obGfx(a0)
 
-		cmpi.w	#$400,($FFFFFE10).w	; is level Uberhub?
-		bne.s	Obj4B_Main_Cont		; if not, branch
+		cmpi.w	#$400,($FFFFFE10).w		; is level Uberhub?
+		bne.s	Obj4B_Main_Cont			; if not, branch
 		move.w	#$2422,obGfx(a0)		; use yellow palette
 		
 	if DoorsAlwaysOpen=0
@@ -15736,7 +15736,7 @@ Obj4B_Main:				; XREF: Obj4B_Index
 	endif
 	
 		cmpi.b	#GRing_Blackout,obSubtype(a0)	; is this the blackout challenge ring?
-		bne.s	Obj4B_Main_Cont		; if not, branch
+		bne.s	Obj4B_Main_Cont			; if not, branch
 		move.w	#$0422,obGfx(a0)		; use red palette
 
 Obj4B_Main_Cont:
@@ -15764,9 +15764,9 @@ Obj4B_Animate:				; XREF: Obj4B_Index
 		move.b	$36(a0),obFrame(a0)
 
 		tst.b	$3C(a0)
-		bne.s	Obj4B_DontCollect
+		bne.w	Obj4B_DontCollect
 		tst.w	($FFFFFE08).w
-		bne.s	Obj4B_DontCollect
+		bne.w	Obj4B_DontCollect
 
 		move.w	obX(a0),d0
 		sub.w	($FFFFD008).w,d0
@@ -15785,7 +15785,19 @@ Obj4B_XPositive:
 Obj4B_YPositive:
 		cmpi.w	#$20,d0
 		bgt.s	Obj4B_DontCollect
-		
+
+		; new censored easter egg (overrides the old naughty one)
+		cmpi.w	#$302,($FFFFFE10).w	; is this Star Agony Place? (easter egg ring)
+		bne.s	@conty			; if yes, branch
+		clr.w	($FFFFD010).w
+		clr.w	($FFFFD012).w
+		jsr	DeleteObject
+		move.b	#$C3,d0
+		jsr	PlaySound_Special
+		move.b	#$C,d0			; VLADIK => Load hint number based on subtype
+		jmp	Tutorial_DisplayHint	; VLADIK => Display hint
+
+@conty:
 		cmpi.b	#GRing_Blackout,obSubtype(a0)	; is this the blackout challenge ring?
 		bne.s	@contnotredaircheck	; if not, branch
 		btst	#1,($FFFFD022).w	; is Sonic in air?
@@ -29666,7 +29678,7 @@ Obj06_Locations:	;XXXX   YYYY
 		dc.w	$18EA, $036C	; Night Hill Place
 		dc.w	$FFFF, $FFFF	; Green Hill Place	(Unused)
 		dc.w	$FFFF, $FFFF	; Special Place		(Unused)
-		dc.w	$1C10, $02B0	; Ruined Place
+		dc.w	$1E10, $02B0	; Ruined Place
 		dc.w	$0230, $00F0	; Labyrinthy Place
 		dc.w	$FFFF, $FFFF	; Finalor Place		(Unused)
 		dc.w	$FFFF, $FFFF	; Spring Yard Place	(Unused)
@@ -31063,8 +31075,8 @@ loc_13336:
 		beq.s	BT_TopBoundary	; if yes, branch
 		cmpi.b	#4,($FFFFFE10).w ; is zone SYZ?
 		beq.s	BT_TopBoundary	; if yes, branch
-		cmpi.w	#$301,($FFFFFE10).w
-		beq.s	BT_TopBoundary
+		cmpi.b	#$3,($FFFFFE10).w ; is zone SLZ?
+		beq.s	BT_TopBoundary ; if yes, branch
 		cmpi.w	#$501,($FFFFFE10).w
 		beq.s	BT_TopBoundary
 		cmpi.b	#1,($FFFFFE10).w ; is zone LZ?

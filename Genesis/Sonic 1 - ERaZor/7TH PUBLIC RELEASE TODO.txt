@@ -3,8 +3,7 @@ Sonic ERaZor 7 - To-Do List
 ---------------------------
 
 Improvements (gameplay):
-	Add time challenge to the new Star Agony
-	Return ring-based challenges, but make the rings only a penalty (they won't kill when you reach zero)
+	Return ring-based challenges, but balance them
 	
 Bugs:
 	Fix cinematic HUD causing garbled explosions from title card graphics in GHZ2
@@ -20,7 +19,6 @@ Bugs:
 	Fix LZ flooding not counting as underwater while Sonic is on the ground
 
 Misc:
-	Add new easter egg in Star Agony (maybe Peace and Tranquility?)
 	Reduced flashing lights option (currently WIP)
 
 Hardware Testing:
@@ -117,3 +115,4 @@ Hardware Testing:
 -	Fix special stages not reverting white flash
 -	Fix music not coming back when dying immediately to the spikes in final boss (was a freebie after disabling freezing the game on dying)
 -	Fix massive slowdowns in new MZ spike section (fixed by essentially splitting the layouts into two parts)
+-	Redo SLZ easter egg

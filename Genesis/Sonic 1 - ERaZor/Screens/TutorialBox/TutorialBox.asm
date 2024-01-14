@@ -628,7 +628,8 @@ Hints_List:
 	dc.l	Hint_8
 	dc.l	Hint_9
 	dc.l	Hint_Pre
-	dc.l	Hint_Easter
+	dc.l	Hint_Easter_Tutorial
+	dc.l	Hint_Easter_SLZ
 
 ; ---------------------------------------------------------------
 ; Hints Scripts
@@ -819,7 +820,7 @@ Hint_9:
 	dc.b	_pause,_end
 
 ;		 --------------------
-Hint_Easter:
+Hint_Easter_Tutorial:
 	dc.b	'YOU THINK YOU\RE',_br
 	dc.b	'PRETTY CLEVER, HUH?',_br
 	dc.b	_pause,_cls
@@ -827,4 +828,27 @@ Hint_Easter:
 	dc.b	'LOSER!',_br
 	dc.b	_pause,_end
 
+;		 --------------------
+Hint_Easter_SLZ:
+	dc.b	'AREN\T THE TRUE',_br
+	dc.b	_br
+	dc.b	'easter eggs',_br
+	dc.b	_br
+	dc.b	'THE FRIENDS WE',_br
+	dc.b	'MADE ALONG THE',_br
+	dc.b	'WAY?',_br
+	dc.b	_pause,_cls
+	dc.b	'...',_br
+	dc.b	_br,_delay,60
+	dc.b	'...',_br
+	dc.b	_br,_delay,60
+	dc.b	'...',_br
+	dc.b	_pause,_cls
+	dc.b	'WHAT?',_br
+	dc.b	_br,_delay,60
+	dc.b	'WERE YOU EXPECTING',_br
+	dc.b	'ANYTHING NAUGHTY',_br
+	dc.b	'UP HERE?',_br
+	dc.b	_pause,_end
+	
 ; ---------------------------------------------------------------

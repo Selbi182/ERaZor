@@ -4,6 +4,7 @@ Sonic ERaZor 7 - To-Do List
 
 Improvements (gameplay):
 	Return ring-based challenges, but balance them
+	Revert SLZ movement style to old, new one just isn't fun enough
 	
 Bugs:
 	Fix cinematic HUD causing garbled explosions from title card graphics in GHZ2
@@ -17,6 +18,7 @@ Bugs:
 	Fix bomb machine cutscene not loading graphics in time in cinematic mode
 	Fix title cards being broken on more advanced emulators
 	Fix LZ flooding not counting as underwater while Sonic is on the ground
+	Fix garbled art after SLZ easter egg and the HUD being shown during it
 
 Misc:
 	Reduced flashing lights option (currently WIP)

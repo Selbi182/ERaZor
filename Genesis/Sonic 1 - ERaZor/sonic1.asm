@@ -15792,10 +15792,13 @@ Obj4B_YPositive:
 		clr.w	($FFFFD010).w
 		clr.w	($FFFFD012).w
 		jsr	DeleteObject
-		move.b	#$C3,d0
-		jsr	PlaySound_Special
+		move.b	#$9D,d0			; play funni music
+		jsr	PlaySound
 		move.b	#$C,d0			; VLADIK => Load hint number based on subtype
-		jmp	Tutorial_DisplayHint	; VLADIK => Display hint
+		jsr	Tutorial_DisplayHint	; VLADIK => Display hint
+		move.b	#$96,d0			; restart regular music
+		jmp	PlaySound
+		
 
 @conty:
 		cmpi.b	#GRing_Blackout,obSubtype(a0)	; is this the blackout challenge ring?
@@ -29679,7 +29682,7 @@ Obj06_Locations:	;XXXX   YYYY
 		dc.w	$FFFF, $FFFF	; Green Hill Place	(Unused)
 		dc.w	$FFFF, $FFFF	; Special Place		(Unused)
 		dc.w	$1E10, $02B0	; Ruined Place
-		dc.w	$0230, $00F0	; Labyrinthy Place
+		dc.w	$01F0, $00EC	; Labyrinthy Place
 		dc.w	$FFFF, $FFFF	; Finalor Place		(Unused)
 		dc.w	$FFFF, $FFFF	; Spring Yard Place	(Unused)
 		dc.w	$FFFF, $FFFF	; Unreal Place		(Unused)

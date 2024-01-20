@@ -3,8 +3,17 @@ Sonic ERaZor 7 - To-Do List
 ---------------------------
 
 Improvements (gameplay):
-	Return ring-based challenges, but balance them
-	Revert SLZ movement style to old, new one just isn't fun enough
+	Add a new difficulty setting Casual/Frantic that reflects all the big gameplay changes between the old and new version
+	Make Star Agony bomb shrapnels around the P-monitor predictable instead of random
+	Somehow make the existence of the options menu more apparent for new players
+	Some hidden message depending on death counter after finishing the game?
+	Make boss HP counter shake on hit
+	Make inhuman bullets fire downwards by default (cause who needs anything else anyway?)
+
+Improvements (art):
+	Make ERaZor banner focus on the ERZ at all times
+	Make water in LZ flooding section a different palette or something to visualize that it isn't breathable anymore (then revert on collecting sign post)
+	Fancy new background deformation for Finalor's new background art (similar to SLZ)
 	
 Bugs:
 	Fix cinematic HUD causing garbled explosions from title card graphics in GHZ2
@@ -19,9 +28,14 @@ Bugs:
 	Fix title cards being broken on more advanced emulators
 	Fix LZ flooding not counting as underwater while Sonic is on the ground
 	Fix garbled art after SLZ easter egg and the HUD being shown during it
+	Fix MZ background disappearing when teleporting too many times
+	Fix the issue of LZ walling you off sometimes
+	Fix Crabmeat boss during cinematic HUD getting the white stuck
+	Fix falling through geometry when rolling along non-activated wires in Star Agony while nonstop inhuman
 
 Misc:
 	Reduced flashing lights option (currently WIP)
+	Tidy up sound test music order
 
 Hardware Testing:
 	Fix weird lock when exiting special stages via pause (might already be fixed, needs hardware testing)

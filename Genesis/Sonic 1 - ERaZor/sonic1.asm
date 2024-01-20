@@ -3525,8 +3525,6 @@ Title_ClrObjRam:
 		bsr	PlaySound_Special
 	if DebugModeDefault=1
 		move.w	#1,($FFFFFFFA).w ; enable debug mode
-	else
-		move.w	#0,($FFFFFFFA).w ; disable debug mode
 	endif
 		move.w	#$618,($FFFFF614).w ; run title screen for $618 frames
 	;	move.w	#$FFFF,($FFFFF614).w
@@ -4003,10 +4001,12 @@ Level_ClrVars3:
 		clr.w	($FFFFC800).w
 		move.l	#$FFFFC800,($FFFFC8FC).w
 
-	;	move.b	#$10,($FFFFD4C0).w	; load camera shaking object
+		cmpi.b	#1,($FFFFFE10).w	; is level LZ?
+		beq.s	Level_LZWaterSetup	; if yes, branch
+		clr.b	($FFFFFF97).w		; clear the lamp post counter in Labyrinth Zone
+		bra.s	Level_LoadPal		; branch
 
-		cmpi.b	#1,($FFFFFE10).w ; is level LZ?
-		bne.s	Level_LoadPal	; if not, branch 
+Level_LZWaterSetup:
 		move.l	#WaterTransition_LZ,($FFFFF610).w
 		move.w	#$8014,(a6)
 		moveq	#0,d0
@@ -4964,6 +4964,7 @@ ClearEverySpecialFlag:
 		clr.l	($FFFFFF64).w
 		clr.l	($FFFFFF68).w
 		clr.l	($FFFFFF6C).w
+		clr.b	($FFFFFF73).w
 		clr.w	($FFFFFF74).w
 		clr.b	($FFFFFF76).w
 		clr.b	($FFFFFF77).w
@@ -18725,8 +18726,8 @@ loc_BDD6:
 @cont1:
 		cmpi.b	#$82,obSubtype(a0)		; was second switch pressed? (for smashable blocks)
 		bne.s	@cont2
-		btst	#1,($FFFFFF6C).w	; is flag already set?
-		bne.s	Obj32_ShowPressed	; if yes, play regular switch sound
+	;	btst	#1,($FFFFFF6C).w	; is flag already set?
+	;	bne.s	Obj32_ShowPressed	; if yes, play regular switch sound
 		bset	#1,($FFFFFF6C).w	; set the "switch in MZ was pressed flag" 2
 		move.w	#$C3,d0			; play giant ring sound (this is when you get the stars)
 		jsr	(PlaySound).l
@@ -18734,8 +18735,8 @@ loc_BDD6:
 @cont2:
 		cmpi.b	#$83,obSubtype(a0)		; was third switch pressed? (for horizontal stomper)
 		bne.s	@notmzswitch
-		btst	#2,($FFFFFF6C).w	; is flag already set?
-		bne.s	Obj32_ShowPressed	; if yes, play regular switch sound
+	;	btst	#2,($FFFFFF6C).w	; is flag already set?
+	;	bne.s	Obj32_ShowPressed	; if yes, play regular switch sound
 		bset	#2,($FFFFFF6C).w	; set the "switch in MZ was pressed flag" 3
 		move.w	#$B7,d0			; play LZ rumbling sound
 		jsr	(PlaySound).l
@@ -18744,8 +18745,8 @@ loc_BDD6:
 @notmzswitch:
 		cmpi.w	#$501,($FFFFFE10).w	; is this the tutorial?
 		bne.s	@nottutorialswitch	; if not, branch
-		tst.b	($FFFFFF77).w		; is antigrav already enabled?
-		bne.w	Obj32_ShowPressed	; if yes, branch
+	;	tst.b	($FFFFFF77).w		; is antigrav already enabled?
+	;	bne.w	Obj32_ShowPressed	; if yes, branch
 		move.b	#1,($FFFFFF77).w	; enable antigrav ability
 		move.b	#$A8,d0			; play upgrade sound
 		jsr	PlaySound
@@ -20500,6 +20501,11 @@ Obj36_Hurt:				; XREF: Obj36_SideWays; Obj36_Upright
 		beq.s	@cont			; if not, branch
 		move.w	#$14E1,($FFFFD008).w	; teleport Sonic on X-axis
 		move.w	#$04CC,($FFFFD00C).w	; teleport Sonic on Y-axis
+		
+		cmpi.b	#2,($FFFFFF73).w	; has second checkpoint been reached?
+		blt.s	@cont
+		move.w	#$1950,($FFFFD008).w	; teleport Sonic on X-axis
+		move.w	#$0590,($FFFFD00C).w	; teleport Sonic on Y-axis
 
 @cont:
 		clr.b	($FFFFFF6C).w		; clear the "switch has been pressed" flags
@@ -24488,6 +24494,7 @@ locret_FCFC:
 ; ===========================================================================
 
 Obj51_Smash:				; XREF: Obj51_Solid
+		move.b	#2,($FFFFFF73).w ; set second MZ spikes section checkpoint
 		move.b	#1,$39(a0)	; mark as smashed
 		move.b	#1,obFrame(a0)
 		lea	(Obj51_Speeds).l,a4 ; load broken fragment speed data
@@ -32114,7 +32121,7 @@ Sonic_Fire:
 		tst.b	($FFFFFFE7).w		; is inhuman mode enabled?
 		beq.w	S_F_End			; if not, don't do anything
 		move.b	($FFFFF603).w,d0	; move button press to d0
-		andi.b	#$40,d0			; and it by $40 (B)
+		andi.b	#$40,d0			; and it by $40 (A)
 		beq.w	S_F_End			; if A is not being pressed, branch
 		bsr	SingleObjLoad		; check if SingleObjLoad is already in use
 		bne.w	S_F_End			; if it is, don't do anything
@@ -32130,25 +32137,25 @@ S_F_NotGHZ2:
 		move.w	obY(a0),obY(a1)		; do the same with sonic's Y-pos
 	;	move.b	#$14,obAnim(a0)		; use surf animation
 		move.w	#0,obVelY(a1)		; move missile in the same Y-direction as Sonic is
-		move.w	#$220,obVelX(a1)		; move missile to the right
+		move.w	#$220,obVelX(a1)	; move missile to the right
 		moveq	#0,d0			; clear d0
 		move.w	#$10,d0			; add $1C to the X-pos (otherwise you would kill yourself)
 		btst	#0,obStatus(a0)		; is sonic facing right?
 		beq.s	S_F_ChkUp		; if yes, branch
-		neg.w	obVelX(a1)			; otherwise negate obVelX(a1) to shoot to the other siede
+		neg.w	obVelX(a1)		; otherwise negate obVelX(a1) to shoot to the other siede
 		move.w	#-$10,d0		; sub $38 from it to get the opposite result of the line above the btst
 
 S_F_ChkUp:
 		btst	#0,($FFFFF602).w	; check if up is being held
 		beq.s	S_F_NoUp		; if not, branch
-		subi.w	#$200,obVelY(a1)		; sub $200 from Y-speed 
+		subi.w	#$200,obVelY(a1)	; sub $200 from Y-speed 
 		move.w	#0,obVelX(a1)		; don't move missile to the right
 		moveq	#0,d0			; don't move missile to the right
 
 S_F_NoUP:
 		btst	#1,($FFFFF602).w	; check if down is being held
 		beq.s	S_F_NoDown		; if not, branch
-		addi.w	#$200,obVelY(a1)		; add $200 to Y-speed
+		addi.w	#$200,obVelY(a1)	; add $200 to Y-speed
 		move.w	obVelY(a0),d1		; get Sonic's Y-speed
 		cmpi.w	#$800,d1		; is Sonic falling faster than $800?
 		bmi.s	S_F_WithinTolerance	; if not,  branch
@@ -32891,6 +32898,9 @@ Obj01_NotDrownAnim:
 		clr.b	($FFFFFF68).w
 		addq.b	#1,($FFFFFE1C).w ; update lives	counter
 		bsr	GameOver
+		
+		bra.s	Obj01_NoOF	; disabled the "laying face-first on floor for a bit" effect from death cause nobody was getting it
+		
 		cmpi.w	#$302,($FFFFFE10).w
 		beq.s	Obj01_NoOF
 		tst.w	obVelY(a0)		; is Sonic moving upwards?
@@ -32927,8 +32937,8 @@ GameOver:				; XREF: Obj01_Death
 		cmp.w	obY(a0),d0
 		bge.w	locret_13900
 	;	move.w	#-$38,obVelY(a0)
-		move.b	#$A3,d0
-		jsr	PlaySound_Special ; play death sound
+		move.b	#$A9,d0			; play blip sound as the death counter goes up
+		jsr	PlaySound_Special
 		addq.b	#2,obRoutine(a0)
 		cmpi.b	#$18,($FFFFF600).w
 		bne.s	@cont

@@ -52,15 +52,15 @@ Info_LoadText:
 		jsr	Pal_FadeFrom
 
 		move	#$2700,sr
-	;	lea	($FF0000).l,a1
-	;	lea	(Eni_InfoBG).l,a0 ; load	Info screen mappings
-	;	move.w	#0,d0
-	;	jsr	EniDec
-	;	lea	($FF0000).l,a1
-	;	move.l	#$42060003,d0
-	;	moveq	#$21,d1
-	;	moveq	#$15,d2
-	;	jsr	ShowVDPGraphics
+		lea	($FF0000).l,a1
+		lea	(Eni_InfoBG).l,a0 ; load	Info screen mappings
+		move.w	#0,d0
+		jsr	EniDec
+		lea	($FF0000).l,a1
+		move.l	#$42060003,d0
+		moveq	#$21,d1
+		moveq	#$15,d2
+		jsr	ShowVDPGraphics
 
 		moveq	#$14,d0
 		jsr	PalLoad2	; load level select pallet
@@ -107,8 +107,9 @@ Info_ClrVram:
 ; LevelSelect:
 InfoScreen_MainLoop:
 		move.b	#2,($FFFFF62A).w
-		jsr	DelayProgram
-		jsr	RunPLC_RAM
+		jsr		DelayProgram
+		jsr		SineWavePalette
+		jsr		RunPLC_RAM
 		tst.l	($FFFFF680).w
 		bne.s	InfoScreen_MainLoop
 		tst.b	($FFFFFF9B).w		; is routine counter at $12 (Info_NoMore)?

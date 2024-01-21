@@ -109,7 +109,8 @@ DCvram	macro	offset
 
 Tutorial_DisplayHint:
 	movem.l	a0/a5-a6,-(sp)
-
+	move.b	d0,($FFFFFF6E).w
+	
 	; Setup registers for constant use
 	lea	VDP_Ctrl,a6           
 	lea	VDP_Data,a5
@@ -157,6 +158,11 @@ DH_MainLoop:
 	move.b	#2,VBlankSub
 	jsr	DelayProgram
 
+	cmpi.b	#10,($FFFFFF6E).w
+	bne.s	@cont
+	jsr	SineWavePalette
+
+@cont:
 	; Run window object code
 	lea	_DH_WindowObj,a0
 	movea.l	obj(a0),a1

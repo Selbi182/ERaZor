@@ -3315,6 +3315,35 @@ Angle_Data:	incbin	misc\angles.bin
 
 ; ===========================================================================
 
+SineWavePalette:
+		addq.w	#2,($FFFFFE04).w
+		move.w	($FFFFFE04).w,d0
+		jsr	CalcSine
+		cmpi.w	#$100,d0
+		bne.s	@contff
+		subq.w	#1,d0
+		
+@contff:
+		addi.w	#$100,d0
+		tst.w	d0
+		bne.s	@cont
+		cmpi.w	#12,($FFFFFF6C).w
+		beq.s	@contx
+		addq.w	#4,($FFFFFF6C).w
+		cmpi.w	#12,($FFFFFF6C).w
+		bne.s	@cont
+
+@contx:
+		clr.w	($FFFFFF6C).w
+		
+@cont:
+		lsr.w	#5,d0
+		move.w	($FFFFFF6C).w,d1
+		lsl.w	d1,d0
+		andi.w	#$EEE,d0
+		move.w	d0,($FFFFFB40).w
+		rts
+
 ; ---------------------------------------------------------------------------
 ; Sega screen
 ; ---------------------------------------------------------------------------
@@ -32933,7 +32962,7 @@ Obj01_NoOF:
 
 GameOver:				; XREF: Obj01_Death
 		move.w	($FFFFF704).w,d0
-		addi.w	#$100,d0
+		addi.w	#$230,d0 		; used to be $100, increased for comedic timing
 		cmp.w	obY(a0),d0
 		bge.w	locret_13900
 	;	move.w	#-$38,obVelY(a0)

@@ -60,7 +60,7 @@ Align:		macro
 ;Don't allow debug mode, not even with Game Genie.
 ; 0 - No
 ; 1 - Yes
-DebugModeDefault = 1
+DebugModeDefault = 0
 DontAllowDebug = 0
 DieInDebug = 0
 ;=================================================
@@ -346,7 +346,7 @@ SRAM_SaveNow:
 		move.l	($FFFFFE26).w,d0			; move score to d0
 		movep.l	d0,SRAM_Score(a1)			; backup score
 		move.b	($FFFFFF93).w,d0			; move game beaten state to d0
-		move.b	d0,SRAM_Complete(a1)			; backup option flags
+		move.b	d0,SRAM_Complete(a1)		; backup option flags
 
 SRAM_SaveNow_End:
 		move.b	#0,($A130F1).l				; disable SRAM
@@ -24482,6 +24482,7 @@ Obj51_Index:	dc.w Obj51_Main-Obj51_Index
 Obj51_Main:				; XREF: Obj51_Index
 		addq.b	#2,obRoutine(a0)
 		move.l	#Map_obj51,obMap(a0)
+
 		move.w	#$42B8,obGfx(a0)
 		move.b	#4,obRender(a0)
 		move.b	#$10,obActWid(a0)
@@ -24521,6 +24522,10 @@ Obj51_Check:
 locret_FCFC:
 		rts	
 ; ===========================================================================
+Obj51_SmashExplode:
+		jsr	SingleObjLoad
+		bne.s	Obj51_Smash
+		move.b	#$3F,0(a1)	; load explosion object
 
 Obj51_Smash:				; XREF: Obj51_Solid
 		move.b	#2,($FFFFFF73).w ; set second MZ spikes section checkpoint
@@ -37690,9 +37695,10 @@ Obj7D_Index:	dc.w Obj7D_Main-Obj7D_Index
 Obj7D_Main:				; XREF: Obj7D_Index
 		cmpi.w	#$400,($FFFFFE10).w	; is level SYZ?
 		bne.s 	Obj7D_Main_SLZ		; if not, branch
-		move.b	#6,obRoutine(a0)		; set to "sound stopper" mode
+		move.b	#6,obRoutine(a0)	; set to "sound stopper" mode
 		bra.w	Obj7D_SoundStopper
-		
+        move.b  #6,obAnim(a0)
+
 Obj7D_Main_SLZ:
 		addq.b	#2,obRoutine(a0)
 		move.l	#Map_obj7D,obMap(a0)
@@ -37700,6 +37706,7 @@ Obj7D_Main_SLZ:
 		ori.b	#$84,obRender(a0)
 		move.b	#3,obPriority(a0)
 		move.b	#3,obFrame(a0)
+        move.b  #6,obAnim(a0)
 
 Obj7D_RightEmblem:
 		moveq	#$20,d2
@@ -37762,6 +37769,11 @@ Obj7D_RightEmblem:
 
 Obj7D_NoTouch:
 		jmp	DisplaySprite
+
+Obj7D_Explode:
+		move.b	#$3F,(a0)
+		clr.b	obRoutine(a0)
+		jmp	    DisplaySprite
 ; ===========================================================================
 
 Obj7D_LeftEmblem:

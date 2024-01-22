@@ -5,20 +5,24 @@
     "objects": [
         {
             "format": "Sonic 1.js",
-            "name": "Hub Platforms",
+            "name": "Points Emblem",
             "palettes": [
                 {
-                    "path": "pallet/syz.bin",
+                    "path": "pallet/sonic.bin",
                     "length": 1
+                },
+                {
+                    "path": "pallet/syz.bin",
+                    "length": 3
                 }
             ],
             "art": {
-                "path": "artnem/SYZPlatform.bin",
+                "path": "artnem/bonus.bin",
                 "compression": "Nemesis",
                 "offset": 0
             },
             "mappings": {
-                "path": "_maps/SYZPlatform.asm",
+                "path": "_maps/obj7D.asm",
                 "label": ""
             },
             "dplcs": {

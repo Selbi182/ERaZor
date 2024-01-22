@@ -124,7 +124,7 @@ Options_ClrVram:
 
 Options_PalCycle:
 PalLocationO = $FFFFFB20
-
+		jsr	SineWavePalette
 		move.w	($FFFFF614).w,d0			; load remaining time into d0
 		andi.w	#3,d0					; mask it against 3
 		bne.s	O_PalSkip_1				; if result isn't 0, branch

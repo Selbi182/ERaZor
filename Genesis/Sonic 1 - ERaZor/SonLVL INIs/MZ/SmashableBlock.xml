@@ -9,6 +9,7 @@
   <Subtypes>
     <Subtype id="00" name="2-Piece Sprite" image="img1"/>
     <Subtype id="01" name="4-Piece Sprite" image="img1"/>
+    <Subtype id="02" name="Uberhub" image="img1"/>
   </Subtypes>
   <Properties>
     <BitsProperty name="Frame" type="MZBlockFrame" startbit="0" length="1" />
@@ -17,6 +18,7 @@
     <Enum name="MZBlockFrame">
       <EnumMember name="Frame 0 (2 Pieces)" />
       <EnumMember name="Frame 1 (4 Pieces)" />
+      <EnumMember name="Frame 2 (Uberhub)" />
     </Enum>
   </Enums>
 </ObjDef>

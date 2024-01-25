@@ -29,11 +29,11 @@
 		dc.w	$0080, $00A8	; SYZ 4
 
 		dc.w	$01A0, $0160	; SBZ 1
-		dc.w	$00EB, $07AC	; SBZ 2
+		dc.w	$01BB, $078C	; SBZ 2 (Tutorial)
 		dc.w	$0B86, $05AC	; FZ
 		dc.w	$0080, $00A8	; Null
 
-		dc.w	$0620, $016B	; Unkown
+		dc.w	$0620, $016B	; Unknown
 		dc.w	$0EE0, $026C	; Ending Sequence
 		dc.w	$0080, $00A8	; Null
 		dc.w	$0080, $00A8	; Null

@@ -155,11 +155,11 @@ StartText:
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
-	dc.b	"                    ",$FF
 	dc.b	"   PEANUT NOCEDA    ",$FF
 	dc.b	"                    ",$FF
+	dc.b	"       AJCOX        ",$FF
 	dc.b	"                    ",$FF
-	dc.b	"                    ",$FF
+	dc.b	"       GIVE         ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
 

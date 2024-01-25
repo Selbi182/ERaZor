@@ -3,35 +3,54 @@ Sonic ERaZor 7 - To-Do List
 ---------------------------
 
 Improvements (gameplay):
-	Add a new difficulty setting Casual/Frantic that reflects all the big gameplay changes between the old and new version
-	Make Star Agony bomb shrapnels around the P-monitor predictable instead of random
 	Somehow make the existence of the options menu more apparent for new players
 	Some hidden message depending on death counter after finishing the game?
 	Make boss HP counter shake on hit
 	Make inhuman bullets fire downwards by default (cause who needs anything else anyway?)
+	Mystery Dungeon style personality test to set the default options? idk probably stupid and too much work
+	Use the terrible title screen music from the 2010 ERaZor release for the =P monitor in LZ and adjust timing
+	Start Sonic one chunk closer to the boss every time he dies in FZ (to save time)
 
 Improvements (art):
 	Make ERaZor banner focus on the ERZ at all times
 	Make water in LZ flooding section a different palette or something to visualize that it isn't breathable anymore (then revert on collecting sign post)
 	Fancy new background deformation for Finalor's new background art (similar to SLZ)
-	
+	Use square goal blocks for Casual mode (if we can't fix the hitbox)
+
+Casual/Frantic:
+	A new difficulty setting Casual/Frantic that reflects all the big gameplay changes between the old and new version
+	Casual:
+		All ring-based challenges are disabled (Ruined Place inhuman section, etc.)
+		Add the ability to stop Sonic from moving in Unreal Place when pressing any of ABC
+		Second emerald in Unreal Place doesn't need to be collected without touching the walls anymore (e.g. the first one doesn't respawn when touching a wall)
+		Use the new gravity control for Star Agony Place
+		Make Star Agony bomb shrapnels around the P-monitor predictable instead of random
+		Only lose 10 instead of 20 rings on hit
+		Timer counts one second at normal speed
+	Frantic:
+		All ring-based challenges return, same way as they were in the 2016 release
+		Use the old gravity inversion controls for Star Agony Place
+		Use sine-wave background for text screens only in Frantic mode (still requires photosensitive mode to be disables)
+		Perhaps only unlock Blackout Challenge door when completing the game in Frantic mode?
+		Timer counts one second at twice the speed (like it is now)
+
 Bugs:
 	Fix cinematic HUD causing garbled explosions from title card graphics in GHZ2
 	Fix the garbled art when starting Star Agony
 	Fix speed adjustments in intro cutscene and ending sequence
 	Fix DPLC when pausing game (see Peelout)
-	Fix game turning gray for no reason (no idea how to reproduce...)
 	Disable stage quitting in special stages during start of level and collecting the final emerald (glitchy art)
 	Fix underwater palette not turning gray when dying or pausing
 	Fix LZ platforms sometimes spawning multiple times
 	Fix bomb machine cutscene not loading graphics in time in cinematic mode
-	Fix title cards being broken on more advanced emulators
+	Fix title cards being broken on more advanced emulators (see LZ)
 	Fix LZ flooding not counting as underwater while Sonic is on the ground
 	Fix garbled art after SLZ easter egg and the HUD being shown during it
 	Fix MZ background disappearing when teleporting too many times
 	Fix the issue of LZ walling you off sometimes
 	Fix Crabmeat boss during cinematic HUD getting the white stuck
 	Fix falling through geometry when rolling along non-activated wires in Star Agony while nonstop inhuman
+	Fix music voices being corrupted after the special stage finish jingle
 
 Misc:
 	Reduced flashing lights option (currently WIP)

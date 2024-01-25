@@ -244,21 +244,17 @@ PLC_SYZ2:	dc.w 2
 PLC_SBZ:	dc.w 4
 		dc.l Nem_SBZ		; SBZ main patterns
 		dc.w 0
-		dc.l Nem_HardPS_Tut	; hard part skipper
-		dc.w $6E40
 		dc.l Nem_SbzDoor1	; door
-		dc.w $5500		; VLADIK => Fixed from $5D00
-		dc.l Nem_Buzz		; buzz bomber enemy
-		dc.w $8880
+		dc.w $5500
+		dc.l Nem_HardPS_Tut	; hard part skipper
+		dc.w $6C00
 		dc.l Nem_LzSwitch	; switch
-		dc.w $7400
-PLC_SBZ2:	dc.w 2
-		dc.l Nem_Electric	; electric orb
-		dc.w $8FC0
+		dc.w $70A0
+		dc.l Nem_LevelSigns	; level signs
+		dc.w $7300
+PLC_SBZ2:	dc.w 0
 		dc.l Nem_Spikes		; spikes
 		dc.w $A360
-		dc.l Nem_FlamePipe	; flaming pipe
-		dc.w $7B20
 ; ---------------------------------------------------------------------------
 ; Pattern load cues - title card
 ; ---------------------------------------------------------------------------

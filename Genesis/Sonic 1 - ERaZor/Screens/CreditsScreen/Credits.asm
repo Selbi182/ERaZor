@@ -134,7 +134,8 @@ CJSM_FO_Array:
 		dc.b	 7, 7
 		
 		dc.b	 8, 3
-		dc.b	 8, 9
+		dc.b	 8, 8
+		dc.b	 8,11
 		
 		dc.b	 9, 1
 		dc.b	 9,10

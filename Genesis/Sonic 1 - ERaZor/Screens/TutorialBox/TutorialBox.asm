@@ -756,7 +756,7 @@ Hint_6:
 	dc.b	'PRESS a + b + c',_br
 	dc.b	'TO SKIP CHALLENGES',_br
 	dc.b	'THAT ARE SIMPLY TOO',_br
-	dc.b	'HARD FOR YOU.',_br
+	dc.b	'TOUGH FOR YOU.',_br
 	dc.b	'NO HARD FEELINGS!',_br
 	dc.b	_pause,_end
 

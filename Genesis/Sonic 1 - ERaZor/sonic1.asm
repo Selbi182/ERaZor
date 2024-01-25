@@ -60,7 +60,7 @@ Align:		macro
 ;Don't allow debug mode, not even with Game Genie.
 ; 0 - No
 ; 1 - Yes
-DebugModeDefault = 0
+DebugModeDefault = 1
 DontAllowDebug = 0
 DieInDebug = 0
 ;=================================================
@@ -4598,9 +4598,9 @@ locret_3CF4:
 ; ===========================================================================
 
 DynWater_LZ2:				; XREF: DynWater_Index
-		move.w	($FFFFF700).w,d0	; get camera X position
+		move.w	($FFFFD008).w,d0	; get Sonic X position
 		move.w	#$328,d1		; set default water level to $328
-		cmpi.w	#$A60,d0		; is camera past X coordinate $A60? (shortly before the end)
+		cmpi.w	#$C00,d0		; is Sonic past X coordinate $C00? (shortly before the end)
 		bcs.s	loc_3D12		; if not, branch
 		move.w	#$160,d1		; flood this place lol
 		move.b	#4,($FFFFF64C).w	; increase water rising speed
@@ -15539,6 +15539,10 @@ Obj37_ContXX:
 
 loc_9D62:
 		move.w	d2,obVelX(a1)
+		cmpi.w	#1,($FFFFFE20).w	; have you lost exactly 1 ring?
+		bne.s	@cont			; if not, branch
+		clr.w	obVelX(a1)		; force single lost ring to fly straight up without any horizontal movement
+@cont:
 		move.w	d3,obVelY(a1)
 		neg.w	d2
 		neg.w	d4
@@ -18684,7 +18688,7 @@ Obj32_Main:				; XREF: Obj32_Index
 		
 		cmpi.b	#5,($FFFFFE10).w	; is level SBZ?
 		bne.s	@switchcheckmz		; if not, branch
-		move.w	#$3A4,obGfx(a0)		; SBZ maps
+		move.w	#($7120/$20),obGfx(a0)	; SBZ maps
 @switchcheckmz:
 		cmpi.b	#2,($FFFFFE10).w	; is level MZ?
 		bne.s	@switchchecklz		; if not, branch
@@ -26637,30 +26641,19 @@ Obj0C_Main:				; XREF: Obj0C_Index
 		ori.b	#4,obRender(a0)
 		move.b	#$28,obActWid(a0)
 		moveq	#0,d0
-		move.b	obSubtype(a0),d0	; get object type
-		mulu.w	#60,d0		; multiply by 60 (1 second)
-		move.w	d0,$32(a0)	; set flap delay time
+		bset	#0,obAnim(a0)	; close door
 
 Obj0C_OpenClose:			; XREF: Obj0C_Index
-		subq.w	#1,$30(a0)	; subtract 1 from time delay
-		bpl.s	Obj0C_Solid	; if time remains, branch
-		move.w	$32(a0),$30(a0)	; reset	time delay
-		bchg	#0,obAnim(a0)	; open/close door
-		tst.b	obRender(a0)
-		bpl.s	Obj0C_Solid
-		move.w	#$BB,d0
-		jsr	(PlaySound_Special).l ;	play door sound
+		cmpi.b	#3,($FFFFFF97).w	; was third lamppost passed?
+		blt.w	Obj0C_Solid		; if not, branch
+		bclr	#0,obAnim(a0)		; open door
 
 Obj0C_Solid:
 		lea	(Ani_obj0C).l,a1
 		bsr	AnimateSprite
-		clr.b	($FFFFF7C9).w	; enable wind tunnel
-		tst.b	obFrame(a0)		; is the door open?
+		tst.b	obFrame(a0)	; is the door open?
 		bne.s	Obj0C_Display	; if yes, branch
 		move.w	($FFFFD008).w,d0
-		cmp.w	obX(a0),d0	; is Sonic in front of the door?
-		bcc.s	Obj0C_Display	; if yes, branch
-		move.b	#1,($FFFFF7C9).w ; disable wind	tunnel
 		move.w	#$13,d1
 		move.w	#$20,d2
 		move.w	d2,d3
@@ -29470,10 +29463,14 @@ Obj03_Setup:
 		move.b	#4,obPriority(a0)	; set priority
 		move.b	#4,obRender(a0)		; set render flag
 		move.b	#$56,obActWid(a0)	; set display width
-		move.w	#$0372,obGfx(a0)	; set art, use first palette line
 		move.b	obSubtype(a0),obFrame(a0) ; set frame to subtype ID
 		subi.w	#$C,obY(a0)		; adjust Y pos
-		
+		move.w	#$0372,obGfx(a0)	; set art, use first palette line
+		cmpi.w	#$501,($FFFFFE10).w	; is this the tutorial?
+		bne.s	@cont			; if not, branch
+		move.w	#($7300/$20),obGfx(a0)	; use alternate mappings
+	
+@cont:		
 		; "PLACE" text on level signs
 		cmpi.b	#7,obSubtype(a0)	; is this a regular level sign? (for an act)
 		bge.s	Obj03_Display		; if not, branch
@@ -29528,7 +29525,8 @@ Map_Obj03:
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Object 06 - Hard Part Skipper and Info Boxes in the Tutorial Level
+; Object 06 - Humble Problem Solvers (previously Hard Part Skippers)
+;             and Info Boxes in the Tutorial Level
 ; ---------------------------------------------------------------------------
 
 Obj06:
@@ -29544,28 +29542,32 @@ Obj06_Index:	dc.w Obj06_Setup-Obj06_Index	; Set up the object (art etc.)	[$0]
 
 Obj06_Setup:
 		addq.b	#2,obRoutine(a0)		; set to "Obj06_Display"
-		move.l	#Map_Obj06,obMap(a0)	; load mappings
+		move.l	#Map_Obj06,obMap(a0)		; load mappings
 		move.b	#4,obPriority(a0)		; set priority
-		move.b	#4,obRender(a0)		; set render flag
+		move.b	#4,obRender(a0)			; set render flag
 		move.b	#$56,obActWid(a0)		; set display width
 
 		move.w	#$049B,obGfx(a0)		; set art pointer, use palette line 1
-		cmpi.w	#$000,($FFFFFE10).w
-		beq.s	Obj06_ArtLocFound
+		cmpi.w	#$000,($FFFFFE10).w		; is level Night Hill Place?
+		beq.s	Obj06_ArtLocFound		; if yes, branch
 
 		move.w	#$04FF,obGfx(a0)		; set art pointer, use palette line 1
-		cmpi.w	#$200,($FFFFFE10).w
-		beq.s	Obj06_ArtLocFound
+		cmpi.w	#$200,($FFFFFE10).w		; is level Ruined Place?
+		beq.s	Obj06_ArtLocFound		; if yes, branch
 
 		move.w	#$04A6,obGfx(a0)		; set art pointer, use palette line 1
-		cmpi.w	#$101,($FFFFFE10).w
+		cmpi.w	#$101,($FFFFFE10).w		; is level Labyrinthy Place?
 		beq.s	Obj06_ArtLocFound
 
 		move.w	#$0490,obGfx(a0)		; set art pointer, use palette line 1
-		cmpi.w	#$302,($FFFFFE10).w
-		beq.s	Obj06_ArtLocFound
+		cmpi.w	#$302,($FFFFFE10).w		; is level Star Agony Place?
+		beq.s	Obj06_ArtLocFound		; if yes, branch
 
-		move.w	#$0372,obGfx(a0)		; set art pointer, use palette line 1
+		move.w	#$0360,obGfx(a0)		; set art pointer, use palette line 1
+		cmpi.w	#$501,($FFFFFE10).w		; is this the tutorial?
+		beq.s	Obj06_ArtLocFound		; if yes, branch
+
+		move.w	#$0372,obGfx(a0)		; fallback pointer
 
 Obj06_ArtLocFound:
 		move.b	#0,$30(a0)

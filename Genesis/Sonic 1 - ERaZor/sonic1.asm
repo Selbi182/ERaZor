@@ -50481,7 +50481,7 @@ Music89:	incbin	sound\music89.bin
 		even
 Music8A:	include	"sound\DalekSam\ENDING.asm"
 		even
-Music8B:	incbin	sound\music8B.bin
+Music8B:	include	"sound\music8B.asm"
 		even
 Music8C:	incbin	sound\sadv3-bosspinch.bin
 		even

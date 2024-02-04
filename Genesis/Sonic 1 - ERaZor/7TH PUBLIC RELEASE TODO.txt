@@ -4,7 +4,6 @@ Sonic ERaZor 7 - To-Do List
 
 Improvements (gameplay):
 	Make inhuman bullets fire downwards by default (cause who needs anything else anyway?)
-	Use the terrible title screen music from the 2010 ERaZor release for the =P monitor in LZ and adjust timing
 	Propel Sonic downwards when touching an upside-down spike during inhuman mode
 	Force LZ camera to move up when Sonic is too far above the screen
 	Make Sonic invincible to goal blocks while nonstop inhuman (and add the palette thingy)
@@ -128,3 +127,4 @@ Bugs:
 -	Fix massive slowdowns in new MZ spike section (fixed by essentially splitting the layouts into two parts)
 -	Redo SLZ easter egg
 -	Fancy new background deformation for Finalor's new background art (similar to SLZ)
+-	Use the terrible title screen music from the 2010 ERaZor release for the =P monitor in LZ and adjust timing

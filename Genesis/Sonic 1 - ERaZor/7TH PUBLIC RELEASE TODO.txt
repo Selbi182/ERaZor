@@ -3,19 +3,17 @@ Sonic ERaZor 7 - To-Do List
 ---------------------------
 
 Improvements (gameplay):
-	Somehow make the existence of the options menu more apparent for new players
-	Some hidden message depending on death counter after finishing the game?
-	Make boss HP counter shake on hit
 	Make inhuman bullets fire downwards by default (cause who needs anything else anyway?)
-	Mystery Dungeon style personality test to set the default options? idk probably stupid and too much work
 	Use the terrible title screen music from the 2010 ERaZor release for the =P monitor in LZ and adjust timing
-	Start Sonic one chunk closer to the boss every time he dies in FZ (to save time)
+	Propel Sonic downwards when touching an upside-down spike during inhuman mode
+	Force LZ camera to move up when Sonic is too far above the screen
+	Make Sonic invincible to goal blocks while nonstop inhuman (and add the palette thingy)
 
 Improvements (art):
-	Make ERaZor banner focus on the ERZ at all times
 	Make water in LZ flooding section a different palette or something to visualize that it isn't breathable anymore (then revert on collecting sign post)
 	Fancy new background deformation for Finalor's new background art (similar to SLZ)
 	Use square goal blocks for Casual mode (if we can't fix the hitbox)
+	New intro animation for Options Menu using H-scroll or something
 
 Casual/Frantic:
 	A new difficulty setting Casual/Frantic that reflects all the big gameplay changes between the old and new version
@@ -51,32 +49,10 @@ Bugs:
 	Fix Crabmeat boss during cinematic HUD getting the white stuck
 	Fix falling through geometry when rolling along non-activated wires in Star Agony while nonstop inhuman
 	Fix music voices being corrupted after the special stage finish jingle
-
-Misc:
-	Reduced flashing lights option (currently WIP)
-	Tidy up sound test music order
-
-Hardware Testing:
-	Fix weird lock when exiting special stages via pause (might already be fixed, needs hardware testing)
-	Fix crash on time over (might be fixed, needs hardware testing)
-	Fix remaining no-SRAM bugs (technically done, but will need proper testing once I get the cartridge)
-
----------------------------
-
-	Bug Reports from YouTube:
-		The only other bug I encountered was the slowdown/cram dot bug on rhs’ livestream of the game with the crabmeat in ghz.
-		If you leave the exploding projectiles it shoots on screen long enough it will happen. I could reproduce it on real hw, regen, and Kega. 
-
-		Btw I recently played your hack on my everdrive pro & had an issue in that water level with the camera.
-		For some reason after the first checkpoint where you’re supposed to fall down, I kept dying because the camera wasn’t scrolling down fast enough I think.
-		The only way I was able to fix it was by resetting back to my everdrive’s menu & booting it up again. It was kinda bizzare. Besides that I didn’t have any other issues besides the ones RHS mentioned.
-	
-		I also encountered another a bug with the same text screen (and this bug also happens in the tutorial with the text boxes) whilst doing an experimental TAS run.
-		The bug results in things such as graphical corruption, temporarily hanging and crashing. It's triggered by spamming start as fast as possible or in terms of TASing every 2 or 4 frames.
-		I'm guessing this is also overflow related and the game not taking account for button spam and not checking if the ID has already reached set a point on time.
-		So yeah, my suggestion would be either add some kind of delay (that can't be bypassed) before the button press is registered or somehow make so it caps using a equal to or greater than check if needed,
-		when a counter reaches the point where it's suppose to transition\finish and trigger the said transition\finish.
-		However it would be nice if you could add the option turn off the story elements and text screens but that's up to you.
+	Fix SLZ loop layout looking like this when teleporting at a weird time: https://youtu.be/N42QLTU5cDs?si=g6WXWbjjshVUHr0J&t=1410
+	Fix SYZ background
+	Fix spike not getting destroyed in inhuman section in Ruined Place when in nonstop inhuman
+	Fix going Finalor after Tutorial under weird conditions: https://youtu.be/N42QLTU5cDs?si=ZhzRJTnnf28kNj1L&t=2942
 
 ---------------------------
 

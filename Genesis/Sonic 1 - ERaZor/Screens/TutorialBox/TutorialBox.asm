@@ -855,5 +855,6 @@ Hint_Easter_SLZ:
 	dc.b	'ANYTHING NAUGHTY',_br
 	dc.b	'UP HERE?',_br
 	dc.b	_pause,_end
-	
+
+	even
 ; ---------------------------------------------------------------

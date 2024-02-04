@@ -23,7 +23,7 @@
 		dc.w	$0B00, $046C	; SLZ 3
 		dc.w	$0080, $00A8	; SLZ 4
 
-		dc.w	$01A0, $0060	; SYZ 1
+		dc.w	$0280, $0060	; SYZ 1
 		dc.w	$0162, $014E	; SYZ 2
 		dc.w	$0038, $00EE	; SYZ 3
 		dc.w	$0080, $00A8	; SYZ 4

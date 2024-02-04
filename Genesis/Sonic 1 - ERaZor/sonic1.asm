@@ -99,7 +99,7 @@ StartOfRom:
 Date:		dc.b '(C)SELBI 2024   ' ; Release date
 Title_Local:	dc.b 'Sonic ERaZor                                    ' ; Domestic name
 Title_Int:	dc.b 'Sonic ERaZor                                    ' ; International name
-Serial:		dc.b 'SP 18201337-00' 	; Serial/version number
+Serial:		dc.b 'SP 18201337-07' 	; Serial/version number
 
 Checksum:	dc.w 0
 		dc.b 'J               '	; I/O support
@@ -374,18 +374,19 @@ MainGameLoop:
 GameModeArray:
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-		dc.l	SegaScreen	; Sega Screen		($00)
-		dc.l	TitleScreen	; Title	Screen		($04)
-		dc.l	Level		; Demo Mode		($08)
-		dc.l	Level		; Normal Level		($0C)
-		dc.l	SpecialStage	; Special Stage		($10)
-		dc.l	ContinueScreen	; Continue Screen	($14)
-		dc.l	EndingSequence	; Ending Sequence	($18)
-		dc.l	Credits		; Credits		($1C)
-		dc.l	InfoScreen	; Info Screen		($20)
-		dc.l	OptionsScreen	; Options Screen	($24)
-		dc.l	ChapterScreen	; Chapters Screen	($28)
-		dc.l	CreditsJest	; Markey's Credits	($2C)
+		dc.l	SegaScreen		; Sega Screen		($00)
+		dc.l	TitleScreen		; Title	Screen		($04)
+		dc.l	Level			; Demo Mode		($08)
+		dc.l	Level			; Normal Level		($0C)
+		dc.l	SpecialStage		; Special Stage		($10)
+		dc.l	ContinueScreen		; Continue Screen	($14)
+		dc.l	EndingSequence		; Ending Sequence	($18)
+		dc.l	Credits			; Credits		($1C)
+		dc.l	InfoScreen		; Info Screen		($20)
+		dc.l	OptionsScreen		; Options Screen	($24)
+		dc.l	ChapterScreen		; Chapters Screen	($28)
+		dc.l	CreditsJest		; Markey's Credits	($2C)
+		dc.l	GameplayStyleScreen	; Gameplay Style Screen	($30)
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
 
@@ -3652,11 +3653,14 @@ StartGame:
 		move.b	#$E0,d0			; fade out music
 		jsr	PlaySound
 		jsr	Pal_MakeWhite		; Fade out previous palette
-		
-		move.w	#$501,($FFFFFE10).w	; set level to SBZ2
-		move.b	#$C,($FFFFF600).w	; set to level
-		move.w	#1,($FFFFFE02).w	; restart level
+	
+		move.b	#$30,($FFFFF600).w	; set to GameplayStyleScreen
 		rts
+		
+	;	move.w	#$501,($FFFFFE10).w	; set level to SBZ2
+	;	move.b	#$C,($FFFFF600).w	; set to level
+	;	move.w	#1,($FFFFFE02).w	; restart level
+	;	rts
 
 SG_ResumeFromSaveGame:
 		move.b	#$28,($FFFFF600).w	; set to Chapters Screen
@@ -50613,6 +50617,7 @@ SegaPCM:	incbin	sound\segapcm.wav
 		include "Screens/InfoScreen/InfoScreen.asm"
 		include	"Screens/CreditsScreen/Credits.asm"
 		include	"Screens/TutorialBox/TutorialBox.asm"
+		include	"Screens/GameplayStyleScreen/GameplayStyleScreen.asm"
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
 

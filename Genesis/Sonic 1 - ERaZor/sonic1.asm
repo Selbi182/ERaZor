@@ -20628,8 +20628,6 @@ Obj36_Hurt:				; XREF: Obj36_SideWays; Obj36_Upright
 	;	clr.w	($FFFFFE20).w		; clear rings
 
 Obj36_NotInhuman2:
-		cmpi.b	#1,($FFFFFFFD).w	; was the Spike Behavior enabled?
-		beq.s	Obj36_Hurt_Rest	; if yes, branch
 		tst.w	($FFFFD030).w	; +++ is Sonic invulnerable? (Spike Behavior check)
 		bne.s	Obj36_Display	; +++ if yes, branch
 
@@ -32227,51 +32225,29 @@ Sonic_Fire:
 		beq.w	S_F_End			; if A is not being pressed, branch
 		bsr	SingleObjLoad		; check if SingleObjLoad is already in use
 		bne.w	S_F_End			; if it is, don't do anything
-		cmpi.w	#$001,($FFFFFE10).w
-		bne.s	S_F_NotGHZ2
-		tst.b	($FFFFFFB6).w
-		bne.w	S_F_End
-		move.b	#1,($FFFFFFB6).w
+		cmpi.w	#$001,($FFFFFE10).w	; is this the intro cutscene?
+		bne.s	S_F_NotGHZ2		; if not branch
+		tst.b	($FFFFFFB6).w		; has bullet already been fired for cutscene?
+		bne.w	S_F_End			; if yes, branch
+		move.b	#1,($FFFFFFB6).w	; mark bullet as fired for cutscene
 		
 S_F_NotGHZ2:
 		move.b	#$23,0(a1)		; load missile object
 		move.w	obX(a0),obX(a1)		; select sonic's current X-pos as destination point
 		move.w	obY(a0),obY(a1)		; do the same with sonic's Y-pos
-	;	move.b	#$14,obAnim(a0)		; use surf animation
-		move.w	#0,obVelY(a1)		; move missile in the same Y-direction as Sonic is
-		move.w	#$220,obVelX(a1)	; move missile to the right
-		moveq	#0,d0			; clear d0
-		move.w	#$10,d0			; add $1C to the X-pos (otherwise you would kill yourself)
-		btst	#0,obStatus(a0)		; is sonic facing right?
-		beq.s	S_F_ChkUp		; if yes, branch
-		neg.w	obVelX(a1)		; otherwise negate obVelX(a1) to shoot to the other siede
-		move.w	#-$10,d0		; sub $38 from it to get the opposite result of the line above the btst
 
-S_F_ChkUp:
-		btst	#0,($FFFFF602).w	; check if up is being held
-		beq.s	S_F_NoUp		; if not, branch
-		subi.w	#$200,obVelY(a1)	; sub $200 from Y-speed 
-		move.w	#0,obVelX(a1)		; don't move missile to the right
-		moveq	#0,d0			; don't move missile to the right
-
-S_F_NoUP:
-		btst	#1,($FFFFF602).w	; check if down is being held
-		beq.s	S_F_NoDown		; if not, branch
-		addi.w	#$200,obVelY(a1)	; add $200 to Y-speed
+		; if no other D-pad button was held, shoot downwards by default
+		move.w	#$200,obVelY(a1)	; move bullet downwards
 		move.w	obVelY(a0),d1		; get Sonic's Y-speed
 		cmpi.w	#$800,d1		; is Sonic falling faster than $800?
-		bmi.s	S_F_WithinTolerance	; if not,  branch
+		bmi.s	S_F_WithinTolerance	; if not, branch
 		add.w	d1,obVelY(a1)		; if yes, add his speed that to the total Y-speed of the bullet (so we don't outrun the missiles while falling down)
-
 S_F_WithinTolerance:
 		move.w	obVelX(a0),d0		; get Sonic's X-speed
 		asr.w	#1,d0			; decrease the speed a lot
 		move.w	d0,obVelX(a1)		; set that speed
-	;	move.w	#0,obVelX(a1)		; don't move missile to the right
-		moveq	#0,d0			; don't move missile to the right
-
-S_F_NoDown:
-		add.w	d0,obX(a1)		; move the missle a bit more to the left/right, when shooting normally
+		asr.w	#6,d0
+		add.w	d0,obX(a1)		; move the missle a bit in front of Sonic
 
 S_F_PlaySound:
 		move.w	#$C4,d0			; set sound $C4
@@ -44499,6 +44475,13 @@ SS_NoTeleport:
 		move.w	Obj09_Modes(pc,d0.w),d1
 		jsr	obj09_Modes(pc,d1.w)
 		jsr	LoadSonicDynPLC
+
+		btst	#4,($FFFFFF92).w	; is nonstop inhuman enabled?
+		beq.s	@cont			; if not, branch
+		add.w	#$0100,($FFFFFB04)	; increase Sonic's palette (color 3)
+		add.w	#$0100,($FFFFFB06)	; increase Sonic's palette (color 4)
+		add.w	#$0100,($FFFFFB08)	; increase Sonic's palette (color 5)
+@cont:
 		jmp	DisplaySprite
 ; ===========================================================================
 Obj09_Modes:	dc.w Obj09_OnWall-Obj09_Modes
@@ -45327,6 +45310,7 @@ locret_1BEAC:
 Obj09_ChkBumper:
 		cmpi.b	#$25,d0		; is the item a	bumper?
 		bne.s	Obj09_ChkW
+Obj09_DoBumper:
 		move.l	$32(a0),d1
 		subi.l	#$FF0001,d1
 		move.w	d1,d2
@@ -45341,10 +45325,10 @@ Obj09_ChkBumper:
 		sub.w	obY(a0),d2
 		jsr	(CalcAngle).l
 		jsr	(CalcSine).l
-		muls.w	#-$700,d1
+		muls.w	#-$100,d1
 		asr.l	#8,d1
 		move.w	d1,obVelX(a0)
-		muls.w	#-$700,d0
+		muls.w	#-$100,d0
 		asr.l	#8,d0
 		move.w	d0,obVelY(a0)
 		bset	#1,obStatus(a0)
@@ -45375,14 +45359,17 @@ Obj09_ChkW_NoChange:
 		rts
 ; ===========================================================================
 
+; Obj09_ChkGOAL:
 Obj09_GOAL:
 		cmpi.b	#$27,d0			; is the item a	"GOAL"?
 		bne.w	Obj09_UPblock		; if not, branch
-		addq.b	#2,obRoutine(a0)		; run routine "Obj09_ExitStage"
-		move.w	#$A8,d0			; play special stage exit sound				
-	;	cmpi.b	#1,($FFFFFE16).w	; is current special stage number = 1?
-	;	bne.s	Obj09_NotSS1x		; if not, branch
-		subq.b	#2,obRoutine(a0)		; don't run "Obj09_ExitStage"
+
+		btst	#4,($FFFFFF92).w	; is nonstop inhuman enabled?
+		bne.w	Obj09_DoBumper		; if yes, branch
+
+		addq.b	#2,obRoutine(a0)	; run routine "Obj09_ExitStage"
+		move.w	#$A8,d0			; play special stage exit sound		
+		subq.b	#2,obRoutine(a0)	; don't run "Obj09_ExitStage"
 		move.w	#$C3,d0			; play giant ring sound
 		clr.b	($FFFFFF9F).w		; make R block usable again
 

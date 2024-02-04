@@ -724,9 +724,8 @@ Hint_3:
 	dc.b	'CRUSHED TO DEATH!',_br
 	dc.b	_pause,_cls
 
-	dc.b	'a + d_pad',_br
-	dc.b	_br
-	dc.b	'SHOOTS A MISSILE',_br
+	dc.b	'PRESS a TO FIRE AN',_br
+	dc.b	'EXPLODING BULLET',_br
 	dc.b	'YOU CAN PROPEL',_br
 	dc.b	'YOURSELF IN THE AIR',_br
 	dc.b	'WITH!',_br

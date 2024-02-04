@@ -2,15 +2,8 @@
 Sonic ERaZor 7 - To-Do List
 ---------------------------
 
-Improvements (gameplay):
-	Make inhuman bullets fire downwards by default (cause who needs anything else anyway?)
-	Propel Sonic downwards when touching an upside-down spike during inhuman mode
-	Force LZ camera to move up when Sonic is too far above the screen
-	Make Sonic invincible to goal blocks while nonstop inhuman (and add the palette thingy)
-
 Improvements (art):
 	Make water in LZ flooding section a different palette or something to visualize that it isn't breathable anymore (then revert on collecting sign post)
-	Use square goal blocks for Casual mode (if we can't fix the hitbox)
 	New intro animation for Options Menu using H-scroll or something
 	Replace RGB sinewave background with starfield (fuzzy)
 
@@ -19,6 +12,7 @@ Casual/Frantic:
 	Casual:
 		All ring-based challenges are disabled (Ruined Place inhuman section, etc.)
 		Add the ability to stop Sonic from moving in Unreal Place when pressing any of ABC
+		Use square GOAL blocks for Casual mode (if we can't fix the hitbox)
 		Second emerald in Unreal Place doesn't need to be collected without touching the walls anymore (e.g. the first one doesn't respawn when touching a wall)
 		Use the new gravity control for Star Agony Place
 		Make Star Agony bomb shrapnels around the P-monitor predictable instead of random
@@ -128,3 +122,5 @@ Bugs:
 -	Redo SLZ easter egg
 -	Fancy new background deformation for Finalor's new background art (similar to SLZ)
 -	Use the terrible title screen music from the 2010 ERaZor release for the =P monitor in LZ and adjust timing
+-	Make inhuman bullets fire downwards by default (cause who needs anything else anyway?)
+-	Make Sonic invincible to goal blocks while nonstop inhuman (and add the palette thingy)

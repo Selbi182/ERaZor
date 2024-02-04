@@ -4019,6 +4019,8 @@ Level_ClrVars3:
 		move.l	d0,(a1)+
 		dbf	d1,Level_ClrVars3 ; clear object variables
 
+		move.b	#$0,($FFFFFFFE).w
+
 		move	#$2700,sr
 		bsr	ClearScreen
 		lea	($C00004).l,a6
@@ -16694,7 +16696,8 @@ Obj2E_ChkSonic:
 		move.w	#10000,d0		; hey at least you get 100000 points
 		jsr	AddPoints
 		
-		move.w	#$1E,($FFFFFE14).w	; set precise remaining air time to get comedic timing right
+		move.w	#$10,($FFFFFE14).w	; set precise remaining air time to get comedic timing right
+		move.b	#$1,($FFFFFFFE).w
 
 		move.w	#$8B,d0
 		jmp	(PlaySound).l	; play the old ending sequence music for maximum troll
@@ -33620,6 +33623,10 @@ Obj0A_Countdown:			; XREF: Obj0A_Index
 		jsr	(RandomNumber).l
 		andi.w	#1,d0
 		move.b	d0,$34(a0)
+		
+		tst.b 	($FFFFFFFE).w		; is the =P monitor enabled?
+		bne.w	Obj0A_ReduceAir		; if yes, disable countdown and drown normally
+
 		move.w	($FFFFFE14).w,d0 ; check air remaining
 		cmpi.w	#$19,d0
 		beq.s	Obj0A_WarnSound	; play sound if	air is $19
@@ -33648,7 +33655,11 @@ Obj0A_WarnSound:			; XREF: Obj0A_Countdown
 Obj0A_ReduceAir:
 		subq.w	#1,($FFFFFE14).w ; subtract 1 from air remaining
 		bcc.w	Obj0A_GoMakeItem ; if air is above 0, branch
+		tst.b 	($FFFFFFFE).w	; is the =P monitor enabled?
+		bne.w	@NoResume		; if yes, do not resume music
 		bsr	ResumeMusic
+
+@NoResume:
 		move.b	#$81,($FFFFF7C8).w ; lock controls
 		move.w	#$B2,d0
 		jsr	(PlaySound_Special).l ;	play drowning sound
@@ -33658,6 +33669,7 @@ Obj0A_ReduceAir:
 		move.l	a0,-(sp)
 		lea	($FFFFD000).w,a0
 		bsr	Sonic_ResetOnFloor
+		move.b	#$0,($FFFFFFFE).w ; reset =P flag
 		move.b	#$17,obAnim(a0)	; use Sonic's drowning animation
 		bset	#1,obStatus(a0)
 		bset	#7,obGfx(a0)
@@ -33679,7 +33691,12 @@ loc_13F86:
 ; ===========================================================================
 
 Obj0A_GoMakeItem:			; XREF: Obj0A_ReduceAir
+		tst.b 	($FFFFFFFE).w
+		bne.w	@Return			; hax
 		bra.s	Obj0A_MakeItem
+
+@Return:
+		rts
 ; ===========================================================================
 
 loc_13FAC:

@@ -160,7 +160,7 @@
  ;S ($FFFFFFFB).w
  ;  ($FFFFFFFC).w
  ;  ($FFFFFFFD).w
-    ($FFFFFFFE).w
+ ;  ($FFFFFFFE).w
     ($FFFFFFFF).w
 
 

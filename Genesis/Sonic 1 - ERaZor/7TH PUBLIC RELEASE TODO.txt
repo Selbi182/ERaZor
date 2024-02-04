@@ -11,9 +11,9 @@ Improvements (gameplay):
 
 Improvements (art):
 	Make water in LZ flooding section a different palette or something to visualize that it isn't breathable anymore (then revert on collecting sign post)
-	Fancy new background deformation for Finalor's new background art (similar to SLZ)
 	Use square goal blocks for Casual mode (if we can't fix the hitbox)
 	New intro animation for Options Menu using H-scroll or something
+	Replace RGB sinewave background with starfield (fuzzy)
 
 Casual/Frantic:
 	A new difficulty setting Casual/Frantic that reflects all the big gameplay changes between the old and new version
@@ -127,3 +127,4 @@ Bugs:
 -	Fix music not coming back when dying immediately to the spikes in final boss (was a freebie after disabling freezing the game on dying)
 -	Fix massive slowdowns in new MZ spike section (fixed by essentially splitting the layouts into two parts)
 -	Redo SLZ easter egg
+-	Fancy new background deformation for Finalor's new background art (similar to SLZ)

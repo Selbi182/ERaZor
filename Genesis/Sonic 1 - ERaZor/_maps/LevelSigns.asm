@@ -2,20 +2,20 @@
 ; Sprite mappings - output from ClownMapEd - Sonic 1/CD format
 ; --------------------------------------------------------------------------------
 
-CME_A84DC60B:
-	dc.w	CME_A84DC60B_0-CME_A84DC60B
-	dc.w	CME_A84DC60B_1-CME_A84DC60B
-	dc.w	CME_A84DC60B_2-CME_A84DC60B
-	dc.w	CME_A84DC60B_3-CME_A84DC60B
-	dc.w	CME_A84DC60B_4-CME_A84DC60B
-	dc.w	CME_A84DC60B_5-CME_A84DC60B
-	dc.w	CME_A84DC60B_6-CME_A84DC60B
-	dc.w	CME_A84DC60B_7-CME_A84DC60B
-	dc.w	CME_A84DC60B_8-CME_A84DC60B
-	dc.w	CME_A84DC60B_9-CME_A84DC60B
-	dc.w	CME_A84DC60B_A-CME_A84DC60B
+CME_F70EFE57:
+	dc.w	CME_F70EFE57_0-CME_F70EFE57
+	dc.w	CME_F70EFE57_1-CME_F70EFE57
+	dc.w	CME_F70EFE57_2-CME_F70EFE57
+	dc.w	CME_F70EFE57_3-CME_F70EFE57
+	dc.w	CME_F70EFE57_4-CME_F70EFE57
+	dc.w	CME_F70EFE57_5-CME_F70EFE57
+	dc.w	CME_F70EFE57_6-CME_F70EFE57
+	dc.w	CME_F70EFE57_7-CME_F70EFE57
+	dc.w	CME_F70EFE57_8-CME_F70EFE57
+	dc.w	CME_F70EFE57_9-CME_F70EFE57
+	dc.w	CME_F70EFE57_A-CME_F70EFE57
 
-CME_A84DC60B_0:
+CME_F70EFE57_0:
 	dc.b	10
 
 	dc.b	-8
@@ -68,7 +68,7 @@ CME_A84DC60B_0:
 	dc.w	$0026
 	dc.b	60
 
-CME_A84DC60B_1:
+CME_F70EFE57_1:
 	dc.b	7
 
 	dc.b	-8
@@ -106,7 +106,7 @@ CME_A84DC60B_1:
 	dc.w	$0026
 	dc.b	37
 
-CME_A84DC60B_2:
+CME_F70EFE57_2:
 	dc.b	6
 
 	dc.b	-8
@@ -139,7 +139,7 @@ CME_A84DC60B_2:
 	dc.w	$000C
 	dc.b	28
 
-CME_A84DC60B_3:
+CME_F70EFE57_3:
 	dc.b	10
 
 	dc.b	-8
@@ -192,7 +192,7 @@ CME_A84DC60B_3:
 	dc.w	$0046
 	dc.b	60
 
-CME_A84DC60B_4:
+CME_F70EFE57_4:
 	dc.b	6
 
 	dc.b	-8
@@ -225,7 +225,7 @@ CME_A84DC60B_4:
 	dc.w	$0026
 	dc.b	32
 
-CME_A84DC60B_5:
+CME_F70EFE57_5:
 	dc.b	10
 
 	dc.b	-8
@@ -278,7 +278,7 @@ CME_A84DC60B_5:
 	dc.w	$003E
 	dc.b	60
 
-CME_A84DC60B_6:
+CME_F70EFE57_6:
 	dc.b	7
 
 	dc.b	-8
@@ -316,7 +316,7 @@ CME_A84DC60B_6:
 	dc.w	$0036
 	dc.b	36
 
-CME_A84DC60B_7:
+CME_F70EFE57_7:
 	dc.b	8
 
 	dc.b	4
@@ -359,7 +359,7 @@ CME_A84DC60B_7:
 	dc.w	$0026
 	dc.b	46
 
-CME_A84DC60B_8:
+CME_F70EFE57_8:
 	dc.b	7
 
 	dc.b	4
@@ -378,11 +378,6 @@ CME_A84DC60B_8:
 	dc.b	-19
 
 	dc.b	4
-	dc.b	$01
-	dc.w	$001F
-	dc.b	-3
-
-	dc.b	4
 	dc.b	$05
 	dc.w	$002E
 	dc.b	5
@@ -390,14 +385,19 @@ CME_A84DC60B_8:
 	dc.b	4
 	dc.b	$05
 	dc.w	$002A
-	dc.b	21
+	dc.b	22
 
 	dc.b	4
 	dc.b	$05
 	dc.w	$003A
 	dc.b	37
 
-CME_A84DC60B_9:
+	dc.b	4
+	dc.b	$01
+	dc.w	$0020
+	dc.b	-4
+
+CME_F70EFE57_9:
 	dc.b	5
 
 	dc.b	-8
@@ -425,7 +425,7 @@ CME_A84DC60B_9:
 	dc.w	$0010
 	dc.b	25
 
-CME_A84DC60B_A:
+CME_F70EFE57_A:
 	dc.b	12
 
 	dc.b	4

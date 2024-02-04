@@ -8133,6 +8133,9 @@ Deform_SYZ_4:				; CODE XREF: Deform_SYZ+90?j
  
  
 Deform_SBZ:
+		cmpi.w	#$502,($FFFFFE10).w	; is this Finalor Place?
+		beq.w	Deform_FZ		; if yes, use alternate deformation
+
 		tst.b	($FFFFFE11).w
 		bne.w	Deform_SBZ_Act2
 		move.w	($FFFFF73A).w,d4
@@ -8242,6 +8245,62 @@ Deform_SBZ_Act2_1:			; CODE XREF: Deform_SBZ+118?j
 		dbf	d1,Deform_SBZ_Act2_1
 		rts	
 ; End of function Deform_SBZ
+
+
+; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+
+DFZ_Pos = $120
+
+Deform_FZ:
+		move.w	#DFZ_Pos,($FFFFF70C).w		; force vertical background position in place
+		move.w	($FFFFF70C).w,($FFFFF618).w 
+
+		lea	($FFFFCC00).w,a1	; load beginning address of horizontal scroll buffer to a1
+		move.w	($FFFFF700).w,d4	; load FG screen's X position
+		neg.w	d4			; negate (positive to negative)
+
+		move.w	($FFFFFE04).w,d2	; get current level timer
+		lsl.w	#2,d2			; speed it up
+
+		neg.w	d2
+		move.w	d2,d0
+		asr.w	#3,d0
+		sub.w	d2,d0
+		ext.l	d0
+		asl.l	#4,d0
+		divs.w	#$1C,d0
+		ext.l	d0
+		asl.l	#4,d0
+		asl.l	#8,d0
+
+		moveq	#0,d3
+		move.w	d2,d3
+
+		move.w	#$1B,d1		; set number of scan lines to dump (minus 1 for dbf)
+FZ_DeformLoop:
+		move.w	d4,(a1)+
+		move.w	d3,(a1)+
+		move.w	d4,(a1)+
+		move.w	d3,(a1)+
+		move.w	d4,(a1)+
+		move.w	d3,(a1)+
+		move.w	d4,(a1)+
+		move.w	d3,(a1)+
+		move.w	d4,(a1)+
+		move.w	d3,(a1)+
+		move.w	d4,(a1)+
+		move.w	d3,(a1)+
+		move.w	d4,(a1)+
+		move.w	d3,(a1)+
+		move.w	d4,(a1)+
+		move.w	d3,(a1)+
+
+		swap	d3
+		add.l	d0,d3
+		swap	d3
+		dbf	d1,FZ_DeformLoop	; repeat d1 number of scanlines
+		rts
+; End of function Deform_FZ
 
 ; ---------------------------------------------------------------------------
 ; Subroutine to	scroll the level horizontally as Sonic moves

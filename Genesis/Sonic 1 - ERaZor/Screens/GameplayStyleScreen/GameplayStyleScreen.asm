@@ -5,6 +5,7 @@
 ; ===========================================================================
 
 GameplayStyleScreen:
+
 		move.b	#$E0,d0
 		jsr	PlaySound_Special		; fade out music
 		jsr	ClearPLC			; clear PLCs
@@ -25,25 +26,29 @@ GameplayStyleScreen:
 		lea	($FFFFD000).w,a1
 		moveq	#0,d0
 		move.w	#$7FF,d1
-GSS_ClrObjRam:	move.l	d0,(a1)+
-		dbf	d1,GSS_ClrObjRam
+
+@ClrObjRam:
+		move.l	d0,(a1)+
+		dbf	d1, @ClrObjRam
 		
 		move.l	#$40000000,($C00004).l		; load art
 		lea	($C00000).l,a6
 		lea	(Art_Difficulty).l,a0
 		jsr	NemDec
 
-		lea	(Map_Difficulty).l,a1		; load maps
-		move.l	#$40000003,d0
-		moveq	#$27,d1
-		moveq	#$1B,d2
-		jsr	ShowVDPGraphics
+		; lea	(Map_Difficulty).l,a1		; load maps
+		; move.l	#$40000003,d0
+		; moveq	#$27,d1
+		; moveq	#$1B,d2
+		; jsr	ShowVDPGraphics
 
 		lea	(Pal_Difficulty).l,a1		; load palette
 		lea	($FFFFFB80).w,a2
 		move.b	#8,d0
-GSS_PalLoopOHD:	move.l	(a1)+,(a2)+
-		dbf	d0,GSS_PalLoopOHD
+		
+@PalLoopOHD:
+		move.l	(a1)+,(a2)+
+		dbf	d0,@PalLoopOHD
 
 		jsr	Pal_FadeTo			; fade in
 
@@ -52,25 +57,32 @@ GSS_PalLoopOHD:	move.l	(a1)+,(a2)+
 
 ; I HATE THIS CODE SO MUCH
 GSS_MainLoop:
-		move.b	#4,($FFFFF62A).w
+		move.b	#$4,($FFFFF62A).w
 		jsr	DelayProgram
+		jsr	ObjectsLoad
+		jsr	BuildSprites
+
+		jsr	SingleObjLoad
+		move.b	#$8B, 0(a1)
+		move.w 	#$150, obX(a1)
+		move.w 	#$A0, obScreenY(a1)
 
 		btst 	#0, ($FFFFF605).w	; is up being held?
-		bne.s 	GSS_PressedUp		; branch
+		bne.s 	@PressedUp		; branch
 
 		move.b 	#1, d0 				; frantic mode
 		btst 	#1, ($FFFFF605).w	; is down being held?
-		bne.s 	GSS_PressedDown		; branch
+		bne.s 	@PressedDown		; branch
 
 		andi.b	#$80,($FFFFF605).w	; is Start button pressed?
 		beq.s	GSS_MainLoop		; if not, branch
 		
-		bra.w 	GSS_Exit
+		bra.w 	@Exit
 ; ---------------------------------------------------------------------------
 
-GSS_PressedUp:
+@PressedUp:
 		btst 	#5, ($FFFFFF92).w 	; already pissbaby mode?
-		beq.s 	@NoUpdate			; don't update
+		beq.s 	@NoUpdateUp			; don't update
 
 		move.w	#$D8, d0
 		jsr		(PlaySound_Special).l ;	play "blip" sound
@@ -80,15 +92,15 @@ GSS_PressedUp:
 		
 		bclr 	#5, ($FFFFFF92).w 	; set to pissbaby mode
 
-@NoUpdate:
+@NoUpdateUp:
 		andi.b	#$80,($FFFFF605).w	; is Start button pressed?
 		beq.s	GSS_MainLoop		; if not, branch
 
 ; ---------------------------------------------------------------------------
 
-GSS_PressedDown:
+@PressedDown:
 		btst 	#5, ($FFFFFF92).w 	; already frantic mode?
-		bne.s 	@NoUpdate			; don't update
+		bne.s 	@NoUpdateDown			; don't update
 
 		move.w	#$D8, d0
 		jsr		(PlaySound_Special).l ;	play "blip" sound
@@ -98,13 +110,13 @@ GSS_PressedDown:
 
 		bset 	#5, ($FFFFFF92).w	; set to frantic mode
 
-@NoUpdate:
+@NoUpdateDown:
 		andi.b	#$80,($FFFFF605).w	; is Start button pressed?
 		beq.w	GSS_MainLoop		; if not, branch
 
 ; ---------------------------------------------------------------------------
 
-GSS_Exit:
+@Exit:
 		move.w	#$C3,d0			; set giant ring sound
 		jsr		PlaySound_Special	; play giant ring sound
 		jsr 	WhiteFlash2
@@ -123,6 +135,9 @@ GSS_Exit:
 		move.b	#$C,($FFFFF600).w	; set to level
 		move.w	#1,($FFFFFE02).w	; restart level
 		rts
+
+@rts:
+	rts
 
 ; ---------------------------------------------------------------------------
 ; ===========================================================================

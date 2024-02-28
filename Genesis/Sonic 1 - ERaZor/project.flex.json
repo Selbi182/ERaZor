@@ -1,8 +1,33 @@
 {
     "Flex": 2,
     "name": "",
-    "node": "87434f37-1cde-4ffa-a665-5dc8cc33caa0",
+    "node": "997b2a23-cffd-4c2f-a858-bbc26094441a",
     "objects": [
+        {
+            "uuid": "997b2a23-cffd-4c2f-a858-bbc26094441a",
+            "format": "Sonic 1.js",
+            "name": "Starfield Star",
+            "palettes": [
+                {
+                    "path": "Screens\\GameplayStyleScreen\\Pal_Difficulty.bin",
+                    "length": 1
+                }
+            ],
+            "art": {
+                "path": "Screens\\GameplayStyleScreen\\Tiles_Difficulty.bin",
+                "compression": "Nemesis",
+                "offset": 0
+            },
+            "mappings": {
+                "path": "_maps\\obj8B.asm",
+                "label": ""
+            },
+            "dplcs": {
+                "enabled": false,
+                "path": "",
+                "label": ""
+            }
+        },
         {
             "format": "Sonic 1.js",
             "name": "Points Emblem",

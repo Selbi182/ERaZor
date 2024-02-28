@@ -1195,9 +1195,11 @@ Pal_Backup_Loop:
 Pal_MBW_Loop:
 		moveq	#0,d0			; clear d0
 		move.w	(a0),d0			; get colour
+
 		moveq	#0,d1			; clear d1
 		move.b	d0,d1 			; copy Green and Red of colour to d1
 		lsr.b	#4,d1 			; get only Green amount
+
 		move.b	d0,d2 			; copy Green and Red of colour to d2
 		and.b	#$E,d2 			; get only Red amount
 		lsr.w	#8,d0 			; get only Blue amount of d0
@@ -1206,11 +1208,13 @@ Pal_MBW_Loop:
 		divu.w	#3,d0 			; divide by 3
 		and.b	#$E,d0 			; keep it an even value (Keep 9-bit VDP)
 		move.b	d0,d1 			; copy to d1
+
 		lsl.b	#4,d1 			; shift to left nybble
 		add.b	d1,d0 			; add to d0 (Setting the green)
 		lsl.w	#4,d1 			; shift to next left nybble
 		add.w	d1,d0			; add to d0 (Setting the blue)
 		move.w	d0,(a0)+		; set new colour
+		
 		dbf	d3,Pal_MBW_Loop		; loop for each colour
 
 loc_13CA:
@@ -3455,7 +3459,8 @@ Sega_NoSound:
 
 Sega_GotoTitle:
 		clr.b	($FFFFFFBE).w
-		jmp	SelbiSplash
+;		jmp	SelbiSplash
+		jmp	GameplayStyleScreen
 	;	move.b	#$24,($FFFFF600).w ; go to options screen
 		rts	
 ; ===========================================================================
@@ -6881,75 +6886,44 @@ TryAg_Exit:
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Object 8B - Eggman on "TRY AGAIN" and "END"	screens
+; Object 8B - Starfield Star
 ; ---------------------------------------------------------------------------
 
-Obj8B:					; XREF: Obj_Index
+Obj8B:
 		moveq	#0,d0
 		move.b	obRoutine(a0),d0
-		move.w	Obj8B_Index(pc,d0.w),d1
-		jsr	obj8B_Index(pc,d1.w)
+		move.w	@Index(pc,d0.w),d1
+		jsr	@Index(pc,d1.w)
 		jmp	DisplaySprite
+
 ; ===========================================================================
-Obj8B_Index:	dc.w Obj8B_Main-Obj8B_Index
-		dc.w Obj8B_Animate-Obj8B_Index
-		dc.w Obj8B_Juggle-Obj8B_Index
-		dc.w loc_5A8E-Obj8B_Index
+@Index:	dc.w @Main-@Index
+		dc.w @Update-@Index
 ; ===========================================================================
 
-Obj8B_Main:				; XREF: Obj8B_Index
+@Main:
 		addq.b	#2,obRoutine(a0)
-		move.w	#$120,obX(a0)
-		move.w	#$F4,obScreenY(a0)
+		move.w	#$125,obX(a0)
+		move.w	#$EC,obScreenY(a0)
 		move.l	#Map_obj8B,obMap(a0)
-		move.w	#$3E1,obGfx(a0)
+		move.w	#$0,obGfx(a0)
 		move.b	#0,obRender(a0)
-		move.b	#2,obPriority(a0)
-		move.b	#2,obAnim(a0)	; use "END" animation
-		cmpi.b	#6,($FFFFFE57).w ; do you have all 6 emeralds?
-		beq.s	Obj8B_Animate	; if yes, branch
-		move.b	#$8A,($FFFFD0C0).w ; load credits object
-		move.w	#9,($FFFFFFF4).w ; use "TRY AGAIN" text
-		move.b	#$8C,($FFFFD800).w ; load emeralds object on "TRY AGAIN" screen
-		move.b	#0,obAnim(a0)	; use "TRY AGAIN" animation
+		jsr 	RandomDirection
+		
+@Update:
+		jsr 	SpeedToScreenPos
+		
+		; X < $40
+		cmpi.w	#$40, obX(a0)		
+		bmi.w	@Destroy
 
-Obj8B_Animate:				; XREF: Obj8B_Index
-		lea	(Ani_obj8B).l,a1
-		jmp	AnimateSprite
-; ===========================================================================
+		; X > $1D0
+		cmpi.w	#$1D0, obX(a0)
+		bpl.w	@Destroy
+		rts
 
-Obj8B_Juggle:				; XREF: Obj8B_Index
-		addq.b	#2,obRoutine(a0)
-		moveq	#2,d0
-		btst	#0,obAnim(a0)
-		beq.s	loc_5A6A
-		neg.w	d0
-
-loc_5A6A:
-		lea	($FFFFD800).w,a1
-		moveq	#5,d1
-
-loc_5A70:
-		move.b	d0,$3E(a1)
-		move.w	d0,d2
-		asl.w	#3,d2
-		add.b	d2,obAngle(a1)
-		lea	$40(a1),a1
-		dbf	d1,loc_5A70
-		addq.b	#1,obFrame(a0)
-		move.w	#112,$30(a0)
-
-loc_5A8E:				; XREF: Obj8B_Index
-		subq.w	#1,$30(a0)
-		bpl.s	locret_5AA0
-		bchg	#0,obAnim(a0)
-		move.b	#2,obRoutine(a0)
-
-locret_5AA0:
-		rts	
-; ===========================================================================
-Ani_obj8B:
-		include	"_anim\obj8B.asm"
+@Destroy:
+		jmp 	DeleteObject
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -21113,6 +21087,14 @@ SpeedToPos:
 		add.l	d2,obX(a0)
 		asl.l	#8,d3
 		add.l	d3,obY(a0)
+		rts
+
+SpeedToScreenPos:
+		movem.w	obVelX(a0),d2-d3
+		asl.l	#8,d2
+		add.l	d2,obX(a0)
+		asl.l	#8,d3
+		add.l	d3,obScreenY(a0)
 		rts
 ; End of function SpeedToPos
 

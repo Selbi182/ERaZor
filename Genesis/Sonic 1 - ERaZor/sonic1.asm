@@ -3459,8 +3459,8 @@ Sega_NoSound:
 
 Sega_GotoTitle:
 		clr.b	($FFFFFFBE).w
-;		jmp	SelbiSplash
-		jmp	GameplayStyleScreen
+		jmp	SelbiSplash
+		; jmp	GameplayStyleScreen
 	;	move.b	#$24,($FFFFF600).w ; go to options screen
 		rts	
 ; ===========================================================================

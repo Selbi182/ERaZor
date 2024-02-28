@@ -36,11 +36,11 @@ GameplayStyleScreen:
 		lea	(Art_Difficulty).l,a0
 		jsr	NemDec
 
-		; lea	(Map_Difficulty).l,a1		; load maps
-		; move.l	#$40000003,d0
-		; moveq	#$27,d1
-		; moveq	#$1B,d2
-		; jsr	ShowVDPGraphics
+		lea	(Map_Difficulty).l,a1		; load maps
+		move.l	#$40000003,d0
+		moveq	#$27,d1
+		moveq	#$1B,d2
+		jsr	ShowVDPGraphics
 
 		lea	(Pal_Difficulty).l,a1		; load palette
 		lea	($FFFFFB80).w,a2
@@ -62,10 +62,10 @@ GSS_MainLoop:
 		jsr	ObjectsLoad
 		jsr	BuildSprites
 
-		jsr	SingleObjLoad
-		move.b	#$8B, 0(a1)
-		move.w 	#$150, obX(a1)
-		move.w 	#$A0, obScreenY(a1)
+		; jsr	SingleObjLoad
+		; move.b	#$8B, 0(a1)
+		; move.w 	#$150, obX(a1)
+		; move.w 	#$A0, obScreenY(a1)
 
 		btst 	#0, ($FFFFF605).w	; is up being held?
 		bne.s 	@PressedUp		; branch

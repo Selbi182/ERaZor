@@ -1218,8 +1218,8 @@ Pal_MBW_Loop:
 		dbf	d3,Pal_MBW_Loop		; loop for each colour
 
 loc_13CA:
-		move.b	#5,($FFFFF62A).w	; stop system
-		bsr	DelayProgram		; stop system
+		move.b	#$10,($FFFFF62A).w
+		bsr	DelayProgram
 
 		cmpi.w	#$501,($FFFFFE10).w
 		beq.s	Pause_ChkBC

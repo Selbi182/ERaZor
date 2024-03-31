@@ -6,6 +6,8 @@ Improvements (art):
 	Make water in LZ flooding section a different palette or something to visualize that it isn't breathable anymore (then revert on collecting sign post)
 	New intro animation for Options Menu using H-scroll or something
 	Replace RGB sinewave background with starfield (fuzzy)
+	Fix underwater palette not turning gray when dying or pausing (if possible)
+	Improve the Nonstop Inhuman bumpers to make navigation easier and prevent getting stuck
 
 Casual/Frantic:
 	A new difficulty setting Casual/Frantic that reflects all the big gameplay changes between the old and new version
@@ -18,6 +20,7 @@ Casual/Frantic:
 		Make Star Agony bomb shrapnels around the P-monitor predictable instead of random
 		Only lose 10 instead of 20 rings on hit
 		Timer counts one second at normal speed
+		Adjust movement speed to be fairer for the MD's shitty diagonal controls
 	Frantic:
 		All ring-based challenges return, same way as they were in the 2016 release
 		Use the old gravity inversion controls for Star Agony Place
@@ -26,26 +29,31 @@ Casual/Frantic:
 		Timer counts one second at twice the speed (like it is now)
 
 Bugs:
-	Fix cinematic HUD causing garbled explosions from title card graphics in GHZ2
-	Fix the garbled art when starting Star Agony
-	Fix speed adjustments in intro cutscene and ending sequence
-	Fix DPLC when pausing game (see Peelout)
-	Disable stage quitting in special stages during start of level and collecting the final emerald (glitchy art)
-	Fix underwater palette not turning gray when dying or pausing
-	Fix LZ platforms sometimes spawning multiple times
-	Fix bomb machine cutscene not loading graphics in time in cinematic mode
-	Fix title cards being broken on more advanced emulators (see LZ)
-	Fix LZ flooding not counting as underwater while Sonic is on the ground
-	Fix garbled art after SLZ easter egg and the HUD being shown during it
-	Fix MZ background disappearing when teleporting too many times
-	Fix the issue of LZ walling you off sometimes
-	Fix Crabmeat boss during cinematic HUD getting the white stuck
-	Fix falling through geometry when rolling along non-activated wires in Star Agony while nonstop inhuman
-	Fix music voices being corrupted after the special stage finish jingle
-	Fix SLZ loop layout looking like this when teleporting at a weird time: https://youtu.be/N42QLTU5cDs?si=g6WXWbjjshVUHr0J&t=1410
-	Fix SYZ background
-	Fix spike not getting destroyed in inhuman section in Ruined Place when in nonstop inhuman
-	Fix going Finalor after Tutorial under weird conditions: https://youtu.be/N42QLTU5cDs?si=ZhzRJTnnf28kNj1L&t=2942
+	Visual:
+		Fix cinematic HUD causing garbled explosions from title card graphics in GHZ2
+		Fix the garbled art when starting Star Agony
+		Disable stage quitting in special stages during start of level and collecting the final emerald (glitchy art)
+		Fix bomb machine cutscene not loading graphics in time in cinematic mode
+		Fix title cards being broken on more advanced emulators (see LZ)
+		Fix garbled art after SLZ easter egg and the HUD being shown during it
+		Fix Crabmeat boss during cinematic HUD getting the white stuck
+		Fix SLZ loop layout looking like this when teleporting at a weird time: https://youtu.be/N42QLTU5cDs?si=g6WXWbjjshVUHr0J&t=1410
+		Fix palettes looking weird when in the Blackout Challenge with Nonstop Inhuman
+		Fix broken emerald visuals in SS
+		
+	Other:
+		Fix speed adjustments in intro cutscene and ending sequence
+		Fix LZ platforms sometimes spawning multiple times
+		Fix LZ flooding not counting as underwater while Sonic is on the ground
+		Fix MZ background disappearing when teleporting too many times
+		Fix the issue of LZ walling you off sometimes
+		Fix falling through geometry when rolling along non-activated wires in Star Agony while nonstop inhuman
+		Fix music voices being corrupted after the special stage finish jingle
+		Fix SYZ background
+		Fix spike not getting destroyed in inhuman section in Ruined Place when in nonstop inhuman
+		Fix going Finalor after Tutorial under weird conditions: https://youtu.be/N42QLTU5cDs?si=ZhzRJTnnf28kNj1L&t=2942
+		Fix Crabmeat boss not showing up when using nonstop inhuman sometimes
+		
 
 ---------------------------
 
@@ -124,3 +132,4 @@ Bugs:
 -	Use the terrible title screen music from the 2010 ERaZor release for the =P monitor in LZ and adjust timing
 -	Make inhuman bullets fire downwards by default (cause who needs anything else anyway?)
 -	Make Sonic invincible to goal blocks while nonstop inhuman (and add the palette thingy)
+-	Fix DPLC when pausing game (see Peelout)

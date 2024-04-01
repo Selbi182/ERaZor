@@ -6914,15 +6914,24 @@ Obj8B:
 		jsr 	SpeedToScreenPos
 		
 		; X < $40
-		cmpi.w	#$40, obX(a0)		
+		cmpi.w	#$40, obX(a0)
 		bmi.w	@Destroy
 
 		; X > $1D0
 		cmpi.w	#$1D0, obX(a0)
 		bpl.w	@Destroy
+
+		; Y < $10
+		cmpi.w	#$10, obScreenY(a0)
+		bmi.w	@Destroy
+
+		; Y > $100
+		cmpi.w	#$200, obScreenY(a0)
+		bpl.w	@Destroy
 		rts
 
 @Destroy:
+		addq.w  #4, sp 		; skip the `jmp DisplaySprite` so it doesn't save the object (tysm markey)
 		jmp 	DeleteObject
 
 ; ===========================================================================
@@ -10268,6 +10277,19 @@ Resize_LZ2:
 		beq.s	@cont				; if yes, branch
 		cmpi.b	#3,($FFFFFF97).w		; has third lamppost been touched?
 		bne.s	@contx				; if not, branch
+
+		tst.b 	($FFFFFFF9).w
+		bne.s 	@samepal
+
+		jsr 	Pal_FadeOut 	; i guess this works????
+		jsr 	WhiteFlash2
+
+		move.b	#$C3,d0
+		jsr	PlaySound_Special
+
+		move.b 	#1, ($FFFFFFF9).w
+
+@samepal:
 		move.w	#$0900,d0
 		move.w	#$0200,d1
 		move.b	#$4F,d2
@@ -10296,6 +10318,7 @@ Resize_LZ2:
 
 @contXX:
 		rts	
+
 ; ===========================================================================
 
 Resize_LZ3:
@@ -21090,11 +21113,21 @@ SpeedToPos:
 		rts
 
 SpeedToScreenPos:
-		movem.w	obVelX(a0),d2-d3
-		asl.l	#8,d2
-		add.l	d2,obX(a0)
-		asl.l	#8,d3
-		add.l	d3,obScreenY(a0)
+        movem.w    obVelX(a0),d2-d3
+        asl.l    #8,d2
+        asl.l    #8,d3
+        move.l    obX(a0),d0
+        move.w    obY(a0),d0
+        add.l    d2,d0
+        move.w    d0,obY(a0)
+        swap    d0
+        move.w    d0,obX(a0)
+        move.l    obScreenY(a0),d0
+        move.w    obY+2(a0),d0
+        add.l    d3,d0
+        move.w    d0,obY+2(a0)
+        swap    d0
+        move.w    d0,obScreenY(a0)
 		rts
 ; End of function SpeedToPos
 
@@ -43604,6 +43637,7 @@ SH_NotEnding:
 		clr.w	($FFFFFE20).w		; clear rings
 		move.b	#70,($FFFFFFDD).w	; set delay for restart when sonic hits ground
 		clr.b	($FFFFFE1E).w		; stop time counter
+		move.b 	#0, ($FFFFFFF9).w	; clear LZ palette change flag (lol)
 		move.b	#6,obRoutine(a0)		; comment this out, and sonic can't die (the main line for the inhuman mode)
 		move.w	obY(a0),$38(a0)		; something with Y and bosses...
 	;	bset	#7,obGfx(a0)		; make sonic being on the foreground (because of the new style disabled)

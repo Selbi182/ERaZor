@@ -155,7 +155,7 @@
  ;  ($FFFFFFF6).w
     ($FFFFFFF7).w
  ;  ($FFFFFFF8).w
-    ($FFFFFFF9).w
+ ;  ($FFFFFFF9).w ; flag for palette change for LZ (WHY. WHY DID I DO THIS)
  ;S ($FFFFFFFA).w
  ;S ($FFFFFFFB).w
  ;  ($FFFFFFFC).w

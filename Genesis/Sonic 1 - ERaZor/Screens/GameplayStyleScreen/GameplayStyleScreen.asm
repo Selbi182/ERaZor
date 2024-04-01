@@ -62,11 +62,14 @@ GSS_MainLoop:
 		jsr	ObjectsLoad
 		jsr	BuildSprites
 
-		; jsr	SingleObjLoad
-		; move.b	#$8B, 0(a1)
-		; move.w 	#$150, obX(a1)
-		; move.w 	#$A0, obScreenY(a1)
+		jsr	SingleObjLoad
+		bne.s 	@NoObject
 
+		move.b	#$8B, 0(a1)
+		move.w 	#$150, obX(a1)
+		move.w 	#$A0, obScreenY(a1)
+
+@NoObject:
 		btst 	#0, ($FFFFF605).w	; is up being held?
 		bne.s 	@PressedUp		; branch
 

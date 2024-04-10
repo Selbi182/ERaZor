@@ -34,7 +34,6 @@ Bugs:
 		Fix the garbled art when starting Star Agony
 		Disable stage quitting in special stages during start of level and collecting the final emerald (glitchy art)
 		Fix bomb machine cutscene not loading graphics in time in cinematic mode
-		Fix title cards being broken on more advanced emulators (see LZ)
 		Fix garbled art after SLZ easter egg and the HUD being shown during it
 		Fix Crabmeat boss during cinematic HUD getting the white stuck
 		Fix SLZ loop layout looking like this when teleporting at a weird time: https://youtu.be/N42QLTU5cDs?si=g6WXWbjjshVUHr0J&t=1410
@@ -133,3 +132,4 @@ Bugs:
 -	Make inhuman bullets fire downwards by default (cause who needs anything else anyway?)
 -	Make Sonic invincible to goal blocks while nonstop inhuman (and add the palette thingy)
 -	Fix DPLC when pausing game (see Peelout)
+-	Fix title cards being broken on more advanced emulators (see LZ)

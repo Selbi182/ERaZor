@@ -5524,6 +5524,8 @@ SS_ClrNemRam:
 ; Main Special Stage loop
 ; ---------------------------------------------------------------------------
 
+Blackout_RotationSpeed = $140
+
 SS_MainLoop:
 		tst.b	($FFFFFF5F).w	;  is this the blackout special stage?
 		beq.s	@contyyy
@@ -5561,12 +5563,12 @@ SS_MainLoop:
 
 		btst	#2,($FFFFF602).w ; is left being pressed?
 		beq.s	@contnotl	; if not, branch
-		move.w	#-$100,($FFFFF782).w ; rotation speed
+		move.w	#-Blackout_RotationSpeed,($FFFFF782).w ; rotation speed
 		bra.s	@contyyyx
 @contnotl:
 		btst	#3,($FFFFF602).w ; is right being pressed?
 		beq.s	@contyyyx	; if not, branch
-		move.w	#$100,($FFFFF782).w ; rotation speed
+		move.w	#Blackout_RotationSpeed,($FFFFF782).w ; rotation speed
 
 @contyyyx:
 		bra.s	SS_NoSkip
@@ -32051,9 +32053,9 @@ SD_End:
 ; Subroutine to move Sonic in air while holding A (Star Agony Place)
 ; ---------------------------------------------------------------------------
 
-AF_Accel =  $70	; acceleration speed
-AF_Decel = $100	; deceleration speed
-AF_Limit = $700	; max speed
+AF_Accel =  $20	; acceleration speed
+AF_Decel =  $10	; deceleration speed
+AF_Limit = $400	; max speed
 
 Sonic_AirFreeze:
 		tst.b	($FFFFFF77).w		; is antigrav enabled?
@@ -44244,8 +44246,11 @@ SS_AlwaysStage12:
 
 
 SSAS_Not2:
+		tst.b	($FFFFFF5F).w	; is this the blackout blackout special stage?
+		beq.s	@cont		; if not, branch
+		move.l	#8,d0		; use alternate layout 
 
-
+@cont:
 		movea.l	SS_LayoutIndex(pc,d0.w),a0	; set layout pointer
 		lea	($FF4000).l,a1			; set destination
 		move.w	#$3FC,d0			; set number of repeats to $3FC
@@ -44509,7 +44514,6 @@ Obj09_Display:				; XREF: Obj09_OnWall
 		rts	
 
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
 
 Obj09_Move:				; XREF: Obj09_OnWall; Obj09_InAir
 		tst.b	($FFFFFF5F).w		; is easter egg SS enabled?
@@ -47792,6 +47796,8 @@ Col_SBZ:	incbin	collide\sbz.bin		; SBZ index
 SS_1:		incbin	sslayout\1.bin
 		even
 SS_2:		incbin	sslayout\2.bin
+		even
+SS_Blackout:	incbin	sslayout\blackout.bin
 		even
 ; ---------------------------------------------------------------------------
 ; Animated uncompressed graphics

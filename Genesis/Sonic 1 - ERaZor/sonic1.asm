@@ -3963,6 +3963,7 @@ Level:					; XREF: GameModeArray
 		bsr	Pal_FadeFrom
 		tst.w	($FFFFFFF0).w
 		bmi.w	Level_ClrRam
+		move	#$2700,sr
 		move.b	#0,($FFFFFF8A).w	; load uncompressed title card art (immediately)
 		jsr	LoadTitleCardArt
 		move	#$2300,sr
@@ -4343,10 +4344,10 @@ Level_DelayLoop:
 Level_ClrCardArt:
 		moveq	#2,d0
 		jsr	(LoadPLC).l	; load explosion patterns
-		moveq	#0,d0
-		move.b	($FFFFFE10).w,d0
-		addi.w	#$15,d0
-		jsr	(LoadPLC).l	; load animal patterns (level no. + $15)
+	;	moveq	#0,d0
+	;	move.b	($FFFFFE10).w,d0
+	;	addi.w	#$15,d0
+	;	jsr	(LoadPLC).l	; load animal patterns (level no. + $15)
 
 Level_StartGame:
 		bclr	#7,($FFFFF600).w ; subtract 80 from screen mode
@@ -19639,10 +19640,10 @@ Obj34_ChangeArt:			; XREF: Obj34_ChkPos2
 		jsr	(LoadPLC).l	; load explosion patterns
 		moveq	#$13,d0
 		jsr	(LoadPLC).l	; load star patterns
-		moveq	#0,d0
-		move.b	($FFFFFE10).w,d0
-		addi.w	#$15,d0
-		jsr	(LoadPLC).l	; load animal patterns
+	;	moveq	#0,d0
+	;	move.b	($FFFFFE10).w,d0
+	;	addi.w	#$15,d0
+	;	jsr	(LoadPLC).l	; load animal patterns
 
 Obj34_Delete:
 		tst.w	($FFFFFFF0).w		; is demo mode on?
@@ -19660,29 +19661,7 @@ HUDSpeed = 6
 Obj34_NoDemo:
 		cmpi.b	#$10,($FFFFF600).w		; is level SLZ1 (special stage)?
 		beq.w	Obj34_JustDelete		; if yes, branch
-		bra.s	@cont2
-
-; ===========================================================================
-		bne.s	@cont2
-
-		move.b	#$21,($FFFFD440).w		; load HUD object
-		move.b	#3,($FFFFD470).w		; set to TIME
-		move.w	#HudSpeed,($FFFFD072).w		; set X-speed
-		move.w	#HudSpeed,($FFFFD074).w		; set Y-speed
-
-		move.b	#$21,($FFFFD400).w		; load HUD object
-		move.b	#2,($FFFFD430).w		; set to RINGS
-		move.w	#HUDSpeed,d3			; load HUD speed into d3
-		neg.w	d3				; negate it
-		move.w	d3,($FFFFD432).w		; set X-speed
-		move.w	#HUDSpeed,($FFFFD434).w		; set Y-speed
-
-
-		bra.w	Obj34_JustDelete
-
-@cont2:
-; ===========================================================================
-
+		
 		cmpi.w	#$501,($FFFFFE10).w
 		beq	Obj34_JustDelete
 		cmpi.w	#$002,($FFFFFE10).w

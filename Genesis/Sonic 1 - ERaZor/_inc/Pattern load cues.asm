@@ -294,11 +294,9 @@ PLC_Signpost:	dc.w 1
 ; ---------------------------------------------------------------------------
 ; Pattern load cues - beta special stage warp effect
 ; ---------------------------------------------------------------------------
-PLC_Warp:	dc.w 1
+PLC_Warp:	dc.w 0
 		dc.l Nem_Stars		; invincibility	stars
 		dc.w $AB80
-		dc.l Nem_Explode	; explosion
-		dc.w $B400
 ; ---------------------------------------------------------------------------
 ; Pattern load cues - special stage
 ; ---------------------------------------------------------------------------

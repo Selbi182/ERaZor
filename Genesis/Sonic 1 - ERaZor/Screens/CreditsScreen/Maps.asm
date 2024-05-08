@@ -172,9 +172,9 @@ StartText:
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
-	dc.b	"    REDHOTSONIC     ",$FF
+	dc.b	"     SONICFAN[      ",$FF
 	dc.b	"                    ",$FF
-	dc.b	"      SONICFAN      ",$FF
+	dc.b	"    REDHOTSONIC     ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF

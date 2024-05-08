@@ -28,7 +28,7 @@
 	dc.w PLC_SLZAnimals-ArtLoadCues	; $18
 	dc.w PLC_SYZAnimals-ArtLoadCues	; $19
 	dc.w PLC_SBZAnimals-ArtLoadCues	; $1A
-	dc.w PLC_SpeStResult-ArtLoadCues; $1B
+	dc.w PLC_SSBlackout-ArtLoadCues ; $1B
 	dc.w PLC_Ending-ArtLoadCues	; $1C
 	dc.w PLC_TryAgain-ArtLoadCues	; $1D
 	dc.w PLC_EggmanSBZ2-ArtLoadCues	; $1E
@@ -364,13 +364,11 @@ PLC_SBZAnimals:	dc.w 0
 		dc.l Nem_Null
 		dc.w $B000
 ; ---------------------------------------------------------------------------
-; Pattern load cues - special stage results screen
+; Pattern load cues - Blackout Challenge special stage overrides
 ; ---------------------------------------------------------------------------
-PLC_SpeStResult:dc.w 1
-		dc.l Nem_ResultEm	; emeralds
-		dc.w $A820
-		dc.l Nem_MiniSonic	; mini Sonic
-		dc.w $AA20
+PLC_SSBlackout:	dc.w 0
+		dc.l Nem_SSSkull	; Skull block
+		dc.w $4A20
 ; ---------------------------------------------------------------------------
 ; Pattern load cues - ending sequence
 ; ---------------------------------------------------------------------------

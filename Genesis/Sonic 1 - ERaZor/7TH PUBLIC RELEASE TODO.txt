@@ -3,30 +3,10 @@ Sonic ERaZor 7 - To-Do List
 ---------------------------
 
 Improvements (art):
-	Make water in LZ flooding section a different palette or something to visualize that it isn't breathable anymore (then revert on collecting sign post)
 	New intro animation for Options Menu using H-scroll or something
 	Replace RGB sinewave background with starfield (fuzzy)
 	Fix underwater palette not turning gray when dying or pausing (if possible)
 	Improve the Nonstop Inhuman bumpers to make navigation easier and prevent getting stuck
-
-Casual/Frantic:
-	A new difficulty setting Casual/Frantic that reflects all the big gameplay changes between the old and new version
-	Casual:
-		All ring-based challenges are disabled (Ruined Place inhuman section, etc.)
-		Add the ability to stop Sonic from moving in Unreal Place when pressing any of ABC
-		Use square GOAL blocks for Casual mode (if we can't fix the hitbox)
-		Second emerald in Unreal Place doesn't need to be collected without touching the walls anymore (e.g. the first one doesn't respawn when touching a wall)
-		Use the new gravity control for Star Agony Place
-		Make Star Agony bomb shrapnels around the P-monitor predictable instead of random
-		Only lose 10 instead of 20 rings on hit
-		Timer counts one second at normal speed
-		Adjust movement speed to be fairer for the MD's shitty diagonal controls
-	Frantic:
-		All ring-based challenges return, same way as they were in the 2016 release
-		Use the old gravity inversion controls for Star Agony Place
-		Use sine-wave background for text screens only in Frantic mode (still requires photosensitive mode to be disables)
-		Perhaps only unlock Blackout Challenge door when completing the game in Frantic mode?
-		Timer counts one second at twice the speed (like it is now)
 
 Bugs:
 	Visual:
@@ -52,10 +32,29 @@ Bugs:
 		Fix spike not getting destroyed in inhuman section in Ruined Place when in nonstop inhuman
 		Fix going Finalor after Tutorial under weird conditions: https://youtu.be/N42QLTU5cDs?si=ZhzRJTnnf28kNj1L&t=2942
 		Fix Crabmeat boss not showing up when using nonstop inhuman sometimes
-		
+
+Casual/Frantic:
+	A new difficulty setting Casual/Frantic that reflects all the big gameplay changes between the old and new version
+	Casual:
+		All ring-based challenges are disabled (Ruined Place inhuman section, etc.)
+		Add the ability to stop Sonic from moving in Unreal Place when pressing any of ABC
+		Use square GOAL blocks for Casual mode (if we can't fix the hitbox)
+		Second emerald in Unreal Place doesn't need to be collected without touching the walls anymore (e.g. the first one doesn't respawn when touching a wall)
+		Use the new gravity control for Star Agony Place
+		Make Star Agony bomb shrapnels around the P-monitor predictable instead of random
+		Only lose 10 instead of 20 rings on hit
+		Timer counts one second at normal speed
+		Adjust movement speed to be fairer for the MD's shitty diagonal controls
+	Frantic:
+		All ring-based challenges return, same way as they were in the 2016 release
+		Use the old gravity inversion controls for Star Agony Place
+		Use sine-wave background for text screens only in Frantic mode (still requires photosensitive mode to be disables)
+		Perhaps only unlock Blackout Challenge door when completing the game in Frantic mode?
+		Timer counts one second at twice the speed (like it is now)
 
 ---------------------------
 
+Done:
 -	Fix text screens hard crash
 -	Disable text screens options (new option, replaces old S3 Art option)
 -	Fix that one bug when standing on monitors

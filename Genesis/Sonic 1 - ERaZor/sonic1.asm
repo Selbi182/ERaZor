@@ -5428,8 +5428,15 @@ loc_463C:
 		bne.s	loc_463C
 		move.w	#$8F02,(a5)
 		bsr	SS_BGLoad
+		
 		moveq	#$14,d0
 		bsr	RunPLC_ROM	; load special stage patterns
+		tst.b	($FFFFFF5F).w	; is this the blackout special stage?
+		beq.s	@contx		; if not, branch
+		moveq	#$1B,d0
+		bsr	RunPLC_ROM	; load unique blackout challenge patterns (skull)
+@contx:
+
 		lea	($FFFFD000).w,a1
 		moveq	#0,d0
 		move.w	#$7FF,d1
@@ -47441,6 +47448,8 @@ Eni_SSBg2:	incbin	mapeni\ssbg2.bin	; special stage background (mappings)
 Nem_SSBgCloud:	incbin	artnem\ssbg2.bin	; special stage clouds background
 		even
 Nem_SSGOAL:	incbin	artnem\ssgoal.bin	; special stage GOAL block
+		even
+Nem_SSSkull:	incbin	artnem\ssgoal_skull.bin	; special stage skull block (restored from the S1 proto)
 		even
 Nem_SSRBlock:	incbin	artnem\ssr.bin		; special stage R block
 		even

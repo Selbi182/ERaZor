@@ -214,6 +214,7 @@ SelbiSplash_ChangePal:
 		bne.s	@cont				; if not, branch
 		move.w	#1,($FFFFFFFA).w	 	; enable debug mode
 		move.b	#%01111111,($FFFFFF8B).w	; unlock all doors
+		move.b	#1,($FFFFFF93).w		; mark game as beaten
 		move.b	#$A8,d0				; set enter SS sound
 		jsr	PlaySound_Special		; play it
 

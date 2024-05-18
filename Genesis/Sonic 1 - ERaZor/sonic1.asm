@@ -15902,6 +15902,8 @@ Obj4B_YPositive:
 		jsr	PlaySound
 		move.b	#$C,d0			; VLADIK => Load hint number based on subtype
 		jsr	Tutorial_DisplayHint	; VLADIK => Display hint
+		moveq	#$A,d0			; reload SLZ patterns overwritten by the textbox
+		jsr	(LoadPLC).l		; (this is slow and inefficient as fuck lmao)
 		move.b	#$96,d0			; restart regular music
 		jmp	PlaySound
 		
@@ -31372,14 +31374,14 @@ WhiteFlash:
 		tst.b	($FFFFFFE7).w		; is inhuman mode on?
 		bne.s	WF_DoWhiteFlashx	; if yes, branch
 		tst.b	($FFFFFE2D).w		; is invincibility mode on?
-		beq.s	WF_Return		; if not, branch
+		beq.w	WF_Return		; if not, branch
 
 WF_DoWhiteFlashx:
 		move.b	#6,($FFFFFFB1).w	; set inhuman crush flag
 
 WF_DoWhiteFlash:
 		tst.b	($FFFFFFB9).w		; is a white flash currently in progres?
-		bne.s	WF_Return		; if yes, skip this one
+		bne.w	WF_Return		; if yes, skip this one
 		move.b	#1,($FFFFFFB9).w	; set white flash flag
 		lea	($FFFFFA80).w,a3	; load palette location to a3
 		lea	($FFFFCA00).w,a4	; load backup location to a4
@@ -31395,17 +31397,30 @@ WF_BackupPal_Loop:
 WF_MakeWhite_Loop:
 		move.w	(a1),d1			; get current color in palette
 		
-		moveq	#2,d4			; set repetitions to 2 (increases white intensity)
-		cmpi.w	#$302,($FFFFFE10).w	; is level SLZ3?
+		; intensity control
+		moveq	#2,d4			; intensity boost (for any normal stage)
+		
+		cmpi.w	#$302,($FFFFFE10).w	; is level Star Agony Place?
+		beq.s	@wfintensitynoboost	; if yes, branch
+		cmpi.b	#$10,($FFFFF600).w	; are we in a special stage?
 		bne.s	@wfintensity		; if not, branch
-		moveq	#0,d4			; don't increase intensity for SLZ (cause of how dark it is)
-@wfintensity:		
+		tst.b	($FFFFFFBF).w		; Unreal Place floating challenge enabled?
+		bne.s	@wfintensitynoboost	; if yes, branch
+		tst.b	($FFFFFF5F).w		; blackout challenge?
+		beq.s	@wfintensity		; if not, branch
+
+@wfintensitynoboost:
+		moveq	#0,d4			; no intensity boost (used for all stages with black backgrounds)
+@wfintensity:
 		move.w	d1,d2			; copy color
 		andi.w	#$00E,d2		; filter for red
 		cmpi.w	#$00E,d2		; are we at max?
 		beq.s	@maxred			; if yes, branch
 		addi.w	#$002,d1		; otherwise, boost color
 @maxred:
+		tst.b	($FFFFFF5F).w		; blackout challenge?
+		bne.s	@maxblue		; if yes, only affect red channel
+
 		move.w	d1,d2			; copy color
 		andi.w	#$0E0,d2		; filter for green
 		cmpi.w	#$0E0,d2		; are we at max?
@@ -31420,6 +31435,7 @@ WF_MakeWhite_Loop:
 @maxblue:
 		dbf	d4,@wfintensity		; repeat for increased intensity
 
+@intensityend:
 		move.w	d1,(a1)+		; set new color
 		dbf	d3,WF_MakeWhite_Loop	; loop
 		move.b	#12,($FFFFFFB2).w	; set ScrollHoriz delay and jumpdash flag 2
@@ -32061,8 +32077,8 @@ SD_End:
 ; ---------------------------------------------------------------------------
 
 AF_Accel =  $20	; acceleration speed
-AF_Decel =  $10	; deceleration speed
-AF_Limit = $400	; max speed
+AF_Decel =  $30	; deceleration speed
+AF_Limit = $500	; max speed
 
 Sonic_AirFreeze:
 		tst.b	($FFFFFF77).w		; is antigrav enabled?
@@ -32518,8 +32534,9 @@ SLZHitWall:
 		move.w	#$0470,($FFFFD00C).w
 		tst.w	($FFFFFF86).w
 		beq.s	@contx
-		move.w	($FFFFFF86).w,obX(a0)	; get Sonic's X-position
-		move.w	($FFFFFF88).w,obY(a0)	; get Sonic's Y-position
+		move.w	($FFFFFF86).w,obX(a0)	; restore saved X-position for Sonic
+		move.w	($FFFFFF88).w,obY(a0)	; restore saved Y-position for Sonic
+	;	jsr	FixLevel		; ideally this would work flawlessly but idfk how
 
 @contx:
 		clr.w	($FFFFD010).w
@@ -43910,7 +43927,7 @@ loc_1B2C8:
 
 loc_1B2E4:
 		move.b	($FFFFFEC5).w,d0
-		move.b	d0,$138(a1)
+		move.b	d0,$138(a1)		; controls the animations for goal blocks
 		move.b	d0,$160(a1)
 		move.b	d0,$148(a1)
 		move.b	d0,$150(a1)
@@ -43920,6 +43937,16 @@ loc_1B2E4:
 		move.b	d0,$1F0(a1)
 		move.b	d0,$1F8(a1)
 		move.b	d0,$200(a1)
+		
+		; only animate skull blocks while rotating
+		tst.b	($FFFFFF5F).w	; is this the blackout blackout special stage?
+		beq.s	@cont		; if not, branch
+		bset	#0,$138(a1)
+		move.b	($FFFFF602).w,d0
+		andi.b	#$C,d0		; is left/right	pressed?
+		bne.s	@cont	; if yes, branch
+		bclr	#0,$138(a1)
+@cont:
 		subq.b	#1,($FFFFFEC6).w
 		bpl.s	loc_1B326
 		move.b	#4,($FFFFFEC6).w
@@ -45026,8 +45053,14 @@ Obj09_GetCont:
 		move.b	#0,($FF24CA).l
 		move.b	#0,($FF254A).l
 		move.b	#0,($FF25CA).l
+		
+		jsr	CollectRing
+		tst.b	($FFFFFF5F).w	; is this the blackout blackout special stage?
+		beq.s	@cont
+		move.w	#$B7,d0
+		jsr	(PlaySound).l	; play rumbling sound
 
-Obj09_NoCont:
+@cont:
 		moveq	#0,d4
 		rts	
 ; ===========================================================================
@@ -45373,9 +45406,6 @@ Obj09_GOAL:
 		btst	#4,($FFFFFF92).w	; is nonstop inhuman enabled?
 		bne.w	Obj09_DoBumper		; if yes, branch
 
-		addq.b	#2,obRoutine(a0)	; run routine "Obj09_ExitStage"
-		move.w	#$A8,d0			; play special stage exit sound		
-		subq.b	#2,obRoutine(a0)	; don't run "Obj09_ExitStage"
 		move.w	#$C3,d0			; play giant ring sound
 		clr.b	($FFFFFF9F).w		; make R block usable again
 
@@ -45397,8 +45427,8 @@ Obj09_CPTeleEnd:
 		move.w	d1,obX(a0)		; restore X-pos
 		move.w	d2,obY(a0)		; restore Y-pos
 
-		tst.b	($FFFFFF5F).w	; is this the blackout blackout special stage?
-		bne.s	@conty
+	;	tst.b	($FFFFFF5F).w	; is this the blackout blackout special stage?
+	;	bne.s	@conty
 		jsr	WhiteFlash2
 
 @conty:

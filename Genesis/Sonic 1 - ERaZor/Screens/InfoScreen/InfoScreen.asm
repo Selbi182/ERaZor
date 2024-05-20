@@ -146,13 +146,13 @@ Info_NoTextChange:
 Info_ExitScreen:
 		cmpi.b	#1,($FFFFFF9E).w	; is this the intro-dialouge?
 		bne.s	Info_NoIntro		; if not, branch
-		move.b	#1,($A130F1).l		; enable SRAM
 		cmpi.b	#1,($FFFFFFA7).w	; is this the first time visiting the tutorial?
 		bgt.s	@notfirstvisit		; if not, branch
 		move.b	#1,($FFFFFFA7).w	; run first chapter screen
+		move.b	#1,($A130F1).l		; enable SRAM
 		move.b	#1,($200000+SRAM_Chapter).l	; save chapter to SRAM
-@notfirstvisit:
 		move.b	#0,($A130F1).l		; disable SRAM
+@notfirstvisit:
 		move.b	#$28,($FFFFF600).w	; set to chapters screen ($28)
 		rts
 

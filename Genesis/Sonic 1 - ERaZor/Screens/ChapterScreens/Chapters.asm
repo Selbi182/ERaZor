@@ -186,25 +186,17 @@ CS_PalLoop2:
 
 CS_SetUpLoop:
 		move.w	#$C0,($FFFFF614).w	; set wait time
+		cmpi.w	#$501,($FFFFFE10).w	; is this the tutorial?
+		beq.w	CS_Loop_OHDIGHZ		; if yes, go to a different loop
 
 ; ---------------------------------------------------------------------------
 CS_Loop:
-		cmpi.w	#$501,($FFFFFE10).w	; is this the tutorial?
-		bne.s	@nottutorial		; if not, branch
-		cmpi.w	#$30,($FFFFF614).w	; wait $30 frames before starting the intro cutscene music
-		bne.s	@nottutorial
-		move.b	#$95,d0			; play intro cutscene music
-		jsr	PlaySound
-		move.w	#$001,($FFFFFE10).w	; load intro cutscene
-		bra.w	CS_PlayLevel
-
-@nottutorial:
 		jsr	ObjectsLoad
 		jsr	BuildSprites
 		move.b	#4,($FFFFF62A).w
 		jsr	DelayProgram
-		andi.b	#$80,($FFFFF605).w ; is	Start button pressed?
-		bne.s	CS_EndLoop	; if yes, branch
+		btst	#7,($FFFFF605).w	; is Start button pressed?
+		bne.s	CS_EndLoop		; if yes, branch
 		tst.w	($FFFFF614).w		; test wait time
 		bne.s	CS_Loop			; if it isn't over, loop
 ; ---------------------------------------------------------------------------
@@ -262,7 +254,26 @@ CS_PlayLevel:
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
 
+CS_Loop_OHDIGHZ:
+		cmpi.w	#$30,($FFFFF614).w	; wait $30 frames before starting the intro cutscene music
+		bne.s	@nottutorial
+@ohdighzstart:
+		move.b	#$95,d0			; play intro cutscene music
+		jsr	PlaySound
+		move.w	#$001,($FFFFFE10).w	; load intro cutscene
+		bra.w	CS_PlayLevel
 
+@nottutorial:
+		jsr	ObjectsLoad
+		jsr	BuildSprites
+		move.b	#4,($FFFFF62A).w
+		jsr	DelayProgram
+		btst	#7,($FFFFF605).w	; is Start button pressed?
+		bne.s	@ohdighzstart		; if yes, branch
+		tst.w	($FFFFF614).w		; test wait time
+		bne.s	CS_Loop_OHDIGHZ		; if it isn't over, loop
+		bra.s	@ohdighzstart
+		
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Object 04 - Chapter Numbers

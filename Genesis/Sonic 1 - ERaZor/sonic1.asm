@@ -7645,6 +7645,8 @@ DTS_Loop:
 Deform_LZ:
 		cmpi.b	#3,($FFFFFF97).w	; was third lamppost passed?
 		beq.s	Deform_LZ_Extended	; if yes, use alternate deformation
+		tst.b 	($FFFFFFFE).w		; is the =P monitor enabled?
+		bne.w	Deform_LZ_Extended	; if yes, use alternate deformation
 
 	; original code, takes MUCH less RAM than the extended code
 		move.w	($FFFFF73A).w,d4

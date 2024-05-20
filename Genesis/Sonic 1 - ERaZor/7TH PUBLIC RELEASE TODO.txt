@@ -10,13 +10,14 @@ Improvements:
 Bugs:
 	Visual:
 		Fix cinematic HUD causing garbled explosions from title card graphics in GHZ2
-		Fix the garbled art when starting Star Agony
+		Fix the garbled art above you when starting Star Agony
 		Disable stage quitting in special stages during start of level and collecting the final emerald (glitchy art)
 		Fix bomb machine cutscene not loading graphics in time in cinematic mode
 		Fix Crabmeat boss during cinematic HUD getting the white stuck
 		Fix SLZ loop layout looking like this when teleporting at a weird time: https://youtu.be/N42QLTU5cDs?si=g6WXWbjjshVUHr0J&t=1410
 		Fix emeralds in Unreal Place sometimes visually glitching out (no idea how to reproduce...)
 		Fix underwater palette not turning gray when dying or pausing (if possible)
+		Fix explosion graphics not loading in intro cutscene
 		
 	Other:
 		Fix speed adjustments in intro cutscene and ending sequence
@@ -28,7 +29,6 @@ Bugs:
 		Fix music voices being corrupted after the special stage finish jingle
 		Fix SYZ background
 		Fix spike not getting destroyed in inhuman section in Ruined Place when in nonstop inhuman
-		Fix going Finalor after Tutorial under weird conditions: https://youtu.be/N42QLTU5cDs?si=ZhzRJTnnf28kNj1L&t=2942
 		Fix Crabmeat boss not showing up when using nonstop inhuman sometimes
 
 Casual/Frantic:
@@ -130,3 +130,4 @@ Done:
 -	Make Sonic invincible to goal blocks while nonstop inhuman (and add the palette thingy)
 -	Fix DPLC when pausing game (see Peelout)
 -	Fix title cards being broken on more advanced emulators (see LZ)
+-	Fix going Finalor after Tutorial under weird conditions: https://youtu.be/N42QLTU5cDs?si=ZhzRJTnnf28kNj1L&t=2942

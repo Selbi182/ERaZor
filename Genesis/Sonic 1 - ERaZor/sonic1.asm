@@ -6905,6 +6905,8 @@ TryAg_Exit:
 ; Object 8B - Starfield Star
 ; ---------------------------------------------------------------------------
 
+Starfield_SpawnInterval = 10
+
 Obj8B:
 		moveq	#0,d0
 		move.b	obRoutine(a0),d0
@@ -6913,42 +6915,86 @@ Obj8B:
 		jmp	DisplaySprite
 
 ; ===========================================================================
-@Index:	dc.w @Main-@Index
-		dc.w @Update-@Index
+@Index:		dc.w @Emitter-@Index
+		dc.w @Particle-@Index
+		dc.w @ChkOffscreen-@Index
 ; ===========================================================================
 
-@Main:
+@Emitter:
+		move.b	#Starfield_SpawnInterval,$31(a0)	; set casual spawn interval
+		move.w 	#$125,obX(a0)				; horizontally center emitter
+		move.w 	#$80,obScreenY(a0)			; set emitter to top of screen
+		btst	#5,($FFFFFF92).w			; frantic mode selected?
+		beq.s	@cont					; if not, branch
+		move.w 	#$170,obScreenY(a0)			; set emitter to top of screen
+		move.b	#Starfield_SpawnInterval/3,$31(a0)	; tripe particle spawn rate
+		
+@cont:
+		subq.b	#1,$30(a0)				; subtract 1 from remaining emitter time
+		bpl.s	@Return					; if time left, branch
+		move.b	$31(a0),$30(a0)				; reset timer
+
+		jsr	SingleObjLoad				; load star particle
+		bne.s	@Return
+		move.b	(a0),(a1)
+		move.b	#2,obRoutine(a1)
+		move.w	obX(a0),obX(a1)
+		move.w	obScreenY(a0),obScreenY(a1)
+@Return:
+		rts
+; ===========================================================================
+
+@Particle:
 		addq.b	#2,obRoutine(a0)
-		move.w	#$125,obX(a0)
-		move.w	#$EC,obScreenY(a0)
 		move.l	#Map_obj8B,obMap(a0)
 		move.w	#$0,obGfx(a0)
 		move.b	#0,obRender(a0)
-		jsr 	RandomDirection
 		
-@Update:
+		jsr	RandomDirection
+		
+		btst	#5,($FFFFFF92).w			; frantic mode selected?
+		bne.s	@contx					; if not, branch
+
+		tst.w	obVelY(a0)
+		bpl.s	@ChkOffscreen
+		not.w	obVelY(a0)
+		bra.s	@ChkOffscreen
+@contx:		
+		move.w	obVelY(a0),d0
+		muls.w	#3,d0
+		move.w	d0,obVelY(a0)
+		
+		tst.w	obVelY(a0)
+		bmi.s	@ChkOffscreen
+		not.w	obVelY(a0)
+; ---------------------------------------------------------------------------
+
+@ChkOffscreen:
 		jsr 	SpeedToScreenPos
+		addi.w	#$4,obVelY(a0)	; increase vertical speed
 		
 		; X < $40
-		cmpi.w	#$40, obX(a0)
+		cmpi.w	#$40,obX(a0)
 		bmi.w	@Destroy
 
 		; X > $1D0
-		cmpi.w	#$1D0, obX(a0)
+		cmpi.w	#$1D0,obX(a0)
 		bpl.w	@Destroy
 
-		; Y < $10
-		cmpi.w	#$10, obScreenY(a0)
+		; Y < $60
+		cmpi.w	#$60,obScreenY(a0)
 		bmi.w	@Destroy
 
 		; Y > $100
-		cmpi.w	#$200, obScreenY(a0)
+		cmpi.w	#$170,obScreenY(a0)
 		bpl.w	@Destroy
 		rts
 
 @Destroy:
-		addq.w  #4, sp 		; skip the `jmp DisplaySprite` so it doesn't save the object (tysm markey)
+		addq.w  #4,sp 		; skip the `jmp DisplaySprite` so it doesn't save the object (tysm markey)
 		jmp 	DeleteObject
+; ---------------------------------------------------------------------------
+; ===========================================================================
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -29563,6 +29609,7 @@ Obj03_Setup:
 		cmpi.w	#$501,($FFFFFE10).w	; is this the tutorial?
 		bne.s	@cont			; if not, branch
 		move.w	#($7300/$20),obGfx(a0)	; use alternate mappings
+		bset	#7,obGfx(a0)		; make it high plane
 	
 @cont:		
 		; "PLACE" text on level signs
@@ -29793,18 +29840,18 @@ Obj06_Display:
 
 Obj06_InfoBox:
 		btst	#1,($FFFFD022).w
-		bne.s	Obj06_NoA
+		bne.w	Obj06_NoA
 		move.b	#2,obFrame(a0)		; show A button
 		move.w	($FFFFD008).w,d0	; get Sonic's X-pos
 		sub.w	obX(a0),d0		; substract the X-pos from the current object from it
 		addi.w	#$20,d0			; add $10 to it
 		cmpi.w	#$40,d0			; is Sonic within $40 pixels of that object?
-		bhi.s	Obj06_NoA		; if not, branch
+		bhi.w	Obj06_NoA		; if not, branch
 		move.w	($FFFFD00C).w,d0	; get Sonic's X-pos
 		sub.w	obY(a0),d0		; substract the X-pos from the current object from it
 		addi.w	#$20,d0			; add $10 to it
 		cmpi.w	#$40,d0			; is Sonic within $40 pixels of that object?
-		bhi.s	Obj06_NoA		; if not, branch
+		bhi.w	Obj06_NoA		; if not, branch
 		
 	;	tst.b	($FFFFD040).w		; is HUD already loaded?
 	;	beq.w	Obj06_NoA		
@@ -29819,6 +29866,46 @@ Obj06_ChkA:
 		
 		cmpi.w	#$400,($FFFFFE10).w	; is level Uberhub?
 		bne.s	@cont			; if not, branch
+		
+		lea	($FFFFFB00).w,a1
+		moveq	#(64/2)-1,d2
+@loopdestroypalette:
+		jsr	RandomNumber
+		move.l	#$E0,d3
+		tst.l	d0
+		bmi.s	@0
+		lsl.l	#4,d3
+		
+@0:
+		and.w	d3,d0
+		move.w	d0,(a1)+
+		and.w	d3,d1
+		move.w	d1,(a1)+
+		dbf	d2,@loopdestroypalette
+		
+	;	jsr	RandomNumber
+	;	andi.l	#$0EEE0EEE,d0
+	;	andi.l	#$0EEE0EEE,d1
+	;	move.l	d0,(a1)+
+	;	move.l	d0,(a1)+
+	;	dbf	d2,@loopdestroypalette
+		
+		move.w	#$000,($FFFFFB24).w
+		move.w	#$020,($FFFFFB26).w
+		move.w	#$040,($FFFFFB28).w
+		move.w	#$060,($FFFFFB2A).w
+		move.w	#$080,($FFFFFB2C).w
+		move.w	#$0A0,($FFFFFB2E).w
+		move.w	#$0C0,($FFFFFB30).w
+		move.w	#$0E0,($FFFFFB32).w
+		move.w	#$0E0,($FFFFFB34).w
+		
+		clr.w	($FFFFFB36).w
+		move.w	#$0EEE,($FFFFFB38).w
+		move.w	#$0CCC,($FFFFFB3A).w
+		move.w	#$0AAA,($FFFFFB3C).w
+		
+		
 		jsr	SineWavePalette
 		move.w	#$93,d0			; play special stage jingle...
 		jsr	PlaySound		; ...specifically because it tends to ruin the music following it lol
@@ -30068,11 +30155,15 @@ Obj01_M_NotGHZ2:
 		bra.s	Obj01_Speedcont		; skip
 ; ===========================================================================
 
-Obj01_EndingSpeed:
+SetEndingSpeeds:
 		; custom speed values to get the timing on the cliff gag right
 		move.w	#$600,($FFFFF760).w	; Sonic's top speed (ending sequence)
 		move.w	#$C,($FFFFF762).w	; Sonic's acceleration (ending sequence)
 		move.w	#$30,($FFFFF764).w	; Sonic's deceleration (ending sequence)
+		rts
+
+Obj01_EndingSpeed:
+		bsr.s	SetEndingSpeeds
 
 Obj01_Speedcont:
 		move.b	#5,($FFFFD1C0).w
@@ -31452,6 +31543,8 @@ WF_MakeWhite_Loop:
 		bne.s	@wfintensitynoboost	; if yes, branch
 		tst.b	($FFFFFF5F).w		; blackout challenge?
 		beq.s	@wfintensity		; if not, branch
+		btst	#5,($FFFFFF92).w	; are we in Frantic mode?
+		bne.s	@wfintensity		; if yes, branch
 
 @wfintensitynoboost:
 		moveq	#0,d4			; no intensity boost (used for all stages with black backgrounds)
@@ -32904,18 +32997,17 @@ Sonic_ResetOnFloor:			; XREF: PlatformObject; et al
 		clr.b	($FFFFFF96).w
 		move.b	#1,($FFFFFFB8).w
 		bclr	#3,obStatus(a0)	; clear "standing on object" flag
+		
+		cmpi.w	#$601,($FFFFFE10).w	; is this the ending sequence?
+		bne.s	@conty			; if not, branch
+		jsr	SetEndingSpeeds
+		
+@conty:
 		cmpi.w	#$502,($FFFFFE10).w	; is level FZ?
 		bne.s	S_ROF_NotFZ		; if not branch
 		move.w	#Sonic_TopSpeed,($FFFFF760).w	; restore Sonic's speed
 		move.w	#Sonic_Acceleration,($FFFFF762).w	; restore Sonic's acceleration
 S_ROF_NotFZ:
-		btst	#4,obStatus(a0)
-		beq.s	loc_137AE
-		nop	
-		nop	
-		nop	
-
-loc_137AE:
 		bclr	#5,obStatus(a0)
 		bclr	#1,obStatus(a0)
 		bclr	#4,obStatus(a0)
@@ -43996,13 +44088,16 @@ loc_1B2E4:
 		move.b	d0,$200(a1)
 		
 		; only animate skull blocks while rotating
-		tst.b	($FFFFFF5F).w	; is this the blackout blackout special stage?
-		beq.s	@cont		; if not, branch
-		bset	#0,$138(a1)
-		move.b	($FFFFF602).w,d0
-		andi.b	#$C,d0		; is left/right	pressed?
-		bne.s	@cont	; if yes, branch
-		bclr	#0,$138(a1)
+		tst.b	($FFFFFF5F).w		; is this the blackout blackout special stage?
+		beq.s	@cont			; if not, branch
+		bclr	#0,$138(a1)		; normal skull icon
+		tst.b	($FFFFFFAE).w		; whiteflash in progress?
+		bne.s	@cont2			; if yes, branch
+		move.b	($FFFFF602).w,d0	; get button presses
+		andi.b	#$C,d0			; is left/right	held?
+		beq.s	@cont			; if not, branch
+@cont2:
+		bset	#0,$138(a1)		; use lit-up skull icon
 @cont:
 		subq.b	#1,($FFFFFEC6).w
 		bpl.s	loc_1B326
@@ -45516,9 +45611,13 @@ Obj09_NotSS1x:
 		clr.w	obVelY(a0)
 		clr.w	obInertia(a0)
 
-		tst.b	($FFFFFF5F).w	; is this the blackout blackout special stage?
-		beq.s	@cont
-		move.w	#$A3,d0
+		tst.b	($FFFFFF5F).w		; is this the blackout blackout special stage?
+		beq.s	@cont			; if not, branch
+		move.w	#$A3,d0			; play death sound
+		btst	#5,($FFFFFF92).w	; are we in Frantic mode?
+		beq.s	@cont			; if not, branch
+		move.w	#$B9,d0			; play annoying crumbling sound instead
+		
 
 @cont:
 		jsr	(PlaySound_Special).l	; play sound

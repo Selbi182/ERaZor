@@ -5,7 +5,6 @@
 ; ===========================================================================
 
 GameplayStyleScreen:
-
 		move.b	#$E0,d0
 		jsr	PlaySound_Special		; fade out music
 		jsr	ClearPLC			; clear PLCs
@@ -44,15 +43,36 @@ GameplayStyleScreen:
 
 		lea	(Pal_Difficulty).l,a1		; load palette
 		lea	($FFFFFB80).w,a2
-		move.b	#8,d0
+		moveq	#(128/4)-1,d0
 		
 @PalLoopOHD:
 		move.l	(a1)+,(a2)+
 		dbf	d0,@PalLoopOHD
-
+		
+		bsr	GSS_SetColor
 		jsr	Pal_FadeTo			; fade in
 
+		jsr	SingleObjLoad
+		bne.s 	GSS_MainLoop			; load star object
+		move.b	#$8B,0(a1)
+		bra.s	GSS_MainLoop
+
 ; ===========================================================================
+; ---------------------------------------------------------------------------
+GSS_SetColor:
+		moveq	#0,d2
+		moveq	#0,d3
+		move.w	#$0EEE,d2
+		move.w	#$0666,d3
+		btst 	#5,($FFFFFF92).w 
+		beq.s	@cont
+		exg.l	d2,d3
+@cont:
+		move.w 	d2,($FFFFFB06).w ; line 0:3 white
+		move.w 	d2,($FFFFFB86).w ; line 0:3 white
+		move.w 	d3,($FFFFFB08).w ; line 0:4 gray
+		move.w 	d3,($FFFFFB88).w ; line 0:4 gray
+		rts
 ; ---------------------------------------------------------------------------
 
 ; I HATE THIS CODE SO MUCH
@@ -62,66 +82,23 @@ GSS_MainLoop:
 		jsr	ObjectsLoad
 		jsr	BuildSprites
 
-		jsr	SingleObjLoad
-		bne.s 	@NoObject
+		move.b	($FFFFF605).w,d1	; get button presses
+	 	andi.b	#$7F,d1			; is anything but start pressed?
+		beq.s	@NoUpdate		; if not, branch
+		bchg 	#5,($FFFFFF92).w 	; toggle casual/frantic flag
+		bsr	GSS_SetColor
+		move.w	#$D8,d0
+		jsr	(PlaySound_Special).l	; play "blip" sound
 
-		move.b	#$8B, 0(a1)
-		move.w 	#$150, obX(a1)
-		move.w 	#$A0, obScreenY(a1)
-
-@NoObject:
-		btst 	#0, ($FFFFF605).w	; is up being held?
-		bne.s 	@PressedUp		; branch
-
-		move.b 	#1, d0 				; frantic mode
-		btst 	#1, ($FFFFF605).w	; is down being held?
-		bne.s 	@PressedDown		; branch
-
+@NoUpdate:
 		andi.b	#$80,($FFFFF605).w	; is Start button pressed?
 		beq.s	GSS_MainLoop		; if not, branch
-		
-		bra.w 	@Exit
-; ---------------------------------------------------------------------------
-
-@PressedUp:
-		btst 	#5, ($FFFFFF92).w 	; already pissbaby mode?
-		beq.s 	@NoUpdateUp			; don't update
-
-		move.w	#$D8, d0
-		jsr		(PlaySound_Special).l ;	play "blip" sound
-
-		move.w 	#$0EEE, ($FFFFFB06).w ; line 0:3 white
-		move.w 	#$0666, ($FFFFFB08).w ; line 0:4 gray
-		
-		bclr 	#5, ($FFFFFF92).w 	; set to pissbaby mode
-
-@NoUpdateUp:
-		andi.b	#$80,($FFFFF605).w	; is Start button pressed?
-		beq.s	GSS_MainLoop		; if not, branch
-
-; ---------------------------------------------------------------------------
-
-@PressedDown:
-		btst 	#5, ($FFFFFF92).w 	; already frantic mode?
-		bne.s 	@NoUpdateDown			; don't update
-
-		move.w	#$D8, d0
-		jsr		(PlaySound_Special).l ;	play "blip" sound
-		
-		move.w 	#$0666, ($FFFFFB06).w ; line 0:3 gray
-		move.w 	#$0EEE, ($FFFFFB08).w ; line 0:4 white
-
-		bset 	#5, ($FFFFFF92).w	; set to frantic mode
-
-@NoUpdateDown:
-		andi.b	#$80,($FFFFF605).w	; is Start button pressed?
-		beq.w	GSS_MainLoop		; if not, branch
 
 ; ---------------------------------------------------------------------------
 
 @Exit:
 		move.w	#$C3,d0			; set giant ring sound
-		jsr		PlaySound_Special	; play giant ring sound
+		jsr	PlaySound_Special	; play giant ring sound
 		jsr 	WhiteFlash2
 		jsr 	Pal_FadeFrom
 
@@ -129,18 +106,23 @@ GSS_MainLoop:
 
 @Wait:
 		move.b	#$4, ($FFFFF62A).w
-		jsr		DelayProgram
+		jsr	DelayProgram
 
 		tst.w 	($FFFFF614).w
 		bne.s 	@Wait
+		
+		cmpi.w	#3,($FFFFFF82).w	; did we come from the options menu?
+		bne.s	@StartTutorial		; if not, start tutorial
+		move.b	#$24,($FFFFF600).w	; otherwise return to options menu
+		rts
 
+@StartTutorial:
 		move.w	#$501,($FFFFFE10).w	; set level to FZ
 		move.b	#$C,($FFFFF600).w	; set to level
 		move.w	#1,($FFFFFE02).w	; restart level
-		rts
 
 @rts:
-	rts
+		rts
 
 ; ---------------------------------------------------------------------------
 ; ===========================================================================

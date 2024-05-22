@@ -736,38 +736,39 @@ Hint_4:
 	dc.b	'0Adw193q4HG5!"%q6/%4',_br
 	dc.b	'8ETRqZ91/D" we03()a)',_br
 	dc.b	'( B)f=)A=2h3401`?!G ',_br
-	dc.b	'#D )26aEd0a..oH My G',_br
-	dc.b	'od WhAT hAVe yOu doN',_br
-	dc.b	'E eVErYTHIng iS RUin',_br
-	dc.b	'eD nOw.:.'
+	dc.b	'#D )26aEd0a..oh my g',_br
+	dc.b	'od what have you don',_br
+	dc.b	'e everything is ruin',_br
+	dc.b	'ed now.:.'
 	dc.b	_pause,_cls
-	dc.b	'BUT HEY, SEEING',_br
-	dc.b	'THAT YOU\VE MADE IT',_br
-	dc.b	'HERE, EXPLORING',_br
-	dc.b	'SEEMS TO BE JUST',_br
-	dc.b	'YOUR THING.',_br
+	dc.b	'but hey, seeing',_br
+	dc.b	'that you\ve made it',_br
+	dc.b	'here, exploring',_br
+	dc.b	'seems to be just',_br
+	dc.b	'your thing.',_br
 	dc.b	_pause,_cls
-	dc.b	'SO TELL YA WHAT,',_br
-	dc.b	'IF YOU WANT TO',_br
-	dc.b	'EXPLORE EVEN MORE',_br
-	dc.b	'HERE\S THE LINK TO',_br
-	dc.b	'THE SOURCE CODE',_br
-	dc.b	'OF SONIC ERAZOR!',_br
+	dc.b	'so tell ya what,',_br
+	dc.b	'if you want to',_br
+	dc.b	'explore even more',_br
+	dc.b	'here\s the link to',_br
+	dc.b	'the source code',_br
+	dc.b	'of sonic erazor!',_br
 	dc.b	_pause,_cls
-	dc.b	'https0//',_br
-	dc.b	'erazor:selbi:club',_br
+	dc.b	'HTTPS0//',_br
+	dc.b	'ERAZOR:SELBI:CLUB',_br
 	dc.b	'',_br	
-	dc.b	'I HOPE YOU CAN ',_br	
-	dc.b	'DECIPHER THAT URL.',_br	
-	dc.b	'I WAS TOO LAZY TO',_br	
-	dc.b	'ADD COLONS AND',_br
-	dc.b	'SLASHES TO THE FONT.',_br
+	dc.b	'i hope you can',_br	
+	dc.b	'decipher that link.',_br	
+	dc.b	'i was too lazy to',_br	
+	dc.b	'add colons and',_br
+	dc.b	'slashes to the font.',_br
 	dc.b	_pause,_cls
-	dc.b	'HAVE FUN! AND OH YEAH'
-	dc.b	'THE LEVEL IS STILL A',_br
-	dc.b	'COMPLETE MESS.',_br
-	dc.b	'',_br,_pause
+	dc.b	'have fun! and oh yeah'
+	dc.b	'the level is still a',_br
+	dc.b	'complete mess.',_br
+	dc.b	_pause
 	dc.b	'YES, I WAS TOO LAZY',_br
+	dc.b	_br
 	dc.b	'TO FIX THAT TOO.',_br
 	dc.b	'',_br,_pause
 	dc.b	'BITE ME.',_br

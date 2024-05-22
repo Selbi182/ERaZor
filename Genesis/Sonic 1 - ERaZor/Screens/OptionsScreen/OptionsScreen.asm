@@ -180,10 +180,12 @@ Options_HandleGameplayStyle:
 		cmpi.w	#3,d0
 		bne.s	Options_HandleExtendedCamera
 		move.b	($FFFFF605).w,d1	; get button presses
-		andi.b	#$FC,d1			; is left, right, A, B, C, or Start pressed?
+	 	andi.b	#$FC,d1			; is left, right, A, B, C, or Start pressed?
 		beq.w	Options_Return		; if not, branch
-		bchg	#5,($FFFFFF92).w	; toggle gameplay style
-		bra.w	Options_UpdateTextAfterChange
+	;	bchg	#5,($FFFFFF92).w	; toggle gameplay style
+	;	bra.w	Options_UpdateTextAfterChange
+		move.b	#$30,($FFFFF600).w	; set to GameplayStyleScreen
+		rts
 ; ---------------------------------------------------------------------------
 
 Options_HandleExtendedCamera:

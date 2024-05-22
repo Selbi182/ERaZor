@@ -98,7 +98,7 @@ StartText:
 	; 5
 	dc.b	$0D						; Number of lines
 	dc.b	"                    ",$FF
-	dc.b	"    MUSIC PORTED    ",$FF
+	dc.b	" MAIN MUSIC PORTED  ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"         BY         ",$FF
 	dc.b	"                    ",$FF
@@ -106,7 +106,7 @@ StartText:
 	dc.b	"                    ",$FF
 	dc.b	"      DALEKSAM      ",$FF
 	dc.b	"                    ",$FF
-	dc.b	"      SPANNER       ",$FF
+	dc.b	"   AKA AMPHOBIOUS   ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
@@ -115,15 +115,15 @@ StartText:
 	; 6
 	dc.b	$0D						; Number of lines
 	dc.b	"                    ",$FF
-	dc.b	"  SOUND DRIVER AND  ",$FF
+	dc.b	"  ADDITIONAL MUSIC  ",$FF
 	dc.b	"                    ",$FF
-	dc.b	"      MUSIC BY      ",$FF
-	dc.b	"                    ",$FF
-	dc.b	"                    ",$FF
+	dc.b	"         BY         ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
-	dc.b	"  EDUARDOKNUCKLES   ",$FF
 	dc.b	"                    ",$FF
+	dc.b	"       SPANNER      ",$FF
+	dc.b	"                    ",$FF
+	dc.b	"       EDUARDO      ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
@@ -154,9 +154,9 @@ StartText:
 	dc.b	"  BETA TESTING BY   ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
-	dc.b	"   PEANUT NOCEDA    ",$FF
-	dc.b	"                    ",$FF
 	dc.b	"       AJCOX        ",$FF
+	dc.b	"                    ",$FF
+	dc.b	"   PEANUT NOCEDA    ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"        GIVE        ",$FF
 	dc.b	"                    ",$FF

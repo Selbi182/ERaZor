@@ -733,9 +733,44 @@ Hint_3:
 
 ;		 --------------------
 Hint_4:
-	dc.b	'YOU SHOULDN\T BE',_br
-	dc.b	'ABLE TO READ THIS',_br
-	dc.b	'LOL',_br
+	dc.b	'0Adw193q4HG5!"%q6/%4',_br
+	dc.b	'8ETRqZ91/D" we03()a)',_br
+	dc.b	'( B)f=)A=2h3401`?!G ',_br
+	dc.b	'#D )26aEd0a..oH My G',_br
+	dc.b	'od WhAT hAVe yOu doN',_br
+	dc.b	'E eVErYTHIng iS RUin',_br
+	dc.b	'eD nOw.:.'
+	dc.b	_pause,_cls
+	dc.b	'BUT HEY, SEEING',_br
+	dc.b	'THAT YOU\VE MADE IT',_br
+	dc.b	'HERE, EXPLORING',_br
+	dc.b	'SEEMS TO BE JUST',_br
+	dc.b	'YOUR THING.',_br
+	dc.b	_pause,_cls
+	dc.b	'SO TELL YA WHAT,',_br
+	dc.b	'IF YOU WANT TO',_br
+	dc.b	'EXPLORE EVEN MORE',_br
+	dc.b	'HERE\S THE LINK TO',_br
+	dc.b	'THE SOURCE CODE',_br
+	dc.b	'OF SONIC ERAZOR!',_br
+	dc.b	_pause,_cls
+	dc.b	'https0//',_br
+	dc.b	'erazor:selbi:club',_br
+	dc.b	'',_br	
+	dc.b	'I HOPE YOU CAN ',_br	
+	dc.b	'DECIPHER THAT URL.',_br	
+	dc.b	'I WAS TOO LAZY TO',_br	
+	dc.b	'ADD COLONS AND',_br
+	dc.b	'SLASHES TO THE FONT.',_br
+	dc.b	_pause,_cls
+	dc.b	'HAVE FUN! AND OH YEAH'
+	dc.b	'THE LEVEL IS STILL A',_br
+	dc.b	'COMPLETE MESS.',_br
+	dc.b	'',_br,_pause
+	dc.b	'YES, I WAS TOO LAZY',_br
+	dc.b	'TO FIX THAT TOO.',_br
+	dc.b	'',_br,_pause
+	dc.b	'BITE ME.',_br
 	dc.b	_pause,_end
 
 ;		 --------------------
@@ -853,6 +888,11 @@ Hint_Easter_SLZ:
 	dc.b	'WERE YOU EXPECTING',_br
 	dc.b	'ANYTHING NAUGHTY',_br
 	dc.b	'UP HERE?',_br
+	dc.b	_pause,_cls
+	dc.b	'YOU ARE',_br
+	dc.b	_br
+	dc.b	'CATEGORICALLY',_br
+	dc.b	'DISGUSTING.',_br
 	dc.b	_pause,_end
 
 	even

@@ -3098,7 +3098,7 @@ loc_2128:
 ; ||||||||||||||| S U B R O U T I N E |||||||||||||||||||||||||||||||||||||||
 
 
-PalLoad3_Water:
+PalLoad3_Water:	; this subroutine is for palette line 1
 		lea	(PalPointers).l,a1
 		lsl.w	#3,d0
 		adda.w	d0,a1
@@ -3117,7 +3117,7 @@ loc_2144:
 ; ||||||||||||||| S U B R O U T I N E |||||||||||||||||||||||||||||||||||||||
 
 
-PalLoad4_Water:
+PalLoad4_Water:	; this subroutine is for palette lines 2-4
 		lea	(PalPointers).l,a1
 		lsl.w	#3,d0
 		adda.w	d0,a1
@@ -3163,6 +3163,7 @@ Pal_Ending:		incbin	pallet\ending.bin
 Pal_Null:		incbin	pallet\null.bin
 Pal_BCutscene:		incbin	pallet\bombcutscene.bin
 Pal_SpecialEaster:	incbin	pallet\specialeaster.bin
+Pal_LZWater2_Evil:	incbin	pallet\lz_uw2_evil.bin
 
 ; ---------------------------------------------------------------------------
 ; Subroutine to	delay the program by ($FFFFF62A) frames
@@ -4314,6 +4315,10 @@ Level_ChkWaterPal:
 		moveq	#$D,d0		; pallet $0D (SBZ3 underwater)
 
 Level_WaterPal2:
+		cmpi.b	#3,($FFFFFF97).w
+		bne.s	@cont
+		moveq	#$17,d0		; load toxic water palette
+@cont:
 		bsr	PalLoad4_Water
 
 Level_Delay:
@@ -6242,8 +6247,9 @@ Map_obj80:
 ; ---------------------------------------------------------------------------
 
 EndingSequence:				; XREF: GameModeArray
-		move.b	#1,($FFFFFF93).w	; you have beaten the game, congrats
-		jsr	SRAM_SaveNow		; save
+	;	move.b	#1,($FFFFFF93).w	; you have beaten the game, congrats
+	;	jsr	SRAM_SaveNow		; save
+	; moved to blackout challenge reward
 		
 		bsr	Pal_FadeFrom
 		lea	($FFFFD000).w,a1
@@ -9792,9 +9798,9 @@ loc_71FC:				; CODE XREF: LoadTilesFromStart2+22?j
 		cmpi.b	#4,($FFFFF600).w ; is this the title screen?
 		beq.s	@cont
 		moveq	#-$10,d3
-		cmpi.w	#$302,($FFFFFE10).w
-		bne.s	@cont
-		addi.w	#$10,d4
+	;	cmpi.w	#$302,($FFFFFE10).w	; in SLZ3?
+	;	bne.s	@cont			; if not, branch
+	;	addi.w	#$10,d4
 
 @cont:
 		move.l	d3,d5				; moving up a tad
@@ -10642,7 +10648,7 @@ Resize_SLZ3:
 		cmpi.w	#$1FC0,($FFFFD008).w
 		bcs.w	@cont
 		
-		cmpi.w	#$49,($FFFFD00C).w
+		cmpi.w	#$4C,($FFFFD00C).w
 		bcc.s	@cont2
 		move.w	#$48,($FFFFD00C).w
 		move.w	#$200,($FFFFD010).w
@@ -12001,14 +12007,18 @@ Obj18_Action2:				; XREF: Obj18_Index
 		bpl.s	@cont
 		neg.w	d0
 @cont:
-		cmpi.w	#$300,d0		; Sonic moving fast enough?
-		bgt.s	Obj18_NotSYZX		; if yes, don't display arrows
+	;	cmpi.w	#$300,d0		; Sonic moving fast enough?
+	;	bgt.s	Obj18_NotSYZX		; if yes, don't display arrows
+		
 		move.b	#1,$3F(a0)
-		btst	#1,($FFFFF605).w
-		beq.s	Obj18_NotSYZX
-		move.b	#10,($FFFFFF64).w		; camera shaking
-		bsr	SingleObjLoad
-		bne.s	Obj18_NotSYZX
+		btst	#1,($FFFFF605).w	; down pressed?
+		beq.s	Obj18_NotSYZX		; if not, branch
+		move.b	#10,($FFFFFF64).w	; camera shaking
+		move.w	obX(a0),($FFFFD008).w	; force Sonic to center of platform
+		clr.w	($FFFFD010).w		; clear Sonic's X speed
+		move.w	#$800,($FFFFD012).w
+		bsr	SingleObjLoad		; load explosion object
+		bne.s	Obj18_SYZEnd
 		move.b	#$3F,(a1)
 		move.w	obX(a0),obX(a1)
 		move.w	obY(a0),obY(a1)
@@ -12016,7 +12026,9 @@ Obj18_Action2:				; XREF: Obj18_Index
 		bclr	#3,($FFFFD022).w
 		bset	#1,($FFFFD022).w
 		move.b	#2,($FFFFD01C).w
+Obj18_SYZEnd:
 		jmp	DeleteObject
+
 
 Obj18_NotSYZX:
 		cmpi.w	#$101,($FFFFFE10).w	; is level LZ2?
@@ -13531,19 +13543,26 @@ Obj3F_Index:	dc.w Obj3F_Main-Obj3F_Index
 ; ===========================================================================
 
 Obj3F_Main:				; XREF: Obj3F_Index
+		cmpi.w	#$502,($FFFFFE10).w	; is level FZ?
+		bne.s	@cont			; if not, branch
+		move.w	($FFFFD008).w,d0
+		cmpi.w	#$2400,d0
+		bcc.s	Obj3F_Main2
+@cont:
 		bsr	SingleObjLoad
 		bne.s	Obj3F_Main2
-		move.b	#$3F,0(a1)	; load animal object
+		move.b	#$3F,0(a1)	; load another explosion object
 		move.w	obX(a0),obX(a1)
 		move.w	obY(a0),obY(a1)
 		move.w	$3E(a0),$3E(a1)
 		move.b	#2,obRoutine(a1)
 		move.b	$30(a0),$30(a1)
-		btst	#0,($FFFFFE05).w
-		bne.s	Obj3F_Main2
+		
+		btst	#0,($FFFFFE05).w	; are we on an odd frame?
+		bne.s	Obj3F_Main2		; if yes, don't load a third explosion
 		bsr	SingleObjLoad
 		bne.s	Obj3F_Main2
-		move.b	#$3F,0(a1)	; load animal object
+		move.b	#$3F,0(a1)	; load explosion object
 		move.w	obX(a0),obX(a1)
 		move.w	obY(a0),obY(a1)
 		move.w	$3E(a0),$3E(a1)
@@ -16624,13 +16643,15 @@ Obj2E_Main:				; XREF: Obj2E_Index
 		move.b	#1,$3F(a0)		; set flag
 
 Obj2E_Move:				; XREF: Obj2E_Index
+		cmpi.b	#8,obAnim(a0)		; is the P-monitor?
+		bne.s	@conty			; if not, branch
+		move.b	#1,($FFFFFF73).w	; re-enable spindash ability
+
+@conty:
 		tst.b	$3F(a0)			; was flag set?
 		bne.s	Obj2E_Original		; if yes, branch
 		cmpi.b	#7,obAnim(a0)		; is that a S monitor?
 		beq.s	Obj2E_Original		; if yes, use original stuff
-		cmpi.b	#8,obAnim(a0)		; is the P-monitor?
-		bne.s	@cont			; if not, branch
-		move.b	#1,($FFFFFF73).w	; re-enable spindash ability
 
 @cont:
 		btst	#1,($FFFFD022).w	; is Sonic on the ground?
@@ -16889,9 +16910,11 @@ Obj2E_Goggles_NotMZ:
 Obj2E_Goggles_NotSLZ3:
 		move.b	#50,($FFFFFFD2).w ; make current displayed rings falling
 		move.b	#1,($FFFFFFB1).w
+		move.w	#$B7,d0
+		jsr	(PlaySound).l	; play rumble sound
 		bsr	SingleObjLoad		; load from SingleObjLoad
 		bne.s	Obj2E_ChkEnd		; if SingleObjLoad is already in use, don't load obejct
-		move.b	#5,($FFFFFF64).w
+		move.b	#120,($FFFFFF64).w
 ; ===========================================================================
 
 Obj2E_ChkEnd:
@@ -29570,7 +29593,19 @@ Obj03_Display:
 Obj03_NotOdd:
 		bsr	DisplaySprite		; display sprite
 
-Obj03_NoDisplay:
+Obj03_BackgroundColor:
+	;	move.w	($FFFFFB40).w,d2
+	;	jsr	SineWavePalette
+	;	move.w	($FFFFFB40).w,d2
+	
+		moveq	#0,d2
+		btst	#0,($FFFFFE05).w
+		beq.s	@cont
+		move.w	#$222,d2
+@cont:
+		move.w	d2,($FFFFFB5E).w	; apply color (color 16 of palette row 3)
+
+Obj03_ChkDelete:
 		move.w	obX(a0),d0
 		andi.w	#$FF80,d0
 		move.w	($FFFFF700).w,d1
@@ -29642,9 +29677,9 @@ Obj06_Setup:
 
 Obj06_ArtLocFound:
 		move.b	#0,$30(a0)
-		tst.b	obSubtype(a0)
-		beq.s	Obj06_ChkDist
-		move.b	#4,obRoutine(a0)
+		tst.b	obSubtype(a0)			; is the subtype 0?
+		beq.s	Obj06_ChkDist			; if yes, that means it's a regular hard part skipper, so branch
+		move.b	#4,obRoutine(a0)		; otherwise it's a tutorial box
 		move.b	#1,obFrame(a0)
 		bra.w	Obj06_InfoBox
 
@@ -29781,9 +29816,16 @@ Obj06_ChkA:
 
 		moveq	#$FFFFFFD9,d0		; VLADIK => Optimized (couldn't resist =D)
 		jsr	PlaySound		; play up/down sound
+		
+		cmpi.w	#$400,($FFFFFE10).w	; is level Uberhub?
+		bne.s	@cont			; if not, branch
+		jsr	SineWavePalette
+		move.w	#$93,d0			; play special stage jingle...
+		jsr	PlaySound		; ...specifically because it tends to ruin the music following it lol
 
+@cont:
 		jsr	DisplaySprite		; VLADIK => Make sure sprite is displayed
-		move.b	obSubtype(a0),d0		; VLADIK => Load hint number based on subtype
+		move.b	obSubtype(a0),d0	; VLADIK => Load hint number based on subtype
 		jmp	Tutorial_DisplayHint	; VLADIK => Display hint
 
 Obj06_NoA:
@@ -31907,10 +31949,10 @@ SPO_End:
 Sonic_Spindash:
 		cmpi.w	#$200,($FFFFFE10).w	; is level MZ1?
 		bne.s	Spdsh_NotMZ		; if not, branch
-		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
-		bne.s	Spdsh_NotMZ
-		tst.b	($FFFFFF73).w
-		bne.s	Spdsh_NotMZ
+	;	btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
+	;	bne.s	Spdsh_NotMZ		; if yes, branch
+		tst.b	($FFFFFF73).w		; P monitor broken?
+		bne.s	Spdsh_NotMZ		; if yes, branch
 		tst.b	($FFFFFFE7).w		; is inhuman mode on?
 		bne.w	locret2_1AC8C		; if yes, branch
 
@@ -37611,11 +37653,24 @@ Obj79_HitLamp:
 		addi.w	#$40,d0
 		cmpi.w	#$68,d0
 		bcc.w	locret_16F90
+		
+Obj79_Hit:		
 		move.w	#$A1,d0
 		jsr	(PlaySound_Special).l ;	play lamppost sound
-		cmpi.W	#$101,($FFFFFE10).w
+
+		cmpi.W	#$101,($FFFFFE10).w	; are we in LZ2?
+		bne.s	@cont			; if not, branch
+		move.b	obSubtype(a0),d2
+		cmp.b	($FFFFFF97).w,d2
+		blo.s	@cont
+		move.b	d2,($FFFFFF97).w	; copy subtype to checkpoint counter
+		
+		cmpi.b	#3,($FFFFFF97).w	; third checkpoint?
 		bne.s	@cont
-		addq.b	#1,($FFFFFF97).w
+		movem.l	d0-d7/a1-a3,-(sp)
+		moveq	#$17,d0
+		jsr	PalLoad4_Water	; load toxic water palette
+		movem.l	(sp)+,d0-d7/a1-a3
 
 @cont:
 		moveq	#100,d0		; add 1000 ...
@@ -45127,13 +45182,14 @@ Emershit:
 
 Obj09_NoSpecial2:
 		move.b	#1,(a2)
-		move.w	#$C5,d0
-		tst.b	($FFFFFF5F).w	; is this the blackout blackout special stage?
-		beq.s	Obj09_YesEmer
-		move.w	#$A6,d0
-
+		move.w	#$C5,d0			; play emerald jingle
+		tst.b	($FFFFFF5F).w		; is this the blackout blackout special stage?
+		beq.s	Obj09_YesEmer		; if not, branch
+		move.b	#1,($FFFFFF93).w	; you have beaten the game, congrats
+		jsr	SRAM_SaveNow		; save
+		move.w	#$A6,d0			; play victory music
 Obj09_YesEmer:
-		jsr	(PlaySound_Special).l ;	play emerald music
+		jsr	(PlaySound_Special).l	; play music
 		moveq	#0,d4
 		rts
 ; ===========================================================================

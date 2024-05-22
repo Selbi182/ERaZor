@@ -884,7 +884,8 @@ InfoText_9:	; "One Hot Night", Tongara's hidden easter egg fanfic
 		dc.b	'          THE END!          ' ;0
 		dc.b	$FF
 		even
-		
+
+InfoText_A:
 		; "The Morning After", the second half of the fanfic, for the weirdos that dig through the source in a hex editor or something lol
 		dc.b	'   THE MORNING SUN ROSE.    ' ;1
 		dc.b	'     IT WAS BEAUTIFUL.      ' ;1
@@ -905,20 +906,20 @@ InfoText_9:	; "One Hot Night", Tongara's hidden easter egg fanfic
 		even
 ; ---------------------------------------------------------------------------
 
-InfoText_A:	; hidden easter egg text found after the blackout special stage
+InfoText_B:	; hidden easter egg text found after the blackout special stage
 		dc.b	'      CONGRATULATIONS!      ' ;0
 		dc.b	'                            ' ;0
 		dc.b	'    YOU HAVE BEATEN THE     ' ;1
 		dc.b	'    BLACKOUT CHALLENGE.     ' ;1
 		dc.b	'                            ' ;0
-		dc.b	' HERE IS A SECRET FOR YOU,  ' ;1
-		dc.b	'   PRESS ANY TEN BUTTONS    ' ;1
-		dc.b	' DURING THE FINAL PHASE OF  ' ;1
-		dc.b	'  THE SELBI SPLASH SCREEN   ' ;1
-		dc.b	'   TO ENABLE DEBUG MODE.    ' ;1
+		dc.b	'CHECK OUT THE OPTIONS MENU, ' ;1
+		dc.b	'A NEW COOL FEATURE HAS BEEN ' ;1
+		dc.b	'  UNLOCKED FOR YOU TO MESS  ' ;0
+		dc.b	'        AROUND WITH!        ' ;0
 		dc.b	'                            ' ;0
 		dc.b	' HAVE FUN AND THANK YOU SO  ' ;1
 		dc.b	' MUCH FOR PLAYING MY GAME!  ' ;1
+		dc.b	'                            ' ;0
 		dc.b	'                            ' ;0
 		dc.b	'           SELBI            ' ;1
 		dc.b	$FF
@@ -993,6 +994,12 @@ ScrollText_A:
 		dc.b	0,0,1,1,0
 		dc.b	1,1,1,1,1
 		dc.b	0,1,1,0,1
+		even
+
+ScrollText_B:
+		dc.b	0,0,1,1,0
+		dc.b	1,1,0,0,0
+		dc.b	1,1,0,0,1
 		even
 ; ---------------------------------------------------------------------------
 ; ===========================================================================

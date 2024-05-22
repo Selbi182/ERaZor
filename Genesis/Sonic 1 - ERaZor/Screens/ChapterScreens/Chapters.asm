@@ -74,6 +74,9 @@ CS_PalLoopOHD:
 ; ---------------------------------------------------------------------------
 
 CS_NotOHDIGHZ:
+		btst	#1,($FFFFFF92).w		; are story text screens enabled?
+		beq.w	CS_EndLoop			; if not, auto-skip
+		
 		move.l	#$40000000,($C00004).l		; Load art
 		lea	($C00000).l,a6
 		lea	(Art_ChapterHeader).l,a1	; load chapter header

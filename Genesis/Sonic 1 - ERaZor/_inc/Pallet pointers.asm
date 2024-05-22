@@ -70,3 +70,6 @@
 	dc.l Pal_SpecialEaster
 	dc.w $FB00
 	dc.w $1F
+	dc.l Pal_LZWater2_Evil
+	dc.w $FB00
+	dc.w $1F

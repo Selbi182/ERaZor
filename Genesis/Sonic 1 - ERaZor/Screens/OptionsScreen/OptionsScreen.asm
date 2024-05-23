@@ -42,29 +42,27 @@ Options_LoadText:
 
 		jsr	Pal_FadeFrom
 
-; ---------------------------------------------------------------------------
 		move.b	#$02,($FFFFD100).w	; load ERaZor banner object
 		move.w	#$120,($FFFFD108).w	; set X-position
 		move.w	#$81,($FFFFD10A).w	; set Y-position
 		jsr	ObjectsLoad
 		jsr	BuildSprites
-; ---------------------------------------------------------------------------
 
-		moveq	#2,d0		; load Options screen pallet
-		jsr	PalLoad1
 		move.b	#$86,d0		; play Options screen music
 		jsr	PlaySound_Special
+		bsr	Options_LoadPal
+		bra.s	Options_ContinueSetup
 
-		movem.l	d0-a2,-(sp)		; backup d0 to a2
-		lea	(Pal_Sonic).l,a1	; set Sonic'S palette pointer
-		lea	($FFFFFBA0).l,a2	; set palette location
-		moveq	#7,d0			; set number of loops to 7
+; ---------------------------------------------------------------------------
+Options_LoadPal:
+		moveq	#2,d0		; load Options screen pallet
+		jsr	PalLoad1
+		moveq	#3,d0		; load Options screen pallet
+		jsr	PalLoad1
+		rts
+; ---------------------------------------------------------------------------
 
-Options_SonPalLoop:
-		move.l	(a1)+,(a2)+		; load 2 colours (4 bytes)
-		dbf	d0,Options_SonPalLoop	; loop
-		movem.l	(sp)+,d0-a2		; restore d0 to a2
-		
+Options_ContinueSetup:		
 		moveq	#0,d0
 		lea	($FFFFCA00).w,a1	; set location for the text
 		move.b	#$F0,d0			; put over $F0s
@@ -225,6 +223,7 @@ Options_HandleCinematicHud:
 		andi.b	#$FC,d1			; is left, right, A, B, C, or Start pressed?
 		beq.w	Options_Return		; if not, branch
 		bchg	#3,($FFFFFF92).w	; toggle cinematic HUD
+		bsr	Options_LoadPal
 		bra.w	Options_UpdateTextAfterChange
 ; ---------------------------------------------------------------------------
 
@@ -341,7 +340,7 @@ Options_HandleExit:
 		bne.s	Options_Return
 
 		move.b	($FFFFF605).w,d1	; get button presses
-		andi.b	#$80,d1			; is start pressed?
+		andi.b	#$EC,d1			; is left, right, A, C, or Start pressed?
 		beq.s	Options_Return		; if not, branch
 		
 		clr.b	($FFFFFF95).w
@@ -798,7 +797,7 @@ OpText_SkipUberhub:
 		even
 		
 OpText_CinematicMode:
-		dc.b	'CINEMATIC HUD        ', $FF
+		dc.b	'CINEMATIC MODE       ', $FF
 		even
 		
 OpText_EasterEgg_Locked:

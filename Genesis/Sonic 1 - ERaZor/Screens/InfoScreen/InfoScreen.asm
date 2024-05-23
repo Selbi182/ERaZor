@@ -114,9 +114,9 @@ InfoScreen_MainLoop:
 		bne.s	InfoScreen_MainLoop
 		tst.b	($FFFFFF9B).w		; is routine counter at $12 (Info_NoMore)?
 		bne.s	Info_NoTextChange	; if yes, branch
-		move.b	($FFFFF605).w,d1
-		andi.b	#$80,d1
-		beq.s	Info_NoStart
+		move.b	($FFFFF605).w,d1	; get button presses
+		andi.b	#$E0,d1			; is A, B, C, or start pressed?
+		beq.s	Info_NoStart		; if not, branch
 		move.b	#1,($FFFFFF9B).w
 		bsr	InfoTextLoad		; update text
 		bra.s	InfoScreen_MainLoop	; if not, branch
@@ -139,7 +139,7 @@ Info_NoStart:
 
 Info_NoTextChange:
 		move.b	($FFFFF605).w,d1	; get button presses
-		andi.b	#$80,d1			; was start pressed?
+		andi.b	#$E0,d1			; is A, B, C, or start pressed?
 		beq.s	InfoScreen_MainLoop	; if not, branch
 ; ===========================================================================
 

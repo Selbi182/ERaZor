@@ -3062,13 +3062,18 @@ PalLoad1:
 		lea	(PalPointers).l,a1
 		lsl.w	#3,d0
 		adda.w	d0,a1
-		movea.l	(a1)+,a2
-		movea.w	(a1)+,a3
+		movea.l	(a1)+,a2		; pointer
+		movea.w	(a1)+,a3		; RAM address
 		adda.w	#$80,a3
-		move.w	(a1)+,d7
+		move.w	(a1)+,d7		; (pallet length / 2) - 1
 
 loc_2110:
-		move.l	(a2)+,(a3)+
+		move.w	(a2)+,d0
+		bsr	ContrastBoost
+		move.w	d0,(a3)+
+		move.w	(a2)+,d0
+		bsr	ContrastBoost
+		move.w	d0,(a3)+
 		dbf	d7,loc_2110
 		rts
 ; End of function PalLoad1
@@ -3086,7 +3091,12 @@ PalLoad2:
 		move.w	(a1)+,d7
 
 loc_2128:
-		move.l	(a2)+,(a3)+
+		move.w	(a2)+,d0
+		bsr	ContrastBoost
+		move.w	d0,(a3)+
+		move.w	(a2)+,d0
+		bsr	ContrastBoost
+		move.w	d0,(a3)+
 		dbf	d7,loc_2128
 		rts
 ; End of function PalLoad2
@@ -3108,7 +3118,12 @@ PalLoad3_Water:	; this subroutine is for palette line 1
 		move.w	(a1)+,d7
 
 loc_2144:
-		move.l	(a2)+,(a3)+
+		move.w	(a2)+,d0
+		bsr	ContrastBoost
+		move.w	d0,(a3)+
+		move.w	(a2)+,d0
+		bsr	ContrastBoost
+		move.w	d0,(a3)+
 		dbf	d7,loc_2144
 		rts
 ; End of function PalLoad3_Water
@@ -3127,10 +3142,50 @@ PalLoad4_Water:	; this subroutine is for palette lines 2-4
 		move.w	(a1)+,d7
 
 loc_2160:
-		move.l	(a2)+,(a3)+
+		move.w	(a2)+,d0
+		bsr	ContrastBoost
+		move.w	d0,(a3)+
+		move.w	(a2)+,d0
+		bsr	ContrastBoost
+		move.w	d0,(a3)+
 		dbf	d7,loc_2160
 		rts
 ; End of function PalLoad4_Water
+
+
+
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Contrast boosting a single color in d0
+; ---------------------------------------------------------------------------
+
+ColorBoost = 6
+
+ContrastBoost:	
+		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
+		beq.s	@skip			; if not, branch
+		
+		move.w	d0,d1
+		andi.w	#$E00,d1
+		ror.w	#8,d1
+		
+		cmpi.w	#ColorBoost,d1
+		bge.s	@decrease
+		moveq	#0,d1	
+		bra.s	@apply
+@decrease:
+		subi.w	#ColorBoost,d1
+
+@apply:
+		rol.w	#8,d1
+		andi.w	#$00EE,d0
+		or.w	d1,d0
+@skip:
+		rts
+; ---------------------------------------------------------------------------
+; ===========================================================================
+
+
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -4148,6 +4203,8 @@ Level_NoTitleCard2:
 	;	move.b	($FFFFFE10).w,d0
 	;	addi.w	#$15,d0
 	;	jsr	(LoadPLC).l	; load animal patterns (level no. + $15)
+		moveq	#2,d0
+		jsr	LoadPLC		; load explosion patterns
 		moveq	#3,d0
 		bsr	PalLoad2	; load Sonic's pallet line
 		moveq	#$13,d0
@@ -4364,7 +4421,8 @@ Level_StartGame:
 Level_MainLoop:
 		jsr	RandomNumber		; constantly create a new random number
 		jsr	LoadTitleCardArt	; check if we gotta load uncompressed title card art
-		
+		jsr	CinematicScreenFuzz	; do cinematic screen fuzz if applicable
+
 		cmpi.b	#$3F,($FFFFFFF0).w		; was demo mode set to $3F for some reason?
 		bne.s	Level_DemoOK			; thanks god if no
 		clr.w	($FFFFFFF0).w			; otherwise, clear it and hope that nothing bad happened
@@ -4910,6 +4968,41 @@ locret_3FBE:
 byte_3FC0:	dc.b $A, $F5, $A, $F6, $F5, $F4, $B, 0,	2, 7, 3, $4C, $4B, 8, 4
 byte_3FCF:	dc.b 0			; XREF: LZWaterSlides
 		even
+; ===========================================================================
+
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Adds a screen fuzz effect when cinematic mode is enabled
+; ---------------------------------------------------------------------------
+
+CinematicScreenFuzz:
+		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
+		beq.s	@skip			; if not, branch
+
+		lea	($FFFFCC00).w,a1	; get h-scroll data
+		moveq	#0,d0			; by default, don't change scroll
+		btst	#0,($FFFFFE05).w	; are we on an odd frame?
+		bne.s	@odd			; if yes, branch
+		not.w	d0			; otherwise, set to -1
+
+@odd:
+		move.w	#224-1,d1		; do for all scanlines
+
+@loop:
+		move.w	(a1),d2			; get foreground scroll
+		add.w	d0,d2			; add manipulation
+		move.w	d2,(a1)+		; store new position
+		
+		move.w	(a1),d2			; get background position
+		add.w	d0,d2			; add manipulation
+		move.w	d2,(a1)+		; store new position
+		
+		not.w	d0			; invert manipulation for next row
+		dbf	d1,@loop		; loop
+
+@skip:
+		rts				; return
+; ---------------------------------------------------------------------------
 ; ===========================================================================
 
 ; ===========================================================================
@@ -5539,6 +5632,7 @@ SS_ClrNemRam:
 Blackout_RotationSpeed = $140
 
 SS_MainLoop:
+		jsr	CinematicScreenFuzz
 		tst.b	($FFFFFF5F).w	;  is this the blackout special stage?
 		beq.s	@contyyy
 		cmpi.b	#4,($FFFFD024).w	; is special stage exiting routine being run?
@@ -19718,10 +19812,7 @@ Obj34_NotIsOval:
 Obj34_ChangeArt:			; XREF: Obj34_ChkPos2
 		cmpi.b	#4,obRoutine(a0)
 		bne.s	Obj34_Delete
-		moveq	#2,d0
-		jsr	(LoadPLC).l	; load explosion patterns
-		moveq	#$13,d0
-		jsr	(LoadPLC).l	; load star patterns
+		bsr	Obj34_LoadPostGraphics
 	;	moveq	#0,d0
 	;	move.b	($FFFFFE10).w,d0
 	;	addi.w	#$15,d0
@@ -19803,6 +19894,14 @@ Obj34_DoDisplay:
 
 Obj34_DoDisplayX:
 		jmp	DisplaySprite		; display sprite
+; ===========================================================================
+
+Obj34_LoadPostGraphics:
+		moveq	#2,d0
+		jsr	(LoadPLC).l	; load explosion patterns
+		moveq	#$13,d0
+		jsr	(LoadPLC).l	; load star patterns
+		rts
 
 ; ===========================================================================
 Obj34_ItemData:
@@ -31532,6 +31631,12 @@ WF_BackupPal_Loop:
 WF_MakeWhite_Loop:
 		move.w	(a1),d1			; get current color in palette
 		
+		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
+		beq.s	@wfnotcinematic		; if not, branch
+		moveq	#7,d4			; bit boost
+		bra.w	@wfintensity		; branch
+
+@wfnotcinematic:
 		; intensity control
 		moveq	#2,d4			; intensity boost (for any normal stage)
 		
@@ -31545,9 +31650,9 @@ WF_MakeWhite_Loop:
 		beq.s	@wfintensity		; if not, branch
 		btst	#5,($FFFFFF92).w	; are we in Frantic mode?
 		bne.s	@wfintensity		; if yes, branch
-
 @wfintensitynoboost:
 		moveq	#0,d4			; no intensity boost (used for all stages with black backgrounds)
+
 @wfintensity:
 		move.w	d1,d2			; copy color
 		andi.w	#$00E,d2		; filter for red

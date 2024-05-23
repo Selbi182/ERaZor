@@ -198,7 +198,8 @@ CS_Loop:
 		jsr	BuildSprites
 		move.b	#4,($FFFFF62A).w
 		jsr	DelayProgram
-		btst	#7,($FFFFF605).w	; is Start button pressed?
+		move.b	($FFFFF605).w,d1	; get button presses
+		andi.b	#$E0,d1			; is A, B, C, or start pressed?
 		bne.s	CS_EndLoop		; if yes, branch
 		tst.w	($FFFFF614).w		; test wait time
 		bne.s	CS_Loop			; if it isn't over, loop
@@ -271,7 +272,8 @@ CS_Loop_OHDIGHZ:
 		jsr	BuildSprites
 		move.b	#4,($FFFFF62A).w
 		jsr	DelayProgram
-		btst	#7,($FFFFF605).w	; is Start button pressed?
+		move.b	($FFFFF605).w,d1	; get button presses
+		andi.b	#$E0,d1			; is A, B, C, or start pressed?
 		bne.s	@ohdighzstart		; if yes, branch
 		tst.w	($FFFFF614).w		; test wait time
 		bne.s	CS_Loop_OHDIGHZ		; if it isn't over, loop

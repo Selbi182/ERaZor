@@ -84,7 +84,7 @@ StartOfRom:
 		dc.l ErrorExcept, ErrorExcept, ErrorExcept, ErrorExcept
 		dc.l ErrorExcept, ErrorExcept, ErrorExcept, ErrorExcept
 		dc.l ErrorExcept, ErrorTrap, ErrorTrap,	ErrorTrap
-		dc.l PalToCRAM,	ErrorTrap, loc_B10, ErrorTrap
+		dc.l HBlank,	ErrorTrap, VBlank, ErrorTrap
 		dc.l ErrorTrap,	ErrorTrap, ErrorTrap, ErrorTrap
 		dc.l ErrorTrap,	ErrorTrap, ErrorTrap, ErrorTrap
 		dc.l ErrorTrap,	ErrorTrap, ErrorTrap, ErrorTrap
@@ -198,9 +198,9 @@ PSGInitLoop:
 PortC_Ok:
 		bra.s	GameProgram
 ; ===========================================================================
-SetupValues:	dc.w $8000		; XREF: PortA_Ok
-		dc.w $3FFF
-		dc.w $100
+SetupValues:	dc.w $8000		; VDP register start number
+		dc.w $3FFF		; size of RAM/4
+		dc.w $100		; VDP register diff
 
 		dc.l $A00000		; start	of Z80 RAM
 		dc.l $A11100		; Z80 bus request
@@ -208,14 +208,29 @@ SetupValues:	dc.w $8000		; XREF: PortA_Ok
 		dc.l $C00000
 		dc.l $C00004		; address for VDP registers
 
-		dc.b 4,	$14, $30, $3C	; values for VDP registers
-		dc.b 7,	$6C, 0,	0
-		dc.b 0,	0, $FF,	0
-		dc.b $81, $37, 0, 1
-		dc.b 1,	0, 0, $FF
-		dc.b $FF, 0, 0,	$80
-
-		dc.l $40000080
+		dc.b 4			; VDP $80 - 8-colour mode
+		dc.b $14		; VDP $81 - Megadrive mode, DMA enable
+		dc.b ($C000>>10)	; VDP $82 - foreground nametable address
+		dc.b ($F000>>10)	; VDP $83 - window nametable address
+		dc.b ($E000>>13)	; VDP $84 - background nametable address
+		dc.b ($D800>>9)		; VDP $85 - sprite table address
+		dc.b 0			; VDP $86 - unused
+		dc.b 0			; VDP $87 - background colour
+		dc.b 0			; VDP $88 - unused
+		dc.b 0			; VDP $89 - unused
+		dc.b 255		; VDP $8A - HBlank register
+		dc.b 0			; VDP $8B - full screen scroll
+		dc.b $81		; VDP $8C - 40 cell display
+		dc.b ($DC00>>10)	; VDP $8D - hscroll table address
+		dc.b 0			; VDP $8E - unused
+		dc.b 1			; VDP $8F - VDP increment
+		dc.b 1			; VDP $90 - 64 cell hscroll size
+		dc.b 0			; VDP $91 - window h position
+		dc.b 0			; VDP $92 - window v position
+		dc.w $FFFF		; VDP $93/94 - DMA length
+		dc.w 0			; VDP $95/96 - DMA source
+		dc.b $80		; VDP $97 - DMA fill VRAM
+		dc.l $40000080		; VRAM address 0
 
 		dc.b $AF, 1, $D9, $1F, $11, $27, 0, $21, $26, 0, $F9, $77 ; Z80	instructions
 		dc.b $ED, $B0, $DD, $E1, $FD, $E1, $ED,	$47, $ED, $4F
@@ -397,8 +412,12 @@ Art_Text:	incbin	Screens\OptionsScreen\Options_TextArt.bin	; text used in level 
 		even
 
 ; ===========================================================================
+; ---------------------------------------------------------------------------
+; V-blanking routine
+; ---------------------------------------------------------------------------
 
-loc_B10:				; XREF: StartOfRom
+; loc_B10:
+VBlank:				; XREF: StartOfRom
 		movem.l	d0-a6,-(sp)
 		tst.b	($FFFFF62A).w
 		beq.s	loc_B88
@@ -417,8 +436,8 @@ loc_B42:
 		move.b	#0,($FFFFF62A).w
 		move.w	#1,($FFFFF644).w
 		andi.w	#$3E,d0
-		move.w	off_B6E(pc,d0.w),d0
-		jsr	off_B6E(pc,d0.w)
+		move.w	VBlankTable(pc,d0.w),d0
+		jsr	VBlankTable(pc,d0.w)
 
 loc_B5E:				; XREF: loc_B88
 		jsr	sub_71B4C
@@ -428,16 +447,22 @@ loc_B64:				; XREF: loc_D50
 		movem.l	(sp)+,d0-a6
 		rte	
 ; ===========================================================================
-off_B6E:	dc.w loc_B88-off_B6E, loc_C32-off_B6E
-		dc.w loc_C44-off_B6E, loc_C5E-off_B6E
-		dc.w loc_C6E-off_B6E, loc_DA6-off_B6E
-		dc.w loc_E72-off_B6E, loc_F8A-off_B6E
-		dc.w loc_C64-off_B6E, loc_F9A-off_B6E
-		dc.w loc_C36-off_B6E, loc_FA6-off_B6E
-		dc.w loc_E72-off_B6E
+VBlankTable:	dc.w loc_B88-VBlankTable ; $00
+		dc.w loc_C32-VBlankTable ; $02
+		dc.w loc_C44-VBlankTable ; $04
+		dc.w loc_C5E-VBlankTable ; $06
+		dc.w loc_C6E-VBlankTable ; $08
+		dc.w loc_DA6-VBlankTable ; $0A
+		dc.w loc_E72-VBlankTable ; $0C
+		dc.w loc_F8A-VBlankTable ; $0E
+		dc.w loc_C64-VBlankTable ; $10
+		dc.w loc_F9A-VBlankTable ; $12
+		dc.w loc_C36-VBlankTable ; $14
+		dc.w loc_FA6-VBlankTable ; $16
+		dc.w loc_E72-VBlankTable ; $18
 ; ===========================================================================
 
-loc_B88:				; XREF: loc_B10; off_B6E
+loc_B88:				; XREF: VBlank; VBlankTable
 		cmpi.b	#$8C,($FFFFF600).w
 		beq.s	loc_B9A
 		cmpi.b	#$C,($FFFFF600).w
@@ -489,10 +514,10 @@ loc_C22:				; XREF: loc_BC8
 		bra.w	loc_B5E
 ; ===========================================================================
 
-loc_C32:				; XREF: off_B6E
+loc_C32:				; XREF: VBlankTable
 		bsr	sub_106E
 
-loc_C36:				; XREF: off_B6E
+loc_C36:				; XREF: VBlankTable
 		tst.w	($FFFFF614).w
 		beq.w	locret_C42
 		subq.w	#1,($FFFFF614).w
@@ -501,7 +526,7 @@ locret_C42:
 		rts	
 ; ===========================================================================
 
-loc_C44:				; XREF: off_B6E
+loc_C44:				; XREF: VBlankTable
 		bsr	sub_106E
 		bsr	sub_6886
 		bsr	sub_1642
@@ -513,16 +538,16 @@ locret_C5C:
 		rts	
 ; ===========================================================================
 
-loc_C5E:				; XREF: off_B6E
+loc_C5E:				; XREF: VBlankTable
 		bsr	sub_106E
 		rts	
 ; ===========================================================================
 
-loc_C64:				; XREF: off_B6E
+loc_C64:				; XREF: VBlankTable
 		cmpi.b	#$10,($FFFFF600).w ; is	game mode = $10	(special stage)	?
 		beq.w	loc_DA6		; if yes, branch
 
-loc_C6E:				; XREF: off_B6E
+loc_C6E:				; XREF: VBlankTable
 		move.w	#$100,($A11100).l ; stop the Z80
 
 loc_C76:
@@ -575,9 +600,10 @@ loc_D50:
 		movem.l	d0-d7,($FFFFFF10).w
 		movem.l	($FFFFF754).w,d0-d1
 		movem.l	d0-d1,($FFFFFF30).w
-		cmpi.b	#$60,($FFFFF625).w
+
+		cmpi.b	#96,($FFFFF625).w
 		bcc.s	Demo_Time
-		move.b	#1,($FFFFF64F).w
+		bset	#0,($FFFFF64F).w
 		addq.l	#4,sp
 		bra.w	loc_B64
 
@@ -588,7 +614,7 @@ loc_D50:
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 
 
-Demo_Time:				; XREF: loc_D50; PalToCRAM
+Demo_Time:				; XREF: loc_D50; HBlank
 		bsr	LoadTilesAsYouMove
 		jsr	AniArt_Load
 		jsr	HudUpdate
@@ -603,7 +629,7 @@ Demo_TimeEnd:
 
 ; ===========================================================================
 
-loc_DA6:				; XREF: off_B6E
+loc_DA6:				; XREF: VBlankTable
 		move.w	#$100,($A11100).l ; stop the Z80
 
 loc_DAE:
@@ -644,7 +670,7 @@ locret_E70:
 		rts	
 ; ===========================================================================
 
-loc_E72:				; XREF: off_B6E
+loc_E72:				; XREF: VBlankTable
 		move.w	#$100,($A11100).l ; stop the Z80
 
 loc_E7A:
@@ -706,21 +732,21 @@ loc_F54:
 		rts	
 ; ===========================================================================
 
-loc_F8A:				; XREF: off_B6E
+loc_F8A:				; XREF: VBlankTable
 		bsr	sub_106E
 		addq.b	#1,($FFFFF628).w
 		move.b	#$E,($FFFFF62A).w
 		rts	
 ; ===========================================================================
 
-loc_F9A:				; XREF: off_B6E
+loc_F9A:				; XREF: VBlankTable
 		bsr	sub_106E
 		move.w	($FFFFF624).w,(a5)
 		move.b	($FFFFF625).w,($FFFFFE07).w
 		bra.w	sub_1642
 ; ===========================================================================
 
-loc_FA6:				; XREF: off_B6E
+loc_FA6:				; XREF: VBlankTable
 		move.w	#$100,($A11100).l ; stop the Z80
 
 loc_FAE:
@@ -810,71 +836,71 @@ loc_10D4:				; XREF: sub_106E
 ; End of function sub_106E
 
 ; ---------------------------------------------------------------------------
-; Subroutine to	move pallets from the RAM to CRAM
+; H-Blanking routine
 ; ---------------------------------------------------------------------------
 
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 
-
-PalToCRAM:
+; PalToCRAM:
+HBlank:
 		tst.w	($FFFFF644).w
-		beq.s	locret_119C
+		beq.w	locret_119C
 		move.w	#0,($FFFFF644).w
 		movem.l	d0-d1/a0-a2,-(sp)
 
 		lea	($C00000).l,a1
-		move.w	#$8ADF,obMap(a1)        ; Reset HInt timing
-		move.w	#$100,($A11100).l ; stop the Z80
-@z80loop:
-		btst	#0,($A11100).l
-		bne.s	@z80loop 	; loop until it says it's stopped
+		move.w	#$8ADF,4(a1)		; Reset HInt timing
+		move.w	#$100,($A11100).l	; stop the Z80
+@z80loop:	btst	#0,($A11100).l
+		bne.s	@z80loop		; loop until it says it's stopped
+
+; LZ water effects
 		movea.l	($FFFFF610).w,a2
-		moveq	#$F,d0        ; adjust to push artifacts off screen
-@loop:
-		dbf	d0,@loop    ; waste a few cycles here
+		moveq	#$F,d0			; adjust to push artifacts off screen
+@loop:		dbf	d0,@loop		; waste a few cycles here
 
 		move.w	(a2)+,d1
 		move.b	($FFFFFE07).w,d0
-		subi.b	#200,d0    ; is H-int occuring below line 200?
-		bcs.s	@transferColors    ; if it is, branch
+		subi.b	#200,d0			; is H-int occuring below line 200?
+		bcs.s	@transferColors		; if it is, branch
 		sub.b	d0,d1
 		bcs.s	@skipTransfer
-
+		
 @transferColors:
 		move.w	(a2)+,d0
 		lea	($FFFFFA80).w,a0
 		adda.w	d0,a0
 		addi.w	#$C000,d0
 		swap	d0
-		move.l	d0,obMap(a1)    ; write to CRAM at appropriate address
-		move.l	(a0)+,(a1)    ; transfer two colors
-		move.w	(a0)+,(a1)    ; transfer the third color
+		move.l	d0,4(a1)		; write to CRAM at appropriate address
+		move.l	(a0)+,(a1)		; transfer two colors
+		move.w	(a0)+,(a1)		; transfer the third color
 		nop
 		nop
 		moveq	#$24,d0
 
 @wasteSomeCycles:
 		dbf    d0,@wasteSomeCycles
-		dbf    d1,@transferColors    ; repeat for number of colors
+		dbf    d1,@transferColors	; repeat for number of colors
 
 @skipTransfer:
-		move.w	#0,($A11100).l    ; start the Z80
+		move.w	#0,($A11100).l		; start the Z80
 		movem.l	(sp)+,d0-d1/a0-a2
-		tst.b	($FFFFF64F).w
+		btst	#0,($FFFFF64F).w
 		bne.s	loc_119E
 
 locret_119C:
 		rte	
 ; ===========================================================================
 
-loc_119E:				; XREF: PalToCRAM
-		clr.b	($FFFFF64F).w
+loc_119E:				; XREF: HBlank
+		bclr	#0,($FFFFF64F).w
 		movem.l	d0-a6,-(sp)
 		bsr	Demo_Time
 		jsr	sub_71B4C
 		movem.l	(sp)+,d0-a6
 		rte	
-; End of function PalToCRAM
+; End of function HBlank
 
 ; ---------------------------------------------------------------------------
 ; Subroutine to	initialise joypads
@@ -978,11 +1004,27 @@ loc_128E:
 ; End of function VDPSetupGame
 
 ; ===========================================================================
-VDPSetupArray:	dc.w $8004, $8134, $8230, $8328	; XREF: VDPSetupGame
-		dc.w $8407, $857C, $8600, $8700
-		dc.w $8800, $8900, $8A00, $8B00
-		dc.w $8C81, $8D3F, $8E00, $8F02
-		dc.w $9001, $9100, $9200
+VDPSetupArray:	dc.w $8004	; 8-colour mode
+		dc.w $8134	; enable V.interrupts, enable DMA
+		dc.w $8230	; set foreground nametable address
+		dc.w $8328	; set window nametable address
+		dc.w $8407	; set background nametable address
+		dc.w $857C	; set sprite table address
+		dc.w $8600	; (unused)
+		dc.w $8700	; set background colour (palette entry 0)
+		dc.w $8800	; (unused)
+		dc.w $8900	; (unused)
+		dc.w $8A00	; default H.interrupt register
+		dc.w $8B00	; full-screen vertical scrolling
+		dc.w $8C81	; 40-cell display mode
+		dc.w $8D3F	; set background hscroll address
+		dc.w $8E00	; (unused)
+		dc.w $8F02	; set VDP increment size
+		dc.w $9001	; 64-cell hscroll size
+		dc.w $9100	; window horizontal position
+		dc.w $9200	; window vertical position
+; ===========================================================================
+
 
 ; ---------------------------------------------------------------------------
 ; Subroutine to	clear the screen
@@ -3422,9 +3464,9 @@ SegaScreen:				; XREF: GameModeArray
 		move.w	#$8B00,(a6)
 		clr.b	($FFFFF64E).w
 		move	#$2700,sr
-		move.w	($FFFFF60C).w,d0
-		andi.b	#$BF,d0
-		move.w	d0,($C00004).l
+		
+		display_disable
+		
 		bsr	ClearScreen
 		move.l	#$40000000,($C00004).l
 		lea	(Nem_SegaLogo).l,a0 ; load Sega	logo patterns
@@ -3477,9 +3519,8 @@ Sega_WaitFrames:
 		move.w	#0,($FFFFF634).w
 		move.w	#0,($FFFFF662).w
 		move.w	#0,($FFFFF660).w
-		move.w	($FFFFF60C).w,d0
-		ori.b	#$40,d0
-		move.w	d0,($C00004).l
+		
+		display_enable
 
 Sega_WaitPallet:
 		move.b	#2,($FFFFF62A).w
@@ -3653,9 +3694,7 @@ Title_SonPalLoop:
 		bsr	LoadPLC2
 		move.w	#0,($FFFFFFE4).w
 		move.w	#0,($FFFFFFE6).w
-		move.w	($FFFFF60C).w,d0
-		ori.b	#$40,d0
-		move.w	d0,($C00004).l
+		display_enable
 		bsr	Pal_FadeTo
 
 ; ===========================================================================
@@ -4248,10 +4287,10 @@ loc_3946:
 	;	lea	(Nem_HardPS).l,a0
 	;	bsr	NemDec
 
-		move.b	#$07,($FFFFD380).w	; load cropped screen object
+		move.b	#$07,($FFFFD380).w	; load cropped screen object (left half)
 		move.w	#$00D4,($FFFFD388).w		; set X-position
 		move.w	#$00F8,($FFFFD38A).w		; set Y-position
-		move.b	#$07,($FFFFD3C0).w	; load cropped screen object
+		move.b	#$07,($FFFFD3C0).w	; load cropped screen object (right half)
 		move.w	#$0174,($FFFFD3C8).w		; set X-position
 		move.w	#$00F8,($FFFFD3CA).w		; set Y-position
 
@@ -5508,9 +5547,7 @@ SpecialStage:				; XREF: GameModeArray
 		move.w	#$8004,(a6)
 		move.w	#$8AAF,($FFFFF624).w
 		move.w	#$9011,(a6)
-		move.w	($FFFFF60C).w,d0
-		andi.b	#$BF,d0
-		move.w	d0,($C00004).l
+		display_disable
 		bsr	ClearScreen
 		move	#$2300,sr
 		lea	($C00004).l,a5
@@ -5619,9 +5656,7 @@ SS_ClrNemRam:
 		move.w	#0,($FFFFFE08).w
 		move.w	#1800,($FFFFF614).w
 
-		move.w	($FFFFF60C).w,d0
-		ori.b	#$40,d0
-		move.w	d0,($C00004).l
+		display_enable
 		bsr	Pal_MakeWhite
 
 
@@ -6044,9 +6079,7 @@ byte_4CCC:	dc.b 8,	2, 4, $FF, 2, 3, 8, $FF, 4, 2, 2, 3, 8,	$FD, 4,	2, 2, 3, 2, $
 ContinueScreen:				; XREF: GameModeArray
 		bsr	Pal_FadeFrom
 		move	#$2700,sr
-		move.w	($FFFFF60C).w,d0
-		andi.b	#$BF,d0
-		move.w	d0,($C00004).l
+		display_disable
 		lea	($C00004).l,a6
 		move.w	#$8004,(a6)
 		move.w	#$8700,(a6)
@@ -6089,9 +6122,7 @@ Cont_ClrObjRam:
 		clr.w	($FFFFFF88).w
 		jsr	ObjectsLoad
 		jsr	BuildSprites
-		move.w	($FFFFF60C).w,d0
-		ori.b	#$40,d0
-		move.w	d0,($C00004).l
+		display_enable
 		bsr	Pal_FadeTo
 
 ; ---------------------------------------------------------------------------
@@ -6379,9 +6410,7 @@ End_ClrRam3:
 		dbf	d1,End_ClrRam3	; clear	variables
 
 		move	#$2700,sr
-		move.w	($FFFFF60C).w,d0
-		andi.b	#$BF,d0
-		move.w	d0,($C00004).l
+		display_disable
 		bsr	ClearScreen
 		lea	($C00004).l,a6
 		move.w	#$8B03,(a6)
@@ -6452,9 +6481,7 @@ End_LoadSonic:
 		move.w	#1800,($FFFFF614).w
 		move.b	#$18,($FFFFF62A).w
 		bsr	DelayProgram
-		move.w	($FFFFF60C).w,d0
-		ori.b	#$40,d0
-		move.w	d0,($C00004).l
+		display_enable
 		move.w	#$3F,($FFFFF626).w
 		bsr	Pal_FadeTo
 
@@ -9679,13 +9706,7 @@ loc_701C:				; CODE XREF: sub_6EA4+156?j
  
  
 DrawTiles_LR:				; CODE XREF: ROM:00006CBA?p
-					; ROM:00006CD4?p ...
 		moveq	#$15,d6
-; End of function DrawTiles_LR
- 
- 
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
- 
  
 DrawTiles_LR2:				; CODE XREF: LoadTilesFromStart2+16?p
 		move.l	#$800000,d7
@@ -9697,7 +9718,7 @@ loc_7032:				; CODE XREF: DrawTiles_LR2+24?j
 		move.l	d1,d0
 		bsr	sub_70AC
 		addq.b	#4,d1
-		andi.b	#$7F,d1	; ''
+		andi.b	#$7F,d1
 		movem.l	(sp)+,d4-d5
 		addi.w	#$10,d5
 		dbf	d6,loc_7032
@@ -9730,13 +9751,7 @@ loc_705C:				; CODE XREF: DrawTiles_LR3+24?j
  
  
 DrawTiles_TB:				; CODE XREF: ROM:00006CEA?p
-					; ROM:00006D04?p ...
 		moveq	#$F,d6
-; End of function DrawTiles_TB
- 
- 
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
- 
  
 DrawTiles_TB2:				; CODE XREF: sub_6DA6+28?p sub_6DA6+48?p ...
 		move.l	#$800000,d7
@@ -9767,11 +9782,13 @@ sub_70AC:				; CODE XREF: sub_6EA4+170?p
 		bne.s	loc_70E8
 		btst	#3,(a0)
 		bne.s	loc_70C8
+	;	move	#$2700,sr
 		move.l	d0,(a5)
 		move.l	(a1)+,(a6)
 		add.l	d7,d0
 		move.l	d0,(a5)
 		move.l	(a1)+,(a6)
+	;	move	#$2300,sr
 		rts	
 ; ===========================================================================
  
@@ -48410,7 +48427,7 @@ SoundTypes:	dc.b $90, $90, $90, $90, $90, $90, $90,	$90, $90, $90, $90, $90, $90
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 
 
-sub_71B4C:				; XREF: loc_B10; PalToCRAM
+sub_71B4C:				; XREF: VBlank; HBlank
 		move.w	#$100,($A11100).l ; stop the Z80
 		nop	
 		nop	

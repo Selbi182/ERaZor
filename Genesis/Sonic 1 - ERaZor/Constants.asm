@@ -1,3 +1,17 @@
+; Macros
+display_enable	macro
+		move.w	($FFFFF60C).w,d0	; enable screen output
+		ori.b	#$40,d0
+		move.w	d0,($C00004).l
+		endm
+
+display_disable	macro
+		move.w	($FFFFF60C).w,d0	; disable screen output
+		andi.b	#$BF,d0
+		move.w	d0,($C00004).l
+		endm
+
+
 ; Object variables
 obRender:	equ 1	; bitfield for x/y flip, display mode
 obGfx:		equ 2	; palette line & VRAM setting (2 bytes)

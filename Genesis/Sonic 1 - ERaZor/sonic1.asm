@@ -416,10 +416,18 @@ Art_Text:	incbin	Screens\OptionsScreen\Options_TextArt.bin	; text used in level 
 ; V-blanking routine
 ; ---------------------------------------------------------------------------
 
+ScreenCropCurrent EQU $FFFFD380+$30
+
 ; loc_B10:
 VBlank:				; XREF: StartOfRom
 		movem.l	d0-a6,-(sp)
 
+		tst.b	(ScreenCropCurrent).w
+		beq.s	@cont
+		move.b	($FFFFF64F).w,d0	; get H-Blank status flags
+		ori.b	#%11100000,d0		; reset flags for black bars
+		move.b	d0,($FFFFF64F).w	; store
+@cont:
 		tst.b	($FFFFF62A).w			; are we late for V-Blank?
 		beq.w	VBlank_Late			; if yes, oh shit oh fuck, go to the emergency routine immediately
 		
@@ -447,10 +455,6 @@ VBlank_Exit:				; XREF: VBlank_Late
 
 ; loc_B64:
 VBlank_Exit_NoSoundDriver:		; XREF: loc_D50
-		move.b	($FFFFF64F).w,d0	; get H-Blank status flags
-		ori.b	#%11100000,d0		; reset flags for black bars
-		move.b	d0,($FFFFF64F).w	; store
-
 		addq.l	#1,($FFFFFE0C).w
 		movem.l	(sp)+,d0-a6
 		rte	
@@ -463,7 +467,7 @@ VBlankTable:	dc.w VBlank_Late-VBlankTable ; $00
 		dc.w loc_DA6-VBlankTable ; $0A
 		dc.w loc_E72-VBlankTable ; $0C
 		dc.w loc_F8A-VBlankTable ; $0E
-		dc.w loc_C64-VBlankTable ; $10
+		dc.w loc_C64-VBlankTable ; $10 (pause)
 		dc.w loc_F9A-VBlankTable ; $12
 		dc.w loc_C36-VBlankTable ; $14
 		dc.w loc_FA6-VBlankTable ; $16
@@ -851,17 +855,38 @@ loc_10D4:				; XREF: sub_106E
 
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 
-BlackBarHeight = $20
+BlackBarHeight	= 32
+BlackBarGrow	=  2
 
 ; PalToCRAM:
 HBlank:
+		cmpi.b	#1,($FFFFFE10).w	; are we in LZ?
+		beq.s	@skipblackbars		; if yes, skip bars (they cause issues with the water thingy)
+		cmpi.b	#BlackBarGrow,(ScreenCropCurrent).w ; are cropped borders enabled? (with tolerance for the last tick)
+		bgt.s	@cont			; if yes, branch
+	
+@skipblackbars:
+		move.l	d0,-(sp)		; backup d0
+		display_enable			; otherwise, make sure display is enabled
+		move.l	(sp)+,d0		; restore d0
+	;	move.w	#$8A00|$DF,($FFFFF624).w ; set H-int timing to not occur this frame anymore
+		move.w	#$8720,($C00004).l	; reset background color
+		bra.w	@hblank_original	; go to original H-Blank code
+		
+@cont:		
 		movem.l	d0-d1,-(sp)		; backup d0 and d1
 		move.b	($FFFFF64F).w,d1	; get flag counter
-
 		btst	#7,d1			; is first flag set?
 		beq.s	@checksecondflag	; if not, branch
 		bclr	#7,d1			; clear first flag
-		move.w	#$8A00|224-(BlackBarHeight*2)-1,($C00004).l ; set H-int timing to occur again once it hits the bottom black bar
+		
+		moveq	#0,d0			; clear d0
+		move.b	#224-1,d0		; set maximum scan line count (minus 1)
+		sub.b	(ScreenCropCurrent).w,d0 ; subntract current height once...
+		sub.b	(ScreenCropCurrent).w,d0 ; ...and twice...
+		ori.w	#$8A00,d0		; set as H-int counter instruction
+		move.w	d0,($C00004).l		; send to VDP
+
 		bra.w	@hblank_earlyexit	; exit without running any additional V-blank stuff
 
 @checksecondflag:
@@ -890,10 +915,19 @@ HBlank:
 		move.b	d1,($FFFFF64F).w	; write updated flags
 		movem.l	(sp)+,d0-d1		; restore d0 and d1
 
+@hblank_original:
+
+; LZ water effects
+; Source: https://sonicresearch.org/community/index.php?threads/removing-the-water-surface-object-in-sonic-1.5975/
+
 		tst.w	($FFFFF644).w
 		beq.w	locret_119C
 		move.w	#0,($FFFFF644).w
 		movem.l	d0-d1/a0-a2,-(sp)
+
+		cmpi.b	#1,($FFFFFE10).w	; are we in LZ?
+		bne.w	@skipTransfer		; if not, branch
+		move.w	#$8A00|$DF,($FFFFF624).w ; set H-int timing to not occur this frame anymore
 
 		lea	($C00000).l,a1
 	;	move.w	#$8ADF,4(a1)		; Reset HInt timing (TODO: this needs to dynamically adjusted for the water surface in LZ in combination with the black bars)
@@ -901,9 +935,6 @@ HBlank:
 @z80loop:	btst	#0,($A11100).l
 		bne.s	@z80loop		; loop until it says it's stopped
 
-; LZ water effects
-; Source: https://sonicresearch.org/community/index.php?threads/removing-the-water-surface-object-in-sonic-1.5975/
-		bra.s	@skipTransfer ; disabled for now because of the black bars clashing with the water effect
 
 		movea.l	($FFFFF610).w,a2
 		moveq	#$F,d0			; adjust to push artifacts off screen
@@ -948,8 +979,8 @@ locret_119C:
 HBlank_DoVBlankUpdates:			; XREF: HBlank
 		bclr	#0,($FFFFF64F).w
 		movem.l	d0-a6,-(sp)
-		bsr	Demo_Time
 		jsr	SoundDriverUpdate
+		bsr	Demo_Time
 		movem.l	(sp)+,d0-a6
 		rte	
 ; End of function HBlank
@@ -1269,7 +1300,7 @@ PG_ChkHUD:
 PG_NotGHZ2:
 		move.w	#1,($FFFFF63A).w	; freeze time
 		tst.b	($FFFFFFB5).w		; is flag set?
-		bne.s	loc_13CA		; if yes, branch
+		bne.s	Pause_MainLoop		; if yes, branch
 		move.b	#1,($FFFFFFB5).w	; set flag
 		move.b	#1,($FFFFF003).w	; pause music
 
@@ -1310,8 +1341,14 @@ Pal_MBW_Loop:
 		move.w	d0,(a0)+		; set new colour
 		
 		dbf	d3,Pal_MBW_Loop		; loop for each colour
+; ---------------------------------------------------------------------------
 
-loc_13CA:
+Pause_MainLoop:
+		movem.l	d0/a0,-(sp)
+		lea	($FFFFD380).w,a0
+		jsr	Obj07			; update cropped screen object even while game is paused
+		movem.l	(sp)+,d0/a0
+
 		move.b	#$10,($FFFFF62A).w
 		bsr	DelayProgram
 
@@ -1341,14 +1378,16 @@ Pause_AExitSS:
 ; ===========================================================================
 
 Pause_ChkBC:
-	;	btst	#4,($FFFFF604).w 	; is button B held?
-	;	bne.s	Pause_SlowMo		; if yes, branch
-	;	btst	#5,($FFFFF605).w 	; is button C pressed?
-	;	bne.s	Pause_SlowMo		; if yes, branch
+		tst.w	($FFFFFFFA).w		; is debug mode enabled?
+		beq.s	Pause_ChkStart		; if not, branch
+		btst	#4,($FFFFF604).w 	; is button B held?
+		bne.s	Pause_SlowMo		; if yes, branch
+		btst	#5,($FFFFF605).w 	; is button C pressed?
+		bne.s	Pause_SlowMo		; if yes, branch
 
 Pause_ChkStart:	
 		btst	#7,($FFFFF605).w 	; is Start button pressed?
-		beq.s	loc_13CA		; if not, branch
+		beq.w	Pause_MainLoop		; if not, loop
 
 loc_1404:
 		move.b	#$80,($FFFFF003).w	; something with music
@@ -4172,8 +4211,6 @@ Level_ClrVars3:
 		move.l	d0,(a1)+
 		dbf	d1,Level_ClrVars3 ; clear object variables
 
-		move.b	#$0,($FFFFFFFE).w
-
 		move	#$2700,sr
 		bsr	ClearScreen
 		lea	($C00004).l,a6
@@ -4184,19 +4221,26 @@ Level_ClrVars3:
 		move.w	#$9001,(a6)
 		move.w	#$8720,(a6)
 		
-		move.w	#$8014,(a6)					; enable horizontal interrupts (normally only enabled in LZ)
-		move.w	#$8A00|(BlackBarHeight/2)-1,($FFFFF624).w	; set initial H-int counter value (changed from $DF)
-		move.w	($FFFFF624).w,(a6)				; apply H-int counter
-
+		move.w	#$8014,(a6)			; enable horizontal interrupts (normally only enabled in LZ)
+		move.w	#$8A00|224-1,($FFFFF624).w	; set initial H-int counter value to apply once per frame
+	;	move.w	#$8A00|(BlackBarHeight/2)-1,($FFFFF624).w	; set initial H-int counter value (changed from $DF)
+		move.w	($FFFFF624).w,(a6)		; apply H-int counter
+		
 		clr.w	($FFFFC800).w
 		move.l	#$FFFFC800,($FFFFC8FC).w
 
 		cmpi.b	#1,($FFFFFE10).w	; is level LZ?
 		beq.s	Level_LZWaterSetup	; if yes, branch
-		clr.b	($FFFFFF97).w		; clear the lamp post counter in Labyrinth Zone
+		clr.b	($FFFFFF97).w		; clear the lamp post counter if we're not in Labyrinth Zone
+		clr.b	($FFFFFFFE).w
 		bra.s	Level_LoadPal		; branch
 
 Level_LZWaterSetup:
+		tst.b	($FFFFFF97).w		; did the player die before the first checkpoint?
+		bne.s	@cont			; if not, branch
+		clr.b	($FFFFFFFE).w		; otherwise, make sure =P state is off
+
+@cont:
 		move.l	#WaterTransition_LZ,($FFFFF610).w
 		move.w	#$8014,(a6)
 		moveq	#0,d0
@@ -4342,11 +4386,11 @@ loc_3946:
 	;	bsr	NemDec
 
 		move.b	#$07,($FFFFD380).w	; load cropped screen object (left half)
-		move.w	#$00D4,($FFFFD388).w		; set X-position
-		move.w	#$00F8,($FFFFD38A).w		; set Y-position
-		move.b	#$07,($FFFFD3C0).w	; load cropped screen object (right half)
-		move.w	#$0174,($FFFFD3C8).w		; set X-position
-		move.w	#$00F8,($FFFFD3CA).w		; set Y-position
+	;	move.w	#$00D4,($FFFFD388).w		; set X-position
+	;	move.w	#$00F8,($FFFFD38A).w		; set Y-position
+	;	move.b	#$07,($FFFFD3C0).w	; load cropped screen object (right half)
+	;	move.w	#$0174,($FFFFD3C8).w		; set X-position
+	;	move.w	#$00F8,($FFFFD3CA).w		; set Y-position
 
 
 		cmpi.w	#$400,($FFFFFE10).w
@@ -5676,14 +5720,14 @@ SS_ClrNemRam:
 		move.l	#0,($FFFFF704).w
 		move.b	#9,($FFFFD000).w ; load	special	stage Sonic object
 		move.b	#$34,($FFFFD080).w ; load title	card object
-		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
-		bne.s	@cont		; if yes, branch
+	;	btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
+	;	bne.s	@cont		; if yes, branch
 		move.b	#$07,($FFFFD380).w	; load cropped screen object
-		move.w	#$00D4,($FFFFD388).w		; set X-position
-		move.w	#$00F8,($FFFFD38A).w		; set Y-position
-		move.b	#$07,($FFFFD3C0).w	; load cropped screen object
-		move.w	#$0174,($FFFFD3C8).w		; set X-position
-		move.w	#$00F8,($FFFFD3CA).w		; set Y-position
+	;	move.w	#$00D4,($FFFFD388).w		; set X-position
+	;	move.w	#$00F8,($FFFFD38A).w		; set Y-position
+	;	move.b	#$07,($FFFFD3C0).w	; load cropped screen object
+	;	move.w	#$0174,($FFFFD3C8).w		; set X-position
+	;	move.w	#$00F8,($FFFFD3CA).w		; set Y-position
 
 @cont:
 		bsr	PalCycle_SS
@@ -6480,11 +6524,11 @@ End_ClrRam3:
 		move.w	#$601,($FFFFFE10).w ; set level	number to 0601 (no flowers)
 		move.b	#1,($FFFFF7CC).w
 		move.b	#$07,($FFFFD380).w	; load cropped screen object
-		move.w	#$00D4,($FFFFD388).w		; set X-position
-		move.w	#$00F8,($FFFFD38A).w		; set Y-position
-		move.b	#$07,($FFFFD3C0).w	; load cropped screen object
-		move.w	#$0174,($FFFFD3C8).w		; set X-position
-		move.w	#$00F8,($FFFFD3CA).w		; set Y-position
+	;	move.w	#$00D4,($FFFFD388).w		; set X-position
+	;	move.w	#$00F8,($FFFFD38A).w		; set Y-position
+	;	move.b	#$07,($FFFFD3C0).w	; load cropped screen object
+	;	move.w	#$0174,($FFFFD3C8).w		; set X-position
+	;	move.w	#$00F8,($FFFFD3CA).w		; set Y-position
 
 End_LoadData:
 		move.b	#4,($FFFFF62A).w
@@ -7872,8 +7916,8 @@ DTS_Loop:
 Deform_LZ:
 		cmpi.b	#3,($FFFFFF97).w	; was third lamppost passed?
 		beq.s	Deform_LZ_Extended	; if yes, use alternate deformation
-		tst.b 	($FFFFFFFE).w		; is the =P monitor enabled?
-		bne.w	Deform_LZ_Extended	; if yes, use alternate deformation
+	;	tst.b 	($FFFFFFFE).w		; is the =P monitor enabled?
+	;	bne.w	Deform_LZ_Extended	; if yes, use alternate deformation
 
 	; original code, takes MUCH less RAM than the extended code
 		move.w	($FFFFF73A).w,d4
@@ -8759,8 +8803,11 @@ ScrollVertical:				; XREF: DeformBgLayer
 ; ===========================================================================
 
 SV_NotSLZ2:
+		; one part of the Labyrinthy Place camera code (the other half is in Resize_LZ2)
 		cmpi.w	#$101,($FFFFFE10).w	; is level LZ2?
 		bne.s	SV_NotLZ2		; if not, branch
+		tst.b 	($FFFFFFFE).w
+		beq.w	SV_NotGHZ2
 		move.w	#-$250,($FFFFF73C).w	; move background up
 		cmpi.b	#1,($FFFFFF97).w	; was first lamppost passed?
 		beq.s	SV_Lamppost		; if yes, branch
@@ -8791,6 +8838,8 @@ SV_NotGHZ2:
 		add.w	($FFFFD00C).w,d0	; changed from move.w
 		cmpi.w	#$101,($FFFFFE10).w	; is level LZ2?
 		bne.s	SV_NotLZ2_2		; if not, branch
+		tst.b 	($FFFFFFFE).w
+		beq.w	SV_NotLZ2_2
 		subi.w	#$45,d0			; substract $45 pixels from Sonic's cam position
 		cmpi.b	#1,($FFFFFF97).w
 		beq.s	@cont
@@ -8828,10 +8877,13 @@ loc_664A:
 
 loc_6656:
 		cmpi.w	#$101,($FFFFFE10).w	; is level LZ2?
-		beq.s	@cont			; if yes, branch
+		bne.s	@cont			; if yes, branch
+		tst.b 	($FFFFFFFE).w
+		bne.s	@cont2
+@cont:	
 		clr.w	($FFFFF73C).w 		; clear camera Y-shift
 
-@cont:
+@cont2:
 		tst.b	($FFFFFF64).w 		; is camera shaking counter empty?
 		beq.s	@contx			; if yes, branch
 		move.w	($FFFFFF60).w,d0	; backup for sprite shaking
@@ -8972,13 +9024,17 @@ contx:
 		move.l	d1,d3
 		sub.l	($FFFFF704).w,d3
 		ror.l	#8,d3
+		
 		cmpi.w	#$101,($FFFFFE10).w	; is level LZ2?
-		beq.s	@cont			; if yes, branch
-		move.w	d3,($FFFFF73C).w
+		bne.s	@cont			; if not, branch
+		tst.b 	($FFFFFFFE).w
+		bne.s	@cont2
 
 @cont:
-		move.l	d1,($FFFFF704).w
+		move.w	d3,($FFFFF73C).w
 
+@cont2:
+		move.l	d1,($FFFFF704).w
 		move.w	($FFFFF704).w,($FFFFFF66).w
 
 		move.w	($FFFFF704).w,d0
@@ -10500,6 +10556,13 @@ Resize_LZ1:
 ; ===========================================================================
 
 Resize_LZ2:
+		tst.b 	($FFFFFFFE).w
+		bne.s	@blubb
+		move.w	#$71F,($FFFFF726).w		; set default lower level boundary
+		move.w	#$71F,($FFFFF72E).w
+		rts
+			
+@blubb:
 		tst.b	($FFFFFF97).w			; has at least one lamppost been touched?
 		beq.s	@nosubchange			; if not, branch
 		move.w	#$0100,d0
@@ -16938,15 +17001,15 @@ Obj2E_ChkEggman:
 		jmp	KillSonic	; kill Sonic lmao
 ; ===========================================================================
 
-Obj2E_ChkSonic:
+Obj2E_ChkSonic: ; =P monitors
 		cmpi.b	#2,d0		; does monitor contain Sonic?
 		bne.w	Obj2E_ChkShoes
 
 		move.w	#10000,d0		; hey at least you get 100000 points
 		jsr	AddPoints
-		
-		move.w	#$10,($FFFFFE14).w	; set precise remaining air time to get comedic timing right
-		move.b	#$1,($FFFFFFFE).w
+
+		move.w	#$1E,($FFFFFE14).w	; set precise remaining air time to get comedic timing right
+		move.b	#1,($FFFFFFFE).w	; set =P monitor flag true
 
 		move.w	#$8B,d0
 		jmp	(PlaySound).l	; play the old ending sequence music for maximum troll
@@ -30116,80 +30179,84 @@ Map_Obj06:
 
 
 ; ===========================================================================
-
-; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Object 07 - Cropped Screen object for Cutscenes
 ; ---------------------------------------------------------------------------
 
 Obj07:
-		moveq	#0,d0			; clear d0
+		moveq	#0,d0				; clear d0
 		move.b	obRoutine(a0),d0		; move routine counter to d0
-		move.w	Obj07_Index(pc,d0.w),d1 ; move the index to d1
-		jmp	Obj07_Index(pc,d1.w)	; find out the current position in the index
+		move.w	Obj07_Index(pc,d0.w),d1		; move the index to d1
+		jmp	Obj07_Index(pc,d1.w)		; find out the current position in the index
 ; ===========================================================================
-Obj07_Index:	dc.w Obj07_Setup-Obj07_Index	; Set up the object (art etc.)	[$0]
-		dc.w Obj07_SkipCheck-Obj07_Index; Skip Check			[$2]
-		dc.w Obj07_Display-Obj07_Index	; Display			[$4]
+Obj07_Index:	dc.w Obj07_Setup-Obj07_Index		; Set up the object (art etc.)	[$0]
+		dc.w Obj07_Move-Obj07_Index		; Move and display		[$2]
 ; ===========================================================================
-
-o7art = $877B
 
 Obj07_Setup:
-	;	tst.b	($FFFFD340).w		; are underwater bubbles visible?
-	;	bne.w	DeleteObject		; if yes, delete crop bars (why???)
-
-Obj07_SkipCheck:
-		addq.b	#2,obRoutine(a0)		; set to "Obj07_Display"
-		move.l	#Map_Obj07,obMap(a0)	; load mappings
-		move.w	#o7art,obGfx(a0)		; set art pointer, use palette line 1
-
-		move.b	#1,obFrame(a0)
-
-Obj07_Display:
-		cmpi.w	#$400,($FFFFFE10).w
-		bne.s	@contx
-		tst.b	($FFFFFF7F).w
-		beq.s	@cont2
-
-@contx:
-		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
-		bne.s	Obj07_MoveOn
-		tst.b	($FFFFF7CC).w
-		bne.s	Obj07_MoveOn
-
-
-; Check for off moving
-@conteaster:
-		cmpi.b	#8,obFrame(a0)
-		bge.s	@cont
-		addq.b	#1,obFrame(a0)
-
+		cmpi.b	#$8C,($FFFFF600).w		; are we in the pre-level sequence?
+		bne.s	@cont				; if not, branch
+		rts					; wait until we're ready
 @cont:
-		cmpi.b	#8,obFrame(a0)
-		bne.s	@cont2
-		rts
-
-@cont2:
-		jmp	DisplaySprite		; display sprite
-
-; Check for on moving
-Obj07_MoveOn:
-		cmpi.b	#1,obFrame(a0)
-		ble.s	@cont
-		subq.b	#1,obFrame(a0)
-
-@cont:
-		jmp	DisplaySprite		; display sprite
+		move.b	#BlackBarHeight,$32(a0)		; set max height
+		move.b	#BlackBarGrow,$33(a0)		; set grow speed
 ; ---------------------------------------------------------------------------
 
-Map_Obj07:
-		include	"_maps\CropScreen.asm"
-	;	include	"_maps\TutorialHUD.asm"
-		even
-; ---------------------------------------------------------------------------
+Obj07_Move:
+		bsr.s	Obj07_CheckState		; update current status (ScreenCropCurrent)
+
+		move.b	$30(a0),d0			; get current height
+		tst.b	d0				; are crops set to be displayed?
+		bne.s	@cropsvisible			; if yes, branch
+		move.w	#$8720,($C00004).l		; reset background color
+		move.w	#$8A00|$DF,($FFFFF624).w	; reset H-int timing to once per frame
+		display_enable
+		rts					; return
+
+@cropsvisible:
+		lsr.b	#1,d0				; half the current height
+		subq.b	#1,d0				; subtract 1
+		ori.w	#$8A00,d0			; mask by $8A (H-int counter VDP register)
+		move.w	d0,($FFFFF624).w		; backup value
+		rts					; return
 ; ===========================================================================
 
+Obj07_CheckState:
+		moveq	#0,d0				; clear d0
+
+		btst	#3,($FFFFFF92).w		; is cinematic HUD enabled?
+		bne.s	@showcrops			; if yes, always enable
+		tst.b	($FFFFF7CC).w			; are controls locked?
+		bne.s	@showcrops			; if yes, always enable
+		tst.w	($FFFFF63A).w			; is game paused?
+		bne.s	@showcrops			; if yes, always enable
+
+		cmpi.w	#$400,($FFFFFE10).w		; are we in Uberhub?
+		bne.s	@dontshow			; if not, branch
+		tst.b	($FFFFFF7F).w			; are we falling down the intro tube?
+		bne.s	@dontshow			; if yes, force display
+
+@showcrops:
+		move.b	$30(a0),d0			; get currently set height
+		add.b	$33(a0),d0			; continue to increase height
+		cmp.b	$32(a0),d0			; compare against max allowed height
+		ble.s	@cont				; if we're below, branch
+		move.b	$32(a0),d0			; make sure we don't exceed the maximum
+@cont:		
+		move.b	d0,$30(a0)			; set crops on
+		rts					; return
+
+@dontshow:
+		move.b	$30(a0),d0			; get currently set height
+		sub.b	$33(a0),d0			; continue to reduce height
+		tst.b	d0				; are we on height 0?
+		bpl.s	@cont2				; if yes, branch
+		move.b	#0,d0				; make sure we don't exceed the minimum
+@cont2:		
+		move.b	d0,$30(a0)			; set crops off
+		rts					; return
+; ---------------------------------------------------------------------------
+; ===========================================================================
 
 
 ; ===========================================================================
@@ -33936,8 +34003,8 @@ Obj0A_Countdown:			; XREF: Obj0A_Index
 		andi.w	#1,d0
 		move.b	d0,$34(a0)
 		
-		tst.b 	($FFFFFFFE).w		; is the =P monitor enabled?
-		bne.w	Obj0A_ReduceAir		; if yes, disable countdown and drown normally
+	;	tst.b 	($FFFFFFFE).w		; is the =P monitor enabled?
+	;	bne.w	Obj0A_ReduceAir		; if yes, disable countdown and drown normally
 
 		move.w	($FFFFFE14).w,d0 ; check air remaining
 		cmpi.w	#$19,d0
@@ -33967,8 +34034,8 @@ Obj0A_WarnSound:			; XREF: Obj0A_Countdown
 Obj0A_ReduceAir:
 		subq.w	#1,($FFFFFE14).w ; subtract 1 from air remaining
 		bcc.w	Obj0A_GoMakeItem ; if air is above 0, branch
-		tst.b 	($FFFFFFFE).w	; is the =P monitor enabled?
-		bne.w	@NoResume		; if yes, do not resume music
+	;	tst.b 	($FFFFFFFE).w	; is the =P monitor enabled?
+	;	bne.w	@NoResume		; if yes, do not resume music
 		bsr	ResumeMusic
 
 @NoResume:
@@ -33981,7 +34048,7 @@ Obj0A_ReduceAir:
 		move.l	a0,-(sp)
 		lea	($FFFFD000).w,a0
 		bsr	Sonic_ResetOnFloor
-		move.b	#$0,($FFFFFFFE).w ; reset =P flag
+	;	move.b	#$0,($FFFFFFFE).w ; reset =P flag
 		move.b	#$17,obAnim(a0)	; use Sonic's drowning animation
 		bset	#1,obStatus(a0)
 		bset	#7,obGfx(a0)
@@ -34003,9 +34070,9 @@ loc_13F86:
 ; ===========================================================================
 
 Obj0A_GoMakeItem:			; XREF: Obj0A_ReduceAir
-		tst.b 	($FFFFFFFE).w
-		bne.w	@Return			; hax
-		bra.s	Obj0A_MakeItem
+	;	tst.b 	($FFFFFFFE).w
+	;	bne.w	@Return			; hax
+	;	bra.s	Obj0A_MakeItem
 
 @Return:
 		rts
@@ -45440,12 +45507,12 @@ Obj09_ChkEmer:
 Emershit:
 	;	jsr	SingleObjLoad
 	;	move.b	#$07,(a1)
-		move.b	#$07,($FFFFD380).w	; load cropped screen object
-		move.w	#$00D4,($FFFFD388).w		; set X-position
-		move.w	#$00F8,($FFFFD38A).w		; set Y-position
-		move.b	#$07,($FFFFD3C0).w	; load cropped screen object
-		move.w	#$0174,($FFFFD3C8).w		; set X-position
-		move.w	#$00F8,($FFFFD3CA).w		; set Y-position
+	;	move.b	#$07,($FFFFD380).w	; load cropped screen object
+	;	move.w	#$00D4,($FFFFD388).w		; set X-position
+	;	move.w	#$00F8,($FFFFD38A).w		; set Y-position
+	;	move.b	#$07,($FFFFD3C0).w	; load cropped screen object
+	;	move.w	#$0174,($FFFFD3C8).w		; set X-position
+	;	move.w	#$00F8,($FFFFD3CA).w		; set Y-position
 		
 		move.b	#1,($FFFFF7CC).w		; lock controls
 		move.l	a0,-(sp)

@@ -99,6 +99,7 @@ Options_ClrVram:
 		move.w	#19,($FFFFFF82).w	; set default selected entry to exit
 
 		bsr	OptionsTextLoad		; load options text
+		display_enable
 		jsr	Pal_FadeTo
 		bra.w	OptionsScreen_MainLoop
 

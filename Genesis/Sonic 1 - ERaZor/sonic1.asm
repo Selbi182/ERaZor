@@ -419,8 +419,10 @@ Art_Text:	incbin	Screens\OptionsScreen\Options_TextArt.bin	; text used in level 
 ; loc_B10:
 VBlank:				; XREF: StartOfRom
 		movem.l	d0-a6,-(sp)
-		tst.b	($FFFFF62A).w
-		beq.s	loc_B88
+
+		tst.b	($FFFFF62A).w			; are we late for V-Blank?
+		beq.w	VBlank_Late			; if yes, oh shit oh fuck, go to the emergency routine immediately
+		
 		move.w	($C00004).l,d0
 		move.l	#$40000010,($C00004).l
 		move.l	($FFFFF616).w,($C00000).l
@@ -439,19 +441,25 @@ loc_B42:
 		move.w	VBlankTable(pc,d0.w),d0
 		jsr	VBlankTable(pc,d0.w)
 
-loc_B5E:				; XREF: loc_B88
-		jsr	sub_71B4C
+; loc_B5E:
+VBlank_Exit:				; XREF: VBlank_Late
+		jsr	SoundDriverUpdate
 
-loc_B64:				; XREF: loc_D50
+; loc_B64:
+VBlank_Exit_NoSoundDriver:		; XREF: loc_D50
+		move.b	($FFFFF64F).w,d0	; get H-Blank status flags
+		ori.b	#%11100000,d0		; reset flags for black bars
+		move.b	d0,($FFFFF64F).w	; store
+
 		addq.l	#1,($FFFFFE0C).w
 		movem.l	(sp)+,d0-a6
 		rte	
 ; ===========================================================================
-VBlankTable:	dc.w loc_B88-VBlankTable ; $00
+VBlankTable:	dc.w VBlank_Late-VBlankTable ; $00
 		dc.w loc_C32-VBlankTable ; $02
 		dc.w loc_C44-VBlankTable ; $04
 		dc.w loc_C5E-VBlankTable ; $06
-		dc.w loc_C6E-VBlankTable ; $08
+		dc.w loc_C6E-VBlankTable ; $08 (main one for levels)
 		dc.w loc_DA6-VBlankTable ; $0A
 		dc.w loc_E72-VBlankTable ; $0C
 		dc.w loc_F8A-VBlankTable ; $0E
@@ -462,15 +470,17 @@ VBlankTable:	dc.w loc_B88-VBlankTable ; $00
 		dc.w loc_E72-VBlankTable ; $18
 ; ===========================================================================
 
-loc_B88:				; XREF: VBlank; VBlankTable
+; loc_B88:
+VBlank_Late:				; XREF: VBlank; VBlankTable
 		cmpi.b	#$8C,($FFFFF600).w
 		beq.s	loc_B9A
-		cmpi.b	#$C,($FFFFF600).w
-		bne.w	loc_B5E
+		cmpi.b	#$C,($FFFFF600).w	; are we in the level game mode?
+		bne.w	VBlank_Exit		; if not, branch
 
 loc_B9A:
-		cmpi.b	#1,($FFFFFE10).w ; is level LZ ?
-		bne.w	loc_B5E		; if not, branch
+		cmpi.b	#1,($FFFFFE10).w	; is level LZ?
+		bne.w	VBlank_Exit		; if not, branch
+
 		move.w	($C00004).l,d0
 		btst	#6,($FFFFFFF8).w
 		beq.s	loc_BBA
@@ -511,7 +521,7 @@ loc_C22:				; XREF: loc_BC8
 		move.w	($FFFFF624).w,(a5)
 		move.b	($FFFFF625).w,($FFFFFE07).w
 		move.w	#0,($A11100).l
-		bra.w	loc_B5E
+		bra.w	VBlank_Exit
 ; ===========================================================================
 
 loc_C32:				; XREF: VBlankTable
@@ -600,12 +610,12 @@ loc_D50:
 		movem.l	d0-d7,($FFFFFF10).w
 		movem.l	($FFFFF754).w,d0-d1
 		movem.l	d0-d1,($FFFFFF30).w
-
-		cmpi.b	#96,($FFFFF625).w
-		bcc.s	Demo_Time
-		bset	#0,($FFFFF64F).w
-		addq.l	#4,sp
-		bra.w	loc_B64
+		
+		cmpi.b	#96,($FFFFF625).w		; is the on-screen water surface on scanline 96 or below?
+		bhs.s	Demo_Time			; if yes, it's safe to do the remaing V-Blank stuff right now
+		bset	#0,($FFFFF64F).w		; otherwise we're short on time, set to do updates in H-Blank
+		addq.l	#4,sp				; skip sound driver updates and do the H-Blank stuff now
+		bra.w	VBlank_Exit_NoSoundDriver	; end V-Blank routine early
 
 ; ---------------------------------------------------------------------------
 ; Subroutine to	run a demo for an amount of time
@@ -841,20 +851,60 @@ loc_10D4:				; XREF: sub_106E
 
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 
+BlackBarHeight = $20
+
 ; PalToCRAM:
 HBlank:
+		movem.l	d0-d1,-(sp)		; backup d0 and d1
+		move.b	($FFFFF64F).w,d1	; get flag counter
+
+		btst	#7,d1			; is first flag set?
+		beq.s	@checksecondflag	; if not, branch
+		bclr	#7,d1			; clear first flag
+		move.w	#$8A00|224-(BlackBarHeight*2)-1,($C00004).l ; set H-int timing to occur again once it hits the bottom black bar
+		bra.w	@hblank_earlyexit	; exit without running any additional V-blank stuff
+
+@checksecondflag:
+		btst	#6,d1			; is second flag set?
+		beq.s	@checkthirdflag		; if not, branch
+		bclr	#6,d1			; clear second flag
+		move.w	#$8A00|$FF,($C00004).l	; set H-int timing to not occur this frame anymore
+		move.w	#$8720,($C00004).l	; reset background color
+		display_enable			; enable display
+		bra.w	@hblank_continue	; exit AND run any additional V-blank stuff
+
+@checkthirdflag:
+		btst	#5,d1			; is third flag set?
+		beq.s	@hblank_continue	; if not, we're entirely done with the black bar stuff. exit
+		bclr	#5,d1			; clear third flag
+		move.w	#$8701,($C00004).l	; set background color to black
+		display_disable			; disable display
+		; exit without running any additional V-blank stuff
+
+@hblank_earlyexit:
+		move.b	d1,($FFFFF64F).w	; write updated flags
+		movem.l	(sp)+,d0-d1		; restore d0
+		rte				; exit H-int
+
+@hblank_continue:
+		move.b	d1,($FFFFF64F).w	; write updated flags
+		movem.l	(sp)+,d0-d1		; restore d0 and d1
+
 		tst.w	($FFFFF644).w
 		beq.w	locret_119C
 		move.w	#0,($FFFFF644).w
 		movem.l	d0-d1/a0-a2,-(sp)
 
 		lea	($C00000).l,a1
-		move.w	#$8ADF,4(a1)		; Reset HInt timing
+	;	move.w	#$8ADF,4(a1)		; Reset HInt timing (TODO: this needs to dynamically adjusted for the water surface in LZ in combination with the black bars)
 		move.w	#$100,($A11100).l	; stop the Z80
 @z80loop:	btst	#0,($A11100).l
 		bne.s	@z80loop		; loop until it says it's stopped
 
 ; LZ water effects
+; Source: https://sonicresearch.org/community/index.php?threads/removing-the-water-surface-object-in-sonic-1.5975/
+		bra.s	@skipTransfer ; disabled for now because of the black bars clashing with the water effect
+
 		movea.l	($FFFFF610).w,a2
 		moveq	#$F,d0			; adjust to push artifacts off screen
 @loop:		dbf	d0,@loop		; waste a few cycles here
@@ -886,18 +936,20 @@ HBlank:
 @skipTransfer:
 		move.w	#0,($A11100).l		; start the Z80
 		movem.l	(sp)+,d0-d1/a0-a2
-		btst	#0,($FFFFF64F).w
-		bne.s	loc_119E
+
+		btst	#0,($FFFFF64F).w	; was the early V-Blank escape set?
+		bne.s	HBlank_DoVBlankUpdates	; if yes, do the updating stuff now
 
 locret_119C:
 		rte	
 ; ===========================================================================
 
-loc_119E:				; XREF: HBlank
+; loc_119E:
+HBlank_DoVBlankUpdates:			; XREF: HBlank
 		bclr	#0,($FFFFF64F).w
 		movem.l	d0-a6,-(sp)
 		bsr	Demo_Time
-		jsr	sub_71B4C
+		jsr	SoundDriverUpdate
 		movem.l	(sp)+,d0-a6
 		rte	
 ; End of function HBlank
@@ -4130,10 +4182,12 @@ Level_ClrVars3:
 		move.w	#$8407,(a6)
 		move.w	#$857C,(a6)
 		move.w	#$9001,(a6)
-		move.w	#$8004,(a6)
 		move.w	#$8720,(a6)
-		move.w	#$8ADF,($FFFFF624).w
-		move.w	($FFFFF624).w,(a6)
+		
+		move.w	#$8014,(a6)					; enable horizontal interrupts (normally only enabled in LZ)
+		move.w	#$8A00|(BlackBarHeight/2)-1,($FFFFF624).w	; set initial H-int counter value (changed from $DF)
+		move.w	($FFFFF624).w,(a6)				; apply H-int counter
+
 		clr.w	($FFFFC800).w
 		move.l	#$FFFFC800,($FFFFC8FC).w
 
@@ -9773,7 +9827,7 @@ loc_7088:				; CODE XREF: DrawTiles_TB2+26?j
  
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
  
- 
+; MAGICSUB:
 sub_70AC:				; CODE XREF: sub_6EA4+170?p
 					; DrawTiles_LR2+12?p ...
 		or.w	d2,d0
@@ -9782,17 +9836,18 @@ sub_70AC:				; CODE XREF: sub_6EA4+170?p
 		bne.s	loc_70E8
 		btst	#3,(a0)
 		bne.s	loc_70C8
-	;	move	#$2700,sr
+		move	#$2700,sr
 		move.l	d0,(a5)
 		move.l	(a1)+,(a6)
 		add.l	d7,d0
 		move.l	d0,(a5)
 		move.l	(a1)+,(a6)
-	;	move	#$2300,sr
+		move	#$2300,sr
 		rts	
 ; ===========================================================================
  
 loc_70C8:				; CODE XREF: sub_70AC+E?j
+		move	#$2700,sr
 		move.l	d0,(a5)
 		move.l	(a1)+,d4
 		eori.l	#$8000800,d4
@@ -9804,12 +9859,14 @@ loc_70C8:				; CODE XREF: sub_70AC+E?j
 		eori.l	#$8000800,d4
 		swap	d4
 		move.l	d4,(a6)
+		move	#$2300,sr
 		rts	
 ; ===========================================================================
  
 loc_70E8:				; CODE XREF: sub_70AC+8?j
 		btst	#3,(a0)
 		bne.s	loc_710A
+		move	#$2700,sr
 		move.l	d0,(a5)
 		move.l	(a1)+,d5
 		move.l	(a1)+,d4
@@ -9819,10 +9876,12 @@ loc_70E8:				; CODE XREF: sub_70AC+8?j
 		move.l	d0,(a5)
 		eori.l	#$10001000,d5
 		move.l	d5,(a6)
+		move	#$2300,sr
 		rts	
 ; ===========================================================================
  
 loc_710A:				; CODE XREF: sub_70AC+40?j
+		move	#$2700,sr
 		move.l	d0,(a5)
 		move.l	(a1)+,d5
 		move.l	(a1)+,d4
@@ -9834,6 +9893,7 @@ loc_710A:				; CODE XREF: sub_70AC+40?j
 		eori.l	#$18001800,d5
 		swap	d5
 		move.l	d5,(a6)
+		move	#$2300,sr
 		rts	
 ; End of function sub_70AC
  
@@ -29757,15 +29817,12 @@ Obj03_NotOdd:
 		bsr	DisplaySprite		; display sprite
 
 Obj03_BackgroundColor:
-	;	move.w	($FFFFFB40).w,d2
-	;	jsr	SineWavePalette
-	;	move.w	($FFFFFB40).w,d2
-	
-		moveq	#0,d2
-		btst	#0,($FFFFFE05).w
-		beq.s	@cont
-		move.w	#$222,d2
-@cont:
+		moveq	#0,d2			; clear d2 (black)
+		move.b	($FFFFF636).w,d0	; get stored random number
+		andi.b	#%1111,d0		; check if the first four bits are all 0
+		bne.s	@notlucky		; if not, branch
+		move.w	#$020,d2		; otherwise, briefly make the sign flash
+@notlucky:
 		move.w	d2,($FFFFFB5E).w	; apply color (color 16 of palette row 3)
 
 Obj03_ChkDelete:
@@ -31833,6 +31890,7 @@ SH_EnemyLoop:
 		tst.b	(a2)			; is current entry $FF (end of array)?
 		bmi.w	SH_NoEnemy		; if yes, branch
 		move.b	(a1),d0			; move current object ID to d0
+		beq.w	SH_NoEnemy		; if it's not a set object, loop
 		cmp.b	(a2)+,d0		; is current object a valid object?
 		bne.s	SH_EnemyLoop		; if not, loop
 
@@ -48427,7 +48485,8 @@ SoundTypes:	dc.b $90, $90, $90, $90, $90, $90, $90,	$90, $90, $90, $90, $90, $90
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 
 
-sub_71B4C:				; XREF: VBlank; HBlank
+; sub_71B4C:
+SoundDriverUpdate:				; XREF: VBlank; HBlank
 		move.w	#$100,($A11100).l ; stop the Z80
 		nop	
 		nop	
@@ -48445,7 +48504,7 @@ loc_71B5A:
 		nop	
 		nop	
 		nop	
-		bra.s	sub_71B4C
+		bra.s	SoundDriverUpdate
 ; ===========================================================================
 
 loc_71B82:
@@ -48549,13 +48608,13 @@ loc_71C38:
 loc_71C44:
 		move.w	#0,($A11100).l	; start	the Z80
 		rts	
-; End of function sub_71B4C
+; End of function SoundDriverUpdate
 
 
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 
 
-sub_71C4E:				; XREF: sub_71B4C
+sub_71C4E:				; XREF: SoundDriverUpdate
 		subq.b	#1,$E(a5)
 		bne.s	locret_71CAA
 		move.b	#$80,obX(a6)
@@ -48614,7 +48673,7 @@ byte_71CC4:	dc.b $12, $15, $1C, $1D, $FF, $FF
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 
 
-sub_71CCA:				; XREF: sub_71B4C
+sub_71CCA:				; XREF: SoundDriverUpdate
 		subq.b	#1,$E(a5)
 		bne.s	loc_71CE0
 		bclr	#4,(a5)
@@ -48835,7 +48894,7 @@ loc_71E4A:
 
 ; ===========================================================================
 
-loc_71E50:				; XREF: sub_71B4C
+loc_71E50:				; XREF: SoundDriverUpdate
 		bmi.s	loc_71E94
 		cmpi.b	#2,3(a6)
 		beq.w	loc_71EFE
@@ -48918,7 +48977,7 @@ loc_71EFE:
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 
 
-Sound_Play:				; XREF: sub_71B4C
+Sound_Play:				; XREF: SoundDriverUpdate
 		movea.l	(Go_SoundTypes).l,a0
 		lea	obScreenY(a6),a1	; load music track number
 		move.b	0(a6),d3
@@ -48959,7 +49018,7 @@ locret_71F4A:
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 
 
-Sound_ChkValue:				; XREF: sub_71B4C
+Sound_ChkValue:				; XREF: SoundDriverUpdate
 		moveq	#0,d7
 		move.b	9(a6),d7
 		beq.w	Sound_E4
@@ -49627,7 +49686,7 @@ Sound_E0:				; XREF: Sound_ExIndex
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 
 
-sub_72504:				; XREF: sub_71B4C
+sub_72504:				; XREF: SoundDriverUpdate
 		move.b	6(a6),d0
 		beq.s	loc_72510
 		subq.b	#1,6(a6)
@@ -49767,7 +49826,7 @@ loc_725E4:
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 
 
-sub_7260C:				; XREF: sub_71B4C
+sub_7260C:				; XREF: SoundDriverUpdate
 		move.b	obGfx(a6),obRender(a6)
 		lea	$4E(a6),a0
 		moveq	#$30,d0
@@ -49823,7 +49882,7 @@ loc_7266A:
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 
 
-sub_7267C:				; XREF: sub_71B4C
+sub_7267C:				; XREF: SoundDriverUpdate
 		tst.b	ob2ndRout(a6)
 		beq.s	loc_72688
 		subq.b	#1,ob2ndRout(a6)
@@ -50004,7 +50063,7 @@ word_72790:	dc.w $25E, $284, $2AB, $2D3, $2FE, $32D, $35C, $38F, $3C5
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 
 
-sub_72850:				; XREF: sub_71B4C
+sub_72850:				; XREF: SoundDriverUpdate
 		subq.b	#1,$E(a5)
 		bne.s	loc_72866
 		bclr	#4,(a5)

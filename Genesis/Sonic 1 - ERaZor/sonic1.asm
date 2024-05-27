@@ -482,6 +482,8 @@ VBlank_Late:				; XREF: VBlank; VBlankTable
 		bne.w	VBlank_Exit		; if not, branch
 
 loc_B9A:
+		move.w	($FFFFF624).w,($C00004).l
+
 		cmpi.b	#1,($FFFFFE10).w	; is level LZ?
 		bne.w	VBlank_Exit		; if not, branch
 
@@ -855,15 +857,17 @@ loc_10D4:				; XREF: sub_106E
 
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 
-BlackBarHeight	= 32
-BlackBarGrow	=  2
+BlackBarHeight = 32
+BlackBarHeight_Cinematic = 56
+BlackBarGrow = 2
+BarKillHeight = $E0/2
 
 ; PalToCRAM:
 HBlank:
 		cmpi.b	#1,($FFFFFE10).w	; are we in LZ?
 		beq.s	@skipblackbars		; if yes, skip bars (they cause issues with the water thingy)
-		cmpi.b	#BlackBarGrow,(ScreenCropCurrent).w ; are cropped borders enabled? (with tolerance for the last tick)
-		bgt.s	@cont			; if yes, branch
+		tst.b	(ScreenCropCurrent).w	; are cropped borders enabled?
+		bgt.s	@blackbars		; if yes, branch
 	
 @skipblackbars:
 		move.l	d0,-(sp)		; backup d0
@@ -872,28 +876,41 @@ HBlank:
 	;	move.w	#$8A00|$DF,($FFFFF624).w ; set H-int timing to not occur this frame anymore
 		move.w	#$8720,($C00004).l	; reset background color
 		bra.w	@hblank_original	; go to original H-Blank code
+; ---------------------------------------------------------------------------
 		
-@cont:		
-		movem.l	d0-d1,-(sp)		; backup d0 and d1
+@blackbars:
+		movem.l	d0-d2,-(sp)		; backup d0 and d1
+		
 		move.b	($FFFFF64F).w,d1	; get flag counter
+		move.b	(ScreenCropCurrent).w,d2 ; get current bar height
+		cmpi.b	#BarKillHeight,d2	; are we at the bar kill height?
+		blo.s	@makebars		; if not, branch. otherwise, set the display to not render anymore to avoid flickers
+		move.w	#$8701,($C00004).l	; set background color to black
+		display_disable			; disable display
+		bra.w	@hblank_continue
+		
+@makebars:
 		btst	#7,d1			; is first flag set?
 		beq.s	@checksecondflag	; if not, branch
 		bclr	#7,d1			; clear first flag
 		
 		moveq	#0,d0			; clear d0
 		move.b	#224-1,d0		; set maximum scan line count (minus 1)
-		sub.b	(ScreenCropCurrent).w,d0 ; subntract current height once...
-		sub.b	(ScreenCropCurrent).w,d0 ; ...and twice...
+		sub.b	d2,d0			; subtract current height once...
+		sub.b	d2,d0 			; ...and twice
+		
 		ori.w	#$8A00,d0		; set as H-int counter instruction
 		move.w	d0,($C00004).l		; send to VDP
 
+		cmpi.b	#$C0/2,d2		; if bars are big enough, do V-Blank now...
+		bhs.w	@hblank_continue	; ...to avoid flickers
 		bra.w	@hblank_earlyexit	; exit without running any additional V-blank stuff
 
 @checksecondflag:
 		btst	#6,d1			; is second flag set?
 		beq.s	@checkthirdflag		; if not, branch
 		bclr	#6,d1			; clear second flag
-		move.w	#$8A00|$FF,($C00004).l	; set H-int timing to not occur this frame anymore
+		move.w	#$8A00|$DF,($C00004).l	; set H-int timing to not occur this frame anymore
 		move.w	#$8720,($C00004).l	; reset background color
 		display_enable			; enable display
 		bra.w	@hblank_continue	; exit AND run any additional V-blank stuff
@@ -908,12 +925,12 @@ HBlank:
 
 @hblank_earlyexit:
 		move.b	d1,($FFFFF64F).w	; write updated flags
-		movem.l	(sp)+,d0-d1		; restore d0
+		movem.l	(sp)+,d0-d2		; restore d0
 		rte				; exit H-int
 
 @hblank_continue:
 		move.b	d1,($FFFFF64F).w	; write updated flags
-		movem.l	(sp)+,d0-d1		; restore d0 and d1
+		movem.l	(sp)+,d0-d2		; restore d0 and d1
 
 @hblank_original:
 
@@ -1304,44 +1321,7 @@ PG_NotGHZ2:
 		move.b	#1,($FFFFFFB5).w	; set flag
 		move.b	#1,($FFFFF003).w	; pause music
 
-Pal_MakeBlackWhite:
-		lea	($FFFFFB00).w,a3	; backup palette
-		lea	($FFFFFD00).w,a4	; backup palette
-		move.w	#$003F,d3		; set d3 to $3F (+1 for the first run)
-
-Pal_Backup_Loop:
-		move.w	(a3)+,(a4)+		; set palette
-		dbf	d3,Pal_Backup_Loop	; loop (backup)
-
-		lea	($FFFFFB00).w,a0 	; get palette
-		moveq	#0,d3			; clear d3
-		move.b	#$3F,d3			; set d3 to $3F (+1 for the first run)
-
-Pal_MBW_Loop:
-		moveq	#0,d0			; clear d0
-		move.w	(a0),d0			; get colour
-
-		moveq	#0,d1			; clear d1
-		move.b	d0,d1 			; copy Green and Red of colour to d1
-		lsr.b	#4,d1 			; get only Green amount
-
-		move.b	d0,d2 			; copy Green and Red of colour to d2
-		and.b	#$E,d2 			; get only Red amount
-		lsr.w	#8,d0 			; get only Blue amount of d0
-		add.b	d1,d0 			; add Green amount to Blue amount
-		add.b	d2,d0 			; then add Red to the amount
-		divu.w	#3,d0 			; divide by 3
-		and.b	#$E,d0 			; keep it an even value (Keep 9-bit VDP)
-		move.b	d0,d1 			; copy to d1
-
-		lsl.b	#4,d1 			; shift to left nybble
-		add.b	d1,d0 			; add to d0 (Setting the green)
-		lsl.w	#4,d1 			; shift to next left nybble
-		add.w	d1,d0			; add to d0 (Setting the blue)
-		move.w	d0,(a0)+		; set new colour
-		
-		dbf	d3,Pal_MBW_Loop		; loop for each colour
-; ---------------------------------------------------------------------------
+		jsr	Pal_MakeBlackWhite
 
 Pause_MainLoop:
 		movem.l	d0/a0,-(sp)
@@ -2316,6 +2296,8 @@ PalCycle_Load:				; XREF: Demo; Level_MainLoop; End_MainLoop
 		blt.s	PCL_Load		; if not, branch
 		tst.b	($FFFFFFB1).w		; is white flash?
 		beq.s	PCL_Load		; if not, branch
+
+@nopalcycle:
 		rts
 
 PCL_Load:
@@ -2348,6 +2330,11 @@ PalCycle_Title:				; XREF: TitleScreen
 ; ===========================================================================
 
 PalCycle_GHZ:				; XREF: PalCycle
+	;	cmpi.w	#$002,($FFFFFE10).w
+	;	bne.s	@0
+	;	cmpi.b	#4,($FFFFFE30).w
+	;	bne.s	locret_1990
+@0:
 		lea	(Pal_GHZCyc).l,a0
 
 loc_196A:				; XREF: PalCycle_Title
@@ -2359,9 +2346,25 @@ loc_196A:				; XREF: PalCycle_Title
 		andi.w	#3,d0
 		lsl.w	#3,d0
 		lea	($FFFFFB50).w,a1
-		move.l	(a0,d0.w),(a1)+
-		move.l	obMap(a0,d0.w),(a1)
-
+		move.l	(a0,d0.w),d4
+		move.l	4(a0,d0.w),d5
+		
+		move.w	d4,d0
+		jsr	ContrastBoost 
+		move.w	d0,(a1)+
+		swap	d4
+		move.w	d4,d0
+		jsr	ContrastBoost
+		move.w	d0,(a1)+
+		
+		move.w	d5,d0
+		jsr	ContrastBoost
+		move.w	d0,(a1)+
+		swap	d5
+		move.w	d5,d0
+		jsr	ContrastBoost
+		move.w	d0,(a1)+
+		
 locret_1990:
 		rts	
 ; End of function PalCycle_Title
@@ -3285,34 +3288,90 @@ loc_2160:
 		rts
 ; End of function PalLoad4_Water
 
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Subroutine to turn the entire palette into grayscale
+; ---------------------------------------------------------------------------
 
+Pal_MakeBlackWhite:
+		lea	($FFFFFB00).w,a3 	; get palette index
+		lea	($FFFFFD00).w,a4	; backup palette location
+		moveq	#0,d3			; clear d3
+		move.b	#$3F,d3			; set d3 to $3F (+1 for the first run)
+
+Pal_MBW_Loop:
+		moveq	#0,d0			; clear d0
+		move.w	(a3),d0			; get colour
+		move.w	d0,(a4)+		; backup colour
+
+		moveq	#0,d1			; clear d1
+		move.b	d0,d1 			; copy Green and Red of colour to d1
+		lsr.b	#4,d1 			; get only Green amount
+
+		move.b	d0,d2 			; copy Green and Red of colour to d2
+		and.b	#$E,d2 			; get only Red amount
+		lsr.w	#8,d0 			; get only Blue amount of d0
+		add.b	d1,d0 			; add Green amount to Blue amount
+		add.b	d2,d0 			; then add Red to the amount
+		divu.w	#3,d0 			; divide by 3
+		and.b	#$E,d0 			; keep it an even value (Keep 9-bit VDP)
+		move.b	d0,d1 			; copy to d1
+
+		lsl.b	#4,d1 			; shift to left nybble
+		add.b	d1,d0 			; add to d0 (Setting the green)
+		lsl.w	#4,d1 			; shift to next left nybble
+		add.w	d1,d0			; add to d0 (Setting the blue)
+		move.w	d0,(a3)+		; set new colour
+		
+		dbf	d3,Pal_MBW_Loop		; loop for each colour
+		rts
+; End of function Pal_MakeBlackWhite
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Contrast boosting a single color in d0
 ; ---------------------------------------------------------------------------
 
-ColorBoost = 6
+ColorBoostB = $C
+ColorBoostG = $4
 
-ContrastBoost:	
+ContrastBoost:
 		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
-		beq.s	@skip			; if not, branch
+		bne.s	@docontrast		; if yes, branch
+		cmpi.w	#$002,($FFFFFE10).w	; are we in Green Hill Place?
+		bne.s	@skip			; if not, branch
+		cmpi.b	#4,($FFFFFE30).w	; did we hit the final checkpoint yet?
+		beq.s	@skip			; if yes, branch
+@docontrast:
+		move.w	d0,d1			; copy color
+
+		ror.w	#4,d1			; get green color
+		move.w	d1,d2			; copy to d2
+		andi.w	#$00E,d2		; limit to one channel
+
+		cmpi.w	#ColorBoostG,d2		; are we at or avobe the minimum value?
+		bge.s	@decreaseG		; if yes, decrease
+		moveq	#0,d2			; otherwise, set green 0
+		bra.s	@applyG			; skip
+@decreaseG:	subi.w	#ColorBoostG,d2		; decrease green value
+
+@applyG:
+		ror.w	#4,d1			; get blue color
+		move.w	d1,d3			; copy to d3
+		andi.w	#$00E,d3		; limit to one channel
 		
-		move.w	d0,d1
-		andi.w	#$E00,d1
-		ror.w	#8,d1
-		
-		cmpi.w	#ColorBoost,d1
-		bge.s	@decrease
-		moveq	#0,d1	
-		bra.s	@apply
-@decrease:
-		subi.w	#ColorBoost,d1
+		cmpi.w	#ColorBoostB,d3		; are we at or avobe the minimum value?
+		bge.s	@decrease		; if yes, decrease
+		moveq	#0,d3			; otherwise, set blue 0
+		bra.s	@apply			; skip
+@decrease:	subi.w	#ColorBoostB,d3		; decrease blue value
 
 @apply:
-		rol.w	#8,d1
-		andi.w	#$00EE,d0
-		or.w	d1,d0
+		rol.w	#4,d2			; prepare for merge
+		rol.w	#8,d3			; prepare for merge
+		or.w	d2,d3			; merge green and blue channel
+		andi.w	#$000E,d0		; clear the previous upper byte of the previous color
+		or.w	d3,d0			; merge with new red value
 @skip:
 		rts
 ; ---------------------------------------------------------------------------
@@ -4298,6 +4357,12 @@ Level_GetBgm:
 Level_NoPreTut:
 		cmpi.w	#$001,($FFFFFE10).w	; is level GHZ2?
 		beq.s	Level_NoMusic		; if yes, don't play music
+		cmpi.w	#$002,($FFFFFE10).w
+		bne.s	@0
+		cmpi.b	#4,($FFFFFE30).w
+		beq.s	Level_NoMusic
+
+@0:
 		bsr	PlayLevelMusic		; play level music
 
 Level_NoMusic:
@@ -4400,9 +4465,9 @@ loc_3946:
 @cont:
 
 
-		move.l	#$72E00003,($C00004).l
-		lea	(Nem_CropScreen).l,a0
-		bsr	NemDec
+	;	move.l	#$72E00003,($C00004).l
+	;	lea	(Nem_CropScreen).l,a0
+	;	bsr	NemDec
 
 		bsr	LoadTilesFromStart
 		jsr	FloorLog_Unk
@@ -5113,32 +5178,125 @@ byte_3FCF:	dc.b 0			; XREF: LZWaterSlides
 ; ---------------------------------------------------------------------------
 
 CinematicScreenFuzz:
-		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
-		beq.s	@skip			; if not, branch
+		tst.b	($FFFFFF64).w		; camera shake currently set?
+		bne.w	@end			; if yes, fuzz currently disabled cause holy shit is it slow
 
+		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
+		bne.s	@dofuzz			; if yes, branch
+		cmpi.w	#$002,($FFFFFE10).w	; are we in Green Hill Place?
+		bne.w	@end			; if not, branch
+		cmpi.b	#4,($FFFFFE30).w	; did we hit the final checkpoint yet?
+		beq.w	@end			; if yes, branch
+
+@dofuzz:
+		lea	(LineLengths).l,a2	; load line lengths address to a2
 		lea	($FFFFCC00).w,a1	; get h-scroll data
 		moveq	#0,d0			; by default, don't change scroll
 		btst	#0,($FFFFFE05).w	; are we on an odd frame?
 		bne.s	@odd			; if yes, branch
-		not.w	d0			; otherwise, set to -1
-
+		moveq	#-1,d0			; otherwise, set to -1
 @odd:
 		move.w	#224-1,d1		; do for all scanlines
+		
+		move.b	(ScreenCropCurrent).w,d2
+		ext.w	d2
+		sub.w	d2,d1
+		sub.w	d2,d1
+		bmi.w	@end
+@prefill	
+		adda.l	#4,a1
+		dbf	d2,@prefill
+		
+		
+		
+		move.l	($FFFFF636).w,d2	; get random number
+		moveq	#0,d3
+		move.b	($FFFFD010).w,d3	; get Sonic's X speed
+		add.b	($FFFFD012).w,d3	; get Sonic's X speed
+		smi.b	d6			; set flag that we're walking left
+		bpl.s	@loop			; if it's positive, branch
+		neg.b	d3			; otherwise make it positive
+
+; ---------------------------------------------------------------------------
 
 @loop:
-		move.w	(a1),d2			; get foreground scroll
-		add.w	d0,d2			; add manipulation
-		move.w	d2,(a1)+		; store new position
+	;bra.s	@apply
+		moveq	#0,d4			; clear d4
+		tst.b	d3			; does Sonic move at all?
+		beq.s	@apply			; if not, skip
+
+		ror.l	#1,d2			; get next random number
+		move.b	d2,d4			; store working copy of current random byte
+		and.b	#$F,d4			; limit it to a random number between 0-15
+
+		and.b	d3,d4			; mask against current speed (effectively a cheap way of emulating Math.min(d3,d4))
+		ext.w	d4			; extend to word
+		add.w	d4,d4			; double for word addressing mode
 		
-		move.w	(a1),d2			; get background position
-		add.w	d0,d2			; add manipulation
-		move.w	d2,(a1)+		; store new position
+		tst	d0			; are we on an even frame?
+		bne.s	@nolongline		; if not, branch
+		btst	#4,d1			; are we in the allowed range?
+		bne.s	@nolongline		; if not, branch	
+		add.w	d4,d4			; increase line length
+
+@nolongline:
+		move.w	(a2,d4.w),d4		; get actual line length value from LUT
+
+		tst.b	d6			; is Sonic walking left?
+		bmi.s	@apply			; if yes, branch
+		neg.w	d4			; otherwise, invert effect
+
+@apply:
+		move.w	(a1),d5			; get foreground scroll
+		add.w	d0,d5			; add manipulation
+		add.w	d4,d5			; apply RNG lines
+		move.w	d5,(a1)+		; store new position
+		
+		move.w	(a1),d5			; get background position
+		add.w	d0,d5			; add manipulation
+		add.w	d4,d5			; apply RNG lines
+		move.w	d5,(a1)+		; store new position
 		
 		not.w	d0			; invert manipulation for next row
 		dbf	d1,@loop		; loop
 
-@skip:
+@end:
 		rts				; return
+
+; ---------------------------------------------------------------------------
+LineLengths:
+		dc.w	0
+		dc.w	1
+		dc.w	1
+		dc.w	1
+		dc.w	2
+		dc.w	2
+		dc.w	3
+		dc.w	3
+		dc.w	4
+		dc.w	4
+		dc.w	5
+		dc.w	5
+		dc.w	6
+		dc.w	6
+		dc.w	7
+		
+		dc.w	7
+		dc.w	8
+		dc.w	10
+		dc.w	12
+		dc.w	14
+		dc.w	16
+		dc.w	18
+		dc.w	20
+		dc.w	22
+		dc.w	24
+		dc.w	26
+		dc.w	28
+		dc.w	30
+		dc.w	32
+		dc.w	34
+		even
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
 
@@ -5164,7 +5322,7 @@ PLM_NoMusic:
 
 MusicList:
 		dc.b	$81	; Night Hill Place
-		dc.b	$94	; Green Hill Place
+		dc.b	$86	; Green Hill Place
 		dc.b	$89	; Special Stage (Unused)
 		dc.b	$83	; Ruined Place
 		dc.b	$82	; Labyrinthy Place
@@ -6516,7 +6674,8 @@ End_ClrRam3:
 		move.w	#$8407,(a6)
 		move.w	#$857C,(a6)
 		move.w	#$9001,(a6)
-		move.w	#$8004,(a6)
+		move.w	#$8014,(a6)
+		move.w	#$8ADF,(a6)
 		move.w	#$8720,(a6)
 		move.w	#$8ADF,($FFFFF624).w
 		move.w	($FFFFF624).w,(a6)
@@ -13689,6 +13848,7 @@ Obj24_Animate:				; XREF: Obj24_Index
 
 Obj24_Display:
 		bra.w	DisplaySprite
+
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Object 27 - explosion	from a destroyed enemy
@@ -13707,6 +13867,7 @@ Obj27_Index:	dc.w Obj27_LoadAnimal-Obj27_Index
 
 Obj27_LoadAnimal:			; XREF: Obj27_Index
 		addq.b	#2,obRoutine(a0)
+
 		bsr	SingleObjLoad
 		bne.w	Obj27_Main
 		move.b	#$27,0(a1)	; load animal object
@@ -13714,7 +13875,8 @@ Obj27_LoadAnimal:			; XREF: Obj27_Index
 		move.w	obY(a0),obY(a1)
 		move.w	$3E(a0),$3E(a1)
 		move.b	#2,obRoutine(a1)
-		bsr	SingleObjLoad
+
+		bsr	SingleObjLoad_Continue
 		bne.s	Obj27_Main
 		move.b	#$27,0(a1)	; load animal object
 		move.w	obX(a0),obX(a1)
@@ -13730,19 +13892,17 @@ Obj27_LoadAnimal:			; XREF: Obj27_Index
 		beq.s	Obj27_Main
 		cmpi.w	#$001,($FFFFFE10).w
 		beq.s	Obj27_Main
-		bsr	SingleObjLoad
+
+		bsr	SingleObjLoad_Continue
 		bne.s	Obj27_Main
 		move.b	#$37,0(a1)	; load bouncing ring object
 		move.w	obX(a0),obX(a1)	; load X position to a1
 		moveq	#0,d0		; clear d0
 		move.w	obY(a0),d0	; move Y position to d0
-	;	sub.w	#$100,d0	; sub it by $100
 		move.w	d0,obY(a1)	; load Y position to a1
 		addi.w	#20,($FFFFFE20).w ; add 10 of rings you have
 		move.b	#$80,($FFFFFE1D).w ; update ring counter
 		move.b	#1,$35(a1)
-
-
 
 Obj27_Main:				; XREF: Obj27_Index
 		addq.b	#2,obRoutine(a0)
@@ -13753,18 +13913,15 @@ Obj27_Main:				; XREF: Obj27_Index
 
 		bsr	RandomDirection
 
-
 		move.b	#0,obColType(a0)
 		move.b	#$C,obActWid(a0)
 		move.b	#4,obTimeFrame(a0)	; set frame duration to	7 frames
 		move.b	#0,obFrame(a0)
 		move.w	#$C1,d0
 		jsr	(PlaySound_Special).l ;	play breaking enemy sound
-	;	moveq	#1,d0		; add 10 ...
-	;	bsr	AddPoints	; ... points
 		
-		bsr	SingleObjLoad		; load from SingleObjLoad
-		bne.s	Obj27_NoCamShake	; if SingleObjLoad is already in use, don't load obejct
+	;	bsr	SingleObjLoad		; load from SingleObjLoad
+	;	bne.s	Obj27_NoCamShake	; if SingleObjLoad is already in use, don't load obejct
 		move.b	#10,($FFFFFF64).w	
 
 Obj27_NoCamShake:
@@ -13780,15 +13937,20 @@ Obj27_Animate:				; XREF: Obj27_Index
 		bset	#7,obGfx(a0)		; otherwise make object high plane
 
 Obj27_NoHigh:
+	;	tst.b	obRender(a0)
+	;	bpl.w	Obj27_Delete
 		subq.b	#1,obTimeFrame(a0)	; subtract 1 from frame	duration
 		bpl.s	Obj27_Display
 		move.b	#4,obTimeFrame(a0)	; set frame duration to	7 frames
 		addq.b	#1,obFrame(a0)	; next frame
 		cmpi.b	#6,obFrame(a0)	; is the final frame (05) displayed?
-		beq.w	DeleteObject	; if yes, branch
+		beq.s	Obj27_Delete	; if yes, branch
 
 Obj27_Display:
 		bra.w	DisplaySprite
+
+Obj27_Delete:
+		bra.w	DeleteObject	; if yes, branch
 ; ===========================================================================
 
 RandomDirection:
@@ -13819,7 +13981,7 @@ Obj3F:					; XREF: Obj_Index
 ; ===========================================================================
 Obj3F_Index:	dc.w Obj3F_Main-Obj3F_Index
 		dc.w Obj3F_Main2-Obj3F_Index
-		dc.w Obj27_Animate-Obj3F_Index
+		dc.w Obj3F_Animate-Obj3F_Index
 ; ===========================================================================
 
 Obj3F_Main:				; XREF: Obj3F_Index
@@ -13836,18 +13998,19 @@ Obj3F_Main:				; XREF: Obj3F_Index
 		move.w	obY(a0),obY(a1)
 		move.w	$3E(a0),$3E(a1)
 		move.b	#2,obRoutine(a1)
-		move.b	$30(a0),$30(a1)
+		move.b	$30(a0),$30(a1)	; copy harm state
 		
 		btst	#0,($FFFFFE05).w	; are we on an odd frame?
 		bne.s	Obj3F_Main2		; if yes, don't load a third explosion
-		bsr	SingleObjLoad
+		bsr	SingleObjLoad_Continue
 		bne.s	Obj3F_Main2
 		move.b	#$3F,0(a1)	; load explosion object
 		move.w	obX(a0),obX(a1)
 		move.w	obY(a0),obY(a1)
 		move.w	$3E(a0),$3E(a1)
 		move.b	#2,obRoutine(a1)
-		move.b	$30(a0),$30(a1)
+		move.b	$30(a0),$30(a1)	; copy harm state
+; ---------------------------------------------------------------------------
 
 Obj3F_Main2:
 		addq.b	#2,obRoutine(a0)
@@ -13865,10 +14028,10 @@ Obj3F_Main2:
 		move.b	#3,obPriority(a0)
 
 @cont2:
-		tst.b	($FFFFF7AA).w	; is boss mode on?
+		tst.b	($FFFFF7AA).w		; is boss mode on?
 		bne.s	Obj3F_NotHarmful	; if yes, branch
-		tst.b	$30(a0)
-		bne.s	Obj3F_NotHarmful
+		tst.b	$30(a0)			; is explosion set to be harmful?
+		bne.s	Obj3F_NotHarmful	; if not, branch
 		cmpi.w	#$001,($FFFFFE10).w
 		beq.s	@cont
 		cmpi.b	#1,($FFFFFFAA).w
@@ -13886,8 +14049,8 @@ Obj3F_NotHarmful:
 		
 		tst.b	$30(a0)
 		bne.s	Obj3F_NoCamShake
-		bsr	SingleObjLoad		; load from SingleObjLoad
-		bne.s	Obj3F_NoCamShake	; if SingleObjLoad is already in use, don't load obejct
+	;	bsr	SingleObjLoad		; load from SingleObjLoad
+	;	bne.s	Obj3F_NoCamShake	; if SingleObjLoad is already in use, don't load obejct
 		move.b	#10,($FFFFFF64).w
 
 Obj3F_NoCamShake:
@@ -13904,6 +14067,31 @@ Obj3F_PlaySound:
 		move.w	#$D7,d0
 		jmp	(PlaySound_Special).l ;	play exploding sound
 	endif
+; ===========================================================================
+
+Obj3F_Animate:				; XREF: Obj3F_Index
+		jsr	SpeedToPos
+		subi.w	#$10,obVelY(a0)
+		bclr	#7,obGfx(a0)		; make object low plane
+		tst.b	($FFFFFFA6).w		; is flag set?
+		beq.s	Obj3F_NoHigh		; if not, branch
+		bset	#7,obGfx(a0)		; otherwise make object high plane
+
+Obj3F_NoHigh:
+	;	tst.b	obRender(a0)
+	;	bmi.w	Obj3F_Delete
+		subq.b	#1,obTimeFrame(a0)	; subtract 1 from frame	duration
+		bpl.s	Obj3F_Display
+		move.b	#4,obTimeFrame(a0)	; set frame duration to	7 frames
+		addq.b	#1,obFrame(a0)	; next frame
+		cmpi.b	#6,obFrame(a0)	; is the final frame (05) displayed?
+		beq.s	Obj3F_Delete	; if yes, branch
+
+Obj3F_Display:
+		bra.w	DisplaySprite
+
+Obj3F_Delete:
+		bra.w	DeleteObject	; if yes, branch
 ; ===========================================================================
 Ani_obj1E:
 		include	"_anim\obj1E.asm"
@@ -14520,8 +14708,8 @@ Obj1F_Timesup:
 		jsr	PlaySound			; play it
 		jsr	obj1F_MakeFire			; make fire
 
-		bsr	SingleObjLoad			; load from SingleObjLoad
-		bne.s	Obj1F_NoCamShake		; if SingleObjLoad is already in use, don't load object
+	;	bsr	SingleObjLoad			; load from SingleObjLoad
+	;	bne.s	Obj1F_NoCamShake		; if SingleObjLoad is already in use, don't load object
 		move.b	#$F0,($FFFFFF64).w
 
 Obj1F_NoCamShake:
@@ -14565,32 +14753,28 @@ Obj1F_BossDelete:
 
 		move.b	#0,($FFFFF7CC).w		; unlock controls
 
-		tst.b	($FFFFFFE7).w		; is Sonic in Inhuman Mode?
-		beq.s	@cont			; if not, branch
-		clr.b	($FFFFFFE7).w		; disabled Inhuman Mode
-		clr.b	($FFFFFE2C).w		; remove any shields
-		move.w	d7,-(sp)		; back up d7
-		moveq	#3,d0			; load Sonic's pallet
-		jsr	PalLoad2		; restore sonic's palette
-		move.w	(sp)+,d7		; restore d7
-
-@cont:
-		jsr	WhiteFlash3			; make white flash
-		move.l	#10000,d0		; add 100000 ...
-		jsr	AddPoints	; ... points
-
 		move.b	#2,($FFFFFFD4).w		; set flag 4, 2
 		move.b	#0,($FFFFF7AA).w		; unlock screen
 		move.b	#2,($FFFFFFAA).w		; set flag 1, 2
 		move.w	#$5060,($FFFFF72A).w		; unlock screen
 		move.w	#$002,($FFFFFE10).w		; change level ID to GHZ3
-		move.b	#$94,d0				; set normal GHZ music
+		move.b	#$86,d0				; set normal GHZ music
 		jsr	PlaySound			; play it
+		move.l	#10000,d0		; add 100000 ...
+		jsr	AddPoints	; ... points
+		
+		movem.l	d0-d7/a1-a3,-(sp)
+		moveq	#3,d0
+		jsr	PalLoad2		; load Sonic palette
+		moveq	#$C,d0
+		jsr	PalLoad2	; load GHZ palette
+		jsr	WhiteFlash3			; make white flash
+	;	move.b	#0,(ScreenCropCurrent).w
+		move.b	#0,(ScreenCropCurrent+2).w
+		movem.l	(sp)+,d0-d7/a1-a3
 
 		move.b	#$34,($FFFFD080).w 		; load title card object
 		move.b	#35,($FFFFD0B0).w
-	;	moveq	#$10,d0				; set d0 to $10
-	;	jsr	(LoadPLC).l			; load title card patterns
 		
 		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
 		bne.s	@crabbossdel		; if yes, branch
@@ -14720,7 +14904,7 @@ Obj1F_MakeFire_2:
 		move.w	#-$230,obVelX(a1)			; load GHZ1 X-speed
 
 Obj1F_MakeFire2:
-		bsr	SingleObjLoad			; load from SingleObjLoad
+		bsr	SingleObjLoad_Continue		; load from SingleObjLoad
 		bne.s	locret_9618			; if it's in use, branch
 		move.b	#$1F,0(a1)			; load right fireball
 		move.b	#6,obRoutine(a1)			; set to fireball
@@ -14909,7 +15093,7 @@ Obj1F_NotGHZ1_3:
 		bls.w	Obj1F_Delete3
 		lea	(Ani_obj1F).l,a1	; load the animation for the balls
 		bsr	AnimateSprite		; animate them
-		bsr	ObjectFall		; move the ball down (which is actually unused now)
+		bsr	ObjectFall		; move the ball down
 		bsr	DisplaySprite		; show the ball (better said, don't delete it)
 
 Obj1F_CheckBallOnGround:
@@ -14978,10 +15162,12 @@ Obj1F_MoveUp:
 ; ===========================================================================
 
 Obj1F_Delete3:
+		cmpi.w	#$000,($FFFFFE10).w
+		bne.s	Obj1F_Delete4
 		bsr	SingleObjLoad		; load from SingleObjLoad
 		bne.s	Obj1F_Delete2		; if it's in use, branch
-		move.b	#1,$30(a1)		; set flag
 		move.b	#$37,0(a1)		; explosion object
+		move.b	#1,$30(a1)		; set flag
 		move.w	obX(a0),obX(a1)		; set X-location
 		move.w	obY(a0),obY(a1)		; set Y-location
 		bra.w	DeleteObject		; delete ball object
@@ -17192,8 +17378,8 @@ Obj2E_Goggles_NotSLZ3:
 		move.b	#1,($FFFFFFB1).w
 		move.w	#$B7,d0
 		jsr	(PlaySound).l	; play rumble sound
-		bsr	SingleObjLoad		; load from SingleObjLoad
-		bne.s	Obj2E_ChkEnd		; if SingleObjLoad is already in use, don't load obejct
+	;	bsr	SingleObjLoad		; load from SingleObjLoad
+	;	bne.s	Obj2E_ChkEnd		; if SingleObjLoad is already in use, don't load obejct
 		move.b	#120,($FFFFFF64).w
 ; ===========================================================================
 
@@ -17647,16 +17833,16 @@ BossDefeated4:
 		move.w	obX(a0),obX(a1)
 		move.w	obY(a0),obY(a1)
 		move.b	#2,obRoutine(a1)
-		jsr	(RandomNumber).l
-		move.w	d0,d1
-		moveq	#0,d1
-		move.b	d0,d1
-		lsr.b	#2,d1
-		subi.w	#$20,d1
-		add.w	d1,obX(a1)
-		lsr.w	#8,d0
-		lsr.b	#3,d0
-		add.w	d0,obY(a1)
+	;	jsr	(RandomNumber).l
+	;	move.w	d0,d1
+	;	moveq	#0,d1
+	;	move.b	d0,d1
+	;	lsr.b	#2,d1
+	;	subi.w	#$20,d1
+	;	add.w	d1,obX(a1)
+	;	lsr.w	#8,d0
+	;	lsr.b	#3,d0
+	;	add.w	d0,obY(a1)
 
 locret_178A22XXX:
 		rts	
@@ -18771,8 +18957,8 @@ loc_B8A8:				; XREF: Obj31_Type00
 		move.w	#0,obVelY(a0)	; stop object falling
 		tst.b	obRender(a0)
 		bpl.s	Obj31_Restart
-		bsr	SingleObjLoad		; load from SingleObjLoad
-		bne.s	Obj31_NoCamShake	; if SingleObjLoad is already in use, don't load obejct
+	;	bsr	SingleObjLoad		; load from SingleObjLoad
+	;	bne.s	Obj31_NoCamShake	; if SingleObjLoad is already in use, don't load obejct
 		move.b	#10,($FFFFFF64).w
 
 Obj31_NoCamShake:
@@ -18829,8 +19015,8 @@ loc_B938:				; XREF: Obj31_Type01
 		move.w	#$3C,$38(a0)
 		tst.b	obRender(a0)
 		bpl.s	loc_B97C
-		bsr	SingleObjLoad		; load from SingleObjLoad
-		bne.s	Obj31_NoCamShake2	; if SingleObjLoad is already in use, don't load obejct
+	;	bsr	SingleObjLoad		; load from SingleObjLoad
+	;	bne.s	Obj31_NoCamShake2	; if SingleObjLoad is already in use, don't load obejct
 		move.b	#10,($FFFFFF64).w
 
 Obj31_NoCamShake2:
@@ -22077,6 +22263,8 @@ locret_DA8A:
 
 SingleObjLoad:
 		lea	($FFFFD800).w,a1 ; start address for object RAM
+
+SingleObjLoad_Continue:
 		move.w	#$5F,d0
 
 loc_DA94:
@@ -30198,16 +30386,56 @@ Obj07_Setup:
 		bne.s	@cont				; if not, branch
 		rts					; wait until we're ready
 @cont:
+		addq.b	#2,obRoutine(a0)
+		
+		move.b	#60,$34(a0)
+		move.b	$34(a0),$35(a0)
 		move.b	#BlackBarHeight,$32(a0)		; set max height
 		move.b	#BlackBarGrow,$33(a0)		; set grow speed
+		cmpi.w	#$002,($FFFFFE10).w
+		bne.s	Obj07_Move
+		clr.b	$32(a0)
+		btst	#5,($FFFFFF92).w		; are we in Frantic mode?
+		beq.s	Obj07_Move			; if not, branch
+		move.b	#30,$34(a0)
+
 ; ---------------------------------------------------------------------------
 
 Obj07_Move:
+		cmpi.w	#$002,($FFFFFE10).w		; are we in Green Hill Place?
+		bne.s	@0				; if not branch?
+		cmpi.b	#6,($FFFFD024).w		; is Sonic dying?
+		bhs.s	@0				; if yes, branch
+		
+		cmpi.b	#4,($FFFFFE30).w
+		bne.s	@notghzlast
+		move.b	#BlackBarHeight,$32(a0)
+		bra.s	@0
+		
+@notghzlast:
+		subq.b	#1,$35(a0)
+		bpl.s	@0
+		move.b	$34(a0),$35(a0)
+		addq.b	#2,$32(a0)			; shrink bar
+
+		cmpi.b	#BarKillHeight,$32(a0)
+		blo.s	@1
+
+		lea	($FFFFD000).w,a0
+		movea.l	a0,a2
+		jmp	KillSonic
+@1:
+		
+		move.w	#$BB,d0
+		jsr	PlaySound_Special	; set badump sound
+		
+@0:		
+		
 		bsr.s	Obj07_CheckState		; update current status (ScreenCropCurrent)
+		
 
 		move.b	$30(a0),d0			; get current height
-		tst.b	d0				; are crops set to be displayed?
-		bne.s	@cropsvisible			; if yes, branch
+		bne.s	@cropsvisible			; are crops set to be displayed? if yes, branch
 		move.w	#$8720,($C00004).l		; reset background color
 		move.w	#$8A00|$DF,($FFFFF624).w	; reset H-int timing to once per frame
 		display_enable
@@ -30231,10 +30459,16 @@ Obj07_CheckState:
 		tst.w	($FFFFF63A).w			; is game paused?
 		bne.s	@showcrops			; if yes, always enable
 
+		cmpi.w	#$002,($FFFFFE10).w		; are we in Green Hill Place?
+		bne.s	@notghp				; if not, branch
+		cmpi.b	#4,($FFFFFE30).w		; did we hit the final checkpoint yet?
+		bne.s	@showcrops			; if not, force display
+
+@notghp:
 		cmpi.w	#$400,($FFFFFE10).w		; are we in Uberhub?
 		bne.s	@dontshow			; if not, branch
 		tst.b	($FFFFFF7F).w			; are we falling down the intro tube?
-		bne.s	@dontshow			; if yes, force display
+		bne.s	@dontshow			; if yes, don't display
 
 @showcrops:
 		move.b	$30(a0),d0			; get currently set height
@@ -30520,6 +30754,8 @@ Obj01_Control_Cont:				; Simulated Peelout
 		bsr	Sonic_Jump			; perform a jump
 
 Obj01_PeeloutCancel:
+		tst.b	($FFFFFE30).w			; are we restarting from a checkpoint?
+		bne.s	Obj01_EndOfCutscenesX		; if yes, branch
 		cmpi.w	#$601,($FFFFFE10).w		; is this the ending sequence?
 		beq.w	Obj01_EndOfCutscenesX		; if yes, branch
 		cmpi.w	#$000,($FFFFFE10).w		; is level GHZ1?
@@ -30676,17 +30912,6 @@ S_D_GHZ2PalChg_Loop:
 S_D_NotGHZ2_PalX:
 		jsr	WhiteFlash_Restore
 		clr.b	($FFFFFFAE).w		; clear WF2 flag
-
-		tst.b	($FFFFFFAA).w		; is Crabmeat boss defeated?
-		beq.s	S_D_NoInhumanCrush	; if not, branch
-		lea	(Pal_GHZ3).l,a3		; load GHZ3 palette to a1
-		lea	($FFFFFB20).w,a4	; move palette row 3 to a2
-		moveq	#0,d5			; make sure d1 is empty
-		move.w	#$18,d5			; set loop time ($18 colours)
-
-NewPalette_LoopX:
-		move.l	(a3)+,(a4)+		; set new colour
-		dbf	d5,NewPalette_LoopX	; repeat process for number in d1
 
 S_D_NoInhumanCrush:
 		cmpi.b	#$10,obAnim(a0)		; is spring animation being showed?
@@ -31760,10 +31985,10 @@ WF_DoWhiteFlash:
 		move.b	#1,($FFFFFFB9).w	; set white flash flag
 		lea	($FFFFFA80).w,a3	; load palette location to a3
 		lea	($FFFFCA00).w,a4	; load backup location to a4
-		move.w	#$007F,d3		; set d3 to $7F (+1 for the first run)
+		move.w	#$003F,d3		; set d3 to $7F (+1 for the first run)
 
 WF_BackupPal_Loop:
-		move.w	(a3)+,(a4)+		; backup palette
+		move.l	(a3)+,(a4)+		; backup palette
 		dbf	d3,WF_BackupPal_Loop	; loop
 
 		lea	($FFFFFA80).w,a1	; load palette location to a3
@@ -33388,6 +33613,8 @@ Obj01_NotDrownAnim:
 		bmi.s	Obj01_NoOF	; if yes, branch
 		cmpi.w	#$101,($FFFFFE10).w	; is level LZ2?
 		beq.s	Obj01_NoOF	; if yes, branch (too many walls to make the effect not suck)
+		cmpi.w	#$002,($FFFFFE10).w	; is level GHP?
+		beq.s	Obj01_NoOF	; if yes, branch
 		bsr	ObjHitFloor	; load from ObjHitFloor
 		add.w	#10,d1		; sub 10 from it
 		tst.w	d1		; did Sonic reached that position?
@@ -37997,6 +38224,22 @@ Obj79_Hit:
 		move.w	#$A1,d0
 		jsr	(PlaySound_Special).l ;	play lamppost sound
 
+		cmpi.w	#$002,($FFFFFE10).w
+		bne.s	@0
+		move.b	#4,($FFFFFE30).w
+		
+		movem.l	d0-d7/a1-a3,-(sp)
+		moveq	#3,d0
+		jsr	PalLoad2		; load Sonic palette
+		moveq	#$C,d0
+		jsr	PalLoad2	; load GHZ palette
+		jsr	WhiteFlash2
+		move.b	#$94,d0
+		jsr	PlaySound
+		
+		movem.l	(sp)+,d0-d7/a1-a3
+		
+@0:
 		cmpi.W	#$101,($FFFFFE10).w	; are we in LZ2?
 		bne.s	@cont			; if not, branch
 		move.b	obSubtype(a0),d2
@@ -38754,7 +38997,7 @@ loc_17984:
 		move.b	#1,($FFFFF7A7).w
 
 locret_179AA:
-		move.w	#$94,d0
+		move.w	#$86,d0
 		jsr	(PlaySound).l	; play GHZ music
 		move.w	#$2AC0+GHZ3Add,($FFFFF72A).w
 		moveq	#$12,d0
@@ -38794,7 +39037,7 @@ loc_179DA:
 
 loc_179E0:
 		clr.w	obVelY(a0)
-		move.w	#$94,d0
+		move.w	#$86,d0
 		jsr	(PlaySound).l	; play GHZ music
 
 loc_179EE:
@@ -43988,40 +44231,8 @@ KillSonic:
 		beq.w	Kill_IfS		; if not, don't stop the time counter / don't kill sonic
 
 Kill_NoS:
-		lea	($FFFFFB20).w,a3	; backup palette
-		lea	($FFFFFD00).w,a4	; backup palette
-		move.w	#$002F,d3		; set d3 to $3F (+1 for the first run)
-
-Pal_Backup_LoopXXX:
-		move.w	(a3)+,(a4)+		; set palette
-		dbf	d3,Pal_Backup_LoopXXX	; loop (backup)
-
-		lea	($FFFFFA80).w,a1 	; get palette
-		moveq	#0,d3			; clear d3
-		move.b	#$CF,d3			; set d3 to $2F (+1 for the first run)
-
-Pal_MBW_LoopXX:
-		moveq	#0,d0			; clear d0
-		move.w	(a1),d0			; get colour
-		moveq	#0,d1			; clear d1
-		move.b	d0,d1 			; copy Green and Red of colour to d1
-		lsr.b	#4,d1 			; get only Green amount
-		move.b	d0,d2 			; copy Green and Red of colour to d2
-		and.b	#$E,d2 			; get only Red amount
-		lsr.w	#8,d0 			; get only Blue amount of d0
-		add.b	d1,d0 			; add Green amount to Blue amount
-		add.b	d2,d0 			; then add Red to the amount
-		divu.w	#3,d0 			; divide by 3
-		and.b	#$E,d0 			; keep it an even value (Keep 9-bit VDP)
-		move.b	d0,d1 			; copy to d1
-		lsl.b	#4,d1 			; shift to left nybble
-		add.b	d1,d0 			; add to d0 (Setting the green)
-		lsl.w	#4,d1 			; shift to next left nybble
-		add.w	d1,d0			; add to d0 (Setting the blue)
-		move.w	d0,(a1)+		; set new colour
-		dbf	d3,Pal_MBW_LoopXX		; loop for each colour
-
-Kill_NoGreyPal:
+		jsr	Pal_MakeBlackWhite
+		
 		cmpi.b	#$18,($FFFFF600).w	; is this the ending sequence?
 		bne.s	SH_NotEnding		; if not, branch
 		move.w	#0,($FFFFF72A).w	; lock screen
@@ -46687,12 +46898,12 @@ Obj21_Display2:
 		bhs.s	@cont			; if yes, branch
 
 		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
-		bne.s	@cont2
-		tst.b	($FFFFF7CC).w
-		beq.s	@cont
+		bne.s	@cont2			; if yes, don't render HUD
+		tst.b	($FFFFF7CC).w		; are controls locked?
+		beq.s	@cont			; if yes, don't render HUD either
 
 @cont2:
-		rts
+		rts				; don't render HUD
 
 @cont:
 		jmp	DisplaySprite		; display sprite
@@ -46815,12 +47026,12 @@ Obj21_Display:
 		bhs.s	@cont			; if yes, branch
 
 		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
-		bne.s	@cont2
-		tst.b	($FFFFF7CC).w
-		beq.s	@cont
+		bne.s	@cont2			; if yes, don't render HUD
+		tst.b	($FFFFF7CC).w		; are controls locked?
+		beq.s	@cont			; if yes, don't render HUD either
 
 @cont2:
-		rts
+		rts				; don't render HUD
 		
 @cont:
 		jmp	DisplaySprite

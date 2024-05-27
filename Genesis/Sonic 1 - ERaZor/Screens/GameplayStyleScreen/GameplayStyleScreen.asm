@@ -49,6 +49,7 @@ GameplayStyleScreen:
 		move.l	(a1)+,(a2)+
 		dbf	d0,@PalLoopOHD
 		
+		display_enable
 		bsr	GSS_SetColor
 		jsr	Pal_FadeTo			; fade in
 

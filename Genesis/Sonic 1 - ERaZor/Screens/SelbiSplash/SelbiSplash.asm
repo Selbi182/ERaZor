@@ -59,6 +59,7 @@ SelbiSplash_SetWait:
 		move.l	#$4E400001,($FFFFFF7A).w
 		move.w	#0,($FFFFFF7E).w
 		move.w	#6,($FFFFF5B0).w
+		display_enable
 		bra.s	SelbiSplash_Loop
 ; ---------------------------------------------------------------------------------------------------------------------
 

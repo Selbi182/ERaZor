@@ -50,6 +50,7 @@ CJ_RepPal:
 
 	;	move.b	#$97,d0					; prepare Credits music ID
 	;	jsr	PlaySound				; play music ID
+		display_enable
 		jsr	Pal_FadeTo				; fade palette in
 
 ; ---------------------------------------------------------------------------

@@ -66,6 +66,7 @@ CS_PalLoopOHD:
 		move.l	(a1)+,(a2)+
 		dbf	d0,CS_PalLoopOHD
 
+		display_enable
 		jsr	Pal_FadeTo
 
 		bra.w	CS_SetUpLoop			; skip

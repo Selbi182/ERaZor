@@ -98,6 +98,7 @@ Info_ClrVram:
 		move.l	d0,(a6)
 		dbf	d1,Info_ClrVram ; fill	VRAM with 0
 		move.w	#$14,($FFFFFF82).w
+		display_enable
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -107,9 +108,9 @@ Info_ClrVram:
 ; LevelSelect:
 InfoScreen_MainLoop:
 		move.b	#2,($FFFFF62A).w
-		jsr		DelayProgram
-		jsr		SineWavePalette
-		jsr		RunPLC_RAM
+		jsr	DelayProgram
+		jsr	SineWavePalette
+		jsr	RunPLC_RAM
 		tst.l	($FFFFF680).w
 		bne.s	InfoScreen_MainLoop
 		tst.b	($FFFFFF9B).w		; is routine counter at $12 (Info_NoMore)?

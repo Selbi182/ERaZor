@@ -149,6 +149,10 @@ Tutorial_DisplayHint:
 	move.l	(a1)+,(a5)
 	dbf	d0,@0
 
+	cmpi.b	#1,($FFFFFE10).w	; are we in LZ?
+	beq.s	@lz			; if yes, branch
+	move.w	#$8004,(a6)	; disable h-ints
+@lz:
 
 ; ---------------------------------------------------------------
 ; Display Hint Main Loop
@@ -184,6 +188,10 @@ DH_MainLoop:
 ; ---------------------------------------------------------------
 
 DH_Quit:
+	cmpi.b	#1,($FFFFFE10).w	; are we in LZ?
+	beq.s	@0			; if yes, branch
+	move.w	#$8014,($C00004).l	; enable h-ints
+@0:
 	movem.l	(sp)+,a0/a5-a6
 
 	; Display objects one final time

@@ -58,7 +58,8 @@ Align:		macro
 ;=================================================
 ;Quick Level Select
 ;Immediately start to a given level ID on startup.
-QuickLevelSelect = -1 ;$301
+QuickLevelSelect = 0
+QuickLevelSelect_ID = $302
 ;=================================================
 ;Debug Mode enabled by default.
 ;Don't allow debug mode, not even with Game Genie.
@@ -3912,8 +3913,8 @@ T_PalSkip_2:
 
 StartGame:
 	
-	if QuickLevelSelect>-1
-		move.w	#QuickLevelSelect,($FFFFFE10).w	; set level to QuickLevelSelect
+	if QuickLevelSelect=1
+		move.w	#QuickLevelSelect_ID,($FFFFFE10).w	; set level to QuickLevelSelect_ID
 		move.b	#$C,($FFFFF600).w		; set game mode to level
 		move.w	#1,($FFFFFE02).w		; restart level
 		rts
@@ -32850,7 +32851,7 @@ Sonic_AirFreeze:
 		btst	#1,($FFFFFFE5).w	; was air freeze already active?
 		beq.w	AM_End			; if not, branch
 		bclr	#1,($FFFFFFE5).w	; clear flag
-		bra.s	AM_LetGo		; move Sonic
+		bra.w	AM_LetGo		; move Sonic
 
 AM_APressed:
 		move.b	($FFFFFE05).w,d0
@@ -32869,8 +32870,45 @@ AM_SetFlags:
 		move.b	#2,obAnim(a0)		; use rolling animation
 AM_DontForceRoll:
 		move.b	#%11,($FFFFFFE5).w	; set flag
-		clr.w	obVelX(a0)		; clear X-velocity
-		clr.w	obVelY(a0)		; clear Y-velocity
+
+
+AF_Decel = $60
+
+
+
+AM_Decelerate_X:
+		tst.w	obVelX(a0)			; test X speed
+		beq.s	AM_Decelerate_Y		; is it already zero? skip
+		bpl.s	@decelxfromright	; is it positive? branch
+		addi.w	#AF_Decel,obVelX(a0)	; decelerate while moving left
+		bcc.s	AM_Decelerate_Y		; did the sign change? if not, branch
+		clr.w	obVelX(a0)			; if it did, set speed to 0
+		bra.s	AM_Decelerate_Y
+	@decelxfromright:
+		subi.w	#AF_Decel,obVelX(a0)	; decelerate while moving right
+		bcc.s	AM_Decelerate_Y		; did the sign change? if not, branch
+		clr.w	obVelX(a0)			; if it did, set speed to 0
+		
+AM_Decelerate_Y:
+		tst.w	obVelY(a0)			; test Y speed
+		beq.s	AM_EndDecel		; is it already zero? skip
+		bpl.s	@decelyfromdown		; is it positive? branch
+		addi.w	#AF_Decel,obVelY(a0)	; decelerate while moving up
+		bcc.s	AM_EndDecel		; did the sign change? if not, branch
+		clr.w	obVelY(a0)			; if it did, set speed to 0
+		bra.s	AM_EndDecel
+	@decelyfromdown:
+		subi.w	#AF_Decel,obVelY(a0)	; decelerate while moving down
+		bcc.s	AM_EndDecel		; did the sign change? if not, branch
+		clr.w	obVelY(a0)			; if it did, set speed to 0
+
+AM_EndDecel:
+
+
+
+
+	;	clr.w	obVelX(a0)		; clear X-velocity
+	;	clr.w	obVelY(a0)		; clear Y-velocity
 		clr.w	obInertia(a0)		; clear interia
 		bra.s	AM_End
 ; ---------------------------------------------------------------------------

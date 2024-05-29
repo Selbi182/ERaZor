@@ -40,6 +40,8 @@ CS_ClrObjRam:
 		move.l	d0,(a1)+
 		dbf	d1,CS_ClrObjRam
 		
+		display_enable
+
 		cmpi.w	#$501,($FFFFFE10).w		; is this the tutorial?
 		beq.s	CS_LoadIntroCutscene		; if yes, branch
 
@@ -66,7 +68,6 @@ CS_PalLoopOHD:
 		move.l	(a1)+,(a2)+
 		dbf	d0,CS_PalLoopOHD
 
-		display_enable
 		jsr	Pal_FadeTo
 
 		bra.w	CS_SetUpLoop			; skip

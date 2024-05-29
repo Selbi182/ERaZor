@@ -130,8 +130,10 @@ PLC_LZ:		dc.w $A
 		dc.w $7780
 		dc.l Nem_LzDoor1	; vertical door
 		dc.w $7880
-		dc.l Nem_Harpoon	; harpoon
+		dc.l Nem_Cork		; cork block
 		dc.w $7980
+	;	dc.l Nem_Harpoon	; harpoon
+	;	dc.w $7980
 		dc.l Nem_HardPS		; hard part skipper
 		dc.w $94C0
 PLC_LZ2:	dc.w $A

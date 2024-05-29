@@ -9,7 +9,7 @@
 		dc.w	$0080, $00A8	; GHZ 4
 
 		dc.w	$0078, $006E	; LZ 1
-		dc.w	$0420, $06EC	; LZ 2
+		dc.w	$0318, $02AC	; LZ 2
 		dc.w	$1C32, $05EC	; LZ 3
 		dc.w	$0B80, $0000	; LZ 4 (SBZ 3)
 

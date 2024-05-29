@@ -976,7 +976,7 @@ HBlank:
 @transferColors:
 		move.w	(a2)+,d0
 		lea	($FFFFFA80).w,a0
-	;	andi.w	#-2,d0			; WEIRD hotfix because otherwise we get an odd addressing error
+		andi.w	#-2,d0			; WEIRD hotfix because otherwise we get an odd addressing error
 		adda.w	d0,a0
 		addi.w	#$C000,d0
 		swap	d0

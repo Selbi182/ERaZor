@@ -207,33 +207,27 @@ SelbiSplash_ChangePal:
 		
 		; hidden debug mode cheat
 		tst.b	($FFFFFFAF).w			; are we in the final phase of the screen?
-		beq.s	@nocheat			; if not, branch
+		beq.s	SelbiSplash_LoopEnd		; if not, branch
 		tst.b	($FFFFF605).w			; get any button press
-		beq.s	@nocheat			; if none are pressed, skip
+		beq.s	SelbiSplash_LoopEnd		; if none are pressed, skip
 		addq.w	#1,($FFFFFFE4).w		; increase counter
 		cmpi.w	#10,($FFFFFFE4).w		; check if 10 buttons have been pressed
-		bne.s	@nocheat			; if not, branch
+		bne.s	SelbiSplash_LoopEnd		; if not, branch
 		
 		; cheat here
 		move.b	#%01111111,($FFFFFF8B).w	; unlock all doors
 		move.b	#1,($FFFFFF93).w		; mark game as beaten
 		
 		tst.w	($FFFFFFFA).w			; was debug mode already enabled?
-		bne.s	@disabledebug			; if yes, disable it
+		bne.s	SelbiSplash_DisableDebug	; if yes, disable it
 		move.w	#1,($FFFFFFFA).w	 	; enable debug mode
 		move.b	#$A8,d0				; set enter SS sound
 		jsr	PlaySound_Special		; play it
 
-@nocheat:
+SelbiSplash_LoopEnd:
 		move.b	($FFFFF605).w,d0
 		andi.b	#$80,d0				; is Start button pressed?
 		beq.w	SelbiSplash_Loop		; if not, loop
-
-@disabledebug:
-		move.w	#0,($FFFFFFFA).w	 	; disable debug mode
-		move.b	#$A4,d0				; set skidding sound
-		jsr	PlaySound_Special		; play it
-		bra.s	@nocheat
 		
 SelbiSplash_Next:
 		clr.b	($FFFFFFAF).w
@@ -241,6 +235,12 @@ SelbiSplash_Next:
 		move.b	#SelbiSplash_NxtScr,($FFFFF600).w ; go to next screen
 		rts	
 		
+SelbiSplash_DisableDebug:
+		move.w	#0,($FFFFFFFA).w	 	; disable debug mode
+		move.b	#$A4,d0				; set skidding sound
+		jsr	PlaySound_Special		; play it
+		bra.s	SelbiSplash_LoopEnd
+
 ; ---------------------------------------------------------------------------------------------------------------------
 Art_SelbiSplash:	incbin	"Screens/SelbiSplash/Tiles.bin"
 			even

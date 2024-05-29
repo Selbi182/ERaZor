@@ -10486,6 +10486,8 @@ LevLoad_ClrRam:
 
 LevelLayoutLoad2:			; XREF: LevelLayoutLoad
 		move.w	($FFFFFE10).w,d0
+
+LevelLayoutLoadManual:
 		lsl.b	#6,d0
 		lsr.w	#5,d0
 		move.w	d0,d2
@@ -17921,7 +17923,23 @@ Obj2C:					; XREF: Obj_Index
 		moveq	#0,d0
 		move.b	obRoutine(a0),d0
 		move.w	Obj2C_Index(pc,d0.w),d1
-		jmp	Obj2C_Index(pc,d1.w)
+		jsr	Obj2C_Index(pc,d1.w)
+
+		jsr		(ObjHitFloor).l
+		cmpi.w	#6, d1
+		ble.s	@Bounce
+
+		bsr.w	ObjectFall
+		bsr.w	SpeedToPos
+		rts
+		
+@Bounce:
+		bchg	#1,obStatus(a0)
+		move.w	#-$200,obVelY(a0)
+		neg.w 	obVelX(a0)
+		bsr.w	SpeedToPos
+		rts
+
 ; ===========================================================================
 Obj2C_Index:	dc.w Obj2C_Main-Obj2C_Index
 		dc.w Obj2C_Turn-Obj2C_Index
@@ -17944,7 +17962,7 @@ Obj2C_Main:				; XREF: Obj2C_Index
 		moveq	#4,d0
 		move.w	d0,$30(a0)	; set turn delay time
 		move.w	d0,$32(a0)
-		move.w	#-$40,obVelX(a0)	; move Jaws to the left
+		move.w	#-$60,obVelX(a0)	; move Jaws to the left
 		btst	#0,obStatus(a0)	; is Jaws facing left?
 		beq.s	Obj2C_Turn	; if yes, branch
 		neg.w	obVelX(a0)		; move Jaws to the right
@@ -17962,10 +17980,11 @@ Obj2C_Turn:				; XREF: Obj2C_Index
 		move.w	obY(a0),obY(a1)
 
 Obj2C_NotInhumanCrush:
+
 		subq.w	#1,$30(a0)	; subtract 1 from turn delay time
 		bpl.s	Obj2C_Animate	; if time remains, branch
 		move.w	$32(a0),$30(a0)	; reset	turn delay time
-		neg.w	obVelX(a0)		; change speed direction
+		; neg.w	obVelX(a0)		; change speed direction
 		bchg	#0,obStatus(a0)	; change Jaws facing direction
 		move.b	#1,obNextAni(a0)	; reset	animation
 
@@ -30547,7 +30566,7 @@ Obj07_Setup:
 		clr.b	$32(a0)
 		btst	#5,($FFFFFF92).w		; are we in Frantic mode?
 		beq.s	Obj07_Move			; if not, branch
-		move.b	#30,$34(a0)
+		move.b	#45,$34(a0)
 
 ; ---------------------------------------------------------------------------
 
@@ -38396,25 +38415,32 @@ Obj79_HitLamp:
 		bcc.w	locret_16F90
 		
 Obj79_Hit:		
-		move.w	#$A1,d0
-		jsr	(PlaySound_Special).l ;	play lamppost sound
+		cmpi.w	#$002,($FFFFFE10).w ; GHP check
+		bne.s	@0 ; If not, skip all the way to @0
 
-		cmpi.w	#$002,($FFFFFE10).w
-		bne.s	@0
+		; move.w	#$C3,d0
+		; jsr	(PlaySound_Special).l ;	play giant ring sound
+
 		move.b	#4,($FFFFFE30).w
-		
+		move.b	#0, ($FFFFFE2D).w ; remove invincibility
+
 		movem.l	d0-d7/a1-a3,-(sp)
 		moveq	#3,d0
 		jsr	PalLoad2		; load Sonic palette
 		moveq	#$C,d0
 		jsr	PalLoad2	; load GHZ palette
 		jsr	WhiteFlash2
+
 		move.b	#$94,d0
 		jsr	PlaySound
 		
 		movem.l	(sp)+,d0-d7/a1-a3
+		bra.s 	@cont
 		
 @0:
+		move.w	#$A1,d0
+		jsr	(PlaySound_Special).l ;	play lamppost sound
+		
 		cmpi.W	#$101,($FFFFFE10).w	; are we in LZ2?
 		bne.s	@cont			; if not, branch
 		move.b	#1,($FFFFFFFE).w	; make sure =P monitor is enabled (if the player somehow skipped it)
@@ -39165,7 +39191,7 @@ loc_17984:
 		move.b	#1,($FFFFF7A7).w
 
 locret_179AA:
-		move.w	#$86,d0
+		move.w	#$94,d0
 		jsr	(PlaySound).l	; play GHZ music
 		move.w	#$2AC0+GHZ3Add,($FFFFF72A).w
 		moveq	#$12,d0
@@ -39205,7 +39231,7 @@ loc_179DA:
 
 loc_179E0:
 		clr.w	obVelY(a0)
-		move.w	#$86,d0
+		move.w	#$94,d0
 		jsr	(PlaySound).l	; play GHZ music
 
 loc_179EE:
@@ -48640,38 +48666,60 @@ Art_MzTorch:	incbin	artunc\mztorch.bin	; MZ torch in background
 		even
 Art_RingFlash:	incbin	artunc\ringflash.bin	; ring flash that appears when you enter a giant ring
 		even
-
+; ---------------------------------------------------------------------------
+; Level layout index entry macro
+; ---------------------------------------------------------------------------
+LayoutEntry:	macro Layout, Background
+	dc.w \Layout-Level_Index, \Background-Level_Index, LevelIndexPadding-Level_Index
+	endm
+	
 ; ---------------------------------------------------------------------------
 ; Level	layout index
 ; ---------------------------------------------------------------------------
-Level_Index:	dc.w Level_GHZ1-Level_Index, Level_GHZbg-Level_Index, byte_68D70-Level_Index
-		dc.w Level_GHZ2-Level_Index, Level_GHZbg-Level_Index, byte_68E3C-Level_Index
-		dc.w Level_GHZ1-Level_Index, Level_GHZbg-Level_Index, byte_68F84-Level_Index
-		dc.w byte_68F88-Level_Index, byte_68F88-Level_Index, byte_68F88-Level_Index
-		dc.w Level_LZ1-Level_Index, Level_LZbg-Level_Index, byte_69190-Level_Index
-		dc.w Level_LZ2-Level_Index, Level_LZbg-Level_Index, byte_6922E-Level_Index
-		dc.w Level_LZ3-Level_Index, Level_LZbg-Level_Index, byte_6934C-Level_Index
-		dc.w Level_SBZ3-Level_Index, Level_LZbg-Level_Index, byte_6940A-Level_Index
-		dc.w Level_MZ1-Level_Index, Level_MZ1bg-Level_Index, Level_MZ1-Level_Index
-		dc.w Level_MZ2-Level_Index, Level_MZ2bg-Level_Index, byte_6965C-Level_Index
-		dc.w Level_MZ3-Level_Index, Level_MZ3bg-Level_Index, byte_697E6-Level_Index
-		dc.w byte_697EA-Level_Index, byte_697EA-Level_Index, byte_697EA-Level_Index
-		dc.w Level_SLZ1-Level_Index, Level_SLZbg-Level_Index, byte_69B84-Level_Index
-		dc.w Level_SLZ2-Level_Index, Level_SLZbg-Level_Index, byte_69B84-Level_Index
-		dc.w Level_SLZ3-Level_Index, Level_SLZbg-Level_Index, byte_69B84-Level_Index
-		dc.w byte_69B84-Level_Index, byte_69B84-Level_Index, byte_69B84-Level_Index
-		dc.w Level_SYZ1-Level_Index, Level_SYZbg-Level_Index, byte_69C7E-Level_Index
-		dc.w Level_SYZ2-Level_Index, Level_SYZbg-Level_Index, byte_69D86-Level_Index
-		dc.w Level_SYZ3-Level_Index, Level_SYZbg-Level_Index, byte_69EE4-Level_Index
-		dc.w byte_69EE8-Level_Index, byte_69EE8-Level_Index, byte_69EE8-Level_Index
-		dc.w Level_SBZ1-Level_Index, Level_SBZ1bg-Level_Index, Level_SBZ1bg-Level_Index
-		dc.w Level_SBZ2-Level_Index, Level_SBZ2bg-Level_Index, Level_SBZ2bg-Level_Index
-		dc.w Level_SBZ2-Level_Index, Level_FZbg-Level_Index, byte_6A2F8-Level_Index
-		dc.w byte_6A2FC-Level_Index, byte_6A2FC-Level_Index, byte_6A2FC-Level_Index
-		dc.w Level_End-Level_Index, Level_GHZbg-Level_Index, byte_6A320-Level_Index
-		dc.w Level_End-Level_Index, Level_GHZbg-Level_Index, byte_6A320-Level_Index
-		dc.w byte_6A320-Level_Index, byte_6A320-Level_Index, byte_6A320-Level_Index
-		dc.w byte_6A320-Level_Index, byte_6A320-Level_Index, byte_6A320-Level_Index
+Level_Index:
+		; 00XX
+		LayoutEntry Level_GHZ1, Level_GHZbg ; Night Hill Place
+		LayoutEntry Level_GHZ2, Level_GHZbg ; Intro
+		LayoutEntry Level_GHZ1, Level_GHZbg ; Green Hill Place
+		LayoutEntry LevelIndexPadding, LevelIndexPadding
+
+		; 01XX
+		LayoutEntry Level_LZ1, Level_LZbg ; 
+		LayoutEntry Level_LZ2, Level_LZbg ; Labyrinthy Place
+		LayoutEntry Level_LZ3, Level_LZbg ; 
+		LayoutEntry Level_SBZ3, Level_LZbg ;
+
+		; 02XX
+		LayoutEntry Level_MZ1, Level_MZ1bg ; Ruined Place
+		LayoutEntry Level_MZ2, Level_MZ2bg ; 
+		LayoutEntry Level_MZ3, Level_MZ3bg ; (ADDRESS ERROR)
+		LayoutEntry LevelIndexPadding, LevelIndexPadding
+
+		; 03XX
+		LayoutEntry Level_SLZ1, Level_SLZbg ; Special Place
+		LayoutEntry Level_SLZ2, Level_SLZbg ; Scar Night Place
+		LayoutEntry Level_SLZ3, Level_SLZbg ; Star Agony Place
+		LayoutEntry LevelIndexPadding, LevelIndexPadding
+
+		; 04XX
+		LayoutEntry Level_SYZ1, Level_SYZbg ; ~Uberhub~
+		LayoutEntry Level_SYZ2, Level_SYZbg ; Unreal Place
+		LayoutEntry Level_SYZ3, Level_SYZbg ; 
+		LayoutEntry LevelIndexPadding, LevelIndexPadding
+
+		; 05XX
+		LayoutEntry Level_SBZ1, Level_SBZ1bg ; Tutorial
+		LayoutEntry Level_SBZ2, Level_SBZ2bg ; Bomb Cutscene
+		LayoutEntry Level_SBZ2, Level_FZbg ; Finalor Place
+		LayoutEntry LevelIndexPadding, LevelIndexPadding
+
+		; 06XX
+		LayoutEntry Level_End, Level_GHZbg ; Ending
+		LayoutEntry Level_End, Level_GHZbg ; Also ending
+		LayoutEntry LevelIndexPadding, LevelIndexPadding
+		LayoutEntry LevelIndexPadding, LevelIndexPadding
+
+LevelIndexPadding:	dc.b 0,	0, 0, 0
 
 Level_GHZ1:	incbin	levels\ghz1.bin
 		even

@@ -48,7 +48,8 @@ Options_LoadText:
 		jsr	ObjectsLoad
 		jsr	BuildSprites
 
-		move.b	#$86,d0		; play Options screen music
+	;	move.b	#$86,d0		; play Options screen music (Spark Mandrill)
+		move.b	#$99,d0		; play Options screen music (introduction text music)
 		jsr	PlaySound_Special
 		bsr	Options_LoadPal
 		bra.s	Options_ContinueSetup
@@ -293,17 +294,21 @@ Options_HandleDeleteSaveGame:
 
 Options_HandleSoundTest:
 		cmpi.w	#17,d0
-		bne.s	Options_HandleExit
+		bne.w	Options_HandleExit
+
 		move.b	($FFFFF605).w,d1	; get button presses
-		andi.b	#$EC,d1			; is left, right, A, C, or Start pressed?
+		andi.b	#$FC,d1			; is left, right, A, B, C, or Start pressed?
 		beq.w	Options_Return		; if not, branch
 		
 		move.b	($FFFFF605).w,d1	; get button presses
+		btst	#4,d1			; is button B pressed?
+		bne.s	@soundtest_stop		; if yes, branch
 		andi.b	#$A0,d1			; is C or Start pressed?
 		beq.s	@soundtest_checkL	; if not, branch
 		move.b	($FFFFFF84).w,d0	; move sound test ID to d0
 		cmpi.b	#$80,d0			; is this ID $80?
 		bne.s	@soundtest_not80	; if not, branch
+@soundtest_stop:
 		move.b	#$E4,d0			; otherwise, make it stop all sound
 @soundtest_not80:
 		jsr	PlaySound_Special	; play music

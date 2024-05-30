@@ -59,7 +59,7 @@ Align:		macro
 ;Quick Level Select
 ;Immediately start to a given level ID on startup.
 QuickLevelSelect = 0
-QuickLevelSelect_ID = $302
+QuickLevelSelect_ID = $101
 ;=================================================
 ;Debug Mode enabled by default.
 ;Don't allow debug mode, not even with Game Genie.
@@ -4786,7 +4786,7 @@ LZMoveWater:
 		clr.b	($FFFFF64E).w
 		moveq	#0,d0
 		move.b	($FFFFFE60).w,d0
-		lsr.w	#1,d0
+		lsr.w	#2,d0
 		add.w	($FFFFF648).w,d0
 		move.w	d0,($FFFFF646).w
 		move.w	($FFFFF646).w,d0
@@ -4905,14 +4905,20 @@ locret_3CF4:
 DynWater_LZ2:				; XREF: DynWater_Index
 		tst.b 	($FFFFFFF9).w		; flooding section already happening?
 		beq.s	@1			; if not, branch
+		btst	#1,($FFFFFFF9).w
+		bne.s	@2
+		bset	#1,($FFFFFFF9).w
+		rts
+@2:
 		move.b	#8,($FFFFF64C).w	; set increased water rising speed
+		move.w	#$058,($FFFFF64A).w	; flood this place
 		rts
 
 @1:
 		move.w	#$328,d1		; set default target water level
 		cmpi.b	#3,($FFFFFF97).w	; was third lamppost passed?
 		bne.s	@0			; if not, branch
-		move.w	#$600,d1		; set water level before Jaws
+		move.w	#$370,d1		; set water level before Jaws
 		move.w	d1,($FFFFF646).w	; set it immediately
 
 @0
@@ -5227,33 +5233,44 @@ CinematicScreenFuzz:
 		moveq	#0,d0			; by default, don't change scroll
 		btst	#0,($FFFFFE05).w	; are we on an odd frame?
 		bne.s	@odd			; if yes, branch
-		moveq	#-1,d0			; otherwise, set to -1
+		moveq	#0,d0			; otherwise, set to -1
 @odd:
 		move.w	#224-1,d1		; do for all scanlines
 		
+		; calculate the exact amount of lines we need, minus ones occupied by black bars
 		move.b	(ScreenCropCurrent).w,d2
 		ext.w	d2
 		sub.w	d2,d1
 		sub.w	d2,d1
 		bmi.w	@end
-@prefill	
-		adda.l	#4,a1
+@prefill:	adda.l	#4,a1
 		dbf	d2,@prefill
 		
-		
-		
 		move.l	($FFFFF636).w,d2	; get random number
-		moveq	#0,d3
+
+		moveq	#1,d6
 		move.b	($FFFFD010).w,d3	; get Sonic's X speed
-		add.b	($FFFFD012).w,d3	; get Sonic's X speed
-		smi.b	d6			; set flag that we're walking left
-		bpl.s	@loop			; if it's positive, branch
-		neg.b	d3			; otherwise make it positive
+		bpl.s	@0
+		neg.b	d3
+		moveq	#-1,d6
+		
+@0:
+		move.b	($FFFFD012).w,d4	; get Sonic's Y speed
+		bpl.s	@1
+		neg.b	d4
+		
+@1:		
+		cmp.b	d3,d4			; compare the two
+		blo.s	@loop			; if X is stronger, branch
+
+@yfuzz:
+		moveq	#0,d6
+		moveq	#0,d3
+		move.b	($FFFFD012).w,d3	; get Sonic's Y speed
 
 ; ---------------------------------------------------------------------------
 
 @loop:
-	;bra.s	@apply
 		moveq	#0,d4			; clear d4
 		tst.b	d3			; does Sonic move at all?
 		beq.s	@apply			; if not, skip
@@ -5266,8 +5283,10 @@ CinematicScreenFuzz:
 		ext.w	d4			; extend to word
 		add.w	d4,d4			; double for word addressing mode
 		
-		tst	d0			; are we on an even frame?
+		tst.b	d0			; are we on an even frame?
 		bne.s	@nolongline		; if not, branch
+		tst.b	d6			; are we doing a Y shift?
+		beq.s	@nolongline		; if yes, don't do long lines
 		btst	#4,d1			; are we in the allowed range?
 		bne.s	@nolongline		; if not, branch	
 		add.w	d4,d4			; increase line length
@@ -5275,8 +5294,15 @@ CinematicScreenFuzz:
 @nolongline:
 		move.w	(a2,d4.w),d4		; get actual line length value from LUT
 
-		tst.b	d6			; is Sonic walking left?
-		bmi.s	@apply			; if yes, branch
+		tst.b	d6			; is Sonic faster on X than Y velocity?
+		bne.s	@xshift			; if yes, branch
+		btst	#0,d1
+		bne.s	@negate
+		bra.s	@apply
+
+@xshift:
+		bmi.s	@apply			; if he's also walking left, branch
+@negate:
 		neg.w	d4			; otherwise, invert effect
 
 @apply:
@@ -5301,10 +5327,7 @@ LineLengths:
 		dc.w	0
 		dc.w	1
 		dc.w	1
-		dc.w	1
 		dc.w	2
-		dc.w	2
-		dc.w	3
 		dc.w	3
 		dc.w	4
 		dc.w	4
@@ -13914,11 +13937,15 @@ Obj27_LoadAnimal:			; XREF: Obj27_Index
 		jsr	PalLoad3_Water	; load toxic water palette
 		jsr 	WhiteFlash3
 		
-	;	moveq	#$17,d0
-	;	jsr	PalLoad4_Water	; load toxic water palette
 		move.w	#$E4,d0			; set song $E0
-		jsr	PlaySound	; fade out music
-		move.w	#$058,($FFFFF64A).w	; flood this place
+		jsr	PlaySound		; fade out music
+		
+		move.w	#$800,d0		; immediately make the water disappear to give the player some time to escape before the flooding
+		move.w	d0,($FFFFF646).w	; current water level
+		move.w	d0,($FFFFF648).w	; average water level
+		move.w	d0,($FFFFF64A).w	; target water level
+		
+		
 		movem.l	(sp)+,d0-a3
 		bra.s	@cont2
 
@@ -13980,12 +14007,10 @@ Obj27_Main:				; XREF: Obj27_Index
 		move.w	#$C1,d0
 		jsr	(PlaySound_Special).l ;	play breaking enemy sound
 		
-	;	bsr	SingleObjLoad		; load from SingleObjLoad
-	;	bne.s	Obj27_NoCamShake	; if SingleObjLoad is already in use, don't load obejct
-		move.b	#10,($FFFFFF64).w
+		move.b	#10,($FFFFFF64).w     	; normal camera shake
 		tst.b	($FFFFFFF9).w
 		beq.s	Obj27_NoCamShake
-		move.b	#180,($FFFFFF64).w		; camera shaking
+		move.b	#180,($FFFFFF64).w	; intense camera shaking
 
 Obj27_NoCamShake:
 	;	tst.w	($FFFFFE20).w 	; do you have any rings?
@@ -17923,26 +17948,11 @@ Obj2C:					; XREF: Obj_Index
 		moveq	#0,d0
 		move.b	obRoutine(a0),d0
 		move.w	Obj2C_Index(pc,d0.w),d1
-		jsr	Obj2C_Index(pc,d1.w)
-
-		jsr		(ObjHitFloor).l
-		cmpi.w	#6, d1
-		ble.s	@Bounce
-
-		bsr.w	ObjectFall
-		bsr.w	SpeedToPos
-		rts
-		
-@Bounce:
-		bchg	#1,obStatus(a0)
-		move.w	#-$200,obVelY(a0)
-		neg.w 	obVelX(a0)
-		bsr.w	SpeedToPos
-		rts
+		jmp	Obj2C_Index(pc,d1.w)
 
 ; ===========================================================================
 Obj2C_Index:	dc.w Obj2C_Main-Obj2C_Index
-		dc.w Obj2C_Turn-Obj2C_Index
+		dc.w Obj2C_Bounce-Obj2C_Index
 		dc.w Obj2C_Delete-Obj2C_Index
 ; ===========================================================================
 
@@ -17955,40 +17965,35 @@ Obj2C_Main:				; XREF: Obj2C_Index
 		move.b	#$A,obColType(a0)
 		move.b	#4,obPriority(a0)
 		move.b	#$10,obActWid(a0)
-	;	moveq	#0,d0
-	;	move.b	obSubtype(a0),d0	; load object subtype number
-	;	lsl.w	#6,d0		; multiply d0 by 64
-	;	subq.w	#1,d0
-		moveq	#4,d0
-		move.w	d0,$30(a0)	; set turn delay time
-		move.w	d0,$32(a0)
 		move.w	#-$60,obVelX(a0)	; move Jaws to the left
-		btst	#0,obStatus(a0)	; is Jaws facing left?
-		beq.s	Obj2C_Turn	; if yes, branch
-		neg.w	obVelX(a0)		; move Jaws to the right
 
-Obj2C_Turn:				; XREF: Obj2C_Index
-		tst.b	($FFFFFFB1).w
-		bmi.s	Obj2C_NotInhumanCrush
-		tst.b	obRender(a0)
-		bpl.b	Obj2C_NotInhumanCrush
-		move.b	#4,obRoutine(a0)		
-		bsr	SingleObjLoad
-		bne.s	Obj2C_NotInhumanCrush
-		move.b	#$3F,0(a1)
-		move.w	obX(a0),obX(a1)
-		move.w	obY(a0),obY(a1)
+Obj2C_Bounce:				; XREF: Obj2C_Index
+		bsr.w	SpeedToPos
+		jsr	(ObjHitFloor).l
+		cmpi.w	#6,d1
+		ble.s	@Bounce
+		bsr.w	ObjectFall
+		bra.s	Obj2C_Animate
+		
+@Bounce:
+		move.b	#$A9,d0			; play blip sound
+		jsr	PlaySound_Special
 
-Obj2C_NotInhumanCrush:
+		move.w	#-$200,obVelY(a0)	; bounce up
+		neg.w 	obVelX(a0)		; reverse direction
+		move.b	#1,obAnim(a0)		; reset animation
 
-		subq.w	#1,$30(a0)	; subtract 1 from turn delay time
-		bpl.s	Obj2C_Animate	; if time remains, branch
-		move.w	$32(a0),$30(a0)	; reset	turn delay time
-		; neg.w	obVelX(a0)		; change speed direction
-		bchg	#0,obStatus(a0)	; change Jaws facing direction
-		move.b	#1,obNextAni(a0)	; reset	animation
+		bclr	#0,obStatus(a0)		; make Jaws face the direction he's bouncing toward
+		tst.w	obVelX(a0)
+		bmi.s	Obj2C_Animate
+		bset	#0,obStatus(a0)
 
 Obj2C_Animate:
+		bclr	#1,obStatus(a0)		; vertically flip Jaws for a brief moment as he touches the ground
+		tst.b	obAnim(a0)
+		beq.s	@1
+		bset	#1,obStatus(a0)
+@1:
 		lea	(Ani_obj2C).l,a1
 		bsr	AnimateSprite
 		bsr	SpeedToPos

@@ -5220,6 +5220,9 @@ CinematicScreenFuzz:
 		tst.b	($FFFFFF64).w		; camera shake currently set?
 		bne.w	@end			; if yes, fuzz currently disabled cause holy shit is it slow
 
+		cmpi.b	#$10, ($FFFFF600).w		; is game mode special stage?
+		beq.w	@end			; if yes, fuzz is ALSO currently disabled cause holy shit is it STILL slow
+
 		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
 		bne.s	@dofuzz			; if yes, branch
 		cmpi.w	#$002,($FFFFFE10).w	; are we in Green Hill Place?
@@ -5228,6 +5231,9 @@ CinematicScreenFuzz:
 		beq.w	@end			; if yes, branch
 
 @dofuzz:
+		move.w	($FFFFFE04).w,d7 ; move timer into d7
+		and.w 	#1, d7 ; only use least significant bit
+
 		lea	(LineLengths).l,a2	; load line lengths address to a2
 		lea	($FFFFCC00).w,a1	; get h-scroll data
 		moveq	#0,d0			; by default, don't change scroll
@@ -5271,6 +5277,8 @@ CinematicScreenFuzz:
 ; ---------------------------------------------------------------------------
 
 @loop:
+		bchg 	#0,d7			; change the least significant bit of the AND'ed timer, for alternating lines
+
 		moveq	#0,d4			; clear d4
 		tst.b	d3			; does Sonic move at all?
 		beq.s	@apply			; if not, skip
@@ -5293,7 +5301,7 @@ CinematicScreenFuzz:
 
 @nolongline:
 		move.w	(a2,d4.w),d4		; get actual line length value from LUT
-
+		
 		tst.b	d6			; is Sonic faster on X than Y velocity?
 		bne.s	@xshift			; if yes, branch
 		btst	#0,d1
@@ -5309,11 +5317,13 @@ CinematicScreenFuzz:
 		move.w	(a1),d5			; get foreground scroll
 		add.w	d0,d5			; add manipulation
 		add.w	d4,d5			; apply RNG lines
+		add.w 	d7,d5			; apply alternating lines
 		move.w	d5,(a1)+		; store new position
 		
 		move.w	(a1),d5			; get background position
 		add.w	d0,d5			; add manipulation
 		add.w	d4,d5			; apply RNG lines
+		add.w 	d7,d5			; apply alternating lines
 		move.w	d5,(a1)+		; store new position
 		
 		not.w	d0			; invert manipulation for next row
@@ -19450,7 +19460,7 @@ loc_BDD6:
 		move.b	#$96,d0			; play music
 		jsr	PlaySound
 		
-		bsr.s	SetupSLZItems
+		bsr.s	SetupSAPItems
 
 Obj32_ShowPressed:
 		bset	d3,(a3)
@@ -19472,7 +19482,7 @@ Obj32_Display:
 		rts	
 ; ===========================================================================
 
-SetupSLZItems:
+SetupSAPItems:
 		; place 6th emblem in the looping section
 		lea	($FFFFDFC0).w,a1
 		move.b	#$7D,(a1)
@@ -28245,7 +28255,7 @@ Obj5F_BossDelete:
 		
 		tst.b	($FFFFFFE7).w	; inhuman?
 		beq.s	@noearlyload
-		jsr	SetupSLZItems
+		jsr	SetupSAPItems
 		
 @noearlyload:
 		move.b	#$84,d0
@@ -32861,8 +32871,9 @@ SD_End:
 ; ---------------------------------------------------------------------------
 ; Subroutine to move Sonic in air while holding A (Star Agony Place)
 ; ---------------------------------------------------------------------------
-
+Last_Direction = $FFFFF670
 AF_Speed =  $500
+AF_Hold_Speed =  $250
 AF_UpBoost = $180
 
 Sonic_AirFreeze:
@@ -32878,11 +32889,48 @@ Sonic_AirFreeze:
 		bra.w	AM_LetGo		; move Sonic
 
 AM_APressed:
+		and.b	#%00001111, d1 	; only use direction nybble
+		tst.b 	d1
+		beq.s 	@NoDirection
+		
+		move.b 	d1, (Last_Direction) ; store direction
+
+@NoDirection:
+		btst	#2,(Last_Direction).w	; is left pressed?
+		beq.s	@ChkRight		; if not, check if down is pressed
+		bset	#0,obStatus(a0)		; make Sonic fake the left
+		move.w	#-AF_Hold_Speed,obVelX(a0)	; move sonic left
+		moveq	#1,d0			; set to something was pressed
+		bra.s	@ChkDown		; we don't need ot check right
+
+@ChkRight:
+		btst	#3,(Last_Direction).w	; is right pressed?
+		beq.s	@ChkDown		; if not, branch
+		bclr	#0,obStatus(a0)		; make Sonic fake the right
+		move.w	#AF_Hold_Speed,obVelX(a0)	; move sonic right
+		moveq	#1,d0			; set to something was pressed
+
+@ChkDown:
+		btst	#1,d1			; is down pressed?
+		beq.s	@ChkUp		; if not, branch
+		move.w	#AF_Hold_Speed,obVelY(a0)	; move sonic down
+		moveq	#1,d0			; set to something was pressed
+		bra.s	@EndInput		; we don't need to check down
+
+@ChkUp:
+		btst	#0,d1			; is up pressed?
+		beq.s	@EndInput		; if not, check if down is pressed
+		move.w	#-AF_Hold_Speed,obVelY(a0)	; move sonic up
+		moveq	#1,d0			; set to something was pressed
+
+@EndInput:
 		move.b	($FFFFFE05).w,d0
 		andi.b	#%111,d0
 		bne.s	@0
 		move.w	#$B8,d0			; continously...
 		jsr	(PlaySound_Special).l	; ... play sound while holding A
+
+		moveq	#0,d0			; set to nothing was pressed
 
 @0:
 		cmpi.w	#$302,($FFFFFE10).w	; is level SLZ3?
@@ -32939,6 +32987,7 @@ AM_EndDecel:
 
 AM_LetGo:
 		moveq	#0,d0			; set to nothing was pressed
+		move.b 	#0, (Last_Direction) ; ^ ditto
 
 		btst	#2,($FFFFF602).w	; is left pressed?
 		beq.s	AM_ChkRight		; if not, check if down is pressed
@@ -32976,6 +33025,8 @@ AM_ChkUp:
 AM_MoveEnd:
 		tst.b	d0			; was any action made?
 		beq.s	AM_End			; if not, branch
+
+		move.b 	#0, (Last_Direction) ; clear last direction
 		move.w	#$A9,d0			; play sound...
 		jsr	(PlaySound_Special).l	; ...when letting go
 
@@ -48709,7 +48760,7 @@ Level_Index:
 		; 04XX
 		LayoutEntry Level_SYZ1, Level_SYZbg ; ~Uberhub~
 		LayoutEntry Level_SYZ2, Level_SYZbg ; Unreal Place
-		LayoutEntry Level_SYZ3, Level_SYZbg ; 
+		LayoutEntry Level_SLZ4, Level_SYZbg ;
 		LayoutEntry LevelIndexPadding, LevelIndexPadding
 
 		; 05XX
@@ -48723,6 +48774,8 @@ Level_Index:
 		LayoutEntry Level_End, Level_GHZbg ; Also ending
 		LayoutEntry LevelIndexPadding, LevelIndexPadding
 		LayoutEntry LevelIndexPadding, LevelIndexPadding
+
+		dc.b "HAM EBIMOGE"
 
 LevelIndexPadding:	dc.b 0,	0, 0, 0
 
@@ -48788,7 +48841,7 @@ byte_69C7E:	dc.b 0,	0, 0, 0
 Level_SYZ2:	;incbin	levels\syz2.bin
 		even
 byte_69D86:	dc.b 0,	0, 0, 0
-Level_SYZ3:	;incbin	levels\syz3.bin
+Level_SLZ4:;	incbin	levels\slz2casual.bin
 		even
 byte_69EE4:	dc.b 0,	0, 0, 0
 byte_69EE8:	dc.b 0,	0, 0, 0

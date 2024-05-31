@@ -58,8 +58,8 @@ Align:		macro
 ;=================================================
 ;Quick Level Select
 ;Immediately start to a given level ID on startup.
-QuickLevelSelect = 0
-QuickLevelSelect_ID = $101
+QuickLevelSelect = 1
+QuickLevelSelect_ID = $200
 ;=================================================
 ;Debug Mode enabled by default.
 ;Don't allow debug mode, not even with Game Genie.
@@ -458,7 +458,11 @@ loc_B42:
 
 ; loc_B5E:
 VBlank_Exit:				; XREF: VBlank_Late
-		jsr	SoundDriverUpdate
+		move	#$2300,sr			; enable interrupts (we can accept horizontal interrupts from now on)
+		bset	#0,($FFFFF64F).w		; set "SMPS running flag"
+		bne.s	VBlank_Exit_NoSoundDriver	; if it was set already, don't call another instance of SMPS
+		jsr	SoundDriverUpdate		; run SMPS
+		bclr	#0,($FFFFF64F).w		; reset "SMPS running flag"
 
 ; loc_B64:
 VBlank_Exit_NoSoundDriver:		; XREF: loc_D50
@@ -504,11 +508,7 @@ loc_BB6:
 
 loc_BBA:
 		move.w	#1,($FFFFF644).w
-		move.w	#$100,($A11100).l
 
-loc_BC8:
-		btst	#0,($A11100).l
-		bne.s	loc_BC8
 		tst.b	($FFFFF64E).w
 		bne.s	loc_BFE
 		lea	($C00004).l,a5
@@ -533,7 +533,7 @@ loc_BFE:				; XREF: loc_BC8
 loc_C22:				; XREF: loc_BC8
 		move.w	($FFFFF624).w,(a5)
 		move.b	($FFFFF625).w,($FFFFFE07).w
-		move.w	#0,($A11100).l
+
 		bra.w	VBlank_Exit
 ; ===========================================================================
 
@@ -571,11 +571,6 @@ loc_C64:				; XREF: VBlankTable
 		beq.w	loc_DA6		; if yes, branch
 
 loc_C6E:				; XREF: VBlankTable
-		move.w	#$100,($A11100).l ; stop the Z80
-
-loc_C76:
-		btst	#0,($A11100).l	; has Z80 stopped?
-		bne.s	loc_C76		; if not, branch
 		bsr	ReadJoypads
 		tst.b	($FFFFF64E).w
 		bne.s	loc_CB0
@@ -618,17 +613,16 @@ loc_CD4:				; XREF: loc_C76
 		jsr	(ProcessDMAQueue).l
 
 loc_D50:
-		move.w	#0,($A11100).l
 		movem.l	($FFFFF700).w,d0-d7
 		movem.l	d0-d7,($FFFFFF10).w
 		movem.l	($FFFFF754).w,d0-d1
 		movem.l	d0-d1,($FFFFFF30).w
 		
-		cmpi.b	#96,($FFFFF625).w		; is the on-screen water surface on scanline 96 or below?
-		bhs.s	Demo_Time			; if yes, it's safe to do the remaing V-Blank stuff right now
-		bset	#0,($FFFFF64F).w		; otherwise we're short on time, set to do updates in H-Blank
-		addq.l	#4,sp				; skip sound driver updates and do the H-Blank stuff now
-		bra.w	VBlank_Exit_NoSoundDriver	; end V-Blank routine early
+	;	cmpi.b	#96,($FFFFF625).w		; is the on-screen water surface on scanline 96 or below?
+	;	bhs.s	Demo_Time			; if yes, it's safe to do the remaing V-Blank stuff right now
+	;	bset	#0,($FFFFF64F).w		; otherwise we're short on time, set to do updates in H-Blank
+	;	addq.l	#4,sp				; skip sound driver updates and do the H-Blank stuff now
+	;	bra.w	VBlank_Exit_NoSoundDriver	; end V-Blank routine early
 
 ; ---------------------------------------------------------------------------
 ; Subroutine to	run a demo for an amount of time
@@ -653,11 +647,6 @@ Demo_TimeEnd:
 ; ===========================================================================
 
 loc_DA6:				; XREF: VBlankTable
-		move.w	#$100,($A11100).l ; stop the Z80
-
-loc_DAE:
-		btst	#0,($A11100).l	; has Z80 stopped?
-		bne.s	loc_DAE		; if not, branch
 		bsr	ReadJoypads
 		lea	($C00004).l,a5
 		move.l	#$94009340,(a5)
@@ -680,7 +669,6 @@ loc_DAE:
 		move.w	#$7C00,(a5)
 		move.w	#$83,($FFFFF640).w
 		move.w	($FFFFF640).w,(a5)
-		move.w	#0,($A11100).l
 		bsr	PalCycle_SS
 		jsr	(ProcessDMAQueue).l
 
@@ -694,11 +682,6 @@ locret_E70:
 ; ===========================================================================
 
 loc_E72:				; XREF: VBlankTable
-		move.w	#$100,($A11100).l ; stop the Z80
-
-loc_E7A:
-		btst	#0,($A11100).l	; has Z80 stopped?
-		bne.s	loc_E7A		; if not, branch
 		bsr	ReadJoypads
 		tst.b	($FFFFF64E).w
 		bne.s	loc_EB4
@@ -743,7 +726,6 @@ loc_EEE:
 		jsr	(ProcessDMAQueue).l
 
 loc_F54:
-		move.w	#0,($A11100).l	; start	the Z80
 		movem.l	($FFFFF700).w,d0-d7
 		movem.l	d0-d7,($FFFFFF10).w
 		movem.l	($FFFFF754).w,d0-d1
@@ -770,11 +752,6 @@ loc_F9A:				; XREF: VBlankTable
 ; ===========================================================================
 
 loc_FA6:				; XREF: VBlankTable
-		move.w	#$100,($A11100).l ; stop the Z80
-
-loc_FAE:
-		btst	#0,($A11100).l	; has Z80 stopped?
-		bne.s	loc_FAE		; if not, branch
 		bsr	ReadJoypads
 		lea	($C00004).l,a5
 		move.l	#$94009340,(a5)
@@ -797,7 +774,6 @@ loc_FAE:
 		move.w	#$7C00,(a5)
 		move.w	#$83,($FFFFF640).w
 		move.w	($FFFFF640).w,(a5)
-		move.w	#0,($A11100).l	; start	the Z80
 		jsr	(ProcessDMAQueue).l
 
 loc_1060:
@@ -812,11 +788,6 @@ locret_106C:
 
 
 sub_106E:				; XREF: loc_C32; et al
-		move.w	#$100,($A11100).l ; stop the Z80
-
-loc_1076:
-		btst	#0,($A11100).l	; has Z80 stopped?
-		bne.s	loc_1076	; if not, branch
 		bsr	ReadJoypads
 		tst.b	($FFFFF64E).w
 		bne.s	loc_10B0
@@ -854,7 +825,6 @@ loc_10D4:				; XREF: sub_106E
 		move.w	#$7C00,(a5)
 		move.w	#$83,($FFFFF640).w
 		move.w	($FFFFF640).w,(a5)
-		move.w	#0,($A11100).l	; start	the Z80
 		rts	
 ; End of function sub_106E
 
@@ -997,8 +967,8 @@ HBlank:
 @skipTransfer2:
 		movem.l	(sp)+,d0-d1/a0-a2
 
-		btst	#0,($FFFFF64F).w	; was the early V-Blank escape set?
-		bne.s	HBlank_DoVBlankUpdates	; if yes, do the updating stuff now
+	;	btst	#0,($FFFFF64F).w	; was the early V-Blank escape set?
+	;	bne.s	HBlank_DoVBlankUpdates	; if yes, do the updating stuff now
 
 locret_119C:
 		rte	
@@ -1006,12 +976,12 @@ locret_119C:
 
 ; loc_119E:
 HBlank_DoVBlankUpdates:			; XREF: HBlank
-		bclr	#0,($FFFFF64F).w
-		movem.l	d0-a6,-(sp)
-		jsr	SoundDriverUpdate
-		bsr	Demo_Time
-		movem.l	(sp)+,d0-a6
-		rte	
+	;	bclr	#0,($FFFFF64F).w
+	;	movem.l	d0-a6,-(sp)
+	;	bsr	Demo_Time
+	;	jsr	SoundDriverUpdate
+	;	movem.l	(sp)+,d0-a6
+	;	rte	
 ; End of function HBlank
 
 ; ---------------------------------------------------------------------------
@@ -2507,6 +2477,21 @@ PCSLZ_Red_Loop:
 		move.w	(a1),($FFFFFB5E).w
 
 PCSLZ_Red_End:
+		move.w	($FFFFFE04).w,d0
+		andi.w	#%111,d0
+		bne.s	@end
+		lea	($FFFFFB60+$10).w,a1
+		jsr	RandomNumber
+		moveq	#4,d0
+
+@loop:
+		ror.l	#1,d1
+		move.w	d1,d2
+		andi.w	#$E62,d2
+		ori.w	#%1100 0100 0010,d2
+		move.w	d2,(a1)+
+		dbf	d0,@loop
+@end:
 		rts
 
 ; End of function PalCycle_SLZ
@@ -3430,6 +3415,7 @@ Pal_Null:		incbin	pallet\null.bin
 Pal_BCutscene:		incbin	pallet\bombcutscene.bin
 Pal_SpecialEaster:	incbin	pallet\specialeaster.bin
 Pal_LZWater2_Evil:	incbin	pallet\lz_uw2_evil.bin
+Pal_ERaZorBanner:	incbin	pallet\ERaZor.bin
 
 ; ---------------------------------------------------------------------------
 ; Subroutine to	delay the program by ($FFFFF62A) frames
@@ -3848,7 +3834,7 @@ Title_ClrObjRam2:
 		move.b	#2,($FFFFD11A).w
 
 		movem.l	d0-a2,-(sp)		; backup d0 to a2
-		lea	(Pal_Sonic).l,a1	; set Sonic'S palette pointer
+		lea	(Pal_ERaZorBanner).l,a1	; set ERaZor banner's palette pointer
 		lea	($FFFFFBE0).l,a2	; set palette location
 		moveq	#7,d0			; set number of loops to 7
 
@@ -3883,35 +3869,43 @@ Title_MainLoop:
 		tst.w	($FFFFF614).w	; is time over?
 		beq.s	StartGame	; if yes, start game
 
-PalLocation = $FFFFFB60
+		
+		move.l	a2,-(sp)		; backup d0 to a2
+		lea	($FFFFFB60).w,a2
+		bsr.w	ERaZorBannerPalette
+		move.l	(sp)+,a2		; backup d0 to a2
 
-		move.w	($FFFFF614).w,d0			; load remaining time into d0
-		andi.w	#3,d0					; mask it against 3
-		bne.s	T_PalSkip_1				; if result isn't 0, branch
-		move.w	(PalLocation+$04).w,d0			; load first blue colour of sonic's palette into d0
-		moveq	#7,d1					; set loop counter to 7
-		lea	(PalLocation+$06).w,a1			; load second blue colour into a1
-
-T_PalLoop:
-		move.w	(a1),-obGfx(a1)				; move colour to last spot
-		adda.l	#2,a1					; increase location pointer
-		dbf	d1,T_PalLoop				; loop
-		move.w	d0,(PalLocation+$12).w			; move first colour to last one
-
-T_PalSkip_1:
-		move.w	($FFFFF614).w,d0			; load remaining time into d0
-		andi.w	#7,d0					; mask it against 7
-		bne.s	T_PalSkip_2				; if result isn't 0, branch
-		move.w	(PalLocation+$18).w,d0			; backup first colour of the red
-		move.w	(PalLocation+$1A).w,(PalLocation+$18).w	; move second colour to first one
-		move.w	(PalLocation+$1C).w,(PalLocation+$1A).w	; move third colour to second one
-		move.w	d0,(PalLocation+$1C).w			; load first colour into third one
-
-T_PalSkip_2:	
 		cmpi.b	#$80,($FFFFF605).w 	; check if Start is pressed
 		bne.w	Title_MainLoop		; if not, branch
 
 StartGame:
+	
+	bra nolevelselyet
+		moveq	#$17,d0
+		bsr.w	PalLoad2	; load level select pallet
+		lea	($FFFFCC00).w,a1
+		moveq	#0,d0
+		move.w	#$DF,d1
+
+Title_ClrScroll:
+		move.l	d0,(a1)+
+		dbf	d1,Title_ClrScroll ; fill scroll data with 0
+
+		move.l	d0,($FFFFF616).w
+		move	#$2700,sr
+		lea	($C00000).l,a6
+		move.l	#$60000003,($C00004).l
+		move.w	#$3FF,d1
+
+Title_ClrVram:
+		move.l	d0,(a6)
+		dbf	d1,Title_ClrVram ; fill	VRAM with 0
+
+		bsr.w	LevSelTextLoad
+		clr.w	($FFFFFF82).w
+		bra.w	LevelSelect
+
+nolevelselyet:
 	
 	if QuickLevelSelect=1
 		move.w	#QuickLevelSelect_ID,($FFFFFE10).w	; set level to QuickLevelSelect_ID
@@ -3957,6 +3951,107 @@ PlayLevelX:
 		move.l	d0,($FFFFFE5C).w ; clear emeralds
 		move.b	d0,($FFFFFE18).w ; clear continues
 		rts	
+; ===========================================================================
+
+ERZ_BlueSpeed = $3
+ERZ_RedSpeed = 3
+
+ERaZorBannerPalette:
+		move.w	($FFFFF614).w,d0		; load remaining time into d0
+		move.w	d0,d2				; copy to d2
+		andi.w	#ERZ_BlueSpeed,d0		; mask it against 3
+		bne.s	ERZ_RedPal			; if result isn't 0, branch
+		
+		; blue/gray palette rotation
+		move.w	4(a2),d0			; load first blue colour of sonic's palette into d0
+		moveq	#7,d1				; set loop counter to 7
+		lea	6(a2),a1			; load second blue colour into a1
+ERZ_BlueLoop:	move.w	(a1),-2(a1)			; move colour to last spot
+		adda.l	#2,a1				; increase location pointer
+		dbf	d1,ERZ_BlueLoop			; loop
+		move.w	d0,$12(a2)			; move first colour to last one
+
+ERZ_RedPal:
+		move.w	d2,d0				; load remaining time into d0
+		andi.w	#ERZ_RedSpeed,d0		; mask it against 7
+		bne.s	ERZ_End				; if result isn't 0, branch	
+
+		; red palette rotation
+		move.w	$14(a2),d0			; load first red colour of sonic's palette into d0
+		moveq	#5,d1				; set loop counter to 5
+		lea	$16(a2),a1			; load second red colour into a1
+ERZ_BlueLoopX:	move.w	(a1),-2(a1)			; move colour to last spot
+		adda.l	#2,a1				; increase location pointer
+		dbf	d1,ERZ_BlueLoopX		; loop
+		move.w	d0,$1E(a2)			; move first colour to last one
+
+ERZ_End:	
+		rts
+
+; ===========================================================================
+
+; ---------------------------------------------------------------------------
+; Level	Select
+; ---------------------------------------------------------------------------
+
+LevelSelect:
+		move.b	#4,($FFFFF62A).w
+		bsr.w	DelayProgram
+		bsr.w	LevSelControls
+		bsr.w	RunPLC_RAM
+		tst.l	($FFFFF680).w
+		bne.s	LevelSelect
+		andi.b	#$F0,($FFFFF605).w ; is	A, B, C, or Start pressed?
+		beq.s	LevelSelect	; if not, branch
+		bra.s	LevSel_Level_SS
+; ===========================================================================
+
+LevSel_Ending:				; XREF: LevelSelect
+		move.b	#$18,($FFFFF600).w ; set screen	mode to	$18 (Ending)
+		move.w	#$600,($FFFFFE10).w ; set level	to 0600	(Ending)
+		rts	
+; ===========================================================================
+
+LevSel_Level_SS:			; XREF: LevelSelect
+		add.w	d0,d0
+		move.w	LSelectPointers(pc,d0.w),d0 ; load level number
+		move.w	#$400,d0
+		bmi.w	LevelSelect
+
+		cmpi.w	#$700,d0	; check	if level is 0700 (Special Stage)
+		bne.s	LevSel_Level	; if not, branch
+		move.b	#$10,($FFFFF600).w ; set screen	mode to	$10 (Special Stage)
+		clr.w	($FFFFFE10).w	; clear	level
+		move.b	#3,($FFFFFE12).w ; set lives to	3
+		moveq	#0,d0
+		move.w	d0,($FFFFFE20).w ; clear rings
+		move.l	d0,($FFFFFE22).w ; clear time
+		move.l	d0,($FFFFFE26).w ; clear score
+		rts	
+; ===========================================================================
+
+LevSel_Level:				; XREF: LevSel_Level_SS
+		andi.w	#$3FFF,d0
+		move.w	d0,($FFFFFE10).w ; set level number
+
+PlayLevel:
+		jmp	PlayLevelX
+		move.b	#$C,($FFFFF600).w ; set	screen mode to $0C (level)
+		move.b	#3,($FFFFFE12).w ; set lives to	3
+		moveq	#0,d0
+		move.w	d0,($FFFFFE20).w ; clear rings
+		move.l	d0,($FFFFFE22).w ; clear time
+		move.l	d0,($FFFFFE26).w ; clear score
+		move.b	d0,($FFFFFE16).w ; clear special stage number
+		move.b	d0,($FFFFFE57).w ; clear emeralds
+		move.l	d0,($FFFFFE58).w ; clear emeralds
+		move.l	d0,($FFFFFE5C).w ; clear emeralds
+		move.b	d0,($FFFFFE18).w ; clear continues
+		move.b	#$E0,d0
+		bsr.w	PlaySound_Special ; fade out music
+		rts	
+; ===========================================================================
+
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Level	select - level pointers
@@ -5251,7 +5346,7 @@ CinematicScreenFuzz:
 		bmi.w	@end
 @prefill:	adda.l	#4,a1
 		dbf	d2,@prefill
-		
+
 		move.l	($FFFFF636).w,d2	; get random number
 
 		moveq	#1,d6
@@ -5793,30 +5888,20 @@ locret_4272:
 
 
 SignpostArtLoad:			; XREF: Level
-		bra.w	Signpost_Exit
-	;	tst.w	($FFFFFE08).w	; is debug mode	being used?
-	;	bne.w	Signpost_Exit	; if yes, branch
-		cmpi.b	#2,($FFFFFE11).w ; is act number 02 (act 3)?
-		beq.s	Signpost_Exit	; if yes, branch
+		tst.w	($FFFFFE08).w	; is debug mode	being used?
+		bne.w	Signpost_Exit	; if yes, branch
 		move.w	($FFFFF700).w,d0
 		move.w	($FFFFF72A).w,d1
 		subi.w	#$100,d1
-		cmpi.w	#$200,($FFFFFE10).w
-		bne.s	@cont
-		addi.w	#$80,d1
-@cont:
 		cmp.w	d1,d0		; has Sonic reached the	edge of	the level?
 		blt.s	Signpost_Exit	; if not, branch
 		tst.b	($FFFFFE1E).w
 		beq.s	Signpost_Exit
 		cmp.w	($FFFFF728).w,d1
 		beq.s	Signpost_Exit
-		
-		move.b	#$A0,d0
-		jsr	PlaySound_Special
+		move.w	d1,($FFFFF728).w ; move	left boundary to current screen	position
 		moveq	#$12,d0
 		jmp	LoadPLC2	; load signpost	patterns
-	;	move.w	d1,($FFFFF728).w ; move	left boundary to current screen	position
 ; ===========================================================================
 
 Signpost_Exit:
@@ -8293,8 +8378,6 @@ LZ_Wave_Data:	dc.b   1,  1,  2,  2,  3,  3,  3,  3,  2,  2,  1,  1,  0,  0,  0, 
  
  
 Deform_MZ:
-		cmpi.w	#$202,($FFFFFE10).w
-		beq.w	Deform_LZ
 		move.w	($FFFFF73A).w,d4
 		ext.l	d4
 		asl.l	#6,d4
@@ -8333,6 +8416,7 @@ Deform_MZ_1:				; CODE XREF: Deform_MZ+3C?j
 		or.b	d0,($FFFFF75A).w
 		clr.b	($FFFFF756).w
 		clr.b	($FFFFF758).w
+
 		lea	($FFFFA800).w,a1
 		move.w	($FFFFF700).w,d2
 		neg.w	d2
@@ -8349,44 +8433,38 @@ Deform_MZ_1:				; CODE XREF: Deform_MZ+3C?j
 		move.w	d2,d3
 		asr.w	#1,d3
 		move.w	#4,d1
- 
-Deform_MZ_2:				; CODE XREF: Deform_MZ+9E?j
-		move.w	d3,(a1)+
+Deform_MZ_2:	move.w	d3,(a1)+
 		swap	d3
 		add.l	d0,d3
 		swap	d3
 		dbf	d1,Deform_MZ_2
+
 		move.w	($FFFFF718).w,d0
 		neg.w	d0
-		move.w	#1,d1
- 
-Deform_MZ_3:				; CODE XREF: Deform_MZ+AE?j
-		move.w	d0,(a1)+
+		move.w	#1,d1 
+Deform_MZ_3:	move.w	d0,(a1)+
 		dbf	d1,Deform_MZ_3
 		move.w	($FFFFF710).w,d0
 		neg.w	d0
 		move.w	#8,d1
  
-Deform_MZ_4:				; CODE XREF: Deform_MZ+BE?j
-		move.w	d0,(a1)+
+Deform_MZ_4:	move.w	d0,(a1)+
 		dbf	d1,Deform_MZ_4
+
 		move.w	($FFFFF708).w,d0
 		neg.w	d0
-		move.w	#$F,d1
- 
-Deform_MZ_5:				; CODE XREF: Deform_MZ+CE?j
-		move.w	d0,(a1)+
+		move.w	#$F,d1 
+Deform_MZ_5:	move.w	d0,(a1)+
 		dbf	d1,Deform_MZ_5
+
 		lea	($FFFFA800).w,a2
 		move.w	($FFFFF70C).w,d0
 		subi.w	#$200,d0
 		move.w	d0,d2
 		cmpi.w	#$100,d0
 		bcs.s	Deform_MZ_6
-		move.w	#$100,d0
- 
-Deform_MZ_6:				; CODE XREF: Deform_MZ+E4?j
-		andi.w	#$1F0,d0
+		move.w	#$100,d0 
+Deform_MZ_6:	andi.w	#$1F0,d0
 		lsr.w	#3,d0
 		lea	(a2,d0.w),a2
 		bra.w	Deform_All
@@ -8440,7 +8518,7 @@ Deform_SLZ:
 		moveq	#0,d3
 		move.w	d2,d3
 
-		move.w	#$1B,d1		; set number of scan lines to dump (minus 1 for dbf)
+		move.w	#$E0/8-1,d1		; set number of scan lines to dump (minus 1 for dbf)
 SLZ_DeformLoop_1:
 		move.w	d4,(a1)+
 		move.w	d3,(a1)+
@@ -17412,7 +17490,7 @@ Obj2E_ChkS:
 		bne.s	@notruinedplace		; if not, branch
 
 		; block off a few chunks offscreen
-		movem.l	d0-a1,-(sp)		; backup a1
+		movem.l	d0-a1,-(sp)		; backup
 
 		move.w	#$118E,d0
 		move.w	#$02D5,d1
@@ -17428,8 +17506,13 @@ Obj2E_ChkS:
 		move.w	#$01AB,d1
 		move.b	#$20,d2
 		jsr	Sub_ChangeChunk
+		
+		; load bloody spikes are now
+		move.l	#$63600002,($C00004).l 
+		lea	(Nem_SpikesBlood).l,a0
+		jsr	NemDec
 
-		movem.l	(sp)+,d0-a1		; restore a1
+		movem.l	(sp)+,d0-a1		; restore
 
 @notruinedplace:
 		move.b	#1,($FFFFFFE7).w ; make sonic immortal
@@ -21052,22 +21135,16 @@ Obj36_Main:				; XREF: Obj36_Index
 		move.w	obY(a0),$32(a0)
 
 Obj36_Solid:				; XREF: Obj36_Index
-		cmpi.w	#$200,($FFFFFE10).w
-		bne.s	Obj36_NotInhuman
-		tst.b	($FFFFFFE7).w ; is inhuman mode on?
-		beq.s	Obj36_NotInhuman ; if not, branch
-		btst	#4,($FFFFFF92).w	; is nonstop inhuman enabled?
-		bne.s	@cont			; if not, branch
-		cmpi.w	#$1190,obX(a0)	; is this that one specific spike guarding off the spikes challenge in Ruined Place?
-		bne.s	@cont		; if not, branch
-		bra.w	Obj36_Explode	; if yes, explode and delete this spike
-@cont:
-		tst.b	($FFFFFFB3).w	; was a spike already destroyed?
-		bne.s	Obj36_NotInhuman ; if yes, branch
-		tst.b	obRender(a0)		; is spike on screen?
-		bpl.s	Obj36_NotInhuman ; if not, branch
-		cmpi.w	#$200,($FFFFFE10).w ; is level MZ1?
-		beq.s	Obj36_Explode	; if yes, branch
+		cmpi.w	#$200,($FFFFFE10).w	; are we in Ruined Place?
+		bne.s	Obj36_NotInhuman	; if not, branch
+		tst.b	($FFFFFFE7).w		; is inhuman mode on?
+		beq.s	Obj36_NotInhuman	; if not, branch
+		tst.b	($FFFFFFB3).w		; was the spike already destroyed?
+		bne.s	Obj36_NotInhuman	; if yes, branch
+	
+		cmpi.w	#$1190,obX(a0)		; is this that one specific spike guarding off the spikes challenge in Ruined Place?
+		bne.s	Obj36_NotInhuman	; if not, branch
+		bra.w	Obj36_Explode		; if yes, explode and delete this spike
 
 Obj36_NotInhuman:
 		jsr	obj36_Type0x	; make the object move
@@ -21165,7 +21242,7 @@ Obj36_Hurt:				; XREF: Obj36_SideWays; Obj36_Upright
 
 @conto:
 		jsr	FixLevel
-		bra.s	Obj36_NotInhuman2
+		bra.w	Obj36_NotInhuman2
 
 @conty:
 		tst.b	($FFFFFE2D).w	; is Sonic invincible?
@@ -21190,9 +21267,16 @@ Obj36_Hurt:				; XREF: Obj36_SideWays; Obj36_Upright
 		move.w	#$0590,($FFFFD00C).w	; teleport Sonic on Y-axis
 
 @cont:
+		cmpi.b	#2,($FFFFFF73).w	; has second checkpoint been reached?
+		bhs.s	@cont2
 		clr.b	($FFFFFF6C).w		; clear the "switch has been pressed" flags
+@cont2:
 		clr.w	($FFFFD010).w		; clear X-speed
 		clr.w	($FFFFD012).w		; clear Y-speed
+		
+		clr.w	($FFFFF708).w
+		clr.w	($FFFFF714).w
+		clr.w	($FFFFF71C).w
 
 		move.w	#$C3,d0			; set giant ring sound
 		jsr	PlaySound		; play it
@@ -23754,11 +23838,6 @@ Obj0D_Main:				; XREF: Obj0D_Index
 		move.b	#$18,obActWid(a0)
 		move.b	#4,obPriority(a0)
 
-		move.l	a0,-(sp)
-		moveq	#$12,d0
-		jsr	LoadPLC2	; load signpost	patterns
-		move.l	(sp)+,a0
-
 Obj0D_Touch:				; XREF: Obj0D_Index
 		move.w	($FFFFD008).w,d0
 		sub.w	obX(a0),d0
@@ -23776,6 +23855,8 @@ Obj0D_Touch:				; XREF: Obj0D_Index
 		move.b	#1,($FFFFFFA5).w	; move HUD off screen
 		cmpi.w	#$101,($FFFFFE10).w	; is level LZ2?
 		bne.s	@cont			; if not, branch
+		cmpi.w	#$B,($FFFFFE14).w
+		bgt.s	@cont
 		move.w	#$82,d0			; resume LZ music (cause we're drowning rn)
 		jsr	(PlaySound).l
 		move.w	#$1E,($FFFFFE14).w
@@ -30527,7 +30608,7 @@ Obj06_Locations:	;XXXX   YYYY
 		dc.w	$FFFF, $FFFF	; Green Hill Place	(Unused)
 		dc.w	$FFFF, $FFFF	; Special Place		(Unused)
 		dc.w	$1E10, $02B0	; Ruined Place
-		dc.w	$0840, $0168	; Labyrinthy Place
+		dc.w	$0D2F, $05A7	; Labyrinthy Place
 		dc.w	$FFFF, $FFFF	; Finalor Place		(Unused)
 		dc.w	$FFFF, $FFFF	; Spring Yard Place	(Unused)
 		dc.w	$FFFF, $FFFF	; Unreal Place		(Unused)
@@ -30637,8 +30718,12 @@ cropsvisible:
 Obj07_CheckState:
 		moveq	#0,d0				; clear d0
 
+
+		
 		btst	#3,($FFFFFF92).w		; is cinematic HUD enabled?
 		bne.s	@showcrops			; if yes, always enable
+		cmpi.b	#6,($FFFFD024).w		; is Sonic dying?
+		bhs.s	@showcrops			; if yes, branch
 		tst.b	($FFFFF7CC).w			; are controls locked?
 		bne.s	@showcrops			; if yes, always enable
 		tst.w	($FFFFF63A).w			; is game paused?
@@ -32872,6 +32957,7 @@ SD_End:
 ; Subroutine to move Sonic in air while holding A (Star Agony Place)
 ; ---------------------------------------------------------------------------
 Last_Direction = $FFFFF670
+A_Hold_timer = $FFFFF672
 AF_Speed =  $500
 AF_Hold_Speed =  $250
 AF_UpBoost = $180
@@ -32889,17 +32975,32 @@ Sonic_AirFreeze:
 		bra.w	AM_LetGo		; move Sonic
 
 AM_APressed:
+		cmpi.w 	#AF_Hold_Speed, (A_Hold_timer)
+		bge.s 	@DontAddToTimer
+
+		add.w 	#3, (A_Hold_timer)
+		bra.s 	@DirectionCheck
+
+@DontAddToTimer:
+		move.w 	#AF_Hold_Speed, (A_Hold_timer)
+
+@DirectionCheck:
 		and.b	#%00001111, d1 	; only use direction nybble
 		tst.b 	d1
-		beq.s 	@NoDirection
+		beq.w 	@EndInput
 		
 		move.b 	d1, (Last_Direction) ; store direction
+		
+		move.w	#-AF_Hold_Speed, d2 ; left + up
+		add.w 	(A_Hold_timer), d2
 
-@NoDirection:
+		move.w	#AF_Hold_Speed, d3 ; right + down
+		sub.w 	(A_Hold_timer), d3
+
 		btst	#2,(Last_Direction).w	; is left pressed?
 		beq.s	@ChkRight		; if not, check if down is pressed
 		bset	#0,obStatus(a0)		; make Sonic fake the left
-		move.w	#-AF_Hold_Speed,obVelX(a0)	; move sonic left
+		move.w	d2,obVelX(a0)	; move sonic left
 		moveq	#1,d0			; set to something was pressed
 		bra.s	@ChkDown		; we don't need ot check right
 
@@ -32907,29 +33008,39 @@ AM_APressed:
 		btst	#3,(Last_Direction).w	; is right pressed?
 		beq.s	@ChkDown		; if not, branch
 		bclr	#0,obStatus(a0)		; make Sonic fake the right
-		move.w	#AF_Hold_Speed,obVelX(a0)	; move sonic right
+		move.w	d3,obVelX(a0)	; move sonic right
 		moveq	#1,d0			; set to something was pressed
 
 @ChkDown:
 		btst	#1,d1			; is down pressed?
 		beq.s	@ChkUp		; if not, branch
-		move.w	#AF_Hold_Speed,obVelY(a0)	; move sonic down
+		move.w	d3,obVelY(a0)	; move sonic down
 		moveq	#1,d0			; set to something was pressed
 		bra.s	@EndInput		; we don't need to check down
 
 @ChkUp:
 		btst	#0,d1			; is up pressed?
 		beq.s	@EndInput		; if not, check if down is pressed
-		move.w	#-AF_Hold_Speed,obVelY(a0)	; move sonic up
+		move.w	d2,obVelY(a0)	; move sonic up
 		moveq	#1,d0			; set to something was pressed
 
 @EndInput:
 		move.b	($FFFFFE05).w,d0
 		andi.b	#%111,d0
 		bne.s	@0
+
+		cmpi.w 	#$F0, d3
+		bge.s	@NormalSound
+		
+		move.w	#$C7,d0			; continously...
+		jsr	(PlaySound_Special).l	; ... play sound while holding A
+		bra.s 	@NothingPressedSet
+
+@NormalSound:
 		move.w	#$B8,d0			; continously...
 		jsr	(PlaySound_Special).l	; ... play sound while holding A
 
+@NothingPressedSet:
 		moveq	#0,d0			; set to nothing was pressed
 
 @0:
@@ -32982,20 +33093,21 @@ AM_EndDecel:
 	;	clr.w	obVelX(a0)		; clear X-velocity
 	;	clr.w	obVelY(a0)		; clear Y-velocity
 		clr.w	obInertia(a0)		; clear interia
-		bra.s	AM_End
+		bra.w	AM_End
 ; ---------------------------------------------------------------------------
 
 AM_LetGo:
 		moveq	#0,d0			; set to nothing was pressed
 		move.b 	#0, (Last_Direction) ; ^ ditto
+		move.w 	#0, (A_Hold_timer)
 
 		btst	#2,($FFFFF602).w	; is left pressed?
 		beq.s	AM_ChkRight		; if not, check if down is pressed
 		bset	#0,obStatus(a0)		; make Sonic fake the left
 		move.w	#-AF_Speed,obVelX(a0)	; move sonic left
 		move.w	#-AF_UpBoost,obVelY(a0)	; move sonic up a lil
-		moveq	#1,d0			; set to something was pressed
-		bra.s	AM_ChkDown		; we don't need ot check right
+		addq.b	#1,d0			; set to something was pressed
+	;	bra.s	AM_ChkDown		; we don't need ot check right
 
 AM_ChkRight:
 		btst	#3,($FFFFF602).w	; is right pressed?
@@ -33003,14 +33115,14 @@ AM_ChkRight:
 		bclr	#0,obStatus(a0)		; make Sonic fake the right
 		move.w	#AF_Speed,obVelX(a0)	; move sonic right
 		move.w	#-AF_UpBoost,obVelY(a0)	; move sonic up a lil
-		moveq	#1,d0			; set to something was pressed
+		addq.b	#1,d0			; set to something was pressed
 
 AM_ChkDown:
 		btst	#1,d1			; is down pressed?
 		beq.s	AM_ChkUp		; if not, branch
 		move.w	#AF_Speed,obVelY(a0)	; move sonic down
-		moveq	#1,d0			; set to something was pressed
-		bra.s	AM_MoveEnd		; we don't need to check down
+		addq.b	#1,d0			; set to something was pressed
+	;	bra.s	AM_MoveEnd		; we don't need to check down
 
 AM_ChkUp:
 		btst	#0,d1			; is up pressed?
@@ -33020,12 +33132,29 @@ AM_ChkUp:
 	;	bne.s	@0
 		subi.w	#AF_UpBoost,obVelY(a0)
 @0:
-		moveq	#1,d0			; set to something was pressed
+		addq.b	#1,d0			; set to something was pressed
 
 AM_MoveEnd:
 		tst.b	d0			; was any action made?
 		beq.s	AM_End			; if not, branch
 
+		cmpi.b	#2,d0			; were both directions affected?
+		blo.s	@notboth		; if not, branch
+		move.w	obVelX(a0),d0
+		asr.w	#1,d0
+	;	move.w	d0,d1
+	;	asr.w	#1,d1
+	;	add.w	d1,d0
+		move.w	d0,obVelX(a0)
+
+		move.w	obVelY(a0),d0
+		asr.w	#1,d0
+	;	move.w	d0,d1
+	;	asr.w	#1,d1
+	;	add.w	d1,d0
+		move.w	d0,obVelY(a0)
+
+@notboth:
 		move.b 	#0, (Last_Direction) ; clear last direction
 		move.w	#$A9,d0			; play sound...
 		jsr	(PlaySound_Special).l	; ...when letting go
@@ -33891,9 +34020,9 @@ GameOver:				; XREF: Obj01_Death
 		addi.w	#$230,d0 		; used to be $100, increased for comedic timing
 		cmp.w	obY(a0),d0
 		bge.w	locret_13900
-	;	move.w	#-$38,obVelY(a0)
 		move.b	#$A9,d0			; play blip sound as the death counter goes up
 		jsr	PlaySound_Special
+		addi.w	#$10,($FFFFD480+obScreenY).w	; bounce death counter
 		addq.b	#2,obRoutine(a0)
 		cmpi.b	#$18,($FFFFF600).w
 		bne.s	@cont
@@ -44510,7 +44639,19 @@ SH_NotEnding:
 Kill_IfS:
 		jsr	Sonic_ResetOnFloor	; do all the shit which is in Sonic_ResetOnFloor
 		bset	#1,obStatus(a0)		; make sonic to be in the air
+
+		
+		btst	#4,($FFFFFF92).w	; is nonstop inhuman enabled?
+		beq.s	@0			; if not, branch
+		btst	#1,obStatus(a2)		; is killer object vertically flipped?
+		beq.s	@0			; if not, branch
+		cmpi.b	#$36,(a2)		; was damage caused by spikes?
+		bne.s	@0			; if not, branch
+		move.w	#$500,d0		; move sonic downwards
+@0:
+		
 		move.w	d0,obVelY(a0)		; move sonic upwards
+		
 		tst.b	($FFFFFFA1).w		; died because of boundary bottom?
 		bne.s	Kill_IfBoundary		; if yes, use the normal stuff
 		tst.b	($FFFFFFE7).w		; has sonic destroyed a S monitor?
@@ -47165,7 +47306,20 @@ Obj21_NoSignPost:
 		cmpi.b	#6,($FFFFD024).w	; is Sonic dying?
 		blo.s	Obj21_NotDying		; if not, branch
 		cmpi.b	#4,$30(a0)		; is object set to LIVES?
-		beq.s	Obj21_NotDying		; if yes, branch
+		bne.s	@0			; if not, branch
+		;move.w	#$14B-$30,obScreenY(a0)		; set Y-position
+
+		cmpi.w	#$12B-$00,obX(a0)
+		bls.s	@1
+		subi.w	#$6,obX(a0)		; set X-position
+		
+@1:
+		cmpi.w	#$14B-$30,obScreenY(a0)
+		bls.s	Obj21_NotDying
+		subi.w	#$3,obScreenY(a0)		; set Y-position
+		bra.s	Obj21_NotDying		; branch
+
+@0:
 		cmpi.w	#$30,obScreenY(a0)		; is Y-position < $30?
 		bmi.w	Obj21_Delete		; if yes, delete object
 		cmpi.w	#$170,obScreenY(a0)		; is Y-position > $170?
@@ -48377,7 +48531,9 @@ Nem_Bridge:	incbin	artnem\ghzbridg.bin	; GHZ bridge
 		even
 Nem_Ball:	incbin	artnem\ghzball.bin	; GHZ giant ball
 		even
-Nem_Spikes:	incbin	artnem\spikes.bin	; spikes
+Nem_Spikes:	incbin	artnem\spikes_blue.bin	; spikes
+		even
+Nem_SpikesBlood:	incbin	artnem\spikes_bloody.bin	; damn those bloody spikes
 		even
 Nem_SpikePole:	incbin	artnem\ghzlog.bin	; GHZ spiked log
 		even
@@ -49371,48 +49527,50 @@ locret_71DC4:
 
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 
-
+; Vladikcomper: Fixed a programming error with stack usage 
 sub_71DC6:				; XREF: sub_71CCA; sub_72850
-		addq.w	#4,sp
-		btst	#1,(a5)		; Is note playing?
-		bne.s	locret_71E16	; no - return
-		btst	#3,(a5)
-		beq.s	locret_71E16
-		tst.b	obPriority(a5)
-		beq.s	loc_71DDA
-		subq.b	#1,obPriority(a5)
-		rts	
+DoModulation:
+        btst    #3,(a5)     ; Is modulation active?
+        beq.s   @dontreturn ; Return if not
+        tst.b   $18(a5)     ; Has modulation wait expired?
+        beq.s   @waitdone   ; If yes, branch
+        subq.b  #1,$18(a5)  ; Update wait timeout
+       
+@dontreturn:
+        addq.w  #4,sp       ; ++ Do not return to caller (but see below)
+        rts
 ; ===========================================================================
-
-loc_71DDA:
-		subq.b	#1,obActWid(a5)
-		beq.s	loc_71DE2
-		rts	
+ 
+@waitdone:
+        subq.b  #1,$19(a5)  ; Update speed
+        beq.s   @updatemodulation   ; If it expired, want to update modulation
+        addq.w  #4,sp       ; ++ Do not return to caller (but see below)
+        rts
 ; ===========================================================================
-
-loc_71DE2:
-		movea.l	obInertia(a5),a0
-		move.b	obRender(a0),obActWid(a5)
-		tst.b	obAniFrame(a5)
-		bne.s	loc_71DFE
-		move.b	3(a0),obAniFrame(a5)
-		neg.b	obFrame(a5)
-		rts	
+ 
+@updatemodulation:
+        movea.l $14(a5),a0  ; Get modulation data
+        move.b  1(a0),$19(a5)   ; Restore modulation speed
+        tst.b   $1B(a5)     ; Check number of steps
+        bne.s   @calcfreq   ; If nonzero, branch
+        move.b  3(a0),$1B(a5)   ; Restore from modulation data
+        neg.b   $1A(a5)     ; Negate modulation delta
+        addq.w  #4,sp       ; ++ Do not return to caller (but see below)
+        rts
 ; ===========================================================================
-
-loc_71DFE:
-		subq.b	#1,obAniFrame(a5)
-		move.b	obFrame(a5),d6
-		ext.w	d6
-		add.w	obAnim(a5),d6
-		move.w	d6,obAnim(a5)
-		add.w	obVelX(a5),d6
-		subq.w	#4,sp
-
-locret_71E16:
-		rts	
-; End of function sub_71DC6
-
+ 
+@calcfreq:
+        subq.b  #1,$1B(a5)  ; Update modulation steps
+        move.b  $1A(a5),d6  ; Get modulation delta
+        ext.w   d6
+        add.w   $1C(a5),d6  ; Add cumulative modulation change
+        move.w  d6,$1C(a5)  ; Store it
+        add.w   $10(a5),d6  ; Add note frequency to it
+ 
+@locret:
+        rts
+; End of function DoModulation
+ 
 
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 
@@ -49422,6 +49580,9 @@ sub_71E18:				; XREF: sub_71CCA
 		bne.s	locret_71E48
 		move.w	obVelX(a5),d6
 		beq.s	loc_71E4A
+		btst	#3,(a5)		; check if modulation is active
+		beq.s	loc_71E24	; if not, branch
+		add.w	$1C(a5),d6	; add modulation frequency to d6
 
 loc_71E24:				; XREF: sub_71CCA
 		move.b	obTimeFrame(a5),d0
@@ -50696,6 +50857,9 @@ loc_728CA:
 sub_728DC:				; XREF: sub_72850
 		move.w	obVelX(a5),d6
 		bmi.s	loc_72920
+		btst	#3,(a5)		; check if modulation is active
+		beq.s	sub_728E2	; if not, branch
+		add.w	$1C(a5),d6	; add modulation frequency to d6
 ; End of function sub_728DC
 
 
@@ -50987,6 +51151,10 @@ loc_72B5C:
 		moveq	#2,d7
 
 loc_72B66:
+		cmpi.b  #$E0,1(a5)		; is this the Noise Channel?
+		bne.s   L2_nextpsg		; no - skip
+		move.b  $1F(a5),($C00011).l	; restore Noise setting
+L2_nextpsg:
 		btst	#7,(a5)
 		beq.s	loc_72B78
 		bset	#1,(a5)

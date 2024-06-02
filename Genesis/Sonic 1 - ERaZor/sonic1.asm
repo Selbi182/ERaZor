@@ -3906,8 +3906,8 @@ Title_ClrVram:
 		bra.w	LevelSelect
 
 nolevelselyet:
-	
 	if QuickLevelSelect=1
+		bsr.s	ERZ_FadeOut
 		move.w	#QuickLevelSelect_ID,($FFFFFE10).w	; set level to QuickLevelSelect_ID
 		move.b	#$C,($FFFFF600).w		; set game mode to level
 		move.w	#1,($FFFFFE02).w		; restart level
@@ -3925,7 +3925,7 @@ nolevelselyet:
 		move.b	#$E0,d0			; fade out music
 		jsr	PlaySound
 		jsr	Pal_MakeWhite		; Fade out previous palette
-	
+		bsr.s	ERZ_FadeOut
 		move.b	#$30,($FFFFF600).w	; set to GameplayStyleScreen
 		rts
 		
@@ -3935,9 +3935,33 @@ nolevelselyet:
 	;	rts
 
 SG_ResumeFromSaveGame:
+		bsr.s	ERZ_FadeOut
 		move.b	#$28,($FFFFF600).w	; set to Chapters Screen
 		rts				; return
 ; ===========================================================================
+
+ERZ_FadeOut:
+		move.b	#$E0,d0			; fade out music
+		jsr	PlaySound
+		move.w	#50,($FFFFF614).w
+@fade
+		move.b	#4,($FFFFF62A).w
+		bsr	DelayProgram
+		move.b	#4,($FFFFF62A).w
+		bsr	DelayProgram
+		move.b	#4,($FFFFF62A).w
+		bsr	DelayProgram
+		move.w	#$00E,($FFFFFB60+$14).w
+		move.w	#$00E,($FFFFFB60+$16).w
+		move.w	#$00E,($FFFFFB60+$1A).w
+		jsr	Pal_FadeOut
+		subq.w	#1,($FFFFF614).w
+		bpl.s	@fade
+		rts
+
+; ===========================================================================
+
+
 
 PlayLevelX:
 		move.b	#$C,($FFFFF600).w ; set	screen mode to $0C (level)

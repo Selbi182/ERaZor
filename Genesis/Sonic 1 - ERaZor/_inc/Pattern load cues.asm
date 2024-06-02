@@ -302,11 +302,11 @@ PLC_Warp:	dc.w 0
 ; ---------------------------------------------------------------------------
 ; Pattern load cues - special stage
 ; ---------------------------------------------------------------------------
-PLC_SpeStage:	dc.w $C
+PLC_SpeStage:	dc.w $B
 		dc.l Nem_SSBgCloud	; bubble and cloud background
 		dc.w 0
-		dc.l Nem_TitleCard	; title cards
-		dc.w $0A20
+	;	dc.l Nem_TitleCard	; title cards
+	;	dc.w $0A20
 		dc.l Nem_SSWalls	; walls
 		dc.w $2840
 		dc.l Nem_Bumper		; bumper
@@ -374,11 +374,9 @@ PLC_SSBlackout:	dc.w 0
 ; ---------------------------------------------------------------------------
 ; Pattern load cues - ending sequence
 ; ---------------------------------------------------------------------------
-PLC_Ending:	dc.w $E
-		dc.l Nem_GHZ_1st	; GHZ main patterns
+PLC_Ending:	dc.w $D
+		dc.l Nem_GHZ		; GHZ patterns
 		dc.w 0
-		dc.l Nem_GHZ_2nd	; GHZ secondary	patterns
-		dc.w $39A0
 		dc.l Nem_Stalk		; flower stalk
 		dc.w $6B00
 		dc.l Nem_EndFlower	; flowers

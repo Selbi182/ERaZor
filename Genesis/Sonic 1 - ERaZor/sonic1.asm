@@ -6054,6 +6054,10 @@ SS_ClrNemRam:
 		move.l	d0,(a1)+
 		dbf	d1,SS_ClrNemRam	; clear	Nemesis	buffer
 
+		move.b	#0,($FFFFFF8A).w	; load uncompressed title card art (immediately)
+		jsr	LoadTitleCardArt
+
+
 		bsr	DeformBgLayer
 		clr.b	($FFFFF64E).w
 		clr.w	($FFFFFE02).w
@@ -20508,7 +20512,13 @@ LoadTitleCardArt:
 @loadart:
 		; load title graphics in an uncompressed matter to speed up loading times
 		lea	($C00000).l,a6
-		move.l	#$6B800002,obMap(a6)
+		
+		move.l	#$6B800002,d2		; $AB80
+		cmpi.b	#$10,($FFFFF600).w	; are we in a special stage?
+		bne.s	@notss			; if not, branch
+		move.l	#$4A200000,d2		; $0A20
+@notss:
+		move.l	d2,4(a6)
 		lea	(Art_TitleCard).l,a5
 		move.w	#$A3F,d1
 @loadtitlecardfont:
@@ -48742,8 +48752,8 @@ Nem_Cater:	incbin	artnem\caterkil.bin	; caterkiller
 ; ---------------------------------------------------------------------------
 Art_TitleCard:	incbin	artunc\TitleCards.bin	; title cards (uncompressed)
 		even
-Nem_TitleCard:	incbin	artnem\ttlcards.bin	; title cards
-		even
+;Nem_TitleCard:	incbin	artnem\ttlcards.bin	; title cards
+;		even
 Nem_TCCont:	incbin	artnem\ttlcards_continue.bin	; title cards used for continue screen
 		even
 Nem_Hud:	incbin	artnem\hud.bin		; HUD (rings, time, score)
@@ -48802,10 +48812,10 @@ Blk16_GHZ:	incbin	map16\ghz.bin
 		even
 Nem_GHZ:	incbin	artnem\8x8ghz.bin	; New GHZ file.
 		even
-Nem_GHZ_1st:	incbin	artnem\8x8ghz1.bin	; GHZ primary patterns
-		even
-Nem_GHZ_2nd:	incbin	artnem\8x8ghz2.bin	; GHZ secondary patterns
-		even
+;Nem_GHZ_1st:	incbin	artnem\8x8ghz1.bin	; GHZ primary patterns
+;		even
+;Nem_GHZ_2nd:	incbin	artnem\8x8ghz2.bin	; GHZ secondary patterns
+;		even
 Blk256_GHZ:	incbin	map256\ghz.bin
 		even
 Blk16_LZ:	incbin	map16\lz.bin

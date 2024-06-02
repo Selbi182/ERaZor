@@ -1147,6 +1147,7 @@ loc_134A:
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 
 ClearVRAM:
+		move.w	sr, -(sp)
 		move	#$2700,sr		; disable IRQ's
 		lea	($C00000).l,a5		; load VDP data port address to a5
 		lea	$04(a5),a6		; load VDP address port address to a6
@@ -10140,18 +10141,15 @@ sub_70AC:				; CODE XREF: sub_6EA4+170?p
 		bne.s	loc_70E8
 		btst	#3,(a0)
 		bne.s	loc_70C8
-		move	#$2700,sr
 		move.l	d0,(a5)
 		move.l	(a1)+,(a6)
 		add.l	d7,d0
 		move.l	d0,(a5)
 		move.l	(a1)+,(a6)
-		move	#$2300,sr
 		rts	
 ; ===========================================================================
  
 loc_70C8:				; CODE XREF: sub_70AC+E?j
-		move	#$2700,sr
 		move.l	d0,(a5)
 		move.l	(a1)+,d4
 		eori.l	#$8000800,d4
@@ -10163,14 +10161,12 @@ loc_70C8:				; CODE XREF: sub_70AC+E?j
 		eori.l	#$8000800,d4
 		swap	d4
 		move.l	d4,(a6)
-		move	#$2300,sr
 		rts	
 ; ===========================================================================
  
 loc_70E8:				; CODE XREF: sub_70AC+8?j
 		btst	#3,(a0)
 		bne.s	loc_710A
-		move	#$2700,sr
 		move.l	d0,(a5)
 		move.l	(a1)+,d5
 		move.l	(a1)+,d4
@@ -10180,12 +10176,10 @@ loc_70E8:				; CODE XREF: sub_70AC+8?j
 		move.l	d0,(a5)
 		eori.l	#$10001000,d5
 		move.l	d5,(a6)
-		move	#$2300,sr
 		rts	
 ; ===========================================================================
  
 loc_710A:				; CODE XREF: sub_70AC+40?j
-		move	#$2700,sr
 		move.l	d0,(a5)
 		move.l	(a1)+,d5
 		move.l	(a1)+,d4
@@ -10197,7 +10191,6 @@ loc_710A:				; CODE XREF: sub_70AC+40?j
 		eori.l	#$18001800,d5
 		swap	d5
 		move.l	d5,(a6)
-		move	#$2300,sr
 		rts	
 ; End of function sub_70AC
  

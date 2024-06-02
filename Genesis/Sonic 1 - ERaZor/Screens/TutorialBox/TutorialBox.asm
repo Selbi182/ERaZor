@@ -126,10 +126,6 @@ Tutorial_DisplayHint:
 	add.w	d0,d0
 	add.w	d0,d0
 	move.l	-4(a1,d0.w),char_pos(a0)	; load hint text
-	
-	; hacky fix required because the cropped borders objects lead to trouble
-	sf.b	(Objects+$3C1).w		; fix Selbi's bad object
-	sf.b	(Objects+$381).w		; fix Selbi's bad object
 
 	; Init hint window gfx
 	move.b	#8,VBlankSub
@@ -149,11 +145,6 @@ Tutorial_DisplayHint:
 	move.l	(a1)+,(a5)
 	dbf	d0,@0
 
-	cmpi.b	#1,($FFFFFE10).w	; are we in LZ?
-	beq.s	@lz			; if yes, branch
-	move.w	#$8004,(a6)	; disable h-ints
-@lz:
-
 ; ---------------------------------------------------------------
 ; Display Hint Main Loop
 ; ---------------------------------------------------------------
@@ -162,11 +153,11 @@ DH_MainLoop:
 	move.b	#2,VBlankSub
 	jsr	DelayProgram
 
-	cmpi.b	#10,($FFFFFF6E).w
-	bne.s	@cont
-	jsr	SineWavePalette
+	cmpi.b	#10,($FFFFFF6E).w	; is this the introduction text?
+	bne.s	@notintro		; if not, branch
+	jsr	SineWavePalette		; sinewave background color
+@notintro:
 
-@cont:
 	; Run window object code
 	lea	_DH_WindowObj,a0
 	movea.l	obj(a0),a1
@@ -188,12 +179,9 @@ DH_MainLoop:
 ; ---------------------------------------------------------------
 
 DH_Quit:
-	cmpi.b	#1,($FFFFFE10).w	; are we in LZ?
-	beq.s	@0			; if yes, branch
-	move.w	#$8014,($C00004).l	; enable h-ints
-@0:
 	movem.l	(sp)+,a0/a5-a6
-
+	clr.b	($FFFFFF6E).w
+	
 	; Display objects one final time
 	lea	Objects,a0
 	moveq	#$7F,d7
@@ -206,6 +194,7 @@ DH_Quit:
 ; ---------------------------------------------------------------
 
 DH_ClearWindow:
+	move	#$2700,sr
 	vram	_DH_VRAM_Base,(a6)
 	move.l	#_DH_BG_Pattern,d0
 	move.w	#$A0-1,d1	; do $A0 tiles
@@ -220,7 +209,7 @@ DH_ClearWindow:
 	move.l	d0,(a5)
 	move.l	d0,(a5)
 	dbf	d1,@DrawTile
-
+	move	#$2300,sr
 	rts
 
 ; ---------------------------------------------------------------

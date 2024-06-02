@@ -841,8 +841,12 @@ BarKillHeight = $E0/2
 
 ; PalToCRAM:
 HBlank:
+	;	tst.l	($FFFFF680).w
+	;	beq.s	@0
+	;	rte
+@0:
 		cmpi.b	#1,($FFFFFE10).w	; are we in LZ?
-		beq.w	@hblank_original		; if yes, skip bars (they cause issues with the water thingy)
+		beq.w	@hblank_original	; if yes, skip bars (they cause issues with the water thingy)
 		tst.b	(ScreenCropCurrent).w	; are cropped borders enabled?
 		bgt.s	@blackbars		; if yes, branch
 	
@@ -967,21 +971,8 @@ HBlank:
 @skipTransfer2:
 		movem.l	(sp)+,d0-d1/a0-a2
 
-	;	btst	#0,($FFFFF64F).w	; was the early V-Blank escape set?
-	;	bne.s	HBlank_DoVBlankUpdates	; if yes, do the updating stuff now
-
 locret_119C:
 		rte	
-; ===========================================================================
-
-; loc_119E:
-HBlank_DoVBlankUpdates:			; XREF: HBlank
-	;	bclr	#0,($FFFFF64F).w
-	;	movem.l	d0-a6,-(sp)
-	;	bsr	Demo_Time
-	;	jsr	SoundDriverUpdate
-	;	movem.l	(sp)+,d0-a6
-	;	rte	
 ; End of function HBlank
 
 ; ---------------------------------------------------------------------------
@@ -1491,202 +1482,198 @@ ProcessDMAQueue_Done:
 		rts
 ; End of function ProcessDMAQueue
 
-; ---------------------------------------------------------------------------
-; Nemesis decompression	algorithm
-; ---------------------------------------------------------------------------
-
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
-
+; ==============================================================================
+; ------------------------------------------------------------------------------
+; Nemesis decompression routine
+; ------------------------------------------------------------------------------
+; Optimized by vladikcomper
+; ------------------------------------------------------------------------------
+		
+NemDec_RAM:
+		movem.l	d0-a1/a3-a6,-(sp)
+		lea	NemDec_WriteRowToRAM(pc),a3
+		bra.s   NemDec_Main
+		
+; ------------------------------------------------------------------------------
 NemDec:
-		movem.l	d0-a1/a3-a5,-(sp)
-		lea	(loc_1502).l,a3
-		lea	($C00000).l,a4
-		bra.s	loc_145C
-; ===========================================================================
-		movem.l	d0-a1/a3-a5,-(sp)
-		lea	(loc_1518).l,a3
-
-loc_145C:				; XREF: NemDec
-		lea	($FFFFAA00).w,a1
-		move.w	(a0)+,d2
-		lsl.w	#1,d2
-		bcc.s	loc_146A
-		adda.w	#$A,a3
-
-loc_146A:
-		lsl.w	#2,d2
-		movea.w	d2,a5
-		moveq	#8,d3
-		moveq	#0,d2
-		moveq	#0,d4
-		bsr	NemDec4
-		move.b	(a0)+,d5
-		asl.w	#8,d5
-		move.b	(a0)+,d5
-		move.w	#$10,d6
-		bsr.s	NemDec2
-		movem.l	(sp)+,d0-a1/a3-a5
-		rts	
+		movem.l	d0-a1/a3-a6,-(sp)
+		lea	$C00000,a4      ; load VDP Data Port     
+		lea	NemDec_WriteRowToVDP(pc),a3
+		
+NemDec_Main:
+		lea	$FFFFAA00,a1        ; load Nemesis decompression buffer
+		move.w  (a0)+,d2        ; get number of patterns
+		bpl.s   @0          ; are we in Mode 0?
+		lea	$A(a3),a3       ; if not, use Mode 1
+@0:		lsl.w   #3,d2
+		movea.w d2,a5
+		moveq   #7,d3
+		moveq   #0,d2
+		moveq   #0,d4
+		bsr.w   NemDec4
+		move.b  (a0)+,d5        ; get first byte of compressed data
+		asl.w   #8,d5           ; shift up by a byte
+		move.b  (a0)+,d5        ; get second byte of compressed data
+		move.w  #$10,d6         ; set initial shift value
+		bsr.s   NemDec2
+		movem.l (sp)+,d0-a1/a3-a6
+		rts
+		
+; ---------------------------------------------------------------------------
+; Part of the Nemesis decompressor, processes the actual compressed data
+; ---------------------------------------------------------------------------
+		
+NemDec2:
+		move.w  d6,d7
+		subq.w  #8,d7           ; get shift value
+		move.w  d5,d1
+		lsr.w   d7,d1           ; shift so that high bit of the code is in bit position 7
+		cmpi.b  #%11111100,d1       ; are the high 6 bits set?
+		bcc.s   NemDec_InlineData   ; if they are, it signifies inline data
+		andi.w  #$FF,d1
+		add.w   d1,d1
+		sub.b   (a1,d1.w),d6        ; ~~ subtract from shift value so that the next code is read next time around
+		cmpi.w  #9,d6           ; does a new byte need to be read?
+		bcc.s   @0          ; if not, branch
+		addq.w  #8,d6
+		asl.w   #8,d5
+		move.b  (a0)+,d5        ; read next byte
+@0:		move.b  1(a1,d1.w),d1
+		move.w  d1,d0
+		andi.w  #$F,d1          ; get palette index for pixel
+		andi.w  #$F0,d0
+		
+NemDec_GetRepeatCount:
+		lsr.w   #4,d0           ; get repeat count
+		
+NemDec_WritePixel:
+		lsl.l   #4,d4           ; shift up by a nybble
+		or.b    d1,d4           ; write pixel
+		dbf	d3,NemDec_WritePixelLoop; ~~
+		jmp	(a3)            ; otherwise, write the row to its destination
+; ---------------------------------------------------------------------------
+		
+NemDec3:
+		moveq   #0,d4           ; reset row
+		moveq   #7,d3           ; reset nybble counter
+		
+NemDec_WritePixelLoop:
+		dbf	d0,NemDec_WritePixel
+		bra.s   NemDec2
+; ---------------------------------------------------------------------------
+		
+NemDec_InlineData:
+		subq.w  #6,d6           ; 6 bits needed to signal inline data
+		cmpi.w  #9,d6
+		bcc.s   @0
+		addq.w  #8,d6
+		asl.w   #8,d5
+		move.b  (a0)+,d5
+@0:		subq.w  #7,d6           ; and 7 bits needed for the inline data itself
+		move.w  d5,d1
+		lsr.w   d6,d1           ; shift so that low bit of the code is in bit position 0
+		move.w  d1,d0
+		andi.w  #$F,d1          ; get palette index for pixel
+		andi.w  #$70,d0         ; high nybble is repeat count for pixel
+		cmpi.w  #9,d6
+		bcc.s   NemDec_GetRepeatCount
+		addq.w  #8,d6
+		asl.w   #8,d5
+		move.b  (a0)+,d5
+		bra.s   NemDec_GetRepeatCount
+		
+; ---------------------------------------------------------------------------
+; Subroutines to output decompressed entry
+; Selected depending on current decompression mode
+; ---------------------------------------------------------------------------
+		
+NemDec_WriteRowToVDP:
+loc_1502:
+		move.l  d4,(a4)         ; write 8-pixel row
+		subq.w  #1,a5
+		move.w  a5,d4           ; have all the 8-pixel rows been written?
+		bne.s   NemDec3         ; if not, branch
+		rts
+; ---------------------------------------------------------------------------
+		
+NemDec_WriteRowToVDP_XOR:
+		eor.l   d4,d2           ; XOR the previous row by the current row
+		move.l  d2,(a4)         ; and write the result
+		subq.w  #1,a5
+		move.w  a5,d4
+		bne.s   NemDec3
+		rts
+; ---------------------------------------------------------------------------
+		
+NemDec_WriteRowToRAM:
+		move.l  d4,(a4)+        ; write 8-pixel row
+		subq.w  #1,a5
+		move.w  a5,d4           ; have all the 8-pixel rows been written?
+		bne.s   NemDec3         ; if not, branch
+		rts
+; ---------------------------------------------------------------------------
+		
+NemDec_WriteRowToRAM_XOR:
+		eor.l   d4,d2           ; XOR the previous row by the current row
+		move.l  d2,(a4)+        ; and write the result
+		subq.w  #1,a5
+		move.w  a5,d4
+		bne.s   NemDec3
+		rts
+		
+; ---------------------------------------------------------------------------
+; Part of the Nemesis decompressor, builds the code table (in RAM)
+; ---------------------------------------------------------------------------
+		
+NemDec4:
+		move.b  (a0)+,d0        ; read first byte
+		
+@ChkEnd:
+		cmpi.b  #$FF,d0         ; has the end of the code table description been reached?
+		bne.s   @NewPalIndex        ; if not, branch
+		rts
+; ---------------------------------------------------------------------------
+		
+@NewPalIndex:
+		move.w  d0,d7
+		
+@ItemLoop:
+		move.b  (a0)+,d0        ; read next byte
+		bmi.s   @ChkEnd         ; ~~
+		move.b  d0,d1
+		andi.w  #$F,d7          ; get palette index
+		andi.w  #$70,d1         ; get repeat count for palette index
+		or.w    d1,d7           ; combine the two
+		andi.w  #$F,d0          ; get the length of the code in bits
+		move.b  d0,d1
+		lsl.w   #8,d1
+		or.w    d1,d7           ; combine with palette index and repeat count to form code table entry
+		moveq   #8,d1
+		sub.w   d0,d1           ; is the code 8 bits long?
+		bne.s   @ItemShortCode      ; if not, a bit of extra processing is needed
+		move.b  (a0)+,d0        ; get code
+		add.w   d0,d0           ; each code gets a word-sized entry in the table
+		move.w  d7,(a1,d0.w)        ; store the entry for the code
+		bra.s   @ItemLoop       ; repeat
+; ---------------------------------------------------------------------------
+		
+@ItemShortCode:
+		move.b  (a0)+,d0        ; get code
+		lsl.w   d1,d0           ; shift so that high bit is in bit position 7
+		add.w   d0,d0           ; get index into code table
+		moveq   #1,d5
+		lsl.w   d1,d5
+		subq.w  #1,d5           ; d5 = 2^d1 - 1
+		lea	(a1,d0.w),a6        ; ~~
+		
+@ItemShortCodeLoop:
+		move.w  d7,(a6)+        ; ~~ store entry
+		dbf	d5,@ItemShortCodeLoop   ; repeat for required number of entries
+		bra.s   @ItemLoop
 ; End of function NemDec
-
-
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
-
-NemDec2:				; XREF: NemDec
-		move.w	d6,d7
-		subq.w	#8,d7
-		move.w	d5,d1
-		lsr.w	d7,d1
-		cmpi.b	#-4,d1
-		bcc.s	loc_14D6
-		andi.w	#$FF,d1
-		add.w	d1,d1
-		move.b	(a1,d1.w),d0
-		ext.w	d0
-		sub.w	d0,d6
-		cmpi.w	#9,d6
-		bcc.s	loc_14B2
-		addq.w	#8,d6
-		asl.w	#8,d5
-		move.b	(a0)+,d5
-
-loc_14B2:
-		move.b	obRender(a1,d1.w),d1
-		move.w	d1,d0
-		andi.w	#$F,d1
-		andi.w	#$F0,d0
-
-loc_14C0:				; XREF: NemDec3
-		lsr.w	#4,d0
-
-loc_14C2:				; XREF: NemDec3
-		lsl.l	#4,d4
-		or.b	d1,d4
-		subq.w	#1,d3
-		bne.s	loc_14D0
-		jmp	(a3)
-; End of function NemDec2
-
-
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
-
-NemDec3:				; XREF: loc_1502
-		moveq	#0,d4
-		moveq	#8,d3
-
-loc_14D0:				; XREF: NemDec2
-		dbf	d0,loc_14C2
-		bra.s	NemDec2
 ; ===========================================================================
 
-loc_14D6:				; XREF: NemDec2
-		subq.w	#6,d6
-		cmpi.w	#9,d6
-		bcc.s	loc_14E4
-		addq.w	#8,d6
-		asl.w	#8,d5
-		move.b	(a0)+,d5
-
-loc_14E4:				; XREF: NemDec3
-		subq.w	#7,d6
-		move.w	d5,d1
-		lsr.w	d6,d1
-		move.w	d1,d0
-		andi.w	#$F,d1
-		andi.w	#$70,d0
-		cmpi.w	#9,d6
-		bcc.s	loc_14C0
-		addq.w	#8,d6
-		asl.w	#8,d5
-		move.b	(a0)+,d5
-		bra.s	loc_14C0
-; End of function NemDec3
-
 ; ===========================================================================
-
-loc_1502:				; XREF: NemDec
-		move.l	d4,(a4)
-		subq.w	#1,a5
-		move.w	a5,d4
-		bne.s	NemDec3
-		rts	
-; ===========================================================================
-		eor.l	d4,d2
-		move.l	d2,(a4)
-		subq.w	#1,a5
-		move.w	a5,d4
-		bne.s	NemDec3
-		rts	
-; ===========================================================================
-
-loc_1518:				; XREF: NemDec
-		move.l	d4,(a4)+
-		subq.w	#1,a5
-		move.w	a5,d4
-		bne.s	NemDec3
-		rts	
-; ===========================================================================
-		eor.l	d4,d2
-		move.l	d2,(a4)+
-		subq.w	#1,a5
-		move.w	a5,d4
-		bne.s	NemDec3
-		rts	
-
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
-
-NemDec4:				; XREF: NemDec
-		move.b	(a0)+,d0
-
-loc_1530:
-		cmpi.b	#-1,d0
-		bne.s	loc_1538
-		rts	
-; ===========================================================================
-
-loc_1538:				; XREF: NemDec4
-		move.w	d0,d7
-
-loc_153A:
-		move.b	(a0)+,d0
-		cmpi.b	#$80,d0
-		bcc.s	loc_1530
-		move.b	d0,d1
-		andi.w	#$F,d7
-		andi.w	#$70,d1
-		or.w	d1,d7
-		andi.w	#$F,d0
-		move.b	d0,d1
-		lsl.w	#8,d1
-		or.w	d1,d7
-		moveq	#8,d1
-		sub.w	d0,d1
-		bne.s	loc_1568
-		move.b	(a0)+,d0
-		add.w	d0,d0
-		move.w	d7,(a1,d0.w)
-		bra.s	loc_153A
-; ===========================================================================
-
-loc_1568:				; XREF: NemDec4
-		move.b	(a0)+,d0
-		lsl.w	d1,d0
-		add.w	d0,d0
-		moveq	#1,d5
-		lsl.w	d1,d5
-		subq.w	#1,d5
-
-loc_1574:
-		move.w	d7,(a1,d0.w)
-		addq.w	#2,d0
-		dbf	d5,loc_1574
-		bra.s	loc_153A
-; End of function NemDec4
-
 ; ---------------------------------------------------------------------------
 ; Subroutine to	load pattern load cues
 ; ---------------------------------------------------------------------------
@@ -1786,7 +1773,9 @@ RunPLC_RAM:				; XREF: Pal_FadeTo
 
 loc_160E:
 		andi.w	#$7FFF,d2
+		ints_disable
 		bsr	NemDec4
+		ints_enable
 		move.b	(a0)+,d5
 		asl.w	#8,d5
 		move.b	(a0)+,d5
@@ -1919,7 +1908,9 @@ RunPLC_Loop:
 		ori.w	#$4000,d0
 		swap	d0
 		move.l	d0,($C00004).l	; put the VRAM address into VDP
+		ints_disable
 		bsr	NemDec		; decompress
+		ints_enable
 		dbf	d1,RunPLC_Loop	; loop for number of entries
 		rts	
 ; End of function RunPLC_ROM
@@ -2162,110 +2153,137 @@ locret_189A:
 		rts	
 ; End of function sub_188C
 
+; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Kosinski decompression algorithm
+; Kosinski decompression routine
+;
+; Created by vladikcomper
+; Special thanks to flamewing and MarkeyJester
 ; ---------------------------------------------------------------------------
 
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
+_Kos_RunBitStream macro
+	dbf	d2,@skip\@
+	moveq	#7,d2
+	move.b	d1,d0
+	swap	d3
+	bpl.s	@skip\@
+	move.b	(a0)+,d0			; get desc. bitfield
+	move.b	(a0)+,d1			;
+	move.b	(a4,d0.w),d0			; reload converted desc. bitfield from a LUT
+	move.b	(a4,d1.w),d1			;
+@skip\@
+	endm
+; ---------------------------------------------------------------------------
 
 KosDec:
+	moveq	#7,d7
+	moveq	#0,d0
+	moveq	#0,d1
+	lea	KosDec_ByteMap(pc),a4
+	move.b	(a0)+,d0			; get desc field low-byte
+	move.b	(a0)+,d1			; get desc field hi-byte
+	move.b	(a4,d0.w),d0			; reload converted desc. bitfield from a LUT
+	move.b	(a4,d1.w),d1			;
+	moveq	#7,d2				; set repeat count to 8
+	moveq	#-1,d3				; d3 will be desc field switcher
+	clr.w	d3				;
+	bra.s	KosDec_FetchNewCode
 
-var_2		= -2
-var_1		= -1
+KosDec_FetchCodeLoop:
+	; code 1 (Uncompressed byte)
+	_Kos_RunBitStream
+	move.b	(a0)+,(a1)+
 
-		subq.l	#2,sp
-		move.b	(a0)+,2+var_1(sp)
-		move.b	(a0)+,(sp)
-		move.w	(sp),d5
-		moveq	#$F,d4
+KosDec_FetchNewCode:
+	add.b	d0,d0				; get a bit from the bitstream
+	bcs.s	KosDec_FetchCodeLoop		; if code = 0, branch
 
-loc_18A8:
-		lsr.w	#1,d5
-		move	sr,d6
-		dbf	d4,loc_18BA
-		move.b	(a0)+,2+var_1(sp)
-		move.b	(a0)+,(sp)
-		move.w	(sp),d5
-		moveq	#$F,d4
+	; codes 00 and 01
+	_Kos_RunBitStream
+	moveq	#0,d4				; d4 will contain copy count
+	add.b	d0,d0				; get a bit from the bitstream
+	bcs.s	KosDec_Code_01
 
-loc_18BA:
-		move	d6,ccr
-		bcc.s	loc_18C2
-		move.b	(a0)+,(a1)+
-		bra.s	loc_18A8
+	; code 00 (Dictionary ref. short)
+	_Kos_RunBitStream
+	add.b	d0,d0				; get a bit from the bitstream
+	addx.w	d4,d4
+	_Kos_RunBitStream
+	add.b	d0,d0				; get a bit from the bitstream
+	addx.w	d4,d4
+	_Kos_RunBitStream
+	moveq	#-1,d5
+	move.b	(a0)+,d5			; d5 = displacement
+
+KosDec_StreamCopy:
+	lea	(a1,d5),a3
+	move.b	(a3)+,(a1)+			; do 1 extra copy (to compensate for +1 to copy counter)
+
+KosDec_copy:
+	move.b	(a3)+,(a1)+
+	dbf	d4,KosDec_copy
+	bra.w	KosDec_FetchNewCode
+; ---------------------------------------------------------------------------
+KosDec_Code_01:
+	; code 01 (Dictionary ref. long / special)
+	_Kos_RunBitStream
+	move.b	(a0)+,d6			; d6 = %LLLLLLLL
+	move.b	(a0)+,d4			; d4 = %HHHHHCCC
+	moveq	#-1,d5
+	move.b	d4,d5				; d5 = %11111111 HHHHHCCC
+	lsl.w	#5,d5				; d5 = %111HHHHH CCC00000
+	move.b	d6,d5				; d5 = %111HHHHH LLLLLLLL
+	and.w	d7,d4				; d4 = %00000CCC
+	bne.s	KosDec_StreamCopy		; if CCC=0, branch
+
+	; special mode (extended counter)
+	move.b	(a0)+,d4			; read cnt
+	beq.s	KosDec_Quit			; if cnt=0, quit decompression
+	subq.b	#1,d4
+	beq.w	KosDec_FetchNewCode		; if cnt=1, fetch a new code
+
+	lea	(a1,d5),a3
+	move.b	(a3)+,(a1)+			; do 1 extra copy (to compensate for +1 to copy counter)
+	move.w	d4,d6
+	not.w	d6
+	and.w	d7,d6
+	add.w	d6,d6
+	lsr.w	#3,d4
+	jmp	KosDec_largecopy(pc,d6.w)
+
+KosDec_largecopy:
+	rept 8
+	move.b	(a3)+,(a1)+
+	endr
+	dbf	d4,KosDec_largecopy
+	bra.w	KosDec_FetchNewCode
+
+KosDec_Quit:
+	rts
+
+; ---------------------------------------------------------------------------
+; A look-up table to invert bits order in desc. field bytes
+; ---------------------------------------------------------------------------
+
+KosDec_ByteMap:
+	dc.b	$00,$80,$40,$C0,$20,$A0,$60,$E0,$10,$90,$50,$D0,$30,$B0,$70,$F0
+	dc.b	$08,$88,$48,$C8,$28,$A8,$68,$E8,$18,$98,$58,$D8,$38,$B8,$78,$F8
+	dc.b	$04,$84,$44,$C4,$24,$A4,$64,$E4,$14,$94,$54,$D4,$34,$B4,$74,$F4
+	dc.b	$0C,$8C,$4C,$CC,$2C,$AC,$6C,$EC,$1C,$9C,$5C,$DC,$3C,$BC,$7C,$FC
+	dc.b	$02,$82,$42,$C2,$22,$A2,$62,$E2,$12,$92,$52,$D2,$32,$B2,$72,$F2
+	dc.b	$0A,$8A,$4A,$CA,$2A,$AA,$6A,$EA,$1A,$9A,$5A,$DA,$3A,$BA,$7A,$FA
+	dc.b	$06,$86,$46,$C6,$26,$A6,$66,$E6,$16,$96,$56,$D6,$36,$B6,$76,$F6
+	dc.b	$0E,$8E,$4E,$CE,$2E,$AE,$6E,$EE,$1E,$9E,$5E,$DE,$3E,$BE,$7E,$FE
+	dc.b	$01,$81,$41,$C1,$21,$A1,$61,$E1,$11,$91,$51,$D1,$31,$B1,$71,$F1
+	dc.b	$09,$89,$49,$C9,$29,$A9,$69,$E9,$19,$99,$59,$D9,$39,$B9,$79,$F9
+	dc.b	$05,$85,$45,$C5,$25,$A5,$65,$E5,$15,$95,$55,$D5,$35,$B5,$75,$F5
+	dc.b	$0D,$8D,$4D,$CD,$2D,$AD,$6D,$ED,$1D,$9D,$5D,$DD,$3D,$BD,$7D,$FD
+	dc.b	$03,$83,$43,$C3,$23,$A3,$63,$E3,$13,$93,$53,$D3,$33,$B3,$73,$F3
+	dc.b	$0B,$8B,$4B,$CB,$2B,$AB,$6B,$EB,$1B,$9B,$5B,$DB,$3B,$BB,$7B,$FB
+	dc.b	$07,$87,$47,$C7,$27,$A7,$67,$E7,$17,$97,$57,$D7,$37,$B7,$77,$F7
+	dc.b	$0F,$8F,$4F,$CF,$2F,$AF,$6F,$EF,$1F,$9F,$5F,$DF,$3F,$BF,$7F,$FF
+
 ; ===========================================================================
-
-loc_18C2:				; XREF: KosDec
-		moveq	#0,d3
-		lsr.w	#1,d5
-		move	sr,d6
-		dbf	d4,loc_18D6
-		move.b	(a0)+,2+var_1(sp)
-		move.b	(a0)+,(sp)
-		move.w	(sp),d5
-		moveq	#$F,d4
-
-loc_18D6:
-		move	d6,ccr
-		bcs.s	loc_1906
-		lsr.w	#1,d5
-		dbf	d4,loc_18EA
-		move.b	(a0)+,2+var_1(sp)
-		move.b	(a0)+,(sp)
-		move.w	(sp),d5
-		moveq	#$F,d4
-
-loc_18EA:
-		roxl.w	#1,d3
-		lsr.w	#1,d5
-		dbf	d4,loc_18FC
-		move.b	(a0)+,2+var_1(sp)
-		move.b	(a0)+,(sp)
-		move.w	(sp),d5
-		moveq	#$F,d4
-
-loc_18FC:
-		roxl.w	#1,d3
-		addq.w	#1,d3
-		moveq	#-1,d2
-		move.b	(a0)+,d2
-		bra.s	loc_191C
-; ===========================================================================
-
-loc_1906:				; XREF: loc_18C2
-		move.b	(a0)+,d0
-		move.b	(a0)+,d1
-		moveq	#-1,d2
-		move.b	d1,d2
-		lsl.w	#5,d2
-		move.b	d0,d2
-		andi.w	#7,d1
-		beq.s	loc_1928
-		move.b	d1,d3
-		addq.w	#1,d3
-
-loc_191C:
-		move.b	(a1,d2.w),d0
-		move.b	d0,(a1)+
-		dbf	d3,loc_191C
-		bra.s	loc_18A8
-; ===========================================================================
-
-loc_1928:				; XREF: loc_1906
-		move.b	(a0)+,d1
-		beq.s	loc_1938
-		cmpi.b	#1,d1
-		beq.w	loc_18A8
-		move.b	d1,d3
-		bra.s	loc_191C
-; ===========================================================================
-
-loc_1938:				; XREF: loc_1928
-		addq.l	#2,sp
-		rts	
-; End of function KosDec
-
 ; ---------------------------------------------------------------------------
 ; Pallet cycling routine loading subroutine
 ; ---------------------------------------------------------------------------
@@ -48441,7 +48459,7 @@ MainLoadBlocks:
 ; ---------------------------------------------------------------------------
 ArtLoadCues:
 		include	"_inc\Pattern load cues.asm"
-		incbin	misc\padding.bin
+	;	incbin	misc\padding.bin
 		even
 
 Nem_SegaLogo:	incbin	artnem\segalogo.bin	; large Sega logo

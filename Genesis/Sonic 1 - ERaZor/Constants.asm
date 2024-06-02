@@ -12,6 +12,16 @@ display_disable	macro
 		endm
 
 
+ints_enable	macro
+		move	#$2300,sr
+		endm
+
+ints_disable	macro
+		move	#$2700,sr
+		endm
+
+
+
 ; Object variables
 obRender:	equ 1	; bitfield for x/y flip, display mode
 obGfx:		equ 2	; palette line & VRAM setting (2 bytes)

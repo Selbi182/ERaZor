@@ -37,7 +37,7 @@ Options_LoadText:
 		dbf	d1,Options_LoadText ; load uncompressed text patterns
 
 		move.l	#$64000002,($C00004).l
-		lea	(Nem_ERaZor).l,a0
+		lea	(Nem_ERaZorNoBG).l,a0
 		jsr	NemDec
 
 		jsr	Pal_FadeFrom

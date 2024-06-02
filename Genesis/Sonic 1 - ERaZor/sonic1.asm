@@ -48418,6 +48418,8 @@ Art_Dust:	incbin	artunc\spindust.bin	; spindash dust art
 ; ---------------------------------------------------------------------------
 Nem_ERaZor:	incbin	artnem\ERaZor.bin	; ERaZor banner art
 		even
+Nem_ERaZorNoBG:	incbin	artnem\ERaZor_NoBG.bin	; ERaZor banner art (no background)
+		even
 Nem_Null:	incbin	artnem\null.bin		; just a file with one blank tile
 		even
 Nem_Shield:	incbin	artnem\shield.bin	; shield

@@ -60,6 +60,15 @@ Options_LoadPal:
 		jsr	PalLoad1
 		moveq	#3,d0		; load Options screen pallet
 		jsr	PalLoad1
+		
+		
+		movem.l	d0-a2,-(sp)		; backup d0 to a2
+		lea	(Pal_ERaZorBanner).l,a1	; set ERaZor banner's palette pointer
+		lea	($FFFFFBA0).l,a2	; set palette location
+		moveq	#7,d0			; set number of loops to 7
+@0:		move.l	(a1)+,(a2)+		; load 2 colours (4 bytes)
+		dbf	d0,@0			; loop
+		movem.l	(sp)+,d0-a2		; restore d0 to a2
 		rts
 ; ---------------------------------------------------------------------------
 
@@ -109,33 +118,12 @@ Options_ClrVram:
 Options_PalCycle:
 		; background palette rotation
 		jsr	SineWavePalette
-	
-	
-		; ERaZor banner palette rotation
-PalLocationO = $FFFFFB20
-		move.w	($FFFFF614).w,d0			; load remaining time into d0
-		andi.w	#3,d0					; mask it against 3
-		bne.s	O_PalSkip_1				; if result isn't 0, branch
-		move.w	(PalLocationO+$04).w,d0			; load first blue colour of sonic's palette into d0
-		moveq	#7,d1					; set loop counter to 7
-		lea	(PalLocationO+$06).w,a1			; load second blue colour into a1
-
-O_PalLoop:
-		move.w	(a1),-2(a1)				; move colour to last spot
-		adda.l	#2,a1					; increase location pointer
-		dbf	d1,O_PalLoop				; loop
-		move.w	d0,(PalLocationO+$12).w			; move first colour to last one
-
-O_PalSkip_1:
-		move.w	($FFFFF614).w,d0			; load remaining time into d0
-		andi.w	#7,d0					; mask it against 7
-		bne.s	O_PalSkip_2				; if result isn't 0, branch
-		move.w	(PalLocationO+$18).w,d0			; backup first colour of the red
-		move.w	(PalLocationO+$1A).w,(PalLocationO+$18).w	; move second colour to first one
-		move.w	(PalLocationO+$1C).w,(PalLocationO+$1A).w	; move third colour to second one
-		move.w	d0,(PalLocationO+$1C).w			; load first colour into third one
-
-O_PalSkip_2:
+		
+		; ERaZor banner palette cycle
+		move.l	a2,-(sp)		; backup d0 to a2
+		lea	($FFFFFB20).w,a2
+		jsr	ERaZorBannerPalette
+		move.l	(sp)+,a2		; backup d0 to a2
 		rts
 
 ; ===========================================================================

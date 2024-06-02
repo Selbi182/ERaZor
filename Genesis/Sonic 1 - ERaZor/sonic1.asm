@@ -1252,6 +1252,8 @@ PauseGame:				; XREF: Level_MainLoop; et al
 	;	beq.w	Unpause			; if not, branch
 		tst.w	($FFFFF63A).w		; is game already paused?
 		bne.s	loc_13BE		; if yes, branch
+		tst.b	($FFFFD000).w		; does Sonic exist? (e.g. has he not jumped into a ring)?
+		beq.w	Pause_DoNothing		; if not, disallow pausing
 		btst	#7,($FFFFF605).w	; is Start button pressed?
 		beq.w	Pause_DoNothing		; if not, branch
 
@@ -3698,7 +3700,7 @@ Sega_WaitFrames:
 Sega_WaitPallet:
 		move.b	#2,($FFFFF62A).w
 		bsr	DelayProgram
-		andi.b	#$80,($FFFFF605).w ; is	Start button pressed?
+		andi.b	#$F0,($FFFFF605).w ; is	A, B, C, or Start pressed?
 		bne.s	Sega_GotoTitle	; if yes, branch
 		bsr	PalCycle_Sega
 		bne.s	Sega_WaitPallet
@@ -3893,8 +3895,10 @@ Title_MainLoop:
 		bsr.w	ERaZorBannerPalette
 		move.l	(sp)+,a2		; backup d0 to a2
 
-		cmpi.b	#$80,($FFFFF605).w 	; check if Start is pressed
-		bne.w	Title_MainLoop		; if not, branch
+
+		move.b	($FFFFF605).w,d1	; get button presses
+		andi.b	#$F0,d1			; is A, B, C, or Start pressed?
+		beq.w	Title_MainLoop		; if not, branch
 
 StartGame:
 		tst.w	($FFFFFFFA).w		; is debug mode enabled?

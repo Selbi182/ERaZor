@@ -11,6 +11,7 @@ CreditsJest:
 		move.l	d0,($FFFFF616).w			; reset Y scroll positions
 		move.l	d0,($FFFFFFAC).w			; reset rumble positions
 		move.l	d0,($FFFFFFA0).w			; reset scroll positions
+		move.w	#$8004,($C00004).l			; disable h-ints
 		move	#$2700,sr				; set IRQ's (disable interrupts)
 		jsr	ClearScreen				; clear the screen
 
@@ -182,7 +183,7 @@ CJML_WriteMappings:
 		cmp.l	($00FF0008).l,d0			; is it the end address?
 		beq	CJML_End				; if so, branch
 
-		addq.b	#1,($FFFFFF91).w
+		addq.b	#1,($FFFFFF91).w			; set to next screen
 
 		lea	($C00000).l,a1				; load VDP data port address to a1
 		move.l	#$40000003,d3				; prepare V-Ram address
@@ -243,7 +244,7 @@ CJML_FinalLoop:
 
 		move.w	($FFFFFFA0).w,d0			; load scroll position
 		andi.w	#$01FF,d0				; keep within the X line
-		tst.w	d0				; is it at the center of the screen?
+		tst.w	d0					; is it at the center of the screen?
 		bne	CJML_FinalScreenScroll			; if not, branch (keep scrolling)
 		bra	CJML_FinalLoop2				; if so, branch
 
@@ -307,17 +308,23 @@ CJML_End:
 ; ---------------------------------------------------------------------------
 
 Pal_Credits:
-		dc.w	$0000,$0000,$0444,$0EEE,$0AAA,$0000,$0000,$0000
-		dc.w	$0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
+		; header - top
+		dc.w	0,0
+		dc.w	$0422,$0ECC,$0A88
+		dc.w	0,0,0,0,0,0,0,0,0,0,0
+		; header - bottom
+		dc.w	0,0
+		dc.w	$0400,$0EAA,$0A66
+		dc.w	0,0,0,0,0,0,0,0,0,0,0
 		
-		dc.w	$0000,$0000,$0400,$0EAA,$0A66,$0000,$0000,$0000
-		dc.w	$0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
-		
-		dc.w	$0000,$0000,$0444,$0EEE,$0AAA,$0000,$0000,$0000
-		dc.w	$0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
-		
-		dc.w	$0000,$0000,$0444,$0EEE,$0AAA,$0000,$0000,$0000
-		dc.w	$0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
+		; main content - top
+		dc.w	0,0
+		dc.w	$0444,$0EEE,$0AAA
+		dc.w	0,0,0,0,0,0,0,0,0,0,0
+		; main content - bottom
+		dc.w	0,0
+		dc.w	$0222,$0AAA,$0888
+		dc.w	0,0,0,0,0,0,0,0,0,0,0
 		even
 
 ; ---------------------------------------------------------------------------

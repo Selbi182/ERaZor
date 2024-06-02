@@ -440,7 +440,7 @@ _CooldownVal	= 2
 
 	move.w	#_DelayVal,delay(a0)	; restore delay
 	move.b	Joypad|Held,d0
-	andi.b	#A+B+C,d0		; A/B/C held?
+	andi.b	#A+B+C+Start,d0		; A/B/C/Start held?
 	beq.s	@Retry			; if not, branch
 	move.w	#_DelayVal_Sh,delay(a0)	; restore short delay
 

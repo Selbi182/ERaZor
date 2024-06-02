@@ -84,7 +84,7 @@ GSS_MainLoop:
 		jsr	BuildSprites
 
 		move.b	($FFFFF605).w,d1	; get button presses
-	 	andi.b	#$7F,d1			; is anything but start pressed?
+	 	andi.b	#3,d1			; is up or down pressed?
 		beq.s	@NoUpdate		; if not, branch
 		bchg 	#5,($FFFFFF92).w 	; toggle casual/frantic flag
 		bsr	GSS_SetColor
@@ -92,7 +92,7 @@ GSS_MainLoop:
 		jsr	(PlaySound_Special).l	; play "blip" sound
 
 @NoUpdate:
-		andi.b	#$80,($FFFFF605).w	; is Start button pressed?
+		andi.b	#$F0,($FFFFF605).w	; is A, B, C, or Start pressed?
 		beq.s	GSS_MainLoop		; if not, branch
 
 ; ---------------------------------------------------------------------------

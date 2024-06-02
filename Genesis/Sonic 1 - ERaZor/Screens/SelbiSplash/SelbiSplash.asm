@@ -226,7 +226,12 @@ SelbiSplash_ChangePal:
 
 SelbiSplash_LoopEnd:
 		move.b	($FFFFF605).w,d0
-		andi.b	#$80,d0				; is Start button pressed?
+		andi.b	#$F0,d0				; is A, B, C, or Start pressed?
+		tst.b	($FFFFFFAF).w			; are we in the final phase of the screen?
+		beq.s	@cont				; if not, branch
+		andi.b	#$80,d0
+@cont:
+		tst.b	d0
 		beq.w	SelbiSplash_Loop		; if not, loop
 		
 SelbiSplash_Next:

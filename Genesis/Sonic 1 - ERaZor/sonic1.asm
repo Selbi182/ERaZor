@@ -58,7 +58,7 @@ Align:		macro
 ;=================================================
 ;Quick Level Select
 ;Immediately start to a given level ID on startup.
-QuickLevelSelect = 1
+QuickLevelSelect = 0
 QuickLevelSelect_ID = $200
 ;=================================================
 ;Debug Mode enabled by default.
@@ -3897,33 +3897,53 @@ Title_MainLoop:
 		bne.w	Title_MainLoop		; if not, branch
 
 StartGame:
-	
-	bra nolevelselyet
-		moveq	#$17,d0
-		bsr.w	PalLoad2	; load level select pallet
+		tst.w	($FFFFFFFA).w		; is debug mode enabled?
+		beq.w	Title_NoLevelSelect	; if not, branch. quick level select only in dev mode
+		
+		move.w	#$E4,d0			; stop music
+		bsr	PlaySound_Special
+		
+
+		; instantly turn the entire palette black, except the outlines of the text
+		moveq	#0,d1
+		lea	($FFFFFB00).w,a1
+		move.w	#$3F,d2
+@clearpalafter:	move.w	d1,(a1)+
+		dbf	d2,@clearpalafter
+		move.w	#$EEE,($FFFFFB42).w	; white outline for selected line
+		move.w	#$222,d0		; gray filling for everything else
+		lea	($FFFFFB64).w,a1
+		moveq	#7,d1
+@grayfilling:	move.w	d0,(a1)+
+		dbf	d1,@grayfilling
+		
 		lea	($FFFFCC00).w,a1
 		moveq	#0,d0
 		move.w	#$DF,d1
-
-Title_ClrScroll:
-		move.l	d0,(a1)+
-		dbf	d1,Title_ClrScroll ; fill scroll data with 0
-
+@clearscroll:	move.l	d0,(a1)+
+		dbf	d1,@clearscroll
 		move.l	d0,($FFFFF616).w
+		
 		move	#$2700,sr
 		lea	($C00000).l,a6
 		move.l	#$60000003,($C00004).l
 		move.w	#$3FF,d1
+@clearvram:	move.l	d0,(a6)
+		dbf	d1,@clearvram
 
-Title_ClrVram:
-		move.l	d0,(a6)
-		dbf	d1,Title_ClrVram ; fill	VRAM with 0
+		lea	($C00000).l,a6
+		move.l	#$50000003,4(a6)
+		lea	(Art_Text).l,a5
+		move.w	#$28F,d1
+@loadtextart:	move.w	(a5)+,(a6)
+		dbf	d1,@loadtextart
 
 		bsr.w	LevSelTextLoad
 		clr.w	($FFFFFF82).w
 		bra.w	LevelSelect
+; ===========================================================================
 
-nolevelselyet:
+Title_NoLevelSelect:
 	if QuickLevelSelect=1
 		bsr.s	ERZ_FadeOut
 		move.w	#QuickLevelSelect_ID,($FFFFFE10).w	; set level to QuickLevelSelect_ID
@@ -3946,11 +3966,6 @@ nolevelselyet:
 		bsr.s	ERZ_FadeOut
 		move.b	#$30,($FFFFF600).w	; set to GameplayStyleScreen
 		rts
-		
-	;	move.w	#$501,($FFFFFE10).w	; set level to SBZ2
-	;	move.b	#$C,($FFFFF600).w	; set to level
-	;	move.w	#1,($FFFFFE02).w	; restart level
-	;	rts
 
 SG_ResumeFromSaveGame:
 		bsr.s	ERZ_FadeOut
@@ -3986,12 +4001,12 @@ PlayLevelX:
 		moveq	#0,d0
 	;	move.w	d0,($FFFFFE20).w ; clear rings
 		move.l	d0,($FFFFFE22).w ; clear time
-		move.l	d0,($FFFFFE26).w ; clear score
-		move.b	d0,($FFFFFE16).w ; clear special stage number
-		move.b	d0,($FFFFFE57).w ; clear emeralds
-		move.l	d0,($FFFFFE58).w ; clear emeralds
-		move.l	d0,($FFFFFE5C).w ; clear emeralds
-		move.b	d0,($FFFFFE18).w ; clear continues
+	;	move.l	d0,($FFFFFE26).w ; clear score
+	;	move.b	d0,($FFFFFE16).w ; clear special stage number
+	;	move.b	d0,($FFFFFE57).w ; clear emeralds
+	;	move.l	d0,($FFFFFE58).w ; clear emeralds
+	;	move.l	d0,($FFFFFE5C).w ; clear emeralds
+	;	move.b	d0,($FFFFFE18).w ; clear continues
 		rts	
 ; ===========================================================================
 
@@ -4048,69 +4063,49 @@ LevelSelect:
 		bra.s	LevSel_Level_SS
 ; ===========================================================================
 
-LevSel_Ending:				; XREF: LevelSelect
-		move.b	#$18,($FFFFF600).w ; set screen	mode to	$18 (Ending)
-		move.w	#$600,($FFFFFE10).w ; set level	to 0600	(Ending)
-		rts	
+LevSel_Intro:
+		move.b	#$95,d0				; play intro sequence music
+		jsr	PlaySound
+		bra.w	LevSel_Level
+
+LevSel_Ending:
+		move.b	#$20,($FFFFF600).w		; load info screen
+		move.b	#8,($FFFFFF9E).w		; set number for text to 8
+		move.b	#$9D,d0				; play ending sequence music
+		jmp	PlaySound
 ; ===========================================================================
 
 LevSel_Level_SS:			; XREF: LevelSelect
+		move.w	($FFFFFF82),d0
 		add.w	d0,d0
-		move.w	LSelectPointers(pc,d0.w),d0 ; load level number
-		move.w	#$400,d0
+		lea	(LSelectPointers).l,a1
+		adda.w	d0,a1
+		move.w	(a1),d0
 		bmi.w	LevelSelect
-
-		cmpi.w	#$700,d0	; check	if level is 0700 (Special Stage)
+		andi.w	#$3FFF,d0
+		move.w	d0,($FFFFFE10).w
+		
+		cmpi.w	#$001,d0	; is this the intro sequence?
+		beq.s	LevSel_Intro	; if yes, branch
+		cmpi.w	#$601,d0	; is this the ending sequence?
+		beq.s	LevSel_Ending	; if yes, branch
+		
+		cmpi.w	#$300,d0	; is Special Place?
+		beq.s	@dospecial	; if yes, branch
+		cmpi.w	#$401,d0	; is Unreal Place?
+		beq.s	@dospecial	; if yes, branch
+		cmpi.w	#$666,d0	; is blackout challenge?
 		bne.s	LevSel_Level	; if not, branch
-		move.b	#$10,($FFFFF600).w ; set screen	mode to	$10 (Special Stage)
-		clr.w	($FFFFFE10).w	; clear	level
-		move.b	#3,($FFFFFE12).w ; set lives to	3
-		moveq	#0,d0
-		move.w	d0,($FFFFFE20).w ; clear rings
-		move.l	d0,($FFFFFE22).w ; clear time
-		move.l	d0,($FFFFFE26).w ; clear score
+		move.w	#$401,($FFFFFE10).w	; set to SS2 layout
+		move.b	#1,($FFFFFF5F).w	; set blackout blackout special stage flag
+
+@dospecial:
+		move.b	#$10,($FFFFF600).w	; set to special stage
 		rts	
 ; ===========================================================================
 
 LevSel_Level:				; XREF: LevSel_Level_SS
-		andi.w	#$3FFF,d0
-		move.w	d0,($FFFFFE10).w ; set level number
-
-PlayLevel:
 		jmp	PlayLevelX
-		move.b	#$C,($FFFFF600).w ; set	screen mode to $0C (level)
-		move.b	#3,($FFFFFE12).w ; set lives to	3
-		moveq	#0,d0
-		move.w	d0,($FFFFFE20).w ; clear rings
-		move.l	d0,($FFFFFE22).w ; clear time
-		move.l	d0,($FFFFFE26).w ; clear score
-		move.b	d0,($FFFFFE16).w ; clear special stage number
-		move.b	d0,($FFFFFE57).w ; clear emeralds
-		move.l	d0,($FFFFFE58).w ; clear emeralds
-		move.l	d0,($FFFFFE5C).w ; clear emeralds
-		move.b	d0,($FFFFFE18).w ; clear continues
-		move.b	#$E0,d0
-		bsr.w	PlaySound_Special ; fade out music
-		rts	
-; ===========================================================================
-
-; ===========================================================================
-; ---------------------------------------------------------------------------
-; Level	select - level pointers
-; ---------------------------------------------------------------------------
-LSelectPointers:
-		incbin	misc\ls_point.bin
-		even
-; ---------------------------------------------------------------------------
-; Level	select codes
-; ---------------------------------------------------------------------------
-LevelSelectCode_J:
-		incbin	misc\ls_jcode.bin
-		even
-
-LevelSelectCode_US:
-		incbin	misc\ls_ucode.bin
-		even
 ; ===========================================================================
 
 ; ---------------------------------------------------------------------------
@@ -4118,149 +4113,41 @@ LevelSelectCode_US:
 ; ---------------------------------------------------------------------------
 
 Demo:					; XREF: TitleScreen
-		move.w	#$1E,($FFFFF614).w
-
-loc_33B6:				; XREF: loc_33E4
-		move.b	#4,($FFFFF62A).w
-		bsr.w	DelayProgram
-		bsr.w	DeformBgLayer
-		bsr.w	PalCycle_Load
-		bsr.w	RunPLC_RAM
-		move.w	($FFFFD008).w,d0
-		addq.w	#2,d0
-		move.w	d0,($FFFFD008).w
-		cmpi.w	#$1C00,d0
-		bcs.s	loc_33E4
-		move.b	#0,($FFFFF600).w ; set screen mode to 00 (level)
-		rts	
-; ===========================================================================
-
-loc_33E4:				; XREF: Demo
-		andi.b	#$80,($FFFFF605).w	; is Start button pressed?
-		beq.s	Demo_NoStart		; if not, branch
-		move.b	#4,($FFFFFE10).w	; set screen mode to title screen
-		rts				; return
-; ===========================================================================
-
-Demo_NoStart:
-		tst.w	($FFFFF614).w
-		bne.w	loc_33B6
-		move.b	#$E0,d0
-		bsr.w	PlaySound_Special ; fade out music
-		move.w	($FFFFFFF2).w,d0 ; load	demo number
-		andi.w	#7,d0
-		add.w	d0,d0
-		move.w	Demo_Levels(pc,d0.w),d0	; load level number for	demo
-		move.w	d0,($FFFFFE10).w
-		addq.w	#1,($FFFFFFF2).w ; add 1 to demo number
-		cmpi.w	#4,($FFFFFFF2).w ; is demo number less than 4?
-		bcs.s	loc_3422	; if yes, branch
-		move.w	#0,($FFFFFFF2).w ; reset demo number to	0
-
-loc_3422:
-		move.w	#1,($FFFFFFF0).w ; turn	demo mode on
-		move.b	#8,($FFFFF600).w ; set screen mode to 08 (demo)
-		cmpi.w	#$600,d0	; is level number 0600 (special	stage)?
-		bne.s	Demo_LevelX	; if not, branch
-		move.b	#$10,($FFFFF600).w ; set screen	mode to	$10 (Special Stage)
-		clr.w	($FFFFFE10).w	; clear	level number
-		clr.b	($FFFFFE16).w	; clear	special	stage number
-
-Demo_LevelX:
-		moveq	#0,d0
-	;	move.w	d0,($FFFFFE20).w ; clear rings
-		move.l	d0,($FFFFFE22).w ; clear time
-		move.l	d0,($FFFFFE26).w ; clear score
-		rts	
-; ===========================================================================
-; ---------------------------------------------------------------------------
-; Levels used in demos
-; ---------------------------------------------------------------------------
-Demo_Levels:	incbin	misc\dm_ord1.bin
-		even
+	rts
 
 ; ---------------------------------------------------------------------------
 ; Subroutine to	change what you're selecting in the level select
 ; ---------------------------------------------------------------------------
 
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
+LevSelEntries = 14
 
 LevSelControls:				; XREF: LevelSelect
 		move.b	($FFFFF605).w,d1
-		andi.b	#3,d1		; is up/down pressed and held?
-		bne.s	LevSel_UpDown	; if yes, branch
-		subq.w	#1,($FFFFFF80).w ; subtract 1 from time	to next	move
-		bpl.s	LevSel_SndTest	; if time remains, branch
-
-LevSel_UpDown:
-		move.w	#5,($FFFFFF80).w ; reset time delay ($B)
-		move.b	($FFFFF604).w,d1
 		andi.b	#3,d1		; is up/down pressed?
-		beq.s	LevSel_SndTest	; if not, branch
+		beq.s	LevSel_End	; if not, branch
 		move.b	#$D8,d0
 		bsr	PlaySound_Special
 		move.w	($FFFFFF82).w,d0
 		btst	#0,d1		; is up	pressed?
 		beq.s	LevSel_Down	; if not, branch
 		subq.w	#1,d0		; move up 1 selection
-		cmpi.w	#4,d0
-		bcc.s	LevSel_Down
-		moveq	#$13,d0		; if selection moves below 0, jump to selection	$14
+		bpl.s	LevSel_Down
+		moveq	#LevSelEntries-1,d0		; if selection moves below 0, jump to selection	13
 
 LevSel_Down:
 		btst	#1,d1		; is down pressed?
 		beq.s	LevSel_Refresh	; if not, branch
 		addq.w	#1,d0		; move down 1 selection
-		cmpi.w	#$14,d0
-		bcs.s	LevSel_Refresh
-		moveq	#4,d0		; if selection moves above $14,	jump to	selection 0
+		cmpi.w	#LevSelEntries-1,d0
+		bls.s	LevSel_Refresh
+		moveq	#0,d0		; if selection moves above $14,	jump to	selection 0
 
 LevSel_Refresh:
 		move.w	d0,($FFFFFF82).w ; set new selection
 		bsr	LevSelTextLoad	; refresh text
-		rts	
-; ===========================================================================
 
-LevSel_SndTest:				; XREF: LevSelControls
-		cmpi.w	#$13,($FFFFFF82).w ; is	item $13 selected?
-		bne.s	LevSel_NoMove	; if not, branch
-		move.b	($FFFFF605).w,d1
-		andi.b	#$C,d1		; is left/right	pressed?
-		bne.s	LevSel_Okay	; if yes, branch
-		move.b	($FFFFF605).w,d1
-		andi.b	#$40,d1		; is A	pressed?
-		beq.s	LevSel_NoMove	; if not, branch
-
-LevSel_Okay:
-		move.w	($FFFFFF84).w,d0
-		btst	#2,d1		; is left pressed?
-		beq.s	LevSel_Right	; if not, branch
-		subq.w	#1,d0		; subtract 1 from sound	test
-		bcc.s	LevSel_Right
-		moveq	#$7F,d0		; if sound test	moves below 0, set to $4F
-
-LevSel_Right:
-		btst	#3,d1		; is right pressed?
-		beq.s	LevSel_A	; if not, branch
-		addq.w	#1,d0		; add 1	to sound test
-		cmpi.w	#$80,d0
-		bcs.s	LevSel_A
-		moveq	#0,d0		; if sound test	moves above $4F, set to	0
-
-LevSel_A:
-		btst	#6,d1		; is A pressed?
-		beq.s	LevSel_Refresh2	; if not, branch
-		add.w	#$10,d0		; add $10 to sound test
-		cmpi.w	#$80,d0
-		bcs.s	LevSel_Refresh2
-		moveq	#0,d0		; if sound test	moves above $4F, set to	0
-
-LevSel_Refresh2:
-		move.w	d0,($FFFFFF84).w ; set sound test number
-		bsr	LevSelTextLoad	; refresh text
-
-LevSel_NoMove:
+LevSel_End:
 		rts	
 ; End of function LevSelControls
 
@@ -4278,11 +4165,12 @@ LevSelTextLoad:				; XREF: TitleScreen
 		move.w	#$E680,d3	; VRAM setting
 		moveq	#$14,d1		; number of lines of text
 
-loc_34FE:				; XREF: LevSelTextLoad+26j
+loc_34FE:
 		move.l	d4,obMap(a6)
 		bsr	LevSel_ChgLine
 		addi.l	#$800000,d4
 		dbf	d1,loc_34FE
+
 		moveq	#0,d0
 		move.w	($FFFFFF82).w,d0
 		move.w	d0,d1
@@ -4299,39 +4187,8 @@ loc_34FE:				; XREF: LevSelTextLoad+26j
 		move.w	#$C680,d3
 		move.l	d4,obMap(a6)
 		bsr	LevSel_ChgLine
-		move.w	#$E680,d3
-		cmpi.w	#$13,($FFFFFF82).w
-		bne.s	loc_3550
-		move.w	#$C680,d3
-
-loc_3550:
-		move.l	#$6BB00003,($C00004).l ; screen	position (sound	test) ($6C300003)
-		move.w	($FFFFFF84).w,d0
-		addi.w	#$80,d0
-		move.b	d0,d2
-		lsr.b	#4,d0
-		bsr	LevSel_ChgSnd
-		move.b	d2,d0
-		bsr	LevSel_ChgSnd
 		rts	
 ; End of function LevSelTextLoad
-
-
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
-
-LevSel_ChgSnd:				; XREF: LevSelTextLoad
-		andi.w	#$F,d0
-		cmpi.b	#$A,d0
-		bcs.s	loc_3580
-		addi.b	#7,d0
-
-loc_3580:
-		add.w	d3,d0
-		move.w	d0,(a6)
-		rts	
-; End of function LevSel_ChgSnd
-
 
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 
@@ -4341,8 +4198,24 @@ LevSel_ChgLine:				; XREF: LevSelTextLoad
 
 loc_3588:
 		moveq	#0,d0
-		move.b	(a1)+,d0
-		bpl.s	loc_3598
+		move.b	(a1)+,d0	; get next character in line
+		bmi.s	@illegal	; if it's an illegal character, skip
+		
+		cmpi.b	#$20,d0		; is this a space?
+		beq.s	@space		; if yes, branch
+		cmpi.b	#$39,d0		; is it a number?
+		bhi.s	@regular	; if not, branch
+		addq.b	#2,d0
+		bra.s	@regular
+@space:
+		moveq	#-1,d0		; adjust for space character
+		bra.s	loc_3598
+
+@regular:
+		subi.w	#50,d0
+		bra.s	loc_3598
+
+@illegal:
 		move.w	#0,(a6)
 		dbf	d2,loc_3588
 		rts	
@@ -4357,11 +4230,45 @@ loc_3598:				; XREF: LevSel_ChgLine
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Level	select menu text
+; Level	select menu text and pointersr
 ; ---------------------------------------------------------------------------
-LevelMenuText:	incbin	misc\menutext.bin
+
+LevelMenuText:
+		dc.b	'   UBERHUB PLACE        '
+		dc.b	'   1 NIGHT HILL PLACE   '
+		dc.b	'   2 GREEN HILL PLACE   '
+		dc.b	'   3 SPECIAL PLACE      '
+		dc.b	'   4 RUINED PLACE       '
+		dc.b	'   5 LABYRINTHY PLACE   '
+		dc.b	'   6 UNREAL PLACE       '
+		dc.b	'   7 SCAR NIGHT PLACE   '
+		dc.b	'   8 STAR AGONY PLACE   '
+		dc.b	'   9 FINALOR PLACE      '
+		dc.b	'   TUTORIAL PLACE       '
+		dc.b	'   INTRO SEQUENCE       '
+		dc.b	'   ENDING SEQUENCE      '
+		dc.b	'   BLACKOUT CHALLENGE   '		
+		rept 7 ; padding
+		dc.b	'                        '
+		endr
 		even
-		
+
+LSelectPointers:
+		dc.w	$400	; Uberhub Place
+		dc.w	$000	; Night Hill Place
+		dc.w	$002	; Green Hill Place
+		dc.w	$300	; Special Place
+		dc.w	$200	; Ruined Place
+		dc.w	$101	; Labyrinthy Place
+		dc.w	$401	; Unreal Place
+		dc.w	$301	; Scar Night Place
+		dc.w	$302	; Star Agony Place
+		dc.w	$502	; Finalor Place
+		dc.w	$501	; Tutorial Place
+		dc.w	$001	; Intro Sequence
+		dc.w	$601	; Ending Sequence
+		dc.w	$666	; Blackout Challenge
+		even	
 ; ---------------------------------------------------------------------------
 ; Level
 ; ---------------------------------------------------------------------------
@@ -30281,8 +30188,8 @@ Obj02_Display:
 Obj02_DisplayE:
 		cmpi.b	#6,($FFFFD024).w	; is Sonic dying?
 		blt.s	Obj02_DE_No		; if not, branch
-		cmpi.w	#$15A,obScreenY(a0)		; has location been reached?
-		beq.s	Obj02_DE_No		; if yes, branch
+		cmpi.w	#$14A,obScreenY(a0)		; has location been reached?
+		bmi.s	Obj02_DE_No		; if yes, branch
 		subq.w	#1,obScreenY(a0)		; move up
 
 Obj02_DE_No:		

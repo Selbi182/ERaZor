@@ -148,9 +148,18 @@ HBlank_Bars:
 		move.w	BlackBars.SecondHCnt, VDP_Ctrl			; send $8Axx to VDP to set HInt counter for the second invocation
 		move.w	#@ToBottom, HBlankSubW				; handle bottom next time
 		rte
+@ToBottom:
+		move.w	#HBlank_Bars_Bottom, HBlankSubW
+		rte
 
 ; ---------------------------------------------------------------------------
+HBlank_Bars_PastQuarter:
+		move.w	BlackBars.SecondHCnt, VDP_Ctrl			; send $8Axx to VDP to set HInt counter for the second invocation
+		move.w	#@ToBottom, HBlankSubW				; handle bottom next time
+		rte
+
 @ToBottom:
+		move.l	#$81748720, VDP_Ctrl				; enable display, restore backdrop color
 		move.w	#HBlank_Bars_Bottom, HBlankSubW
 		rte
 
@@ -158,5 +167,5 @@ HBlank_Bars:
 HBlank_Bars_Bottom:
 		move.l	#$81348701, VDP_Ctrl				; disable display + set backdrop color to black
 		move.w	#$8A00|$DF, VDP_Ctrl				; set H-int timing to not occur this frame anymore
-		move.w	#HBlank_Bars, HBlankSubW			; restore the original routine for next frame
+		move.w	#NullInt, HBlankSubW				; don't run any code during HInt
 		rte

@@ -428,12 +428,11 @@ ScreenCropCurrent EQU $FFFFD380+$30
 ; loc_B10:
 VBlank:				; XREF: StartOfRom
 		movem.l	d0-a6,-(sp)
+		display_disable
 
 		tst.b	(ScreenCropCurrent).w
 		beq.s	@cont
-		move.b	($FFFFF64F).w,d0	; get H-Blank status flags
-		ori.b	#%11100000,d0		; reset flags for black bars
-		move.b	d0,($FFFFF64F).w	; store
+		ori.b	#%11100000,($FFFFF64F).w	; reset flags for black bars
 @cont:
 		tst.b	($FFFFF62A).w			; are we late for V-Blank?
 		beq.w	VBlank_Late			; if yes, oh shit oh fuck, go to the emergency routine immediately
@@ -458,9 +457,11 @@ loc_B42:
 
 ; loc_B5E:
 VBlank_Exit:				; XREF: VBlank_Late
+		display_enable
 		move	#$2300,sr			; enable interrupts (we can accept horizontal interrupts from now on)
+		btst	#0,($FFFFF64F).w
+		bne.s	VBlank_Exit_NoSoundDriver
 		bset	#0,($FFFFF64F).w		; set "SMPS running flag"
-		bne.s	VBlank_Exit_NoSoundDriver	; if it was set already, don't call another instance of SMPS
 		jsr	SoundDriverUpdate		; run SMPS
 		bclr	#0,($FFFFF64F).w		; reset "SMPS running flag"
 
@@ -474,7 +475,7 @@ VBlankTable:	dc.w VBlank_Late-VBlankTable ; $00
 		dc.w loc_C32-VBlankTable ; $02
 		dc.w loc_C44-VBlankTable ; $04
 		dc.w loc_C5E-VBlankTable ; $06
-		dc.w loc_C6E-VBlankTable ; $08 (main one for levels)
+		dc.w VBlank_Level-VBlankTable ; $08 (main one for levels)
 		dc.w loc_DA6-VBlankTable ; $0A
 		dc.w loc_E72-VBlankTable ; $0C
 		dc.w loc_F8A-VBlankTable ; $0E
@@ -570,7 +571,8 @@ loc_C64:				; XREF: VBlankTable
 		cmpi.b	#$10,($FFFFF600).w ; is	game mode = $10	(special stage)	?
 		beq.w	loc_DA6		; if yes, branch
 
-loc_C6E:				; XREF: VBlankTable
+;loc_C6E:				; XREF: VBlankTable
+VBlank_Level:
 		bsr	ReadJoypads
 		tst.b	($FFFFF64E).w
 		bne.s	loc_CB0
@@ -617,12 +619,6 @@ loc_D50:
 		movem.l	d0-d7,($FFFFFF10).w
 		movem.l	($FFFFF754).w,d0-d1
 		movem.l	d0-d1,($FFFFFF30).w
-		
-	;	cmpi.b	#96,($FFFFF625).w		; is the on-screen water surface on scanline 96 or below?
-	;	bhs.s	Demo_Time			; if yes, it's safe to do the remaing V-Blank stuff right now
-	;	bset	#0,($FFFFF64F).w		; otherwise we're short on time, set to do updates in H-Blank
-	;	addq.l	#4,sp				; skip sound driver updates and do the H-Blank stuff now
-	;	bra.w	VBlank_Exit_NoSoundDriver	; end V-Blank routine early
 
 ; ---------------------------------------------------------------------------
 ; Subroutine to	run a demo for an amount of time
@@ -636,11 +632,6 @@ Demo_Time:				; XREF: loc_D50; HBlank
 		jsr	AniArt_Load
 		jsr	HudUpdate
 		bsr	sub_165E
-	;	tst.w	($FFFFF614).w	; is there time	left on	the demo?
-	;	beq.w	Demo_TimeEnd	; if not, branch
-	;	subq.w	#1,($FFFFF614).w ; subtract 1 from time	left
-
-Demo_TimeEnd:
 		rts	
 ; End of function Demo_Time
 
@@ -841,10 +832,6 @@ BarKillHeight = $E0/2
 
 ; PalToCRAM:
 HBlank:
-	;	tst.l	($FFFFF680).w
-	;	beq.s	@0
-	;	rte
-@0:
 		cmpi.b	#1,($FFFFFE10).w	; are we in LZ?
 		beq.w	@hblank_original	; if yes, skip bars (they cause issues with the water thingy)
 		tst.b	(ScreenCropCurrent).w	; are cropped borders enabled?
@@ -30597,7 +30584,7 @@ Obj07:
 		cmpi.b	#1,($FFFFFE10).w
 		bne.s	@notlz
 		clr.b	$32(a0)
-		bsr.w	Obj07_ReEnable
+		bsr.w	Obj07_ReEnableScreen
 		jmp	DeleteObject
 @notlz:
 		moveq	#0,d0				; clear d0
@@ -30663,16 +30650,17 @@ Obj07_Move:
 		
 
 		move.b	$30(a0),d0			; get current height
-		bne.s	cropsvisible			; are crops set to be displayed? if yes, branch
-Obj07_ReEnable:
+		bne.s	Obj07_EnableCrops		; are crops set to be displayed? if yes, branch
+Obj07_ReEnableScreen:
 		move.w	#$8720,($C00004).l		; reset background color
 		move.w	#$8A00|$DF,($FFFFF624).w	; reset H-int timing to once per frame
 		display_enable
 		rts					; return
 
-cropsvisible:
+Obj07_EnableCrops:
 		lsr.b	#1,d0				; half the current height
 		subq.b	#1,d0				; subtract 1
+		andi.w	#$00FF,d0
 		ori.w	#$8A00,d0			; mask by $8A (H-int counter VDP register)
 		move.w	d0,($FFFFF624).w		; backup value
 		rts					; return
@@ -30681,8 +30669,6 @@ cropsvisible:
 Obj07_CheckState:
 		moveq	#0,d0				; clear d0
 
-
-		
 		btst	#3,($FFFFFF92).w		; is cinematic HUD enabled?
 		bne.s	@showcrops			; if yes, always enable
 		cmpi.b	#6,($FFFFD024).w		; is Sonic dying?

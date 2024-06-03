@@ -321,6 +321,19 @@ STS_Loop_MainXX:
 		move.b	(a2)+,d3		; move current char into d3
 		cmpi.b	#$FF,d3			; has the end of the list been reached?	
 		beq.s	STS_DoNext1XX		; if yes, branch
+
+		cmpi.b	#':',d3			; is current char a colon?
+		bne.s	STS_NoColon1XX		; if not, go to next char
+		move.b	#3,d3
+		bra.s	STS_NoNumber1XX
+
+STS_NoColon1XX:
+		cmpi.b	#'\',d3			; is current char a backslash?
+		bne.s	STS_NoBSlash1XX		; if not, go to next char
+		move.b	#2,d3
+		bra.s	STS_NoNumber1XX
+
+STS_NoBSlash1XX:
 		cmpi.b	#$2E,d3			; is current char a dot?
 		bne.s	STS_NoDot1XX		; if not, go to next char
 		move.b	#$26,d3
@@ -372,6 +385,20 @@ STS_DoNext1XX:
 		move.w	#84,d5			; set numbers of loops (this will make the "typing" effect)
 STS_Loop_ContinueXX:
 		move.b	(a2)+,d3		; move current char into d3
+
+
+		cmpi.b	#':',d3			; is current char a colon?
+		bne.s	STS_NoColon1XX		; if not, go to next char
+		move.b	#3,d3
+		bra.s	STS_NoNumber2XX
+
+STS_NoColon2XX:
+		cmpi.b	#'\',d3			; is current char a backslash?
+		bne.s	STS_NoBSlash2XX		; if not, go to next char
+		move.b	#2,d3
+		bra.s	STS_NoNumber2XX
+
+STS_NoBSlash2XX:
 		cmpi.b	#$2E,d3			; is current char a dot?
 		bne.s	STS_NoDot2XX		; if not, go to next char
 		move.b	#$26,d3
@@ -580,13 +607,27 @@ STS_Loop_Main:
 		move.b	(a2)+,d3		; move current char into d3
 		cmpi.b	#$FF,d3			; has the end of the list been reached?	
 		beq.s	STS_DoNext1		; if yes, branch
-		cmpi.b	#$2E,d3			; is current char a dot?
+
+
+		cmpi.b	#':',d3			; is current char a colon?
+		bne.s	STS_NoColon1		; if not, go to next char
+		move.b	#3,d3
+		bra.s	STS_NoNumber1
+
+STS_NoColon1:
+		cmpi.b	#'\',d3			; is current char a backslash?
+		bne.s	STS_NoBSlash1		; if not, go to next char
+		move.b	#2,d3
+		bra.s	STS_NoNumber1
+
+STS_NoBSlash1:
+		cmpi.b	#'.',d3			; is current char a dot?
 		bne.s	STS_NoDot1		; if not, go to next char
 		move.b	#$26,d3
 		bra.s	STS_NoNumber1
 
 STS_NoDot1:
-		cmpi.b	#$3F,d3			; is current char a question mark?
+		cmpi.b	#'?',d3			; is current char a question mark?
 		bne.s	STS_NoQMark1		; if not, branch
 		move.b	#$28,d3
 		bra.s	STS_NoNumber1
@@ -598,19 +639,19 @@ STS_NoQMark1:
 		bra.s	STS_NoNumber1
 
 STS_NoExMark1:
-		cmpi.b	#$2C,d3			; is current char a comma?
+		cmpi.b	#',',d3			; is current char a comma?
 		bne.s	STS_NoComma1		; if not, branch
 		move.b	#$27,d3
 		bra.s	STS_NoNumber1
 
 STS_NoComma1:
-		cmpi.b	#$20,d3			; is current char a space?
+		cmpi.b	#' ',d3			; is current char a space?
 		bne.s	STS_NoSpace1		; if not, go to next char
 		move.b	#$00,(a1)+		; load space char to a1		
 		bra.s	STS_Loop_Main		; loop without taking time
 
 STS_NoSpace1:
-		cmpi.b	#$61,d3			; is current char an uncapitalized letter?
+		cmpi.b	#'a',d3			; is current char an uncapitalized letter?
 		blt.s	STS_NoUncapi		; if not, branch
 		subi.b	#$20,d3			; use same font as capitalized letters
 
@@ -651,6 +692,20 @@ STS_Loop_Continue:
 		move.b	(a2)+,d3		; move current char into d3
 		cmpi.b	#$FF,d3			; has the end of the list been reached?	
 		beq.s	STS_DoNext2		; if yes, branch
+
+
+		cmpi.b	#':',d3			; is current char a colon?
+		bne.s	STS_NoColon2		; if not, go to next char
+		move.b	#3,d3
+		bra.s	STS_NoNumber2
+
+STS_NoColon2:
+		cmpi.b	#'\',d3			; is current char a backslash?
+		bne.s	STS_NoBSlash2		; if not, go to next char
+		move.b	#2,d3
+		bra.s	STS_NoNumber2
+
+STS_NoBSlash2:
 		cmpi.b	#$2E,d3			; is current char a dot?
 		bne.s	STS_NoDot2		; if not, go to next char
 		move.b	#$26,d3
@@ -715,221 +770,221 @@ STS_HeaderText3:	dc.b	'SONIC ERAZORX'
 ; ---------------------------------------------------------------------------
 
 StoryText_1:	; text after intro cutscene
-		dc.b	'THE SPIKED SUCKER DECIDED   ' ;1
-		dc.b	'TO GO BACK TO THE HILLS AND ' ;1
-		dc.b	'CHECK OUT WHAT WAS GOING ON.' ;0
-		dc.b	'                            ' ;0
-		dc.b	'WHEN SUDDENLY...            ' ;0
-		dc.b	'EXPLOSIONS! EVERYWHERE!     ' ;1
-		dc.b	'A GRAY METALLIC BUZZ BOMBER ' ;1
-		dc.b	'SHOWERED EXPLODING BOMBS ON ' ;1
-		dc.b	'HIM! SONIC ESCAPED IT, BUT  ' ;0
-		dc.b	'MINDLESSLY FELL INTO A RING ' ;1
-		dc.b	'TRAP AND LANDED IN A        ' ;0
-		dc.b	'STRANGE PARALLEL DIMENSION. ' ;1
-		dc.b	'                            ' ;0
-		dc.b	'HE NEEDS TO BLAST HIS WAY TO' ;0
-		dc.b	'EGGMAN AND ESCAPE IT...     ' ;1
+		dc.b	'THE SPIKED SUCKER DECIDED   '
+		dc.b	'TO GO BACK TO THE HILLS AND '
+		dc.b	'CHECK OUT WHAT WAS GOING ON.'
+		dc.b	'                            '
+		dc.b	'WHEN SUDDENLY...            '
+		dc.b	'EXPLOSIONS! EVERYWHERE!     '
+		dc.b	'A GRAY METALLIC BUZZ BOMBER '
+		dc.b	'SHOWERED EXPLODING BOMBS ON '
+		dc.b	'HIM! SONIC ESCAPED IT, BUT  '
+		dc.b	'MINDLESSLY FELL INTO A RING '
+		dc.b	'TRAP AND LANDED IN A        '
+		dc.b	'STRANGE PARALLEL DIMENSION. '
+		dc.b	'                            '
+		dc.b	'HE NEEDS TO BLAST HIS WAY TO'
+		dc.b	'EGGMAN AND ESCAPE IT...     '
 		dc.b	$FF
 		even
 ; ---------------------------------------------------------------------------
 
 StoryText_2:	; text after beating Night Hill Place
-		dc.b	'TELEPORTING WATERFALLS,     ' ;1
-		dc.b	'CRABMEATS WITH EXPLODING    ' ;0
-		dc.b	'BALLS, AND THE ORIGINAL     ' ;1
-		dc.b	'GREEN HILL ZONE TRANSFORMED ' ;1
-		dc.b	'INTO AN ACTION MOVIE OR     ' ;1
-		dc.b	'SOMETHING. TOP IT OFF WITH  ' ;1
-		dc.b	'EGGMAN AND HIS THREE SPIKED ' ;1
-		dc.b	'BALLS OF STEEL, AND YOU CAN ' ;1
-		dc.b	'TELL SONIC ISN\T EXACTLY    ' ;0
-		dc.b	'HAVING THE TIME OF HIS LIFE.' ;1
-		dc.b	'                            ' ;1
-		dc.b	'BUT HEY, I HEARD THEY\VE GOT' ;0
-		dc.b	'A BUNCH OF EMERALDS NEARBY? ' ;0
-		dc.b	'WOULD BE A REAL SHAME IF YOU' ;1
-		dc.b	'MISSED YOUR GOAL.           ' ;1
+		dc.b	'TELEPORTING WATERFALLS,     '
+		dc.b	'CRABMEATS WITH EXPLODING    '
+		dc.b	'BALLS, AND THE ORIGINAL     '
+		dc.b	'GREEN HILL ZONE TRANSFORMED '
+		dc.b	'INTO AN ACTION MOVIE OR     '
+		dc.b	'SOMETHING. TOP IT OFF WITH  '
+		dc.b	'EGGMAN AND HIS THREE SPIKED '
+		dc.b	'BALLS OF STEEL, AND YOU CAN '
+		dc.b	'TELL SONIC ISN\T EXACTLY    '
+		dc.b	'HAVING THE TIME OF HIS LIFE.'
+		dc.b	'                            '
+		dc.b	'BUT HEY, I HEARD THEY\VE GOT'
+		dc.b	'A BUNCH OF EMERALDS NEARBY? '
+		dc.b	'WOULD BE A REAL SHAME IF YOU'
+		dc.b	'MISSED YOUR GOAL.           '
 		dc.b	$FF
 		even
 ; ---------------------------------------------------------------------------
 
 StoryText_3:	; text after beating Special Place
-		dc.b	'WOW, ALREADY 4 EMERALDS     ' ;1
-		dc.b	'COLLECTED, AND SONIC DOESN\T' ;0
-		dc.b	'EVEN KNOW WHY HE NEEDS THEM.' ;0
-		dc.b	'                            ' ;0
-		dc.b	'FRANKLY, I GOT NO IDEA. HOW ' ;0
-		dc.b	'ELSE SHOULD I END THIS      ' ;0
-		dc.b	'STAGE? WITH A BLOODY PARADE?' ;1
-		dc.b	'HOW ABOUT A COOKIE TOO?     ' ;0
-		dc.b	'CATCH ME A BREAK HERE.      ' ;0
-		dc.b	'                            ' ;0
-		dc.b	'ANYWAY, LISTEN. WHATEVER YOU' ;0
-		dc.b	'DO, STAY AWAY FROM ANY      ' ;1
-		dc.b	'SUSPICIOUS MONITORS!        ' ;1
-		dc.b	'WHO KNOWS WHAT INHUMANITY   ' ;1
-		dc.b	'LIES IN THERE...            ' ;1
+		dc.b	'WOW, ALREADY 4 EMERALDS     '
+		dc.b	'COLLECTED, AND SONIC DOESN\T'
+		dc.b	'EVEN KNOW WHY HE NEEDS THEM.'
+		dc.b	'                            '
+		dc.b	'FRANKLY, I GOT NO IDEA. BUT '
+		dc.b	'HOW ELSE SHOULD I END THIS  '
+		dc.b	'STAGE? WITH A BLOODY PARADE?'
+		dc.b	'HOW ABOUT A COOKIE TOO?     '
+		dc.b	'CATCH ME A BREAK HERE.      '
+		dc.b	'                            '
+		dc.b	'ANYWAY, LISTEN. WHATEVER YOU'
+		dc.b	'DO, STAY AWAY FROM ANY      '
+		dc.b	'SUSPICIOUS MONITORS!        '
+		dc.b	'WHO KNOWS WHAT INHUMANITY   '
+		dc.b	'LIES IN THERE...            '
 		dc.b	$FF
 		even
 ; ---------------------------------------------------------------------------
 
 StoryText_4:	; text after beating Ruined Place
-		dc.b	'YOU DIDN\T LISTEN. WHAT A   ' ;1
-		dc.b	'FOOL. WELL, AT LEAST YOUR   ' ;1
-		dc.b	'PATHETIC EFFORTS SHOOTING   ' ;0
-		dc.b	'YOURSELF THROUGH A MAZE OF  ' ;0
-		dc.b	'SPIKES MADE FOR QUITE AN    ' ;1
-		dc.b	'ENTERTAINING WATCH. REALLY, ' ;1
-		dc.b	'I THINK YOU\VE GOT A GREAT  ' ;0
-		dc.b	'CAREER AS A COMMEDIAN AHEAD!' ;0
-		dc.b	'                            ' ;0
-		dc.b	'ACTUALLY, THAT GIVES ME AN  ' ;1
-		dc.b	'IDEA. LET\S SEE WHAT HAPPENS' ;1
-		dc.b	'WHEN THE CAMERA GUIDES THE  ' ;1
-		dc.b	'NARRATIVE. I SURE HOPE YOU  ' ;0
-		dc.b	'DON\T FEEL TOO DOWN, BECAUSE' ;1
-		dc.b	'THINGS CAN ONLY GO UP...    ' ;1
+		dc.b	'YOU DIDN\T LISTEN. WHAT A   '
+		dc.b	'FOOL. WELL, AT LEAST YOUR   '
+		dc.b	'PATHETIC EFFORTS SHOOTING   '
+		dc.b	'YOURSELF THROUGH A MAZE OF  '
+		dc.b	'SPIKES MADE FOR QUITE AN    '
+		dc.b	'ENTERTAINING WATCH. REALLY, '
+		dc.b	'I THINK YOU\VE GOT A GREAT  '
+		dc.b	'CAREER AS A COMMEDIAN AHEAD!'
+		dc.b	'                            '
+		dc.b	'ACTUALLY, THAT GIVES ME AN  '
+		dc.b	'IDEA. LET\S SEE WHAT HAPPENS'
+		dc.b	'WHEN THE CAMERA GUIDES THE  '
+		dc.b	'NARRATIVE. I SURE HOPE YOU  '
+		dc.b	'DON\T FEEL TOO DOWN, BECAUSE'
+		dc.b	'THINGS CAN ONLY GO UP...    '
 		dc.b	$FF
 		even
 ; ---------------------------------------------------------------------------
 
 StoryText_5:	; text after beating Labyrinth Place
-		dc.b	'MAN, IF YOU COULD SEE YOUR  ' ;0
-		dc.b	'FACE RIGHT NOW! PRICELESS!  ' ;0
-		dc.b	'                            ' ;0
-		dc.b	'WELL, OUR CAMERA CREW WILL  ' ;0
-		dc.b	'MAKE ENOUGH CASH FROM THAT  ' ;0
-		dc.b	'PATHETIC ATTEMPT OF YOURS   ' ;0
-		dc.b	'TO LAST FOR A LIFETIME.     ' ;0
-		dc.b	'SO, NO MORE FUNKY CAMERA    ' ;0
-		dc.b	'BUSINESS. PINKY PROMISE.    ' ;0
-		dc.b	'                            ' ;1
-		dc.b	'BUT YOU HAVE KILLED THE     ' ;1
-		dc.b	'JAWS OF DESTINY             ' ;1
-		dc.b	'AND THEREFORE MUST BE SERVED' ;0
-		dc.b	'THE ULTIMATE PUNISHMENT:    ' ;1
-		dc.b	'AN AUTOSCROLLER LEVEL.      ' ;1
+		dc.b	'MAN, IF YOU COULD SEE YOUR  '
+		dc.b	'FACE RIGHT NOW! PRICELESS!  '
+		dc.b	'                            '
+		dc.b	'WELL, OUR CAMERA CREW WILL  '
+		dc.b	'MAKE ENOUGH CASH FROM THAT  '
+		dc.b	'PATHETIC ATTEMPT OF YOURS   '
+		dc.b	'TO LAST FOR A LIFETIME.     '
+		dc.b	'SO, NO MORE FUNKY CAMERA    '
+		dc.b	'BUSINESS. PINKY PROMISE.    '
+		dc.b	'                            '
+		dc.b	'BUT YOU HAVE KILLED THE     '
+		dc.b	'JAWS OF DESTINY             '
+		dc.b	'AND THEREFORE MUST BE SERVED'
+		dc.b	'THE ULTIMATE PUNISHMENT:    '
+		dc.b	'AN AUTOSCROLLER LEVEL.      '
 		dc.b	$FF
 		even
 ; ---------------------------------------------------------------------------
 
 StoryText_6:	; text after beating Unreal Place
-		dc.b	'IF I SEE SUCH A PATHETIC    ' ;0
-		dc.b	'EXCUSE FOR WHAT YOU CALL    ' ;0
-		dc.b	'SKILL AGAIN, I WILL GO AHEAD' ;1
-		dc.b	'AND DISABLE THE CHECKPOINTS ' ;0
-		dc.b	'UNTIL YOU CAN DO THE ENTIRE ' ;1
-		dc.b	'STAGE BLINDFOLDED!          ' ;0
-		dc.b	'                            ' ;1
-		dc.b	'BUT HEY, YOU COLLECTED ALL  ' ;0
-		dc.b	'SIX EMERALDS, SO THAT MEANS ' ;1
-		dc.b	'YOU GO TO SPACE NOW! LIKE IN' ;0
-		dc.b	'EVERY OTHER SONIC GAME!     ' ;1
-		dc.b	'                            ' ;0
-		dc.b	'JUST REMEMBER ONE THING:    ' ;1
-		dc.b	'IN SPACE, NO ONE CAN HEAR   ' ;0
-		dc.b	'YOU SCREAM FOR HELP.        ' ;0
+		dc.b	'IF I SEE SUCH A PATHETIC    '
+		dc.b	'EXCUSE FOR WHAT YOU CALL    '
+		dc.b	'SKILL AGAIN, I WILL GO AHEAD'
+		dc.b	'AND DISABLE THE CHECKPOINTS '
+		dc.b	'UNTIL YOU CAN DO THE ENTIRE '
+		dc.b	'STAGE BLINDFOLDED!          '
+		dc.b	'                            '
+		dc.b	'BUT HEY, YOU COLLECTED ALL  '
+		dc.b	'SIX EMERALDS, SO THAT MEANS '
+		dc.b	'YOU GO TO SPACE NOW! LIKE IN'
+		dc.b	'EVERY OTHER SONIC GAME!     '
+		dc.b	'                            '
+		dc.b	'JUST REMEMBER ONE THING:    '
+		dc.b	'IN SPACE, NO ONE CAN HEAR   '
+		dc.b	'YOU SCREAM FOR HELP.        '
 		dc.b	$FF
 		even
 ; ---------------------------------------------------------------------------
 
 StoryText_7:	; text after beating Scar Night Place
-		dc.b	'WORD OF ADVICE:             ' ;0
-		dc.b	'TOO MUCH SCREAMING ISN\T    ' ;0
-		dc.b	'GOOD FOR YOUR VOCAL CORDS.  ' ;0
-		dc.b	'YOU CLEARLY DIDN\T PAY ANY  ' ;1
-		dc.b	'ATTENTION TO WHAT I SAID    ' ;1
-		dc.b	'EARLIER ABOUT NOBODY BEING  ' ;1
-		dc.b	'ABLE TO HEAR YOU IN SPACE.  ' ;0
-		dc.b	'MORON. BUT I GET IT, I ALSO ' ;0
-		dc.b	'SCREAM IN EXCITEMENT IF I   ' ;1
-		dc.b	'PLAY A BUZZ WIRE GAME!      ' ;0
-		dc.b	'                            ' ;0
-		dc.b	'I HOPE YOUR ANGELIC VOICE   ' ;0
-		dc.b	'CAN BE HEARD ONE MORE TIME  ' ;0
-		dc.b	'IN THE FINALE! IT IS THE    ' ;0
-		dc.b	'FINALE, OR?                 ' ;1
+		dc.b	'WORD OF ADVICE:             '
+		dc.b	'TOO MUCH SCREAMING ISN\T    '
+		dc.b	'GOOD FOR YOUR VOCAL CORDS.  '
+		dc.b	'YOU CLEARLY DIDN\T PAY ANY  '
+		dc.b	'ATTENTION TO WHAT I SAID    '
+		dc.b	'EARLIER ABOUT NOBODY BEING  '
+		dc.b	'ABLE TO HEAR YOU IN SPACE.  '
+		dc.b	'MORON. BUT I GET IT, I ALSO '
+		dc.b	'SCREAM IN EXCITEMENT IF I   '
+		dc.b	'PLAY A BUZZ WIRE GAME!      '
+		dc.b	'                            '
+		dc.b	'I HOPE YOUR ANGELIC VOICE   '
+		dc.b	'CAN BE HEARD ONE MORE TIME  '
+		dc.b	'IN THE FINALE! IT IS THE    '
+		dc.b	'FINALE, OR?                 '
 		dc.b	$FF
 		even
 ; ---------------------------------------------------------------------------
 
 StoryText_8:	; text after jumping in the ring for the Ending Sequence
-		dc.b	'THE WORLD IS RESCUED!       ' ;1
-		dc.b	'ANIMALS JUMP AROUND AND     ' ;1
-		dc.b	'SPREAD THEIR HAPPINESS BY   ' ;1
-		dc.b	'JUMPING OFF CLIFFS!         ' ;1
-		dc.b	'                            ' ;0
-		dc.b	'SONIC DECIDED TO MAKE ONE   ' ;1
-		dc.b	'QUICK FINAL RUN THROUGH THE ' ;1
-		dc.b	'HILLS, WHERE IT ALL STARTED,' ;1
-		dc.b	'TO CELEBRATE HIS AND YOUR   ' ;1
-		dc.b	'HARD EFFORTS. WITHOUT YOUR  ' ;0
-		dc.b	'HELP, THIS WOULD HAVE       ' ;1
-		dc.b	'NEVER HAPPENED!             ' ;1
-		dc.b	'                            ' ;0
-		dc.b	'NOW WATCH SONIC ARRIVE AT   ' ;1
-		dc.b	'HIS WELL DESERVED PARTY...  ' ;0
+		dc.b	'THE WORLD IS RESCUED!       '
+		dc.b	'ANIMALS JUMP AROUND AND     '
+		dc.b	'SPREAD THEIR HAPPINESS BY   '
+		dc.b	'JUMPING OFF CLIFFS!         '
+		dc.b	'                            '
+		dc.b	'SONIC DECIDED TO MAKE ONE   '
+		dc.b	'QUICK FINAL RUN THROUGH THE '
+		dc.b	'HILLS, WHERE IT ALL STARTED,'
+		dc.b	'TO CELEBRATE HIS AND YOUR   '
+		dc.b	'HARD EFFORTS. WITHOUT YOUR  '
+		dc.b	'HELP, THIS WOULD HAVE       '
+		dc.b	'NEVER HAPPENED!             '
+		dc.b	'                            '
+		dc.b	'NOW WATCH SONIC ARRIVE AT   '
+		dc.b	'HIS WELL DESERVED PARTY...  '
 		dc.b	$FF
 		even
 ; ---------------------------------------------------------------------------
 
 StoryText_9:	; "One Hot Night", Tongara's hidden easter egg fanfic 
-		dc.b	'I REMEMBER WHEN I STUCK MY  ' ;0
-		dc.b	'DICK INSIDE *******. WHAT A ' ;1
-		dc.b	'MAGICAL DAY IT WAS! ********' ;0
-		dc.b	'GOT SO JEALOUS. SO HE       ' ;1
-		dc.b	'DECIDED TO STICK HIS DICK IN' ;0
-		dc.b	'**********. HE ENJOYED THIS.' ;0
-		dc.b	'IT MADE HIM FEEL HOT. ******' ;0
-		dc.b	'THEN WALKED INTO THE ROOM,  ' ;0
-		dc.b	'UNEXPECTEDLY. HE GOT WET    ' ;1
-		dc.b	'THE INSTANT HE SAW ******   ' ;0
-		dc.b	'ON THE FLOOR NAKED. THEY HAD' ;0
-		dc.b	'A MAGICAL NIGHT OF LOVE     ' ;1
-		dc.b	'MAKING. AND THEN, *******   ' ;1
-		dc.b	'DIED AND EVERYONE WAS HAPPY.' ;0
-		dc.b	'THE END!                    ' ;0
+		dc.b	'I REMEMBER WHEN I STUCK MY  '
+		dc.b	'DICK INSIDE *******. WHAT A '
+		dc.b	'MAGICAL DAY IT WAS! ********'
+		dc.b	'GOT SO JEALOUS. SO HE       '
+		dc.b	'DECIDED TO STICK HIS DICK IN'
+		dc.b	'**********. HE ENJOYED THIS.'
+		dc.b	'IT MADE HIM FEEL HOT. ******'
+		dc.b	'THEN WALKED INTO THE ROOM,  '
+		dc.b	'UNEXPECTEDLY. HE GOT WET    '
+		dc.b	'THE INSTANT HE SAW ******   '
+		dc.b	'ON THE FLOOR NAKED. THEY HAD'
+		dc.b	'A MAGICAL NIGHT OF LOVE     '
+		dc.b	'MAKING. AND THEN, *******   '
+		dc.b	'DIED AND EVERYONE WAS HAPPY.'
+		dc.b	'THE END!                    '
 		dc.b	$FF
 		even
 
 StoryText_A:
 		; "The Morning After", the second half of the fanfic, for the weirdos that dig through the source in a hex editor or something lol
-		dc.b	'THE MORNING SUN ROSE.       ' ;1
-		dc.b	'IT WAS BEAUTIFUL.           ' ;1
-		dc.b	'THE SUN SHONE DOWN INTO     ' ;1
-		dc.b	'THE ROOM, WHERE ALL THE     ' ;1
-		dc.b	'LOVE MAKERS SLEPT.          ' ;0
-		dc.b	'****** AWOKE NEXT TO        ' ;0
-		dc.b	'THE ROTTING BODY OF *******,' ;0
-		dc.b	'BAKING IN THE SUN.          ' ;0
-		dc.b	'IT MADE HIM HORNY.          ' ;0
-		dc.b	'HE TURNED ******* OVER AND  ' ;0
-		dc.b	'MADE LOVE TO HIS ANUS.      ' ;0
-		dc.b	'WHAT A MAGICAL ANUS IT WAS! ' ;1
-		dc.b	'HE THEN CAME.               ' ;1
-		dc.b	'                            ' ;0
-		dc.b	'THE END!                    ' ;0
+		dc.b	'THE MORNING SUN ROSE.       '
+		dc.b	'IT WAS BEAUTIFUL.           '
+		dc.b	'THE SUN SHONE DOWN INTO     '
+		dc.b	'THE ROOM, WHERE ALL THE     '
+		dc.b	'LOVE MAKERS SLEPT.          '
+		dc.b	'****** AWOKE NEXT TO        '
+		dc.b	'THE ROTTING BODY OF *******,'
+		dc.b	'BAKING IN THE SUN.          '
+		dc.b	'IT MADE HIM HORNY.          '
+		dc.b	'HE TURNED ******* OVER AND  '
+		dc.b	'MADE LOVE TO HIS ANUS.      '
+		dc.b	'WHAT A MAGICAL ANUS IT WAS! '
+		dc.b	'HE THEN CAME.               '
+		dc.b	'                            '
+		dc.b	'THE END!                    '
 		dc.b	$FF
 		even
 ; ---------------------------------------------------------------------------
 
 StoryText_B:	; hidden easter egg text found after the blackout special stage
-		dc.b	'CONGRATULATIONS!            ' ;0
-		dc.b	'                            ' ;0
-		dc.b	'YOU HAVE BEATEN THE         ' ;1
-		dc.b	'BLACKOUT CHALLENGE.         ' ;1
-		dc.b	'                            ' ;0
-		dc.b	'CHECK OUT THE OPTIONS MENU, ' ;1
-		dc.b	'A NEW COOL FEATURE HAS BEEN ' ;1
-		dc.b	'UNLOCKED FOR YOU TO MESS    ' ;0
-		dc.b	'AROUND WITH!                ' ;0
-		dc.b	'                            ' ;0
-		dc.b	'HAVE FUN AND THANK YOU SO   ' ;1
-		dc.b	'MUCH FOR PLAYING MY GAME!   ' ;1
-		dc.b	'                            ' ;0
-		dc.b	'                            ' ;0
-		dc.b	'SELBI                       ' ;1
+		dc.b	'CONGRATULATIONS!            '
+		dc.b	'                            '
+		dc.b	'YOU HAVE BEATEN THE         '
+		dc.b	'BLACKOUT CHALLENGE.         '
+		dc.b	'                            '
+		dc.b	'CHECK OUT THE OPTIONS MENU, '
+		dc.b	'A NEW COOL FEATURE HAS BEEN '
+		dc.b	'UNLOCKED FOR YOU TO MESS    '
+		dc.b	'AROUND WITH!                '
+		dc.b	'                            '
+		dc.b	'HAVE FUN AND THANK YOU SO   '
+		dc.b	'MUCH FOR PLAYING MY GAME!   '
+		dc.b	'                            '
+		dc.b	'                            '
+		dc.b	'SELBI                       '
 		dc.b	$FF
 		even
 ; ---------------------------------------------------------------------------

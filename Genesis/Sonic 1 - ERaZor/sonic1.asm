@@ -77,8 +77,7 @@ DieInDebug = 0
 DoorsAlwaysOpen = 1
 ;=================================================
 
-		include	"Variables.asm"
-		include	"Constants.asm"
+		include	"Misc.asm"
 
 ; ---------------------------------------------------------------------------
 ; Start of ROM - Sonic ERaZor
@@ -420,7 +419,7 @@ GameModeArray:
 		dc.l	ContinueScreen		; Continue Screen	($14)
 		dc.l	EndingSequence		; Ending Sequence	($18)
 		dc.l	Credits			; Credits		($1C)
-		dc.l	InfoScreen		; Info Screen		($20)
+		dc.l	StoryScreen		; Story Screen		($20)
 		dc.l	OptionsScreen		; Options Screen	($24)
 		dc.l	ChapterScreen		; Chapters Screen	($28)
 		dc.l	CreditsJest		; Markey's Credits	($2C)
@@ -3751,16 +3750,18 @@ Title_MainLoop:
 
 
 		move.b	($FFFFF605).w,d1	; get button presses
-		andi.b	#$F0,d1			; is A, B, C, or Start pressed?
+		andi.b	#$B0,d1			; is A, B, C, or Start pressed?
 		beq.w	Title_MainLoop		; if not, branch
 
 StartGame:
 		tst.w	($FFFFFFFA).w		; is debug mode enabled?
 		beq.w	Title_NoLevelSelect	; if not, branch. quick level select only in dev mode
+		move.b	($FFFFF604).w,d0	; get button presses
+		andi.b	#$40,d0			; check A
+		beq.w	Title_NoLevelSelect	; if not pressed, start game normally
 		
-		move.w	#$E4,d0			; stop music
+		move.w	#$E0,d0			; fade out music for level select
 		bsr	PlaySound_Special
-		
 
 		; instantly turn the entire palette black, except the outlines of the text
 		moveq	#0,d1
@@ -3818,12 +3819,12 @@ Title_NoLevelSelect:
 		move.b	#1,($FFFFFF9E).w	; set number for text to 1
 		move.b	#1,($FFFFFFA7).w	; set number for chapter to 1
 
-		move.b	#$E0,d0			; fade out music
-		jsr	PlaySound
-		jsr	Pal_MakeWhite		; Fade out previous palette
-		bsr.s	ERZ_FadeOut
-		move.b	#$30,($FFFFF600).w	; set to GameplayStyleScreen
-		rts
+	;	move.b	#$E0,d0			; fade out music
+	;	jsr	PlaySound
+	;	jsr	Pal_MakeWhite		; Fade out previous palette
+	;	bsr.s	ERZ_FadeOut
+	;	move.b	#$30,($FFFFF600).w	; set to GameplayStyleScreen
+	;	rts
 
 SG_ResumeFromSaveGame:
 		bsr.s	ERZ_FadeOut
@@ -16506,9 +16507,11 @@ Obj4B_LoadLevel:
 		
 		cmpi.w	#$501,($FFFFFE10).w	; is this the tutorial?
 		bne.s	Obj4B_SNZ		; if not, branch
-		move.b	#$28,($FFFFF600).w	; load chapters screen
-		move.b	#$E0,d0			; fade out music
-		jmp	PlaySound_Special
+	;	move.b	#$28,($FFFFF600).w	; load chapters screen
+	;	move.b	#$E0,d0			; fade out music
+	;	jmp	PlaySound_Special
+		move.w	#$400,($FFFFFE10).w	; set level to Uberhub
+		bra.w	Obj4B_PlayLevel		; play level
 
 Obj4B_SNZ:
 		cmpi.w	#$302,($FFFFFE10).w	; is this the easter egg ring in Star Agony Place?
@@ -51586,7 +51589,7 @@ SegaPCM:	incbin	sound\segapcm.wav
 		include "Screens/SelbiSplash/SelbiSplash.asm"
 		include "Screens/ChapterScreens/Chapters.asm"
 		include "Screens/OptionsScreen/OptionsScreen.asm"
-		include "Screens/InfoScreen/InfoScreen.asm"
+		include "Screens/StoryScreen/StoryScreen.asm"
 		include	"Screens/CreditsScreen/Credits.asm"
 		include	"Screens/TutorialBox/TutorialBox.asm"
 		include	"Screens/GameplayStyleScreen/GameplayStyleScreen.asm"

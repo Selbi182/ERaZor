@@ -2,7 +2,6 @@
 ; Selbi Splash Screen - Code made by Marc - Sonic ERaZor
 ; =====================================================================================================================
 SelbiSplash_MusicID		EQU	$B7		; Music to play
-SelbiSplash_NxtScr		EQU	$04		; Screen mode to go to next (Title Screen)
 SelbiSplash_Wait		EQU	$30		; Time to wait ($100)
 SelbiSplash_PalChgSpeed		EQU	$200		; Speed for the palette to be changed ($200)
 
@@ -237,9 +236,21 @@ SelbiSplash_LoopEnd:
 SelbiSplash_Next:
 		clr.b	($FFFFFFAF).w
 		clr.l	($FFFFFF7A).w
-		move.b	#SelbiSplash_NxtScr,($FFFFF600).w ; go to next screen
-		rts	
 		
+		
+		tst.b	($FFFFFFA7).w			; is this the first time the game is being played?
+		beq.s	SelbiSplash_FirstTime		; if yes, branch
+		move.b	#4,($FFFFF600).w		; otherwise go to title screen
+		rts	
+
+SelbiSplash_FirstTime:
+	;	move.b	#$E0,d0			; fade out music
+	;	jsr	PlaySound
+	;	jsr	Pal_MakeWhite		; Fade out previous palette
+	;	bsr.s	ERZ_FadeOut
+		move.b	#$30,($FFFFF600).w	; set to GameplayStyleScreen
+		rts
+
 SelbiSplash_DisableDebug:
 		move.w	#0,($FFFFFFFA).w	 	; disable debug mode
 		move.b	#$A4,d0				; set skidding sound

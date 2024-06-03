@@ -118,9 +118,13 @@ GSS_MainLoop:
 		rts
 
 @StartTutorial:
-		move.w	#$501,($FFFFFE10).w	; set level to FZ
-		move.b	#$C,($FFFFF600).w	; set to level
-		move.w	#1,($FFFFFE02).w	; restart level
+		move.b	#$28,($FFFFF600).w	; load chapters screen (One Hot Day...)
+		move.w	#$501,($FFFFFE10).w	; set to use correct level
+	;	move.b	#$E0,d0			; fade out music
+	;	jmp	PlaySound_Special
+	;	move.w	#$501,($FFFFFE10).w	; set level to FZ
+	;	move.b	#$C,($FFFFF600).w	; set to level
+	;	move.w	#1,($FFFFFE02).w	; restart level
 
 @rts:
 		rts

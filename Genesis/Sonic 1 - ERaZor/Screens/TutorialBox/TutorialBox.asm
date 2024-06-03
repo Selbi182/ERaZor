@@ -828,12 +828,12 @@ Hint_9:
 	dc.b	'REST ON YOUR OWN.',_br
 	dc.b	_pause,_cls
 
-	dc.b	'JUST ONE WORD OF',_br
-	dc.b	'ADVICE, YOU CAN',_br
-	dc.b	'ALWAYS RETURN TO',_br
-	dc.b	'THE HUB WORLD BY',_br
-	dc.b	'PRESSING a WHILE',_br
-	dc.b	'THE GAME IS PAUSED.',_br
+	dc.b	' TWO MORE QUICK tips ',_br
+	dc.b	'                     ',_br
+	dc.b	'- EXIT A STAGE AT ANY',_br
+	dc.b	'  TIME WITH pause + a',_br
+	dc.b	'- BE SURE TO CHECK   ',_br
+	dc.b	'  OUT THE options!   ',_br
 	dc.b	_pause,_cls
 
 	dc.b	'NOW GO OUT THERE AND',_br

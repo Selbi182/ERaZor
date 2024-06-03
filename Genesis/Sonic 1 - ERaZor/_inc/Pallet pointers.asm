@@ -61,7 +61,7 @@
 	dc.l Pal_Ending
 	dc.w $FB00
 	dc.w $1F
-	dc.l Pal_InfoScreen
+	dc.l Pal_StoryScreen
 	dc.w $FB00
 	dc.w $1F
 	dc.l Pal_BCutscene

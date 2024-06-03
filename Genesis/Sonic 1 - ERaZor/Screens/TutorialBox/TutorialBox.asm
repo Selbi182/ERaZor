@@ -632,6 +632,7 @@ Hints_List:
 	dc.l	Hint_Pre
 	dc.l	Hint_Easter_Tutorial
 	dc.l	Hint_Easter_SLZ
+	dc.l	Hint_TutorialConclusion
 
 ; ---------------------------------------------------------------
 ; Hints Scripts
@@ -715,17 +716,18 @@ Hint_2:
 Hint_3:
 	dc.b	'inhuman mode',_br
 	dc.b	_br
-	dc.b	'YOU CAN\T DIE,',_br
-	dc.b	'EVEN TO BOTTOMLESS',_br
-	dc.b	'PITS OR BEING',_br
-	dc.b	'CRUSHED TO DEATH!',_br
-	dc.b	_pause,_cls
-
 	dc.b	'PRESS a TO FIRE AN',_br
 	dc.b	'EXPLODING BULLET',_br
 	dc.b	'YOU CAN PROPEL',_br
 	dc.b	'YOURSELF IN THE AIR',_br
 	dc.b	'WITH!',_br
+	dc.b	_pause,_cls
+
+	dc.b	'ALSO, YOU ARE FULLY',_br
+	dc.b	'INVINCIBLE TO',_br
+	dc.b	'EVERYTHING!',_br
+	dc.b	_pause,_br,_br
+	dc.b	'...EXCEPT SPIKES.',_br
 	dc.b	_pause,_end
 
 ;		 --------------------
@@ -790,6 +792,11 @@ Hint_6:
 	dc.b	'THAT ARE SIMPLY TOO',_br
 	dc.b	'TOUGH FOR YOU.',_br
 	dc.b	'NO HARD FEELINGS!',_br
+	dc.b	_pause,_cls
+	dc.b	'DO NOTE THAT',_br
+	dc.b	'HARD PART SKIPPERS',_br
+	dc.b	'ARE ONLY AVAILBLE',_br
+	dc.b	'IN casual mode!',_br
 	dc.b	_pause,_end
 
 ;		 --------------------
@@ -812,48 +819,19 @@ Hint_7:
 Hint_8:
 	dc.b	'alternative gravity',_br
 	dc.b	_br
-	dc.b	'HOLD a WHILE IN AIR',_br
-	dc.b	'AND USE THE d_pad',_br
-	dc.b	'TO CONTROL THE',_br
-	dc.b	'MOVEMENT OF SONIC!',_br
+	dc.b	'PRESS a REPEATEDLY',_br
+	dc.b	'WHILE IN AIR AND USE',_br
+	dc.b	'THE d_pad TO HOP AND',_br
+	dc.b	'DASH IN WHATEVER',_br
+	dc.b	'DIRECTION YOU WANT!',_br
 	dc.b	_pause,_end
 
 ;		 --------------------
 Hint_9:
-	dc.b	'AND THAT CONCLUDES',_br
-	dc.b	'THE TUTORIAL!',_br
-	dc.b	_br
-	dc.b	'YOU SHOULD BE ABLE',_br
-	dc.b	'TO FIGURE OUT THE',_br
-	dc.b	'REST ON YOUR OWN.',_br
-	dc.b	_pause,_cls
-
-	dc.b	' TWO MORE QUICK tips ',_br
-	dc.b	'                     ',_br
-	dc.b	'- EXIT A STAGE AT ANY',_br
-	dc.b	'  TIME WITH pause + a',_br
-	dc.b	'- BE SURE TO CHECK   ',_br
-	dc.b	'  OUT THE options!   ',_br
-	dc.b	_pause,_cls
-
-	dc.b	'NOW GO OUT THERE AND',_br
-	dc.b	'HAVE FUN WITH',_br
-	dc.b	_br
-	dc.b	'    sonic erazor',_br
-	dc.b	_br
-	dc.b	'I HOPE YOU\LL HAVE',_br
-	dc.b	'AS MUCH FUN AS I HAD',_br
-	dc.b	'CREATING IT!',_br
-	dc.b	_pause,_cls
-
-	dc.b	'      BY selbi',_br
-	dc.b	_br,_delay,60
-	dc.b	'  THEY CALL ME THE',_br
-	dc.b	'    MICHAEL  BAY',_br
-	dc.b	'   OF SONIC GAMES.',_br
-	dc.b	_br,_delay,90
-	dc.b	' AND VERY SOON YOU',_br
-	dc.b	' WILL ALSO SEE WHY.',_br
+	dc.b	'HEDGEHOG SPACE GOLF',_br
+	dc.b	'ISN\T YOUR THING?',_br
+	dc.b	'TRY HOLDING b TO',_br
+	dc.b	'INVERT GRAVITY!',_br
 	dc.b	_pause,_end
 
 ;		 --------------------
@@ -893,5 +871,44 @@ Hint_Easter_SLZ:
 	dc.b	'DISGUSTING.',_br
 	dc.b	_pause,_end
 
+;		 --------------------
+Hint_TutorialConclusion:
+	dc.b	'AND THAT CONCLUDES',_br
+	dc.b	'THE TUTORIAL!',_br
+	dc.b	_br
+	dc.b	'YOU SHOULD BE ABLE',_br
+	dc.b	'TO FIGURE OUT THE',_br
+	dc.b	'REST ON YOUR OWN.',_br
+	dc.b	_pause,_cls
+
+	dc.b	'TWO MORE QUICK tips ',_br
+	dc.b	_br
+	dc.b	'- EXIT A STAGE AT',_br
+	dc.b	'  ANY TIME WITH',_br
+	dc.b	'  pause + a',_br
+	dc.b	_br
+	dc.b	'- BE SURE TO CHECK',_br
+	dc.b	'  OUT THE options!',_br
+	dc.b	_pause,_cls
+
+	dc.b	'NOW GO OUT THERE AND',_br
+	dc.b	'HAVE FUN WITH',_br
+	dc.b	_br
+	dc.b	'    sonic erazor',_br
+	dc.b	_br
+	dc.b	'I HOPE YOU\LL HAVE',_br
+	dc.b	'AS MUCH FUN AS I HAD',_br
+	dc.b	'CREATING IT!',_br
+	dc.b	_pause,_cls
+
+	dc.b	'      BY selbi',_br
+	dc.b	_br,_delay,60
+	dc.b	'  THEY CALL ME THE',_br
+	dc.b	'    MICHAEL  BAY',_br
+	dc.b	'   OF SONIC GAMES.',_br
+	dc.b	_br,_delay,90
+	dc.b	' AND VERY SOON YOU',_br
+	dc.b	' WILL ALSO SEE WHY.',_br
+	dc.b	_pause,_end
 	even
 ; ---------------------------------------------------------------

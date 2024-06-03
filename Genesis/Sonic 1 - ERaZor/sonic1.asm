@@ -21165,53 +21165,45 @@ Obj36_Type00:				; XREF: Obj36_TypeIndex
 ; ===========================================================================
 
 Obj36_Type01:				; XREF: Obj36_TypeIndex
-		jsr	obj36_Wait
-		moveq	#0,d0
-		move.b	$34(a0),d0
-		add.w	$32(a0),d0
-		move.w	d0,obY(a0)	; move the object vertically
+	;	jsr	obj36_Wait
+	;	moveq	#0,d0
+	;	move.w	$34(a0),d0
+	;	add.w	$32(a0),d0
+	;	move.w	d0,obY(a0)	; move the object vertically
 		rts	
-; ===========================================================================
+; ========================================3===================================
 
 Obj36_Type02:				; XREF: Obj36_TypeIndex
 		jsr	obj36_Wait
 		moveq	#0,d0
-		move.b	$34(a0),d0
+		move.w	$34(a0),d0
 		add.w	$30(a0),d0
 		move.w	d0,obX(a0)	; move the object horizontally
 		rts	
 ; ===========================================================================
 
 Obj36_Wait:
-		tst.w	$38(a0)		; is time delay	= zero?
-		beq.s	loc_CFA4	; if yes, branch
-		subq.w	#1,$38(a0)	; subtract 1 from time delay
+		move.w	($FFFFFE04).w,d0
+		andi.w	#$1F,d0
 		bne.s	locret_CFE6
+		
+		moveq	#$30,d0		; set move distance to $20 pixels
+		btst	#5,($FFFFFE05).w
+		bne.s	@0
+		btst	#0,obStatus(a0)	; is spike mirrored?
+		beq.s	@1
+		neg.w	d0
+@1:		move.w	d0,$34(a0)
+		bra.s	@playsound
+
+@0:
+		clr.w	$34(a0)
+
+@playsound:
 		tst.b	obRender(a0)
 		bpl.s	locret_CFE6
 		move.w	#$B6,d0
 		jsr	(PlaySound_Special).l ;	play "spikes moving" sound
-		bra.s	locret_CFE6
-; ===========================================================================
-
-loc_CFA4:
-		tst.w	$36(a0)
-		beq.s	loc_CFC6
-		subi.w	#$800,$34(a0)
-		bcc.s	locret_CFE6
-		move.w	#0,$34(a0)
-		move.w	#0,$36(a0)
-		move.w	#15,$38(a0)	; set time delay to 1 second
-		bra.s	locret_CFE6
-; ===========================================================================
-
-loc_CFC6:
-		addi.w	#$800,$34(a0)
-		cmpi.w	#$2000,$34(a0)
-		bcs.s	locret_CFE6
-		move.w	#$2000,$34(a0)
-		move.w	#1,$36(a0)
-		move.w	#15,$38(a0)	; set time delay to 1 second
 
 locret_CFE6:
 		rts	
@@ -30173,8 +30165,7 @@ Map_Obj03:
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Object 06 - Humble Problem Solvers (previously Hard Part Skippers)
-;             and Info Boxes in the Tutorial Level
+; Object 06 - Hard Part Skippers / Info Boxes in the Tutorial Level
 ; ---------------------------------------------------------------------------
 
 Obj06:
@@ -30226,24 +30217,27 @@ Obj06_ArtLocFound:
 		bra.w	Obj06_InfoBox
 
 Obj06_ChkDist:
-		tst.b	($FFFFFFB1).w	; is white flash counter empty?
-		bpl.w	Obj06_Display	; if not, branch
-
-		tst.w	($FFFFFFFA).w	; is debug cheat enabled?
+		tst.b	($FFFFFFB1).w		; is white flash counter empty?
+		bpl.w	Obj06_Display		; if not, branch (to prevent the white getting stuck)
+	
+		move.b	($FFFFF602).w,d0	; get button presses
+		eori.b	#$70,d0			; sort out any non ABC button presses
+		tst.w	($FFFFFFFA).w		; is debug cheat enabled?
 		beq.s	@cont			; if not, branch
 		move.b	($FFFFF602).w,d0	; get button presses
-		andi.b	#$60,d0			; sort out any non A&C button presses
-		cmpi.b	#$60,d0			; is A and C pressed?
-		bne.w	Obj06_Display		; if not, branch
-		bra.s	@conty
-
+		eori.b	#$60,d0			; filter out B to not interfere with debug mode
 @cont:
-		move.b	($FFFFF602).w,d0	; get button presses
-		andi.b	#$70,d0			; sort out any non ABC button presses
-		cmpi.b	#$70,d0			; is A, B and C pressed?
+		tst.b	d0			; all buttons pressed?
 		bne.w	Obj06_Display		; if not, branch
 
-@conty:
+		btst	#5,($FFFFFF92).w	; are we in Frantic mode?
+		beq.s	Obj06_DoHardPartSkip	; if not, branch
+		jsr	DeleteObject		; delete Hard Part Skipper
+		lea	($FFFFD000).w,a0	; set self to Sonic
+		movea.l	a0,a2			; set killer to self
+		jmp	KillSonic		; get fucking trolled lmao
+
+Obj06_DoHardPartSkip:
 		move.w	($FFFFD008).w,d0	; get Sonic's X-pos
 		sub.w	obX(a0),d0		; substract the X-pos from the current object from it
 		addi.w	#$10,d0			; add $10 to it

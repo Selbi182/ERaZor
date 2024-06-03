@@ -766,10 +766,10 @@ StoryText_3:	; text after beating Special Place
 		dc.b	'CATCH ME A BREAK HERE.      ' ;0
 		dc.b	'                            ' ;0
 		dc.b	'ANYWAY, LISTEN. WHATEVER YOU' ;0
-		dc.b	'DO, DO NOT BREAK OPEN ANY   ' ;1
-		dc.b	'MONITORS WITH AN S INSIDE!  ' ;1
-		dc.b	'YOU COULD TURN INTO SOME    ' ;1
-		dc.b	'INHUMAN CREATURE...         ' ;1
+		dc.b	'DO, STAY AWAY FROM ANY      ' ;1
+		dc.b	'SUSPICIOUS MONITORS!        ' ;1
+		dc.b	'WHO KNOWS WHAT INHUMANITY   ' ;1
+		dc.b	'LIES IN THERE...            ' ;1
 		dc.b	$FF
 		even
 ; ---------------------------------------------------------------------------

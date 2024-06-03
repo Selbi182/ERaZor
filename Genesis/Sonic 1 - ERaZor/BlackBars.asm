@@ -15,6 +15,7 @@ BlackBars.TestAnimation:
 
 ; ---------------------------------------------------------------------------
 BlackBars.UpdateInVBlank:
+	 rts ; disabled for now while I still iron out other bugs
 		move.w	BlackBars.Height, d0		; is height 0?
 		beq.s	@disable_bars				; if yes, branch
 		cmp.w	#224/2-1, d0				; are we taking half the screen?

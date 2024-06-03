@@ -810,7 +810,7 @@ StoryText_2:	; text after beating Night Hill Place
 ; ---------------------------------------------------------------------------
 
 StoryText_3:	; text after beating Special Place
-		dc.b	'WOW, ALREADY 4 EMERALDS     '
+		dc.b	'WOW, FOUR EMERALDS ALREADY  '
 		dc.b	'COLLECTED, AND SONIC DOESN\T'
 		dc.b	'EVEN KNOW WHY HE NEEDS THEM.'
 		dc.b	'                            '
@@ -877,10 +877,10 @@ StoryText_6:	; text after beating Unreal Place
 		dc.b	'UNTIL YOU CAN DO THE ENTIRE '
 		dc.b	'STAGE BLINDFOLDED!          '
 		dc.b	'                            '
-		dc.b	'BUT HEY, YOU COLLECTED ALL  '
-		dc.b	'SIX EMERALDS, SO THAT MEANS '
-		dc.b	'YOU GO TO SPACE NOW! LIKE IN'
-		dc.b	'EVERY OTHER SONIC GAME!     '
+		dc.b	'BUT HEY, AT LEAST YOU       '
+		dc.b	'COLLECTED ALL SIX EMERALDS, '
+		dc.b	'WHICH MEANS YOU WILL NOW GO '
+		dc.b	'INTO SPACE OR SOMETHING.    '
 		dc.b	'                            '
 		dc.b	'JUST REMEMBER ONE THING:    '
 		dc.b	'IN SPACE, NO ONE CAN HEAR   '
@@ -915,16 +915,16 @@ StoryText_8:	; text after jumping in the ring for the Ending Sequence
 		dc.b	'SPREAD THEIR HAPPINESS BY   '
 		dc.b	'JUMPING OFF CLIFFS!         '
 		dc.b	'                            '
-		dc.b	'SONIC DECIDED TO MAKE ONE   '
-		dc.b	'QUICK FINAL RUN THROUGH THE '
+		dc.b	'SONIC DECIDED TO TAKE ONE   '
+		dc.b	'FINAL RUN THROUGH THE GREEN '
 		dc.b	'HILLS, WHERE IT ALL STARTED,'
 		dc.b	'TO CELEBRATE HIS AND YOUR   '
 		dc.b	'HARD EFFORTS. WITHOUT YOUR  '
 		dc.b	'HELP, THIS WOULD HAVE       '
 		dc.b	'NEVER HAPPENED!             '
 		dc.b	'                            '
-		dc.b	'NOW WATCH SONIC ARRIVE AT   '
-		dc.b	'HIS WELL DESERVED PARTY...  '
+		dc.b	'NOW WATCH YOURS AND SONIC\S '
+		dc.b	'WELL DESERVED END...        '
 		dc.b	$FF
 		even
 ; ---------------------------------------------------------------------------

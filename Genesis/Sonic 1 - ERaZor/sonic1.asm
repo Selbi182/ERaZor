@@ -627,20 +627,13 @@ loc_D50:
 		movem.l	($FFFFF754).w,d0-d1
 		movem.l	d0-d1,($FFFFFF30).w
 
-; ---------------------------------------------------------------------------
-; Subroutine to	run a demo for an amount of time
-; ---------------------------------------------------------------------------
-
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
-
-Demo_Time:				; XREF: loc_D50; HBlank
+;:
 		bsr	LoadTilesAsYouMove
 		jsr	AniArt_Load
 		jsr	HudUpdate
 		bsr	sub_165E
 		rts	
-; End of function Demo_Time
+; End of function 
 
 ; ===========================================================================
 
@@ -1666,7 +1659,7 @@ sub_1642:				; XREF: loc_C44; loc_F54; loc_F9A
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 
 
-sub_165E:				; XREF: Demo_Time
+sub_165E:				; XREF: 
 		tst.w	($FFFFF6F8).w
 		beq.w	locret_16DA
 		cmpi.b	#$01,($FFFFFE10).w        ; is this LZ?
@@ -3972,7 +3965,7 @@ LevSel_Level:				; XREF: LevSel_Level_SS
 ; ---------------------------------------------------------------------------
 
 Demo:					; XREF: TitleScreen
-	rts
+		rts	; fucking eradicated from this source code
 
 ; ---------------------------------------------------------------------------
 ; Subroutine to	change what you're selecting in the level select
@@ -4479,19 +4472,7 @@ loc_39E8:
 		move.b	#1,($FFFFFE1D).w ; update rings	counter
 		move.b	#1,($FFFFFE1E).w ; update time counter
 		move.w	#0,($FFFFF790).w
-		lea	(Demo_Index).l,a1 ; load demo data
-		moveq	#0,d0
-		move.b	($FFFFFE10).w,d0
-		lsl.w	#2,d0
-		movea.l	(a1,d0.w),a1
 
-		move.b	obRender(a1),($FFFFF792).w ; load key press duration
-		subq.b	#1,($FFFFF792).w ; subtract 1 from duration
-		bcc.s	Level_Demo_NullPress
-		move.b	3(a1),($FFFFF792).w
-		addq.w	#2,($FFFFF790).w
-
-Level_Demo_NullPress:
 		move.w	#1800,($FFFFF614).w
 		tst.w	($FFFFFFF0).w
 		beq.s	Level_ChkWaterPal
@@ -4567,7 +4548,6 @@ Level_DemoOK:
 		move.b	#8,($FFFFF62A).w
 		bsr	DelayProgram
 		addq.w	#1,($FFFFFE04).w ; add 1 to level timer
-		bsr	MoveSonicInDemo
 		bsr	LZWaterEffects
 		jsr	ObjectsLoad
 		tst.w	($FFFFFE02).w	; is the level set to restart?
@@ -4592,64 +4572,14 @@ L_ML_NoPalCycle:
 		bsr	RunPLC_RAM
 		bsr	OscillateNumDo
 		bsr	ChangeRingFrame
-
-		cmpi.w	#$000,($FFFFFE10).w	; is level GHZ1?
-		beq.s	L_ML_NoSAL		; if yes, branch
-		cmpi.w	#$400,($FFFFFE10).w	; is level SYZ1?
-		beq.s	L_ML_NoSAL		; if yes, branch
-		cmpi.w	#$301,($FFFFFE10).w	; is level SLZ2?
-		beq.s	L_ML_NoSAL		; if yes, branch
 		bsr	SignpostArtLoad
 
 L_ML_NoSAL:
-		cmpi.b	#8,($FFFFF600).w
-		beq.s	Level_ChkDemo	; if screen mode is 08 (demo), branch
 		cmpi.b	#$C,($FFFFF600).w
 		beq.w	Level_MainLoop	; if screen mode is $0C	(level), branch
 		rts	
 ; ===========================================================================
 
-Level_ChkDemo:				; XREF: Level_MainLoop
-		tst.w	($FFFFFE02).w	; is level set to restart?
-		bne.s	Level_EndDemo	; if yes, branch
-		tst.w	($FFFFF614).w	; is there time	left on	the demo?
-		beq.s	Level_EndDemo	; if not, branch
-		cmpi.b	#8,($FFFFF600).w
-		beq.w	Level_MainLoop	; if screen mode is 08 (demo), branch
-		move.b	#0,($FFFFF600).w ; go to Sega screen
-		rts	
-; ===========================================================================
-
-Level_EndDemo:				; XREF: Level_ChkDemo
-		cmpi.b	#8,($FFFFF600).w ; is screen mode 08 (demo)?
-		bne.s	loc_3B88	; if not, branch
-		move.b	#0,($FFFFF600).w ; go to Sega screen
-	;	tst.w	($FFFFFFF0).w	; is demo mode on?
-	;	bpl.s	loc_3B88	; if yes, branch
-		move.b	#$1C,($FFFFF600).w ; go	to credits
-
-loc_3B88:
-		move.w	#$3C,($FFFFF614).w
-		move.w	#$3F,($FFFFF626).w
-		clr.w	($FFFFF794).w
-
-loc_3B98:
-		move.b	#8,($FFFFF62A).w
-		bsr	DelayProgram
-		bsr	MoveSonicInDemo
-		jsr	ObjectsLoad
-		jsr	BuildSprites
-		jsr	ObjPosLoad
-		subq.w	#1,($FFFFF794).w
-		bpl.s	loc_3BC8
-		move.w	#2,($FFFFF794).w
-		bsr	Pal_FadeOut
-
-loc_3BC8:
-		tst.w	($FFFFF614).w
-		bne.s	loc_3B98
-		rts	
-; ===========================================================================
 WaterTransition_LZ:	dc.w $13    ; # of entries - 1
 		dc.w $62
 		dc.w $68
@@ -5440,85 +5370,6 @@ MBH_Array:	; 13 entries
 ; -------------------------------------------------------------------------------
 ; ===============================================================================
 
-
-; ---------------------------------------------------------------------------
-; Subroutine to	move Sonic in demo mode
-; ---------------------------------------------------------------------------
-
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
-
-MoveSonicInDemo:			; XREF: Level_MainLoop; et al
-		tst.w	($FFFFFFF0).w	; is demo mode on?
-		bne.s	MoveDemo_On	; if yes, branch
-		rts
-
-MoveDemo_Record:
-	;	lea	($80000).l,a1
-		lea	($FFFFD200).w,a1
-		move.w	($FFFFF790).w,d0
-		adda.w	d0,a1
-		move.b	($FFFFF604).w,d0
-		cmp.b	(a1),d0
-		bne.s	loc_3FFA
-		addq.b	#1,obRender(a1)
-		cmpi.b	#$FF,obRender(a1)
-		beq.s	loc_3FFA
-		rts	
-; ===========================================================================
-
-loc_3FFA:				; XREF: MoveDemo_Record
-		move.b	d0,obGfx(a1)
-		move.b	#0,3(a1)
-		addq.w	#2,($FFFFF790).w
-		andi.w	#$3FF,($FFFFF790).w
-		rts	
-; ===========================================================================
-
-MoveDemo_On:				; XREF: MoveSonicInDemo
-		tst.b	($FFFFF604).w
-		bpl.s	loc_4022
-		tst.w	($FFFFFFF0).w
-		bmi.s	loc_4022
-		move.b	#4,($FFFFF600).w
-
-loc_4022:
-		lea	(Demo_Index).l,a1
-		moveq	#0,d0
-		move.b	($FFFFFE10).w,d0
-		cmpi.b	#$10,($FFFFF600).w
-		bne.s	loc_4038
-		moveq	#6,d0
-
-loc_4038:
-		lsl.w	#2,d0
-		movea.l	(a1,d0.w),a1
-		move.w	($FFFFF790).w,d0
-		adda.w	d0,a1
-		move.b	(a1),d0
-		lea	($FFFFF604).w,a0
-		move.b	d0,d1
-		move.b	-obGfx(a0),d2
-		eor.b	d2,d0
-		move.b	d1,(a0)+
-		and.b	d1,d0
-		move.b	d0,(a0)+
-		subq.b	#1,($FFFFF792).w
-		bcc.s	locret_407E
-		move.b	3(a1),($FFFFF792).w
-		addq.w	#2,($FFFFF790).w
-
-locret_407E:
-		rts	
-; End of function MoveSonicInDemo
-
-; ===========================================================================
-; ---------------------------------------------------------------------------
-; Demo sequence	pointers
-; ---------------------------------------------------------------------------
-Demo_Index:
-		include	"_inc\Demo pointers for intro.asm"
-
 ; ---------------------------------------------------------------------------
 ; Collision index loading subroutine
 ; ---------------------------------------------------------------------------
@@ -5696,20 +5547,31 @@ locret_4272:
 
 
 SignpostArtLoad:			; XREF: Level
-		tst.w	($FFFFFE08).w	; is debug mode	being used?
-		bne.w	Signpost_Exit	; if yes, branch
-		move.w	($FFFFF700).w,d0
-		move.w	($FFFFF72A).w,d1
-		subi.w	#$100,d1
-		cmp.w	d1,d0		; has Sonic reached the	edge of	the level?
-		blt.s	Signpost_Exit	; if not, branch
-		tst.b	($FFFFFE1E).w
-		beq.s	Signpost_Exit
-		cmp.w	($FFFFF728).w,d1
-		beq.s	Signpost_Exit
-		move.w	d1,($FFFFF728).w ; move	left boundary to current screen	position
+		move.w	($FFFFF700).w,d0	; get X camera position
+		move.w	($FFFFF72A).w,d1	; get right level boundary
+		subi.w	#$100,d1		; adjust
+		cmp.w	d1,d0			; has Sonic reached the	edge of	the level?
+		blt.s	Signpost_Exit		; if not, branch
+		tst.b	($FFFFFE1E).w		; is time stopped?
+		beq.s	Signpost_Exit		; if not, branch
+		cmp.w	($FFFFF728).w,d1	; was left boundary already set?
+		beq.s	Signpost_Exit		; if yes, branch
+
+		move.w	($FFFFFE10).w,d0
+		cmpi.w	#$002,d0		; is level GHP?
+		beq.s	Signpost_DoLoad		; if yes, branch		
+		cmpi.w	#$200,d0		; is level RP?
+		beq.s	Signpost_DoLoad		; if yes, branch
+		cmpi.w	#$101,d0		; is level LP?
+		beq.s	Signpost_DoLoad		; if yes, branch
+		cmpi.w	#$302,d0		; is level SAP?
+		beq.s	Signpost_DoLoad		; if yes, branch
+		rts				; otherwise, don't load
+
+Signpost_DoLoad:
+		move.w	d1,($FFFFF728).w	; move left boundary to current screen position
 		moveq	#$12,d0
-		jmp	LoadPLC2	; load signpost	patterns
+		jmp	LoadPLC2		; load signpost	patterns
 ; ===========================================================================
 
 Signpost_Exit:
@@ -5717,12 +5579,6 @@ Signpost_Exit:
 ; End of function SignpostArtLoad
 
 ; ===========================================================================
-Demo_GHZ:	incbin	demodata\i_ghz.bin
-Demo_MZ:	incbin	demodata\i_mz.bin
-Demo_SYZ:	incbin	demodata\i_syz.bin
-Demo_SS:	incbin	demodata\i_ss.bin
-; ===========================================================================
-
 ; ---------------------------------------------------------------------------
 ; Special Stage
 ; ---------------------------------------------------------------------------
@@ -5865,12 +5721,6 @@ SS_ClrNemRam:
 @conto:
 		bsr	PlaySound	; play special stage BG	music
 		move.w	#0,($FFFFF790).w
-		lea	(Demo_Index).l,a1
-		moveq	#6,d0
-		lsl.w	#2,d0
-		movea.l	(a1,d0.w),a1
-		move.b	obRender(a1),($FFFFF792).w
-		subq.b	#1,($FFFFF792).w
 	;	clr.w	($FFFFFE20).w	; clear rings
 	;	clr.b	($FFFFFE1B).w	; clear ring counter
 		move.w	#0,($FFFFFE08).w
@@ -5952,7 +5802,6 @@ SS_NoSkip:
 SS_NoPauseGame:
 		move.b	#$A,($FFFFF62A).w
 		bsr	DelayProgram
-		bsr	MoveSonicInDemo
 		move.w	($FFFFF604).w,($FFFFF602).w
 		jsr	ObjectsLoad
 		jsr	BuildSprites
@@ -5969,7 +5818,6 @@ SS_ChkEnd:
 SS_EndLoop:
 		move.b	#$16,($FFFFF62A).w
 		bsr	DelayProgram
-		bsr	MoveSonicInDemo
 		move.w	($FFFFF604).w,($FFFFF602).w
 		jsr	ObjectsLoad
 		jsr	BuildSprites
@@ -7092,7 +6940,6 @@ Cred_ClrPallet:
 		move.b	#$8A,($FFFFD080).w ; load credits object
 		jsr	ObjectsLoad
 		jsr	BuildSprites
-	;	bsr	EndingDemoLoad
 		moveq	#0,d0
 		move.b	($FFFFFE10).w,d0
 		lsl.w	#4,d0
@@ -7122,61 +6969,6 @@ Cred_WaitLoop:
 		beq.w	TryAgainEnd	; if yes, branch
 		rts	
 
-; ---------------------------------------------------------------------------
-; Ending sequence demo loading subroutine
-; ---------------------------------------------------------------------------
-
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
-
-EndingDemoLoad:				; XREF: Credits
-		move.w	($FFFFFFF4).w,d0
-		andi.w	#$F,d0
-		add.w	d0,d0
-		move.w	EndDemo_Levels(pc,d0.w),d0 ; load level	array
-		move.w	d0,($FFFFFE10).w ; set level from level	array
-		addq.w	#1,($FFFFFFF4).w
-		cmpi.w	#9,($FFFFFFF4).w ; have	credits	finished?
-		bcc.s	EndDemo_Exit	; if yes, branch
-		rts
-	;	move.w	#$8001,($FFFFFFF0).w ; force demo mode
-		move.b	#8,($FFFFF600).w ; set game mode to 08 (demo)
-		move.b	#0,($FFFFFE12).w ; set deaths to 0
-		moveq	#0,d0
-	;	move.w	d0,($FFFFFE20).w ; clear rings
-		move.l	d0,($FFFFFE22).w ; clear time
-		move.l	d0,($FFFFFE26).w ; clear score
-		move.b	d0,($FFFFFE30).w ; clear lamppost counter
-		cmpi.w	#4,($FFFFFFF4).w ; is SLZ demo running?
-		bne.s	EndDemo_Exit	; if not, branch
-		lea	(EndDemo_LampVar).l,a1 ; load lamppost variables
-		lea	($FFFFFE30).w,a2
-		move.w	#8,d0
-
-EndDemo_LampLoad:
-		move.l	(a1)+,(a2)+
-		dbf	d0,EndDemo_LampLoad
-
-EndDemo_Exit:
-		rts	
-; End of function EndingDemoLoad
-
-; ===========================================================================
-; ---------------------------------------------------------------------------
-; Levels used in the end sequence demos
-; ---------------------------------------------------------------------------
-EndDemo_Levels:	incbin	misc\dm_ord2.bin
-
-; ---------------------------------------------------------------------------
-; Lamppost variables in the end sequence demo (Star Light Zone)
-; ---------------------------------------------------------------------------
-EndDemo_LampVar:
-		dc.b 1,	1		; XREF: EndingDemoLoad
-		dc.w $A00, $62C, $D
-		dc.l 0
-		dc.b 0,	0
-		dc.w $800, $957, $5CC, $4AB, $3A6, 0, $28C, 0, 0, $308
-		dc.b 1,	1
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; "TRY AGAIN" and "END"	screens
@@ -7514,12 +7306,6 @@ LevSz_StartLoc:				; XREF: LevelSizeLoad
 		lsl.b	#6,d0
 		lsr.w	#4,d0
 		lea	StartLocArray(pc,d0.w),a1 ; load Sonic's start location
-		tst.w	($FFFFFFF0).w	; is demo mode on?
-		bpl.s	LevSz_SonicPos	; if not, branch
-		move.w	($FFFFFFF4).w,d0
-		subq.w	#1,d0
-		lsl.w	#2,d0
-		lea	EndingStLocArray(pc,d0.w),a1 ; load Sonic's start location
 		bra.s	LevSz_SonicPos
 
 ; ---------------------------------------------------------------------------
@@ -9405,7 +9191,7 @@ sub_6886:
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
  
  
-LoadTilesAsYouMove:			; XREF: Demo_Time
+LoadTilesAsYouMove:			; XREF: 
 		lea	($C00004).l,a5
 		lea	($C00000).l,a6
 		lea	($FFFFFF32).w,a2
@@ -16402,19 +16188,20 @@ Obj4B_DontCollect:
 
 Obj4B_Collect:				; XREF: Obj4B_Index
 		move.l	a0,-(sp)
+		ints_disable
 		move.l	#$4C400002,d0
 		cmpi.w	#$400,($FFFFFE10).w
 		bne.s	@cont
 		move.l	#$50800002,d0
 
 @cont
-		move.l	d0,($C00004).l
 		lea	(Art_RingFlash).l,a0
 		move.w	#2687,d1
-
+		move.l	d0,($C00004).l
 Obj4B_ArtLoadLoop:
-		move.w	(a0)+,(a6)
+		move.w	(a0)+,($C00000).l
 		dbf	d1,Obj4B_ArtLoadLoop
+		ints_enable
 		move.l	(sp)+,a0
 		
 		cmpi.b	#GRing_Blackout,obSubtype(a0)	; is this the blackout challenge ring?
@@ -20123,30 +19910,14 @@ Obj34_NotIsAct:
 Obj34_NotIsOval:
 		rts
 ; ===========================================================================
+HUDSpeed = 6
 
 Obj34_ChangeArt:			; XREF: Obj34_ChkPos2
 		cmpi.b	#4,obRoutine(a0)
 		bne.s	Obj34_Delete
 		bsr	Obj34_LoadPostGraphics
-	;	moveq	#0,d0
-	;	move.b	($FFFFFE10).w,d0
-	;	addi.w	#$15,d0
-	;	jsr	(LoadPLC).l	; load animal patterns
 
 Obj34_Delete:
-		tst.w	($FFFFFFF0).w		; is demo mode on?
-		beq.s	Obj34_NoDemo		; if not, branch
-		move.b	#$4F,($FFFFD040).w	; load DEMO object
-		movem.l	d0-a6,-(sp)
-		move.l	#$59400003,($C00004).l	; set VRAM location
-		lea	(Nem_DEMO).l,a0		; set art location
-		jsr	NemDec			; load art from nemesis
-		movem.l	(sp)+,d0-a6
-		bra.w	Obj34_JustDelete	; skip
-
-HUDSpeed = 6
-
-Obj34_NoDemo:
 		cmpi.b	#$10,($FFFFF600).w		; is level SLZ1 (special stage)?
 		beq.w	Obj34_JustDelete		; if yes, branch
 		
@@ -30233,6 +30004,8 @@ Obj06_ChkDist:
 		btst	#5,($FFFFFF92).w	; are we in Frantic mode?
 		beq.s	Obj06_DoHardPartSkip	; if not, branch
 		jsr	DeleteObject		; delete Hard Part Skipper
+		move.w	#$8F,d0			; play game over jingle
+		jsr	PlaySound
 		lea	($FFFFD000).w,a0	; set self to Sonic
 		movea.l	a0,a2			; set killer to self
 		jmp	KillSonic		; get fucking trolled lmao
@@ -46452,7 +46225,7 @@ Obj10_NoCamShake:
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 
 
-AniArt_Load:				; XREF: Demo_Time; loc_F54
+AniArt_Load:				; XREF: ; loc_F54
 	;	tst.w	($FFFFF63A).w	; is the game paused?
 	;	bne.s	AniArt_Pause	; if yes, branch
 		lea	($C00000).l,a6
@@ -46917,7 +46690,7 @@ loc_1C518:
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Object 4F - Blinking DEMO Object
+; Object 4F - Blinking DEMO Object [scrapped idea]
 ; ---------------------------------------------------------------------------
 
 Obj4F:
@@ -47294,12 +47067,6 @@ locret_1C6B6:
 
 
 HudUpdate:
-		tst.w	($FFFFFFF0).w	; is demo mode on?
-		beq.s	@NoDemo		; if not, branch
-		rts			; return
-; ===========================================================================
-
-@NoDemo:
 		tst.w	($FFFFFE08).w	; is debug mode	being used?
 		bne.w	HudDebug	; if yes, branch
 		tst.b	($FFFFFE1F).w	; does the score need updating?
@@ -47465,12 +47232,6 @@ Hud_LoadZero:				; XREF: HudUpdate
 
 
 Hud_Base:				; XREF: Level; SS_EndLoop; EndingSequence
-		tst.w	($FFFFFFF0).w	; is demo mode on?
-		beq.s	@NoDemo		; if not, branch
-		rts			; return
-; ===========================================================================
-
-@NoDemo:
 		lea	($C00000).l,a6
 		bsr	Hud_Lives
 		move.l	#$5C400003,($C00004).l
@@ -48538,7 +48299,7 @@ Nem_BigFlash:	incbin	artnem\rngflash.bin	; flash from giant ring
 		even
 Nem_Bonus:	incbin	artnem\bonus.bin	; hidden bonuses at end of a level
 		even
-Nem_DEMO:	incbin	artnem\Art_DEMO.bin	; DEMO
+Nem_DEMO:	incbin	artnem\Art_DEMO.bin	; blinking DEMO banner [scrapped idea]
 		even
 Nem_HardPS:	incbin	artnem\HardPartSkipper.bin ; Hard Part Skipper
 		even

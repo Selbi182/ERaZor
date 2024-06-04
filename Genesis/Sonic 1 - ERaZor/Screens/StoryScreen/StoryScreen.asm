@@ -851,16 +851,16 @@ StoryText_5:	; text after beating Labyrinth Place
 		dc.b	'                            '
 		dc.b	'WELL, OUR CAMERA CREW WILL  '
 		dc.b	'MAKE ENOUGH CASH FROM THAT  '
-		dc.b	'PATHETIC ATTEMPT OF YOURS   '
-		dc.b	'TO LAST FOR A LIFETIME.     '
-		dc.b	'SO, NO MORE FUNKY CAMERA    '
-		dc.b	'BUSINESS. PINKY PROMISE.    '
+		dc.b	'AWFUL ATTEMPT OF YOURS TO   '
+		dc.b	'LAST A LIFETIME. SO, NO MORE'
+		dc.b	'FUNKY CAMERA BUSINESS. PINKY'
+		dc.b	'PROMISE.                    '
 		dc.b	'                            '
-		dc.b	'BUT YOU HAVE KILLED THE     '
-		dc.b	'JAWS OF DESTINY             '
+		dc.b	'UNFORTUNATELY, YOU HAVE     '
+		dc.b	'KILLED THE JAWS OF DESTINY, '
 		dc.b	'AND THEREFORE MUST BE SERVED'
 		dc.b	'THE ULTIMATE PUNISHMENT:    '
-		dc.b	'AN AUTOSCROLLER LEVEL.      '
+		dc.b	'ANOTHER SPECIAL STAGE.      '
 		dc.b	$FF
 		even
 ; ---------------------------------------------------------------------------
@@ -875,12 +875,12 @@ StoryText_6:	; text after beating Unreal Place
 		dc.b	'                            '
 		dc.b	'BUT HEY, AT LEAST YOU       '
 		dc.b	'COLLECTED ALL SIX EMERALDS, '
-		dc.b	'WHICH MEANS YOU WILL NOW GO '
-		dc.b	'INTO SPACE OR SOMETHING.    '
+		dc.b	'WHICH MEANS YOU NEED TO GO '
+		dc.b	'TO SPACE OR SOMETHING.      '
 		dc.b	'                            '
-		dc.b	'JUST REMEMBER ONE THING:    '
-		dc.b	'IN SPACE, NO ONE CAN HEAR   '
-		dc.b	'YOU SCREAM FOR HELP.        '
+		dc.b	'JUST REMEMBER THAT IN THE   '
+		dc.b	'VOID, NOBODY CAN HEAR YOUR  '
+		dc.b	'CRIES FOR HELP...           '
 		dc.b	$FF
 		even
 ; ---------------------------------------------------------------------------
@@ -900,7 +900,7 @@ StoryText_7:	; text after beating Scar Night Place
 		dc.b	'I HOPE YOUR ANGELIC VOICE   '
 		dc.b	'CAN BE HEARD ONE MORE TIME  '
 		dc.b	'IN THE FINALE! IT IS THE    '
-		dc.b	'FINALE, OR?                 '
+		dc.b	'LAST STAGE AFTER ALL, RIGHT?'
 		dc.b	$FF
 		even
 ; ---------------------------------------------------------------------------

@@ -3748,10 +3748,10 @@ Title_MainLoop:
 
 StartGame:
 		tst.w	($FFFFFFFA).w		; is debug mode enabled?
-		beq.w	Title_NoLevelSelect	; if not, branch. quick level select only in dev mode
+		beq.w	Title_NoLevSel		; if not, branch. quick level select only in dev mode
 		move.b	($FFFFF604).w,d0	; get button presses
 		andi.b	#$40,d0			; check A
-		beq.w	Title_NoLevelSelect	; if not pressed, start game normally
+		beq.w	Title_NoLevSel		; if not pressed, start game normally
 		
 		move.w	#$E0,d0			; fade out music for level select
 		bsr	PlaySound_Special
@@ -3795,7 +3795,7 @@ StartGame:
 		bra.w	LevelSelect
 ; ===========================================================================
 
-Title_NoLevelSelect:
+Title_NoLevSel:
 	if QuickLevelSelect=1
 		bsr.s	ERZ_FadeOut
 		move.w	#QuickLevelSelect_ID,($FFFFFE10).w	; set level to QuickLevelSelect_ID
@@ -3845,8 +3845,6 @@ ERZ_FadeOut:
 		rts
 
 ; ===========================================================================
-
-
 
 PlayLevelX:
 		move.b	#$C,($FFFFF600).w ; set	screen mode to $0C (level)
@@ -3925,6 +3923,14 @@ LevSel_Ending:
 		move.b	#8,($FFFFFF9E).w		; set number for text to 8
 		move.b	#$9D,d0				; play ending sequence music
 		jmp	PlaySound
+
+LevSel_RP2:
+		move.w	#$200,($FFFFFE10).w		; set level to MZ1
+		move.b	#1,($FFFFFE30).w 		; lamppost number
+		move.b	($FFFFFE30).w,($FFFFFE31).w
+		move.w	#$1120,($FFFFFE32).w		; x-position
+		move.w	#$350,($FFFFFE34).w		; y-position
+		bra.w	PlayLevelX
 ; ===========================================================================
 
 LevSel_Level_SS:			; XREF: LevelSelect
@@ -3941,6 +3947,8 @@ LevSel_Level_SS:			; XREF: LevelSelect
 		beq.s	LevSel_Intro	; if yes, branch
 		cmpi.w	#$601,d0	; is this the ending sequence?
 		beq.s	LevSel_Ending	; if yes, branch
+		cmpi.w	#$201,d0	; is this Ruined Place part 2?
+		beq.s	LevSel_RP2	; if yes, branch
 		
 		cmpi.w	#$300,d0	; is Special Place?
 		beq.s	@dospecial	; if yes, branch
@@ -3972,7 +3980,7 @@ Demo:					; XREF: TitleScreen
 ; ---------------------------------------------------------------------------
 
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-LevSelEntries = 14
+LevSelEntries = 15
 
 LevSelControls:				; XREF: LevelSelect
 		move.b	($FFFFF605).w,d1
@@ -4091,6 +4099,7 @@ LevelMenuText:
 		dc.b	'   2 GREEN HILL PLACE   '
 		dc.b	'   3 SPECIAL PLACE      '
 		dc.b	'   4 RUINED PLACE       '
+		dc.b	'     RUINED PLACE 2     '
 		dc.b	'   5 LABYRINTHY PLACE   '
 		dc.b	'   6 UNREAL PLACE       '
 		dc.b	'   7 SCAR NIGHT PLACE   '
@@ -4100,7 +4109,7 @@ LevelMenuText:
 		dc.b	'   INTRO SEQUENCE       '
 		dc.b	'   ENDING SEQUENCE      '
 		dc.b	'   BLACKOUT CHALLENGE   '		
-		rept 7 ; padding
+		rept 6 ; padding
 		dc.b	'                        '
 		endr
 		even
@@ -4111,6 +4120,7 @@ LSelectPointers:
 		dc.w	$002	; Green Hill Place
 		dc.w	$300	; Special Place
 		dc.w	$200	; Ruined Place
+		dc.w	$201	; Ruined Place part 2
 		dc.w	$101	; Labyrinthy Place
 		dc.w	$401	; Unreal Place
 		dc.w	$301	; Scar Night Place
@@ -12071,13 +12081,14 @@ Obj18_NotLZ:
 		bne.s	Obj18_NotSYZ
 		move.l	#Map_obj18a,obMap(a0) ; SYZ specific code
 		move.w	#$4490,obGfx(a0)
-		move.b	#$30,obActWid(a0)
+	;	move.b	#$30,obActWid(a0)
+		move.b	#$A0,obActWid(a0)	; make platforms SUPER wide for easy access
 		addq.w	#1,obY(a0)	; fix vertical pixel offset
 
 		; glowing yellow arrows when stepping on platform in Uberhub
 		jsr	SingleObjLoad
 		move.b	#$18,(a1)
-		move.b	#$A,obRoutine(a1)
+		move.b	#$A,obRoutine(a1)	; set to arrow routine
 		move.l	#Map_obj18a,obMap(a1) ; SYZ specific code
 		move.w	#$6490,obGfx(a1)
 		move.w	obX(a0),obX(a1)
@@ -12136,13 +12147,6 @@ loc_7EE0:
 		bsr	PlatformObject
 
 Obj18_Action:				; XREF: Obj18_Index
-	;	cmpi.w	#$101,($FFFFFE10).w	; is level LZ2?
-	;	bne.s	@cont			; if not, branch
-	;	tst.b	($FFFFFFE7).w		; is Sonic inhuman?
-	;	beq.s	@cont
-	;	move.w	($FFFFD008).w,obX(a0)	; set platforms X-location to Sonic's one
-
-;@cont:
 		jsr	obj18_Move
 		jsr	obj18_Nudge
 		bsr	DisplaySprite
@@ -12153,13 +12157,15 @@ Obj18_Arrows:
 		movea.l	$36(a0),a1
 		tst.b	$3F(a1)
 		beq.s	@cont
+		
+		move.w	($FFFFD008).w,obX(a0)
 
-		; move.b	$3E(a0),d0
-		; addq.b	#3,$3E(a0)
-		; jsr	    (CalcSine).l
-		; asr.w	#2,d0
-		; move.w	d0,obVelY(a0)
-        ; jsr     SpeedToPos
+		move.b	$3E(a0),d0
+		addq.b	#3,$3E(a0)
+		jsr	(CalcSine).l
+		asr.w	#2,d0
+		move.w	d0,obVelY(a0)
+		jsr     SpeedToPos
 
 		move.b	obRoutine(a1),d0
 		cmpi.b	#4,d0
@@ -16045,6 +16051,7 @@ GRing_NightHill  = 1
 GRing_GreenHill  = 2
 GRing_Special    = 3
 GRing_Ruined     = 4
+GRing_Ruined2    = $84
 GRing_Labyrinthy = 5
 GRing_Unreal     = 6
 GRing_ScarNight  = 7
@@ -16373,10 +16380,20 @@ Obj4B_ChkSpecial1:
 		rts
 
 Obj4B_ChkMZ:
-		cmpi.b	#GRing_Ruined,obSubtype(a0)		; is this the ring to Ruined Place?
-		bne.s	Obj4B_ChkLZ2			; if not, branch
+		cmpi.b	#GRing_Ruined,obSubtype(a0)	; is this the ring to Ruined Place?
+		bne.s	Obj4B_ChkMZ2			; if not, branch
 		move.w	#$200,($FFFFFE10).w		; set level to MZ1
 		bsr	MakeChapterScreen
+		bra.w	Obj4B_PlayLevel
+
+Obj4B_ChkMZ2:
+		cmpi.b	#GRing_Ruined2,obSubtype(a0)	; is this the ring to Ruined Place part 2?
+		bne.s	Obj4B_ChkLZ2			; if not, branch
+		move.w	#$200,($FFFFFE10).w		; set level to MZ1
+		move.b	#1,($FFFFFE30).w 		; lamppost number
+		move.b	($FFFFFE30).w,($FFFFFE31).w
+		move.w	#$1120,($FFFFFE32).w		; x-position
+		move.w	#$350,($FFFFFE34).w		; y-position
 		bra.w	Obj4B_PlayLevel
 
 Obj4B_ChkLZ2:
@@ -16387,7 +16404,7 @@ Obj4B_ChkLZ2:
 		bra.w	Obj4B_PlayLevel
 
 Obj4B_ChkSpecial2:
-		cmpi.b	#GRing_Unreal,obSubtype(a0)		; is this the ring to Unreal Place?
+		cmpi.b	#GRing_Unreal,obSubtype(a0)	; is this the ring to Unreal Place?
 		bne.s	Obj4B_ChkSLZ2			; if not, branch
 		move.w	#$401,($FFFFFE10).w		; set level to Special Stage 2
 		clr.b	($FFFFFF5F).w			; clear blackout blackout special stage flag
@@ -16408,14 +16425,14 @@ Obj4B_ChkSLZ3:
 		bra.s	Obj4B_PlayLevel
 
 Obj4B_ChkFZ:
-		cmpi.b	#GRing_Finalor,obSubtype(a0)		; is this the ring to Finalor Place?
+		cmpi.b	#GRing_Finalor,obSubtype(a0)	; is this the ring to Finalor Place?
 		bne.s	Obj4B_ChkEnding			; if not, branch
 		move.w	#$502,($FFFFFE10).w		; set level to FZ
 		bsr	MakeChapterScreen
 		bra.s	Obj4B_PlayLevel
 
 Obj4B_ChkEnding:
-		cmpi.b	#GRing_Ending,obSubtype(a0)		; is this the ring to the ending sequence?
+		cmpi.b	#GRing_Ending,obSubtype(a0)	; is this the ring to the ending sequence?
 		bne.s	Obj4B_ChkOptions		; if not, branch
 		move.b	#$20,($FFFFF600).w		; load info screen
 		move.b	#8,($FFFFFF9E).w		; set number for text to 8
@@ -16423,26 +16440,26 @@ Obj4B_ChkEnding:
 		jmp	PlaySound
 
 Obj4B_ChkOptions:
-		cmpi.b	#GRing_Options,obSubtype(a0)		; is this the ring to the options menu?
+		cmpi.b	#GRing_Options,obSubtype(a0)	; is this the ring to the options menu?
 		bne.s	Obj4B_ChkTutorial		; if not, branch
 		move.b	#$24,($FFFFF600).w		; load options menu
 		rts
 
 Obj4B_ChkTutorial:
-		cmpi.b	#GRing_Tutorial,obSubtype(a0)		; is this the ring to the tutorial?
+		cmpi.b	#GRing_Tutorial,obSubtype(a0)	; is this the ring to the tutorial?
 		bne.s	Obj4B_ChkBlackout		; if not, branch
 		move.w	#$501,($FFFFFE10).w		; set level to SBZ2
 		bra.w	Obj4B_PlayLevel
 
 Obj4B_ChkBlackout:
-		cmpi.b	#GRing_Blackout,obSubtype(a0)		; is this the blackout challenge ring?
+		cmpi.b	#GRing_Blackout,obSubtype(a0)	; is this the blackout challenge ring?
 		bne.s	Obj4B_Fallback			; if not, branch
 		move.w	#$401,($FFFFFE10).w		; set level to Special Stage 2 Easter
 		move.b	#1,($FFFFFF5F).w		; set blackout blackout special stage flag
 		move.b	#$10,($FFFFF600).w		; set game mode to special stage (needs to be done manually since no chapter screen)
 		rts
 
-Obj4B_Fallback
+Obj4B_Fallback:
 		move.w	#$400,($FFFFFE10).w		; set level to Uberhub (as fallback; this should never happen)
 ; ---------------------------------------------------------------------------
 

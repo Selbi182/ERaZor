@@ -30131,31 +30131,32 @@ Obj02_Index:	dc.w Obj02_Setup-Obj02_Index	; Set up the object (art etc.)	[$0]
 
 Obj02_Setup:
 		addq.b	#2,obRoutine(a0)		; set to "Obj02_Display"
-		move.l	#Map_Obj02,obMap(a0)	; load mappings
+		move.l	#Map_Obj02,obMap(a0)		; load mappings
 		move.b	#0,obPriority(a0)		; set priority
-		move.b	#0,obRender(a0)		; set render flag
+		move.b	#0,obRender(a0)			; set render flag
 		move.w	#$6520,obGfx(a0)		; set art, use fourth palette line
-		cmpi.b	#$18,($FFFFF600).w	; is screen mode ending sequence?
-		bne.s	Obj02_NotEnding		; if not, branch
+		cmpi.b	#$18,($FFFFF600).w		; is screen mode ending sequence?
+		bne.s	Obj02_NotEnding			; if not, branch
 		move.w	#$0524,obGfx(a0)		; set art, use first palette line
 		move.l	#Map_Obj02_End,obMap(a0)	; load mappings
-		move.w	#$140,obX(a0)		; set X-position
+		move.w	#$140,obX(a0)			; set X-position
 		move.w	#$20A,obScreenY(a0)		; set Y-position
 		addq.b	#2,obRoutine(a0)		; set to "Obj02_Display"
-		jmp	DisplaySprite		; jump to DisplaySprite
+		bra.s	Obj02_Display
 
 Obj02_NotEnding:
-		cmpi.b	#$24,($FFFFF600).w	; is screen mode options menu?
-		bne.s	Obj02_NotOptions	; if not, branch
+		cmpi.b	#$24,($FFFFF600).w		; is screen mode options menu?
+		bne.s	Obj02_NotOptions		; if not, branch
 		move.w	#$2520,obGfx(a0)		; set art, use second palette line
-		bra.s	Obj02_Display		; use XY positions set while loading object
+		bra.s	Obj02_Display			; use XY positions set while loading object
 
 Obj02_NotOptions:
-		move.w	#$120,obX(a0)		; set X-position
+		move.w	#$120,obX(a0)			; set X-position
 		move.w	#$117,obScreenY(a0)		; set Y-position
 
 Obj02_Display:
-		jmp	DisplaySprite		; jump to DisplaySprite
+		bset	#7,obGfx(a0)			; make object high priority
+		jmp	DisplaySprite			; jump to DisplaySprite
 ; ===========================================================================
 
 Obj02_DisplayE:

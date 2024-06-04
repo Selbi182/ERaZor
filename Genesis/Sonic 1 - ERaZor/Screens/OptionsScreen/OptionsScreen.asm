@@ -1,7 +1,7 @@
 ; ---------------------------------------------------------------------------
 ; Options screen
 ; ---------------------------------------------------------------------------
-Options_Blank = $F0
+Options_Blank = 30+11
 ; ---------------------------------------------------------------------------
 
 OptionsScreen:				; XREF: GameModeArray
@@ -18,6 +18,7 @@ OptionsScreen:				; XREF: GameModeArray
 		move.w	#$9001,(a6)
 		move.w	#$9200,(a6)
 		move.w	#$8B07,(a6)
+		move.w	#$8C81|8,(a6) ; enable shadow mode
 		move.w	#$8720,(a6)
 		clr.b	($FFFFF64E).w
 		jsr	ClearScreen
@@ -46,9 +47,12 @@ OptionsScreen:				; XREF: GameModeArray
 
 		jsr	Pal_FadeFrom
 
-		move.b	#$02,($FFFFD100).w	; load ERaZor banner object
-		move.w	#$120,($FFFFD108).w	; set X-position
-		move.w	#$84,($FFFFD10A).w	; set Y-position
+		lea	($FFFFD100).w,a0
+		move.b	#$02,(a0)	; load ERaZor banner object
+		move.w	#$120,obX(a0)	; set X-position
+		move.w	#$84,obScreenY(a0)	; set Y-position
+		bset	#7,obGfx(a0)		; otherwise make object high plane
+		
 		jsr	ObjectsLoad
 		jsr	BuildSprites
 
@@ -104,33 +108,19 @@ Options_ContinueSetup:
 		display_enable
 		jsr	Pal_FadeTo
 
-	;	lea	($C00000).l,a6
-	;	move.l	#$60000003,($C00004).l
-	;	move.w	#$3FF,d1
-;@clearvram:	move.l	d0,(a6)
-	;	dbf	d1,@clearvram	; fill VRAM with 0
-
-
-
 		; background mappings
 		lea	($C00000).l,a6		; load VDP data port address to a6
-	;	move.l	#$60000003,4(a6)	; set VDP to VRAM and start at E000 (location of Plane B nametable)
-		vram	$C000,4(a6)	; set VDP to VRAM and start at E000 (location of Plane B nametable)
-		moveq	#3,d6				; repeats
-
+		vram	$C000,4(a6)		; set VDP to VRAM and start at E000 (location of Plane B nametable)
+		moveq	#3,d6			; repeats
 @repeat:	moveq	#1,d5
-		moveq	#(256/8)-1,d1			; write 40 columns
-		moveq	#(256/8)/2-1,d2			; write 14 lines (the "SELBI" stuff, basically)
-	
+		moveq	#(256/8)-1,d1		; write columns
+		moveq	#(256/8)/2-1,d2		; write lines
 @row:		move.w	d1,d3			; reload number of columns
-
 @column:	move.w	d5,(a6)			; dump map to VDP map slot
 		addi.w	#1,d5			; go to next tile
 		dbf	d3,@column		; repeat til columns have dumped
 		dbf	d2,@row			; repeat til all rows have dumped	
 		dbf	d6,@repeat
-		; bg maps end
-		
 
 		bra.w	OptionsScreen_MainLoop
 
@@ -165,9 +155,10 @@ Options_PalCycle:
 		bra.s	@bgpalcycle
 @0:
 		move.w	d0,d2
-	;	lsl.w	#4,d2
-	;	andi.w	#$400,d2
-	;	or.w	d2,d0
+		lsl.w	#4,d2
+		andi.w	#$E00,d2
+		or.w	d2,d0
+		andi.w	#$0FFF,d0
 		move.w	d0,(a2)+
 		dbf	d1,@bgpalcycle
 		
@@ -204,16 +195,19 @@ Options_PalCycle:
 		movem.l	d0/d1,-(sp)
 		move.w	d4,d0
 		jsr	CalcSine
+		
+		btst	#0,d3
+		beq.s	@2
+		neg.w	d0
+@2:
 		move.w	d0,d4
+		
 		movem.l	(sp)+,d0/d1
 		add.w	d4,d0
-	;	add.w	d3,d0
 		swap	d0
 		or.l	d0,d2
 		move.l	d2,(a1)+
 		dbf	d3,@scroll ; fill scroll data with 0
-
-
 
 		; V-Scroll
 		lea	($C00000).l,a0			; init VDP data port in a0
@@ -224,13 +218,6 @@ Options_PalCycle:
 		swap	d1
 		move.l	d1,(a0)				; dump art to VSRAM
 		dbf	d0,@vScroll_loop		; repeat until all lines are done
-
-
-
-
-
-
-
 
 Options_PalCycle_ERaZor:
 		; ERaZor banner palette cycle
@@ -261,28 +248,6 @@ Options_BGCycleColors:
 		dc.w	$080
 		dc.w	$040
 
-		dc.w	  -1
-		even
-
-	
-		dc.w	$020
-		dc.w	$020
-		dc.w	$020
-		dc.w	$040
-		dc.w	$080
-		dc.w	$0A0
-		dc.w	$0C0
-		dc.w	$0C0
-		
-		dc.w	$0C0
-		dc.w	$0C0
-		dc.w	$0A0
-		dc.w	$080
-		dc.w	$040
-		dc.w	$020
-		dc.w	$020
-		dc.w	$020
-		
 		dc.w	  -1
 		even
 
@@ -336,6 +301,7 @@ Options_HandleGameplayStyle:
 		beq.w	Options_Return		; if not, branch
 	 	andi.b	#$FC,d1			; is left, right, A, B, C, or Start pressed?
 		move.b	#$30,($FFFFF600).w	; set to GameplayStyleScreen
+		move.w	#$8C81|0,($C00004).l	; disable shadow mode		
 		rts
 @quicktoggle:
 		bchg	#5,($FFFFFF92).w	; toggle gameplay style
@@ -409,7 +375,6 @@ Options_HandleDeleteSaveGame:
 		andi.b	#$80,d1			; is Start pressed? (this option only works on start because of how delicate it is)
 		beq.w	Options_Return		; if not, return
 		
-		
 		move.w	#90,($FFFFFF82).w	; set fade-out sequence time to 90 frames
 @delete_fadeoutloop:
 		subq.w	#1,($FFFFFF82).w	; subtract 1 from remaining time
@@ -433,7 +398,6 @@ Options_HandleDeleteSaveGame:
 		jsr	DelayProgram		; ''
 		bra.s	@delete_fadeoutloop	; loop
 
-
 @delete_fadeoutend:
 		move.b	#1,($A130F1).l		; enable SRAM
 		clr.b	($200000+SRAM_Exists).l	; unset the magic number (actual SRAM deletion happens during restart)
@@ -452,7 +416,7 @@ Options_HandleSoundTest:
 		bne.w	Options_HandleExit
 
 		move.b	($FFFFF605).w,d1	; get button presses
-		andi.b	#$FC,d1			; is left, right, A, B, C, or Start pressed?
+		andi.b	#$F0,d1			; is A, B, C, or Start pressed?
 		beq.w	Options_Return		; if not, branch
 		
 		move.b	($FFFFF605).w,d1	; get button presses
@@ -517,6 +481,7 @@ Options_HandleExit:
 
 		move.w	#$400,($FFFFFE10).w
 		move.b	#$C,($FFFFF600).w	; set screen mode to level ($C)
+		move.w	#$8C81|0,($C00004).l	; disable shadow mode
 		rts
 ; ---------------------------------------------------------------------------
 
@@ -590,43 +555,52 @@ Options_NoMove:
 
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 
-Options_VRAM = $62900003
+Options_VRAM = $628E0003
 
 OptionsTextLoad:				; XREF: TitleScreen
 		bsr	GetOptionsText
-		lea	($FFFFCA00).w,a1		
+
+		lea	($FFFFCA00).w,a1	; get preloaded text buffer	
 		lea	($C00000).l,a6
 		move.l	#Options_VRAM,d4	; screen position (text)
+		
+		; prefill
+		move.w	#$E570+Options_Blank,d0	; VRAM setting
+		moveq	#$17+2,d2		; number of characters per line
+		move.l	d4,4(a6)
+@0:		
+		move.w	d0,(a6)
+		dbf	d2,@0
+		addi.l	#$800000,d4
+
+		; write text to buffer
 		move.w	#$E570,d3	; VRAM setting
 		moveq	#$14,d1		; number of lines of text
-
-loc2_34FE:				; XREF: OptionsTextLoad
+loc2_34FE:	
 		move.l	d4,4(a6)
-		bsr	Options_ChgLine
+		move.w	#$E570+Options_Blank,(a6)
+		bsr	Options_WriteLine
+		move.w	#$E570+Options_Blank,(a6)
 		addi.l	#$800000,d4
 		dbf	d1,loc2_34FE
+
+		; make currently selected line red
+		move.l	#Options_VRAM,d4
+		addi.l	#$800000,d4
 		moveq	#0,d0
 		move.w	($FFFFFF82).w,d0
-		move.w	d0,d1
-		move.l	#Options_VRAM,d4
 		lsl.w	#7,d0
 		swap	d0
 		add.l	d0,d4
-		lea	($FFFFCA00).w,a1
-		lsl.w	#3,d1
-		move.w	d1,d0
-		add.w	d1,d1
-		add.w	d0,d1
-		adda.w	d1,a1
-		move.w	#$C570,d3
 		move.l	d4,4(a6)
-		
-		lea	($FFFFCA00).w,a1	; set location
+
+		lea	($FFFFCA00-1).w,a1	; set location
 		move.w	($FFFFFF82).w,d5	; get current selection
 		mulu.w	#24,d5			; multiply it by 24 (number of characters per line)
-		adda.w	d5,a1			; add result to pointer
-		
-		bsr	Options_ChgLine
+		adda.w	d5,a1			; add result to pointer	
+		move.w	#$C570,d3		; red palette line
+		moveq	#$18,d2
+		bsr	Options_WriteLine2	; write selected line
 loc2_3550:
 		rts	
 ; End of function OptionsTextLoad
@@ -634,24 +608,24 @@ loc2_3550:
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 
 
-Options_ChgLine:				; XREF: OptionsTextLoad
+Options_WriteLine:				; XREF: OptionsTextLoad
 		moveq	#$17,d2		; number of characters per line
 
-loc2_3588:
+Options_WriteLine2:
 		moveq	#0,d0
 		move.b	(a1)+,d0
 		bpl.s	loc2_3598
 		move.w	#0,(a6)
-		dbf	d2,loc2_3588
+		dbf	d2,Options_WriteLine2
 		rts	
 ; ===========================================================================
 
-loc2_3598:				; XREF: Options_ChgLine
+loc2_3598:				; XREF: Options_WriteLine
 		add.w	d3,d0
 		move.w	d0,(a6)
-		dbf	d2,loc2_3588
+		dbf	d2,Options_WriteLine2
 		rts	
-; End of function Options_ChgLine
+; End of function Options_WriteLine
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -934,7 +908,7 @@ GOTCO_Return:
 ; ---------------------------------------------------------------------------
 
 OpText_Header1:
-		dc.b	'------------------------', $FF
+		dc.b	'<---------------------->', $FF
 		even
 
 OpText_Header2:

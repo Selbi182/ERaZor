@@ -12,73 +12,120 @@
 ;				Spanner
 ; Sound Driver:			EduardoKnuckles
 ; Main Beta Testing:		SonicVaan
-; Additional Beta Testing:	Peanut Noceda
+; Beta/Real Hardware Testing:	SonicFan1
+; Additional Beta Testing:	ajcox
+;				Peanut Noceda
 ; Real Hardware Testing:	redhotsonic
 ; Special Thanks to:		MainMemory
 ;				Jorge
 ; ------------------------------------------------------
-
-; Sega Screen		($00)
-; Title	Screen		($04)
-; Demo Mode		($08)
-; Normal Level		($0C)
-; Special Stage		($10)
-; Continue Screen	($14)
-; Ending Sequence	($18)
-; Old Credits		($1C)
-; Info Screen		($20)
-; Options Screen	($24)
-; Chapters Screen	($28)
-; New Credits		($2C)
-; ------------------------------------------------------
 ; =======================================================
 
-; =====================
-;Align macro for ASM68k
-; DON'T TOUCH IT!!!
-align:		macro
-		cnop 0,\1
-		endm
-; =====================
+; ------------------------------------------------------
+; Assembly Options
+; ------------------------------------------------------
+QuickLevelSelect = 0
+QuickLevelSelect_ID = $200
 
-__DEBUG__: equ 1
+DebugModeDefault = 1
+DieInDebug = 0
+
+DoorsAlwaysOpen = 1
+
+; ------------------------------------------------------
+; Macros
+; ------------------------------------------------------
+; align macro for ASM68k
+align	macro
+	cnop 0,\1
+	endm
+
+; Enable/disable display
+display_enable	macro
+	move.w	($FFFFF60C).w,d0	; enable screen output
+	ori.b	#$40,d0
+	move.w	d0,($C00004).l
+	endm
+display_disable	macro
+	move.w	($FFFFF60C).w,d0	; disable screen output
+	andi.b	#$BF,d0
+	move.w	d0,($C00004).l
+	endm
+
+; Enable/disable interrupts
+ints_enable	macro
+	move	#$2300,sr
+	endm
+ints_disable	macro
+	move	#$2700,sr
+	endm
+
+; Set VDP to VRAM write
+vram	macro	offset,operand
+	if (narg=1)
+		move.l	#($40000000+(((\offset)&$3FFF)<<16)+(((\offset)&$C000)>>14)),($C00004).l
+	else
+		move.l	#($40000000+(((\offset)&$3FFF)<<16)+(((\offset)&$C000)>>14)),\operand
+	endc
+	endm
+	
+; VRAM write access constant
+DCvram	macro	offset
+	dc.l	($40000000+(((\offset)&$3FFF)<<16)+(((\offset)&$C000)>>14))
+	endm
+
+; ------------------------------------------------------
+; Object variables
+; ------------------------------------------------------
+obRender:	equ 1	; bitfield for x/y flip, display mode
+obGfx:		equ 2	; palette line & VRAM setting (2 bytes)
+obMap:		equ 4	; mappings address (4 bytes)
+obX:		equ 8	; x-axis position (2-4 bytes)
+obScreenY:	equ $A	; y-axis position for screen-fixed items (2 bytes)
+obY:		equ $C	; y-axis position (2-4 bytes)
+obVelX:		equ $10	; x-axis velocity (2 bytes)
+obVelY:		equ $12	; y-axis velocity (2 bytes)
+obInertia:	equ $14	; potential speed (2 bytes)
+obHeight:	equ $16	; height/2
+obWidth:	equ $17	; width/2
+obPriority:	equ $18	; sprite stack priority -- 0 is front
+obActWid:	equ $19	; action width
+obFrame:	equ $1A	; current frame displayed
+obAniFrame:	equ $1B	; current frame in animation script
+obAnim:		equ $1C	; current animation
+obNextAni:	equ $1D	; next animation
+obTimeFrame:	equ $1E	; time to next frame
+obDelayAni:	equ $1F	; time to delay animation
+obColType:	equ $20	; collision response type
+obColProp:	equ $21	; collision extra property
+obStatus:	equ $22	; orientation or mode
+obRespawnNo:	equ $23	; respawn list index number
+obRoutine:	equ $24	; routine number
+ob2ndRout:	equ $25	; secondary routine number
+obAngle:	equ $26	; angle
+obSubtype:	equ $28	; object subtype
+obSolid:	equ ob2ndRout ; solid status flag
+
+
+
+BlackBars.Height:	equ		$FFFFF5F6				; w		Height of black bars in pixels
+BlackBars.FirstHCnt:	equ		$FFFFF5F8				; w		$8Axx VDP register value for the first HInt
+BlackBars.SecondHCnt:	equ		$FFFFF5FA				; w		$8Axx VDP register value for the second HInt
+HBlankHndl:		equ		$FFFFF5FC				; l/w	Jump code for HInt
+HBlankSubW:		equ		$FFFFF5FE				; w		Word offset for HInt routine 
 
 ; =======================================================
 ; ------------------------------------------------------
 ; Vladik's Debugger
 ; ------------------------------------------------------
+;__DEBUG__: equ 1
 		include	"Debugger/Debugger.asm"
 		even
 ; ------------------------------------------------------
 ; =======================================================
-		
-;--------------------------------------------------------
-; Assembly Options (NOTE: There are more spread around
-; the disassembly! Search for " = " (without the quotes)
-; to find them.)
-;--------------------------------------------------------
-;=================================================
-;Quick Level Select
-;Immediately start to a given level ID on startup.
-QuickLevelSelect = 0
-QuickLevelSelect_ID = $200
-;=================================================
-;Debug Mode enabled by default.
-;Don't allow debug mode, not even with Game Genie.
-; 0 - No
-; 1 - Yes
-DebugModeDefault = 1
-DontAllowDebug = 0
-DieInDebug = 0
-;=================================================
-;If 1, the doors in the SYZ are always open.
-; 0 - Closed, you need to play the levels first
-; 1 - Opened
-DoorsAlwaysOpen = 1
-;=================================================
 
-		include	"Misc.asm"
 
+; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Start of ROM - Sonic ERaZor
 ; ---------------------------------------------------------------------------
@@ -386,10 +433,242 @@ NullInt:
 		rte
 
 ; ===========================================================================
+; ---------------------------------------------------------------------------
+; H-Blanking routine
+; ---------------------------------------------------------------------------
 
-		include	"HBlank.asm"
+; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 
-		include	"BlackBars.asm"
+BlackBarHeight = 32
+BlackBarHeight_Cinematic = 56
+BlackBarGrow = 2
+BarKillHeight = $E0/2
+
+; PalToCRAM:
+HBlank:
+		cmpi.b	#1,($FFFFFE10).w	; are we in LZ?
+		beq.w	@hblank_original	; if yes, skip bars (they cause issues with the water thingy)
+		tst.b	(ScreenCropCurrent).w	; are cropped borders enabled?
+		bgt.s	@blackbars		; if yes, branch
+	
+@skipblackbars:
+		move.l	d0,-(sp)		; backup d0
+		display_enable			; otherwise, make sure display is enabled
+		move.l	(sp)+,d0		; restore d0
+		move.w	#$8A00|$DF,($FFFFF624).w ; set H-int timing to not occur this frame anymore
+		move.w	#$8720,($C00004).l	; reset background color
+		bra.w	@hblank_original	; go to original H-Blank code
+; ---------------------------------------------------------------------------
+		
+@blackbars:
+		movem.l	d0-d2,-(sp)		; backup d0 and d1
+		
+		move.b	($FFFFF64F).w,d1	; get flag counter
+		move.b	(ScreenCropCurrent).w,d2 ; get current bar height
+		cmpi.b	#BarKillHeight,d2	; are we at the bar kill height?
+		blo.s	@makebars		; if not, branch. otherwise, set the display to not render anymore to avoid flickers
+		move.w	#$8701,($C00004).l	; set background color to black
+		display_disable			; disable display
+		bra.w	@hblank_continue
+		
+@makebars:
+		btst	#7,d1			; is first flag set?
+		beq.s	@checksecondflag	; if not, branch
+		bclr	#7,d1			; clear first flag
+		
+		moveq	#0,d0			; clear d0
+		move.b	#224-1,d0		; set maximum scan line count (minus 1)
+		sub.b	d2,d0			; subtract current height once...
+		sub.b	d2,d0 			; ...and twice
+		
+		ori.w	#$8A00,d0		; set as H-int counter instruction
+		move.w	d0,($C00004).l		; send to VDP
+
+		cmpi.b	#$C0/2,d2		; if bars are big enough, do V-Blank now...
+		bhs.w	@hblank_continue	; ...to avoid flickers
+		bra.w	@hblank_earlyexit	; exit without running any additional V-blank stuff
+
+@checksecondflag:
+		btst	#6,d1			; is second flag set?
+		beq.s	@checkthirdflag		; if not, branch
+		bclr	#6,d1			; clear second flag
+		move.w	#$8A00|$DF,($C00004).l	; set H-int timing to not occur this frame anymore
+		move.w	#$8720,($C00004).l	; reset background color
+		display_enable			; enable display
+		bra.w	@hblank_continue	; exit AND run any additional V-blank stuff
+
+@checkthirdflag:
+		btst	#5,d1			; is third flag set?
+		beq.s	@hblank_continue	; if not, we're entirely done with the black bar stuff. exit
+		bclr	#5,d1			; clear third flag
+		move.w	#$8701,($C00004).l	; set background color to black
+		display_disable			; disable display
+		; exit without running any additional V-blank stuff
+
+@hblank_earlyexit:
+		move.b	d1,($FFFFF64F).w	; write updated flags
+		movem.l	(sp)+,d0-d2		; restore d0
+		rte				; exit H-int
+
+@hblank_continue:
+		move.b	d1,($FFFFF64F).w	; write updated flags
+		movem.l	(sp)+,d0-d2		; restore d0 and d1
+
+; LZ water effects
+; Source: https://sonicresearch.org/community/index.php?threads/removing-the-water-surface-object-in-sonic-1.5975/
+
+@hblank_original:
+		tst.w	($FFFFF644).w
+		beq.w	locret_119C
+		clr.w	($FFFFF644).w
+		movem.l	d0-d1/a0-a2,-(sp)
+
+		cmpi.b	#1,($FFFFFE10).w	; are we in LZ?
+		bne.w	@skipTransfer2		; if not, branch
+		
+	;	bra.w	@skipTransfer2		; disabled for now cause it sucks
+
+	;	move.l	d0,-(sp)		; backup d0
+	;	display_enable			; otherwise, make sure display is enabled
+	;	move.l	(sp)+,d0		; restore d0
+		lea	($C00000).l,a1
+	;	move.w	#$8A00|$DF,($FFFFF624).w ; set H-int timing to not occur this frame anymore
+	;	move.w	#$8A00|$DF,4(a1)		; Reset HInt timing (TODO: this needs to dynamically adjusted for the water surface in LZ in combination with the black bars)
+		move.w	#$100,($A11100).l	; stop the Z80
+@z80loop:	btst	#0,($A11100).l
+		bne.s	@z80loop		; loop until it says it's stopped
+
+		movea.l	($FFFFF610).w,a2
+		moveq	#$F,d0			; adjust to push artifacts off screen
+@loop:		dbf	d0,@loop		; waste a few cycles here
+
+		move.w	(a2)+,d1
+		move.b	($FFFFFE07).w,d0
+		subi.b	#200,d0			; is H-int occuring below line 200?
+		bcs.s	@transferColors		; if it is, branch
+		sub.b	d0,d1
+		bcs.s	@skipTransfer
+		
+@transferColors:
+		move.w	(a2)+,d0
+		lea	($FFFFFA80).w,a0
+		andi.w	#-2,d0			; WEIRD hotfix because otherwise we get an odd addressing error
+		adda.w	d0,a0
+		addi.w	#$C000,d0
+		swap	d0
+		move.l	d0,4(a1)		; write to CRAM at appropriate address
+		move.l	(a0)+,(a1)		; transfer two colors
+		move.w	(a0)+,(a1)		; transfer the third color
+		nop
+		nop
+		moveq	#$24,d0
+
+@wasteSomeCycles:
+		dbf    d0,@wasteSomeCycles
+		dbf    d1,@transferColors	; repeat for number of colors
+
+@skipTransfer:
+		move.w	#0,($A11100).l		; start the Z80
+@skipTransfer2:
+		movem.l	(sp)+,d0-d1/a0-a2
+
+locret_119C:
+		rte	
+; End of function HBlank
+
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Vladik's cool and awesome black bars that replaced my garbage ones B)
+; ---------------------------------------------------------------------------
+
+HBlank_Bars:
+		move.l	#$81748720, VDP_Ctrl				; enable display, restore backdrop color
+		move.w	BlackBars.SecondHCnt, VDP_Ctrl			; send $8Axx to VDP to set HInt counter for the second invocation
+		move.w	#@ToBottom, HBlankSubW				; handle bottom next time
+		rte
+@ToBottom:
+		move.w	#HBlank_Bars_Bottom, HBlankSubW
+		rte
+
+; ---------------------------------------------------------------------------
+HBlank_Bars_PastQuarter:
+		move.w	BlackBars.SecondHCnt, VDP_Ctrl			; send $8Axx to VDP to set HInt counter for the second invocation
+		move.w	#@ToBottom, HBlankSubW				; handle bottom next time
+		rte
+
+@ToBottom:
+		move.l	#$81748720, VDP_Ctrl				; enable display, restore backdrop color
+		move.w	#HBlank_Bars_Bottom, HBlankSubW
+		rte
+
+; ---------------------------------------------------------------------------
+HBlank_Bars_Bottom:
+		move.l	#$81348701, VDP_Ctrl				; disable display + set backdrop color to black
+		move.w	#$8A00|$DF, VDP_Ctrl				; set H-int timing to not occur this frame anymore
+		move.w	#NullInt, HBlankSubW				; don't run any code during HInt
+		rte
+
+
+
+; ---------------------------------------------------------------------------
+BlackBars.Init:
+		move.w	#0, BlackBars.Height
+		move.l	#$8ADF8ADF, BlackBars.FirstHCnt ; + BlackBars.SecondHCnt
+		rts
+
+; ---------------------------------------------------------------------------
+BlackBars.TestAnimation:
+		addq.w	#1, BlackBars.Height
+		cmp.w	#224/2, BlackBars.Height
+		bne.s	@done
+		move.w	#0, BlackBars.Height
+@done:	rts
+
+; ---------------------------------------------------------------------------
+BlackBars.UpdateInVBlank:
+	 ;rts ; disabled for now while I still iron out other bugs
+		move.w	BlackBars.Height, d0		; is height 0?
+		beq.s	@disable_bars				; if yes, branch
+		cmp.w	#224/2-1, d0				; are we taking half the screen?
+		bhi.s	@make_black_screen			; if yes, branch
+		cmp.w	#224/4-1, d0				; are we quater the screen?
+		bhs.s	@make_bars_past_quarter		; if yes, branch
+
+		move.w	#HBlank_Bars, HBlankSubW
+		move.w	d0, d1
+		add.w	d1, d1
+		add.w	d0, d1
+		sub.w	#224-1, d1
+		neg.w	d1
+
+@make_bars_cont:
+		move.b	d0, BlackBars.FirstHCnt+1
+		move.b	d1, BlackBars.SecondHCnt+1
+		move.w	BlackBars.FirstHCnt, VDP_Ctrl
+		move.l	#$81348701, VDP_Ctrl		; disable display, set backdrop color to black
+		rts
+
+; ---------------------------------------------------------------------------
+@make_bars_past_quarter:	
+		move.w	#HBlank_Bars_PastQuarter, HBlankSubW
+		move.w	d0, d1
+		add.w	d1, d1
+		sub.w	#224-1, d1
+		neg.w	d1
+		lsr.w	#1, d0
+		bra.s	@make_bars_cont
+
+; ---------------------------------------------------------------------------
+@make_black_screen:
+		move.l	#$81348701, VDP_Ctrl		; disable display, set backdrop color to black
+
+@disable_bars:
+		move.w	#NullInt, HBlankSubW
+		rts
+; End of function HBlank_Bars
+; ---------------------------------------------------------------------------
+; ===========================================================================
+
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -407,10 +686,7 @@ MainGameLoop:
 ; ---------------------------------------------------------------------------
 ; Main game mode array (screen modes / game modes)
 ; ---------------------------------------------------------------------------
-
 GameModeArray:
-; ===========================================================================
-; ---------------------------------------------------------------------------
 		dc.l	SegaScreen		; Sega Screen		($00)
 		dc.l	TitleScreen		; Title	Screen		($04)
 		dc.l	Level			; Demo Mode		($08)
@@ -429,8 +705,7 @@ GameModeArray:
 
 ; ===========================================================================
 
-Art_Text:	incbin	Screens\OptionsScreen\Options_TextArt.bin	; text used in level select and debug mode
-		;incbin	artunc\menutext.bin
+Art_Text:	incbin	Screens\OptionsScreen\Options_TextArt.bin
 		even
 
 ; ===========================================================================
@@ -5400,7 +5675,12 @@ ColIndexLoad:				; XREF: Level
 ; Collision index pointers
 ; ---------------------------------------------------------------------------
 ColPointers:
-		include	"_inc\Collision index pointers.asm"
+	dc.l Col_GHZ
+	dc.l Col_LZ
+	dc.l Col_MZ
+	dc.l Col_SLZ
+	dc.l Col_SYZ
+	dc.l Col_SBZ
 
 ; ---------------------------------------------------------------------------
 ; Oscillating number subroutine
@@ -21307,7 +21587,42 @@ loc_D37C:
 ; Object pointers
 ; ---------------------------------------------------------------------------
 Obj_Index:
-		include	"_inc\Object pointers.asm"
+		dc.l Obj01, Obj02, Obj03, Obj04
+		dc.l Obj05, Obj06, Obj07, Obj08
+		dc.l Obj09, Obj0A, Obj0B, Obj0C
+		dc.l Obj0D, Obj0E, Obj0F, Obj10
+		dc.l Obj11, Obj12, Obj13, Obj14
+		dc.l Obj15, Obj16, Obj17, Obj18
+		dc.l Obj19, Obj1A, Obj1B, Obj1C
+		dc.l Obj1D, Obj1E, Obj1F, Obj20
+		dc.l Obj21, Obj22, Obj23, Obj24
+		dc.l Obj25, Obj26, Obj27, Obj28
+		dc.l Obj29, Obj2A, Obj2B, Obj2C
+		dc.l Obj2D, Obj2E, Obj2F, Obj30
+		dc.l Obj31, Obj32, Obj33, Obj34
+		dc.l Obj35, Obj36, Obj37, Obj38
+		dc.l Obj39, Obj3A, Obj3B, Obj3C
+		dc.l Obj3D, Obj3E, Obj3F, Obj40
+		dc.l Obj41, Obj42, Obj43, Obj44
+		dc.l Obj45, Obj46, Obj47, Obj48
+		dc.l Obj49, Obj4A, Obj4B, Obj4C
+		dc.l Obj4D, Obj4E, Obj4F, Obj50
+		dc.l Obj51, Obj52, Obj53, Obj54
+		dc.l Obj55, Obj56, Obj57, Obj58
+		dc.l Obj59, Obj5A, Obj5B, Obj5C
+		dc.l Obj5D, Obj5E, Obj5F, Obj60
+		dc.l Obj61, Obj62, Obj63, Obj64
+		dc.l Obj65, Obj66, Obj67, Obj68
+		dc.l Obj69, Obj6A, Obj6B, Obj6C
+		dc.l Obj6D, Obj6E, Obj6F, Obj70
+		dc.l Obj71, Obj72, Obj73, Obj74
+		dc.l Obj75, Obj76, Obj77, Obj78
+		dc.l Obj79, Obj7A, Obj7B, Obj7C
+		dc.l Obj7D, Obj7E, Obj7F, Obj80
+		dc.l Obj81, Obj82, Obj83, Obj84
+		dc.l Obj85, Obj86, Obj87, Obj88
+		dc.l Obj89, Obj8A, Obj8B, Obj8C
+		even
 
 ; ---------------------------------------------------------------------------
 ; Subroutine to	make an	object fall downwards, increasingly fast
@@ -30423,9 +30738,6 @@ Obj01:					; XREF: Obj_Index
 ; ===========================================================================
 
 Obj01_Normal:
-	if DontAllowDebug=1
-		bra.s	Obj01_NoDebug	; don't allow debug
-	endif
 		tst.w	($FFFFFFFA).w	; is debug cheat enabled?
 		beq.s	Obj01_NoDebug	; if not, branch
 		btst	#4,($FFFFF605).w ; is button B pressed?
@@ -44815,13 +45127,15 @@ SS_AniGlassData:dc.b $4B, $4C, $4D, $4E, $4B, $4C, $4D,	$4E, 0,	0
 ; Special stage	layout pointers
 ; ---------------------------------------------------------------------------
 SS_LayoutIndex:
-		include	"_inc\Special stage layout pointers.asm"
+	dc.l	SS_1
+	dc.l	SS_2
+	dc.l	SS_Blackout
+	even
 
 ; ---------------------------------------------------------------------------
 ; Special stage	start locations
 ; ---------------------------------------------------------------------------
 SS_StartLoc:	include	"misc\sloc_ss.asm"
-	;	incbin	misc\sloc_ss.bin
 		even
 
 ; ---------------------------------------------------------------------------
@@ -45071,9 +45385,6 @@ Obj09_Main:				; XREF: Obj09_Index
 ; ---------------------------------------------------------------------------
 
 Obj09_ChkDebug:				; XREF: Obj09_Index
-	if DontAllowDebug=1
-		bra.s	Obj09_NoDebug
-	endif
 		tst.w	($FFFFFFFA).w	; is debug mode	cheat enabled?
 		beq.s	Obj09_NoDebug	; if not, branch
 		btst	#4,($FFFFF605).w ; is button B pressed?
@@ -45307,9 +45618,6 @@ Obj09_Jump:				; XREF: Obj09_OnWall
 		beq.s	Obj09_NoJump		; if not, branch
 		tst.b	($FFFFFFBF).w
 		bne.s	Obj09_NoJump
-	if DontAllowDebug=1
-		bra.s	Obj09_Jump_NoDebug
-	endif
 		tst.w	($FFFFFFFA).w		; is debug mode on?
 		beq.s	Obj09_Jump_NoDebug	; if not, branch
 		move.b	($FFFFF603).w,d0	; get button press
@@ -47731,6 +48039,11 @@ Debug_Main:				; XREF: Debug_Index
 		moveq	#6,d0		; use 6th debug	item list
 		bra.s	Debug_UseList
 ; ===========================================================================
+DebugList:	; just a ring
+		dc.w	1
+		dc.l	Map_obj25+$25000000
+		dc.b	0, 0, $27, $B2
+; ===========================================================================
 
 Debug_Zone:
 		moveq	#0,d0
@@ -47738,8 +48051,6 @@ Debug_Zone:
 
 Debug_UseList:
 		lea	(DebugList).l,a2
-		add.w	d0,d0
-		adda.w	(a2,d0.w),a2
 		move.w	(a2)+,d6
 		cmp.b	($FFFFFE06).w,d6
 		bhi.s	loc_1CF9E
@@ -47759,8 +48070,6 @@ Debug_Skip:				; XREF: Debug_Index
 
 loc_1CFBE:
 		lea	(DebugList).l,a2
-		add.w	d0,d0
-		adda.w	(a2,d0.w),a2
 		move.w	(a2)+,d6
 		bsr	Debug_Control
 		jmp	DisplaySprite
@@ -47779,7 +48088,7 @@ Debug_Control:
 		bne.s	loc_1D000
 		move.b	#$C,($FFFFFE0A).w
 		move.b	#$F,($FFFFFE0B).w
-		bra.w	Debug_BackItem
+		bra.w	Debug_Exit
 ; ===========================================================================
 
 loc_1D000:
@@ -47837,58 +48146,6 @@ loc_1D066:
 		move.l	d2,obY(a0)	; set final Y position of debug object
 		move.l	d3,obX(a0)	; set final X position of debug object
 
-Debug_BackItem:
-		btst	#6,($FFFFF604).w ; is button A pressed?
-		bra.s	Debug_MakeItem	; if not, branch
-		btst	#5,($FFFFF605).w ; is button C pressed?
-		beq.s	Debug_NextItem	; if not, branch
-		cmpi.b	#$10,($FFFFF600).w ; is	game mode = $10	(special stage)?
-		beq.s	Debug_NextItem	; if yes, branch
-		subq.b	#1,($FFFFFE06).w ; go back 1 item
-		bcc.s	Debug_NoLoop
-		add.b	d6,($FFFFFE06).w
-		bra.s	Debug_NoLoop
-; ===========================================================================
-
-Debug_NextItem:
-		btst	#6,($FFFFF605).w ; is button A pressed?
-		bra.s	Debug_MakeItem	; if not, branch
-		cmpi.b	#$10,($FFFFF600).w ; is	game mode = $10	(special stage)?
-		beq.s	Debug_MakeItem	; if yes, branch
-		addq.b	#1,($FFFFFE06).w ; go forwards 1 item
-		cmp.b	($FFFFFE06).w,d6
-		bhi.s	Debug_NoLoop
-		move.b	#0,($FFFFFE06).w ; loop	back to	first item
-
-Debug_NoLoop:
-		bra.w	Debug_ShowItem
-; ===========================================================================
-
-Debug_MakeItem:
-		btst	#5,($FFFFF605).w ; is button C pressed?
-		bra.s	Debug_Exit	; if not, branch
-		cmpi.b	#$10,($FFFFF600).w ; is	game mode = $10	(special stage)?
-		beq.s	Debug_Exit	; if yes, branch
-		jsr	SingleObjLoad
-		bne.s	Debug_Exit
-		move.w	obX(a0),obX(a1)
-		move.w	obY(a0),obY(a1)
-		move.b	obMap(a0),0(a1)	; create object
-		move.b	obRender(a0),obRender(a1)
-		move.b	obRender(a0),obStatus(a1)
-		andi.b	#$7F,obStatus(a1)
-		moveq	#0,d0
-		move.b	($FFFFFE06).w,d0
-		lsl.w	#3,d0
-		move.b	obMap(a2,d0.w),obSubtype(a1)
-		cmpi.b	#$26,(a1)
-		bne.s	Debug_NotMonitor
-		move.b	#9,obSubtype(a1)
-
-Debug_NotMonitor:
-		rts	
-; ===========================================================================
-
 Debug_Exit:
 		btst	#4,($FFFFF605).w ; is button B pressed?
 		beq.s	Debug_DoNothing	; if not, branch
@@ -47913,8 +48170,6 @@ Debug_Exit:
 		bra.s	Debug_DoNothing
 
 Debug_Exit_SS:
-	;	clr.w	($FFFFF780).w
-	;	move.w	#$40,($FFFFF782).w ; set new level rotation speed
 		move.l	#Map_Sonic,($FFFFD004).w
 		move.w	#$780,($FFFFD002).w
 		move.b	#2,($FFFFD01C).w
@@ -47941,58 +48196,44 @@ Debug_ShowItem:				; XREF: Debug_Main
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Debug	list pointers
-; ---------------------------------------------------------------------------
-DebugList:
-		include	"_inc\Debug list pointers.asm"
-
-; ---------------------------------------------------------------------------
-; Debug	list - Green Hill
-; ---------------------------------------------------------------------------
-Debug_GHZ:
-		include	"_inc\Debug list - GHZ.asm"
-
-; ---------------------------------------------------------------------------
-; Debug	list - Labyrinth
-; ---------------------------------------------------------------------------
-Debug_LZ:
-		include	"_inc\Debug list - LZ.asm"
-
-; ---------------------------------------------------------------------------
-; Debug	list - Marble
-; ---------------------------------------------------------------------------
-Debug_MZ:
-		include	"_inc\Debug list - MZ.asm"
-
-; ---------------------------------------------------------------------------
-; Debug	list - Star Light
-; ---------------------------------------------------------------------------
-Debug_SLZ:
-		include	"_inc\Debug list - SLZ.asm"
-
-; ---------------------------------------------------------------------------
-; Debug	list - Spring Yard
-; ---------------------------------------------------------------------------
-Debug_SYZ:
-		include	"_inc\Debug list - SYZ.asm"
-
-; ---------------------------------------------------------------------------
-; Debug	list - Scrap Brain
-; ---------------------------------------------------------------------------
-Debug_SBZ:
-		include	"_inc\Debug list - SBZ.asm"
-
-; ---------------------------------------------------------------------------
-; Debug	list - ending sequence / special stage
-; ---------------------------------------------------------------------------
-Debug_Ending:
-		include	"_inc\Debug list - Ending and SS.asm"
-
-; ---------------------------------------------------------------------------
 ; Main level load blocks
+;
+; ===FORMAT===
+; level	patterns + (1st	PLC num	* 10^6)
+; 16x16	mappings + (2nd	PLC num	* 10^6)
+; 256x256 mappings
+; blank, music (unused), pal index (unused), pal index
 ; ---------------------------------------------------------------------------
 MainLoadBlocks:
-		include	"_inc\Main level load blocks.asm"
+	dc.l Nem_GHZ+$4000000
+	dc.l Blk16_GHZ+$5000000
+	dc.l Blk256_GHZ
+	dc.b 0,	$81, 4,	4
+	dc.l Nem_LZ+$6000000
+	dc.l Blk16_LZ+$7000000
+	dc.l Blk256_LZ
+	dc.b 0,	$82, 5,	5
+	dc.l Nem_MZ+$8000000
+	dc.l Blk16_MZ+$9000000
+	dc.l Blk256_MZ
+	dc.b 0,	$83, 6,	6
+	dc.l Nem_SLZ+$A000000
+	dc.l Blk16_SLZ+$B000000
+	dc.l Blk256_SLZ
+	dc.b 0,	$84, 7,	7
+	dc.l Nem_SYZ+$C000000
+	dc.l Blk16_SYZ+$D000000
+	dc.l Blk256_SYZ
+	dc.b 0,	$85, 8,	8
+	dc.l Nem_SBZ+$E000000
+	dc.l Blk16_SBZ+$F000000
+	dc.l Blk256_SBZ
+	dc.b 0,	$86, 9,	9
+	dc.l Nem_title	; main load block for ending
+	dc.l Blk16_GHZ
+	dc.l Blk256_END
+	dc.b 0,	$86, $13, $13
+	even
 
 ; ---------------------------------------------------------------------------
 ; Pattern load cues

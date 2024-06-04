@@ -4089,8 +4089,8 @@ StartGame:
 @loadtextart:	move.w	(a5)+,(a6)
 		dbf	d1,@loadtextart
 
-		bsr.w	LevSelTextLoad
 		clr.w	($FFFFFF82).w
+		bsr.w	LevSelTextLoad
 		bra.w	LevelSelect
 ; ===========================================================================
 
@@ -30289,7 +30289,7 @@ Map_Obj03:
 ; ===========================================================================
 
 
-; For Obj04 see Screens\ChapterScreens\Chapters.asm
+; For Obj04 see Screens\ChapterScreens\ChapterScreen.asm
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -51509,10 +51509,10 @@ SegaPCM:	incbin	sound\segapcm.wav
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 		include "Screens/SelbiSplash/SelbiSplash.asm"
-		include "Screens/ChapterScreens/Chapters.asm"
+		include "Screens/ChapterScreens/ChapterScreen.asm"
 		include "Screens/OptionsScreen/OptionsScreen.asm"
 		include "Screens/StoryScreen/StoryScreen.asm"
-		include	"Screens/CreditsScreen/Credits.asm"
+		include	"Screens/CreditsScreen/CreditsScreen.asm"
 		include	"Screens/TutorialBox/TutorialBox.asm"
 		include	"Screens/GameplayStyleScreen/GameplayStyleScreen.asm"
 ; ---------------------------------------------------------------------------

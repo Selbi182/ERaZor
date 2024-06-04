@@ -333,7 +333,7 @@ Pal_Credits:
 ; Art Data
 ; ---------------------------------------------------------------------------
 
-Art_Credits:	incbin	"Screens/CreditsScreen/Art.bin"
+Art_Credits:	incbin	"Screens/CreditsScreen/Credits_FontArt.bin"
 		even
 
 ; ---------------------------------------------------------------------------
@@ -342,7 +342,7 @@ Art_Credits:	incbin	"Screens/CreditsScreen/Art.bin"
 ; Map Data
 ; ---------------------------------------------------------------------------
 
-Map_Credits:	include	"Screens/CreditsScreen/Maps.asm"
+Map_Credits:	include	"Screens/CreditsScreen/Credits_Maps.asm"
 		even
 
 ; ---------------------------------------------------------------------------

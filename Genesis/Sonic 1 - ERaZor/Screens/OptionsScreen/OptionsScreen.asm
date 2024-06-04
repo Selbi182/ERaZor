@@ -1,6 +1,8 @@
 ; ---------------------------------------------------------------------------
 ; Options screen
 ; ---------------------------------------------------------------------------
+Options_Blank = $F0
+; ---------------------------------------------------------------------------
 
 OptionsScreen:				; XREF: GameModeArray
 		move.b	#$E4,d0
@@ -15,28 +17,30 @@ OptionsScreen:				; XREF: GameModeArray
 		move.w	#$8407,(a6)
 		move.w	#$9001,(a6)
 		move.w	#$9200,(a6)
-		move.w	#$8B03,(a6)
+		move.w	#$8B07,(a6)
 		move.w	#$8720,(a6)
 		clr.b	($FFFFF64E).w
 		jsr	ClearScreen
 		lea	($FFFFD000).w,a1
 		moveq	#0,d0
 		move.w	#$7FF,d1
-
-Options_ClrObjRam:
-		move.l	d0,(a1)+
-		dbf	d1,Options_ClrObjRam ; fill object RAM ($D000-$EFFF) with $0
+@clearobjram:	move.l	d0,(a1)+
+		dbf	d1,@clearobjram ; fill object RAM ($D000-$EFFF) with $0
 
 		lea	($C00000).l,a6
 		move.l	#$6E000002,4(a6)
 		lea	(Options_TextArt).l,a5
 		move.w	#$59F,d1		; Original: $28F
+@loadtextart:	move.w	(a5)+,(a6)
+		dbf	d1,@loadtextart ; load uncompressed text patterns
 
-Options_LoadText:
-		move.w	(a5)+,(a6)
-		dbf	d1,Options_LoadText ; load uncompressed text patterns
+		move.l	#$40200000,4(a6)
+		lea	(Options_BGArt).l,a5
+		move.w	#($400*8)-1,d1
+@loadbgart:	move.w	(a5)+,(a6)
+		dbf	d1,@loadbgart ; load uncompressed background art
 
-		move.l	#$64000002,($C00004).l
+		move.l	#$64000002,4(a6)
 		lea	(Nem_ERaZorNoBG).l,a0
 		jsr	NemDec
 
@@ -44,7 +48,7 @@ Options_LoadText:
 
 		move.b	#$02,($FFFFD100).w	; load ERaZor banner object
 		move.w	#$120,($FFFFD108).w	; set X-position
-		move.w	#$81,($FFFFD10A).w	; set Y-position
+		move.w	#$84,($FFFFD10A).w	; set Y-position
 		jsr	ObjectsLoad
 		jsr	BuildSprites
 
@@ -60,8 +64,7 @@ Options_LoadPal:
 		jsr	PalLoad1
 		moveq	#3,d0		; load Options screen pallet
 		jsr	PalLoad1
-		
-		
+
 		movem.l	d0-a2,-(sp)		; backup d0 to a2
 		lea	(Pal_ERaZorBanner).l,a1	; set ERaZor banner's palette pointer
 		lea	($FFFFFBA0).l,a2	; set palette location
@@ -75,12 +78,10 @@ Options_LoadPal:
 Options_ContinueSetup:		
 		moveq	#0,d0
 		lea	($FFFFCA00).w,a1	; set location for the text
-		move.b	#$F0,d0			; put over $F0s
+		move.b	#Options_Blank,d0	; load blank char
 		move.w	#503,d1			; do it for all 504 chars
-
-Options_MakeF0s:
-		move.b	d0,(a1)+		; put $FF into current spot
-		dbf	d1,Options_MakeF0s	; loop
+@fillblank:	move.b	d0,(a1)+		; put blank character into current spot
+		dbf	d1,@fillblank		; loop
 		clr.b	($FFFFFF95).w
 		clr.w	($FFFFFF96).w
 		clr.b	($FFFFFF98).w
@@ -90,48 +91,206 @@ Options_MakeF0s:
 		move.b	#$81,($FFFFFF84).w
 		
 		lea	($FFFFCC00).w,a1
+		move	#$2700,sr
 		moveq	#0,d0
 		move.w	#$DF,d1
-
-Options_ClrScroll:
+@clearscroll:
 		move.l	d0,(a1)+
-		dbf	d1,Options_ClrScroll ; fill scroll data with 0
-
+		dbf	d1,@clearscroll ; fill scroll data with 0
 		move.l	d0,($FFFFF616).w
-		move	#$2700,sr
-		lea	($C00000).l,a6
-		move.l	#$60000003,($C00004).l
-		move.w	#$3FF,d1
 
-Options_ClrVram:
-		move.l	d0,(a6)
-		dbf	d1,Options_ClrVram	; fill	VRAM with 0
 		move.w	#19,($FFFFFF82).w	; set default selected entry to exit
-
 		bsr	OptionsTextLoad		; load options text
 		display_enable
 		jsr	Pal_FadeTo
+
+	;	lea	($C00000).l,a6
+	;	move.l	#$60000003,($C00004).l
+	;	move.w	#$3FF,d1
+;@clearvram:	move.l	d0,(a6)
+	;	dbf	d1,@clearvram	; fill VRAM with 0
+
+
+
+		; background mappings
+		lea	($C00000).l,a6		; load VDP data port address to a6
+	;	move.l	#$60000003,4(a6)	; set VDP to VRAM and start at E000 (location of Plane B nametable)
+		vram	$C000,4(a6)	; set VDP to VRAM and start at E000 (location of Plane B nametable)
+		moveq	#3,d6				; repeats
+
+@repeat:	moveq	#1,d5
+		moveq	#(256/8)-1,d1			; write 40 columns
+		moveq	#(256/8)/2-1,d2			; write 14 lines (the "SELBI" stuff, basically)
+	
+@row:		move.w	d1,d3			; reload number of columns
+
+@column:	move.w	d5,(a6)			; dump map to VDP map slot
+		addi.w	#1,d5			; go to next tile
+		dbf	d3,@column		; repeat til columns have dumped
+		dbf	d2,@row			; repeat til all rows have dumped	
+		dbf	d6,@repeat
+		; bg maps end
+		
+
 		bra.w	OptionsScreen_MainLoop
 
 ; ===========================================================================
 
 Options_PalCycle:
-		; background palette rotation
-		jsr	SineWavePalette
-		
-		; ERaZor banner palette cycle
+		ints_disable
 		move.l	a2,-(sp)		; backup d0 to a2
+
+		; background palette rotation
+	;	jsr	SineWavePalette
+	
+		move.l	($FFFFFE0C).w,d0	; get V-blank timer
+		andi.l	#3,d0
+		bne.w	Options_PalCycle_ERaZor
+		addq.b	#1,($FFFFFF85).w	; increase timer
+
+		moveq	#0,d0
+		lea	(Options_BGCycleColors).l,a1
+		move.b	($FFFFFF85).w,d0	; get timer
+		andi.w	#$F,d0
+		add.w	d0,d0
+		adda.w	d0,a1
+		
+		lea	($FFFFFB02).w,a2
+		moveq	#0,d0
+		moveq	#10-1,d1	; 10 colors
+@bgpalcycle:
+		move.w	(a1)+,d0
+		bpl.s	@0
+		lea	(Options_BGCycleColors).l,a1
+		bra.s	@bgpalcycle
+@0:
+		move.w	d0,d2
+	;	lsl.w	#4,d2
+	;	andi.w	#$400,d2
+	;	or.w	d2,d0
+		move.w	d0,(a2)+
+		dbf	d1,@bgpalcycle
+		
+		; background deformation
+	;	moveq	#0,d0
+	;	move.b	($FFFFFF85).w,d0
+	;	subi.b	#$80,d0
+	;	or.w	#$9100,d0
+	;	move.w	d0,($C00004).l
+		
+		lea	($FFFFCC00).w,a1
+		move.w	#224-1,d3
+		jsr	RandomNumber
+@scroll:
+		ror.l	#1,d1
+		move.l	d1,d2
+		andi.l	#$001F0000,d2
+		
+		moveq	#0,d0
+		moveq	#0,d4
+		move.w	($FFFFFE0E).w,d0	; get timer
+		swap	d0
+		btst	#0,d3
+		beq.s	@1
+		neg.l	d0
+@1:
+		andi.l	#$0000FFFF,d0
+		swap	d0
+		add.w	($FFFFFE0E).w,d0 ; scroll everything to the right
+		
+		move.w	d0,d4		; copy scroll
+		add.w	d3,d4		; add line index
+		subi.w	#224/2,d4
+		movem.l	d0/d1,-(sp)
+		move.w	d4,d0
+		jsr	CalcSine
+		move.w	d0,d4
+		movem.l	(sp)+,d0/d1
+		add.w	d4,d0
+	;	add.w	d3,d0
+		swap	d0
+		or.l	d0,d2
+		move.l	d2,(a1)+
+		dbf	d3,@scroll ; fill scroll data with 0
+
+
+
+		; V-Scroll
+		lea	($C00000).l,a0			; init VDP data port in a0
+		move.l	#$40000010,4(a0)		; set VDP control port to VSRAM mode and start at 00
+		move.w	#(320/8)-1,d0			; do it for all 40 double-tiles (320 width = 80 tiles at 8 pixels)
+@vScroll_loop:	moveq	#0,d1
+		move.w	($FFFFFE0E).w,d1
+		swap	d1
+		move.l	d1,(a0)				; dump art to VSRAM
+		dbf	d0,@vScroll_loop		; repeat until all lines are done
+
+
+
+
+
+
+
+
+Options_PalCycle_ERaZor:
+		; ERaZor banner palette cycle
 		lea	($FFFFFB20).w,a2
 		jsr	ERaZorBannerPalette
+
 		move.l	(sp)+,a2		; backup d0 to a2
+		ints_enable
 		rts
+
+; ---------------------------------------------------------------------------
+Options_BGCycleColors:
+		dc.w	$020
+		dc.w	$040
+		dc.w	$080
+		dc.w	$0A0
+		dc.w	$0C0
+		dc.w	$0A0
+		dc.w	$080
+		dc.w	$040
+		
+		dc.w	$020
+		dc.w	$040
+		dc.w	$080
+		dc.w	$0A0
+		dc.w	$0C0
+		dc.w	$0A0
+		dc.w	$080
+		dc.w	$040
+
+		dc.w	  -1
+		even
+
+	
+		dc.w	$020
+		dc.w	$020
+		dc.w	$020
+		dc.w	$040
+		dc.w	$080
+		dc.w	$0A0
+		dc.w	$0C0
+		dc.w	$0C0
+		
+		dc.w	$0C0
+		dc.w	$0C0
+		dc.w	$0A0
+		dc.w	$080
+		dc.w	$040
+		dc.w	$020
+		dc.w	$020
+		dc.w	$020
+		
+		dc.w	  -1
+		even
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Options Screen - Main Loop
 ; ---------------------------------------------------------------------------
 
-; LevelSelect:
 OptionsScreen_MainLoop:
 		move.b	#2,($FFFFF62A).w
 		jsr	DelayProgram
@@ -149,7 +308,7 @@ O_DontResetTimer:
 		tst.l	($FFFFF680).w		; are pattern load cues empty?
 		bne.s	OptionsScreen_MainLoop	; if not, branch
 
-; ===========================================================================
+; ---------------------------------------------------------------------------
 ; All options are kept in a single byte to save space (it's all flags anyway)
 ; RAM location: $FFFFFF92
 ;  bit 0 = Extended Camera
@@ -158,6 +317,9 @@ O_DontResetTimer:
 ;  bit 3 = Cinematic HUD
 ;  bit 4 = Nonstop Inhuman
 ;  bit 5 = Gamplay Style (0 - Casual Mode // 1 - Frantic Mode)
+;  bit 6 = [unused]
+;  bit 7 = [unused]
+; ---------------------------------------------------------------------------
 
 Options_HandleChange:
 		moveq	#0,d0			; make sure d0 is empty
@@ -428,12 +590,13 @@ Options_NoMove:
 
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 
+Options_VRAM = $62900003
 
 OptionsTextLoad:				; XREF: TitleScreen
 		bsr	GetOptionsText
 		lea	($FFFFCA00).w,a1		
 		lea	($C00000).l,a6
-		move.l	#$62100003,d4	; screen position (text)
+		move.l	#Options_VRAM,d4	; screen position (text)
 		move.w	#$E570,d3	; VRAM setting
 		moveq	#$14,d1		; number of lines of text
 
@@ -445,7 +608,7 @@ loc2_34FE:				; XREF: OptionsTextLoad
 		moveq	#0,d0
 		move.w	($FFFFFF82).w,d0
 		move.w	d0,d1
-		move.l	#$62100003,d4
+		move.l	#Options_VRAM,d4
 		lsl.w	#7,d0
 		swap	d0
 		add.l	d0,d4
@@ -630,7 +793,7 @@ OW_NotFF:
 		bra.s	OW_DoWrite		; skip
 
 OW_SpaceLoop:
-		move.b	#$F0,(a1)+		; write a space char to a1
+		move.b	#Options_Blank,(a1)+	 ; write a space char to a1
 		cmpi.b	#' ',(a2)+		; is next character a space as well?
 		beq.s	OW_SpaceLoop		; if yes, loop until not anymore
 		suba.w	#1,a2			; sub 1 from a2
@@ -840,6 +1003,9 @@ OpText_Frantic:	dc.b	'FRANTIC', $FF
 ; ---------------------------------------------------------------------------
 Options_TextArt:
 		incbin	Screens\OptionsScreen\Options_TextArt.bin
+		even
+Options_BGArt:
+		incbin	Screens\OptionsScreen\FuzzyBG_Unc.bin
 		even
 ; ---------------------------------------------------------------------------
 ; ===========================================================================

@@ -86,25 +86,6 @@ frame		equ	$1A
 anim		equ	$1C
 obj		equ	$3C	; Object code offset
 
-
-; ---------------------------------------------------------------
-; Macros
-; ---------------------------------------------------------------
-
-; Set VDP to VRAM write
-vram	macro	offset,operand
-	if (narg=1)
-		move.l	#($40000000+(((\offset)&$3FFF)<<16)+(((\offset)&$C000)>>14)),VDP_Ctrl
-	else
-		move.l	#($40000000+(((\offset)&$3FFF)<<16)+(((\offset)&$C000)>>14)),\operand
-	endc
-	endm
-	
-; VRAM write access constant
-DCvram	macro	offset
-	dc.l	($40000000+(((\offset)&$3FFF)<<16)+(((\offset)&$C000)>>14))
-	endm
-
 ; ===============================================================
 
 Tutorial_DisplayHint:

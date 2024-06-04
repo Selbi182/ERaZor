@@ -104,26 +104,15 @@ obRoutine:	equ $24	; routine number
 ob2ndRout:	equ $25	; secondary routine number
 obAngle:	equ $26	; angle
 obSubtype:	equ $28	; object subtype
-obSolid:	equ ob2ndRout ; solid status flag
+obSolid:	equ $25 ; solid status flag
 
-
-
-BlackBars.Height:	equ		$FFFFF5F6				; w		Height of black bars in pixels
-BlackBars.FirstHCnt:	equ		$FFFFF5F8				; w		$8Axx VDP register value for the first HInt
-BlackBars.SecondHCnt:	equ		$FFFFF5FA				; w		$8Axx VDP register value for the second HInt
-HBlankHndl:		equ		$FFFFF5FC				; l/w	Jump code for HInt
-HBlankSubW:		equ		$FFFFF5FE				; w		Word offset for HInt routine 
-
-; =======================================================
 ; ------------------------------------------------------
 ; Vladik's Debugger
+; __DEBUG__: equ 1
 ; ------------------------------------------------------
-;__DEBUG__: equ 1
 		include	"Debugger/Debugger.asm"
 		even
 ; ------------------------------------------------------
-; =======================================================
-
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -426,98 +415,13 @@ SRAM_SaveNow_End:
 		rts
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
-HBlank_BaseHandler:
-		jmp	NullInt.w
-	
-NullInt:
-		rte
-
-; ===========================================================================
 ; ---------------------------------------------------------------------------
-; H-Blanking routine
-; ---------------------------------------------------------------------------
-
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
-BlackBarHeight = 32
-BlackBarHeight_Cinematic = 56
-BlackBarGrow = 2
-BarKillHeight = $E0/2
-
-; PalToCRAM:
-HBlank:
-		cmpi.b	#1,($FFFFFE10).w	; are we in LZ?
-		beq.w	@hblank_original	; if yes, skip bars (they cause issues with the water thingy)
-		tst.b	(ScreenCropCurrent).w	; are cropped borders enabled?
-		bgt.s	@blackbars		; if yes, branch
-	
-@skipblackbars:
-		move.l	d0,-(sp)		; backup d0
-		display_enable			; otherwise, make sure display is enabled
-		move.l	(sp)+,d0		; restore d0
-		move.w	#$8A00|$DF,($FFFFF624).w ; set H-int timing to not occur this frame anymore
-		move.w	#$8720,($C00004).l	; reset background color
-		bra.w	@hblank_original	; go to original H-Blank code
-; ---------------------------------------------------------------------------
-		
-@blackbars:
-		movem.l	d0-d2,-(sp)		; backup d0 and d1
-		
-		move.b	($FFFFF64F).w,d1	; get flag counter
-		move.b	(ScreenCropCurrent).w,d2 ; get current bar height
-		cmpi.b	#BarKillHeight,d2	; are we at the bar kill height?
-		blo.s	@makebars		; if not, branch. otherwise, set the display to not render anymore to avoid flickers
-		move.w	#$8701,($C00004).l	; set background color to black
-		display_disable			; disable display
-		bra.w	@hblank_continue
-		
-@makebars:
-		btst	#7,d1			; is first flag set?
-		beq.s	@checksecondflag	; if not, branch
-		bclr	#7,d1			; clear first flag
-		
-		moveq	#0,d0			; clear d0
-		move.b	#224-1,d0		; set maximum scan line count (minus 1)
-		sub.b	d2,d0			; subtract current height once...
-		sub.b	d2,d0 			; ...and twice
-		
-		ori.w	#$8A00,d0		; set as H-int counter instruction
-		move.w	d0,($C00004).l		; send to VDP
-
-		cmpi.b	#$C0/2,d2		; if bars are big enough, do V-Blank now...
-		bhs.w	@hblank_continue	; ...to avoid flickers
-		bra.w	@hblank_earlyexit	; exit without running any additional V-blank stuff
-
-@checksecondflag:
-		btst	#6,d1			; is second flag set?
-		beq.s	@checkthirdflag		; if not, branch
-		bclr	#6,d1			; clear second flag
-		move.w	#$8A00|$DF,($C00004).l	; set H-int timing to not occur this frame anymore
-		move.w	#$8720,($C00004).l	; reset background color
-		display_enable			; enable display
-		bra.w	@hblank_continue	; exit AND run any additional V-blank stuff
-
-@checkthirdflag:
-		btst	#5,d1			; is third flag set?
-		beq.s	@hblank_continue	; if not, we're entirely done with the black bar stuff. exit
-		bclr	#5,d1			; clear third flag
-		move.w	#$8701,($C00004).l	; set background color to black
-		display_disable			; disable display
-		; exit without running any additional V-blank stuff
-
-@hblank_earlyexit:
-		move.b	d1,($FFFFF64F).w	; write updated flags
-		movem.l	(sp)+,d0-d2		; restore d0
-		rte				; exit H-int
-
-@hblank_continue:
-		move.b	d1,($FFFFF64F).w	; write updated flags
-		movem.l	(sp)+,d0-d2		; restore d0 and d1
-
-; LZ water effects
+; H-Blank - LZ water palette swap effect
 ; Source: https://sonicresearch.org/community/index.php?threads/removing-the-water-surface-object-in-sonic-1.5975/
+; ---------------------------------------------------------------------------
 
-@hblank_original:
+; HBlank:
+HBlank_Original:
 		tst.w	($FFFFF644).w
 		beq.w	locret_119C
 		clr.w	($FFFFF644).w
@@ -580,92 +484,194 @@ locret_119C:
 ; ---------------------------------------------------------------------------
 ; Vladik's cool and awesome black bars that replaced my garbage ones B)
 ; ---------------------------------------------------------------------------
+BlackBars.TargetHeight:	equ	$FFFFF5F4	; w	Target height of black bars in pixels
+BlackBars.Height:	equ	$FFFFF5F6	; w	Current height of black bars in pixels
+BlackBars.FirstHCnt:	equ	$FFFFF5F8	; w	$8Axx VDP register value for the first HInt
+BlackBars.SecondHCnt:	equ	$FFFFF5FA	; w	$8Axx VDP register value for the second HInt
+HBlankHndl:		equ	$FFFFF5FC	; l/w	Jump code for HInt
+HBlankSubW:		equ	$FFFFF5FE	; w	Word offset for HInt routine 
+
+BlackBars.GrowSize = 2
+BlackBars.MaxHeight = 32
+; ---------------------------------------------------------------------------
+
+NullInt:
+		rte
+; ---------------------------------------------------------------------------
+
+HBlank_BaseHandler:
+		jmp	NullInt.w	
+; ===========================================================================
 
 HBlank_Bars:
-		move.l	#$81748720, VDP_Ctrl				; enable display, restore backdrop color
-		move.w	BlackBars.SecondHCnt, VDP_Ctrl			; send $8Axx to VDP to set HInt counter for the second invocation
-		move.w	#@ToBottom, HBlankSubW				; handle bottom next time
+		move.l	#$81748720,VDP_Ctrl				; enable display, restore backdrop color
+		move.w	BlackBars.SecondHCnt,VDP_Ctrl			; send $8Axx to VDP to set HInt counter for the second invocation
+		move.w	#@ToBottom,HBlankSubW				; handle bottom next time
 		rte
 @ToBottom:
-		move.w	#HBlank_Bars_Bottom, HBlankSubW
+		move.w	#HBlank_Bars_Bottom,HBlankSubW
 		rte
-
 ; ---------------------------------------------------------------------------
+
 HBlank_Bars_PastQuarter:
-		move.w	BlackBars.SecondHCnt, VDP_Ctrl			; send $8Axx to VDP to set HInt counter for the second invocation
-		move.w	#@ToBottom, HBlankSubW				; handle bottom next time
+		move.w	BlackBars.SecondHCnt,VDP_Ctrl			; send $8Axx to VDP to set HInt counter for the second invocation
+		move.w	#@ToBottom,HBlankSubW				; handle bottom next time
 		rte
 
 @ToBottom:
-		move.l	#$81748720, VDP_Ctrl				; enable display, restore backdrop color
-		move.w	#HBlank_Bars_Bottom, HBlankSubW
+		move.l	#$81748720,VDP_Ctrl				; enable display, restore backdrop color
+		move.w	#HBlank_Bars_Bottom,HBlankSubW
 		rte
-
 ; ---------------------------------------------------------------------------
+
 HBlank_Bars_Bottom:
-		move.l	#$81348701, VDP_Ctrl				; disable display + set backdrop color to black
-		move.w	#$8A00|$DF, VDP_Ctrl				; set H-int timing to not occur this frame anymore
-		move.w	#NullInt, HBlankSubW				; don't run any code during HInt
+		move.l	#$81348701,VDP_Ctrl				; disable display + set backdrop color to black
+		move.w	#$8A00|$DF,VDP_Ctrl				; set H-int timing to not occur this frame anymore
+		move.w	#NullInt,HBlankSubW				; don't run any code during HInt
 		rte
+; ===========================================================================
 
-
-
-; ---------------------------------------------------------------------------
+; called once on system start
 BlackBars.Init:
-		move.w	#0, BlackBars.Height
-		move.l	#$8ADF8ADF, BlackBars.FirstHCnt ; + BlackBars.SecondHCnt
+		move.l	#$8ADF8ADF,BlackBars.FirstHCnt			; + BlackBars.SecondHCnt
+BlackBars.Reset:
+		move.w	#0,BlackBars.Height
+		move.w	#BlackBars.MaxHeight,BlackBars.TargetHeight
 		rts
-
 ; ---------------------------------------------------------------------------
-BlackBars.TestAnimation:
-		addq.w	#1, BlackBars.Height
-		cmp.w	#224/2, BlackBars.Height
-		bne.s	@done
-		move.w	#0, BlackBars.Height
-@done:	rts
 
-; ---------------------------------------------------------------------------
+; called from VBlank every single frame
 BlackBars.UpdateInVBlank:
-	 ;rts ; disabled for now while I still iron out other bugs
-		move.w	BlackBars.Height, d0		; is height 0?
-		beq.s	@disable_bars				; if yes, branch
-		cmp.w	#224/2-1, d0				; are we taking half the screen?
-		bhi.s	@make_black_screen			; if yes, branch
-		cmp.w	#224/4-1, d0				; are we quater the screen?
-		bhs.s	@make_bars_past_quarter		; if yes, branch
+		bsr.s	BlackBars.SetState
+		
+		move.w	BlackBars.Height,d0				; is height 0?
+		beq.s	@disable_bars					; if yes, branch
+		cmp.w	#224/2-1,d0					; are we taking half the screen?
+		bhi.s	@make_black_screen				; if yes, branch
+		cmp.w	#224/4-1,d0					; are we quater the screen?
+		bhs.s	@make_bars_past_quarter				; if yes, branch
 
-		move.w	#HBlank_Bars, HBlankSubW
-		move.w	d0, d1
-		add.w	d1, d1
-		add.w	d0, d1
-		sub.w	#224-1, d1
+		move.w	#HBlank_Bars,HBlankSubW
+		move.w	d0,d1
+		add.w	d1,d1
+		add.w	d0,d1
+		sub.w	#224-1,d1
 		neg.w	d1
 
 @make_bars_cont:
-		move.b	d0, BlackBars.FirstHCnt+1
-		move.b	d1, BlackBars.SecondHCnt+1
-		move.w	BlackBars.FirstHCnt, VDP_Ctrl
-		move.l	#$81348701, VDP_Ctrl		; disable display, set backdrop color to black
+		move.b	d0,BlackBars.FirstHCnt+1
+		move.b	d1,BlackBars.SecondHCnt+1
+		move.w	BlackBars.FirstHCnt,VDP_Ctrl
+		move.l	#$81348701,VDP_Ctrl				; disable display, set backdrop color to black
 		rts
-
 ; ---------------------------------------------------------------------------
+
 @make_bars_past_quarter:	
-		move.w	#HBlank_Bars_PastQuarter, HBlankSubW
-		move.w	d0, d1
-		add.w	d1, d1
-		sub.w	#224-1, d1
+		move.w	#HBlank_Bars_PastQuarter,HBlankSubW
+		move.w	d0,d1
+		add.w	d1,d1
+		sub.w	#224-1,d1
 		neg.w	d1
-		lsr.w	#1, d0
+		lsr.w	#1,d0
 		bra.s	@make_bars_cont
-
 ; ---------------------------------------------------------------------------
+
 @make_black_screen:
-		move.l	#$81348701, VDP_Ctrl		; disable display, set backdrop color to black
+		move.l	#$81348701,VDP_Ctrl				; disable display, set backdrop color to black
 
 @disable_bars:
-		move.w	#NullInt, HBlankSubW
+		move.w	#NullInt,HBlankSubW
 		rts
 ; End of function HBlank_Bars
+; ===========================================================================
+
+; ---------------------------------------------------------------------------
+; Black bars control logic
+; ---------------------------------------------------------------------------
+
+BlackBars.SetState:
+		moveq	#0,d0				; clear d0
+
+		cmpi.b	#$8C,($FFFFF600).w		; are we in the pre-level sequence?
+		beq.s	BlackBars_DontShow		; if yes, branch
+
+		btst	#3,($FFFFFF92).w		; is cinematic HUD enabled?
+		bne.s	BlackBars_Show			; if yes, always enable
+		cmpi.b	#6,($FFFFD024).w		; is Sonic dying?
+		bhs.s	BlackBars_Show			; if yes, branch
+		tst.b	($FFFFF7CC).w			; are controls locked?
+		bne.s	BlackBars_Show			; if yes, always enable
+		tst.w	($FFFFF63A).w			; is game paused?
+		bne.s	BlackBars_Show			; if yes, always enable
+
+		cmpi.w	#$002,($FFFFFE10).w		; are we in Green Hill Place?
+		bne.s	@notghp				; if not, branch
+		cmpi.b	#4,($FFFFFE30).w		; did we hit the final checkpoint yet?
+		beq.s	BlackBars_DontShow		; if yes, disable black bars
+		bra.s	BlackBars.GHP			; update GHP black bars
+
+@notghp:
+		cmpi.w	#$400,($FFFFFE10).w		; are we in Uberhub?
+		bne.s	BlackBars_DontShow		; if not, branch
+		tst.b	($FFFFFF7F).w			; are we falling down the intro tube?
+		bne.s	BlackBars_DontShow		; if yes, don't display
+; ---------------------------------------------------------------------------
+
+BlackBars_Show:
+		move.w	#BlackBars.MaxHeight,BlackBars.TargetHeight	; set target height to the default max (32px)
+BlackBars_ShowCustom:
+		move.w	BlackBars.Height,d0		; get currently set height
+		addi.w	#BlackBars.GrowSize,d0		; continue to increase height
+		cmp.w	BlackBars.TargetHeight,d0	; compare against max allowed height
+		ble.s	BlackBars_SetHeight		; if we're below, branch
+		move.w	BlackBars.TargetHeight,d0	; make sure we don't exceed the maximum
+		bra.s	BlackBars_SetHeight
+
+BlackBars_DontShow:
+		move.w	#0,BlackBars.TargetHeight	; set target height to 0
+		move.w	BlackBars.Height,d0		; get currently set height
+		sub.w	#BlackBars.GrowSize,d0		; continue to reduce height
+		tst.w	d0				; are we on height 0?
+		bpl.s	BlackBars_SetHeight		; if yes, branch
+		move.w	#0,d0				; make sure we don't exceed the minimum
+
+BlackBars_SetHeight:
+		move.w	d0,BlackBars.Height		; set crops off
+		rts					; return
+; ===========================================================================
+
+BlackBars.GHPTimer:		equ	$FFFFF5F2		; b
+BlackBars.GHPTimerReset:	equ	$FFFFF5F3		; b
+BlackBars.GHPCasual  = 60
+BlackBars.GHPFrantic = 45
+; ---------------------------------------------------------------------------
+
+BlackBars.GHP:
+		move.b	#BlackBars.GHPCasual,d0		; set casual reset time (60 frames)
+		btst	#5,($FFFFFF92).w		; are we in Frantic mode?
+		beq.s	@notfrantic			; if not, branch
+		move.b	#BlackBars.GHPFrantic,d0	; set frantic reset time (45 frames)
+
+@notfrantic:
+		move.b	d0,BlackBars.GHPTimerReset	; set reset time
+
+		subq.b	#1,BlackBars.GHPTimer		; sub 1 from shrink timer
+		bpl.s	@timeleft			; if time is left, branch
+		move.b	BlackBars.GHPTimerReset,BlackBars.GHPTimer	; reset timer
+		addq.w	#BlackBars.GrowSize,BlackBars.TargetHeight	; shrink bars
+
+		cmpi.w	#$E0/2,BlackBars.Height		; did we reach kill height yet? (full screen covered)
+		blo.s	@noscreenkill			; if not, branch
+		lea	($FFFFD000).w,a0		; load Sonic's object to a0
+		movea.l	a0,a2				; set killer to self
+		jmp	KillSonic			; hecking kill Sonic
+		
+@noscreenkill:
+		move.w	#$BB,d0				; play...
+		jsr	PlaySound_Special		; ...badump sound		
+
+@timeleft:		
+		bra.s	BlackBars_ShowCustom		; force display
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
 
@@ -718,7 +724,6 @@ ScreenCropCurrent EQU $FFFFD380+$30
 ; loc_B10:
 VBlank:				; XREF: StartOfRom
 		movem.l	d0-a6,-(sp)
-		;display_disable
 
 		tst.b	($FFFFF62A).w			; are we late for V-Blank?
 		beq.w	VBlank_Late			; if yes, oh shit oh fuck, go to the emergency routine immediately
@@ -741,7 +746,6 @@ loc_B42:
 
 ; loc_B5E:
 VBlank_Exit:				; XREF: VBlank_Late
-		;display_enable
 		move	#$2300,sr			; enable interrupts (we can accept horizontal interrupts from now on)
 		btst	#0,($FFFFF64F).w
 		bne.s	VBlank_Exit_NoSoundDriver
@@ -1419,11 +1423,6 @@ PG_NotGHZ2:
 		jsr	Pal_MakeBlackWhite
 
 Pause_MainLoop:
-		movem.l	d0/a0,-(sp)
-		lea	($FFFFD380).w,a0
-		jsr	Obj07			; update cropped screen object even while game is paused
-		movem.l	(sp)+,d0/a0
-
 		move.b	#$10,($FFFFF62A).w
 		bsr	DelayProgram
 
@@ -4663,7 +4662,8 @@ loc_3946:
 	;	lea	(Nem_HardPS).l,a0
 	;	bsr	NemDec
 
-		move.b	#$07,($FFFFD380).w	; load cropped screen object (left half)
+		jsr	BlackBars.Reset		; set up cropped screens
+	;	move.b	#$07,($FFFFD380).w	; load cropped screen object (left half)
 	;	move.w	#$00D4,($FFFFD388).w		; set X-position
 	;	move.w	#$00F8,($FFFFD38A).w		; set Y-position
 	;	move.b	#$07,($FFFFD3C0).w	; load cropped screen object (right half)
@@ -30535,142 +30535,13 @@ Map_Obj06:
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
 
-
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Object 07 - Cropped Screen object for Cutscenes
+; Object 07 - Unused (used to be the old cropped screen sprites)
 ; ---------------------------------------------------------------------------
 
 Obj07:
-		cmpi.b	#1,($FFFFFE10).w
-		bne.s	@notlz
-		clr.b	$32(a0)
-		bsr.w	Obj07_ReEnableScreen
 		jmp	DeleteObject
-@notlz:
-		moveq	#0,d0				; clear d0
-		move.b	obRoutine(a0),d0		; move routine counter to d0
-		move.w	Obj07_Index(pc,d0.w),d1		; move the index to d1
-		jmp	Obj07_Index(pc,d1.w)		; find out the current position in the index
-; ===========================================================================
-Obj07_Index:	dc.w Obj07_Setup-Obj07_Index		; Set up the object (art etc.)	[$0]
-		dc.w Obj07_Move-Obj07_Index		; Move and display		[$2]
-; ===========================================================================
-
-Obj07_Setup:
-		cmpi.b	#$8C,($FFFFF600).w		; are we in the pre-level sequence?
-		bne.s	@cont				; if not, branch
-		rts					; wait until we're ready
-@cont:
-		addq.b	#2,obRoutine(a0)
-		
-		move.b	#60,$34(a0)
-		move.b	$34(a0),$35(a0)
-		move.b	#BlackBarHeight,$32(a0)		; set max height
-		move.b	#BlackBarGrow,$33(a0)		; set grow speed
-		cmpi.w	#$002,($FFFFFE10).w
-		bne.s	Obj07_Move
-		clr.b	$32(a0)
-		btst	#5,($FFFFFF92).w		; are we in Frantic mode?
-		beq.s	Obj07_Move			; if not, branch
-		move.b	#45,$34(a0)
-
-; ---------------------------------------------------------------------------
-
-Obj07_Move:
-		cmpi.w	#$002,($FFFFFE10).w		; are we in Green Hill Place?
-		bne.s	@0				; if not branch?
-		cmpi.b	#6,($FFFFD024).w		; is Sonic dying?
-		bhs.s	@0				; if yes, branch
-		
-		cmpi.b	#4,($FFFFFE30).w
-		bne.s	@notghzlast
-		move.b	#BlackBarHeight,$32(a0)
-		bra.s	@0
-		
-@notghzlast:
-		subq.b	#1,$35(a0)
-		bpl.s	@0
-		move.b	$34(a0),$35(a0)
-		addq.b	#2,$32(a0)			; shrink bar
-
-		cmpi.b	#BarKillHeight,$32(a0)
-		blo.s	@1
-
-		lea	($FFFFD000).w,a0
-		movea.l	a0,a2
-		jmp	KillSonic
-@1:
-		
-		move.w	#$BB,d0
-		jsr	PlaySound_Special	; set badump sound
-		
-@0:		
-		
-		bsr.s	Obj07_CheckState		; update current status (ScreenCropCurrent)
-		
-
-		move.b	$30(a0),d0			; get current height
-		bne.s	Obj07_EnableCrops		; are crops set to be displayed? if yes, branch
-Obj07_ReEnableScreen:
-		move.w	#$8720,($C00004).l		; reset background color
-		move.w	#$8A00|$DF,($FFFFF624).w	; reset H-int timing to once per frame
-		display_enable
-		rts					; return
-
-Obj07_EnableCrops:
-		lsr.b	#1,d0				; half the current height
-		subq.b	#1,d0				; subtract 1
-		andi.w	#$00FF,d0
-		move.w	d0, BlackBars.Height
-		rts					; return
-; ===========================================================================
-
-Obj07_CheckState:
-		moveq	#0,d0				; clear d0
-
-		btst	#3,($FFFFFF92).w		; is cinematic HUD enabled?
-		bne.s	@showcrops			; if yes, always enable
-		cmpi.b	#6,($FFFFD024).w		; is Sonic dying?
-		bhs.s	@showcrops			; if yes, branch
-		tst.b	($FFFFF7CC).w			; are controls locked?
-		bne.s	@showcrops			; if yes, always enable
-		tst.w	($FFFFF63A).w			; is game paused?
-		bne.s	@showcrops			; if yes, always enable
-
-		cmpi.w	#$002,($FFFFFE10).w		; are we in Green Hill Place?
-		bne.s	@notghp				; if not, branch
-		cmpi.b	#4,($FFFFFE30).w		; did we hit the final checkpoint yet?
-		bne.s	@showcrops			; if not, force display
-
-@notghp:
-		cmpi.w	#$400,($FFFFFE10).w		; are we in Uberhub?
-		bne.s	@dontshow			; if not, branch
-		tst.b	($FFFFFF7F).w			; are we falling down the intro tube?
-		bne.s	@dontshow			; if yes, don't display
-
-@showcrops:
-		move.b	$30(a0),d0			; get currently set height
-		add.b	$33(a0),d0			; continue to increase height
-		cmp.b	$32(a0),d0			; compare against max allowed height
-		ble.s	@cont				; if we're below, branch
-		move.b	$32(a0),d0			; make sure we don't exceed the maximum
-@cont:		
-		move.b	d0,$30(a0)			; set crops on
-		rts					; return
-
-@dontshow:
-		move.b	$30(a0),d0			; get currently set height
-		sub.b	$33(a0),d0			; continue to reduce height
-		tst.b	d0				; are we on height 0?
-		bpl.s	@cont2				; if yes, branch
-		move.b	#0,d0				; make sure we don't exceed the minimum
-@cont2:		
-		move.b	d0,$30(a0)			; set crops off
-		rts					; return
-; ---------------------------------------------------------------------------
-; ===========================================================================
-
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------

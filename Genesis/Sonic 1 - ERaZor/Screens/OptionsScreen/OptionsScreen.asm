@@ -10,7 +10,7 @@ OptionsScreen:				; XREF: GameModeArray
 		move	#$2700,sr
 		jsr	SoundDriverLoad
 		lea	($C00004).l,a6
-		move.w	#$8004,(a6)
+	;	move.w	#$8004,(a6)
 		move.w	#$8230,(a6)
 		move.w	#$8407,(a6)
 		move.w	#$9001,(a6)
@@ -168,12 +168,17 @@ Options_HandleGameplayStyle:
 		cmpi.w	#3,d0
 		bne.s	Options_HandleExtendedCamera
 		move.b	($FFFFF605).w,d1	; get button presses
-	 	andi.b	#$FC,d1			; is left, right, A, B, C, or Start pressed?
+		btst	#4,d1			; is B pressed?
+		bne.s	@quicktoggle		; if yes, branch
+	 	andi.b	#$EC,d1			; is left, right, A, C, or Start pressed?
 		beq.w	Options_Return		; if not, branch
-	;	bchg	#5,($FFFFFF92).w	; toggle gameplay style
-	;	bra.w	Options_UpdateTextAfterChange
+	 	andi.b	#$FC,d1			; is left, right, A, B, C, or Start pressed?
 		move.b	#$30,($FFFFF600).w	; set to GameplayStyleScreen
 		rts
+@quicktoggle:
+		bchg	#5,($FFFFFF92).w	; toggle gameplay style
+		bra.w	Options_UpdateTextAfterChange
+
 ; ---------------------------------------------------------------------------
 
 Options_HandleExtendedCamera:

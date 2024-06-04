@@ -289,6 +289,8 @@ SetupValues:	dc.w $8000		; VDP register start number
 ; ===========================================================================
 
 GameProgram:
+		move.w	#$8004,($C00004).l	; disable h-ints
+		
 		lea	($FF0000).l,a6
 		moveq	#0,d7
 		move.w	#$3F7F,d6
@@ -299,10 +301,12 @@ GameClrRAM:
 		bsr	VDPSetupGame
 		bsr	SoundDriverLoad
 		bsr	JoypadInit
-		jsr	BlackBars.Init
-		move.l	HBlank_BaseHandler, HBlankHndl	; setup HBlank handler
-		move.b	#0,($FFFFF600).w ; set Game Mode to Sega Screen
 		bsr.s	LoadSRAM
+
+		jsr	BlackBars.Init			; setup black bars
+		move.l	HBlank_BaseHandler, HBlankHndl	; setup HBlank handler
+
+		move.b	#0,($FFFFF600).w ; set Game Mode to Sega Screen
 		bra.w	MainGameLoop	; continue to main game loop
 
 ; ===========================================================================
@@ -492,7 +496,7 @@ HBlankHndl:		equ	$FFFFF5FC	; l/w	Jump code for HInt
 HBlankSubW:		equ	$FFFFF5FE	; w	Word offset for HInt routine 
 
 BlackBars.GrowSize = 2
-BlackBars.MaxHeight = 32
+BlackBars.MaxHeight = 40
 ; ---------------------------------------------------------------------------
 
 NullInt:
@@ -535,8 +539,9 @@ HBlank_Bars_Bottom:
 BlackBars.Init:
 		move.l	#$8ADF8ADF,BlackBars.FirstHCnt			; + BlackBars.SecondHCnt
 BlackBars.Reset:
-		move.w	#0,BlackBars.Height
-		move.w	#BlackBars.MaxHeight,BlackBars.TargetHeight
+		move.w	#0,BlackBars.Height				; set current height to 0
+		move.w	#BlackBars.MaxHeight,BlackBars.TargetHeight	; set target height to default
+		move.l	#$81748720,VDP_Ctrl				; enable display, restore backdrop color
 		rts
 ; ---------------------------------------------------------------------------
 
@@ -581,6 +586,7 @@ BlackBars.UpdateInVBlank:
 
 @disable_bars:
 		move.w	#NullInt,HBlankSubW
+		bsr	BlackBars.Reset
 		rts
 ; End of function HBlank_Bars
 ; ===========================================================================
@@ -590,11 +596,17 @@ BlackBars.UpdateInVBlank:
 ; ---------------------------------------------------------------------------
 
 BlackBars.SetState:
-		moveq	#0,d0				; clear d0
+		moveq	#0,d0				; clear d0		
+		move.b	($FFFFF600).w,d0		; get current game mode
+		cmpi.b	#$C,d0				; are we in a level?
+		beq.s	@validgamemode			; if yes, branch
+		cmpi.b	#$10,d0				; are we in a special stage?
+		beq.s	@validgamemode			; if yes, branch
+		cmpi.b	#$18,d0				; are we in the ending sequence?
+		beq.s	@validgamemode			; if yes, branch
+		bra.s	BlackBars_DontShow		; don't show black bars in any other game modes
 
-		cmpi.b	#$8C,($FFFFF600).w		; are we in the pre-level sequence?
-		beq.s	BlackBars_DontShow		; if yes, branch
-
+@validgamemode:
 		btst	#3,($FFFFFF92).w		; is cinematic HUD enabled?
 		bne.s	BlackBars_Show			; if yes, always enable
 		cmpi.b	#6,($FFFFD024).w		; is Sonic dying?
@@ -623,14 +635,14 @@ BlackBars_ShowCustom:
 		move.w	BlackBars.Height,d0		; get currently set height
 		addi.w	#BlackBars.GrowSize,d0		; continue to increase height
 		cmp.w	BlackBars.TargetHeight,d0	; compare against max allowed height
-		ble.s	BlackBars_SetHeight		; if we're below, branch
+		bls.s	BlackBars_SetHeight		; if we're below, branch
 		move.w	BlackBars.TargetHeight,d0	; make sure we don't exceed the maximum
 		bra.s	BlackBars_SetHeight
 
 BlackBars_DontShow:
 		move.w	#0,BlackBars.TargetHeight	; set target height to 0
 		move.w	BlackBars.Height,d0		; get currently set height
-		sub.w	#BlackBars.GrowSize,d0		; continue to reduce height
+		subi.w	#BlackBars.GrowSize,d0		; continue to reduce height
 		tst.w	d0				; are we on height 0?
 		bpl.s	BlackBars_SetHeight		; if yes, branch
 		move.w	#0,d0				; make sure we don't exceed the minimum
@@ -664,6 +676,7 @@ BlackBars.GHP:
 		blo.s	@noscreenkill			; if not, branch
 		lea	($FFFFD000).w,a0		; load Sonic's object to a0
 		movea.l	a0,a2				; set killer to self
+		clr.b	($FFFFFFE7).w			; disable inhuman mode (to prevent softlocks)
 		jmp	KillSonic			; hecking kill Sonic
 		
 @noscreenkill:
@@ -682,11 +695,12 @@ BlackBars.GHP:
 ; ---------------------------------------------------------------------------
 
 MainGameLoop:
-		moveq	#0,d0
-		move.b	($FFFFF600).w,d0
-		movea.l	GameModeArray(pc,d0.w),a1
-		jsr	(a1)
-		bra.s	MainGameLoop
+		moveq	#0,d0				; clear d0
+		move.b	($FFFFF600).w,d0		; get current game mode
+		movea.l	GameModeArray(pc,d0.w),a1	; locate address in GameModeArray
+		jsr	(a1)				; enter game mode
+		jsr	BlackBars.Reset			; reset black bars between game mode transitions
+		bra.s	MainGameLoop			; if we're here, we exited the game mode; load new one
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -724,7 +738,6 @@ ScreenCropCurrent EQU $FFFFD380+$30
 ; loc_B10:
 VBlank:				; XREF: StartOfRom
 		movem.l	d0-a6,-(sp)
-
 		tst.b	($FFFFF62A).w			; are we late for V-Blank?
 		beq.w	VBlank_Late			; if yes, oh shit oh fuck, go to the emergency routine immediately
 		
@@ -746,32 +759,35 @@ loc_B42:
 
 ; loc_B5E:
 VBlank_Exit:				; XREF: VBlank_Late
-		move	#$2300,sr			; enable interrupts (we can accept horizontal interrupts from now on)
-		btst	#0,($FFFFF64F).w
-		bne.s	VBlank_Exit_NoSoundDriver
-		bset	#0,($FFFFF64F).w		; set "SMPS running flag"
-		jsr	SoundDriverUpdate		; run SMPS
-		bclr	#0,($FFFFF64F).w		; reset "SMPS running flag"
-
-; loc_B64:
-VBlank_Exit_NoSoundDriver:		; XREF: loc_D50
-		addq.l	#1,($FFFFFE0C).w
+		bsr.s	UpdateSoundDriver	; update sound driver stuff now
+		addq.l	#1,($FFFFFE0C).w	; increase 1 to V-Blank counter
 		movem.l	(sp)+,d0-a6
 		rte	
 ; ===========================================================================
-VBlankTable:	dc.w VBlank_Late-VBlankTable ; $00
-		dc.w loc_C32-VBlankTable ; $02
-		dc.w loc_C44-VBlankTable ; $04
-		dc.w loc_C5E-VBlankTable ; $06
-		dc.w VBlank_Level-VBlankTable ; $08 (main one for levels)
-		dc.w loc_DA6-VBlankTable ; $0A
-		dc.w loc_E72-VBlankTable ; $0C
-		dc.w loc_F8A-VBlankTable ; $0E
-		dc.w loc_C64-VBlankTable ; $10 (pause)
-		dc.w loc_F9A-VBlankTable ; $12
-		dc.w loc_C36-VBlankTable ; $14
-		dc.w loc_FA6-VBlankTable ; $16
-		dc.w loc_E72-VBlankTable ; $18
+
+UpdateSoundDriver:
+		move	#$2300,sr		; enable interrupts (we can accept horizontal interrupts from now on)
+		tst.b	($FFFFF64F).w		; is SMPS currently running?
+		bne.s	@end			; if yes, branch
+		move.b	#1,($FFFFF64F).w	; set "SMPS running flag"
+		jsr	SoundDriverUpdate	; run SMPS
+		clr.b	($FFFFF64F).w		; reset "SMPS running flag"
+@end:		rts
+
+; ===========================================================================
+VBlankTable:	dc.w VBlank_Late-VBlankTable	; $00
+		dc.w loc_C32-VBlankTable	; $02
+		dc.w loc_C44-VBlankTable	; $04
+		dc.w loc_C5E-VBlankTable	; $06
+		dc.w VBlank_Level-VBlankTable	; $08 (main one for levels)
+		dc.w loc_DA6-VBlankTable	; $0A
+		dc.w loc_E72-VBlankTable	; $0C
+		dc.w loc_F8A-VBlankTable	; $0E
+		dc.w loc_C64-VBlankTable	; $10 (pause)
+		dc.w loc_F9A-VBlankTable	; $12
+		dc.w loc_C36-VBlankTable	; $14
+		dc.w loc_FA6-VBlankTable	; $16
+		dc.w loc_E72-VBlankTable	; $18
 ; ===========================================================================
 
 ; loc_B88:
@@ -783,6 +799,7 @@ VBlank_Late:				; XREF: VBlank; VBlankTable
 
 loc_B9A:
 		jsr	BlackBars.UpdateInVBlank
+		move.b	($FFFFF625).w,($FFFFFE07).w
 
 		cmpi.b	#1,($FFFFFE10).w	; is level LZ?
 		bne.w	VBlank_Exit		; if not, branch
@@ -826,6 +843,8 @@ loc_C22:				; XREF: loc_BC8
 
 loc_C32:				; XREF: VBlankTable
 		bsr	sub_106E
+		jsr	BlackBars.UpdateInVBlank
+		move.b	($FFFFF625).w,($FFFFFE07).w
 
 loc_C36:				; XREF: VBlankTable
 		tst.w	($FFFFF614).w
@@ -838,6 +857,8 @@ locret_C42:
 
 loc_C44:				; XREF: VBlankTable
 		bsr	sub_106E
+		jsr	BlackBars.UpdateInVBlank
+		move.b	($FFFFF625).w,($FFFFFE07).w
 		bsr	sub_6886
 		bsr	sub_1642
 		tst.w	($FFFFF614).w
@@ -850,6 +871,8 @@ locret_C5C:
 
 loc_C5E:				; XREF: VBlankTable
 		bsr	sub_106E
+		jsr	BlackBars.UpdateInVBlank
+		move.b	($FFFFF625).w,($FFFFFE07).w
 		rts	
 ; ===========================================================================
 
@@ -906,13 +929,13 @@ loc_D50:
 		movem.l	($FFFFF754).w,d0-d1
 		movem.l	d0-d1,($FFFFFF30).w
 
-;:
+;Demo_Time:
 		bsr	LoadTilesAsYouMove
 		jsr	AniArt_Load
 		jsr	HudUpdate
 		bsr	sub_165E
 		rts	
-; End of function 
+; End of function Demo_Time
 
 ; ===========================================================================
 
@@ -1009,6 +1032,8 @@ loc_F54:
 
 loc_F8A:				; XREF: VBlankTable
 		bsr	sub_106E
+		jsr	BlackBars.UpdateInVBlank
+		move.b	($FFFFF625).w,($FFFFFE07).w
 		addq.b	#1,($FFFFF628).w
 		move.b	#$E,($FFFFF62A).w
 		rts	
@@ -1384,9 +1409,9 @@ PauseGame:				; XREF: Level_MainLoop; et al
 loc_13BE:
 		move.b	#$E5,d0
 		bsr	PlaySound_Special
-		cmpi.w	#$500,($FFFFFE10).w
-		bne.s	@cont
-		move.w	#$301,($FFFFFE10).w
+		cmpi.w	#$500,($FFFFFE10).w	; is this the bomb machine cutscene?
+		bne.s	@cont			; if not, branch
+		move.w	#$301,($FFFFFE10).w	; set level to Scar Night Place
 		move.b	#$C,($FFFFF600).w
 		move.w	#1,($FFFFFE02).w
 		rts
@@ -1426,10 +1451,10 @@ Pause_MainLoop:
 		move.b	#$10,($FFFFF62A).w
 		bsr	DelayProgram
 
-		cmpi.w	#$501,($FFFFFE10).w
-		beq.s	Pause_ChkBC
-		cmpi.w	#$400,($FFFFFE10).w
-		beq.s	Pause_ChkBC
+	;	cmpi.w	#$501,($FFFFFE10).w
+	;	beq.s	Pause_ChkBC
+	;	cmpi.w	#$400,($FFFFFE10).w
+	;	beq.s	Pause_ChkBC
 		
 		btst	#6,($FFFFF605).w 	; is button A pressed?
 		beq.s	Pause_ChkBC		; if not, branch
@@ -1605,9 +1630,11 @@ ProcessDMAQueue_Done:
 
 ; ==============================================================================
 ; ------------------------------------------------------------------------------
-; Nemesis decompression routine
-; ------------------------------------------------------------------------------
-; Optimized by vladikcomper
+; Nemesis decompression routine - Optimized by vladikcomper
+; Usage:
+;	move.l	#$40000000,($C00004).l
+;	lea	(Nem_Graphics).l,a0
+;	jsr	NemDec
 ; ------------------------------------------------------------------------------
 		
 NemDec_RAM:
@@ -1639,7 +1666,7 @@ NemDec_Main:
 		bsr.s   NemDec2
 		movem.l (sp)+,d0-a1/a3-a6
 		rts
-		
+
 ; ---------------------------------------------------------------------------
 ; Part of the Nemesis decompressor, processes the actual compressed data
 ; ---------------------------------------------------------------------------
@@ -2029,9 +2056,7 @@ RunPLC_Loop:
 		ori.w	#$4000,d0
 		swap	d0
 		move.l	d0,($C00004).l	; put the VRAM address into VDP
-		ints_disable
 		bsr	NemDec		; decompress
-		ints_enable
 		dbf	d1,RunPLC_Loop	; loop for number of entries
 		rts	
 ; End of function RunPLC_ROM
@@ -4662,7 +4687,6 @@ loc_3946:
 	;	lea	(Nem_HardPS).l,a0
 	;	bsr	NemDec
 
-		jsr	BlackBars.Reset		; set up cropped screens
 	;	move.b	#$07,($FFFFD380).w	; load cropped screen object (left half)
 	;	move.w	#$00D4,($FFFFD388).w		; set X-position
 	;	move.w	#$00F8,($FFFFD38A).w		; set Y-position
@@ -5990,7 +6014,7 @@ SS_ClrNemRam:
 		move.b	#$34,($FFFFD080).w ; load title	card object
 	;	btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
 	;	bne.s	@cont		; if yes, branch
-		move.b	#$07,($FFFFD380).w	; load cropped screen object
+	;	move.b	#$07,($FFFFD380).w	; load cropped screen object
 	;	move.w	#$00D4,($FFFFD388).w		; set X-position
 	;	move.w	#$00F8,($FFFFD38A).w		; set Y-position
 	;	move.b	#$07,($FFFFD3C0).w	; load cropped screen object
@@ -6735,6 +6759,8 @@ EndingSequence:				; XREF: GameModeArray
 	; moved to blackout challenge reward
 		
 		bsr	Pal_FadeFrom
+		
+		move.w	#$8004,($C00004).l	; disable h-ints
 		lea	($FFFFD000).w,a1
 		moveq	#0,d0
 		move.w	#$7FF,d1
@@ -6768,7 +6794,8 @@ End_ClrRam3:
 		dbf	d1,End_ClrRam3	; clear	variables
 
 		move	#$2700,sr
-		display_disable
+	;	display_disable
+	
 		bsr	ClearScreen
 		lea	($C00004).l,a6
 		move.w	#$8B03,(a6)
@@ -6776,7 +6803,7 @@ End_ClrRam3:
 		move.w	#$8407,(a6)
 		move.w	#$857C,(a6)
 		move.w	#$9001,(a6)
-		move.w	#$8014,(a6)
+	;	move.w	#$8014,(a6)
 		move.w	#$8ADF,(a6)
 		move.w	#$8720,(a6)
 		move.w	#$8ADF,($FFFFF624).w
@@ -6784,7 +6811,7 @@ End_ClrRam3:
 		move.w	#$1E,($FFFFFE14).w
 		move.w	#$601,($FFFFFE10).w ; set level	number to 0601 (no flowers)
 		move.b	#1,($FFFFF7CC).w
-		move.b	#$07,($FFFFD380).w	; load cropped screen object
+	;	move.b	#$07,($FFFFD380).w	; load cropped screen object
 	;	move.w	#$00D4,($FFFFD388).w		; set X-position
 	;	move.w	#$00F8,($FFFFD38A).w		; set Y-position
 	;	move.b	#$07,($FFFFD3C0).w	; load cropped screen object
@@ -6840,6 +6867,7 @@ End_LoadSonic:
 		move.w	#1800,($FFFFF614).w
 		move.b	#$18,($FFFFF62A).w
 		bsr	DelayProgram
+		move.w	#$8014,($C00004).l	; enable h-ints
 		display_enable
 		move.w	#$3F,($FFFFF626).w
 		bsr	Pal_FadeTo
@@ -16480,11 +16508,10 @@ Obj4B_Collect:				; XREF: Obj4B_Index
 		cmpi.w	#$400,($FFFFFE10).w
 		bne.s	@cont
 		move.l	#$50800002,d0
+@cont:		move.l	d0,($C00004).l
 
-@cont
 		lea	(Art_RingFlash).l,a0
 		move.w	#2687,d1
-		move.l	d0,($C00004).l
 Obj4B_ArtLoadLoop:
 		move.w	(a0)+,($C00000).l
 		dbf	d1,Obj4B_ArtLoadLoop
@@ -17250,6 +17277,7 @@ Obj2E_ChkEggman:
 		cmpi.b	#1,d0		; does monitor contain Eggman?
 		bne.s	Obj2E_ChkSonic
 		lea	($FFFFD000).w,a0
+		clr.b	($FFFFFFE7).w	; disable inhuman mode
 		jmp	KillSonic	; kill Sonic lmao
 ; ===========================================================================
 
@@ -20339,19 +20367,16 @@ LoadTitleCardArt:
 
 @loadart:
 		; load title graphics in an uncompressed matter to speed up loading times
-		lea	($C00000).l,a6
-		
-		move.l	#$6B800002,d2		; $AB80
+		move.l	#$6B800002,d2		; VRAM = $AB80
 		cmpi.b	#$10,($FFFFF600).w	; are we in a special stage?
 		bne.s	@notss			; if not, branch
-		move.l	#$4A200000,d2		; $0A20
+		move.l	#$4A200000,d2		; VRAM = $0A20
 @notss:
-		move.l	d2,4(a6)
+		move.l	d2,($C00004).l
 		lea	(Art_TitleCard).l,a5
 		move.w	#$A3F,d1
-@loadtitlecardfont:
-		move.w	(a5)+,(a6)
-		dbf	d1,@loadtitlecardfont
+@loadfont:	move.w	(a5)+,($C00000).l
+		dbf	d1,@loadfont
 
 @titlecardloadend:
 		movem.l	(sp)+,d1-a6
@@ -30335,11 +30360,21 @@ Obj06_ChkDist:
 
 		btst	#5,($FFFFFF92).w	; are we in Frantic mode?
 		beq.s	Obj06_DoHardPartSkip	; if not, branch
+		
+		jsr	SingleObjLoad2
+		bne.w	@noobjectleft
+		move.b	#$3F,(a1)		; load singular explosion object
+		move.w	obX(a0),obX(a1)
+		move.w	obY(a0),obY(a1)
+		move.b	#10,($FFFFFF64).w
+@noobjectleft:
 		jsr	DeleteObject		; delete Hard Part Skipper
+
 		move.w	#$8F,d0			; play game over jingle
 		jsr	PlaySound
 		lea	($FFFFD000).w,a0	; set self to Sonic
 		movea.l	a0,a2			; set killer to self
+		clr.b	($FFFFFFE7).w		; disable inhuman mode
 		jmp	KillSonic		; get fucking trolled lmao
 
 Obj06_DoHardPartSkip:
@@ -44376,21 +44411,23 @@ KillSonic:
 		tst.w	($FFFFFE08).w		; is debug mode	active?
 		bne.w	Kill_End		; if yes, branch
 		clr.b	($FFFFFE2C).w		; clear shield
-	;	clr.b	($FFFFFFFC).w
-		clr.w	obInertia(a0)			; clear interia
-		moveq	#0,d0
+		clr.w	obInertia(a0)		; clear interia
+		moveq	#0,d0			; clear d0
 		clr.b	($FFFFFFAF).w		; clear automatic extended camera flag
 		move.w	#-$600,d0		; move sonic upwards (inhuman)
 		clr.b	($FFFFFE2D).w		; remove invincibility
-		tst.b	($FFFFFFE7).w		; has sonic destroyed a S monitor?
-		beq.s	Kill_NoS		; if not, skip this stuff anyway
+		tst.b	($FFFFFFE7).w		; is Inhuman Mode enabled?
+		beq.s	Kill_DoKill		; if not, skip this stuff anyway
 		tst.b	($FFFFFFA1).w		; did Sonic die because of touching the boundary bottom?
-		beq.w	Kill_IfS		; if not, don't stop the time counter / don't kill sonic
+		beq.w	Kill_InhumanMode	; if not, don't stop the time counter / don't kill sonic
 
-Kill_NoS:
-		jsr	Pal_MakeBlackWhite
-		jsr	Pal_MakeBlackWhite_Water
-		
+Kill_DoKill:
+		jsr	Pal_MakeBlackWhite	; turn palette black and white
+		cmpi.b	#1,($FFFFFE10).w	; are we in LZ?
+		bne.s	Kill_NotLZ		; if not, branch
+		jsr	Pal_MakeBlackWhite_Water ; also turn the water black and white
+
+Kill_NotLZ:
 		cmpi.b	#$18,($FFFFF600).w	; is this the ending sequence?
 		bne.s	SH_NotEnding		; if not, branch
 		move.w	#0,($FFFFF72A).w	; lock screen
@@ -44408,12 +44445,12 @@ SH_NotEnding:
 		move.b	#70,($FFFFFFDD).w	; set delay for restart when sonic hits ground
 		clr.b	($FFFFFE1E).w		; stop time counter
 		clr.b 	($FFFFFFF9).w		; clear LZ palette change flag (lol)
-		move.b	#6,obRoutine(a0)		; comment this out, and sonic can't die (the main line for the inhuman mode)
+		move.b	#6,obRoutine(a0)	; comment this out, and sonic can't die (the main line for the inhuman mode)
 		move.w	obY(a0),$38(a0)		; something with Y and bosses...
 	;	bset	#7,obGfx(a0)		; make sonic being on the foreground (because of the new style disabled)
 		move.w	#-$700,d0		; move sonic upwards (normal)
 		
-Kill_IfS:
+Kill_InhumanMode:
 		jsr	Sonic_ResetOnFloor	; do all the shit which is in Sonic_ResetOnFloor
 		bset	#1,obStatus(a0)		; make sonic to be in the air
 
@@ -47356,6 +47393,7 @@ TimeOver:				; XREF: Hud_ChkTime
 		clr.b	($FFFFFE1E).w
 		lea	($FFFFD000).w,a0
 		movea.l	a0,a2
+		clr.b	($FFFFFFE7).w	; disable inhuman mode (to prevent softlocks)
 		bsr	KillSonic
 	;	move.b	#1,($FFFFFE1A).w
 		rts	

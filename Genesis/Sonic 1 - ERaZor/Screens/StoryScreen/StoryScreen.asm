@@ -124,7 +124,7 @@ StoryScreen_MainLoop:
 		move.b	($FFFFF605).w,d1	; get button presses
 		andi.b	#$E0,d1			; is A, B, C, or start pressed?
 		beq.s	STS_NoStart		; if not, branch
-		move.b	#1,($FFFFFF9B).w
+		move.b	#1,($FFFFFF9B).w	; set text-fully-written flag
 		bsr	StoryTextLoad		; update text
 		bra.s	StoryScreen_MainLoop	; if not, branch
 ; ===========================================================================
@@ -148,7 +148,7 @@ STS_NoTextChange:
 		move.b	($FFFFF605).w,d1	; get button presses
 		andi.b	#$E0,d1			; is A, B, C, or start pressed?
 		beq.s	StoryScreen_MainLoop	; if not, branch
-; ===========================================================================
+; ---------------------------------------------------------------------------
 
 STS_ExitScreen:
 		cmpi.b	#1,($FFFFFF9E).w	; is this the intro-dialouge?
@@ -206,8 +206,6 @@ StoryTextLoad:
 		move.l	#$620C0003,d4	; screen position (text)
 		move.w	#$E680,d3	; VRAM setting
 		moveq	#STS_LinesTotal,d1		; number of lines of text
-
-
 loc3_34FE:
 		move.l	d4,4(a6)
 		bsr	STS_ChgLine
@@ -284,18 +282,15 @@ STS_Loop_Header1XX:
 		bne.s	@0
 		move.b	#6,d3
 		bra.s	STS_Loop_H1_NoSpaceXX
-@0		cmpi.b	#'~',d3
+@0:		cmpi.b	#'~',d3
 		bne.s	@1
 		move.b	#7,d3
 		bra.s	STS_Loop_H1_NoSpaceXX
-@1		cmpi.b	#'#',d3
+@1:		cmpi.b	#'#',d3
 		bne.s	@2
 		move.b	#8,d3
 		bra.s	STS_Loop_H1_NoSpaceXX
-@2	
-
-
-
+@2:
 		cmpi.b	#$20,d3
 		beq.s	STS_Loop_H1_SpaceXX
 		cmpi.b	#$3D,d3
@@ -388,7 +383,7 @@ STS_Loop_ContinueXX:
 
 
 		cmpi.b	#':',d3			; is current char a colon?
-		bne.s	STS_NoColon1XX		; if not, go to next char
+		bne.s	STS_NoColon2XX		; if not, go to next char
 		move.b	#3,d3
 		bra.s	STS_NoNumber2XX
 
@@ -427,9 +422,10 @@ STS_SetMainText:
 		lea	(StoryText_1).l,a2	; get text location 1 (which is also the start of the text locations in general)
 		move.b	($FFFFFF9E).w,d0 	; get text ID
 		subq.b	#1,d0			; sub 1 from it, because we want to use 0 as base, not 1
-		bpl.s	@0
+		bpl.s	@pos			; is it positive? branch
 		moveq	#0,d0			; make sure we never get any illegal values from underflows
-@0:
+@pos:
+		ext.w	d0			; convert to word
 		mulu.w	#422,d0			; multiply it by 422 (number of chars for a single block of text including the $FF)
 		adda.w	d0,a2			; add result to text location (a2)
 	

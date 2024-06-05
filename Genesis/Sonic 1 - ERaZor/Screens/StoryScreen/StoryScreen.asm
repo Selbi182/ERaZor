@@ -875,7 +875,7 @@ StoryText_6:	; text after beating Unreal Place
 		dc.b	'                            '
 		dc.b	'BUT HEY, AT LEAST YOU       '
 		dc.b	'COLLECTED ALL SIX EMERALDS, '
-		dc.b	'WHICH MEANS YOU NEED TO GO '
+		dc.b	'WHICH MEANS YOU NEED TO GO  '
 		dc.b	'TO SPACE OR SOMETHING.      '
 		dc.b	'                            '
 		dc.b	'JUST REMEMBER THAT IN THE   '

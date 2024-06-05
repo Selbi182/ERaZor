@@ -1,7 +1,7 @@
 ; ---------------------------------------------------------------------------
 ; Options screen
 ; ---------------------------------------------------------------------------
-Options_Blank = 30+11
+Options_Blank = $29
 ; ---------------------------------------------------------------------------
 
 OptionsScreen:				; XREF: GameModeArray
@@ -64,10 +64,10 @@ OptionsScreen:				; XREF: GameModeArray
 
 ; ---------------------------------------------------------------------------
 Options_LoadPal:
-		moveq	#2,d0		; load Options screen pallet
+		moveq	#2,d0		; load level select palette
 		jsr	PalLoad1
-		moveq	#3,d0		; load Options screen pallet
-		jsr	PalLoad1
+	;	moveq	#3,d0		; load Sonic palette
+	;	jsr	PalLoad1
 
 		movem.l	d0-a2,-(sp)		; backup d0 to a2
 		lea	(Pal_ERaZorBanner).l,a1	; set ERaZor banner's palette pointer
@@ -133,9 +133,11 @@ Options_PalCycle:
 		; background palette rotation
 	;	jsr	SineWavePalette
 	
-		move.l	($FFFFFE0C).w,d0	; get V-blank timer
-		andi.l	#3,d0
-		bne.w	Options_PalCycle_ERaZor
+		move.w	($FFFFFE0E).w,d0	; get V-blank timer
+		andi.w	#$F,d0
+		divu.w	#10,d0
+		andi.l	#$FFFF0000,d0
+		bne.w	Options_Deform
 		addq.b	#1,($FFFFFF85).w	; increase timer
 
 		moveq	#0,d0
@@ -154,23 +156,15 @@ Options_PalCycle:
 		lea	(Options_BGCycleColors).l,a1
 		bra.s	@bgpalcycle
 @0:
-		move.w	d0,d2
-		lsl.w	#4,d2
-		andi.w	#$E00,d2
-		or.w	d2,d0
-		andi.w	#$0FFF,d0
+		rol.w	#4,d0
+		andi.w	#$0EEE,d0
 		move.w	d0,(a2)+
 		dbf	d1,@bgpalcycle
-		
+
+Options_Deform:
 		; background deformation
-	;	moveq	#0,d0
-	;	move.b	($FFFFFF85).w,d0
-	;	subi.b	#$80,d0
-	;	or.w	#$9100,d0
-	;	move.w	d0,($C00004).l
-		
 		lea	($FFFFCC00).w,a1
-		move.w	#224-1,d3
+		move.w	#(224/1)-1,d3
 		jsr	RandomNumber
 @scroll:
 		ror.l	#1,d1
@@ -188,6 +182,12 @@ Options_PalCycle:
 		andi.l	#$0000FFFF,d0
 		swap	d0
 		add.w	($FFFFFE0E).w,d0 ; scroll everything to the right
+		btst	#0,d5
+		beq.s	@3
+		sub.w	($FFFFFE0E).w,d0 ; scroll everything to the right
+
+@3:
+	
 		
 		move.w	d0,d4		; copy scroll
 		add.w	d3,d4		; add line index
@@ -196,7 +196,9 @@ Options_PalCycle:
 		move.w	d4,d0
 		jsr	CalcSine
 		
-		btst	#0,d3
+		move.w	d3,d5
+		add.w	($FFFFFE0E).w,d5
+		btst	#7,d5
 		beq.s	@2
 		neg.w	d0
 @2:
@@ -207,6 +209,8 @@ Options_PalCycle:
 		swap	d0
 		or.l	d0,d2
 		move.l	d2,(a1)+
+	;	addi.l	#$80000,d2
+	;	move.l	d2,(a1)+
 		dbf	d3,@scroll ; fill scroll data with 0
 
 		; V-Scroll
@@ -215,6 +219,7 @@ Options_PalCycle:
 		move.w	#(320/8)-1,d0			; do it for all 40 double-tiles (320 width = 80 tiles at 8 pixels)
 @vScroll_loop:	moveq	#0,d1
 		move.w	($FFFFFE0E).w,d1
+		lsl.w	#1,d1
 		swap	d1
 		move.l	d1,(a0)				; dump art to VSRAM
 		dbf	d0,@vScroll_loop		; repeat until all lines are done
@@ -230,23 +235,51 @@ Options_PalCycle_ERaZor:
 
 ; ---------------------------------------------------------------------------
 Options_BGCycleColors:
-		dc.w	$020
-		dc.w	$040
-		dc.w	$080
-		dc.w	$0A0
-		dc.w	$0C0
-		dc.w	$0A0
-		dc.w	$080
-		dc.w	$040
+		dc.w	$000
+		dc.w	$200
+		dc.w	$420
+		dc.w	$642
+		dc.w	$864
+		dc.w	$886
+		dc.w	$888
 		
+		dc.w	$868
+		dc.w	$868
+		
+		dc.w	$888
+		dc.w	$688
+		dc.w	$468
+		dc.w	$246
+		dc.w	$024
+		dc.w	$002
+		dc.w	$020
+
+		dc.w	  -1
+		even
+	
+	
+	
+	
+	
+	
 		dc.w	$020
 		dc.w	$040
+		dc.w	$060
 		dc.w	$080
 		dc.w	$0A0
 		dc.w	$0C0
+		dc.w	$0C0
+		
+		dc.w	$0E0
+		dc.w	$0E0
+		
+		dc.w	$0C0
+		dc.w	$0C0
 		dc.w	$0A0
 		dc.w	$080
+		dc.w	$060
 		dc.w	$040
+		dc.w	$020
 
 		dc.w	  -1
 		even
@@ -763,7 +796,7 @@ OW_NotFF:
 		bne.s	OW_NotSpace		; if not, branch
 		cmpi.b	#4,($FFFFFF98).w	; are the options being written now?
 		bne.s	OW_SpaceLoop		; if not, branch
-		move.b	#$29,d0			; set correct value for space
+		move.b	#Options_Blank,d0	; set correct value for space
 		bra.s	OW_DoWrite		; skip
 
 OW_SpaceLoop:

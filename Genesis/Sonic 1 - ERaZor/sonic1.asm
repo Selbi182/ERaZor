@@ -546,7 +546,7 @@ BlackBars.Reset:
 ; ---------------------------------------------------------------------------
 
 ; called from VBlank every single frame
-BlackBars.UpdateInVBlank:
+BlackBars.VBlankUpdate:
 		bsr.s	BlackBars.SetState
 		
 		move.w	BlackBars.Height,d0				; is height 0?
@@ -738,6 +738,9 @@ ScreenCropCurrent EQU $FFFFD380+$30
 ; loc_B10:
 VBlank:				; XREF: StartOfRom
 		movem.l	d0-a6,-(sp)
+		
+		bsr.w	BlackBars.VBlankUpdate
+		
 		tst.b	($FFFFF62A).w			; are we late for V-Blank?
 		beq.w	VBlank_Late			; if yes, oh shit oh fuck, go to the emergency routine immediately
 		
@@ -798,7 +801,6 @@ VBlank_Late:				; XREF: VBlank; VBlankTable
 		bne.w	VBlank_Exit		; if not, branch
 
 loc_B9A:
-		jsr	BlackBars.UpdateInVBlank
 		move.b	($FFFFF625).w,($FFFFFE07).w
 
 		cmpi.b	#1,($FFFFFE10).w	; is level LZ?
@@ -835,7 +837,6 @@ loc_BFE:				; XREF: loc_BC8
 		move.w	($FFFFF640).w,(a5)
 
 loc_C22:				; XREF: loc_BC8
-		jsr	BlackBars.UpdateInVBlank
 		move.b	($FFFFF625).w,($FFFFFE07).w
 
 		bra.w	VBlank_Exit
@@ -843,7 +844,6 @@ loc_C22:				; XREF: loc_BC8
 
 loc_C32:				; XREF: VBlankTable
 		bsr	sub_106E
-		jsr	BlackBars.UpdateInVBlank
 		move.b	($FFFFF625).w,($FFFFFE07).w
 
 loc_C36:				; XREF: VBlankTable
@@ -857,7 +857,6 @@ locret_C42:
 
 loc_C44:				; XREF: VBlankTable
 		bsr	sub_106E
-		jsr	BlackBars.UpdateInVBlank
 		move.b	($FFFFF625).w,($FFFFFE07).w
 		bsr	sub_6886
 		bsr	sub_1642
@@ -871,7 +870,6 @@ locret_C5C:
 
 loc_C5E:				; XREF: VBlankTable
 		bsr	sub_106E
-		jsr	BlackBars.UpdateInVBlank
 		move.b	($FFFFF625).w,($FFFFFE07).w
 		rts	
 ; ===========================================================================
@@ -905,7 +903,6 @@ loc_CB0:				; XREF: loc_C76
 		move.w	($FFFFF640).w,(a5)
 
 loc_CD4:				; XREF: loc_C76
-		jsr	BlackBars.UpdateInVBlank
 		move.b	($FFFFF625).w,($FFFFFE07).w
 		lea	($C00004).l,a5
 		move.l	#$940193C0,(a5)
@@ -998,7 +995,6 @@ loc_EB4:				; XREF: loc_E7A
 		move.w	($FFFFF640).w,(a5)
 
 loc_ED8:				; XREF: loc_E7A
-		jsr	BlackBars.UpdateInVBlank
 		move.b	($FFFFF625).w,($FFFFFE07).w
 		lea	($C00004).l,a5
 		move.l	#$940193C0,(a5)
@@ -1032,7 +1028,6 @@ loc_F54:
 
 loc_F8A:				; XREF: VBlankTable
 		bsr	sub_106E
-		jsr	BlackBars.UpdateInVBlank
 		move.b	($FFFFF625).w,($FFFFFE07).w
 		addq.b	#1,($FFFFF628).w
 		move.b	#$E,($FFFFF62A).w
@@ -1041,7 +1036,6 @@ loc_F8A:				; XREF: VBlankTable
 
 loc_F9A:				; XREF: VBlankTable
 		bsr	sub_106E
-		jsr	BlackBars.UpdateInVBlank
 		move.b	($FFFFF625).w,($FFFFFE07).w
 		bra.w	sub_1642
 ; ===========================================================================
@@ -1492,9 +1486,9 @@ loc_1404:
 		move.b	#$80,($FFFFF003).w	; something with music
 
 Unpause:
-		lea	($FFFFFB00).w,a0	; get palette
-		lea	($FFFFFD00).w,a1 	; get backup up palette (WARNING! This will be corrupted if stack grows >$80 bytes)
-		move.w	#$003F,d3		; set d3 to $3F (+1 for the first run)
+		lea	($FFFFFA80).w,a0	; get palette
+		lea	($FFFFC910).w,a1 	; get backup up palette
+		move.w	#$007F,d3		; set d3 to $3F (+1 for the first run)
 
 Pal_RTN_Loop
 		move.w	(a1)+,(a0)+		; set new palette
@@ -3455,12 +3449,12 @@ loc_2160:
 ; ---------------------------------------------------------------------------
 
 Pal_MakeBlackWhite:
-		lea	($FFFFFB00).w,a3 	; get palette index
+		lea	($FFFFFA80).w,a3 	; get palette index
 
 Pal_MakeBlackWhite2:
-		lea	($FFFFFD00).w,a4	; backup palette location
+		lea	($FFFFC910).w,a4	; backup palette location
 		moveq	#0,d3			; clear d3
-		move.b	#$3F,d3			; set d3 to $3F (+1 for the first run)
+		move.w	#$7F,d3			; set d3 to $3F (+1 for the first run)
 
 Pal_MBW_Loop:
 		moveq	#0,d0			; clear d0
@@ -3491,6 +3485,7 @@ Pal_MBW_Loop:
 ; ---------------------------------------------------------------------------
 
 Pal_MakeBlackWhite_Water:
+	rts
 		lea	($FFFFFA80).w,a3 	; get palette index
 		bra.s	Pal_MakeBlackWhite2
 ; End of function Pal_MakeBlackWhite
@@ -30655,7 +30650,7 @@ Obj01_Normal:
 		bne.s	Obj01_RoutineNotDeath
 		movem.l	d3-a1,-(sp)
 		lea	($FFFFFB20).w,a0	; get palette
-		lea	($FFFFFD00).w,a1 	; get backup up palette
+		lea	($FFFFC910+$80).w,a1 	; get backup up palette
 		move.w	#$002F,d3		; set d3 to $3F (+1 for the first run)
 
 Pal_RTN_LoopXXX:

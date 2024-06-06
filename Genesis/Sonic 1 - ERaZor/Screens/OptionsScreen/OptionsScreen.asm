@@ -1,7 +1,7 @@
 ; ---------------------------------------------------------------------------
 ; Options screen
 ; ---------------------------------------------------------------------------
-Options_Blank = $29
+Options_Blank = $29 ; blank character, high priority
 ; ---------------------------------------------------------------------------
 
 OptionsScreen:				; XREF: GameModeArray
@@ -277,6 +277,8 @@ Options_ERZPalCycle:
 OptionsScreen_MainLoop:
 		move.b	#2,($FFFFF62A).w
 		jsr	DelayProgram
+		jsr	ObjectsLoad
+		jsr	BuildSprites
 
 		tst.w	($FFFFF614).w		; is timer empty?
 		bne.s	O_DontResetTimer	; if not, branch

@@ -246,14 +246,14 @@ PLC_SYZ2:	dc.w 2
 PLC_SBZ:	dc.w 3
 	;	dc.l Nem_SBZ		; SBZ main patterns
 	;	dc.w 0
-		dc.l Nem_SbzDoor1	; door
-		dc.w $5500
 		dc.l Nem_HardPS_Tut	; hard part skipper
 		dc.w $6C00
 		dc.l Nem_LzSwitch	; switch
 		dc.w $70A0
 		dc.l Nem_LevelSigns	; level signs
 		dc.w $7300
+		dc.l Nem_SbzDoor1	; door
+		dc.w $8000
 PLC_SBZ2:	dc.w 0
 		dc.l Nem_Spikes		; spikes
 		dc.w $A360

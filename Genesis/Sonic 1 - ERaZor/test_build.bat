@@ -14,8 +14,11 @@ if exist s1erz.bin (
 	echo Built, press any button to play!
 	echo ============================================
 	pause
-	@echo on
-	start s1erz.bin
+
+	if "%~1" neq "--nolaunch" (
+		@echo on
+		start s1erz.bin
+	)
 ) else (
 	echo.
 	echo ============================================

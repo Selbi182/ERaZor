@@ -143,16 +143,12 @@ DH_MainLoop:
 	move.b	#2,VBlankSub
 	jsr	DelayProgram
 
-	cmpi.b	#10,($FFFFFF6E).w	; is this the introduction text?
-	bne.s	@notintro		; if not, branch
-	jsr	SineWavePalette		; sinewave background color
+	;cmpi.b	#10,($FFFFFF6E).w	; is this the introduction text?
+	;bne.s	@notintro		; if not, branch
+	;lea	($FFFFFB40).w,a1
+	;jsr	SineWavePalette		; sinewave background color
 @notintro:
-	
-	;clr.w	$FFFFD012
-	;move.w	#$A00,$FFFFD010
-	;jsr	CinematicScreenFuzz_Do
-
-; background deformation
+		; background deformation
 		lea	($FFFFCC00).w,a1
 		move.w	#(224/1)-1,d3
 		jsr	RandomNumber
@@ -215,6 +211,28 @@ DH_MainLoop:
 	jsr	BuildSprites
 	jsr	PalCycle_Load
 
+	; red palette cycle
+	cmpi.b	#5,($FFFFFE10).w
+	bne.s	@notsbz
+	move.w	($FFFFFE0E).w,d0
+	lsl.w	#4,d0
+	jsr	CalcSine
+	cmpi.w	#$100,d0
+	bne.s	@contff
+	subq.w	#1,d0		
+@contff:
+	addi.w	#$100,d0
+	lsr.w	#6,d0
+	andi.w	#$00E,d0
+	move.w	d0,d1
+	rol.w	#4,d1
+	or.w	d1,d0
+	rol.w	#4,d1
+	or.w	d1,d0
+	move.w	d0,(a1)
+	move.w	d0,($FFFFFB34).w
+	
+@notsbz:
 	; Check if it's over
 	tst.b	_DH_WindowObj	; object window dead?
 	bne.w	DH_MainLoop	; if not, branch
@@ -313,7 +331,7 @@ xpos	= 8
 ypos	= $A
 xpos2	= $14
 
-_StartVel = $1A00
+_StartVel = $1400
 _Accel = $B8
 
 DH_OWindow_Init:
@@ -628,6 +646,8 @@ Hints_List:
 mapchar macro char
 	if     \char = "'"
 		dc.b	$2+DH_CharOffset
+	elseif \char = "#"
+		dc.b	_font2, $2+DH_CharOffset
 	elseif \char = '.'
 		dc.b	$26+DH_CharOffset
 	elseif \char = ':'
@@ -660,8 +680,11 @@ mapchar macro char
 	endm
  
 boxtxt macro string
-	len: = strlen(\string)
 	i:   = 1
+	len: = strlen(\string)
+	if (len>20)
+		inform 1, 'line too long'
+	endif
 
 	while (i<=len)
 		char:	substr i,i,\string
@@ -684,30 +707,38 @@ Hint_Pre:
 	boxtxt	"BLUE HEDGEHOG!"
 	dc.b	_br,_pause,_cls
 	
-	boxtxt	"YOU'LL FACE SOME"
-	boxtxt	"OF THE MOST RAGE"
-	boxtxt	"INDUCING, UNIQUE,"
-	boxtxt	"AND EXPLOSIVE"
-	boxtxt	"CHALLENGES EVER"
-	boxtxt	"CREATED FOR A SONIC"
-	boxtxt	"GAME!"
+	boxtxt	"YOU WILL REVISIT"
+	boxtxt	"THE FIRST SONIC GAME"
+	boxtxt	"THROUGH THE LENS OF"
+	boxtxt	"AN ACTION MOVIE."
+	dc.b	_br
+	boxtxt	"FAST MOVEMENT,"
+	boxtxt	"TOUGH CHALLENGES,"
+	boxtxt	"AND explosions."
 	dc.b	_br,_pause,_cls
 
 	boxtxt	"BECAUSE TEARS OF"
 	boxtxt	"FRUSTRATION SHOULD"
 	boxtxt	"BE KEPT TO A MINIMUM"
-	boxtxt	"THE FOLLOWING LEVEL"
-	boxtxt	"WILL TEACH YOU SOME"
-	boxtxt	"OF THE BASICS YOU'LL"
-	boxtxt	"NEED TO KNOW LATER"
-	boxtxt	"IN THE GAME."
+	boxtxt	"AT ALL TIMES, THE"
+	boxtxt	"FOLLOWING STAGE WILL"
+	boxtxt	"TEACH YOU SOME OF"
+	boxtxt	"THIS GAME'S"
+	boxtxt	"REQUIRED BASICS."
+	dc.b	_br,_pause,_cls
+
+	boxtxt	"POSITION YOURSELF"
+	boxtxt	"IN FRONT OF THE"
+	boxtxt	"INFORMATION MONITORS"
+	boxtxt	"AND PRESS a TO BRING"
+	boxtxt	"UP USEFUL TIPS!"
 	dc.b	_br,_pause,_cls
 
 	dc.b	_br
 	boxtxt	"   ALRIGHT THEN,"
 	dc.b	_br,_delay,10
 	dc.b	_br
-	boxtxt	"   let us begin1"
+	boxtxt	"     let#s go1"
 	dc.b	_br,_pause,_end
 
 ;		 --------------------
@@ -788,7 +819,7 @@ Hint_4:
 	boxtxt	"add colons and"
 	boxtxt	"slashes to the font."
 	dc.b	_br,_pause,_cls
-	boxtxt	"have fun! and oh yeah"
+	boxtxt	"have fun! and oh yea"
 	boxtxt	"the level is still a"
 	boxtxt	"complete mess."
 	dc.b	_pause
@@ -810,7 +841,7 @@ Hint_5:
 
 ;		 --------------------
 Hint_6:
-	boxtxt	"hard part skipper"
+	boxtxt	"hard part skippers"
 	dc.b	_br
 	boxtxt	"PRESS a + b + c"
 	boxtxt	"TO SKIP CHALLENGES"
@@ -872,7 +903,7 @@ Hint_Easter_Tutorial:
 Hint_Easter_SLZ:
 	boxtxt	"AREN'T THE TRUE"
 	dc.b	_br
-	boxtxt	"easter eggs"
+	boxtxt	"EASTER EGGS"
 	dc.b	_br
 	boxtxt	"THE FRIENDS WE"
 	boxtxt	"MADE ALONG THE"

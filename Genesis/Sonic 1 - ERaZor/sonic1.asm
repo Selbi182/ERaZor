@@ -2701,7 +2701,6 @@ PalCycle_SBZ:
 		lea	($FFFFF650).w,a1
 		move.w	(a2)+,d1
 
-
 		cmpi.w	#$500,($FFFFFE10).w
 		bne.s	loc_1AE0
 		tst.b	($FFFFFFC8).w
@@ -3735,8 +3734,8 @@ Angle_Data:	incbin	misc\angles.bin
 ; ===========================================================================
 
 SineWavePalette:
-		addq.w	#2,($FFFFFE04).w
-		move.w	($FFFFFE04).w,d0
+		move.w	($FFFFFE0E).w,d0
+		lsl.w	#5,d0
 		jsr	CalcSine
 		cmpi.w	#$100,d0
 		bne.s	@contff
@@ -3759,8 +3758,9 @@ SineWavePalette:
 		lsr.w	#5,d0
 		move.w	($FFFFFF6C).w,d1
 		lsl.w	d1,d0
-		andi.w	#$EEE,d0
-		move.w	d0,($FFFFFB40).w
+		andi.w	#$00E,d0
+		move.w	d0,(a1)
+	;	move.w	d0,($FFFFFB40).w
 		rts
 
 ; ---------------------------------------------------------------------------
@@ -4431,6 +4431,7 @@ LSelectPointers:
 ; Level
 ; ---------------------------------------------------------------------------
 
+; Level:: <-- to for quick search
 Level:					; XREF: GameModeArray
 		clr.b	($FFFFFF94).w
 		bset	#7,($FFFFF600).w ; add $80 to screen mode (for pre level sequence)
@@ -4449,6 +4450,8 @@ Level:					; XREF: GameModeArray
 		rept	$20-1
 		move.w	#0,VDP_Data
 		endr
+		
+	;	jsr	ClearVRAM
 
 		move.b	#0,($FFFFFF8A).w	; load uncompressed title card art (immediately)
 		jsr	LoadTitleCardArt
@@ -13507,10 +13510,11 @@ Obj2A_Main:				; XREF: Obj2A_Index
 		move.l	a0,$30(a1)		; make the stopper remember the location of this door
 
 @nosoundstopper:
-		cmpi.w	#$501,($FFFFFE10).w
-		bne.s	Obj2A_OpenShut
+		cmpi.w	#$501,($FFFFFE10).w	; is this the tutorial?
+		bne.s	Obj2A_OpenShut		; if not, branch
 		addq.b	#2,obRoutine(a0)
 		move.b	#1,obAnim(a0)
+		move.w	#$4000+($8000/$20),obGfx(a0)
 		bra.w	Obj2A_OpenShutSBZ
 
 Obj2A_OpenShut:				; XREF: Obj2A_Index
@@ -23956,9 +23960,9 @@ loc_EC86:
 		addq.b	#2,obRoutine(a0)
 
 ; ---------------------------------------------------------------------------
-; Subroutine unlock the doors in SYZ1 after you finish a normal level.
+; Subroutine to unlock the doors in SYZ1 after you finish a normal level
 
-; About: ($FFFFFF8B).w
+; ($FFFFFF8B).w
 ; Bit 0 = GHZ | SS1
 ; Bit 1 = SS1 | MZ
 ; Bit 2 = MZ | LZ
@@ -30596,7 +30600,7 @@ Obj06_ChkA:
 		move.w	#$0CCC,($FFFFFB3A).w
 		move.w	#$0AAA,($FFFFFB3C).w
 		
-		
+		lea	($FFFFFB40).w,a1
 		jsr	SineWavePalette
 		move.w	#$93,d0			; play special stage jingle...
 		jsr	PlaySound		; ...specifically because it tends to ruin the music following it lol

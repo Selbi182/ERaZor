@@ -108,7 +108,7 @@ obSolid:	equ $25 ; solid status flag
 
 ; ------------------------------------------------------
 ; Vladik's Debugger
-; __DEBUG__: equ 1
+;__DEBUG__: equ 1
 ; ------------------------------------------------------
 		include	"Debugger/Debugger.asm"
 		even
@@ -735,11 +735,12 @@ Art_Text:	incbin	Screens\OptionsScreen\Options_TextArt.bin
 ; V-blanking routine
 ; ---------------------------------------------------------------------------
 
-ScreenCropCurrent EQU $FFFFD380+$30
-
 ; loc_B10:
 VBlank:				; XREF: StartOfRom
 		movem.l	d0-a6,-(sp)
+		
+		tst.b	(NemBusy).w			; is NemDec currently busy?
+		bne.s	VBlank_Exit			; if yes, skip everything and just run the sound driver
 		
 		bsr.w	BlackBars.VBlankUpdate
 		
@@ -1632,14 +1633,18 @@ ProcessDMAQueue_Done:
 ;	lea	(Nem_Graphics).l,a0
 ;	jsr	NemDec
 ; ------------------------------------------------------------------------------
-		
-NemDec_RAM:
+NemBusy equ $FFFFF629
+
+NemDec_RAM: ; unused in this game
 		movem.l	d0-a1/a3-a6,-(sp)
 		lea	NemDec_WriteRowToRAM(pc),a3
 		bra.s   NemDec_Main
 		
 ; ------------------------------------------------------------------------------
 NemDec:
+		ints_disable
+		move.b	#1,(NemBusy).w ; set "NemDec busy" flag
+
 		movem.l	d0-a1/a3-a6,-(sp)
 		lea	$C00000,a4      ; load VDP Data Port     
 		lea	NemDec_WriteRowToVDP(pc),a3
@@ -1661,6 +1666,9 @@ NemDec_Main:
 		move.w  #$10,d6         ; set initial shift value
 		bsr.s   NemDec2
 		movem.l (sp)+,d0-a1/a3-a6
+
+		clr.b	(NemBusy).w	; clear "NemDec busy" flag
+		ints_enable
 		rts
 
 ; ---------------------------------------------------------------------------
@@ -1917,7 +1925,13 @@ RunPLC_RAM:				; XREF: Pal_FadeTo
 
 loc_160E:
 		andi.w	#$7FFF,d2
+		
+		ints_disable
+		move.b	#1,(NemBusy).w	; set "NemDec busy" flag
 		bsr	NemDec4
+		clr.b	(NemBusy).w	; clear "NemDec busy" flag
+		ints_enable
+
 		move.b	(a0)+,d5
 		asl.w	#8,d5
 		move.b	(a0)+,d5
@@ -2000,7 +2014,13 @@ loc_1676:				; XREF: sub_1642
 
 loc_16AA:				; XREF: sub_165E
 		movea.w	#8,a5
+		
+		ints_disable
+		move.b	#1,(NemBusy).w	; set "NemDec busy" flag
 		bsr	NemDec3
+		clr.b	(NemBusy).w	; clear "NemDec busy" flag
+		ints_enable
+
 		subq.w	#1,($FFFFF6F8).w
 		beq.s	loc_16DC
 		subq.w	#1,($FFFFF6FA).w
@@ -4008,7 +4028,7 @@ Title_SonPalLoop:
 		jsr	ObjectsLoad
 		bsr	DeformBgLayer
 		jsr	BuildSprites
-		moveq	#0,d0
+		moveq	#0,d0			; load standard patterns
 		bsr	LoadPLC2
 		move.w	#0,($FFFFFFE4).w
 		move.w	#0,($FFFFFFE6).w
@@ -4431,7 +4451,7 @@ LSelectPointers:
 ; Level
 ; ---------------------------------------------------------------------------
 
-; Level:: <-- to for quick search
+; Level::	<-- for quick search
 Level:					; XREF: GameModeArray
 		clr.b	($FFFFFF94).w
 		bset	#7,($FFFFF600).w ; add $80 to screen mode (for pre level sequence)
@@ -4441,11 +4461,8 @@ Level:					; XREF: GameModeArray
 		display_enable
 		bsr	Pal_FadeFrom
 
-		tst.w	($FFFFFFF0).w
-		bmi.w	Level_ClrRam
-		move	#$2700,sr
-
 		; immediately clear the first tile in VRAM to avoid graphical issues
+		move	#$2700,sr
 		vram	$0000
 		rept	$20-1
 		move.w	#0,VDP_Data
@@ -4453,8 +4470,12 @@ Level:					; XREF: GameModeArray
 		
 	;	jsr	ClearVRAM
 
+		cmpi.w	#$001,($FFFFFE10).w
+		move.b	#-1,($FFFFFF8A).w	; don't load title card art
+		beq.s	@notitlecardart
 		move.b	#0,($FFFFFF8A).w	; load uncompressed title card art (immediately)
 		jsr	LoadTitleCardArt
+@notitlecardart:
 		move	#$2300,sr
 		moveq	#0,d0
 		move.b	($FFFFFE10).w,d0
@@ -4474,10 +4495,10 @@ loc_37FC:
 		jsr	SRAM_SaveNow		; save our progress
 
 Level_NoSRAM:
-	;	moveq	#0,d0
-	;	bsr	LoadPLC2		; (re-)load standard patterns 1
 		moveq	#1,d0
 		bsr	LoadPLC			; load standard patterns 2
+	;	moveq	#0,d0
+	;	bsr	LoadPLC		; (re-)load standard patterns 1
 
 		cmpi.w	#$001,($FFFFFE10).w	; is current level GHZ 2 (intro level)?
 		bne.s	Level_ClrRam		; if not, branch
@@ -4488,33 +4509,25 @@ Level_ClrRam:
 		lea	($FFFFD000).w,a1
 		moveq	#0,d0
 		move.w	#$7FF,d1
-
-Level_ClrObjRam:
-		move.l	d0,(a1)+
+Level_ClrObjRam:move.l	d0,(a1)+
 		dbf	d1,Level_ClrObjRam ; clear object RAM
 
 		lea	($FFFFF628).w,a1
 		moveq	#0,d0
 		move.w	#$15,d1
-
-Level_ClrVars:
-		move.l	d0,(a1)+
+Level_ClrVars:	move.l	d0,(a1)+
 		dbf	d1,Level_ClrVars ; clear misc variables
 
 		lea	($FFFFF700).w,a1
 		moveq	#0,d0
 		move.w	#$3F,d1
-
-Level_ClrVars2:
-		move.l	d0,(a1)+
+Level_ClrVars2:	move.l	d0,(a1)+
 		dbf	d1,Level_ClrVars2 ; clear misc variables
 
 		lea	($FFFFFE60).w,a1
 		moveq	#0,d0
 		move.w	#$47,d1
-
-Level_ClrVars3:
-		move.l	d0,(a1)+
+Level_ClrVars3:	move.l	d0,(a1)+
 		dbf	d1,Level_ClrVars3 ; clear object variables
 
 		move	#$2700,sr
@@ -4527,7 +4540,7 @@ Level_ClrVars3:
 		move.w	#$9001,(a6)
 		move.w	#$8720,(a6)
 		
-		move.w	#$8014,(a6)			; enable horizontal interrupts (normally only enabled in LZ)
+	;	move.w	#$8014,(a6)			; enable horizontal interrupts (normally only enabled in LZ)
 		move.w	#$8A00|$DF,($FFFFF624).w	; set initial H-int counter value to apply once per frame
 		move.w	($FFFFF624).w,(a6)		; apply H-int counter
 		
@@ -4634,8 +4647,9 @@ Level_NoMusic2:
 		vram	$D700
 		lea	(Nem_ExplBall).l,a0
 		jsr	NemDec
+		jsr	Load_ExplosionGraphics
 		bra.s	Level_NoTitleCard
-
+		
 @0:
 		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
 		bne.s	Level_NoTitleCard2	; if yes, branch
@@ -4652,12 +4666,9 @@ Level_NoMusic2:
 ; ===========================================================================
 
 Level_NoTitleCard2:
-	;	moveq	#0,d0
-	;	move.b	($FFFFFE10).w,d0
-	;	addi.w	#$15,d0
-	;	jsr	(LoadPLC).l	; load animal patterns (level no. + $15)
-		moveq	#2,d0
-		jsr	LoadPLC		; load explosion patterns
+	;	moveq	#2,d0
+	;	jsr	LoadPLC		; load explosion patterns
+		jsr	Load_ExplosionGraphics
 		moveq	#3,d0
 		bsr	PalLoad2	; load Sonic's pallet line
 		moveq	#$13,d0
@@ -4667,10 +4678,6 @@ Level_NoTitleCard2:
 Level_NoTitleCard:
 		moveq	#3,d0
 		bsr	PalLoad2	; load Sonic's pallet line
-		cmpi.w	#$500,($FFFFFE10).w
-		bne.s	Level_TtlCard
-		moveq	#2,d0
-		jsr	LoadPLC		; load explosion patterns
 
 Level_TtlCard:
 		move.b	#$C,($FFFFF62A).w
@@ -4697,11 +4704,10 @@ loc_3946:
 		move.l	#$64600002,($C00004).l
 		lea	(Nem_HSpring).l,a0
 		bsr	NemDec
-
-	;	move.l	#$74000003,($C00004).l
-	;	lea	(Nem_HardPS).l,a0
-	;	bsr	NemDec
-
+	
+		moveq	#0,d0
+		bsr	LoadPLC		; (re-)load standard patterns 1
+		
 	;	move.b	#$07,($FFFFD380).w	; load cropped screen object (left half)
 	;	move.w	#$00D4,($FFFFD388).w		; set X-position
 	;	move.w	#$00F8,($FFFFD38A).w		; set Y-position
@@ -4709,17 +4715,11 @@ loc_3946:
 	;	move.w	#$0174,($FFFFD3C8).w		; set X-position
 	;	move.w	#$00F8,($FFFFD3CA).w		; set Y-position
 
-
 		cmpi.w	#$400,($FFFFFE10).w
 		bne.s	@cont
 		move.b	#0,($FFFFFF7F).w
 		move.b	#1,($FFFFF7CC).w
 @cont:
-
-
-	;	move.l	#$72E00003,($C00004).l
-	;	lea	(Nem_CropScreen).l,a0
-	;	bsr	NemDec
 
 		bsr	LoadTilesFromStart
 		jsr	FloorLog_Unk
@@ -4817,42 +4817,30 @@ Level_WaterPal2:
 		bsr	PalLoad4_Water
 
 Level_Delay:
-		cmpi.b	#3,($FFFFFE10).w
-		bne.s	@cont
+		cmpi.b	#3,($FFFFFE10).w	; are we in SLZ?
+		bne.s	@notslz			; if not, branch
 		jsr	SingleObjLoad
-		move.b	#$5C,(a1)
+		bne.s	@notslz
+		move.b	#$5C,(a1)		; load metal girder overlay object
+@notslz:
 
-@cont:
-		move.w	#3,d1
-
+	;	move.w	#3,d1
 Level_DelayLoop:
-		move.b	#8,($FFFFF62A).w
-		bsr	DelayProgram
-		dbf	d1,Level_DelayLoop
+	;	move.b	#8,($FFFFF62A).w
+	;	bsr	DelayProgram
+	;	dbf	d1,Level_DelayLoop
 
 		move.w	#$202F,($FFFFF626).w
 		bsr	Pal_FadeTo2
-		tst.w	($FFFFFFF0).w
-		bmi.w	Level_ClrCardArt
 		addq.b	#2,($FFFFD0A4).w ; make	title card move
 		addq.b	#4,($FFFFD0E4).w ; make	title card move
 		addq.b	#4,($FFFFD124).w ; make	title card move
 		addq.b	#4,($FFFFD164).w ; make	title card move
-		bra.w	Level_StartGame
-; ===========================================================================
-
-Level_ClrCardArt:
-		moveq	#2,d0
-		jsr	(LoadPLC).l	; load explosion patterns
-	;	moveq	#0,d0
-	;	move.b	($FFFFFE10).w,d0
-	;	addi.w	#$15,d0
-	;	jsr	(LoadPLC).l	; load animal patterns (level no. + $15)
 
 Level_StartGame:
-	
-		move	#$2300,sr
-		bclr	#7,($FFFFF600).w ; subtract 80 from screen mode
+		move.w	#$8014,($C00004)	; enable horizontal interrupts (normally only enabled in LZ)
+		ints_enable
+		bclr	#7,($FFFFF600).w	; clear pre-level sequence flag
 
 ; ---------------------------------------------------------------------------
 ; Main level loop (when	all title card and loading sequences are finished)
@@ -6774,40 +6762,30 @@ EndingSequence:				; XREF: GameModeArray
 	;	move.b	#1,($FFFFFF93).w	; you have beaten the game, congrats
 	;	jsr	SRAM_SaveNow		; save
 	; moved to blackout challenge reward
-		
 		bsr	Pal_FadeFrom
-		
-		move.w	#$8004,($C00004).l	; disable h-ints
+
 		lea	($FFFFD000).w,a1
 		moveq	#0,d0
 		move.w	#$7FF,d1
-
-End_ClrObjRam:
-		move.l	d0,(a1)+
+End_ClrObjRam:	move.l	d0,(a1)+
 		dbf	d1,End_ClrObjRam ; clear object	RAM
 
 		lea	($FFFFF628).w,a1
 		moveq	#0,d0
 		move.w	#$15,d1
-
-End_ClrRam:
-		move.l	d0,(a1)+
+End_ClrRam:	move.l	d0,(a1)+
 		dbf	d1,End_ClrRam	; clear	variables
 
 		lea	($FFFFF700).w,a1
 		moveq	#0,d0
 		move.w	#$3F,d1
-
-End_ClrRam2:
-		move.l	d0,(a1)+
+End_ClrRam2:	move.l	d0,(a1)+
 		dbf	d1,End_ClrRam2	; clear	variables
 
 		lea	($FFFFFE60).w,a1
 		moveq	#0,d0
 		move.w	#$47,d1
-
-End_ClrRam3:
-		move.l	d0,(a1)+
+End_ClrRam3:	move.l	d0,(a1)+
 		dbf	d1,End_ClrRam3	; clear	variables
 
 		move	#$2700,sr
@@ -6826,7 +6804,7 @@ End_ClrRam3:
 		move.w	#$8ADF,($FFFFF624).w
 		move.w	($FFFFF624).w,(a6)
 		move.w	#$1E,($FFFFFE14).w
-		move.w	#$602,($FFFFFE10).w ; set level	number to 0601 (no flowers)
+		move.w	#$601,($FFFFFE10).w ; set level	number to 0601 (no flowers)
 		move.b	#1,($FFFFF7CC).w
 	;	move.b	#$07,($FFFFD380).w	; load cropped screen object
 	;	move.w	#$00D4,($FFFFD388).w		; set X-position
@@ -6845,6 +6823,7 @@ End_LoadData:
 		bsr	DeformBgLayer
 		bset	#2,($FFFFF754).w
 		bsr	LoadZoneTiles		; load level art
+		
 		bsr	MainLoadBlockLoad	; load block mappings and palettes
 		bsr	LoadTilesFromStart
 		move.l	#Col_GHZ,($FFFFF796).w ; load collision	index
@@ -14116,6 +14095,14 @@ Obj3F_SoundType = 1
 ; If 1, the sound will be EXTREME!!!
 ; If 0, it will be the normal and boring sound...
 ; ---------------------------------------------------------------------------
+Load_ExplosionGraphics:
+		move.l	a0,-(sp)
+		vram	$B400
+		lea	(Nem_Explode).l,a0
+		jsr	NemDec
+		move.l	(sp)+,a0
+		rts
+; ---------------------------------------------------------------------------
 
 Obj3F:					; XREF: Obj_Index
 		moveq	#0,d0
@@ -14913,8 +14900,7 @@ Obj1F_BossDelete:
 		moveq	#$C,d0
 		jsr	PalLoad2	; load GHZ palette
 		jsr	WhiteFlash3			; make white flash
-	;	move.b	#0,(ScreenCropCurrent).w
-		move.b	#0,(ScreenCropCurrent+2).w
+		move.b	#0,(BlackBars.Height).w
 		movem.l	(sp)+,d0-d7/a1-a3
 
 		move.b	#$34,($FFFFD080).w 		; load title card object
@@ -20372,8 +20358,9 @@ Obj34_DoDisplayX:
 ; ===========================================================================
 
 Obj34_LoadPostGraphics:
-		moveq	#2,d0
-		jsr	(LoadPLC).l	; load explosion patterns
+	;	moveq	#2,d0
+	;	jsr	(LoadPLC).l	; load explosion patterns
+		jsr	Load_ExplosionGraphics
 		moveq	#$13,d0
 		jsr	(LoadPLC).l	; load star patterns
 		rts
@@ -27915,7 +27902,7 @@ Obj5E_FC2:
 ; ---------------------------------------------------------------------------
 BombWalkSpeed_Boss = $140
 BombFuseTime_Boss = 41
-BombFuseVelocity_Boss = $70
+BombFuseVelocity_Boss = $70*2
 BombDistance_Boss = $50
 BombPellets_Boss = 13
 ; ---------------------------------------------------------------------------
@@ -27938,10 +27925,10 @@ Obj5F_Index:	dc.w Obj5F_Main-Obj5F_Index		; [$0]
 
 Obj5F_Main:				; XREF: Obj5F_Index
 		addq.b	#2,obRoutine(a0)
-	;	move.l	#Map_obj5F,obMap(a0)
-		move.l	#Map_obj5F_Giant,obMap(a0)
-	;	move.w	#$400,obGfx(a0)
-		move.w	#$42C,obGfx(a0)
+		move.l	#Map_obj5F,obMap(a0)
+	;	move.l	#Map_obj5F_Giant,obMap(a0)
+		move.w	#$400,obGfx(a0)
+	;	move.w	#$42C,obGfx(a0)
 		ori.b	#4,obRender(a0)
 		move.b	#3,obPriority(a0)
 		move.b	#$C,obActWid(a0)
@@ -28192,10 +28179,7 @@ Obj5F_MakeFuse:
 		move.b	#4,obSubtype(a1)		; set new object to routine 4
 		move.b	#3,obAnim(a1)
 		move.b	#0,obPriority(a1)
-		move.w	#BombFuseVelocity,obVelY(a1)		; set fuse speed
-		tst.b	($FFFFFFA9).w				; fighting against bomb boss?
-		beq.s	@conty					; if not, branch
-		move.w	#BombFuseVelocity_Boss,obVelY(a1)	; set alternate speed
+		move.w	#-BombFuseVelocity_Boss,obVelY(a1)	; set alternate speed
 
 @conty:
 		btst	#1,obStatus(a0)
@@ -30269,7 +30253,7 @@ Obj03_Setup:
 		move.b	#$56,obActWid(a0)	; set display width
 		move.b	obSubtype(a0),obFrame(a0) ; set frame to subtype ID
 		subi.w	#$C,obY(a0)		; adjust Y pos
-		move.w	#$0372,obGfx(a0)	; set art, use first palette line
+		move.w	#($6E40/$20),obGfx(a0)	; set art, use first palette line
 		cmpi.w	#$501,($FFFFFE10).w	; is this the tutorial?
 		bne.s	@cont			; if not, branch
 		move.w	#($7300/$20),obGfx(a0)	; use alternate mappings
@@ -48213,7 +48197,7 @@ MainLoadBlocks:
 		dc.l Blk256_SBZ
 		dc.b 0,	$86, 9,	9
 		
-		dc.l Nem_TitleScreen	; main load block for ending
+		dc.l Kos_GHZ	; main load block for ending
 		dc.l Blk16_GHZ
 		dc.l Blk256_END
 		dc.b 0,	$86, $13, $13

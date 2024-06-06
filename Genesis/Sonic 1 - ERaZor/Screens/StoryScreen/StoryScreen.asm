@@ -119,7 +119,7 @@ StoryScreen_MainLoop:
 		jsr	RunPLC_RAM
 		tst.l	($FFFFF680).w
 		bne.s	StoryScreen_MainLoop
-		tst.b	($FFFFFF9B).w		; is routine counter at $12 (STS_NoMore)?
+		tst.b	($FFFFFF9B).w		; is is text already fully written out?
 		bne.s	STS_NoTextChange	; if yes, branch
 		move.b	($FFFFF605).w,d1	; get button presses
 		andi.b	#$E0,d1			; is A, B, C, or start pressed?
@@ -139,7 +139,7 @@ STS_NoStart:
 		move.b	#2,($FFFFFF95).w
 
 @cont:
-		tst.b	($FFFFFF9B).w		; is routine counter at $12 (STS_NoMore)?
+		tst.b	($FFFFFF9B).w		; is text already fully written out?
 		bne.s	STS_NoTextChange	; if yes, branch
 		bra.s	StoryScreen_MainLoop
 ; ===========================================================================
@@ -151,16 +151,17 @@ STS_NoTextChange:
 ; ---------------------------------------------------------------------------
 
 STS_ExitScreen:
-		cmpi.b	#1,($FFFFFF9E).w	; is this the intro-dialouge?
+		cmpi.b	#1,($FFFFFF9E).w	; is this the intro dialouge?
 		bne.s	STS_NoIntro		; if not, branch
-		cmpi.b	#1,($FFFFFFA7).w	; is this the first time visiting the tutorial?
+		cmpi.b	#1,($FFFFFFA7).w	; is this the first time start of the game?
 		bgt.s	@notfirstvisit		; if not, branch
 		move.b	#1,($FFFFFFA7).w	; run first chapter screen
 		move.b	#1,($A130F1).l		; enable SRAM
 		move.b	#1,($200000+SRAM_Chapter).l	; save chapter to SRAM
 		move.b	#0,($A130F1).l		; disable SRAM
 @notfirstvisit:
-		move.b	#$28,($FFFFF600).w	; set to chapters screen ($28)
+		move.b	#4,($FFFFF600).w	; set to title screen
+	;	move.b	#$28,($FFFFF600).w	; set to chapters screen ($28)
 		rts
 
 STS_NoIntro:
@@ -178,7 +179,7 @@ STS_NoEnding:
 		rts
 
 STS_NoEaster:
-		cmpi.b	#$A,($FFFFFF9E).w	; is this the black special stage?
+		cmpi.b	#$A,($FFFFFF9E).w	; is this the blackout special stage?
 		bne.s	STS_NoBlack		; if not, branch
 		move.b	#$00,($FFFFF600).w	; set to sega screen ($00)
 		rts

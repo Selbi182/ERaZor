@@ -303,7 +303,7 @@ GameClrRAM:
 		bsr	JoypadInit
 		bsr.s	LoadSRAM
 
-		jsr	BlackBars.Init			; setup black bars
+		jsr	BlackBars.FullReset		; setup black bars
 		move.l	HBlank_BaseHandler, HBlankHndl	; setup HBlank handler
 
 		move.b	#0,($FFFFF600).w ; set Game Mode to Sega Screen
@@ -488,6 +488,7 @@ locret_119C:
 ; ---------------------------------------------------------------------------
 ; Vladik's cool and awesome black bars that replaced my garbage ones B)
 ; ---------------------------------------------------------------------------
+BlackBars.BaseHeight:	equ	$FFFFF5F2	; w	Base height of black bars in pixels
 BlackBars.TargetHeight:	equ	$FFFFF5F4	; w	Target height of black bars in pixels
 BlackBars.Height:	equ	$FFFFF5F6	; w	Current height of black bars in pixels
 BlackBars.FirstHCnt:	equ	$FFFFF5F8	; w	$8Axx VDP register value for the first HInt
@@ -536,11 +537,12 @@ HBlank_Bars_Bottom:
 ; ===========================================================================
 
 ; called once on system start
-BlackBars.Init:
+BlackBars.FullReset:
 		move.l	#$8ADF8ADF,BlackBars.FirstHCnt			; + BlackBars.SecondHCnt
 BlackBars.Reset:
 		move.w	#0,BlackBars.Height				; set current height to 0
-		move.w	#BlackBars.MaxHeight,BlackBars.TargetHeight	; set target height to default
+		move.w	#BlackBars.MaxHeight,BlackBars.BaseHeight	; set base height to default
+		move.w	BlackBars.BaseHeight,BlackBars.TargetHeight	; set target height to default
 		move.l	#$81748720,VDP_Ctrl				; enable display, restore backdrop color
 		rts
 ; ---------------------------------------------------------------------------
@@ -630,7 +632,7 @@ BlackBars.SetState:
 ; ---------------------------------------------------------------------------
 
 BlackBars_Show:
-		move.w	#BlackBars.MaxHeight,BlackBars.TargetHeight	; set target height to the default max (32px)
+		move.w	BlackBars.BaseHeight,BlackBars.TargetHeight	; set target height to the default max (32px)
 BlackBars_ShowCustom:
 		move.w	BlackBars.Height,d0		; get currently set height
 		addi.w	#BlackBars.GrowSize,d0		; continue to increase height
@@ -652,8 +654,8 @@ BlackBars_SetHeight:
 		rts					; return
 ; ===========================================================================
 
-BlackBars.GHPTimer:		equ	$FFFFF5F2		; b
-BlackBars.GHPTimerReset:	equ	$FFFFF5F3		; b
+BlackBars.GHPTimer:		equ	$FFFFF5F0		; b
+BlackBars.GHPTimerReset:	equ	$FFFFF5F1		; b
 BlackBars.GHPCasual  = 60
 BlackBars.GHPFrantic = 45
 ; ---------------------------------------------------------------------------
@@ -694,7 +696,7 @@ BlackBars.GHP:
 ; Main Game Loop, everything before this is only done on startup.
 ; ---------------------------------------------------------------------------
 
-MainGameLoop:
+MainGameLoop:		
 		moveq	#0,d0				; clear d0
 		move.b	($FFFFF600).w,d0		; get current game mode
 		movea.l	GameModeArray(pc,d0.w),a1	; locate address in GameModeArray
@@ -1915,9 +1917,7 @@ RunPLC_RAM:				; XREF: Pal_FadeTo
 
 loc_160E:
 		andi.w	#$7FFF,d2
-		ints_disable
 		bsr	NemDec4
-		ints_enable
 		move.b	(a0)+,d5
 		asl.w	#8,d5
 		move.b	(a0)+,d5
@@ -2050,7 +2050,9 @@ RunPLC_Loop:
 		ori.w	#$4000,d0
 		swap	d0
 		move.l	d0,($C00004).l	; put the VRAM address into VDP
+		ints_disable
 		bsr	NemDec		; decompress
+		ints_enable
 		dbf	d1,RunPLC_Loop	; loop for number of entries
 		rts	
 ; End of function RunPLC_ROM
@@ -3929,10 +3931,10 @@ Title_ClrObjRam:
 		bsr	LevelSizeLoad
 		bsr	DeformBgLayer
 		lea	($FFFFB000).w,a1
-		lea	(Blk16_title).l,a0 ; load	GHZ 16x16 mappings
+		lea	(Blk16_TitleScreen).l,a0 ; load title screen block mappings
 		move.w	#0,d0
 		bsr	EniDec
-		lea	(Blk256_title).l,a0 ; load GHZ 256x256 mappings
+		lea	(Blk256_TitleScreen).l,a0 ; load title screen chunk mappings
 		lea	($FF0000).l,a1
 		bsr	KosDec
 		bsr	LevelLayoutLoad
@@ -3961,8 +3963,8 @@ Title_ClrObjRam:
 		moveq	#$15,d2
 		bsr	ShowVDPGraphics
 		move.l	#$40000000,($C00004).l
-		lea	(Nem_title).l,a0 ; load GHZ patterns
-		bsr	NemDec		; disabled ONLY because of the ERaZor banner
+		lea	(Nem_TitleScreen).l,a0 ; load title screen patterns
+		bsr	NemDec
 
 		move.l	#$64000002,($C00004).l
 		lea	(Nem_ERaZor).l,a0
@@ -4437,11 +4439,17 @@ Level:					; XREF: GameModeArray
 		move.w	#$8004,($C00004).l	; disable h-ints
 		display_enable
 		bsr	Pal_FadeFrom
-		
-		
+
 		tst.w	($FFFFFFF0).w
 		bmi.w	Level_ClrRam
 		move	#$2700,sr
+
+		; immediately clear the first tile in VRAM to avoid graphical issues
+		vram	$0000
+		rept	$20-1
+		move.w	#0,VDP_Data
+		endr
+
 		move.b	#0,($FFFFFF8A).w	; load uncompressed title card art (immediately)
 		jsr	LoadTitleCardArt
 		move	#$2300,sr
@@ -4463,8 +4471,11 @@ loc_37FC:
 		jsr	SRAM_SaveNow		; save our progress
 
 Level_NoSRAM:
+	;	moveq	#0,d0
+	;	bsr	LoadPLC2		; (re-)load standard patterns 1
 		moveq	#1,d0
-		bsr	LoadPLC		; load standard	patterns
+		bsr	LoadPLC			; load standard patterns 2
+
 		cmpi.w	#$001,($FFFFFE10).w	; is current level GHZ 2 (intro level)?
 		bne.s	Level_ClrRam		; if not, branch
 		moveq	#$13,d0			; set to star patterns
@@ -4548,7 +4559,6 @@ Level_LZWaterSetup:
 
 Level_LoadPal:
 		move.w	#$1E,($FFFFFE14).w ; set oxygen timer
-		move	#$2300,sr
 		cmpi.b	#1,($FFFFFE10).w ; is level LZ?
 		bne.s	Level_GetBgm	; if not, branch
 		moveq	#$F,d0		; pallet number	$0F (LZ)
@@ -4617,7 +4627,13 @@ Level_NoMusic2:
 @contx:
 
 		cmpi.w	#$001,($FFFFFE10).w
-		beq.s	Level_NoTitleCard
+		bne.s	@0
+		vram	$D700
+		lea	(Nem_ExplBall).l,a0
+		jsr	NemDec
+		bra.s	Level_NoTitleCard
+
+@0:
 		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
 		bne.s	Level_NoTitleCard2	; if yes, branch
 		cmpi.w	#$500,($FFFFFE10).w
@@ -4625,7 +4641,7 @@ Level_NoMusic2:
 		move.b	#1,($FFFFF7CC).w
 		moveq	#$1E,d0
 		jsr	LoadPLC		; load SBZ2 Eggman patterns
-		bra.s	Level_NoTitleCard
+		bra.s	Level_NoTitleCard2
 
 @cont:
 		move.b	#$34,($FFFFD080).w ; load title	card object
@@ -4672,7 +4688,8 @@ loc_3946:
 		bsr	LevelSizeLoad
 		bsr	DeformBgLayer
 		bset	#2,($FFFFF754).w
-		bsr	MainLoadBlockLoad ; load block mappings	and pallets
+		bsr	LoadZoneTiles		; load level art
+		bsr	MainLoadBlockLoad	; load block mappings and palettes
 
 		move.l	#$64600002,($C00004).l
 		lea	(Nem_HSpring).l,a0
@@ -4830,6 +4847,8 @@ Level_ClrCardArt:
 	;	jsr	(LoadPLC).l	; load animal patterns (level no. + $15)
 
 Level_StartGame:
+	
+		move	#$2300,sr
 		bclr	#7,($FFFFF600).w ; subtract 80 from screen mode
 
 ; ---------------------------------------------------------------------------
@@ -5355,19 +5374,19 @@ byte_3FCF:	dc.b 0			; XREF: LZWaterSlides
 
 CinematicScreenFuzz:
 		tst.b	($FFFFFF64).w		; camera shake currently set?
-		bne.w	@end			; if yes, fuzz currently disabled cause holy shit is it slow
+		bne.w	CinematicScreenFuzz_End	; if yes, fuzz currently disabled cause holy shit is it slow
 
-		cmpi.b	#$10, ($FFFFF600).w		; is game mode special stage?
-		beq.w	@end			; if yes, fuzz is ALSO currently disabled cause holy shit is it STILL slow
+		cmpi.b	#$10, ($FFFFF600).w	; is game mode special stage?
+		beq.w	CinematicScreenFuzz_End	; if yes, fuzz is ALSO currently disabled cause holy shit is it STILL slow
 
 		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
-		bne.s	@dofuzz			; if yes, branch
+		bne.s	CinematicScreenFuzz_Do	; if yes, branch
 		cmpi.w	#$002,($FFFFFE10).w	; are we in Green Hill Place?
-		bne.w	@end			; if not, branch
+		bne.w	CinematicScreenFuzz_End	; if not, branch
 		cmpi.b	#4,($FFFFFE30).w	; did we hit the final checkpoint yet?
-		beq.w	@end			; if yes, branch
+		beq.w	CinematicScreenFuzz_End	; if yes, branch
 
-@dofuzz:
+CinematicScreenFuzz_Do:
 		move.w	($FFFFFE04).w,d7 ; move timer into d7
 		and.w 	#1, d7 ; only use least significant bit
 
@@ -5381,11 +5400,11 @@ CinematicScreenFuzz:
 		move.w	#224-1,d1		; do for all scanlines
 		
 		; calculate the exact amount of lines we need, minus ones occupied by black bars
-		move.b	(ScreenCropCurrent).w,d2
+		move.b	(BlackBars.Height).w,d2
 		ext.w	d2
 		sub.w	d2,d1
 		sub.w	d2,d1
-		bmi.w	@end
+		bmi.w	CinematicScreenFuzz_End
 @prefill:	adda.l	#4,a1
 		dbf	d2,@prefill
 
@@ -5422,7 +5441,7 @@ CinematicScreenFuzz:
 
 		ror.l	#1,d2			; get next random number
 		move.b	d2,d4			; store working copy of current random byte
-		and.b	#$F,d4			; limit it to a random number between 0-15
+		andi.b	#$F,d4			; limit it to a random number between 0-15
 
 		and.b	d3,d4			; mask against current speed (effectively a cheap way of emulating Math.min(d3,d4))
 		ext.w	d4			; extend to word
@@ -5466,7 +5485,7 @@ CinematicScreenFuzz:
 		not.w	d0			; invert manipulation for next row
 		dbf	d1,@loop		; loop
 
-@end:
+CinematicScreenFuzz_End:
 		rts				; return
 
 ; ---------------------------------------------------------------------------
@@ -6804,7 +6823,7 @@ End_ClrRam3:
 		move.w	#$8ADF,($FFFFF624).w
 		move.w	($FFFFF624).w,(a6)
 		move.w	#$1E,($FFFFFE14).w
-		move.w	#$601,($FFFFFE10).w ; set level	number to 0601 (no flowers)
+		move.w	#$602,($FFFFFE10).w ; set level	number to 0601 (no flowers)
 		move.b	#1,($FFFFF7CC).w
 	;	move.b	#$07,($FFFFD380).w	; load cropped screen object
 	;	move.w	#$00D4,($FFFFD388).w		; set X-position
@@ -6822,7 +6841,8 @@ End_LoadData:
 		bsr	LevelSizeLoad
 		bsr	DeformBgLayer
 		bset	#2,($FFFFF754).w
-		bsr	MainLoadBlockLoad
+		bsr	LoadZoneTiles		; load level art
+		bsr	MainLoadBlockLoad	; load block mappings and palettes
 		bsr	LoadTilesFromStart
 		move.l	#Col_GHZ,($FFFFF796).w ; load collision	index
 		move	#$2300,sr
@@ -10404,6 +10424,51 @@ loc_72DA:				; CODE XREF: sub_72BA+A?j
 locret_72EE:				; CODE XREF: sub_72BA+1E?j
 		rts	
 ; End of function sub_72BA
+
+; ---------------------------------------------------------------------------
+; Sonic 2 level zone tile loading routine
+; ---------------------------------------------------------------------------
+
+LoadZoneTiles:
+		moveq	#0,d0			; Clear d0
+		move.b	($FFFFFE10).w,d0	; Load number of current zone to d0
+		lsl.w	#4,d0			; Multiply by $10, converting the zone ID into an offset
+		lea	(MainLoadBlocks).l,a2	; Load LevelHeaders's address into a2
+		lea	(a2,d0.w),a2		; Offset LevelHeaders by the zone-offset, and load the resultant address to a2
+		move.l	(a2)+,d0		; Move the first longword of data that a2 points to to d0, this contains the zone's first PLC ID and its art's address.
+						; The auto increment is pointless as a2 is overwritten later, and nothing reads from a2 before then
+		andi.l	#$FFFFFF,d0    		; Filter out the first byte, which contains the first PLC ID, leaving the address of the zone's art in d0
+		movea.l	d0,a0			; Load the address of the zone's art into a0 (source)
+		lea	($FF0000).l,a1		; Load v_256x256/StartOfRAM (in this context, an art buffer) into a1 (destination)
+		bsr.w	KosDec			; Decompress a0 to a1 (Kosinski compression)
+
+		move.w	a1,d3			; Move a word of a1 to d3, note that a1 doesn't exactly contain the address of v_256x256/StartOfRAM anymore, after KosDec, a1 now contains v_256x256/StartOfRAM + the size of the file decompressed to it, d3 now contains the length of the file that was decompressed
+		move.w	d3,d7			; Move d3 to d7, for use in seperate calculations
+
+		andi.w	#$FFF,d3		; Remove the high nibble of the high byte of the length of decompressed file, this nibble is how many $1000 bytes the decompressed art is
+		lsr.w	#1,d3			; Half the value of 'length of decompressed file', d3 becomes the 'DMA transfer length'
+
+		rol.w	#4,d7			; Rotate (left) length of decompressed file by one nibble
+		andi.w	#$F,d7			; Only keep the low nibble of low byte (the same one filtered out of d3 above), this nibble is how many $1000 bytes the decompressed art is
+
+@loop:		move.w	d7,d2			; Move d7 to d2, note that the ahead dbf removes 1 byte from d7 each time it loops, meaning that the following calculations will have different results each time
+		lsl.w	#7,d2
+		lsl.w	#5,d2			; Shift (left) d2 by $C, making it high nibble of the high byte, d2 is now the size of the decompressed file rounded down to the nearest $1000 bytes, d2 becomes the 'destination address'
+
+		move.l	#$FFFFFF,d1		; Fill d1 with $FF
+		move.w	d2,d1			; Move d2 to d1, overwriting the last word of $FF's with d2, this turns d1 into 'StartOfRAM'+'However many $1000 bytes the decompressed art is', d1 becomes the 'source address'
+
+		jsr	(QueueDMATransfer).l	; Use d1, d2, and d3 to locate the decompressed art and ready for transfer to VRAM
+		move.w	d7,-(sp)		; Store d7 in the Stack
+		move.b	#$C,($FFFFF62A).w
+		bsr.w	DelayProgram
+		bsr.w	RunPLC_RAM
+		move.w	(sp)+,d7		; Restore d7 from the Stack
+		move.w	#$800,d3		; Force the DMA transfer length to be $1000/2 (the first cycle is dynamic because the art's DMA'd backwards)
+		dbf	d7,@loop		; Loop for each $1000 bytes the decompressed art is
+
+		rts
+; End of function LoadZoneTiles
 
 ; ---------------------------------------------------------------------------
 ; Main Load Block loading subroutine
@@ -48110,35 +48175,41 @@ Debug_ShowItem:				; XREF: Debug_Main
 ; blank, music (unused), pal index (unused), pal index
 ; ---------------------------------------------------------------------------
 MainLoadBlocks:
-	dc.l Nem_GHZ+$4000000
-	dc.l Blk16_GHZ+$5000000
-	dc.l Blk256_GHZ
-	dc.b 0,	$81, 4,	4
-	dc.l Nem_LZ+$6000000
-	dc.l Blk16_LZ+$7000000
-	dc.l Blk256_LZ
-	dc.b 0,	$82, 5,	5
-	dc.l Nem_MZ+$8000000
-	dc.l Blk16_MZ+$9000000
-	dc.l Blk256_MZ
-	dc.b 0,	$83, 6,	6
-	dc.l Nem_SLZ+$A000000
-	dc.l Blk16_SLZ+$B000000
-	dc.l Blk256_SLZ
-	dc.b 0,	$84, 7,	7
-	dc.l Nem_SYZ+$C000000
-	dc.l Blk16_SYZ+$D000000
-	dc.l Blk256_SYZ
-	dc.b 0,	$85, 8,	8
-	dc.l Nem_SBZ+$E000000
-	dc.l Blk16_SBZ+$F000000
-	dc.l Blk256_SBZ
-	dc.b 0,	$86, 9,	9
-	dc.l Nem_title	; main load block for ending
-	dc.l Blk16_GHZ
-	dc.l Blk256_END
-	dc.b 0,	$86, $13, $13
-	even
+		dc.l Kos_GHZ+$4000000
+		dc.l Blk16_GHZ+$5000000
+		dc.l Blk256_GHZ
+		dc.b 0,	$81, 4,	4
+		
+		dc.l Kos_LZ+$6000000
+		dc.l Blk16_LZ+$7000000
+		dc.l Blk256_LZ
+		dc.b 0,	$82, 5,	5
+		
+		dc.l Kos_MZ+$8000000
+		dc.l Blk16_MZ+$9000000
+		dc.l Blk256_MZ
+		dc.b 0,	$83, 6,	6
+		
+		dc.l Kos_SLZ+$A000000
+		dc.l Blk16_SLZ+$B000000
+		dc.l Blk256_SLZ
+		dc.b 0,	$84, 7,	7
+		
+		dc.l Kos_SYZ+$C000000
+		dc.l Blk16_SYZ+$D000000
+		dc.l Blk256_SYZ
+		dc.b 0,	$85, 8,	8
+		
+		dc.l Kos_SBZ+$E000000
+		dc.l Blk16_SBZ+$F000000
+		dc.l Blk256_SBZ
+		dc.b 0,	$86, 9,	9
+		
+		dc.l Nem_TitleScreen	; main load block for ending
+		dc.l Blk16_GHZ
+		dc.l Blk256_END
+		dc.b 0,	$86, $13, $13
+		even
 
 ; ---------------------------------------------------------------------------
 ; Pattern load cues
@@ -48173,9 +48244,6 @@ SonicDynPLC:	include	"_inc\Sonic dynamic pattern load cues.asm"
 		even
 Art_Sonic:	incbin	artunc\sonic.bin	; Sonic Normal
 		even
-
-; ---------------------------------------------------------------------------
-
 Art_Dust:	incbin	artunc\spindust.bin	; spindash dust art
 		even
 ; ---------------------------------------------------------------------------
@@ -48478,18 +48546,33 @@ Nem_ContSonic:	incbin	artnem\cntsonic.bin	; Sonic on continue screen
 Nem_MiniSonic:	incbin	artnem\cntother.bin	; mini Sonic and text on continue screen
 		even
 ; ---------------------------------------------------------------------------
+; Kosinksi - Level graphics
+; ---------------------------------------------------------------------------
+Kos_GHZ:	incbin	artkos\8x8ghz.kos	; GHZ patterns (Kosinksi)
+		even
+Kos_LZ:		incbin	artkos\8x8lz.kos	; LZ patterns (Kosinksi)
+		even
+Kos_MZ:		incbin	artkos\8x8mz.kos	; MZ patterns (Kosinksi)
+		even
+Kos_SLZ:	incbin	artkos\8x8slz.kos	; SLZ patterns (Kosinksi)
+		even
+Kos_SYZ:	incbin	artkos\8x8syz.kos	; SYZ patterns (Kosinksi)
+		even
+Kos_SBZ:	incbin	artkos\8x8sbz.kos	; SBZ patterns (Kosinksi)
+		even
+; ---------------------------------------------------------------------------
 ; Compressed graphics - primary patterns and block mappings
 ; ---------------------------------------------------------------------------
-Nem_title:	incbin	artnem\8x8title.bin	; TS primary patterns
-		even
-Blk16_title:	incbin	map16\title.bin
-		even
-Blk256_title:	incbin	map256\title.bin	;title.bin
-		even		
+Nem_TitleScreen:	incbin	artnem\8x8title.bin	; TS primary patterns
+			even
+Blk16_TitleScreen:	incbin	map16\title.bin
+			even
+Blk256_TitleScreen:	incbin	map256\title.bin
+			even
 Blk16_GHZ:	incbin	map16\ghz.bin
 		even
-Nem_GHZ:	incbin	artnem\8x8ghz.bin	; New GHZ file.
-		even
+;Nem_GHZ:	incbin	artnem\8x8ghz.bin	; New GHZ file.
+;		even
 ;Nem_GHZ_1st:	incbin	artnem\8x8ghz1.bin	; GHZ primary patterns
 ;		even
 ;Nem_GHZ_2nd:	incbin	artnem\8x8ghz2.bin	; GHZ secondary patterns
@@ -48498,32 +48581,32 @@ Blk256_GHZ:	incbin	map256\ghz.bin
 		even
 Blk16_LZ:	incbin	map16\lz.bin
 		even
-Nem_LZ:		incbin	artnem\8x8lz.bin	; LZ primary patterns
-		even
+;Nem_LZ:	incbin	artnem\8x8lz.bin	; LZ primary patterns
+;		even
 Blk256_LZ:	incbin	map256\lz.bin
 		even
 Blk16_MZ:	incbin	map16\mz.bin
 		even
-Nem_MZ:		incbin	artnem\8x8mz.bin	; MZ primary patterns
-		even
+;Nem_MZ:	incbin	artnem\8x8mz.bin	; MZ primary patterns
+;		even
 Blk256_MZ:	incbin	map256\mz.bin
 		even
 Blk16_SLZ:	incbin	map16\slz.bin
 		even
-Nem_SLZ:	incbin	artnem\8x8slz.bin	; SLZ primary patterns
-		even
+;Nem_SLZ:	incbin	artnem\8x8slz.bin	; SLZ primary patterns
+;		even
 Blk256_SLZ:	incbin	map256\slz.bin
 		even
 Blk16_SYZ:	incbin	map16\syz.bin
 		even
-Nem_SYZ:	incbin	artnem\8x8syz.bin	; SYZ primary patterns
-		even
+;Nem_SYZ:	incbin	artnem\8x8syz.bin	; SYZ primary patterns
+;		even
 Blk256_SYZ:	incbin	map256\syz.bin
 		even
 Blk16_SBZ:	incbin	map16\sbz.bin
 		even
-Nem_SBZ:	incbin	artnem\8x8sbz.bin	; SBZ primary patterns
-		even
+;Nem_SBZ:	incbin	artnem\8x8sbz.bin	; SBZ primary patterns
+;		even
 Blk256_SBZ:	incbin	map256\sbz.bin
 		even
 Blk256_END:	incbin	map256\ghz_end.bin

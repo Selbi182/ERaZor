@@ -86,6 +86,15 @@ frame		equ	$1A
 anim		equ	$1C
 obj		equ	$3C	; Object code offset
 
+
+; You can use these flags to make it cooler:
+_br	= $00	; line break flags
+_font2	= $01	; will make the next character use palette line 2 for the font
+_delay	= $FC	; set delay (given in the next byte)
+_pause	= $FD	; wait player to press A/B/C button
+_cls	= $FE	; clear window
+_end	= $FF	; finish hint
+
 ; ===============================================================
 
 Tutorial_DisplayHint:
@@ -138,6 +147,61 @@ DH_MainLoop:
 	bne.s	@notintro		; if not, branch
 	jsr	SineWavePalette		; sinewave background color
 @notintro:
+	
+	;clr.w	$FFFFD012
+	;move.w	#$A00,$FFFFD010
+	;jsr	CinematicScreenFuzz_Do
+
+; background deformation
+		lea	($FFFFCC00).w,a1
+		move.w	#(224/1)-1,d3
+		jsr	RandomNumber
+@scroll:
+		ror.l	#1,d1
+		move.l	d1,d2
+		andi.l	#$00070000,d2
+		
+		moveq	#0,d0
+		moveq	#0,d4
+		move.w	($FFFFFE0E).w,d0	; get timer
+		swap	d0
+		btst	#0,d3
+		beq.s	@1
+		neg.l	d0
+@1:
+		andi.l	#$0000FFFF,d0
+		swap	d0
+		add.w	($FFFFFE0E).w,d0 ; scroll everything to the right
+		btst	#0,d5
+		beq.s	@3
+		sub.w	($FFFFFE0E).w,d0 ; scroll everything to the right
+
+@3:
+		move.w	d0,d4		; copy scroll
+		add.w	d3,d4		; add line index
+		subi.w	#224/2,d4
+		movem.l	d0/d1,-(sp)
+		move.w	d4,d0
+		jsr	CalcSine
+		
+		move.w	d3,d5
+		add.w	($FFFFFE0E).w,d5
+		btst	#7,d5
+	;	beq.s	@2
+		neg.w	d0
+@2:
+		move.w	d0,d4
+		
+		movem.l	(sp)+,d0/d1
+		add.w	d4,d0
+		swap	d0
+		or.l	d0,d2
+		move.l	d2,d4
+		swap	d4
+		add.l	d4,d2
+		move.l	d2,(a1)+
+		dbf	d3,@scroll ; fill scroll data with 0
+
 
 	; Run window object code
 	lea	_DH_WindowObj,a0
@@ -153,7 +217,7 @@ DH_MainLoop:
 
 	; Check if it's over
 	tst.b	_DH_WindowObj	; object window dead?
-	bne.s	DH_MainLoop	; if not, branch
+	bne.w	DH_MainLoop	; if not, branch
 
 ; ---------------------------------------------------------------
 ; Return to the game
@@ -199,79 +263,19 @@ DH_ClearWindow:
 ; INPUT:
 ;	d0.w	= Char
 ; ---------------------------------------------------------------
+DH_CharOffset = $36
 
 DH_DrawChar:
-	lea	Art_DH_Font,a1
-
-	cmpi.b	#'\',d0
-	bne.s	@NoAccent
-	move.b	#$2+$36,d0
-@NoAccent:
-	cmpi.b	#'.',d0
-	bne.s	@NoDot
-	move.b	#$26+$36,d0
-@NoDot:
-	cmpi.b	#':',d0
-	bne.s	@NoYDot
-	move.b	#$26+$36,d0
-	lea	Art_DH_FontY,a1
-@NoYDot:
-	cmpi.b	#',',d0
-	bne.s	@NoComma
-	move.b	#$27+$36,d0
-@NoComma:
-	cmpi.b	#';',d0
-	bne.s	@NoYComma
-	move.b	#$27+$36,d0
-	lea	Art_DH_FontY,a1
-@NoYComma:
-	cmpi.b	#'!',d0
-	bne.s	@NoExclemation
-	move.b	#$A+$36,d0
-@NoExclemation:
-	cmpi.b	#'1',d0
-	bne.s	@NoYExclemation
-	move.b	#$A+$36,d0
-	lea	Art_DH_FontY,a1
-@NoYExclemation:
-	cmpi.b	#'-',d0
-	bne.s	@NoHyphen
-	move.b	#$25+$36,d0
-@NoHyphen:
-	cmpi.b	#'_',d0
-	bne.s	@NoYHyphen
-	lea	Art_DH_FontY,a1
-	move.b	#$25+$36,d0
-@NoYHyphen:
-	cmpi.b	#'+',d0
-	bne.s	@NoPlus
-	move.b	#$29+$36,d0
-@NoPlus:
-	cmpi.b	#'~',d0
-	bne.s	@NoTilde
-	move.b	#$1+$36,d0
-	lea	Art_DH_FontY,a1
-@NoTilde:
-	cmpi.b	#'^',d0
-	bne.s	@NoCircumflex
-	move.b	#$5+$36,d0
-	lea	Art_DH_FontY,a1
-@NoCircumflex:
-	cmpi.b	#'a',d0
-	blt.s	@NoYellow
-	cmpi.b	#'z',d0
-	bgt.s	@NoYellow
-	lea	Art_DH_FontY,a1
-	subi.b	#$20,d0
-@NoYellow:
-	cmpi.b	#'?',d0
-	bne.s	@NoQuestion
-	move.b	#$28+$36,d0
-@NoQuestion:
-	
-	subi.b	#$36,d0
+	lea	(Art_DH_Font).l,a2
+	cmpi.b	#_font2,d0
+	bne.s	@0
+	lea	(Art_DH_FontY).l,a2
+	move.b	(a1)+,d0		; skip char
+	addq.l	#1,char_pos(a0)		; increase it
+@0:
+	subi.b	#DH_CharOffset,d0
 	lsl.w	#5,d0			; d0 = Char*$20
-	lea	(a1,d0.w),a1		; load this char's art 
+	lea	(a2,d0.w),a2		; load this char's art 
 
 InitDraw:  
 	moveq	#$F,d3			; d3 = Pixel Mask
@@ -280,7 +284,7 @@ InitDraw:
 
 @DrawLine:
 	moveq	#7,d2
-	move.l	(a1)+,d0		; load 8 px
+	move.l	(a2)+,d0		; load 8 px
 
 @CheckPixel:
 	move.b	d0,d1			; load line pattern
@@ -309,7 +313,7 @@ xpos	= 8
 ypos	= $A
 xpos2	= $14
 
-_StartVel = $1400
+_StartVel = $1A00
 _Accel = $B8
 
 DH_OWindow_Init:
@@ -371,11 +375,11 @@ _CooldownVal	= 2
 ; ---------------------------------------------------------------
 @InstantWrite:
 	move	#$2700,sr		; we *must* disable interrupts
-	movea.l	char_pos(a0),a2		; load last position in text
+	movea.l	char_pos(a0),a1		; load last position in text
 
 @InstantWrite_Loop:
 	moveq	#0,d0
-	move.b	(a2)+,d0		; get a char
+	move.b	(a1)+,d0		; get a char
 	beq.s	@Call_LoadNextRow	; --
 	bmi.s	@InstantWrite_Flags	; --
 	cmpi.b	#' ',d0			; --
@@ -386,16 +390,16 @@ _CooldownVal	= 2
 	bra.s	@InstantWrite_Loop
 
 @InstantWrite_Flags:
-	cmpi.b	#$FC,d0
+	cmpi.b	#_delay,d0
 	beq.s	@InstantWrite_SkipDelay	; if flag = '_delay', branch
-	cmpi.b	#$FD,d0
+	cmpi.b	#_pause,d0
 	bne.s	@InstantWrite_Loop	; if flag != '_pause', ignore
-	subq.w	#1,a2			; position of '_pause' flag
-	move.l	a2,char_pos(a0)		; remember position
+	subq.w	#1,a1			; position of '_pause' flag
+	move.l	a1,char_pos(a0)		; remember position
 	rts				; finish loop
 	
 @InstantWrite_SkipDelay:
-	addq.w	#1,a2			; skip delay value
+	addq.w	#1,a1			; skip delay value
 	bra.s	@InstantWrite_Loop
 
 @Call_LoadNextRow:
@@ -461,7 +465,8 @@ _CooldownVal	= 2
 @DoPause:
 	move.l	#@PauseLoop,obj(a0)
 
-	lea	(Art_DH_Font+$120).l,a1
+	; blinking cursor in bottom right while screen is waiting for input
+	lea	(Art_DH_Font+$120).l,a2
 	vram	_DH_VRAM_Base+$13E0,(a6)
 	bsr	InitDraw
 	move.b	#$20,$32(a0)
@@ -470,10 +475,10 @@ _CooldownVal	= 2
 	subq.b	#1,$32(a0)
 	bpl.s	@cont
 	move.b	#$20,$32(a0)
-	lea	(Art_DH_Font).l,a1
+	lea	(Art_DH_Font).l,a2
 	bchg	#0,$33(a0)
 	beq.s	@cont2
-	adda.w	#$120,a1
+	adda.w	#$120,a2
 @cont2:
 	vram	_DH_VRAM_Base+$13E0,(a6)
 	bsr	InitDraw
@@ -587,13 +592,13 @@ fhv	= 3<<3
 ; ===============================================================
 
 Art_DH_WindowBorder:
-	incbin	'Screens\TutorialBox\TutorialBox_Art.bin'
+	incbin	'Screens/TutorialBox/TutorialBox_Art.bin'
 
 Art_DH_Font:
-	incbin	'Screens\TutorialBox\TutorialBox_Font.bin'
+	incbin	'Screens/TutorialBox/TutorialBox_Font.bin'
 
 Art_DH_FontY:
-	incbin	'Screens\TutorialBox\TutorialBox_FontYellow.bin'
+	incbin	'Screens/TutorialBox/TutorialBox_FontYellow.bin'
 
 ; ===============================================================
 ; ---------------------------------------------------------------
@@ -619,277 +624,316 @@ Hints_List:
 ; Hints Scripts
 ; ---------------------------------------------------------------
 
-; You can use these flags to make it cooler:
+; Macro to preprocess and output a character to its correct mapping
+mapchar macro char
+	if     \char = "'"
+		dc.b	$2+DH_CharOffset
+	elseif \char = '.'
+		dc.b	$26+DH_CharOffset
+	elseif \char = ':'
+		dc.b	_font2, $26+DH_CharOffset
+	elseif \char = ','
+		dc.b	$27+DH_CharOffset
+	elseif \char = ';'
+		dc.b	_font2, $27+DH_CharOffset
+	elseif \char = '!'
+		dc.b	$A+DH_CharOffset
+	elseif \char = '1'
+		dc.b	_font2, $A+DH_CharOffset
+	elseif \char = '-'
+		dc.b	$25+DH_CharOffset
+	elseif \char = '_'
+		dc.b	_font2, $25+DH_CharOffset
+	elseif \char = '+'
+		dc.b	$29+DH_CharOffset
+	elseif \char = '~'
+		dc.b	_font2, $1+DH_CharOffset
+	elseif \char = '^'
+		dc.b	_font2, $5+DH_CharOffset
+	elseif (\char >= 'a') & (\char <= 'z')
+		dc.b	_font2, \char-$20
+	elseif \char = '?'
+		dc.b	$28+DH_CharOffset
+	else
+		dc.b	\char
+	endif
+	endm
+ 
+boxtxt macro string
+	len: = strlen(\string)
+	i:   = 1
 
-_br	= $00	; line break flags
-_delay	= $FC	; set delay (given in the next byte)
-_pause	= $FD	; wait player to press A/B/C button
-_cls	= $FE	; clear window
-_end	= $FF	; finish hint
+	while (i<=len)
+		char:	substr i,i,\string
+		mapchar '\char'
+		i: = i+1
+	endw
+	
+	dc.b _br
+	endm
 
 ;		 --------------------
 Hint_Pre:
-	dc.b	'HELLO AND WELCOME TO',_br
-	dc.b	                    '',_br
-	dc.b	'    sonic erazor',_br
-	dc.b	                    '',_delay,10,_br
-	dc.b	'THE CRAZIEST JOURNEY',_br
-	dc.b	'YOU\LL EVER TAKE',_br
-	dc.b	'WITH YOUR FAVORITE',_br
-	dc.b	'BLUE HEDGEHOG!',_br
-	dc.b	_pause,_cls
-	
-	dc.b	'YOU\LL FACE SOME',_br
-	dc.b	'OF THE MOST RAGE',_br
-	dc.b	'INDUCING, UNIQUE,',_br
-	dc.b	'AND EXPLOSIVE',_br
-	dc.b	'CHALLENGES EVER',_br
-	dc.b	'CREATED FOR A SONIC',_br
-	dc.b	'GAME!',_br
-	dc.b	_pause,_cls
-
-	dc.b	'BECAUSE TEARS OF',_br
-	dc.b	'FRUSTRATION SHOULD',_br
-	dc.b	'BE KEPT TO A MINIMUM',_br
-	dc.b	'THE FOLLOWING LEVEL',_br
-	dc.b	'WILL TEACH YOU SOME',_br
-	dc.b	'OF THE BASICS YOU\LL',_br
-	dc.b	'NEED TO KNOW LATER',_br
-	dc.b	'IN THE GAME.',_br
-	dc.b	_pause,_cls
-
-	dc.b	_br,_br
-	dc.b	'   ALRIGHT THEN,',_br
-	dc.b	_delay,10,_br
+	boxtxt	"HELLO AND WELCOME TO"
 	dc.b	_br
-	dc.b	'   let us begin1',_br
-	dc.b	_pause,_end
+	boxtxt	"    sonic erazor"
+	dc.b	_br,_delay,10
+	boxtxt	"THE CRAZIEST JOURNEY"
+	boxtxt	"YOU'LL EVER TAKE"
+	boxtxt	"WITH YOUR FAVORITE"
+	boxtxt	"BLUE HEDGEHOG!"
+	dc.b	_br,_pause,_cls
+	
+	boxtxt	"YOU'LL FACE SOME"
+	boxtxt	"OF THE MOST RAGE"
+	boxtxt	"INDUCING, UNIQUE,"
+	boxtxt	"AND EXPLOSIVE"
+	boxtxt	"CHALLENGES EVER"
+	boxtxt	"CREATED FOR A SONIC"
+	boxtxt	"GAME!"
+	dc.b	_br,_pause,_cls
+
+	boxtxt	"BECAUSE TEARS OF"
+	boxtxt	"FRUSTRATION SHOULD"
+	boxtxt	"BE KEPT TO A MINIMUM"
+	boxtxt	"THE FOLLOWING LEVEL"
+	boxtxt	"WILL TEACH YOU SOME"
+	boxtxt	"OF THE BASICS YOU'LL"
+	boxtxt	"NEED TO KNOW LATER"
+	boxtxt	"IN THE GAME."
+	dc.b	_br,_pause,_cls
+
+	dc.b	_br
+	boxtxt	"   ALRIGHT THEN,"
+	dc.b	_br,_delay,10
+	dc.b	_br
+	boxtxt	"   let us begin1"
+	dc.b	_br,_pause,_end
 
 ;		 --------------------
 Hint_1:
-	dc.b	'YOU SHOULDN\T BE',_br
-	dc.b	'ABLE TO READ THIS',_br
-	dc.b	'LOL',_br
-	dc.b	_pause,_end
+	boxtxt	"YOU SHOULDN'T BE"
+	boxtxt	"ABLE TO READ THIS"
+	boxtxt	"LOL"
+	dc.b	_br,_pause,_end
 
 ;		 --------------------
 Hint_2:
-	dc.b	'controls',_br
+	boxtxt	"controls"
 	dc.b	_br
-	dc.b	'  c OR b - JUMP',_br
-	dc.b	'       a - SPECIAL',_br
-	dc.b	'           POWER  ',_br
-	dc.b	'~ + jump - SPINDASH',_br
-	dc.b	'^ + jump - PEELOUT',_br
-	dc.b	_pause,_cls
+	boxtxt	"  c OR b - JUMP"
+	boxtxt	"       a - SPECIAL"
+	boxtxt	"           POWER  "
+	boxtxt	"~ + jump - SPINDASH"
+	boxtxt	"^ + jump - PEELOUT"
+	dc.b	_br,_pause,_cls
 	
-	dc.b	'while in the air',_br
+	boxtxt	"while in the air"
 	dc.b	_br
-	dc.b	'c - HOMING ATTACK',_br
-	dc.b	'b - DOUBLE JUMP',_br
-	dc.b	'a - SPECIAL POWER',_br
+	boxtxt	"c - HOMING ATTACK"
+	boxtxt	"b - DOUBLE JUMP"
+	boxtxt	"a - SPECIAL POWER"
 	dc.b	_br
-	dc.b	'd_pad + jump -',_br
-	dc.b    '  DIRECTIONAL JUMP',_br
-	dc.b	_pause,_end
+	boxtxt	"d_pad + jump -"
+	boxtxt    "  DIRECTIONAL JUMP"
+	dc.b	_br,_pause,_end
 
 ;		 --------------------
 Hint_3:
-	dc.b	'inhuman mode',_br
+	boxtxt	"inhuman mode"
 	dc.b	_br
-	dc.b	'PRESS a TO FIRE AN',_br
-	dc.b	'EXPLODING BULLET',_br
-	dc.b	'YOU CAN PROPEL',_br
-	dc.b	'YOURSELF IN THE AIR',_br
-	dc.b	'WITH!',_br
-	dc.b	_pause,_cls
+	boxtxt	"PRESS a TO FIRE AN"
+	boxtxt	"EXPLODING BULLET"
+	boxtxt	"YOU CAN PROPEL"
+	boxtxt	"YOURSELF IN THE AIR"
+	boxtxt	"WITH!"
+	dc.b	_br,_pause,_cls
 
-	dc.b	'ALSO, YOU ARE FULLY',_br
-	dc.b	'INVINCIBLE TO',_br
-	dc.b	'EVERYTHING!',_br
-	dc.b	_pause,_br,_br
-	dc.b	'...EXCEPT SPIKES.',_br
-	dc.b	_pause,_end
+	boxtxt	"ALSO, YOU ARE FULLY"
+	boxtxt	"INVINCIBLE TO"
+	boxtxt	"EVERYTHING!"
+	dc.b	_br,_pause
+	boxtxt	"...EXCEPT SPIKES."
+	dc.b	_br,_pause,_end
 
 ;		 --------------------
 Hint_4:
-	dc.b	'0Adw193q4HG5!"%q6/%4',_br
-	dc.b	'8ETRqZ91/D" we03()a)',_br
-	dc.b	'( B)f=)A=2h3401`?!G ',_br
-	dc.b	'#D )26aEd0a..oh my g',_br
-	dc.b	'od what have you don',_br
-	dc.b	'e everything is ruin',_br
-	dc.b	'ed now.:.'
-	dc.b	_pause,_cls
-	dc.b	'but hey, seeing',_br
-	dc.b	'that you\ve made it',_br
-	dc.b	'here, exploring',_br
-	dc.b	'seems to be just',_br
-	dc.b	'your thing.',_br
-	dc.b	_pause,_cls
-	dc.b	'so tell ya what,',_br
-	dc.b	'if you want to',_br
-	dc.b	'explore even more',_br
-	dc.b	'here\s the link to',_br
-	dc.b	'the source code',_br
-	dc.b	'of sonic erazor!',_br
-	dc.b	_pause,_cls
-	dc.b	'HTTPS0//',_br
-	dc.b	'ERAZOR:SELBI:CLUB',_br
-	dc.b	'',_br	
-	dc.b	'i hope you can',_br	
-	dc.b	'decipher that link.',_br	
-	dc.b	'i was too lazy to',_br	
-	dc.b	'add colons and',_br
-	dc.b	'slashes to the font.',_br
-	dc.b	_pause,_cls
-	dc.b	'have fun! and oh yeah'
-	dc.b	'the level is still a',_br
-	dc.b	'complete mess.',_br
+	boxtxt	"0Adw193q4HG5!'%q6/%4"
+	boxtxt	"8ETRqZ91/D' we03()a)"
+	boxtxt	"( B)f=)A=2h3401`?!G "
+	boxtxt	"#D )26aEd0a..oh my g"
+	boxtxt	"od what have you don"
+	boxtxt	"e everything is ruin"
+	boxtxt	"ed now.:."
+	dc.b	_br,_pause,_cls
+	boxtxt	"but hey, seeing"
+	boxtxt	"that you've made it"
+	boxtxt	"here, exploring"
+	boxtxt	"seems to be just"
+	boxtxt	"your thing."
+	dc.b	_br,_pause,_cls
+	boxtxt	"so tell ya what,"
+	boxtxt	"if you want to"
+	boxtxt	"explore even more"
+	boxtxt	"here's the link to"
+	boxtxt	"the source code"
+	boxtxt	"of sonic erazor!"
+	dc.b	_br,_pause,_cls
+	boxtxt	"HTTPS0//"
+	boxtxt	"ERAZOR:SELBI:CLUB"
+	dc.b	_br	
+	boxtxt	"i hope you can"	
+	boxtxt	"decipher that link."	
+	boxtxt	"i was too lazy to"	
+	boxtxt	"add colons and"
+	boxtxt	"slashes to the font."
+	dc.b	_br,_pause,_cls
+	boxtxt	"have fun! and oh yeah"
+	boxtxt	"the level is still a"
+	boxtxt	"complete mess."
 	dc.b	_pause
-	dc.b	'YES, I WAS TOO LAZY',_br
-	dc.b	_br
-	dc.b	'TO FIX THAT TOO.',_br
-	dc.b	'',_br,_pause
-	dc.b	'BITE ME.',_br
-	dc.b	_pause,_end
+	boxtxt	"YES, I WAS TOO LAZY"
+	boxtxt	"TO FIX THAT TOO."
+	dc.b	_br,_pause
+	boxtxt	"BITE ME."
+	dc.b	_br,_pause,_end
 
 ;		 --------------------
 Hint_5:
-	dc.b	'MOST CHALLENGES IN',_br
-	dc.b	'THIS GAME WILL',_br
-	dc.b	'INSTANTLY TELEPORT',_br
-	dc.b	'YOU BACK TO THEIR',_br
-	dc.b	'START, RATHER THAN',_br
-	dc.b	'SIMPLY KILLING YOU!',_br
-	dc.b	_pause,_end
+	boxtxt	"MOST CHALLENGES IN"
+	boxtxt	"THIS GAME WILL"
+	boxtxt	"INSTANTLY TELEPORT"
+	boxtxt	"YOU BACK TO THEIR"
+	boxtxt	"START, RATHER THAN"
+	boxtxt	"SIMPLY KILLING YOU!"
+	dc.b	_br,_pause,_end
 
 ;		 --------------------
 Hint_6:
-	dc.b	'hard part skipper',_br
+	boxtxt	"hard part skipper"
 	dc.b	_br
-	dc.b	'PRESS a + b + c',_br
-	dc.b	'TO SKIP CHALLENGES',_br
-	dc.b	'THAT ARE SIMPLY TOO',_br
-	dc.b	'TOUGH FOR YOU.',_br
-	dc.b	'NO HARD FEELINGS!',_br
-	dc.b	_pause,_cls
-	dc.b	'DO NOTE THAT',_br
-	dc.b	'HARD PART SKIPPERS',_br
-	dc.b	'ARE ONLY AVAILBLE',_br
-	dc.b	'IN casual mode!',_br
-	dc.b	_pause,_end
+	boxtxt	"PRESS a + b + c"
+	boxtxt	"TO SKIP CHALLENGES"
+	boxtxt	"THAT ARE SIMPLY TOO"
+	boxtxt	"TOUGH FOR YOU."
+	boxtxt	"NO HARD FEELINGS!"
+	dc.b	_br,_pause,_cls
+	boxtxt	"DO NOTE THAT"
+	boxtxt	"HARD PART SKIPPERS"
+	boxtxt	"ARE ONLY AVAILBLE"
+	boxtxt	"IN casual mode!"
+	dc.b	_br,_pause,_end
 
 ;		 --------------------
 Hint_7:
-	dc.b	'trial and error',_br
+	boxtxt	"trial and error"
 	dc.b	_br
-	dc.b	'SOME CHALLENGES',_br
-	dc.b	'SIMPLY CAN\T BE',_br
-	dc.b	'COMPLETED WITHOUT',_br
-	dc.b	'TRIAL AND ERROR.',_br
-	dc.b	_pause,_cls
+	boxtxt	"SOME CHALLENGES"
+	boxtxt	"SIMPLY CAN'T BE"
+	boxtxt	"COMPLETED WITHOUT"
+	boxtxt	"TRIAL AND ERROR."
+	dc.b	_br,_pause,_cls
 
-	dc.b	'DON\T WORRY THOUGH,',_br
-	dc.b	'THERE ARE NO LIVES,',_br
-	dc.b	'SO FEEL FREE TO BE',_br
-	dc.b	'A MANIAC!',_br
-	dc.b	_pause,_end
+	boxtxt	"DON'T WORRY THOUGH,"
+	boxtxt	"THERE ARE NO LIVES,"
+	boxtxt	"SO FEEL FREE TO BE"
+	boxtxt	"A MANIAC!"
+	dc.b	_br,_pause,_end
 
 ;		 --------------------
 Hint_8:
-	dc.b	'alternative gravity',_br
+	boxtxt	"alternative gravity"
 	dc.b	_br
-	dc.b	'PRESS a REPEATEDLY',_br
-	dc.b	'WHILE IN AIR AND USE',_br
-	dc.b	'THE d_pad TO HOP AND',_br
-	dc.b	'DASH IN WHATEVER',_br
-	dc.b	'DIRECTION YOU WANT!',_br
-	dc.b	_pause,_end
+	boxtxt	"PRESS a REPEATEDLY"
+	boxtxt	"WHILE IN AIR AND USE"
+	boxtxt	"THE d_pad TO HOP AND"
+	boxtxt	"DASH IN WHATEVER"
+	boxtxt	"DIRECTION YOU WANT!"
+	dc.b	_br,_pause,_end
 
 ;		 --------------------
 Hint_9:
-	dc.b	'HEDGEHOG SPACE GOLF',_br
-	dc.b	'ISN\T YOUR THING?',_br
-	dc.b	'TRY HOLDING b TO',_br
-	dc.b	'INVERT GRAVITY!',_br
-	dc.b	_pause,_end
+	boxtxt	"HEDGEHOG SPACE GOLF"
+	boxtxt	"ISN'T YOUR THING?"
+	boxtxt	"TRY HOLDING b TO"
+	boxtxt	"INVERT GRAVITY!"
+	dc.b	_br,_pause,_end
 
 ;		 --------------------
 Hint_Easter_Tutorial:
-	dc.b	'YOU THINK YOU\RE',_br
-	dc.b	'PRETTY CLEVER, HUH?',_br
-	dc.b	_pause,_cls
-	dc.b	'GET IN THE RING,',_br
-	dc.b	'LOSER!',_br
-	dc.b	_pause,_end
+	boxtxt	"YOU THINK YOU'RE"
+	boxtxt	"PRETTY CLEVER, HUH?"
+	dc.b	_br,_pause,_cls
+	boxtxt	"GET IN THE RING,"
+	boxtxt	"LOSER!"
+	dc.b	_br,_pause,_end
 
 ;		 --------------------
 Hint_Easter_SLZ:
-	dc.b	'AREN\T THE TRUE',_br
+	boxtxt	"AREN'T THE TRUE"
 	dc.b	_br
-	dc.b	'easter eggs',_br
+	boxtxt	"easter eggs"
 	dc.b	_br
-	dc.b	'THE FRIENDS WE',_br
-	dc.b	'MADE ALONG THE',_br
-	dc.b	'WAY?',_br
-	dc.b	_pause,_cls
-	dc.b	'...',_br
+	boxtxt	"THE FRIENDS WE"
+	boxtxt	"MADE ALONG THE"
+	boxtxt	"WAY?"
+	dc.b	_br,_pause,_cls
+	boxtxt	"..."
 	dc.b	_br,_delay,60
-	dc.b	'...',_br
+	boxtxt	"..."
 	dc.b	_br,_delay,60
-	dc.b	'...',_br
-	dc.b	_pause,_cls
-	dc.b	'WHAT?',_br
+	boxtxt	"..."
+	dc.b	_br,_pause,_cls
+	boxtxt	"WHAT?"
 	dc.b	_br,_delay,60
-	dc.b	'WERE YOU EXPECTING',_br
-	dc.b	'ANYTHING NAUGHTY',_br
-	dc.b	'UP HERE?',_br
-	dc.b	_pause,_cls
-	dc.b	'YOU ARE',_br
+	boxtxt	"WERE YOU EXPECTING"
+	boxtxt	"ANYTHING NAUGHTY"
+	boxtxt	"UP HERE?"
+	dc.b	_br,_pause,_cls
+	boxtxt	"YOU ARE"
 	dc.b	_br
-	dc.b	'CATEGORICALLY',_br
-	dc.b	'DISGUSTING.',_br
-	dc.b	_pause,_end
+	boxtxt	"CATEGORICALLY"
+	boxtxt	"DISGUSTING."
+	dc.b	_br,_pause,_end
 
 ;		 --------------------
 Hint_TutorialConclusion:
-	dc.b	'AND THAT CONCLUDES',_br
-	dc.b	'THE TUTORIAL!',_br
+	boxtxt	"AND THAT CONCLUDES"
+	boxtxt	"THE TUTORIAL!"
 	dc.b	_br
-	dc.b	'YOU SHOULD BE ABLE',_br
-	dc.b	'TO FIGURE OUT THE',_br
-	dc.b	'REST ON YOUR OWN.',_br
-	dc.b	_pause,_cls
+	boxtxt	"YOU SHOULD BE ABLE"
+	boxtxt	"TO FIGURE OUT THE"
+	boxtxt	"REST ON YOUR OWN."
+	dc.b	_br,_pause,_cls
 
-	dc.b	'TWO MORE QUICK tips ',_br
+	boxtxt	"TWO MORE QUICK tips "
 	dc.b	_br
-	dc.b	'- EXIT A STAGE AT',_br
-	dc.b	'  ANY TIME WITH',_br
-	dc.b	'  pause + a',_br
+	boxtxt	"- EXIT A STAGE AT"
+	boxtxt	"  ANY TIME WITH"
+	boxtxt	"  pause + a"
 	dc.b	_br
-	dc.b	'- BE SURE TO CHECK',_br
-	dc.b	'  OUT THE options!',_br
-	dc.b	_pause,_cls
+	boxtxt	"- BE SURE TO CHECK"
+	boxtxt	"  OUT THE options!"
+	dc.b	_br,_pause,_cls
 
-	dc.b	'NOW GO OUT THERE AND',_br
-	dc.b	'HAVE FUN WITH',_br
+	boxtxt	"NOW GO OUT THERE AND"
+	boxtxt	"HAVE FUN WITH"
 	dc.b	_br
-	dc.b	'    sonic erazor',_br
+	boxtxt	"    sonic erazor"
 	dc.b	_br
-	dc.b	'I HOPE YOU\LL HAVE',_br
-	dc.b	'AS MUCH FUN AS I HAD',_br
-	dc.b	'CREATING IT!',_br
-	dc.b	_pause,_cls
+	boxtxt	"I HOPE YOU'LL HAVE"
+	boxtxt	"AS MUCH FUN AS I HAD"
+	boxtxt	"CREATING IT!"
+	dc.b	_br,_pause,_cls
 
-	dc.b	'      BY selbi',_br
+	boxtxt	"      BY selbi"
 	dc.b	_br,_delay,60
-	dc.b	'  THEY CALL ME THE',_br
-	dc.b	'    MICHAEL  BAY',_br
-	dc.b	'   OF SONIC GAMES.',_br
+	boxtxt	"  THEY CALL ME THE"
+	boxtxt	"    MICHAEL  BAY"
+	boxtxt	"   OF SONIC GAMES."
 	dc.b	_br,_delay,90
-	dc.b	' AND VERY SOON YOU',_br
-	dc.b	' WILL ALSO SEE WHY.',_br
-	dc.b	_pause,_end
+	boxtxt	" AND VERY SOON YOU"
+	boxtxt	" WILL ALSO SEE WHY."
+	dc.b	_br,_pause,_end
 	even
 ; ---------------------------------------------------------------

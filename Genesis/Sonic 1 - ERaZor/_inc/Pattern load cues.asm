@@ -70,9 +70,9 @@ PLC_GameOver:	dc.w 0
 ; ---------------------------------------------------------------------------
 ; Pattern load cues - Green Hill
 ; ---------------------------------------------------------------------------
-PLC_GHZ:	dc.w $A
-		dc.l Nem_GHZ		; GHZ main patterns
-		dc.w 0
+PLC_GHZ:	dc.w $9
+	;	dc.l Nem_GHZ		; GHZ main patterns
+	;	dc.w 0
 		dc.l Nem_Stalk		; flower stalk
 		dc.w $6B00
 		dc.l Nem_PplRock	; purple rock
@@ -109,9 +109,9 @@ PLC_GHZ2:	dc.w 5
 ; ---------------------------------------------------------------------------
 ; Pattern load cues - Labyrinth
 ; ---------------------------------------------------------------------------
-PLC_LZ:		dc.w $A
-		dc.l Nem_LZ		; LZ main patterns
-		dc.w 0
+PLC_LZ:		dc.w $9
+	;	dc.l Nem_LZ		; LZ main patterns
+	;	dc.w 0
 		dc.l Nem_LzBlock1	; block
 		dc.w $3C00
 		dc.l Nem_LzBlock2	; blocks
@@ -164,9 +164,9 @@ PLC_LZ2:	dc.w $A
 ; ---------------------------------------------------------------------------
 ; Pattern load cues - Marble
 ; ---------------------------------------------------------------------------
-PLC_MZ:		dc.w 9
-		dc.l Nem_MZ		; MZ main patterns
-		dc.w 0
+PLC_MZ:		dc.w 8
+	;	dc.l Nem_MZ		; MZ main patterns
+	;	dc.w 0
 		dc.l Nem_MzMetal	; metal	blocks
 		dc.w $6000
 		dc.l Nem_MzFire		; fireballs
@@ -199,9 +199,9 @@ PLC_MZ2:	dc.w 4
 ; ---------------------------------------------------------------------------
 ; Pattern load cues - Star Light
 ; ---------------------------------------------------------------------------
-PLC_SLZ:	dc.w 5
-		dc.l Nem_SLZ		; SLZ main patterns
-		dc.w 0
+PLC_SLZ:	dc.w 4
+	;	dc.l Nem_SLZ		; SLZ main patterns
+	;	dc.w 0
 		dc.l Nem_Bomb		; bomb enemy
 		dc.w $8000
 		dc.l Nem_LzSwitch	; switch
@@ -226,9 +226,9 @@ PLC_SLZ2:	dc.w 4
 ; ---------------------------------------------------------------------------
 ; Pattern load cues - Spring Yard
 ; ---------------------------------------------------------------------------
-PLC_SYZ:	dc.w 2
-		dc.l Nem_SYZ		; SYZ main patterns
-		dc.w $0000
+PLC_SYZ:	dc.w 1
+	;	dc.l Nem_SYZ		; SYZ main patterns
+	;	dc.w 0
 		dc.l Nem_SYZDoors	; SYZ doors
 		dc.w $6000
 		dc.l Nem_LevelSigns	; level signs
@@ -243,9 +243,9 @@ PLC_SYZ2:	dc.w 2
 ; ---------------------------------------------------------------------------
 ; Pattern load cues - Scrap Brain
 ; ---------------------------------------------------------------------------
-PLC_SBZ:	dc.w 4
-		dc.l Nem_SBZ		; SBZ main patterns
-		dc.w 0
+PLC_SBZ:	dc.w 3
+	;	dc.l Nem_SBZ		; SBZ main patterns
+	;	dc.w 0
 		dc.l Nem_SbzDoor1	; door
 		dc.w $5500
 		dc.l Nem_HardPS_Tut	; hard part skipper
@@ -374,9 +374,9 @@ PLC_SSBlackout:	dc.w 0
 ; ---------------------------------------------------------------------------
 ; Pattern load cues - ending sequence
 ; ---------------------------------------------------------------------------
-PLC_Ending:	dc.w $D
-		dc.l Nem_GHZ		; GHZ patterns
-		dc.w 0
+PLC_Ending:	dc.w $C
+	;	dc.l Nem_GHZ		; GHZ patterns
+	;	dc.w 0
 		dc.l Nem_Stalk		; flower stalk
 		dc.w $6B00
 		dc.l Nem_EndFlower	; flowers

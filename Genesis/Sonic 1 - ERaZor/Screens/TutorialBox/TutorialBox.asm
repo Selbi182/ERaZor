@@ -287,7 +287,7 @@ DH_DrawChar:
 	lea	(Art_DH_Font).l,a2
 	cmpi.b	#_font2,d0
 	bne.s	@0
-	lea	(Art_DH_FontY).l,a2
+	lea	(Art_DH_Font2).l,a2
 	move.b	(a1)+,d0		; skip char
 	addq.l	#1,char_pos(a0)		; increase it
 @0:
@@ -615,8 +615,8 @@ Art_DH_WindowBorder:
 Art_DH_Font:
 	incbin	'Screens/TutorialBox/TutorialBox_Font.bin'
 
-Art_DH_FontY:
-	incbin	'Screens/TutorialBox/TutorialBox_FontYellow.bin'
+Art_DH_Font2:
+	incbin	'Screens/TutorialBox/TutorialBox_Font2.bin'
 
 ; ===============================================================
 ; ---------------------------------------------------------------
@@ -624,11 +624,11 @@ Art_DH_FontY:
 ; ---------------------------------------------------------------
 
 Hints_List:
-	dc.l	Hint_1
+	dc.l	Hint_Null
 	dc.l	Hint_2
 	dc.l	Hint_3
 	dc.l	Hint_4
-	dc.l	Hint_5
+	dc.l	Hint_Null
 	dc.l	Hint_6
 	dc.l	Hint_7
 	dc.l	Hint_8
@@ -664,6 +664,8 @@ mapchar macro char
 		dc.b	$25+DH_CharOffset
 	elseif \char = '_'
 		dc.b	_font2, $25+DH_CharOffset
+	elseif \char = '&'
+		dc.b	_font2, $29+DH_CharOffset
 	elseif \char = '+'
 		dc.b	$29+DH_CharOffset
 	elseif \char = '~'
@@ -696,6 +698,14 @@ boxtxt macro string
 	endm
 
 ;		 --------------------
+
+Hint_Null:
+	boxtxt	"you shouldn#t be"
+	boxtxt	"able to read this"
+	boxtxt	"lol"
+	dc.b	_br,_pause,_end
+
+
 Hint_Pre:
 	boxtxt	"HELLO AND WELCOME TO"
 	dc.b	_br
@@ -739,13 +749,6 @@ Hint_Pre:
 	dc.b	_br,_delay,10
 	dc.b	_br
 	boxtxt	"     let#s go1"
-	dc.b	_br,_pause,_end
-
-;		 --------------------
-Hint_1:
-	boxtxt	"YOU SHOULDN'T BE"
-	boxtxt	"ABLE TO READ THIS"
-	boxtxt	"LOL"
 	dc.b	_br,_pause,_end
 
 ;		 --------------------
@@ -830,16 +833,6 @@ Hint_4:
 	dc.b	_br,_pause,_end
 
 ;		 --------------------
-Hint_5:
-	boxtxt	"MOST CHALLENGES IN"
-	boxtxt	"THIS GAME WILL"
-	boxtxt	"INSTANTLY TELEPORT"
-	boxtxt	"YOU BACK TO THEIR"
-	boxtxt	"START, RATHER THAN"
-	boxtxt	"SIMPLY KILLING YOU!"
-	dc.b	_br,_pause,_end
-
-;		 --------------------
 Hint_6:
 	boxtxt	"hard part skippers"
 	dc.b	_br
@@ -851,24 +844,27 @@ Hint_6:
 	dc.b	_br,_pause,_cls
 	boxtxt	"DO NOTE THAT"
 	boxtxt	"HARD PART SKIPPERS"
-	boxtxt	"ARE ONLY AVAILBLE"
+	boxtxt	"MAY ONLY BE USED"
 	boxtxt	"IN casual mode!"
 	dc.b	_br,_pause,_end
 
 ;		 --------------------
 Hint_7:
-	boxtxt	"trial and error"
+	boxtxt	"dying sucks"
 	dc.b	_br
-	boxtxt	"SOME CHALLENGES"
-	boxtxt	"SIMPLY CAN'T BE"
-	boxtxt	"COMPLETED WITHOUT"
-	boxtxt	"TRIAL AND ERROR."
-	dc.b	_br,_pause,_cls
-
 	boxtxt	"DON'T WORRY THOUGH,"
-	boxtxt	"THERE ARE NO LIVES,"
-	boxtxt	"SO FEEL FREE TO BE"
-	boxtxt	"A MANIAC!"
+	boxtxt	"THERE ARE no lives,"
+	boxtxt	"IN THIS GAME. SO,"
+	boxtxt	"FEEL FREE TO GO"
+	boxtxt	"ABSOLUTELY CRAZY!"
+	dc.b	_br,_pause,_cls
+	boxtxt	"FURTHERMORE, TO NOT"
+	boxtxt	"WASTE YOUR TIME,"
+	boxtxt	"MOST CHALLENGES"	
+	boxtxt	"WILL INSTANTLY"
+	boxtxt	"TELEPORT YOU BACK,"
+	boxtxt	"RATHER THAN OUTRIGHT"
+	boxtxt	"KILLING YOU!"
 	dc.b	_br,_pause,_end
 
 ;		 --------------------
@@ -937,7 +933,7 @@ Hint_TutorialConclusion:
 	boxtxt	"REST ON YOUR OWN."
 	dc.b	_br,_pause,_cls
 
-	boxtxt	"TWO MORE QUICK tips "
+	boxtxt	"TWO MORE QUICK tips"
 	dc.b	_br
 	boxtxt	"- EXIT A STAGE AT"
 	boxtxt	"  ANY TIME WITH"

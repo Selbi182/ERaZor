@@ -33719,6 +33719,7 @@ Sonic_ResetOnFloor:			; XREF: PlatformObject; et al
 		move.b	#0,($FFFFF7CC).w
 @cont:
 
+		bclr	#1,($FFFFFFE5).w	; clear air-freeze flag
 		clr.b	($FFFFFFEB).w	; clear jumpdash flag
 		clr.b	($FFFFFFDA).w	; clear Sonic_AutomaticRoll flag
 		clr.b	($FFFFFFAD).w	; clear jumpdash flag for afterimage

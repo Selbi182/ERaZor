@@ -871,7 +871,7 @@ Hint_7:
 Hint_8:
 	boxtxt	"alternative gravity"
 	dc.b	_br
-	boxtxt	"PRESS a REPEATEDLY"
+	boxtxt	"PRESS c REPEATEDLY"
 	boxtxt	"WHILE IN AIR AND USE"
 	boxtxt	"THE d_pad TO HOP AND"
 	boxtxt	"DASH IN WHATEVER"
@@ -882,7 +882,7 @@ Hint_8:
 Hint_9:
 	boxtxt	"HEDGEHOG SPACE GOLF"
 	boxtxt	"ISN'T YOUR THING?"
-	boxtxt	"TRY HOLDING b TO"
+	boxtxt	"TRY HOLDING a TO"
 	boxtxt	"INVERT GRAVITY!"
 	dc.b	_br,_pause,_end
 

@@ -11144,7 +11144,13 @@ Resize_SLZ2boss2:
 		move.b	#$5F,0(a1)		; load bomb boss
 		move.w	#$BD0,obX(a1)
 		move.w	#$048C,obY(a1)
+		
+	if DebugModeDefault=1
+		move.b	#2,($FFFFFF75).w	; set lives
+	else
 		move.b	#21,($FFFFFF75).w	; set lives
+	endif
+		
 		move.b	($FFFFFF75).w,($FFFFFF68).w
 
 		addq.b	#2,($FFFFF742).w
@@ -21328,7 +21334,7 @@ Obj36_Type02:				; XREF: Obj36_TypeIndex
 
 Obj36_Wait:
 		move.w	($FFFFFE04).w,d0
-		divu.w	#45,d0
+		divu.w	#60,d0
 		andi.l	#$FFFF0000,d0
 		bne.s	locret_CFE6
 		
@@ -21735,6 +21741,7 @@ ObjectFall:
 
 
 ObjectFall_Sonic:
+		; x velocity
 		move.w	obVelX(a0),d0		; get Sonic's horizontal speed
 		ext.l	d0			; extend his X speed to a long
 		asl.l	#8,d0			; move one byte ahead
@@ -21742,16 +21749,49 @@ ObjectFall_Sonic:
 		add.l	d0,d2			; add that new speed to Sonic's new X position
 		move.l	d2,obX(a0)		; write new X coordinate for Sonic
 		
-		move.w	obVelY(a0),d0		; get Sonic's vertical speed
-		tst.b	($FFFFFFE5).w		; is air freeze enabled?
-		beq.s	@gravity		; if not, use regular gravity
-		btst	#1,($FFFFFFE5).w	; air freeze currently active?
-		bne.s	@nogravity		; if yes, stop gravity
-		subi.w	#Gravity/2,obVelY(a0)	; otherwise just half gravity
+		; y velocity
+		moveq	#0,d3			; register to store this frame's velocity delta
+		move.w	#Gravity,d3		; increase vertical speed (gravity)
 		
-@gravity:
-		addi.w	#Gravity,obVelY(a0)	; increase vertical speed (gravity)
-@nogravity:
+		tst.b	($FFFFFF77).w		; is antigrav enabled?
+		bne.s	@OFS_OGAntigrav		; if not, branch
+		
+		bra.w	@OFS_FallEnd
+
+@OFS_OGAntigrav:
+		; OG Star Agony Place antigrav controls from 2016
+		cmpi.w	#$302,($FFFFFE10).w	; are we in Star Agony Place?
+		beq.s	@OFS_ReverseGravity	; if yes, branch
+		cmpi.w	#$501,($FFFFFE10).w	; are we in the tutorial?
+		bne.s	@OFS_FallEnd		; if not, branch
+
+@OFS_ReverseGravity:
+		subi.w	#$38,d3			; inverse gravity
+
+		btst	#6,($FFFFF602).w	; is A pressed?
+		beq.s	@OFS_NoA		; if not, branch
+		move.b	#1,($FFFFFFEB).w	; set jumpdash flag (to prevent it)
+		tst.w	obVelY(a0)
+		bmi.s	@OFS_Negative
+		subi.w	#$38,d3
+		bra.s	@OFS_FallEnd
+@OFS_Negative:
+		subi.w	#$1C,d3
+		bra.s	@OFS_FallEnd
+@OFS_NoA:
+		tst.w	obVelY(a0)
+		bpl.s	@OFS_Positve
+		addi.w	#$38,d3
+		bra.s	@OFS_FallEnd
+@OFS_Positve:
+		addi.w	#$1C,d3
+@OFS_FallEnd:
+
+		add.w	d3,obVelY(a0)
+
+
+		; translate to position
+		move.w	obVelY(a0),d0		; get Sonic's vertical speed
 		ext.l	d0			; extend Y speed to a long
 		asl.l	#8,d0			; move one byte ahead
 		move.l	obY(a0),d2		; get Sonic's Y positon
@@ -32819,7 +32859,7 @@ SD_End:
 ; Subroutine to move Sonic in air while holding A (Star Agony Place)
 ; ---------------------------------------------------------------------------
 Last_Direction = $FFFFF670
-A_Hold_timer = $FFFFF672
+C_HoldTimer = $FFFFF672
 AF_Speed =  $500
 AF_Hold_Speed =  $250
 AF_UpBoost = $180
@@ -32831,7 +32871,7 @@ Sonic_AirFreeze:
 		bne.w	AM_End			; if yes, disallow air freeze
 
 		move.b	($FFFFF602).w,d1	; get button pressed
-		btst	#6,d1			; is A pressed?
+		btst	#5,d1			; is C pressed?
 		bne.s	AM_APressed		; if yes, branch
 		btst	#1,($FFFFFFE5).w	; was air freeze already active?
 		beq.w	AM_End			; if not, branch
@@ -32839,27 +32879,27 @@ Sonic_AirFreeze:
 		bra.w	AM_LetGo		; move Sonic
 
 AM_APressed:
-		cmpi.w 	#AF_Hold_Speed, (A_Hold_timer)
+		cmpi.w 	#AF_Hold_Speed, (C_HoldTimer)
 		bge.s 	@DontAddToTimer
 
-		add.w 	#3, (A_Hold_timer)
+		add.w 	#3, (C_HoldTimer)
 		bra.s 	@DirectionCheck
 
 @DontAddToTimer:
-		move.w 	#AF_Hold_Speed, (A_Hold_timer)
+		move.w 	#AF_Hold_Speed, (C_HoldTimer)
 
 @DirectionCheck:
 		and.b	#%00001111, d1 	; only use direction nybble
 		tst.b 	d1
 		beq.w 	@EndInput
 		
-		move.b 	d1, (Last_Direction) ; store direction
+		move.b 	d1,(Last_Direction) ; store direction
 		
 		move.w	#-AF_Hold_Speed, d2 ; left + up
-		add.w 	(A_Hold_timer), d2
+		add.w 	(C_HoldTimer), d2
 
 		move.w	#AF_Hold_Speed, d3 ; right + down
-		sub.w 	(A_Hold_timer), d3
+		sub.w 	(C_HoldTimer), d3
 
 		btst	#2,(Last_Direction).w	; is left pressed?
 		beq.s	@ChkRight		; if not, check if down is pressed
@@ -32963,7 +33003,7 @@ AM_EndDecel:
 AM_LetGo:
 		moveq	#0,d0			; set to nothing was pressed
 		move.b 	#0, (Last_Direction) ; ^ ditto
-		move.w 	#0, (A_Hold_timer)
+		move.w 	#0, (C_HoldTimer)
 
 		btst	#2,($FFFFF602).w	; is left pressed?
 		beq.s	AM_ChkRight		; if not, check if down is pressed
@@ -38933,7 +38973,11 @@ loc_17772:
 		move.w	obX(a0),$30(a0)
 		move.w	obY(a0),$38(a0)
 
+	if DebugModeDefault=1
+		move.b	#1,obColProp(a0)		; set number of	hits to	1
+	else
 		move.b	#20,obColProp(a0)	; set number of	hits to	20
+	endif
 		move.b	obColProp(a0),($FFFFFF68).w
 
 Obj3D_ShipMain:				; XREF: Obj3D_Index
@@ -39241,6 +39285,7 @@ loc_17984:
 		move.b	#1,($FFFFF7A7).w
 
 locret_179AA:
+		move.b	#1,($FFFFFE2D).w		; make Sonic invincible
 		move.w	#$94,d0
 		jsr	(PlaySound).l	; play GHZ music
 		move.w	#$2AC0+GHZ3Add,($FFFFF72A).w
@@ -39431,7 +39476,11 @@ Obj48_Main:				; XREF: Obj48_Index
 		beq.s	Obj48_Do
 		subq.b	#1,ob2ndRout(a0)
 		movea.l	$34(a0),a1
+	if DebugModeDefault=1
+		move.b	#1,obColProp(a1)	; force boss to have full health until all three balls appeared
+	else
 		move.b	#20,obColProp(a1)	; force boss to have full health until all three balls appeared
+	endif
 		rts
 ; ---------------------------------------------------------------------------
 

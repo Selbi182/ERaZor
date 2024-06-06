@@ -21337,11 +21337,12 @@ Obj36_Type02:				; XREF: Obj36_TypeIndex
 
 Obj36_Wait:
 		move.w	($FFFFFE04).w,d0
-		andi.w	#$1F,d0
+		divu.w	#45,d0
+		andi.l	#$FFFF0000,d0
 		bne.s	locret_CFE6
 		
 		moveq	#$30,d0		; set move distance to $20 pixels
-		btst	#5,($FFFFFE05).w
+		tst.w	$34(a0)
 		bne.s	@0
 		btst	#0,obStatus(a0)	; is spike mirrored?
 		beq.s	@1
@@ -32838,6 +32839,8 @@ AF_UpBoost = $180
 Sonic_AirFreeze:
 		tst.b	($FFFFFF77).w		; is antigrav enabled?
 		beq.w	AM_End			; if not, branch
+		tst.b	($FFFFFFE7).w		; is inhuman mode enabled?
+		bne.w	AM_End			; if yes, disallow air freeze
 
 		move.b	($FFFFF602).w,d1	; get button pressed
 		btst	#6,d1			; is A pressed?

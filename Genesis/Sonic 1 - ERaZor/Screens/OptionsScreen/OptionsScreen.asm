@@ -48,9 +48,9 @@ OptionsScreen:				; XREF: GameModeArray
 		jsr	Pal_FadeFrom
 
 		lea	($FFFFD100).w,a0
-		move.b	#$02,(a0)	; load ERaZor banner object
-		move.w	#$120,obX(a0)	; set X-position
-		move.w	#$84,obScreenY(a0)	; set Y-position
+		move.b	#2,(a0)			; load ERaZor banner object
+		move.w	#$11E,obX(a0)		; set X-position
+		move.w	#$87,obScreenY(a0)	; set Y-position
 		bset	#7,obGfx(a0)		; otherwise make object high plane
 		
 		jsr	ObjectsLoad
@@ -124,20 +124,31 @@ Options_ContinueSetup:
 
 		bra.w	OptionsScreen_MainLoop
 
+; ---------------------------------------------------------------------------
 ; ===========================================================================
+; ---------------------------------------------------------------------------
+; Options menu background effects
+; ---------------------------------------------------------------------------
 
-Options_PalCycle:
+Options_BackgroundEffects:
 		ints_disable
 		move.l	a2,-(sp)		; backup d0 to a2
+		bsr	Options_BGPalCycle
+		bsr	Options_BGDeformation
+		bsr	Options_BGVScroll
+		bsr	Options_ERZPalCycle
+		move.l	(sp)+,a2		; backup d0 to a2
+		ints_enable
+		rts
+; ===========================================================================
 
-		; background palette rotation
-	;	jsr	SineWavePalette
-	
+; Background palette rotation
+Options_BGPalCycle:
 		move.w	($FFFFFE0E).w,d0	; get V-blank timer
 		andi.w	#$F,d0
 		divu.w	#10,d0
 		andi.l	#$FFFF0000,d0
-		bne.w	Options_Deform
+		bne.w	@1
 		addq.b	#1,($FFFFFF85).w	; increase timer
 
 		moveq	#0,d0
@@ -160,79 +171,8 @@ Options_PalCycle:
 		andi.w	#$0EEE,d0
 		move.w	d0,(a2)+
 		dbf	d1,@bgpalcycle
-
-Options_Deform:
-		; background deformation
-		lea	($FFFFCC00).w,a1
-		move.w	#(224/1)-1,d3
-		jsr	RandomNumber
-@scroll:
-		ror.l	#1,d1
-		move.l	d1,d2
-		andi.l	#$001F0000,d2
-		
-		moveq	#0,d0
-		moveq	#0,d4
-		move.w	($FFFFFE0E).w,d0	; get timer
-		swap	d0
-		btst	#0,d3
-		beq.s	@1
-		neg.l	d0
 @1:
-		andi.l	#$0000FFFF,d0
-		swap	d0
-		add.w	($FFFFFE0E).w,d0 ; scroll everything to the right
-		btst	#0,d5
-		beq.s	@3
-		sub.w	($FFFFFE0E).w,d0 ; scroll everything to the right
-
-@3:
-	
-		
-		move.w	d0,d4		; copy scroll
-		add.w	d3,d4		; add line index
-		subi.w	#224/2,d4
-		movem.l	d0/d1,-(sp)
-		move.w	d4,d0
-		jsr	CalcSine
-		
-		move.w	d3,d5
-		add.w	($FFFFFE0E).w,d5
-		btst	#7,d5
-		beq.s	@2
-		neg.w	d0
-@2:
-		move.w	d0,d4
-		
-		movem.l	(sp)+,d0/d1
-		add.w	d4,d0
-		swap	d0
-		or.l	d0,d2
-		move.l	d2,(a1)+
-	;	addi.l	#$80000,d2
-	;	move.l	d2,(a1)+
-		dbf	d3,@scroll ; fill scroll data with 0
-
-		; V-Scroll
-		lea	($C00000).l,a0			; init VDP data port in a0
-		move.l	#$40000010,4(a0)		; set VDP control port to VSRAM mode and start at 00
-		move.w	#(320/8)-1,d0			; do it for all 40 double-tiles (320 width = 80 tiles at 8 pixels)
-@vScroll_loop:	moveq	#0,d1
-		move.w	($FFFFFE0E).w,d1
-		lsl.w	#1,d1
-		swap	d1
-		move.l	d1,(a0)				; dump art to VSRAM
-		dbf	d0,@vScroll_loop		; repeat until all lines are done
-
-Options_PalCycle_ERaZor:
-		; ERaZor banner palette cycle
-		lea	($FFFFFB20).w,a2
-		jsr	ERaZorBannerPalette
-
-		move.l	(sp)+,a2		; backup d0 to a2
-		ints_enable
 		rts
-
 ; ---------------------------------------------------------------------------
 Options_BGCycleColors:
 		dc.w	$000
@@ -256,35 +196,80 @@ Options_BGCycleColors:
 
 		dc.w	  -1
 		even
-	
-	
-	
-	
-	
-	
-		dc.w	$020
-		dc.w	$040
-		dc.w	$060
-		dc.w	$080
-		dc.w	$0A0
-		dc.w	$0C0
-		dc.w	$0C0
-		
-		dc.w	$0E0
-		dc.w	$0E0
-		
-		dc.w	$0C0
-		dc.w	$0C0
-		dc.w	$0A0
-		dc.w	$080
-		dc.w	$060
-		dc.w	$040
-		dc.w	$020
+; ---------------------------------------------------------------------------
 
-		dc.w	  -1
-		even
+; Background deformation (the main effect)
+Options_BGDeformation:
+		lea	($FFFFCC00).w,a1
+		move.w	#(224/1)-1,d3
+		jsr	RandomNumber
+@scroll:
+		ror.l	#1,d1
+		move.l	d1,d2
+		andi.l	#$001F0000,d2
+		
+		moveq	#0,d0
+		moveq	#0,d4
+		move.w	($FFFFFE0E).w,d0	; get timer
+		swap	d0
+		btst	#0,d3
+		beq.s	@1
+		neg.l	d0
+@1:
+		andi.l	#$0000FFFF,d0
+		swap	d0
+		add.w	($FFFFFE0E).w,d0 ; scroll everything to the right
+		btst	#0,d5
+		beq.s	@3
+		sub.w	($FFFFFE0E).w,d0 ; scroll everything to the left
+@3:
+		move.w	d0,d4		; copy scroll
+		add.w	d3,d4		; add line index
+		subi.w	#224/2,d4
+		movem.l	d0/d1,-(sp)
+		move.w	d4,d0
+		jsr	CalcSine
+		
+		move.w	d3,d5
+		add.w	($FFFFFE0E).w,d5
+		btst	#7,d5
+		beq.s	@2
+		neg.w	d0
+@2:
+		move.w	d0,d4
+		
+		movem.l	(sp)+,d0/d1
+		add.w	d4,d0
+		swap	d0
+		or.l	d0,d2
+		move.l	d2,(a1)+
+		dbf	d3,@scroll ; fill scroll data with 0
+		rts
+; ---------------------------------------------------------------------------
 
+; V-Scroll
+Options_BGVScroll:
+		lea	($C00000).l,a0			; init VDP data port in a0
+		move.l	#$40000010,4(a0)		; set VDP control port to VSRAM mode and start at 00
+		move.w	#(320/8)-1,d0			; do it for all 40 double-tiles (320 width = 80 tiles at 8 pixels)
+@vScroll_loop:	moveq	#0,d1
+		move.w	($FFFFFE0E).w,d1
+		lsl.w	#1,d1
+		swap	d1
+		move.l	d1,(a0)				; dump art to VSRAM
+		dbf	d0,@vScroll_loop		; repeat until all lines are done
+		rts
+; ---------------------------------------------------------------------------
+
+; ERaZor banner palette cycle
+Options_ERZPalCycle:
+		lea	($FFFFFB20).w,a2
+		jsr	ERaZorBannerPalette
+		rts
+; ---------------------------------------------------------------------------
 ; ===========================================================================
+; ---------------------------------------------------------------------------
+
 ; ---------------------------------------------------------------------------
 ; Options Screen - Main Loop
 ; ---------------------------------------------------------------------------
@@ -301,7 +286,7 @@ O_DontResetTimer:
 		bsr	OptionsControls
 		jsr	RunPLC_RAM
 		
-		bsr.w	Options_PalCycle
+		bsr.w	Options_BackgroundEffects
 
 		tst.l	($FFFFF680).w		; are pattern load cues empty?
 		bne.s	OptionsScreen_MainLoop	; if not, branch
@@ -448,10 +433,8 @@ Options_HandleSoundTest:
 		cmpi.w	#17,d0
 		bne.w	Options_HandleExit
 
-		move.b	($FFFFF605).w,d1	; get button presses
-		andi.b	#$F0,d1			; is A, B, C, or Start pressed?
+		tst.b	($FFFFF605).w		; anything pressed this frame?
 		beq.w	Options_Return		; if not, branch
-		
 		move.b	($FFFFF605).w,d1	; get button presses
 		btst	#4,d1			; is button B pressed?
 		bne.s	@soundtest_stop		; if yes, branch
@@ -583,58 +566,55 @@ Options_NoMove:
 ; End of function OptionsControls
 
 ; ---------------------------------------------------------------------------
-; Subroutine to load level select text
+; Subroutine to load the Options menu text
 ; ---------------------------------------------------------------------------
+Options_VRAM = $E570
+Options_VRAM_Red = $C570
+Options_VDP = $600C0003
 
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+Options_LineCount = 22
+Options_LineLength = 24
+Options_Padding = 2
+Options_LineLengthTotal = Options_LineLength + (Options_Padding * 2)
 
-Options_VRAM = $628E0003
+blankline macro lines
+		rept	\lines
+		move.l	d4,4(a6)
+		rept	Options_LineLengthTotal
+		move.w	#Options_VRAM+Options_Blank,(a6)
+		endr
+		addi.l	#$800000,d4
+		endr
+		endm
+; ---------------------------------------------------------------------------
 
 OptionsTextLoad:				; XREF: TitleScreen
 		bsr	GetOptionsText
 
 		lea	($FFFFCA00).w,a1	; get preloaded text buffer	
 		lea	($C00000).l,a6
-		move.l	#Options_VRAM,d4	; screen position (text)
+		move.l	#Options_VDP,d4		; screen position (text)
 		
-		; prefill
-		move.w	#$E570+Options_Blank,d0	; VRAM setting
-		moveq	#$17+2,d2		; number of characters per line
-		move.l	d4,4(a6)
-@0:		
-		move.w	d0,(a6)
-		dbf	d2,@0
-		addi.l	#$800000,d4
+		; prefill top with non-shadowy blank tiles
+		blankline 4
 
 		; write text to buffer
-		move.w	#$E570,d3	; VRAM setting
-		moveq	#$14,d1		; number of lines of text
-loc2_34FE:	
+		move.w	#Options_VRAM,d3	; VRAM setting
+		moveq	#Options_LineCount-1,d1		; number of lines of text
+@writeline:	
 		move.l	d4,4(a6)
-		move.w	#$E570+Options_Blank,(a6)
+		move.w	#Options_VRAM+Options_Blank,(a6)
+		move.w	#Options_VRAM+Options_Blank,(a6)
 		bsr	Options_WriteLine
-		move.w	#$E570+Options_Blank,(a6)
+		move.w	#Options_VRAM+Options_Blank,(a6)
+		move.w	#Options_VRAM+Options_Blank,(a6)
+@1:
 		addi.l	#$800000,d4
-		dbf	d1,loc2_34FE
+		dbf	d1,@writeline
+		
+		; postfill bottom with non-shadowy blank tiles
+		blankline 2
 
-		; make currently selected line red
-		move.l	#Options_VRAM,d4
-		addi.l	#$800000,d4
-		moveq	#0,d0
-		move.w	($FFFFFF82).w,d0
-		lsl.w	#7,d0
-		swap	d0
-		add.l	d0,d4
-		move.l	d4,4(a6)
-
-		lea	($FFFFCA00-1).w,a1	; set location
-		move.w	($FFFFFF82).w,d5	; get current selection
-		mulu.w	#24,d5			; multiply it by 24 (number of characters per line)
-		adda.w	d5,a1			; add result to pointer	
-		move.w	#$C570,d3		; red palette line
-		moveq	#$18,d2
-		bsr	Options_WriteLine2	; write selected line
-loc2_3550:
 		rts	
 ; End of function OptionsTextLoad
 
@@ -642,18 +622,28 @@ loc2_3550:
 
 
 Options_WriteLine:				; XREF: OptionsTextLoad
-		moveq	#$17,d2		; number of characters per line
+		moveq	#Options_LineLength-1,d2
 
 Options_WriteLine2:
 		moveq	#0,d0
 		move.b	(a1)+,d0
-		bpl.s	loc2_3598
-		move.w	#0,(a6)
+		bpl.s	OWL_Positive
+
+		cmpi.b	#$FF,d0			; reached end of list?
+		beq.s	OWL_End			; if yes, branch
+
+		move.w	#Options_VRAM_Red,d3	; red palette line
+		andi.b	#$7F,d0
+		add.w	d3,d0
+		move.w	d0,(a6)
 		dbf	d2,Options_WriteLine2
+
+OWL_End:
 		rts	
 ; ===========================================================================
 
-loc2_3598:				; XREF: Options_WriteLine
+OWL_Positive:				; XREF: Options_WriteLine
+		move.w	#Options_VRAM,d3	; default palette line
 		add.w	d3,d0
 		move.w	d0,(a6)
 		dbf	d2,Options_WriteLine2
@@ -669,12 +659,12 @@ GetOptionsText:
 		lea	($FFFFCA00).w,a1		; set destination
 		moveq	#0,d1				; use $FF as ending of the list
 
-		lea	(OpText_Header2).l,a2		; set text location
-		bsr.w	Options_Write			; write text
 		lea	(OpText_Header1).l,a2		; set text location
 		bsr.w	Options_Write			; write text
+		lea	(OpText_Header2).l,a2		; set text location
+		bsr.w	Options_Write			; write text
 
-		adda.w	#(1*24),a1			; make one empty line
+		adda.w	#Options_LineLength*2,a1	; make two empty lines
 
 		lea	(OpText_GameplayStyle).l,a2	; set text location
 		bsr.w	Options_Write			; write text
@@ -682,7 +672,7 @@ GetOptionsText:
 		bsr.w	GOT_ChkOption			; check if option is ON or OFF
 		bsr.w	Options_Write			; write text
 
-		adda.w	#(1*24),a1			; make one empty line
+		adda.w	#Options_LineLength,a1		; make one empty line
 		
 		lea	(OpText_Extended).l,a2		; set text location
 		bsr.w	Options_Write			; write text
@@ -690,15 +680,15 @@ GetOptionsText:
 		bsr.w	GOT_ChkOption			; check if option is ON or OFF
 		bsr.w	Options_Write			; write text
 
-		adda.w	#(1*24),a1			; make one empty line
-
+		adda.w	#Options_LineLength,a1		; make one empty line
+		
 		lea	(OpText_StoryTextScreens).l,a2	; set text location
 		bsr.w	Options_Write			; write text
 		moveq	#3,d2				; set d2 to 3
 		bsr.w	GOT_ChkOption			; check if option is ON or OFF
 		bsr.w	Options_Write			; write text
 
-		adda.w	#(1*24),a1			; make one empty line
+		adda.w	#Options_LineLength,a1		; make one empty line
 		
 		lea	(OpText_SkipUberhub).l,a2	; set text location
 		bsr.w	Options_Write			; write text
@@ -706,7 +696,7 @@ GetOptionsText:
 		bsr.w	GOT_ChkOption			; check if option is ON or OFF
 		bsr.w	Options_Write			; write text
 
-		adda.w	#(1*24),a1			; make one empty line
+		adda.w	#Options_LineLength,a1		; make one empty line
 		
 		lea	(OpText_CinematicMode).l,a2	; set text location
 		bsr.w	Options_Write			; write text
@@ -714,7 +704,7 @@ GetOptionsText:
 		bsr.w	GOT_ChkOption			; check if option is ON or OFF
 		bsr.w	Options_Write			; write text
 
-		adda.w	#(1*24),a1			; make one empty line
+		adda.w	#Options_LineLength,a1		; make one empty line
 		
 		move.l	#OpText_EasterEgg_Locked,d6	; set locked text location	
 		tst.b	($FFFFFF93).w			; has the player beaten the game?
@@ -727,12 +717,12 @@ GetOptionsText:
 		bsr.w	GOT_ChkOption			; check if option is ON or OFF
 		bsr.w	Options_Write			; write text
 
-		adda.w	#(1*24),a1			; make one empty line
+		adda.w	#Options_LineLength,a1		; make one empty line
 
 		lea	(OpText_DeleteSRAM).l,a2	; set text location
 		bsr.w	Options_Write			; write text
 
-		adda.w	#(1*24+3),a1			; make one empty line + 3 characters (because the delete save option is a one-time action button)
+		adda.w	#Options_LineLength+3,a1	; make one empty line + 3 characters (because the delete save option is a one-time action button)
 
 ; ---------------------------------------------------------------------------
 		lea	(OpText_SoundTest).l,a2		; set text location
@@ -759,12 +749,28 @@ GOT_Snd_Skip1:
 
 GOT_Snd_Skip2:
 		move.b	d0,0(a1)			; set result to second digit (8 "1")
+		adda.w	#3,a1				; adjust for the earlier sound test offset
 ; ---------------------------------------------------------------------------
 
-		adda.w	#(1*24+3),a1			; make one empty line and adjust for the earlier sound test offset
+		adda.w	#Options_LineLength*2,a1	; make two empty lines
 
 		lea	(OpText_Exit).l,a2		; set text location
 		bsr.w	Options_Write			; write text
+
+; ---------------------------------------------------------------------------
+
+		; make currently selected line red
+		lea	($FFFFCA00+Options_LineLength).w,a1	; set location
+		move.w	($FFFFFF82).w,d5			; get current selection
+		cmpi.w	#19,d5
+		bne.s	@0
+		addq.w	#1,d5
+@0:
+		mulu.w	#Options_LineLength,d5			; multiply by line length
+		adda.w	d5,a1
+		moveq	#Options_LineLength-1,d2
+@redline:	ori.b	#$80,(a1)+				; mark line to use red
+		dbf	d2,@redline
 
 		rts					; return
 
@@ -794,17 +800,8 @@ OW_LimitGiven:
 OW_NotFF:
 		cmpi.b	#' ',d0			; is current character a space?
 		bne.s	OW_NotSpace		; if not, branch
-		cmpi.b	#4,($FFFFFF98).w	; are the options being written now?
-		bne.s	OW_SpaceLoop		; if not, branch
-		move.b	#Options_Blank,d0	; set correct value for space
+		move.b	#Options_Blank,d0	; write a space char to a1
 		bra.s	OW_DoWrite		; skip
-
-OW_SpaceLoop:
-		move.b	#Options_Blank,(a1)+	 ; write a space char to a1
-		cmpi.b	#' ',(a2)+		; is next character a space as well?
-		beq.s	OW_SpaceLoop		; if yes, loop until not anymore
-		suba.w	#1,a2			; sub 1 from a2
-		bra.s	Options_Write		; loop
 
 OW_NotSpace:
 		cmpi.b	#'<',d0			; is current character a "<"?
@@ -819,12 +816,12 @@ OW_NotLeftArrow:
 		bra.s	OW_DoWrite		; skip
 
 OW_NotRightArrow:
-		cmpi.b	#'=',d0			; is current character a "="?
-		bne.s	OW_NotEqual		; if not, branch
-		move.b	#$0C,d0			; set correct value for "="
+		cmpi.b	#'&',d0			; is current character a "&"?
+		bne.s	OW_NotAmpersand		; if not, branch
+		move.b	#$0C,d0			; set correct value for "&"
 		bra.s	OW_DoWrite		; skip
 
-OW_NotEqual:
+OW_NotAmpersand:
 		cmpi.b	#'-',d0			; is current character a "-"?
 		bne.s	OW_NotHyphen		; if not, branch
 		move.b	#$0B,d0			; set correct value for "-"
@@ -945,7 +942,7 @@ OpText_Header1:
 		even
 
 OpText_Header2:
-		dc.b	'      OPTIONS MENU      ', $FF
+		dc.b	'      CHANGE STUFF      ', $FF
 		even
 ; ---------------------------------------------------------------------------
 
@@ -990,7 +987,7 @@ OpText_SoundTestDefault:
 		even
 ; ---------------------------------------------------------------------------
 
-OpText_Exit:	dc.b	'      EXIT OPTIONS   ', $FF
+OpText_Exit:	dc.b	'     APPLY SETTINGS     ', $FF
 		even
 ; ---------------------------------------------------------------------------
 

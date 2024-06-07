@@ -22,10 +22,10 @@
 ; =======================================================
 
 ; ------------------------------------------------------
-; Assembly Options
+; Developer Assembly Options
 ; ------------------------------------------------------
 QuickLevelSelect = 0
-QuickLevelSelect_ID = $200
+QuickLevelSelect_ID = $302
 
 DebugModeDefault = 1
 DieInDebug = 0
@@ -173,9 +173,8 @@ EntryPoint:
 		tst.l	($A10008).l	; test port A control
 		bne.s	PortA_Ok
 		tst.w	($A1000C).l	; test port C control
+PortA_Ok:	bne.s	PortC_Ok
 
-PortA_Ok:
-		bne.s	PortC_Ok
 		lea	SetupValues(pc),a5
 		movem.w	(a5)+,d5-d7
 		movem.l	(a5)+,a0-a4
@@ -190,12 +189,11 @@ SkipSecurity:
 		movea.l	d0,a6
 		move.l	a6,usp		; set usp to $0
 		moveq	#$17,d1
-
-VDPInitLoop:
-		move.b	(a5)+,d5	; add $8000 to value
+VDPInitLoop:	move.b	(a5)+,d5	; add $8000 to value
 		move.w	d5,(a4)		; move value to	VDP register
 		add.w	d7,d5		; next register
 		dbf	d1,VDPInitLoop
+
 		move.l	(a5)+,(a4)
 		move.w	d0,(a3)		; clear	the screen
 		move.w	d7,(a1)		; stop the Z80
@@ -204,42 +202,39 @@ VDPInitLoop:
 WaitForZ80:
 		btst	d0,(a1)		; has the Z80 stopped?
 		bne.s	WaitForZ80	; if not, branch
-		moveq	#$25,d2
 
-Z80InitLoop:
-		move.b	(a5)+,(a0)+
+		moveq	#$25,d2
+Z80InitLoop:	move.b	(a5)+,(a0)+
 		dbf	d2,Z80InitLoop
+
 		move.w	d0,(a2)
 		move.w	d0,(a1)		; start	the Z80
 		move.w	d7,(a2)		; reset	the Z80
-
-ClrRAMLoop:
-		move.l	d0,-(a6)
+ClrRAMLoop:	move.l	d0,-(a6)
 		dbf	d6,ClrRAMLoop	; clear	the entire RAM
+
 		move.l	(a5)+,(a4)	; set VDP display mode and increment
 		move.l	(a5)+,(a4)	; set VDP to CRAM write
 		moveq	#$1F,d3
-
-ClrCRAMLoop:
-		move.l	d0,(a3)
+ClrCRAMLoop:	move.l	d0,(a3)
 		dbf	d3,ClrCRAMLoop	; clear	the CRAM
+
 		move.l	(a5)+,(a4)
 		moveq	#$13,d4
-
-ClrVDPStuff:
-		move.l	d0,(a3)
+ClrVDPStuff:	move.l	d0,(a3)
 		dbf	d4,ClrVDPStuff
-		moveq	#3,d5
 
-PSGInitLoop:
-		move.b	(a5)+,$11(a3)	; reset	the PSG
+		moveq	#3,d5
+PSGInitLoop:	move.b	(a5)+,$11(a3)	; reset	the PSG
 		dbf	d5,PSGInitLoop
+
 		move.w	d0,(a2)
 		movem.l	(a6),d0-a6	; clear	all registers
-		move	#$2700,sr	; set the sr
+		ints_disable
 
 PortC_Ok:
 		bra.s	GameProgram
+
 ; ===========================================================================
 SetupValues:	dc.w $8000		; VDP register start number
 		dc.w $3FFF		; size of RAM/4
@@ -286,6 +281,7 @@ SetupValues:	dc.w $8000		; VDP register start number
 		dc.l $40000010
 
 		dc.b $9F, $BF, $DF, $FF	; values for PSG channel volumes
+		even
 ; ===========================================================================
 
 GameProgram:
@@ -294,10 +290,9 @@ GameProgram:
 		lea	($FF0000).l,a6
 		moveq	#0,d7
 		move.w	#$3F7F,d6
-
-GameClrRAM:
-		move.l	d7,(a6)+
+GameClrRAM:	move.l	d7,(a6)+
 		dbf	d6,GameClrRAM	; fill RAM ($0000-$FDFF) with $0
+
 		bsr	VDPSetupGame
 		bsr	SoundDriverLoad
 		bsr	JoypadInit
@@ -426,22 +421,13 @@ SRAM_SaveNow_End:
 
 ; HBlank:
 HBlank_Original:
-		tst.w	($FFFFF644).w
-		beq.w	locret_119C
-		clr.w	($FFFFF644).w
+		tst.w	($FFFFF644).w		; is flag set to transfer water palette mid-frame?
+		beq.w	locret_119C		; if not, branch
+		clr.w	($FFFFF644).w		; clear said flag
 		movem.l	d0-d1/a0-a2,-(sp)
-
-		cmpi.b	#1,($FFFFFE10).w	; are we in LZ?
-		bne.w	@skipTransfer2		; if not, branch
 		
-	;	bra.w	@skipTransfer2		; disabled for now cause it sucks
-
-	;	move.l	d0,-(sp)		; backup d0
-	;	display_enable			; otherwise, make sure display is enabled
-	;	move.l	(sp)+,d0		; restore d0
 		lea	($C00000).l,a1
-	;	move.w	#$8A00|$DF,($FFFFF624).w ; set H-int timing to not occur this frame anymore
-	;	move.w	#$8A00|$DF,4(a1)		; Reset HInt timing (TODO: this needs to dynamically adjusted for the water surface in LZ in combination with the black bars)
+		move.w	#$8A00|$DF,4(a1)	; Reset HInt timing
 		move.w	#$100,($A11100).l	; stop the Z80
 @z80loop:	btst	#0,($A11100).l
 		bne.s	@z80loop		; loop until it says it's stopped
@@ -460,7 +446,7 @@ HBlank_Original:
 @transferColors:
 		move.w	(a2)+,d0
 		lea	($FFFFFA80).w,a0
-		andi.w	#-2,d0			; WEIRD hotfix because otherwise we get an odd addressing error
+	;	andi.w	#-2,d0			; WEIRD hotfix because otherwise we get an odd addressing error
 		adda.w	d0,a0
 		addi.w	#$C000,d0
 		swap	d0
@@ -470,14 +456,11 @@ HBlank_Original:
 		nop
 		nop
 		moveq	#$24,d0
-
-@wasteSomeCycles:
-		dbf    d0,@wasteSomeCycles
+		dbf    d0,*			; waste some cycles
 		dbf    d1,@transferColors	; repeat for number of colors
 
 @skipTransfer:
 		move.w	#0,($A11100).l		; start the Z80
-@skipTransfer2:
 		movem.l	(sp)+,d0-d1/a0-a2
 
 locret_119C:
@@ -505,7 +488,7 @@ NullInt:
 ; ---------------------------------------------------------------------------
 
 HBlank_BaseHandler:
-		jmp	NullInt.w	
+		jmp	NullInt.w
 ; ===========================================================================
 
 HBlank_Bars:
@@ -539,7 +522,9 @@ HBlank_Bars_Bottom:
 ; called once on system start
 BlackBars.FullReset:
 		move.l	#$8ADF8ADF,BlackBars.FirstHCnt			; + BlackBars.SecondHCnt
+
 BlackBars.Reset:
+		move.w	#NullInt,HBlankSubW				; don't run any code during HInt
 		move.w	#0,BlackBars.Height				; set current height to 0
 		move.w	#BlackBars.MaxHeight,BlackBars.BaseHeight	; set base height to default
 		move.w	BlackBars.BaseHeight,BlackBars.TargetHeight	; set target height to default
@@ -549,8 +534,17 @@ BlackBars.Reset:
 
 ; called from VBlank every single frame
 BlackBars.VBlankUpdate:
+		cmpi.b	#1,($FFFFFE10).w				; are we in LZ?
+		bne.s	@notlz						; if not, branch
+		cmpi.w	#HBlank_Original,HBlankSubW			; already set up?
+		beq.s	@0						; if yes, branch
+		bsr.s	BlackBars.FullReset				; reset black bars (not supported in LZ)
+		move.w	#HBlank_Original,HBlankSubW			; go to original HBlank subroutine for LZ
+@0		rts
+
+@notlz:
 		bsr.s	BlackBars.SetState
-		
+	
 		move.w	BlackBars.Height,d0				; is height 0?
 		beq.s	@disable_bars					; if yes, branch
 		cmp.w	#224/2-1,d0					; are we taking half the screen?
@@ -696,12 +690,12 @@ BlackBars.GHP:
 ; Main Game Loop, everything before this is only done on startup.
 ; ---------------------------------------------------------------------------
 
-MainGameLoop:		
+MainGameLoop:
 		moveq	#0,d0				; clear d0
 		move.b	($FFFFF600).w,d0		; get current game mode
 		movea.l	GameModeArray(pc,d0.w),a1	; locate address in GameModeArray
 		jsr	(a1)				; enter game mode
-		jsr	BlackBars.Reset			; reset black bars between game mode transitions
+		jsr	BlackBars.FullReset		; reset black bars between game mode transitions
 		bra.s	MainGameLoop			; if we're here, we exited the game mode; load new one
 
 ; ===========================================================================
@@ -772,7 +766,7 @@ VBlank_Exit:				; XREF: VBlank_Late
 ; ===========================================================================
 
 UpdateSoundDriver:
-		move	#$2300,sr		; enable interrupts (we can accept horizontal interrupts from now on)
+		ints_enable			; enable interrupts (we can accept horizontal interrupts from now on)
 		tst.b	($FFFFF64F).w		; is SMPS currently running?
 		bne.s	@end			; if yes, branch
 		move.b	#1,($FFFFF64F).w	; set "SMPS running flag"
@@ -804,8 +798,6 @@ VBlank_Late:				; XREF: VBlank; VBlankTable
 		bne.w	VBlank_Exit		; if not, branch
 
 loc_B9A:
-		move.b	($FFFFF625).w,($FFFFFE07).w
-
 		cmpi.b	#1,($FFFFFE10).w	; is level LZ?
 		bne.w	VBlank_Exit		; if not, branch
 
@@ -818,8 +810,6 @@ loc_B9A:
 loc_BBA:
 		move.w	#1,($FFFFF644).w
 
-		tst.b	($FFFFF64E).w
-		bne.s	loc_BFE
 		lea	($C00004).l,a5
 		move.l	#$94009340,(a5)
 		move.l	#$96FD9580,(a5)
@@ -840,6 +830,7 @@ loc_BFE:				; XREF: loc_BC8
 		move.w	($FFFFF640).w,(a5)
 
 loc_C22:				; XREF: loc_BC8
+		move.w	($FFFFF624).w,(a5)
 		move.b	($FFFFF625).w,($FFFFFE07).w
 
 		bra.w	VBlank_Exit
@@ -906,6 +897,7 @@ loc_CB0:				; XREF: loc_C76
 		move.w	($FFFFF640).w,(a5)
 
 loc_CD4:				; XREF: loc_C76
+		move.w	($FFFFF624).w,(a5)
 		move.b	($FFFFF625).w,($FFFFFE07).w
 		lea	($C00004).l,a5
 		move.l	#$940193C0,(a5)
@@ -998,6 +990,7 @@ loc_EB4:				; XREF: loc_E7A
 		move.w	($FFFFF640).w,(a5)
 
 loc_ED8:				; XREF: loc_E7A
+		move.w	($FFFFF624).w,(a5)
 		move.b	($FFFFF625).w,($FFFFFE07).w
 		lea	($C00004).l,a5
 		move.l	#$940193C0,(a5)
@@ -1039,6 +1032,7 @@ loc_F8A:				; XREF: VBlankTable
 
 loc_F9A:				; XREF: VBlankTable
 		bsr	sub_106E
+		move.w	($FFFFF624).w,(a5)
 		move.b	($FFFFF625).w,($FFFFFE07).w
 		bra.w	sub_1642
 ; ===========================================================================
@@ -4553,7 +4547,7 @@ Level_LZWaterSetup:
 
 @cont:
 		move.l	#WaterTransition_LZ,($FFFFF610).w
-	;	move.w	#$8014,(a6)
+		move.w	#$8014,(a6)
 		moveq	#0,d0
 		move.b	($FFFFFE11).w,d0
 		add.w	d0,d0
@@ -24055,6 +24049,7 @@ NextLevelX:
 		move.b	#0,($FFFFFFD3).w	; $FFD3
 		clr.b	($FFFFFFBB).w
 		clr.b	($FFFFFFB6).w
+		lea	($FFFFD000).w,a0
 		bsr	Sonic_ResetOnFloor
 
 		btst	#2,($FFFFFF92).w	; is Skip Uberhub Place enabled?

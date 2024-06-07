@@ -236,8 +236,12 @@ SelbiSplash_LoopEnd:
 SelbiSplash_Next:
 		clr.b	($FFFFFFAF).w
 		clr.l	($FFFFFF7A).w
-		
-		
+	
+	if QuickLevelSelect=1
+		move.b	#4,($FFFFF600).w		; go to title screen
+		rts
+	endif
+
 		tst.b	($FFFFFFA7).w			; is this the first time the game is being played?
 		beq.s	SelbiSplash_FirstTime		; if yes, branch
 		move.b	#4,($FFFFF600).w		; otherwise go to title screen

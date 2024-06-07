@@ -3378,23 +3378,15 @@ PalLoad1:
 		movea.w	(a1)+,a3		; RAM address
 		adda.w	#$80,a3
 		move.w	(a1)+,d7		; (pallet length / 2) - 1
-
-loc_2110:
-		move.w	(a2)+,d0
-		bsr	ContrastBoost
-		move.w	d0,(a3)+
-		move.w	(a2)+,d0
-		bsr	ContrastBoost
-		move.w	d0,(a3)+
-		dbf	d7,loc_2110
-		rts
+		
+		bra.s	loc_2128
 ; End of function PalLoad1
 
 
 ; ||||||||||||||| S U B R O U T I N E |||||||||||||||||||||||||||||||||||||||
 	
 
-PalLoad2:
+PalLoad2:	; virtually identical to PalLoad1, except the missing +$80 on a3
 		lea	(PalPointers).l,a1
 		lsl.w	#3,d0
 		adda.w	d0,a1
@@ -19504,8 +19496,18 @@ loc_BDD6:
 	;	tst.b	($FFFFFF77).w		; is antigrav already enabled?
 	;	bne.w	Obj32_ShowPressed	; if yes, branch
 		move.b	#1,($FFFFFF77).w	; enable antigrav ability
+		tst.b	($FFFFFFE7).w		; did the player make it here through with inhuman still enabled?
+		beq.s	@0			; if not, branch
+		clr.b	($FFFFFFE7).w		; disable inhuman mode
+		jsr	PlayLevelMusic
+		movem.l	d7/a1-a3,-(sp)
+		moveq	#3,d0
+		jsr	PalLoad2		; load Sonic palette
+		movem.l	(sp)+,d7/a1-a3
+
+@0:
 		move.b	#$A8,d0			; play upgrade sound
-		jsr	PlaySound
+		jsr	PlaySound_Special
 		bra.s	Obj32_ShowPressed
 
 @nottutorialswitch:
@@ -21334,7 +21336,7 @@ Obj36_Type02:				; XREF: Obj36_TypeIndex
 
 Obj36_Wait:
 		move.w	($FFFFFE04).w,d0
-		divu.w	#60,d0
+		divu.w	#50,d0
 		andi.l	#$FFFF0000,d0
 		bne.s	locret_CFE6
 		
@@ -29139,7 +29141,8 @@ Obj62_Index:	dc.w Obj62_Main-Obj62_Index
 		dc.w Obj62_FireBall-Obj62_Index
 		dc.w Obj62_AniFire-Obj62_Index
 
-Obj62_SpitRate:	dc.b 30/4, 60, 90, 120, 150, 180,	210, 240
+Obj62_SpitRate:	dc.b	30/4	; sanic speed
+		dc.b	60, 90, 120, 150, 180, 210, 240
 ; ===========================================================================
 
 Obj62_Main:				; XREF: Obj62_Index
@@ -30224,6 +30227,7 @@ Obj02_Setup:
 		move.b	#0,obPriority(a0)		; set priority
 		move.b	#0,obRender(a0)			; set render flag
 		move.w	#$6520,obGfx(a0)		; set art, use fourth palette line
+		
 		cmpi.b	#$18,($FFFFF600).w		; is screen mode ending sequence?
 		bne.s	Obj02_NotEnding			; if not, branch
 		move.w	#$0524,obGfx(a0)		; set art, use first palette line
@@ -30234,8 +30238,11 @@ Obj02_Setup:
 		bra.s	Obj02_Display
 
 Obj02_NotEnding:
+		cmpi.b	#$20,($FFFFF600).w		; is screen mode story screen?
+		beq.s	@nobgmaps			; if yes, branch
 		cmpi.b	#$24,($FFFFF600).w		; is screen mode options menu?
 		bne.s	Obj02_NotOptions		; if not, branch
+@nobgmaps:
 		move.w	#$2520,obGfx(a0)		; set art, use second palette line
 		bra.s	Obj02_Display			; use XY positions set while loading object
 
@@ -44405,6 +44412,15 @@ loc_1AFDA:				; XREF: Touch_CatKiller
 		bset	#7,obStatus(a1)
 
 Touch_ChkHurt:				; XREF: Touch_ChkValue
+		tst.b	($FFFFFE2D).w	; is Sonic invincible?
+		bne.s	loc_1AFE6	; if yes, branch
+
+		cmpi.w	#$101,($FFFFFE10).w	; are we in LZ?
+		bne.s	Touch_Hurt		; if not, regular hurt
+		tst.b 	($FFFFFFFE).w		; is the =P monitor enabled?
+		bne.s	Touch_Hurt		; if yes, all good
+		jmp	KillSonic
+
 		tst.b	($FFFFFE2D).w	; is Sonic invincible?
 		beq.s	Touch_Hurt	; if not, branch
 

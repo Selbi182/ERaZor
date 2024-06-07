@@ -844,8 +844,9 @@ Hint_6:
 	dc.b	_br,_pause,_cls
 	boxtxt	"DO NOTE THAT"
 	boxtxt	"HARD PART SKIPPERS"
-	boxtxt	"MAY ONLY BE USED"
+	boxtxt	"MUST ONLY BE USED"
 	boxtxt	"IN casual mode!"
+	boxtxt	"OR ELSE..."
 	dc.b	_br,_pause,_end
 
 ;		 --------------------

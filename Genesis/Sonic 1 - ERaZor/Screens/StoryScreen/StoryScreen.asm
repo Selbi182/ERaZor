@@ -8,6 +8,8 @@ STS_LinesMain = 15
 STS_LinesExtra = 5
 STS_LinesTotal = STS_LinesMain + STS_LinesExtra
 
+STSBuffer equ $FFFFC900
+
 StoryScreen:				; XREF: GameModeArray
 	;	move.b	#$E4,d0
 	;	bsr	PlaySound_Special ; stop music
@@ -21,16 +23,14 @@ StoryScreen:				; XREF: GameModeArray
 		move.w	#$8407,(a6)
 		move.w	#$9001,(a6)
 		move.w	#$9200,(a6)
-		move.w	#$8B03,(a6)
+		move.w	#$8B07,(a6)
 		move.w	#$8720,(a6)
 		clr.b	($FFFFF64E).w
 		jsr	ClearScreen
 		lea	($FFFFD000).w,a1
 		moveq	#0,d0
 		move.w	#$7FF,d1
-
-STS_ClrObjRam:
-		move.l	d0,(a1)+
+STS_ClrObjRam:	move.l	d0,(a1)+
 		dbf	d1,STS_ClrObjRam ; fill object RAM ($D000-$EFFF) with $0
 				
 		btst	#1,($FFFFFF92).w	; are story text screens enabled?
@@ -42,34 +42,68 @@ STS_ClrObjRam:
 
 @cont:
 		move	#$2700,sr
-		move.l	#$40000001,($C00004).l
-		lea	(Nem_StoryBG).l,a0 ; load Info	screen patterns
-		jsr	NemDec
-		lea	($C00000).l,a6
-		move.l	#$50000003,4(a6)
-	;	lea	(Art_Text).l,a5
-		lea	(STS_FontArt).l,a5
-		move.w	#$28F,d1
-
-STS_LoadText:
-		move.w	(a5)+,(a6)
-		dbf	d1,STS_LoadText ; load uncompressed text patterns
-
 		jsr	Pal_FadeFrom
 
 		move	#$2700,sr
-		lea	($FF0000).l,a1
-		lea	(Eni_StoryBG).l,a0 ; load	Info screen mappings
-		move.w	#0,d0
-		jsr	EniDec
-		lea	($FF0000).l,a1
-		move.l	#$42060003,d0
-		moveq	#$21,d1
-		moveq	#$15,d2
-		jsr	ShowVDPGraphics
+		move.l	#$64000002,($C00004).l
+		lea	(Nem_ERaZorNoBG).l,a0
+		jsr	NemDec
+		
+		moveq	#20,d1
+	@delay:	
+		jsr	RunPLC_RAM
+		move.b	#2,($FFFFF62A).w
+		jsr	DelayProgram
+		dbf	d1,@delay
+		move	#$2700,sr
+		display_disable
 
-		moveq	#$14,d0
-		jsr	PalLoad2	; load level select pallet
+		move	#$2700,sr
+		lea	($FFFFD100).w,a0
+		move.b	#2,(a0)			; load ERaZor banner object
+		move.w	#$11E,obX(a0)		; set X-position
+		move.w	#$87,obScreenY(a0)	; set Y-position
+		bset	#7,obGfx(a0)		; otherwise make object high plane
+		
+		jsr	ObjectsLoad
+		jsr	BuildSprites
+		
+		move	#$2700,sr
+		lea	($C00000).l,a6
+		move.l	#$50000003,4(a6)
+		lea	(STS_FontArt).l,a5
+		move.w	#$28F,d1
+STS_LoadText:	move.w	(a5)+,(a6)
+		dbf	d1,STS_LoadText ; load uncompressed text patterns
+
+		jsr	BGDeformation_Setup
+
+	;	move.l	#$40000001,($C00004).l
+	;	lea	(Nem_StoryBG).l,a0 ; load Info	screen patterns
+	;	jsr	NemDec
+	;	move	#$2700,sr
+	;	lea	($FF0000).l,a1
+	;	lea	(Eni_StoryBG).l,a0 ; load	Info screen mappings
+	;	move.w	#0,d0
+	;	jsr	EniDec
+	;	lea	($FF0000).l,a1
+	;	move.l	#$42060003,d0
+	;	moveq	#$21,d1
+	;	moveq	#$15,d2
+	;	jsr	ShowVDPGraphics
+
+	;	moveq	#$14,d0
+	;	jsr	PalLoad2	; load level select pallet
+		moveq	#2,d0		; load level select palette
+		jsr	PalLoad2
+
+		movem.l	d0-a2,-(sp)		; backup d0 to a2
+		lea	(Pal_ERaZorBanner).l,a1	; set ERaZor banner's palette pointer
+		lea	($FFFFFBA0).l,a2	; set palette location
+		moveq	#7,d0			; set number of loops to 7
+@0:		move.l	(a1)+,(a2)+		; load 2 colours (4 bytes)
+		dbf	d0,@0			; loop
+		movem.l	(sp)+,d0-a2		; restore d0 to a2
 
 		clr.b	($FFFFFF95).w
 		clr.w	($FFFFFF96).w
@@ -77,21 +111,16 @@ STS_LoadText:
 		clr.w	($FFFFFF9A).w
 		clr.w	($FFFFFF9C).w		
 				
-		lea	($FFFFCA00).w,a1	; set location for the text
+		lea	(STSBuffer).w,a1	; set location for the text
 		moveq	#0,d0
-		move.w	#559,d1			; do it for all 504 chars
-
-STS_MakeFF:
-		move.b	d0,(a1)+		; put $FF into current spot
+		move.w	#559+$100,d1			; do it for all 504 chars
+STS_MakeFF:	move.b	d0,(a1)+		; put $FF into current spot
 		dbf	d1,STS_MakeFF	; loop
-
 
 		lea	($FFFFCC00).w,a1
 		moveq	#0,d0
 		move.w	#$DF,d1
-
-STS_ClrScroll:
-		move.l	d0,(a1)+
+STS_ClrScroll:	move.l	d0,(a1)+
 		dbf	d1,STS_ClrScroll ; fill scroll data with 0
 
 		move.l	d0,($FFFFF616).w
@@ -99,12 +128,12 @@ STS_ClrScroll:
 		lea	($C00000).l,a6
 		move.l	#$60000003,($C00004).l
 		move.w	#$3FF,d1
-
-STS_ClrVram:
-		move.l	d0,(a6)
+STS_ClrVram:	move.l	d0,(a6)
 		dbf	d1,STS_ClrVram ; fill	VRAM with 0
+		
 		move.w	#STS_LinesTotal,($FFFFFF82).w
 		display_enable
+		jsr	Pal_FadeTo
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -115,10 +144,15 @@ STS_ClrVram:
 StoryScreen_MainLoop:
 		move.b	#2,($FFFFF62A).w
 		jsr	DelayProgram
-		jsr	SineWavePalette
+		jsr	ObjectsLoad
+		jsr	BuildSprites
+	;	jsr	SineWavePalette
 		jsr	RunPLC_RAM
+		jsr	Options_BackgroundEffects
 		tst.l	($FFFFF680).w
 		bne.s	StoryScreen_MainLoop
+
+
 		tst.b	($FFFFFF9B).w		; is is text already fully written out?
 		bne.s	STS_NoTextChange	; if yes, branch
 		move.b	($FFFFF605).w,d1	; get button presses
@@ -202,7 +236,7 @@ STS_NoBlack:
 
 StoryTextLoad:
 		bsr	GetStoryText
-		lea	($FFFFCA00).w,a1		
+		lea	(STSBuffer).w,a1		
 		lea	($C00000).l,a6
 		move.l	#$620C0003,d4	; screen position (text)
 		move.w	#$E680,d3	; VRAM setting
@@ -212,28 +246,7 @@ loc3_34FE:
 		bsr	STS_ChgLine
 		addi.l	#$800000,d4
 		dbf	d1,loc3_34FE
-		moveq	#0,d0
-		move.w	($FFFFFF82).w,d0
-	;	move.w	#1,d0
-		move.w	d0,d1
-		move.l	#$620C0003,d4
-		lsl.w	#7,d0
-		swap	d0
-		add.l	d0,d4
-		lea	($FFFFCA00).w,a1
-		lsl.w	#3,d1
-		move.w	d1,d0
-		add.w	d1,d1
-		add.w	d0,d1
-		adda.w	d1,a1
-		move.w	#$C680,d3
-		move.l	d4,4(a6)
-
-		lea	($FFFFCC32).w,a1	; set location
-		bsr	STS_ChgLine
-		move.w	#$C680,d3
-
-loc3_3550:
+		
 		rts	
 ; End of function StoryTextLoad
 
@@ -272,7 +285,7 @@ GetStoryText:
 		
 		moveq	#0,d5			; make sure d5 is empty
 		moveq	#0,d3			; make sure d3 is empty
-		lea	($FFFFCA00).w,a1	; load destination location to a1
+		lea	(STSBuffer).w,a1	; load destination location to a1
 		lea	(STS_HeaderX).l,a2	; get text location 1
 		move.w	#83,d5			; set numbers of loops (this will make the "typing" effect)
 		
@@ -377,11 +390,11 @@ STS_NoNumber1XX:
 ; =============================
 
 STS_DoNext1XX:
+		rts
 		lea	(STS_ContinueX).l,a2	; get text location 1
 		move.w	#84,d5			; set numbers of loops (this will make the "typing" effect)
 STS_Loop_ContinueXX:
 		move.b	(a2)+,d3		; move current char into d3
-
 
 		cmpi.b	#':',d3			; is current char a colon?
 		bne.s	STS_NoColon2XX		; if not, go to next char
@@ -429,8 +442,9 @@ STS_SetMainText:
 		ext.w	d0			; convert to word
 		mulu.w	#422,d0			; multiply it by 422 (number of chars for a single block of text including the $FF)
 		adda.w	d0,a2			; add result to text location (a2)
-	
+		
 		; center the text using H-scroll
+		rts	; disabled for now
 		movea.l	a2,a3			; copy text location to a3
 		lea	($FFFFCCE0).w,a4	; set up H-scroll buffer to a4
 		moveq	#STS_LineLength,d3	; set line length to d3
@@ -465,11 +479,11 @@ STS_LoadUp:
 		jmp	STS_Index(pc,d1.w)	; jump to set position
 ; ===========================================================================
 STS_Index:	dc.w STS_Header1-STS_Index
-		dc.w STS_Header2-STS_Index
+		dc.w STS_Header1-STS_Index
 		dc.w STS_Lag-STS_Index
 		dc.w STS_MainText-STS_Index
 		dc.w STS_Lag-STS_Index
-		dc.w STS_ContinueText-STS_Index
+	;	dc.w STS_ContinueText-STS_Index
 		dc.w STS_NoMore-STS_Index
 ; ===========================================================================
 
@@ -477,25 +491,12 @@ STS_Header1:
 		addq.w	#STS_Speed,($FFFFFF96).w	; increase main counter
 		moveq	#0,d5			; make sure d5 is empty
 		moveq	#0,d3			; make sure d3 is empty
-		lea	($FFFFCA00).w,a1	; load destination location to a1
-		lea	(STS_HeaderText1).l,a2	; get text location
-		move.w	($FFFFFF96).w,d5	; set numbers of loops (this will make the "typing" effect)
-		
-STS_Loop_Header1:
-		move.b	(a2)+,d3		; load current char to a1
-		cmpi.b	#$20,d3
-		beq.s	STS_Loop_H1_Space
-		subi.b	#$18,d3
-		bra.s	STS_Loop_H1_NoSpace
 
-STS_Loop_H1_Space:
-		move.b	#$00,d3
-
-STS_Loop_H1_NoSpace:
-		move.b	d3,(a1)+
-		dbf	d5,STS_Loop_Header1	; loop
-
-		lea	($FFFFCA1C).w,a1	; load destination location to a1
+		lea	(STSBuffer+$1C).w,a1	; load destination location to a1
+		tst.b	($FFFFFF9A).w	; bottom line?
+		beq.s	@0
+		adda.w	#STS_LineLength*18,a1
+@0:
 		lea	(STS_HeaderText2).l,a2	; get text location
 		move.w	($FFFFFF96).w,d5	; set numbers of loops (this will make the "typing" effect)
 		
@@ -514,8 +515,14 @@ STS_Loop_Header2:
 		move.b	d3,(a1)+
 		dbf	d5,STS_Loop_Header2	; loop
 		
-		move.l	#$00,($FFFFCA38).w
-		move.l	#$00,($FFFFCA3C).w
+		; hotfix to get rid of some glitchy vv stuff
+		lea	(STSBuffer+$38).w,a1	; load destination location to a1
+		tst.b	($FFFFFF9A).w	; bottom line?
+		beq.s	@0x
+		adda.w	#STS_LineLength*18,a1
+@0x:
+		move.l	#0,(a1)+
+		move.l	#0,(a1)
 
 		move.w	($FFFFFF96).w,d2
 		andi.w	#1,d2
@@ -538,7 +545,7 @@ STS_Header2:
 		addq.w	#STS_Speed,($FFFFFF96).w	; increase main counter
 		moveq	#0,d5			; make sure d5 is empty
 		moveq	#0,d3			; make sure d3 is empty
-		lea	($FFFFCA08).w,a1	; load destination location to a1
+		lea	(STSBuffer+$8).w,a1	; load destination location to a1
 		lea	(STS_HeaderText3).l,a2	; get text location
 		move.w	($FFFFFF96).w,d5	; set numbers of loops (this will make the "typing" effect)
 		
@@ -596,7 +603,7 @@ STS_MainText:
 		addq.w	#STS_Speed+1,($FFFFFF96).w	; increase main counter
 		moveq	#0,d5			; make sure d5 is empty
 		moveq	#0,d3			; make sure d3 is empty
-		lea	($FFFFCA54).w,a1	; load destination location to a1
+		lea	(STSBuffer+$54).w,a1	; load destination location to a1
 		bsr.w	STS_SetMainText
 		move.w	($FFFFFF96).w,d5	; set numbers of loops (this will make the "typing" effect)
 		
@@ -681,7 +688,7 @@ STS_ContinueText:
 		addq.w	#STS_Speed,($FFFFFF96).w	; increase main counter
 		moveq	#0,d5			; make sure d5 is empty
 		moveq	#0,d3			; make sure d3 is empty
-		lea	($FFFFCC32).w,a1	; load destination location to a1
+		lea	(STSBuffer+$232).w,a1	; load destination location to a1
 		lea	(STS_Continue).l,a2	; get text location
 		move.w	($FFFFFF96).w,d5	; set numbers of loops (this will make the "typing" effect)
 		
@@ -745,14 +752,12 @@ STS_NoMore:
 ; ===========================================================================
 ; ===========================================================================
 
-STS_HeaderX:		dc.b	'        SONIC ERAZOR        '
+STS_HeaderX:		dc.b	'                            '
 			dc.b	'<~~~~~~~~~~~~~~~~~~~~~~~~~~#'
 			dc.b	'                            '
 			even
 
-STS_ContinueX:		dc.b	'                            '
-			dc.b	'                              '
-			dc.b	' PRESS START TO CONTINUE... '
+STS_ContinueX:		dc.b	' PRESS START TO CONTINUE... '
 			even
 ; ---------------------------------------------------------------------------
 
@@ -762,7 +767,7 @@ STS_HeaderText1:	dc.b	'                            '
 STS_HeaderText2:	dc.b	'<~~~~~~~~~~~~~~~~~~~~~~~~~~#'
 			even
 
-STS_HeaderText3:	dc.b	'SONIC ERAZORX'
+STS_HeaderText3:	dc.b	'            X'
 			even
 ; ---------------------------------------------------------------------------
 
@@ -987,7 +992,7 @@ StoryText_B:	; hidden easter egg text found after the blackout special stage
 ; ---------------------------------------------------------------------------
 
 STS_Continue:
-		dc.b	' PRESS START TO CONTINUE...'
+		dc.b	'PRESS START TO CONTINUE... '
 		dc.b	$FF
 		even
 ; ---------------------------------------------------------------------------

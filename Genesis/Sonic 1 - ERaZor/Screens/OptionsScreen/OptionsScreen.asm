@@ -35,12 +35,6 @@ OptionsScreen:				; XREF: GameModeArray
 @loadtextart:	move.w	(a5)+,(a6)
 		dbf	d1,@loadtextart ; load uncompressed text patterns
 
-		move.l	#$40200000,4(a6)
-		lea	(Options_BGArt).l,a5
-		move.w	#($400*8)-1,d1
-@loadbgart:	move.w	(a5)+,(a6)
-		dbf	d1,@loadbgart ; load uncompressed background art
-
 		move.l	#$64000002,4(a6)
 		lea	(Nem_ERaZorNoBG).l,a0
 		jsr	NemDec
@@ -81,7 +75,7 @@ Options_LoadPal:
 
 Options_ContinueSetup:		
 		moveq	#0,d0
-		lea	($FFFFCA00).w,a1	; set location for the text
+		lea	($FFFFC900).w,a1	; set location for the text
 		move.b	#Options_Blank,d0	; load blank char
 		move.w	#503,d1			; do it for all 504 chars
 @fillblank:	move.b	d0,(a1)+		; put blank character into current spot
@@ -98,8 +92,7 @@ Options_ContinueSetup:
 		move	#$2700,sr
 		moveq	#0,d0
 		move.w	#$DF,d1
-@clearscroll:
-		move.l	d0,(a1)+
+@clearscroll:	move.l	d0,(a1)+
 		dbf	d1,@clearscroll ; fill scroll data with 0
 		move.l	d0,($FFFFF616).w
 
@@ -107,20 +100,8 @@ Options_ContinueSetup:
 		bsr	OptionsTextLoad		; load options text
 		display_enable
 		jsr	Pal_FadeTo
-
-		; background mappings
-		lea	($C00000).l,a6		; load VDP data port address to a6
-		vram	$C000,4(a6)		; set VDP to VRAM and start at E000 (location of Plane B nametable)
-		moveq	#3,d6			; repeats
-@repeat:	moveq	#1,d5
-		moveq	#(256/8)-1,d1		; write columns
-		moveq	#(256/8)/2-1,d2		; write lines
-@row:		move.w	d1,d3			; reload number of columns
-@column:	move.w	d5,(a6)			; dump map to VDP map slot
-		addi.w	#1,d5			; go to next tile
-		dbf	d3,@column		; repeat til columns have dumped
-		dbf	d2,@row			; repeat til all rows have dumped	
-		dbf	d6,@repeat
+		
+		bsr	BGDeformation_Setup
 
 		bra.w	OptionsScreen_MainLoop
 
@@ -138,6 +119,32 @@ Options_BackgroundEffects:
 		bsr	Options_BGVScroll
 		bsr	Options_ERZPalCycle
 		move.l	(sp)+,a2		; backup d0 to a2
+		ints_enable
+		rts
+; ===========================================================================
+
+BGDeformation_Setup:
+		ints_disable
+		lea	($C00000).l,a6		
+		move.l	#$40200000,4(a6)
+		lea	(Options_BGArt).l,a5
+		move.w	#($400*8)-1,d1
+@loadbgart:	move.w	(a5)+,(a6)
+		dbf	d1,@loadbgart ; load uncompressed background art
+
+		; background mappings
+		vram	$C000,4(a6)		; set VDP to VRAM and start at E000 (location of Plane B nametable)
+		moveq	#3,d6			; repeats
+@repeat:	moveq	#1,d5
+		moveq	#(256/8)-1,d1		; write columns
+		moveq	#(256/8)/2-1,d2		; write lines
+@row:		move.w	d1,d3			; reload number of columns
+@column:	move.w	d5,(a6)			; dump map to VDP map slot
+		addi.w	#1,d5			; go to next tile
+		dbf	d3,@column		; repeat til columns have dumped
+		dbf	d2,@row			; repeat til all rows have dumped	
+		dbf	d6,@repeat
+
 		ints_enable
 		rts
 ; ===========================================================================
@@ -593,7 +600,7 @@ blankline macro lines
 OptionsTextLoad:				; XREF: TitleScreen
 		bsr	GetOptionsText
 
-		lea	($FFFFCA00).w,a1	; get preloaded text buffer	
+		lea	($FFFFC900).w,a1	; get preloaded text buffer	
 		lea	($C00000).l,a6
 		move.l	#Options_VDP,d4		; screen position (text)
 		
@@ -658,7 +665,7 @@ OWL_Positive:				; XREF: Options_WriteLine
 ; ---------------------------------------------------------------------------
 
 GetOptionsText:
-		lea	($FFFFCA00).w,a1		; set destination
+		lea	($FFFFC900).w,a1		; set destination
 		moveq	#0,d1				; use $FF as ending of the list
 
 		lea	(OpText_Header1).l,a2		; set text location
@@ -762,7 +769,7 @@ GOT_Snd_Skip2:
 ; ---------------------------------------------------------------------------
 
 		; make currently selected line red
-		lea	($FFFFCA00+Options_LineLength).w,a1	; set location
+		lea	($FFFFC900+Options_LineLength).w,a1	; set location
 		move.w	($FFFFFF82).w,d5			; get current selection
 		cmpi.w	#19,d5
 		bne.s	@0

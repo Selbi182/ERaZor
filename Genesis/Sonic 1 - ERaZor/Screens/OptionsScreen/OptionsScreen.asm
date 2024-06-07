@@ -2,6 +2,7 @@
 ; Options screen
 ; ---------------------------------------------------------------------------
 Options_Blank = $29 ; blank character, high priority
+OptionsBuffer equ $FFFFC900 ; $200 bytes
 ; ---------------------------------------------------------------------------
 
 OptionsScreen:				; XREF: GameModeArray
@@ -54,7 +55,9 @@ OptionsScreen:				; XREF: GameModeArray
 		move.b	#$99,d0		; play Options screen music (introduction text music)
 		jsr	PlaySound_Special
 		bsr	Options_LoadPal
+  
 		bra.s	Options_ContinueSetup
+		
 
 ; ---------------------------------------------------------------------------
 Options_LoadPal:
@@ -73,21 +76,35 @@ Options_LoadPal:
 		rts
 ; ---------------------------------------------------------------------------
 
-Options_ContinueSetup:		
+Options_ClearBuffer:
 		moveq	#0,d0
-		lea	($FFFFC900).w,a1	; set location for the text
-		move.b	#Options_Blank,d0	; load blank char
-		move.w	#503,d1			; do it for all 504 chars
-@fillblank:	move.b	d0,(a1)+		; put blank character into current spot
+		moveq	#0,d1
+		lea	(OptionsBuffer).w,a1	; set location for the text
+		move.b	d2,d0			; passed char
+		move.b	d0,d1
+		rept	3	; turn it into four bytes of the same thing
+		rol.l	#8,d1
+		or.l	d1,d0
+		endr
+
+		move.l	#($200/4)-1,d1		; do it for all 504 chars
+@fillblank:	move.l	d0,(a1)+		; put blank character into current spot
 		dbf	d1,@fillblank		; loop
-		clr.b	($FFFFFF95).w
+		rts
+; ---------------------------------------------------------------------------
+
+Options_ContinueSetup:
+		move.b	#Options_Blank,d2
+		bsr.s	Options_ClearBuffer
+
+ 		clr.b	($FFFFFF95).w
 		clr.w	($FFFFFF96).w
 		clr.b	($FFFFFF98).w
 		clr.w	($FFFFFFB8).w
 		move.w	#21,($FFFFFF9A).w
 		clr.w	($FFFFFF9C).w		; previously used to coordinate the intro sequence, now unused
 		move.b	#$81,($FFFFFF84).w
-		
+				
 		lea	($FFFFCC00).w,a1
 		move	#$2700,sr
 		moveq	#0,d0
@@ -96,6 +113,7 @@ Options_ContinueSetup:
 		dbf	d1,@clearscroll ; fill scroll data with 0
 		move.l	d0,($FFFFF616).w
 
+Options_FinishSetup:
 		move.w	#19,($FFFFFF82).w	; set default selected entry to exit
 		bsr	OptionsTextLoad		; load options text
 		display_enable
@@ -288,7 +306,7 @@ OptionsScreen_MainLoop:
 		jsr	BuildSprites
 
 		tst.w	($FFFFF614).w		; is timer empty?
-		bne.s	O_DontResetTimer	; if not, branch
+		bhi.s	O_DontResetTimer	; if not, branch
 		move.w	#$618,($FFFFF614).w	; otherwise, reset it
 
 O_DontResetTimer:
@@ -493,6 +511,10 @@ Options_HandleExit:
 		andi.b	#$EC,d1			; is left, right, A, C, or Start pressed?
 		beq.s	Options_Return		; if not, branch
 		
+Options_Exit:
+		moveq	#0,d2
+		bsr.w	Options_ClearBuffer
+
 		clr.b	($FFFFFF95).w
 		clr.w	($FFFFFF96).w
 		clr.w	($FFFFFF98).w

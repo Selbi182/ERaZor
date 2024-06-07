@@ -185,6 +185,9 @@ STS_NoTextChange:
 ; ---------------------------------------------------------------------------
 
 STS_ExitScreen:
+		moveq	#0,d2
+		jsr	Options_ClearBuffer
+
 		cmpi.b	#1,($FFFFFF9E).w	; is this the intro dialouge?
 		bne.s	STS_NoIntro		; if not, branch
 		cmpi.b	#1,($FFFFFFA7).w	; is this the first time start of the game?

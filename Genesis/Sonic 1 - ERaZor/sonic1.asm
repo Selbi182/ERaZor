@@ -1642,13 +1642,14 @@ NemDec_RAM: ; unused in this game
 		
 ; ------------------------------------------------------------------------------
 NemDec:
-		ints_disable
+		move.w	sr,-(sp)	; backup previous sr state
+		ints_disable		; disable interrupts while NemDec is active
 		move.b	#1,(NemBusy).w ; set "NemDec busy" flag
 
 		movem.l	d0-a1/a3-a6,-(sp)
 		lea	$C00000,a4      ; load VDP Data Port     
 		lea	NemDec_WriteRowToVDP(pc),a3
-		
+
 NemDec_Main:
 		lea	$FFFFAA00,a1        ; load Nemesis decompression buffer
 		move.w  (a0)+,d2        ; get number of patterns
@@ -1668,7 +1669,7 @@ NemDec_Main:
 		movem.l (sp)+,d0-a1/a3-a6
 
 		clr.b	(NemBusy).w	; clear "NemDec busy" flag
-		ints_enable
+		move.w	(sp)+,sr	; restore previous sr state
 		rts
 
 ; ---------------------------------------------------------------------------
@@ -1926,11 +1927,12 @@ RunPLC_RAM:				; XREF: Pal_FadeTo
 loc_160E:
 		andi.w	#$7FFF,d2
 		
-		ints_disable
+		move.w	sr,-(sp)	; backup previous sr state
+		ints_disable		; disable interrupts while NemDec is active
 		move.b	#1,(NemBusy).w	; set "NemDec busy" flag
-		bsr	NemDec4
+		bsr	NemDec4		; do NemDec4 stuff
 		clr.b	(NemBusy).w	; clear "NemDec busy" flag
-		ints_enable
+		move.w	(sp)+,sr	; restore previous sr state
 
 		move.b	(a0)+,d5
 		asl.w	#8,d5
@@ -2015,11 +2017,12 @@ loc_1676:				; XREF: sub_1642
 loc_16AA:				; XREF: sub_165E
 		movea.w	#8,a5
 		
-		ints_disable
+		move.w	sr,-(sp)	; backup previous sr state
+		ints_disable		; disable interrupts while NemDec is active
 		move.b	#1,(NemBusy).w	; set "NemDec busy" flag
-		bsr	NemDec3
+		bsr	NemDec3		; do NemDec3 stuff
 		clr.b	(NemBusy).w	; clear "NemDec busy" flag
-		ints_enable
+		move.w	(sp)+,sr	; restore previous sr state
 
 		subq.w	#1,($FFFFF6F8).w
 		beq.s	loc_16DC
@@ -2070,9 +2073,7 @@ RunPLC_Loop:
 		ori.w	#$4000,d0
 		swap	d0
 		move.l	d0,($C00004).l	; put the VRAM address into VDP
-		ints_disable
 		bsr	NemDec		; decompress
-		ints_enable
 		dbf	d1,RunPLC_Loop	; loop for number of entries
 		rts	
 ; End of function RunPLC_ROM

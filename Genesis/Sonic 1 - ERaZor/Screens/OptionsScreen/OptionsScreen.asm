@@ -175,53 +175,113 @@ BGDeformation_Setup:
 Options_BGPalCycle:
 		move.w	($FFFFFE0E).w,d0	; get V-blank timer
 		andi.w	#$F,d0
-		divu.w	#10,d0
+		divu.w	#8,d0
 		andi.l	#$FFFF0000,d0
-		bne.w	@1
+		bne.w	@bgpalend
 		addq.b	#1,($FFFFFF85).w	; increase timer
 
 		moveq	#0,d0
-		lea	(Options_BGCycleColors).l,a1
+		move.l	#Options_BGCycleColors_BW,d2
+		movea.l	d2,a1
 		move.b	($FFFFFF85).w,d0	; get timer
 		andi.w	#$F,d0
 		add.w	d0,d0
 		adda.w	d0,a1
-		
+
 		lea	($FFFFFB02).w,a2
-		moveq	#0,d0
-		moveq	#10-1,d1	; 10 colors
+		moveq	#10-1,d6	; 10 colors
 @bgpalcycle:
-		move.w	(a1)+,d0
-		bpl.s	@0
-		lea	(Options_BGCycleColors).l,a1
+		moveq	#0,d0
+		lea	(Obj03_BG).l,a3
+		move.b	($FFFFFF9E).w,d0
+		
+		subq.b	#2,d0
+		add.w	d0,d0
+		adda.w	d0,a3
+		
+		move.w	(a3),d0		; get theme color
+
+		move.w	(a1)+,d1	; get mask color
+		bpl.s	@dolimit
+		movea.l	d2,a1		; reset cycle location
 		bra.s	@bgpalcycle
-@0:
-		rol.w	#4,d0
-		andi.w	#$0EEE,d0
-		move.w	d0,(a2)+
-		dbf	d1,@bgpalcycle
-@1:
+@dolimit:
+		moveq	#0,d3		; limited color
+		
+		move.w	d1,d4		; copy mask color
+		andi.w	#$00E,d4	; limit mask color
+		move.w	d0,d5		; copy theme color
+		andi.w	#$00E,d5
+		cmp.w	d5,d4
+		bls.s	@0
+		move.w	d5,d4
+@0		or.w	d4,d3
+
+		move.w	d1,d4		; copy mask color
+		andi.w	#$0E0,d4	; limit mask color
+		move.w	d0,d5		; copy theme color
+		andi.w	#$0E0,d5
+		cmp.w	d5,d4
+		bls.s	@1
+		move.w	d5,d4
+@1		or.w	d4,d3
+
+		move.w	d1,d4		; copy mask color
+		andi.w	#$E00,d4	; limit mask color
+		move.w	d0,d5		; copy theme color
+		andi.w	#$E00,d5
+		cmp.w	d5,d4
+		bls.s	@2
+		move.w	d5,d4
+@2		or.w	d4,d3
+
+		move.w	d3,(a2)+
+		dbf	d6,@bgpalcycle
+@bgpalend:
 		rts
 ; ---------------------------------------------------------------------------
+Options_BGCycleColors_BW:
+		dc.w	$000
+		dc.w	$000
+		dc.w	$222
+		dc.w	$444
+		dc.w	$666
+		dc.w	$666
+		dc.w	$888
+		
+		dc.w	$AAA
+		dc.w	$AAA
+		
+		dc.w	$888
+		dc.w	$666
+		dc.w	$666
+		dc.w	$444
+		dc.w	$222
+		dc.w	$000
+		dc.w	$000
+
+		dc.w	  -1
+		even
+
 Options_BGCycleColors:
+		dc.w	$000
 		dc.w	$000
 		dc.w	$200
 		dc.w	$420
-		dc.w	$642
-		dc.w	$864
-		dc.w	$886
-		dc.w	$888
+		dc.w	$640
+		dc.w	$860
+		dc.w	$880
 		
-		dc.w	$868
-		dc.w	$868
+		dc.w	$680
+		dc.w	$680
 		
-		dc.w	$888
-		dc.w	$688
-		dc.w	$468
-		dc.w	$246
-		dc.w	$024
-		dc.w	$002
+		dc.w	$880
+		dc.w	$880
+		dc.w	$680
+		dc.w	$460
+		dc.w	$240
 		dc.w	$020
+		dc.w	$220
 
 		dc.w	  -1
 		even
@@ -240,7 +300,7 @@ Options_BGDeformation:
 		
 		moveq	#0,d0
 		moveq	#0,d4
-		move.w	d6,d0
+		move.w	d6,d0	; get timer
 		swap	d0
 		btst	#0,d3
 		beq.s	@1
@@ -261,7 +321,7 @@ Options_BGDeformation:
 		jsr	CalcSine
 		
 		move.w	d3,d5
-		add.w	d6,d0
+		add.w	d6,d5
 		btst	#7,d5
 		beq.s	@2
 		neg.w	d0
@@ -272,15 +332,11 @@ Options_BGDeformation:
 		add.w	d4,d0
 		swap	d0
 		or.l	d0,d2
-
-		moveq	#0,d0
-		move.w	d6,d0
-		swap	d0
-		add.l	d0,d2
 		move.l	d2,(a1)+
 		dbf	d3,@scroll ; fill scroll data with 0
 		rts
 ; ---------------------------------------------------------------------------
+
 
 ; V-Scroll
 Options_BGVScroll:
@@ -346,7 +402,21 @@ OptionsScreen_MainLoop:
 Options_HandleChange:
 		tst.b	($FFFFF605).w		; was anything at all pressed this frame?
 		beq.s	OptionsScreen_MainLoop	; if not, branch
-		
+
+
+; randomize BG color with B, just for testing
+@newbgcolor:	btst	#4,($FFFFF605).w	; has B been pressed?
+		beq.s	@0
+		jsr	RandomNumber
+		add.w	d0,($FFFFFF9E).w
+		subq.b	#2,d0
+		add.w	d0,d0
+		adda.w	d0,a3
+		move.w	(a3),d0
+		beq.s	@newbgcolor
+		bra.w	Options_Return
+@0:
+	
 		moveq	#0,d0			; make sure d0 is empty
 		move.w	($FFFFFF82).w,d0	; get current selection
 		subq.w	#3,d0			; first option starts at line 3
@@ -766,6 +836,7 @@ GetOptionsText:
 		bsr.w	Options_Write			; write text
 		moveq	#6,d2				; set d2 to 4
 		bsr.w	GOT_ChkOption			; check if option is ON or OFF
+		moveq	#6,d2				; set d2 to 4
 		bsr.w	Options_Write			; write text
 
 		adda.w	#Options_LineLength,a1		; make one empty line

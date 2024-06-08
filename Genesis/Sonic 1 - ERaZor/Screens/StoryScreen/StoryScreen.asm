@@ -92,10 +92,10 @@ STS_LoadText:	move.w	(a5)+,(a6)
 	;	moveq	#$15,d2
 	;	jsr	ShowVDPGraphics
 
-	;	moveq	#$14,d0
-	;	jsr	PalLoad2	; load level select pallet
-		moveq	#2,d0		; load level select palette
-		jsr	PalLoad2
+		moveq	#$14,d0
+		jsr	PalLoad1	; load level select pallet
+	;	moveq	#2,d0		; load level select palette
+	;	jsr	PalLoad2
 
 		movem.l	d0-a2,-(sp)		; backup d0 to a2
 		lea	(Pal_ERaZorBanner).l,a1	; set ERaZor banner's palette pointer

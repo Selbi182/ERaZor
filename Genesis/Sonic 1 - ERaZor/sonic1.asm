@@ -592,6 +592,7 @@ BlackBars.VBlankUpdate:
 ; ---------------------------------------------------------------------------
 
 BlackBars.SetState:
+	jmp BlackBars_DontShow
 		moveq	#0,d0				; clear d0		
 		move.b	($FFFFF600).w,d0		; get current game mode
 		cmpi.b	#$C,d0				; are we in a level?
@@ -3468,35 +3469,43 @@ Pal_MBW_Loop:
 		moveq	#0,d0			; clear d0
 		move.w	(a3),d0			; get colour
 		move.w	d0,(a4)+		; backup colour
-
-		moveq	#0,d1			; clear d1
-		move.b	d0,d1 			; copy Green and Red of colour to d1
-		lsr.b	#4,d1 			; get only Green amount
-
-		move.b	d0,d2 			; copy Green and Red of colour to d2
-		and.b	#$E,d2 			; get only Red amount
-		lsr.w	#8,d0 			; get only Blue amount of d0
-		add.b	d1,d0 			; add Green amount to Blue amount
-		add.b	d2,d0 			; then add Red to the amount
-		divu.w	#3,d0 			; divide by 3
-		and.b	#$E,d0 			; keep it an even value (Keep 9-bit VDP)
-		move.b	d0,d1 			; copy to d1
-
-		lsl.b	#4,d1 			; shift to left nybble
-		add.b	d1,d0 			; add to d0 (Setting the green)
-		lsl.w	#4,d1 			; shift to next left nybble
-		add.w	d1,d0			; add to d0 (Setting the blue)
+		bsr.s	Pal_AsGrayscale		; convert current color to grayscale
 		move.w	d0,(a3)+		; set new colour
 		
 		dbf	d3,Pal_MBW_Loop		; loop for each colour
 		rts
 ; ---------------------------------------------------------------------------
 
-Pal_MakeBlackWhite_Water:
-	rts
-		lea	($FFFFFA80).w,a3 	; get palette index
-		bra.s	Pal_MakeBlackWhite2
+; Turn the given color into grayscale
+; input/output = d0
+Pal_AsGrayscale:
+		moveq	#0,d1			; clear d1
+		moveq	#0,d2			; clear d1
+
+		; sum up the values of the individual RGB channels
+		move.b	d0,d1			; copy Green and Red of colour to d1
+		lsr.b	#4,d1			; get only Green amount
+		move.b	d0,d2			; copy Green and Red of colour to d2
+		andi.b	#$E,d2			; get only Red amount
+		lsr.w	#8,d0			; get only Blue amount of d0
+		add.b	d1,d0			; add Green amount to Blue amount
+		add.b	d2,d0			; then add Red to the amount
+		
+		; calculate average
+		divu.w	#3,d0			; divide by 3
+		andi.b	#$E,d0			; keep it an even value (Keep 9-bit VDP)
+		move.b	d0,d1			; copy to d1
+
+		; copy average to all three channels
+		lsl.b	#4,d1			; shift to left nybble
+		add.b	d1,d0			; add to d0 (Setting the green)
+		lsl.w	#4,d1			; shift to next left nybble
+		add.w	d1,d0			; add to d0 (Setting the blue)
+
+		rts
 ; End of function Pal_MakeBlackWhite
+; ===========================================================================
+
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -16448,12 +16457,18 @@ Obj4B_Main:				; XREF: Obj4B_Index
 		bne.s	Obj4B_Main_Cont			; if yes, branch
 		jmp	DeleteObject			; otherwise, delete this ring
 @tempringcont1:
-		cmpi.b	#GRing_StarAgony,obSubtype(a0)	; is this a ring leading to Star Agony Place (SNP act 2)?
+		cmpi.b	#GRing_Ruined2,obSubtype(a0)	; is this a ring leading to Ruined Place part 2?
 		bne.s	@tempringcont2			; if not, branch
+		btst	#2,($FFFFFF8B).w		; has the player beaten this level before?
+		bne.s	Obj4B_Main_Cont			; if yes, branch
+		jmp	DeleteObject			; otherwise, delete this ring
+@tempringcont2:
+		cmpi.b	#GRing_StarAgony,obSubtype(a0)	; is this a ring leading to Star Agony Place (SNP act 2)?
+		bne.s	@tempringcont3			; if not, branch
 		btst	#5,($FFFFFF8B).w		; has the player beaten this level before?
 		bne.s	Obj4B_Main_Cont			; if yes, branch
 		jmp	DeleteObject			; otherwise, delete this ring	
-@tempringcont2:
+@tempringcont3:
 	endif
 	
 		cmpi.b	#GRing_Blackout,obSubtype(a0)	; is this the blackout challenge ring?
@@ -30321,7 +30336,7 @@ Obj03_Setup:
 		move.l	#Map_Obj03,obMap(a1)	; load mappings
 		move.b	#4,obPriority(a1)	; set priority
 		move.b	#4,obRender(a1)		; set render flag
-		move.b	#$56,obActWid(a1)	; set display width
+		move.b	#86,obActWid(a1)	; set display width
 		move.w	#$0372,obGfx(a1)	; set art, use first palette line
 		move.b	#9,obFrame(a1)		; set to "PLACE" frame
 		move.w	obY(a1),$38(a1)		; remember base Y pos
@@ -30333,21 +30348,8 @@ Obj03_Display:
 		bset	#5,obGfx(a0)		; use second palette row (gives a slight flicker effect)
 @notodd:	bsr	DisplaySprite		; display sprite
 
-Obj03_BackgroundColor:
-		tst.b	obRender(a0)		; is sign on screen?
-		bpl.s	Obj03_ChkDelete		; if not, branch
-		move.b	obSubtype(a0),d0
-		cmpi.b	#7,d0			; is this a regular level sign? (for an act)
-		bhs.s	Obj03_ChkDelete		; if not, branch
-		ext.w	d0
-		add.w	d0,d0
-		lea	(Obj03_BG).l,a1
-		adda.w	d0,a1
-		move.w	(a1),d1
-		andi.w	#$0EEE,d1
-		move.w	d1,($FFFFFB5E).w	; apply color (color 16 of palette row 3)
+		bsr.s	Obj03_BackgroundColor
 
-Obj03_ChkDelete:
 		move.w	obX(a0),d0
 		andi.w	#$FF80,d0
 		move.w	($FFFFF700).w,d1
@@ -30359,21 +30361,34 @@ Obj03_ChkDelete:
 		rts				; return
 ; ===========================================================================
 
+Obj03_BackgroundColor:
+		moveq	#$000,d1		; set default BG color to black
+	
+		moveq	#0,d0
+		move.b	($FFFFF700).w,d0
+		subi.b	#5,d0
+		bmi.s	@applybgcolor
+		cmpi.b	#$C,d0
+		bhs.s	@applybgcolor
+		andi.b	#$0E,d0
+		move.w	Obj03_BG(pc,d0.w),d1
+		andi.w	#$0EEE,d1
+
+@applybgcolor:
+		move.w	d1,($FFFFFB5E).w	; apply color (color 16 of palette row 3)
+		rts
+; ---------------------------------------------------------------------------
 Obj03_BG:
-		dc.w	$0420	; GHZ
-		dc.w	$0400
-		dc.w	$0020
-		dc.w	$0420
-		dc.w	$0420
-		dc.w	$0420
-		dc.w	$0420
-		dc.w	$0420
-		dc.w	$0420
-		dc.w	$0420
+		dc.w	$2E6	; GHP
+		dc.w	$E6E	; SP
+		dc.w	$06E	; RP
+		dc.w	$EA4	; LP
+		dc.w	$E4A	; UP
+		dc.w	$E24	; SAP
+		dc.w	$444	; FP
+		dc.w	$000	; invalid
 		even
 ; ===========================================================================
-
-
 
 
 ; ---------------------------------------------------------------------------
@@ -38480,8 +38495,8 @@ Obj79_RedLamp:
 ; ===========================================================================
 
 Obj79_BlueLamp:				; XREF: Obj79_Index
-		tst.w	($FFFFFE08).w	; is debug mode	being used?
-		bne.w	locret_16F90	; if yes, branch
+	;	tst.w	($FFFFFE08).w	; is debug mode	being used?
+	;	bne.w	locret_16F90	; if yes, branch
 		tst.b	($FFFFF7C8).w
 		bmi.w	locret_16F90
 		move.b	($FFFFFE30).w,d1
@@ -38505,16 +38520,18 @@ Obj79_HitLamp:
 		addq.w	#8,d0
 		cmpi.w	#$10,d0
 		bcc.w	locret_16F90
+
+		cmpi.w	#$002,($FFFFFE10).w ; GHP check
+		beq.s	@1 ; If not, skip all the way to @0
+		
 		move.w	($FFFFD00C).w,d0
 		sub.w	obY(a0),d0
 		addi.w	#$40,d0
 		cmpi.w	#$68,d0
 		bcc.w	locret_16F90
-		
-Obj79_Hit:		
-		cmpi.w	#$002,($FFFFFE10).w ; GHP check
-		bne.s	@0 ; If not, skip all the way to @0
+		bra.s	@0
 
+@1:
 		; move.w	#$C3,d0
 		; jsr	(PlaySound_Special).l ;	play giant ring sound
 
@@ -44541,11 +44558,7 @@ KillSonic:
 
 Kill_DoKill:
 		jsr	Pal_MakeBlackWhite	; turn palette black and white
-		cmpi.b	#1,($FFFFFE10).w	; are we in LZ?
-		bne.s	Kill_NotLZ		; if not, branch
-		jsr	Pal_MakeBlackWhite_Water ; also turn the water black and white
 
-Kill_NotLZ:
 		cmpi.b	#$18,($FFFFF600).w	; is this the ending sequence?
 		bne.s	SH_NotEnding		; if not, branch
 		move.w	#0,($FFFFF72A).w	; lock screen

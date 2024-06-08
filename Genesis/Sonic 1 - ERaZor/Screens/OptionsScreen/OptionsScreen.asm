@@ -322,7 +322,7 @@ O_DontResetTimer:
 ; All options are kept in a single byte to save space (it's all flags anyway)
 ; RAM location: $FFFFFF92
 ;  bit 0 = Extended Camera
-;  bit 1 = Story Text Screens
+;  bit 1 = Skip Story Screens
 ;  bit 2 = Skip Uberhub Place
 ;  bit 3 = Cinematic HUD
 ;  bit 4 = Nonstop Inhuman
@@ -713,7 +713,7 @@ GetOptionsText:
 
 		adda.w	#Options_LineLength,a1		; make one empty line
 		
-		lea	(OpText_StoryTextScreens).l,a2	; set text location
+		lea	(OpText_SkipStory).l,a2		; set text location
 		bsr.w	Options_Write			; write text
 		moveq	#3,d2				; set d2 to 3
 		bsr.w	GOT_ChkOption			; check if option is ON or OFF
@@ -904,7 +904,7 @@ GOT_ChkOption:
 
 GOTCO_ChkExtendedCamera:
 		cmpi.b	#2,d2				; is d2 set to 2?
-		bne.s	GOTCO_ChkAutoSkipText		; if not, branch
+		bne.s	GOTCO_ChkSkipStory		; if not, branch
 		lea	(OpText_OFF).l,a2		; use "OFF" text
 		btst	#0,($FFFFFF92).w		; is Extended Camera enabled?
 		beq.w	GOTCO_Return			; if not, branch
@@ -912,13 +912,13 @@ GOTCO_ChkExtendedCamera:
 		rts					; return
 ; ---------------------------------------------------------------------------
 
-GOTCO_ChkAutoSkipText:
+GOTCO_ChkSkipStory:
 		cmpi.b	#3,d2				; is d2 set to 3?
 		bne.s	GOTCO_ChkSkipUberhub		; if not, branch
-		lea	(OpText_OFF).l,a2		; use "OFF" text
-		btst	#1,($FFFFFF92).w		; is Auto-Skip-Text enabled?
-		beq.s	GOTCO_Return			; if not, branch
 		lea	(OpText_ON).l,a2		; otherwise use "ON" text
+		btst	#1,($FFFFFF92).w		; is Skip Story Screens enabled?
+		beq.s	GOTCO_Return			; if not, branch
+		lea	(OpText_OFF).l,a2		; use "OFF" text
 		rts					; return
 ; ---------------------------------------------------------------------------
 
@@ -985,8 +985,8 @@ OpText_Extended:
 		dc.b	'EXTENDED CAMERA      ', $FF
 		even
 
-OpText_StoryTextScreens:
-		dc.b	'STORY TEXT SCREENS   ', $FF
+OpText_SkipStory:
+		dc.b	'SKIP STORY SCREENS   ', $FF
 		even
 
 OpText_SkipUberhub:

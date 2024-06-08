@@ -4041,6 +4041,7 @@ Title_MainLoop:
 		
 		move.l	a2,-(sp)		; backup d0 to a2
 		lea	($FFFFFB60).w,a2
+		moveq	#1,d2			; do blue rotation
 		bsr.w	ERaZorBannerPalette
 		move.l	(sp)+,a2		; backup d0 to a2
 
@@ -4167,35 +4168,37 @@ ERZ_BlueSpeed = $3
 ERZ_RedSpeed = 3
 
 ERaZorBannerPalette:
-		move.w	($FFFFF614).w,d0		; load remaining time into d0
+		move.w	($FFFFFE0E).w,d0		; load V-Blank counter into d0
 		move.w	d0,d2				; copy to d2
 		andi.w	#ERZ_BlueSpeed,d0		; mask it against 3
-		bne.s	ERZ_RedPal			; if result isn't 0, branch
+		bne.s	@doredpal			; if result isn't 0, branch
 		
 		; blue/gray palette rotation
+		tst.b	d1				; is blue color rotation set to be done?
+		beq.s	@doredpal			; if not, branch
 		move.w	4(a2),d0			; load first blue colour of sonic's palette into d0
 		moveq	#7,d1				; set loop counter to 7
 		lea	6(a2),a1			; load second blue colour into a1
-ERZ_BlueLoop:	move.w	(a1),-2(a1)			; move colour to last spot
+@blueloop:	move.w	(a1),-2(a1)			; move colour to last spot
 		adda.l	#2,a1				; increase location pointer
-		dbf	d1,ERZ_BlueLoop			; loop
+		dbf	d1,@blueloop			; loop
 		move.w	d0,$12(a2)			; move first colour to last one
 
-ERZ_RedPal:
+@doredpal:
 		move.w	d2,d0				; load remaining time into d0
 		andi.w	#ERZ_RedSpeed,d0		; mask it against 7
-		bne.s	ERZ_End				; if result isn't 0, branch	
+		bne.s	@end				; if result isn't 0, branch	
 
 		; red palette rotation
 		move.w	$14(a2),d0			; load first red colour of sonic's palette into d0
 		moveq	#5,d1				; set loop counter to 5
 		lea	$16(a2),a1			; load second red colour into a1
-ERZ_BlueLoopX:	move.w	(a1),-2(a1)			; move colour to last spot
+@redloop:	move.w	(a1),-2(a1)			; move colour to last spot
 		adda.l	#2,a1				; increase location pointer
-		dbf	d1,ERZ_BlueLoopX		; loop
+		dbf	d1,@redloop			; loop
 		move.w	d0,$1E(a2)			; move first colour to last one
 
-ERZ_End:	
+@end:	
 		rts
 
 ; ===========================================================================

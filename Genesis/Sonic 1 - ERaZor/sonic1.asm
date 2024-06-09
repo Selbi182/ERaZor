@@ -11488,11 +11488,11 @@ loc_7312:
 ; ===========================================================================
 
 Resize_FZAddBombs:
-		cmpi.b	#10,($FFFFFF68).w
-		bgt.s	@Continue
-		
 		tst.b	($FFFFFF68).w
 		beq.s	@End
+		
+		cmpi.b	#10,($FFFFFF68).w
+		bgt.s	@Continue
 
 		move.b	($FFFFFE05).w,d0
 		andi.b 	#%00011111, d0
@@ -43884,13 +43884,28 @@ Obj86_Generator:			; XREF: Obj86_Index
 		move.w	d0,obVelX(a0)
 
 @Continue2:
+		cmpi.b 	#$0A, ($FFFFF742).w ; check resize subroutine
+		bne.s 	@NoFall
+
+		cmpi.w	#$5C0,obY(a0)
+		bge.s	@Explode
+
+		jsr		ObjectFall
+		sub.w 	#$10, obVelY(a0)
+		jsr		SpeedToPos
+
+@NoFall:
 		movea.l	$34(a0),a1
-		cmpi.b	#6,$34(a1)
-		bne.s	loc_1A850
+		cmpi.w	#$5C0,obY(a0)
+		blt.s	loc_1A850
 		move.b	#$3F,(a0)
 		move.b	#0,obRoutine(a0)
 		jmp	DisplaySprite
 ; ===========================================================================
+
+@Explode:
+		move.b	#$3F,0(a0)	; load explosion object
+		rts
 
 loc_1A850:
 	;	move.b	#0,obAnim(a0)
@@ -44040,19 +44055,8 @@ locret_1AA1C:
 loc_1AA1E:				; XREF: Obj86_Index2
 		jsr	ObjectFall
 		jsr	SpeedToPos
-	;	cmpi.w	#$5E0,obY(a0)
 		cmpi.w	#$5C0,obY(a0)
-		bcc.s	loc_1AA34
-		; subq.w	#1,obSubtype(a0)
-		; beq.s	loc_1AA34
-		rts	
-; ===========================================================================
-
-loc_1AA34:
-		jsr	ObjectFall
-		jsr	SpeedToPos
-		cmpi.w	#$5C0,obY(a0)
-		bgt.s	Obj86_NoExplode
+		blt.s	Obj86_DoNothing
 
 		move.b	#$C4,d0				; load boost SFX
 		jsr	PlaySound_Special		; play boost SFX
@@ -44067,6 +44071,9 @@ Obj86_NoExplode:
 		movea.l	$34(a0),a1
 		subq.w	#1,$38(a1)
 		bra.w	Obj84_Delete
+
+Obj86_DoNothing:
+		rts
 ; ===========================================================================
 Ani_obj86:
 		include	"_anim\obj86.asm"

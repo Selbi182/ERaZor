@@ -446,7 +446,7 @@ HBlank_Original:
 @transferColors:
 		move.w	(a2)+,d0
 		lea	($FFFFFA80).w,a0
-	;	andi.w	#-2,d0			; WEIRD hotfix because otherwise we get an odd addressing error
+		bclr	#0,d0			; force d0 to be even (WEIRD hotfix because otherwise we get an odd addressing error)
 		adda.w	d0,a0
 		addi.w	#$C000,d0
 		swap	d0
@@ -21736,6 +21736,7 @@ ObjectFall:
 		ext.l	d0
 		lsl.l	#8,d0
 		add.l	d0,obX(a0)
+
 		move.w	obVelY(a0),d0
 		tst.b	($FFFFFFE5).w		; is air freeze enabled?
 		beq.s	@fullgravity		; if not, use regular gravity
@@ -21766,53 +21767,46 @@ ObjectFall_Sonic:
 		move.l	d2,obX(a0)		; write new X coordinate for Sonic
 		
 		; y velocity
-		moveq	#0,d3			; register to store this frame's velocity delta
-		move.w	#Gravity,d3		; increase vertical speed (gravity)
-		
-		tst.b	($FFFFFF77).w		; is antigrav enabled?
-		bne.s	@OFS_OGAntigrav		; if not, branch
-		
-		bra.w	@OFS_FallEnd
-
-@OFS_OGAntigrav:
-		; OG Star Agony Place antigrav controls from 2016
-		cmpi.w	#$302,($FFFFFE10).w	; are we in Star Agony Place?
-		beq.s	@OFS_ReverseGravity	; if yes, branch
-		cmpi.w	#$501,($FFFFFE10).w	; are we in the tutorial?
-		bne.s	@OFS_FallEnd		; if not, branch
-
-@OFS_ReverseGravity:
-		subi.w	#$38,d3			; inverse gravity
-
-		btst	#6,($FFFFF602).w	; is A pressed?
-		beq.s	@OFS_NoA		; if not, branch
-		move.b	#1,($FFFFFFEB).w	; set jumpdash flag (to prevent it)
-		tst.w	obVelY(a0)
-		bmi.s	@OFS_Negative
-		subi.w	#$38,d3
-		bra.s	@OFS_FallEnd
-@OFS_Negative:
-		subi.w	#$1C,d3
-		bra.s	@OFS_FallEnd
-@OFS_NoA:
-		tst.w	obVelY(a0)
-		bpl.s	@OFS_Positve
-		addi.w	#$38,d3
-		bra.s	@OFS_FallEnd
-@OFS_Positve:
-		addi.w	#$1C,d3
-@OFS_FallEnd:
-
-		add.w	d3,obVelY(a0)
-
-
-		; translate to position
 		move.w	obVelY(a0),d0		; get Sonic's vertical speed
 		ext.l	d0			; extend Y speed to a long
 		asl.l	#8,d0			; move one byte ahead
 		move.l	obY(a0),d2		; get Sonic's Y positon
 		add.l	d0,d2			; add that new speed to Sonic's new Y position
 		move.l	d2,obY(a0)		; write new Y coordinate for Sonic
+
+		moveq	#0,d3			; register to store this frame's velocity delta
+		move.w	#Gravity,d3		; increase vertical speed (gravity)
+
+		; OG antigrav
+		tst.b	($FFFFFF77).w		; is antigrav enabled?
+		beq.w	@OFS_FallEnd		; if not, branch
+		cmpi.w	#$302,($FFFFFE10).w	; are we in Star Agony Place?
+		beq.s	@OFS_ReverseGravity	; if yes, branch
+		cmpi.w	#$501,($FFFFFE10).w	; are we in the tutorial?
+		bne.s	@OFS_FallEnd		; if not, branch
+
+@OFS_ReverseGravity:
+		subi.w	#Gravity,d3		; inverse gravity
+
+		btst	#6,($FFFFF602).w	; is A pressed?
+		beq.s	@OFS_NoA		; if not, branch
+		move.b	#1,($FFFFFFEB).w	; set jumpdash flag (to prevent it)
+		tst.w	obVelY(a0)
+		bmi.s	@OFS_Negative
+		subi.w	#Gravity,d3
+		bra.s	@OFS_FallEnd
+@OFS_Negative:
+		subi.w	#Gravity/2,d3
+		bra.s	@OFS_FallEnd
+@OFS_NoA:
+		tst.w	obVelY(a0)
+		bpl.s	@OFS_Positve
+		addi.w	#Gravity,d3
+		bra.s	@OFS_FallEnd
+@OFS_Positve:
+		addi.w	#Gravity/2,d3
+@OFS_FallEnd:
+		add.w	d3,obVelY(a0)		; apply gravity changes
 		rts				; return
 ; End of function ObjectFall
 

@@ -19568,19 +19568,27 @@ loc_BDD6:
 @cont1:
 		cmpi.b	#$82,obSubtype(a0)		; was second switch pressed? (for smashable blocks)
 		bne.s	@cont2
-	;	btst	#1,($FFFFFF6C).w	; is flag already set?
-	;	bne.s	Obj32_ShowPressed	; if yes, play regular switch sound
+		btst	#1,($FFFFFF6C).w	; is flag already set?
+		bne.s	@PlaySound			; don't change palette
 		bset	#1,($FFFFFF6C).w	; set the "switch in MZ was pressed flag" 2
+		jsr 	ChangePaletteRP
+
+@PlaySound:
 		move.w	#$C3,d0			; play giant ring sound (this is when you get the stars)
 		jsr	(PlaySound).l
 		bra.s	Obj32_ShowPressed
 @cont2:
 		cmpi.b	#$83,obSubtype(a0)		; was third switch pressed? (for horizontal stomper)
 		bne.s	@notmzswitch
-	;	btst	#2,($FFFFFF6C).w	; is flag already set?
-	;	bne.s	Obj32_ShowPressed	; if yes, play regular switch sound
+		btst	#2,($FFFFFF6C).w	; is flag already set?
+		bne.s	@PlaySound2
+
 		bset	#2,($FFFFFF6C).w	; set the "switch in MZ was pressed flag" 3
-		move.w	#$B7,d0			; play LZ rumbling sound
+		jsr 	ChangePaletteRP
+
+@PlaySound2:
+		; move.w	#$B7,d0			; play LZ rumbling sound
+		move.w	#$C3,d0			; play giant ring sound
 		jsr	(PlaySound).l
 		bra.s	Obj32_ShowPressed
 
@@ -19633,6 +19641,33 @@ Obj32_Display:
 		cmpi.w	#$280,d0
 		bhi.w	Obj32_Delete
 		rts	
+; ===========================================================================
+
+ChangePaletteRP:
+		
+		lea 	($FFFFFB48).w, a2
+		moveq 	#3, d0
+
+@SubtractGraysLoop:
+		subi.w 	#$0222, (a2)+
+		dbf 	d0, @SubtractGraysLoop
+
+		lea 	($FFFFFB72).w, a2
+		moveq	#2, d0
+
+@SubtractBluesLoop:
+		subi.w 	#$0200, (a2)+
+		dbf 	d0, @SubtractBluesLoop
+
+		subi.b 	#2,($FFFFFB7C).w ; cloud extra
+		subi.b 	#2,($FFFFFB40).w ; sky
+		move.w	#$0008,($FFFFFB6A).w ;lava
+		move.w	#$004E,($FFFFFB6C).w ;lava
+
+		jsr		WhiteFlash2
+
+		rts
+
 ; ===========================================================================
 
 SetupSAPItems:
@@ -43344,13 +43379,12 @@ loc_1A23A:
 		move.w	#$27E0,($FFFFD008).w
 
 loc_1A248:
-		cmpi.w	#$2900,obX(a0)
+		cmpi.w	#$29D0,obX(a0)
 		bcs.s	loc_1A260
 		tst.b	obRender(a0)
 		bmi.s	loc_1A260
 
 		bset	#6,($FFFFFF8B).w	; unlock door to the credits
-		
 		
 		btst	#2,($FFFFFF92).w	; is Skip Uberhub Place enabled?
 		bne.s	@cont			; if yes, go directly to ending sequence instead of back to Uberhub
@@ -43418,15 +43452,37 @@ loc_1A2C6:				; XREF: Obj85_Index
 ; ===========================================================================
 
 loc_1A2E4:
+		cmpi.w 	#$27A0, obX(a0)
+		blt.s	@NoFall
+
+		cmpi.w 	#$0600, obY(a0)
+		bge.s	@Crash
+
+		jsr		ObjectFall
+		subi.w 	#$35, obVelY(a0)
+		jsr		SpeedToPos
+
+		; move.w	obX(a0),obX(a1)
+		move.w	obY(a0),obY(a1)
+		bra.s 	@NoFall
+
+@Crash:
+		move.b 	#$B9,d0
+		jsr		PlaySound_Special
+
+		jsr		WhiteFlash2
+		jsr		DeleteObject
+
+@NoFall:
 		move.b	#1,obAnim(a0)
-		tst.b	obColProp(a1)
-		ble.s	loc_1A312
-		move.b	#6,obAnim(a0)
-		move.l	#Map_Eggman,obMap(a0)
-		move.w	#$400,obGfx(a0)
-		lea	Ani_Eggman(pc),a1
-		jsr	AnimateSprite
-		bra.w	loc_1A296
+		; tst.b	obColProp(a1)
+		; ble.s	loc_1A312
+		; move.b	#6,obAnim(a0)
+		; move.l	#Map_Eggman,obMap(a0)
+		; move.w	#$400,obGfx(a0)
+		; lea	Ani_Eggman(pc),a1
+		; jsr	AnimateSprite
+		; bra.w	loc_1A296
 ; ===========================================================================
 
 loc_1A312:

@@ -11426,8 +11426,8 @@ Resize_FZ:
 		jmp	off_72D8(pc,d0.w)
 ; ===========================================================================
 off_72D8:	dc.w Resize_FZmain-off_72D8, Resize_FZboss-off_72D8
-		dc.w Resize_FZend-off_72D8, locret_7322-off_72D8
-		dc.w Resize_FZend2-off_72D8
+		dc.w Resize_FZend-off_72D8, Resize_FZAddBombs-off_72D8
+		dc.w locret_7322-off_72D8, Resize_FZend2-off_72D8
 ; ===========================================================================
 
 Resize_FZmain:
@@ -11442,7 +11442,7 @@ Resize_FZmain:
 
 loc_72F4:
 		rts
-		bra.s	loc_72C2
+		bra.w	loc_72C2
 ; ===========================================================================
 
 Resize_FZboss:
@@ -11458,13 +11458,46 @@ loc_7312:
 		bra.s	loc_72C2
 ; ===========================================================================
 
+Resize_FZAddBombs:
+		cmpi.b	#10,($FFFFFF68).w
+		bgt.s	@Continue
+		
+		tst.b	($FFFFFF68).w
+		beq.s	@End
+
+		move.b	($FFFFFE05).w,d0
+		andi.b 	#%00011111, d0
+		tst.b 	d0
+		bne.s 	@Continue
+
+		;create bomb objects
+		jsr 	SingleObjLoad
+		move.b 	#$23, (a1)
+		move.w	#$2586, obX(a1)
+		move.w	#$053C, obY(a1)
+		
+		jsr 	RandomNumber
+		andi.w 	#%0000000011111111, d0
+		neg.w 	d0
+		move.w	d0, obVelX(a1)
+
+		bra.s 	@Continue
+
+@End:
+		addq.b	#2,($FFFFF742).w
+		bra.s 	locret_7322
+
+@Continue:
+		bra.w	loc_72C2
+ 
+
 Resize_FZend:
 		cmpi.w	#$2450,($FFFFF700).w
 		bcs.s	loc_7320
 		addq.b	#2,($FFFFF742).w
 
 loc_7320:
-		bra.s	loc_72C2
+		bra.w	loc_72C2
 ; ===========================================================================
 
 locret_7322:
@@ -11472,7 +11505,7 @@ locret_7322:
 ; ===========================================================================
 
 Resize_FZend2:
-		bra.s	loc_72C2
+		bra.w	loc_72C2
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Ending sequence dynamic screen resizing
@@ -15710,8 +15743,17 @@ Obj23_ChkCancel:			; XREF: Obj23_Main
 ; ===========================================================================
 
 Obj23_FromBuzz:				; XREF: Obj23_Index
+		cmpi.w	#$0502,($FFFFFE10).w
+		bne.w	@Check2
+
+		jsr 	ObjectFall
+		bra.s 	@Continue
+
+@Check2:
 		cmpi.w	#$001,($FFFFFE10).w
 		bne.w	Obj23_FromBuzz_Normal
+
+@Continue
 		subq.b	#1,$30(a0)	; sub 1 from time limit
 		bmi.w	Obj23_Explode	; if there's no time left, branch
 		moveq	#0,d1
@@ -42985,7 +43027,7 @@ loc_19F50:
 loc_19F6A:
 		move.w	d0,($FFFFD010).w
 		tst.b	$35(a0)
-		bne.s	loc_19F88
+		bne.w	loc_19F88
 		subq.b	#1,obColProp(a0)
 		move.b	obColProp(a0),($FFFFFF68).w
 		bsr	BossDamageSound
@@ -42993,6 +43035,7 @@ loc_19F6A:
 		jsr	AddPoints	; ... points
 		cmpi.b	#10,obColProp(a0)
 		bne.s	@cont
+		
 		move.w	#$E2,d0
 		jsr	(PlaySound_Special).l	; speed up music
 
@@ -43791,6 +43834,27 @@ Obj86_Main:				; XREF: Obj86_Index
 		addq.b	#2,obRoutine(a0)
 
 Obj86_Generator:			; XREF: Obj86_Index
+		cmpi.b	#10,($FFFFFF68).w
+		bgt.s	@Continue2
+
+		move.b	($FFFFFE05).w,d0
+		andi.b 	#%00001111, d0
+		tst.b 	d0
+		bne.s 	@Continue
+
+		jsr	SingleObjLoad
+		move.b	#$3F,0(a1)	; load explosion object
+		move.w	obX(a0),obX(a1)
+		move.w	obY(a0),obY(a1)
+		move.b	#1,$30(a1)
+
+@Continue:
+		jsr	RandomNumber
+		andi.w	#$FF,d0
+		subi.w	#$80,d0
+		move.w	d0,obVelX(a0)
+
+@Continue2:
 		movea.l	$34(a0),a1
 		cmpi.b	#6,$34(a1)
 		bne.s	loc_1A850
@@ -43930,14 +43994,6 @@ loc_1A9E6:
 		bne.s	locret_1AA1C
 		addq.b	#2,ob2ndRout(a0)
 
-		cmpi.b	#10,($FFFFFF68).w
-		bgt.s	@cont
-		jsr	RandomNumber
-		andi.w	#$FF,d0
-		subi.w	#$80,d0
-		move.w	d0,obVelX(a0)
-
-@cont:
 		move.b	#1,obAnim(a0)
 		move.b	#$9A,obColType(a0)
 		move.w	#$B4,obSubtype(a0)
@@ -43954,16 +44010,21 @@ locret_1AA1C:
 
 loc_1AA1E:				; XREF: Obj86_Index2
 		jsr	ObjectFall
-	;	bsr	SpeedToPos
+		jsr	SpeedToPos
 	;	cmpi.w	#$5E0,obY(a0)
 		cmpi.w	#$5C0,obY(a0)
 		bcc.s	loc_1AA34
-		subq.w	#1,obSubtype(a0)
-		beq.s	loc_1AA34
+		; subq.w	#1,obSubtype(a0)
+		; beq.s	loc_1AA34
 		rts	
 ; ===========================================================================
 
 loc_1AA34:
+		jsr	ObjectFall
+		jsr	SpeedToPos
+		cmpi.w	#$5C0,obY(a0)
+		bgt.s	Obj86_NoExplode
+
 		move.b	#$C4,d0				; load boost SFX
 		jsr	PlaySound_Special		; play boost SFX
 		jsr	SingleObjLoad

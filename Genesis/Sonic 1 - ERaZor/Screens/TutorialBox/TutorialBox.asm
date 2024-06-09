@@ -120,7 +120,7 @@ Tutorial_DisplayHint:
 	; Init hint window gfx
 	move.b	#8,VBlankSub
 	jsr	DelayProgram			; perform vsync before operation, fix Sonic's DPCL
-	move	#$2700,sr			; disable interrupts
+	ints_disable				; disable interrupts
 	bsr	DH_ClearWindow			; draw window
 	lea	Art_DH_WindowBorder,a1		; load border art
 	vram	_DH_VRAM_Border,(a6)
@@ -135,6 +135,12 @@ Tutorial_DisplayHint:
 	move.l	(a1)+,(a5)
 	dbf	d0,@0
 
+	cmpi.b	#10,($FFFFFF6E).w	; is this the introduction text?
+	bne.s	DH_MainLoop		; if not, branch
+	jsr	BGDeformation_Setup
+	lea	VDP_Ctrl,a6   
+	lea	VDP_Data,a5
+
 ; ---------------------------------------------------------------
 ; Display Hint Main Loop
 ; ---------------------------------------------------------------
@@ -143,62 +149,63 @@ DH_MainLoop:
 	move.b	#2,VBlankSub
 	jsr	DelayProgram
 
-	;cmpi.b	#10,($FFFFFF6E).w	; is this the introduction text?
-	;bne.s	@notintro		; if not, branch
-	;lea	($FFFFFB40).w,a1
-	;jsr	SineWavePalette		; sinewave background color
-@notintro:
-		; background deformation
-		lea	($FFFFCC00).w,a1
-		move.w	#(224/1)-1,d3
-		jsr	RandomNumber
+	cmpi.b	#10,($FFFFFF6E).w	; is this the introduction text?
+	bne.s	DH_NormalDeform		; if not, branch
+	jsr	Options_BackgroundEffects
+	bra.w	DH_Continue
+
+DH_NormalDeform:
+	; background deformation during a level
+	lea	($FFFFCC00).w,a1
+	move.w	#(224/1)-1,d3
+	jsr	RandomNumber
 @scroll:
-		ror.l	#1,d1
-		move.l	d1,d2
-		andi.l	#$00070000,d2
-		
-		moveq	#0,d0
-		moveq	#0,d4
-		move.w	($FFFFFE0E).w,d0	; get timer
-		swap	d0
-		btst	#0,d3
-		beq.s	@1
-		neg.l	d0
+	ror.l	#1,d1
+	move.l	d1,d2
+	andi.l	#$00070000,d2
+	
+	moveq	#0,d0
+	moveq	#0,d4
+	move.w	($FFFFFE0E).w,d0	; get timer
+	swap	d0
+	btst	#0,d3
+	beq.s	@1
+	neg.l	d0
 @1:
-		andi.l	#$0000FFFF,d0
-		swap	d0
-		add.w	($FFFFFE0E).w,d0 ; scroll everything to the right
-		btst	#0,d5
-		beq.s	@3
-		sub.w	($FFFFFE0E).w,d0 ; scroll everything to the right
+	andi.l	#$0000FFFF,d0
+	swap	d0
+	add.w	($FFFFFE0E).w,d0 ; scroll everything to the right
+	btst	#0,d5
+	beq.s	@3
+	sub.w	($FFFFFE0E).w,d0 ; scroll everything to the right
 
 @3:
-		move.w	d0,d4		; copy scroll
-		add.w	d3,d4		; add line index
-		subi.w	#224/2,d4
-		movem.l	d0/d1,-(sp)
-		move.w	d4,d0
-		jsr	CalcSine
-		
-		move.w	d3,d5
-		add.w	($FFFFFE0E).w,d5
-		btst	#7,d5
-	;	beq.s	@2
-		neg.w	d0
+	move.w	d0,d4		; copy scroll
+	add.w	d3,d4		; add line index
+	subi.w	#224/2,d4
+	movem.l	d0/d1,-(sp)
+	move.w	d4,d0
+	jsr	CalcSine
+	
+	move.w	d3,d5
+	add.w	($FFFFFE0E).w,d5
+	btst	#7,d5
+;	beq.s	@2
+	neg.w	d0
 @2:
-		move.w	d0,d4
-		
-		movem.l	(sp)+,d0/d1
-		add.w	d4,d0
-		swap	d0
-		or.l	d0,d2
-		move.l	d2,d4
-		swap	d4
-		add.l	d4,d2
-		move.l	d2,(a1)+
-		dbf	d3,@scroll ; fill scroll data with 0
+	move.w	d0,d4
+	
+	movem.l	(sp)+,d0/d1
+	add.w	d4,d0
+	swap	d0
+	or.l	d0,d2
+	move.l	d2,d4
+	swap	d4
+	add.l	d4,d2
+	move.l	d2,(a1)+
+	dbf	d3,@scroll ; fill scroll data with 0
 
-
+DH_Continue:
 	; Run window object code
 	lea	_DH_WindowObj,a0
 	movea.l	obj(a0),a1
@@ -257,7 +264,7 @@ DH_Quit:
 ; ---------------------------------------------------------------
 
 DH_ClearWindow:
-	move	#$2700,sr
+	ints_push
 	vram	_DH_VRAM_Base,(a6)
 	move.l	#_DH_BG_Pattern,d0
 	move.w	#$A0-1,d1	; do $A0 tiles
@@ -272,7 +279,7 @@ DH_ClearWindow:
 	move.l	d0,(a5)
 	move.l	d0,(a5)
 	dbf	d1,@DrawTile
-	move	#$2300,sr
+	ints_pop
 	rts
 
 ; ---------------------------------------------------------------
@@ -392,7 +399,7 @@ _CooldownVal	= 2
 
 ; ---------------------------------------------------------------
 @InstantWrite:
-	move	#$2700,sr		; we *must* disable interrupts
+	ints_disable		; we *must* disable interrupts
 	movea.l	char_pos(a0),a1		; load last position in text
 
 @InstantWrite_Loop:

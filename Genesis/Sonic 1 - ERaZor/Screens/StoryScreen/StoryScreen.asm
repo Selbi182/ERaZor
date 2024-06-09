@@ -149,6 +149,7 @@ StoryScreen_MainLoop:
 	;	jsr	SineWavePalette
 		jsr	RunPLC_RAM
 		jsr	Options_BackgroundEffects
+		jsr	Options_ERZPalCycle
 		tst.l	($FFFFF680).w
 		bne.s	StoryScreen_MainLoop
 

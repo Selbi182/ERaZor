@@ -134,19 +134,19 @@ Options_FinishSetup:
 ; ---------------------------------------------------------------------------
 
 Options_BackgroundEffects:
-		ints_disable
+		ints_push
 		move.l	a2,-(sp)
 		bsr	Options_BGPalCycle
 		bsr	Options_BGDeformation
 		bsr	Options_BGVScroll
-		bsr	Options_ERZPalCycle
 		move.l	(sp)+,a2
-		ints_enable
+		ints_pop
 		rts
 ; ===========================================================================
 
 BGDeformation_Setup:
-		ints_disable
+		ints_push
+
 		lea	($C00000).l,a6		
 		move.l	#$40200000,4(a6)
 		lea	(Options_BGArt).l,a5
@@ -167,7 +167,7 @@ BGDeformation_Setup:
 		dbf	d2,@row			; repeat til all rows have dumped	
 		dbf	d6,@repeat
 
-		ints_enable
+		ints_pop
 		rts
 ; ===========================================================================
 
@@ -382,6 +382,7 @@ OptionsScreen_MainLoop:
 		jsr	RunPLC_RAM
 		
 		bsr.w	Options_BackgroundEffects
+		bsr.w	Options_ERZPalCycle
 
 		tst.l	($FFFFF680).w		; are pattern load cues empty?
 		bne.s	OptionsScreen_MainLoop	; if not, branch to avoid visual corruptions

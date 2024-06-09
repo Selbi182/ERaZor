@@ -60,6 +60,14 @@ ints_disable	macro
 	move	#$2700,sr
 	endm
 
+ints_push	macro
+	move.w	sr,-(sp)
+	ints_disable
+	endm
+ints_pop	macro
+	move.w	(sp)+,sr
+	endm
+
 ; Set VDP to VRAM write
 vram	macro	offset,operand
 	if (narg=1)
@@ -594,7 +602,6 @@ BlackBars.VBlankUpdate:
 ; ---------------------------------------------------------------------------
 
 BlackBars.SetState:
-	jmp BlackBars_DontShow
 		moveq	#0,d0				; clear d0		
 		move.b	($FFFFF600).w,d0		; get current game mode
 		cmpi.b	#$C,d0				; are we in a level?

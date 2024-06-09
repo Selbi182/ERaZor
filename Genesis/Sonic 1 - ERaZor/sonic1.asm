@@ -178,12 +178,10 @@ ErrorTrap:
 ; ===========================================================================
 
 EntryPoint:
-		; soft-reset functionality
-		; (disabled because it raises a ton of bugs I'm too lazy to fix :V)
-	;	tst.l	($A10008).l	; test port A control
-	;	bne.s	PortA_Ok
-	;	tst.w	($A1000C).l	; test port C control
-;PortA_Ok:	bne.s	PortC_Ok
+		tst.l	($A10008).l	; test port A control
+		bne.s	PortA_Ok
+		tst.w	($A1000C).l	; test port C control
+PortA_Ok:	bne.s	PortC_Ok
 
 		lea	SetupValues(pc),a5
 		movem.w	(a5)+,d5-d7
@@ -209,8 +207,7 @@ VDPInitLoop:	move.b	(a5)+,d5	; add $8000 to value
 		move.w	d7,(a1)		; stop the Z80
 		move.w	d7,(a2)		; reset	the Z80
 
-WaitForZ80:
-		btst	d0,(a1)		; has the Z80 stopped?
+WaitForZ80:	btst	d0,(a1)		; has the Z80 stopped?
 		bne.s	WaitForZ80	; if not, branch
 
 		moveq	#$25,d2
@@ -240,7 +237,6 @@ PSGInitLoop:	move.b	(a5)+,$11(a3)	; reset	the PSG
 
 		move.w	d0,(a2)
 		movem.l	(a6),d0-a6	; clear	all registers
-		ints_disable
 
 PortC_Ok:
 		bra.s	GameProgram
@@ -295,13 +291,16 @@ SetupValues:	dc.w $8000		; VDP register start number
 ; ===========================================================================
 
 GameProgram:
-		move.w	#$8004,($C00004).l	; disable h-ints
+		ints_disable
 		
+		; super mega ultra clear the entire RAM from start to finish
+		; (used to clear just 0000-FDFF, updated to go to FFFF)
+		; (this was done to avoid RAM inconsistencies from soft reboots)
 		lea	($FF0000).l,a6
 		moveq	#0,d7
-		move.w	#$3F7F,d6
+		move.w	#($10000/4)-1,d6	
 GameClrRAM:	move.l	d7,(a6)+
-		dbf	d6,GameClrRAM	; fill RAM ($0000-$FDFF) with $0
+		dbf	d6,GameClrRAM
 
 		bsr	VDPSetupGame
 		bsr	SoundDriverLoad
@@ -330,7 +329,7 @@ GameClrRAM:	move.l	d7,(a6)+
 ;  lv = Lives (or Deaths, rather lol) ($FFFFFE12)
 ;  r_ = Rings ($FFFFFE20-FFFFFE21)
 ;  s_ = Score ($FFFFFE26-FFFFFE29)
-;  cm = Complete (saw final custscene at least once) ($FFFFFF93)
+;  cm = Complete (beat Blackout challenge) ($FFFFFF93)
 ;  mg = Magic Number (always set to 182, absence implies no SRAM)
 ; ---------------------------------------------------------------------------
 SRAM_Options	= $01
@@ -417,7 +416,7 @@ SRAM_SaveNow:
 		move.l	($FFFFFE26).w,d0			; move score to d0
 		movep.l	d0,SRAM_Score(a1)			; backup score
 		move.b	($FFFFFF93).w,d0			; move game beaten state to d0
-		move.b	d0,SRAM_Complete(a1)		; backup option flags
+		move.b	d0,SRAM_Complete(a1)			; backup option flags
 
 SRAM_SaveNow_End:
 		move.b	#0,($A130F1).l				; disable SRAM
@@ -430,7 +429,7 @@ SRAM_SaveNow_End:
 ; ---------------------------------------------------------------------------
 
 ; HBlank:
-HBlank_Original:
+HBlank_LZWaterSurface:
 		tst.w	($FFFFF644).w		; is flag set to transfer water palette mid-frame?
 		beq.w	locret_119C		; if not, branch
 		clr.w	($FFFFF644).w		; clear said flag
@@ -546,10 +545,10 @@ BlackBars.Reset:
 BlackBars.VBlankUpdate:
 		cmpi.b	#1,($FFFFFE10).w				; are we in LZ?
 		bne.s	@notlz						; if not, branch
-		cmpi.w	#HBlank_Original,HBlankSubW			; already set up?
+		cmpi.w	#HBlank_LZWaterSurface,HBlankSubW			; already set up?
 		beq.s	@0						; if yes, branch
 		bsr.s	BlackBars.FullReset				; reset black bars (not supported in LZ)
-		move.w	#HBlank_Original,HBlankSubW			; go to original HBlank subroutine for LZ
+		move.w	#HBlank_LZWaterSurface,HBlankSubW			; go to original HBlank subroutine for LZ
 @0		rts
 
 @notlz:
@@ -5643,6 +5642,7 @@ MainLevelArray:
 ; ---------------------------------------------------------------------------
 
 ClearEverySpecialFlag:
+		clr.b	(FZEscape).w
 		clr.w	($FFFFC904).w
 		clr.b	($FFFFFF5F).w
 		clr.l	($FFFFFF60).w
@@ -11451,18 +11451,21 @@ loc_72C2:
 Resize_FZ:
 		moveq	#0,d0
 		move.b	($FFFFF742).w,d0
-		move.w	off_72D8(pc,d0.w),d0
-		jmp	off_72D8(pc,d0.w)
+		move.w	ResizeFZ_Index(pc,d0.w),d0
+		jmp	ResizeFZ_Index(pc,d0.w)
 ; ===========================================================================
-off_72D8:	dc.w Resize_FZmain-off_72D8, Resize_FZboss-off_72D8
-		dc.w Resize_FZend-off_72D8, Resize_FZAddBombs-off_72D8
-		dc.w locret_7322-off_72D8, Resize_FZend2-off_72D8
+ResizeFZ_Index:	dc.w Resize_FZmain-ResizeFZ_Index, Resize_FZboss-ResizeFZ_Index
+		dc.w Resize_FZend-ResizeFZ_Index, Resize_FZAddBombs-ResizeFZ_Index
+		dc.w locret_7322-ResizeFZ_Index, Resize_FZend2-ResizeFZ_Index
+
+		dc.w Resize_FZEscape-ResizeFZ_Index
+		dc.w Resize_FZEscape2-ResizeFZ_Index
+		dc.w Resize_FZEscape3-ResizeFZ_Index
 ; ===========================================================================
 
 Resize_FZmain:
 		move.w	#$510,($FFFFF726).w
 
-@cont:
 		cmpi.w	#$2148,($FFFFF700).w
 		bcs.s	loc_72F4
 		addq.b	#2,($FFFFF742).w
@@ -11470,7 +11473,7 @@ Resize_FZmain:
 		bsr	LoadPLC		; load FZ boss patterns
 
 loc_72F4:
-		rts
+		rts	; don't lock screen until you're at the boss
 		bra.w	loc_72C2
 ; ===========================================================================
 
@@ -11499,7 +11502,7 @@ Resize_FZAddBombs:
 		tst.b 	d0
 		bne.s 	@Continue
 
-		;create bomb objects
+		; create bomb objects
 		jsr 	SingleObjLoad
 		move.b 	#$23, (a1)
 		move.w	#$2586, obX(a1)
@@ -11533,8 +11536,49 @@ locret_7322:
 		rts	
 ; ===========================================================================
 
+FZEscape equ $FFFFF734
+
 Resize_FZend2:
+		tst.b	(FZEscape).w		; has escape sequence flag been set?
+		beq.s	@0			; if not, branch
+		addq.b	#2,($FFFFF742).w	; go to escape sequence code
+@0:
 		bra.w	loc_72C2
+; ===========================================================================
+
+Resize_FZEscape:
+		addq.b	#2,($FFFFF742).w	; go to next routine
+		move.w	#$0,($FFFFF72C).w	; unlock controls
+		
+		move.w	#0,($FFFFF728).w	; set left level boundary
+		move.w	#$510,($FFFFF726).w	; set bottom level boundary
+
+		move.w	#$0A00,d0		; replace laser barrier chunk
+		move.w	#$0500,d1
+		move.b	#$46,d2
+		jsr	Sub_ChangeChunk
+
+		move.w	#$91,d0
+		jmp	PlaySound		; play invincibility music (placeholder for now)
+
+Resize_FZEscape2:
+		cmpi.w	#$1000,($FFFFF700).w	; near the falling pit?
+		bhi.s	@0			; if not yet, branch
+		addq.b	#2,($FFFFF742).w	; next routine
+		move.w	#$710,($FFFFF726).w	; lower level boundary
+		move.w	#$1100,($FFFFF72A).w	; prevent going back right
+@0:
+		rts
+		
+Resize_FZEscape3:
+		move.w	#$710,($FFFFF726).w	; lower level boundary
+		cmpi.w	#$500,($FFFFD00C).w	; is Sonic above the FZ section?
+		blo.s	@0			; if not, branch
+		move.w	#$2460,($FFFFF72A).w	; right boundary
+@0:
+		rts
+
+
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Ending sequence dynamic screen resizing
@@ -12377,7 +12421,7 @@ Obj17_Main:				; XREF: Obj17_Index
 		moveq	#0,d6
 
 Obj17_MakeHelix:
-		bsr	SingleObjLoad
+		jsr	SingleObjLoad
 		bne.s	Obj17_Action
 		addq.b	#1,obSubtype(a0)
 		move.w	a1,d5
@@ -13460,7 +13504,7 @@ Map_obj1C:
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Object 1D - Exploding scenery object used in Final Place.
+; Object 1D - Exploding scenery object used in Finalor Place
 ; ---------------------------------------------------------------------------
 
 Obj1D:					; XREF: Obj_Index
@@ -13481,14 +13525,28 @@ Obj1D_Index:	dc.w Obj1D_Main-Obj1D_Index
 Obj1D_Main:				; XREF: Obj1D_Index
 		addq.b	#2,obRoutine(a0)
 
-		moveq	#30,d0		; set base cooldown time to 20 frames
-		move.b	obSubtype(a0),d1	; get object subtype (range: 0-A)
+		clr.b	$34(a0)			; clear flag
+		move.b	obSubtype(a0),d0	; is this the following-Sonic object?
+		bpl.s	@0			; if not, branch
+		move.b	#1,$34(a0)		; set flag
+@0:
+		andi.b	#$F,d0			; remove extra crap
+		move.b	d0,obSubtype(a0)	; store new subtype
+
+		move.b	d0,d1		; get object subtype (range: 0-A)
+		moveq	#30,d0		; set base cooldown time to 30 frames
 		add.b	d1,d1		; multiply it by 2
 		sub.b	d1,d0		; substract from cooldown time
 		move.b	d0,$30(a0)	; backup value
 		move.b	d0,$32(a0)	; backup value
 
 Obj1D_Action:
+		tst.b	$34(a0)			; is this the following-Sonic object?
+		beq.s	@0			; if not, branch
+		move.w	($FFFFD008).w,obX(a0)	; copy Sonic's X position
+		move.w	($FFFFD00C).w,obY(a0)	; copy Sonic's Y position
+
+@0:
 		subq.b	#1,$32(a0)	; substract 1 from cooldown timer
 		bpl.s	Obj1D_ChkDelete	; has the time run out? if not, branch
 		move.b	$30(a0),$32(a0)	; reset cooldown
@@ -13500,17 +13558,24 @@ Obj1D_Action:
 		move.b	#$3F,0(a1)	; load explosion object
 		move.w	obX(a0),obX(a1)
 		move.w	obY(a0),obY(a1)
-		jsr	(RandomNumber).l
 		move.b	#1,$30(a1)
-		move.w	d0,d1
+		
+		; random deviation
+	;	jsr	(RandomNumber).l
+		move.l	($FFFFF636).w,d0
 		moveq	#0,d1
 		move.b	d0,d1
 		subi.w	#$80,d1
-		add.w	d1,obX(a1)
 		lsr.w	#8,d0
+		subi.w	#$50,d0
+		btst	#0,($FFFFFE0F).w
+		beq.s	@set
+		asl.w	#1,d1
+		asl.w	#1,d0
+@set:
+		add.w	d1,obX(a1)
 		add.w	d0,obY(a1)
-		subi.w	#$50,obY(a1)
-
+	
 Obj1D_ChkDelete:				; XREF: Obj1D_Index
 		move.w	obX(a0),d0
 		andi.w	#$FF80,d0
@@ -13537,7 +13602,7 @@ Obj2A:					; XREF: Obj_Index
 ; ===========================================================================
 Obj2A_Index:	dc.w Obj2A_Main-Obj2A_Index
 		dc.w Obj2A_OpenShut-Obj2A_Index
-		dc.w Obj2A_OpenShutSBZ-Obj2A_Index
+		dc.w Obj2A_OpenShutTutorial-Obj2A_Index
 ; ===========================================================================
 
 Obj2A_Main:				; XREF: Obj2A_Index
@@ -13571,9 +13636,19 @@ Obj2A_Main:				; XREF: Obj2A_Index
 		addq.b	#2,obRoutine(a0)
 		move.b	#1,obAnim(a0)
 		move.w	#$4000+($8000/$20),obGfx(a0)
-		bra.w	Obj2A_OpenShutSBZ
+		bra.w	Obj2A_OpenShutTutorial
 
 Obj2A_OpenShut:				; XREF: Obj2A_Index
+		tst.b	(FZEscape).w
+		beq.s	@0
+		cmpi.w	#$246A,obX(a0)
+		bne.s	@0
+		move.b	#$3F,(a0)
+		move.b	#0,obRoutine(a0)
+		rts
+@0:
+
+
 		cmpi.w	#$400,($FFFFFE10).w	; is level SYZ1 (overworld)?
 		bne.s	Obj2A_NotSYZ1		; if not, branch
 
@@ -13668,11 +13743,8 @@ Obj2A_MarkAsUsed:
 		jmp	MarkObjGone
 ; ===========================================================================
 
-Obj2A_OpenShutSBZ:
-	;	tst.b	obAnim(a0)
-	;	beq.s	Obj2A_Animate
+Obj2A_OpenShutTutorial:
 		move.w	($FFFFD008).w,d0
-	;	subi.w	#$40,d0
 		cmp.w	obX(a0),d0
 		blt.s	Obj2A_Open
 		move.b	#0,obAnim(a0)		; use "closing"	animation
@@ -16520,6 +16592,14 @@ Obj4B_Index:	dc.w Obj4B_Main-Obj4B_Index
 ; ===========================================================================
 
 Obj4B_Main:				; XREF: Obj4B_Index
+		tst.b	(FZEscape).w
+		beq.s	@0
+		tst.b	obSubtype(a0)	; is this the skip ring?
+		bmi.s	@0		; if not, branch
+		move.b	#$3F,(a0)	; turn into explosion
+		move.b	#0,obRoutine(a0)
+		rts
+@0:
 		move.w	obY(a0),$34(a0)
 		move.b	#5,$37(a0)
 		move.b	#5,$38(a0)
@@ -16706,7 +16786,7 @@ Obj4B_PlaySnd:
 Obj4B_Delete:				; XREF: Obj4B_Index
 		bsr.w	Obj4B_Animate		; still animate ring
 
-		cmpi.w	#$501,($FFFFFE10).w	; is this the tutorial?
+		cmpi.b	#$5,($FFFFFE10).w	; is this the tutorial/finalor?
 		beq.s	@conty			; if yes, branch
 
 		cmpi.w	#$302,($FFFFFE10).w	; is this Star Agony Place? (easter egg ring)
@@ -16745,16 +16825,15 @@ Obj4B_Delete:				; XREF: Obj4B_Index
 ; Misc loading logic
 
 Obj4B_LoadLevel:
-		tst.b	obRender(a0)			; is ring still on screen?
+		tst.b	obRender(a0)		; is ring still on screen?
 		bmi.w	Obj4B_Return		; if yes, branch
 		
-		cmpi.w	#$501,($FFFFFE10).w	; is this the tutorial?
+		cmpi.b	#$5,($FFFFFE10).w	; is this the tutorial/finalor?
 		bne.s	Obj4B_SNZ		; if not, branch
-	;	move.b	#$28,($FFFFF600).w	; load chapters screen
-	;	move.b	#$E0,d0			; fade out music
-	;	jmp	PlaySound_Special
 		move.w	#$400,($FFFFFE10).w	; set level to Uberhub
-		bra.w	Obj4B_PlayLevel		; play level
+		cmpi.w	#$502,($FFFFFE10).w	; is this also finalor?
+		bne.w	Obj4B_PlayLevel		; if not, branch
+		jmp	FinalBoss_Exit		; this stuff was originally part of the FZ boss
 
 Obj4B_SNZ:
 		cmpi.w	#$302,($FFFFFE10).w	; is this the easter egg ring in Star Agony Place?
@@ -42991,7 +43070,11 @@ loc_19E3E:
 
 loc_19E5A:
 		move.w	#0,$34(a0)
+	if DebugModeDefault=1
+		move.b	#1,obColProp(a0)	; set number of	hits to	1
+	else
 		move.b	#30,obColProp(a0)	; set number of	hits to	30
+	endif
 		move.b	obColProp(a0),($FFFFFF68).w
 		move.w	#-1,$30(a0)
 
@@ -43381,19 +43464,27 @@ loc_1A23A:
 loc_1A248:
 		cmpi.w	#$29D0,obX(a0)
 		bcs.s	loc_1A260
-		tst.b	obRender(a0)
-		bmi.s	loc_1A260
 
+		tst.b	obRender(a0)		; has Eggman object been deleted after the crash cutscene?
+		bmi.s	loc_1A260		; if not, branch
+		move.b	#1,(FZEscape).w	; set final sequence flag
+		move.b	#0,($FFFFF7CC).w
+		bra.w	Obj85_Delete
+; ===========================================================================
+
+; Used to be called right after the cutscene after the final boss finishes,
+; now it's called from Obj4B
+FinalBoss_Exit:
 		bset	#6,($FFFFFF8B).w	; unlock door to the credits
 		
 		btst	#2,($FFFFFF92).w	; is Skip Uberhub Place enabled?
-		bne.s	@cont			; if yes, go directly to ending sequence instead of back to Uberhub
+		bne.s	@straighttoend		; if yes, go directly to ending sequence instead of back to Uberhub
 		move.w	#$400,($FFFFFE10).w	; set level to SYZ1
 		move.b	#$C,($FFFFF600).w	; set game mdoe to level
 		move.w	#1,($FFFFFE02).w	; restart level
 		bra.w	Obj85_Delete
 
-@cont:
+@straighttoend:
 		move.b	#$20,($FFFFF600).w	; load info screen
 		move.b	#8,($FFFFFF9E).w	; set number for text to 8
 		move.b	#$9D,d0			; play ending sequence music
@@ -43458,9 +43549,9 @@ loc_1A2E4:
 		cmpi.w 	#$0600, obY(a0)
 		bge.s	@Crash
 
-		jsr		ObjectFall
+		jsr	ObjectFall
 		subi.w 	#$35, obVelY(a0)
-		jsr		SpeedToPos
+		jsr	SpeedToPos
 
 		; move.w	obX(a0),obX(a1)
 		move.w	obY(a0),obY(a1)
@@ -43468,10 +43559,10 @@ loc_1A2E4:
 
 @Crash:
 		move.b 	#$B9,d0
-		jsr		PlaySound_Special
+		jsr	PlaySound_Special
 
-		jsr		WhiteFlash2
-		jsr		DeleteObject
+		jsr	WhiteFlash2
+		jsr	DeleteObject
 
 @NoFall:
 		move.b	#1,obAnim(a0)
@@ -49896,7 +49987,7 @@ Sound_E1:
 		jsr	sub_72764(pc)	; Write to YM2612 Port 1 (for FM6) [sub_72764]
 
 		lea	(SegaPCM).l,a2			; Load the SEGA PCM sample into a2. It's important that we use a2 since a0 and a1 are going to be used up ahead when reading the joypad ports 
-		move.l	#$6978,d3			; Load the size of the SEGA PCM sample into d3 
+		move.l	#SegaPCM_End-SegaPCM,d3		; Load the size of the SEGA PCM sample into d3 
 		move.b	#$2A,($A04000).l		; $A04000 = $2A -> Write to DAC channel	  
 
 PlayPCM_Loop:	  
@@ -51881,7 +51972,7 @@ SoundDF:	incbin	sound\soundNULL.bin
 		even
 
 SegaPCM:	incbin	sound\segapcm.wav
-		even
+SegaPCM_End:	even
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------

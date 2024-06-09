@@ -170,10 +170,12 @@ ErrorTrap:
 ; ===========================================================================
 
 EntryPoint:
-		tst.l	($A10008).l	; test port A control
-		bne.s	PortA_Ok
-		tst.w	($A1000C).l	; test port C control
-PortA_Ok:	bne.s	PortC_Ok
+		; soft-reset functionality
+		; (disabled because it raises a ton of bugs I'm too lazy to fix :V)
+	;	tst.l	($A10008).l	; test port A control
+	;	bne.s	PortA_Ok
+	;	tst.w	($A1000C).l	; test port C control
+;PortA_Ok:	bne.s	PortC_Ok
 
 		lea	SetupValues(pc),a5
 		movem.w	(a5)+,d5-d7
@@ -30369,22 +30371,94 @@ Obj03_BackgroundColor:
 		andi.w	#$0EEE,d1
 
 @applybgcolor:
-		move.w	d1,($FFFFFB5E).w	; apply color (color 16 of palette row 3)
+		move.w	d1,d0		; base color
+		
+		moveq	#0,d1
+		move.w	($FFFFFE0E).w,d2
+		btst	#5,d2
+		beq.s	@getmask
+		lsr.w	#1,d2
+		andi.w	#$1E,d2
+		move.w	d2,d1
+@getmask:
+		move.w	Obj03_BGCycleColors_BW(pc,d1.w),d1	; mask
+
+		bsr.w	Pal_LimitColor
+
+		move.w	d3,($FFFFFB5E).w	; apply color (color 16 of palette row 3)
 		rts
 ; ---------------------------------------------------------------------------
 Obj03_BG:
-		dc.w	$2E6	; GHP
-		dc.w	$E6E	; SP
-		dc.w	$06E	; RP
-		dc.w	$EA4	; LP
-		dc.w	$E4A	; UP
+		dc.w	$2E4	; GHP
+		dc.w	$E2E	; SP
+		dc.w	$02E	; RP
+		dc.w	$EA2	; LP
+		dc.w	$E2A	; UP
 		dc.w	$E24	; SAP
-		dc.w	$444	; FP
+		dc.w	$000	; FP
 		dc.w	$000	; invalid
+		even
+; ---------------------------------------------------------------------------
+Obj03_BGCycleColors_BW:
+		dc.w	$A88
+		dc.w	$866
+		dc.w	$A88
+		dc.w	$866
+		dc.w	$A88
+		dc.w	$866
+		
+		dc.w	$A88
+		dc.w	$866
+		dc.w	$A88
+		dc.w	$866
+		dc.w	$A88
+		dc.w	$866
+		dc.w	$A88
+		dc.w	$866
+
+		dc.w	$644
+		dc.w	$866
+		
+		dc.w	  -1
 		even
 ; ===========================================================================
 
+; Take a color and apply a limit to each individual channel.
+; d0 = base color
+; d1 = mask color
+; out: d3
+Pal_LimitColor:
+		moveq	#0,d3		; limited color
+		
+		move.w	d1,d4		; copy mask color
+		andi.w	#$00E,d4	; limit mask color
+		move.w	d0,d5		; copy theme color
+		andi.w	#$00E,d5
+		cmp.w	d5,d4
+		bls.s	@0
+		move.w	d5,d4
+@0		or.w	d4,d3
 
+		move.w	d1,d4		; copy mask color
+		andi.w	#$0E0,d4	; limit mask color
+		move.w	d0,d5		; copy theme color
+		andi.w	#$0E0,d5
+		cmp.w	d5,d4
+		bls.s	@1
+		move.w	d5,d4
+@1		or.w	d4,d3
+
+		move.w	d1,d4		; copy mask color
+		andi.w	#$E00,d4	; limit mask color
+		move.w	d0,d5		; copy theme color
+		andi.w	#$E00,d5
+		cmp.w	d5,d4
+		bls.s	@2
+		move.w	d5,d4
+@2		or.w	d4,d3
+		rts
+
+; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Sprite mappings - Level Signs
 ; ---------------------------------------------------------------------------

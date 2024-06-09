@@ -853,11 +853,11 @@ Hint_6:
 Hint_7:
 	boxtxt	"dying sucks"
 	dc.b	_br
-	boxtxt	"DON'T WORRY THOUGH,"
-	boxtxt	"THERE ARE no lives,"
-	boxtxt	"IN THIS GAME. SO,"
-	boxtxt	"FEEL FREE TO GO"
-	boxtxt	"ABSOLUTELY CRAZY!"
+	boxtxt	"SOME TRIAL AND ERROR"
+	boxtxt	"MIGHT BE NECESSARY."
+	boxtxt	"THERE ARE ABSOLUTELY"
+	boxtxt	"no lives ANYWHERE IN"
+	boxtxt	"IN THIS GAME THOUGH!"
 	dc.b	_br,_pause,_cls
 	boxtxt	"FURTHERMORE, TO NOT"
 	boxtxt	"WASTE YOUR TIME,"

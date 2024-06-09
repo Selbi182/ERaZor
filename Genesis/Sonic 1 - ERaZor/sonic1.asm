@@ -12377,7 +12377,7 @@ Obj17_Main:				; XREF: Obj17_Index
 		moveq	#0,d6
 
 Obj17_MakeHelix:
-		bsr	SingleObjLoad
+		jsr	SingleObjLoad
 		bne.s	Obj17_Action
 		addq.b	#1,obSubtype(a0)
 		move.w	a1,d5
@@ -19576,7 +19576,7 @@ loc_BDD6:
 @PlaySound:
 		move.w	#$C3,d0			; play giant ring sound (this is when you get the stars)
 		jsr	(PlaySound).l
-		bra.s	Obj32_ShowPressed
+		bra.w	Obj32_ShowPressed
 @cont2:
 		cmpi.b	#$83,obSubtype(a0)		; was third switch pressed? (for horizontal stomper)
 		bne.s	@notmzswitch
@@ -19621,7 +19621,7 @@ loc_BDD6:
 		move.b	#$96,d0			; play music
 		jsr	PlaySound
 		
-		bsr.s	SetupSAPItems
+		bsr.w	SetupSAPItems
 
 Obj32_ShowPressed:
 		bset	d3,(a3)
@@ -19644,7 +19644,6 @@ Obj32_Display:
 ; ===========================================================================
 
 ChangePaletteRP:
-		
 		lea 	($FFFFFB48).w, a2
 		moveq 	#3, d0
 
@@ -19661,8 +19660,34 @@ ChangePaletteRP:
 
 		subi.b 	#2,($FFFFFB7C).w ; cloud extra
 		subi.b 	#2,($FFFFFB40).w ; sky
-		move.w	#$0008,($FFFFFB6A).w ;lava
-		move.w	#$004E,($FFFFFB6C).w ;lava
+		move.w	#$0008,($FFFFFB6A).w ; lava
+		move.w	#$004E,($FFFFFB6C).w ; lava
+
+		jsr		WhiteFlash2
+
+		rts
+
+; ===========================================================================
+
+RestorePaletteRP:
+		lea 	($FFFFFB48).w, a2
+		moveq 	#3, d0
+
+@SubtractGraysLoop:
+		addi.w 	#$0222, (a2)+
+		dbf 	d0, @SubtractGraysLoop
+
+		lea 	($FFFFFB72).w, a2
+		moveq	#2, d0
+
+@SubtractBluesLoop:
+		addi.w 	#$0200, (a2)+
+		dbf 	d0, @SubtractBluesLoop
+
+		addi.b 	#2,($FFFFFB7C).w ; cloud extra
+		addi.b 	#2,($FFFFFB40).w ; sky
+		move.w	#$0228,($FFFFFB6A).w ; lava
+		move.w	#$026C,($FFFFFB6C).w ; lava
 
 		jsr		WhiteFlash2
 
@@ -21341,9 +21366,9 @@ Obj36_Hurt:				; XREF: Obj36_SideWays; Obj36_Upright
 		tst.b	($FFFFFE2D).w	; is Sonic invincible?
 		bne.w	Obj36_Display	; if yes, branch
 		tst.b	($FFFFFFE7).w		; is inhuman mode on?
-		beq.s	Obj36_NotInhuman2	; if not, branch
+		beq.w	Obj36_NotInhuman2	; if not, branch
 		cmpi.w	#$200,($FFFFFE10).w	; is level MZ1?
-		bne.s	Obj36_NotInhuman2	; if not, branch
+		bne.w	Obj36_NotInhuman2	; if not, branch
 		
 		btst	#4,($FFFFFF92).w	; is nonstop inhuman enabled?
 		bne.s	Obj36_NotInhuman2
@@ -21362,7 +21387,12 @@ Obj36_Hurt:				; XREF: Obj36_SideWays; Obj36_Upright
 @cont:
 		cmpi.b	#2,($FFFFFF73).w	; has second checkpoint been reached?
 		bhs.s	@cont2
+		move.b	($FFFFFF6C).w,d0
 		clr.b	($FFFFFF6C).w		; clear the "switch has been pressed" flags
+		btst	#1, d0
+		beq.s	@cont2
+		jsr		RestorePaletteRP
+
 @cont2:
 		clr.w	($FFFFD010).w		; clear X-speed
 		clr.w	($FFFFD012).w		; clear Y-speed

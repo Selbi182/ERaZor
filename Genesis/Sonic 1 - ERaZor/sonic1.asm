@@ -820,6 +820,8 @@ loc_B9A:
 loc_BBA:
 		move.w	#1,($FFFFF644).w
 
+		tst.b	($FFFFF64E).w
+		bne.s	loc_BFE
 		lea	($C00004).l,a5
 		move.l	#$94009340,(a5)
 		move.l	#$96FD9580,(a5)
@@ -840,15 +842,21 @@ loc_BFE:				; XREF: loc_BC8
 		move.w	($FFFFF640).w,(a5)
 
 loc_C22:				; XREF: loc_BC8
+		cmpi.b	#1,($FFFFFE10).w
+		bne.s	@0
 		move.w	($FFFFF624).w,(a5)
-		move.b	($FFFFF625).w,($FFFFFE07).w
+@0:		move.b	($FFFFF625).w,($FFFFFE07).w
 
 		bra.w	VBlank_Exit
 ; ===========================================================================
 
 loc_C32:				; XREF: VBlankTable
 		bsr	sub_106E
-		move.b	($FFFFF625).w,($FFFFFE07).w
+		cmpi.b	#1,($FFFFFE10).w
+		bne.s	@0
+		move.w	($FFFFF624).w,(a5)
+@0:		move.b	($FFFFF625).w,($FFFFFE07).w
+
 
 loc_C36:				; XREF: VBlankTable
 		tst.w	($FFFFF614).w
@@ -861,7 +869,11 @@ locret_C42:
 
 loc_C44:				; XREF: VBlankTable
 		bsr	sub_106E
-		move.b	($FFFFF625).w,($FFFFFE07).w
+		cmpi.b	#1,($FFFFFE10).w
+		bne.s	@0
+		move.w	($FFFFF624).w,(a5)
+@0:		move.b	($FFFFF625).w,($FFFFFE07).w
+
 		bsr	sub_6886
 		bsr	sub_1642
 		tst.w	($FFFFF614).w
@@ -874,7 +886,11 @@ locret_C5C:
 
 loc_C5E:				; XREF: VBlankTable
 		bsr	sub_106E
-		move.b	($FFFFF625).w,($FFFFFE07).w
+		cmpi.b	#1,($FFFFFE10).w
+		bne.s	@0
+		move.w	($FFFFF624).w,(a5)
+@0:		move.b	($FFFFF625).w,($FFFFFE07).w
+
 		rts	
 ; ===========================================================================
 
@@ -907,8 +923,11 @@ loc_CB0:				; XREF: loc_C76
 		move.w	($FFFFF640).w,(a5)
 
 loc_CD4:				; XREF: loc_C76
+		cmpi.b	#1,($FFFFFE10).w
+		bne.s	@0
 		move.w	($FFFFF624).w,(a5)
-		move.b	($FFFFF625).w,($FFFFFE07).w
+@0:		move.b	($FFFFF625).w,($FFFFFE07).w
+
 		lea	($C00004).l,a5
 		move.l	#$940193C0,(a5)
 		move.l	#$96E69500,(a5)
@@ -1000,8 +1019,11 @@ loc_EB4:				; XREF: loc_E7A
 		move.w	($FFFFF640).w,(a5)
 
 loc_ED8:				; XREF: loc_E7A
+		cmpi.b	#1,($FFFFFE10).w
+		bne.s	@0
 		move.w	($FFFFF624).w,(a5)
-		move.b	($FFFFF625).w,($FFFFFE07).w
+@0:		move.b	($FFFFF625).w,($FFFFFE07).w
+
 		lea	($C00004).l,a5
 		move.l	#$940193C0,(a5)
 		move.l	#$96E69500,(a5)
@@ -1034,7 +1056,11 @@ loc_F54:
 
 loc_F8A:				; XREF: VBlankTable
 		bsr	sub_106E
-		move.b	($FFFFF625).w,($FFFFFE07).w
+		cmpi.b	#1,($FFFFFE10).w
+		bne.s	@0
+		move.w	($FFFFF624).w,(a5)
+@0:		move.b	($FFFFF625).w,($FFFFFE07).w
+
 		addq.b	#1,($FFFFF628).w
 		move.b	#$E,($FFFFF62A).w
 		rts	
@@ -1042,8 +1068,11 @@ loc_F8A:				; XREF: VBlankTable
 
 loc_F9A:				; XREF: VBlankTable
 		bsr	sub_106E
+		cmpi.b	#1,($FFFFFE10).w
+		bne.s	@0
 		move.w	($FFFFF624).w,(a5)
-		move.b	($FFFFF625).w,($FFFFFE07).w
+@0:		move.b	($FFFFF625).w,($FFFFFE07).w
+
 		bra.w	sub_1642
 ; ===========================================================================
 

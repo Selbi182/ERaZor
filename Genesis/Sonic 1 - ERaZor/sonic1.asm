@@ -10776,15 +10776,17 @@ GHZ3Add = $2700
 
 Resize_GHZ3main:
 		move.w	#$410,($FFFFF726).w	; set lower y-boundary
+
 		cmpi.w	#$2700,($FFFFF700).w	; has the camera reached $2700 on x-axis?
 		bcs.s	locret_6E96		; if not, branch
+		move.w	#$300,($FFFFF726).w	; set lower y-boundary
 
-		move.w	#$300,($FFFFF726).w ; set lower	y-boundary
-		cmpi.w	#$1780+GHZ3Add,($FFFFF700).w ; has the camera reached $1780 on x-axis?
-		bcs.s	locret_6E96	; if not, branch
-		move.w	#$400,($FFFFF726).w ; set lower	y-boundary
-		cmpi.w	#$2700+GHZ3Add,($FFFFF700).w
-		bcc.s	loc_6E98
+		cmpi.w	#$1780+GHZ3Add,($FFFFF700).w	; has the camera reached $1780 on x-axis?
+		bcs.s	locret_6E96			; if not, branch
+		move.w	#$400,($FFFFF726).w		; set lower y-boundary
+
+		cmpi.w	#$27D0+GHZ3Add,($FFFFD008).w	; is Sonic near boss?
+		bcc.s	loc_6E98			; if yes, branch
 		
 locret_6E96:
 		rts
@@ -10798,11 +10800,8 @@ loc_6E98:
 
 Resize_GHZ3boss:
 		move.w	#$300,($FFFFF726).w
-		cmpi.w	#$2700+GHZ3Add,($FFFFF700).w
-		bcc.s	loc_6EB0
-		subq.b	#2,($FFFFF742).w
+		move.w	($FFFFF700).w,($FFFFF728).w
 
-loc_6EB0:
 		cmpi.w	#$2960+GHZ3Add,($FFFFF700).w
 		bcs.s	locret_6EE8
 		jsr	SingleObjLoad
@@ -17584,7 +17583,7 @@ Sonic_TopSpeed_Water 		= Sonic_TopSpeed / 2
 Sonic_Acceleration_Water	= Sonic_Acceleration / 2
 Sonic_Deceleration_Water	= Sonic_Deceleration / 2
 
-Sonic_TopSpeed_Shoes		= Sonic_TopSpeed * 2
+Sonic_TopSpeed_Shoes		= Sonic_TopSpeed + $680
 Sonic_Acceleration_Shoes	= Sonic_Acceleration * 2
 Sonic_Deceleration_Shoes	= Sonic_Deceleration * 2
 ; ---------------------------------------------------------------------------
@@ -17594,6 +17593,7 @@ Obj2E_ChkShoes:
 		bne.s	Obj2E_ChkShield
 		move.b	#1,($FFFFFE2E).w ; speed up the	BG music
 		move.w	#$4B0,($FFFFD034).w ; time limit for the power-up
+		
 		move.w	#Sonic_TopSpeed_Shoes,($FFFFF760).w ; change Sonic's top speed
 		move.w	#Sonic_Acceleration_Shoes,($FFFFF762).w
 		move.w	#Sonic_Deceleration_Shoes,($FFFFF764).w
@@ -31569,6 +31569,9 @@ Obj01_ChkGoggles:
 Obj01_ChkShoes:
 		tst.b	($FFFFFE2E).w	; does Sonic have speed	shoes?
 		beq.s	Obj01_ExitChk	; if not, branch
+		move.w	#Sonic_TopSpeed_Shoes,($FFFFF760).w ; change Sonic's top speed
+		move.w	#Sonic_Acceleration_Shoes,($FFFFF762).w
+		move.w	#Sonic_Deceleration_Shoes,($FFFFF764).w
 		tst.w	$34(a0)		; check	time remaining
 		beq.s	Obj01_ExitChk
 		subq.w	#1,$34(a0)	; subtract 1 from time

@@ -11554,6 +11554,10 @@ Resize_FZend2:
 		blo.s	@0
 		addq.b	#2,($FFFFF742).w	; go to escape sequence code
 
+		vram	$93A0			; load prison capsule graphics
+		lea	(Nem_Prison).l,a0
+		jsr	NemDec
+
 @0:
 		bra.w	loc_72C2
 ; ===========================================================================
@@ -12076,24 +12080,24 @@ Obj11_DelLoop:
 		movea.l	d0,a1
 		cmp.w	a0,d0
 		beq.s	loc_791E
-		jsr		DeleteObject2
+		jsr	DeleteObject2
 
 loc_791E:
 		dbf	d2,Obj11_DelLoop ; repeat d2 times (bridge length)
 
 Obj11_Delete:
-		jsr		DeleteObject
-		rts	
+		jsr	DeleteObject
+		rts
 ; ===========================================================================
 
 Obj11_Delete2:				; XREF: Obj11_Index
-		jsr		DeleteObject
-		rts	
+		jsr	DeleteObject
+		rts
 ; ===========================================================================
 
 Obj11_Display2:				; XREF: Obj11_Index
-		bsr	DisplaySprite
-		rts	
+		jsr	DisplaySprite
+		rts
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Sprite mappings - GHZ	bridge
@@ -20449,6 +20453,22 @@ Obj34_NoMainLevel:
 
 Obj34_MakeSprite:
 		move.b	d0,obFrame(a1)		; display frame	number d0
+		
+		movem.l	d0-d2/a0-a2,-(sp)	; need to read joypads now...
+		jsr	ReadJoypads		; ...because at this point...
+		movem.l	(sp)+,d0-d2/a0-a2	; ...controls are still locked
+
+		cmpi.b	#$70,($FFFFF604).w	; exactly ABC held?
+		bne.s	@0			; if not, branch
+		cmpi.b	#4,$3F(a1)		; is current object the Oval?
+		beq.s	@0			; if yes, branch
+		move.b	#6,obFrame(a1)		; PLACE PLACE PLACE
+		cmpi.b	#3,$3F(a1)		; is this the Act?
+		bne.s	@0			; if not, branch
+		addi.w	#$28,$30(a1)		; adjust target X position
+		subi.w	#$1A,obScreenY(a1)	; adjust Y positon
+@0:
+	
 		move.l	#Map_obj34,obMap(a1)
 		move.w	#$855C,obGfx(a1)
 		cmpi.b	#$10,($FFFFF600).w	; is current level a special stage?
@@ -20536,7 +20556,7 @@ Obj34_ChkPos2:				; XREF: Obj34_Wait
 		subq.w	#MoveOffSpeedY,obScreenY(a0)
 		subq.w	#MoveOffSpeedX,obX(a0)
 		cmpi.w	#$40,obX(a0)
-		blt.s	Obj34_ChangeArt
+		blt.w	Obj34_ChangeArt
 		bra.w	Obj34_Display
 
 Obj34_NotIsZone:

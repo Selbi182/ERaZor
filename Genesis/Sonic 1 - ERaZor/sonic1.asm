@@ -24,8 +24,8 @@
 ; ------------------------------------------------------
 ; Developer Assembly Options
 ; ------------------------------------------------------
-QuickLevelSelect = 0
-QuickLevelSelect_ID = $302
+QuickLevelSelect = 1
+QuickLevelSelect_ID = $502
 
 DebugModeDefault = 1
 DieInDebug = 0
@@ -11456,8 +11456,10 @@ Resize_FZ:
 ; ===========================================================================
 ResizeFZ_Index:	dc.w Resize_FZmain-ResizeFZ_Index, Resize_FZboss-ResizeFZ_Index
 		dc.w Resize_FZend-ResizeFZ_Index, Resize_FZAddBombs-ResizeFZ_Index
-		dc.w locret_7322-ResizeFZ_Index, Resize_FZend2-ResizeFZ_Index
+		dc.w locret_7322-ResizeFZ_Index
 
+		dc.w Resize_FZend2-ResizeFZ_Index
+		dc.w Resize_FZEscape_Nuke-ResizeFZ_Index
 		dc.w Resize_FZEscape-ResizeFZ_Index
 		dc.w Resize_FZEscape2-ResizeFZ_Index
 		dc.w Resize_FZEscape3-ResizeFZ_Index
@@ -11539,24 +11541,57 @@ locret_7322:
 FZEscape equ $FFFFF734
 
 Resize_FZend2:
-		tst.b	(FZEscape).w		; has escape sequence flag been set?
+		tst.b	(FZEscape).w		; has escape sequence flag been set? (Eggman object deleted after crash)
 		beq.s	@0			; if not, branch
+		
+		; move camera to the right
+		moveq	#1,d0
+		add.w	d0,($FFFFF700).w
+		add.w	d0,($FFFFF728).w
+		add.w	d0,($FFFFF72A).w
+		
+		cmpi.w	#$27C0,($FFFFF700).w
+		blo.s	@0
 		addq.b	#2,($FFFFF742).w	; go to escape sequence code
+
 @0:
 		bra.w	loc_72C2
 ; ===========================================================================
 
+Resize_FZEscape_Nuke:
+		move.w	#$28C0,($FFFFF72A).w		; right boundary
+		move.w	($FFFFF700).w,($FFFFF728).w	; lock left boundary as you walk right
+		
+		tst.b	($FFFFFFA5).w		; egg prison opened?
+		beq.s	@0			; if not, branch
+		
+		addq.b	#2,($FFFFF742).w	; go to next routine	
+		move.w	#0,($FFFFF72C).w	; unlock controls
+
+@0:
+		rts
+; ===========================================================================
+
 Resize_FZEscape:
 		addq.b	#2,($FFFFF742).w	; go to next routine
-		move.w	#$0,($FFFFF72C).w	; unlock controls
-		
+		move.b	#2,(FZEscape).w		; enable exploding scenery
+
+	;	move.w	#0,($FFFFF72C).w	; unlock controls
 		move.w	#0,($FFFFF728).w	; set left level boundary
 		move.w	#$510,($FFFFF726).w	; set bottom level boundary
-
+		
 		move.w	#$0A00,d0		; replace laser barrier chunk
 		move.w	#$0500,d1
 		move.b	#$46,d2
 		jsr	Sub_ChangeChunk
+		
+		; move Sonic left after explosion
+		move.b	#4,($FFFFD024).w
+		move.b	#$1A,($FFFFD01C).w
+		bset	#1,($FFFFD022).w
+		move.w	#-$800,($FFFFD010).w
+		subq.w	#1,($FFFFD008).w
+		move.w	#-$480,($FFFFD012).w
 
 		move.w	#$91,d0
 		jmp	PlaySound		; play invincibility music (placeholder for now)
@@ -11567,7 +11602,9 @@ Resize_FZEscape2:
 		addq.b	#2,($FFFFF742).w	; next routine
 		move.w	#$710,($FFFFF726).w	; lower level boundary
 		move.w	#$1100,($FFFFF72A).w	; prevent going back right
+		rts
 @0:
+		move.w	($FFFFF700).w,($FFFFF72A).w	; lock right boundary as you walk left
 		rts
 		
 Resize_FZEscape3:
@@ -13543,10 +13580,23 @@ Obj1D_Main:				; XREF: Obj1D_Index
 Obj1D_Action:
 		tst.b	$34(a0)			; is this the following-Sonic object?
 		beq.s	@0			; if not, branch
+		cmpi.b	#2,(FZEscape).w		; is escape sequence already set?
+		bhs.s	@updatepos		; if yes, branch
+		rts
+
+@updatepos:
 		move.w	($FFFFD008).w,obX(a0)	; copy Sonic's X position
 		move.w	($FFFFD00C).w,obY(a0)	; copy Sonic's Y position
+		bra.s	@1
 
 @0:
+		tst.b	$34(a0)			; is this the following-Sonic object?
+		bne.s	@1			; if yes, branch
+		tst.b	(FZEscape).w		; is escape sequence already set?
+		beq.s	@1			; if not, branch
+		jmp	DeleteObject		; delete the static scenery objects during the escape
+		
+@1:
 		subq.b	#1,$32(a0)	; substract 1 from cooldown timer
 		bpl.s	Obj1D_ChkDelete	; has the time run out? if not, branch
 		move.b	$30(a0),$32(a0)	; reset cooldown
@@ -28378,6 +28428,8 @@ Obj5F_Explode:				; XREF: Obj5F_Index2
 
 		cmpi.b	#1,($FFFFFFA9).w
 		bne.s	locret_11AD0
+		
+		; stuff that gets run when the bomb boss starts for real
 		move.b	#2,($FFFFFFA9).w
 		move.b	#4,($FFFFD024).w
 		move.b	#$1A,($FFFFD01C).w
@@ -32252,18 +32304,18 @@ Sonic_LevelBound:			; XREF: Obj01_MdNormal; et al
 		asl.l	#8,d0
 		add.l	d0,d1
 		swap	d1
+
 		move.w	($FFFFF728).w,d0
 		addi.w	#$10,d0
-		cmp.w	d1,d0		; has Sonic touched the	side boundary?
+		cmp.w	d1,d0		; has Sonic touched the	left side boundary?
 		bhi.w	Boundary_Sides	; if yes, branch
+
 		move.w	($FFFFF72A).w,d0
 		addi.w	#$128,d0
-		tst.b	($FFFFF7AA).w
-		bne.s	loc_13332
+		tst.b	($FFFFF7AA).w	; is boss mode on?
+		bne.s	@notboss	; if yes, branch
 		addi.w	#$40,d0
-
-loc_13332:
-		cmp.w	d1,d0		; has Sonic touched the	side boundary?
+@notboss:	cmp.w	d1,d0		; has Sonic touched the	right side boundary?
 		bls.w	Boundary_Sides	; if yes, branch
 
 loc_13336:
@@ -43101,7 +43153,7 @@ loc_19E3E:
 loc_19E5A:
 		move.w	#0,$34(a0)
 	if DebugModeDefault=1
-		move.b	#1,obColProp(a0)	; set number of	hits to	1
+		move.b	#0,obColProp(a0)	; set number of	hits to	1
 	else
 		move.b	#30,obColProp(a0)	; set number of	hits to	30
 	endif
@@ -43419,9 +43471,9 @@ loc_1A15C:
 		jsr	AnimateSprite
 
 loc_1A166:
-		cmpi.w	#$2700,($FFFFF72A).w
-		bge.s	loc_1A172
-		addq.w	#2,($FFFFF72A).w
+	;	cmpi.w	#$2700,($FFFFF72A).w
+	;	bge.s	loc_1A172
+		move.w	#$2860,($FFFFF72A).w	; set right boundary after defeating the FZ boss
 
 loc_1A172:
 		cmpi.b	#$C,$34(a0)
@@ -43477,13 +43529,16 @@ loc_1A210:
 		move.b	#$F,obColType(a0)
 
 loc_1A216:
-		cmpi.w	#$2790,($FFFFD008).w
+		; cutscene after hitting eggman one last time
+		cmpi.w	#$27B0,($FFFFD008).w
 		blt.s	loc_1A23A
-		move.b	#1,($FFFFF7CC).w
-		move.w	#0,($FFFFF602).w
-		clr.w	($FFFFD014).w
-		tst.w	obVelY(a0)
-		bpl.s	loc_1A248
+		move.b	#1,($FFFFF7CC).w	; lock controls
+		move.w	#0,($FFFFF602).w	; clear inputs
+		clr.w	($FFFFD014).w		; clear inertia
+		
+		move.w	($FFFFD00C).w,d0
+		cmp.w	obY(a0),d0
+		blo.s	loc_1A248
 		move.w	#$100,($FFFFF602).w
 
 loc_1A23A:
@@ -43497,8 +43552,10 @@ loc_1A248:
 
 		tst.b	obRender(a0)		; has Eggman object been deleted after the crash cutscene?
 		bmi.s	loc_1A260		; if not, branch
-		move.b	#1,(FZEscape).w	; set final sequence flag
-		move.b	#0,($FFFFF7CC).w
+		move.b	#1,(FZEscape).w		; set final sequence flag
+		move.b	#0,($FFFFF7CC).w	; unlock controls
+		move.w	#$E0,d0
+		jsr	PlaySound		; fade out music
 		bra.w	Obj85_Delete
 ; ===========================================================================
 
@@ -44334,10 +44391,10 @@ Obj3E_Not02:
 Obj3E_BodyMain:				; XREF: Obj3E_Index
 		cmpi.b	#2,($FFFFF7A7).w
 		beq.s	Obj3E_ChkOpened
-		move.w	#$2B,d1
-		move.w	#$18,d2
-		move.w	#$18,d3
-		move.w	obX(a0),d4
+		move.w	#43,d1		; width
+		move.w	#24*3-8,d2	; height / 2 (when jumping)
+		move.w	#24*3-8,d3	; height / 2 (when walking)
+		move.w	obX(a0),d4	; x-axis position
 		jmp	SolidObject
 ; ===========================================================================
 
@@ -44366,14 +44423,15 @@ Obj3E_Switched:				; XREF: Obj3E_Index
 		move.w	$30(a0),obY(a0)
 		tst.b	ob2ndRout(a0)
 		beq.s	locret_1AC60
+		
 		addq.w	#8,obY(a0)
 		move.b	#$A,obRoutine(a0)
 		move.w	#$3C,obTimeFrame(a0)
-		move.b	#1,($FFFFFFA5).w	; move HUD off screen
-		clr.b	($FFFFFE1E).w	; stop time counter
-		clr.b	($FFFFF7AA).w	; lock screen position
-		move.b	#1,($FFFFF7CC).w ; lock	controls
-		move.w	#$800,($FFFFF602).w ; make Sonic run to	the right
+		move.b	#1,($FFFFFFA5).w	; move HUD off screen (and start FZEscape sequence)
+	;	clr.b	($FFFFFE1E).w	; stop time counter
+	;	clr.b	($FFFFF7AA).w	; lock screen position
+	;	move.b	#1,($FFFFF7CC).w ; lock	controls
+	;	move.w	#$800,($FFFFF602).w ; make Sonic run to	the right
 		clr.b	ob2ndRout(a0)
 		bclr	#3,($FFFFD022).w
 		bset	#1,($FFFFD022).w

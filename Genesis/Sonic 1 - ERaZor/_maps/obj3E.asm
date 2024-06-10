@@ -1,33 +1,145 @@
-; ---------------------------------------------------------------------------
-; Sprite mappings - prison capsule
-; ---------------------------------------------------------------------------
-		dc.w byte_1AD82-Map_obj3E, byte_1ADA6-Map_obj3E
-		dc.w byte_1ADAC-Map_obj3E, byte_1ADCB-Map_obj3E
-		dc.w byte_1ADD1-Map_obj3E, byte_1ADDC-Map_obj3E
-		dc.w byte_1ADE2-Map_obj3E
-byte_1AD82:	dc.b 7
-		dc.b $E0, $C, $20, 0, $F0
-		dc.b $E8, $D, $20, 4, $E0
-		dc.b $E8, $D, $20, $C, 0
-		dc.b $F8, $E, $20, $14,	$E0
-		dc.b $F8, $E, $20, $20,	0
-		dc.b $10, $D, $20, $2C,	$E0
-		dc.b $10, $D, $20, $34,	0
-byte_1ADA6:	dc.b 1
-		dc.b $F8, 9, 0,	$3C, $F4
-byte_1ADAC:	dc.b 6
-		dc.b 0,	8, $20,	$42, $E0
-		dc.b 8,	$C, $20, $45, $E0
-		dc.b 0,	4, $20,	$49, $10
-		dc.b 8,	$C, $20, $4B, 0
-		dc.b $10, $D, $20, $2C,	$E0
-		dc.b $10, $D, $20, $34,	0
-byte_1ADCB:	dc.b 1
-		dc.b $F8, 9, 0,	$4F, $F4
-byte_1ADD1:	dc.b 2
-		dc.b $E8, $E, $20, $55,	$F0
-		dc.b 0,	$E, $20, $61, $F0
-byte_1ADDC:	dc.b 1
-		dc.b $F0, 7, $20, $6D, $F8
-byte_1ADE2:	dc.b 0
-		even
+; --------------------------------------------------------------------------------
+; Sprite mappings - output from ClownMapEd - Sonic 1/CD format
+; --------------------------------------------------------------------------------
+
+CME_B10F34CF:
+	dc.w	CME_B10F34CF_0-CME_B10F34CF
+	dc.w	CME_B10F34CF_1-CME_B10F34CF
+	dc.w	CME_B10F34CF_2-CME_B10F34CF
+	dc.w	CME_B10F34CF_3-CME_B10F34CF
+	dc.w	CME_B10F34CF_4-CME_B10F34CF
+	dc.w	CME_B10F34CF_5-CME_B10F34CF
+	dc.w	CME_B10F34CF_6-CME_B10F34CF
+
+CME_B10F34CF_0:
+	dc.b	11
+
+	dc.b	-80
+	dc.b	$0C
+	dc.w	$2000
+	dc.b	-16
+
+	dc.b	-72
+	dc.b	$0D
+	dc.w	$2004
+	dc.b	-32
+
+	dc.b	-72
+	dc.b	$0D
+	dc.w	$200C
+	dc.b	0
+
+	dc.b	-8
+	dc.b	$0E
+	dc.w	$2014
+	dc.b	-32
+
+	dc.b	-32
+	dc.b	$0E
+	dc.w	$2014
+	dc.b	-32
+
+	dc.b	-56
+	dc.b	$0E
+	dc.w	$2014
+	dc.b	-32
+
+	dc.b	-8
+	dc.b	$0E
+	dc.w	$2020
+	dc.b	0
+
+	dc.b	-32
+	dc.b	$0E
+	dc.w	$2020
+	dc.b	0
+
+	dc.b	-56
+	dc.b	$0E
+	dc.w	$2020
+	dc.b	0
+
+	dc.b	16
+	dc.b	$0D
+	dc.w	$202C
+	dc.b	-32
+
+	dc.b	16
+	dc.b	$0D
+	dc.w	$2034
+	dc.b	0
+
+CME_B10F34CF_1:
+	dc.b	1
+
+	dc.b	-8
+	dc.b	$09
+	dc.w	$003C
+	dc.b	-12
+
+CME_B10F34CF_2:
+	dc.b	6
+
+	dc.b	0
+	dc.b	$08
+	dc.w	$2042
+	dc.b	-32
+
+	dc.b	8
+	dc.b	$0C
+	dc.w	$2045
+	dc.b	-32
+
+	dc.b	0
+	dc.b	$04
+	dc.w	$2049
+	dc.b	16
+
+	dc.b	8
+	dc.b	$0C
+	dc.w	$204B
+	dc.b	0
+
+	dc.b	16
+	dc.b	$0D
+	dc.w	$202C
+	dc.b	-32
+
+	dc.b	16
+	dc.b	$0D
+	dc.w	$2034
+	dc.b	0
+
+CME_B10F34CF_3:
+	dc.b	1
+
+	dc.b	-8
+	dc.b	$09
+	dc.w	$004F
+	dc.b	-12
+
+CME_B10F34CF_4:
+	dc.b	2
+
+	dc.b	-24
+	dc.b	$0E
+	dc.w	$2055
+	dc.b	-16
+
+	dc.b	0
+	dc.b	$0E
+	dc.w	$2061
+	dc.b	-16
+
+CME_B10F34CF_5:
+	dc.b	1
+
+	dc.b	-16
+	dc.b	$07
+	dc.w	$206D
+	dc.b	-8
+
+CME_B10F34CF_6:
+	dc.b	0
+
+	even

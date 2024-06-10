@@ -33,6 +33,8 @@ OptionsScreen:				; XREF: GameModeArray
 @clearobjram:	move.l	d0,(a1)+
 		dbf	d1,@clearobjram ; fill object RAM ($D000-$EFFF) with $0
 
+		jsr	Pal_FadeFrom
+
 		lea	($C00000).l,a6
 		move.l	#$6E000002,4(a6)
 		lea	(Options_TextArt).l,a5
@@ -44,7 +46,6 @@ OptionsScreen:				; XREF: GameModeArray
 		lea	(Nem_ERaZorNoBG).l,a0
 		jsr	NemDec
 
-		jsr	Pal_FadeFrom
 
 		lea	($FFFFD100).w,a0
 		move.b	#2,(a0)			; load ERaZor banner object

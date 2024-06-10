@@ -12039,18 +12039,18 @@ Obj11_DelLoop:
 		movea.l	d0,a1
 		cmp.w	a0,d0
 		beq.s	loc_791E
-		bsr	DeleteObject2
+		jsr		DeleteObject2
 
 loc_791E:
 		dbf	d2,Obj11_DelLoop ; repeat d2 times (bridge length)
 
 Obj11_Delete:
-		bsr	DeleteObject
+		jsr		DeleteObject
 		rts	
 ; ===========================================================================
 
 Obj11_Delete2:				; XREF: Obj11_Index
-		bsr	DeleteObject
+		jsr		DeleteObject
 		rts	
 ; ===========================================================================
 

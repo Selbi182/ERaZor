@@ -59,7 +59,8 @@ PLC_Main2:	dc.w 1
 ; Pattern load cues - explosion
 ; ---------------------------------------------------------------------------
 PLC_Explode:	dc.w 0
-		dc.l Nem_Explode	; explosion
+		dc.l Nem_Null
+	;	dc.l Nem_Explode	; explosion
 		dc.w $B400
 ; ---------------------------------------------------------------------------
 ; Pattern load cues - game/time	over
@@ -297,7 +298,8 @@ PLC_Signpost:	dc.w 1
 ; Pattern load cues - beta special stage warp effect
 ; ---------------------------------------------------------------------------
 PLC_Warp:	dc.w 0
-		dc.l Nem_Stars		; invincibility	stars
+		dc.l Nem_Null
+	;	dc.l Nem_Stars		; invincibility	stars
 		dc.w $AB80
 ; ---------------------------------------------------------------------------
 ; Pattern load cues - special stage

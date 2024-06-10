@@ -2694,7 +2694,7 @@ PCSLZ_Red_End:
 		andi.w	#%111,d0
 		bne.s	@end
 		lea	($FFFFFB60+$10).w,a1
-		jsr	RandomNumber
+		jsr	RandomNumber_Next
 		moveq	#4,d0
 
 @loop:
@@ -3652,9 +3652,10 @@ loc_29AC:
 
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 
+CurrentRandomNumber equ	$FFFFF636
 
 RandomNumber:
-		move.l	($FFFFF636).w,d1
+		move.l	(CurrentRandomNumber).w,d1
 		bne.s	loc_29C0
 		move.l	#$2A6D365A,d1
 
@@ -3667,10 +3668,17 @@ loc_29C0:
 		move.w	d1,d0
 		swap	d1
 		add.w	d1,d0
+
+RNG_Rest:
 		move.w	d0,d1
 		swap	d1
-		move.l	d1,($FFFFF636).w
-		rts	
+		move.l	d1,(CurrentRandomNumber).w
+		rts
+
+RandomNumber_Next:
+		move.w	(CurrentRandomNumber).w,d0
+		rol.l	#1,d0
+		bra.s	RNG_Rest
 ; End of function RandomNumber
 
 
@@ -4506,11 +4514,11 @@ Level:					; XREF: GameModeArray
 		
 	;	jsr	ClearVRAM
 
-		cmpi.w	#$001,($FFFFFE10).w
 		move.b	#-1,($FFFFFF8A).w	; don't load title card art
+		cmpi.w	#$001,($FFFFFE10).w
 		beq.s	@notitlecardart
 		move.b	#0,($FFFFFF8A).w	; load uncompressed title card art (immediately)
-		jsr	LoadTitleCardArt
+		jsr	Load_TitleCardArt
 @notitlecardart:
 		move	#$2300,sr
 		moveq	#0,d0
@@ -4538,8 +4546,9 @@ Level_NoSRAM:
 
 		cmpi.w	#$001,($FFFFFE10).w	; is current level GHZ 2 (intro level)?
 		bne.s	Level_ClrRam		; if not, branch
-		moveq	#$13,d0			; set to star patterns
-		jsr	(LoadPLC).l		; load star patterns
+		jsr	Load_StarGraphics
+	;	moveq	#$13,d0			; set to star patterns
+	;	jsr	(LoadPLC).l		; load star patterns
 
 Level_ClrRam:
 		lea	($FFFFD000).w,a1
@@ -4702,13 +4711,17 @@ Level_NoMusic2:
 ; ===========================================================================
 
 Level_NoTitleCard2:
+		moveq	#3,d0
+		bsr	PalLoad2	; load Sonic's pallet line
+	
 	;	moveq	#2,d0
 	;	jsr	LoadPLC		; load explosion patterns
 		jsr	Load_ExplosionGraphics
-		moveq	#3,d0
-		bsr	PalLoad2	; load Sonic's pallet line
-		moveq	#$13,d0
-		jsr	LoadPLC		; load star patterns
+	
+	;	moveq	#$13,d0
+	;	jsr	LoadPLC		; load star patterns
+		jsr	Load_StarGraphics
+
 		bra.s	Level_TtlCard
 
 Level_NoTitleCard:
@@ -4762,6 +4775,7 @@ loc_3946:
 		bsr	ColIndexLoad
 		bsr	LZWaterEffects
 		
+		; bomb machine cutscene setup
 		cmpi.w	#$500,($FFFFFE10).w
 		bne.s	@SBZcont2
 		lea	($FFFFD440).w,a1
@@ -4779,23 +4793,10 @@ loc_3946:
 
 @SBZcont:
 		cmpi.w	#$400,($FFFFFE10).w
-		bne.s	L_NotSYZ
+		bne.s	Level_ChkWater
 		bset	#1,($FFFFD022).w
 		move.b	#2,($FFFFD01C).w
 		move.w	#$800,($FFFFD012).w
-
-L_NotSYZ:
-
-	;	tst.w	($FFFFFFF0).w
-	;	bmi.s	Level_ChkDebug
-	;	move.b	#$21,($FFFFD040).w ; load HUD object
-
-; Level_ChkDebug:
-		tst.b	($FFFFFFE2).w	; has debug cheat been entered?
-		beq.s	Level_ChkWater	; if not, branch
-		btst	#6,($FFFFF604).w ; is A	button pressed?
-		beq.s	Level_ChkWater	; if not, branch
-		move.b	#1,($FFFFFFFA).w ; enable debug	mode
 
 Level_ChkWater:
 		move.w	#0,($FFFFF602).w
@@ -4823,6 +4824,7 @@ loc_39E8:
 	;	move.b	d0,($FFFFFFFC).w ; clear multi shield counter
 		move.b	d0,($FFFFFE2D).w ; clear invincibility
 		move.b	d0,($FFFFFE2E).w ; clear speed shoes
+		move.b	d0,($FFFFD034).w ; clear speed shoes timer
 		move.b	d0,($FFFFFE2F).w
 		move.w	d0,($FFFFFE08).w
 		move.w	d0,($FFFFFE02).w
@@ -4883,8 +4885,8 @@ Level_StartGame:
 ; ---------------------------------------------------------------------------
 
 Level_MainLoop:
-		jsr	RandomNumber		; constantly create a new random number
-		jsr	LoadTitleCardArt	; check if we gotta load uncompressed title card art
+		jsr	RandomNumber		; constantly create a new random number every frame to make use of RandomNumber_Next
+		jsr	Load_TitleCardArt	; check if we gotta load uncompressed title card art
 		jsr	CinematicScreenFuzz	; do cinematic screen fuzz if applicable
 
 		cmpi.b	#$3F,($FFFFFFF0).w		; was demo mode set to $3F for some reason?
@@ -5435,7 +5437,7 @@ CinematicScreenFuzz_Do:
 @prefill:	adda.l	#4,a1
 		dbf	d2,@prefill
 
-		move.l	($FFFFF636).w,d2	; get random number
+		move.l	(CurrentRandomNumber).w,d2	; get random number
 
 		moveq	#1,d6
 		move.b	($FFFFD010).w,d3	; get Sonic's X speed
@@ -5915,8 +5917,13 @@ SignpostArtLoad:			; XREF: Level
 		beq.s	Signpost_Exit		; if yes, branch
 
 		move.w	($FFFFFE10).w,d0
-		cmpi.w	#$002,d0		; is level GHP?
-		beq.s	Signpost_DoLoad		; if yes, branch		
+		tst.b	($FFFFFF91).w		; GHP boss defeated?
+		beq.s	@notghp			; if not, branch
+		cmpi.w	#$002,d0		; is level GHP in the first place?
+		bne.s	@notghp			; if not, branch		
+		bra.s	Signpost_DoLoad		; do load
+
+@notghp:
 		cmpi.w	#$200,d0		; is level RP?
 		beq.s	Signpost_DoLoad		; if yes, branch
 		cmpi.w	#$101,d0		; is level LP?
@@ -6034,7 +6041,7 @@ SS_ClrNemRam:
 		dbf	d1,SS_ClrNemRam	; clear	Nemesis	buffer
 
 		move.b	#0,($FFFFFF8A).w	; load uncompressed title card art (immediately)
-		jsr	LoadTitleCardArt
+		jsr	Load_TitleCardArt
 
 
 		bsr	DeformBgLayer
@@ -7911,7 +7918,7 @@ GenerateCameraShake:
 		tst.b	($FFFFFF64).w
 		beq.s	@cont
 		subq.b	#1,($FFFFFF64).w
-		jsr	RandomNumber		; random number
+		jsr	RandomNumber_Next	; random number
 		swap	d0
 		move.w	d0,d1
 		swap	d0
@@ -11509,7 +11516,7 @@ Resize_FZAddBombs:
 		move.w	#$2586, obX(a1)
 		move.w	#$053C, obY(a1)
 		
-		jsr 	RandomNumber
+		jsr 	RandomNumber_Next
 		andi.w 	#%0000000011111111, d0
 		neg.w 	d0
 		move.w	d0, obVelX(a1)
@@ -11570,6 +11577,9 @@ Resize_FZEscape_Nuke:
 		
 		addq.b	#2,($FFFFF742).w	; go to next routine	
 		move.w	#0,($FFFFF72C).w	; unlock controls
+
+		move.b	#1,($FFFFFE2E).w	; speed up the BG music
+		move.w	#$4B0,($FFFFD034).w	; give Sonic super speed to make the walking-left part less tedious
 
 @0:
 		rts
@@ -13614,8 +13624,7 @@ Obj1D_Action:
 		move.b	#1,$30(a1)
 		
 		; random deviation
-	;	jsr	(RandomNumber).l
-		move.l	($FFFFF636).w,d0
+		jsr	(RandomNumber_Next).l
 		moveq	#0,d1
 		move.b	d0,d1
 		subi.w	#$80,d1
@@ -14279,7 +14288,7 @@ Obj27_Delete:
 ; ===========================================================================
 
 RandomDirection:
-		bsr	RandomNumber
+		bsr	RandomNumber_Next
 		andi.l	#$01FF01FF,d0
 		subi.w	#$FF,d0
 		move.w	d0,obVelX(a0)
@@ -14298,11 +14307,16 @@ Obj3F_SoundType = 1
 ; If 0, it will be the normal and boring sound...
 ; ---------------------------------------------------------------------------
 Load_ExplosionGraphics:
+		; load explosion graphics in an uncompressed matter to speed up loading times
+		ints_push
 		move.l	a0,-(sp)
 		vram	$B400
-		lea	(Nem_Explode).l,a0
-		jsr	NemDec
+		lea	(Art_Explosion).l,a0
+		move.w	#($60*$10)-1,d1
+@explosions:	move.w	(a0)+,($C00000).l
+		dbf	d1,@explosions
 		move.l	(sp)+,a0
+		ints_pop
 		rts
 ; ---------------------------------------------------------------------------
 
@@ -14531,7 +14545,7 @@ Obj28_Ending:				; XREF: Obj28_Index
 
 Obj28_FromEnemy:			; XREF: Obj28_Ending
 		addq.b	#2,obRoutine(a0)
-		jsr	RandomNumber
+		jsr	RandomNumber_Next
 		andi.w	#1,d0
 		moveq	#0,d1
 		move.b	($FFFFFE10).w,d1
@@ -15567,6 +15581,8 @@ Obj22_Main:				; XREF: Obj22_Index
 	;	move.b	#8,obColType(a0)
 		move.b	#$18,obActWid(a0)
 		move.b	#20,$32(a0)
+		move.w	obX(a0),$36(a0)	; remember original X position
+		move.w	obY(a0),$38(a0)	; remember original Y position
 
 Obj22_Action:				; XREF: Obj22_Index
 		moveq	#0,d0
@@ -15646,6 +15662,12 @@ Obj22_Return:
 ; ===========================================================================
 
 Obj22_NotGHZ2:
+		tst.b	($FFFFFFB9).w		; is white flash flag set? (aka, falling into the teleporting pit)
+		beq.s	@noresetposition	; if not, branch
+		move.w	$36(a0),obX(a0)		; restore original X position
+		move.w	$38(a0),obY(a0)		; restore original Y position
+
+@noresetposition:
 		tst.b	($FFFFFFB1).w		; is inhuman crush timer filled?
 		bmi.s	Obj22_NotInhumanCrush	; if not, branch
 		tst.b	obRender(a0)			; is buzz bomber on-screen?
@@ -15658,29 +15680,30 @@ Obj22_NotGHZ2:
 		move.w	obY(a0),obY(a1)		; set Y-pos to the explosion's one
 
 Obj22_NotInhumanCrush:
-		move.b	#0,obColType(a0)		; make the buzz bomber not destroyable
-		moveq	#0,d0			; clear d0
-		move.w	obVelY(a0),d0		; move its Y-pos to d0
-		sub.w	($FFFFD012).w,d0	; sub Sonic's one from it
-		bpl.s	Obj22_NotHigher		; if the buzz bomber is higher than Sonic, branch
-		btst	#1,($FFFFD022).w	; check if sonic is in the air
-		beq.s	Obj22_NotHigher		; if he isn't, branch
+	
+		; Night Hill Place waterfall buzzbombers
+		move.b	#0,obColType(a0)	; make the buzz bomber not destroyable
 		cmpi.w	#$000,($FFFFFE10).w	; is level GHZ1?
 		bne.s	Obj22_NotGHZ1		; if not, branch
 		cmpi.w	#$13C0,obX(a0)		; is buzz bomber before $13C0?
 		bmi.s	Obj22_NotGHZ1		; if yes, branch
 		cmpi.w	#$1800,obX(a0)		; is buzz bomber after $1800?
 		bpl.s	Obj22_NotGHZ1		; if yes, branch
-		move.b	#0,obColType(a0)		; make the buzz bomber not destroyable
+		move.b	#0,obColType(a0)	; make the buzz bomber not destroyable
+				
+		btst	#5,($FFFFFF92).w	; are we in Frantic mode?
+		beq.w	Obj22_MoveEnd		; if not, disable movement
+	
 		bra.s	Obj22_NotHigher		; skip
 ; ===========================================================================
 
 Obj22_NotGHZ1:
-		move.b	#8,obColType(a0)		; make buzz bomber destroyable
+		move.b	#8,obColType(a0)	; make buzz bomber destroyable
 
 Obj22_NotHigher:
-		tst.w	($FFFFFE08).w	; is debug mode	on?
-		bne.w	Obj22_Return3	; if yes, make buzz bomber ignore you
+		tst.w	($FFFFFE08).w		; is debug mode	on?
+		bne.w	Obj22_Return3		; if yes, make buzz bomber ignore you
+
 		moveq	#0,d0			; clear d0
 		move.w	($FFFFD008).w,d0	; move Sonic's X-pos to d0
 		sub.w	obX(a0),d0		; substract the one from the buzz bomber from it
@@ -15738,7 +15761,7 @@ Obj22_YChk:
 		move.w	obX(a0),obX(a1)
 		move.w	obY(a0),obY(a1)
 	;	move.b	#1,$30(a1)
-		jsr	(RandomNumber).l
+		jsr	(RandomNumber_Next).l
 		move.w	d0,d1
 		moveq	#0,d1
 		move.b	d0,d1
@@ -17526,7 +17549,7 @@ Obj2E_ChkRandom:
 		cmpi.b	#0,d0		; is this the random monitor?
 		bne.s	Obj2E_ChkEggman	; if not, branch
 		bra.s	Obj2e_ChkEggman
-		jsr	RandomNumber	; create a random number
+		jsr	RandomNumber_Next	; create a random number
 		andi.b	#8,d0		; change the max of the random number to 8
 		cmpi.b	#1,d0		; is the number "1"?
 		beq.w	Obj2E_ChkEggman ; if yes, branch to eggman
@@ -18159,7 +18182,7 @@ BossDefeated2:
 		move.w	obX(a0),obX(a1)
 		move.w	obY(a0),obY(a1)
 		move.b	#1,$30(a1)
-		jsr	(RandomNumber).l
+		jsr	(RandomNumber_Next).l
 		move.w	d0,d1
 		moveq	#0,d1
 		move.b	d0,d1
@@ -18185,7 +18208,7 @@ BossDefeated3:
 		move.w	obX(a0),obX(a1)
 		move.w	obY(a0),obY(a1)
 	;	move.b	#1,$30(a1)
-		jsr	(RandomNumber).l
+		jsr	(RandomNumber_Next).l
 		move.w	d0,d1
 		moveq	#0,d1
 		move.b	d0,d1
@@ -18210,7 +18233,7 @@ BossDefeated4:
 		move.w	obX(a0),obX(a1)
 		move.w	obY(a0),obY(a1)
 		move.b	#2,obRoutine(a1)
-	;	jsr	(RandomNumber).l
+	;	jsr	(RandomNumber_Next).l
 	;	move.w	d0,d1
 	;	moveq	#0,d1
 	;	move.b	d0,d1
@@ -20672,8 +20695,9 @@ Obj34_LoadPostGraphics:
 	;	moveq	#2,d0
 	;	jsr	(LoadPLC).l	; load explosion patterns
 		jsr	Load_ExplosionGraphics
-		moveq	#$13,d0
-		jsr	(LoadPLC).l	; load star patterns
+	;	moveq	#2,d0
+	;	jsr	(LoadPLC).l	; load star patterns
+		jsr	Load_StarGraphics
 		rts
 
 ; ===========================================================================
@@ -20719,7 +20743,8 @@ Obj34_ConData:
 		even
 ; ===========================================================================
 
-LoadTitleCardArt:		
+Load_TitleCardArt:
+		ints_push
 		movem.l	d1-a6,-(sp)
 		tst.b	($FFFFFF8A).w		; are title cards set to load?
 		bmi.s	@titlecardloadend	; if not, branch
@@ -20742,6 +20767,7 @@ LoadTitleCardArt:
 
 @titlecardloadend:
 		movem.l	(sp)+,d1-a6
+		ints_pop
 		rts
 
 ; ===========================================================================
@@ -20949,7 +20975,7 @@ Obj3A_Tube:
 		move.w	obX(a0),obX(a1)
 		move.w	obY(a0),obY(a1)
 		move.b	#1,$30(a1)
-		jsr	(RandomNumber).l
+		jsr	(RandomNumber_Next).l
 		move.w	d0,d1
 		moveq	#0,d1
 		move.b	d0,d1
@@ -28086,10 +28112,7 @@ Obj5E_Explode:				; XREF: Obj5E_Index
 		asr.l	#8,d0			; align the results to the correct position in the bitfield ...
 		asr.l	#8,d1			; ... (e.g. 00000000xxxxxxxxxxxxxxxx00000000 to 0000000000000000xxxxxxxxxxxxxxxx)
 		
-		move.l	($FFFFF636).w,d3	; get last random number
-		ror.l	#1,d3			; rotate to next
-		move.l	d3,($FFFFF636).w	; save new value (without rerunning RNG algorithm)
-
+		jsr	RandomNumber_Next	; get random number
 		andi.l	#$01FF01FF,d3		; mask by variance
 		subi.w	#$100,d3		; center variance for X
 		add.w	d3,d1			; add variance to X
@@ -28130,7 +28153,7 @@ Obj5E_Fuse:				; XREF: Obj5E_Index
 		btst	#1,obStatus(a0)
 		beq.s	@0
 		addi.w	#$60,obY(a1)
-@0:		jsr	RandomNumber
+@0:		jsr	RandomNumber_Next
 		andi.l	#$01FF01FF,d0
 		subi.w	#$FF,d0
 		asr.w	#1,d0
@@ -28605,7 +28628,7 @@ Obj5F_BossDefeatedboss2:
 		move.w	obX(a0),obX(a1)
 		move.w	obY(a0),obY(a1)
 		move.b	#1,$30(a1)
-		jsr	(RandomNumber).l
+		jsr	(RandomNumber_Next).l
 		move.w	d0,d1
 		moveq	#0,d1
 		move.b	d0,d1
@@ -28704,7 +28727,7 @@ Obj5F_Display:				; XREF: Obj5F_Index
 		addi.w	#$60,obY(a1)
 
 @0:		
-		jsr	RandomNumber
+		jsr	RandomNumber_Next
 		andi.l	#$01FF01FF,d0
 		subi.w	#$FF,d0
 		asl.w	#1,d0
@@ -28821,10 +28844,7 @@ Obj5F_MakeShrap:			; XREF: loc_11B7C
 		asr.l	#8,d0			; align the results to the correct position in the bitfield ...
 		asr.l	#8,d1			; ... (e.g. 00000000xxxxxxxxxxxxxxxx00000000 to 0000000000000000xxxxxxxxxxxxxxxx)
 		
-		move.l	($FFFFF636).w,d3	; get last random number
-		ror.l	#1,d3			; rotate to next
-		move.l	d3,($FFFFF636).w	; save new value (without rerunning RNG algorithm)
-
+		jsr	RandomNumber_Next	; get random number
 		andi.l	#$01FF01FF,d3		; mask by variance
 		subi.w	#$100,d3		; center variance for X
 		add.w	d3,d1			; add variance to X
@@ -28836,7 +28856,7 @@ Obj5F_MakeShrap:			; XREF: loc_11B7C
 		bra.s	loc_11BCE		; skip
 		
 Obj5F_MakeShrap_Boss:
-		jsr	RandomNumber
+		jsr	RandomNumber_Next
 		move.l	d1,d4
 		move.w	d4,d5
 		swap	d4
@@ -29875,7 +29895,7 @@ Obj64_Bubble:				; XREF: Obj64_Main
 		move.b	d0,obAnim(a0)
 		move.w	obX(a0),$30(a0)
 		move.w	#-$88,obVelY(a0)	; float	bubble upwards
-		jsr	(RandomNumber).l
+		jsr	(RandomNumber_Next).l
 		move.b	d0,obAngle(a0)
 
 Obj64_Animate:				; XREF: Obj64_Index
@@ -29973,7 +29993,7 @@ Obj64_BblMaker:				; XREF: Obj64_Index
 		move.w	#1,$36(a0)
 
 loc_1283A:
-		jsr	(RandomNumber).l
+		jsr	(RandomNumber_Next).l
 		move.w	d0,d1
 		andi.w	#7,d0
 		cmpi.w	#6,d0
@@ -29998,14 +30018,14 @@ loc_12874:				; XREF: Obj64_BblMaker
 		bpl.w	loc_12914
 
 loc_1287C:
-		jsr	(RandomNumber).l
+		jsr	(RandomNumber_Next).l
 		andi.w	#$1F,d0
 		move.w	d0,$38(a0)
 		bsr	SingleObjLoad
 		bne.s	loc_128F8
 		move.b	#$64,0(a1)	; load bubble object
 		move.w	obX(a0),obX(a1)
-		jsr	(RandomNumber).l
+		jsr	(RandomNumber_Next).l
 		andi.w	#$F,d0
 		subq.w	#8,d0
 		add.w	d0,obX(a1)
@@ -30016,7 +30036,7 @@ loc_1287C:
 		move.b	(a2,d0.w),obSubtype(a1)
 		btst	#7,$36(a0)
 		beq.s	loc_128F8
-		jsr	(RandomNumber).l
+		jsr	(RandomNumber_Next).l
 		andi.w	#3,d0
 		bne.s	loc_128E4
 		bset	#6,$36(a0)
@@ -30033,7 +30053,7 @@ loc_128E4:
 loc_128F8:
 		subq.b	#1,$34(a0)
 		bpl.s	loc_12914
-		jsr	(RandomNumber).l
+		jsr	(RandomNumber_Next).l
 		andi.w	#$7F,d0
 		addi.w	#$80,d0
 		add.w	d0,$38(a0)
@@ -30973,7 +30993,7 @@ Obj06_ChkA:
 		lea	($FFFFFB00).w,a1
 		moveq	#(64/2)-1,d2
 @loopdestroypalette:
-		jsr	RandomNumber
+		jsr	RandomNumber_Next
 		move.l	#$E0,d3
 		tst.l	d0
 		bmi.s	@0
@@ -30986,7 +31006,7 @@ Obj06_ChkA:
 		move.w	d1,(a1)+
 		dbf	d2,@loopdestroypalette
 		
-	;	jsr	RandomNumber
+	;	jsr	RandomNumber_Next
 	;	andi.l	#$0EEE0EEE,d0
 	;	andi.l	#$0EEE0EEE,d1
 	;	move.l	d0,(a1)+
@@ -31572,17 +31592,12 @@ Obj01_ChkShoes:
 		move.w	#Sonic_TopSpeed_Shoes,($FFFFF760).w ; change Sonic's top speed
 		move.w	#Sonic_Acceleration_Shoes,($FFFFF762).w
 		move.w	#Sonic_Deceleration_Shoes,($FFFFF764).w
-		tst.w	$34(a0)		; check	time remaining
-		beq.s	Obj01_ExitChk
 		subq.w	#1,$34(a0)	; subtract 1 from time
-		bne.s	Obj01_ExitChk
+		bpl.s	Obj01_ExitChk
+		move.w	#0,$34(a0)
 		move.w	#Sonic_TopSpeed,($FFFFF760).w		; restore Sonic's speed
 		move.w	#Sonic_Acceleration,($FFFFF762).w	; restore Sonic's acceleration
 		move.w	#Sonic_Deceleration,($FFFFF764).w	; restore Sonic's deceleration
-		move.b	#$E3,d0
-		jsr	(PlaySound).w	; play normal music
-		move.b	#$E3,d0
-		jsr	(PlaySound).w	; play normal music
 
 Obj01_ExitChk:
 		rts
@@ -34897,7 +34912,7 @@ Obj0A_Countdown:			; XREF: Obj0A_Index
 		bpl.w	loc_13FAC
 		move.w	#59,$38(a0)
 		move.w	#1,$36(a0)
-		jsr	(RandomNumber).l
+		jsr	(RandomNumber_Next).l
 		andi.w	#1,d0
 		move.b	d0,$34(a0)
 		
@@ -34983,7 +34998,7 @@ loc_13FAC:
 		bpl.w	locret_1408C
 
 Obj0A_MakeItem:
-		jsr	(RandomNumber).l
+		jsr	(RandomNumber_Next).l
 		andi.w	#$F,d0
 		move.w	d0,$3A(a0)
 		jsr	SingleObjLoad
@@ -35007,7 +35022,7 @@ loc_13FF2:
 		move.w	($FFFFD00C).w,d0
 		subi.w	#$C,d0
 		move.w	d0,obY(a1)
-		jsr	(RandomNumber).l
+		jsr	(RandomNumber_Next).l
 		move.b	d0,obAngle(a1)
 		move.w	($FFFFFE04).w,d0
 		andi.b	#3,d0
@@ -35021,7 +35036,7 @@ loc_1403E:
 		beq.s	loc_14082
 		move.w	($FFFFFE14).w,d2
 		lsr.w	#1,d2
-		jsr	(RandomNumber).l
+		jsr	(RandomNumber_Next).l
 		andi.w	#3,d0
 		bne.s	loc_1406A
 		bset	#6,$36(a0)
@@ -35074,6 +35089,19 @@ Map_obj0A:
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Object 38 - shield and invincibility stars
+; ---------------------------------------------------------------------------
+Load_StarGraphics:
+		; load star graphics in an uncompressed matter to speed up loading times
+		ints_push
+		move.l	a0,-(sp)
+		vram	$AB80
+		lea	(Art_InvStars).l,a0
+		move.w	#($24*$10)-1,d1
+@invstars:	move.w	(a0)+,($C00000).l
+		dbf	d1,@invstars
+		move.l	(sp)+,a0
+		ints_pop
+		rts
 ; ---------------------------------------------------------------------------
 
 Obj38:					; XREF: Obj_Index
@@ -39502,7 +39530,7 @@ BossDefeated:
 		move.w	obX(a0),obX(a1)
 		move.w	obY(a0),obY(a1)
 		move.b	#1,$30(a1)
-		jsr	(RandomNumber).l
+		jsr	(RandomNumber_Next).l
 		move.w	d0,d1
 		moveq	#0,d1
 		move.b	d0,d1
@@ -40569,7 +40597,7 @@ loc_18302:				; XREF: Obj73_ShipIndex
 		clr.l	obVelX(a0)
 
 loc_18334:
-		jsr	(RandomNumber).l
+		jsr	(RandomNumber_Next).l
 		move.b	d0,$34(a0)
 
 loc_1833E:
@@ -40660,7 +40688,7 @@ Obj73_MakeLava:
 		bne.s	loc_1844A
 		move.b	#$14,0(a1)	; load lava ball object
 		move.w	#$2E8,obY(a1)	; set Y	position
-		jsr	(RandomNumber).l
+		jsr	(RandomNumber_Next).l
 		andi.l	#$FFFF,d0
 		divu.w	#$50,d0
 		swap	d0
@@ -40670,7 +40698,7 @@ Obj73_MakeLava:
 		move.w	#$FF,obSubtype(a1)
 
 loc_1844A:
-		jsr	(RandomNumber).l
+		jsr	(RandomNumber_Next).l
 		andi.b	#$1F,d0
 		addi.b	#$40,d0
 		move.b	d0,$34(a0)
@@ -43206,7 +43234,7 @@ loc_19E90:				; XREF: off_19E80
 		jsr	PlaySound	; play FZ boss music
 
 loc_19EA2:
-		addq.l	#1,($FFFFF636).w
+		addq.l	#1,(CurrentRandomNumber).w
 		rts	
 ; ===========================================================================
 
@@ -43214,7 +43242,7 @@ loc_19EA8:				; XREF: off_19E80
 		tst.w	$30(a0)
 		bpl.s	loc_19F10
 		clr.w	$30(a0)
-		jsr	(RandomNumber).l
+		jsr	(RandomNumber_Next).l
 		andi.w	#$14,d0		; changed from $C
 		move.w	d0,d1
 		addq.w	#2,d1
@@ -43268,7 +43296,7 @@ loc_19F48:
 ; ===========================================================================
 
 loc_19F50:
-		addq.w	#7,($FFFFF636).w
+		addq.w	#7,(CurrentRandomNumber).w
 		cmpi.b	#2,($FFFFD01C).w
 		bne.s	loc_19F48
 		move.w	#$300,d0
@@ -44028,7 +44056,7 @@ BossDefeatedX:
 		move.w	obY(a0),obY(a1)
 		move.b	#1,$30(a1)
 		move.b	#2,obRoutine(a1)
-		jsr	(RandomNumber).l
+		jsr	(RandomNumber_Next).l
 		move.w	d0,d1
 		moveq	#0,d1
 		move.b	d0,d1
@@ -44135,7 +44163,7 @@ Obj86_Generator:			; XREF: Obj86_Index
 		move.b	#1,$30(a1)
 
 @Continue:
-		jsr	RandomNumber
+		jsr	RandomNumber_Next
 		andi.w	#$FF,d0
 		subi.w	#$80,d0
 		move.w	d0,obVelX(a0)
@@ -44220,7 +44248,7 @@ Obj86_Loop:
 		move.b	#4,obRender(a1)
 		bset	#7,obRender(a1)
 		move.l	a0,$34(a1)
-		jsr	(RandomNumber).l
+		jsr	(RandomNumber_Next).l
 		move.w	$32(a0),d1
 		muls.w	#-$59,d1	; horizontal spacing for ammount of balls (3=6F, 4=4F, 5=3F, 6=2F)
 		addi.w	#$2578,d1
@@ -44473,7 +44501,7 @@ Obj3E_Explosion:			; XREF: Obj3E_Index
 		move.w	obX(a0),obX(a1)
 		move.w	obY(a0),obY(a1)
 		move.b	#1,$30(a1)
-		jsr	(RandomNumber).l
+		jsr	(RandomNumber_Next).l
 		moveq	#0,d1
 		move.b	d0,d1
 		lsr.b	#2,d1
@@ -44524,7 +44552,7 @@ Obj3E_Animals:				; XREF: Obj3E_Index
 		move.b	#$28,0(a1)	; load animal object
 		move.w	obX(a0),obX(a1)
 		move.w	obY(a0),obY(a1)
-		jsr	(RandomNumber).l
+		jsr	(RandomNumber_Next).l
 		andi.w	#$1F,d0
 		subq.w	#6,d0
 		tst.w	d1
@@ -48757,8 +48785,10 @@ Nem_Null:	incbin	artnem\null.bin		; just a file with one blank tile
 		even
 Nem_Shield:	incbin	artnem\shield.bin	; shield
 		even
-Nem_Stars:	incbin	artnem\invstars.bin	; invincibility stars
+Art_InvStars:	incbin	artunc\invstars.bin	; invincibility stars (uncompressed)
 		even
+;Nem_Stars:	incbin	artnem\invstars.bin	; invincibility stars
+;		even
 Nem_TutHUD:	incbin	artnem\TutorialHUD.bin	; tutorial HUD
 		even
 Nem_CroPScreen:	incbin	artnem\CropScreen.bin	; cropped screen
@@ -49012,8 +49042,10 @@ Nem_Ring:	incbin	artnem\rings.bin	; rings
 		even
 Nem_Monitors:	incbin	artnem\monitors.bin	; monitors
 		even
-Nem_Explode:	incbin	artnem\explosio.bin	; explosion
+Art_Explosion:	incbin	artunc\explosion.bin	; explosion (uncompressed)
 		even
+;Nem_Explode:	incbin	artnem\explosio.bin	; explosion
+;		even
 Nem_Points:	incbin	artnem\points.bin	; points from destroyed enemy or object
 		even
 Nem_GameOver:	incbin	artnem\gameover.bin	; game over / time over

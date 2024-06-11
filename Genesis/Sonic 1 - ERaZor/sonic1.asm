@@ -607,8 +607,8 @@ BlackBars.SetState:
 		move.b	($FFFFF600).w,d0		; get current game mode
 		cmpi.b	#$C,d0				; are we in a level?
 		beq.s	@validgamemode			; if yes, branch
-		cmpi.b	#$10,d0				; are we in a special stage?
-		beq.s	@validgamemode			; if yes, branch
+	;	cmpi.b	#$10,d0				; are we in a special stage?
+	;	beq.s	@validgamemode			; if yes, branch
 		cmpi.b	#$18,d0				; are we in the ending sequence?
 		beq.s	@validgamemode			; if yes, branch
 		bra.s	BlackBars_DontShow		; don't show black bars in any other game modes
@@ -14367,6 +14367,12 @@ Obj3F_SoundType = 1
 ; If 0, it will be the normal and boring sound...
 ; ---------------------------------------------------------------------------
 Load_ExplosionGraphics:
+		; only allow in level game mode (including pre-sequence)
+		move.b	($FFFFF600).w,d0
+		andi.b	#$7F,d0
+		cmpi.b	#$C,d0
+		bne.s	@loadend
+
 		; load explosion graphics in an uncompressed matter to speed up loading times
 		ints_push
 		move.l	a0,-(sp)
@@ -14377,6 +14383,7 @@ Load_ExplosionGraphics:
 		dbf	d1,@explosions
 		move.l	(sp)+,a0
 		ints_pop
+@loadend:
 		rts
 ; ---------------------------------------------------------------------------
 

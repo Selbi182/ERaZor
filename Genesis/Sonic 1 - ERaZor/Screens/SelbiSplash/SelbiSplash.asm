@@ -20,7 +20,7 @@ SelbiSplash_VDP:
 		move.w	#$8407,(a6)
 		move.w	#$9001,(a6)
 		move.w	#$9200,(a6)
-		move.w	#$8B03,(a6)
+		move.w	#$8B07,(a6)
 		move.w	#$8720,(a6)
 		clr.b	($FFFFF64E).w
 		jsr	ClearScreen			; Clear screen
@@ -75,7 +75,7 @@ SelbiSplash_Loop:
 		cmpi.l	#$4EE00001,($FFFFFF7A).w
 		beq.w	@cont
 		cmpi.w	#$20,($FFFFF614).w		; is time less than $20?
-		bpl	SelbiSplash_ChangePal		; if yes, branch
+		bpl	SelbiSplash_ChangePal		; if not, branch
 
 		lea	($C00000).l,a5			; load VDP data port address to a5
 		lea	($C00004).l,a6			; load VDP address port address to a6
@@ -106,24 +106,40 @@ SelbiSplash_Loop:
 		move.w	#$D0,($FFFFF614).w
 		lea	($C00000).l,a5
 		lea	$04(a5),a6
-		move.w	#$8B00,(a6)
+	;	move.w	#$8B00,(a6)
 		move.l	#$40000010,(a6)
 		move.w	#$0008,(a5)
 @cont:
 		; palette flashing effect
 		; (this is a terrible way of doing this lol)
-		sub.w	#SelbiSplash_PalChgSpeed,($FFFFFB04)
-		sub.w	#SelbiSplash_PalChgSpeed,($FFFFFB06)
-		sub.w	#SelbiSplash_PalChgSpeed,($FFFFFB08)
-		sub.w	#SelbiSplash_PalChgSpeed,($FFFFFB0A)
-		sub.w	#SelbiSplash_PalChgSpeed,($FFFFFB0C)
-		sub.w	#SelbiSplash_PalChgSpeed,($FFFFFB0E)
+	;	sub.w	#SelbiSplash_PalChgSpeed,($FFFFFB04)
+	;	sub.w	#SelbiSplash_PalChgSpeed,($FFFFFB06)
+	;	sub.w	#SelbiSplash_PalChgSpeed,($FFFFFB08)
+	;	sub.w	#SelbiSplash_PalChgSpeed,($FFFFFB0A)
+	;	sub.w	#SelbiSplash_PalChgSpeed,($FFFFFB0C)
+	;	sub.w	#SelbiSplash_PalChgSpeed,($FFFFFB0E)
+		
+		btst	#0,($FFFFFE0F).w
+		bne.s	@0
+		lea	($FFFFFB04),a1
+		move.w	#6-1,d4
+@boost:		jsr	SineWavePalette
+		andi.w	#$00E,d0
+		move.w	d0,(a1)
+		dbf	d4,@boost
 
+
+		cmpi.w	#$90,($FFFFF614).w		; is time less than $90?
+		bpl.w	@0
+		move.w	#$8B07,($C00004).l
+		moveq	#7,d0
+		jsr	Options_BGDeformation2
+
+@0:
 		cmpi.w	#$90,($FFFFF614).w		; is time less than $90?
 		bmi.w	SelbiSplash_DontChangePal	; if yes, branch
 		cmpi.w	#$D0,($FFFFF614).w		; is time more than $D0?
 		bpl.w	SelbiSplash_ChangePal		; if yes, branch
-
 
 		; screen shake Y
 		move.w	($FFFFF5B0).w,d0
@@ -193,8 +209,15 @@ SelbiSplash_LoadPRESENTS:
 		moveq	#$1B,d2
 		jsr	ShowVDPGraphics
 
-SelbiSplash_PL2Passed:	
-		jsr	Pal_MakeWhite			; white flash
+SelbiSplash_PL2Passed:
+		lea	(Pal_SelbiSplash).l,a1		; Load palette
+		lea	($FFFFFB00).w,a2
+		moveq	#7,d0
+@0
+		move.l	(a1)+,(a2)+
+		dbf	d0,@0
+		
+	;	jsr	Pal_MakeWhite			; white flash
 		movem.l (sp)+,d0-a6
 		move.b	#1,($FFFFFFAF).w		; set flag that we are in the final phase of the screen
 

@@ -3838,7 +3838,7 @@ SegaScreen:				; XREF: GameModeArray
 		move.w	#$8230,(a6)
 		move.w	#$8407,(a6)
 		move.w	#$8700,(a6)
-		move.w	#$8B00,(a6)
+		move.w	#$8B07,(a6)
 		clr.b	($FFFFF64E).w
 		move	#$2700,sr
 		
@@ -3900,12 +3900,23 @@ Sega_WaitFrames:
 		display_enable
 
 Sega_WaitPallet:
+		moveq	#7,d0
+		jsr	Options_BGDeformation2
+
 		move.b	#2,($FFFFF62A).w
 		bsr	DelayProgram
 		andi.b	#$F0,($FFFFF605).w ; is	A, B, C, or Start pressed?
 		bne.s	Sega_GotoTitle	; if yes, branch
 		bsr	PalCycle_Sega
 		bne.s	Sega_WaitPallet
+
+		lea	($FFFFCC00).w,a1
+		move	#$2700,sr
+		moveq	#0,d0
+		move.w	#$DF,d1
+@clearscroll:	move.l	d0,(a1)+
+		dbf	d1,@clearscroll ; fill scroll data with 0
+		move.l	d0,($FFFFF616).w
 
 		move.b	#$B5,d0
 		bsr	PlaySound_Special ; play ring sound
@@ -31598,6 +31609,7 @@ Obj01_ChkShoes:
 		move.w	#Sonic_TopSpeed,($FFFFF760).w		; restore Sonic's speed
 		move.w	#Sonic_Acceleration,($FFFFF762).w	; restore Sonic's acceleration
 		move.w	#Sonic_Deceleration,($FFFFF764).w	; restore Sonic's deceleration
+		clr.b	($FFFFFE2E).w
 
 Obj01_ExitChk:
 		rts
@@ -32701,7 +32713,7 @@ JD_SetSpeed1:
 		move.w	#$A00,d0		; set normal jumpdash speed
 		tst.b	($FFFFFE2E).w		; do you have speed shoes?
 		beq.s	JD_SetSpeed2		; if not, branch
-		move.w	#$B00,d0		; set speed shoes jumpdash speed
+		move.w	#Sonic_TopSpeed+$680,d0	; set speed shoes jumpdash speed
 		move.b	#1,($FFFFFFE8).w	; set JD_SetSpeed2 flag
 
 JD_SetSpeed2:

@@ -290,10 +290,19 @@ Options_BGCycleColors:
 
 ; Background deformation (the main effect)
 Options_BGDeformation:
+		moveq	#0,d0
+	
+Options_BGDeformation2:
+		move.l	d7,-(sp)
+		moveq	#0,d7
+		move.w	($FFFFFE0E).w,d6	; get timer
+		tst.b	d0
+		beq.s	@noadjust
+		move.w	d0,d7
+@noadjust:
 		lea	($FFFFCC00).w,a1
 		move.w	#(224/1)-1,d3
 		jsr	RandomNumber
-		move.w	($FFFFFE0E).w,d6	; get timer
 @scroll:
 		ror.l	#1,d1
 		move.l	d1,d2
@@ -333,8 +342,14 @@ Options_BGDeformation:
 		add.w	d4,d0
 		swap	d0
 		or.l	d0,d2
+		tst.b	d7
+		beq.s	@bla
+		asr.l	d7,d2
+		andi.l	#$FFFF0000,d2
+@bla
 		move.l	d2,(a1)+
 		dbf	d3,@scroll ; fill scroll data with 0
+		move.l	(sp)+,d7
 		rts
 ; ---------------------------------------------------------------------------
 

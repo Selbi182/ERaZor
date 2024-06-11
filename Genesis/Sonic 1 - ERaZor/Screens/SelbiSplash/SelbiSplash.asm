@@ -132,7 +132,7 @@ SelbiSplash_Loop:
 		cmpi.w	#$90,($FFFFF614).w		; is time less than $90?
 		bpl.w	@0
 		move.w	#$8B07,($C00004).l
-		moveq	#7,d0
+		moveq	#8,d0
 		jsr	Options_BGDeformation2
 
 @0:

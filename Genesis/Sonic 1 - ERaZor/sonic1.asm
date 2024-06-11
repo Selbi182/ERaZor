@@ -3395,6 +3395,7 @@ loc_20BC:
 
 Pal_Sega1:	incbin	pallet\sega1.bin
 Pal_Sega2:	incbin	pallet\sega2.bin
+Pal_Sega2OG:	incbin	pallet\sega2_original.bin
 
 ; ---------------------------------------------------------------------------
 ; Subroutines to load pallets
@@ -3900,47 +3901,82 @@ Sega_WaitFrames:
 		display_enable
 
 Sega_WaitPallet:
-		moveq	#7,d0
-		jsr	Options_BGDeformation2
+		lea	($FFFFCC00).w,a1
+		moveq	#0,d0
+		move.w	#224-1,d1
+@clearscroll:	move.l	d0,(a1)+
+		dbf	d1,@clearscroll
 
+		tst.b	($FFFFF635).w
+		bne.s	@0
+		jsr	Options_BGDeformation2
+@0:
 		move.b	#2,($FFFFF62A).w
 		bsr	DelayProgram
 		andi.b	#$F0,($FFFFF605).w ; is	A, B, C, or Start pressed?
-		bne.s	Sega_GotoTitle	; if yes, branch
+		bne.w	Sega_GotoTitle	; if yes, branch
 		bsr	PalCycle_Sega
 		bne.s	Sega_WaitPallet
 
-		lea	($FFFFCC00).w,a1
-		move	#$2700,sr
-		moveq	#0,d0
-		move.w	#$DF,d1
-@clearscroll:	move.l	d0,(a1)+
-		dbf	d1,@clearscroll ; fill scroll data with 0
-		move.l	d0,($FFFFF616).w
-
 		move.b	#$B5,d0
-		bsr	PlaySound_Special ; play ring sound
+		move.b	#$E1,d0
+		bsr	PlaySound_Special  ; play "SEGA" sound (featuring the beautiful voice of yours truly)
 		move.b	#$14,($FFFFF62A).w
 		bsr	DelayProgram
-		move.w	#$3F,($FFFFF614).w	; frames to wait after SEGA sound started
-		move.b	#25,($FFFFFFBD).w
+
+		move.b	#0,($FFFFFFBD).w	; frames to wait after SEGA sound
+		move.w	#150,($FFFFF614).w	; frames to wait after crash sound
 
 Sega_WaitEnd:
 		tst.b	($FFFFFFBE).w
+		beq.s	@notendphase
+		move.w	#25,d0
+		sub.w	($FFFFFFBD).w,d0
+		lsr.w	#7,d0
+		jsr	Options_BGDeformation2
+				
+		lea	($FFFFCC00+80*4).w,a1
+		move.l	#$00010000,d0
+		btst	#1,($FFFFFE0F).w
+		beq.s	@0
+		moveq	#0,d0
+@0:
+		move.w	#64-1,d1
+@clearscroll:
+		move.l	(a1),d0
+		asr.l	#5,d0
+		andi.l	#$FFFF0000,d0
+		move.l	d0,(a1)+
+		dbf	d1,@clearscroll
+
+@notendphase:
+		tst.b	($FFFFFFBE).w
 		bne.s	Sega_NoSound
+		
 		subq.b	#1,($FFFFFFBD).w
 		bpl.s	Sega_NoSound
-		move.b	#$E1,d0
-		bsr	PlaySound_Special ; play "SEGA"	sound (featuring the beautiful voice of yours truly)
+		move.b	#$D3,d0
+		bsr	PlaySound_Special ; play crash sound
 		move.b	#1,($FFFFFFBE).w
-
+		move.w	#$000,($FFFFFB00).w
+		move.w	#$000,($FFFFFB02).w
+		move.w	#$222,($FFFFFB04).w
+		move.w	#$222,($FFFFFB0C).w
+		jsr	Pal_MakeBlackWhite
+		
+		lea	($FFFFFB20).w,a0
+		move.w	#$E80,d0
+		move.w	#$10*3-1,d1
+@white:		move.w	d0,(a0)+
+		dbf	d1,@white
+		
 Sega_NoSound:
 		move.b	#2,($FFFFF62A).w
 		bsr	DelayProgram
 		tst.w	($FFFFF614).w
 		beq.s	Sega_GotoTitle
 		andi.b	#$80,($FFFFF605).w ; is	Start button pressed?
-		beq.s	Sega_WaitEnd	; if not, branch
+		beq.w	Sega_WaitEnd	; if not, branch
 
 Sega_GotoTitle:
 		clr.b	($FFFFFFBE).w
@@ -52126,8 +52162,10 @@ SoundDE:	incbin	sound\soundNULL.bin
 SoundDF:	incbin	sound\soundNULL.bin
 		even
 
-SegaPCM:	incbin	sound\segapcm.wav
-SegaPCM_End:	even
+;SegaPCM:	incbin	sound\segapcm.wav
+SegaPCM:	incbin	sound\segapcm_cursed.raw
+		even
+SegaPCM_End:
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------

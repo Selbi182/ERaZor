@@ -72,22 +72,17 @@ SYZPlatform_Frame0:
 	dc.b	40
 
 SYZPlatform_Frame1:
-	dc.b	3
+	dc.b	2
 
-	dc.b	-60
+	dc.b	-90
 	dc.b	$06
 	dc.w	$0020
-	dc.b	-8
+	dc.b	-64
 
-	dc.b	-56
+	dc.b	-90
 	dc.b	$06
 	dc.w	$0020
-	dc.b	-32
-
-	dc.b	-56
-	dc.b	$06
-	dc.w	$0020
-	dc.b	16
+	dc.b	48
 
 SYZPlatform_Frame2:
 	dc.b	3

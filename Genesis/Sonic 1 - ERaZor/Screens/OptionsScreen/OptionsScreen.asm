@@ -522,6 +522,7 @@ Options_HandleDeleteSaveGame:
 		andi.b	#$80,d1			; is Start pressed? (this option only works on start because of how delicate it is)
 		beq.w	Options_Return		; if not, return
 		
+		ints_disable
 		move.w	#90,($FFFFFF82).w	; set fade-out sequence time to 90 frames
 @delete_fadeoutloop:
 		subq.w	#1,($FFFFFF82).w	; subtract 1 from remaining time
@@ -549,13 +550,7 @@ Options_HandleDeleteSaveGame:
 		move.b	#1,($A130F1).l		; enable SRAM
 		clr.b	($200000+SRAM_Exists).l	; unset the magic number (actual SRAM deletion happens during restart)
 		move.b	#0,($A130F1).l		; disable SRAM
-		
-		lea	($FFFFD000).w,a1	; get start of object RAM
-		moveq	#0,d0			; overwrite everything with 0
-		move.w	#$BFF,d1		; $BFF iterations to cover the entirety of the RAM
-@clear_ram:	move.l	d0,(a1)+		; clear four bytes of RAM
-		dbf	d1,@clear_ram		; clear	the RAM
-		jmp	EntryPoint		; restart the game
+		jmp	Init			; restart the game
 ; ---------------------------------------------------------------------------
 
 Options_HandleSoundTest:

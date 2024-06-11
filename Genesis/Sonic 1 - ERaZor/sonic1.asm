@@ -24,7 +24,7 @@
 ; ------------------------------------------------------
 ; Developer Assembly Options
 ; ------------------------------------------------------
-QuickLevelSelect = 1
+QuickLevelSelect = 0
 QuickLevelSelect_ID = $502
 
 DebugModeDefault = 1
@@ -183,6 +183,7 @@ EntryPoint:
 		tst.w	($A1000C).l	; test port C control
 PortA_Ok:	bne.s	PortC_Ok
 
+Init:
 		lea	SetupValues(pc),a5
 		movem.w	(a5)+,d5-d7
 		movem.l	(a5)+,a0-a4
@@ -437,9 +438,9 @@ HBlank_LZWaterSurface:
 		
 		lea	($C00000).l,a1
 		move.w	#$8A00|$DF,4(a1)	; Reset HInt timing
-		move.w	#$100,($A11100).l	; stop the Z80
-@z80loop:	btst	#0,($A11100).l
-		bne.s	@z80loop		; loop until it says it's stopped
+	;	move.w	#$100,($A11100).l	; stop the Z80
+@z80loop:;	btst	#0,($A11100).l
+	;	bne.s	@z80loop		; loop until it says it's stopped
 
 		movea.l	($FFFFF610).w,a2
 		moveq	#$F,d0			; adjust to push artifacts off screen
@@ -469,7 +470,8 @@ HBlank_LZWaterSurface:
 		dbf    d1,@transferColors	; repeat for number of colors
 
 @skipTransfer:
-		move.w	#0,($A11100).l		; start the Z80
+	;	move.w	#0,($A11100).l		; start the Z80
+		
 		movem.l	(sp)+,d0-d1/a0-a2
 
 locret_119C:
@@ -3677,6 +3679,8 @@ RNG_Rest:
 		rts
 
 RandomNumber_Next:
+		bra.s	RandomNumber	; thought I was clever, but this turned out to be beyond useless
+
 		move.w	(CurrentRandomNumber).w,d0
 		rol.l	#1,d0
 		bra.s	RNG_Rest
@@ -3930,8 +3934,8 @@ Sega_WaitPallet:
 Sega_WaitEnd:
 		tst.b	($FFFFFFBE).w
 		beq.s	@notendphase
-		move.w	#25,d0
-		sub.w	($FFFFFFBD).w,d0
+		move.b	#25,d0
+		sub.b	($FFFFFFBD).w,d0
 		lsr.w	#7,d0
 		jsr	Options_BGDeformation2
 				
@@ -4800,10 +4804,12 @@ loc_3946:
 		move.l	#$64600002,($C00004).l
 		lea	(Nem_HSpring).l,a0
 		bsr	NemDec
-	
+		
+		cmpi.b	#1,($FFFFFE10).w
+		beq.s	@0
 		moveq	#0,d0
 		bsr	LoadPLC		; (re-)load standard patterns 1
-		
+@0:
 	;	move.b	#$07,($FFFFD380).w	; load cropped screen object (left half)
 	;	move.w	#$00D4,($FFFFD388).w		; set X-position
 	;	move.w	#$00F8,($FFFFD38A).w		; set Y-position
@@ -5449,18 +5455,20 @@ byte_3FCF:	dc.b 0			; XREF: LZWaterSlides
 ; ---------------------------------------------------------------------------
 
 CinematicScreenFuzz:
+		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
+		beq.w	CinematicScreenFuzz_End	; if not, branch
+
 		tst.b	($FFFFFF64).w		; camera shake currently set?
 		bne.w	CinematicScreenFuzz_End	; if yes, fuzz currently disabled cause holy shit is it slow
-
-		cmpi.b	#$10, ($FFFFF600).w	; is game mode special stage?
+		cmpi.b	#$10,($FFFFF600).w	; is game mode special stage?
 		beq.w	CinematicScreenFuzz_End	; if yes, fuzz is ALSO currently disabled cause holy shit is it STILL slow
 
-		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
-		bne.s	CinematicScreenFuzz_Do	; if yes, branch
-		cmpi.w	#$002,($FFFFFE10).w	; are we in Green Hill Place?
-		bne.w	CinematicScreenFuzz_End	; if not, branch
-		cmpi.b	#4,($FFFFFE30).w	; did we hit the final checkpoint yet?
-		beq.w	CinematicScreenFuzz_End	; if yes, branch
+	;	btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
+	;	bne.s	CinematicScreenFuzz_Do	; if yes, branch
+	;	cmpi.w	#$002,($FFFFFE10).w	; are we in Green Hill Place?
+	;	bne.w	CinematicScreenFuzz_End	; if not, branch
+	;	cmpi.b	#4,($FFFFFE30).w	; did we hit the final checkpoint yet?
+	;	beq.w	CinematicScreenFuzz_End	; if yes, branch
 
 CinematicScreenFuzz_Do:
 		move.w	($FFFFFE04).w,d7 ; move timer into d7
@@ -32772,7 +32780,10 @@ JD_Move:
 		move.b	#$14,obAnim(a0)
 JD_NoA:
 		move.w	d0,obVelX(a0)		; move sonic forward (X-velocity)
-		clr.w	obVelY(a0)			; clear Y-velocity to move sonic directly down
+		clr.w	obVelY(a0)		; clear Y-velocity to move sonic directly down
+		
+		cmpi.b	#$1,($FFFFFE10).w	; is level LZ?
+		beq.s	JD_End			; if yes, branch
 		bsr.s	Sonic_HomingAttack	; check if homing attack is possible
 
 JD_End:
@@ -32909,7 +32920,7 @@ SH_Return2:
 ; -------------------------------------------------------------------------------
 
 SH_Objects:
-	dc.b	$1E, $1F, $22, $26, $2B, $2C, $2D, $40, $42, $43, $50, $55, $60
+	dc.b	$1F, $22, $26, $2B, $40, $50, $55
 	dc.b	$FF	; this $FF is the end of list
 	even
 ; -------------------------------------------------------------------------------

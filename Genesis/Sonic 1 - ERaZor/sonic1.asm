@@ -4337,10 +4337,12 @@ LevSel_Ending:
 
 LevSel_RP2:
 		move.w	#$200,($FFFFFE10).w		; set level to MZ1
-		move.b	#1,($FFFFFE30).w 		; lamppost number
+		move.b	#3,($FFFFFE30).w 		; lamppost number
 		move.b	($FFFFFE30).w,($FFFFFE31).w
 		move.w	#$1120,($FFFFFE32).w		; x-position
 		move.w	#$350,($FFFFFE34).w		; y-position
+		move.w	#$1077,($FFFFFE40).w 	; screen x-position
+		move.w	#$02EC,($FFFFFE42).w 	; screen y-position
 		bra.w	PlayLevelX
 ; ===========================================================================
 
@@ -9194,7 +9196,7 @@ loc_664A:
 
 loc_6656:
 		cmpi.w	#$101,($FFFFFE10).w	; is level LZ2?
-		bne.s	@cont			; if yes, branch
+		bne.s	@cont			; if not, branch
 		tst.b 	($FFFFFFFE).w
 		bne.s	@cont2
 @cont:	
@@ -10738,8 +10740,8 @@ loc_6DAC:				; XREF: DynScrResizeLoad
 		addq.w	#8,d0
 		cmp.w	($FFFFF72E).w,d0
 		bcs.s	loc_6DC4
-		btst	#1,($FFFFD022).w
-		beq.s	loc_6DC4
+	;	btst	#1,($FFFFD022).w	; this stuff makes the vertical camera movement slower when not in air
+	;	beq.s	loc_6DC4		; it can kiss my ass
 		add.w	d1,d1
 		add.w	d1,d1
 
@@ -11652,6 +11654,7 @@ Resize_FZEscape:
 		move.w	#$0500,d1
 		move.b	#$46,d2
 		jsr	Sub_ChangeChunk
+		
 		
 		; move Sonic left after explosion
 		move.b	#4,($FFFFD024).w
@@ -13861,10 +13864,12 @@ Obj2A_MarkAsUsed:
 ; ===========================================================================
 
 Obj2A_OpenShutTutorial:
+		tst.b	obSubtype(a0)		; is this the door for the escape sequence?
+		bmi.s	@tutshut		; if yes, force shut
 		move.w	($FFFFD008).w,d0
 		cmp.w	obX(a0),d0
 		blt.s	Obj2A_Open
-		move.b	#0,obAnim(a0)		; use "closing"	animation
+@tutshut:	move.b	#0,obAnim(a0)		; use "closing"	animation
 		bra.s	Obj2A_Animate
 
 ; ===========================================================================
@@ -21468,7 +21473,7 @@ Obj36_Var:	dc.b 0,	$14		; frame	number,	object width
 Obj36_Main:				; XREF: Obj36_Index
 		addq.b	#2,obRoutine(a0)
 		move.l	#Map_obj36,obMap(a0)
-		move.w	#$51B,obGfx(a0)
+		move.w	#$051B,obGfx(a0)
 		ori.b	#4,obRender(a0)
 		move.b	#4,obPriority(a0)
 		move.b	obSubtype(a0),d0
@@ -21487,6 +21492,7 @@ Obj36_Solid:				; XREF: Obj36_Index
 		bne.s	Obj36_NotInhuman	; if not, branch
 		tst.b	($FFFFFFE7).w		; is inhuman mode on?
 		beq.s	Obj36_NotInhuman	; if not, branch
+		ori.w	#$6000,obGfx(a0)	; use palette line four from now now
 		tst.b	($FFFFFFB3).w		; was the spike already destroyed?
 		bne.s	Obj36_NotInhuman	; if yes, branch
 	
@@ -39333,6 +39339,8 @@ Obj7D_SoundStopper:
 		movea.l	$30(a0),a1		; get saved RAM address of the door
 		move.b	#1,$30(a1)		; turn the door red
 		
+		move.b	#1,($FFFFFFA5).w	; move HUD off screen
+		
 		jmp	DeleteObject
 
 Obj7D_NoTouch3:
@@ -48918,9 +48926,9 @@ Nem_Bridge:	incbin	artnem\ghzbridg.bin	; GHZ bridge
 		even
 Nem_Ball:	incbin	artnem\ghzball.bin	; GHZ giant ball
 		even
-Nem_Spikes:	incbin	artnem\spikes_blue.bin	; spikes
+Nem_Spikes:	incbin	artnem\spikes_bloody.bin	; spikes
 		even
-Nem_SpikesBlood:	incbin	artnem\spikes_bloody.bin	; damn those bloody spikes
+Nem_SpikesBlood: incbin	artnem\spikes_lava.bin	; damn those bloody spikes
 		even
 Nem_SpikePole:	incbin	artnem\ghzlog.bin	; GHZ spiked log
 		even

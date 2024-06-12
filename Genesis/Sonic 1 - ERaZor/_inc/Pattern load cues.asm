@@ -236,7 +236,8 @@ PLC_SYZ:	dc.w 1
 		dc.w $6E40
 PLC_SYZ2:	dc.w 2
 		dc.l Nem_SYZPlat	; platform
-		dc.w $9200
+		dc.w $A660
+	;	dc.w $9200
 		dc.l Nem_LzSwitch	; switch
 		dc.w $A1E0
 		dc.l Nem_HSpring	; horizontal spring

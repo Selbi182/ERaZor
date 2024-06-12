@@ -31,6 +31,7 @@ DebugModeDefault = 1
 DieInDebug = 0
 
 DoorsAlwaysOpen = 1
+LowBossHP = 1
 
 ; ------------------------------------------------------
 ; Macros
@@ -613,23 +614,24 @@ BlackBars.SetState:
 		beq.s	@validgamemode			; if yes, branch
 		bra.s	BlackBars_DontShow		; don't show black bars in any other game modes
 
-@validgamemode:
-		btst	#3,($FFFFFF92).w		; is cinematic HUD enabled?
-		bne.s	BlackBars_Show			; if yes, always enable
-		cmpi.b	#6,($FFFFD024).w		; is Sonic dying?
-		bhs.s	BlackBars_Show			; if yes, branch
+@validgamemode:	
 		tst.b	($FFFFF7CC).w			; are controls locked?
 		bne.s	BlackBars_Show			; if yes, always enable
 		tst.w	($FFFFF63A).w			; is game paused?
 		bne.s	BlackBars_Show			; if yes, always enable
+		cmpi.b	#6,($FFFFD024).w		; is Sonic dying?
+		bhs.s	BlackBars_Show			; if yes, branch
 
 		cmpi.w	#$002,($FFFFFE10).w		; are we in Green Hill Place?
 		bne.s	@notghp				; if not, branch
 		cmpi.b	#4,($FFFFFE30).w		; did we hit the final checkpoint yet?
 		beq.s	BlackBars_DontShow		; if yes, disable black bars
 		bra.s	BlackBars.GHP			; update GHP black bars
-
 @notghp:
+
+		btst	#3,($FFFFFF92).w		; is cinematic HUD enabled?
+		bne.s	BlackBars_Show			; if yes, always enable
+
 		cmpi.w	#$400,($FFFFFE10).w		; are we in Uberhub?
 		bne.s	BlackBars_DontShow		; if not, branch
 		tst.b	($FFFFFF7F).w			; are we falling down the intro tube?
@@ -679,7 +681,7 @@ BlackBars.GHP:
 		move.b	BlackBars.GHPTimerReset,BlackBars.GHPTimer	; reset timer
 		addq.w	#BlackBars.GrowSize,BlackBars.TargetHeight	; shrink bars
 
-		cmpi.w	#$E0/2,BlackBars.Height		; did we reach kill height yet? (full screen covered)
+		cmpi.w	#$E0/2-2,BlackBars.Height		; did we reach kill height yet? (full screen covered)
 		blo.s	@noscreenkill			; if not, branch
 		lea	($FFFFD000).w,a0		; load Sonic's object to a0
 		movea.l	a0,a2				; set killer to self
@@ -5465,8 +5467,6 @@ CinematicScreenFuzz:
 		cmpi.b	#$10,($FFFFF600).w	; is game mode special stage?
 		beq.w	CinematicScreenFuzz_End	; if yes, fuzz is ALSO currently disabled cause holy shit is it STILL slow
 
-	;	btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
-	;	bne.s	CinematicScreenFuzz_Do	; if yes, branch
 	;	cmpi.w	#$002,($FFFFFE10).w	; are we in Green Hill Place?
 	;	bne.w	CinematicScreenFuzz_End	; if not, branch
 	;	cmpi.b	#4,($FFFFFE30).w	; did we hit the final checkpoint yet?
@@ -5486,7 +5486,7 @@ CinematicScreenFuzz_Do:
 		move.w	#224-1,d1		; do for all scanlines
 		
 		; calculate the exact amount of lines we need, minus ones occupied by black bars
-		move.b	(BlackBars.Height).w,d2
+		move.w	(BlackBars.Height).w,d2
 		ext.w	d2
 		sub.w	d2,d1
 		sub.w	d2,d1
@@ -11246,7 +11246,7 @@ Resize_SLZ2boss2:
 		move.w	#$BD0,obX(a1)
 		move.w	#$048C,obY(a1)
 		
-	if DebugModeDefault=1
+	if LowBossHP=1
 		move.b	#2,($FFFFFF75).w	; set lives
 	else
 		move.b	#21,($FFFFFF75).w	; set lives
@@ -11355,6 +11355,17 @@ Resize_SYZx:	dc.w Resize_SYZ1-Resize_SYZx
 
 Resize_SYZ1:
 		move.w	#$4A0,($FFFFF726).w
+
+		cmpi.w	#$500,($FFFFF700).w
+		blo.s	@0
+		cmpi.w	#$260,($FFFFD00C).w
+		blo.s	@1
+		move.w	#$4A0,($FFFFF72E).w
+		bra.s	@0
+@1:		move.w	#$1C0,($FFFFF726).w
+
+
+@0:
 		rts	
 ; ===========================================================================
 
@@ -12654,22 +12665,27 @@ Obj18_Main:				; XREF: Obj18_Index
 		cmpi.b	#1,($FFFFFE10).w ; check if level is LZ
 		bne.s	Obj18_NotLZ
 		move.l	#Map_obj18c,obMap(a0)
+		move.b	#0,$3C(a0)
 
 Obj18_NotLZ:
 		cmpi.b	#4,($FFFFFE10).w ; check if level is SYZ
-		bne.s	Obj18_NotSYZ
+		bne.w	Obj18_NotSYZ
 		move.l	#Map_obj18a,obMap(a0) ; SYZ specific code
-		move.w	#$4490,obGfx(a0)
+	;	move.w	#$4490,obGfx(a0)
+		move.w	#$4000+($A660/$20),obGfx(a0)
 	;	move.b	#$30,obActWid(a0)
 		move.b	#$A0,obActWid(a0)	; make platforms SUPER wide for easy access
 		addq.w	#1,obY(a0)	; fix vertical pixel offset
 
+		tst.b	obSubtype(a0)
+		bmi.s	Obj18_NotSYZ
 		; glowing yellow arrows when stepping on platform in Uberhub
 		jsr	SingleObjLoad
 		move.b	#$18,(a1)
 		move.b	#$A,obRoutine(a1)	; set to arrow routine
 		move.l	#Map_obj18a,obMap(a1) ; SYZ specific code
-		move.w	#$6490,obGfx(a1)
+	;	move.w	#$6490,obGfx(a1)
+		move.w	#$6533,obGfx(a1)
 		move.w	obX(a0),obX(a1)
 		move.w	obY(a0),d0
 		addi.w	#$38,d0		; adjust Y pos
@@ -12775,7 +12791,7 @@ Obj18_Action2:				; XREF: Obj18_Index
 		move.b	#10,($FFFFFF64).w	; camera shaking
 		move.w	obX(a0),($FFFFD008).w	; force Sonic to center of platform
 		clr.w	($FFFFD010).w		; clear Sonic's X speed
-		move.w	#$800,($FFFFD012).w
+		move.w	#$800,($FFFFD012).w	; shoot Sonic down
 		bsr	SingleObjLoad		; load explosion object
 		bne.s	Obj18_SYZEnd
 		move.b	#$3F,(a1)
@@ -12785,9 +12801,13 @@ Obj18_Action2:				; XREF: Obj18_Index
 		bclr	#3,($FFFFD022).w
 		bset	#1,($FFFFD022).w
 		move.b	#2,($FFFFD01C).w
+		move.w	obY(a0),d0
+		cmp.w	($FFFFD00C).w,d0
+		blo.s	Obj18_SYZEnd
+		move.b	#30,$3C(a0)
+		
 Obj18_SYZEnd:
-		jmp	DeleteObject
-
+		rts
 
 Obj18_NotSYZX:
 		cmpi.w	#$101,($FFFFFE10).w	; is level LZ2?
@@ -12820,6 +12840,15 @@ Obj18_NoCheckpoint:
 		addq.b	#4,$38(a0)
 
 loc_7F06:
+		tst.b	$3C(a0)
+		beq.s	@0
+		bmi.s	@0
+		subq.b	#1,$3C(a0)
+		bsr	ExitPlatform
+		bra.w	DisplaySprite
+
+@0:
+		clr.b	$3C(a0)
 		moveq	#0,d1
 		move.b	obActWid(a0),d1
 		bsr	ExitPlatform
@@ -13697,6 +13726,8 @@ Obj1D_Action:
 		add.w	d0,obY(a1)
 	
 Obj1D_ChkDelete:				; XREF: Obj1D_Index
+		tst.b	$34(a0)			; is this the following-Sonic object?
+		bne.s	@0			; if yes, don't delete
 		move.w	obX(a0),d0
 		andi.w	#$FF80,d0
 		move.w	($FFFFF700).w,d1
@@ -13705,6 +13736,7 @@ Obj1D_ChkDelete:				; XREF: Obj1D_Index
 		sub.w	d1,d0
 		cmpi.w	#$280,d0
 		bhi.w	DeleteObject
+@0:
 		rts
 ; ===========================================================================
 
@@ -14401,6 +14433,8 @@ Obj3F_Index:	dc.w Obj3F_Main-Obj3F_Index
 Obj3F_Main:				; XREF: Obj3F_Index
 		cmpi.w	#$502,($FFFFFE10).w	; is level FZ?
 		bne.s	@cont			; if not, branch
+		tst.b	(FZEscape).w
+		bne.s	@cont
 		move.w	($FFFFD008).w,d0
 		cmpi.w	#$2400,d0
 		bcc.s	Obj3F_Main2
@@ -15013,7 +15047,7 @@ Obj1F_Main:				; XREF: Obj1F_Index
 		cmpi.w	#$000,($FFFFFE10).w	; is level GHZ1?
 		bne.s	Obj01_NotGHZ1_Main2	; if not, branch
 		move.b	#$F,obColType(a0)		; use boss touch response
-	if DebugModeDefault=1
+	if LowBossHP=1
 		move.b	#1,obColProp(a0)		; set number of	hits to	1
 	else
 		move.b	#12,obColProp(a0)		; set number of	hits to	12
@@ -15183,7 +15217,7 @@ Obj1F_BossDelete:
 		moveq	#$C,d0
 		jsr	PalLoad2	; load GHZ palette
 		jsr	WhiteFlash3			; make white flash
-		move.b	#0,(BlackBars.Height).w
+		move.w	#0,(BlackBars.Height).w
 		movem.l	(sp)+,d0-d7/a1-a3
 
 		move.b	#$34,($FFFFD080).w 		; load title card object
@@ -23034,6 +23068,10 @@ Obj41_BounceUp:				; XREF: Obj41_Up
 		addq.b	#2,obRoutine(a0)
 		addq.w	#8,obY(a1)
 		move.w	$30(a0),obVelY(a1)	; move Sonic upwards
+		cmpi.w	#$400,($FFFFFE10).w
+		bne.s	@0
+		subi.w	#$50,obY(a1)
+@0:
 		move.b	#1,($FFFFFFAD).w
 		move.b	#1,($FFFFFF96).w
 		bset	#1,obStatus(a1)
@@ -32770,7 +32808,7 @@ JD_SetSpeed1:
 		move.w	#$A00,d0		; set normal jumpdash speed
 		tst.b	($FFFFFE2E).w		; do you have speed shoes?
 		beq.s	JD_SetSpeed2		; if not, branch
-		move.w	#Sonic_TopSpeed+$680,d0	; set speed shoes jumpdash speed
+		move.w	#Sonic_TopSpeed+$600,d0	; set speed shoes jumpdash speed
 		move.b	#1,($FFFFFFE8).w	; set JD_SetSpeed2 flag
 
 JD_SetSpeed2:
@@ -39464,7 +39502,7 @@ loc_17772:
 		move.w	obX(a0),$30(a0)
 		move.w	obY(a0),$38(a0)
 
-	if DebugModeDefault=1
+	if LowBossHP=1
 		move.b	#1,obColProp(a0)		; set number of	hits to	1
 	else
 		move.b	#20,obColProp(a0)	; set number of	hits to	20
@@ -39967,7 +40005,7 @@ Obj48_Main:				; XREF: Obj48_Index
 		beq.s	Obj48_Do
 		subq.b	#1,ob2ndRout(a0)
 		movea.l	$34(a0),a1
-	if DebugModeDefault=1
+	if LowBossHP=1
 		move.b	#1,obColProp(a1)	; force boss to have full health until all three balls appeared
 	else
 		move.b	#20,obColProp(a1)	; force boss to have full health until all three balls appeared
@@ -43277,7 +43315,7 @@ loc_19E3E:
 
 loc_19E5A:
 		move.w	#0,$34(a0)
-	if DebugModeDefault=1
+	if LowBossHP=1
 		move.b	#0,obColProp(a0)	; set number of	hits to	1
 	else
 		move.b	#30,obColProp(a0)	; set number of	hits to	30
@@ -43660,6 +43698,7 @@ loc_1A216:
 		move.b	#1,($FFFFF7CC).w	; lock controls
 		move.w	#0,($FFFFF602).w	; clear inputs
 		clr.w	($FFFFD014).w		; clear inertia
+		bclr	#5,($FFFFD022).w
 		
 		move.w	($FFFFD00C).w,d0
 		cmp.w	obY(a0),d0
@@ -43677,6 +43716,7 @@ loc_1A248:
 
 		tst.b	obRender(a0)		; has Eggman object been deleted after the crash cutscene?
 		bmi.s	loc_1A260		; if not, branch
+		move.b	#0,($FFFFD000+obAniFrame).w ; reset Sonic waiting animation
 		move.b	#1,(FZEscape).w		; set final sequence flag
 		move.b	#0,($FFFFF7CC).w	; unlock controls
 		move.w	#$E0,d0
@@ -44476,14 +44516,14 @@ Obj3E:					; XREF: Obj_Index
 Obj3E_Delete:
 		jmp	DeleteObject
 ; ===========================================================================
-Obj3E_Index:	dc.w Obj3E_Main-Obj3E_Index
-		dc.w Obj3E_BodyMain-Obj3E_Index
-		dc.w Obj3E_Switched-Obj3E_Index
-		dc.w Obj3E_Explosion-Obj3E_Index
-		dc.w Obj3E_Explosion-Obj3E_Index
-		dc.w Obj3E_Explosion-Obj3E_Index
-		dc.w Obj3E_Animals-Obj3E_Index
-		dc.w Obj3E_EndAct-Obj3E_Index
+Obj3E_Index:	dc.w Obj3E_Main-Obj3E_Index		; 0
+		dc.w Obj3E_BodyMain-Obj3E_Index		; 2
+		dc.w Obj3E_Switched-Obj3E_Index		; 4
+		dc.w Obj3E_Explosion-Obj3E_Index	; 6
+		dc.w Obj3E_Explosion-Obj3E_Index	; 8
+		dc.w Obj3E_Explosion-Obj3E_Index	; A
+		dc.w Obj3E_Nuke-Obj3E_Index		; C
+		dc.w Obj3E_EndAct-Obj3E_Index		; E
 
 Obj3E_Var:	dc.b 2,	$20, 4,	0	; routine, width, priority, frame
 		dc.b 4,	$C, 5, 1
@@ -44531,8 +44571,6 @@ Obj3E_ChkOpened:
 		bset	#1,($FFFFD022).w
 
 Obj3E_DoOpen:
-		bset	#0,($FFFFFF8B).w	; unlock first door
-
 		move.b	#2,obFrame(a0)	; use frame number 2 (destroyed	prison)
 		rts	
 ; ===========================================================================
@@ -44552,11 +44590,7 @@ Obj3E_Switched:				; XREF: Obj3E_Index
 		addq.w	#8,obY(a0)
 		move.b	#$A,obRoutine(a0)
 		move.w	#$3C,obTimeFrame(a0)
-		move.b	#1,($FFFFFFA5).w	; move HUD off screen (and start FZEscape sequence)
-	;	clr.b	($FFFFFE1E).w	; stop time counter
-	;	clr.b	($FFFFF7AA).w	; lock screen position
-	;	move.b	#1,($FFFFF7CC).w ; lock	controls
-	;	move.w	#$800,($FFFFF602).w ; make Sonic run to	the right
+	;	move.b	#1,($FFFFFFA5).w	; move HUD off screen (and start FZEscape sequence)
 		clr.b	ob2ndRout(a0)
 		bclr	#3,($FFFFD022).w
 		bset	#1,($FFFFD022).w
@@ -44587,67 +44621,42 @@ Obj3E_Explosion:			; XREF: Obj3E_Index
 
 loc_1ACA0:
 		subq.w	#1,obTimeFrame(a0)
-		beq.s	Obj3E_MakeAnimal
+		beq.s	Obj3E_MakeNuke
 		rts	
 ; ===========================================================================
 
-Obj3E_MakeAnimal:
+Obj3E_MakeNuke:
 		move.b	#2,($FFFFF7A7).w
-		move.b	#$C,obRoutine(a0)	; replace explosions with animals
+		move.b	#$C,obRoutine(a0)
 		move.b	#6,obFrame(a0)
 		move.w	#$96,obTimeFrame(a0)
 		addi.w	#$20,obY(a0)
-		moveq	#7,d6
-		move.w	#$9A,d5
-		moveq	#-$1C,d4
-
-Obj3E_Loop:
+		
+		; load nuke object
 		jsr	SingleObjLoad
 		bne.s	locret_1ACF8
-		move.b	#$28,0(a1)	; load animal object
+		move.b	#$28,0(a1)
 		move.w	obX(a0),obX(a1)
 		move.w	obY(a0),obY(a1)
-		add.w	d4,obX(a1)
-		addq.w	#7,d4
-		move.w	d5,$36(a1)
-		subq.w	#8,d5
-		dbf	d6,Obj3E_Loop	; repeat 7 more	times
 
 locret_1ACF8:
 		rts	
 ; ===========================================================================
 
-Obj3E_Animals:				; XREF: Obj3E_Index
-		moveq	#7,d0
-		and.b	($FFFFFE0F).w,d0
-		bne.s	loc_1AD38
-		jsr	SingleObjLoad
-		bne.s	loc_1AD38
-		move.b	#$28,0(a1)	; load animal object
-		move.w	obX(a0),obX(a1)
-		move.w	obY(a0),obY(a1)
-		jsr	(RandomNumber_Next).l
-		andi.w	#$1F,d0
-		subq.w	#6,d0
-		tst.w	d1
-		bpl.s	loc_1AD2E
-		neg.w	d0
-
-loc_1AD2E:
-		add.w	d0,obX(a1)
-		move.w	#$C,$36(a1)
-
-loc_1AD38:
+Obj3E_Nuke:				; XREF: Obj3E_Index
 		subq.w	#1,obTimeFrame(a0)
 		bne.s	locret_1AD48
 		addq.b	#2,obRoutine(a0)
 		move.w	#180,obTimeFrame(a0)
+		move.b	#1,($FFFFFFA5).w	; move HUD off screen (and start FZEscape sequence)
 
 locret_1AD48:
 		rts	
 ; ===========================================================================
 
 Obj3E_EndAct:				; XREF: Obj3E_Index
+		rts
+
 		moveq	#$3E,d0
 		moveq	#$28,d1
 		moveq	#$40,d2

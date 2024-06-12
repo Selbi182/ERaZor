@@ -117,7 +117,7 @@ obSolid:	equ $25 ; solid status flag
 
 ; ------------------------------------------------------
 ; Vladik's Debugger
-;__DEBUG__: equ 1
+__DEBUG__: equ 1
 ; ------------------------------------------------------
 		include	"Debugger/Debugger.asm"
 		even
@@ -3875,6 +3875,7 @@ SegaScreen:				; XREF: GameModeArray
 
 
 		move.w	#$0000,($FFFFFB00).w	; set background colour to black
+		move.w	#$0000,($FFFFFB02).w	; set background colour to black
 		move.b	#$00,($FF2000).l	; clear counter
 
 Sega_WhiteFadeIn:
@@ -3930,7 +3931,7 @@ Sega_WaitPallet:
 		move.b	#$14,($FFFFF62A).w
 		bsr	DelayProgram
 
-		move.b	#0,($FFFFFFBD).w	; frames to wait after SEGA sound
+		move.b	#30,($FFFFFFBD).w	; frames to wait after SEGA sound
 		move.w	#150,($FFFFF614).w	; frames to wait after crash sound
 
 Sega_WaitEnd:
@@ -49497,7 +49498,7 @@ ObjPos_Index:	dc.w ObjPos_GHZ1-ObjPos_Index, ObjPos_Null-ObjPos_Index
 		dc.w ObjPos_SBZ1pf3-ObjPos_Index, ObjPos_SBZ1pf4-ObjPos_Index
 		dc.w ObjPos_SBZ1pf5-ObjPos_Index, ObjPos_SBZ1pf6-ObjPos_Index
 		dc.w ObjPos_SBZ1pf1-ObjPos_Index, ObjPos_SBZ1pf2-ObjPos_Index
-		dc.b $FF, $FF, 0, 0, 0,	0
+		dc.w    $FFFF,$0000,$0000
 ObjPos_GHZ1:	incbin	objpos\ghz1.bin
 		even
 ObjPos_GHZ2:	incbin	objpos\ghz2.bin
@@ -49524,6 +49525,7 @@ ObjPos_LZ3pf1:;	incbin	objpos\lz3pf1.bin
 		even
 ObjPos_LZ3pf2:;	incbin	objpos\lz3pf2.bin
 		even
+		dc.w    $FFFF,$0000,$0000
 ObjPos_MZ1:	incbin	objpos\mz1.bin
 		even
 ObjPos_MZ2:;	incbin	objpos\mz2.bin
@@ -49560,9 +49562,10 @@ ObjPos_SBZ1pf5:;	incbin	objpos\sbz1pf5.bin
 		even
 ObjPos_SBZ1pf6:;	incbin	objpos\sbz1pf6.bin
 		even
+		dc.w    $FFFF,$0000,$0000
 ObjPos_End:	incbin	objpos\ending.bin
 		even
-ObjPos_Null:	dc.b $FF, $FF, 0, 0, 0,	0
+ObjPos_Null:	dc.w    $FFFF,$0000,$0000
 ; ---------------------------------------------------------------------------
 		incbin	misc\padding4.bin
 		even
@@ -52197,8 +52200,8 @@ SoundDE:	incbin	sound\soundNULL.bin
 SoundDF:	incbin	sound\soundNULL.bin
 		even
 
-;SegaPCM:	incbin	sound\segapcm.wav
-SegaPCM:	incbin	sound\segapcm_cursed.raw
+SegaPCM:	incbin	sound\segapcm.wav
+;SegaPCM:	incbin	sound\segapcm_cursed.raw
 		even
 SegaPCM_End:
 

@@ -13,7 +13,7 @@
 		dc.w	$1C32, $05EC	; LZ 3
 		dc.w	$0B80, $0000	; LZ 4 (SBZ 3)
 
-		dc.w	$006A, $026C	; MZ 1
+		dc.w	$01AF, $026C	; MZ 1
 		dc.w	$009C, $0264	; MZ 2
 		dc.w	$004F, $000F	; MZ 3
 		dc.w	$0080, $00A8	; MZ 4

@@ -11654,6 +11654,10 @@ Resize_FZEscape_Nuke:
 ; ===========================================================================
 
 Resize_FZEscape:
+		vram	$6C00			; load HPS and info box graphics
+		lea	(Nem_HardPS_Tut).l,a0
+		jsr	NemDec
+
 		addq.b	#2,($FFFFF742).w	; go to next routine
 		move.b	#2,(FZEscape).w		; enable exploding scenery
 
@@ -21529,10 +21533,12 @@ Obj36_Main:				; XREF: Obj36_Index
 		move.w	obY(a0),$32(a0)
 
 Obj36_Solid:				; XREF: Obj36_Index
-		cmpi.w	#$200,($FFFFFE10).w	; are we in Ruined Place?
-		bne.s	Obj36_NotInhuman	; if not, branch
 		tst.b	($FFFFFFE7).w		; is inhuman mode on?
 		beq.s	Obj36_NotInhuman	; if not, branch
+		cmpi.w	#$502,($FFFFFE10).w	; is level FP?
+		beq.w	Obj36_ExplodeFP		; if yes, branch
+		cmpi.w	#$200,($FFFFFE10).w	; are we in Ruined Place?
+		bne.s	Obj36_NotInhuman	; if not, branch
 		ori.w	#$6000,obGfx(a0)	; use palette line four from now now
 		tst.b	($FFFFFFB3).w		; was the spike already destroyed?
 		bne.s	Obj36_NotInhuman	; if yes, branch
@@ -21734,6 +21740,10 @@ Obj36_Display:
 		cmpi.w	#$280,d0
 		bhi.w	DeleteObject
 		rts	
+
+Obj36_ExplodeFP:
+		move.b	#$67,0(a0)
+		rts
 ; ===========================================================================
 
 Obj36_Type0x:				; XREF: Obj36_Solid
@@ -30933,6 +30943,8 @@ Obj06_Setup:
 		move.w	#$0360,obGfx(a0)		; set art pointer, use palette line 1
 		cmpi.w	#$501,($FFFFFE10).w		; is this the tutorial?
 		beq.s	Obj06_ArtLocFound		; if yes, branch
+		cmpi.w	#$502,($FFFFFE10).w		; is this Finalor Place?
+		beq.s	Obj06_ArtLocFound		; if yes, branch
 
 		move.w	#$0372,obGfx(a0)		; fallback pointer
 
@@ -36957,169 +36969,39 @@ Map_obj66:
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Object 67 - disc that	you run	around (SBZ)
+; Object 67 - Explosion emitter
 ; ---------------------------------------------------------------------------
+Obj67:
+		moveq	#0, d0
+		move.b	obRoutine(a0), d0
+		move.w	@Index(pc, d0.w), d1
+		jmp		@Index(pc, d1.w)
 
-Obj67:					; XREF: Obj_Index
-		moveq	#0,d0
-		move.b	obRoutine(a0),d0
-		move.w	Obj67_Index(pc,d0.w),d1
-		jmp	Obj67_Index(pc,d1.w)
 ; ===========================================================================
-Obj67_Index:	dc.w Obj67_Main-Obj67_Index
-		dc.w Obj67_Action-Obj67_Index
-; ===========================================================================
+@Timer:		equ $26
 
-Obj67_Main:				; XREF: Obj67_Index
-		addq.b	#2,obRoutine(a0)
-		move.l	#Map_obj67,obMap(a0)
-		move.w	#$C344,obGfx(a0)
-		move.b	#4,obRender(a0)
-		move.b	#4,obPriority(a0)
-		move.b	#8,obActWid(a0)
-		move.w	obX(a0),$32(a0)
-		move.w	obY(a0),$30(a0)
-		move.b	#$18,$34(a0)
-		move.b	#$48,$38(a0)
-		move.b	obSubtype(a0),d1	; get object type
-		andi.b	#$F,d1		; read only the	2nd digit
-		beq.s	loc_15546
-		move.b	#$10,$34(a0)
-		move.b	#$38,$38(a0)
-
-loc_15546:
-		move.b	obSubtype(a0),d1	; get object type
-		andi.b	#$F0,d1		; read only the	1st digit
-		ext.w	d1
-		asl.w	#3,d1
-		move.w	d1,$36(a0)
-		move.b	obStatus(a0),d0
-		ror.b	#2,d0
-		andi.b	#-$40,d0
-		move.b	d0,obAngle(a0)
-
-Obj67_Action:				; XREF: Obj67_Index
-		jsr	obj67_MoveSonic
-		jsr	obj67_MoveSpot
-		bra.w	Obj67_ChkDel
+@Index:	dc.w @Main-@Index
+		dc.w @Action-@Index
 ; ===========================================================================
 
-Obj67_MoveSonic:			; XREF: Obj67_Action
-		moveq	#0,d2
-		move.b	$38(a0),d2
-		move.w	d2,d3
-		add.w	d3,d3
-		lea	($FFFFD000).w,a1
-		move.w	obX(a1),d0
-		sub.w	$32(a0),d0
-		add.w	d2,d0
-		cmp.w	d3,d0
-		bcc.s	loc_155A8
-		move.w	obY(a1),d1
-		sub.w	$30(a0),d1
-		add.w	d2,d1
-		cmp.w	d3,d1
-		bcc.s	loc_155A8
-		btst	#1,obStatus(a1)
-		beq.s	loc_155B8
-		clr.b	$3A(a0)
-		rts	
-; ===========================================================================
+@Main:
+		addq.b	#2, obRoutine(a0)
 
-loc_155A8:
-		tst.b	$3A(a0)
-		beq.s	locret_155B6
-		clr.b	$38(a1)
-		clr.b	$3A(a0)
+@Action:
+		add.w 	#$1000, @Timer(a0)
+		bcc.s	@Return
 
-locret_155B6:
-		rts	
-; ===========================================================================
+		jsr		SingleObjLoad
+		bne.s	@Return
 
-loc_155B8:
-		tst.b	$3A(a0)
-		bne.s	loc_155E2
-		move.b	#1,$3A(a0)
-		btst	#2,obStatus(a1)
-		bne.s	loc_155D0
-		clr.b	obAnim(a1)
+		move.b	#$3F, 0(a1)
+		move.w	obX(a0),obX(a1)
+		move.w	obY(a0),obY(a1)
+		move.b	#1, $30(a1)
 
-loc_155D0:
-		bclr	#5,obStatus(a1)
-		move.b	#1,obNextAni(a1)
-		move.b	#1,$38(a1)
+@Return:
+		rts
 
-loc_155E2:
-		move.w	obInertia(a1),d0
-		tst.w	$36(a0)
-		bpl.s	loc_15608
-		cmpi.w	#-$400,d0
-		ble.s	loc_155FA
-		move.w	#-$400,obInertia(a1)
-		rts	
-; ===========================================================================
-
-loc_155FA:
-		cmpi.w	#-$F00,d0
-		bge.s	locret_15606
-		move.w	#-$F00,obInertia(a1)
-
-locret_15606:
-		rts	
-; ===========================================================================
-
-loc_15608:
-		cmpi.w	#$400,d0
-		bge.s	loc_15616
-		move.w	#$400,obInertia(a1)
-		rts	
-; ===========================================================================
-
-loc_15616:
-		cmpi.w	#$F00,d0
-		ble.s	locret_15622
-		move.w	#$F00,obInertia(a1)
-
-locret_15622:
-		rts	
-; ===========================================================================
-
-Obj67_MoveSpot:				; XREF: Obj67_Action
-		move.w	$36(a0),d0
-		add.w	d0,obAngle(a0)
-		move.b	obAngle(a0),d0
-		jsr	(CalcSine).l
-		move.w	$30(a0),d2
-		move.w	$32(a0),d3
-		moveq	#0,d4
-		move.b	$34(a0),d4
-		lsl.w	#8,d4
-		move.l	d4,d5
-		muls.w	d0,d4
-		swap	d4
-		muls.w	d1,d5
-		swap	d5
-		add.w	d2,d4
-		add.w	d3,d5
-		move.w	d4,obY(a0)
-		move.w	d5,obX(a0)
-		rts	
-; ===========================================================================
-
-Obj67_ChkDel:				; XREF: Obj67_Action
-		move.w	$32(a0),d0
-		andi.w	#-$80,d0
-		move.w	($FFFFF700).w,d1
-		subi.w	#$80,d1
-		andi.w	#-$80,d1
-		sub.w	d1,d0
-		cmpi.w	#$280,d0
-		bhi.s	Obj67_Delete
-		jmp	DisplaySprite
-; ===========================================================================
-
-Obj67_Delete:
-		jmp	DeleteObject
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Sprite mappings - disc that you run around (SBZ)

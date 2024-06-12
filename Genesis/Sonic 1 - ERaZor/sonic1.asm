@@ -11659,19 +11659,25 @@ Resize_FZEscape_Nuke:
 ; ===========================================================================
 
 Resize_FZEscape:
+		; PLC kinda
 		vram	$6C00			; load HPS and info box graphics
 		lea	(Nem_HardPS_Tut).l,a0
 		jsr	NemDec
 
-		vram	$70A0			; loadswitch graphics
+		vram	$70A0			; load switch graphics
 		lea	(Nem_LzSwitch).l,a0
 		jsr	NemDec
 
+		vram 	$5500
+		lea (Nem_SbzDoor1),a0
+		jsr NemDec
+		; (why did i do that)
+		
 		addq.b	#2,($FFFFF742).w	; go to next routine
 		move.b	#2,(FZEscape).w		; enable exploding scenery
 
 	;	move.w	#0,($FFFFF72C).w	; unlock controls
-		move.w	#0,($FFFFF728).w	; set left level boundary
+		move.w	#$D0,($FFFFF728).w	; set left level boundary
 		move.w	#$510,($FFFFF726).w	; set bottom level boundary
 		
 		move.w	#$0A00,d0		; replace laser barrier chunk

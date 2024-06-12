@@ -11630,8 +11630,12 @@ Resize_FZend2:
 		addq.b	#2,($FFFFF742).w	; go to escape sequence code
 
 		vram	$93A0			; load prison capsule graphics
-		lea	(Nem_Prison).l,a0
-		jsr	NemDec
+		lea	(Unc_Prison).l,a0
+		move.w	#($600)-1, d1
+
+@PrisonLoad:
+		move.w	(a0)+, ($C00000).l
+		dbf	d1, @PrisonLoad
 
 @0:
 		bra.w	loc_72C2
@@ -11657,6 +11661,10 @@ Resize_FZEscape_Nuke:
 Resize_FZEscape:
 		vram	$6C00			; load HPS and info box graphics
 		lea	(Nem_HardPS_Tut).l,a0
+		jsr	NemDec
+
+		vram	$70A0			; loadswitch graphics
+		lea	(Nem_LzSwitch).l,a0
 		jsr	NemDec
 
 		addq.b	#2,($FFFFF742).w	; go to next routine
@@ -19855,7 +19863,7 @@ loc_BDD6:
 		bra.s	Obj32_ShowPressed
 
 @notmzswitch:
-		cmpi.w	#$501,($FFFFFE10).w	; is this the tutorial?
+		cmpi.b	#$5,($FFFFFE10).w	; is this the tutorial or FP?
 		bne.s	@nottutorialswitch	; if not, branch
 	;	tst.b	($FFFFFF77).w		; is antigrav already enabled?
 	;	bne.w	Obj32_ShowPressed	; if yes, branch
@@ -49110,7 +49118,7 @@ Nem_Eggman:	incbin	artnem\bossmain.bin	; boss main patterns
 		even
 Nem_Weapons:	incbin	artnem\bossxtra.bin	; boss add-ons and weapons
 		even
-Nem_Prison:	incbin	artnem\prison.bin	; prison capsule
+Unc_Prison:	incbin	artunc\prison.bin	; prison capsule (uncompressed)
 		even
 Nem_Sbz2Eggman:	incbin	artnem\sbz2boss.bin	; Eggman in SBZ2 and FZ
 		even

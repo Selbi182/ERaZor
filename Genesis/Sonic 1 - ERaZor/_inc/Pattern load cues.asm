@@ -270,13 +270,11 @@ PLC_TitleCard:	dc.w 0
 ; ---------------------------------------------------------------------------
 ; Pattern load cues - act 3 boss
 ; ---------------------------------------------------------------------------
-PLC_Boss:	dc.w 4
+PLC_Boss:	dc.w 3
 		dc.l Nem_Eggman		; Eggman main patterns
 		dc.w $8000
 		dc.l Nem_Weapons	; Eggman's weapons
 		dc.w $8D80
-		dc.l Nem_Prison		; prison capsule
-		dc.w $93A0
 		dc.l Nem_Bomb		; bomb enemy (gets overwritten)
 		dc.w $A300
 		dc.l Nem_Exhaust	; exhaust flame

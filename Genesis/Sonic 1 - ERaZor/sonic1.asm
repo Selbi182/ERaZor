@@ -11667,10 +11667,6 @@ Resize_FZEscape:
 		vram	$70A0			; load switch graphics
 		lea	(Nem_LzSwitch).l,a0
 		jsr	NemDec
-
-		vram 	$5500
-		lea (Nem_SbzDoor1),a0
-		jsr NemDec
 		; (why did i do that)
 		
 		addq.b	#2,($FFFFF742).w	; go to next routine
@@ -44180,6 +44176,8 @@ Obj86_Generator:			; XREF: Obj86_Index
 		cmpi.w	#$5C0,obY(a0)
 		bge.s	@Explode
 
+		move.b	#$D,obColType(a0) ; breakable
+		
 		jsr		ObjectFall
 		sub.w 	#$10, obVelY(a0)
 		jsr		SpeedToPos

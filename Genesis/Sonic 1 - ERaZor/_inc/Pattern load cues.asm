@@ -429,7 +429,9 @@ PLC_EggmanSBZ2:	dc.w 3
 ; ---------------------------------------------------------------------------
 ; Pattern load cues - final boss
 ; ---------------------------------------------------------------------------
-PLC_FZBoss:	dc.w 4
+PLC_FZBoss:	dc.w 5
+		dc.l Nem_SbzDoor1	; door
+		dc.w $5500
 		dc.l Nem_FzEggman	; Eggman after boss
 		dc.w $7400
 		dc.l Nem_FzBoss		; FZ boss

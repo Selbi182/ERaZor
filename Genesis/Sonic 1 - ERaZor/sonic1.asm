@@ -21743,7 +21743,12 @@ Obj36_Display:
 		rts	
 
 Obj36_ExplodeFP:
-		move.b	#$67,0(a0)
+		; make this object an explosion emitter
+		move.b	#$67, (a0)
+		
+		; randomize timer
+		jsr 	RandomNumber
+		move.w	d0, $26(a0)
 		rts
 ; ===========================================================================
 
@@ -36973,29 +36978,18 @@ Map_obj66:
 ; Object 67 - Explosion emitter
 ; ---------------------------------------------------------------------------
 Obj67:
-		moveq	#0, d0
-		move.b	obRoutine(a0), d0
-		move.w	@Index(pc, d0.w), d1
-		jmp		@Index(pc, d1.w)
 
-; ===========================================================================
+; ---------------------------------------------------------------------------
 @Timer:		equ $26
+; ---------------------------------------------------------------------------
 
-@Index:	dc.w @Main-@Index
-		dc.w @Action-@Index
-; ===========================================================================
-
-@Main:
-		addq.b	#2, obRoutine(a0)
-
-@Action:
-		add.w 	#$1000, @Timer(a0)
+		add.w 	#$1000/3, @Timer(a0)
 		bcc.s	@Return
 
 		jsr		SingleObjLoad
 		bne.s	@Return
 
-		move.b	#$3F, 0(a1)
+		move.b	#$3F, (a1)
 		move.w	obX(a0),obX(a1)
 		move.w	obY(a0),obY(a1)
 		move.b	#1, $30(a1)

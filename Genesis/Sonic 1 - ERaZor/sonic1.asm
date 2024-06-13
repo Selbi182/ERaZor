@@ -11638,6 +11638,10 @@ Resize_FZend2:
 		move.w	(a0)+, ($C00000).l
 		dbf	d1, @PrisonLoad
 
+		vram	$70A0			; load switch graphics
+		lea	(Nem_LzSwitch).l,a0
+		jsr	NemDec
+
 @0:
 		bra.w	loc_72C2
 ; ===========================================================================
@@ -11649,6 +11653,10 @@ Resize_FZEscape_Nuke:
 		tst.b	($FFFFFFA5).w		; egg prison opened?
 		beq.s	@0			; if not, branch
 		
+		vram	$6C00			; load HPS and info box graphics
+		lea	(Nem_HardPS_Tut).l,a0
+		jsr	NemDec
+
 		addq.b	#2,($FFFFF742).w	; go to next routine	
 		move.w	#0,($FFFFF72C).w	; unlock controls
 
@@ -11660,15 +11668,9 @@ Resize_FZEscape_Nuke:
 ; ===========================================================================
 
 Resize_FZEscape:
-		; PLC kinda
-		vram	$6C00			; load HPS and info box graphics
-		lea	(Nem_HardPS_Tut).l,a0
+		vram	$A460			; load horizontal spring graphics
+		lea	(Nem_HSpring).l,a0
 		jsr	NemDec
-
-		vram	$70A0			; load switch graphics
-		lea	(Nem_LzSwitch).l,a0
-		jsr	NemDec
-		; (why did i do that)
 		
 		addq.b	#2,($FFFFF742).w	; go to next routine
 		move.b	#2,(FZEscape).w		; enable exploding scenery
@@ -11718,10 +11720,11 @@ Resize_FZEscape3:
 		rts
 
 ; ===========================================================================	
-
+; <3 1A
+;
 ; X = not in bounds
 ; O = in bounds
-
+;
 ; OOOOOO|XX
 ; OOOOOO|XX
 ; OOOOOO|XX
@@ -11730,14 +11733,15 @@ Resize_FZEscape3:
 
 Resize_FZEscape4:
 		; Y check
-		cmpi.w 	#$4AC, ($FFFFD00C).w
+		cmpi.w 	#$04AC, ($FFFFD00C).w
 		bgt.s 	@Return
 
 		; X check
 		cmpi.w 	#$1800, ($FFFFD00A).w
 		bgt.s 	@Return
 
-		move.w	#$D0, ($FFFFF728).w	; set left level boundary
+		move.w	#$00D0, ($FFFFF728).w	; set left level boundary
+		move.w	#$0400,($FFFFF726).w	; set lower level boundary
 
 @Return:
 		rts
@@ -13829,10 +13833,16 @@ Obj2A_Main:				; XREF: Obj2A_Index
 @nosoundstopper:
 		cmpi.w	#$501,($FFFFFE10).w	; is this the tutorial?
 		bne.s	Obj2A_OpenShut		; if not, branch
+		tst.b	obSubtype(a0)		; "don't appear in tutorial" flag set?
+		bne.s 	@Delete				; if yes, branch
+
 		addq.b	#2,obRoutine(a0)
 		move.b	#1,obAnim(a0)
 		move.w	#$4000+($8000/$20),obGfx(a0)
 		bra.w	Obj2A_OpenShutTutorial
+
+@Delete:
+		jmp 	DeleteObject
 
 Obj2A_OpenShut:				; XREF: Obj2A_Index
 		tst.b	(FZEscape).w
@@ -21783,12 +21793,13 @@ Obj36_Display:
 
 Obj36_ExplodeFP:
 		; make this object an explosion emitter
-		move.b	#$67, (a0)
-		
+		; move.b	#$67, (a0)
+		; nevermind lol
+
 		; randomize timer
-		jsr 	RandomNumber
-		move.w	d0, $26(a0)
-		rts
+		; jsr 	RandomNumber
+		; move.w	d0, $26(a0)
+		jmp		DeleteObject
 ; ===========================================================================
 
 Obj36_Type0x:				; XREF: Obj36_Solid

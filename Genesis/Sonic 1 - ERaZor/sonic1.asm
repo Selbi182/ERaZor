@@ -663,15 +663,15 @@ BlackBars_SetHeight:
 
 BlackBars.GHPTimer:		equ	$FFFFF5F0		; b
 BlackBars.GHPTimerReset:	equ	$FFFFF5F1		; b
-BlackBars.GHPCasual  = 60
-BlackBars.GHPFrantic = 45
+BlackBars.GHPCasual  = 80
+BlackBars.GHPFrantic = 60
 ; ---------------------------------------------------------------------------
 
 BlackBars.GHP:
-		move.b	#BlackBars.GHPCasual,d0		; set casual reset time (60 frames)
+		move.b	#BlackBars.GHPCasual,d0		; set casual reset time
 		btst	#5,($FFFFFF92).w		; are we in Frantic mode?
 		beq.s	@notfrantic			; if not, branch
-		move.b	#BlackBars.GHPFrantic,d0	; set frantic reset time (45 frames)
+		move.b	#BlackBars.GHPFrantic,d0	; set frantic reset time
 
 @notfrantic:
 		move.b	d0,BlackBars.GHPTimerReset	; set reset time

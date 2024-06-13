@@ -11537,6 +11537,7 @@ ResizeFZ_Index:	dc.w Resize_FZmain-ResizeFZ_Index, Resize_FZboss-ResizeFZ_Index
 		dc.w Resize_FZEscape_Nuke-ResizeFZ_Index
 		dc.w Resize_FZEscape-ResizeFZ_Index
 		dc.w Resize_FZEscape2-ResizeFZ_Index
+		dc.w Resize_FZEscape2pit-ResizeFZ_Index
 		dc.w Resize_FZEscape3-ResizeFZ_Index
 ; ===========================================================================
 
@@ -11667,17 +11668,14 @@ Resize_FZEscape:
 		vram	$70A0			; load switch graphics
 		lea	(Nem_LzSwitch).l,a0
 		jsr	NemDec
-
-		vram 	$5500
-		lea (Nem_SbzDoor1),a0
-		jsr NemDec
 		; (why did i do that)
 		
 		addq.b	#2,($FFFFF742).w	; go to next routine
 		move.b	#2,(FZEscape).w		; enable exploding scenery
 
 	;	move.w	#0,($FFFFF72C).w	; unlock controls
-		move.w	#$D0,($FFFFF728).w	; set left level boundary
+	;	move.w	#$D0,($FFFFF728).w	; set left level boundary (hide skip tutorial)
+		move.w	#0,($FFFFF728).w	; set left level boundary
 		move.w	#$510,($FFFFF726).w	; set bottom level boundary
 		
 		move.w	#$0A00,d0		; replace laser barrier chunk
@@ -11701,13 +11699,27 @@ Resize_FZEscape2:
 		cmpi.w	#$1000,($FFFFF700).w	; near the falling pit?
 		bhi.s	@0			; if not yet, branch
 		addq.b	#2,($FFFFF742).w	; next routine
-		move.w	#$710,($FFFFF726).w	; lower level boundary
+		move.w	#$A10,($FFFFF726).w	; lower level boundary
 		move.w	#$1100,($FFFFF72A).w	; prevent going back right
 		rts
 @0:
 		move.w	($FFFFF700).w,($FFFFF72A).w	; lock right boundary as you walk left
 		rts
-		
+; ===========================================================================
+
+Resize_FZEscape2pit:
+		move.w	($FFFFD00C).w,d0
+		cmpi.w	#$700,d0
+		blo.s	@0
+		addq.b	#2,($FFFFF742).w	; next routine
+		addi.w	#$1800,($FFFFD008).w
+		subi.w	#$600,($FFFFD00C).w
+		move.w	#$2460,($FFFFF72A).w	; right boundary
+		jsr	FixLevel
+@0:
+		rts
+	
+	
 Resize_FZEscape3:
 		move.w	#$710,($FFFFF726).w	; lower level boundary
 		cmpi.w	#$500,($FFFFD00C).w	; is Sonic above the FZ section?
@@ -13812,8 +13824,8 @@ Obj2A_Main:				; XREF: Obj2A_Index
 Obj2A_OpenShut:				; XREF: Obj2A_Index
 		tst.b	(FZEscape).w
 		beq.s	@0
-		cmpi.w	#$246A,obX(a0)
-		bne.s	@0
+	;	cmpi.w	#$246A,obX(a0)
+	;	bne.s	@0
 		move.b	#$3F,(a0)
 		move.b	#0,obRoutine(a0)
 		rts
@@ -16791,7 +16803,7 @@ Obj4B_Main:				; XREF: Obj4B_Index
 		tst.b	(FZEscape).w
 		beq.s	@0
 		tst.b	obSubtype(a0)	; is this the skip ring?
-		bmi.s	@0		; if not, branch
+		bpl.s	@0		; if yes, branch
 		move.b	#$3F,(a0)	; turn into explosion
 		move.b	#0,obRoutine(a0)
 		rts
@@ -32654,10 +32666,16 @@ locret_133E8:
 FixLevel:
 		move.w	($FFFFD008).w,d0	; load Sonic's X-location into d0
 		subi.w	#160,d0			; substract 160 pixels from it (half of 320, horizontal screen size)
-		move.w	d0,($FFFFF700).w	; put result into X-camera location
+		bpl.s	@0
+		moveq	#0,d0
+@0:		move.w	d0,($FFFFF700).w	; put result into X-camera location
+
 		move.w	($FFFFD00C).w,d0	; load Sonic's Y-location into d0
 		subi.w	#112,d0			; substract 112 pixels from it (half of 224, vertical screen size)
-		move.w	d0,($FFFFF704).w	; put result into Y-camera location
+		bpl.s	@1
+		moveq	#0,d0
+@1:		move.w	d0,($FFFFF704).w	; put result into Y-camera location
+
 		movem.l	d0-a6,-(sp)		; backup all data and address registers
 		jsr	DeformBgLayer		; fix the background position
 		jsr	LoadTilesFromStart	; make sure the correct tiles are being used
@@ -44177,6 +44195,8 @@ Obj86_Generator:			; XREF: Obj86_Index
 		cmpi.w	#$5C0,obY(a0)
 		bge.s	@Explode
 
+		move.b	#$D,obColType(a0) ; breakable
+		
 		jsr		ObjectFall
 		sub.w 	#$10, obVelY(a0)
 		jsr		SpeedToPos

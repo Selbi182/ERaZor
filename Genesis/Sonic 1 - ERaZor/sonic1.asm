@@ -19939,8 +19939,8 @@ loc_BDD6:
 		tst.b	($FFFFFFE7).w		; did the player make it here through with inhuman still enabled?
 		beq.s	@0			; if not, branch
 		clr.b	($FFFFFFE7).w		; disable inhuman mode
-		tst.b 	($FFFFFE11).w		; are we in FP?
-		bne.s 	@ResumeEscapeMusic	; if so, do escape music instead
+		cmpi.b 	#2, ($FFFFFE11).w		; are we in FP?
+		beq.s 	@ResumeEscapeMusic	; if so, do escape music instead
 		jsr	PlayLevelMusic
 		bra.s 	@DoneResuming
 
@@ -31068,10 +31068,6 @@ Obj06_ChkDist:
 
 		frantic				; are we in Frantic mode?
 		beq.s	Obj06_DoHardPartSkip	; if not, branch
-		
-		cmpi.w	#$501,($FFFFFE10).w		; is this the tutorial?
-		beq.s	Obj06_DoHardPartSkip		; if yes, branch
-
 
 		jsr	SingleObjLoad2
 		bne.w	@noobjectleft
@@ -52192,13 +52188,13 @@ SoundD9:	incbin	sound\soundD9.bin
 		even
 SoundDA:	incbin	sound\soundDA.bin
 		even
-SoundDB:	incbin	sound\soundNULL.bin
+SoundDB:	incbin	sound\GunstarSFX\27.sfx
 		even
-SoundDC:	incbin	sound\soundNULL.bin
+SoundDC:	incbin	sound\GunstarSFX\28.sfx
 		even
-SoundDD:	incbin	sound\soundNULL.bin
+SoundDD:	incbin	sound\GunstarSFX\1E.sfx
 		even
-SoundDE:	incbin	sound\soundNULL.bin
+SoundDE:	incbin	sound\GunstarSFX\29.sfx
 		even
 SoundDF:	incbin	sound\soundNULL.bin
 		even

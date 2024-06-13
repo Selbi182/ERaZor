@@ -29,7 +29,7 @@
 		dc.w	$0080, $00A8	; SYZ 4
 
 		dc.w	$01A0, $0160	; SBZ 1
-		dc.w	$01BB, $078C	; SBZ 2 (Tutorial)
+		dc.w	$0180, $078C	; SBZ 2 (Tutorial)
 		dc.w	$0B86, $05AC	; FZ
 		dc.w	$0080, $00A8	; Null
 

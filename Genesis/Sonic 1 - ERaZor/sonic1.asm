@@ -21637,30 +21637,32 @@ Obj36_Upright:				; XREF: Obj36_Solid
 		bpl.w	Obj36_Display
 
 Obj36_Hurt:				; XREF: Obj36_SideWays; Obj36_Upright
-		cmpi.w	#$501,($FFFFFE10).w
-		bne.s	@conty
-		move.w	#$09E0,($FFFFD008).w	; teleport Sonic on X-axis
-		move.w	#$01AC,($FFFFD00C).w	; teleport Sonic on Y-axis
-		tst.b	($FFFFFFE7).w
-		bne.s	@contx
-		move.w	#$1420,($FFFFD008).w	; teleport Sonic on X-axis
-		move.w	#$03AC,($FFFFD00C).w	; teleport Sonic on Y-axis
+		cmpi.w	#$501,($FFFFFE10).w	; are we in the tutorial?
+		bne.s	@nottutorial
 
-@contx:
+		move.w	#$09E0,d1
+		move.w	#$01AC,d2
+		move.w	obX(a0),d0
+		cmpi.w	#$1000,d0
+		blo.s	@doteleport
+		move.w	#$1000,d1
+		move.w	#$0190,d2
+		cmpi.w	#$1500,d0
+		blo.s	@doteleport
+		move.w	#$1420,d1
+		move.w	#$03AC,d2
+@doteleport:
+		move.w	d1,($FFFFD008).w	; teleport Sonic on X-axis
+		move.w	d2,($FFFFD00C).w	; teleport Sonic on Y-axis
 		clr.w	($FFFFD010).w		; clear X-speed
 		clr.w	($FFFFD012).w		; clear Y-speed
 		move.w	#$C3,d0			; set giant ring sound
 		jsr	PlaySound		; play it
-		
-	;	cmpi.w	#10,($FFFFFE20).w	; got at least 10 rings?
-	;	blo.s	@conto
 		jsr	WhiteFlash2		; make a white flash
-
-@conto:
 		jsr	FixLevel
 		bra.w	Obj36_NotInhuman2
 
-@conty:
+@nottutorial:
 		tst.b	($FFFFFE2D).w	; is Sonic invincible?
 		bne.w	Obj36_Display	; if yes, branch
 		tst.b	($FFFFFFE7).w		; is inhuman mode on?
@@ -21802,7 +21804,7 @@ Obj36_Type02:				; XREF: Obj36_TypeIndex
 
 Obj36_Wait:
 		move.w	($FFFFFE04).w,d0
-		divu.w	#50,d0
+		divu.w	#45,d0
 		andi.l	#$FFFF0000,d0
 		bne.s	locret_CFE6
 		
@@ -22230,16 +22232,11 @@ ObjectFall_Sonic:
 		move.w	#Gravity,d3		; increase vertical speed (gravity)
 
 		; OG antigrav
+@OFS_ReverseGravity:
 		tst.b	($FFFFFF77).w		; is antigrav enabled?
 		beq.w	@OFS_FallEnd		; if not, branch
-		cmpi.w	#$302,($FFFFFE10).w	; are we in Star Agony Place?
-		beq.s	@OFS_ReverseGravity	; if yes, branch
-		cmpi.w	#$501,($FFFFFE10).w	; are we in the tutorial?
-		bne.s	@OFS_FallEnd		; if not, branch
-
-@OFS_ReverseGravity:
+		
 		subi.w	#Gravity,d3		; inverse gravity
-
 		btst	#6,($FFFFF602).w	; is A pressed?
 		beq.s	@OFS_NoA		; if not, branch
 		move.b	#1,($FFFFFFEB).w	; set jumpdash flag (to prevent it)

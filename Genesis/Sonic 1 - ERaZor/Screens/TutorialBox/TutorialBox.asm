@@ -631,7 +631,7 @@ Art_DH_Font2:
 ; ---------------------------------------------------------------
 
 Hints_List:
-	dc.l	Hint_Null
+	dc.l	Hint_1
 	dc.l	Hint_2
 	dc.l	Hint_3
 	dc.l	Hint_4
@@ -705,14 +705,13 @@ boxtxt macro string
 	endm
 
 ;		 --------------------
-
 Hint_Null:
 	boxtxt	"you shouldn#t be"
 	boxtxt	"able to read this"
 	boxtxt	"lol"
 	dc.b	_br,_pause,_end
 
-
+;		 --------------------
 Hint_Pre:
 	boxtxt	"HELLO AND WELCOME TO"
 	dc.b	_br
@@ -759,24 +758,23 @@ Hint_Pre:
 	dc.b	_br,_pause,_end
 
 ;		 --------------------
-Hint_2:
-	boxtxt	"controls"
+Hint_1:
+	boxtxt	"controls - on ground"
 	dc.b	_br
-	boxtxt	"  c OR b - JUMP"
-	boxtxt	"       a - SPECIAL"
-	boxtxt	"           POWER  "
+	boxtxt	"c OR b - JUMP      "
+	boxtxt	"                    "
 	boxtxt	"~ + jump - SPINDASH"
 	boxtxt	"^ + jump - PEELOUT"
-	dc.b	_br,_pause,_cls
-	
-	boxtxt	"while in the air"
+	dc.b	_br,_pause,_end
+
+;		 --------------------
+Hint_2:
+	boxtxt	"controls - airbourne"
 	dc.b	_br
 	boxtxt	"c - HOMING ATTACK"
-	boxtxt	"b - DOUBLE JUMP"
-	boxtxt	"a - SPECIAL POWER"
+	boxtxt	"    JUMPDASH"
 	dc.b	_br
-	boxtxt	"d_pad + jump -"
-	boxtxt    "  DIRECTIONAL JUMP"
+	boxtxt	"b - DOUBLE JUMP"
 	dc.b	_br,_pause,_end
 
 ;		 --------------------

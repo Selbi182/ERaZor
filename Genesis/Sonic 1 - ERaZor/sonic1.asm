@@ -11537,7 +11537,6 @@ ResizeFZ_Index:	dc.w Resize_FZmain-ResizeFZ_Index, Resize_FZboss-ResizeFZ_Index
 		dc.w Resize_FZEscape_Nuke-ResizeFZ_Index
 		dc.w Resize_FZEscape-ResizeFZ_Index
 		dc.w Resize_FZEscape2-ResizeFZ_Index
-		dc.w Resize_FZEscape2pit-ResizeFZ_Index
 		dc.w Resize_FZEscape3-ResizeFZ_Index
 ; ===========================================================================
 
@@ -11674,8 +11673,8 @@ Resize_FZEscape:
 		move.b	#2,(FZEscape).w		; enable exploding scenery
 
 	;	move.w	#0,($FFFFF72C).w	; unlock controls
-	;	move.w	#$D0,($FFFFF728).w	; set left level boundary (hide skip tutorial)
-		move.w	#0,($FFFFF728).w	; set left level boundary
+	;	move.w	#0,($FFFFF728).w	; set left level boundary
+		move.w	#$D0,($FFFFF728).w	; set left level boundary (hide skip tutorial)
 		move.w	#$510,($FFFFF726).w	; set bottom level boundary
 		
 		move.w	#$0A00,d0		; replace laser barrier chunk
@@ -11705,23 +11704,10 @@ Resize_FZEscape2:
 @0:
 		move.w	($FFFFF700).w,($FFFFF72A).w	; lock right boundary as you walk left
 		rts
-; ===========================================================================
-
-Resize_FZEscape2pit:
-		move.w	($FFFFD00C).w,d0
-		cmpi.w	#$700,d0
-		blo.s	@0
-		addq.b	#2,($FFFFF742).w	; next routine
-		addi.w	#$1800,($FFFFD008).w
-		subi.w	#$600,($FFFFD00C).w
-		move.w	#$2460,($FFFFF72A).w	; right boundary
-		jsr	FixLevel
-@0:
-		rts
-	
+; ===========================================================================	
 	
 Resize_FZEscape3:
-		move.w	#$710,($FFFFF726).w	; lower level boundary
+		move.w	#$A10,($FFFFF726).w	; lower level boundary
 		cmpi.w	#$500,($FFFFD00C).w	; is Sonic above the FZ section?
 		blo.s	@0			; if not, branch
 		move.w	#$2460,($FFFFF72A).w	; right boundary
@@ -13824,14 +13810,12 @@ Obj2A_Main:				; XREF: Obj2A_Index
 Obj2A_OpenShut:				; XREF: Obj2A_Index
 		tst.b	(FZEscape).w
 		beq.s	@0
-	;	cmpi.w	#$246A,obX(a0)
-	;	bne.s	@0
+		cmpi.w	#$246A,obX(a0)
+		bne.s	@0
 		move.b	#$3F,(a0)
 		move.b	#0,obRoutine(a0)
 		rts
 @0:
-
-
 		cmpi.w	#$400,($FFFFFE10).w	; is level SYZ1 (overworld)?
 		bne.s	Obj2A_NotSYZ1		; if not, branch
 
@@ -16803,7 +16787,7 @@ Obj4B_Main:				; XREF: Obj4B_Index
 		tst.b	(FZEscape).w
 		beq.s	@0
 		tst.b	obSubtype(a0)	; is this the skip ring?
-		bpl.s	@0		; if yes, branch
+		bmi.s	@0		; if not, branch
 		move.b	#$3F,(a0)	; turn into explosion
 		move.b	#0,obRoutine(a0)
 		rts
@@ -31130,6 +31114,8 @@ Obj06_ChkA:
 		move.b	($FFFFF603).w,d0	; is A pressed? (part 1)
 		andi.b	#$40,d0			; is A pressed? (part 2)
 		beq.s	Obj06_Display		; if not, branch
+		
+		clr.b	($FFFFF603).w		; clear bitfield (to prevent rare softlocks)
 
 		moveq	#$FFFFFFD9,d0		; VLADIK => Optimized (couldn't resist =D)
 		jsr	PlaySound		; play up/down sound

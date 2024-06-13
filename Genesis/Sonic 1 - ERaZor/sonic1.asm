@@ -83,6 +83,12 @@ DCvram	macro	offset
 	dc.l	($40000000+(((\offset)&$3FFF)<<16)+(((\offset)&$C000)>>14))
 	endm
 
+; Test if Frantic Mode is enabled in the gameplay style options
+frantic macro
+	btst	#5,($FFFFFF92).w	; 0 = casual // 1 = frantic
+	endm
+
+
 ; ------------------------------------------------------
 ; Object variables
 ; ------------------------------------------------------
@@ -669,7 +675,7 @@ BlackBars.GHPFrantic = 60
 
 BlackBars.GHP:
 		move.b	#BlackBars.GHPCasual,d0		; set casual reset time
-		btst	#5,($FFFFFF92).w		; are we in Frantic mode?
+		frantic					; are we in Frantic mode?
 		beq.s	@notfrantic			; if not, branch
 		move.b	#BlackBars.GHPFrantic,d0	; set frantic reset time
 
@@ -7476,7 +7482,7 @@ Obj8B:
 		move.b	#Starfield_SpawnInterval,$31(a0)	; set casual spawn interval
 		move.w 	#$125,obX(a0)				; horizontally center emitter
 		move.w 	#$80,obScreenY(a0)			; set emitter to top of screen
-		btst	#5,($FFFFFF92).w			; frantic mode selected?
+		frantic						; frantic mode selected?
 		beq.s	@cont					; if not, branch
 		move.w 	#$170,obScreenY(a0)			; set emitter to top of screen
 		move.b	#Starfield_SpawnInterval/3,$31(a0)	; tripe particle spawn rate
@@ -7504,7 +7510,7 @@ Obj8B:
 		
 		jsr	RandomDirection
 		
-		btst	#5,($FFFFFF92).w			; frantic mode selected?
+		frantic						; frantic mode selected?
 		bne.s	@contx					; if not, branch
 
 		tst.w	obVelY(a0)
@@ -11355,18 +11361,27 @@ Resize_SYZx:	dc.w Resize_SYZ1-Resize_SYZx
 ; ===========================================================================
 
 Resize_SYZ1:
-		move.w	#$4A0,($FFFFF726).w
+		move.w	#$21C,($FFFFF726).w	; default boundary bottom
+		
+		tst.b	($FFFFFFA5).w		; entered the blackout area?
+		beq.s	@noblackout		; if not, branch
+		move.w	#$A8,($FFFFF726).w	; boundary bottom in blackout section
+		rts
 
-		cmpi.w	#$500,($FFFFF700).w
-		blo.s	@0
-		cmpi.w	#$260,($FFFFD00C).w
-		blo.s	@1
-		move.w	#$4A0,($FFFFF72E).w
-		bra.s	@0
-@1:		move.w	#$1C0,($FFFFF726).w
+@noblackout:
+		cmpi.w	#$500,($FFFFF700).w	; after 500 units?
+		blo.s	@uberhubend		; if not, branch
+		move.w	#$1C0,($FFFFF726).w	; raise boundary bottom (to center the level signs vertically on screen)
+		
+		cmpi.w	#$260,($FFFFD00C).w	; entered a tube?
+		blo.s	@uberhubend		; if not, branch
+		cmpi.w	#$600,($FFFFD008).w	; make sure Sonic is in the right area
+		blo.s	@uberhubend		; if before that, branch
+		move.w	#$430,d0		; set boundary bottom for tubes
+		move.w	d0,($FFFFF726).w	; target boundary
+		move.w	d0,($FFFFF72E).w	; current boundary
 
-
-@0:
+@uberhubend:
 		rts	
 ; ===========================================================================
 
@@ -15734,6 +15749,10 @@ Obj22_Main:				; XREF: Obj22_Index
 	;	move.b	#8,obColType(a0)
 		move.b	#$18,obActWid(a0)
 		move.b	#20,$32(a0)
+		
+		clr.l	$36(a0)
+		cmpi.w	#$001,($FFFFFE10).w
+		beq.s	Obj22_Action
 		move.w	obX(a0),$36(a0)	; remember original X position
 		move.w	obY(a0),$38(a0)	; remember original Y position
 
@@ -15844,7 +15863,7 @@ Obj22_NotInhumanCrush:
 		bpl.s	Obj22_NotGHZ1		; if yes, branch
 		move.b	#0,obColType(a0)	; make the buzz bomber not destroyable
 				
-		btst	#5,($FFFFFF92).w	; are we in Frantic mode?
+		frantic				; are we in Frantic mode?
 		beq.w	Obj22_MoveEnd		; if not, disable movement
 	
 		bra.s	Obj22_NotHigher		; skip
@@ -16340,7 +16359,7 @@ Obj25_NoRingMove:
 		cmpi.b 	#$5, ($FFFFFE10).w	; not FP or tutorial?
 		bne.s	@DontClearFlag		; don't even bother
 
-		btst	#5,($FFFFFF92).w	; are we in Frantic mode?
+		frantic				; are we in Frantic mode?
 		beq.s	@DontClearFlag		; if not, branch
 
 		move.b 	#0, ($FFFFFFD2).w 	; this is a huge hack
@@ -28384,7 +28403,7 @@ Obj5E_Shrapnel:				; XREF: Obj5E_Index
 		clr.w	obVelX(a0)
 		addi.w	#$38,obVelY(a0)
 @1:
-		btst	#5,($FFFFFF92).w	; are we in Frantic mode?
+		frantic				; are we in Frantic mode?
 		beq.s	@2			; if not, branch
 		addi.w	#$20,obVelY(a0)		; apply gravity only in frantic
 @2:
@@ -29072,7 +29091,7 @@ loc_11BCE:
 		dbf	d6,Obj5F_Loop	; repeat 3 more	times
 
 Obj5F_End:				; XREF: Obj5F_Index
-		btst	#5,($FFFFFF92).w	; are we in Frantic mode?
+		frantic				; are we in Frantic mode?
 		bne.s	@0			; if yes, branch
 		addi.w	#$20,obVelY(a0)		; apply gravity only in casual
 @0:
@@ -30047,7 +30066,7 @@ Map_obj63:
 ; ---------------------------------------------------------------------------
 
 Obj64:					; XREF: Obj_Index
-		btst	#5,($FFFFFF92).w ; frantic mode?
+		frantic			; frantic mode?
 		beq.s	@Frantic	; no bubbles for you
 
 		moveq	#0,d0
@@ -31047,7 +31066,7 @@ Obj06_ChkDist:
 		tst.b	d0			; all buttons pressed?
 		bne.w	Obj06_Display		; if not, branch
 
-		btst	#5,($FFFFFF92).w	; are we in Frantic mode?
+		frantic				; are we in Frantic mode?
 		beq.s	Obj06_DoHardPartSkip	; if not, branch
 		
 		cmpi.w	#$501,($FFFFFE10).w		; is this the tutorial?
@@ -31390,6 +31409,7 @@ Obj01_Main:				; XREF: Obj01_Index
 		move.b	#2,obPriority(a0)
 		move.b	#$18,obActWid(a0)
 		move.b	#4,obRender(a0)
+
 		cmpi.b	#$0,($FFFFFE10).w
 		bne.s	Obj01_M_NotGHZ2
 		cmpi.w	#$002,($FFFFFE10).w
@@ -31400,11 +31420,21 @@ Obj01_Main:				; XREF: Obj01_Index
 Obj01_M_NotGHZ2:
 		cmpi.w	#$601,($FFFFFE10).w	; is this the ending sequence?
 		beq.s	Obj01_EndingSpeed	; if yes, use different speed
-		move.w	#Sonic_TopSpeed,($FFFFF760).w 		; Sonic's top speed
+		cmpi.w	#$001,($FFFFFE10).w	; is this the intro sequence?
+		beq.s	SetIntroSpeeds		; if yes, use different speeds
+		
+		; default speeds
+		move.w	#Sonic_TopSpeed,($FFFFF760).w 	; Sonic's top speed
 		move.w	#Sonic_Acceleration,($FFFFF762).w	; Sonic's acceleration
 		move.w	#Sonic_Deceleration,($FFFFF764).w	; Sonic's deceleration
 		bra.s	Obj01_Speedcont		; skip
 ; ===========================================================================
+
+SetIntroSpeeds:
+		move.w	#$800,($FFFFF760).w 	; Sonic's top speed
+		move.w	#$D,($FFFFF762).w	; Sonic's acceleration
+		move.w	#$80,($FFFFF764).w	; Sonic's deceleration
+		bra.s	Obj01_Speedcont
 
 SetEndingSpeeds:
 		; custom speed values to get the timing on the cliff gag right
@@ -32798,7 +32828,7 @@ WF_MakeWhite_Loop:
 		bne.s	@wfintensitynoboost	; if yes, branch
 		tst.b	($FFFFFF5F).w		; blackout challenge?
 		beq.s	@wfintensity		; if not, branch
-		btst	#5,($FFFFFF92).w	; are we in Frantic mode?
+		frantic				; are we in Frantic mode?
 		bne.s	@wfintensity		; if yes, branch
 @wfintensitynoboost:
 		moveq	#0,d4			; no intensity boost (used for all stages with black backgrounds)
@@ -34795,13 +34825,17 @@ loc_13A78:
 		
 ;loc_13A9C:
 Sonic_TestSpeed:
-		lea	(SonAni_FastRunning).l,a1 ; use sprinting animation
-		cmpi.w	#$A00,d2		; is Sonic running really fast?
-		bcc.s	loc_13AB4	; if carry clear, branch
-		lea	(SonAni_Run).l,a1 ; use	running	animation
-		cmpi.w	#$600,d2	; is Sonic at running speed?
-		bcc.s	loc_13AB4	; if yes, branch
-		lea	(SonAni_Walk).l,a1 ; use walking animation
+		lea	(SonAni_FastRunning).l,a1	; use figure-8 sprinting animation
+		cmpi.w	#$A00,d2			; is Sonic running faster than $A00 units?
+		bhs.s	loc_13AB4			; if yes, branch
+		cmpi.w	#$001,($FFFFFE10).w		; is this the intro sequence?
+		beq.s	loc_13AB4			; if yes, force figure-8 animation (for the swag)
+
+		lea	(SonAni_Run).l,a1		; use regular running animation
+		cmpi.w	#$600,d2			; is Sonic at running speed?
+		bhs.s	loc_13AB4			; if yes, branch
+
+		lea	(SonAni_Walk).l,a1		; use walking animation
 		move.b	d0,d1
 		lsr.b	#1,d1
 		add.b	d1,d0
@@ -46909,7 +46943,7 @@ Obj09_NotSS1x:
 		tst.b	($FFFFFF5F).w		; is this the blackout blackout special stage?
 		beq.s	@cont			; if not, branch
 		move.w	#$A3,d0			; play death sound
-		btst	#5,($FFFFFF92).w	; are we in Frantic mode?
+		frantic				; are we in Frantic mode?
 		beq.s	@cont			; if not, branch
 		move.w	#$B9,d0			; play annoying crumbling sound instead
 		
@@ -47971,10 +48005,18 @@ Hud_ChkTime:
 		beq.s	Hud_ChkLives	; if yes, branch
 		tst.w	($FFFFF63A).w	; is the game paused?
 		bne.s	Hud_ChkLives	; if yes, branch
+
 		lea	($FFFFFE22).w,a1
-		cmpi.l	#$9631D,(a1)+	; is the time 999? ($93B3B)
-		beq.w	TimeOver	; if yes, branch
-		addq.b	#1,-(a1)
+		cmpi.l	#$9631D,(a1)+	; is the time 999? ($9631D)
+		beq.w	TimeOver	; if yes, time over noob
+		
+		moveq	#1,d0			; regular timer speed (1 second per second; at 1000 seconds, that's 16-17 minutes)
+		frantic				; frantic mode selected?
+		beq.s	@notfrantic		; if not, branch
+		moveq	#3,d0			; triple timer speed (3 seconds per second; this changes the effective time limit to roughly 5-6 minutes)
+
+@notfrantic:
+		add.b	d0,-(a1)
 		cmpi.b	#30,(a1)
 		bcs.s	Hud_ChkLives
 		move.b	#0,(a1)

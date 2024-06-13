@@ -65,7 +65,7 @@ GSS_SetColor:
 		moveq	#0,d3
 		move.w	#$0EEE,d2
 		move.w	#$0666,d3
-		btst 	#5,($FFFFFF92).w 
+		frantic
 		beq.s	@cont
 		exg.l	d2,d3
 @cont:

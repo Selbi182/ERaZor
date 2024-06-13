@@ -453,10 +453,12 @@ OpHandle_Index:	dc.w	Options_HandleGameplayStyle-OpHandle_Index
 
 Options_HandleGameplayStyle:
 		move.b	($FFFFF605).w,d1	; get button presses
-		btst	#4,d1			; is B pressed?
-		bne.s	@quicktoggle		; if yes, branch
-	 	andi.b	#$EC,d1			; is left, right, A, C, or Start pressed?
+	 	andi.b	#$FC,d1			; is left, right, A, B, C, or Start pressed?
 		beq.w	Options_Return		; if not, branch
+
+		btst	#6,d1			; is A pressed?
+		bne.s	@quicktoggle		; if yes, quick toggle
+
 	 	andi.b	#$FC,d1			; is left, right, A, B, C, or Start pressed?
 		move.b	#$30,($FFFFF600).w	; set to GameplayStyleScreen
 	if Options_ShadowMode=1

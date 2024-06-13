@@ -11538,6 +11538,7 @@ ResizeFZ_Index:	dc.w Resize_FZmain-ResizeFZ_Index, Resize_FZboss-ResizeFZ_Index
 		dc.w Resize_FZEscape-ResizeFZ_Index
 		dc.w Resize_FZEscape2-ResizeFZ_Index
 		dc.w Resize_FZEscape3-ResizeFZ_Index
+		dc.w Resize_FZEscape4-ResizeFZ_Index
 ; ===========================================================================
 
 Resize_FZmain:
@@ -11642,7 +11643,7 @@ Resize_FZend2:
 ; ===========================================================================
 
 Resize_FZEscape_Nuke:
-		move.w	#$28C0,($FFFFF72A).w		; right boundary
+		move.w	#$2840,($FFFFF72A).w		; right boundary
 		move.w	($FFFFF700).w,($FFFFF728).w	; lock left boundary as you walk right
 		
 		tst.b	($FFFFFFA5).w		; egg prison opened?
@@ -11674,7 +11675,7 @@ Resize_FZEscape:
 
 	;	move.w	#0,($FFFFF72C).w	; unlock controls
 	;	move.w	#0,($FFFFF728).w	; set left level boundary
-		move.w	#$D0,($FFFFF728).w	; set left level boundary (hide skip tutorial)
+		move.w	#$2C1,($FFFFF728).w	; set left level boundary (hide skip tutorial)
 		move.w	#$510,($FFFFF726).w	; set bottom level boundary
 		
 		move.w	#$0A00,d0		; replace laser barrier chunk
@@ -11711,9 +11712,35 @@ Resize_FZEscape3:
 		cmpi.w	#$500,($FFFFD00C).w	; is Sonic above the FZ section?
 		blo.s	@0			; if not, branch
 		move.w	#$2460,($FFFFF72A).w	; right boundary
+		addq.b	#2,($FFFFF742).w	; next routine
+
 @0:
 		rts
 
+; ===========================================================================	
+
+; X = not in bounds
+; O = in bounds
+
+; OOOOOO|XX
+; OOOOOO|XX
+; OOOOOO|XX
+; ------/XX
+; XXXXXXXXX
+
+Resize_FZEscape4:
+		; Y check
+		cmpi.w 	#$4AC, ($FFFFD00C).w
+		bgt.s 	@Return
+
+		; X check
+		cmpi.w 	#$1800, ($FFFFD00A).w
+		bgt.s 	@Return
+
+		move.w	#$D0, ($FFFFF728).w	; set left level boundary
+
+@Return:
+		rts
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -44181,7 +44208,7 @@ Obj86_Generator:			; XREF: Obj86_Index
 		cmpi.w	#$5C0,obY(a0)
 		bge.s	@Explode
 
-		move.b	#$D,obColType(a0) ; breakable
+		move.b	#$E,obColType(a0) ; breakable
 		
 		jsr		ObjectFall
 		sub.w 	#$10, obVelY(a0)

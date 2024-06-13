@@ -16336,6 +16336,16 @@ Obj25_NoRingMove:
 		subq.b	#1,($FFFFFFD2).w	; sub one from timer
 	;	tst.b	obRender(a0)			; is ring on screen?
 	;	bpl.s	Obj25_NoRingsFall	; if not, branch
+
+		cmpi.b 	#$5, ($FFFFFE10).w	; not FP or tutorial?
+		bne.s	@DontClearFlag		; don't even bother
+
+		btst	#5,($FFFFFF92).w	; are we in Frantic mode?
+		beq.s	@DontClearFlag		; if not, branch
+
+		move.b 	#0, ($FFFFFFD2).w 	; this is a huge hack
+
+@DontClearFlag:
  		move.w	obX(a0),d0
 		andi.w	#$FF80,d0
 		move.w	($FFFFF700).w,d1
@@ -30037,10 +30047,17 @@ Map_obj63:
 ; ---------------------------------------------------------------------------
 
 Obj64:					; XREF: Obj_Index
+		btst	#5,($FFFFFF92).w ; frantic mode?
+		beq.s	@Frantic	; no bubbles for you
+
 		moveq	#0,d0
 		move.b	obRoutine(a0),d0
 		move.w	Obj64_Index(pc,d0.w),d1
 		jmp	Obj64_Index(pc,d1.w)
+
+@Frantic:
+		jmp 	DeleteObject
+
 ; ===========================================================================
 Obj64_Index:	dc.w Obj64_Main-Obj64_Index
 		dc.w Obj64_Animate-Obj64_Index

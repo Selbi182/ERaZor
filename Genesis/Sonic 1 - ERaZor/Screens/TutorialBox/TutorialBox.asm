@@ -90,6 +90,7 @@ obj		equ	$3C	; Object code offset
 ; You can use these flags to make it cooler:
 _br	= $00	; line break flags
 _font2	= $01	; will make the next character use palette line 2 for the font
+_frantic = $FB	; will act as _end in casual and _pause in frantic
 _delay	= $FC	; set delay (given in the next byte)
 _pause	= $FD	; wait player to press A/B/C button
 _cls	= $FE	; clear window
@@ -480,7 +481,17 @@ _CooldownVal	= 2
 	beq.w	@ClearWindow		; if flag = '_cls', branch
 	addq.b	#1,d0
 	beq.s	@DoPause		; if flag = '_pause', branch
-					; assume it's flag '_delay' then
+	addq.b	#1,d0
+	beq.s	@DoDelay		; if flag = '_delay', branch
+					; assume it's flag '_frantic' then
+
+@FranticTextCheck:
+	frantic				; is frantic mode enabled?
+	bne.s	@ClearWindow		; if yes, make _frantic act like _cls
+	bra.w	@GotoDisappear		; in casual, make it act like _end
+
+; ---------------------------------------------------------------
+@DoDelay:
 	move.b	(a1),d0
 	move.w	d0,delay(a0)		; setup new delay
 	addq.l	#1,char_pos(a0)		; skip a char
@@ -704,34 +715,47 @@ boxtxt macro string
 	dc.b _br
 	endm
 
+boxtxt_line macro
+	dc.b	_br
+	endm
+boxtxt_pause macro
+	dc.b	_br,_pause
+	endm
+boxtxt_next macro
+	dc.b	_pause,_cls
+	endm
+boxtxt_end macro
+	dc.b	_pause,_end
+	endm
 ;		 --------------------
 Hint_Null:
 	boxtxt	"you shouldn#t be"
 	boxtxt	"able to read this"
 	boxtxt	"lol"
-	dc.b	_br,_pause,_end
+	boxtxt_end
 
 ;		 --------------------
 Hint_Pre:
 	boxtxt	"HELLO AND WELCOME TO"
-	dc.b	_br
+	boxtxt_line
 	boxtxt	"    sonic erazor"
-	dc.b	_br,_delay,10
+	boxtxt_line
+	dc.b	_delay,10
 	boxtxt	"THE CRAZIEST JOURNEY"
 	boxtxt	"YOU'LL EVER TAKE"
 	boxtxt	"WITH YOUR FAVORITE"
 	boxtxt	"BLUE HEDGEHOG!"
-	dc.b	_br,_pause,_cls
+	boxtxt_next
 	
 	boxtxt	"YOU WILL REVISIT"
 	boxtxt	"THE FIRST SONIC GAME"
 	boxtxt	"THROUGH THE LENS OF"
 	boxtxt	"AN ACTION MOVIE."
-	dc.b	_br
+	boxtxt_line
 	boxtxt	"FAST MOVEMENT,"
 	boxtxt	"TOUGH CHALLENGES,"
 	boxtxt	"AND explosions."
-	dc.b	_br,_pause,_cls
+	boxtxt_next
 
 	boxtxt	"BECAUSE TEARS OF"
 	boxtxt	"FRUSTRATION SHOULD"
@@ -741,59 +765,61 @@ Hint_Pre:
 	boxtxt	"TEACH YOU SOME OF"
 	boxtxt	"THIS GAME'S"
 	boxtxt	"REQUIRED BASICS."
-	dc.b	_br,_pause,_cls
+	boxtxt_next
 
 	boxtxt	"POSITION YOURSELF"
 	boxtxt	"IN FRONT OF THE"
 	boxtxt	"INFORMATION MONITORS"
 	boxtxt	"AND PRESS a TO BRING"
 	boxtxt	"UP USEFUL TIPS!"
-	dc.b	_br,_pause,_cls
+	boxtxt_next
 
-	dc.b	_br
+	boxtxt_line
+	boxtxt_line
 	boxtxt	"   ALRIGHT THEN,"
-	dc.b	_br,_delay,10
-	dc.b	_br
+	dc.b	_delay,10
+	boxtxt_line
+	boxtxt_line
 	boxtxt	"     let#s go1"
-	dc.b	_br,_pause,_end
+	boxtxt_end
 
 ;		 --------------------
 Hint_1:
 	boxtxt	"controls - on ground"
-	dc.b	_br
-	boxtxt	"c OR b - JUMP      "
-	boxtxt	"                    "
-	boxtxt	"~ + jump - SPINDASH"
-	boxtxt	"^ + jump - PEELOUT"
-	dc.b	_br,_pause,_end
+	boxtxt_line
+	boxtxt	"c OR b - JUMP"
+	boxtxt_line
+	boxtxt	"~ + jump - SPIN DASH"
+	boxtxt	"^ + jump - PEEL OUT"
+	boxtxt_end
 
 ;		 --------------------
 Hint_2:
 	boxtxt	"controls - airbourne"
-	dc.b	_br
-	boxtxt	"c - HOMING ATTACK"
-	boxtxt	"    JUMPDASH"
-	dc.b	_br
+	boxtxt_line
+	boxtxt	"c - JUMP DASH"
+	boxtxt	"    HOMING ATTACK"
+	boxtxt_line
 	boxtxt	"b - DOUBLE JUMP"
-	dc.b	_br,_pause,_end
+	boxtxt_end
 
 ;		 --------------------
 Hint_3:
 	boxtxt	"inhuman mode"
-	dc.b	_br
+	boxtxt_line
 	boxtxt	"PRESS a TO FIRE AN"
 	boxtxt	"EXPLODING BULLET"
 	boxtxt	"YOU CAN PROPEL"
 	boxtxt	"YOURSELF IN THE AIR"
 	boxtxt	"WITH!"
-	dc.b	_br,_pause,_cls
+	boxtxt_next
 
 	boxtxt	"ALSO, YOU ARE FULLY"
 	boxtxt	"INVINCIBLE TO"
 	boxtxt	"EVERYTHING!"
-	dc.b	_br,_pause
+	boxtxt_pause
 	boxtxt	"...EXCEPT SPIKES."
-	dc.b	_br,_pause,_end
+	boxtxt_end
 
 ;		 --------------------
 Hint_4:
@@ -804,66 +830,76 @@ Hint_4:
 	boxtxt	"od what have you don"
 	boxtxt	"e everything is ruin"
 	boxtxt	"ed now.:."
-	dc.b	_br,_pause,_cls
+	boxtxt_next
+
 	boxtxt	"but hey, seeing"
 	boxtxt	"that you've made it"
 	boxtxt	"here, exploring"
 	boxtxt	"seems to be just"
 	boxtxt	"your thing."
-	dc.b	_br,_pause,_cls
+	boxtxt_next
+
 	boxtxt	"so tell ya what,"
 	boxtxt	"if you want to"
 	boxtxt	"explore even more"
 	boxtxt	"here's the link to"
 	boxtxt	"the source code"
 	boxtxt	"of sonic erazor!"
-	dc.b	_br,_pause,_cls
+	boxtxt_next
+
 	boxtxt	"HTTPS0//"
 	boxtxt	"ERAZOR:SELBI:CLUB"
-	dc.b	_br	
+	boxtxt_line	
 	boxtxt	"i hope you can"	
 	boxtxt	"decipher that link."	
 	boxtxt	"i was too lazy to"	
 	boxtxt	"add colons and"
 	boxtxt	"slashes to the font."
-	dc.b	_br,_pause,_cls
+	boxtxt_next
+
 	boxtxt	"have fun! and oh yea"
 	boxtxt	"the level is still a"
 	boxtxt	"complete mess."
-	dc.b	_pause
+	boxtxt_pause
 	boxtxt	"YES, I WAS TOO LAZY"
 	boxtxt	"TO FIX THAT TOO."
-	dc.b	_br,_pause
+	boxtxt_pause
 	boxtxt	"BITE ME."
-	dc.b	_br,_pause,_end
+	boxtxt_end
 
 ;		 --------------------
 Hint_6:
 	boxtxt	"hard part skippers"
-	dc.b	_br
+	boxtxt_line
 	boxtxt	"PRESS a + b + c"
 	boxtxt	"TO SKIP CHALLENGES"
 	boxtxt	"THAT ARE SIMPLY TOO"
 	boxtxt	"TOUGH FOR YOU."
 	boxtxt	"NO HARD FEELINGS!"
-	dc.b	_br,_pause,_cls
-	boxtxt	"DO NOTE THAT"
+	boxtxt_pause
+
+	dc.b	_frantic
+	boxtxt	"frantic mode"
+	boxtxt_line
+	boxtxt	"UNFORTUNATELY..."
 	boxtxt	"HARD PART SKIPPERS"
-	boxtxt	"MUST ONLY BE USED"
-	boxtxt	"IN casual mode!"
-	boxtxt	"OR ELSE..."
-	dc.b	_br,_pause,_end
+	boxtxt	"ARE ONLY AVAILABLE"
+	boxtxt	"IN CASUAL MODE."
+	boxtxt_line
+	boxtxt	"GET CREATIVE!"
+	boxtxt_end
 
 ;		 --------------------
 Hint_7:
 	boxtxt	"dying sucks"
-	dc.b	_br
+	boxtxt_line
 	boxtxt	"SOME TRIAL AND ERROR"
 	boxtxt	"MIGHT BE NECESSARY."
 	boxtxt	"THERE ARE ABSOLUTELY"
 	boxtxt	"no lives ANYWHERE IN"
 	boxtxt	"IN THIS GAME THOUGH!"
-	dc.b	_br,_pause,_cls
+	boxtxt_next
+
 	boxtxt	"FURTHERMORE, TO NOT"
 	boxtxt	"WASTE YOUR TIME,"
 	boxtxt	"MOST CHALLENGES"	
@@ -871,18 +907,33 @@ Hint_7:
 	boxtxt	"TELEPORT YOU BACK,"
 	boxtxt	"RATHER THAN OUTRIGHT"
 	boxtxt	"KILLING YOU!"
-	dc.b	_br,_pause,_end
+	boxtxt_pause
+
+	dc.b	_frantic
+	boxtxt	"frantic mode"
+	boxtxt_line
+	boxtxt	"MIND YOUR RINGS!"
+	boxtxt_line
+	boxtxt	"IN FRANTIC MODE,"
+	boxtxt	"REPEATED FAILURE"
+	boxtxt	"COSTS YOU RINGS."
+	boxtxt_next
+
+	boxtxt	"OUT OF RINGS?"
+	boxtxt_pause
+	boxtxt	"YOU DIE."
+	boxtxt_end
 
 ;		 --------------------
 Hint_8:
 	boxtxt	"alternative gravity"
-	dc.b	_br
+	boxtxt_line
 	boxtxt	"PRESS c REPEATEDLY"
 	boxtxt	"WHILE IN AIR AND USE"
 	boxtxt	"THE d_pad TO HOP AND"
 	boxtxt	"DASH IN WHATEVER"
 	boxtxt	"DIRECTION YOU WANT!"
-	dc.b	_br,_pause,_end
+	boxtxt_end
 
 ;		 --------------------
 Hint_9:
@@ -890,83 +941,91 @@ Hint_9:
 	boxtxt	"ISN'T YOUR THING?"
 	boxtxt	"TRY HOLDING a TO"
 	boxtxt	"INVERT GRAVITY!"
-	dc.b	_br,_pause,_end
+	boxtxt_end
 
 ;		 --------------------
 Hint_Easter_Tutorial:
 	boxtxt	"YOU THINK YOU'RE"
 	boxtxt	"PRETTY CLEVER, HUH?"
-	dc.b	_br,_pause,_cls
+	boxtxt_pause
 	boxtxt	"GET IN THE RING,"
 	boxtxt	"LOSER!"
-	dc.b	_br,_pause,_end
+	boxtxt_end
 
 ;		 --------------------
 Hint_Easter_SLZ:
 	boxtxt	"AREN'T THE TRUE"
-	dc.b	_br
+	boxtxt_line
 	boxtxt	"EASTER EGGS"
-	dc.b	_br
+	boxtxt_line
 	boxtxt	"THE FRIENDS WE"
 	boxtxt	"MADE ALONG THE"
 	boxtxt	"WAY?"
-	dc.b	_br,_pause,_cls
+	boxtxt_next
+
 	boxtxt	"..."
-	dc.b	_br,_delay,60
+	boxtxt_pause
 	boxtxt	"..."
-	dc.b	_br,_delay,60
+	boxtxt_pause
 	boxtxt	"..."
-	dc.b	_br,_pause,_cls
+	boxtxt_next
+
 	boxtxt	"WHAT?"
-	dc.b	_br,_delay,60
+	boxtxt_pause
 	boxtxt	"WERE YOU EXPECTING"
 	boxtxt	"ANYTHING NAUGHTY"
 	boxtxt	"UP HERE?"
-	dc.b	_br,_pause,_cls
+	boxtxt_next
+
 	boxtxt	"YOU ARE"
-	dc.b	_br
+	boxtxt_line
+	boxtxt_pause
 	boxtxt	"CATEGORICALLY"
+	boxtxt_pause
 	boxtxt	"DISGUSTING."
-	dc.b	_br,_pause,_end
+	boxtxt_end
 
 ;		 --------------------
 Hint_TutorialConclusion:
 	boxtxt	"AND THAT CONCLUDES"
 	boxtxt	"THE TUTORIAL!"
-	dc.b	_br
+	boxtxt_line
 	boxtxt	"YOU SHOULD BE ABLE"
 	boxtxt	"TO FIGURE OUT THE"
 	boxtxt	"REST ON YOUR OWN."
-	dc.b	_br,_pause,_cls
+	boxtxt_next
 
 	boxtxt	"TWO MORE QUICK tips"
-	dc.b	_br
+	boxtxt_line
 	boxtxt	"- EXIT A STAGE AT"
 	boxtxt	"  ANY TIME WITH"
 	boxtxt	"  pause + a"
-	dc.b	_br
+	boxtxt_line
 	boxtxt	"- BE SURE TO CHECK"
 	boxtxt	"  OUT THE options!"
-	dc.b	_br,_pause,_cls
+	boxtxt_next
 
 	boxtxt	"NOW GO OUT THERE AND"
 	boxtxt	"HAVE FUN WITH"
-	dc.b	_br
+	boxtxt_line
 	boxtxt	"    sonic erazor"
-	dc.b	_br
+	boxtxt_line
 	boxtxt	"I HOPE YOU'LL HAVE"
 	boxtxt	"AS MUCH FUN AS I HAD"
 	boxtxt	"CREATING IT!"
-	dc.b	_br,_pause,_cls
+	boxtxt_next
 
 	boxtxt	"      BY selbi"
-	dc.b	_br,_delay,60
+	boxtxt_line
+	dc.b	_delay,60
 	boxtxt	"  THEY CALL ME THE"
-	boxtxt	"    MICHAEL  BAY"
+	boxtxt	"    michael  bay"
 	boxtxt	"   OF SONIC GAMES."
-	dc.b	_br,_delay,90
+	boxtxt_line
+	dc.b	_delay,90
 	boxtxt	" AND VERY SOON YOU"
 	boxtxt	" WILL ALSO SEE WHY."
-	dc.b	_br,_pause,_end
+	boxtxt_end
+
 	even
 ; ---------------------------------------------------------------

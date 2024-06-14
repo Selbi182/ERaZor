@@ -3853,11 +3853,25 @@ SegaScreen:				; XREF: GameModeArray
 		move.w	#$8700,(a6)
 		move.w	#$8B07,(a6)
 		clr.b	($FFFFF64E).w
-		move	#$2700,sr
+		ints_disable
 		
 		display_disable
 		
 		bsr	ClearScreen
+
+		lea	($FFFFCC00).w,a1
+		moveq	#0,d0
+		move.w	#224-1,d1
+@clearscroll:	move.l	d0,(a1)+
+		dbf	d1,@clearscroll
+
+		move.l	#$40000010,(a6)	; set VDP control port to VSRAM mode and start at 00
+		lea	($C00000).l,a0	; init VDP data port in a0	
+		moveq	#0,d0		; clear VSRAM
+		moveq	#40-1,d1	; do it for all 16-pixel strips
+@clearvsram:	move.w	d0,(a0)		; dump art to VSRAM
+		dbf	d1,@clearvsram	; repeat until all lines are done
+
 		move.l	#$40000000,($C00004).l
 		lea	(Nem_SegaLogo).l,a0 ; load Sega	logo patterns
 		bsr	NemDec
@@ -11287,6 +11301,9 @@ Resize_SLZ3:
 		cmpi.w	#$1F00,($FFFFD008).w	; is Sonic at the end of the stage?
 		bcs.w	@contret		; if not, branch
 		
+		clr.b	($FFFFFF77).w
+		clr.b	($FFFFFFE5).w
+		
 		tst.b	($FFFFF7CC).w		; are controls already locked?
 		bne.s	@cont5			; if yes, branch
 		moveq	#$12,d0
@@ -12740,8 +12757,6 @@ Obj18_NotLZ:
 		move.b	#$A0,obActWid(a0)	; make platforms SUPER wide for easy access
 		addq.w	#1,obY(a0)	; fix vertical pixel offset
 
-		tst.b	obSubtype(a0)
-		bmi.s	Obj18_NotSYZ
 		; glowing yellow arrows when stepping on platform in Uberhub
 		jsr	SingleObjLoad
 		move.b	#$18,(a1)
@@ -12751,7 +12766,7 @@ Obj18_NotLZ:
 		move.w	#$6533,obGfx(a1)
 		move.w	obX(a0),obX(a1)
 		move.w	obY(a0),d0
-		addi.w	#$38,d0		; adjust Y pos
+		addi.w	#5,d0		; adjust Y pos
 		move.w	d0,obY(a1)
 		move.b	#1,obFrame(a1)
 		move.b	#$30,obActWid(a1)
@@ -12762,6 +12777,11 @@ Obj18_NotLZ:
 		move.w	obX(a0),$32(a1)
 		move.w	#$80,obAngle(a1)
 		move.l	a0,$36(a1)
+
+		tst.b	obSubtype(a0)
+		bpl.s	Obj18_NotSYZ
+		move.b	#2,obFrame(a1)		; vertically flip
+		subi.w	#$A0,obY(a1)
 
 Obj18_NotSYZ:
 		cmpi.b	#3,($FFFFFE10).w ; check if level is SLZ
@@ -12816,7 +12836,7 @@ Obj18_Arrows:
 		tst.b	$3F(a1)
 		beq.s	@cont
 		
-		move.w	($FFFFD008).w,obX(a0)
+	;	move.w	($FFFFD008).w,obX(a0)
 
 		move.b	$3E(a0),d0
 		addq.b	#3,$3E(a0)
@@ -12839,22 +12859,33 @@ Obj18_Arrows:
 
 Obj18_Action2:				; XREF: Obj18_Index
 		cmpi.w	#$400,($FFFFFE10).w	; is level SYZ1?
-		bne.s	Obj18_NotSYZX
-		move.b	#0,$3F(a0)
-		move.w	($FFFFD010).w,d0	; get Sonic's X speed
-		bpl.s	@cont
-		neg.w	d0
-@cont:
-	;	cmpi.w	#$300,d0		; Sonic moving fast enough?
-	;	bgt.s	Obj18_NotSYZX		; if yes, don't display arrows
+		bne.w	Obj18_NotSYZX
+
+		move.b	#1,$3F(a0)		; show arrows
+
+		tst.b	obSubtype(a0)		; is this the platform to go back up?
+		bmi.s	@gobackup		; if yes, branch
 		
-		move.b	#1,$3F(a0)
 		btst	#1,($FFFFF605).w	; down pressed?
 		beq.s	Obj18_NotSYZX		; if not, branch
+		move.w	#$800,($FFFFD012).w	; shoot Sonic down
+		move.b	#2,($FFFFD01C).w	; rolling animation
+		bra.s	@platformgoboom
+
+@gobackup:
+		btst	#0,($FFFFF605).w	; up pressed?
+		beq.s	Obj18_NotSYZX		; if not, branch
+		move.w	#-$1000,($FFFFD012).w	; shoot Sonic up
+
+		subi.w	#$50,($FFFFD00C).w
+		move.b	#$10,($FFFFD01C).w	; use "bouncing" animation
+
+
+@platformgoboom:
 		move.b	#10,($FFFFFF64).w	; camera shaking
 		move.w	obX(a0),($FFFFD008).w	; force Sonic to center of platform
 		clr.w	($FFFFD010).w		; clear Sonic's X speed
-		move.w	#$800,($FFFFD012).w	; shoot Sonic down
+		
 		bsr	SingleObjLoad		; load explosion object
 		bne.s	Obj18_SYZEnd
 		move.b	#$3F,(a1)
@@ -12863,12 +12894,10 @@ Obj18_Action2:				; XREF: Obj18_Index
 		move.b	#1,$30(a1)
 		bclr	#3,($FFFFD022).w
 		bset	#1,($FFFFD022).w
-		move.b	#2,($FFFFD01C).w
+		move.b	#1,($FFFFFFAD).w	; set jumpdash flag
 		move.w	obY(a0),d0
-		cmp.w	($FFFFD00C).w,d0
-		blo.s	Obj18_SYZEnd
 		move.b	#30,$3C(a0)
-		
+
 Obj18_SYZEnd:
 		rts
 
@@ -14576,11 +14605,15 @@ Obj3F_NoCamShake:
 
 Obj3F_PlaySound:
 	if Obj3F_SoundType=1
-		move.w	#$C4,d0
-		jmp	(PlaySound_Special).l ;	play extreme exploding sound
+		move.w	#$C4,d0			; play default explosion sound (MZ block smash)
+		move.w	($FFFFFE0E).w,d1	; get timer
+		andi.w	#$3F,d1			; only allow every once in a while
+		bne.s	@notjester		; ''
+		move.w	#$D6,d0			; play Jester explosion sound
+@notjester:	jmp	(PlaySound_Special).l
 	else
-		move.w	#$D7,d0
-		jmp	(PlaySound_Special).l ;	play exploding sound
+		move.w	#$D7,d0			; play boring ass baby explosion sound
+		jmp	(PlaySound_Special).l
 	endif
 ; ===========================================================================
 
@@ -32756,10 +32789,12 @@ FixLevel:
 		moveq	#0,d0
 @1:		move.w	d0,($FFFFF704).w	; put result into Y-camera location
 
+		ints_push
 		movem.l	d0-a6,-(sp)		; backup all data and address registers
 		jsr	DeformBgLayer		; fix the background position
 		jsr	LoadTilesFromStart	; make sure the correct tiles are being used
 		movem.l	(sp)+,d0-a6		; restore them
+		ints_pop
 		rts
 
 ; ---------------------------------------------------------------------------
@@ -52068,6 +52103,7 @@ SoundIndex:	dc.l SoundA0, SoundA1, SoundA2
 		dc.l SoundD7, SoundD8, SoundD9
 		dc.l SoundDA, SoundDB, SoundDC
 		dc.l SoundDD, SoundDE, SoundDF
+		
 SoundD0Index:	dc.l SoundD0
 SoundA0:;	incbin	sound\soundA0.bin
 		incbin	sound\sound00.bin
@@ -52178,7 +52214,7 @@ SoundD4:	incbin	sound\soundD4.bin
 		even
 SoundD5:	incbin	sound\soundD5.bin
 		even
-SoundD6:	incbin	sound\soundD6.bin
+SoundD6:	incbin	sound\jesterExplosion.bin
 		even
 SoundD7:	incbin	sound\soundD7.bin
 		even

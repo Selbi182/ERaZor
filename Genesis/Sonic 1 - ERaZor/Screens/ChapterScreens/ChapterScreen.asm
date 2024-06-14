@@ -16,7 +16,7 @@
 ChapterScreen:
 		move.b	#$E0,d0
 		jsr	PlaySound_Special		; fade out music
-		jsr	ClearPLC			; Clear PLCs
+		jsr	PLC_ClearQueue			; Clear PLCs
 		jsr	Pal_FadeFrom			; Fade out previous palette
 	;	jsr	ClearVRAM
 		move	#$2700,sr

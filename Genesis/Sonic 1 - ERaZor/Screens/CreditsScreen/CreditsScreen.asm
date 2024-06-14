@@ -25,8 +25,8 @@ CreditsJest:
 		dbf	d0,@delay
 
 		move.l	#$40000000,($C00004).l			; set VDP to V-Ram write mode with address
-		lea	(Art_Credits).l,a0			; load address of compressed art
-		jsr	NemDec					; decompress and dump
+		lea	(ArtKospM_Credits).l,a0			; load address of compressed art
+		jsr	KosPlusMDec_VRAM					; decompress and dump
 
 		lea	($00FF0000).l,a1			; set destination
 		lea	(Map_Credits).l,a0			; set mappings location
@@ -333,7 +333,7 @@ Pal_Credits:
 ; Art Data
 ; ---------------------------------------------------------------------------
 
-Art_Credits:	incbin	"Screens/CreditsScreen/Credits_FontArt.bin"
+ArtKospM_Credits:	incbin	"Screens/CreditsScreen/Credits_FontArt.kospm"
 		even
 
 ; ---------------------------------------------------------------------------

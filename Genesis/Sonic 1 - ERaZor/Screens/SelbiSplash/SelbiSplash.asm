@@ -9,7 +9,7 @@ SelbiSplash_PalChgSpeed		EQU	$200		; Speed for the palette to be changed ($200)
 SelbiSplash:
 		move.b	#$E4,d0
 		jsr	PlaySound_Special		; Stop music
-		jsr	ClearPLC			; Clear PLCs
+		jsr	PLC_ClearQueue			; Clear PLCs
 		jsr	Pal_FadeFrom			; Fade out previous palette
 		move	#$2700,sr
 
@@ -27,8 +27,8 @@ SelbiSplash_VDP:
 		
 SelbiSplash_Art:
 		move.l	#$40000000,($C00004).l		; Load art
-		lea	(Art_SelbiSplash).l,a0
-		jsr	NemDec
+		lea	(ArtKospM_SelbiSplash).l,a0
+		jsr	KosPlusMDec_VRAM
 		
 SelbiSplash_Mappings:
 		lea	($FF0000).l,a1			; Load screen mappings
@@ -285,7 +285,7 @@ SelbiSplash_DisableDebug:
 		bra.s	SelbiSplash_LoopEnd
 
 ; ---------------------------------------------------------------------------------------------------------------------
-Art_SelbiSplash:	incbin	"Screens/SelbiSplash/Tiles.bin"
+ArtKospM_SelbiSplash:	incbin	"Screens/SelbiSplash/Tiles.kospm"
 			even
 ;Map_SelbiSplash:	incbin	"Screens/SelbiSplash/Maps_NoPRESENTS.bin"
 ;			even

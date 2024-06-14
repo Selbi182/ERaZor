@@ -7,7 +7,7 @@
 GameplayStyleScreen:
 		move.b	#$E0,d0
 		jsr	PlaySound_Special		; fade out music
-		jsr	ClearPLC			; clear PLCs
+		jsr	PLC_ClearQueue			; clear PLCs
 		jsr	Pal_FadeFrom			; fade out previous palette
 		move	#$2700,sr
 
@@ -32,8 +32,8 @@ GameplayStyleScreen:
 		
 		move.l	#$40000000,($C00004).l		; load art
 		lea	($C00000).l,a6
-		lea	(Art_Difficulty).l,a0
-		jsr	NemDec
+		lea	(ArtKospM_Credits).l,a0
+		jsr	KosPlusMDec_VRAM
 
 		lea	(Map_Difficulty).l,a1		; load maps
 		move.l	#$40000003,d0
@@ -133,7 +133,7 @@ GSS_MainLoop:
 ; ===========================================================================
 
 ; ===========================================================================
-Art_Difficulty:	incbin	"Screens/GameplayStyleScreen/Tiles_Difficulty.bin"
+ArtKospM_Difficulty:	incbin	"Screens/GameplayStyleScreen/Tiles_Difficulty.kospm"
 		even
 Map_Difficulty:	incbin	"Screens/GameplayStyleScreen/Maps_Difficulty.bin"
 		even

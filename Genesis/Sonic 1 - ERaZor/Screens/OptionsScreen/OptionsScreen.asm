@@ -9,10 +9,10 @@ Options_ShadowMode = 0
 OptionsScreen:				; XREF: GameModeArray
 		move.b	#$E4,d0
 		jsr	PlaySound_Special ; stop music
-		jsr	ClearPLC
+		jsr	PLC_ClearQueue
 		jsr	Pal_FadeFrom
 		move	#$2700,sr
-		jsr	SoundDriverLoad
+
 		lea	($C00004).l,a6
 	;	move.w	#$8004,(a6)
 		move.w	#$8230,(a6)
@@ -27,6 +27,7 @@ OptionsScreen:				; XREF: GameModeArray
 		move.w	#$8720,(a6)
 		clr.b	($FFFFF64E).w
 		jsr	ClearScreen
+
 		lea	($FFFFD000).w,a1
 		moveq	#0,d0
 		move.w	#$7FF,d1
@@ -43,9 +44,8 @@ OptionsScreen:				; XREF: GameModeArray
 		dbf	d1,@loadtextart ; load uncompressed text patterns
 
 		move.l	#$64000002,4(a6)
-		lea	(Nem_ERaZorNoBG).l,a0
-		jsr	NemDec
-
+		lea	(ArtKospM_ERaZorNoBG).l,a0
+		jsr	KosPlusMDec_VRAM
 
 		lea	($FFFFD100).w,a0
 		move.b	#2,(a0)			; load ERaZor banner object
@@ -101,6 +101,7 @@ Options_ClearBuffer:
 Options_ContinueSetup:
 		move.b	#Options_Blank,d2
 		bsr.s	Options_ClearBuffer
+		bsr	BGDeformation_Setup
 
  		clr.b	($FFFFFF95).w
 		clr.w	($FFFFFF96).w
@@ -123,8 +124,6 @@ Options_FinishSetup:
 		bsr	OptionsTextLoad		; load options text
 		display_enable
 		jsr	Pal_FadeTo
-		
-		bsr	BGDeformation_Setup
 
 		bra.w	OptionsScreen_MainLoop
 
@@ -146,14 +145,12 @@ Options_BackgroundEffects:
 ; ===========================================================================
 
 BGDeformation_Setup:
-		ints_push
+		VBlank_SetMusicOnly
 
 		lea	($C00000).l,a6		
 		move.l	#$40200000,4(a6)
-		lea	(Options_BGArt).l,a5
-		move.w	#($400*8)-1,d1
-@loadbgart:	move.w	(a5)+,(a6)
-		dbf	d1,@loadbgart ; load uncompressed background art
+		lea	(Options_BGArt).l,a0
+		jsr	KosPlusMDec_VRAM
 
 		; background mappings
 		vram	$C000,4(a6)		; set VDP to VRAM and start at E000 (location of Plane B nametable)
@@ -168,7 +165,7 @@ BGDeformation_Setup:
 		dbf	d2,@row			; repeat til all rows have dumped	
 		dbf	d6,@repeat
 
-		ints_pop
+		VBlank_UnsetMusicOnly
 		rts
 ; ===========================================================================
 
@@ -395,12 +392,12 @@ OptionsScreen_MainLoop:
 		jsr	BuildSprites
 
 		bsr	OptionsControls
-		jsr	RunPLC_RAM
+		jsr	PLC_Execute
 		
 		bsr.w	Options_BackgroundEffects
 		bsr.w	Options_ERZPalCycle
 
-		tst.l	($FFFFF680).w		; are pattern load cues empty?
+		tst.l	PLC_Pointer		; are pattern load cues empty?
 		bne.s	OptionsScreen_MainLoop	; if not, branch to avoid visual corruptions
 
 ; ---------------------------------------------------------------------------
@@ -1141,7 +1138,7 @@ Options_TextArt:
 		incbin	Screens\OptionsScreen\Options_TextArt.bin
 		even
 Options_BGArt:
-		incbin	Screens\OptionsScreen\FuzzyBG_Unc.bin
+		incbin	Screens\OptionsScreen\FuzzyBG.kospm
 		even
 ; ---------------------------------------------------------------------------
 ; ===========================================================================

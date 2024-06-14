@@ -328,13 +328,13 @@ GameClrRAM:	move.l	d7,(a6)+
 ; SRAM Loading Routine
 ; ---------------------------------------------------------------------------
 ; Format (note, SRAM can only be written to odd addresses):
-; 00 op 00 ch  00 do 00 lv  00 r1 00 r2  00 s1 00 s2  00 s3 00 s4  00 cm 00 mg
-;    01    03     05    07     09    0B     0D    0F     11    13     15    17
+; 00 op 00 ch  00 do 00 l1  00 l2 00 r1  00 r2 00 s1  00 s2 00 s3  00 s4 00 cm  00 mg
+;    01    03     05    07     09    0B     0D    0F     11    13     15    17     19
 ;
 ;  op = Options Flags ($FFFFFF92)
 ;  ch = Current Chapter ($FFFFFFA7)
 ;  do = Open Doors Bitset ($FFFFFF8B)
-;  lv = Lives (or Deaths, rather lol) ($FFFFFE12)
+;  l_ = Lives (or Deaths rather, lol) ($FFFFFE12-FFFFFE13)
 ;  r_ = Rings ($FFFFFE20-FFFFFE21)
 ;  s_ = Score ($FFFFFE26-FFFFFE29)
 ;  cm = Complete (beat Blackout challenge) ($FFFFFF93)
@@ -343,11 +343,11 @@ GameClrRAM:	move.l	d7,(a6)+
 SRAM_Options	= $01
 SRAM_Chapter	= $03
 SRAM_Doors	= $05
-SRAM_Lives	= $07
-SRAM_Rings	= $09 ; 2 bytes
-SRAM_Score	= $0D ; 4 bytes
-SRAM_Complete	= $15
-SRAM_Exists	= $17
+SRAM_Lives	= $07 ; 2 bytes
+SRAM_Rings	= $0B ; 2 bytes
+SRAM_Score	= $0F ; 4 bytes
+SRAM_Complete	= $17
+SRAM_Exists	= $19
 
 SRAM_MagicNumber = 182
 ; ---------------------------------------------------------------------------
@@ -367,7 +367,8 @@ SRAMFound:
 		move.b	SRAM_Options(a1),($FFFFFF92).w		; load options flags
 		move.b	SRAM_Chapter(a1),($FFFFFFA7).w		; load current chapter
 		move.b	SRAM_Doors(a1),($FFFFFF8B).w		; load open doors bitset
-		move.b	SRAM_Lives(a1),($FFFFFE12).w		; load lives/deaths counter
+		movep.w	SRAM_Lives(a1),d0			; load...
+		move.w	d0,($FFFFFE12).w			; ...lives/deaths counter
 		movep.w	SRAM_Rings(a1),d0			; load...
 		move.w	d0,($FFFFFE20).w			; ...rings
 		movep.l	SRAM_Score(a1),d0			; load...
@@ -395,7 +396,7 @@ SRAM_Delete:
 		moveq	#0,d0
 		move.b	d0,($FFFFFFA7).w			; clear current chapter
 		move.b	d0,($FFFFFF8B).w			; clear open doors bitset
-		move.b	d0,($FFFFFE12).w			; clear lives/deaths counter
+		move.w	d0,($FFFFFE12).w			; clear lives/deaths counter
 		move.w	d0,($FFFFFE20).w			; clear rings
 		move.l	d0,($FFFFFE26).w			; clear score
 		move.b	d0,($FFFFFF93).w			; clear game beaten state
@@ -417,8 +418,8 @@ SRAM_SaveNow:
 		move.b	d0,SRAM_Chapter(a1)			; backup current chapter
 		move.b	($FFFFFF8B).w,d0			; move open doors bitset to d0
 		move.b	d0,SRAM_Doors(a1)			; backup open doors bitset
-		move.b	($FFFFFE12).w,d0			; move lives/deaths to d0
-		move.b	d0,SRAM_Lives(a1)			; backup lives/deaths
+		move.w	($FFFFFE12).w,d0			; move lives/deaths to d0
+		movep.w	d0,SRAM_Lives(a1)			; backup lives/deaths
 		move.w	($FFFFFE20).w,d0			; move rings to d0
 		movep.w	d0,SRAM_Rings(a1)			; backup rings
 		move.l	($FFFFFE26).w,d0			; move score to d0
@@ -1436,7 +1437,7 @@ PlaySound_Special:
 
 PauseGame:				; XREF: Level_MainLoop; et al
 		nop				; no operation
-	;	tst.b	($FFFFFE12).w		; do you have any lives	left?
+	;	tst.w	($FFFFFE12).w		; do you have any lives	left?
 	;	beq.w	Unpause			; if not, branch
 		tst.w	($FFFFF63A).w		; is game already paused?
 		bne.s	loc_13BE		; if yes, branch
@@ -6675,7 +6676,7 @@ loc_4DF2:
 
 Cont_GotoLevelX:				; XREF: Cont_MainLoop
 		move.b	#$C,($FFFFF600).w ; set	screen mode to $0C (level)
-		move.b	#0,($FFFFFE12).w ; set deaths to 0
+		move.w	#0,($FFFFFE12).w ; set deaths to 0
 		moveq	#0,d0
 	;	move.w	d0,($FFFFFE20).w ; clear rings
 		move.w	($FFFFFF88).w,($FFFFFE20).w	; set rings to that random value
@@ -14326,7 +14327,7 @@ Obj24_Main:				; XREF: Obj24_Index
 		move.b	#0,obFrame(a0)
 		move.w	#$A5,d0
 		jsr	(PlaySound_Special).l ;	play explosion sound
-		moveq	#1,d0		; add 10 ...
+		moveq	#100,d0		; add 1000 ...
 		jsr	AddPoints	; ... points
 
 Obj24_Animate:				; XREF: Obj24_Index
@@ -14583,7 +14584,7 @@ Obj3F_Main2:
 
 @cont:
 		move.b	#$84,obColType(a0)
-	;	moveq	#1,d0		; add 100 ...
+	;	moveq	#10,d0		; add 100 ...
 	;	jsr	AddPoints	; ... points
 
 Obj3F_NotHarmful:
@@ -15490,7 +15491,7 @@ Obj1F_WalkOnFloor:			; XREF: Obj1F_Index2
 		move.b	#$20,$3E(a0)			; set flashing timer
 		move.w	#$AC,d0				; set sound
 		jsr	(PlaySound_Special).l 		; play boss damage sound
-		moveq	#10,d0		; add 100 ...
+		moveq	#100,d0		; add 1000 ...
 		jsr	AddPoints	; ... points
 		
 
@@ -16429,7 +16430,7 @@ Obj25_DontDoThis:
 
 Obj25_Collect:				; XREF: Obj25_Index
 		addq.b	#2,obRoutine(a0)
-		moveq	#1,d0		; add 10 ...
+		moveq	#10,d0		; add 100 ...
 		jsr	AddPoints	; ... points
 		move.b	#0,obColType(a0)
 		move.b	#1,obPriority(a0)
@@ -16833,7 +16834,7 @@ Obj37_DontChkBound:
 
 Obj37_Collect:				; XREF: Obj37_Index
 		addq.b	#2,obRoutine(a0)
-		moveq	#1,d0		; add 10 ...
+		moveq	#10,d0		; add 100 ...
 		jsr	AddPoints	; ... points
 		move.b	#0,obColType(a0)
 		move.b	#1,obPriority(a0)
@@ -17650,11 +17651,6 @@ Obj26_BO_NoHome:
 		move.b	obAnim(a0),obAnim(a1)
 
 Obj26_Explode:
-		cmpi.w	#$001,($FFFFFE10).w
-		beq.s	@cont
-		moveq	#10,d0		; add 1000 ...
-		jsr	AddPoints	; ... points
-@cont:
 		bsr	SingleObjLoad
 		bne.s	Obj26_SetBroken
 		move.b	#$27,0(a1)	; load explosion object
@@ -17797,9 +17793,6 @@ Obj2E_ChkSonic: ; =P monitors
 		cmpi.b	#2,d0		; does monitor contain Sonic?
 		bne.w	Obj2E_ChkShoes
 
-		move.w	#10000,d0		; hey at least you get 100000 points
-		jsr	AddPoints
-
 		move.w	#$1E,($FFFFFE14).w	; set precise remaining air time to get comedic timing right
 		move.b	#1,($FFFFFFFE).w	; set =P monitor flag true
 
@@ -17835,10 +17828,7 @@ Obj2E_ChkShoes:
 		move.w	#Sonic_TopSpeed_Shoes,($FFFFF760).w ; change Sonic's top speed
 		move.w	#Sonic_Acceleration_Shoes,($FFFFF762).w
 		move.w	#Sonic_Deceleration_Shoes,($FFFFF764).w
-		moveq	#10,d0		; add 100 ...
-		jsr	AddPoints	; ... points
-		move.w	#$E2,d0
-		jsr	(PlaySound).l	; play invincibility music
+
 		move.w	#$E2,d0
 		jmp	(PlaySound).l	; change music
 ; ===========================================================================
@@ -17856,8 +17846,6 @@ Obj2E_ChkShield:
 		move.b	#1,($FFFFFE2C).w ; give	Sonic a	shield
 	
 		move.b	#$38,($FFFFD180).w ; load shield object	($38)
-		moveq	#10,d0		; add 100 ...
-		jsr	AddPoints	; ... points
 
 		move.w	#$AF,d0
 		jmp	(PlaySound).l	; play shield sound
@@ -17879,9 +17867,6 @@ Obj2E_ChkInvinc:
 		move.b	#3,($FFFFD29C).w
 		move.b	#$38,($FFFFD2C0).w ; load stars	object ($3804)
 		move.b	#4,($FFFFD2DC).w
-		
-		moveq	#10,d0		; add 100 ...
-		jsr	AddPoints	; ... points
 
 		tst.b	($FFFFF7AA).w	; is boss mode on?
 		bne.s	Obj2E_NoMusic	; if yes, branch
@@ -17899,8 +17884,6 @@ Obj2E_ChkRings:
 		addi.w	#$A,($FFFFFE20).w ; add	10 rings to the	number of rings	you have
 		ori.b	#1,($FFFFFE1D).w ; update the ring counter
 
-		moveq	#10,d0		; add 100 ...
-		jsr	AddPoints	; ... points
 		move.w	#$B5,d0
 		jmp	(PlaySound).l	; play ring sound
 ; ===========================================================================
@@ -17965,8 +17948,6 @@ Obj2E_ChkGoggles: ;Power
 		cmpi.b	#8,d0		; does monitor contain goggles?
 		bne.s	Obj2E_ChkEnd	; if not, branch
 
-		moveq	#10,d0		; add 100 ...
-		jsr	AddPoints	; ... points
 		cmpi.w	#$200,($FFFFFE10).w	; is level MZ1?
 		bne.s	Obj2E_Goggles_NotMZ	; if not, branch
 		move.w	#$D1,d0			; set spinadsh sound
@@ -24346,8 +24327,8 @@ Obj47_Hit:				; XREF: Obj47_Index
 		addq.b	#1,obGfx(a2,d0.w)
 
 Obj47_Score:
-		moveq	#1,d0
-		jsr	AddPoints	; add 10 to score
+		moveq	#10,d0
+		jsr	AddPoints	; add 100 to score
 		bsr	SingleObjLoad
 		bne.s	Obj47_Display
 		move.b	#$29,0(a1)	; load points object
@@ -24442,7 +24423,6 @@ Obj0D_Touch:				; XREF: Obj0D_Index
 
 		move.l	#10000,d0	; add 100000 ...
 		jsr	AddPoints	; ... points
-
 
 		move.b	#1,($FFFFFFA5).w	; move HUD off screen
 		cmpi.w	#$101,($FFFFFE10).w	; is level LZ2?
@@ -34608,11 +34588,18 @@ GameOver:				; XREF: Obj01_Death
 		bra.s	loc_138D4
 
 @cont:
-		clr.b	($FFFFFE1E).w	; stop time counter
-		addq.b	#1,($FFFFFE1C).w ; update lives	counter
-		cmpi.b	#99,($FFFFFE12).w
-		bge.s	loc_138D4
-		addq.b	#1,($FFFFFE12).w ; subtract 1 from number of lives
+		clr.b	($FFFFFE1E).w		; stop time counter
+		ori.b	#1,($FFFFFE1C).w	; update lives counter
+		addq.w	#1,($FFFFFE12).w	; add one death
+		cmpi.w	#99,($FFFFFE12).w	; are we at 99 deaths?
+		blo.s	loc_138D4		; if not, branch
+		move.w	#99,($FFFFFE12).w	; holy shit you suck at video games. cap the counter
+		
+		; TODO: change to this once third digit is implemented
+	;	addi.w	#47,($FFFFFE12).w	; add a ton of deaths of testing
+	;	cmpi.w	#999,($FFFFFE12).w	; are we at 999 deaths?
+	;	blo.s	loc_138D4		; if not, branch
+	;	move.w	#999,($FFFFFE12).w	; holy shit you suck at video games. cap the counter
 
 loc_138D4:
 		move.w	#60,$3A(a0)	; set time delay to 60 frames
@@ -39091,7 +39078,7 @@ Obj79_HitLamp:
 		blo.s	@cont
 		move.b	d2,($FFFFFF97).w	; copy subtype to checkpoint counter
 @cont:
-		moveq	#100,d0		; add 1000 ...
+		move.w	#1000,d0		; add 10000 ...
 		jsr	AddPoints	; ... points
 
 		addq.b	#2,obRoutine(a0)
@@ -39280,7 +39267,7 @@ Obj7D_RightEmblem:
 		move.w	#$C9,d0
 		jsr	(PlaySound_Special).l ;	play bonus sound
 		
-		moveq	#1,d0
+		moveq	#10,d0		; add 100 points
 		jsr	AddPoints
 
 		cmpi.b	#6,($FFFFFFA0).w	; have all six emblems been collected?
@@ -39348,7 +39335,7 @@ Obj7D_LeftEmblem:
 		move.w	#$C9,d0
 		jsr	(PlaySound_Special).l ;	play bonus sound
 
-		moveq	#1,d0
+		moveq	#10,d0		; add 100 points
 		jsr	AddPoints
 
 		addq.b	#1,($FFFFFFA0).w	; increase emblems collected counter
@@ -46586,7 +46573,7 @@ Obj09_Chk1Up:
 		move.l	a1,obMap(a2)
 
 Obj09_Get1Up:
-		addq.b	#1,($FFFFFE12).w ; add 1 to number of lives
+		addq.w	#1,($FFFFFE12).w ; add 1 to number of lives
 		addq.b	#1,($FFFFFE1C).w ; add 1 to lives counter
 		move.w	#$C5,d0
 		jsr	(PlaySound).l	; play extra life music
@@ -47754,7 +47741,7 @@ Obj21_ChkLives:
 		move.w	#$19B,$36(a0)		; set X-position
 		cmpi.w	#$400,($FFFFFE10).w
 		bne.s	@cont
-		move.w	#$12B,$36(a0)		; set X-position
+		move.w	#$130,$36(a0)		; set X-position
 @cont:
 		move.w	#$14B,obScreenY(a0)		; set Y-position
 		move.w	#$8F,obX(a0)
@@ -47818,7 +47805,7 @@ Obj21_NoSignPost:
 		bne.s	@0			; if not, branch
 		;move.w	#$14B-$30,obScreenY(a0)		; set Y-position
 
-		cmpi.w	#$12B-$00,obX(a0)
+		cmpi.w	#$130,obX(a0)
 		bls.s	@1
 		subi.w	#$6,obX(a0)		; set X-position
 		
@@ -48544,10 +48531,12 @@ Hud_ClrBonusLoop:
 Hud_Lives:				; XREF: Hud_ChkLives
 		move.l	#$7B800003,d0	; set VRAM address
 		moveq	#0,d1
-		move.b	($FFFFFE12).w,d1 ; load	number of lives
+		move.w	($FFFFFE12).w,d1	; load number of lives
+	;	divu.w	#100,d1			; only look at the first two decimal digits
 		tst.b	($FFFFFF68).w
 		beq.s	@cont
 		move.b	($FFFFFF68).w,d1
+
 @cont:
 		lea	(Hud_10).l,a2
 		moveq	#1,d6
@@ -48555,7 +48544,7 @@ Hud_Lives:				; XREF: Hud_ChkLives
 		lea	Art_Hud(pc),a1
 
 Hud_LivesLoop:
-		move.l	d0,obMap(a6)
+		move.l	d0,4(a6)
 		moveq	#0,d2
 		move.l	(a2)+,d3
 
@@ -48605,13 +48594,13 @@ loc_1CABC:
 
 Hud_ClrLives:
 		tst.w	d6
-		beq.s	loc_1CAA6
+		beq.w	loc_1CAA6
 		moveq	#7,d5
 
 Hud_ClrLivesLoop:
 		move.l	#0,(a6)
 		dbf	d5,Hud_ClrLivesLoop
-		bra.s	loc_1CABC
+		bra.w	loc_1CABC
 ; End of function Hud_Lives
 
 ; ===========================================================================

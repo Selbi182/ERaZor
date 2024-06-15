@@ -64,9 +64,9 @@ StartText:
 	; 3
 	dc.b	$0D						; Number of lines
 	dc.b	"                    ",$FF
-	dc.b	"     ADDITIONAL     ",$FF
+	dc.b	"  BLAST PROCESSING  ",$FF
 	dc.b	"                    ",$FF
-	dc.b	"   PROGRAMMING BY   ",$FF
+	dc.b	"         BY         ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF

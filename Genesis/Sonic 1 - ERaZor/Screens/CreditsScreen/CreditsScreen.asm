@@ -12,40 +12,39 @@ CreditsJest:
 		move.l	d0,($FFFFFFAC).w			; reset rumble positions
 		move.l	d0,($FFFFFFA0).w			; reset scroll positions
 		move.w	#$8004,($C00004).l			; disable h-ints
-		move	#$2700,sr				; set IRQ's (disable interrupts)
+		ints_disable
 		jsr	ClearScreen				; clear the screen
 
 		move.b	#4,($FFFFF62A).w
 		jsr	DelayProgram
 		
+		; opening delay to sync the screen
 		move.w	#120,d0
-	@delay:
-		move.b	#4,($FFFFF62A).w
+	@delay:	move.b	#4,($FFFFF62A).w
 		jsr	DelayProgram
 		dbf	d0,@delay
 
+		
+		VBlank_SetMusicOnly
 		move.l	#$40000000,($C00004).l			; set VDP to V-Ram write mode with address
 		lea	(ArtKospM_Credits).l,a0			; load address of compressed art
-		jsr	KosPlusMDec_VRAM					; decompress and dump
+		jsr	KosPlusMDec_VRAM			; decompress and dump
 
 		lea	($00FF0000).l,a1			; set destination
 		lea	(Map_Credits).l,a0			; set mappings location
 		move.w	#(295*NumberOfCreditsPages)+11,d1	; set number of loops
-
-CJ_MapsLoop:
-		move.b	(a0)+,(a1)+				; load data
+CJ_MapsLoop:	move.b	(a0)+,(a1)+				; load data
 		dbf	d1,CJ_MapsLoop				; loop
 
 		lea	($FFFFFB80).w,a1			; load address of storage buffer
 		lea	(Pal_Credits).l,a0			; load address of palette data
 		moveq	#$07,d1					; set repeat times
-
-CJ_RepPal:
-		move.l	(a0)+,(a1)+				; dump palette
+CJ_RepPal:	move.l	(a0)+,(a1)+				; dump palette
 		move.l	(a0)+,(a1)+				; ''
 		move.l	(a0)+,(a1)+				; ''
 		move.l	(a0)+,(a1)+				; ''
 		dbf	d1,CJ_RepPal				; repeat til palette is dumped
+		VBlank_UnsetMusicOnly
 
 		clr.b	($FFFFFF91).w
 
@@ -123,6 +122,8 @@ CJSM_FO_Array:
 		
 		dc.b	 2, 1
 		dc.b	 2, 3
+		
+		dc.b	 3, 1
 		
 		dc.b	 4, 1
 		dc.b	 4, 3

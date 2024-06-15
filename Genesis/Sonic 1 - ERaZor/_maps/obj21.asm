@@ -40,7 +40,7 @@ Obj21_Time:	dc.b 4
 		dc.b $F8, $05, $80, $2C, $0F	; Second and third digit of Timer
 
 Obj21_Lives:	dc.b 6
-		dc.b $F8, $01, $80, $24, $C8	; the faked zero from the score counter
+		dc.b $F8, $01, $80, $24, $C8	; the 10s digit from the score counter
 		dc.b $F8, $05, $81, $12, $D0	; Deaths Counter
 		dc.b $F9, $01, $81, $0A, $E8	; D
 		dc.b $F9, $01, $80, $16, $F0	; E

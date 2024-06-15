@@ -10788,10 +10788,12 @@ Resize_FZEscape_Nuke:
 		tst.b	($FFFFFFA5).w		; egg prison opened?
 		beq.s	@0			; if not, branch
 		
+		VBlank_SetMusicOnly 		; VBlank won't touch VDP now
 		vram	$6C00			; load HPS and info box graphics
 		lea	(ArtKospM_HardPS_Tut).l,a0
 		jsr	KosPlusMDec_VRAM
-
+		VBlank_UnsetMusicOnly
+		
 		addq.b	#2,($FFFFF742).w	; go to next routine	
 		move.w	#0,($FFFFF72C).w	; unlock controls
 
@@ -10803,9 +10805,11 @@ Resize_FZEscape_Nuke:
 ; ===========================================================================
 
 Resize_FZEscape:
+		VBlank_SetMusicOnly 		; VBlank won't touch VDP now
 		vram	$A460			; load horizontal spring graphics
 		lea	(ArtKospM_HSpring).l,a0
 		jsr	KosPlusMDec_VRAM
+		VBlank_UnsetMusicOnly
 		
 		addq.b	#2,($FFFFF742).w	; go to next routine
 		move.b	#2,(FZEscape).w		; enable exploding scenery
@@ -14278,7 +14282,7 @@ Obj1F_NotInhumanCrush:
 	;	subq.b	#1,obColProp(a0)			; sub 1 from lives (for SOME really stupid reason, this is done somewhere else. gah.)
 		move.b	obColProp(a0),($FFFFFF68).w
 		tst.b	obColProp(a0)
-		bne.s	@cont
+		bhi.s	@cont
 		cmpi.b	#4,ob2ndRout(a0)
 		bge.s	@cont
 		move.b	#10,($FFFFFF64).w		; camera shaking
@@ -42477,6 +42481,9 @@ loc_19F6A:
 		tst.b	$35(a0)
 		bne.w	loc_19F88
 		subq.b	#1,obColProp(a0)
+		bpl.s	@0
+		move.b	#0,obColProp(a0)
+@0:
 		move.b	obColProp(a0),($FFFFFF68).w
 		bsr	BossDamageSound
 		moveq	#10,d0		; add 100 ...

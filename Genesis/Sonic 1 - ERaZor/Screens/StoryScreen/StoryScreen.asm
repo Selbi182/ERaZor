@@ -13,7 +13,7 @@ STSBuffer equ $FFFFC900
 StoryScreen:				; XREF: GameModeArray
 	;	move.b	#$E4,d0
 	;	bsr	PlaySound_Special ; stop music
-		jsr	ClearPLC
+		jsr	PLC_ClearQueue
 		jsr	Pal_FadeFrom
 		move	#$2700,sr
 	;	bsr	SoundDriverLoad
@@ -46,12 +46,12 @@ STS_ClrObjRam:	move.l	d0,(a1)+
 
 		move	#$2700,sr
 		move.l	#$64000002,($C00004).l
-		lea	(Nem_ERaZorNoBG).l,a0
-		jsr	NemDec
+		lea	(ArtKospM_ERaZorNoBG).l,a0
+		jsr	KosPlusMDec_VRAM
 		
 		moveq	#20,d1
 	@delay:	
-		jsr	RunPLC_RAM
+		jsr	PLC_Execute
 		move.b	#2,($FFFFF62A).w
 		jsr	DelayProgram
 		dbf	d1,@delay
@@ -147,10 +147,10 @@ StoryScreen_MainLoop:
 		jsr	ObjectsLoad
 		jsr	BuildSprites
 	;	jsr	SineWavePalette
-		jsr	RunPLC_RAM
+		jsr	PLC_Execute
 		jsr	Options_BackgroundEffects
 		jsr	Options_ERZPalCycle
-		tst.l	($FFFFF680).w
+		tst.l	PLC_Pointer
 		bne.s	StoryScreen_MainLoop
 
 

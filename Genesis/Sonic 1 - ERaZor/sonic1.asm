@@ -21,6 +21,9 @@
 ; ------------------------------------------------------
 ; =======================================================
 
+	include	"Variables.asm"
+	include	"macros.asm"
+
 ; ------------------------------------------------------
 ; Developer Assembly Options
 ; ------------------------------------------------------
@@ -315,6 +318,8 @@ GameClrRAM:	move.l	d7,(a6)+
 		bsr	JoypadInit
 		bsr.s	LoadSRAM
 
+		jsr		PLC_ClearQueue	; setup PLC system
+
 		jsr	BlackBars.FullReset		; setup black bars
 		move.l	HBlank_BaseHandler, HBlankHndl	; setup HBlank handler
 
@@ -490,13 +495,6 @@ locret_119C:
 ; ---------------------------------------------------------------------------
 ; Vladik's cool and awesome black bars that replaced my garbage ones B)
 ; ---------------------------------------------------------------------------
-BlackBars.BaseHeight:	equ	$FFFFF5F2	; w	Base height of black bars in pixels
-BlackBars.TargetHeight:	equ	$FFFFF5F4	; w	Target height of black bars in pixels
-BlackBars.Height:	equ	$FFFFF5F6	; w	Current height of black bars in pixels
-BlackBars.FirstHCnt:	equ	$FFFFF5F8	; w	$8Axx VDP register value for the first HInt
-BlackBars.SecondHCnt:	equ	$FFFFF5FA	; w	$8Axx VDP register value for the second HInt
-HBlankHndl:		equ	$FFFFF5FC	; l/w	Jump code for HInt
-HBlankSubW:		equ	$FFFFF5FE	; w	Word offset for HInt routine 
 
 BlackBars.GrowSize = 2
 BlackBars.MaxHeight = 40
@@ -668,8 +666,6 @@ BlackBars_SetHeight:
 		rts					; return
 ; ===========================================================================
 
-BlackBars.GHPTimer:		equ	$FFFFF5F0		; b
-BlackBars.GHPTimerReset:	equ	$FFFFF5F1		; b
 BlackBars.GHPCasual  = 80
 BlackBars.GHPFrantic = 60
 ; ---------------------------------------------------------------------------
@@ -700,7 +696,7 @@ BlackBars.GHP:
 		jsr	PlaySound_Special		; ...badump sound		
 
 @timeleft:		
-		bra.s	BlackBars_ShowCustom		; force display
+		bra		BlackBars_ShowCustom		; force display
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
 
@@ -714,6 +710,7 @@ MainGameLoop:
 		moveq	#0,d0				; clear d0
 		move.b	($FFFFF600).w,d0		; get current game mode
 		movea.l	GameModeArray(pc,d0.w),a1	; locate address in GameModeArray
+		KDebug.WriteLine "MainGameLoop(): Launching %<.l a1 sym>..."
 		jsr	(a1)				; enter game mode
 		jsr	BlackBars.FullReset		; reset black bars between game mode transitions
 		bra.s	MainGameLoop			; if we're here, we exited the game mode; load new one
@@ -752,10 +749,10 @@ Art_Text:	incbin	Screens\OptionsScreen\Options_TextArt.bin
 ; loc_B10:
 VBlank:				; XREF: StartOfRom
 		movem.l	d0-a6,-(sp)
-		
-		tst.b	(NemBusy).w			; is NemDec currently busy?
-		bne.s	VBlank_Exit			; if yes, skip everything and just run the sound driver
-		
+
+		tst.b	VBlank_MusicOnly		; is "music only" flag set (effectively disabled VBlank, only SMPS works)
+		bne.s	VBlank_Exit				; if yes, skip all of VBlank
+
 		bsr.w	BlackBars.VBlankUpdate
 		
 		tst.b	($FFFFF62A).w			; are we late for V-Blank?
@@ -771,7 +768,6 @@ VBlank:				; XREF: StartOfRom
 
 loc_B42:
 		move.b	($FFFFF62A).w,d0
-		move.b	#0,($FFFFF62A).w
 		move.w	#1,($FFFFF644).w
 		andi.w	#$3E,d0
 		move.w	VBlankTable(pc,d0.w),d0
@@ -779,6 +775,7 @@ loc_B42:
 
 ; loc_B5E:
 VBlank_Exit:				; XREF: VBlank_Late
+		move.b	#0,($FFFFF62A).w
 		bsr.s	UpdateSoundDriver	; update sound driver stuff now
 		addq.l	#1,($FFFFFE0C).w	; increase 1 to V-Blank counter
 		movem.l	(sp)+,d0-a6
@@ -885,7 +882,6 @@ loc_C44:				; XREF: VBlankTable
 @0:		move.b	($FFFFF625).w,($FFFFFE07).w
 
 		bsr	sub_6886
-		bsr	sub_1642
 		tst.w	($FFFFF614).w
 		beq.w	locret_C5C
 		subq.w	#1,($FFFFF614).w
@@ -964,8 +960,7 @@ loc_D50:
 		bsr	LoadTilesAsYouMove
 		jsr	AniArt_Load
 		jsr	HudUpdate
-		bsr	sub_165E
-		rts	
+		rts
 ; End of function Demo_Time
 
 ; ===========================================================================
@@ -1060,7 +1055,6 @@ loc_F54:
 		bsr	LoadTilesAsYouMove
 		jsr	AniArt_Load
 		jsr	HudUpdate
-		bsr	sub_1642
 		rts	
 ; ===========================================================================
 
@@ -1083,7 +1077,7 @@ loc_F9A:				; XREF: VBlankTable
 		move.w	($FFFFF624).w,(a5)
 @0:		move.b	($FFFFF625).w,($FFFFFE07).w
 
-		bra.w	sub_1642
+		rts
 ; ===========================================================================
 
 loc_FA6:				; XREF: VBlankTable
@@ -1160,6 +1154,7 @@ loc_10D4:				; XREF: sub_106E
 		move.w	#$7C00,(a5)
 		move.w	#$83,($FFFFF640).w
 		move.w	($FFFFF640).w,(a5)
+		jsr	(ProcessDMAQueue).l
 		rts	
 ; End of function sub_106E
 
@@ -1590,6 +1585,12 @@ MapScreen_Column:
 ; sub_144E: DMA_68KtoVRAM: QueueCopyToVRAM: QueueVDPCommand: Add_To_DMA_Queue:
 QueueDMATransfer:
 		movea.l	($FFFFC8FC).w,a1
+
+		;move.l	a0, -(sp)
+		;movea.l	4(sp), a0
+		;KDebug.WriteLine "QueueDMATransfer(): frame=%<.w $FFFFFE0C+2>, pos=%<.w a1>, src=%<.l d1 sym>, dest=%<.w d2>, size=%<.w d3>, caller=%<.l a0 sym>"
+		;move.l	(sp)+, a0
+
 		cmpa.w	#$C8FC,a1
 		beq.s	QueueDMATransfer_Done ; return if there's no more room in the buffer
 
@@ -1645,8 +1646,19 @@ QueueDMATransfer_Done:
 
 ; sub_14AC: CopyToVRAM: IssueVDPCommands: Process_DMA: Process_DMA_Queue:
 ProcessDMAQueue:
+		; Interrupts should be disabled
+		if def(__DEBUG__)
+			tst.b	VBlank_MusicOnly
+			bne.s	@interrupts_ok
+			move.w	sr, -(sp)
+			assert.b (sp), hs, #$26
+			addq.w	#2, sp
+		@interrupts_ok:
+		endif
+
 		lea	($C00004).l,a5
 		lea	($FFFFC800).w,a1
+
 ; loc_14B6:
 ProcessDMAQueue_Loop:
 		move.w	(a1)+,d0
@@ -1667,827 +1679,23 @@ ProcessDMAQueue_Done:
 		move.l	#$FFFFC800,($FFFFC8FC).w
 		rts
 ; End of function ProcessDMAQueue
-
-; ==============================================================================
-; ------------------------------------------------------------------------------
-; Nemesis decompression routine - Optimized by vladikcomper
-; Usage:
-;	move.l	#$40000000,($C00004).l
-;	lea	(Nem_Graphics).l,a0
-;	jsr	NemDec
-; ------------------------------------------------------------------------------
-NemBusy equ $FFFFF629
-
-NemDec_RAM: ; unused in this game
-		movem.l	d0-a1/a3-a6,-(sp)
-		lea	NemDec_WriteRowToRAM(pc),a3
-		bra.s   NemDec_Main
-		
-; ------------------------------------------------------------------------------
-NemDec:
-		move.w	sr,-(sp)	; backup previous sr state
-		ints_disable		; disable interrupts while NemDec is active
-		move.b	#1,(NemBusy).w ; set "NemDec busy" flag
-
-		movem.l	d0-a1/a3-a6,-(sp)
-		lea	$C00000,a4      ; load VDP Data Port     
-		lea	NemDec_WriteRowToVDP(pc),a3
-
-NemDec_Main:
-		lea	$FFFFAA00,a1        ; load Nemesis decompression buffer
-		move.w  (a0)+,d2        ; get number of patterns
-		bpl.s   @0          ; are we in Mode 0?
-		lea	$A(a3),a3       ; if not, use Mode 1
-@0:		lsl.w   #3,d2
-		movea.w d2,a5
-		moveq   #7,d3
-		moveq   #0,d2
-		moveq   #0,d4
-		bsr.w   NemDec4
-		move.b  (a0)+,d5        ; get first byte of compressed data
-		asl.w   #8,d5           ; shift up by a byte
-		move.b  (a0)+,d5        ; get second byte of compressed data
-		move.w  #$10,d6         ; set initial shift value
-		bsr.s   NemDec2
-		movem.l (sp)+,d0-a1/a3-a6
-
-		clr.b	(NemBusy).w	; clear "NemDec busy" flag
-		move.w	(sp)+,sr	; restore previous sr state
-		rts
-
-; ---------------------------------------------------------------------------
-; Part of the Nemesis decompressor, processes the actual compressed data
-; ---------------------------------------------------------------------------
-		
-NemDec2:
-		move.w  d6,d7
-		subq.w  #8,d7           ; get shift value
-		move.w  d5,d1
-		lsr.w   d7,d1           ; shift so that high bit of the code is in bit position 7
-		cmpi.b  #%11111100,d1       ; are the high 6 bits set?
-		bcc.s   NemDec_InlineData   ; if they are, it signifies inline data
-		andi.w  #$FF,d1
-		add.w   d1,d1
-		sub.b   (a1,d1.w),d6        ; ~~ subtract from shift value so that the next code is read next time around
-		cmpi.w  #9,d6           ; does a new byte need to be read?
-		bcc.s   @0          ; if not, branch
-		addq.w  #8,d6
-		asl.w   #8,d5
-		move.b  (a0)+,d5        ; read next byte
-@0:		move.b  1(a1,d1.w),d1
-		move.w  d1,d0
-		andi.w  #$F,d1          ; get palette index for pixel
-		andi.w  #$F0,d0
-		
-NemDec_GetRepeatCount:
-		lsr.w   #4,d0           ; get repeat count
-		
-NemDec_WritePixel:
-		lsl.l   #4,d4           ; shift up by a nybble
-		or.b    d1,d4           ; write pixel
-		dbf	d3,NemDec_WritePixelLoop; ~~
-		jmp	(a3)            ; otherwise, write the row to its destination
-; ---------------------------------------------------------------------------
-		
-NemDec3:
-		moveq   #0,d4           ; reset row
-		moveq   #7,d3           ; reset nybble counter
-		
-NemDec_WritePixelLoop:
-		dbf	d0,NemDec_WritePixel
-		bra.s   NemDec2
-; ---------------------------------------------------------------------------
-		
-NemDec_InlineData:
-		subq.w  #6,d6           ; 6 bits needed to signal inline data
-		cmpi.w  #9,d6
-		bcc.s   @0
-		addq.w  #8,d6
-		asl.w   #8,d5
-		move.b  (a0)+,d5
-@0:		subq.w  #7,d6           ; and 7 bits needed for the inline data itself
-		move.w  d5,d1
-		lsr.w   d6,d1           ; shift so that low bit of the code is in bit position 0
-		move.w  d1,d0
-		andi.w  #$F,d1          ; get palette index for pixel
-		andi.w  #$70,d0         ; high nybble is repeat count for pixel
-		cmpi.w  #9,d6
-		bcc.s   NemDec_GetRepeatCount
-		addq.w  #8,d6
-		asl.w   #8,d5
-		move.b  (a0)+,d5
-		bra.s   NemDec_GetRepeatCount
-		
-; ---------------------------------------------------------------------------
-; Subroutines to output decompressed entry
-; Selected depending on current decompression mode
-; ---------------------------------------------------------------------------
-		
-NemDec_WriteRowToVDP:
-loc_1502:
-		move.l  d4,(a4)         ; write 8-pixel row
-		subq.w  #1,a5
-		move.w  a5,d4           ; have all the 8-pixel rows been written?
-		bne.s   NemDec3         ; if not, branch
-		rts
-; ---------------------------------------------------------------------------
-		
-NemDec_WriteRowToVDP_XOR:
-		eor.l   d4,d2           ; XOR the previous row by the current row
-		move.l  d2,(a4)         ; and write the result
-		subq.w  #1,a5
-		move.w  a5,d4
-		bne.s   NemDec3
-		rts
-; ---------------------------------------------------------------------------
-		
-NemDec_WriteRowToRAM:
-		move.l  d4,(a4)+        ; write 8-pixel row
-		subq.w  #1,a5
-		move.w  a5,d4           ; have all the 8-pixel rows been written?
-		bne.s   NemDec3         ; if not, branch
-		rts
-; ---------------------------------------------------------------------------
-		
-NemDec_WriteRowToRAM_XOR:
-		eor.l   d4,d2           ; XOR the previous row by the current row
-		move.l  d2,(a4)+        ; and write the result
-		subq.w  #1,a5
-		move.w  a5,d4
-		bne.s   NemDec3
-		rts
-		
-; ---------------------------------------------------------------------------
-; Part of the Nemesis decompressor, builds the code table (in RAM)
-; ---------------------------------------------------------------------------
-		
-NemDec4:
-		move.b  (a0)+,d0        ; read first byte
-		
-@ChkEnd:
-		cmpi.b  #$FF,d0         ; has the end of the code table description been reached?
-		bne.s   @NewPalIndex        ; if not, branch
-		rts
-; ---------------------------------------------------------------------------
-		
-@NewPalIndex:
-		move.w  d0,d7
-		
-@ItemLoop:
-		move.b  (a0)+,d0        ; read next byte
-		bmi.s   @ChkEnd         ; ~~
-		move.b  d0,d1
-		andi.w  #$F,d7          ; get palette index
-		andi.w  #$70,d1         ; get repeat count for palette index
-		or.w    d1,d7           ; combine the two
-		andi.w  #$F,d0          ; get the length of the code in bits
-		move.b  d0,d1
-		lsl.w   #8,d1
-		or.w    d1,d7           ; combine with palette index and repeat count to form code table entry
-		moveq   #8,d1
-		sub.w   d0,d1           ; is the code 8 bits long?
-		bne.s   @ItemShortCode      ; if not, a bit of extra processing is needed
-		move.b  (a0)+,d0        ; get code
-		add.w   d0,d0           ; each code gets a word-sized entry in the table
-		move.w  d7,(a1,d0.w)        ; store the entry for the code
-		bra.s   @ItemLoop       ; repeat
-; ---------------------------------------------------------------------------
-		
-@ItemShortCode:
-		move.b  (a0)+,d0        ; get code
-		lsl.w   d1,d0           ; shift so that high bit is in bit position 7
-		add.w   d0,d0           ; get index into code table
-		moveq   #1,d5
-		lsl.w   d1,d5
-		subq.w  #1,d5           ; d5 = 2^d1 - 1
-		lea	(a1,d0.w),a6        ; ~~
-		
-@ItemShortCodeLoop:
-		move.w  d7,(a6)+        ; ~~ store entry
-		dbf	d5,@ItemShortCodeLoop   ; repeat for required number of entries
-		bra.s   @ItemLoop
-; End of function NemDec
-; ===========================================================================
-
-; ===========================================================================
-; ---------------------------------------------------------------------------
-; Subroutine to	load pattern load cues
 ; ---------------------------------------------------------------------------
 
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
-
-LoadPLC:
-		movem.l	d0-a6,-(sp)
-		lea	(ArtLoadCues).l,a1
-		add.w	d0,d0
-		move.w	(a1,d0.w),d0
-		lea	(a1,d0.w),a1
-		lea	($FFFFF680).w,a2
-
-loc_1598:
-		tst.l	(a2)
-		beq.s	loc_15A0
-		addq.w	#6,a2
-		bra.s	loc_1598
-; ===========================================================================
-
-loc_15A0:				; XREF: LoadPLC
-		move.w	(a1)+,d0
-		bmi.s	loc_15AC
-
-loc_15A4:
-		move.l	(a1)+,(a2)+
-		move.w	(a1)+,(a2)+
-		dbf	d0,loc_15A4
-
-loc_15AC:
-		movem.l	(sp)+,d0-a6
-		rts	
-; End of function LoadPLC
-
-
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
-
-LoadPLC2:
-		movem.l	d0-a6,-(sp)
-		lea	(ArtLoadCues).l,a1
-		add.w	d0,d0
-		move.w	(a1,d0.w),d0
-		lea	(a1,d0.w),a1
-		bsr.s	ClearPLC
-		lea	($FFFFF680).w,a2
-		move.w	(a1)+,d0
-		bmi.s	loc_15D8
-
-loc_15D0:
-		move.l	(a1)+,(a2)+
-		move.w	(a1)+,(a2)+
-		dbf	d0,loc_15D0
-
-loc_15D8:
-		movem.l	(sp)+,d0-a6
-		rts	
-; End of function LoadPLC2
-
-; ---------------------------------------------------------------------------
-; Subroutine to	clear the pattern load cues
-; ---------------------------------------------------------------------------
-
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
-
-ClearPLC:				; XREF: LoadPLC2
-		lea	($FFFFF680).w,a2
-		moveq	#$1F,d0
-
-ClearPLC_Loop:
-		clr.l	(a2)+
-		dbf	d0,ClearPLC_Loop
-		rts	
-; End of function ClearPLC
-
-; ---------------------------------------------------------------------------
-; Subroutine to	use graphics listed in a pattern load cue
-; ---------------------------------------------------------------------------
-
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
-
-RunPLC_RAM:				; XREF: Pal_FadeTo
-		tst.l	($FFFFF680).w
-		beq.s	locret_1640
-		tst.w	($FFFFF6F8).w
-		bne.s	locret_1640
-		movea.l	($FFFFF680).w,a0
-		lea	(loc_1502).l,a3
-		lea	($FFFFAA00).w,a1
-		move.w	(a0)+,d2
-		bpl.s	loc_160E
-		adda.w	#$A,a3
-
-loc_160E:
-		andi.w	#$7FFF,d2
-		
-		move.w	sr,-(sp)	; backup previous sr state
-		ints_disable		; disable interrupts while NemDec is active
-		move.b	#1,(NemBusy).w	; set "NemDec busy" flag
-		bsr	NemDec4		; do NemDec4 stuff
-		clr.b	(NemBusy).w	; clear "NemDec busy" flag
-		move.w	(sp)+,sr	; restore previous sr state
-
-		move.b	(a0)+,d5
-		asl.w	#8,d5
-		move.b	(a0)+,d5
-		moveq	#$10,d6
-		moveq	#0,d0
-		move.l	a0,($FFFFF680).w
-		move.l	a3,($FFFFF6E0).w
-		move.l	d0,($FFFFF6E4).w
-		move.l	d0,($FFFFF6E8).w
-		move.l	d0,($FFFFF6EC).w
-		move.l	d5,($FFFFF6F0).w
-		move.l	d6,($FFFFF6F4).w
-		move.w	d2,($FFFFF6F8).w	; https://info.sonicretro.org/SCHG_How-to:Fix_a_race_condition_with_Pattern_Load_Cues
-
-locret_1640:
-		rts	
-; End of function RunPLC_RAM
-
-
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
-
-sub_1642:				; XREF: loc_C44; loc_F54; loc_F9A
-		tst.w	($FFFFF6F8).w
-		beq.w	locret_16DA
-		move.w	#9,($FFFFF6FA).w
-		moveq	#0,d0
-		move.w	($FFFFF684).w,d0
-		addi.w	#$120,($FFFFF684).w
-		bra.s	loc_1676
-; End of function sub_1642
-
-
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
-
-sub_165E:				; XREF: 
-		tst.w	($FFFFF6F8).w
-		beq.w	locret_16DA
-		cmpi.b	#$01,($FFFFFE10).w        ; is this LZ?
-		bne.s	.Normal                ; if not, continue normally
-		move.w	($FFFFF646).w,d0        ; load water level
-		sub.w	($FFFFF704).w,d0        ; get distance from top of screen
-		cmpi.w	#$00DF,d0            ; is the water level below the screen?
-		bhs.s	.Normal                ; if so, run normal decompression rate
-		moveq	#$07,d0            ; check if it's been 8 frames
-		and.w	($FFFFFE04).w,d0    ; ''
-		beq.s	.Slow            ; if so, continue decompression
-		rts                ; cancel
-
-.Slow:
-		moveq	#1,d0                ; set to decompress and transfer 1 tile
-		move.w	d0,($FFFFF6FA).w        ; ''
-		move.w	($FFFFF684).w,d0        ; load current VRAM address to transfer to
-		addi.w	#$20,($FFFFF684).w        ; advance to next tile (next frame)
-		bra.s	loc_1676            ; continue with decompression/transfer
-
-.Normal:
-		move.w	#3,($FFFFF6FA).w
-		moveq	#0,d0
-		move.w	($FFFFF684).w,d0
-		addi.w	#$60,($FFFFF684).w
-
-loc_1676:				; XREF: sub_1642
-		lea	($C00004).l,a4
-		lsl.l	#2,d0
-		lsr.w	#2,d0
-		ori.w	#$4000,d0
-		swap	d0
-		move.l	d0,(a4)
-		subq.w	#4,a4
-		movea.l	($FFFFF680).w,a0
-		movea.l	($FFFFF6E0).w,a3
-		move.l	($FFFFF6E4).w,d0
-		move.l	($FFFFF6E8).w,d1
-		move.l	($FFFFF6EC).w,d2
-		move.l	($FFFFF6F0).w,d5
-		move.l	($FFFFF6F4).w,d6
-		lea	($FFFFAA00).w,a1
-
-loc_16AA:				; XREF: sub_165E
-		movea.w	#8,a5
-		
-		move.w	sr,-(sp)	; backup previous sr state
-		ints_disable		; disable interrupts while NemDec is active
-		move.b	#1,(NemBusy).w	; set "NemDec busy" flag
-		bsr	NemDec3		; do NemDec3 stuff
-		clr.b	(NemBusy).w	; clear "NemDec busy" flag
-		move.w	(sp)+,sr	; restore previous sr state
-
-		subq.w	#1,($FFFFF6F8).w
-		beq.s	loc_16DC
-		subq.w	#1,($FFFFF6FA).w
-		bne.s	loc_16AA
-		move.l	a0,($FFFFF680).w
-		move.l	a3,($FFFFF6E0).w
-		move.l	d0,($FFFFF6E4).w
-		move.l	d1,($FFFFF6E8).w
-		move.l	d2,($FFFFF6EC).w
-		move.l	d5,($FFFFF6F0).w
-		move.l	d6,($FFFFF6F4).w
-
-locret_16DA:				; XREF: sub_1642
-		rts	
-; ===========================================================================
-
-loc_16DC:				; XREF: sub_165E
-		lea	($FFFFF680).w,a0
-		moveq	#$15,d0
-
-loc_16E2:				; XREF: sub_165E
-		move.l	6(a0),(a0)+
-		dbf	d0,loc_16E2
-		rts	
-; End of function sub_165E
-
-; ---------------------------------------------------------------------------
-; Subroutine to	execute	the pattern load cue
-; ---------------------------------------------------------------------------
-
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
-
-RunPLC_ROM:
-		lea	(ArtLoadCues).l,a1 ; load the PLC index
-		add.w	d0,d0
-		move.w	(a1,d0.w),d0
-		lea	(a1,d0.w),a1
-		move.w	(a1)+,d1	; load number of entries in the	PLC
-
-RunPLC_Loop:
-		movea.l	(a1)+,a0	; get art pointer
-		moveq	#0,d0
-		move.w	(a1)+,d0	; get VRAM address
-		lsl.l	#2,d0		; divide address by $20
-		lsr.w	#2,d0
-		ori.w	#$4000,d0
-		swap	d0
-		move.l	d0,($C00004).l	; put the VRAM address into VDP
-		bsr	NemDec		; decompress
-		dbf	d1,RunPLC_Loop	; loop for number of entries
-		rts	
-; End of function RunPLC_ROM
-
-; ---------------------------------------------------------------------------
-; Enigma decompression algorithm
-; ---------------------------------------------------------------------------
-
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
-
-EniDec:
-		movem.l	d0-d7/a1-a5,-(sp)
-		movea.w	d0,a3
-		move.b	(a0)+,d0
-		ext.w	d0
-		movea.w	d0,a5
-		move.b	(a0)+,d4
-		lsl.b	#3,d4
-		movea.w	(a0)+,a2
-		adda.w	a3,a2
-		movea.w	(a0)+,a4
-		adda.w	a3,a4
-		move.b	(a0)+,d5
-		asl.w	#8,d5
-		move.b	(a0)+,d5
-		moveq	#$10,d6
-
-loc_173E:				; XREF: loc_1768
-		moveq	#7,d0
-		move.w	d6,d7
-		sub.w	d0,d7
-		move.w	d5,d1
-		lsr.w	d7,d1
-		andi.w	#$7F,d1
-		move.w	d1,d2
-		cmpi.w	#$40,d1
-		bcc.s	loc_1758
-		moveq	#6,d0
-		lsr.w	#1,d2
-
-loc_1758:
-		bsr	sub_188C
-		andi.w	#$F,d2
-		lsr.w	#4,d1
-		add.w	d1,d1
-		jmp	loc_17B4(pc,d1.w)
-; End of function EniDec
-
-; ===========================================================================
-
-loc_1768:				; XREF: loc_17B4
-		move.w	a2,(a1)+
-		addq.w	#1,a2
-		dbf	d2,loc_1768
-		bra.s	loc_173E
-; ===========================================================================
-
-loc_1772:				; XREF: loc_17B4
-		move.w	a4,(a1)+
-		dbf	d2,loc_1772
-		bra.s	loc_173E
-; ===========================================================================
-
-loc_177A:				; XREF: loc_17B4
-		bsr	loc_17DC
-
-loc_177E:
-		move.w	d1,(a1)+
-		dbf	d2,loc_177E
-		bra.s	loc_173E
-; ===========================================================================
-
-loc_1786:				; XREF: loc_17B4
-		bsr	loc_17DC
-
-loc_178A:
-		move.w	d1,(a1)+
-		addq.w	#1,d1
-		dbf	d2,loc_178A
-		bra.s	loc_173E
-; ===========================================================================
-
-loc_1794:				; XREF: loc_17B4
-		bsr	loc_17DC
-
-loc_1798:
-		move.w	d1,(a1)+
-		subq.w	#1,d1
-		dbf	d2,loc_1798
-		bra.s	loc_173E
-; ===========================================================================
-
-loc_17A2:				; XREF: loc_17B4
-		cmpi.w	#$F,d2
-		beq.s	loc_17C4
-
-loc_17A8:
-		bsr	loc_17DC
-		move.w	d1,(a1)+
-		dbf	d2,loc_17A8
-		bra.s	loc_173E
-; ===========================================================================
-
-loc_17B4:				; XREF: EniDec
-		bra.s	loc_1768
-; ===========================================================================
-		bra.s	loc_1768
-; ===========================================================================
-		bra.s	loc_1772
-; ===========================================================================
-		bra.s	loc_1772
-; ===========================================================================
-		bra.s	loc_177A
-; ===========================================================================
-		bra.s	loc_1786
-; ===========================================================================
-		bra.s	loc_1794
-; ===========================================================================
-		bra.s	loc_17A2
-; ===========================================================================
-
-loc_17C4:				; XREF: loc_17A2
-		subq.w	#1,a0
-		cmpi.w	#$10,d6
-		bne.s	loc_17CE
-		subq.w	#1,a0
-
-loc_17CE:
-		move.w	a0,d0
-		lsr.w	#1,d0
-		bcc.s	loc_17D6
-		addq.w	#1,a0
-
-loc_17D6:
-		movem.l	(sp)+,d0-d7/a1-a5
-		rts	
-; ===========================================================================
-
-loc_17DC:				; XREF: loc_17A2
-		move.w	a3,d3
-		move.b	d4,d1
-		add.b	d1,d1
-		bcc.s	loc_17EE
-		subq.w	#1,d6
-		btst	d6,d5
-		beq.s	loc_17EE
-		ori.w	#-$8000,d3
-
-loc_17EE:
-		add.b	d1,d1
-		bcc.s	loc_17FC
-		subq.w	#1,d6
-		btst	d6,d5
-		beq.s	loc_17FC
-		addi.w	#$4000,d3
-
-loc_17FC:
-		add.b	d1,d1
-		bcc.s	loc_180A
-		subq.w	#1,d6
-		btst	d6,d5
-		beq.s	loc_180A
-		addi.w	#$2000,d3
-
-loc_180A:
-		add.b	d1,d1
-		bcc.s	loc_1818
-		subq.w	#1,d6
-		btst	d6,d5
-		beq.s	loc_1818
-		ori.w	#$1000,d3
-
-loc_1818:
-		add.b	d1,d1
-		bcc.s	loc_1826
-		subq.w	#1,d6
-		btst	d6,d5
-		beq.s	loc_1826
-		ori.w	#$800,d3
-
-loc_1826:
-		move.w	d5,d1
-		move.w	d6,d7
-		sub.w	a5,d7
-		bcc.s	loc_1856
-		move.w	d7,d6
-		addi.w	#$10,d6
-		neg.w	d7
-		lsl.w	d7,d1
-		move.b	(a0),d5
-		rol.b	d7,d5
-		add.w	d7,d7
-		and.w	word_186C-obGfx(pc,d7.w),d5
-		add.w	d5,d1
-
-loc_1844:				; XREF: loc_1868
-		move.w	a5,d0
-		add.w	d0,d0
-		and.w	word_186C-obGfx(pc,d0.w),d1
-		add.w	d3,d1
-		move.b	(a0)+,d5
-		lsl.w	#8,d5
-		move.b	(a0)+,d5
-		rts	
-; ===========================================================================
-
-loc_1856:				; XREF: loc_1826
-		beq.s	loc_1868
-		lsr.w	d7,d1
-		move.w	a5,d0
-		add.w	d0,d0
-		and.w	word_186C-obGfx(pc,d0.w),d1
-		add.w	d3,d1
-		move.w	a5,d0
-		bra.s	sub_188C
-; ===========================================================================
-
-loc_1868:				; XREF: loc_1856
-		moveq	#$10,d6
-
-loc_186A:
-		bra.s	loc_1844
-; ===========================================================================
-word_186C:	dc.w 1,	3, 7, $F, $1F, $3F, $7F, $FF, $1FF, $3FF, $7FF
-		dc.w $FFF, $1FFF, $3FFF, $7FFF,	$FFFF	; XREF: loc_1856
-
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
-
-sub_188C:				; XREF: EniDec
-		sub.w	d0,d6
-		cmpi.w	#9,d6
-		bcc.s	locret_189A
-		addq.w	#8,d6
-		asl.w	#8,d5
-		move.b	(a0)+,d5
-
-locret_189A:
-		rts	
-; End of function sub_188C
-
-; ===========================================================================
-; ---------------------------------------------------------------------------
-; Kosinski decompression routine
-;
-; Created by vladikcomper
-; Special thanks to flamewing and MarkeyJester
-; ---------------------------------------------------------------------------
-
-_Kos_RunBitStream macro
-	dbf	d2,@skip\@
-	moveq	#7,d2
-	move.b	d1,d0
-	swap	d3
-	bpl.s	@skip\@
-	move.b	(a0)+,d0			; get desc. bitfield
-	move.b	(a0)+,d1			;
-	move.b	(a4,d0.w),d0			; reload converted desc. bitfield from a LUT
-	move.b	(a4,d1.w),d1			;
-@skip\@
-	endm
-; ---------------------------------------------------------------------------
-
-KosDec:
-	moveq	#7,d7
-	moveq	#0,d0
-	moveq	#0,d1
-	lea	KosDec_ByteMap(pc),a4
-	move.b	(a0)+,d0			; get desc field low-byte
-	move.b	(a0)+,d1			; get desc field hi-byte
-	move.b	(a4,d0.w),d0			; reload converted desc. bitfield from a LUT
-	move.b	(a4,d1.w),d1			;
-	moveq	#7,d2				; set repeat count to 8
-	moveq	#-1,d3				; d3 will be desc field switcher
-	clr.w	d3				;
-	bra.s	KosDec_FetchNewCode
-
-KosDec_FetchCodeLoop:
-	; code 1 (Uncompressed byte)
-	_Kos_RunBitStream
-	move.b	(a0)+,(a1)+
-
-KosDec_FetchNewCode:
-	add.b	d0,d0				; get a bit from the bitstream
-	bcs.s	KosDec_FetchCodeLoop		; if code = 0, branch
-
-	; codes 00 and 01
-	_Kos_RunBitStream
-	moveq	#0,d4				; d4 will contain copy count
-	add.b	d0,d0				; get a bit from the bitstream
-	bcs.s	KosDec_Code_01
-
-	; code 00 (Dictionary ref. short)
-	_Kos_RunBitStream
-	add.b	d0,d0				; get a bit from the bitstream
-	addx.w	d4,d4
-	_Kos_RunBitStream
-	add.b	d0,d0				; get a bit from the bitstream
-	addx.w	d4,d4
-	_Kos_RunBitStream
-	moveq	#-1,d5
-	move.b	(a0)+,d5			; d5 = displacement
-
-KosDec_StreamCopy:
-	lea	(a1,d5),a3
-	move.b	(a3)+,(a1)+			; do 1 extra copy (to compensate for +1 to copy counter)
-
-KosDec_copy:
-	move.b	(a3)+,(a1)+
-	dbf	d4,KosDec_copy
-	bra.w	KosDec_FetchNewCode
-; ---------------------------------------------------------------------------
-KosDec_Code_01:
-	; code 01 (Dictionary ref. long / special)
-	_Kos_RunBitStream
-	move.b	(a0)+,d6			; d6 = %LLLLLLLL
-	move.b	(a0)+,d4			; d4 = %HHHHHCCC
-	moveq	#-1,d5
-	move.b	d4,d5				; d5 = %11111111 HHHHHCCC
-	lsl.w	#5,d5				; d5 = %111HHHHH CCC00000
-	move.b	d6,d5				; d5 = %111HHHHH LLLLLLLL
-	and.w	d7,d4				; d4 = %00000CCC
-	bne.s	KosDec_StreamCopy		; if CCC=0, branch
-
-	; special mode (extended counter)
-	move.b	(a0)+,d4			; read cnt
-	beq.s	KosDec_Quit			; if cnt=0, quit decompression
-	subq.b	#1,d4
-	beq.w	KosDec_FetchNewCode		; if cnt=1, fetch a new code
-
-	lea	(a1,d5),a3
-	move.b	(a3)+,(a1)+			; do 1 extra copy (to compensate for +1 to copy counter)
-	move.w	d4,d6
-	not.w	d6
-	and.w	d7,d6
-	add.w	d6,d6
-	lsr.w	#3,d4
-	jmp	KosDec_largecopy(pc,d6.w)
-
-KosDec_largecopy:
-	rept 8
-	move.b	(a3)+,(a1)+
-	endr
-	dbf	d4,KosDec_largecopy
-	bra.w	KosDec_FetchNewCode
-
-KosDec_Quit:
-	rts
-
-; ---------------------------------------------------------------------------
-; A look-up table to invert bits order in desc. field bytes
-; ---------------------------------------------------------------------------
-
-KosDec_ByteMap:
-	dc.b	$00,$80,$40,$C0,$20,$A0,$60,$E0,$10,$90,$50,$D0,$30,$B0,$70,$F0
-	dc.b	$08,$88,$48,$C8,$28,$A8,$68,$E8,$18,$98,$58,$D8,$38,$B8,$78,$F8
-	dc.b	$04,$84,$44,$C4,$24,$A4,$64,$E4,$14,$94,$54,$D4,$34,$B4,$74,$F4
-	dc.b	$0C,$8C,$4C,$CC,$2C,$AC,$6C,$EC,$1C,$9C,$5C,$DC,$3C,$BC,$7C,$FC
-	dc.b	$02,$82,$42,$C2,$22,$A2,$62,$E2,$12,$92,$52,$D2,$32,$B2,$72,$F2
-	dc.b	$0A,$8A,$4A,$CA,$2A,$AA,$6A,$EA,$1A,$9A,$5A,$DA,$3A,$BA,$7A,$FA
-	dc.b	$06,$86,$46,$C6,$26,$A6,$66,$E6,$16,$96,$56,$D6,$36,$B6,$76,$F6
-	dc.b	$0E,$8E,$4E,$CE,$2E,$AE,$6E,$EE,$1E,$9E,$5E,$DE,$3E,$BE,$7E,$FE
-	dc.b	$01,$81,$41,$C1,$21,$A1,$61,$E1,$11,$91,$51,$D1,$31,$B1,$71,$F1
-	dc.b	$09,$89,$49,$C9,$29,$A9,$69,$E9,$19,$99,$59,$D9,$39,$B9,$79,$F9
-	dc.b	$05,$85,$45,$C5,$25,$A5,$65,$E5,$15,$95,$55,$D5,$35,$B5,$75,$F5
-	dc.b	$0D,$8D,$4D,$CD,$2D,$AD,$6D,$ED,$1D,$9D,$5D,$DD,$3D,$BD,$7D,$FD
-	dc.b	$03,$83,$43,$C3,$23,$A3,$63,$E3,$13,$93,$53,$D3,$33,$B3,$73,$F3
-	dc.b	$0B,$8B,$4B,$CB,$2B,$AB,$6B,$EB,$1B,$9B,$5B,$DB,$3B,$BB,$7B,$FB
-	dc.b	$07,$87,$47,$C7,$27,$A7,$67,$E7,$17,$97,$57,$D7,$37,$B7,$77,$F7
-	dc.b	$0F,$8F,$4F,$CF,$2F,$AF,$6F,$EF,$1F,$9F,$5F,$DF,$3F,$BF,$7F,$FF
+*LoadPLC:
+*LoadPLC2:
+*LoadPLC_Direct:
+	include	'modules\Pattern Load Cues.asm'
+
+*EniDec:
+	include 'modules\Enigma Decompressor.asm'
+
+*KosPlusDec:
+*KosPlusMDec_VRAM:
+	include	'modules\Kosinski+ Decompressor.asm'
+
+	; TODO: Completely replace remaining Kosinski art with Kosinski+, remove this decompressor
+*KosDec:
+	include	'modules\Kosinski Decompressor.asm'
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -2888,7 +2096,9 @@ Pal_ToBlack:
 		moveq	#$00,d6					; MJ: clear d6
 
 loc_1DCE:
-		bsr.w	RunPLC_RAM
+		movem.l	d4/d6, -(sp)
+		bsr.w	PLC_Execute
+		movem.l	(sp)+, d4/d6
 		move.b	#$12,($FFFFF62A).w
 		bsr.w	DelayProgram
 		bchg	#$00,d6					; MJ: change delay counter
@@ -2979,7 +2189,7 @@ Pal_FadeFrom:
 		moveq	#$00,d6					; MJ: clear d6
 
 loc_1E5C:
-		bsr.w	RunPLC_RAM
+		bsr.w	PLC_Execute
 		move.b	#$12,($FFFFF62A).w
 		bsr.w	DelayProgram
 		bchg	#$00,d6					; MJ: change delay counter
@@ -3076,7 +2286,7 @@ loc_1EF4:
 
 		cmpi.b	#1,($FFFFFFD6).w	; is a W-block being touched in the special stage?
 		beq.s	PMW_NoPLC		; if yes, skip this routine
-		bsr	RunPLC_RAM
+		bsr	PLC_Execute
 
 PMW_NoPLC:
 		dbf	d4,loc_1EF4
@@ -3176,7 +2386,7 @@ loc_1F86:
 		move.b	#$12,($FFFFF62A).w
 		bsr	DelayProgram
 		bsr.s	Pal_ToWhite
-		bsr	RunPLC_RAM
+		bsr	PLC_Execute
 		dbf	d4,loc_1F86
 		rts	
 ; End of function Pal_MakeFlash
@@ -3845,7 +3055,7 @@ SineWavePalette:
 SegaScreen:				; XREF: GameModeArray
 		move.b	#$E4,d0
 		bsr	PlaySound_Special ; stop music
-		bsr	ClearPLC
+		bsr	PLC_ClearQueue
 		bsr	Pal_FadeFrom
 		lea	($C00004).l,a6
 		move.w	#$8004,(a6)
@@ -3874,8 +3084,8 @@ SegaScreen:				; XREF: GameModeArray
 		dbf	d1,@clearvsram	; repeat until all lines are done
 
 		move.l	#$40000000,($C00004).l
-		lea	(Nem_SegaLogo).l,a0 ; load Sega	logo patterns
-		bsr	NemDec
+		lea	(ArtKospM_SegaLogo).l,a0 ; load Sega	logo patterns
+		bsr	KosPlusMDec_VRAM
 		lea	($FF0000).l,a1
 		lea	(Eni_SegaLogo).l,a0 ; load Sega	logo mappings
 		move.w	#0,d0
@@ -4024,7 +3234,7 @@ Sega_GotoTitle:
 TitleScreen:				; XREF: GameModeArray
 		move.b	#$E4,d0
 		bsr	PlaySound_Special ; stop music
-		bsr	ClearPLC
+		bsr	PLC_ClearQueue
 		bsr	Pal_FadeFrom
 		move	#$2700,sr
 		bsr	SoundDriverLoad
@@ -4048,14 +3258,14 @@ Title_ClrObjRam:
 
 		move	#$2700, sr		; disable unterbrechen
 		move.l	#$40000001,($C00004).l
-		lea	(Nem_TitleFg).l,a0 ; load title	screen patterns
-		bsr	NemDec
+		lea	(ArtKospM_TitleFg).l,a0 ; load title	screen patterns
+		bsr	KosPlusMDec_VRAM
 		move.l	#$60000001,($C00004).l
-		lea	(Nem_TitleSonic).l,a0 ;	load Sonic title screen	patterns
-		bsr	NemDec
+		lea	(ArtKospM_TitleSonic).l,a0 ;	load Sonic title screen	patterns
+		bsr	KosPlusMDec_VRAM
 	;	move.l	#$62000002,($C00004).l
-	;	lea	(Nem_TitleTM).l,a0 ; load "TM" patterns
-	;	bsr	NemDec
+	;	lea	(ArtKospM_TitleTM).l,a0 ; load "TM" patterns
+	;	bsr	KosPlusMDec_VRAM
 
 		move.b	#0,($FFFFFE30).w ; clear lamppost counter
 		move.w	#0,($FFFFFE08).w ; disable debug item placement	mode
@@ -4066,10 +3276,8 @@ Title_ClrObjRam:
 
 		bsr	LevelSizeLoad
 		bsr	DeformBgLayer
-		lea	($FFFFB000).w,a1
-		lea	(Blk16_TitleScreen).l,a0 ; load title screen block mappings
-		move.w	#0,d0
-		bsr	EniDec
+		move.l	#Blk16_TitleScreen, BlocksAddress	; load 16x16 blocks
+
 		lea	(Blk256_TitleScreen).l,a0 ; load title screen chunk mappings
 		lea	($FF0000).l,a1
 		bsr	KosDec
@@ -4099,12 +3307,12 @@ Title_ClrObjRam:
 		moveq	#$15,d2
 		bsr	ShowVDPGraphics
 		move.l	#$40000000,($C00004).l
-		lea	(Nem_TitleScreen).l,a0 ; load title screen patterns
-		bsr	NemDec
+		lea	(ArtKospM_TitleScreen).l,a0 ; load title screen patterns
+		bsr	KosPlusMDec_VRAM
 
 		move.l	#$64000002,($C00004).l
-		lea	(Nem_ERaZor).l,a0
-		bsr	NemDec
+		lea	(ArtKospM_ERaZor).l,a0
+		bsr	KosPlusMDec_VRAM
 
 		moveq	#1,d0		; load title screen pallet
 		bsr	PalLoad1
@@ -4153,6 +3361,8 @@ Title_SonPalLoop:
 
 ; ===========================================================================
 
+	KDebug.WriteLine "Reached Title_MainLoop..."
+
 Title_MainLoop:
 		addq.w	#3,($FFFFD008).w
 
@@ -4162,7 +3372,7 @@ Title_MainLoop:
 		bsr	DeformBgLayer
 		jsr	BuildSprites
 		bsr	PalCycle_Title
-		bsr	RunPLC_RAM
+		bsr	PLC_Execute
 
 		tst.w	($FFFFF614).w	; is time over?
 		beq.s	StartGame	; if yes, start game
@@ -4340,8 +3550,8 @@ LevelSelect:
 		move.b	#4,($FFFFF62A).w
 		bsr.w	DelayProgram
 		bsr.w	LevSelControls
-		bsr.w	RunPLC_RAM
-		tst.l	($FFFFF680).w
+		bsr.w	PLC_Execute
+		tst.l	PLC_Pointer
 		bne.s	LevelSelect
 		andi.b	#$F0,($FFFFF605).w ; is	A, B, C, or Start pressed?
 		beq.s	LevelSelect	; if not, branch
@@ -4576,7 +3786,7 @@ LSelectPointers:
 Level:					; XREF: GameModeArray
 		clr.b	($FFFFFF94).w
 		bset	#7,($FFFFF600).w ; add $80 to screen mode (for pre level sequence)
-		bsr	ClearPLC
+		bsr	PLC_ClearQueue
 		
 		move.w	#$8004,($C00004).l	; disable h-ints
 		display_enable
@@ -4591,11 +3801,11 @@ Level:					; XREF: GameModeArray
 		
 	;	jsr	ClearVRAM
 
-		move.b	#-1,($FFFFFF8A).w	; don't load title card art
 		cmpi.w	#$001,($FFFFFE10).w
 		beq.s	@notitlecardart
-		move.b	#0,($FFFFFF8A).w	; load uncompressed title card art (immediately)
-		jsr	Load_TitleCardArt
+		lea	PLC_TitleCard, a1
+		jsr	LoadPLC_Direct
+
 @notitlecardart:
 		move	#$2300,sr
 		moveq	#0,d0
@@ -4623,9 +3833,8 @@ Level_NoSRAM:
 
 		cmpi.w	#$001,($FFFFFE10).w	; is current level GHZ 2 (intro level)?
 		bne.s	Level_ClrRam		; if not, branch
-		jsr	Load_StarGraphics
-	;	moveq	#$13,d0			; set to star patterns
-	;	jsr	(LoadPLC).l		; load star patterns
+		moveq	#$13,d0			; set to star patterns
+		jsr	(LoadPLC).l		; load star patterns
 
 Level_ClrRam:
 		lea	($FFFFD000).w,a1
@@ -4767,9 +3976,10 @@ Level_NoMusic2:
 		cmpi.w	#$001,($FFFFFE10).w
 		bne.s	@0
 		vram	$D700
-		lea	(Nem_ExplBall).l,a0
-		jsr	NemDec
-		jsr	Load_ExplosionGraphics
+		lea	(ArtKospM_ExplBall).l,a0
+		jsr	KosPlusMDec_VRAM
+		moveq	#2,d0
+		jsr	LoadPLC			; load explosion patterns
 		bra.s	Level_NoTitleCard
 		
 @0:
@@ -4791,14 +4001,10 @@ Level_NoTitleCard2:
 		moveq	#3,d0
 		bsr	PalLoad2	; load Sonic's pallet line
 	
-	;	moveq	#2,d0
-	;	jsr	LoadPLC		; load explosion patterns
-		jsr	Load_ExplosionGraphics
-	
-	;	moveq	#$13,d0
-	;	jsr	LoadPLC		; load star patterns
-		jsr	Load_StarGraphics
-
+		moveq	#2,d0
+		jsr	LoadPLC		; load explosion patterns
+		moveq	#$13,d0
+		jsr	LoadPLC		; load star patterns
 		bra.s	Level_TtlCard
 
 Level_NoTitleCard:
@@ -4810,12 +4016,12 @@ Level_TtlCard:
 		bsr	DelayProgram
 		jsr	ObjectsLoad
 		jsr	BuildSprites
-		bsr	RunPLC_RAM
+		bsr	PLC_Execute
 		move.w	($FFFFD108).w,d0
 		cmp.w	($FFFFD130).w,d0 ; has title card sequence finished?
 		bne.s	Level_TtlCard	; if not, branch
-		tst.l	($FFFFF680).w	; are there any	items in the pattern load cue?
-		bne.s	Level_TtlCard	; if yes, branch
+		tst.l	PLC_Pointer		 	; are there any items in the pattern load cue?
+		bne.s	Level_TtlCard		; if yes, branch
 		jsr	Hud_Base
 
 loc_3946:
@@ -4824,13 +4030,8 @@ loc_3946:
 		bsr	LevelSizeLoad
 		bsr	DeformBgLayer
 		bset	#2,($FFFFF754).w
-		bsr	LoadZoneTiles		; load level art
 		bsr	MainLoadBlockLoad	; load block mappings and palettes
 
-		move.l	#$64600002,($C00004).l
-		lea	(Nem_HSpring).l,a0
-		bsr	NemDec
-		
 		cmpi.b	#1,($FFFFFE10).w
 		beq.s	@0
 		moveq	#0,d0
@@ -4965,7 +4166,6 @@ Level_StartGame:
 
 Level_MainLoop:
 		jsr	RandomNumber		; constantly create a new random number every frame to make use of RandomNumber_Next
-		jsr	Load_TitleCardArt	; check if we gotta load uncompressed title card art
 		jsr	CinematicScreenFuzz	; do cinematic screen fuzz if applicable
 
 		cmpi.b	#$3F,($FFFFFFF0).w		; was demo mode set to $3F for some reason?
@@ -5000,7 +4200,7 @@ loc_3B14:
 
 L_ML_NoPalCycle:
 		jsr	ObjPosLoad
-		bsr	RunPLC_RAM
+		bsr	PLC_Execute
 		bsr	OscillateNumDo
 		bsr	ChangeRingFrame
 		bsr	SignpostArtLoad
@@ -6080,11 +5280,11 @@ loc_463C:
 		bsr	SS_BGLoad
 		
 		moveq	#$14,d0
-		bsr	RunPLC_ROM	; load special stage patterns
+		bsr	PLC_ExecuteOnce	; load special stage patterns
 		tst.b	($FFFFFF5F).w	; is this the blackout special stage?
 		beq.s	@contx		; if not, branch
 		moveq	#$1B,d0
-		bsr	RunPLC_ROM	; load unique blackout challenge patterns (skull)
+		bsr	PLC_ExecuteOnce	; load unique blackout challenge patterns (skull)
 @contx:
 
 		lea	($FFFFD000).w,a1
@@ -6119,9 +5319,8 @@ SS_ClrNemRam:
 		move.l	d0,(a1)+
 		dbf	d1,SS_ClrNemRam	; clear	Nemesis	buffer
 
-		move.b	#0,($FFFFFF8A).w	; load uncompressed title card art (immediately)
-		jsr	Load_TitleCardArt
-
+		lea	PLC_TitleCard, a1
+		jsr	LoadPLC_Direct
 
 		bsr	DeformBgLayer
 		clr.b	($FFFFF64E).w
@@ -6339,7 +5538,7 @@ SpecialStage_Exit:
 		bsr	DelayProgram
 		jsr	ObjectsLoad
 		jsr	BuildSprites
-		bsr	RunPLC_RAM
+		bsr	PLC_Execute
 		bsr	Pal_MakeFlash
 		rts
 ; ===========================================================================
@@ -6604,14 +5803,14 @@ Cont_ClrObjRam:
 		dbf	d1,Cont_ClrObjRam ; clear object RAM
 
 		move.l	#$70000002,($C00004).l
-		lea	(Nem_TCCont).l,a0 ; load title card patterns
-		bsr	NemDec
+		lea	(ArtKospM_TCCont).l,a0 ; load title card patterns
+		bsr	KosPlusMDec_VRAM
 		move.l	#$60000002,($C00004).l
-		lea	(Nem_ContSonic).l,a0 ; load Sonic patterns
-		bsr	NemDec
+		lea	(ArtKospM_ContSonic).l,a0 ; load Sonic patterns
+		bsr	KosPlusMDec_VRAM
 		move.l	#$6A200002,($C00004).l
-		lea	(Nem_MiniSonic).l,a0 ; load continue screen patterns
-		bsr	NemDec
+		lea	(ArtKospM_MiniSonic).l,a0 ; load continue screen patterns
+		bsr	KosPlusMDec_VRAM
 		moveq	#$00,d1
 		jsr	ContScrCounter	; run countdown	(start from 10)
 		moveq	#$12,d0
@@ -6941,12 +6140,11 @@ End_LoadData:
 		move.b	#4,($FFFFF62A).w
 		bsr	DelayProgram
 		moveq	#$1C,d0
-		bsr	RunPLC_ROM	; load ending sequence patterns
+		bsr	PLC_ExecuteOnce	; load ending sequence patterns
 		jsr	Hud_Base
 		bsr	LevelSizeLoad
 		bsr	DeformBgLayer
 		bset	#2,($FFFFF754).w
-		bsr	LoadZoneTiles		; load level art
 		
 		bsr	MainLoadBlockLoad	; load block mappings and palettes
 		bsr	LoadTilesFromStart
@@ -7343,7 +6541,7 @@ Map_obj89:
 ; ---------------------------------------------------------------------------
 
 Credits:				; XREF: GameModeArray
-		bsr	ClearPLC
+		bsr	PLC_ClearQueue
 		bsr	Pal_FadeFrom
 		lea	($C00004).l,a6
 		move.w	#$8004,(a6)
@@ -7364,8 +6562,8 @@ Cred_ClrObjRam:
 		dbf	d1,Cred_ClrObjRam ; clear object RAM
 
 		move.l	#$74000002,($C00004).l
-		lea	(Nem_CreditText).l,a0 ;	load credits alphabet patterns
-		bsr	NemDec
+		lea	(ArtKospM_CreditText).l,a0 ;	load credits alphabet patterns
+		bsr	KosPlusMDec_VRAM
 		lea	($FFFFFB80).w,a1
 		moveq	#0,d0
 		move.w	#$1F,d1
@@ -7398,11 +6596,11 @@ loc_5862:
 Cred_WaitLoop:
 		move.b	#4,($FFFFF62A).w
 		bsr	DelayProgram
-		bsr	RunPLC_RAM
+		bsr	PLC_Execute
 		tst.w	($FFFFF614).w	; have 2 seconds elapsed?
 		bne.s	Cred_WaitLoop	; if not, branch
 		addq.w	#1,($FFFFFFF4).w
-		tst.l	($FFFFF680).w	; have level gfx finished decompressing?
+		tst.l	PLC_Pointer	; have level gfx finished decompressing?
 		bne.s	Cred_WaitLoop	; if not, branch
 		cmpi.w	#9,($FFFFFFF4).w ; have	the credits finished?
 		beq.w	TryAgainEnd	; if yes, branch
@@ -7414,7 +6612,7 @@ Cred_WaitLoop:
 ; ---------------------------------------------------------------------------
 
 TryAgainEnd:				; XREF: Credits
-		bsr	ClearPLC
+		bsr	PLC_ClearQueue
 		bsr	Pal_FadeFrom
 		lea	($C00004).l,a6
 		move.w	#$8004,(a6)
@@ -7435,7 +6633,7 @@ TryAg_ClrObjRam:
 		dbf	d1,TryAg_ClrObjRam ; clear object RAM
 
 		moveq	#$1D,d0
-		bsr	RunPLC_ROM	; load "TRY AGAIN" or "END" patterns
+		bsr	PLC_ExecuteOnce	; load "TRY AGAIN" or "END" patterns
 		lea	($FFFFFB80).w,a1
 		moveq	#0,d0
 		move.w	#$1F,d1
@@ -10296,7 +9494,7 @@ sub_712A:				; CODE XREF: sub_6EA4+164?p
  
 loc_712C:				; CODE XREF: DrawTiles_LR3+C?p
 		add.w	obMap(a3),d4
-		lea	($FFFFB000).w,a1
+		movea.l	BlocksAddress,a1
 		move.w	d4,d3
 		lsr.w	#1,d3
 		andi.w	#$380,d3
@@ -10532,51 +9730,6 @@ locret_72EE:				; CODE XREF: sub_72BA+1E?j
 ; End of function sub_72BA
 
 ; ---------------------------------------------------------------------------
-; Sonic 2 level zone tile loading routine
-; ---------------------------------------------------------------------------
-
-LoadZoneTiles:
-		moveq	#0,d0			; Clear d0
-		move.b	($FFFFFE10).w,d0	; Load number of current zone to d0
-		lsl.w	#4,d0			; Multiply by $10, converting the zone ID into an offset
-		lea	(MainLoadBlocks).l,a2	; Load LevelHeaders's address into a2
-		lea	(a2,d0.w),a2		; Offset LevelHeaders by the zone-offset, and load the resultant address to a2
-		move.l	(a2)+,d0		; Move the first longword of data that a2 points to to d0, this contains the zone's first PLC ID and its art's address.
-						; The auto increment is pointless as a2 is overwritten later, and nothing reads from a2 before then
-		andi.l	#$FFFFFF,d0    		; Filter out the first byte, which contains the first PLC ID, leaving the address of the zone's art in d0
-		movea.l	d0,a0			; Load the address of the zone's art into a0 (source)
-		lea	($FF0000).l,a1		; Load v_256x256/StartOfRAM (in this context, an art buffer) into a1 (destination)
-		bsr.w	KosDec			; Decompress a0 to a1 (Kosinski compression)
-
-		move.w	a1,d3			; Move a word of a1 to d3, note that a1 doesn't exactly contain the address of v_256x256/StartOfRAM anymore, after KosDec, a1 now contains v_256x256/StartOfRAM + the size of the file decompressed to it, d3 now contains the length of the file that was decompressed
-		move.w	d3,d7			; Move d3 to d7, for use in seperate calculations
-
-		andi.w	#$FFF,d3		; Remove the high nibble of the high byte of the length of decompressed file, this nibble is how many $1000 bytes the decompressed art is
-		lsr.w	#1,d3			; Half the value of 'length of decompressed file', d3 becomes the 'DMA transfer length'
-
-		rol.w	#4,d7			; Rotate (left) length of decompressed file by one nibble
-		andi.w	#$F,d7			; Only keep the low nibble of low byte (the same one filtered out of d3 above), this nibble is how many $1000 bytes the decompressed art is
-
-@loop:		move.w	d7,d2			; Move d7 to d2, note that the ahead dbf removes 1 byte from d7 each time it loops, meaning that the following calculations will have different results each time
-		lsl.w	#7,d2
-		lsl.w	#5,d2			; Shift (left) d2 by $C, making it high nibble of the high byte, d2 is now the size of the decompressed file rounded down to the nearest $1000 bytes, d2 becomes the 'destination address'
-
-		move.l	#$FFFFFF,d1		; Fill d1 with $FF
-		move.w	d2,d1			; Move d2 to d1, overwriting the last word of $FF's with d2, this turns d1 into 'StartOfRAM'+'However many $1000 bytes the decompressed art is', d1 becomes the 'source address'
-
-		jsr	(QueueDMATransfer).l	; Use d1, d2, and d3 to locate the decompressed art and ready for transfer to VRAM
-		move.w	d7,-(sp)		; Store d7 in the Stack
-		move.b	#$C,($FFFFF62A).w
-		bsr.w	DelayProgram
-		bsr.w	RunPLC_RAM
-		move.w	(sp)+,d7		; Restore d7 from the Stack
-		move.w	#$800,d3		; Force the DMA transfer length to be $1000/2 (the first cycle is dynamic because the art's DMA'd backwards)
-		dbf	d7,@loop		; Loop for each $1000 bytes the decompressed art is
-
-		rts
-; End of function LoadZoneTiles
-
-; ---------------------------------------------------------------------------
 ; Main Load Block loading subroutine
 ; ---------------------------------------------------------------------------
 
@@ -10591,14 +9744,14 @@ MainLoadBlockLoad:			; XREF: Level; EndingSequence
 		lea	(a2,d0.w),a2
 		move.l	a2,-(sp)
 		addq.l	#4,a2
-		movea.l	(a2)+,a0
-		lea	($FFFFB000).w,a1 ; RAM address for 16x16 mappings
-		move.w	#0,d0
-		bsr	EniDec
+		
+		move.l	(a2)+,BlocksAddress
+
 		movea.l	(a2)+,a0
 		lea	($FF0000).l,a1	; RAM address for 256x256 mappings
 		bsr	KosDec
 		bsr	LevelLayoutLoad
+
 		move.w	(a2)+,d0
 		move.w	(a2),d0
 		andi.w	#$FF,d0
@@ -11671,12 +10824,17 @@ Resize_FZend2:
 		move.w	(a0)+, ($C00000).l
 		dbf	d1, @PrisonLoad
 
-		vram	$70A0			; load switch graphics
-		lea	(Nem_LzSwitch).l,a0
-		jsr	NemDec
+		lea	@LzSwitch(pc), a1	; load switch graphics
+		jsr	LoadPLC_Direct
 
-@0:
-		bra.w	loc_72C2
+@0:		bra.w	loc_72C2
+
+; ===========================================================================
+@LzSwitch:
+	dc.l	ArtKospM_LzSwitch
+	dc.w	$70A0
+	dc.w	-1
+
 ; ===========================================================================
 
 Resize_FZEscape_Nuke:
@@ -11687,8 +10845,8 @@ Resize_FZEscape_Nuke:
 		beq.s	@0			; if not, branch
 		
 		vram	$6C00			; load HPS and info box graphics
-		lea	(Nem_HardPS_Tut).l,a0
-		jsr	NemDec
+		lea	(ArtKospM_HardPS_Tut).l,a0
+		jsr	KosPlusMDec_VRAM
 
 		addq.b	#2,($FFFFF742).w	; go to next routine	
 		move.w	#0,($FFFFF72C).w	; unlock controls
@@ -11702,8 +10860,8 @@ Resize_FZEscape_Nuke:
 
 Resize_FZEscape:
 		vram	$A460			; load horizontal spring graphics
-		lea	(Nem_HSpring).l,a0
-		jsr	NemDec
+		lea	(ArtKospM_HSpring).l,a0
+		jsr	KosPlusMDec_VRAM
 		
 		addq.b	#2,($FFFFF742).w	; go to next routine
 		move.b	#2,(FZEscape).w		; enable exploding scenery
@@ -14492,29 +13650,6 @@ RandomDirection:
 ; ---------------------------------------------------------------------------
 
 Obj3F_SoundType = 1
-; If 1, the sound will be EXTREME!!!
-; If 0, it will be the normal and boring sound...
-; ---------------------------------------------------------------------------
-Load_ExplosionGraphics:
-		; only allow in level game mode (including pre-sequence)
-		move.b	($FFFFF600).w,d0
-		andi.b	#$7F,d0
-		cmpi.b	#$C,d0
-		bne.s	@loadend
-
-		; load explosion graphics in an uncompressed matter to speed up loading times
-		ints_push
-		move.l	a0,-(sp)
-		vram	$B400
-		lea	(Art_Explosion).l,a0
-		move.w	#($60*$10)-1,d1
-@explosions:	move.w	(a0)+,($C00000).l
-		dbf	d1,@explosions
-		move.l	(sp)+,a0
-		ints_pop
-@loadend:
-		rts
-; ---------------------------------------------------------------------------
 
 Obj3F:					; XREF: Obj_Index
 		moveq	#0,d0
@@ -15326,7 +14461,10 @@ Obj1F_BossDelete:
 		
 		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
 		bne.s	@crabbossdel		; if yes, branch
-		move.b	#30,($FFFFFF8A).w	; load uncompressed title card art in a bit
+
+		; TODO: Verify this
+		lea	PLC_TitleCard, a1
+		jsr	LoadPLC_Direct
 		
 @crabbossdel:
 		bra.w	Obj1F_Delete			; delete
@@ -17922,9 +17060,8 @@ Obj2E_ChkS:
 		jsr	Sub_ChangeChunk
 		
 		; load bloody spikes are now
-		move.l	#$63600002,($C00004).l 
-		lea	(Nem_SpikesBlood).l,a0
-		jsr	NemDec
+		lea	Obj2E_SpikesBlood, a1
+		jsr	LoadPLC_Direct
 
 		movem.l	(sp)+,d0-a1		; restore
 
@@ -17944,6 +17081,12 @@ Obj2E_NotGHZ2:
 		jmp	PlaySound	; play inhuman mode music
 ; ===========================================================================
 
+Obj2E_SpikesBlood:
+	dc.l	ArtKospM_SpikesBlood
+	dc.w	$A360
+	dc.w	-1
+
+; ===========================================================================
 Obj2E_ChkGoggles: ;Power
 		cmpi.b	#8,d0		; does monitor contain goggles?
 		bne.s	Obj2E_ChkEnd	; if not, branch
@@ -20897,13 +20040,10 @@ Obj34_DoDisplayX:
 ; ===========================================================================
 
 Obj34_LoadPostGraphics:
-	;	moveq	#2,d0
-	;	jsr	(LoadPLC).l	; load explosion patterns
-		jsr	Load_ExplosionGraphics
-	;	moveq	#2,d0
-	;	jsr	(LoadPLC).l	; load star patterns
-		jsr	Load_StarGraphics
-		rts
+		moveq	#2,d0
+		jsr	(LoadPLC).l	; load explosion patterns
+		moveq	#$13,d0
+		jmp	(LoadPLC).l	; load star patterns
 
 ; ===========================================================================
 Obj34_ItemData:
@@ -20948,33 +20088,6 @@ Obj34_ConData:
 		even
 ; ===========================================================================
 
-Load_TitleCardArt:
-		ints_push
-		movem.l	d1-a6,-(sp)
-		tst.b	($FFFFFF8A).w		; are title cards set to load?
-		bmi.s	@titlecardloadend	; if not, branch
-		subq.b	#1,($FFFFFF8A).w	; sub one from delay
-		bmi.s	@loadart
-		bra.s	@titlecardloadend
-
-@loadart:
-		; load title graphics in an uncompressed matter to speed up loading times
-		move.l	#$6B800002,d2		; VRAM = $AB80
-		cmpi.b	#$10,($FFFFF600).w	; are we in a special stage?
-		bne.s	@notss			; if not, branch
-		move.l	#$4A200000,d2		; VRAM = $0A20
-@notss:
-		move.l	d2,($C00004).l
-		lea	(Art_TitleCard).l,a5
-		move.w	#$A3F,d1
-@loadfont:	move.w	(a5)+,($C00000).l
-		dbf	d1,@loadfont
-
-@titlecardloadend:
-		movem.l	(sp)+,d1-a6
-		ints_pop
-		rts
-
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Object 39 - "GAME OVER" and "TIME OVER"
@@ -20992,7 +20105,7 @@ Obj39_Index:	dc.w Obj39_ChkPLC-Obj39_Index
 ; ===========================================================================
 
 Obj39_ChkPLC:				; XREF: Obj39_Index
-		tst.l	($FFFFF680).w	; are the pattern load cues empty?
+		tst.l	PLC_Pointer	; are the pattern load cues empty?
 		beq.s	Obj39_Main	; if yes, branch
 		rts	
 ; ===========================================================================
@@ -21243,7 +20356,7 @@ Obj7E_Index:	dc.w Obj7E_ChkPLC-Obj7E_Index
 ; ===========================================================================
 
 Obj7E_ChkPLC:				; XREF: Obj7E_Index
-		tst.l	($FFFFF680).w	; are the pattern load cues empty?
+		tst.l	PLC_Pointer	; are the pattern load cues empty?
 		beq.s	Obj7E_Main	; if yes, branch
 		rts	
 ; ===========================================================================
@@ -28885,11 +27998,11 @@ Obj5F_BossDelete:
 
 		move.b	#$34,($FFFFD080).w 		; load title card object
 		move.b	#35,($FFFFD0B0).w
-	;	moveq	#$10,d0				; set d0 to $10
-	;	jsr	(LoadPLC).l			; load title card patterns
-		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
-		bne.s	@bombbossdel		; if yes, branch
-		move.b	#30,($FFFFFF8A).w	; load uncompressed title card art in a bit
+
+;		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
+;		bne.s	@bombbossdel		; if yes, branch
+		moveq	#$10,d0				; set d0 to $10
+		jsr	(LoadPLC).l			; load title card patterns
 @bombbossdel:
 		move.w	#$302,($FFFFFE10).w	; change level to SLZ3
 		move.w	#$1FBF,($FFFFF72A).w
@@ -35353,19 +34466,6 @@ Map_obj0A:
 ; ---------------------------------------------------------------------------
 ; Object 38 - shield and invincibility stars
 ; ---------------------------------------------------------------------------
-Load_StarGraphics:
-		; load star graphics in an uncompressed matter to speed up loading times
-		ints_push
-		move.l	a0,-(sp)
-		vram	$AB80
-		lea	(Art_InvStars).l,a0
-		move.w	#($24*$10)-1,d1
-@invstars:	move.w	(a0)+,($C00000).l
-		dbf	d1,@invstars
-		move.l	(sp)+,a0
-		ints_pop
-		rts
-; ---------------------------------------------------------------------------
 
 Obj38:					; XREF: Obj_Index
 		bclr	#7,obGfx(a0)		; make object low plane
@@ -35505,7 +34605,7 @@ Obj4A_Index:	dc.w Obj4A_Main-Obj4A_Index
 ; ===========================================================================
 
 Obj4A_Main:				; XREF: Obj4A_Index
-		tst.l	($FFFFF680).w	; are pattern load cues	empty?
+		tst.l	PLC_Pointer	; are pattern load cues	empty?
 		beq.s	Obj4A_Main2	; if yes, branch
 		rts	
 ; ===========================================================================
@@ -43006,8 +42106,8 @@ Obj82_FindBlocks:
 
 	;	move.l	a0,-(sp)
 	;	move.l	#$66600002,($C00004).l
-	;	lea	(Nem_Bomb).l,a0
-	;	jsr	NemDec
+	;	lea	(ArtKospM_Bomb).l,a0
+	;	jsr	KosPlusMDec_VRAM
 	;	move.l	(sp)+,a0
 	
 		move.b	#1,($FFFFD45A).w	; use second frame
@@ -43349,7 +42449,7 @@ off_19E80:	dc.w loc_19E90-off_19E80, loc_19EA8-off_19E80
 ; ===========================================================================
 
 loc_19E90:				; XREF: off_19E80
-		tst.l	($FFFFF680).w
+		tst.l	PLC_Pointer
 		bne.s	loc_19EA2
 		cmpi.w	#$2450,($FFFFF700).w
 		bcs.s	loc_19EA2
@@ -46617,8 +45717,8 @@ Emershit:
 		move.b	#1,($FFFFF7CC).w		; lock controls
 		move.l	a0,-(sp)
 		move.l	#$72E00003,($C00004).l
-		lea	(Nem_CropScreen).l,a0
-		jsr	NemDec
+		lea	(ArtKospM_CropScreen).l,a0
+		jsr	KosPlusMDec_VRAM
 		move.l	(sp)+,a0
 		bra.s	Obj09_YesEmer
 
@@ -48810,37 +47910,37 @@ Debug_ShowItem:				; XREF: Debug_Main
 ; blank, music (unused), pal index (unused), pal index
 ; ---------------------------------------------------------------------------
 MainLoadBlocks:
-		dc.l Kos_GHZ+$4000000
+		dc.l ArtKospM_GHZ+$4000000
 		dc.l Blk16_GHZ+$5000000
 		dc.l Blk256_GHZ
 		dc.b 0,	$81, 4,	4
 		
-		dc.l Kos_LZ+$6000000
+		dc.l ArtKospM_LZ+$6000000
 		dc.l Blk16_LZ+$7000000
 		dc.l Blk256_LZ
 		dc.b 0,	$82, 5,	5
 		
-		dc.l Kos_MZ+$8000000
+		dc.l ArtKospM_MZ+$8000000
 		dc.l Blk16_MZ+$9000000
 		dc.l Blk256_MZ
 		dc.b 0,	$83, 6,	6
 		
-		dc.l Kos_SLZ+$A000000
+		dc.l ArtKospM_SLZ+$A000000
 		dc.l Blk16_SLZ+$B000000
 		dc.l Blk256_SLZ
 		dc.b 0,	$84, 7,	7
 		
-		dc.l Kos_SYZ+$C000000
+		dc.l ArtKospM_SYZ+$C000000
 		dc.l Blk16_SYZ+$D000000
 		dc.l Blk256_SYZ
 		dc.b 0,	$85, 8,	8
 		
-		dc.l Kos_SBZ+$E000000
+		dc.l ArtKospM_SBZ+$E000000
 		dc.l Blk16_SBZ+$F000000
 		dc.l Blk256_SBZ
 		dc.b 0,	$86, 9,	9
 		
-		dc.l Kos_GHZ	; main load block for ending
+		dc.l ArtKospM_GHZ	; main load block for ending
 		dc.l Blk16_GHZ
 		dc.l Blk256_END
 		dc.b 0,	$86, $13, $13
@@ -48854,19 +47954,19 @@ ArtLoadCues:
 	;	incbin	misc\padding.bin
 		even
 
-Nem_SegaLogo:	incbin	artnem\segalogo.bin	; large Sega logo
+ArtKospM_SegaLogo:	incbin	artkosp\segalogo.kospm	; large Sega logo
 		even
 Eni_SegaLogo:	incbin	mapeni\segalogo.bin	; large Sega logo (mappings)
 		even
 Eni_Title:	incbin	mapeni\titlescr.bin	; title screen foreground (mappings)
 		even
-Nem_TitleFg:	incbin	artnem\titlefor.bin	; title screen foreground
+ArtKospM_TitleFg:	incbin	artkosp\titlefor.kospm	; title screen foreground
 		even
-Nem_TitleSonic:	incbin	artnem\titleson.bin	; Sonic on title screen
+ArtKospM_TitleSonic:	incbin	artkosp\titleson.kospm	; Sonic on title screen
 		even
 Eni_JapNames:;	incbin	mapeni\japcreds.bin	; Japanese credits (mappings)
 		even
-Nem_JapNames:;	incbin	artnem\japcreds.bin	; Japanese credits
+ArtKospM_JapNames:;	incbin	artkosp\japcreds.kospm	; Japanese credits
 		even
 ; ---------------------------------------------------------------------------
 ; Sprite mappings - Sonic
@@ -48884,40 +47984,38 @@ Art_Dust:	incbin	artunc\spindust.bin	; spindash dust art
 ; ---------------------------------------------------------------------------
 ; Compressed graphics - various
 ; ---------------------------------------------------------------------------
-Nem_ERaZor:	incbin	artnem\ERaZor.bin	; ERaZor banner art
+ArtKospM_ERaZor:	incbin	artkosp\ERaZor.kospm	; ERaZor banner art
 		even
-Nem_ERaZorNoBG:	incbin	artnem\ERaZor_NoBG.bin	; ERaZor banner art (no background)
+ArtKospM_ERaZorNoBG:	incbin	artkosp\ERaZor_NoBG.kospm	; ERaZor banner art (no background)
 		even
-Nem_Null:	incbin	artnem\null.bin		; just a file with one blank tile
+ArtKospM_Null:	incbin	artkosp\null.kospm		; just a file with one blank tile
 		even
-Nem_Shield:	incbin	artnem\shield.bin	; shield
+ArtKospM_Shield:	incbin	artkosp\shield.kospm	; shield
 		even
-Art_InvStars:	incbin	artunc\invstars.bin	; invincibility stars (uncompressed)
+ArtKospM_Stars:	incbin	artkosp\invstars.kospm	; invincibility stars
 		even
-;Nem_Stars:	incbin	artnem\invstars.bin	; invincibility stars
-;		even
-Nem_TutHUD:	incbin	artnem\TutorialHUD.bin	; tutorial HUD
+ArtKospM_TutHUD:	incbin	artkosp\TutorialHUD.kospm	; tutorial HUD
 		even
-Nem_CroPScreen:	incbin	artnem\CropScreen.bin	; cropped screen
+ArtKospM_CroPScreen:	incbin	artkosp\CropScreen.kospm	; cropped screen
 		even
-Nem_UMadBro:	incbin	artnem\UMadBro.bin	; U Mad Bro?!
+ArtKospM_UMadBro:	incbin	artkosp\UMadBro.kospm	; U Mad Bro?!
 		even
 ; ---------------------------------------------------------------------------
 ; Compressed graphics - animals
 ; ---------------------------------------------------------------------------
-Nem_Rabbit:	incbin	artnem\rabbit.bin	; rabbit
+ArtKospM_Rabbit:	incbin	artkosp\rabbit.kospm	; rabbit
 		even
-Nem_Chicken:	incbin	artnem\chicken.bin	; chicken
+ArtKospM_Chicken:	incbin	artkosp\chicken.kospm	; chicken
 		even
-Nem_BlackBird:	incbin	artnem\blackbrd.bin	; blackbird
+ArtKospM_BlackBird:	incbin	artkosp\blackbrd.kospm	; blackbird
 		even
-Nem_Seal:	incbin	artnem\seal.bin		; seal
+ArtKospM_Seal:	incbin	artkosp\seal.kospm		; seal
 		even
-Nem_Pig:	incbin	artnem\pig.bin		; pig
+ArtKospM_Pig:	incbin	artkosp\pig.kospm		; pig
 		even
-Nem_Flicky:	incbin	artnem\flicky.bin	; flicky
+ArtKospM_Flicky:	incbin	artkosp\flicky.kospm	; flicky
 		even
-Nem_Squirrel:	incbin	artnem\squirrel.bin	; squirrel
+ArtKospM_Squirrel:	incbin	artkosp\squirrel.kospm	; squirrel
 		even
 ; ---------------------------------------------------------------------------
 ; Sprite mappings - walls of the special stage
@@ -48927,325 +48025,306 @@ Map_SSWalls:
 ; ---------------------------------------------------------------------------
 ; Compressed graphics - special stage
 ; ---------------------------------------------------------------------------
-Nem_SSWalls:	incbin	artnem\sswalls.bin	; special stage walls
+ArtKospM_SSWalls:	incbin	artkosp\sswalls.kospm	; special stage walls
 		even
 Eni_SSBg2:	incbin	mapeni\ssbg2.bin	; special stage background (mappings)
 		even
-Nem_SSBgCloud:	incbin	artnem\ssbg2.bin	; special stage clouds background
+ArtKospM_SSBgCloud:	incbin	artkosp\ssbg2.kospm	; special stage clouds background
 		even
-Nem_SSGOAL:	incbin	artnem\ssgoal.bin	; special stage GOAL block
+ArtKospM_SSGOAL:	incbin	artkosp\ssgoal.kospm	; special stage GOAL block
 		even
-Nem_SSSkull:	incbin	artnem\ssgoal_skull.bin	; special stage skull block (restored from the S1 proto)
+ArtKospM_SSSkull:	incbin	artkosp\ssgoal_skull.kospm	; special stage skull block (restored from the S1 proto)
 		even
-Nem_SSRBlock:	incbin	artnem\ssr.bin		; special stage R block
+ArtKospM_SSRBlock:	incbin	artkosp\ssr.kospm		; special stage R block
 		even
-Nem_SSEmStars:	incbin	artnem\ssemstar.bin	; special stage stars from a collected emerald
+ArtKospM_SSEmStars:	incbin	artkosp\ssemstar.kospm	; special stage stars from a collected emerald
 		even
-Nem_SSRedWhite:	incbin	artnem\ssredwhi.bin	; special stage red/white block
+ArtKospM_SSRedWhite:	incbin	artkosp\ssredwhi.kospm	; special stage red/white block
 		even
-Nem_SSUpDown:	incbin	artnem\ssupdown.bin	; special stage UP/DOWN block
+ArtKospM_SSUpDown:	incbin	artkosp\ssupdown.kospm	; special stage UP/DOWN block
 		even
-Nem_SSEmerald:	incbin	artnem\ssemeral.bin	; special stage chaos emeralds
+ArtKospM_SSEmerald:	incbin	artkosp\ssemeral.kospm	; special stage chaos emeralds
 		even
-Nem_SSGhost:	incbin	artnem\ssghost.bin	; special stage ghost block
+ArtKospM_SSGhost:	incbin	artkosp\ssghost.kospm	; special stage ghost block
 		even
-Nem_SSWBlock:	incbin	artnem\ssw.bin		; special stage W block
+ArtKospM_SSWBlock:	incbin	artkosp\ssw.kospm		; special stage W block
 		even
-Nem_SSGlass:	incbin	artnem\ssglass.bin	; special stage destroyable glass block
+ArtKospM_SSGlass:	incbin	artkosp\ssglass.kospm	; special stage destroyable glass block
 		even
-Nem_ResultEm:	incbin	artnem\ssresems.bin	; chaos emeralds on special stage results screen
+ArtKospM_ResultEm:	incbin	artkosp\ssresems.kospm	; chaos emeralds on special stage results screen
 		even
 ; ---------------------------------------------------------------------------
 ; Compressed graphics - GHZ stuff
 ; ---------------------------------------------------------------------------
-Nem_Stalk:	incbin	artnem\ghzstalk.bin	; GHZ flower stalk
+ArtKospM_Stalk:	incbin	artkosp\ghzstalk.kospm	; GHZ flower stalk
 		even
-Nem_Swing:	incbin	artnem\ghzswing.bin	; GHZ swinging platform
+ArtKospM_Swing:	incbin	artkosp\ghzswing.kospm	; GHZ swinging platform
 		even
-Nem_Bridge:	incbin	artnem\ghzbridg.bin	; GHZ bridge
+ArtKospM_Bridge:	incbin	artkosp\ghzbridg.kospm	; GHZ bridge
 		even
-Nem_Ball:	incbin	artnem\ghzball.bin	; GHZ giant ball
+ArtKospM_Ball:	incbin	artkosp\ghzball.kospm	; GHZ giant ball
 		even
-Nem_Spikes:	incbin	artnem\spikes_bloody.bin	; spikes
+ArtKospM_Spikes:	incbin	artkosp\spikes_bloody.kospm	; spikes
 		even
-Nem_SpikesBlood: incbin	artnem\spikes_lava.bin	; damn those bloody spikes
+ArtKospM_SpikesBlood: incbin	artkosp\spikes_lava.kospm	; damn those bloody spikes
 		even
-Nem_SpikePole:	incbin	artnem\ghzlog.bin	; GHZ spiked log
+ArtKospM_SpikePole:	incbin	artkosp\ghzlog.kospm	; GHZ spiked log
 		even
-Nem_PplRock:	incbin	artnem\ghzrock.bin	; GHZ purple rock
+ArtKospM_PplRock:	incbin	artkosp\ghzrock.kospm	; GHZ purple rock
 		even
-Nem_GhzWall1:	incbin	artnem\ghzwall1.bin	; GHZ destroyable wall
+ArtKospM_GhzWall1:	incbin	artkosp\ghzwall1.kospm	; GHZ destroyable wall
 		even
-Nem_GhzWall2:	incbin	artnem\ghzwall2.bin	; GHZ normal wall
+ArtKospM_GhzWall2:	incbin	artkosp\ghzwall2.kospm	; GHZ normal wall
 		even
 ; ---------------------------------------------------------------------------
 ; Compressed graphics - LZ stuff
 ; ---------------------------------------------------------------------------
-Nem_Water:	incbin	artnem\lzwater.bin	; LZ water surface
+ArtKospM_Water:	incbin	artkosp\lzwater.kospm	; LZ water surface
 		even
-Nem_Splash:	incbin	artnem\lzsplash.bin	; LZ waterfalls and splashes
+ArtKospM_Splash:	incbin	artkosp\lzsplash.kospm	; LZ waterfalls and splashes
 		even
-Nem_LzSpikeBall:incbin	artnem\lzspball.bin	; LZ spiked ball on chain
+ArtKospM_LzSpikeBall:incbin	artkosp\lzspball.kospm	; LZ spiked ball on chain
 		even
-Nem_FlapDoor:	incbin	artnem\lzflapdo.bin	; LZ flapping door
+ArtKospM_FlapDoor:	incbin	artkosp\lzflapdo.kospm	; LZ flapping door
 		even
-Nem_Bubbles:	incbin	artnem\lzbubble.bin	; LZ bubbles and countdown numbers
+ArtKospM_Bubbles:	incbin	artkosp\lzbubble.kospm	; LZ bubbles and countdown numbers
 		even
-Nem_LzBlock3:	incbin	artnem\lzblock3.bin	; LZ 32x16 block
+ArtKospM_LzBlock3:	incbin	artkosp\lzblock3.kospm	; LZ 32x16 block
 		even
-Nem_LzDoor1:	incbin	artnem\lzvdoor.bin	; LZ vertical door
+ArtKospM_LzDoor1:	incbin	artkosp\lzvdoor.kospm	; LZ vertical door
 		even
-Nem_Harpoon:	incbin	artnem\lzharpoo.bin	; LZ harpoon
+ArtKospM_Harpoon:	incbin	artkosp\lzharpoo.kospm	; LZ harpoon
 		even
-Nem_LzPole:	incbin	artnem\lzpole.bin	; LZ pole that breaks
+ArtKospM_LzPole:	incbin	artkosp\lzpole.kospm	; LZ pole that breaks
 		even
-Nem_LzDoor2:	incbin	artnem\lzhdoor.bin	; LZ large horizontal door
+ArtKospM_LzDoor2:	incbin	artkosp\lzhdoor.kospm	; LZ large horizontal door
 		even
-Nem_LzWheel:	incbin	artnem\lzwheel.bin	; LZ wheel from corner of conveyor belt
+ArtKospM_LzWheel:	incbin	artkosp\lzwheel.kospm	; LZ wheel from corner of conveyor belt
 		even
-Nem_Gargoyle:	incbin	artnem\lzgargoy.bin	; LZ gargoyle head and spitting fire
+ArtKospM_Gargoyle:	incbin	artkosp\lzgargoy.kospm	; LZ gargoyle head and spitting fire
 		even
-Nem_LzBlock2:	incbin	artnem\lzblock2.bin	; LZ blocks
+ArtKospM_LzBlock2:	incbin	artkosp\lzblock2.kospm	; LZ blocks
 		even
-Nem_LzPlatfm:	incbin	artnem\lzptform.bin	; LZ rising platforms
+ArtKospM_LzPlatfm:	incbin	artkosp\lzptform.kospm	; LZ rising platforms
 		even
-Nem_Cork:	incbin	artnem\lzcork.bin	; LZ cork block
+ArtKospM_Cork:	incbin	artkosp\lzcork.kospm	; LZ cork block
 		even
-Nem_LzBlock1:	incbin	artnem\lzblock1.bin	; LZ 32x32 block
+ArtKospM_LzBlock1:	incbin	artkosp\lzblock1.kospm	; LZ 32x32 block
 		even
 ; ---------------------------------------------------------------------------
 ; Compressed graphics - MZ stuff
 ; ---------------------------------------------------------------------------
-Nem_MzMetal:	incbin	artnem\mzmetal.bin	; MZ metal blocks
+ArtKospM_MzMetal:	incbin	artkosp\mzmetal.kospm	; MZ metal blocks
 		even
-Nem_MzSwitch:	incbin	artnem\mzswitch.bin	; MZ switch
+ArtKospM_MzSwitch:	incbin	artkosp\mzswitch.kospm	; MZ switch
 		even
-Nem_MzGlass:	incbin	artnem\mzglassy.bin	; MZ green glassy block
+ArtKospM_MzGlass:	incbin	artkosp\mzglassy.kospm	; MZ green glassy block
 		even
-Nem_MzFire:	incbin	artnem\mzfire.bin	; MZ fireballs
+ArtKospM_MzFire:	incbin	artkosp\mzfire.kospm	; MZ fireballs
 		even
-Nem_Lava:	incbin	artnem\mzlava.bin	; MZ lava
+ArtKospM_Lava:	incbin	artkosp\mzlava.kospm	; MZ lava
 		even
-Nem_MzBlock:	incbin	artnem\mzblock.bin	; MZ green pushable block
+ArtKospM_MzBlock:	incbin	artkosp\mzblock.kospm	; MZ green pushable block
 		even
 ; ---------------------------------------------------------------------------
 ; Compressed graphics - SLZ stuff
 ; ---------------------------------------------------------------------------
-Nem_Seesaw:	incbin	artnem\slzseesa.bin	; SLZ seesaw
+ArtKospM_Seesaw:	incbin	artkosp\slzseesa.kospm	; SLZ seesaw
 		even
-Nem_SlzSpike:	incbin	artnem\slzspike.bin	; SLZ spikeball that sits on a seesaw
+ArtKospM_SlzSpike:	incbin	artkosp\slzspike.kospm	; SLZ spikeball that sits on a seesaw
 		even
-Nem_Fan:	incbin	artnem\slzfan.bin	; SLZ fan
+ArtKospM_Fan:	incbin	artkosp\slzfan.kospm	; SLZ fan
 		even
-Nem_SlzWall:	incbin	artnem\slzwall.bin	; SLZ smashable wall
+ArtKospM_SlzWall:	incbin	artkosp\slzwall.kospm	; SLZ smashable wall
 		even
-Nem_Pylon:	incbin	artnem\slzpylon.bin	; SLZ foreground pylon
+ArtKospM_Pylon:	incbin	artkosp\slzpylon.kospm	; SLZ foreground pylon
 		even
-Nem_SlzSwing:	incbin	artnem\slzswing.bin	; SLZ swinging platform
+ArtKospM_SlzSwing:	incbin	artkosp\slzswing.kospm	; SLZ swinging platform
 		even
-Nem_SlzBlock:	incbin	artnem\slzblock.bin	; SLZ 32x32 block
+ArtKospM_SlzBlock:	incbin	artkosp\slzblock.kospm	; SLZ 32x32 block
 		even
-Nem_SlzCannon:	incbin	artnem\slzcanno.bin	; SLZ fireball launcher cannon
+ArtKospM_SlzCannon:	incbin	artkosp\slzcanno.kospm	; SLZ fireball launcher cannon
 		even
-Nem_SLZPlatform:incbin	artnem\SLZPlatform.bin	; SLZ platform
+ArtKospM_SLZPlatform:incbin	artkosp\SLZPlatform.kospm	; SLZ platform
 		even
-Nem_GiantBomb:	incbin	artnem\GiantBomb.bin	; Giant Bomb
+ArtKospM_GiantBomb:	incbin	artkosp\GiantBomb.kospm	; Giant Bomb
 		even
 ; ---------------------------------------------------------------------------
 ; Compressed graphics - SYZ stuff
 ; ---------------------------------------------------------------------------
-Nem_Bumper:	incbin	artnem\syzbumpe.bin	; SYZ bumper
+ArtKospM_Bumper:	incbin	artkosp\syzbumpe.kospm	; SYZ bumper
 		even
-Nem_LzSwitch:	incbin	artnem\switch.bin	; LZ/SYZ/SBZ switch
+ArtKospM_LzSwitch:	incbin	artkosp\switch.kospm	; LZ/SYZ/SBZ switch
 		even
-Nem_SYZDoors:	incbin	artnem\SYZDoors.bin	; SYZ doors
+ArtKospM_SYZDoors:	incbin	artkosp\SYZDoors.kospm	; SYZ doors
 		even
-Nem_LevelSigns:	incbin	artnem\LevelSigns.bin	; SYZ level signs
+ArtKospM_LevelSigns:	incbin	artkosp\LevelSigns.kospm	; SYZ level signs
 		even
-Nem_SYZPlat:	incbin	artnem\SYZPlatform.bin	; SLZ Platform
+ArtKospM_SYZPlat:	incbin	artkosp\SYZPlatform.kospm	; SLZ Platform
 		even
 ; ---------------------------------------------------------------------------
 ; Compressed graphics - SBZ stuff
 ; ---------------------------------------------------------------------------
-Nem_SbzWheel1:	incbin	artnem\sbzwhee1.bin	; SBZ spot on rotating wheel that Sonic runs around
+ArtKospM_SbzWheel1:	incbin	artkosp\sbzwhee1.kospm	; SBZ spot on rotating wheel that Sonic runs around
 		even
-Nem_SbzWheel2:	incbin	artnem\sbzwhee2.bin	; SBZ wheel that grabs Sonic
+ArtKospM_SbzWheel2:	incbin	artkosp\sbzwhee2.kospm	; SBZ wheel that grabs Sonic
 		even
-Nem_Cutter:	incbin	artnem\sbzcutte.bin	; SBZ pizza cutter
+ArtKospM_Cutter:	incbin	artkosp\sbzcutte.kospm	; SBZ pizza cutter
 		even
-Nem_Stomper:	incbin	artnem\sbzstomp.bin	; SBZ stomper
+ArtKospM_Stomper:	incbin	artkosp\sbzstomp.kospm	; SBZ stomper
 		even
-Nem_SpinPform:	incbin	artnem\sbzpform.bin	; SBZ spinning platform
+ArtKospM_SpinPform:	incbin	artkosp\sbzpform.kospm	; SBZ spinning platform
 		even
-Nem_TrapDoor:	incbin	artnem\sbztrapd.bin	; SBZ trapdoor
+ArtKospM_TrapDoor:	incbin	artkosp\sbztrapd.kospm	; SBZ trapdoor
 		even
-Nem_SbzFloor:	incbin	artnem\sbzfloor.bin	; SBZ collapsing floor
+ArtKospM_SbzFloor:	incbin	artkosp\sbzfloor.kospm	; SBZ collapsing floor
 		even
-Nem_Electric:	incbin	artnem\sbzshock.bin	; SBZ electric shock orb
+ArtKospM_Electric:	incbin	artkosp\sbzshock.kospm	; SBZ electric shock orb
 		even
-Nem_SbzBlock:	incbin	artnem\sbzvanis.bin	; SBZ vanishing block
+ArtKospM_SbzBlock:	incbin	artkosp\sbzvanis.kospm	; SBZ vanishing block
 		even
-Nem_FlamePipe:	incbin	artnem\sbzflame.bin	; SBZ flaming pipe
+ArtKospM_FlamePipe:	incbin	artkosp\sbzflame.kospm	; SBZ flaming pipe
 		even
-Nem_SbzDoor1:	incbin	artnem\sbzvdoor.bin	; SBZ small vertical door
+ArtKospM_SbzDoor1:	incbin	artkosp\sbzvdoor.kospm	; SBZ small vertical door
 		even
-Nem_SlideFloor:	incbin	artnem\sbzslide.bin	; SBZ floor that slides away
+ArtKospM_SlideFloor:	incbin	artkosp\sbzslide.kospm	; SBZ floor that slides away
 		even
-Nem_SbzDoor2:	incbin	artnem\sbzhdoor.bin	; SBZ large horizontal door
+ArtKospM_SbzDoor2:	incbin	artkosp\sbzhdoor.kospm	; SBZ large horizontal door
 		even
-Nem_Girder:	incbin	artnem\sbzgirde.bin	; SBZ crushing girder
+ArtKospM_Girder:	incbin	artkosp\sbzgirde.kospm	; SBZ crushing girder
 		even
 ; ---------------------------------------------------------------------------
 ; Compressed graphics - enemies
 ; ---------------------------------------------------------------------------
-Nem_BallHog:	incbin	artnem\ballhog.bin	; ball hog
+ArtKospM_BallHog:	incbin	artkosp\ballhog.kospm	; ball hog
 		even
-Nem_Crabmeat:	incbin	artnem\crabmeat.bin	; crabmeat
+ArtKospM_Crabmeat:	incbin	artkosp\crabmeat.kospm	; crabmeat
 		even
-Nem_Buzz:	incbin	artnem\buzzbomb.bin	; buzz bomber
+ArtKospM_Buzz:	incbin	artkosp\buzzbomb.kospm	; buzz bomber
 		even
-Nem_ExplBall:	incbin	artnem\explodingballs.bin ; exploding balls
+ArtKospM_ExplBall:	incbin	artkosp\explodingballs.kospm ; exploding balls
 		even
-Nem_Burrobot:	incbin	artnem\burrobot.bin	; burrobot
+ArtKospM_Burrobot:	incbin	artkosp\burrobot.kospm	; burrobot
 		even
-Nem_Chopper:	incbin	artnem\chopper.bin	; chopper
+ArtKospM_Chopper:	incbin	artkosp\chopper.kospm	; chopper
 		even
-Nem_Jaws:	incbin	artnem\jaws.bin		; jaws
+ArtKospM_Jaws:	incbin	artkosp\jaws.kospm		; jaws
 		even
-Nem_Roller:	incbin	artnem\roller.bin	; roller
+ArtKospM_Roller:	incbin	artkosp\roller.kospm	; roller
 		even
-Nem_Motobug:	incbin	artnem\motobug.bin	; moto bug
+ArtKospM_Motobug:	incbin	artkosp\motobug.kospm	; moto bug
 		even
-Nem_Newtron:	incbin	artnem\newtron.bin	; newtron
+ArtKospM_Newtron:	incbin	artkosp\newtron.kospm	; newtron
 		even
-Nem_Yadrin:	incbin	artnem\yadrin.bin	; yadrin
+ArtKospM_Yadrin:	incbin	artkosp\yadrin.kospm	; yadrin
 		even
-Nem_Basaran:	incbin	artnem\basaran.bin	; basaran
+ArtKospM_Basaran:	incbin	artkosp\basaran.kospm	; basaran
 		even
-Nem_Bomb:	incbin	artnem\bomb.bin		; bomb
+ArtKospM_Bomb:	incbin	artkosp\bomb.kospm		; bomb
 		even
-Nem_BombOld:	incbin	artnem\bomb_old.bin	; old bomb
+ArtKospM_BombOld:	incbin	artkosp\bomb_old.kospm	; old bomb
 		even
-Nem_Orbinaut:	incbin	artnem\orbinaut.bin	; orbinaut
+ArtKospM_Orbinaut:	incbin	artkosp\orbinaut.kospm	; orbinaut
 		even
-Nem_Cater:	incbin	artnem\caterkil.bin	; caterkiller
+ArtKospM_Cater:	incbin	artkosp\caterkil.kospm	; caterkiller
 		even
 ; ---------------------------------------------------------------------------
 ; Compressed graphics - various
 ; ---------------------------------------------------------------------------
-Art_TitleCard:	incbin	artunc\TitleCards.bin	; title cards (uncompressed)
+ArtKospM_TitleCard:	incbin	artkosp\TitleCards.kospm	; title cards
 		even
-;Nem_TitleCard:	incbin	artnem\ttlcards.bin	; title cards
-;		even
-Nem_TCCont:	incbin	artnem\ttlcards_continue.bin	; title cards used for continue screen
+ArtKospM_TCCont:	incbin	artkosp\ttlcards_continue.kospm	; title cards used for continue screen
 		even
-Nem_Hud:	incbin	artnem\hud.bin		; HUD (rings, time, score)
+ArtKospM_Hud:	incbin	artkosp\hud.kospm		; HUD (rings, time, score)
 		even
-XNem_Lives:	incbin	artnem\lifeicon.bin	; load normal life counter icon
+XArtKospM_Lives:	incbin	artkosp\lifeicon.kospm	; load normal life counter icon
 		even
-Nem_Lives:	incbin	artnem\lifeiconcrazy.bin ; load crazy life counter icon
+ArtKospM_Lives:	incbin	artkosp\lifeiconcrazy.kospm ; load crazy life counter icon
 		even
-Nem_Ring:	incbin	artnem\rings.bin	; rings
+ArtKospM_Ring:	incbin	artkosp\rings.kospm	; rings
 		even
-Nem_Monitors:	incbin	artnem\monitors.bin	; monitors
+ArtKospM_Monitors:	incbin	artkosp\monitors.kospm	; monitors
 		even
-Art_Explosion:	incbin	artunc\explosion.bin	; explosion (uncompressed)
+ArtKospM_Explode:	incbin	artkosp\explosio.kospm	; explosion
 		even
-;Nem_Explode:	incbin	artnem\explosio.bin	; explosion
-;		even
-Nem_Points:	incbin	artnem\points.bin	; points from destroyed enemy or object
+ArtKospM_Points:	incbin	artkosp\points.kospm	; points from destroyed enemy or object
 		even
-Nem_GameOver:	incbin	artnem\gameover.bin	; game over / time over
+ArtKospM_GameOver:	incbin	artkosp\gameover.kospm	; game over / time over
 		even
-Nem_HSpring:	incbin	artnem\springh.bin	; horizontal spring
+ArtKospM_HSpring:	incbin	artkosp\springh.kospm	; horizontal spring
 		even
-Nem_VSpring:	incbin	artnem\springv.bin	; vertical spring
+ArtKospM_VSpring:	incbin	artkosp\springv.kospm	; vertical spring
 		even
-Nem_SignPost:	incbin	artnem\signpost.bin	; end of level signpost
+ArtKospM_SignPost:	incbin	artkosp\signpost.kospm	; end of level signpost
 		even
-Nem_Lamp:	incbin	artnem\lamppost.bin	; lamppost
+ArtKospM_Lamp:	incbin	artkosp\lamppost.kospm	; lamppost
 		even
-Nem_BigFlash:	incbin	artnem\rngflash.bin	; flash from giant ring
+ArtKospM_BigFlash:	incbin	artkosp\rngflash.kospm	; flash from giant ring
 		even
-Nem_Bonus:	incbin	artnem\bonus.bin	; hidden bonuses at end of a level
+ArtKospM_Bonus:	incbin	artkosp\bonus.kospm	; hidden bonuses at end of a level
 		even
-Nem_DEMO:	incbin	artnem\Art_DEMO.bin	; blinking DEMO banner [scrapped idea]
+ArtKospM_DEMO:	incbin	artkosp\Art_DEMO.kospm	; blinking DEMO banner [scrapped idea]
 		even
-Nem_HardPS:	incbin	artnem\HardPartSkipper.bin ; Hard Part Skipper
+ArtKospM_HardPS:	incbin	artkosp\HardPartSkipper.kospm ; Hard Part Skipper
 		even
-Nem_HardPS_Tut:	incbin	artnem\HardPartSkipper_Tutorial.bin ; Hard Part Skipper
+ArtKospM_HardPS_Tut:	incbin	artkosp\HardPartSkipper_Tutorial.kospm ; Hard Part Skipper
 		even
-Nem_BombMach:	incbin	artnem\BombMachine.bin	; bomb machine
+ArtKospM_BombMach:	incbin	artkosp\BombMachine.kospm	; bomb machine
 		even
 ; ---------------------------------------------------------------------------
 ; Compressed graphics - continue screen
 ; ---------------------------------------------------------------------------
-Nem_ContSonic:	incbin	artnem\cntsonic.bin	; Sonic on continue screen
+ArtKospM_ContSonic:	incbin	artkosp\cntsonic.kospm	; Sonic on continue screen
 		even
-Nem_MiniSonic:	incbin	artnem\cntother.bin	; mini Sonic and text on continue screen
-		even
-; ---------------------------------------------------------------------------
-; Kosinksi - Level graphics
-; ---------------------------------------------------------------------------
-Kos_GHZ:	incbin	artkos\8x8ghz.kos	; GHZ patterns (Kosinksi)
-		even
-Kos_LZ:		incbin	artkos\8x8lz.kos	; LZ patterns (Kosinksi)
-		even
-Kos_MZ:		incbin	artkos\8x8mz.kos	; MZ patterns (Kosinksi)
-		even
-Kos_SLZ:	incbin	artkos\8x8slz.kos	; SLZ patterns (Kosinksi)
-		even
-Kos_SYZ:	incbin	artkos\8x8syz.kos	; SYZ patterns (Kosinksi)
-		even
-Kos_SBZ:	incbin	artkos\8x8sbz.kos	; SBZ patterns (Kosinksi)
+ArtKospM_MiniSonic:	incbin	artkosp\cntother.kospm	; mini Sonic and text on continue screen
 		even
 ; ---------------------------------------------------------------------------
 ; Compressed graphics - primary patterns and block mappings
 ; ---------------------------------------------------------------------------
-Nem_TitleScreen:	incbin	artnem\8x8title.bin	; TS primary patterns
+ArtKospM_TitleScreen:	incbin	artkosp\8x8title.kospm	; TS primary patterns
 			even
-Blk16_TitleScreen:	incbin	map16\title.bin
+Blk16_TitleScreen:	incbin	map16\title.unc
 			even
 Blk256_TitleScreen:	incbin	map256\title.bin
 			even
-Blk16_GHZ:	incbin	map16\ghz.bin
+Blk16_GHZ:	incbin	map16\ghz.unc
 		even
-;Nem_GHZ:	incbin	artnem\8x8ghz.bin	; New GHZ file.
+ArtKospM_GHZ:	incbin	artkosp\8x8ghz.kospm	; New GHZ file.
+		even
+;ArtKospM_GHZ_1st:	incbin	artkosp\8x8ghz1.kospm	; GHZ primary patterns
 ;		even
-;Nem_GHZ_1st:	incbin	artnem\8x8ghz1.bin	; GHZ primary patterns
-;		even
-;Nem_GHZ_2nd:	incbin	artnem\8x8ghz2.bin	; GHZ secondary patterns
+;ArtKospM_GHZ_2nd:	incbin	artkosp\8x8ghz2.kospm	; GHZ secondary patterns
 ;		even
 Blk256_GHZ:	incbin	map256\ghz.bin
 		even
-Blk16_LZ:	incbin	map16\lz.bin
+Blk16_LZ:	incbin	map16\lz.unc
 		even
-;Nem_LZ:	incbin	artnem\8x8lz.bin	; LZ primary patterns
-;		even
+ArtKospM_LZ:	incbin	artkosp\8x8lz.kospm	; LZ primary patterns
+		even
 Blk256_LZ:	incbin	map256\lz.bin
 		even
-Blk16_MZ:	incbin	map16\mz.bin
+Blk16_MZ:	incbin	map16\mz.unc
 		even
-;Nem_MZ:	incbin	artnem\8x8mz.bin	; MZ primary patterns
-;		even
+ArtKospM_MZ:	incbin	artkosp\8x8mz.kospm	; MZ primary patterns
+		even
 Blk256_MZ:	incbin	map256\mz.bin
 		even
-Blk16_SLZ:	incbin	map16\slz.bin
+Blk16_SLZ:	incbin	map16\slz.unc
 		even
-;Nem_SLZ:	incbin	artnem\8x8slz.bin	; SLZ primary patterns
-;		even
+ArtKospM_SLZ:	incbin	artkosp\8x8slz.kospm	; SLZ primary patterns
+		even
 Blk256_SLZ:	incbin	map256\slz.bin
 		even
-Blk16_SYZ:	incbin	map16\syz.bin
+Blk16_SYZ:	incbin	map16\syz.unc
 		even
-;Nem_SYZ:	incbin	artnem\8x8syz.bin	; SYZ primary patterns
-;		even
+ArtKospM_SYZ:	incbin	artkosp\8x8syz.kospm	; SYZ primary patterns
+		even
 Blk256_SYZ:	incbin	map256\syz.bin
 		even
-Blk16_SBZ:	incbin	map16\sbz.bin
+Blk16_SBZ:	incbin	map16\sbz.unc
 		even
-;Nem_SBZ:	incbin	artnem\8x8sbz.bin	; SBZ primary patterns
-;		even
+ArtKospM_SBZ:	incbin	artkosp\8x8sbz.kospm	; SBZ primary patterns
+		even
 Blk256_SBZ:	incbin	map256\sbz.bin
 		even
 Blk256_END:	incbin	map256\ghz_end.bin
@@ -49253,33 +48332,33 @@ Blk256_END:	incbin	map256\ghz_end.bin
 ; ---------------------------------------------------------------------------
 ; Compressed graphics - bosses and ending sequence
 ; ---------------------------------------------------------------------------
-Nem_Eggman:	incbin	artnem\bossmain.bin	; boss main patterns
+ArtKospM_Eggman:	incbin	artkosp\bossmain.kospm	; boss main patterns
 		even
-Nem_Weapons:	incbin	artnem\bossxtra.bin	; boss add-ons and weapons
+ArtKospM_Weapons:	incbin	artkosp\bossxtra.kospm	; boss add-ons and weapons
 		even
 Unc_Prison:	incbin	artunc\prison.bin	; prison capsule (uncompressed)
 		even
-Nem_Sbz2Eggman:	incbin	artnem\sbz2boss.bin	; Eggman in SBZ2 and FZ
+ArtKospM_Sbz2Eggman:	incbin	artkosp\sbz2boss.kospm	; Eggman in SBZ2 and FZ
 		even
-Nem_FzBoss:	incbin	artnem\fzboss.bin	; FZ boss
+ArtKospM_FzBoss:	incbin	artkosp\fzboss.kospm	; FZ boss
 		even
-Nem_FzEggman:	incbin	artnem\fzboss2.bin	; Eggman after the FZ boss
+ArtKospM_FzEggman:	incbin	artkosp\fzboss2.kospm	; Eggman after the FZ boss
 		even
-Nem_Exhaust:	incbin	artnem\bossflam.bin	; boss exhaust flame
+ArtKospM_Exhaust:	incbin	artkosp\bossflam.kospm	; boss exhaust flame
 		even
-Nem_EndEm:	incbin	artnem\endemera.bin	; ending sequence chaos emeralds
+ArtKospM_EndEm:	incbin	artkosp\endemera.kospm	; ending sequence chaos emeralds
 		even
-Nem_EndSonic:	incbin	artnem\endsonic.bin	; ending sequence Sonic
+ArtKospM_EndSonic:	incbin	artkosp\endsonic.kospm	; ending sequence Sonic
 		even
-Nem_TryAgain:	incbin	artnem\tryagain.bin	; ending "try again" screen
+ArtKospM_TryAgain:	incbin	artkosp\tryagain.kospm	; ending "try again" screen
 		even
 Kos_EndFlowers:	incbin	artkos\flowers.bin	; ending sequence animated flowers
 		even
-Nem_EndFlower:	incbin	artnem\endflowe.bin	; ending sequence flowers
+ArtKospM_EndFlower:	incbin	artkosp\endflowe.kospm	; ending sequence flowers
 		even
-Nem_CreditText:	incbin	artnem\credits.bin	; credits alphabet
+ArtKospM_CreditText:	incbin	artkosp\credits.kospm	; credits alphabet
 		even
-Nem_EndStH:	incbin	artnem\endtext.bin	; ending sequence "Sonic the Hedgehog" text
+ArtKospM_EndStH:	incbin	artkosp\endtext.kospm	; ending sequence "Sonic the Hedgehog" text
 		even
 		incbin	misc\padding2.bin
 		even
@@ -49476,7 +48555,7 @@ byte_6A320:	dc.b 0,	0, 0, 0
 Art_BigRing:	incbin	artunc\bigring.bin
 		even
 
-Art_SGMC:	incbin artnem\sgmc.bin
+ArtKospM_SGMC:	incbin artkosp\sgmc.kospm
 		even
 		
 		incbin	misc\padding3.bin

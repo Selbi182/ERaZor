@@ -36,411 +36,467 @@
 ; ---------------------------------------------------------------------------
 ; Pattern load cues - standard block 1
 ; ---------------------------------------------------------------------------
-PLC_Main:	dc.w 4
-		dc.l Nem_Lamp		; lamppost
+PLC_Main:
+		dc.l ArtKospM_Lamp		; lamppost
 		dc.w $D800
-		dc.l Nem_Hud		; HUD
+		dc.l ArtKospM_Hud		; HUD
 		dc.w $D940
-		dc.l Nem_Lives		; lives	counter
+		dc.l ArtKospM_Lives		; lives	counter
 		dc.w $FA80
-		dc.l Nem_Ring		; rings
+		dc.l ArtKospM_Ring		; rings
 		dc.w $F640
-		dc.l Nem_ExplBall	; exploding balls from Inhuman Mode
+		dc.l ArtKospM_ExplBall	; exploding balls from Inhuman Mode
 		dc.w $D700
+		dc.w -1
+
 ; ---------------------------------------------------------------------------
 ; Pattern load cues - standard block 2
 ; ---------------------------------------------------------------------------
-PLC_Main2:	dc.w 1
-		dc.l Nem_Monitors	; monitors
+PLC_Main2:
+		dc.l ArtKospM_Monitors	; monitors
 		dc.w $D000
-		dc.l Nem_Shield		; shield
+		dc.l ArtKospM_Shield		; shield
 		dc.w $A820
+		dc.w -1
 ; ---------------------------------------------------------------------------
 ; Pattern load cues - explosion
 ; ---------------------------------------------------------------------------
-PLC_Explode:	dc.w 0
-		dc.l Nem_Null
-	;	dc.l Nem_Explode	; explosion
+PLC_Explode:
+		dc.l ArtKospM_Explode	; explosion
 		dc.w $B400
+		dc.w -1
 ; ---------------------------------------------------------------------------
 ; Pattern load cues - game/time	over
 ; ---------------------------------------------------------------------------
-PLC_GameOver:	dc.w 0
-		dc.l Nem_GameOver	; game/time over
+PLC_GameOver:
+		dc.l ArtKospM_GameOver	; game/time over
 		dc.w $ABC0
+		dc.w -1
 ; ---------------------------------------------------------------------------
 ; Pattern load cues - Green Hill
 ; ---------------------------------------------------------------------------
-PLC_GHZ:	dc.w $9
-	;	dc.l Nem_GHZ		; GHZ main patterns
-	;	dc.w 0
-		dc.l Nem_Stalk		; flower stalk
+PLC_GHZ:
+		dc.l ArtKospM_GHZ		; GHZ main patterns
+		dc.w 0
+		dc.l ArtKospM_Stalk		; flower stalk
 		dc.w $6B00
-		dc.l Nem_PplRock	; purple rock
+		dc.l ArtKospM_PplRock	; purple rock
 		dc.w $7A00
-		dc.l Nem_Crabmeat	; crabmeat enemy
+		dc.l ArtKospM_Crabmeat	; crabmeat enemy
 		dc.w $8000
-		dc.l Nem_Buzz		; buzz bomber enemy
+		dc.l ArtKospM_Buzz		; buzz bomber enemy
 		dc.w $8880
-		dc.l Nem_Chopper	; chopper enemy
+		dc.l ArtKospM_Chopper	; chopper enemy
 		dc.w $8F60
-		dc.l Nem_HardPS		; hard part skipper
+		dc.l ArtKospM_HardPS		; hard part skipper
 		dc.w $9360
-		dc.l Nem_Motobug	; motobug enemy
+		dc.l ArtKospM_Motobug	; motobug enemy
 		dc.w $9E00
-		dc.l Nem_Spikes		; spikes
+		dc.l ArtKospM_Spikes		; spikes
 		dc.w $A360
-		dc.l Nem_HSpring	; horizontal spring
+		dc.l ArtKospM_HSpring	; horizontal spring
 		dc.w $A460
-		dc.l Nem_VSpring	; vertical spring
+		dc.l ArtKospM_VSpring	; vertical spring
 		dc.w $A660
-PLC_GHZ2:	dc.w 5
-		dc.l Nem_Swing		; swinging platform
+		dc.w -1
+
+PLC_GHZ2:
+		dc.l ArtKospM_Swing		; swinging platform
 		dc.w $7000
-		dc.l Nem_Bridge		; bridge
+		dc.l ArtKospM_Bridge		; bridge
 		dc.w $71C0
-		dc.l Nem_SpikePole	; spiked pole
+		dc.l ArtKospM_SpikePole	; spiked pole
 		dc.w $7300
-		dc.l Nem_Ball		; giant	ball
+		dc.l ArtKospM_Ball		; giant	ball
 		dc.w $7540
-		dc.l Nem_GhzWall1	; breakable wall
+		dc.l ArtKospM_GhzWall1	; breakable wall
 		dc.w $A1E0
-		dc.l Nem_GhzWall2	; normal wall
+		dc.l ArtKospM_GhzWall2	; normal wall
 		dc.w $6980
+		dc.w -1
+
 ; ---------------------------------------------------------------------------
 ; Pattern load cues - Labyrinth
 ; ---------------------------------------------------------------------------
-PLC_LZ:		dc.w $9
-	;	dc.l Nem_LZ		; LZ main patterns
-	;	dc.w 0
-		dc.l Nem_LzBlock1	; block
+PLC_LZ:
+		dc.l ArtKospM_LZ		; LZ main patterns
+		dc.w 0
+		dc.l ArtKospM_LzBlock1	; block
 		dc.w $3C00
-		dc.l Nem_LzBlock2	; blocks
+		dc.l ArtKospM_LzBlock2	; blocks
 		dc.w $3E00
-		dc.l Nem_Splash		; waterfalls and splash
+		dc.l ArtKospM_Splash		; waterfalls and splash
 		dc.w $4B20
-	;	dc.l Nem_Water		; water	surface
+	;	dc.l ArtKospM_Water		; water	surface
 	;	dc.w $6000
-		dc.l Nem_LzSpikeBall	; spiked ball
+		dc.l ArtKospM_LzSpikeBall	; spiked ball
 		dc.w $6200
-		dc.l Nem_FlapDoor	; flapping door
+		dc.l ArtKospM_FlapDoor	; flapping door
 		dc.w $6500
-		dc.l Nem_Bubbles	; bubbles and numbers
+		dc.l ArtKospM_Bubbles	; bubbles and numbers
 		dc.w $6900
-		dc.l Nem_LzBlock3	; block
+		dc.l ArtKospM_LzBlock3	; block
 		dc.w $7780
-		dc.l Nem_LzDoor1	; vertical door
+		dc.l ArtKospM_LzDoor1	; vertical door
 		dc.w $7880
-		dc.l Nem_Cork		; cork block
+		dc.l ArtKospM_Cork		; cork block
 		dc.w $7980
-	;	dc.l Nem_Harpoon	; harpoon
+	;	dc.l ArtKospM_Harpoon	; harpoon
 	;	dc.w $7980
-		dc.l Nem_HardPS		; hard part skipper
+		dc.l ArtKospM_HardPS		; hard part skipper
 		dc.w $94C0
-PLC_LZ2:	dc.w $A
-		dc.l Nem_LzPole		; pole that breaks
+		dc.w -1
+
+PLC_LZ2:
+		dc.l ArtKospM_LzPole		; pole that breaks
 		dc.w $7BC0
-		dc.l Nem_LzDoor2	; large	horizontal door
+		dc.l ArtKospM_LzDoor2	; large	horizontal door
 		dc.w $7CC0
-		dc.l Nem_LzWheel	; wheel
+		dc.l ArtKospM_LzWheel	; wheel
 		dc.w $7EC0
-		dc.l Nem_Gargoyle	; gargoyle head
+		dc.l ArtKospM_Gargoyle	; gargoyle head
 		dc.w $5D20
-		dc.l Nem_LzPlatfm	; rising platform
+		dc.l ArtKospM_LzPlatfm	; rising platform
 		dc.w $89E0
-		dc.l Nem_Orbinaut	; orbinaut enemy
+		dc.l ArtKospM_Orbinaut	; orbinaut enemy
 		dc.w $8CE0
-		dc.l Nem_Jaws		; jaws enemy
+		dc.l ArtKospM_Jaws		; jaws enemy
 		dc.w $90C0
-		dc.l Nem_LzSwitch	; switch
+		dc.l ArtKospM_LzSwitch	; switch
 		dc.w $A1E0
-	;	dc.l Nem_Cork		; cork block
+	;	dc.l ArtKospM_Cork		; cork block
 	;	dc.w $A000
-		dc.l Nem_Spikes		; spikes
+		dc.l ArtKospM_Spikes		; spikes
 		dc.w $A360
-		dc.l Nem_HSpring	; horizontal spring
+		dc.l ArtKospM_HSpring	; horizontal spring
 		dc.w $A460
-		dc.l Nem_VSpring	; vertical spring
+		dc.l ArtKospM_VSpring	; vertical spring
 		dc.w $A660
+		dc.w -1
+
 ; ---------------------------------------------------------------------------
 ; Pattern load cues - Marble
 ; ---------------------------------------------------------------------------
-PLC_MZ:		dc.w 8
-	;	dc.l Nem_MZ		; MZ main patterns
-	;	dc.w 0
-		dc.l Nem_MzMetal	; metal	blocks
+PLC_MZ:
+		dc.l ArtKospM_MZ		; MZ main patterns
+		dc.w 0
+		dc.l ArtKospM_MzMetal	; metal	blocks
 		dc.w $6000
-		dc.l Nem_MzFire		; fireballs
+		dc.l ArtKospM_MzFire		; fireballs
 		dc.w $68A0
-		dc.l Nem_Swing		; swinging platform
+		dc.l ArtKospM_Swing		; swinging platform
 		dc.w $7000
-		dc.l Nem_MzGlass	; green	glassy block
+		dc.l ArtKospM_MzGlass	; green	glassy block
 		dc.w $71C0
-		dc.l Nem_Lava		; lava
+		dc.l ArtKospM_Lava		; lava
 		dc.w $7500
-		dc.l Nem_Buzz		; buzz bomber enemy
+		dc.l ArtKospM_Buzz		; buzz bomber enemy
 		dc.w $8880
-		dc.l Nem_Yadrin		; yadrin enemy
+		dc.l ArtKospM_Yadrin		; yadrin enemy
 		dc.w $8F60
-		dc.l Nem_Basaran	; basaran enemy
+		dc.l ArtKospM_Basaran	; basaran enemy
 		dc.w $9700
-		dc.l Nem_HardPS		; hard part skipper
+		dc.l ArtKospM_HardPS		; hard part skipper
 		dc.w $9FE0
-PLC_MZ2:	dc.w 4
-		dc.l Nem_MzSwitch	; switch
+		dc.w -1
+
+PLC_MZ2:
+		dc.l ArtKospM_MzSwitch	; switch
 		dc.w $A260
-		dc.l Nem_Spikes		; spikes
+		dc.l ArtKospM_Spikes		; spikes
 		dc.w $A360
-		dc.l Nem_HSpring	; horizontal spring
+		dc.l ArtKospM_HSpring	; horizontal spring
 		dc.w $A460
-		dc.l Nem_VSpring	; vertical spring
+		dc.l ArtKospM_VSpring	; vertical spring
 		dc.w $A660
-		dc.l Nem_MzBlock	; green	stone block
+		dc.l ArtKospM_MzBlock	; green	stone block
 		dc.w $5700
+		dc.w -1
+
 ; ---------------------------------------------------------------------------
 ; Pattern load cues - Star Light
 ; ---------------------------------------------------------------------------
-PLC_SLZ:	dc.w 4
-	;	dc.l Nem_SLZ		; SLZ main patterns
-	;	dc.w 0
-		dc.l Nem_Bomb		; bomb enemy
+PLC_SLZ:
+		dc.l ArtKospM_SLZ		; SLZ main patterns
+		dc.w 0
+		dc.l ArtKospM_Bomb		; bomb enemy
 		dc.w $8000
-		dc.l Nem_LzSwitch	; switch
+		dc.l ArtKospM_LzSwitch	; switch
 		dc.w $9000
-		dc.l Nem_Spikes		; spikes
+		dc.l ArtKospM_Spikes		; spikes
 		dc.w $A360
-		dc.l Nem_HSpring	; horizontal spring
+		dc.l ArtKospM_HSpring	; horizontal spring
 		dc.w $A460
-		dc.l Nem_VSpring	; vertical spring
+		dc.l ArtKospM_VSpring	; vertical spring
 		dc.w $A660
-PLC_SLZ2:	dc.w 4
-		dc.l Nem_Pylon		; foreground pylon
+		dc.w -1
+
+PLC_SLZ2:
+		dc.l ArtKospM_Pylon		; foreground pylon
 		dc.w $7980
-		dc.l Nem_GiantBomb	; giant bomb
+		dc.l ArtKospM_GiantBomb	; giant bomb
 		dc.w $8580
-		dc.l Nem_Bonus		; bonus points
+		dc.l ArtKospM_Bonus		; bonus points
 		dc.w $96C0
-		dc.l Nem_SLZPlatform	; SLZ platform
+		dc.l ArtKospM_SLZPlatform	; SLZ platform
 		dc.w $9C00
-		dc.l Nem_HardPS		; hard part skipper
+		dc.l ArtKospM_HardPS		; hard part skipper
 		dc.w $9200
+		dc.w -1
+
 ; ---------------------------------------------------------------------------
 ; Pattern load cues - Spring Yard
 ; ---------------------------------------------------------------------------
-PLC_SYZ:	dc.w 1
-	;	dc.l Nem_SYZ		; SYZ main patterns
-	;	dc.w 0
-		dc.l Nem_SYZDoors	; SYZ doors
+PLC_SYZ:
+		dc.l ArtKospM_SYZ		; SYZ main patterns
+		dc.w 0
+		dc.l ArtKospM_SYZDoors	; SYZ doors
 		dc.w $6000
-		dc.l Nem_LevelSigns	; level signs
+		dc.l ArtKospM_LevelSigns	; level signs
 		dc.w $6E40
-PLC_SYZ2:	dc.w 2
-		dc.l Nem_SYZPlat	; platform
+		dc.w -1
+
+PLC_SYZ2:
+		dc.l ArtKospM_SYZPlat	; platform
 		dc.w $A660
 	;	dc.w $9200
-		dc.l Nem_LzSwitch	; switch
+		dc.l ArtKospM_LzSwitch	; switch
 		dc.w $A1E0
-		dc.l Nem_HSpring	; horizontal spring
+		dc.l ArtKospM_HSpring	; horizontal spring
 		dc.w $A460
+		dc.w -1
+
 ; ---------------------------------------------------------------------------
 ; Pattern load cues - Scrap Brain
 ; ---------------------------------------------------------------------------
-PLC_SBZ:	dc.w 3
-	;	dc.l Nem_SBZ		; SBZ main patterns
-	;	dc.w 0
-		dc.l Nem_HardPS_Tut	; hard part skipper
+PLC_SBZ:
+		dc.l ArtKospM_SBZ		; SBZ main patterns
+		dc.w 0
+		dc.l ArtKospM_HardPS_Tut	; hard part skipper
 		dc.w $6C00
-		dc.l Nem_LzSwitch	; switch
+		dc.l ArtKospM_LzSwitch	; switch
 		dc.w $70A0
-		dc.l Nem_LevelSigns	; level signs
+		dc.l ArtKospM_LevelSigns	; level signs
 		dc.w $7300
-		dc.l Nem_SbzDoor1	; door
+		dc.l ArtKospM_SbzDoor1	; door
 		dc.w $8000
-PLC_SBZ2:	dc.w 0
-		dc.l Nem_Spikes		; spikes
+		dc.w -1
+
+PLC_SBZ2:
+		dc.l ArtKospM_Spikes		; spikes
 		dc.w $A360
+		dc.w -1
+
 ; ---------------------------------------------------------------------------
 ; Pattern load cues - title card
 ; ---------------------------------------------------------------------------
-PLC_TitleCard:	dc.w 0
-	;	dc.l Nem_TitleCard
-	;	dc.w $AB80
-		dc.l Nem_Null
-		dc.w $B000
+PLC_TitleCard:
+		dc.l ArtKospM_TitleCard
+		dc.w $AB80
+		dc.w -1
+
 ; ---------------------------------------------------------------------------
 ; Pattern load cues - act 3 boss
 ; ---------------------------------------------------------------------------
-PLC_Boss:	dc.w 3
-		dc.l Nem_Eggman		; Eggman main patterns
+PLC_Boss:
+		dc.l ArtKospM_Eggman		; Eggman main patterns
 		dc.w $8000
-		dc.l Nem_Weapons	; Eggman's weapons
+		dc.l ArtKospM_Weapons	; Eggman's weapons
 		dc.w $8D80
-		dc.l Nem_Bomb		; bomb enemy (gets overwritten)
+		dc.l ArtKospM_Bomb		; bomb enemy (gets overwritten)
 		dc.w $A300
-		dc.l Nem_Exhaust	; exhaust flame
+		dc.l ArtKospM_Exhaust	; exhaust flame
 		dc.w $A540
-	;	dc.l Nem_ExplBall	; buzz bomber enemy
+	;	dc.l ArtKospM_ExplBall	; buzz bomber enemy
 	;	dc.w $8E00
+		dc.w -1
+
 ; ---------------------------------------------------------------------------
 ; Pattern load cues - act 1/2 signpost
 ; ---------------------------------------------------------------------------
-PLC_Signpost:	dc.w 1
-		dc.l Nem_SignPost	; signpost
+PLC_Signpost:
+		dc.l ArtKospM_SignPost	; signpost
 		dc.w $D000
-		dc.l Nem_HSpring	; horizontal spring
+		dc.l ArtKospM_HSpring	; horizontal spring
 		dc.w $A460
-	;	dc.l Nem_Bonus		; hidden bonus points
+	;	dc.l ArtKospM_Bonus		; hidden bonus points
 	;	dc.w $96C0
-	;	dc.l Nem_BigFlash	; giant	ring flash effect
+	;	dc.l ArtKospM_BigFlash	; giant	ring flash effect
 	;	dc.w $8C40
+		dc.w -1
+
 ; ---------------------------------------------------------------------------
 ; Pattern load cues - beta special stage warp effect
 ; ---------------------------------------------------------------------------
-PLC_Warp:	dc.w 0
-		dc.l Nem_Null
-	;	dc.l Nem_Stars		; invincibility	stars
+PLC_Warp:
+		dc.l ArtKospM_Stars		; invincibility	stars
 		dc.w $AB80
+		dc.w -1
+
 ; ---------------------------------------------------------------------------
 ; Pattern load cues - special stage
 ; ---------------------------------------------------------------------------
-PLC_SpeStage:	dc.w $B
-		dc.l Nem_SSBgCloud	; bubble and cloud background
+PLC_SpeStage:
+		dc.l ArtKospM_SSBgCloud	; bubble and cloud background
 		dc.w 0
-	;	dc.l Nem_TitleCard	; title cards
-	;	dc.w $0A20
-		dc.l Nem_SSWalls	; walls
+		dc.l ArtKospM_TitleCard	; title cards
+		dc.w $0A20
+		dc.l ArtKospM_SSWalls	; walls
 		dc.w $2840
-		dc.l Nem_Bumper		; bumper
+		dc.l ArtKospM_Bumper		; bumper
 		dc.w $4760
-		dc.l Nem_SSGOAL		; GOAL block
+		dc.l ArtKospM_SSGOAL		; GOAL block
 		dc.w $4A20
-		dc.l Nem_SSUpDown	; UP and DOWN blocks
+		dc.l ArtKospM_SSUpDown	; UP and DOWN blocks
 		dc.w $4C60
-		dc.l Nem_SSRBlock	; R block
+		dc.l ArtKospM_SSRBlock	; R block
 		dc.w $5E00
-		dc.l Nem_SSEmStars	; emerald collection stars
+		dc.l ArtKospM_SSEmStars	; emerald collection stars
 		dc.w $7E00
-		dc.l Nem_SSRedWhite	; red and white	block
+		dc.l ArtKospM_SSRedWhite	; red and white	block
 		dc.w $8E00
-		dc.l Nem_SSGhost	; ghost	block
+		dc.l ArtKospM_SSGhost	; ghost	block
 		dc.w $9E00
-		dc.l Nem_SSWBlock	; W block
+		dc.l ArtKospM_SSWBlock	; W block
 		dc.w $AE00
-		dc.l Nem_SSGlass	; glass	block
+		dc.l ArtKospM_SSGlass	; glass	block
 		dc.w $BE00
-		dc.l Nem_SSEmerald	; emeralds
+		dc.l ArtKospM_SSEmerald	; emeralds
 		dc.w $EE00
+		dc.w -1
+
 ; ---------------------------------------------------------------------------
 ; Pattern load cues - GHZ animals
 ; ---------------------------------------------------------------------------
-PLC_GHZAnimals:	dc.w 0
-		dc.l Nem_Null
+PLC_GHZAnimals:
+		dc.l ArtKospM_Null
 		dc.w $B000
+		dc.w -1
+
 ; ---------------------------------------------------------------------------
 ; Pattern load cues - LZ animals
 ; ---------------------------------------------------------------------------
-PLC_LZAnimals:	dc.w 0
-		dc.l Nem_Null
+PLC_LZAnimals:
+		dc.l ArtKospM_Null
 		dc.w $B000
+		dc.w -1
+
 ; ---------------------------------------------------------------------------
 ; Pattern load cues - MZ animals
 ; ---------------------------------------------------------------------------
-PLC_MZAnimals:	dc.w 0
-		dc.l Nem_Null
+PLC_MZAnimals:
+		dc.l ArtKospM_Null
 		dc.w $B000
+		dc.w -1
+
 ; ---------------------------------------------------------------------------
 ; Pattern load cues - SLZ animals
 ; ---------------------------------------------------------------------------
-PLC_SLZAnimals:	dc.w 0
-		dc.l Nem_Null
+PLC_SLZAnimals:
+		dc.l ArtKospM_Null
 		dc.w $B000
+		dc.w -1
+
 ; ---------------------------------------------------------------------------
 ; Pattern load cues - SYZ animals
 ; ---------------------------------------------------------------------------
-PLC_SYZAnimals:	dc.w 0
-		dc.l Nem_Null
+PLC_SYZAnimals:
+		dc.l ArtKospM_Null
 		dc.w $B000
+		dc.w -1
+
 ; ---------------------------------------------------------------------------
 ; Pattern load cues - SBZ animals
 ; ---------------------------------------------------------------------------
-PLC_SBZAnimals:	dc.w 0
-		dc.l Nem_Null
+PLC_SBZAnimals:
+		dc.l ArtKospM_Null
 		dc.w $B000
+		dc.w -1
+
 ; ---------------------------------------------------------------------------
 ; Pattern load cues - Blackout Challenge special stage overrides
 ; ---------------------------------------------------------------------------
-PLC_SSBlackout:	dc.w 0
-		dc.l Nem_SSSkull	; Skull block
+PLC_SSBlackout:
+		dc.l ArtKospM_SSSkull	; Skull block
 		dc.w $4A20
+		dc.w -1
+
 ; ---------------------------------------------------------------------------
 ; Pattern load cues - ending sequence
 ; ---------------------------------------------------------------------------
-PLC_Ending:	dc.w $C
-	;	dc.l Nem_GHZ		; GHZ patterns
-	;	dc.w 0
-		dc.l Nem_Stalk		; flower stalk
+PLC_Ending:
+		dc.l ArtKospM_GHZ		; GHZ patterns
+		dc.w 0
+		dc.l ArtKospM_Stalk		; flower stalk
 		dc.w $6B00
-		dc.l Nem_EndFlower	; flowers
+		dc.l ArtKospM_EndFlower	; flowers
 		dc.w $7400
-		dc.l Nem_EndEm		; emeralds
+		dc.l ArtKospM_EndEm		; emeralds
 		dc.w $78A0
-		dc.l Nem_EndSonic	; Sonic
+		dc.l ArtKospM_EndSonic	; Sonic
 		dc.w $7C20
-		dc.l Nem_UMadBro	; U Mad Bro?!
+		dc.l ArtKospM_UMadBro	; U Mad Bro?!
 		dc.w $A480
-		dc.l Nem_Rabbit		; rabbit
+		dc.l ArtKospM_Rabbit		; rabbit
 		dc.w $AA60
-		dc.l Nem_Chicken	; chicken
+		dc.l ArtKospM_Chicken	; chicken
 		dc.w $ACA0
-		dc.l Nem_BlackBird	; blackbird
+		dc.l ArtKospM_BlackBird	; blackbird
 		dc.w $AE60
-		dc.l Nem_Seal		; seal
+		dc.l ArtKospM_Seal		; seal
 		dc.w $B0A0
-		dc.l Nem_Pig		; pig
+		dc.l ArtKospM_Pig		; pig
 		dc.w $B260
-		dc.l Nem_Flicky		; flicky
+		dc.l ArtKospM_Flicky		; flicky
 		dc.w $B4A0
-		dc.l Nem_Squirrel	; squirrel
+		dc.l ArtKospM_Squirrel	; squirrel
 		dc.w $B660
-		dc.l Nem_EndStH		; "SONIC THE HEDGEHOG"
+		dc.l ArtKospM_EndStH		; "SONIC THE HEDGEHOG"
 		dc.w $B8A0
+		dc.w -1
+
 ; ---------------------------------------------------------------------------
 ; Pattern load cues - "TRY AGAIN" and "END" screens
 ; ---------------------------------------------------------------------------
-PLC_TryAgain:	dc.w 2
-		dc.l Nem_EndEm		; emeralds
+PLC_TryAgain:
+		dc.l ArtKospM_EndEm		; emeralds
 		dc.w $78A0
-		dc.l Nem_TryAgain	; Eggman
+		dc.l ArtKospM_TryAgain	; Eggman
 		dc.w $7C20
-		dc.l Nem_CreditText	; credits alphabet
+		dc.l ArtKospM_CreditText	; credits alphabet
 		dc.w $B400
+		dc.w -1
+
 ; ---------------------------------------------------------------------------
 ; Pattern load cues - Eggman on SBZ 2
 ; ---------------------------------------------------------------------------
-PLC_EggmanSBZ2:	dc.w 3
-		dc.l Nem_Sbz2Eggman	; Eggman
+PLC_EggmanSBZ2:
+		dc.l ArtKospM_Sbz2Eggman	; Eggman
 		dc.w $8000
-		dc.l Nem_LzSwitch	; switch
+		dc.l ArtKospM_LzSwitch	; switch
 		dc.w $9400
-		dc.l Nem_BombOld	; bomb enemy
+		dc.l ArtKospM_BombOld	; bomb enemy
 		dc.w $A660
-		dc.l Nem_BombMach	; bomb machine
+		dc.l ArtKospM_BombMach	; bomb machine
 		dc.w $5600
+		dc.w -1
+
 ; ---------------------------------------------------------------------------
 ; Pattern load cues - final boss
 ; ---------------------------------------------------------------------------
-PLC_FZBoss:	dc.w 5
-		dc.l Nem_SbzDoor1	; door
+PLC_FZBoss:
+		dc.l ArtKospM_SbzDoor1	; door
 		dc.w $5500
-		dc.l Nem_FzEggman	; Eggman after boss
+		dc.l ArtKospM_FzEggman	; Eggman after boss
 		dc.w $7400
-		dc.l Nem_FzBoss		; FZ boss
+		dc.l ArtKospM_FzBoss		; FZ boss
 		dc.w $6000
-		dc.l Nem_Eggman		; Eggman main patterns
+		dc.l ArtKospM_Eggman		; Eggman main patterns
 		dc.w $8000
-		dc.l Nem_Sbz2Eggman	; Eggman without ship
+		dc.l ArtKospM_Sbz2Eggman	; Eggman without ship
 		dc.w $8E00
-		dc.l Nem_Exhaust	; exhaust flame
+		dc.l ArtKospM_Exhaust	; exhaust flame
 		dc.w $A540
-		even
+		dc.w -1
+
 ; ---------------------------------------------------------------------------

@@ -866,24 +866,22 @@ GetOptionsText:
 		move.b	#$0D,-3(a1)			; write < before the ID
 		move.b	#$0E,2(a1)			; write > after the ID
 
+		moveq	#0,d0
 		move.b	($FFFFFF84).w,d0		; get sound test ID
 		lsr.b	#4,d0				; swap first and second short
 		andi.b	#$0F,d0				; clear first short
 		cmpi.b	#9,d0				; is result greater than 9?
 		ble.s	GOT_Snd_Skip1			; if not, branch
 		addi.b	#5,d0				; skip the special chars (!, ?, etc.)
-
-GOT_Snd_Skip1:
-		move.b	d0,-1(a1)			; set result to first digit ("8" 1)
+GOT_Snd_Skip1:	move.b	d0,-1(a1)			; set result to first digit ("8" 1)
 
 		move.b	($FFFFFF84).w,d0		; get sound test ID
 		andi.b	#$0F,d0				; clear first short
 		cmpi.b	#9,d0				; is result greater than 9?
 		ble.s	GOT_Snd_Skip2			; if not, branch
 		addi.b	#5,d0				; skip the special chars (!, ?, etc.)
+GOT_Snd_Skip2:	move.b	d0,0(a1)			; set result to second digit (8 "1")
 
-GOT_Snd_Skip2:
-		move.b	d0,0(a1)			; set result to second digit (8 "1")
 		adda.w	#3,a1				; adjust for the earlier sound test offset
 ; ---------------------------------------------------------------------------
 

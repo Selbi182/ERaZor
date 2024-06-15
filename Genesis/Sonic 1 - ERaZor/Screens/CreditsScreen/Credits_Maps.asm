@@ -47,9 +47,9 @@ StartText:
 	; 2
 	dc.b	$0D						; Number of lines
 	dc.b	"                    ",$FF
-	dc.b	" WITH GRAPHICS AND  ",$FF
+	dc.b	"WITH MENTORSHIP AND ",$FF
 	dc.b	"                    ",$FF
-	dc.b	" SPECIAL HELP FROM  ",$FF
+	dc.b	"  EXTRA ASSETS BY   ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
@@ -104,9 +104,9 @@ StartText:
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
-	dc.b	"      DALEKSAM      ",$FF
+	dc.b	"     AMPHOBIOUS     ",$FF
 	dc.b	"                    ",$FF
-	dc.b	"   AKA AMPHOBIOUS   ",$FF
+	dc.b	"    AKA DALEKSAM    ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
@@ -138,9 +138,9 @@ StartText:
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
+	dc.b	"     NEONSYNTH      ",$FF
 	dc.b	"                    ",$FF
-	dc.b	"     SONICVAAN      ",$FF
-	dc.b	"                    ",$FF
+	dc.b	"   AKA SONICVAAN    ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF

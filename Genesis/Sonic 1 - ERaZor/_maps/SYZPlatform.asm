@@ -2,13 +2,12 @@
 ; Sprite mappings - output from ClownMapEd - Sonic 1/CD format
 ; --------------------------------------------------------------------------------
 
-SYZPlatformMaps:
-	dc.w	SYZPlatform_Frame0-SYZPlatformMaps
-	dc.w	SYZPlatform_Frame1-SYZPlatformMaps
-	dc.w	SYZPlatform_Frame2-SYZPlatformMaps
+CME_1AE2106F:
+	dc.w	CME_1AE2106F_0-CME_1AE2106F
+	dc.w	CME_1AE2106F_1-CME_1AE2106F
+	dc.w	CME_1AE2106F_2-CME_1AE2106F
 
-SYZPlatform_Frame0:
-
+CME_1AE2106F_0:
 	dc.b	12
 
 	dc.b	-9
@@ -71,35 +70,25 @@ SYZPlatform_Frame0:
 	dc.w	$001C
 	dc.b	40
 
-SYZPlatform_Frame1:
+CME_1AE2106F_1:
 	dc.b	2
 
 	dc.b	-90
 	dc.b	$06
 	dc.w	$0020
-	dc.b	-64
+	dc.b	-96-16
 
 	dc.b	-90
 	dc.b	$06
 	dc.w	$0020
-	dc.b	48
+	dc.b	96
 
-SYZPlatform_Frame2:
-	dc.b	3
+CME_1AE2106F_2:
+	dc.b	1
 
-	dc.b	-6
+	dc.b	0
 	dc.b	$06
-	dc.w	$0020
+	dc.w	$1020
 	dc.b	-8
-
-	dc.b	-2
-	dc.b	$06
-	dc.w	$0020
-	dc.b	-32
-
-	dc.b	-2
-	dc.b	$06
-	dc.w	$0020
-	dc.b	16
 
 	even

@@ -16,11 +16,12 @@ Obj21_Mappings:
 Obj21_Blank	dc.b 0
 		dc.b $00, $00, $00, $00, $00	; Blank
 
-Obj21_Score:	dc.b 4
+Obj21_Score:	dc.b 5
 		dc.b $F9, $0D, $80, $00, $C8	; SCOR
 		dc.b $F9, $01, $80, $16, $E8	; E
 		dc.b $F8, $0D, $80, $18, $F0	; First part of Score Counter
-		dc.b $F8, $0D, $80, $20, $10	; Second part of Score Counter
+		dc.b $F8, $09, $80, $20, $10	; Second part of Score Counter
+		dc.b $F8, $01, $80, $26, $28	; faked zero
 
 Obj21_Rings:	dc.b 3
 		dc.b $F8, $09, $80, $30, $DF	; Rings Counter
@@ -38,7 +39,8 @@ Obj21_Time:	dc.b 4
 		dc.b $F8, $01, $80, $28, $07	; First digit of Timer
 		dc.b $F8, $05, $80, $2C, $0F	; Second and third digit of Timer
 
-Obj21_Lives:	dc.b 5
+Obj21_Lives:	dc.b 6
+		dc.b $F8, $01, $80, $24, $C8	; the faked zero from the score counter
 		dc.b $F8, $05, $81, $12, $D0	; Deaths Counter
 		dc.b $F9, $01, $81, $0A, $E8	; D
 		dc.b $F9, $01, $80, $16, $F0	; E

@@ -666,8 +666,6 @@ BlackBars_SetHeight:
 		rts					; return
 ; ===========================================================================
 
-BlackBars.GHPTimer:		equ	$FFFFF5F0		; b
-BlackBars.GHPTimerReset:	equ	$FFFFF5F1		; b
 BlackBars.GHPCasual  = 80
 BlackBars.GHPFrantic = 60
 ; ---------------------------------------------------------------------------

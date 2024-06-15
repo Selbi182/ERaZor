@@ -9,10 +9,12 @@ Art_Buffer: 			equ 	$FFFFB000			;		Art buffer, used for decompression and transf
 Art_Buffer_End:			equ		$FFFFC000			;		WARNING! Buffer should be at least $1000 bytes for PLC system to work
 
 
-VBlank_MusicOnly:		equ		$FFFFF5ED			; b		
+VBlank_MusicOnly:		equ		$FFFFF5EB			; b		
 
-BlocksAddress:			equ		$FFFFF5EE			; l 	Address for level 16x16 blocks (uncompressed)
+BlocksAddress:			equ		$FFFFF5EC			; l 	Address for level 16x16 blocks (uncompressed)
 
+BlackBars.GHPTimer:		equ		$FFFFF5F0			; b
+BlackBars.GHPTimerReset:equ		$FFFFF5F1			; b
 BlackBars.BaseHeight:	equ		$FFFFF5F2			; w		Base height of black bars in pixels
 BlackBars.TargetHeight:	equ		$FFFFF5F4			; w		Target height of black bars in pixels
 BlackBars.Height:		equ		$FFFFF5F6			; w		Current height of black bars in pixels

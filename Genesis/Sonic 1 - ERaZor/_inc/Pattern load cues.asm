@@ -425,8 +425,8 @@ PLC_SSBlackout:
 ; Pattern load cues - ending sequence
 ; ---------------------------------------------------------------------------
 PLC_Ending:
-	;	dc.l ArtKospM_GHZ		; GHZ patterns
-	;	dc.w 0
+		dc.l ArtKospM_GHZ		; GHZ patterns
+		dc.w 0
 		dc.l ArtKospM_Stalk		; flower stalk
 		dc.w $6B00
 		dc.l ArtKospM_EndFlower	; flowers

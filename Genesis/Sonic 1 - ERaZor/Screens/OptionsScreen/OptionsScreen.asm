@@ -43,9 +43,11 @@ OptionsScreen:				; XREF: GameModeArray
 @loadtextart:	move.w	(a5)+,(a6)
 		dbf	d1,@loadtextart ; load uncompressed text patterns
 
+		VBlank_SetMusicOnly
 		move.l	#$64000002,4(a6)
 		lea	(ArtKospM_ERaZorNoBG).l,a0
 		jsr	KosPlusMDec_VRAM
+		VBlank_UnsetMusicOnly
 
 		lea	($FFFFD100).w,a0
 		move.b	#2,(a0)			; load ERaZor banner object

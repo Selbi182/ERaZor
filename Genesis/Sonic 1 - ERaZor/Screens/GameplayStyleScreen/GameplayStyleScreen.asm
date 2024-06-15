@@ -32,7 +32,7 @@ GameplayStyleScreen:
 		
 		move.l	#$40000000,($C00004).l		; load art
 		lea	($C00000).l,a6
-		lea	(ArtKospM_Credits).l,a0
+		lea	(ArtKospM_Difficulty).l,a0
 		jsr	KosPlusMDec_VRAM
 
 		lea	(Map_Difficulty).l,a1		; load maps

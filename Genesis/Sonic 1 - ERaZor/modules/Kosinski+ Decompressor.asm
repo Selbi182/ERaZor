@@ -25,34 +25,34 @@ KosPlusMDec_VRAM:
 	and.w	#$F000, d6
 	rol.w	#4, d6				; d6 = Number of 4kb blocks - 1
 	and.w	#$0FFF, d5			; is the size multiple of 4kb?
-	seq.b	d5					; d5 = 0 if not, -1 otherwise
+	seq.b	d5				; d5 = 0 if not, -1 otherwise
 	add.b	d5, d6				; reduce number of modules if size is multiple of 4kb
 
 	@decompress_module:
 		move.w	d6, -(sp)
 
-		lea		Art_Buffer, a1
-		jsr		KosPlusDec(pc)
+		lea	Art_Buffer, a1
+		jsr	KosPlusDec(pc)
 
-		assert.l	a1, ls, #Art_Buffer_End	; buffer shouldn't overflow
+		assert.l a1, ls, #Art_Buffer_End	; buffer shouldn't overflow
 
 		move.l	a0, -(sp)
-		lea		Art_Buffer, a0			; a0 = transfer source
+		lea	Art_Buffer, a0			; a0 = transfer source
 		move.w	a1, d1
-		sub.w	a0, d1					; d1 = bytes to transfer
-		lsr.w	#5, d1					; d1 = tiles to transfer
+		sub.w	a0, d1				; d1 = bytes to transfer
+		lsr.w	#5, d1				; d1 = tiles to transfer
 		subq.w	#1, d1
-		lea		VDP_Data, a6
+		lea	VDP_Data, a6
 
-		@transfer_loop:					; WARNING! Slow
+		@transfer_loop:				; WARNING! Slow
 			rept	$20/4
 				move.l	(a0)+, (a6)
 			endr
-			dbf		d1, @transfer_loop
+			dbf	d1, @transfer_loop
 
 		move.l	(sp)+, a0
 		move.w	(sp)+, d6
-		dbf		d6, @decompress_module
+		dbf	d6, @decompress_module
 		rts
 
 ; ---------------------------------------------------------------------------
@@ -113,7 +113,7 @@ KosPlusDec:
 
 @FetchNewCode:
 	_KosPlus_ReadBit
-	bcs.s	@FetchCodeLoop				; If code = 1, branch.
+	bcs.s	@FetchCodeLoop					; If code = 1, branch.
 
 	; Codes 00 and 01.
 	moveq	#-1,d5
@@ -145,7 +145,7 @@ KosPlusDec:
 	lsl.w	#5, d5						; d5 = %111HHHHH CCC00000.
 	move.b	(a0)+, d5					; d5 = %111HHHHH LLLLLLLL.
 	if (_KosPlus_LoopUnroll=3)
-		and.w	d7, d4						; d4 = %00000CCC.
+		and.w	d7, d4					; d4 = %00000CCC.
 	else
 		andi.w	#7, d4
 	endc

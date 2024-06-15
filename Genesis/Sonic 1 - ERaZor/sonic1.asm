@@ -10,7 +10,7 @@
 ; Programming/Beta Testing:	Fuzzy
 ; Music Ports:			DalekSam
 ;				Spanner
-; Sound Driver:			EduardoKnuckles
+; Sound Driver:			EduardoKnuckles	
 ; Main Beta Testing:		SonicVaan
 ; Beta/Real Hardware Testing:	SonicFan1
 ; Additional Beta Testing:	ajcox
@@ -22,7 +22,7 @@
 ; =======================================================
 
 	include	"Variables.asm"
-	include	"macros.asm"
+	include	"Macros.asm"
 
 ; ------------------------------------------------------
 ; Developer Assembly Options
@@ -35,62 +35,6 @@ DieInDebug = 0
 
 DoorsAlwaysOpen = 1
 LowBossHP = 1
-
-; ------------------------------------------------------
-; Macros
-; ------------------------------------------------------
-; align macro for ASM68k
-align	macro
-	cnop 0,\1
-	endm
-
-; Enable/disable display
-display_enable	macro
-	move.w	($FFFFF60C).w,d0	; enable screen output
-	ori.b	#$40,d0
-	move.w	d0,($C00004).l
-	endm
-display_disable	macro
-	move.w	($FFFFF60C).w,d0	; disable screen output
-	andi.b	#$BF,d0
-	move.w	d0,($C00004).l
-	endm
-
-; Enable/disable interrupts
-ints_enable	macro
-	move	#$2300,sr
-	endm
-ints_disable	macro
-	move	#$2700,sr
-	endm
-
-ints_push	macro
-	move.w	sr,-(sp)
-	ints_disable
-	endm
-ints_pop	macro
-	move.w	(sp)+,sr
-	endm
-
-; Set VDP to VRAM write
-vram	macro	offset,operand
-	if (narg=1)
-		move.l	#($40000000+(((\offset)&$3FFF)<<16)+(((\offset)&$C000)>>14)),($C00004).l
-	else
-		move.l	#($40000000+(((\offset)&$3FFF)<<16)+(((\offset)&$C000)>>14)),\operand
-	endc
-	endm
-	
-; VRAM write access constant
-DCvram	macro	offset
-	dc.l	($40000000+(((\offset)&$3FFF)<<16)+(((\offset)&$C000)>>14))
-	endm
-
-; Test if Frantic Mode is enabled in the gameplay style options
-frantic macro
-	btst	#5,($FFFFFF92).w	; 0 = casual // 1 = frantic
-	endm
-
 
 ; ------------------------------------------------------
 ; Object variables

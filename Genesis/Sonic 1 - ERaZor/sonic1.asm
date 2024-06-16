@@ -4913,6 +4913,8 @@ ClearEverySpecialFlag:
 ; -------------------------------------------------------------------------------
 
 GHZ_MakeBlocksHigh:
+		rts	; TODO: do this the proper way
+
 		movem.l	d1-a2,-(sp)		; backup d1 to a2
 
 		lea	(MBH_Array).l,a2	; set a2 to block ID array
@@ -5234,33 +5236,25 @@ loc_463C:
 		lea	($FFFFD000).w,a1
 		moveq	#0,d0
 		move.w	#$7FF,d1
-
-SS_ClrObjRam:
-		move.l	d0,(a1)+
+SS_ClrObjRam:	move.l	d0,(a1)+
 		dbf	d1,SS_ClrObjRam	; clear	the object RAM
 
 		lea	($FFFFF700).w,a1
 		moveq	#0,d0
 		move.w	#$3F,d1
-
-SS_ClrRam:
-		move.l	d0,(a1)+
+SS_ClrRam:	move.l	d0,(a1)+
 		dbf	d1,SS_ClrRam	; clear	variables
 
 		lea	($FFFFFE60).w,a1
 		moveq	#0,d0
 		move.w	#$27,d1
-
-SS_ClrRam2:
-		move.l	d0,(a1)+
+SS_ClrRam2:	move.l	d0,(a1)+
 		dbf	d1,SS_ClrRam2	; clear	variables
 
 		lea	($FFFFAA00).w,a1
 		moveq	#0,d0
 		move.w	#$7F,d1
-
-SS_ClrNemRam:
-		move.l	d0,(a1)+
+SS_ClrNemRam:	move.l	d0,(a1)+
 		dbf	d1,SS_ClrNemRam	; clear	Nemesis	buffer
 
 		lea	PLC_TitleCard, a1
@@ -14977,12 +14971,22 @@ Obj22_NotInhumanCrush:
 		move.b	#0,obColType(a0)	; make the buzz bomber not destroyable
 		cmpi.w	#$000,($FFFFFE10).w	; is level GHZ1?
 		bne.s	Obj22_NotGHZ1		; if not, branch
+		move.w	#$0444,obGfx(a0)	; use default palette line
 		cmpi.w	#$13C0,obX(a0)		; is buzz bomber before $13C0?
 		bmi.s	Obj22_NotGHZ1		; if yes, branch
 		cmpi.w	#$1800,obX(a0)		; is buzz bomber after $1800?
 		bpl.s	Obj22_NotGHZ1		; if yes, branch
+		
+		; buzz bomber is in waterfall section
 		move.b	#0,obColType(a0)	; make the buzz bomber not destroyable
-				
+		move.b	($FFFFFE0F).w,d0
+		btst	#1,d0			; every other pair of frames
+		beq.s	@0
+		move.w	#$6444,obGfx(a0)	; use fourth palette line
+		btst	#0,d0			; every third frame
+		beq.s	@0
+		move.w	#$2444,obGfx(a0)	; use second palette line
+@0:
 		frantic				; are we in Frantic mode?
 		beq.w	Obj22_MoveEnd		; if not, disable movement
 	

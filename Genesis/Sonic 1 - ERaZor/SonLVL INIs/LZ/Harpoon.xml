@@ -2,11 +2,11 @@
 <ObjDef xmlns="http://www.sonicretro.org" Name="Harpoon" Image="vertical" RememberState="true">
   <Images>
     <ImageFromMappings id="horizontal">
-      <ArtFile filename="../artnem/lzharpoo.bin"/>
+      <ArtFile filename="../artkosp/lzharpoo.kospm"/>
       <MapFile type="ASM" filename="../_maps/obj16.asm" frame="0" startpal="0"/>
     </ImageFromMappings>
     <ImageFromMappings id="vertical">
-      <ArtFile filename="../artnem/lzharpoo.bin"/>
+      <ArtFile filename="../artkosp/lzharpoo.kospm"/>
       <MapFile type="ASM" filename="../_maps/obj16.asm" frame="3" startpal="0"/>
     </ImageFromMappings>
   </Images>

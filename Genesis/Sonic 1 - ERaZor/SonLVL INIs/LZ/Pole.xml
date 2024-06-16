@@ -2,7 +2,7 @@
 <ObjDef xmlns="http://www.sonicretro.org" Name="Pole" Image="img1">
   <Images>
     <ImageFromMappings id="img1">
-      <ArtFile filename="../artnem/lzpole.bin"/>
+      <ArtFile filename="../artkosp/lzpole.kospm"/>
       <MapFile type="ASM" filename="../_maps/obj0B.asm" frame="0" startpal="2"/>
     </ImageFromMappings>
   </Images>

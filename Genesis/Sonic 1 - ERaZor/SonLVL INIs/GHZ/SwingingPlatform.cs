@@ -14,9 +14,9 @@ namespace S1ObjectDefinitions.GHZ
 
 		public override void Init(ObjectData data)
 		{
-			imgwreckingball = ObjectHelper.MapASMToBmp(ObjectHelper.OpenArtFile("../artnem/ghzball.bin", CompressionType.Nemesis), "../_maps/obj48.asm", 1, 2);
+			imgwreckingball = ObjectHelper.MapASMToBmp(ObjectHelper.OpenArtFile("../artkosp/ghzball.kospm", CompressionType.Nemesis), "../_maps/obj48.asm", 1, 2);
 			for (int i = 0; i < labels.Length; i++)
-				imgs.Add(ObjectHelper.MapASMToBmp(ObjectHelper.OpenArtFile("../artnem/ghzswing.bin", CompressionType.Nemesis), "../_maps/obj15ghz.asm", labels[i], i == 1 ? 0 : 2));
+				imgs.Add(ObjectHelper.MapASMToBmp(ObjectHelper.OpenArtFile("../artkosp/ghzswing.kospm", CompressionType.Nemesis), "../_maps/obj15ghz.asm", labels[i], i == 1 ? 0 : 2));
 		}
 
 		public override ReadOnlyCollection<byte> Subtypes

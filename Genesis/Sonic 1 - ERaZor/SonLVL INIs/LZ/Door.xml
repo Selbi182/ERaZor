@@ -2,11 +2,11 @@
 <ObjDef xmlns="http://www.sonicretro.org" Name="Door" Image="vertical" RememberState="true">
   <Images>
     <ImageFromMappings id="vertical">
-      <ArtFile filename="../artnem/lzvdoor.bin"/>
+      <ArtFile filename="../artkosp/lzvdoor.kospm"/>
       <MapFile type="ASM" filename="../_maps/obj56.asm" frame="6" startpal="2"/>
     </ImageFromMappings>
     <ImageFromMappings id="horizontal">
-      <ArtFile filename="../artnem/lzhdoor.bin" offset="1088"/>
+      <ArtFile filename="../artkosp/lzhdoor.kospm" offset="1088"/>
       <MapFile type="ASM" filename="../_maps/obj56.asm" frame="7" startpal="2"/>
     </ImageFromMappings>
   </Images>

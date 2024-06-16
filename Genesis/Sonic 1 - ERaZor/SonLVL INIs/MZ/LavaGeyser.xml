@@ -2,7 +2,7 @@
 <ObjDef xmlns="http://www.sonicretro.org" Name="lava geyser/lavafall producer" Image="img1">
   <Images>
     <ImageFromMappings id="img1">
-      <ArtFile filename="../artnem/mzlava.bin"/>
+      <ArtFile filename="../artkosp/mzlava.kospm"/>
       <MapFile type="ASM" filename="../_maps/obj4C.asm" frame="4" startpal="3"/>
     </ImageFromMappings>
   </Images>

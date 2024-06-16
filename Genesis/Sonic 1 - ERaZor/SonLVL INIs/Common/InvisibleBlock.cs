@@ -12,7 +12,7 @@ namespace S1ObjectDefinitions.Common
 
 		public override void Init(ObjectData data)
 		{
-			byte[] artfile = ObjectHelper.OpenArtFile("../artnem/monitors.bin", CompressionType.Nemesis);
+			byte[] artfile = ObjectHelper.OpenArtFile("../artkosp/monitors.kospm", CompressionType.Nemesis);
 			img = ObjectHelper.MapASMToBmp(artfile, "../_maps/obj71.asm", 0, 0);
 		}
 

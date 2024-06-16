@@ -14,7 +14,7 @@ namespace S1ObjectDefinitions.LZ
 
 		public override void Init(ObjectData data)
 		{
-			byte[] artfile = ObjectHelper.OpenArtFile("../artnem/lzspball.bin", CompressionType.Nemesis);
+			byte[] artfile = ObjectHelper.OpenArtFile("../artkosp/lzspball.kospm", CompressionType.Nemesis);
 			img = ObjectHelper.MapASMToBmp(artfile, "../_maps/obj57lz.asm", 1, 0);
 			for (int i = 0; i < labels.Length; i++)
 				imgs.Add(ObjectHelper.MapASMToBmp(artfile, "../_maps/obj57lz.asm", labels[i], 0));

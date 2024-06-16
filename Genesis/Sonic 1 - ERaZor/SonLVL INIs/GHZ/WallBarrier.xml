@@ -2,15 +2,15 @@
 <ObjDef xmlns="http://www.sonicretro.org" Name="Wall Barrier" Image="img1">
   <Images>
     <ImageFromMappings id="img1">
-      <ArtFile filename="../artnem/ghzwall2.bin"/>
+      <ArtFile filename="../artkosp/ghzwall2.kospm"/>
       <MapFile type="ASM" filename="../_maps/obj44.asm" frame="0" startpal="2"/>
     </ImageFromMappings>
     <ImageFromMappings id="img2">
-      <ArtFile filename="../artnem/ghzwall2.bin"/>
+      <ArtFile filename="../artkosp/ghzwall2.kospm"/>
       <MapFile type="ASM" filename="../_maps/obj44.asm" frame="1" startpal="2"/>
     </ImageFromMappings>
     <ImageFromMappings id="img3">
-      <ArtFile filename="../artnem/ghzwall2.bin"/>
+      <ArtFile filename="../artkosp/ghzwall2.kospm"/>
       <MapFile type="ASM" filename="../_maps/obj44.asm" frame="2" startpal="2"/>
     </ImageFromMappings>
   </Images>

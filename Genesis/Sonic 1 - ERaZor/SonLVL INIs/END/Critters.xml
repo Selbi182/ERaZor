@@ -2,31 +2,31 @@
 <ObjDef xmlns="http://www.sonicretro.org" Name="Ending Animals" Image="img1" RememberState="true">
   <Images>
     <ImageFromMappings id="img1">
-      <ArtFile filename="../artnem/blackbrd.bin"/>
+      <ArtFile filename="../artkosp/blackbrd.kospm"/>
       <MapFile type="ASM" filename="../_maps/obj28.asm" frame="2" startpal="0" />
     </ImageFromMappings>
     <ImageFromMappings id="img2">
-      <ArtFile filename="../artnem/pig.bin"/>
+      <ArtFile filename="../artkosp/pig.kospm"/>
       <MapFile type="ASM" filename="../_maps/obj28b.asm" frame="2" startpal="0" />
     </ImageFromMappings>
     <ImageFromMappings id="img3">
-      <ArtFile filename="../artnem/chicken.bin"/>
+      <ArtFile filename="../artkosp/chicken.kospm"/>
       <MapFile type="ASM" filename="../_maps/obj28a.asm" frame="2" startpal="0" />
     </ImageFromMappings>
     <ImageFromMappings id="img4">
-      <ArtFile filename="../artnem/squirrel.bin"/>
+      <ArtFile filename="../artkosp/squirrel.kospm"/>
       <MapFile type="ASM" filename="../_maps/obj28.asm" frame="2" startpal="0" />
     </ImageFromMappings>
     <ImageFromMappings id="img5">
-      <ArtFile filename="../artnem/flicky.bin"/>
+      <ArtFile filename="../artkosp/flicky.kospm"/>
       <MapFile type="ASM" filename="../_maps/obj28a.asm" frame="2" startpal="0" />
     </ImageFromMappings>
     <ImageFromMappings id="img6">
-      <ArtFile filename="../artnem/seal.bin"/>
+      <ArtFile filename="../artkosp/seal.kospm"/>
       <MapFile type="ASM" filename="../_maps/obj28a.asm" frame="2" startpal="0" />
     </ImageFromMappings>
     <ImageFromMappings id="img7">
-      <ArtFile filename="../artnem/rabbit.bin"/>
+      <ArtFile filename="../artkosp/rabbit.kospm"/>
       <MapFile type="ASM" filename="../_maps/obj28.asm" frame="2" startpal="0" />
     </ImageFromMappings>
   </Images>

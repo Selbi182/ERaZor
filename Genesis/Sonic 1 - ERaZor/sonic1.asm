@@ -10686,9 +10686,9 @@ Resize_FZend2:
 		blo.s	@0
 		addq.b	#2,($FFFFF742).w	; go to escape sequence code
 
-		vram	$93A0			; load prison capsule graphics
+		vram	$6000			; load prison capsule graphics
 		lea	(Unc_Prison).l,a0
-		move.w	#($600)-1, d1
+		move.w	#($16A0)-1, d1
 
 @PrisonLoad:
 		move.w	(a0)+, ($C00000).l
@@ -18891,11 +18891,14 @@ loc_BDD6:
 		; move.w	#$B7,d0			; play LZ rumbling sound
 		move.w	#$C3,d0			; play giant ring sound
 		jsr	(PlaySound).l
-		bra.s	Obj32_ShowPressed
+		bra.w	Obj32_ShowPressed
 
 @notmzswitch:
 		cmpi.b	#$5,($FFFFFE10).w	; is this the tutorial or FP?
 		bne.s	@nottutorialswitch	; if not, branch
+		cmpi.b	#$2,($FFFFFE11).w	; specifically FP?
+		beq.s	@Explode	; if yes, branch
+
 	;	tst.b	($FFFFFF77).w		; is antigrav already enabled?
 	;	bne.w	Obj32_ShowPressed	; if yes, branch
 		move.b	#1,($FFFFFF77).w	; enable antigrav ability
@@ -18932,6 +18935,20 @@ loc_BDD6:
 		jsr	PlaySound
 		
 		bsr.w	SetupSAPItems
+
+@Explode:
+		lea		$FFFFD000,a1
+		addq.w	#8,obY(a1)
+		bset	#1,obStatus(a1) ; in air
+		bset	#2,obStatus(a1) ; rolling
+		bclr	#3,obStatus(a1) ; not standing
+		move.b	#$25,obAnim(a1)	; use inhuman rotate animation
+		move.b	#2,obRoutine(a1)
+		move.w	#-$1800,obVelY(a1)	; move Sonic upwards
+
+		move.b	#$3F,0(a0)	; load explosion object
+		move.b	#0,obRoutine(a0)
+		rts
 
 Obj32_ShowPressed:
 		bset	d3,(a3)
@@ -43192,6 +43209,7 @@ Obj86_Generator:			; XREF: Obj86_Index
 
 @Explode:
 		move.b	#$3F,0(a0)	; load explosion object
+		move.b	#0,obRoutine(a0)
 		rts
 
 loc_1A850:
@@ -43421,7 +43439,7 @@ Obj3E_Var:	dc.b 2,	$20, 4,	0	; routine, width, priority, frame
 
 Obj3E_Main:				; XREF: Obj3E_Index
 		move.l	#Map_obj3E,obMap(a0)
-		move.w	#$49D,obGfx(a0)
+		move.w	#$6000/$20,obGfx(a0)
 		move.b	#4,obRender(a0)
 		move.w	obY(a0),$30(a0)
 		moveq	#0,d0
@@ -45489,11 +45507,6 @@ Emershit:
 	;	move.w	#$00F8,($FFFFD3CA).w		; set Y-position
 		
 		move.b	#1,($FFFFF7CC).w		; lock controls
-		move.l	a0,-(sp)
-		move.l	#$72E00003,($C00004).l
-		lea	(ArtKospM_CropScreen).l,a0
-		jsr	KosPlusMDec_VRAM
-		move.l	(sp)+,a0
 		bra.s	Obj09_YesEmer
 
 Obj09_NoSpecial2:
@@ -46594,7 +46607,7 @@ Obj21_ChkTime:
 		move.b	#4,obFrame(a0)		; use TIME frame (3 is the red ring frame, so we have to use 4)
 		move.w	#$AD,obX(a0)		; set X-position
 		move.w	#$43,obScreenY(a0)
-		move.w	#$14F,$38(a0)		; set Y-position
+		move.w	#$14B,$38(a0)		; set Y-position
 		bra.s	Obj21_FrameSelected	; skip
 
 ; ===========================================================================
@@ -47769,8 +47782,6 @@ ArtKospM_Shield:	incbin	artkosp\shield.kospm	; shield
 ArtKospM_Stars:	incbin	artkosp\invstars.kospm	; invincibility stars
 		even
 ArtKospM_TutHUD:	incbin	artkosp\TutorialHUD.kospm	; tutorial HUD
-		even
-ArtKospM_CroPScreen:	incbin	artkosp\CropScreen.kospm	; cropped screen
 		even
 ArtKospM_UMadBro:	incbin	artkosp\UMadBro.kospm	; U Mad Bro?!
 		even

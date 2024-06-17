@@ -31,7 +31,7 @@ QuickLevelSelect = 0
 QuickLevelSelect_ID = $502
 
 DebugModeDefault = 1
-DieInDebug = 0
+DieInDebug = 1
 
 DoorsAlwaysOpen = 1
 LowBossHP = 1
@@ -4863,7 +4863,6 @@ ClearEverySpecialFlag:
 		clr.w	($FFFFFF9C).w
 		clr.l	($FFFFFFA0).w	; clear RAM adresses $FFA0-$FFA3 (4 flags)
 		clr.w	($FFFFFFA4).w	; $FFA4-$FFA5	(2)
-		clr.b	($FFFFFFA6).w	; $FFA6		(1)
 		clr.l	($FFFFFFA8).w	; $FFA8-$FFAB	(4)
 		clr.l	($FFFFFFAC).w	; $FFAC-$FFAF	(4)
 		clr.l	($FFFFFFB0).w	; $FFB0-$FFB3	(4)
@@ -4880,48 +4879,6 @@ ClearEverySpecialFlag:
 		rts
 ; End of function ClearEverySpecialFlag
 	
-
-; ===============================================================================
-; -------------------------------------------------------------------------------
-; Subroutine to set blocks to high plane in the GHZ1 waterfall section
-; -------------------------------------------------------------------------------
-
-GHZ_MakeBlocksHigh:
-		rts	; TODO: do this the proper way
-
-		movem.l	d1-a2,-(sp)		; backup d1 to a2
-
-		lea	(MBH_Array).l,a2	; set a2 to block ID array
-		moveq	#12,d2			; set number of loops to 12 (13 blocks)
-
-MBH_Loop:
-		move.w	(a2)+,d1		; get current entry
-		lsl.w	#3,d1			; multiply d1 by 8
-		add.w	#$B000,d1		; add $B000 to d1
-		movea.w	d1,a1			; set result to a1
-		bset	#7,0(a1)		; make 1st tile high plane
-		bset	#7,obGfx(a1)		; make 2nd tile high plane
-		bset	#7,obMap(a1)		; make 3rd tile high plane
-		bset	#7,6(a1)		; make 4th tile high plane
-		tst.b	d0			; is d0 set?
-		beq.s	MBH_Skip		; if not, branch
-		bclr	#7,0(a1)		; make 1st tile low plane again
-		bclr	#7,obGfx(a1)		; make 2nd tile low plane again
-		bclr	#7,obMap(a1)		; make 3rd tile low plane again
-		bclr	#7,6(a1)		; make 4th tile low plane again
-
-MBH_Skip:
-		dbf	d2,MBH_Loop		; loop
-		
-		movem.l	(sp)+,d1-a2		; restore d1 to a2
-		rts				; return
-
-; ===============================================================================
-; -------------------------------------------------------------------------------
-MBH_Array:	; 13 entries
-		dc.w	$001, $06E, $072, $073, $076, $077, $0B6, $0B8, $0F1, $0F2, $140, $1A9, $1AA
-; -------------------------------------------------------------------------------
-; ===============================================================================
 
 ; ---------------------------------------------------------------------------
 ; Collision index loading subroutine
@@ -5416,7 +5373,7 @@ SS_EndClrObjRamX:
 		move.b	#6,($FFFFFF9E).w	; set number for text to 6
 		tst.b	($FFFFFF5F).w	;  is this the blackout special stage?
 		beq.s	@cont3
-		move.b	#$B,($FFFFFF9E).w	; set number for text to A
+		move.b	#9,($FFFFFF9E).w	; set number for text to 9
 
 @cont3:
 		move.b	#$20,($FFFFF600).w	; set to info screen
@@ -10443,6 +10400,7 @@ Resize_SYZx:	dc.w Resize_SYZ1-Resize_SYZx
 		dc.w Resize_SYZ3-Resize_SYZx
 ; ===========================================================================
 
+; Resize_Uberhub:
 Resize_SYZ1:
 		move.w	#$21C,($FFFFF726).w	; default boundary bottom
 		
@@ -10766,7 +10724,7 @@ Resize_FZEscape_Nuke:
 		move.w	#0,($FFFFF72C).w	; unlock controls
 
 		move.b	#1,($FFFFFE2E).w	; speed up the BG music
-		move.w	#$4B0,($FFFFD034).w	; give Sonic super speed to make the walking-left part less tedious
+		move.w	#180*60,($FFFFD034).w	; give Sonic super speed to make the walking-left part less tedious
 
 @0:
 		rts
@@ -11884,12 +11842,6 @@ Obj18_SetFrame:
 		move.b	d1,obFrame(a0)	; set frame to d1
 
 Obj18_Solid:				; XREF: Obj18_Index
-		bclr	#7,obGfx(a0)		; make object low plane
-		tst.b	($FFFFFFA6).w		; is flag set?
-		beq.s	Obj18_NoHigh		; if not, branch
-		bset	#7,obGfx(a0)		; otherwise make object high plane
-
-Obj18_NoHigh:
 		tst.b	$38(a0)
 		beq.s	loc_7EE0
 		subq.b	#4,$38(a0)
@@ -12363,13 +12315,7 @@ Obj19_Return:
 Obj19_DoAfter:
 		cmpi.b	#6,($FFFFD024).w	; is Sonic dying?
 		bhs.s	Obj19_Remove		; if yes, branch
-		
-		bclr	#7,obGfx(a0)		; make object low plane
-		tst.b	($FFFFFFA6).w		; are we in the waterfall section in GHZ1?
-		beq.s	Obj19_NoHigh		; if not, branch
-		bset	#7,obGfx(a0)		; otherwise make object high plane (in front of the waterfall)
 
-Obj19_NoHigh:
 		addq.b	#2,obRoutine(a0)		; increase routine counter
 		move.b	($FFFFFE05).w,d0	; copy the game frame timer to d0
 		and.b	$30(a0),d0		; and it by the number in $30(a0) (each after image sprite is flashing a bit more than the rest)
@@ -13528,12 +13474,7 @@ Obj27_NoCamShake:
 Obj27_Animate:				; XREF: Obj27_Index
 		jsr	SpeedToPos
 		subi.w	#$10,obVelY(a0)
-		bclr	#7,obGfx(a0)		; make object low plane
-		tst.b	($FFFFFFA6).w		; is flag set?
-		beq.s	Obj27_NoHigh		; if not, branch
-		bset	#7,obGfx(a0)		; otherwise make object high plane
 
-Obj27_NoHigh:
 	;	tst.b	obRender(a0)
 	;	bpl.w	Obj27_Delete
 		subq.b	#1,obTimeFrame(a0)	; subtract 1 from frame	duration
@@ -13672,12 +13613,7 @@ Obj3F_PlaySound:
 Obj3F_Animate:				; XREF: Obj3F_Index
 		jsr	SpeedToPos
 		subi.w	#$10,obVelY(a0)
-		bclr	#7,obGfx(a0)		; make object low plane
-		tst.b	($FFFFFFA6).w		; is flag set?
-		beq.s	Obj3F_NoHigh		; if not, branch
-		bset	#7,obGfx(a0)		; otherwise make object high plane
 
-Obj3F_NoHigh:
 	;	tst.b	obRender(a0)
 	;	bmi.w	Obj3F_Delete
 		subq.b	#1,obTimeFrame(a0)	; subtract 1 from frame	duration
@@ -15420,12 +15356,6 @@ loc_9C0E:
 ; ---------------------------------------------------------------------------
 
 Obj25_Animate:				; XREF: Obj25_Index
-		bclr	#7,obGfx(a0)		; make object low plane
-		tst.b	($FFFFFFA6).w		; is flag set?
-		beq.s	Obj25_NoHigh		; if not, branch
-		bset	#7,obGfx(a0)		; otherwise make object high plane
-
-Obj25_NoHigh:
 		tst.b	($FFFFFFE7).w		; inhuman?
 		bne.s	Obj25_NoRingMove	; if yes, disable ring move
 
@@ -15439,8 +15369,10 @@ Obj25_NoHigh:
 
 Obj25_LostShield:
 		move.b	#$37,0(a0)		; change ring object to bouncing ring object, to give this decent effect
-		move.b	#2,obRoutine(a0)		; make sure the ring just bounces, we don't want to loose 10 rings
+		move.b	#2,obRoutine(a0)	; make sure the ring just bounces, we don't want to loose 10 rings
  		move.b	#-1,($FFFFFEC6).w	; without this line all hell breaks loose
+ 		bra.s	Obj25_NoRingMove
+ 
 Obj25_DoCheck:
 		tst.b	($FFFFFE2C).w		; is Sonic having a shield?
 		beq.s	Obj25_NoRingMove	; if not, branch
@@ -15529,11 +15461,9 @@ CollectRing:				; XREF: Obj25_Collect
 ; ---------------------------------------------------------------------------
 ;=============================================
 ;Speed for the rings, once they are moving
-; Standard = 2
-AttractedRing_Speed = 2
+AttractedRing_Speed = 3
 ;=============================================
 ;Required distance for a ring to get attracted
-; Standard = $60
 AttractedRing_Dist = $50
 ;=============================================
 
@@ -15544,86 +15474,37 @@ AttractedRing_Check:
 		sub.w	($FFFFD008).w,d0	; minus sonic's X pos from it
 		bpl.w	Ring_XChk		; if answer is possitive, branch
 		neg.w	d0			; reverse d0
-
-Ring_XChk:
-		cmpi.w	#AttractedRing_Dist,d0	; is sonic within XX pixels of the ring?
-		bge.w	Obj25_NoRingMove	; if not, branch
+Ring_XChk:	cmpi.w	#AttractedRing_Dist,d0	; is sonic within XX pixels of the ring?
+		bge.s	NoRingMove		; if not, branch
 
 		move.w	obY(a0),d1		; load object's Y pos
 		sub.w	($FFFFD00C).w,d1	; minus sonic's Y pos from it
 		bpl.w	Ring_YChk		; if answer is possitive, branch
 		neg.w	d1			; reverse d1
-
-Ring_YChk:
-		cmpi.w	#AttractedRing_Dist,d1	; is sonic within XX pixels of the object?
-		bge.w	Obj25_NoRingMove	; if not, branch
+Ring_YChk:	cmpi.w	#AttractedRing_Dist,d1	; is sonic within XX pixels of the object?
+		bge.s	NoRingMove		; if not, branch
 		move.b	#1,$29(a0)		; set to near enough, so the ring doesn't stop tracking you
-		rts
 
+NoRingMove:
+		rts
 ; ===========================================================================
+
 AttractedRing_Move:
-		cmpi.w	#$200,($FFFFFE10).w	; is this Ruined Place?
-		bne.s	@cont
-		tst.b	($FFFFFFE7).w		; inhuman?
-		beq.s	@cont
-		rts
-
-@cont:
 		moveq	#0,d0			; clear d0
 		moveq	#0,d1			; clear d1
 		moveq	#0,d2			; clear d2
-		move.w	#$30,d1			; important, but I've no Idea what $30 is
-		move.w	($FFFFD008).w,d0	; move Sonic's X-position to d0
-		cmp.w	obX(a0),d0		; is the ring's X-pos greater than Sonic's one?
-		bgt.s	Ring_XPos_Greater	; if yes, branch
-		neg.w	d1			; negate the speed we are going to use
-		tst.w	obVelX(a0)			; is the ring's X-speed negative?
-		bmi.s	Ring_XMove		; if yes, branch
-		move.b	#AttractedRing_Speed,d2	; set ring moving speed
-Ring_XSpeed_Loop1:
-		add.w	d1,d1			; double the speed we are going to use
-		dbf	d2,Ring_XSpeed_Loop1	; repeat
-		bra.s	Ring_XMove		; skip Ring_XPos_Greater
-; ===========================================================================
 
-Ring_XPos_Greater:
-		tst.w	obVelX(a0)			; is the ring's X-speed positive?
-		bpl.s	Ring_XMove		; if yes, branch
-		move.b	#AttractedRing_Speed,d2	; set ring moving speed
-Ring_XSpeed_Loop2:
-		add.w	d1,d1			; double the speed we are going to use
-		dbf	d2,Ring_XSpeed_Loop2	; repeat
-
-Ring_XMove:
-		add.w	d1,obVelX(a0)		; move the final calculated speed to ring's X-speed
-
-		moveq	#0,d0			; clear d0
-		moveq	#0,d1			; clear d1
-		moveq	#0,d2			; clear d2
-		move.w	#$30,d1			; again, important, but I've no Idea what $30 is
-		move.w	($FFFFD00C).w,d0	; move Sonic's Y-position to d0
-		cmp.w	obY(a0),d0		; is the ring's Y-pos greater than Sonic's one?
-		bcc.s	Ring_YPos_Greater	; if yes, branch
-		neg.w	d1			; negate the speed we are going to use
-		tst.w	obVelY(a0)			; is the ring's Y-speed negative?
-		bmi.s	Ring_YMove		; if yes, branch
-		move.b	#AttractedRing_Speed,d2	; set ring moving speed
-Ring_YSpeed_Loop1:
-		add.w	d1,d1			; double the speed we are going to use
-		dbf	d2,Ring_YSpeed_Loop1	; repeat
-		bra.s	Ring_YMove		; skip Ring_YPos_Greater
-; ===========================================================================
-
-Ring_YPos_Greater:
-		tst.w	obVelY(a0)			; is the ring's Y-speed positive?
-		bpl.s	Ring_YMove		; if yes, branch
-		move.b	#AttractedRing_Speed,d2	; set ring moving speed
-Ring_YSpeed_Loop2:
-		add.w	d1,d1			; double the speed we are going to use
-		dbf	d2,Ring_YSpeed_Loop2	; repeat
-
-Ring_YMove:
-		add.w	d1,obVelY(a0)		; move the final calculated speed to ring's Y-speed
+		move.w	($FFFFD008).w,d1	; load Sonic's X-pos into d1
+		sub.w	obX(a0),d1		; sub ring's X-pos from it
+		move.w	($FFFFD00C).w,d2	; load Sonic's Y-pos into d2
+		sub.w	obY(a0),d2		; sub ring's Y-pos from it
+		jsr	CalcAngle		; calculate the angle
+		jsr	CalcSine		; calculate the sine
+		asl.w	#AttractedRing_Speed,d0
+		asl.w	#AttractedRing_Speed,d1
+		
+		move.w	d1,obVelX(a0)		; move the final calculated speed to ring's Y-speed
+		move.w	d0,obVelY(a0)		; move the final calculated speed to ring's Y-speed
 		jmp	SpeedToPos		; let SpeedToPos do the rest
 ; End of function AttractedRing_Move
 
@@ -15633,12 +15514,6 @@ Ring_YMove:
 ; ---------------------------------------------------------------------------
 
 Obj37:					; XREF: Obj_Index
-		cmpi.w	#$001,($FFFFFE10).w
-		bne.s	Obj37_NotGHZ2
-		rts
-; ===========================================================================
-
-Obj37_NotGHZ2:
 		moveq	#0,d0
 		move.b	obRoutine(a0),d0
 		move.w	Obj37_Index(pc,d0.w),d1
@@ -15652,6 +15527,11 @@ Obj37_Index:	dc.w Obj37_CountRings-Obj37_Index
 ; ===========================================================================
 
 Obj37_CountRings:			; XREF: Obj37_Index
+		cmpi.w	#$001,($FFFFFE10).w
+		bne.s	Obj37_NotGHZ2
+		jmp	DeleteObject
+
+Obj37_NotGHZ2:
 		move.b	#50,$32(a0)	; set delay before rings are getting attracted
 		movea.l	a0,a1
 		moveq	#0,d5
@@ -15791,23 +15671,26 @@ Obj37_Play:
 ; ---------------------------------------------------------------------------
 
 Obj37_Bounce:				; XREF: Obj37_Index
-		bclr	#7,obGfx(a0)		; make object low plane
-		tst.b	($FFFFFFA6).w		; is flag set?
-		beq.s	Obj37_NoHigh		; if not, branch
-		bset	#7,obGfx(a0)		; otherwise make object high plane
-
-Obj37_NoHigh:
 		tst.b	$30(a0)			; is this the multi read balls (crabmeat)?
 		bne.s	Obj37_NoRingsMove	; if yes, branch
-		
-		tst.b	($FFFFFE2C).w		; does sonic have a shield?
-		bne.s	Obj37_MoveRing		; if yes, branch
-		bra.s	Obj37_NoRingsMove	; otherwise, don't move rings
 
-Obj37_MoveRing:
-		subq.b	#1,$32(a0)		; sub 1 from delay, before rings are getting attracted
-		bpl.s	Obj37_NoRingsMove	; if there's time left, branch
-		bsr	AttractedRing_Move	; move rings
+		tst.b	$29(a0)			; was ring already set to follow you?
+		beq.s	Obj37_DoCheck		; if not, branch
+		tst.b	($FFFFFE2C).w		; is sonic still having a shield?
+		beq.s	Obj37_LostShield	; if not, branch
+		bsr	AttractedRing_Move	; move the ring
+		bra.s	Obj37_NoRingsMove
+
+Obj37_LostShield:
+		move.b	#$37,0(a0)		; change ring object to bouncing ring object, to give this decent effect
+		move.b	#2,obRoutine(a0)	; make sure the ring just bounces, we don't want to loose 10 rings
+ 		move.b	#-1,($FFFFFEC6).w	; without this line all hell breaks loose
+ 		bra.s	Obj37_NoRingsMove
+ 
+Obj37_DoCheck:
+		tst.b	($FFFFFE2C).w		; is Sonic having a shield?
+		beq.s	Obj37_NoRingsMove	; if not, branch
+		bsr	AttractedRing_Check	; do the check
 
 Obj37_NoRingsMove:
 		move.b	($FFFFFEC7).w,obFrame(a0)
@@ -16543,12 +16426,6 @@ Obj26_NotBroken:			; XREF: Obj26_Main
 		move.b	obSubtype(a0),obAnim(a0)	; copy subtype to animation
 
 Obj26_Solid:				; XREF: Obj26_Index
-		bclr	#7,obGfx(a0)		; make object low plane
-		tst.b	($FFFFFFA6).w		; is flag set?
-		beq.s	Obj26_NoHigh		; if not, branch
-		bset	#7,obGfx(a0)		; otherwise make object high plane
-
-Obj26_NoHigh:
 		cmpi.w	#$502,($FFFFFE10).w
 		beq.s	Obj26_SetToNormal
 		move.w	($FFFFD014).w,d2	; move Sonic's interia to d2
@@ -16887,7 +16764,7 @@ Obj2E_ChkShoes:
 		cmpi.b	#3,d0		; does monitor contain speed shoes?
 		bne.s	Obj2E_ChkShield
 		move.b	#1,($FFFFFE2E).w ; speed up the	BG music
-		move.w	#$4B0,($FFFFD034).w ; time limit for the power-up
+		move.w	#20*60,($FFFFD034).w ; time limit for the power-up (20 seconds)
 		
 		move.w	#Sonic_TopSpeed_Shoes,($FFFFF760).w ; change Sonic's top speed
 		move.w	#Sonic_Acceleration_Shoes,($FFFFF762).w
@@ -16921,7 +16798,7 @@ Obj2E_ChkInvinc:
 		tst.b	($FFFFFFE7).w	; has sonic destroyed a S monitor?
 		bne.s	Obj2E_ChkRings	; if yes, don't give sonic invinciblility
 		move.b	#1,($FFFFFE2D).w ; make	Sonic invincible
-		move.w	#$4B0,($FFFFD032).w ; time limit for the power-up
+		move.w	#20*60,($FFFFD032).w ; time limit for the power-up (20 seconds)
 
 		move.b	#$38,($FFFFD200).w ; load stars	object ($3801)
 		move.b	#1,($FFFFD21C).w
@@ -17003,6 +16880,9 @@ Obj2E_ChkS:
 		rts
 
 Obj2E_NotGHZ2:
+		tst.b	(FZEscape).w	; are we in the FZ escape?
+		bne.w	Obj2E_ChkEnd	; if yes, don't overwrite music
+
 		move.w	#$9F,d0		; set song $9F
 		jmp	PlaySound	; play inhuman mode music
 ; ===========================================================================
@@ -22180,12 +22060,6 @@ Obj41_Powers:	dc.w -$1000		; power	of red spring
 ; ===========================================================================
 
 Obj41_Up:				; XREF: Obj41_Index
-		bclr	#7,obGfx(a0)		; make object low plane
-		tst.b	($FFFFFFA6).w		; is flag set?
-		beq.s	Obj41_NoHigh		; if not, branch
-		bset	#7,obGfx(a0)		; otherwise make object high plane
-
-Obj41_NoHigh:
 		cmpi.w	#$501,($FFFFFE10).w
 		bne.s	@cont
 		lea	($FFFFD000).w,a1
@@ -30677,64 +30551,39 @@ Sonic_Display:				; XREF: loc_12C7E
 		cmpi.w	#$000,($FFFFFE10).w	; is level GHZ1?
 		bne.w	S_D_NoTeleport		; if not, branch
 
-		cmpi.w	#$1900,obX(a0)		; is Sonic past the X-location $1900?
-		bpl.s	S_D_Revert		; if yes, branch
-		cmpi.w	#$1300,obX(a0)		; is Sonic before the X-location $1300?
-		bmi.s	S_D_Revert		; if yes, branch
-		
-		tst.b	($FFFFFFA6).w		; is flag set?
-		bne.s	S_D_NoWaterfall		; if yes, branch
-		moveq	#0,d0			; clear d0
-		jsr	GHZ_MakeBlocksHigh	; make the blocks in the waterfall section high plane
-		move.b	#1,($FFFFFFA6).w	; set flag
-		bset	#7,obGfx(a0)		; make Sonic high plane
-		bra.s	S_D_NoWaterfall
-
-S_D_Revert:
-		tst.b	($FFFFFFA6).w		; is flag set?
-		beq.s	S_D_NoWaterfall		; if not, branch
-		moveq	#1,d0			; set d0 to 1
-		jsr	GHZ_MakeBlocksHigh	; make the blocks in the waterfall section low plane again
-		move.b	#0,($FFFFFFA6).w	; unset flag
-		bclr	#7,obGfx(a0)		; make Sonic's plane normal again
-
-S_D_NoWaterfall:
 		tst.b	($FFFFFFE7).w		; is inhuman mode on?
-		beq.s	S_D_TeleNoInhuman	; if not, branch
-		bra.w	S_D_NoTeleport		; otherwise skip
-; ===========================================================================
+		bne.w	S_D_NoTeleport		; if yes, branch
 
-S_D_TeleNoInhuman:
 		cmpi.w	#$1BB0,obX(a0)		; is Sonic past the X-location $1BB0?
 		bpl.w	S_D_NoTeleport		; if yes, branch
 		cmpi.w	#$1340,obX(a0)		; is Sonic before the X-location $1340?
 		bmi.w	S_D_NoTeleport		; if yes, branch
-		
+
 		cmpi.w	#$4E0,obY(a0)		; is Sonic above the Y-location $3E0?
 		bmi.s	S_D_NoTeleport		; if yes, branch
-		cmpi.w	#10,($FFFFFE20).w	; do you have at least 10 rings?
-		bra.s	S_D_20Rings		; if yes, branch
-		clr.w	($FFFFFE10).w		; clear rings
-		ori.b	#$81,($FFFFFE1D).w	; update ring counter
-		move.b	#1,($FFFFFF95).w	; make Sonic die
-		bra.s	S_D_NoTeleport		; skip
-; ===========================================================================
 
-S_D_20Rings:
-	;	subi.w	#10,($FFFFFE20).w	; substract 10 rings
-	;	move.b	#$80,($FFFFFE1D).w	; update ring counter
-		move.b	#$1C,obAnim(a0)		; make Sonic invisible
+		clr.b	($FFFFFE2C).w		; remove any shields
+
+		frantic				; is frantic mode enabled?
+		beq.s	@notfrantic		; if not, don't do ring penalties
+		cmpi.w	#20,($FFFFFE20).w	; do you have at least 20 rings?
+		bhs.s	@enough			; if yes, branch
+		move.b	#1,($FFFFFF95).w	; make Sonic die
+		bra.s	S_D_NoTeleport
+
+@enough:
 		move.w	#$12A0,obX(a0)		; set new location for Sonic's X-pos
 		move.w	#$21A,obY(a0)		; set new location for Sonic's Y-pos
-		clr.w	obVelX(a0)			; clear X-speed
-		clr.w	obVelY(a0)			; clear Y-speed
-		clr.w	obInertia(a0)			; clear interia
-		bsr	WhiteFlash2		; make a white flash
+		jsr	HurtSonic		; make Sonic hurt (this removes 20 rings)
+		bra.s	@teleportend
+
+@notfrantic:
+		move.w	#$12A0,obX(a0)		; set new location for Sonic's X-pos
+		move.w	#$21A,obY(a0)		; set new location for Sonic's Y-pos
+@teleportend:
 		move.w	#$C3,d0			; set giant ring sound
 		jsr	PlaySound_Special	; set giant ring sound
-	;	jsr	HurtSonic		; make Sonic hurt
-		clr.b	($FFFFFE2C).w		; remove any shields
-	;	clr.b	($FFFFFFFC).w		; clear shield counter
+		bsr	WhiteFlash2		; make a white flash
 		bsr	FixLevel
 ; ===========================================================================
 
@@ -30743,8 +30592,6 @@ S_D_NoTeleport:
 		bne.s	S_D_WF2			; if yes, branch
 		tst.b	($FFFFFFB2).w		; is jumpdash flag 2 set?
 		beq.s	S_D_NoInhumanCrush	; if not, branch
-	;	tst.b	($FFFFFFE7).w		; is Sonic inhuman?
-	;	beq.s	S_D_NoInhumanCrush	; if not, branch
 
 S_D_WF2:
 		tst.b	($FFFFFFB1).w		; is white flash counter empty?
@@ -32834,6 +32681,7 @@ S_F_NotGHZ2:
 		move.b	#$23,0(a1)		; load missile object
 		move.w	obX(a0),obX(a1)		; select sonic's current X-pos as destination point
 		move.w	obY(a0),obY(a1)		; do the same with sonic's Y-pos
+		
 
 		; if no other D-pad button was held, shoot downwards by default
 		move.w	#$200,obVelY(a1)	; move bullet downwards
@@ -32845,7 +32693,7 @@ S_F_WithinTolerance:
 		move.w	obVelX(a0),d0		; get Sonic's X-speed
 		asr.w	#1,d0			; decrease the speed a lot
 		move.w	d0,obVelX(a1)		; set that speed
-		asr.w	#6,d0
+		asr.w	#7,d0
 		add.w	d0,obX(a1)		; move the missle a bit in front of Sonic
 
 S_F_PlaySound:
@@ -34394,12 +34242,6 @@ Map_obj0A:
 ; ---------------------------------------------------------------------------
 
 Obj38:					; XREF: Obj_Index
-		bclr	#7,obGfx(a0)		; make object low plane
-		tst.b	($FFFFFFA6).w		; is flag set?
-		beq.s	Obj38_NoHigh		; if not, branch
-		bset	#7,obGfx(a0)		; otherwise make object high plane
-
-Obj38_NoHigh:
 		moveq	#0,d0
 		move.b	obRoutine(a0),d0
 		move.w	Obj38_Index(pc,d0.w),d1
@@ -38056,6 +37898,9 @@ Obj79_BlueLamp:				; XREF: Obj79_Index
 ; ===========================================================================
 
 Obj79_HitLamp:
+		cmpi.b	#6,($FFFFD024).w	; is Sonic dying?
+		bhs.w	locret_16F90		; if yes, branch
+
 		move.w	($FFFFD008).w,d0
 		sub.w	obX(a0),d0
 		addq.w	#8,d0
@@ -47057,10 +46902,10 @@ Hud_ChkTime:
 		cmpi.l	#$9631D,(a1)+	; is the time 999? ($9631D)
 		beq.w	TimeOver	; if yes, time over noob
 		
-		moveq	#1,d0			; regular timer speed (1 second per second; at 1000 seconds, that's 16-17 minutes)
+		moveq	#1,d0			; regular timer speed (1 tick per second; at 999 ticks, that's roughly 16 minutes)
 		frantic				; frantic mode selected?
 		beq.s	@notfrantic		; if not, branch
-		moveq	#3,d0			; triple timer speed (3 seconds per second; this changes the effective time limit to roughly 5-6 minutes)
+		moveq	#2,d0			; double timer speed (2 ticks per second; this changes the effective time limit to roughly 8 minutes)
 
 @notfrantic:
 		add.b	d0,-(a1)

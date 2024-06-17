@@ -741,7 +741,7 @@ Hint_Pre:
 	boxtxt	"    sonic erazor"
 	boxtxt_line
 	dc.b	_delay,10
-	boxtxt	"THE CRAZIEST JOURNEY"
+	boxtxt	"THE WILDEST JOURNEY"
 	boxtxt	"YOU'LL EVER TAKE"
 	boxtxt	"WITH YOUR FAVORITE"
 	boxtxt	"BLUE HEDGEHOG!"
@@ -786,7 +786,7 @@ Hint_Pre:
 ;		 --------------------
 Hint_1:
 	boxtxt	"controls - on ground"
-	boxtxt_line
+	boxtxt_pause
 	boxtxt	"c OR b - JUMP"
 	boxtxt_line
 	boxtxt	"~ + jump - SPIN DASH"
@@ -796,17 +796,19 @@ Hint_1:
 ;		 --------------------
 Hint_2:
 	boxtxt	"controls - airbourne"
-	boxtxt_line
+	boxtxt_pause
 	boxtxt	"c - JUMP DASH"
 	boxtxt	"    HOMING ATTACK"
 	boxtxt_line
 	boxtxt	"b - DOUBLE JUMP"
+	boxtxt_pause
+	boxtxt	"a - YOU'LL SEE..."
 	boxtxt_end
 
 ;		 --------------------
 Hint_3:
 	boxtxt	"inhuman mode"
-	boxtxt_line
+	boxtxt_pause
 	boxtxt	"PRESS a TO FIRE AN"
 	boxtxt	"EXPLODING BULLET"
 	boxtxt	"YOU CAN PROPEL"
@@ -869,30 +871,39 @@ Hint_4:
 
 ;		 --------------------
 Hint_6:
-	boxtxt	"hard part skippers"
-	boxtxt_line
-	boxtxt	"PRESS a + b + c"
-	boxtxt	"TO SKIP CHALLENGES"
-	boxtxt	"THAT ARE SIMPLY TOO"
-	boxtxt	"TOUGH FOR YOU."
+	boxtxt	"hard part skipper"
+	boxtxt_pause
+	boxtxt	"THIS IS A HARD PART"
+	boxtxt	"SKIPPER."
+	boxtxt_pause
+	boxtxt	"IT SKIPS PARTS THAT"
+	boxtxt	"ARE HARD."
+	boxtxt_next
+
+	boxtxt	"TO SKIP PARTS THAT"
+	boxtxt	"ARE SIMPLY TOO HARD"
+	boxtxt	"FOR YOU, PRESS"
+	boxtxt	"a + b + c"
+	boxtxt	"IN FRONT OF A HARD"
+	boxtxt	"PART SKIPPER."
+	boxtxt_pause
 	boxtxt	"NO HARD FEELINGS!"
 	boxtxt_pause
 
 	dc.b	_frantic
-	boxtxt	"frantic mode"
-	boxtxt_line
-	boxtxt	"UNFORTUNATELY..."
-	boxtxt	"HARD PART SKIPPERS"
-	boxtxt	"ARE ONLY AVAILABLE"
-	boxtxt	"IN CASUAL MODE."
-	boxtxt_line
-	boxtxt	"GET CREATIVE!"
+	boxtxt	"    frantic mode"
+	boxtxt_pause
+	boxtxt	"  UNFORTUNATELY..."
+	boxtxt	" HARD PART SKIPPERS"
+	boxtxt	" ARE ONLY AVAILABLE"
+	boxtxt	" IN CASUAL MODE AND"
+	boxtxt	"  MAY not BE USED!"
 	boxtxt_end
 
 ;		 --------------------
 Hint_7:
 	boxtxt	"dying sucks"
-	boxtxt_line
+	boxtxt_pause
 	boxtxt	"SOME TRIAL AND ERROR"
 	boxtxt	"MIGHT BE NECESSARY."
 	boxtxt	"THERE ARE ABSOLUTELY"
@@ -910,24 +921,26 @@ Hint_7:
 	boxtxt_pause
 
 	dc.b	_frantic
-	boxtxt	"frantic mode"
+	boxtxt	"    frantic mode"
+	boxtxt_pause
+	boxtxt	"  MIND YOUR RINGS!"
 	boxtxt_line
-	boxtxt	"MIND YOUR RINGS!"
-	boxtxt_line
-	boxtxt	"IN FRANTIC MODE,"
-	boxtxt	"REPEATED FAILURE"
-	boxtxt	"COSTS YOU RINGS."
+	boxtxt	"  IN FRANTIC MODE,"
+	boxtxt	"  REPEATED FAILURE"
+	boxtxt	"  COSTS YOU RINGS."
 	boxtxt_next
 
-	boxtxt	"OUT OF RINGS?"
+	boxtxt_line
+	boxtxt_line
+	boxtxt	"   OUT OF RINGS?!"
 	boxtxt_pause
-	boxtxt	"YOU DIE."
+	boxtxt	"      YOU DIE."
 	boxtxt_end
 
 ;		 --------------------
 Hint_8:
 	boxtxt	"alternative gravity"
-	boxtxt_line
+	boxtxt_pause
 	boxtxt	"PRESS c REPEATEDLY"
 	boxtxt	"WHILE IN AIR AND USE"
 	boxtxt	"THE d_pad TO HOP AND"
@@ -939,6 +952,7 @@ Hint_8:
 Hint_9:
 	boxtxt	"HEDGEHOG SPACE GOLF"
 	boxtxt	"ISN'T YOUR THING?"
+	boxtxt_pause
 	boxtxt	"TRY HOLDING a TO"
 	boxtxt	"INVERT GRAVITY!"
 	boxtxt_end
@@ -996,11 +1010,11 @@ Hint_TutorialConclusion:
 	boxtxt_next
 
 	boxtxt	"TWO MORE QUICK tips"
-	boxtxt_line
+	boxtxt_pause
 	boxtxt	"- EXIT A STAGE AT"
 	boxtxt	"  ANY TIME WITH"
 	boxtxt	"  pause + a"
-	boxtxt_line
+	boxtxt_pause
 	boxtxt	"- BE SURE TO CHECK"
 	boxtxt	"  OUT THE options!"
 	boxtxt_next
@@ -1016,13 +1030,11 @@ Hint_TutorialConclusion:
 	boxtxt_next
 
 	boxtxt	"      BY selbi"
-	boxtxt_line
-	dc.b	_delay,60
+	boxtxt_pause
 	boxtxt	"  THEY CALL ME THE"
 	boxtxt	"    michael  bay"
 	boxtxt	"   OF SONIC GAMES."
-	boxtxt_line
-	dc.b	_delay,90
+	boxtxt_pause
 	boxtxt	" AND VERY SOON YOU"
 	boxtxt	" WILL ALSO SEE WHY."
 	boxtxt_end

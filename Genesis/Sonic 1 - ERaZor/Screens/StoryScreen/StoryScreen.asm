@@ -15,10 +15,11 @@ StoryScreen:				; XREF: GameModeArray
 	;	bsr	PlaySound_Special ; stop music
 		jsr	PLC_ClearQueue
 		jsr	Pal_FadeFrom
-		move	#$2700,sr
-	;	bsr	SoundDriverLoad
+		VBlank_SetMusicOnly
+		display_disable
+		
 		lea	($C00004).l,a6
-		move.w	#$8004,(a6)
+	;	move.w	#$8004,(a6)
 		move.w	#$8230,(a6)
 		move.w	#$8407,(a6)
 		move.w	#$9001,(a6)
@@ -27,6 +28,7 @@ StoryScreen:				; XREF: GameModeArray
 		move.w	#$8720,(a6)
 		clr.b	($FFFFF64E).w
 		jsr	ClearScreen
+
 		lea	($FFFFD000).w,a1
 		moveq	#0,d0
 		move.w	#$7FF,d1
@@ -35,40 +37,23 @@ STS_ClrObjRam:	move.l	d0,(a1)+
 				
 		btst	#1,($FFFFFF92).w	; are story text screens enabled?
 		bne.s	@cont			; if yes, branch
-		cmpi.b	#9,($FFFFFF9E).w	; is this the easter egg?
-		beq.s	@cont			; if not, don't skip cause that's the whole point lmao
 		move.b	#1,($FFFFFF7D).w	; make sure the chapters screen leads us to the correct level
 		bra.w	STS_ExitScreen		; auto-skip the cringe
 
-@cont:
-		move	#$2700,sr
-		jsr	Pal_FadeFrom
-
-		move	#$2700,sr
+@cont:	
 		move.l	#$64000002,($C00004).l
 		lea	(ArtKospM_ERaZorNoBG).l,a0
 		jsr	KosPlusMDec_VRAM
-		
-		moveq	#20,d1
-	@delay:	
-		jsr	PLC_Execute
-		move.b	#2,($FFFFF62A).w
-		jsr	DelayProgram
-		dbf	d1,@delay
-		move	#$2700,sr
-		display_disable
 
-		move	#$2700,sr
 		lea	($FFFFD100).w,a0
 		move.b	#2,(a0)			; load ERaZor banner object
 		move.w	#$11E,obX(a0)		; set X-position
 		move.w	#$87,obScreenY(a0)	; set Y-position
 		bset	#7,obGfx(a0)		; otherwise make object high plane
-		
+
 		jsr	ObjectsLoad
 		jsr	BuildSprites
-		
-		move	#$2700,sr
+	
 		lea	($C00000).l,a6
 		move.l	#$50000003,4(a6)
 		lea	(STS_FontArt).l,a5
@@ -78,24 +63,8 @@ STS_LoadText:	move.w	(a5)+,(a6)
 
 		jsr	BGDeformation_Setup
 
-	;	move.l	#$40000001,($C00004).l
-	;	lea	(Nem_StoryBG).l,a0 ; load Info	screen patterns
-	;	jsr	NemDec
-	;	move	#$2700,sr
-	;	lea	($FF0000).l,a1
-	;	lea	(Eni_StoryBG).l,a0 ; load	Info screen mappings
-	;	move.w	#0,d0
-	;	jsr	EniDec
-	;	lea	($FF0000).l,a1
-	;	move.l	#$42060003,d0
-	;	moveq	#$21,d1
-	;	moveq	#$15,d2
-	;	jsr	ShowVDPGraphics
-
 		moveq	#$14,d0
 		jsr	PalLoad1	; load level select pallet
-	;	moveq	#2,d0		; load level select palette
-	;	jsr	PalLoad2
 
 		movem.l	d0-a2,-(sp)		; backup d0 to a2
 		lea	(Pal_ERaZorBanner).l,a1	; set ERaZor banner's palette pointer
@@ -133,6 +102,7 @@ STS_ClrVram:	move.l	d0,(a6)
 		
 		move.w	#STS_LinesTotal,($FFFFFF82).w
 		display_enable
+		VBlank_UnsetMusicOnly
 		jsr	Pal_FadeTo
 
 ; ===========================================================================
@@ -146,40 +116,11 @@ StoryScreen_MainLoop:
 		jsr	DelayProgram
 		jsr	ObjectsLoad
 		jsr	BuildSprites
-	;	jsr	SineWavePalette
-		jsr	PLC_Execute
 		jsr	Options_BackgroundEffects
 		jsr	Options_ERZPalCycle
-		tst.l	PLC_Pointer
-		bne.s	StoryScreen_MainLoop
 
+		bsr	StoryScreen_ContinueWriting
 
-		tst.b	($FFFFFF9B).w		; is is text already fully written out?
-		bne.s	STS_NoTextChange	; if yes, branch
-		move.b	($FFFFF605).w,d1	; get button presses
-		andi.b	#$E0,d1			; is A, B, C, or start pressed?
-		beq.s	STS_NoStart		; if not, branch
-		move.b	#1,($FFFFFF9B).w	; set text-fully-written flag
-		bsr	StoryTextLoad		; update text
-		bra.s	StoryScreen_MainLoop	; if not, branch
-; ===========================================================================
-
-STS_NoStart:
-		subq.b	#1,($FFFFFF95).w	; sub 1 from delay
-		bpl.s	STS_NoTextChange	; if time remains, branch (comment out to remove delay entirly)
-		bsr	StoryTextLoad		; update text
-		move.b	#1,($FFFFFF95).w	; reset delay timer
-		cmpi.b	#6,($FFFFFF9A).w
-		beq.s	@cont
-		move.b	#2,($FFFFFF95).w
-
-@cont:
-		tst.b	($FFFFFF9B).w		; is text already fully written out?
-		bne.s	STS_NoTextChange	; if yes, branch
-		bra.s	StoryScreen_MainLoop
-; ===========================================================================
-
-STS_NoTextChange:
 		move.b	($FFFFF605).w,d1	; get button presses
 		andi.b	#$E0,d1			; is A, B, C, or start pressed?
 		beq.s	StoryScreen_MainLoop	; if not, branch
@@ -199,7 +140,6 @@ STS_ExitScreen:
 		move.b	#0,($A130F1).l		; disable SRAM
 @notfirstvisit:
 		move.b	#4,($FFFFF600).w	; set to title screen
-	;	move.b	#$28,($FFFFF600).w	; set to chapters screen ($28)
 		rts
 
 STS_NoIntro:
@@ -232,223 +172,41 @@ STS_NoBlack:
 ; ===========================================================================
 
 ; ---------------------------------------------------------------------------
-; Subroutine to load story text
+; Subroutine to continue loading the story text, if necessary
 ; ---------------------------------------------------------------------------
 
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
-
-StoryTextLoad:
-		bsr	GetStoryText
-		lea	(STSBuffer).w,a1		
-		lea	($C00000).l,a6
-		move.l	#$620C0003,d4	; screen position (text)
-		move.w	#$E680,d3	; VRAM setting
-		moveq	#STS_LinesTotal,d1		; number of lines of text
-loc3_34FE:
-		move.l	d4,4(a6)
-		bsr	STS_ChgLine
-		addi.l	#$800000,d4
-		dbf	d1,loc3_34FE
-		
-		rts	
-; End of function StoryTextLoad
-
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
-STS_ChgLine:				; XREF: StoryTextLoad
-		moveq	#$1B,d2		; number of characters per line $17 $1B
-
-loc3_3588:
+StoryScreen_ContinueWriting:
 		moveq	#0,d0
-		move.b	(a1)+,d0
-		bpl.s	loc3_3598
-		move.w	#0,(a6)
-		dbf	d2,loc3_3588
-		rts	
-; ===========================================================================
+		move.b	($FFFFFF9E).w,d0 	; get ID for the current text we want to display
+		add.w	d0,d0
+		add.w	d0,d0
 
-loc3_3598:				; XREF: STS_ChgLine
-		add.w	d3,d0
-		move.w	d0,(a6)
-		dbf	d2,loc3_3588
-		rts	
-; End of function STS_ChgLine
-
-; ===========================================================================
-; ===========================================================================
-STS_Sound = $D8
-STS_Speed = 1
-STS_LagSpeed = 10
-; ===========================================================================
-; ===========================================================================
-
-GetStoryText:
-		tst.b	($FFFFFF9B).w		; is routine counter at $12 (STS_NoMore)?
-		beq.w	STS_LoadUp		; if yes, branch
+		movea.l	StoryText_Index(pc,d0.w),a0
 		
-		moveq	#0,d5			; make sure d5 is empty
-		moveq	#0,d3			; make sure d3 is empty
-		lea	(STSBuffer).w,a1	; load destination location to a1
-		lea	(STS_HeaderX).l,a2	; get text location 1
-		move.w	#83,d5			; set numbers of loops (this will make the "typing" effect)
-		
-STS_Loop_Header1XX:
-		move.b	(a2)+,d3		; load current char to a1
-
-		cmpi.b	#'<',d3
-		bne.s	@0
-		move.b	#6,d3
-		bra.s	STS_Loop_H1_NoSpaceXX
-@0:		cmpi.b	#'~',d3
-		bne.s	@1
-		move.b	#7,d3
-		bra.s	STS_Loop_H1_NoSpaceXX
-@1:		cmpi.b	#'#',d3
-		bne.s	@2
-		move.b	#8,d3
-		bra.s	STS_Loop_H1_NoSpaceXX
-@2:
-		cmpi.b	#$20,d3
-		beq.s	STS_Loop_H1_SpaceXX
-		cmpi.b	#$3D,d3
-		beq.s	STS_Loop_H1_EqualXX
-		subi.b	#$36,d3
-		bra.s	STS_Loop_H1_NoSpaceXX
-		
-STS_Loop_H1_EqualXX:
-		move.b	#$25,d3
-		bra.s	STS_Loop_H1_NoSpaceXX
-
-STS_Loop_H1_SpaceXX:
-		move.b	#$00,d3
-
-STS_Loop_H1_NoSpaceXX:
-		move.b	d3,(a1)+
-		dbf	d5,STS_Loop_Header1XX	; loop
-
-; =============================
-
-		bsr.w	STS_SetMainText
-STS_Loop_MainXX:
-		move.b	(a2)+,d3		; move current char into d3
-		cmpi.b	#$FF,d3			; has the end of the list been reached?	
-		beq.s	STS_DoNext1XX		; if yes, branch
-
-		cmpi.b	#':',d3			; is current char a colon?
-		bne.s	STS_NoColon1XX		; if not, go to next char
-		move.b	#3,d3
-		bra.s	STS_NoNumber1XX
-
-STS_NoColon1XX:
-		cmpi.b	#'\',d3			; is current char a backslash?
-		bne.s	STS_NoBSlash1XX		; if not, go to next char
-		move.b	#2,d3
-		bra.s	STS_NoNumber1XX
-
-STS_NoBSlash1XX:
-		cmpi.b	#$2E,d3			; is current char a dot?
-		bne.s	STS_NoDot1XX		; if not, go to next char
-		move.b	#$26,d3
-		bra.s	STS_NoNumber1XX
-
-STS_NoDot1XX:
-		cmpi.b	#$3F,d3			; is current char a question mark?
-		bne.s	STS_NoQMark1xx		; if not, branch
-		move.b	#$28,d3
-		bra.s	STS_NoNumber1xx
-
-STS_NoQMark1xx:
-		cmpi.b	#"!",d3			; is current char an exclamation mark?
-		bne.s	STS_NoExMark1xx		; if not, branch
-		move.b	#$0A,d3
-		bra.s	STS_NoNumber1xx
-
-STS_NoExMark1xx:
-		cmpi.b	#$2C,d3			; is current char a comma?
-		bne.s	STS_NoComma1xx		; if not, branch
-		move.b	#$27,d3
-		bra.s	STS_NoNumber1xx
-
-STS_NoComma1xx:
-		cmpi.b	#$20,d3			; is current char a space?
-		bne.s	STS_NoSpace1XX		; if not, go to next char
-		move.b	#$00,(a1)+		; load space char to a1		
-		bra.s	STS_Loop_MainXX	; loop without taking time
-
-STS_NoSpace1XX:
-		cmpi.b	#$61,d3			; is current char an uncapitalized letter?
-		blt.s	STS_NoUncapiXX		; if not, branch
-		subi.b	#$20,d3			; use same font as capitalized letters
-
-STS_NoUncapiXX:
-		subi.b	#$2F,d3			; substract $2F from d3 (because it's in ascii)
-		cmpi.b	#10,d3			; is the current char a number?
-		ble.s	STS_NoNumber1XX	; if yes, branch
-		subi.b	#7,d3			; otherwise, additionally substract 7 from it
-
-STS_NoNumber1XX:
-		move.b	d3,(a1)+		; load output to a1
-		bra.s	STS_Loop_MainXX	; loop
-
-; =============================
-
-STS_DoNext1XX:
-		rts
-		lea	(STS_ContinueX).l,a2	; get text location 1
-		move.w	#84,d5			; set numbers of loops (this will make the "typing" effect)
-STS_Loop_ContinueXX:
-		move.b	(a2)+,d3		; move current char into d3
-
-		cmpi.b	#':',d3			; is current char a colon?
-		bne.s	STS_NoColon2XX		; if not, go to next char
-		move.b	#3,d3
-		bra.s	STS_NoNumber2XX
-
-STS_NoColon2XX:
-		cmpi.b	#'\',d3			; is current char a backslash?
-		bne.s	STS_NoBSlash2XX		; if not, go to next char
-		move.b	#2,d3
-		bra.s	STS_NoNumber2XX
-
-STS_NoBSlash2XX:
-		cmpi.b	#$2E,d3			; is current char a dot?
-		bne.s	STS_NoDot2XX		; if not, go to next char
-		move.b	#$26,d3
-		bra.s	STS_NoNumber2XX
-
-STS_NoDot2XX:
-		cmpi.b	#$20,d3			; is current char a space?
-		bne.s	STS_NoSpace2XX		; if not, go to next char
-		move.b	#$00,d3			; load space char to a1		
-		bra.s	STS_NoNumber2XX	; loop without taking time
-
-STS_NoSpace2XX:
-		subi.b	#$36,d3			; substract $36 from d3 (because it's in ascii)
-		
-STS_NoNumber2XX:
-
-		move.b	d3,(a1)+		; load output to a1
-		dbf	d5,STS_Loop_ContinueXX	; loop
+		;font at VRAM $D000
+		;  0 - space
+		; 20 - '
+		; 40 - :
+		; 60 - 3
+		; 80 - 4
+		; A0 - - (left)
+		; C0 - - (middle)
+		; E0 - - (right)
+		;100 - >
+		;120 - !
+		;140 - A
+		;... - the remaining alphabet
+		;480 - Z
+		;4A0 - -  
+		;4C0 - .  
+		;4E0 - ,  
+		;500 - ?  
 
 		rts
 ; ===========================================================================
-; ===========================================================================
 
-STS_SetMainText:
-		moveq	#0,d0			; clear d0
-		lea	(StoryText_1).l,a2	; get text location 1 (which is also the start of the text locations in general)
-		move.b	($FFFFFF9E).w,d0 	; get text ID
-		subq.b	#1,d0			; sub 1 from it, because we want to use 0 as base, not 1
-		bpl.s	@pos			; is it positive? branch
-		moveq	#0,d0			; make sure we never get any illegal values from underflows
-@pos:
-		ext.w	d0			; convert to word
-		mulu.w	#422,d0			; multiply it by 422 (number of chars for a single block of text including the $FF)
-		adda.w	d0,a2			; add result to text location (a2)
-		
+StoryScreen_centerText:
 		; center the text using H-scroll
-		rts	; disabled for now
 		movea.l	a2,a3			; copy text location to a3
 		lea	($FFFFCCE0).w,a4	; set up H-scroll buffer to a4
 		moveq	#STS_LineLength,d3	; set line length to d3
@@ -473,305 +231,27 @@ STS_SetMainText:
 		dbf	d4,@centertextloop
 
 		rts				; return
-; ===========================================================================
-; ===========================================================================
 
-STS_LoadUp:
-		moveq	#0,d0			; clear d0
-		move.b	($FFFFFF9A).w,d0	; get index number
-		move.w	STS_Index(pc,d0.w),d1 ; get current index
-		jmp	STS_Index(pc,d1.w)	; jump to set position
+
 ; ===========================================================================
-STS_Index:	dc.w STS_Header1-STS_Index
-		dc.w STS_Header1-STS_Index
-		dc.w STS_Lag-STS_Index
-		dc.w STS_MainText-STS_Index
-		dc.w STS_Lag-STS_Index
-	;	dc.w STS_ContinueText-STS_Index
-		dc.w STS_NoMore-STS_Index
-; ===========================================================================
-
-STS_Header1:
-		addq.w	#STS_Speed,($FFFFFF96).w	; increase main counter
-		moveq	#0,d5			; make sure d5 is empty
-		moveq	#0,d3			; make sure d3 is empty
-
-		lea	(STSBuffer+$1C).w,a1	; load destination location to a1
-		tst.b	($FFFFFF9A).w	; bottom line?
-		beq.s	@0
-		adda.w	#STS_LineLength*18,a1
-@0:
-		lea	(STS_HeaderText2).l,a2	; get text location
-		move.w	($FFFFFF96).w,d5	; set numbers of loops (this will make the "typing" effect)
-		
-STS_Loop_Header2:
-		move.b	(a2)+,d3		; load current char to a1
-		cmpi.b	#'<',d3
-		bne.s	@0
-		move.b	#6,d3
-@0		cmpi.b	#'~',d3
-		bne.s	@1
-		move.b	#7,d3
-@1		cmpi.b	#'#',d3
-		bne.s	@2
-		move.b	#8,d3
-@2	
-		move.b	d3,(a1)+
-		dbf	d5,STS_Loop_Header2	; loop
-		
-		; hotfix to get rid of some glitchy vv stuff
-		lea	(STSBuffer+$38).w,a1	; load destination location to a1
-		tst.b	($FFFFFF9A).w	; bottom line?
-		beq.s	@0x
-		adda.w	#STS_LineLength*18,a1
-@0x:
-		move.l	#0,(a1)+
-		move.l	#0,(a1)
-
-		move.w	($FFFFFF96).w,d2
-		andi.w	#1,d2
-		beq.w	STS_MultiReturn
-		move.b	#STS_Sound,d0
-		jsr	PlaySound_Special
-		
-		cmpi.w	#28,($FFFFFF96).w	; has char 71 been reached?
-		bge.s	STS_DoNextHeader	; if yes, branch
-		rts				; otherwise return
+; ---------------------------------------------------------------------------
+; Story Text Index
 ; ---------------------------------------------------------------------------
 
-STS_DoNextHeader:
-		clr.w	($FFFFFF96).w
-		addq.b	#2,($FFFFFF9A).w	; go to next text
-		bra.w	STS_LoadUp		; kind of return
-; ===========================================================================
-
-STS_Header2:
-		addq.w	#STS_Speed,($FFFFFF96).w	; increase main counter
-		moveq	#0,d5			; make sure d5 is empty
-		moveq	#0,d3			; make sure d3 is empty
-		lea	(STSBuffer+$8).w,a1	; load destination location to a1
-		lea	(STS_HeaderText3).l,a2	; get text location
-		move.w	($FFFFFF96).w,d5	; set numbers of loops (this will make the "typing" effect)
-		
-STS_Loop_Header3:
-		move.b	(a2)+,d3		; move current char into d3
-		cmpi.b	#$58,d3			; has the end of the list been reached?	
-		beq.s	STS_DoLag		; if yes, branch
-		cmpi.b	#$20,d3			; is current char a space?
-		bne.s	STS_NoSpaceX2		; if not, go to next char
-		move.b	#$00,(a1)+		; load space char to a1		
-		bra.s	STS_Loop_Header3	; loop without taking time
-
-STS_NoSpaceX2:
-		subi.b	#$2F,d3			; substract $2F from d3 (because it's in ascii)
-		cmpi.b	#10,d3			; is the current char a number?
-		ble.s	STS_NoNumberX2		; if yes, branch
-		subi.b	#7,d3			; otherwise, additionally substract 7 from it
-
-STS_NoNumberX2:
-		move.b	d3,(a1)+		; load output to a1
-		dbf	d5,STS_Loop_Header3	; loop
-
-		move.w	($FFFFFF96).w,d2
-		andi.w	#1,d2
-		beq.w	STS_MultiReturn
-		move.b	#STS_Sound,d0
-		jsr	PlaySound_Special
-
-		cmpi.w	#10,($FFFFFF96).w	; has char 71 been reached?
-		bge.s	STS_DoLag		; if yes, branch
-		rts				; otherwise return
+StoryText_Index:
+		dc.l	STS_Continue	; continue text at the bottom of the screen
+		dc.l	StoryText_1	; text after intro cutscene
+		dc.l	StoryText_2	; text after beating Night Hill Place
+		dc.l	StoryText_3	; text after beating Special Place
+		dc.l	StoryText_4	; text after beating Ruined Place
+		dc.l	StoryText_5	; text after beating Labyrinth Place
+		dc.l	StoryText_6	; text after beating Unreal Place
+		dc.l	StoryText_7	; text after beating Scar Night Place
+		dc.l	StoryText_8	; text after jumping in the ring for the Ending Sequence
+		dc.l	StoryText_9	; text after beating the blackout challenge special stage
 ; ---------------------------------------------------------------------------
 
-STS_DoLag:
-		clr.w	($FFFFFF96).w
-		addq.b	#2,($FFFFFF9A).w	; go to next text
-		bra.w	STS_LoadUp		; kind of return
-; ===========================================================================
-
-STS_Lag:
-		addq.w	#1,($FFFFFF96).w
-		cmpi.w	#STS_LagSpeed,($FFFFFF96).w
-		bge.s	STS_DoMain
-		rts
-; ---------------------------------------------------------------------------
-
-STS_DoMain:
-		clr.w	($FFFFFF96).w
-		addq.b	#2,($FFFFFF9A).w	; go to next text
-		bra.w	STS_LoadUp		; kind of return
-; ===========================================================================
-		
-
-STS_MainText:
-		addq.w	#STS_Speed+1,($FFFFFF96).w	; increase main counter
-		moveq	#0,d5			; make sure d5 is empty
-		moveq	#0,d3			; make sure d3 is empty
-		lea	(STSBuffer+$54).w,a1	; load destination location to a1
-		bsr.w	STS_SetMainText
-		move.w	($FFFFFF96).w,d5	; set numbers of loops (this will make the "typing" effect)
-		
-STS_Loop_Main:
-		move.b	(a2)+,d3		; move current char into d3
-		cmpi.b	#$FF,d3			; has the end of the list been reached?	
-		beq.s	STS_DoNext1		; if yes, branch
-
-
-		cmpi.b	#':',d3			; is current char a colon?
-		bne.s	STS_NoColon1		; if not, go to next char
-		move.b	#3,d3
-		bra.s	STS_NoNumber1
-
-STS_NoColon1:
-		cmpi.b	#'\',d3			; is current char a backslash?
-		bne.s	STS_NoBSlash1		; if not, go to next char
-		move.b	#2,d3
-		bra.s	STS_NoNumber1
-
-STS_NoBSlash1:
-		cmpi.b	#'.',d3			; is current char a dot?
-		bne.s	STS_NoDot1		; if not, go to next char
-		move.b	#$26,d3
-		bra.s	STS_NoNumber1
-
-STS_NoDot1:
-		cmpi.b	#'?',d3			; is current char a question mark?
-		bne.s	STS_NoQMark1		; if not, branch
-		move.b	#$28,d3
-		bra.s	STS_NoNumber1
-
-STS_NoQMark1:
-		cmpi.b	#"!",d3			; is current char an exclamation mark?
-		bne.s	STS_NoExMark1		; if not, branch
-		move.b	#$0A,d3
-		bra.s	STS_NoNumber1
-
-STS_NoExMark1:
-		cmpi.b	#',',d3			; is current char a comma?
-		bne.s	STS_NoComma1		; if not, branch
-		move.b	#$27,d3
-		bra.s	STS_NoNumber1
-
-STS_NoComma1:
-		cmpi.b	#' ',d3			; is current char a space?
-		bne.s	STS_NoSpace1		; if not, go to next char
-		move.b	#$00,(a1)+		; load space char to a1		
-		bra.s	STS_Loop_Main		; loop without taking time
-
-STS_NoSpace1:
-		cmpi.b	#'a',d3			; is current char an uncapitalized letter?
-		blt.s	STS_NoUncapi		; if not, branch
-		subi.b	#$20,d3			; use same font as capitalized letters
-
-STS_NoUncapi:
-		subi.b	#$2F,d3			; substract $2F from d3 (because it's in ascii)
-		cmpi.b	#10,d3			; is the current char a number?
-		ble.s	STS_NoNumber1		; if yes, branch
-		subi.b	#7,d3			; otherwise, additionally substract 7 from it
-
-STS_NoNumber1:
-		move.b	d3,(a1)+		; load output to a1
-		dbf	d5,STS_Loop_Main	; loop
-
-		move.b	#STS_Sound,d0
-		jsr	PlaySound_Special
-	;	cmpi.w	#532,($FFFFFF96).w	; has last char been reached?
-	;	bge.s	STS_DoNext2		; if yes, branch
-
-STS_MultiReturn:
-		rts				; return
-; ---------------------------------------------------------------------------
-
-STS_DoNext1:
-		clr.w	($FFFFFF96).w		; clear counter for the next time
-		addq.b	#2,($FFFFFF9A).w	; go to next text
-		bra.w	STS_LoadUp		; kind of return
-; ===========================================================================
-
-STS_ContinueText:
-		addq.w	#STS_Speed,($FFFFFF96).w	; increase main counter
-		moveq	#0,d5			; make sure d5 is empty
-		moveq	#0,d3			; make sure d3 is empty
-		lea	(STSBuffer+$232).w,a1	; load destination location to a1
-		lea	(STS_Continue).l,a2	; get text location
-		move.w	($FFFFFF96).w,d5	; set numbers of loops (this will make the "typing" effect)
-		
-STS_Loop_Continue:
-		move.b	(a2)+,d3		; move current char into d3
-		cmpi.b	#$FF,d3			; has the end of the list been reached?	
-		beq.s	STS_DoNext2		; if yes, branch
-
-
-		cmpi.b	#':',d3			; is current char a colon?
-		bne.s	STS_NoColon2		; if not, go to next char
-		move.b	#3,d3
-		bra.s	STS_NoNumber2
-
-STS_NoColon2:
-		cmpi.b	#'\',d3			; is current char a backslash?
-		bne.s	STS_NoBSlash2		; if not, go to next char
-		move.b	#2,d3
-		bra.s	STS_NoNumber2
-
-STS_NoBSlash2:
-		cmpi.b	#$2E,d3			; is current char a dot?
-		bne.s	STS_NoDot2		; if not, go to next char
-		move.b	#$26,d3
-		bra.s	STS_NoNumber2
-
-STS_NoDot2:
-		cmpi.b	#$20,d3			; is current char a space?
-		bne.s	STS_NoSpace2		; if not, go to next char
-		move.b	#$00,(a1)+		; load space char to a1		
-		bra.s	STS_Loop_Continue	; loop without taking time
-
-STS_NoSpace2:
-		subi.b	#$2F,d3			; substract $2F from d3 (because it's in ascii)
-		cmpi.b	#10,d3			; is the current char a number?
-		ble.s	STS_NoNumber2		; if yes, branch
-		subi.b	#7,d3			; otherwise, additionally substract 7 from it
-
-STS_NoNumber2:
-		move.b	d3,(a1)+		; load output to a1
-		dbf	d5,STS_Loop_Continue	; loop
-
-		move.w	($FFFFFF96).w,d2
-		andi.w	#1,d2
-		beq.w	STS_MultiReturn
-		move.b	#STS_Sound,d0
-		jsr	PlaySound_Special
-
-		rts				; otherwise return
-; ---------------------------------------------------------------------------
-
-STS_DoNext2:
-		clr.w	($FFFFFF96).w		; clear counter for the next time
-		addq.b	#2,($FFFFFF9A).w	; go to next text
-		move.b	#1,($FFFFFF9B).w	; set "done" flag
-		move.b	#4,($FFFFFF9A).w	; increase routine counter
-
-STS_NoMore:
-		rts				; return
-; ===========================================================================
-; ===========================================================================
-; ===========================================================================
-
-STS_HeaderX:		dc.b	'                            '
-			dc.b	'<~~~~~~~~~~~~~~~~~~~~~~~~~~#'
-			dc.b	'                            '
-			even
-
-STS_ContinueX:		dc.b	' PRESS START TO CONTINUE... '
-			even
-; ---------------------------------------------------------------------------
-
-STS_HeaderText1:	dc.b	'                            '
-			even
-
-STS_HeaderText2:	dc.b	'<~~~~~~~~~~~~~~~~~~~~~~~~~~#'
-			even
-
-STS_HeaderText3:	dc.b	'            X'
+STS_Continue:		dc.b	' PRESS START TO CONTINUE... '
 			even
 ; ---------------------------------------------------------------------------
 
@@ -935,47 +415,7 @@ StoryText_8:	; text after jumping in the ring for the Ending Sequence
 		even
 ; ---------------------------------------------------------------------------
 
-StoryText_9:	; "One Hot Night", Tongara's hidden easter egg fanfic 
-		dc.b	'I REMEMBER WHEN I STUCK MY  '
-		dc.b	'DICK INSIDE *******. WHAT A '
-		dc.b	'MAGICAL DAY IT WAS! ********'
-		dc.b	'GOT SO JEALOUS. SO HE       '
-		dc.b	'DECIDED TO STICK HIS DICK IN'
-		dc.b	'**********. HE ENJOYED THIS.'
-		dc.b	'IT MADE HIM FEEL HOT. ******'
-		dc.b	'THEN WALKED INTO THE ROOM,  '
-		dc.b	'UNEXPECTEDLY. HE GOT WET    '
-		dc.b	'THE INSTANT HE SAW ******   '
-		dc.b	'ON THE FLOOR NAKED. THEY HAD'
-		dc.b	'A MAGICAL NIGHT OF LOVE     '
-		dc.b	'MAKING. AND THEN, *******   '
-		dc.b	'DIED AND EVERYONE WAS HAPPY.'
-		dc.b	'THE END!                    '
-		dc.b	$FF
-		even
-
-StoryText_A:
-		; "The Morning After", the second half of the fanfic, for the weirdos that dig through the source in a hex editor or something lol
-		dc.b	'THE MORNING SUN ROSE.       '
-		dc.b	'IT WAS BEAUTIFUL.           '
-		dc.b	'THE SUN SHONE DOWN INTO     '
-		dc.b	'THE ROOM, WHERE ALL THE     '
-		dc.b	'LOVE MAKERS SLEPT.          '
-		dc.b	'****** AWOKE NEXT TO        '
-		dc.b	'THE ROTTING BODY OF *******,'
-		dc.b	'BAKING IN THE SUN.          '
-		dc.b	'IT MADE HIM HORNY.          '
-		dc.b	'HE TURNED ******* OVER AND  '
-		dc.b	'MADE LOVE TO HIS ANUS.      '
-		dc.b	'WHAT A MAGICAL ANUS IT WAS! '
-		dc.b	'HE THEN CAME.               '
-		dc.b	'                            '
-		dc.b	'THE END!                    '
-		dc.b	$FF
-		even
-; ---------------------------------------------------------------------------
-
-StoryText_B:	; hidden easter egg text found after the blackout special stage
+StoryText_9:	; text after beating the blackout challenge special stage
 		dc.b	'CONGRATULATIONS!            '
 		dc.b	'                            '
 		dc.b	'YOU HAVE BEATEN THE         '
@@ -994,12 +434,6 @@ StoryText_B:	; hidden easter egg text found after the blackout special stage
 		dc.b	$FF
 		even
 ; ---------------------------------------------------------------------------
-
-STS_Continue:
-		dc.b	'PRESS START TO CONTINUE... '
-		dc.b	$FF
-		even
-; ---------------------------------------------------------------------------
 ; ===========================================================================
 
 ; ===========================================================================
@@ -1007,11 +441,5 @@ STS_FontArt:	incbin	Screens\StoryScreen\StoryScreen_Font.bin
 		even
 ; ===========================================================================
 Pal_StoryScreen:	incbin	Screens\StoryScreen\StoryScreen_Pal.bin
-		even
-; ===========================================================================
-Nem_StoryBG:	incbin	Screens\StoryScreen\StoryScreen_ArtBG.bin
-		even
-; ===========================================================================
-Eni_StoryBG:	incbin	Screens\StoryScreen\StoryScreen_MapsBG.bin
 		even
 ; ===========================================================================

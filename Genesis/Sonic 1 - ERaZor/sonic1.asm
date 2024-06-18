@@ -18899,6 +18899,8 @@ loc_BDBE:
 ; ===========================================================================
 
 loc_BDC8:
+		cmpi.w	#$502,($FFFFFE10).w	; is level FP?
+		beq.w	loc_BDD6		; if yes, branch
 		tst.b	(a3)			; has switch already been pressed in the previous frame?
 		bne.w	Obj32_ShowPressed	; if yes, branch
 		move.w	#$CD,d0			; play switch sound
@@ -18950,16 +18952,6 @@ loc_BDD6:
 		tst.b	($FFFFFFE7).w		; did the player make it here through with inhuman still enabled?
 		beq.s	@0			; if not, branch
 		clr.b	($FFFFFFE7).w		; disable inhuman mode
-		cmpi.b 	#2, ($FFFFFE11).w		; are we in FP?
-		beq.s 	@ResumeEscapeMusic	; if so, do escape music instead
-		jsr	PlayLevelMusic
-		bra.s 	@DoneResuming
-
-@ResumeEscapeMusic:
-		move.b	#$91,d0				; play temporary escape music
-		jsr	PlaySound
-
-@DoneResuming:
 		movem.l	d7/a1-a3,-(sp)
 		moveq	#3,d0
 		jsr	PalLoad2		; load Sonic palette
@@ -18990,6 +18982,9 @@ loc_BDD6:
 		move.b	#$25,obAnim(a1)	; use inhuman rotate animation
 		move.b	#2,obRoutine(a1)
 		move.w	#-$1800,obVelY(a1)	; move Sonic upwards
+
+		move.b	#$DB,d0
+		jsr	PlaySound_Special
 
 		move.b	#$3F,0(a0)	; load explosion object
 		move.b	#0,obRoutine(a0)

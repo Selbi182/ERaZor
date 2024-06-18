@@ -27,14 +27,26 @@
 ; ------------------------------------------------------
 ; Developer Assembly Options
 ; ------------------------------------------------------
+; $400 - Uberhub Place
+; $000 - Night Hill Place
+; $002 - Green Hill Place
+; $300 - Special Place
+; $200 - Ruined Place
+; $101 - Labyrinthy Place
+; $401 - Unreal Place
+; $301 - Scar Night Place
+; $302 - Star Agony Place
+; $502 - Finalor Place
+; $501 - Tutorial Place
 QuickLevelSelect = 0
-QuickLevelSelect_ID = $502
-
+QuickLevelSelect_ID = $300
+; ------------------------------------------------------
 DebugModeDefault = 1
 DieInDebug = 1
-
+; ------------------------------------------------------
 DoorsAlwaysOpen = 1
 LowBossHP = 1
+; ------------------------------------------------------
 
 ; ------------------------------------------------------
 ; Object variables
@@ -259,7 +271,7 @@ GameClrRAM:	move.l	d7,(a6)+
 
 		bsr	VDPSetupGame
 		bsr	JoypadInit
-		bsr.s	LoadSRAM
+		bsr.w	LoadSRAM
 
 		jsr     MegaPCM_LoadDriver
 		lea     SampleTable, a0
@@ -279,7 +291,21 @@ GameClrRAM:	move.l	d7,(a6)+
 		jsr	BlackBars.FullReset		; setup black bars
 		move.l	HBlank_BaseHandler, HBlankHndl	; setup HBlank handler
 
+	if DebugModeDefault=1
+		move.w	#1,($FFFFFFFA).w ; enable debug mode
+	endif
+
+	if QuickLevelSelect=1
+		move.w	#QuickLevelSelect_ID,($FFFFFE10).w	; set level to QuickLevelSelect_ID
+		if (QuickLevelSelect_ID=$300) | (QuickLevelSelect_ID=$401)
+			move.b	#$10,($FFFFF600).w		; set game mode to special stage
+		else
+			move.b	#$C,($FFFFF600).w		; set game mode to level
+		endif
+	else
 		move.b	#0,($FFFFF600).w ; set Game Mode to Sega Screen
+	endif
+
 		bra.w	MainGameLoop	; continue to main game loop
 
 ; ===========================================================================
@@ -2199,11 +2225,11 @@ loc_1EF4:
 		bsr	DelayProgram
 		bsr.s	Pal_WhiteToBlack
 
-		cmpi.b	#1,($FFFFFFD6).w	; is a W-block being touched in the special stage?
-		beq.s	PMW_NoPLC		; if yes, skip this routine
-		bsr	PLC_Execute
-
-PMW_NoPLC:
+	;	cmpi.b	#1,($FFFFFFD6).w	; is a W-block being touched in the special stage?
+	;	beq.s	PMW_NoPLC		; if yes, skip this routine
+	;	bsr	PLC_Execute
+;PMW_NoPLC:
+	
 		dbf	d4,loc_1EF4
 		rts	
 ; End of function Pal_MakeWhite
@@ -3137,13 +3163,7 @@ Sega_NoSound:
 
 Sega_GotoTitle:
 		clr.b	($FFFFFFBE).w
-	if DebugModeDefault=1
-		move.w	#1,($FFFFFFFA).w ; enable debug mode
-	endif
 		jmp	SelbiSplash
-		; jmp	GameplayStyleScreen
-	;	move.b	#$24,($FFFFF600).w ; go to options screen
-		rts	
 ; ===========================================================================
 
 ; ---------------------------------------------------------------------------
@@ -3357,14 +3377,6 @@ StartGame:
 ; ===========================================================================
 
 Title_NoLevSel:
-	if QuickLevelSelect=1
-		bsr.s	ERZ_FadeOut
-		move.w	#QuickLevelSelect_ID,($FFFFFE10).w	; set level to QuickLevelSelect_ID
-		move.b	#$C,($FFFFF600).w		; set game mode to level
-		move.w	#1,($FFFFFE02).w		; restart level
-		rts
-	endif
-	
 		tst.b	($FFFFFFA7).w		; is this the first time the game is being played?
 		bne.s	SG_ResumeFromSaveGame	; if not, load whatever was in the SRAM at the time
 		
@@ -5105,7 +5117,7 @@ Signpost_Exit:
 
 SpecialStage:				; XREF: GameModeArray
 		tst.b	($FFFFFF5F).w	; is this the blackout special stage?
-		beq.s	@conty		; if not, branch
+		beq.s	@notblackout		; if not, branch
 		
 		clr.b	($FFFFFFD0).w	; disable distortion effect
 		clr.b	($FFFFFF64).w	; disable screen shake effect
@@ -5125,39 +5137,41 @@ SpecialStage:				; XREF: GameModeArray
 		bsr	DelayProgram
 		bra.s	@cont
 
-@conty:
+@notblackout:
 		move.w	#$CA,d0
 		bsr	PlaySound_Special ; play special stage entry sound
 		bsr	Pal_MakeFlash
-
 @cont:
 		jsr	SRAM_SaveNow		; save our progress on entering a special stage
 
-		move	#$2700,sr
+		ints_disable
 		lea	($C00004).l,a6
 		move.w	#$8B03,(a6)
-		move.w	#$8004,(a6)
+		move.w	#$8004,(a6)		; disable h-ints (VERY important, because otherwise we get massive slowdowns!)
 		move.w	#$8AAF,($FFFFF624).w
 		move.w	#$9011,(a6)
 		display_disable
 		bsr	ClearScreen
-		move	#$2300,sr
+
 		lea	($C00004).l,a5
 		move.w	#$8F01,(a5)
 		move.l	#$946F93FF,(a5)
 		move.w	#$9780,(a5)
 		move.l	#$50000081,(a5)
 		move.w	#0,($C00000).l
-
 loc_463C:
 		move.w	(a5),d1
 		btst	#1,d1
 		bne.s	loc_463C
 		move.w	#$8F02,(a5)
+		
 		bsr	SS_BGLoad
 		
+		ints_enable
+
 		moveq	#$14,d0
 		bsr	PLC_ExecuteOnce	; load special stage patterns
+
 		tst.b	($FFFFFF5F).w	; is this the blackout special stage?
 		beq.s	@contx		; if not, branch
 		moveq	#$1B,d0
@@ -5192,6 +5206,7 @@ SS_ClrNemRam:	move.l	d0,(a1)+
 		jsr	LoadPLC_Direct
 
 		bsr	DeformBgLayer
+
 		clr.b	($FFFFF64E).w
 		clr.w	($FFFFFE02).w
 		clr.b	($FFFFFE57).w
@@ -5201,24 +5216,15 @@ SS_ClrNemRam:	move.l	d0,(a1)+
 		tst.b	($FFFFFF5F).w	; is this the blackout special stage?
 		beq.s	@contx		; if not, branch
 		moveq	#22,d0		; load dark/red palette
+@contx:		bsr	PalLoad1	; load special stage pallet
 
-@contx:
-		bsr	PalLoad1	; load special stage pallet		
 		jsr	SS_Load
+
 		move.l	#0,($FFFFF700).w
 		move.l	#0,($FFFFF704).w
 		move.b	#9,($FFFFD000).w ; load	special	stage Sonic object
 		move.b	#$34,($FFFFD080).w ; load title	card object
-	;	btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
-	;	bne.s	@cont		; if yes, branch
-	;	move.b	#$07,($FFFFD380).w	; load cropped screen object
-	;	move.w	#$00D4,($FFFFD388).w		; set X-position
-	;	move.w	#$00F8,($FFFFD38A).w		; set Y-position
-	;	move.b	#$07,($FFFFD3C0).w	; load cropped screen object
-	;	move.w	#$0174,($FFFFD3C8).w		; set X-position
-	;	move.w	#$00F8,($FFFFD3CA).w		; set Y-position
 
-@cont:
 		bsr	PalCycle_SS
 		clr.w	($FFFFF780).w	; set stage angle to "upright"
 		move.w	#0,($FFFFF782).w ; no rotation speed
@@ -5245,14 +5251,141 @@ SS_ClrNemRam:	move.l	d0,(a1)+
 ; Main Special Stage loop
 ; ---------------------------------------------------------------------------
 
+SS_MainLoop:
+		cmpi.b	#4,($FFFFD024).w	; is special stage exiting routine already being run?
+		bhs.s	SS_NoPauseGame		; if yes, branch
+		bsr	PauseGame		; make the game pausing when pressing start
+
+		; SS hard part skipper
+		tst.b	($FFFFFF5F).w		; is this the blackout special stage?
+		bne.s	SS_NoPauseGame		; if yes, disallow hard part skippers
+		move.b	($FFFFF602).w,d0	; get button presses
+		cmpi.b	#$70,d0			; is exactly ABC held?
+		bne.s	SS_NoPauseGame		; if not, branch
+		move.b	#4,($FFFFD024).w	; make SS-Sonic object run "Obj09_Exit"
+		move.w	#$A8,d0			; play special stage exit sound
+		jsr	(PlaySound_Special).l	; play sound
+		clr.w	($FFFFFE20).w		; lose all your rings, loser
+
+SS_NoPauseGame:
+		move.b	#$A,($FFFFF62A).w
+		bsr	DelayProgram
+		move.w	($FFFFF604).w,($FFFFF602).w
+		jsr	ObjectsLoad
+		jsr	BuildSprites
+		jsr	SS_ShowLayout
+		bsr	SS_BGAnimate
+
+		bsr	BlackoutChallenge
+
+		cmpi.b	#$10,($FFFFF600).w ; is	game mode still special stage?
+		beq.w	SS_MainLoop	; if yes, loop
+; ---------------------------------------------------------------------------
+
+		; exit special stage
+		move.w	#60,($FFFFF614).w ; set	delay time to 1	second
+		move.w	#$3F,($FFFFF626).w
+		clr.w	($FFFFF794).w
+
+SS_EndLoop:
+		move.b	#$16,($FFFFF62A).w
+		bsr	DelayProgram
+		move.w	($FFFFF604).w,($FFFFF602).w
+		jsr	ObjectsLoad
+		jsr	BuildSprites
+	;	bsr	PLC_Execute
+		jsr	SS_ShowLayout
+		bsr	SS_BGAnimate
+		
+		subq.w	#1,($FFFFF794).w
+		bpl.s	loc_47D4
+		move.w	#2,($FFFFF794).w
+		bsr	Pal_ToWhite
+
+loc_47D4:
+		tst.w	($FFFFF614).w
+		bne.s	SS_EndLoop
+
+		moveq	#0,d0
+		bsr	LoadPLC2
+		moveq	#0,d0
+		move.w	#$7FF,d1
+
+SS_EndClrObjRamX:
+		move.l	d0,(a1)+
+		dbf	d1,SS_EndClrObjRamX ; clear object RAM
+
+		clr.b	($FFFFFF5F).w	; clear blackout special stage flag
+		clr.b	($FFFFFFE7).w	; make sonic mortal
+		clr.b	($FFFFFFE1).w	; make sonic not being on the foreground
+		clr.b	($FFFFFFAA).w		; clear crabmeat boss flag 1
+		clr.b	($FFFFFFAB).w		; clear crabmeat boss flag 2
+		clr.b	($FFFFFFA9).w		; clear crabmeat boss flag 3
+		clr.b	($FFFFFFB3).w
+		clr.b	($FFFFFFB4).w
+		clr.b	($FFFFFFB8).w
+		clr.b	($FFFFFFB7).w
+		clr.b	($FFFFFFB9).w
+		clr.b	($FFFFFE30).w	; clear	lamppost counter
+		clr.b	($FFFFFFD3).w
+		clr.b	($FFFFFFBB).w
+		clr.b	($FFFFFFB6).w
+		
+		move.l	a0,-(sp)
+		lea	($FFFFD000).w,a0
+		jsr	Sonic_ResetOnFloor
+		move.l	(sp)+,a0
+
+		move.b	#$C,($FFFFF62A).w
+		bsr	DelayProgram
+		jsr	ObjectsLoad
+		jsr	BuildSprites
+		bsr	Pal_MakeFlash
+
+		tst.b	($FFFFFF94).w		; was special stage exited via Pause+A?
+		bne.s	SpecialStage_Quitter	; if yes, don't modify progress
+
+SpecialStage_Beaten:
+		move.l	#10000,d0		; add 100000 ...
+		jsr	AddPoints		; ... points
+
+		cmpi.w	#$300,($FFFFFE10).w	; did we beat Special Place?
+		beq.s	@spbeaten		; if yes, branch
+		cmpi.w	#$401,($FFFFFE10).w	; did we beat Unreal Place/Blackout Challenge?
+		beq.s	@upbeaten		; if yes, branch
+		bra.s	SpecialStage_Quitter	; uhh idk how this could ever happen, but just in case
+
+@spbeaten:
+		bset	#1,($FFFFFF8B).w	; open second door after Special Place
+		move.b	#3,($FFFFFF9E).w	; set number for text to 3
+		bra.s	@runinfoscreen
+
+@upbeaten:
+		bset	#4,($FFFFFF8B).w	; open door after Unreal Place
+		move.b	#6,($FFFFFF9E).w	; set number for text to 6
+		tst.b	($FFFFFF5F).w		; is this the blackout special stage?
+		beq.s	@runinfoscreen		; if not, branch
+		move.b	#9,($FFFFFF9E).w	; set number for text to 9 instead
+
+@runinfoscreen:
+		move.b	#$20,($FFFFF600).w	; set to info screen
+		rts
+; ===========================================================================
+
+SpecialStage_Quitter:
+		move.w	#$400,($FFFFFE10).w	; set level to Uberhub
+		move.b	#$C,($FFFFF600).w	; set to level
+		move.w	#1,($FFFFFE02).w	; restart level	
+		rts
+; ===========================================================================
+
 Blackout_RotationSpeed = $140
 
-SS_MainLoop:
-		jsr	CinematicScreenFuzz
+BlackoutChallenge:
 		tst.b	($FFFFFF5F).w	;  is this the blackout special stage?
-		beq.s	@contyyy
+		beq.s	@blackoutend
 		cmpi.b	#4,($FFFFD024).w	; is special stage exiting routine being run?
-		bge.w	SS_NoPauseGame		; if yes, branch
+		bhs.w	@blackoutend		; if yes, branch
 
 		; continously apply the red/black palette
 		movem.l	d0-a1,-(sp)
@@ -5280,137 +5413,22 @@ SS_MainLoop:
 		move.w	d0,(a1)+		; set new colour
 		dbf	d3,@blackoutpalette	; loop for each colour
 		movem.l	(sp)+,d0-a1
+		
+		; blackout challenge controls
+		clr.w	($FFFFF782).w		; clear rotation speed
 
-		clr.w	($FFFFF782).w ; rotation speed
-
-		btst	#2,($FFFFF602).w ; is left being pressed?
-		beq.s	@contnotl	; if not, branch
-		move.w	#-Blackout_RotationSpeed,($FFFFF782).w ; rotation speed
-		bra.s	@contyyyx
+		btst	#2,($FFFFF602).w	; is left being pressed?
+		beq.s	@contnotl		; if not, branch
+		move.w	#-Blackout_RotationSpeed,($FFFFF782).w ; counterclockwise rotation
+		bra.s	@blackoutend
 @contnotl:
-		btst	#3,($FFFFF602).w ; is right being pressed?
-		beq.s	@contyyyx	; if not, branch
-		move.w	#Blackout_RotationSpeed,($FFFFF782).w ; rotation speed
+		btst	#3,($FFFFF602).w	; is right being pressed?
+		beq.s	@blackoutend		; if not, branch
+		move.w	#Blackout_RotationSpeed,($FFFFF782).w ; clockwise rotation
 
-@contyyyx:
-		bra.s	SS_NoSkip
-@contyyy:
-		move.b	($FFFFF602).w,d0	; get button presses
-		andi.b	#$70,d0			; sort out any non ABC button presses
-		cmpi.b	#$70,d0			; sort out any non ABC button presses
-		bne.w	SS_NoSkip		; if not, branch
-		cmpi.b	#4,($FFFFD024).w	; is special stage exiting routine being run?
-		bge.s	SS_NoPauseGame		; if yes, branch
-		move.b	#4,($FFFFD024).w	; make SS-Sonic object run "Obj09_Exit"
-		move.w	#$A8,d0			; play special stage exit sound
-		jsr	(PlaySound_Special).l	; play sound
-		clr.w	($FFFFFE20).w
-		bra.s	SS_NoPauseGame		; skip PauseGame jump
-
-SS_NoSkip:
-		bsr	PauseGame		; make the game pausing when pressing start
-
-SS_NoPauseGame:
-		move.b	#$A,($FFFFF62A).w
-		bsr	DelayProgram
-		move.w	($FFFFF604).w,($FFFFF602).w
-		jsr	ObjectsLoad
-		jsr	BuildSprites
-		jsr	SS_ShowLayout
-		bsr	SS_BGAnimate
-
-SS_ChkEnd:
-		cmpi.b	#$10,($FFFFF600).w ; is	game mode $10 (special stage)?
-		beq.w	SS_MainLoop	; if yes, branch
-		move.w	#60,($FFFFF614).w ; set	delay time to 1	second
-		move.w	#$3F,($FFFFF626).w
-		clr.w	($FFFFF794).w
-
-SS_EndLoop:
-		move.b	#$16,($FFFFF62A).w
-		bsr	DelayProgram
-		move.w	($FFFFF604).w,($FFFFF602).w
-		jsr	ObjectsLoad
-		jsr	BuildSprites
-		jsr	SS_ShowLayout
-		bsr	SS_BGAnimate
-		subq.w	#1,($FFFFF794).w
-		bpl.s	loc_47D4
-		move.w	#2,($FFFFF794).w
-		bsr	Pal_ToWhite
-
-loc_47D4:
-		tst.w	($FFFFF614).w
-		bne.s	SS_EndLoop
-
-		moveq	#0,d0
-		bsr	LoadPLC2
-		moveq	#0,d0
-		move.w	#$7FF,d1
-
-SS_EndClrObjRamX:
-		move.l	d0,(a1)+
-		dbf	d1,SS_EndClrObjRamX ; clear object RAM
-		
-		tst.b	($FFFFFF94).w		; was special stage exited via Pause+A?
-		bne.s	SpecialStage_Exit	; if yes, don't modify progress
-
-		move.w	($FFFFFF70).w,d0	; restore the rings you had before entering special stage to d0
-	;	add.w	($FFFFFE20).w,d0	; add your new collected rings to it (there are no rings in my special stages lmao)
-		move.w	d0,($FFFFFE20).w	; move result to rings counter
-
-		cmpi.w	#$401,($FFFFFE10).w
-		bne.s	@cont
-		bset	#4,($FFFFFF8B).w	; open second door
-		bra.s	@cont2
-@cont:
-		bset	#1,($FFFFFF8B).w	; open second door
-
-@cont2:
-		move.b	#3,($FFFFFF9E).w	; set number for text to 3
-		cmpi.w	#$401,($FFFFFE10).w
-		bne.s	@cont3
-		move.b	#6,($FFFFFF9E).w	; set number for text to 6
-		tst.b	($FFFFFF5F).w	;  is this the blackout special stage?
-		beq.s	@cont3
-		move.b	#9,($FFFFFF9E).w	; set number for text to 9
-
-@cont3:
-		move.b	#$20,($FFFFF600).w	; set to info screen
-
-		move.l	#10000,d0		; add 100000 ...
-		jsr	AddPoints	; ... points
-
-SpecialStage_Exit:
-		clr.b	($FFFFFF5F).w	; clear blackout special stage flag
-		clr.b	($FFFFFFE7).w	; make sonic mortal
-		clr.b	($FFFFFFE1).w	; make sonic not being on the foreground
-		clr.b	($FFFFFFAA).w		; clear crabmeat boss flag 1
-		clr.b	($FFFFFFAB).w		; clear crabmeat boss flag 2
-		clr.b	($FFFFFFA9).w		; clear crabmeat boss flag 3
-		clr.b	($FFFFFFB3).w
-		clr.b	($FFFFFFB4).w
-		clr.b	($FFFFFFB8).w
-		clr.b	($FFFFFFB7).w
-		clr.b	($FFFFFFB9).w
-		clr.b	($FFFFFE30).w	; clear	lamppost counter
-		clr.b	($FFFFFFD3).w
-		clr.b	($FFFFFFBB).w
-		clr.b	($FFFFFFB6).w
-		
-		move.l	a0,-(sp)
-		lea	($FFFFD000).w,a0
-		jsr	Sonic_ResetOnFloor
-		move.l	(sp)+,a0
-
-		move.b	#$C,($FFFFF62A).w
-		bsr	DelayProgram
-		jsr	ObjectsLoad
-		jsr	BuildSprites
-		bsr	PLC_Execute
-		bsr	Pal_MakeFlash
+@blackoutend:
 		rts
-; ===========================================================================
+; ---------------------------------------------------------------------------
 
 ; ---------------------------------------------------------------------------
 ; Special stage	background loading subroutine
@@ -45479,45 +45497,38 @@ Obj09_ChkEmer:
 		cmpi.b	#$40,d4
 		bhi.w	Obj09_ChkGhost
 		bsr	SS_RemoveCollectedItem
-		move.l	a1,obMap(a2)
-		move.b	#5,(a2)
-		addq.b	#1,($FFFFFE57).w ; add 1 to number of emeralds
+		move.l	a1,4(a2)
+		move.b	#1,(a2)
 
-		move.w	#$93,d0
-		tst.b	($FFFFFF5F).w	; is this the blackout blackout special stage?
-		beq.s	@cont
-		move.w	#$91,d0
-@cont:
+		addq.b	#1,($FFFFFE57).w ; add 1 to number of emeralds
 
 		cmpi.b	#4,($FFFFFE57).w ; do you have all the emeralds?
 		beq.s	Emershit
 		cmpi.w	#$401,($FFFFFE10).w	; is this Unreal Place?
-		bne.s	Obj09_NoSpecial2
+		bne.s	Obj09_EmerNotAll
 		cmpi.b	#2,($FFFFFE57).w ; do you have all the emeralds?
-		bne.s	Obj09_NoSpecial2
+		bne.s	Obj09_EmerNotAll
 
 Emershit:
-	;	jsr	SingleObjLoad
-	;	move.b	#$07,(a1)
-	;	move.b	#$07,($FFFFD380).w	; load cropped screen object
-	;	move.w	#$00D4,($FFFFD388).w		; set X-position
-	;	move.w	#$00F8,($FFFFD38A).w		; set Y-position
-	;	move.b	#$07,($FFFFD3C0).w	; load cropped screen object
-	;	move.w	#$0174,($FFFFD3C8).w		; set X-position
-	;	move.w	#$00F8,($FFFFD3CA).w		; set Y-position
-		
-		move.b	#1,($FFFFF7CC).w		; lock controls
-		bra.s	Obj09_YesEmer
-
-Obj09_NoSpecial2:
-		move.b	#1,(a2)
-		move.w	#$C5,d0			; play emerald jingle
-		tst.b	($FFFFFF5F).w		; is this the blackout blackout special stage?
-		beq.s	Obj09_YesEmer		; if not, branch
+		move.b	#5,(a2)		; this is important to end the stage
+		move.w	#$93,d0		; play regular special stage beaten jingle
+		tst.b	($FFFFFF5F).w	; is this the blackout blackout special stage?
+		beq.s	@cont		; if not, branch
 		move.b	#1,($FFFFFF93).w	; you have beaten the game, congrats
 		jsr	SRAM_SaveNow		; save
-		move.w	#$A6,d0			; play victory music
-Obj09_YesEmer:
+		move.w	#$91,d0			; play true ending music
+
+@cont:
+		move.b	#1,($FFFFF7CC).w		; lock controls
+		bra.s	Obj09_EmerPlaySound
+
+Obj09_EmerNotAll:
+		move.w	#$C5,d0			; play single emerald collected sound
+		tst.b	($FFFFFF5F).w		; is this the blackout blackout special stage?
+		beq.s	Obj09_EmerPlaySound	; if not, branch
+		move.w	#$A6,d0			; play spike hurt sound instead
+
+Obj09_EmerPlaySound:
 		jsr	(PlaySound_Special).l	; play music
 		moveq	#0,d4
 		rts
@@ -45851,6 +45862,8 @@ Obj09_NotSS1x:
 		frantic				; are we in Frantic mode?
 		beq.s	@cont			; if not, branch
 		move.w	#$B9,d0			; play annoying crumbling sound instead
+		jsr	(PlaySound).l	; play sound
+		move.w	#$DB,d0			; play annoying crumbling sound instead
 		
 
 @cont:

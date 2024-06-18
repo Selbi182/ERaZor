@@ -38,8 +38,8 @@
 ; $302 - Star Agony Place
 ; $502 - Finalor Place
 ; $501 - Tutorial Place
-QuickLevelSelect = 1
-QuickLevelSelect_ID = $300
+QuickLevelSelect = 0
+QuickLevelSelect_ID = $400
 ; ------------------------------------------------------
 DebugModeDefault = 1
 DieInDebug = 1
@@ -597,6 +597,15 @@ BlackBars.SetState:
 		bra.s	BlackBars_DontShow		; don't show black bars in any other game modes
 
 @validgamemode:	
+		cmpi.w	#$500,($FFFFFE10).w		; is this the bomb machine cutscene?
+		bne.s	@notmachine			; if not, branch
+		move.w	#8,BlackBars.TargetHeight	; set custom target height for the first part of the cutscene
+		tst.b	($FFFFFFC8).w			; did Eggman press the switch?
+		beq.s	BlackBars_ShowCustom		; if not yet, show small black bars
+		move.w	#28,BlackBars.TargetHeight	; set full bars once the machine is destroyed
+		bra.s	BlackBars_ShowCustom		; force display
+
+@notmachine:
 		tst.b	($FFFFF7CC).w			; are controls locked?
 		bne.s	BlackBars_Show			; if yes, always enable
 		tst.w	($FFFFF63A).w			; is game paused?
@@ -610,10 +619,8 @@ BlackBars.SetState:
 		beq.s	BlackBars_DontShow		; if yes, disable black bars
 		bra.s	BlackBars.GHP			; update GHP black bars
 @notghp:
-
 		btst	#3,($FFFFFF92).w		; is cinematic HUD enabled?
 		bne.s	BlackBars_Show			; if yes, always enable
-
 		cmpi.w	#$400,($FFFFFE10).w		; are we in Uberhub?
 		bne.s	BlackBars_DontShow		; if not, branch
 		tst.b	($FFFFFF7F).w			; are we falling down the intro tube?
@@ -673,7 +680,7 @@ BlackBars.GHP:
 		jsr	PlaySound_Special		; ...badump sound		
 
 @timeleft:		
-		bra		BlackBars_ShowCustom		; force display
+		bra	BlackBars_ShowCustom		; force display
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
 
@@ -3756,11 +3763,11 @@ loc_37FC:
 		jsr	SRAM_SaveNow		; save our progress
 
 Level_NoSRAM:
+		cmpi.w	#$500,($FFFFFE10).w	; is this the bomb machine cutscen?
+		beq.s	@skipstandard		; if yes, don't load these PLCs to avoid breaching the queue
 		moveq	#1,d0
 		bsr	LoadPLC			; load standard patterns 2
-	;	moveq	#0,d0
-	;	bsr	LoadPLC		; (re-)load standard patterns 1
-
+@skipstandard:
 		cmpi.w	#$001,($FFFFFE10).w	; is current level GHZ 2 (intro level)?
 		bne.s	Level_ClrRam		; if not, branch
 		moveq	#$13,d0			; set to star patterns
@@ -3854,9 +3861,11 @@ Level_GetBgm:
 		move.b	#$E3,d0
 		jsr	PlaySound_Special
 
-		cmpi.w	#$501,($FFFFFE10).w
-		bne.s	Level_NoPreTut
-		move.b	#$99,d0
+		cmpi.w	#$501,($FFFFFE10).w	; are we starting the tutorial?
+		bne.s	Level_NoPreTut		; if not, branch
+		
+		; TODO: don't replay this on death
+		move.b	#$99,d0			; play introduction music
 		jsr	PlaySound_Special
 
 		moveq	#$E,d0		; use FZ pallet
@@ -3902,9 +3911,8 @@ Level_NoMusic2:
 		bne.s	@contx
 		move.b	#0,($FFFFFF68).w
 @contx:
-
 		cmpi.w	#$001,($FFFFFE10).w
-		bne.s	@0
+		bne.s	@notintrocutscene
 		vram	$D700
 		lea	(ArtKospM_ExplBall).l,a0
 		jsr	KosPlusMDec_VRAM
@@ -3912,22 +3920,33 @@ Level_NoMusic2:
 		jsr	LoadPLC			; load explosion patterns
 		bra.s	Level_NoTitleCard
 		
-@0:
+@notintrocutscene:
 		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
-		bne.s	Level_NoTitleCard2	; if yes, branch
-		cmpi.w	#$500,($FFFFFE10).w
-		bne.s	@cont
-		move.b	#1,($FFFFF7CC).w
+		bne.s	Level_CinematicHud	; if yes, branch
+		
+		cmpi.w	#$500,($FFFFFE10).w	; is this the bomb machine cutscene?
+		bne.s	@notmachine		; if not, branch
+		move.b	#1,($FFFFF7CC).w	; lock controls 
 		moveq	#$1E,d0
-		jsr	LoadPLC		; load SBZ2 Eggman patterns
-		bra.s	Level_NoTitleCard2
+		jsr	LoadPLC			; load SBZ2 Eggman patterns
+		moveq	#2,d0
+		jsr	LoadPLC			; load explosion patterns
+		bra.s	Level_NoTitleCard
 
-@cont:
+@runplc:
+		; run PLC now to avoid breaching the queue limit
+		move.b	#$C,($FFFFF62A).w
+		bsr	DelayProgram
+		bsr	PLC_Execute
+		tst.l	PLC_Pointer	; are there any items in the pattern load cue?
+		bne.s	@runplc		; if yes, branch
+
+@notmachine:
 		move.b	#$34,($FFFFD080).w ; load title	card object
 		bra.s	Level_TtlCard
 ; ===========================================================================
 
-Level_NoTitleCard2:
+Level_CinematicHud:
 		moveq	#3,d0
 		bsr	PalLoad2	; load Sonic's pallet line
 	
@@ -13624,6 +13643,7 @@ Obj3F_NoCamShake:
 Obj3F_PlaySound:
 	if Obj3F_SoundType=1
 		move.w	#$C4,d0			; play default explosion sound (MZ block smash)
+		bra.s	@notjester ; I'm sorry but this just isn't working
 		move.w	($FFFFFE0E).w,d1	; get timer
 		andi.w	#$3F,d1			; only allow every once in a while
 		bne.s	@notjester		; ''

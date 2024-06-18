@@ -250,21 +250,21 @@ StoryText_WriteFull:
 		moveq	#STS_LinesTotal,d1		; number of lines of text
 
 @nextline:
-		move.l	d4,4(a6)
+		move.l	d4,4(a6)			; write whatever line we're on right now to the VDP
 		moveq	#STS_LineLength-1,d2		; number of characters per line
 @nextchar:
-		moveq	#0,d0
-		move.b	(a1)+,d0
-		bmi.s	@endwrite
-		add.w	d3,d0
-		move.w	d0,(a6)
-		dbf	d2,@nextchar
+		moveq	#0,d0				; clear d0
+		move.b	(a1)+,d0			; get next char
+		bmi.s	@endwrite			; is it the end of the text? brancch
+		add.w	d3,d0				; apply VRAM settings
+		move.w	d0,(a6)				; write to VDP
+		dbf	d2,@nextchar			; loop until row is done
 
 		addi.l	#$800000,d4			; go to next line
-		dbf	d1,@nextline
+		dbf	d1,@nextline			; loop until entire text is written
 
 @endwrite:
-		move.b	#1,(STS_FullyWritten).w
+		move.b	#1,(STS_FullyWritten).w		; set flag
 		rts
 
 ; ===========================================================================
@@ -273,7 +273,7 @@ StoryText_WriteFull:
 ; ---------------------------------------------------------------------------
 ; Macro to preprocess and output a character to its correct mapping
 stschar macro char		
-	if     \char = " "
+	if     \char = ' '
 		dc.b	$0000
 	elseif \char = "'"
 		dc.b	$0040/$20
@@ -290,15 +290,15 @@ stschar macro char
 	elseif \char = '?'
 		dc.b	$0500/$20
 	else 	; regular letter
-		dc.b	($0160/$20)+\char-'A'
+		dc.b	($0160/$20) + \char - 'A'
 	endif
 	endm
  
 ststxt macro string
 	i:   = 1
 	len: = strlen(\string)
-	if (len>STS_LineLength)
-		inform 1, 'line too long'
+	if (len<>STS_LineLength)
+		inform 2, "line must be EXACTLY 28 characters long"
 	endif
 
 	while (i<=len)

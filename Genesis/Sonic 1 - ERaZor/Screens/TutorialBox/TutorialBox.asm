@@ -789,8 +789,8 @@ Hint_1:
 	boxtxt_pause
 	boxtxt	"c OR b - JUMP"
 	boxtxt_line
-	boxtxt	"~ + jump - SPIN DASH"
-	boxtxt	"^ + jump - PEEL OUT"
+	boxtxt	"~ + abc - SPIN DASH"
+	boxtxt	"^ + a   - PEEL OUT"
 	boxtxt_end
 
 ;		 --------------------

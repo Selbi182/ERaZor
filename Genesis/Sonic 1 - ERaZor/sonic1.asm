@@ -42,7 +42,7 @@ QuickLevelSelect = 0
 QuickLevelSelect_ID = $400
 ; ------------------------------------------------------
 DebugModeDefault = 1
-DieInDebug = 1
+DebugSurviveNoRings = 1
 ; ------------------------------------------------------
 DoorsAlwaysOpen = 1
 LowBossHP = 1
@@ -32177,7 +32177,7 @@ SPO_NotMZ:
 		cmpi.b	#7,obAnim(a0)		; is anim looking up?
 		bne.w	SPO_End			; if not, return
 		move.b	($FFFFF603).w,d0	; read controller
-		andi.b	#$30,d0			; pressing B/C ?
+		andi.b	#$40,d0			; pressing A?
 		beq.w	SPO_End			; if not, return
 
 SPO_Simulated:
@@ -32304,7 +32304,7 @@ Spdsh_NotMZ:
 		cmpi.b	#8,obAnim(a0)		; is anim duck
 		bne.s	locret2_1AC8C		; if not, return
 		move.b	($FFFFF603).w,d0	; read controller
-		andi.b	#$30,d0			; pressing B/C ?
+		andi.b	#$70,d0			; pressing A/B/C ?
 		beq.w	locret2_1AC8C		; if not, return
 		move.b	#$1F,obAnim(a0)		; set spindash anim (9 in s2)
 		move.w	#$D1,d0			; spin sound ($E0 in s2)
@@ -44010,14 +44010,12 @@ Hurt_Sound:
 ; ===========================================================================
 
 Hurt_NoRings:
+	if DebugSurviveNoRings=1
 		tst.b	($FFFFFFE7).w	; has sonic destroyed a S monitor?
-		bne.s	KillSonic	; if yes, branch
+		bne.s	KillSonic	; if yes, do the funny spinny thingy
 		
-	if DieInDebug=0
 		tst.w	($FFFFFFFA).w	; is debug mode	cheat on?
-		bne.w	Hurt_Shield	; if yes, branch
-	else
-		nop
+		bne.w	Hurt_Shield	; if yes, don't kill us
 	endif
 ; End of function HurtSonic
 ; Continue straight to KillSonic
@@ -46786,14 +46784,14 @@ Obj21_ChkTime2:
 		move.w	obScreenY(a0),d0		; move Y-pos into d0
 		add.w	#HudSpeed,d0		; add the HUDSpeed - 1 to it
 		cmp.w	$38(a0),d0		; check current position on goal position
-		bmi.s	Obj21_NormalUpdateY	; if current position is smaller than goal position, move it normally
+		blt.s	Obj21_NormalUpdateY	; if current position is smaller than goal position, move it normally
 		bra.s	Obj21_YEnd
 
 Obj21_ChkLives2:
 		move.w	obX(a0),d0		; move X-pos into d0
 		add.w	#HudSpeed,d0		; add the HUDSpeed - 1 to it
 		cmp.w	$36(a0),d0		; check current position on goal position
-		bmi.s	Obj21_NormalUpdateX	; if current position is smaller than goal position, move it normally
+		blt.s	Obj21_NormalUpdateX	; if current position is smaller than goal position, move it normally
 
 Obj21_XEnd:
 		move.w	$36(a0),obX(a0)		; make sure the position is really at the correct spot

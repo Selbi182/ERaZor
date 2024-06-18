@@ -38,7 +38,7 @@
 ; $302 - Star Agony Place
 ; $502 - Finalor Place
 ; $501 - Tutorial Place
-QuickLevelSelect = 0
+QuickLevelSelect = 1
 QuickLevelSelect_ID = $300
 ; ------------------------------------------------------
 DebugModeDefault = 1
@@ -5260,8 +5260,15 @@ SS_MainLoop:
 		tst.b	($FFFFFF5F).w		; is this the blackout special stage?
 		bne.s	SS_NoPauseGame		; if yes, disallow hard part skippers
 		move.b	($FFFFF602).w,d0	; get button presses
+		tst.w	($FFFFFFFA).w		; is debug cheat enabled?
+		beq.s	@notdebug		; if not, branch
+		cmpi.b	#$60,d0			; is A&C held? (filter out B to not interfere with debug mode)
+		bne.s	SS_NoPauseGame		; if not, branch
+		bra.s	@dosshardpartskip
+@notdebug:	
 		cmpi.b	#$70,d0			; is exactly ABC held?
 		bne.s	SS_NoPauseGame		; if not, branch
+@dosshardpartskip:
 		move.b	#4,($FFFFD024).w	; make SS-Sonic object run "Obj09_Exit"
 		move.w	#$A8,d0			; play special stage exit sound
 		jsr	(PlaySound_Special).l	; play sound

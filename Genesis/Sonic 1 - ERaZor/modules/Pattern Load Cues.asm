@@ -7,12 +7,10 @@ PLC_Slot_2:		rs.l	1
 PLC_Slot_3:		rs.l	1
 PLC_VRAMAddr:		rs.w	1			; VRAM destination address
 PLC_NumBlocks:		rs.w	1			; number of blocks to decompress
-PLC_LastBlockSize:	rs.w	1			; size of the last block to decompress
+PLC_LastBlockSize:	rs.w	1			; size of the last block to decompress (unused)
 PLC_ArtPtr:		rs.l	1			; pointer within compressed art
 
 PLC_RAM_End:		equ	__RS
-
-PLC_BlockSize = $1000	; 4 kb
 
 ; --------------------------------------------------------------
 ; Subroutine to execute PLC list
@@ -105,13 +103,13 @@ PLC_DecompressArt:
 		KDebug.WriteLine "PLC_DecompressArt(): block=%<.l PLC_ArtPtr sym>, pos=%<.l PLC_Pointer sym>, caller=%<.l a1 sym>"
 	endif
 
-	lea		Art_Buffer, a1			; a1 = decompression buffer
+	lea	Art_Buffer, a1				; a1 = decompression buffer
 	move.l	PLC_ArtPtr, a0				; a0 = compressed art ptr
 							; a1 = destination buffer
-	jsr		KosPlusDec(pc)			; decompress block
-	move.l	a0,	PLC_ArtPtr			; remember compressed art ptr
+	jsr	KosPlusDec(pc)				; decompress block
+	move.l	a0, PLC_ArtPtr				; remember compressed art ptr
 
-	assert.l	a1, ls, #Art_Buffer_End	; art buffer should be within bounds after decompression
+	assert.l a1, ls, #Art_Buffer_End		; art buffer should be within bounds after decompression
 
 	; Convert art in-memory, prepare DMA
 	lea	Art_Buffer, a0				; a0 = source
@@ -125,7 +123,7 @@ PLC_DecompressArt:
 	lsr.w	d3
 	jsr	QueueDMATransfer			;
 
-	subq.w	#1,	PLC_NumBlocks
+	subq.w	#1, PLC_NumBlocks
 	bpl.s	@return
 	move.l	#PLC_ProcessQueue, PLC_StreamHndl	; fetch new entry next time
 
@@ -169,7 +167,11 @@ LoadPLC:
 	move.l	(a2)+, d0			; check slot_2
 	beq.s	@found
 	move.l	(a2)+, d0			; check slot_3
-	bne.s	@done
+	if def(__DEBUG__)
+		bne.s	LoadPLC_OutOfSlotsException
+	else
+		bne.s	@done
+	endif
 
 @found:
 	move.l	a1, -(a2)			; save address in free slot
@@ -178,6 +180,12 @@ LoadPLC:
 	move.l	(sp)+, a2
 	move.l	(sp)+, a1
 	rts
+
+; ==============================================================
+	if def(__DEBUG__)
+LoadPLC_OutOfSlotsException:
+	RaiseError 'Out of PLC list slots'
+	endif
 
 ; ==============================================================
 LoadPLC_Direct:
@@ -191,7 +199,11 @@ LoadPLC_Direct:
 	move.l	(a2)+, d0			; check slot_2
 	beq.s	@found
 	move.l	(a2)+, d0			; check slot_3
-	bne.s	@done
+	if def(__DEBUG__)
+		bne.s	LoadPLC_OutOfSlotsException
+	else
+		bne.s	@done
+	endif
 
 @found:
 	move.l	a1, -(a2)			; save address in free slot

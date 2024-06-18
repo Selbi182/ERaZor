@@ -48490,6 +48490,14 @@ ObjPos_Null:	dc.w    $FFFF,$0000,$0000
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
 
+; Sanity check for __DEBUG__ symbol to avoid pitfals
+	if def(__DEBUG__)
+	if __DEBUG__=0
+		; "if def(__DEBUG__)" will always be true, even if __DEBUG__=0
+		inform 2, "__DEBUG__=0 doesn't have any effect, comment it out instead"
+	endif
+	endif
+
 ; ===========================================================================
 EndOfRom:	END	; it's joever
 ; ===========================================================================

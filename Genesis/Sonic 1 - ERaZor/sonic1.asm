@@ -4319,26 +4319,34 @@ locret_3CF4:
 ; ===========================================================================
 
 DynWater_LZ2:				; XREF: DynWater_Index
-		tst.b 	($FFFFFFF9).w		; flooding section already happening?
-		beq.s	@1			; if not, branch
-		btst	#1,($FFFFFFF9).w
-		bne.s	@2
-		bset	#1,($FFFFFFF9).w
-		rts
-@2:
+		tst.b 	($FFFFFFF9).w		; is flooding section even happening?
+		beq.s	@noflood		; if not, branch
+		btst	#1,($FFFFFFF9).w	; one frame passed since Jaws was destroyed?
+		bne.s	@flood			; if yes, branch
+		bset	#1,($FFFFFFF9).w	; set flag
+		rts				; don't flood yet, because we need to drain first for 1 frame
+@flood:
 		move.b	#8,($FFFFF64C).w	; set increased water rising speed
-		move.w	#$058,($FFFFF64A).w	; flood this place
-		rts
+		move.w	#$058,d1		; flood this place
+		bra.s	@setheight
 
-@1:
+@noflood:
 		move.w	#$328,d1		; set default target water level
-		cmpi.b	#3,($FFFFFF97).w	; was third lamppost passed?
-		bne.s	@0			; if not, branch
-		move.w	#$370,d1		; set water level before Jaws
-		move.w	d1,($FFFFF646).w	; set it immediately
 
-@0
-		move.w	d1,($FFFFF64A).w	; set water level
+		cmpi.b	#1,($FFFFFF97).w	; was first lamppost passed?
+		bne.s	@notfirst		; if not, branch
+		move.w	#$228,d1		; set default target water level
+		bra.s	@immediately
+@notfirst:
+		cmpi.b	#3,($FFFFFF97).w	; was third lamppost passed?
+		bne.s	@setheight		; if not, branch
+		move.w	#$3B0,d1		; set water level before Jaws
+
+@immediately:
+		move.w	d1,($FFFFF646).w	; current water level
+		move.w	d1,($FFFFF648).w	; average water level
+@setheight:
+		move.w	d1,($FFFFF64A).w	; set target water level
 		rts	
 ; ===========================================================================
 
@@ -4877,6 +4885,7 @@ MainLevelArray:
 ClearEverySpecialFlag:
 		clr.b	(FZEscape).w
 		clr.w	($FFFFC904).w
+		clr.b	($FFFFF5E0).w
 		clr.b	($FFFFFF5F).w
 		clr.l	($FFFFFF60).w
 		clr.l	($FFFFFF64).w
@@ -5101,32 +5110,32 @@ SignpostArtLoad:			; XREF: Level
 		subi.w	#$100,d1		; adjust
 		cmp.w	d1,d0			; has Sonic reached the	edge of	the level?
 		blt.s	Signpost_Exit		; if not, branch
-		tst.b	($FFFFFE1E).w		; is time stopped?
-		beq.s	Signpost_Exit		; if not, branch
-		cmp.w	($FFFFF728).w,d1	; was left boundary already set?
-		beq.s	Signpost_Exit		; if yes, branch
+		tst.b	($FFFFF5E0).w		; sign post art already loaded?
+		bne.s	Signpost_Exit		; if yes, don't load again
 
-		move.w	($FFFFFE10).w,d0
+		move.w	($FFFFFE10).w,d0	; get current Level ID
+		cmpi.w	#$002,d0		; is level GHP?
+		bne.s	@notghp			; if not, branch		
 		tst.b	($FFFFFF91).w		; GHP boss defeated?
 		beq.s	@notghp			; if not, branch
-		cmpi.w	#$002,d0		; is level GHP in the first place?
-		bne.s	@notghp			; if not, branch		
 		bra.s	Signpost_DoLoad		; do load
 
 @notghp:
 		cmpi.w	#$200,d0		; is level RP?
 		beq.s	Signpost_DoLoad		; if yes, branch
 		cmpi.w	#$101,d0		; is level LP?
-		beq.s	Signpost_DoLoad		; if yes, branch
+		beq.s	Signpost_DoLoad_NoLock	; if yes, branch (don't lock screen)
 		cmpi.w	#$302,d0		; is level SAP?
 		beq.s	Signpost_DoLoad		; if yes, branch
 		rts				; otherwise, don't load
 
 Signpost_DoLoad:
 		move.w	d1,($FFFFF728).w	; move left boundary to current screen position
+
+Signpost_DoLoad_NoLock:
 		moveq	#$12,d0
-		jmp	LoadPLC2		; load signpost	patterns
-; ===========================================================================
+		jsr	LoadPLC2		; load signpost	patterns
+		move.b	#1,($FFFFF5E0).w	; set "signpost patterns have been loaded" flag
 
 Signpost_Exit:
 		rts	
@@ -7376,12 +7385,10 @@ DTS_Loop:
 ; ===========================================================================
 
 Deform_LZ:
-		tst.b 	($FFFFFFF9).w
+		tst.b 	($FFFFFFFE).w		; is the =P monitor enabled?
 		bne.s	Deform_LZ_Extended	; if yes, use alternate deformation
-	;	tst.b 	($FFFFFFFE).w		; is the =P monitor enabled?
-	;	bne.w	Deform_LZ_Extended	; if yes, use alternate deformation
 
-	; original code, takes MUCH less RAM than the extended code
+	; original code, takes A LOT less cycles than the extended code
 		move.w	($FFFFF73A).w,d4
 		ext.l	d4
 		asl.l	#7,d4
@@ -7407,7 +7414,7 @@ loc_63C6:
 ; End of function Deform_LZ
 ; ===========================================================================
 
-; extended code, takes way too much RAM and is therefore disabled.
+; extended code, takes way a ton more cycles
 Deform_LZ_Extended:
 		move.w	($FFFFF73A).w,d4	; d4 = Cam_X_shift (8 fixed)
 		ext.l	d4
@@ -27170,7 +27177,7 @@ Map_obj5D:
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Object 5F - stationary shotgunner bomb enemy (SLZ)
+; Object 5E - stationary shotgunner bomb enemy (SLZ)
 ; ---------------------------------------------------------------------------
 BombWalkSpeed =	$C0
 BombFuseTime = 82
@@ -28708,7 +28715,7 @@ Obj62_FireBall:				; XREF: Obj62_Index
 		move.b	#8,obActWid(a0)
 		move.b	#2,obFrame(a0)
 		addq.w	#8,obY(a0)
-		move.w	#$1000,obVelX(a0)	; set X speed
+		move.w	#$600,obVelX(a0)	; set X speed
 		btst	#0,obStatus(a0)
 		bne.s	Obj62_Sound
 		neg.w	obVelX(a0)
@@ -29052,17 +29059,10 @@ Map_obj63:
 ; ---------------------------------------------------------------------------
 
 Obj64:					; XREF: Obj_Index
-		frantic			; frantic mode?
-		beq.s	@Frantic	; no bubbles for you
-
 		moveq	#0,d0
 		move.b	obRoutine(a0),d0
 		move.w	Obj64_Index(pc,d0.w),d1
 		jmp	Obj64_Index(pc,d1.w)
-
-@Frantic:
-		jmp 	DeleteObject
-
 ; ===========================================================================
 Obj64_Index:	dc.w Obj64_Main-Obj64_Index
 		dc.w Obj64_Animate-Obj64_Index
@@ -29073,6 +29073,9 @@ Obj64_Index:	dc.w Obj64_Main-Obj64_Index
 ; ===========================================================================
 
 Obj64_Main:				; XREF: Obj64_Index
+		frantic			; are we in frantic mode?
+		bne.w	DeleteObject	; if yes, no bubbles for you
+
 		addq.b	#2,obRoutine(a0)
 		move.l	#Map_obj64,obMap(a0)
 		move.w	#$8348,obGfx(a0)
@@ -30045,10 +30048,10 @@ Obj06_ChkDist:
 		move.b	($FFFFF602).w,d0	; get button presses
 		eori.b	#$70,d0			; sort out any non ABC button presses
 		tst.w	($FFFFFFFA).w		; is debug cheat enabled?
-		beq.s	@cont			; if not, branch
+		beq.s	@notdebug		; if not, branch
 		move.b	($FFFFF602).w,d0	; get button presses
 		eori.b	#$60,d0			; filter out B to not interfere with debug mode
-@cont:
+@notdebug:
 		tst.b	d0			; all buttons pressed?
 		bne.w	Obj06_Display		; if not, branch
 
@@ -30093,8 +30096,14 @@ Obj06_DoHardPartSkip:
 		clr.w	($FFFFD012).w		; clear Sonic's Y-speed
 		clr.w	($FFFFD014).w		; clear Sonic's interia
 
+		cmpi.w	#$101,($FFFFFE10).w
+		bne.s	@notlp
+		move.b	#1,($FFFFFFFE).w	; make sure =P monitor is enabled
+		move.b	#3,($FFFFFF97).w	; set to final checkpoint
+
+@notlp:
 		cmpi.w	#$302,($FFFFFE10).w
-		bne.s	@contxx
+		bne.s	@notsap
 		move.b	#6,($FFFFFFA0).w
 		movem.l	d0-a1,-(sp)
 		move.w	#$1D80,d0
@@ -30122,29 +30131,28 @@ Obj06_DoHardPartSkip:
 		move.b	#1,($FFFFFF77).w
 		move.b	#$96,d0			; play music
 		jsr	PlaySound
-
-
-@contxx:
+@notsap:
 		clr.w	($FFFFFE20).w
 		clr.b	($FFFFFE1D).w
 		move.w	#$C3,d0			; set giant ring sound
 		jsr	PlaySound_Special	; play it
 		tst.b	($FFFFFFE7).w		; is Sonic in Inhuman Mode?
-		beq.s	@contx			; if not, branch
+		beq.s	@notinhuman		; if not, branch
 		clr.b	($FFFFFFE7).w		; disabled Inhuman Mode
+
 		cmpi.w	#$501,($FFFFFE10).w
-		bne.s	@contxy
+		bne.s	@nottutorial
 		move.b	#$87,d0
 		jsr	PlaySound
 		clr.b	($FFFFFF74).w
 
-@contxy:
+@nottutorial:
 		move.w	d7,-(sp)		; back up d7
 		moveq	#3,d0			; load Sonic's pallet
 		jsr	PalLoad2		; restore sonic's palette
 		move.w	(sp)+,d7		; restore d7
 
-@contx:
+@notinhuman:
 		jsr	WhiteFlash2		; make a white flash
 	;	jsr	FixLevel		; instantly move the camera
 
@@ -30159,7 +30167,7 @@ Obj06_Display:
 		cmpi.w	#$280,d0		; has object gone out of screen?
 		bhi.w	DeleteObject		; if yes, delete object
 		rts				; return
-; ---------------------------------------------------------------------------
+; ===========================================================================
 
 Obj06_InfoBox:
 		btst	#1,($FFFFD022).w
@@ -30175,9 +30183,7 @@ Obj06_InfoBox:
 		addi.w	#$20,d0			; add $10 to it
 		cmpi.w	#$40,d0			; is Sonic within $40 pixels of that object?
 		bhi.w	Obj06_NoA		; if not, branch
-		
-	;	tst.b	($FFFFD040).w		; is HUD already loaded?
-	;	beq.w	Obj06_NoA		
+
 
 Obj06_ChkA:
 		move.b	($FFFFF603).w,d0	; is A pressed? (part 1)
@@ -30190,7 +30196,7 @@ Obj06_ChkA:
 		jsr	PlaySound		; play up/down sound
 		
 		cmpi.w	#$400,($FFFFFE10).w	; is level Uberhub?
-		bne.s	@cont			; if not, branch
+		bne.s	@notuberhubeasteregg	; if not, branch
 		
 		lea	($FFFFFB00).w,a1
 		moveq	#(64/2)-1,d2
@@ -30200,20 +30206,11 @@ Obj06_ChkA:
 		tst.l	d0
 		bmi.s	@0
 		lsl.l	#4,d3
-		
-@0:
-		and.w	d3,d0
+@0:		and.w	d3,d0
 		move.w	d0,(a1)+
 		and.w	d3,d1
 		move.w	d1,(a1)+
 		dbf	d2,@loopdestroypalette
-		
-	;	jsr	RandomNumber_Next
-	;	andi.l	#$0EEE0EEE,d0
-	;	andi.l	#$0EEE0EEE,d1
-	;	move.l	d0,(a1)+
-	;	move.l	d0,(a1)+
-	;	dbf	d2,@loopdestroypalette
 		
 		move.w	#$000,($FFFFFB24).w
 		move.w	#$020,($FFFFFB26).w
@@ -30235,7 +30232,7 @@ Obj06_ChkA:
 		move.w	#$93,d0			; play special stage jingle...
 		jsr	PlaySound		; ...specifically because it tends to ruin the music following it lol
 
-@cont:
+@notuberhubeasteregg:
 		jsr	DisplaySprite		; VLADIK => Make sure sprite is displayed
 		move.b	obSubtype(a0),d0	; VLADIK => Load hint number based on subtype
 		jmp	Tutorial_DisplayHint	; VLADIK => Display hint
@@ -30243,7 +30240,7 @@ Obj06_ChkA:
 Obj06_NoA:
 		move.b	#1,obFrame(a0)		; don't show A button
 		bra.w	Obj06_Display
-; ---------------------------------------------------------------------------
+; ===========================================================================
 
 Obj06_Locations:	;XXXX   YYYY
 		dc.w	$18EA, $036C	; Night Hill Place
@@ -30258,7 +30255,7 @@ Obj06_Locations:	;XXXX   YYYY
 		dc.w	$101E, $036C	; Tutorial Place
 		dc.w	$1EE0, $0304	; Star Agony Place
 
-; ---------------------------------------------------------------------------
+; ===========================================================================
 
 Map_Obj06:
 		include	"_maps\HardPartSkipper.asm"
@@ -30433,10 +30430,10 @@ Obj01_Speedcont:
 		bra.s	Obj01_Control
 
 ; ===========================================================================
-Obj01_Modes:	dc.w Obj01_MdNormal-Obj01_Modes
-		dc.w Obj01_MdJump-Obj01_Modes
-		dc.w Obj01_MdRoll-Obj01_Modes
-		dc.w Obj01_MdJump2-Obj01_Modes
+Obj01_Modes:	dc.w Obj01_MdNormal-Obj01_Modes	; neither jumping, rolling, or airbourne
+		dc.w Obj01_MdJump-Obj01_Modes	; airbourne but not by a manual jump
+		dc.w Obj01_MdRoll-Obj01_Modes	; rolling on the ground
+		dc.w Obj01_MdJump2-Obj01_Modes	; airbourne as a result of a manual jump
 ; ===========================================================================
 
 Obj01_Control:
@@ -30449,7 +30446,7 @@ loc_12C64:
 		bne.s	loc_12C7E	; if yes, branch
 		moveq	#0,d0
 		move.b	obStatus(a0),d0
-		andi.w	#6,d0
+		andi.w	#%0110,d0			; only look at bit 1 (airbourne flag) and 2 (jumping/rolling flag)
 		move.w	Obj01_Modes(pc,d0.w),d1
 		jsr	obj01_Modes(pc,d1.w)
 
@@ -30880,7 +30877,6 @@ loc_12E0E:
 ; ---------------------------------------------------------------------------
 
 Obj01_MdNormal:				; XREF: Obj01_Modes
-		bsr	Sonic_SpeedDash
 		bsr	Sonic_SuperPeelOut
 		bsr	Sonic_Spindash
 		bsr	Sonic_Jump
@@ -30899,10 +30895,7 @@ Obj01_MdJump:				; XREF: Obj01_Modes
 		clr.b	$39(a0)
 		bsr	Sonic_AutomaticRoll	; branch to automatic roll routine
 		bsr	Sonic_AirFreeze
-		bsr	Sonic_CheckUpBtn
-		bsr	Sonic_CheckDownBtn
 		bsr	Sonic_JumpHeight
-		bsr	Sonic_FixWalkJumpBug	; branch to walk/jump fix routine
 		bsr	Sonic_ChgJumpDir
 		bsr	Sonic_LevelBound
 		bsr	ObjectFall_Sonic
@@ -30929,26 +30922,10 @@ Obj01_MdRoll:				; XREF: Obj01_Modes
 ; ===========================================================================
 
 Obj01_MdJump2:				; XREF: Obj01_Modes
-		clr.b	$39(a0)
-		bsr	Sonic_AutomaticRoll	; branch to automatic roll routine		
-		bsr	Sonic_AirFreeze
-		bsr	Sonic_CheckUpBtn
-		bsr	Sonic_CheckDownBtn
+		; MdJump2 is almost identical to MdJump, but you can jumpdash as well
 		bsr	Sonic_Jumpdash
-		bsr	Sonic_JumpHeight
-		bsr	Sonic_FixWalkJumpBug	; branch to walk/jump fix routine
-		bsr	Sonic_ChgJumpDir
-		bsr	Sonic_LevelBound
-		bsr	ObjectFall_Sonic
-		btst	#6,obStatus(a0)	; is Sonic underwater?
-		beq.s	loc_12EA6	; if not, branch
-		subi.w	#$28,obVelY(a0)	; use reduced gravity
+		bra.s	Obj01_MdJump
 
-loc_12EA6:
-		bsr	Sonic_JumpAngle
-		bsr	Sonic_Floor
-		bsr	Sonic_Fire
-		rts	
 ; ---------------------------------------------------------------------------
 ; Subroutine to	make Sonic walk/run
 ; ---------------------------------------------------------------------------
@@ -32066,29 +32043,10 @@ SH_Objects:
 ; ===============================================================================
 
 ; ---------------------------------------------------------------------------
-; Subroutine to check if up is pressed, and if so, branch to Sonic_DoubleJump
-; ---------------------------------------------------------------------------
-
-Sonic_CheckUpBtn:
-		rts
-		move.b	($FFFFF603).w,d0	; move button press to d0
-		andi.b	#1,d0			; is up pressed?
-		beq.s	Sonic_CUB_End		; if not brancgh
-	;	tst.w	obVelY(a0)			; is vertical speed negative (is sonic moving up)?
-		bra.s	Sonic_DoubleJump	; if yes, branch
-
-Sonic_CUB_End:
-		rts
-
-; ---------------------------------------------------------------------------
 ; Subroutine to perform a Double Jump
 ; ---------------------------------------------------------------------------
 
 Sonic_DoubleJump:
-	;	bsr	WhiteFlash		; make white flash
-	;	tst.b	($FFFFFFEB).w		; was jumpdash flag set?
-	;	bne.s	DJ_End			; if yes, branch
-	;	move.b	#1,($FFFFFFEB).w	; if not, set jumpdash flag
 		move.w	#$A0,d0			; set jumping sound		
 		tst.b	($FFFFFFE7).w		; is inhuman mode on?
 		beq.s	DJ_PlaySound		; if not, branch
@@ -32096,8 +32054,7 @@ Sonic_DoubleJump:
 
 DJ_PlaySound:
 		jsr	(PlaySound).l		; play jumping sound
-	;	bclr	#4,obStatus(a0)		; clear double jump flag
-		move.w	#-$700,obVelY(a0)		; set normal double jump speed
+		move.w	#-$700,obVelY(a0)	; set normal double jump speed
 		btst	#3,($FFFFF602).w
 		beq.s	DJ_NoRight
 		add.w	#$150,obVelX(a0)
@@ -32110,43 +32067,22 @@ DJ_NoRight:
 DJ_NoLeft:
 		btst	#6,obStatus(a0)		; is Sonic underwater?
 		beq.s	DJ_End			; if not, branch
-		move.w	#-$300,obVelY(a0)		; set underwater double jump speed
+		move.w	#-$300,obVelY(a0)	; set underwater double jump speed
 
 DJ_End:
 		rts				; return or cancel double jump
-
-; ---------------------------------------------------------------------------
-; Subroutine to check if down is pressed, and if so, branch to Sonic_DashDown
-; ---------------------------------------------------------------------------
-
-Sonic_CheckDownBtn:
-		rts
-		move.b	($FFFFF603).w,d0	; move button press to d0
-		andi.b	#2,d0			; is down pressed?
-		beq.s	Sonic_CDB_End		; if not brancgh
-	;	tst.w	obVelY(a0)			; is vertical speed positive (is sonic moving down)?
-		bra.s	Sonic_DownDash		; if yes, branch
-
-Sonic_CDB_End:
-		rts
 
 ; ---------------------------------------------------------------------------
 ; Subroutine to dash Sonic down
 ; ---------------------------------------------------------------------------
 
 Sonic_DownDash:
-	;	bsr	WhiteFlash		; make white flash
-	;	tst.b	($FFFFFFEB).w		; was jumpdash flag set?
-	;	bne.s	DD_End			; if yes, branch
-	;	move.b	#1,($FFFFFFEB).w	; if not, set jumpdash flag
 		move.w	#$BC,d0			; set jumpdash sound
 		jsr	(PlaySound).l		; play jumpadsh sound
-	;	bclr	#4,obStatus(a0)		; clear double jump flag
-	;	move.b	#$29,obAnim(a0)		; set down dash anim (disabled because it's scrambled)
-		move.w	#$A00,obVelY(a0)		; set normal down dash speed
+		move.w	#$A00,obVelY(a0)	; set normal down dash speed
 		btst	#6,obStatus(a0)		; is Sonic underwater?
 		beq.s	DD_End			; if not, branch
-		move.w	#$600,obVelY(a0)		; set underwater down dash speed
+		move.w	#$600,obVelY(a0)	; set underwater down dash speed
 
 DD_End:
 		rts				; return or cancel down dash
@@ -32432,30 +32368,6 @@ loc2_1AD8C:
 ; End of function Sonic_Spindash
 
 ; ---------------------------------------------------------------------------
-; Subroutine to perform a Speed Dash
-; ---------------------------------------------------------------------------
-
-Sonic_SpeedDash:
-		rts			; disabled because it's not working properly
-		move.b	($FFFFF603).w,d0	; read controller
-		andi.b	#$40,d0			; pressing A?
-		beq.s	SD_End			; if yes, branch
-		move.w	#$A00,obInertia(a0)		; set peelout speed
-		btst	#0,obStatus(a0)		; is sonic facing right?
-		beq.w	SPO_PlaySound		; if not, branch
-		neg.w	obInertia(a0)			; negate inertia
-
-SD_Left:
-		bsr	Sonic_Roll
-		move.b	#2,obAnim(a0)		; change animation to rolling
-		move.w	#$BC,d0			; set jumpdash sound
-		jsr	(PlaySound).l		; play jumpadsh sound
-
-SD_End:
-		rts				; return
-; End of function Sonic_SpeedDash
-
-; ---------------------------------------------------------------------------
 ; Subroutine to move Sonic in air while holding A (Star Agony Place)
 ; ---------------------------------------------------------------------------
 Last_Direction = $FFFFF670
@@ -32693,30 +32605,6 @@ AR_End:
 ; End of function Sonic_AutomaticRoll
 
 ; ---------------------------------------------------------------------------
-; Subroutine to	fix the Walk/Jump bug
-; ---------------------------------------------------------------------------
- 
-Sonic_FixWalkJumpBug:
-		rts	; disabled. Cinossu's method is better
-		tst.b	$3C(a0)		; is sonic jumping?
-		beq.s	FWJB_End	; if not, branch
-		tst.w	obVelY(a0)		; is sonic moving upwards?
-		blt.s	FWJB_CheckJump	; if yes, branch
-		bra.s	FWJB_End	; if not, skip everything
-
-FWJB_CheckJump:
-		cmpi.b	#1,obAnim(a0)	; is sonic using the walking animation?
-		blt.s	FWJB_FixBug	; if yes, branch to change it
-		bra.s	FWJB_End	; if not, don't change the animation
-
-FWJB_FixBug:
-		move.b	#2,obAnim(a0)	; change animation to rolling
-
-FWJB_End:
-		rts			; return
-; End of function Sonic_FixWalkJumpBug
-
-; ---------------------------------------------------------------------------
 ; Subroutine to shoot a buzz bomber missile
 ; ---------------------------------------------------------------------------
 
@@ -32773,8 +32661,6 @@ Sonic_Jump:				; XREF: Obj01_MdNormal; Obj01_MdRoll
 		andi.b	#$30,d0		; is B or C pressed?
 		beq.w	locret_1348E	; if not, branch
 
-	;	andi.b	#$40,d0		; was the button that was pressed A?
-	;	bne.w	Sonic_SpeedDash	; if yes, speeddash instead of jumping
 		moveq	#0,d0
 		move.b	obAngle(a0),d0
 		addi.b	#$80,d0
@@ -33346,7 +33232,6 @@ Sonic_ResetOnFloor:			; XREF: PlatformObject; et al
 
 		bclr	#1,($FFFFFFE5).w	; clear air-freeze flag
 		clr.b	($FFFFFFEB).w	; clear jumpdash flag
-		clr.b	($FFFFFFDA).w	; clear Sonic_AutomaticRoll flag
 		clr.b	($FFFFFFAD).w	; clear jumpdash flag for afterimage
 		clr.b	($FFFFFF96).w
 		move.b	#1,($FFFFFFB8).w
@@ -46954,21 +46839,22 @@ Hud_ChkTime:
 		moveq	#1,d0			; regular timer speed (1 tick per second; at 999 ticks, that's roughly 16 minutes)
 		frantic				; frantic mode selected?
 		beq.s	@notfrantic		; if not, branch
-		moveq	#2,d0			; double timer speed (2 ticks per second; this changes the effective time limit to roughly 8 minutes)
+		moveq	#3,d0			; double timer speed (2 ticks per second; this changes the effective time limit to roughly 8 minutes)
 
 @notfrantic:
-		add.b	d0,-(a1)
-		cmpi.b	#30,(a1)
-		bcs.s	Hud_ChkLives
-		move.b	#0,(a1)
-		addq.b	#1,-(a1)
-		cmpi.b	#100,(a1)
-		bcs.s	loc_1C734
-		move.b	#0,(a1)
-		addq.b	#1,-(a1)
-		cmpi.b	#9,(a1)
-		bcs.s	loc_1C734
-		move.b	#9,(a1)
+		add.b	d0,-(a1)		; add to current timer
+
+		cmpi.b	#60,(a1)		; did we reach 60 frames?
+		blo.s	Hud_ChkLives		; if not, branch
+		move.b	#0,(a1)			; clear single digits counter
+		addq.b	#1,-(a1)		; add 1 to tenth digits counter
+		cmpi.b	#100,(a1)		; did we reach 100 seconds?
+		blo.s	loc_1C734		; if not, branch
+		move.b	#0,(a1)			; clear seconds
+		addq.b	#1,-(a1)		; add 1 to minutes counter
+		cmpi.b	#9,(a1)			; are we at 9 minutes?
+		blo.s	loc_1C734		; if not, branch
+		move.b	#9,(a1)			; force to 9 minutes
 
 loc_1C734:
 		move.l	#$5E400003,d0

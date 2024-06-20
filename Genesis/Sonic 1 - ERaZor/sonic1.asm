@@ -3861,10 +3861,11 @@ Level_GetBgm:
 		move.b	#$E3,d0
 		jsr	PlaySound_Special
 
+		; tutorial introduction text
+		; TODO: don't replay this on death
 		cmpi.w	#$501,($FFFFFE10).w	; are we starting the tutorial?
 		bne.s	Level_NoPreTut		; if not, branch
 		
-		; TODO: don't replay this on death
 		move.b	#$99,d0			; play introduction music
 		jsr	PlaySound_Special
 
@@ -3875,6 +3876,8 @@ Level_GetBgm:
 		move.b	#10,d0		; VLADIK => Load hint number
 		jsr	Tutorial_DisplayHint	; VLADIK => Display hint
 		
+		jsr	ClearScreen
+
 		moveq	#0,d1
 		lea	($FFFFFB20).w,a1
 		move.w	#$17,d2

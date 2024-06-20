@@ -11,7 +11,7 @@ OptionsScreen:				; XREF: GameModeArray
 		jsr	PlaySound_Special ; stop music
 		jsr	PLC_ClearQueue
 		jsr	Pal_FadeFrom
-		move	#$2700,sr
+		VBlank_SetMusicOnly
 
 		lea	($C00004).l,a6
 	;	move.w	#$8004,(a6)
@@ -112,9 +112,8 @@ Options_ContinueSetup:
 		move.w	#21,($FFFFFF9A).w
 		clr.w	($FFFFFF9C).w		; previously used to coordinate the intro sequence, now unused
 		move.b	#$81,($FFFFFF84).w
-				
+
 		lea	($FFFFCC00).w,a1
-		move	#$2700,sr
 		moveq	#0,d0
 		move.w	#$DF,d1
 @clearscroll:	move.l	d0,(a1)+
@@ -126,6 +125,7 @@ Options_FinishSetup:
 		bsr	OptionsTextLoad		; load options text
 		display_enable
 		jsr	Pal_FadeTo
+		VBlank_UnsetMusicOnly
 
 		bra.w	OptionsScreen_MainLoop
 
@@ -136,13 +136,13 @@ Options_FinishSetup:
 ; ---------------------------------------------------------------------------
 
 Options_BackgroundEffects:
-		ints_push
+		VBlank_SetMusicOnly
 		move.l	a2,-(sp)
 		bsr	Options_BGPalCycle
 		bsr	Options_BGDeformation
 		bsr	Options_BGVScroll
 		move.l	(sp)+,a2
-		ints_pop
+		VBlank_UnsetMusicOnly
 		rts
 ; ===========================================================================
 
@@ -154,18 +154,17 @@ BGDeformation_Setup:
 		lea	(Options_BGArt).l,a0
 		jsr	KosPlusMDec_VRAM
 
-		; background mappings
-		vram	$C000,4(a6)		; set VDP to VRAM and start at E000 (location of Plane B nametable)
-		moveq	#3,d6			; repeats
-@repeat:	moveq	#1,d5
-		moveq	#(256/8)-1,d1		; write columns
-		moveq	#(256/8)/2-1,d2		; write lines
-@row:		move.w	d1,d3			; reload number of columns
-@column:	move.w	d5,(a6)			; dump map to VDP map slot
+		vram	$C000,4(a6)		; set VDP to VRAM and start at C000 (location of Plane A nametable)
+		moveq	#0,d5			; clear d5
+		move.w	#(512*256/64)-1,d1	; do for all tiles in the 512x256 plane
+@column:
 		addi.w	#1,d5			; go to next tile
-		dbf	d3,@column		; repeat til columns have dumped
-		dbf	d2,@row			; repeat til all rows have dumped	
-		dbf	d6,@repeat
+		move.w	d5,(a6)			; dump map to VDP map slot
+		tst.b	d5			; did we reach tile $80?
+		bpl.s	@noreset		; if not, branch
+		moveq	#0,d5			; reset index
+@noreset:
+		dbf	d1,@column		; repeat til columns have dumped
 
 		VBlank_UnsetMusicOnly
 		rts
@@ -351,7 +350,6 @@ Options_BGDeformation2:
 		move.l	(sp)+,d7
 		rts
 ; ---------------------------------------------------------------------------
-
 
 ; V-Scroll
 Options_BGVScroll:

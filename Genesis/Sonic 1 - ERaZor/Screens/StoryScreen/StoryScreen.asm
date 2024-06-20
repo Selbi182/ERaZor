@@ -21,7 +21,7 @@ StoryScreen:				; XREF: GameModeArray
 		display_disable
 		
 		lea	($C00004).l,a6
-	;	move.w	#$8004,(a6)	; deliberatly commented out - not messing with h-ints to avoid visual glitches with the black bars
+		move.w	#$8004,(a6)
 		move.w	#$8230,(a6)
 		move.w	#$8407,(a6)
 		move.w	#$9001,(a6)
@@ -183,7 +183,7 @@ STS_VRAMBase = $60000003|($800000*STS_BaseRow)|($20000*STS_BaseCol)
 
 StoryScreen_ContinueWriting:
 		tst.b	(STS_FullyWritten).w		; is text already fully written?
-		bne.s	@writeend			; if yes, don't continue writing
+		bne.w	@writeend			; if yes, don't continue writing
 
 @skipspaces:	bsr	StoryText_Load			; load story text into a1
 		adda.w	(STS_CurrentChar).w,a1		; find the char we want to write
@@ -192,7 +192,7 @@ StoryScreen_ContinueWriting:
 		move.b	(a1),d0				; move current char to d0
 		bne.s	@notspace			; if it isn't a space, branch
 		suba.w	(STS_CurrentChar).w,a1		; undo the offset adjustment from above
-		bsr.s	@gotonextpos			; go to next char (skip spaces)
+		bsr.w	@gotonextpos			; go to next char (skip spaces)
 		bra.s	@skipspaces			; loop
 
 @notspace:
@@ -218,10 +218,11 @@ StoryScreen_ContinueWriting:
 		swap	d1				; convert to the format we want
 		add.l	d1,d3				; add to base address
 
+		VBlank_SetMusicOnly
 		move.l	d3,4(a6)			; write final position to VDP
-
 		add.w	#$8000|$6000|($D000/$20),d0	; apply VRAM settings (high plane, palette line 4, VRAM address $D000)
 		move.w	d0,(a6)				; write char to screen
+		VBlank_UnsetMusicOnly
 
 		move.b	#STS_Sound,d0			; play...
 		jsr	PlaySound_Special		; ... text writing sound
@@ -241,6 +242,7 @@ StoryScreen_ContinueWriting:
 ; ---------------------------------------------------------------------------
 
 StoryText_WriteFull:
+		VBlank_SetMusicOnly
 		bsr	STS_ClearFlags			; make sure any previously written text doesn't interfere	
 		bsr	StoryText_Load			; reload beginning of story text into a1
 		
@@ -265,6 +267,7 @@ StoryText_WriteFull:
 
 @endwrite:
 		move.b	#1,(STS_FullyWritten).w		; set flag
+		VBlank_UnsetMusicOnly
 		rts
 
 ; ===========================================================================
@@ -423,8 +426,8 @@ StoryText_5:	; text after beating Labyrinth Place
 		ststxt	"MAKE ENOUGH CASH FROM THAT  "
 		ststxt	"AWFUL ATTEMPT OF YOURS TO   "
 		ststxt	"LAST A LIFETIME. SO, NO MORE"
-		ststxt	"FUNKY CAMERA BUSINESS. PINKY"
-		ststxt	"PROMISE.                    "
+		ststxt	"FUNKY CAMERA BUSINESS.      "
+		ststxt	"PINKY PROMISE.              "
 		ststxt	"                            "
 		ststxt	"UNFORTUNATELY, YOU HAVE     "
 		ststxt	"KILLED THE JAWS OF DESTINY, "

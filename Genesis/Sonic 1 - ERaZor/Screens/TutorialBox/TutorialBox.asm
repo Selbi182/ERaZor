@@ -121,7 +121,7 @@ Tutorial_DisplayHint:
 	; Init hint window gfx
 	move.b	#8,VBlankSub
 	jsr	DelayProgram			; perform vsync before operation, fix Sonic's DPCL
-	ints_disable				; disable interrupts
+	VBlank_SetMusicOnly			; disable interrupts
 	bsr	DH_ClearWindow			; draw window
 	lea	Art_DH_WindowBorder,a1		; load border art
 	vram	_DH_VRAM_Border,(a6)
@@ -135,6 +135,7 @@ Tutorial_DisplayHint:
 	move.l	(a1)+,(a5)
 	move.l	(a1)+,(a5)
 	dbf	d0,@0
+	VBlank_UnsetMusicOnly
 
 	cmpi.b	#10,($FFFFFF6E).w	; is this the introduction text?
 	bne.s	DH_MainLoop		; if not, branch
@@ -265,7 +266,7 @@ DH_Quit:
 ; ---------------------------------------------------------------
 
 DH_ClearWindow:
-	ints_push
+	VBlank_SetMusicOnly
 	vram	_DH_VRAM_Base,(a6)
 	move.l	#_DH_BG_Pattern,d0
 	move.w	#$A0-1,d1	; do $A0 tiles
@@ -280,7 +281,7 @@ DH_ClearWindow:
 	move.l	d0,(a5)
 	move.l	d0,(a5)
 	dbf	d1,@DrawTile
-	ints_pop
+	VBlank_UnsetMusicOnly
 	rts
 
 ; ---------------------------------------------------------------
@@ -400,7 +401,7 @@ _CooldownVal	= 2
 
 ; ---------------------------------------------------------------
 @InstantWrite:
-	ints_disable		; we *must* disable interrupts
+	VBlank_SetMusicOnly		; we *must* disable interrupts
 	movea.l	char_pos(a0),a1		; load last position in text
 
 @InstantWrite_Loop:
@@ -422,6 +423,7 @@ _CooldownVal	= 2
 	bne.s	@InstantWrite_Loop	; if flag != '_pause', ignore
 	subq.w	#1,a1			; position of '_pause' flag
 	move.l	a1,char_pos(a0)		; remember position
+	VBlank_UnsetMusicOnly
 	rts				; finish loop
 	
 @InstantWrite_SkipDelay:
@@ -438,7 +440,7 @@ _CooldownVal	= 2
 	andi.b	#A+B+C+START,d0		; A/B/C/START pressed?
 	beq.s	@ContinueChar		; if not, branch
 	tst.w	cooldown(a0)		; is cooldown over?
-	beq.s	@InstantWrite		; if yes, immediately write the whole screen
+	beq	@InstantWrite		; if yes, immediately write the whole screen
 
 @ContinueChar:
 	tst.w	cooldown(a0)		; is cooldown over?
@@ -464,8 +466,10 @@ _CooldownVal	= 2
 	bmi	@CheckFlags		; -- if special flag, branch
 	cmpi.b	#' ',d0			; -- is it a space?
 	beq.s	@0			; -- if yes, don't draw, don't play sound
+	VBlank_SetMusicOnly
 	move.l	vram_pos(a0),(a6)	; setup VDP access
 	bsr	DH_DrawChar		; draw da char
+	VBlank_UnsetMusicOnly
 	moveq	#$FFFFFFD8,d0
 	jsr	PlaySound
 	addi.w	#4*$20,vram_pos(a0)	; set pointer for next char (+4 tiles)
@@ -674,6 +678,8 @@ mapchar macro char
 		dc.b	$27+DH_CharOffset
 	elseif \char = ';'
 		dc.b	_font2, $27+DH_CharOffset
+	elseif \char = '/'
+		dc.b	$8+DH_CharOffset
 	elseif \char = '!'
 		dc.b	$A+DH_CharOffset
 	elseif \char = '1'
@@ -785,24 +791,31 @@ Hint_Pre:
 
 ;		 --------------------
 Hint_1:
-	boxtxt	"controls - on ground"
+	boxtxt	"CONTROLS - grounded"
 	boxtxt_pause
-	boxtxt	"c OR b - JUMP"
+	boxtxt	" SPIN DASH"
+	boxtxt	" ~ + a/b/c"
 	boxtxt_line
-	boxtxt	"~ + abc - SPIN DASH"
-	boxtxt	"^ + a   - PEEL OUT"
+	boxtxt	" SUPER PEEL OUT"
+	boxtxt	" ^ + a"
+	boxtxt_next
+
+	boxtxt	"AND TO JUMP, YOU"
+	boxtxt	"HAVE TO PRESS-"
+	boxtxt_pause
+	boxtxt	"...NEVER MIND."
 	boxtxt_end
 
 ;		 --------------------
 Hint_2:
-	boxtxt	"controls - airbourne"
+	boxtxt	"CONTROLS - airbourne"
 	boxtxt_pause
-	boxtxt	"c - JUMP DASH"
-	boxtxt	"    HOMING ATTACK"
+	boxtxt	" c - JUMP DASH"
+	boxtxt	"     HOMING ATTACK"
 	boxtxt_line
-	boxtxt	"b - DOUBLE JUMP"
+	boxtxt	" b - DOUBLE JUMP"
 	boxtxt_pause
-	boxtxt	"a - YOU'LL SEE..."
+	boxtxt	" a - YOU'LL SEE..."
 	boxtxt_end
 
 ;		 --------------------
@@ -850,13 +863,24 @@ Hint_4:
 	boxtxt_next
 
 	boxtxt	"HTTPS0//"
-	boxtxt	"ERAZOR:SELBI:CLUB"
+	boxtxt	"ERAZOR.SELBI.CLUB"
 	boxtxt_line	
 	boxtxt	"i hope you can"	
 	boxtxt	"decipher that link."	
 	boxtxt	"i was too lazy to"	
-	boxtxt	"add colons and"
-	boxtxt	"slashes to the font."
+	boxtxt	"add colons."
+	boxtxt_next
+	
+	boxtxt "and, as a little"
+	boxtxt "bonus on top, here's"
+	boxtxt "how you can enable"
+	boxtxt "debug mode."
+	boxtxt_next
+	boxtxt "when you are in the"
+	boxtxt "final phase of the"
+	boxtxt "SELBI screen, mash"
+	boxtxt "the ABC buttons"
+	boxtxt "ten times1"
 	boxtxt_next
 
 	boxtxt	"have fun! and oh yea"

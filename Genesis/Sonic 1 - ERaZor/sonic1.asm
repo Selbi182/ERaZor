@@ -596,8 +596,9 @@ BlackBars.SetState:
 		beq.s	@validgamemode			; if yes, branch
 		bra.s	BlackBars_DontShow		; don't show black bars in any other game modes
 
-@validgamemode:	
-		cmpi.w	#$500,($FFFFFE10).w		; is this the bomb machine cutscene?
+@validgamemode:
+		move.w	($FFFFFE10).w,d0		; get current level ID
+		cmpi.w	#$500,d0			; is this the bomb machine cutscene?
 		bne.s	@notmachine			; if not, branch
 		move.w	#8,BlackBars.TargetHeight	; set custom target height for the first part of the cutscene
 		tst.b	($FFFFFFC8).w			; did Eggman press the switch?
@@ -606,24 +607,25 @@ BlackBars.SetState:
 		bra.s	BlackBars_ShowCustom		; force display
 
 @notmachine:
+		cmpi.w	#$002,d0			; are we in Green Hill Place?
+		bne.s	@notghp				; if not, branch
+		cmpi.b	#4,($FFFFFE30).w		; did we hit the final checkpoint yet?
+		beq.s	BlackBars_DontShow		; if yes, disable black bars
+		bra.s	BlackBars.GHP			; update GHP black bars
+
+@notghp:
 		tst.b	($FFFFF7CC).w			; are controls locked?
 		bne.s	BlackBars_Show			; if yes, always enable
 		tst.w	($FFFFF63A).w			; is game paused?
 		bne.s	BlackBars_Show			; if yes, always enable
 		cmpi.b	#6,($FFFFD024).w		; is Sonic dying?
 		bhs.s	BlackBars_Show			; if yes, branch
-
-		cmpi.w	#$002,($FFFFFE10).w		; are we in Green Hill Place?
-		bne.s	@notghp				; if not, branch
-		cmpi.b	#4,($FFFFFE30).w		; did we hit the final checkpoint yet?
-		beq.s	BlackBars_DontShow		; if yes, disable black bars
-		bra.s	BlackBars.GHP			; update GHP black bars
-@notghp:
 		btst	#3,($FFFFFF92).w		; is cinematic HUD enabled?
 		bne.s	BlackBars_Show			; if yes, always enable
-		cmpi.w	#$400,($FFFFFE10).w		; are we in Uberhub?
+
+		cmpi.w	#$400,d0			; are we in Uberhub?
 		bne.s	BlackBars_DontShow		; if not, branch
-		tst.b	($FFFFFF7F).w			; are we falling down the intro tube?
+		tst.b	($FFFFFF7F).w			; are we done falling down the intro tube?
 		bne.s	BlackBars_DontShow		; if yes, don't display
 ; ---------------------------------------------------------------------------
 
@@ -655,6 +657,12 @@ BlackBars.GHPFrantic = 60
 ; ---------------------------------------------------------------------------
 
 BlackBars.GHP:
+		tst.w	($FFFFF63A).w			; is game paused?
+		bne.s	@timeleft			; if yes, don't affect height
+		
+		cmpi.b	#6,($FFFFD024).w		; is Sonic dying?
+		bhs.s	BlackBars_Show			; if yes, show regular black bars
+		
 		move.b	#BlackBars.GHPCasual,d0		; set casual reset time
 		frantic					; are we in Frantic mode?
 		beq.s	@notfrantic			; if not, branch
@@ -2686,8 +2694,7 @@ Pal_MZ:			incbin	pallet\mz.bin
 Pal_SLZ:		incbin	pallet\slz.bin
 ;Pal_SYZ:		incbin	pallet\syz.bin
 Pal_SYZ:
-	;	dc.w	$0000,$0000,$0022,$2044,$4088,$0888,$0EEE,$0888,$0666,$0444,$0AAA,$0666,$0444,$0222,$0222,$0888
-		dc.w	$0222,$0000,$0444,$0666,$0888,$0CCC,$0EEE,$0AAA,$0888,$0444,$0AAA,$0666,$0888,$0444,$0222,$0444
+		dc.w	$0222,$0000,$0444,$0666,$0888,$0CCC,$0EEE,$0AAA,$0888,$0444,$0AAA,$0666,$00EE,$0088,$0044,$0444
 		dc.w	$0444,$0000,$0EEE,$0AAA,$0888,$0666,$0222,$0222,$0000,$0AAA,$0666,$0222,$0EEE,$0888,$0666,$0000
 		dc.w	$0444,$0000,$0666,$0888,$0AAA,$0CCC,$0EEE,$0444,$0000,$0888,$0666,$0EEE,$0222,$0444,$0888,$0000
 		even
@@ -5193,6 +5200,8 @@ SS_MainLoop:
 		bsr	PauseGame		; make the game pausing when pressing start
 
 		; SS hard part skipper
+		frantic				; is frantic mode enabled?
+		bne.s	SS_NoPauseGame		; if yes, disallow hard part skippers
 		tst.b	($FFFFFF5F).w		; is this the blackout special stage?
 		bne.s	SS_NoPauseGame		; if yes, disallow hard part skippers
 		move.b	($FFFFF602).w,d0	; get button presses
@@ -5200,7 +5209,7 @@ SS_MainLoop:
 		beq.s	@notdebug		; if not, branch
 		cmpi.b	#$60,d0			; is A&C held? (filter out B to not interfere with debug mode)
 		bne.s	SS_NoPauseGame		; if not, branch
-		bra.s	@dosshardpartskip
+		bra.s	@dosshardpartskip	; do the thing
 @notdebug:	
 		cmpi.b	#$70,d0			; is exactly ABC held?
 		bne.s	SS_NoPauseGame		; if not, branch
@@ -7278,6 +7287,7 @@ DeformLoop5:
 		lsl.l	#2,d0			; multiply it by 4
 		neg.l	d0			; negate it
 		move.w	#$80,d2			; set loops to $80 (yes $80, not $7F)
+		moveq	#0,d3
 DTS_Loop:
 		move.w	d3,d1			; get deformation speed for the current line
 		move.l	d1,(a1)+		; set it to scroll buffer
@@ -7688,80 +7698,9 @@ Deform_SYZ:
 		rts
 
 @RegularDeform:
-	;	move.w	($FFFFF73C).w,d5
-	;	ext.l	d5
-	;	asl.l	#4,d5
-	;	move.l	d5,d1
-	;	asl.l	#1,d5
-	;	add.l	d1,d5
-	;	bsr	ScrollBlock2
-	;	move.w	($FFFFF70C).w,($FFFFF618).w
-
 		; force background Y camera to always be at the top
 		move.w	#0,($FFFFF70C).w
 		move.w	($FFFFF70C).w,($FFFFF618).w
-		
-		lea	($FFFFA800).w,a1
-		move.w	($FFFFFE0E).w,d2	; automatically scroll background
-		add.w	d2,d2
-		add.w	d2,d2
-		add.w	($FFFFF700).w,d2
-		neg.w	d2
-		move.w	d2,d0
-		asr.w	#3,d0
-		sub.w	d2,d0
-		ext.l	d0
-		asl.l	#3,d0
-		divs.w	#8,d0
-		ext.l	d0
-		asl.l	#4,d0
-		asl.l	#8,d0
-		moveq	#0,d3
-		move.w	d2,d3
-		asr.w	#1,d3
-		move.w	#7,d1 
-Deform_SYZ_1:	move.w	d3,(a1)+
-		swap	d3
-		add.l	d0,d3
-		swap	d3
-		dbf	d1,Deform_SYZ_1
-
-	;	moveq	#0,d2
-		move.w	($FFFFF700).w,d2
-		asr.w	#1,d2
-		neg.w	d2
-		
-		move.w	d2,d0
-		asr.w	#3,d0
-		move.w	#4,d1
-Deform_SYZ_2:	move.w	d0,(a1)+
-		dbf	d1,Deform_SYZ_2
-
-		move.w	d2,d0
-		asr.w	#2,d0
-		move.w	#5,d1
-Deform_SYZ_3:	move.w	d0,(a1)+
-		dbf	d1,Deform_SYZ_3
-
-		move.w	d2,d0
-		move.w	d2,d1
-		asr.w	#1,d1
-		sub.w	d1,d0
-		ext.l	d0
-		asl.l	#4,d0
-		divs.w	#$E,d0
-		ext.l	d0
-		asl.l	#4,d0
-		asl.l	#8,d0
-		moveq	#0,d3
-		move.w	d2,d3
-		asr.w	#1,d3
-		move.w	#$D,d1 
-Deform_SYZ_4:	move.w	d3,(a1)+
-		swap	d3
-		add.l	d0,d3
-		swap	d3
-		dbf	d1,Deform_SYZ_4
 
 		lea	($FFFFA800).w,a2
 		move.w	($FFFFF70C).w,d0
@@ -7769,7 +7708,28 @@ Deform_SYZ_4:	move.w	d3,(a1)+
 		andi.w	#$1F0,d0
 		lsr.w	#3,d0
 		lea	(a2,d0.w),a2
-		bra.w	Deform_All
+		bsr.w	Deform_All
+
+		lea	($FFFFCC00+(112*4)).w,a1 ; start at the bottom
+		move.w	($FFFFFE0E).w,d0	; automatically scroll background
+		addi.w	#$1000,d0		; give us a head start cause otherwise it looks awkward at the start
+		ext.l	d0			; extend to long
+		lsl.l	#8,d0			; multiply it by $100
+		lsl.l	#2,d0			; multiply it by 4
+		neg.l	d0			; negate it
+		moveq	#0,d3			; clear d3
+		move.w	#112-1,d2		; do it for the bottom half of the screen
+@skydeform:
+		moveq	#0,d1			; clear d1
+		move.w	d3,d1			; get deformation speed for the current line
+		add.l	d1,-(a1)		; set it to scroll buffer
+		add.l	d0,d3			; increase speed for next row
+		swap	d3			; swap it
+		dbf	d2,@skydeform		; loop
+
+		rts
+
+
 ; End of function Deform_SYZ
  
  
@@ -15816,7 +15776,7 @@ Obj4B_Main:				; XREF: Obj4B_Index
 
 		cmpi.w	#$400,($FFFFFE10).w		; is level Uberhub?
 		bne.s	Obj4B_Main_Cont			; if not, branch
-		move.w	#$2422,obGfx(a0)		; use yellow palette
+		move.w	#$2422,obGfx(a0)		; use alternate offset
 		
 	if DoorsAlwaysOpen=0
 		cmpi.b	#GRing_GreenHill,obSubtype(a0)	; is this a ring leading to Green Hill Place (NHP act 2)?
@@ -26769,6 +26729,9 @@ Obj0B_Main:				; XREF: Obj0B_Index
 		move.w	d0,$30(a0)	; set breakage time
 
 Obj0B_Action:				; XREF: Obj0B_Index
+		move.b	#4,obRoutine(a0)	; set to display routine to make it...
+		bra.w	Obj0B_Display		; ...purely decorational
+
 		tst.b	$32(a0)
 		beq.s	Obj0B_Grab
 		tst.w	$30(a0)
@@ -27093,12 +27056,11 @@ Map_obj5D:
 ; ---------------------------------------------------------------------------
 ; Object 5E - stationary shotgunner bomb enemy (SLZ)
 ; ---------------------------------------------------------------------------
-BombWalkSpeed =	$C0
-BombFuseTime = 82
+BombFuseTime = 100
 BombFuseVelocity = $34
-BombShotgunSpeed = $700
+BombShotgunSpeed = $400
 BombDistance = $90
-BombPellets = 6
+BombPellets = 4
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
 
@@ -27224,7 +27186,12 @@ Obj5E_Explode:				; XREF: Obj5E_Index
 		asr.l	#8,d0			; align the results to the correct position in the bitfield ...
 		asr.l	#8,d1			; ... (e.g. 00000000xxxxxxxxxxxxxxxx00000000 to 0000000000000000xxxxxxxxxxxxxxxx)
 		
-		jsr	RandomNumber_Next	; get random number
+	;	jsr	RandomNumber_Next	; get random number
+
+		move.l	($FFFFF636).w,d3	; get last random number
+		ror.l	#1,d3			; rotate to next
+		move.l	d3,($FFFFF636).w	; save new value (without rerunning RNG algorithm)
+
 		andi.l	#$01FF01FF,d3		; mask by variance
 		subi.w	#$100,d3		; center variance for X
 		add.w	d3,d1			; add variance to X
@@ -30117,20 +30084,53 @@ Obj06_InfoBox:
 		cmpi.w	#$40,d0			; is Sonic within $40 pixels of that object?
 		bhi.w	Obj06_NoA		; if not, branch
 
-
 Obj06_ChkA:
 		move.b	($FFFFF603).w,d0	; is A pressed? (part 1)
 		andi.b	#$40,d0			; is A pressed? (part 2)
 		beq.s	Obj06_Display		; if not, branch
 		
-		clr.b	($FFFFF603).w		; clear bitfield (to prevent rare softlocks)
+		clr.b	($FFFFF603).w		; clear controller 1 bitfield (to prevent rare softlocks)
+		move.b	#1,obFrame(a0)		; don't show A button while tutorial box is visible
 
 		moveq	#$FFFFFFD9,d0		; VLADIK => Optimized (couldn't resist =D)
 		jsr	PlaySound		; play up/down sound
 		
 		cmpi.w	#$400,($FFFFFE10).w	; is level Uberhub?
 		bne.s	@notuberhubeasteregg	; if not, branch
-		
+		bsr	UberhubEasteregg	; ruin everything
+
+@notuberhubeasteregg:
+		jsr	DisplaySprite		; VLADIK => Make sure sprite is displayed
+		move.b	obSubtype(a0),d0	; VLADIK => Load hint number based on subtype
+		jmp	Tutorial_DisplayHint	; VLADIK => Display hint
+
+Obj06_NoA:
+		move.b	#1,obFrame(a0)		; don't show A button
+		bra.w	Obj06_Display
+; ===========================================================================
+
+Obj06_Locations:	;XXXX   YYYY
+		dc.w	$18EA, $036C	; Night Hill Place
+		dc.w	$FFFF, $FFFF	; Green Hill Place	(Unused)
+		dc.w	$FFFF, $FFFF	; Special Place		(Unused)
+		dc.w	$1E10, $02B0	; Ruined Place
+		dc.w	$0D2F, $05A7	; Labyrinthy Place
+		dc.w	$FFFF, $FFFF	; Finalor Place		(Unused)
+		dc.w	$FFFF, $FFFF	; Spring Yard Place	(Unused)
+		dc.w	$FFFF, $FFFF	; Unreal Place		(Unused)
+		dc.w	$FFFF, $FFFF	; Scar Night Place 	(Unused)
+		dc.w	$101E, $036C	; Tutorial Place
+		dc.w	$1EE0, $0304	; Star Agony Place
+
+; ===========================================================================
+
+Map_Obj06:
+		include	"_maps\HardPartSkipper.asm"
+
+; ---------------------------------------------------------------------------
+; ===========================================================================
+
+UberhubEasteregg:
 		lea	($FFFFFB00).w,a1
 		moveq	#(64/2)-1,d2
 @loopdestroypalette:
@@ -30164,37 +30164,7 @@ Obj06_ChkA:
 		jsr	SineWavePalette
 		move.w	#$93,d0			; play special stage jingle...
 		jsr	PlaySound		; ...specifically because it tends to ruin the music following it lol
-
-@notuberhubeasteregg:
-		jsr	DisplaySprite		; VLADIK => Make sure sprite is displayed
-		move.b	obSubtype(a0),d0	; VLADIK => Load hint number based on subtype
-		jmp	Tutorial_DisplayHint	; VLADIK => Display hint
-
-Obj06_NoA:
-		move.b	#1,obFrame(a0)		; don't show A button
-		bra.w	Obj06_Display
-; ===========================================================================
-
-Obj06_Locations:	;XXXX   YYYY
-		dc.w	$18EA, $036C	; Night Hill Place
-		dc.w	$FFFF, $FFFF	; Green Hill Place	(Unused)
-		dc.w	$FFFF, $FFFF	; Special Place		(Unused)
-		dc.w	$1E10, $02B0	; Ruined Place
-		dc.w	$0D2F, $05A7	; Labyrinthy Place
-		dc.w	$FFFF, $FFFF	; Finalor Place		(Unused)
-		dc.w	$FFFF, $FFFF	; Spring Yard Place	(Unused)
-		dc.w	$FFFF, $FFFF	; Unreal Place		(Unused)
-		dc.w	$FFFF, $FFFF	; Scar Night Place 	(Unused)
-		dc.w	$101E, $036C	; Tutorial Place
-		dc.w	$1EE0, $0304	; Star Agony Place
-
-; ===========================================================================
-
-Map_Obj06:
-		include	"_maps\HardPartSkipper.asm"
-
-; ---------------------------------------------------------------------------
-; ===========================================================================
+		rts
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -32301,7 +32271,7 @@ loc2_1AD8C:
 ; End of function Sonic_Spindash
 
 ; ---------------------------------------------------------------------------
-; Subroutine to move Sonic in air while holding A (Star Agony Place)
+; Subroutine to move Sonic in air while holding C (Star Agony Place)
 ; ---------------------------------------------------------------------------
 Last_Direction = $FFFFF670
 C_HoldTimer = $FFFFF672
@@ -32517,18 +32487,10 @@ AM_End:
 ; ---------------------------------------------------------------------------
 
 Sonic_AutomaticRoll:
-		cmpi.b	#0,obAnim(a0)	; is animation walking or running?
-		bne.s	AR_CheckA	; if not, check if A is pressed
-		bra.s	AR_ChangeAnim	; if yes, change animation to rolling
-
-AR_CheckA:
-		tst.b	($FFFFFFE7).w	; if inhuman mode on?
-		bne.s	AR_End		; if yes, branch
-		tst.b	($FFFFFFB1).w	; is sonic doing a jumpdash?
-		bne.s	AR_End		; if yes, branch
-		move.b	($FFFFF602).w,d0; is A pressed? (part 1)
-		andi.b	#$40,d0		; is A pressed? (part 2)
-		beq.s	AR_End		; if not, don't change animation
+		cmpi.b	#$F,obAnim(a0)		; is the current anim ID $F or lower?
+		bls.s	AR_ChangeAnim		; if yes, do automatic roll
+		btst	#6,($FFFFF602).w	; is A pressed?
+		beq.s	AR_End			; if not, don't change animation
 
 AR_ChangeAnim:
 		move.b	#2,obAnim(a0)	; change animation to rolling
@@ -38046,7 +38008,7 @@ Obj7D_RightEmblem:
 		movem.l	d0-a1,-(sp)
 		move.w	#$1B80,d0
 		move.w	#$0280,d1
-		move.b	#$2A,d2
+		move.b	#$3B,d2
 		jsr	Sub_ChangeChunk
 		move.w	#$1C80,d0
 		move.w	#$0280,d1
@@ -46431,9 +46393,19 @@ Obj21_Index:	dc.w Obj21_Main-Obj21_Index
 ; ===========================================================================
 
 Obj21_Main:
+		tst.w	BlackBars.Height
+		beq.s	@noblackbars
+		tst.w	BlackBars.TargetHeight	; are any black bars currently visible?
+		beq.s	@noblackbars		; if not, branch
+		rts				; if yes, don't display HUD
+
+@noblackbars:
+		moveq	#0,d0
+		move.l	d0,$32(a0)
+		move.l	d0,$36(a0)
+		move.l	d0,$3A(a0)
+		
 		addq.b	#2,obRoutine(a0)		; increase routine counter
-	;	move.w	#$90,obX(a0)		; X-position
-	;	move.w	#$108,obScreenY(a0)		; Y-position
 		move.w	#0,obScreenY(a0)		; Y-position
 		move.l	#Map_obj21,obMap(a0)	; load mappings
 
@@ -46464,17 +46436,6 @@ Obj21_ChkTime:
 		move.w	#$14B,$38(a0)		; set Y-position
 		bra.s	Obj21_FrameSelected	; skip
 
-; ===========================================================================
-		cmpi.b	#$10,($FFFFF600).w
-		bne.s	Obj21_FrameSelected
-
-		move.b	#4,obFrame(a0)		; use TIME frame (3 is the red ring frame, so we have to use 4)
-		move.w	#$C5,$36(a0)		; set X-position
-		move.w	#$94,obScreenY(a0)		; set Y-position
-		move.w	#$1D1,obX(a0)
-		bra.s	Obj21_FrameSelected	; skip
-; ===========================================================================
-
 Obj21_ChkLives:
 		cmpi.b	#4,$30(a0)		; is object set to LIVES?
 		bne.s	Obj21_FrameSelected	; if not, branch
@@ -46498,6 +46459,16 @@ Obj21_FrameSelected:
 ; ===========================================================================
 
 Obj21_Flash:
+		tst.w	BlackBars.Height
+		beq.s	@noblackbars
+		tst.w	BlackBars.TargetHeight	; are any black bars currently visible?
+		beq.s	@noblackbars		; if not, display
+		tst.w	($FFFFF63A).w		; is the game paused?
+		bne.s	@noblackbars		; if yes, display anyway
+		move.b	#0,obRoutine(a0)	; make the HUD redo the animation once the bars are gone
+		rts				; if yes, don't display HUD
+
+@noblackbars:
 		tst.b	($FFFFFFA5).w		; has Sonic touched the sign post?
 		beq.s	Obj21_NoSignPost	; if not, branch
 
@@ -46525,17 +46496,17 @@ Obj21_Delete2:
 
 Obj21_Display2:
 		cmpi.b	#6,($FFFFD024).w	; is Sonic dying?
-		bhs.s	@cont			; if yes, branch
+		bhs.s	@displayhud		; if yes, branch
 
 		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
-		bne.s	@cont2			; if yes, don't render HUD
+		bne.s	@dontdisplay		; if yes, don't render HUD
 		tst.b	($FFFFF7CC).w		; are controls locked?
-		beq.s	@cont			; if yes, don't render HUD either
+		beq.s	@displayhud		; if yes, don't render HUD either
 
-@cont2:
+@dontdisplay:
 		rts				; don't render HUD
 
-@cont:
+@displayhud:
 		jmp	DisplaySprite		; display sprite
 ; ---------------------------------------------------------------------------
 

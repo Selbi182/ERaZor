@@ -490,6 +490,8 @@ _CooldownVal	= 2
 					; assume it's flag '_frantic' then
 
 @FranticTextCheck:
+	bra.w	@ClearWindow		; yeah that was dumb, no player is gonna replay the tutorial
+
 	frantic				; is frantic mode enabled?
 	bne.s	@ClearWindow		; if yes, make _frantic act like _cls
 	bra.w	@GotoDisappear		; in casual, make it act like _end
@@ -791,6 +793,15 @@ Hint_Pre:
 
 ;		 --------------------
 Hint_1:
+	boxtxt	"HI, AND WELCOME TO"
+	boxtxt	"THE tutorial!"
+	boxtxt_pause
+	boxtxt	"WE'LL TAKE IT EASY,"
+	boxtxt	"SINCE THERE IS"
+	boxtxt	"ABSOLUTELY"
+	boxtxt	"NO RUSH AT ALL."
+	boxtxt_next
+
 	boxtxt	"CONTROLS - grounded"
 	boxtxt_pause
 	boxtxt	" SPIN DASH"
@@ -874,7 +885,7 @@ Hint_4:
 	boxtxt "and, as a little"
 	boxtxt "bonus on top, here's"
 	boxtxt "how you can enable"
-	boxtxt "debug mode."
+	boxtxt "debug mode1"
 	boxtxt_next
 	boxtxt "when you are in the"
 	boxtxt "final phase of the"
@@ -904,14 +915,19 @@ Hint_6:
 	boxtxt	"ARE HARD."
 	boxtxt_next
 
-	boxtxt	"TO SKIP PARTS THAT"
-	boxtxt	"ARE SIMPLY TOO HARD"
-	boxtxt	"FOR YOU, PRESS"
+	boxtxt	"IF A CHALLENGE IS"
+	boxtxt	"ASKING TOO MUCH FROM"
+	boxtxt	"YOU, SIMPLY PRESS"
+	boxtxt_line
 	boxtxt	"a + b + c"
-	boxtxt	"IN FRONT OF A HARD"
-	boxtxt	"PART SKIPPER."
-	boxtxt_pause
-	boxtxt	"NO HARD FEELINGS!"
+	boxtxt_line
+	boxtxt	"IN FRONT OF THIS"
+	boxtxt	"DEVICE TO SKIP IT!"
+	boxtxt_next
+	
+	boxtxt	"THIS ALSO WORKS IN"
+	boxtxt	"SPECIAL STAGES,"
+	boxtxt	"AT ANY TIME!"
 	boxtxt_pause
 
 	dc.b	_frantic
@@ -921,7 +937,8 @@ Hint_6:
 	boxtxt	" HARD PART SKIPPERS"
 	boxtxt	" ARE ONLY AVAILABLE"
 	boxtxt	" IN CASUAL MODE AND"
-	boxtxt	"  MAY not BE USED!"
+	boxtxt	"  MUST not BE USED"
+	boxtxt	"  IN FRANTIC MODE!"
 	boxtxt_end
 
 ;		 --------------------

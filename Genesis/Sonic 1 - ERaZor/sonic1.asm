@@ -2002,12 +2002,8 @@ Pal_SLZCyc:	incbin	pallet\c_slz.bin
 Pal_SYZCyc1:	incbin	pallet\c_syz_1.bin
 Pal_SYZCyc2:	incbin	pallet\c_syz_2.bin
 
-
-Pal_SBZCycList:
-		include	"_inc\SBZ pallet script 2.asm"
-
-Pal_SBZCycList2:
-		include	"_inc\SBZ pallet script 2.asm"
+Pal_SBZCycList:  include "_inc\SBZ pallet script 2.asm"
+Pal_SBZCycList2: include "_inc\SBZ pallet script 2.asm"
 
 Pal_SBZCyc1:	incbin	pallet\c_sbz_1.bin
 Pal_SBZCyc2:	incbin	pallet\c_sbz_2.bin
@@ -2019,13 +2015,14 @@ Pal_SBZCyc7:	incbin	pallet\c_sbz_7.bin
 Pal_SBZCyc8:	incbin	pallet\c_sbz_8.bin
 Pal_SBZCyc9:	incbin	pallet\c_sbz_9.bin
 Pal_SBZCyc10:	incbin	pallet\c_sbz_10.bin
+		even
+
+; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Subroutine to	fade out and fade in
+; Subroutine to	fade from black
 ; ---------------------------------------------------------------------------
 
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
-
+; PaletteFadeIn:
 Pal_FadeTo:
 		move.w	#$3F,($FFFFF626).w
 
@@ -2036,41 +2033,33 @@ Pal_FadeTo2:
 		adda.w	d0,a0
 		moveq	#0,d1
 		move.b	($FFFFF627).w,d0
-
-Pal_ToBlack:
-		move.w	d1,(a0)+
+Pal_ToBlack:	move.w	d1,(a0)+
 		dbf	d0,Pal_ToBlack	; fill pallet with $000	(black)
-		moveq	#$0E,d4					; MJ: prepare maximum colour check
-		moveq	#$00,d6					; MJ: clear d6
 
+		moveq	#$E,d4					; MJ: prepare maximum colour check
+		moveq	#0,d6					; MJ: clear d6
 loc_1DCE:
 		movem.l	d4/d6, -(sp)
 		bsr.w	PLC_Execute
 		movem.l	(sp)+, d4/d6
 		move.b	#$12,($FFFFF62A).w
 		bsr.w	DelayProgram
-		bchg	#$00,d6					; MJ: change delay counter
+		bchg	#0,d6					; MJ: change delay counter
 		beq	loc_1DCE				; MJ: if null, delay a frame
+
 		bsr.s	Pal_FadeIn
-		subq.b	#$02,d4					; MJ: decrease colour check
+		subq.b	#2,d4					; MJ: decrease colour check
 		bne	loc_1DCE				; MJ: if it has not reached null, branch
 		move.b	#$12,($FFFFF62A).w			; MJ: wait for V-blank again (so colours transfer)
-		bra	DelayProgram				; MJ: ''
+		bra.w	DelayProgram				; MJ: ''
+; ===========================================================================
 
-; End of function Pal_FadeTo
-
-; ---------------------------------------------------------------------------
-; Pallet fade-in subroutine
-; ---------------------------------------------------------------------------
-
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
-
+;FadeIn_FromBlack:
 Pal_FadeIn:				; XREF: Pal_FadeTo
 		moveq	#0,d0
-		lea	($FFFFFB00).w,a0
-		lea	($FFFFFB80).w,a1
-		move.b	($FFFFF626).w,d0
+		lea	($FFFFFB00).w,a0	; destination
+		lea	($FFFFFB80).w,a1	; source
+		move.b	($FFFFF626).w,d0	; number of colors to affect
 		adda.w	d0,a0
 		adda.w	d0,a1
 		move.b	($FFFFF627).w,d0
@@ -2078,8 +2067,9 @@ Pal_FadeIn:				; XREF: Pal_FadeTo
 loc_1DFA:
 		bsr.s	Pal_AddColor
 		dbf	d0,loc_1DFA
-		cmpi.b	#1,($FFFFFE10).w
-		bne.s	locret_1E24
+
+		cmpi.b	#1,($FFFFFE10).w	; are we in LZ?
+		bne.s	locret_1E24		; if not, branch
 		moveq	#0,d0
 		lea	($FFFFFA80).w,a0
 		lea	($FFFFFA00).w,a1
@@ -2094,12 +2084,9 @@ loc_1E1E:
 
 locret_1E24:
 		rts	
-; End of function Pal_FadeIn
+; ===========================================================================
 
-
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
-
+;FadeIn_AddColor:
 Pal_AddColor:				; XREF: Pal_FadeIn
 		move.b	(a1),d5					; MJ: load blue
 		move.w	(a1)+,d1				; MJ: load green and red
@@ -2125,12 +2112,14 @@ FCI_NoRed:
 		move.w	d3,(a0)+				; MJ: save colour
 		rts						; MJ: return
 
-; End of function Pal_AddColor
+; End of function Pal_FadeIn
 
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Subroutine to fade out to black
+; ---------------------------------------------------------------------------
 
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
-
+;PaletteFadeOut:
 Pal_FadeFrom:
 		move.w	#$3F,($FFFFF626).w
 		moveq	#$07,d4					; MJ: set repeat times
@@ -2145,15 +2134,9 @@ loc_1E5C:
 		bsr.s	Pal_FadeOut
 		dbf	d4,loc_1E5C
 		rts	
-; End of function Pal_FadeFrom
+; ===========================================================================
 
-; ---------------------------------------------------------------------------
-; Pallet fade-out subroutine
-; ---------------------------------------------------------------------------
-
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
-
+;FadeOut_ToBlack:
 Pal_FadeOut:				; XREF: Pal_FadeFrom
 		moveq	#0,d0
 		lea	($FFFFFB00).w,a0
@@ -2175,12 +2158,9 @@ loc_1E98:
 		bsr.s	Pal_DecColor
 		dbf	d0,loc_1E98
 		rts	
-; End of function Pal_FadeOut
+; ===========================================================================
 
-
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
-
+;FadeOut_DecColor:
 Pal_DecColor:				; XREF: Pal_FadeOut
 		move.w	(a0),d5					; MJ: load colour
 		move.w	d5,d1					; MJ: copy to d1
@@ -2203,16 +2183,14 @@ FCO_NoGreen:
 FCO_NoRed:
 		move.w	d5,(a0)+				; MJ: save new colour
 		rts						; MJ: return
+; End of function Pal_FadeFrom
 
-; End of function Pal_DecColor
-
+; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Subroutine to	fill the pallet	with white (special stage)
+; Subroutine to	fade to white (special stage)
 ; ---------------------------------------------------------------------------
 
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
-
+;PaletteWhiteIn
 Pal_MakeWhite:				; XREF: SpecialStage
 		move.w	#$3F,($FFFFF626).w
 		moveq	#0,d0
@@ -2232,19 +2210,13 @@ loc_1EF4:
 		bsr	DelayProgram
 		bsr.s	Pal_WhiteToBlack
 
-	;	cmpi.b	#1,($FFFFFFD6).w	; is a W-block being touched in the special stage?
-	;	beq.s	PMW_NoPLC		; if yes, skip this routine
-	;	bsr	PLC_Execute
-;PMW_NoPLC:
-	
+	;	bsr	PLC_Execute	; this was in the original game, now it just causes trouble
+
 		dbf	d4,loc_1EF4
 		rts	
-; End of function Pal_MakeWhite
+; ===========================================================================
 
-
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
-
+;WhiteIn_FromWhite:
 Pal_WhiteToBlack:			; XREF: Pal_MakeWhite
 		moveq	#0,d0
 		lea	($FFFFFB00).w,a0
@@ -2256,13 +2228,13 @@ Pal_WhiteToBlack:			; XREF: Pal_MakeWhite
 
 loc_1F20:
 		bsr.s	Pal_DecColor2
-		cmpi.b	#$10,($FFFFF600).w	; is game mode = special stage?
-		bne.s	Pal_NoSpecial		; if not, branch
-		move.w	#$EEE,($FFFFFB58).w	; make sure a special colour is always black
-
-Pal_NoSpecial:
 		dbf	d0,loc_1F20
 
+		cmpi.b	#$10,($FFFFF600).w	; is game mode = special stage?
+		bne.s	Pal_NoSpecial		; if not, branch
+		move.w	#$EEE,($FFFFFB58).w	; make sure a specific colour is always white
+
+Pal_NoSpecial:
 		cmpi.b	#1,($FFFFFE10).w
 		bne.s	locret_1F4A
 		moveq	#0,d0
@@ -2279,12 +2251,9 @@ loc_1F44:
 
 locret_1F4A:
 		rts	
-; End of function Pal_WhiteToBlack
+; ===========================================================================
 
-
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
-
+;WhiteIn_DecColor:
 Pal_DecColor2:				; XREF: Pal_WhiteToBlack
 		move.w	(a1)+,d2
 		move.w	(a0),d3
@@ -2297,7 +2266,6 @@ Pal_DecColor2:				; XREF: Pal_WhiteToBlack
 		bcs.s	loc_1F64
 		move.w	d1,(a0)+
 		rts	
-; ===========================================================================
 
 loc_1F64:				; XREF: Pal_DecColor2
 		move.w	d3,d1
@@ -2307,25 +2275,22 @@ loc_1F64:				; XREF: Pal_DecColor2
 		bcs.s	loc_1F74
 		move.w	d1,(a0)+
 		rts	
-; ===========================================================================
 
 loc_1F74:				; XREF: loc_1F64
 		subq.w	#2,(a0)+	; decrease red value
 		rts	
-; ===========================================================================
 
 loc_1F78:				; XREF: Pal_DecColor2
 		addq.w	#2,a0
 		rts	
-; End of function Pal_DecColor2
+; End of function Pal_MakeWhite
 
+; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Subroutine to	make a white flash when	you enter a special stage
+; Subroutine to	fade to white (Special Stage)
 ; ---------------------------------------------------------------------------
 
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
-
+;PaletteWhiteOut:
 Pal_MakeFlash:				; XREF: SpecialStage
 		move.w	#$3F,($FFFFF626).w
 		move.w	#$15,d4
@@ -2337,12 +2302,9 @@ loc_1F86:
 		bsr	PLC_Execute
 		dbf	d4,loc_1F86
 		rts	
-; End of function Pal_MakeFlash
+; ===========================================================================
 
-
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
-
+;WhiteOut_ToWhite:
 Pal_ToWhite:				; XREF: Pal_MakeFlash
 		moveq	#0,d0
 		lea	($FFFFFB00).w,a0
@@ -2363,12 +2325,9 @@ loc_1FC2:
 		bsr.s	Pal_AddColor2
 		dbf	d0,loc_1FC2
 		rts	
-; End of function Pal_ToWhite
+; ===========================================================================
 
-
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
-
+;WhiteOut_AddColour:
 Pal_AddColor2:				; XREF: Pal_ToWhite
 		move.w	(a0),d2
 		cmpi.w	#$EEE,d2
@@ -2379,7 +2338,6 @@ Pal_AddColor2:				; XREF: Pal_ToWhite
 		beq.s	loc_1FE2
 		addq.w	#2,(a0)+	; increase red value
 		rts	
-; ===========================================================================
 
 loc_1FE2:				; XREF: Pal_AddColor2
 		move.w	d2,d1
@@ -2388,7 +2346,6 @@ loc_1FE2:				; XREF: Pal_AddColor2
 		beq.s	loc_1FF4
 		addi.w	#$20,(a0)+	; increase green value
 		rts	
-; ===========================================================================
 
 loc_1FF4:				; XREF: loc_1FE2
 		move.w	d2,d1
@@ -2397,73 +2354,13 @@ loc_1FF4:				; XREF: loc_1FE2
 		beq.s	loc_2006
 		addi.w	#$200,(a0)+	; increase blue	value
 		rts	
-; ===========================================================================
 
 loc_2006:				; XREF: Pal_AddColor2
 		addq.w	#2,a0
 		rts	
-; End of function Pal_AddColor2
+; End of function Pal_MakeFlash
 
-Pal_ToBlack2:				; XREF: Pal_MakeFlash
-		moveq	#0,d0
-		lea	($FFFFFB00).w,a0
-		move.b	($FFFFF626).w,d0
-		adda.w	d0,a0
-		move.b	($FFFFF627).w,d0
-
-locx_1FAC:
-		bsr.s	Palx_AddColor2
-		dbf	d0,locx_1FAC
-		moveq	#0,d0
-		lea	($FFFFFA80).w,a0
-		move.b	($FFFFF626).w,d0
-		adda.w	d0,a0
-		move.b	($FFFFF627).w,d0
-
-locx_1FC2:
-		bsr.s	Pal_AddColor2
-		dbf	d0,locx_1FC2
-		rts	
-; End of function Pal_ToWhite
-
-
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
-
-Palx_AddColor2:				; XREF: Pal_ToWhite
-		move.w	(a0),d2
-		cmpi.w	#$EEE,d2
-		beq.s	locx_2006
-		move.w	d2,d1
-		andi.w	#$E,d1
-		cmpi.w	#$E,d1
-		beq.s	locx_1FE2
-		subq.w	#2,(a0)+	; increase red value
-		rts	
 ; ===========================================================================
-
-locx_1FE2:				; XREF: Pal_AddColor2
-		move.w	d2,d1
-		andi.w	#$E0,d1
-		cmpi.w	#$E0,d1
-		beq.s	locx_1FF4
-		subi.w	#$20,(a0)+	; increase green value
-		rts	
-; ===========================================================================
-
-locx_1FF4:				; XREF: locx_1FE2
-		move.w	d2,d1
-		andi.w	#$E00,d1
-		cmpi.w	#$E00,d1
-		beq.s	locx_2006
-		subi.w	#$200,(a0)+	; increase blue	value
-		rts	
-; ===========================================================================
-
-locx_2006:				; XREF: Pal_AddColor2
-		addq.w	#2,a0
-		rts	
-
 ; ---------------------------------------------------------------------------
 ; Pallet cycling routine - Sega	logo
 ; ---------------------------------------------------------------------------
@@ -2787,7 +2684,15 @@ Pal_LZ2:		incbin	pallet\lz2.bin
 Pal_LZWater2:		incbin	pallet\lz_uw2.bin
 Pal_MZ:			incbin	pallet\mz.bin
 Pal_SLZ:		incbin	pallet\slz.bin
-Pal_SYZ:		incbin	pallet\syz.bin
+;Pal_SYZ:		incbin	pallet\syz.bin
+Pal_SYZ:
+	;	dc.w	$0000,$0000,$0022,$2044,$4088,$0888,$0EEE,$0888,$0666,$0444,$0AAA,$0666,$0444,$0222,$0222,$0888
+		dc.w	$0222,$0000,$0444,$0666,$0888,$0CCC,$0EEE,$0AAA,$0888,$0444,$0AAA,$0666,$0888,$0444,$0222,$0444
+		dc.w	$0444,$0000,$0EEE,$0AAA,$0888,$0666,$0222,$0222,$0000,$0AAA,$0666,$0222,$0EEE,$0888,$0666,$0000
+		dc.w	$0444,$0000,$0666,$0888,$0AAA,$0CCC,$0EEE,$0444,$0000,$0888,$0666,$0EEE,$0222,$0444,$0888,$0000
+		even
+	
+	
 Pal_SBZ2:		incbin	pallet\fz.bin
 Pal_FZ:			incbin	pallet\fz.bin
 Pal_Special:		incbin	pallet\special.bin
@@ -7783,16 +7688,24 @@ Deform_SYZ:
 		rts
 
 @RegularDeform:
-		move.w	($FFFFF73C).w,d5
-		ext.l	d5
-		asl.l	#4,d5
-		move.l	d5,d1
-		asl.l	#1,d5
-		add.l	d1,d5
-		bsr	ScrollBlock2
+	;	move.w	($FFFFF73C).w,d5
+	;	ext.l	d5
+	;	asl.l	#4,d5
+	;	move.l	d5,d1
+	;	asl.l	#1,d5
+	;	add.l	d1,d5
+	;	bsr	ScrollBlock2
+	;	move.w	($FFFFF70C).w,($FFFFF618).w
+
+		; force background Y camera to always be at the top
+		move.w	#0,($FFFFF70C).w
 		move.w	($FFFFF70C).w,($FFFFF618).w
+		
 		lea	($FFFFA800).w,a1
-		move.w	($FFFFF700).w,d2
+		move.w	($FFFFFE0E).w,d2	; automatically scroll background
+		add.w	d2,d2
+		add.w	d2,d2
+		add.w	($FFFFF700).w,d2
 		neg.w	d2
 		move.w	d2,d0
 		asr.w	#3,d0
@@ -7806,28 +7719,30 @@ Deform_SYZ:
 		moveq	#0,d3
 		move.w	d2,d3
 		asr.w	#1,d3
-		move.w	#7,d1
- 
-Deform_SYZ_1:				; CODE XREF: Deform_SYZ+48?j
-		move.w	d3,(a1)+
+		move.w	#7,d1 
+Deform_SYZ_1:	move.w	d3,(a1)+
 		swap	d3
 		add.l	d0,d3
 		swap	d3
 		dbf	d1,Deform_SYZ_1
+
+	;	moveq	#0,d2
+		move.w	($FFFFF700).w,d2
+		asr.w	#1,d2
+		neg.w	d2
+		
 		move.w	d2,d0
 		asr.w	#3,d0
 		move.w	#4,d1
- 
-Deform_SYZ_2:				; CODE XREF: Deform_SYZ+56?j
-		move.w	d0,(a1)+
+Deform_SYZ_2:	move.w	d0,(a1)+
 		dbf	d1,Deform_SYZ_2
+
 		move.w	d2,d0
 		asr.w	#2,d0
 		move.w	#5,d1
- 
-Deform_SYZ_3:				; CODE XREF: Deform_SYZ+64?j
-		move.w	d0,(a1)+
+Deform_SYZ_3:	move.w	d0,(a1)+
 		dbf	d1,Deform_SYZ_3
+
 		move.w	d2,d0
 		move.w	d2,d1
 		asr.w	#1,d1
@@ -7841,14 +7756,13 @@ Deform_SYZ_3:				; CODE XREF: Deform_SYZ+64?j
 		moveq	#0,d3
 		move.w	d2,d3
 		asr.w	#1,d3
-		move.w	#$D,d1
- 
-Deform_SYZ_4:				; CODE XREF: Deform_SYZ+90?j
-		move.w	d3,(a1)+
+		move.w	#$D,d1 
+Deform_SYZ_4:	move.w	d3,(a1)+
 		swap	d3
 		add.l	d0,d3
 		swap	d3
 		dbf	d1,Deform_SYZ_4
+
 		lea	($FFFFA800).w,a2
 		move.w	($FFFFF70C).w,d0
 		move.w	d0,d2
@@ -29805,12 +29719,12 @@ Map_Obj02_End:
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Object 03 - Level Signs in SYZ
+; Object 03 - Level Signs in Uberhub Place (SYZ1)
 ; ---------------------------------------------------------------------------
 
 Obj03:
 		moveq	#0,d0			; clear d0
-		move.b	obRoutine(a0),d0		; move routine counter to d0
+		move.b	obRoutine(a0),d0	; move routine counter to d0
 		move.w	Obj03_Index(pc,d0.w),d1 ; move the index to d1
 		jmp	Obj03_Index(pc,d1.w)	; find out the current position in the index
 ; ===========================================================================
@@ -29879,11 +29793,21 @@ Obj03_BackgroundColor:
 		move.b	($FFFFF700).w,d0
 		subi.b	#5,d0
 		bmi.s	@applybgcolor
-		cmpi.b	#$C,d0
+		cmpi.b	#$13-5,d0
 		bhs.s	@applybgcolor
 		andi.b	#$0E,d0
 		move.w	Obj03_BG(pc,d0.w),d1
 		andi.w	#$0EEE,d1
+	
+	bra @applybgcolor
+		;jsr	Pal_FadeIn
+		lea	($FFFFFB00).w,a1
+		lea	($FFFFFB80).w,a2
+		move.w	#$40-1,d2
+	@bla:	move.w	(a2)+,d0
+		bsr.w	Pal_LimitColor
+		move.w	d3,(a1)+
+		dbf	d2,@bla
 
 @applybgcolor:
 		move.w	d1,d0		; base color
@@ -29896,14 +29820,13 @@ Obj03_BackgroundColor:
 		andi.w	#$1E,d2
 		move.w	d2,d1
 @getmask:
-		move.w	Obj03_BGCycleColors_BW(pc,d1.w),d1	; mask
-
+		move.w	Obj03_BGMask(pc,d1.w),d1	; mask
 		bsr.w	Pal_LimitColor
-
 		move.w	d3,($FFFFFB5E).w	; apply color (color 16 of palette row 3)
 		rts
 ; ---------------------------------------------------------------------------
 Obj03_BG:
+	
 		dc.w	$2E4	; GHP
 		dc.w	$E2E	; SP
 		dc.w	$02E	; RP
@@ -29913,8 +29836,18 @@ Obj03_BG:
 		dc.w	$000	; FP
 		dc.w	$000	; invalid
 		even
+
+		dc.w	$0E0	; GHP
+		dc.w	$E0E	; SP
+		dc.w	$00E	; RP
+		dc.w	$EA0	; LP
+		dc.w	$80E	; UP
+		dc.w	$E00	; SAP
+		dc.w	$000	; FP
+		dc.w	$000	; invalid
+		even
 ; ---------------------------------------------------------------------------
-Obj03_BGCycleColors_BW:
+Obj03_BGMask:
 		dc.w	$A88
 		dc.w	$866
 		dc.w	$A88

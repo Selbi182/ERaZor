@@ -55,7 +55,7 @@ SelbiSplash_SetWait:
 		move.w	#SelbiSplash_Wait,($FFFFF614).w	; Wait time
 		jsr	Pal_FadeTo			; Fade palette in
 		
-		move.l	#$4E400001,($FFFFFF7A).w
+		vram	$4E40, ($FFFFFF7A).w
 		move.w	#0,($FFFFFF7E).w
 		move.w	#6,($FFFFF5B0).w
 		display_enable
@@ -72,24 +72,31 @@ SelbiSplash_Sounds:
 
 ; ---------------------------------------------------------------------------------------------------------------------
 SelbiSplash_Loop:
-		cmpi.l	#$4EE00001,($FFFFFF7A).w
+		move.b	#2,($FFFFF62A).w		; Function 2 in vInt
+		jsr	DelayProgram			; Run delay program
+		tst.w	($FFFFF614).w			; Test wait time
+		beq.w	SelbiSplash_Next		; is it over? branch
+
+		cmpi.l	#$4EE00001,($FFFFFF7A).w	; vram=$4EE0
 		beq.w	@cont
 		cmpi.w	#$20,($FFFFF614).w		; is time less than $20?
 		bpl	SelbiSplash_ChangePal		; if not, branch
 
+		VBlank_SetMusicOnly
 		lea	($C00000).l,a5			; load VDP data port address to a5
 		lea	($C00004).l,a6			; load VDP address port address to a6
 		move.l	($FFFFFF7A).w,(a6)		; set VDP address to write to
 		move.l	#$44444444,d2
-		move.l	d2,(a5)			; dump art to V-Ram
-		move.l	d2,(a5)			; ''
-		move.l	d2,(a5)			; ''
-		move.l	d2,(a5)			; ''
-		move.l	d2,(a5)			; ''
-		move.l	d2,(a5)			; ''
-		move.l	d2,(a5)			; ''
-		move.l	d2,(a5)			; ''
-		addi.l	#$00200000,($FFFFFF7A).w
+		move.l	d2,(a5)				; dump art to V-Ram
+		move.l	d2,(a5)				; ''
+		move.l	d2,(a5)				; ''
+		move.l	d2,(a5)				; ''
+		move.l	d2,(a5)				; ''
+		move.l	d2,(a5)				; ''
+		move.l	d2,(a5)				; ''
+		move.l	d2,(a5)				; ''
+		addi.l	#$00200000,($FFFFFF7A).w	; select next tile
+		VBlank_UnsetMusicOnly
 
 		lea	(SelbiSplash_Sounds).l,a1
 		move.w	($FFFFFF7E).w,d3
@@ -149,12 +156,13 @@ SelbiSplash_Loop:
 		beq.s	@cont1x
 		neg.w	d0
 @cont1x:
+		VBlank_SetMusicOnly
 		lea	($C00000).l,a5
 		lea	$04(a5),a6
 		move.w	#$8B00,(a6)
 		move.l	#$40000010,(a6)
 		move.w	d0,(a5)
-	
+
 		; screen shake X
 		move.w	($FFFFF5B0).w,d0
 		lsr.w	#3,d0
@@ -168,6 +176,7 @@ SelbiSplash_Loop:
 		move.w	#$8B00,(a6)
 		move.l	#$7C000003,(a6)
 		move.w	d0,(a5)
+		VBlank_UnsetMusicOnly
 
 		move.b	($FFFFFE0F).w,d0
 		andi.b	#1,d0
@@ -185,47 +194,45 @@ SelbiSplash_Loop:
 
 		move.b	($FFFFFE0F).w,d0
 		andi.b	#5,d0
-		beq.s	SelbiSplash_ChangePal
+		beq.w	SelbiSplash_ChangePal
 
 		move.b	(SelbiSplash_Sounds+4),d0
 		jsr	PlaySound_Special
-		bra.s	SelbiSplash_ChangePal
+		bra	SelbiSplash_ChangePal
 
 SelbiSplash_DontChangePal:
 		tst.b	($FFFFFFAF).w			; has final screen already been loaded?
-		bne.s	SelbiSplash_ChangePal		; if yes, branch
+		bne.w	SelbiSplash_ChangePal		; if yes, branch
 		move.b	#$B9,d0				; play massive explosion sound
 		jsr	PlaySound		
-		movem.l	d0-a6,-(sp)
 
 SelbiSplash_LoadPRESENTS:
 		lea	($FF0000).l,a1			; Load screen mappings
 		lea	(Map2_SelbiSplash).l,a0
-		move.w	#0,d0
+		moveq	#0,d0
 		jsr	EniDec
+
+		move.b	#2,($FFFFF62A).w
+		jsr	DelayProgram			; VSync so gfx loading below isn't terribly out of VBlank
+		VBlank_SetMusicOnly
 		lea	($FF0000).l,a1			; Show screen
 		move.l	#$40000003,d0
 		moveq	#$27,d1
 		moveq	#$1B,d2
 		jsr	ShowVDPGraphics
+		VBlank_UnsetMusicOnly
 
 SelbiSplash_PL2Passed:
 		lea	(Pal_SelbiSplash).l,a1		; Load palette
 		lea	($FFFFFB00).w,a2
-		moveq	#7,d0
-@0
-		move.l	(a1)+,(a2)+
-		dbf	d0,@0
-		
+		rept 8
+			move.l	(a1)+,(a2)+
+		endr
+
 	;	jsr	Pal_MakeWhite			; white flash
-		movem.l (sp)+,d0-a6
 		move.b	#1,($FFFFFFAF).w		; set flag that we are in the final phase of the screen
 
 SelbiSplash_ChangePal:
-		move.b	#2,($FFFFF62A).w		; Function 2 in vInt
-		jsr	DelayProgram			; Run delay program
-		tst.w	($FFFFF614).w			; Test wait time
-		beq.s	SelbiSplash_Next		; is it over? branch
 		
 		; hidden debug mode cheat
 		tst.b	($FFFFFFAF).w			; are we in the final phase of the screen?

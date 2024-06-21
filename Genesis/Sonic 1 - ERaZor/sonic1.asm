@@ -11877,6 +11877,11 @@ Obj18_NoMovingPlatforms:
 		move.b	#1,obFrame(a0)
 		move.b	#$A1,d0
 		jsr	PlaySound_Special
+
+		tst.w	($FFFFFF86).w
+		bne.s	@notfirstcheckpoint
+		jsr	SetupSAPItems
+@notfirstcheckpoint:
 		move.w	obX(a0),($FFFFFF86).w	; save Sonic's X-position
 		move.w	obY(a0),($FFFFFF88).w	; save Sonic's Y-position
 		subi.w	#$1C,($FFFFFF88).w
@@ -15839,7 +15844,7 @@ Obj4B_Animate:				; XREF: Obj4B_Index
 
 Obj4B_XPositive:
 		cmpi.w	#$20,d0
-		bgt.s	Obj4B_DontCollect
+		bgt.w	Obj4B_DontCollect
 
 		move.w	obY(a0),d0
 		sub.w	($FFFFD00C).w,d0
@@ -15861,8 +15866,17 @@ Obj4B_YPositive:
 		move.b	#$C,d0			; VLADIK => Load hint number based on subtype
 		jsr	Tutorial_DisplayHint	; VLADIK => Display hint
 		moveq	#$A,d0			; reload SLZ patterns overwritten by the textbox
-		jsr	(LoadPLC).l		; (this is slow and inefficient as fuck lmao)
+		jsr	(LoadPLC).l		; (this is slow and inefficient as fuck lmao -- UPDATE: not anymore thanks to vlad!)
+		moveq	#$B,d0			; reload the other SLZ patterns overwritten by the textbox
+		jsr	(LoadPLC).l
+		
+		
 		move.b	#$96,d0			; restart regular music
+		btst	#4,($FFFFFF92).w	; is nonstop inhuman enabled?
+		beq.s	@notnonstopinhuman	; if not, branch
+		move.b	#$84,d0			; restart lame default music
+		
+@notnonstopinhuman:
 		jmp	PlaySound
 		
 
@@ -18746,6 +18760,7 @@ Obj32_Main:				; XREF: Obj32_Index
 		move.b	#$10,obActWid(a0)
 		move.b	#4,obPriority(a0)
 		addq.w	#3,obY(a0)
+; ---------------------------------------------------------------------------
 
 Obj32_Pressed:				; XREF: Obj32_Index
 		tst.b	obRender(a0)
@@ -18823,42 +18838,52 @@ loc_BDD6:
 		move.w	#$C3,d0			; play giant ring sound
 		jsr	(PlaySound).l
 		bra.w	Obj32_ShowPressed
+; ---------------------------------------------------------------------------
 
 @notmzswitch:
 		cmpi.b	#$5,($FFFFFE10).w	; is this the tutorial or FP?
 		bne.s	@nottutorialswitch	; if not, branch
 		cmpi.b	#$2,($FFFFFE11).w	; specifically FP?
-		beq.s	@Explode	; if yes, branch
+		beq.s	@Explode		; if yes, branch
 
-	;	tst.b	($FFFFFF77).w		; is antigrav already enabled?
-	;	bne.w	Obj32_ShowPressed	; if yes, branch
+		tst.b	($FFFFFF77).w		; is antigrav already enabled?
+		bne.w	Obj32_ShowPressed	; if yes, branch
 		move.b	#1,($FFFFFF77).w	; enable antigrav ability
-		tst.b	($FFFFFFE7).w		; did the player make it here through with inhuman still enabled?
-		beq.s	@0			; if not, branch
+		tst.b	($FFFFFFE7).w		; did the player make it here with inhuman still enabled?
+		beq.s	@notinhuman		; if not, branch
 		clr.b	($FFFFFFE7).w		; disable inhuman mode
 		movem.l	d7/a1-a3,-(sp)
 		moveq	#3,d0
 		jsr	PalLoad2		; load Sonic palette
 		movem.l	(sp)+,d7/a1-a3
-
-@0:
+@notinhuman:
 		move.b	#$A8,d0			; play upgrade sound
 		jsr	PlaySound_Special
-		bra.s	Obj32_ShowPressed
+		bra.w	Obj32_ShowPressed
+; ---------------------------------------------------------------------------
 
 @nottutorialswitch:
 		cmpi.w	#$302,($FFFFFE10).w	; is this Star Agony Place?
 		bne.w	Obj32_ShowPressed	; if not, branch
+		btst	#4,($FFFFFF92).w	; is nonstop inhuman enabled?
+		beq.s	@notnonstopinhuman	; if not, branch
+		
+		move.b	#$3F,0(a0)		; change switch into explodion (no double fun allowed, sorry)
+		move.b	#0,obRoutine(a0)	; set to initial routine
+		jsr	SetupSAPItems
+		rts				; don't do anything else
+
+@notnonstopinhuman:
 		tst.b	($FFFFFF77).w		; is antigrav already enabled?
-		bne.w	Obj32_ShowPressed	; if yes, branch
+		bne.w	@Explode		; if yes, branch
 		move.b	#1,($FFFFFF77).w	; enable antigrav ability
 		move.b	#$96,d0			; play music
 		jsr	PlaySound
-		
 		bsr.w	SetupSAPItems
+		; fuzzy forgot an rts here but this mistake was actually ingenious
 
 @Explode:
-		lea		$FFFFD000,a1
+		lea	$FFFFD000,a1
 		addq.w	#8,obY(a1)
 		bset	#1,obStatus(a1) ; in air
 		bset	#2,obStatus(a1) ; rolling
@@ -18866,13 +18891,15 @@ loc_BDD6:
 		move.b	#$25,obAnim(a1)	; use inhuman rotate animation
 		move.b	#2,obRoutine(a1)
 		move.w	#-$1800,obVelY(a1)	; move Sonic upwards
+		move.b	#1,($FFFFFFEB).w	; set jumpdash flag
 
 		move.b	#$DB,d0
 		jsr	PlaySound_Special
 
-		move.b	#$3F,0(a0)	; load explosion object
-		move.b	#0,obRoutine(a0)
+		jsr	SingleObjLoad
+		move.b	#$3F,0(a1)	; load explosion object
 		rts
+; ---------------------------------------------------------------------------
 
 Obj32_ShowPressed:
 		bset	d3,(a3)
@@ -32374,7 +32401,7 @@ AM_DontForceRoll:
 		move.b	#%11,($FFFFFFE5).w	; set flag
 
 
-AF_Decel = $60
+AF_Decel = $C0
 
 
 
@@ -32487,16 +32514,19 @@ AM_End:
 ; ---------------------------------------------------------------------------
 
 Sonic_AutomaticRoll:
-		cmpi.b	#$F,obAnim(a0)		; is the current anim ID $F or lower?
-		bls.s	AR_ChangeAnim		; if yes, do automatic roll
-		btst	#6,($FFFFF602).w	; is A pressed?
-		beq.s	AR_End			; if not, don't change animation
+		tst.b	obAnim(a0)		; are we on the walking/running animations?
+		beq.s	AR_ChangeAnim		; if yes, force roll
+		cmpi.b	#$D,obAnim(a0)		; are we on the stopping animation (sliding off a platform)?
+		bls.s	AR_ChangeAnim		; if yes, force roll
+	;	btst	#6,($FFFFF602).w	; is A pressed?
+	;	beq.s	AR_End			; if not, don't change animation
+		bra.s	AR_End			; actually you know what fuck you A
 
 AR_ChangeAnim:
-		move.b	#2,obAnim(a0)	; change animation to rolling
+		move.b	#2,obAnim(a0)		; change animation to rolling
 	
 AR_End:
-		rts			; return
+		rts				; return
 ; End of function Sonic_AutomaticRoll
 
 ; ---------------------------------------------------------------------------

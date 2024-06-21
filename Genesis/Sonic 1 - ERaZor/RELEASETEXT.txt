@@ -1,48 +1,44 @@
-Stop me if you've heard this one before: "Final version of Sonic ERaZor"
-
-Yeah, we're beating that dead horse once more, though this time it's at least been a while – 8 years since the last release, to be precise. Don't get me wrong, I really do mean I originally had no plans to work on it again. Hell, [URL='https://forums.sonicretro.org/index.php?threads/sonic-erazor-source-code-and-everything-else.41682/']I even made the source code public[/URL]. But then something happened — that's right, [URL='https://www.youtube.com/watch?v=MaIDlHM3qC4']redhotsonic happened[/URL]. While I did spot the odd bug or design quirk here and there over the past few years already, it was his video – specifically the showcase of a massive, unavoidable hard crash if the game ran without SRAM – that finally made me break my oath. So, uh, thanks? :v:
-
-But after almost a decade of silence, I didn't want to release a new version only containing a single bug fix. One thing led to another and suddenly this revival grew into its own beast. A lovely beast, though; I haven't been this excited about anything tech-related in actual ages. It is genuinely a great feeling to look at the clock and see it's already 3 a.m. because I got so lost in the zone while working on something I'm passionate about. I missed that feeling. If there's anything you might want to take away from this sappy ramble, it's this: don't worry about dusting off the ol' reliable. If working on it makes you happy, that's all that matters.
-
-[I]Ahem.[/I]
-
-Now that we're done with the lore recap, I'm delighted to present:
-
 [CENTER][SIZE=6][B]Sonic ERaZor – Seventh Public Release[/B]
 [I]Rise-and-Shine Update[/I][/SIZE]
 
-[IMG]https://i.imgur.com/QZNgYUA.png[/IMG] MORE SCREENSHOTS HERE
+[IMG]https://i.imgur.com/QZNgYUA.png[/IMG]
+(MORE SCREENSHOTS HERE)
 
 A massive quality-of-life update for every single aspect of the game! Many, many design improvements – both visually and gameplay-wise – as well as another metric fuckton of bugfixes.
-The goal was to keep the identity as faithful to the OG version as possible while acknowledging its shortcomings.[/CENTER]
+The goal was to keep the identity as faithful to the OG version as possible while acknowledging its shortcomings.
 
-DOWNLOAD HERE
+[URL='http://[/CENTER]'][B][SIZE=6]DOWNLOAD[/SIZE][/B][/URL][/CENTER]
 
-[B]Highlights:[/B]
+
+Stop me if you've heard this one before: "Final version of Sonic ERaZor." Yeah, we're beating that dead horse once again, though this time it's at least been a while – 8 years since the last release, to be precise. Don't get me wrong, I really do mean I originally had no plans to work on it again. Hell, [URL='https://forums.sonicretro.org/index.php?threads/sonic-erazor-source-code-and-everything-else.41682/']I even made the source code public[/URL]. But then something happened – that's right, [URL='https://www.youtube.com/watch?v=MaIDlHM3qC4']redhotsonic happened[/URL]. While I did spot the odd bug or design quirk here and there over the past few years already, it was his video – specifically the showcase of a massive, unavoidable hard crash if the game ran without SRAM – that finally made me break my oath. So, uh, thanks? :v:
+
+But after almost a decade of silence, I didn't want to release a new version only containing a single bug fix. One thing led to another and suddenly this revival grew into its own beast. A lovely beast, though; I haven't been this excited about anything tech-related in actual ages. It is genuinely a great feeling to look at the clock and see it's already 3 a.m. because I got so lost in the zone while working on something I'm passionate about. I missed that feeling. If there's anything you might want to take away from this sappy ramble, it's this: don't worry about dusting off the ol' reliable. If working on it makes you happy, that's all that matters.
+
+[I]Ahem.[/I] Now that we're done with the lore recap, I'm delighted to talk about the update itself. Originally, I wanted to post the full changelog, but uh... then you'd look at 300-something entries.
+
+So, here is the basic overview of the update:
 [LIST]
-[*]Full compatibility with real hardware. Yes, even without SRAM
-[*]Every level received a major overhaul to tackle long-standing gameplay issues and visual quirks
-[*]Added new options to automatically go to the next stage instead of returning to the hub world, for that authentic playthrough-in-one-sitting-without-interruptions experience
-[*]Added a new option to disable story text screens after beating a stage for those who just hate my writing lol. Speaking of which...
-[*]Dramatically reduced the amount of text in the tutorial, and also made the font more legible
-[*]Reduced the intensity of all flashing lights. No more epilepsy warning necessary, dear YouTubers
-[*]A plethora of bug fixes and general quality-of-life improvements; see full changelog
+[*][B]Full compatibility with real hardware[/B]! Yes, even without SRAM.
+[*][B]Casual/Frantic Mode[/B]: A new difficulty selection screen, but not in the traditional sense of "easy/hard". This one is more about how you prefer to play the game; do you want to take your time or do you want to be constantly pushed forward through time pressure? They choice is yours!
+[*]Some ideas of the old version just didn't work out like I had hoped they would, so [B]a ton of challenges have been dramatically altered to feel more fun[/B]
+[*]In general, every level received some form of major overhaul to [B]tackle long-standing gameplay issues and visual quirks[/B]
+[*]Added [B]"Skip Story Texts"[/B] and [B]"Skip Uberhub"[/B] options, for that authentic playthrough-in-one-sitting-without-interruptions experience
+[*]Everything text-related received some form of [B]rewrite or visual overhaul[/B]
+[*][B]Reduced the intensity of all flashing lights[/B]. No more epilepsy warning necessary, dear YouTubers
+[*]Fancy new and improved [B]black bars[/B] to be more cinematic
+[*][B]A new unlockable option[/B]
+[*][B]Tons of easter eggs[/B]
+[*]And a plethora of bug fixes and general quality-of-life improvements...
 [/LIST]
 
-[B]Full Changelog:[/B]
-[spoiler]
+I want to give my most sincere appreciation to everyone in the ERaZor 7 squad. Without you guys, this update would've been impossible:
 [LIST]
-[*]bla
-[*]bla
-[/LIST]
-[/spoiler]
-
-A HUGE [B]thank you[/B] goes out to these wonderful people, without whom this update wouldn't have been possible:
-[LIST]
-[*][B]SonicFan1[/B] (real hardware testing, beta testing, feedback)
-[*][B]Fuzzy[/B] (additional programming, beta testing, feedback)
-[*][B]SonicVaan[/B] (beta testing, feedback)
-[*][B]MarkeyJester[/B] (feedback, additional art, technical assist)
-[*][B]vladikcomper[/B] (technical assist)
-[*][B]Peanut Noceda[/B] (early beta testing)
+[*][B]vladikcomper[/B]: The master of blast processing! He helped me out when I hit a severe technical roadblock that almost put the whole project into jeopardy. He also optimized a ton about the engine and implemented MegaPCM 2!
+[*][B]MarkeyJester[/B]: My mentor for as long as ERaZor has existed, and he continued to be an amazing teacher for this update as well! Oh yeah and he also drew a nuke.
+[*][B]Fuzzy[/B]: A long-time fan-turned-friend who joined with the unique skillset of a programmer while also being very familiar with the base game. An invaluable resource for making ERaZor even more ERaZor-y!
+[*][B]SonicFan1[/B]: Doing a tooon of hardware testing and provided great feedback for almost any wild idea I had. In fact, he was my sanity check for when I went a bit too crazy.
+[*][B]ajcox[/B]: He did a ton of playtesting in video format, which helped uncover some of the most bizarre bugs by doing stuff I would've never thought of. Also super helpful with ideas and feedback!
+[*][B]neonsynth[/B] aka. SonicVaan: The guy who made the original six versions playable returned to beta test this update as well for old time's sake!
+[*][B]Peanut Noceda[/B]: He helped me a lot in the early stages of the update project.
+[*][B]Give[/B] and [B]Craze[/B]: Additional one-time playtesting mid-development, to get input from a fresh perspective.
 [/LIST]

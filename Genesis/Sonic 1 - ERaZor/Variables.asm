@@ -10,6 +10,10 @@ Art_Buffer_End:		equ	$FFFFC000			;	WARNING! Buffer should be at least $1000 byte
 
 VBlank_MusicOnly:	equ	$FFFFF5EB			; b		
 
+; 
+
+SoundDriverRAM:		equ	$FFFFF000			;	SMPS RAM
+
 BlocksAddress:		equ	$FFFFF5EC			; l 	Address for level 16x16 blocks (uncompressed)
 
 BlackBars.GHPTimer:	equ	$FFFFF5F0			; b

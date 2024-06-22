@@ -48316,7 +48316,14 @@ ObjPos_Null:	dc.w    $FFFF,$0000,$0000
 
 		include	'MegaPCM.asm'
 		include	'SampleTable.asm'
+
+		pusho		; save previous options
+		opt	l+	; use "." for local labels (AS compatibility)
+FixBugs:	equ	1	; want to fix SMPS bugs
+
+		include	's1.sounddriver.defs.asm'
 		include	's1.sounddriver.asm'
+		popo		; restore previous options
 
 ; ---------------------------------------------------------------------------
 

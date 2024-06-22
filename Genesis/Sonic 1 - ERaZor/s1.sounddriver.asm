@@ -888,6 +888,9 @@ PSGInitBytes:	dc.b $80, $A0, $C0	; Specifically, these configure writes to the P
 Sound_PlaySFX:
 		tst.b	f_1up_playing(a6)	; Is 1-up playing?
 		bne.w	.clear_sndprio		; Exit is it is
+		cmpi.b	#$D1,d7			; ++ are we spin dash?
+		beq.s	.sfx_doneChecks		; ++ if yes, branch
+		clr.b	v_revsound(a6)		; ++ reset spin dash revving otherwise
 		cmpi.b	#$B5,d7			; is ring sound	effect played?
 		bne.s	.sfx_notRing		; if not, branch
 		tst.b	v_ring_speaker(a6)	; Is the ring sound playing on right speaker?
@@ -905,6 +908,7 @@ Sound_PlaySFX:
 		move.b	#$80,f_push_playing(a6)	; Mark it as playing
 ; Sound_notA7:
 .sfx_notPush:
+.sfx_doneChecks:
 		movea.l	(Go_SoundIndex).l,a0
 		subi.b	#$A0,d7			; Make it 0-based
 		lsl.w	#2,d7			; Convert sfx ID into index
@@ -2067,6 +2071,14 @@ coordflagLookup:
 ; ===========================================================================
 		bra.w	cfOpF9			; $F9
 ; ===========================================================================
+		nop 				; $FA
+		nop
+; ===========================================================================
+		nop 				; $FB
+		nop
+; ===========================================================================
+		bra.w	cfRevving		; $FC
+; ===========================================================================
 ; loc_72ACC:
 cfPanningAMSFMS:
 		move.b	(a4)+,d1			; New AMS/FMS/panning value
@@ -2589,6 +2601,17 @@ cfOpF9:
 		move.b	#$8C,d0		; D1L/RR of Operator 4
 		move.b	#$F,d1		; Loaded with fixed value (max RR, 1TL)
 		bra.w	WriteFMI
+; ===========================================================================
+; Vladikcomper: Spin Dash revving effect flag (non-standard, ported from VEPS)
+
+cfRevving:
+		move.b	(a4)+,d0
+		add.b	v_revsound(a6),d0
+		cmp.b	#$10,d0
+		bhi.s	.j1
+		move.b	d0,v_revsound(a6)
+.j1: 		add.b	d0,TrackTranspose(a5)
+		rts
 
 ; ===========================================================================
 		include	"sound\s1smps2asm_inc.asm"

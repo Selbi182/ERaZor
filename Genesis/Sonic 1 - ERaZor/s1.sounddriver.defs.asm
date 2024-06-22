@@ -58,6 +58,7 @@ v_soundqueue2:		= v_soundqueue_start+2	; unused sound to play
 v_soundqueue_end:	= v_soundqueue_start+3
 
 f_voice_selector:	= $00E	; $00 = use music voice pointer; $40 = use special voice pointer; $80 = use track voice pointer
+v_revsound:             = $00F  ; ++ revving sound effect
 
 v_voice_ptr:		= $018	; voice data pointer (4 bytes)
 

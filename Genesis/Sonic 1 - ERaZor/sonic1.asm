@@ -30189,9 +30189,8 @@ UberhubEasteregg:
 		
 		lea	($FFFFFB40).w,a1
 		jsr	SineWavePalette
-		move.w	#$93,d0			; play special stage jingle...
-		jsr	PlaySound		; ...specifically because it tends to ruin the music following it lol
-		rts
+		moveq	#$FFFFFF88,d0		; play special stage jingle...
+		jmp	PlaySound		; ...specifically because it tends to ruin the music following it lol
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -45343,13 +45342,13 @@ Obj09_ChkEmer:
 		bne.s	Obj09_EmerNotAll
 
 Emershit:
-		move.b	#5,(a2)		; this is important to end the stage
-		move.w	#$93,d0		; play regular special stage beaten jingle
-		tst.b	($FFFFFF5F).w	; is this the blackout blackout special stage?
-		beq.s	@cont		; if not, branch
+		move.b	#5,(a2)			; this is important to end the stage
+		moveq	#$FFFFFF88,d0		; play regular special stage beaten jingle
+		tst.b	($FFFFFF5F).w		; is this the blackout blackout special stage?
+		beq.s	@cont			; if not, branch
 		move.b	#1,($FFFFFF93).w	; you have beaten the game, congrats
 		jsr	SRAM_SaveNow		; save
-		move.w	#$91,d0			; play true ending music
+		moveq	#$FFFFFF91,d0		; play true ending music
 
 @cont:
 		move.b	#1,($FFFFF7CC).w		; lock controls

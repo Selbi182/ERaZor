@@ -886,8 +886,6 @@ PSGInitBytes:	dc.b $80, $A0, $C0	; Specifically, these configure writes to the P
 ; ---------------------------------------------------------------------------
 ; Sound_A0toCF:
 Sound_PlaySFX:
-		tst.b	f_1up_playing(a6)	; Is 1-up playing?
-		bne.w	.clear_sndprio		; Exit is it is
 		cmpi.b	#$D1,d7			; ++ are we spin dash?
 		beq.s	.sfx_doneChecks		; ++ if yes, branch
 		clr.b	v_revsound(a6)		; ++ reset spin dash revving otherwise

@@ -1398,8 +1398,6 @@ PauseGame:				; XREF: Level_MainLoop; et al
 		beq.w	Pause_DoNothing		; if not, branch
 
 loc_13BE:
-		move.b	#$E5,d0
-		bsr	PlaySound_Special
 		cmpi.w	#$500,($FFFFFE10).w	; is this the bomb machine cutscene?
 		bne.s	@cont			; if not, branch
 		move.w	#$301,($FFFFFE10).w	; set level to Scar Night Place

@@ -1398,8 +1398,6 @@ PauseGame:				; XREF: Level_MainLoop; et al
 		beq.w	Pause_DoNothing		; if not, branch
 
 loc_13BE:
-		move.b	#$E5,d0
-		bsr	PlaySound_Special
 		cmpi.w	#$500,($FFFFFE10).w	; is this the bomb machine cutscene?
 		bne.s	@cont			; if not, branch
 		move.w	#$301,($FFFFFE10).w	; set level to Scar Night Place
@@ -4711,7 +4709,7 @@ PlayLevelMusic:
 		bsr.s	CheckIfMainLevel	; get main level ID and load it into d5
 		lea	(MusicList).l,a1	; load Playlist into a1
 		move.b	(a1,d5.w),d0		; get music ID
-		cmp.b	($FFFFFFDE).w,d0	; is last played music ID the same one as the one to be played?
+		cmp.b	SoundDriverRAM+v_last_bgm,d0	; is last played music ID the same one as the one to be played?
 		beq.s	PLM_NoMusic		; if yes, don't restart music
 		bsr.w	PlaySound		; play music
 
@@ -30189,9 +30187,8 @@ UberhubEasteregg:
 		
 		lea	($FFFFFB40).w,a1
 		jsr	SineWavePalette
-		move.w	#$93,d0			; play special stage jingle...
-		jsr	PlaySound		; ...specifically because it tends to ruin the music following it lol
-		rts
+		moveq	#$FFFFFF88,d0		; play special stage jingle...
+		jmp	PlaySound		; ...specifically because it tends to ruin the music following it lol
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -45343,13 +45340,13 @@ Obj09_ChkEmer:
 		bne.s	Obj09_EmerNotAll
 
 Emershit:
-		move.b	#5,(a2)		; this is important to end the stage
-		move.w	#$93,d0		; play regular special stage beaten jingle
-		tst.b	($FFFFFF5F).w	; is this the blackout blackout special stage?
-		beq.s	@cont		; if not, branch
+		move.b	#5,(a2)			; this is important to end the stage
+		moveq	#$FFFFFF88,d0		; play regular special stage beaten jingle
+		tst.b	($FFFFFF5F).w		; is this the blackout blackout special stage?
+		beq.s	@cont			; if not, branch
 		move.b	#1,($FFFFFF93).w	; you have beaten the game, congrats
 		jsr	SRAM_SaveNow		; save
-		move.w	#$91,d0			; play true ending music
+		moveq	#$FFFFFF91,d0		; play true ending music
 
 @cont:
 		move.b	#1,($FFFFF7CC).w		; lock controls
@@ -48316,7 +48313,14 @@ ObjPos_Null:	dc.w    $FFFF,$0000,$0000
 
 		include	'MegaPCM.asm'
 		include	'SampleTable.asm'
+
+		pusho		; save previous options
+		opt	l+	; use "." for local labels (AS compatibility)
+FixBugs:	equ	1	; want to fix SMPS bugs
+
+		include	's1.sounddriver.defs.asm'
 		include	's1.sounddriver.asm'
+		popo		; restore previous options
 
 ; ---------------------------------------------------------------------------
 

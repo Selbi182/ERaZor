@@ -4711,7 +4711,7 @@ PlayLevelMusic:
 		bsr.s	CheckIfMainLevel	; get main level ID and load it into d5
 		lea	(MusicList).l,a1	; load Playlist into a1
 		move.b	(a1,d5.w),d0		; get music ID
-		cmp.b	($FFFFFFDE).w,d0	; is last played music ID the same one as the one to be played?
+		cmp.b	SoundDriverRAM+v_last_bgm,d0	; is last played music ID the same one as the one to be played?
 		beq.s	PLM_NoMusic		; if yes, don't restart music
 		bsr.w	PlaySound		; play music
 

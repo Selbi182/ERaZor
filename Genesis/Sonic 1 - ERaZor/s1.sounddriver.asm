@@ -722,6 +722,7 @@ Sound_PlayBGM:
 ; ===========================================================================
 ; loc_72024:
 .bgmnot1up:
+		move.b  d7,v_last_bgm(a6)	; ++ remember this as last played BGM
 		clr.b	f_1up_playing(a6)
 		clr.b	v_fadein_counter(a6)
 ; loc_7202C:
@@ -1405,37 +1406,34 @@ StopAllSound:
 
 ; sub_725CA:
 InitMusicPlayback:
-		movea.l	a6,a0
+		moveq	#0, d0
+		move.b	d0,v_main_tempo_timeout(a6)	;
+		move.w	d0,v_main_tempo(a6)		; v_main_tempo, f_pausemusic
+		move.b	d0,v_fadeout_counter(a6)	;
+		move.w	d0,v_fadeout_delay(a6)		; v_fadeout_delay, v_communication_byte
+
 		; Save several values
-		move.b	v_sndprio(a6),d1
 		move.b	f_1up_playing(a6),d2
 		move.b	f_speedup(a6),d3
 		move.b	v_fadein_counter(a6),d4
 		move.w	v_soundqueue0(a6),d5
-	if FixBugs
 		move.b	v_soundqueue2(a6),d6
-	else
-		; DANGER! Only v_soundqueue0 and v_soundqueue1 are backed up, once again breaking v_soundqueue2
-	endif
-		move.w	#((v_music_track_ram_end-v_startofvariables)/4)-1,d0	; Clear $220 bytes: all variables and music track data
+
+		lea	0+f_updating_dac(a6),a0
+		move.w	#((v_music_track_ram_end-f_updating_dac)/4)-1,d1	; Clear $220 bytes: all variables and music track data
 ; loc_725E4:
 .clearramloop:
-		clr.l	(a0)+
-		dbf	d0,.clearramloop
+		move.l	d0, (a0)+			; fill with zeroes
+		dbf	d1,.clearramloop
 
 		; Restore the values saved above
-		move.b	d1,v_sndprio(a6)
 		move.b	d2,f_1up_playing(a6)
 		move.b	d3,f_speedup(a6)
 		move.b	d4,v_fadein_counter(a6)
 		move.w	d5,v_soundqueue0(a6)
-	if FixBugs
 		move.b	d6,v_soundqueue2(a6)
-	else
-		; DANGER! Only v_soundqueue0 and v_soundqueue1 are restored, once again breaking v_soundqueue2
-	endif
 		move.b	#$80,v_sound_id(a6)	; set music to $80 (silence)
-	if FixBugs
+
 		lea	v_music_track_ram+TrackVoiceControl(a6),a1
 		lea	FMDACInitBytes(pc),a2
 		moveq	#((v_music_fmdac_tracks_end-v_music_fmdac_tracks)/TrackSz)-1,d1		; 7 DAC/FM tracks
@@ -1447,23 +1445,7 @@ InitMusicPlayback:
 		move.b	(a2)+,(a1)		; Write track's channel byte
 		lea	TrackSz(a1),a1		; Next track
 		dbf	d1,.writeloop		; Loop for all DAC/FM/PSG tracks
-
-		rts
-	else
-		; DANGER! This silences ALL channels, even the ones being used
-		; by SFX, and not music! .sendfmnoteoff does this already, and
-		; doesn't affect SFX channels, either.
-		; DANGER! InitMusicPlayback, and Sound_PlayBGM for that matter,
-		; don't do a very good job of setting up the music tracks.
-		; Tracks that aren't defined in a music file's header don't have
-		; their channels defined, meaning .sendfmnoteoff won't silence
-		; hardware properly. In combination with removing the above
-		; calls to FMSilenceAll/PSGSilenceAll, this will cause hanging
-		; notes.
-		jsr	FMSilenceAll(pc)
-		bra.w	PSGSilenceAll
-	endif
-	
+		rts	
 ; End of function InitMusicPlayback
 
 

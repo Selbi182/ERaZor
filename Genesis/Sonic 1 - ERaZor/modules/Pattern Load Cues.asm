@@ -184,7 +184,19 @@ LoadPLC:
 ; ==============================================================
 	if def(__DEBUG__)
 LoadPLC_OutOfSlotsException:
-	RaiseError 'Out of PLC list slots'
+	RaiseError 'Out of PLC list slots', Debugger_PLC
+
+Debugger_PLC:
+	Console.WriteLine "%<pal1>PLC Slots:"
+	Console.WriteLine "%<pal2>Active: %<pal0>%<.l PLC_Pointer sym>"
+	Console.WriteLine "%<pal2>Next 1: %<pal0>%<.l PLC_Slot_1 sym>"
+	Console.WriteLine "%<pal2>Next 2: %<pal0>%<.l PLC_Slot_2 sym>"
+	Console.WriteLine "%<pal2>Next 3: %<pal0>%<.l PLC_Slot_3 sym>"
+
+	Console.WriteLine "%<endl>%<pal1>PLC State:"
+	Console.WriteLine "%<pal2>Handler: %<pal0>%<.l PLC_StreamHndl sym>"
+	Console.WriteLine "%<pal2>Art ptr: %<pal0>%<.l PLC_ArtPtr sym>"
+	rts
 	endif
 
 ; ==============================================================
@@ -200,7 +212,7 @@ LoadPLC_Direct:
 	beq.s	@found
 	move.l	(a2)+, d0			; check slot_3
 	if def(__DEBUG__)
-		bne.s	LoadPLC_OutOfSlotsException
+		bne	LoadPLC_OutOfSlotsException
 	else
 		bne.s	@done
 	endif

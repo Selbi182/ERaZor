@@ -2690,8 +2690,8 @@ Pal_LZ2:		incbin	pallet\lz2.bin
 Pal_LZWater2:		incbin	pallet\lz_uw2.bin
 Pal_MZ:			incbin	pallet\mz.bin
 Pal_SLZ:		incbin	pallet\slz.bin
-;Pal_SYZ:		incbin	pallet\syz.bin
-Pal_SYZ:
+Pal_SYZ:		incbin	pallet\syz.bin
+Pal_SYZGray:
 		dc.w	$0222,$0000,$0444,$0666,$0888,$0CCC,$0EEE,$0AAA,$0888,$0444,$0AAA,$0666,$00EE,$0088,$0044,$0444
 		dc.w	$0444,$0000,$0EEE,$0AAA,$0888,$0666,$0222,$0222,$0000,$0AAA,$0666,$0222,$0EEE,$0888,$0666,$0000
 		dc.w	$0444,$0000,$0666,$0888,$0AAA,$0CCC,$0EEE,$0444,$0000,$0888,$0666,$0EEE,$0222,$0444,$0888,$0000
@@ -16090,6 +16090,18 @@ Obj4B_Delete:				; XREF: Obj4B_Index
 		bra.w	Obj4B_Return
 
 @contnotred:
+		btst	#3, $FFFFFF92		; is cinematic HUD enabled?
+		bne.s	@NoPaletteChange		; don't change the palette
+
+		lea	 	Pal_SYZGray, a3
+		lea 	$FFFFFB20, a4
+		moveq	#$30, d0
+
+@MovePaletteLoop:
+		move.w 	(a3)+, (a4)+
+		dbf 	d0, @MovePaletteLoop
+
+@NoPaletteChange:
 		tst.b	($FFFFFF7D).w		; is ring moving up?
 		bne.s	@cont2			; if yes, branch
 		addi.w	#$10,obVelY(a0)		; move ring down
@@ -19018,6 +19030,9 @@ Obj32_Display:
 ; ===========================================================================
 
 ChangePaletteRP:
+		btst	#3, $FFFFFF92		; is cinematic HUD enabled?
+		bne.s 	@FuckNo				; accomodate for piss filter
+
 		lea 	($FFFFFB48).w, a2
 		moveq 	#3, d0
 
@@ -19039,6 +19054,7 @@ ChangePaletteRP:
 
 		jsr		WhiteFlash2
 
+@FuckNo:
 		rts
 
 ; ===========================================================================
@@ -20739,7 +20755,7 @@ Obj36_Hurt:				; XREF: Obj36_SideWays; Obj36_Upright
 		bne.w	Obj36_NotInhuman2	; if not, branch
 		
 		btst	#4,($FFFFFF92).w	; is nonstop inhuman enabled?
-		bne.s	Obj36_NotInhuman2
+		bne.w	Obj36_NotInhuman2
 		move.w	#$12DD,($FFFFD008).w	; teleport Sonic on X-axis
 		move.w	#$008C,($FFFFD00C).w	; teleport Sonic on Y-axis
 		tst.b	($FFFFFF73).w		; has P monitor been broken in Ruined Place?
@@ -20759,6 +20775,8 @@ Obj36_Hurt:				; XREF: Obj36_SideWays; Obj36_Upright
 		clr.b	($FFFFFF6C).w		; clear the "switch has been pressed" flags
 		btst	#1, d0
 		beq.s	@cont2
+		btst	#3, $FFFFFF92		; is cinematic HUD enabled?
+		bne.s 	@cont2				; palette never changed, branch
 		jsr		RestorePaletteRP
 
 @cont2:

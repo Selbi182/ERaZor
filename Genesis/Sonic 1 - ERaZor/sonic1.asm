@@ -16093,6 +16093,9 @@ Obj4B_Delete:				; XREF: Obj4B_Index
 		btst	#3, $FFFFFF92		; is cinematic HUD enabled?
 		bne.s	@NoPaletteChange		; don't change the palette
 
+		cmpi.w	#400, $FFFFFE10			; we in uberhub?
+		bne.s	@NoPaletteChange		; if not, don't change the palette
+
 		lea	 	Pal_SYZGray, a3
 		lea 	$FFFFFB20, a4
 		moveq	#$30, d0

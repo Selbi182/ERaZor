@@ -3836,6 +3836,14 @@ Level_NoMusic2:
 		bra.s	Level_NoTitleCard
 		
 @notintrocutscene:
+@runplc:
+		; run PLC now to avoid breaching the queue limit
+		move.b	#$C,($FFFFF62A).w
+		bsr	DelayProgram
+		bsr	PLC_Execute
+		tst.l	PLC_Pointer	; are there any items in the pattern load cue?
+		bne.s	@runplc		; if yes, branch
+
 		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
 		bne.s	Level_CinematicHud	; if yes, branch
 		
@@ -3847,14 +3855,6 @@ Level_NoMusic2:
 		moveq	#2,d0
 		jsr	LoadPLC			; load explosion patterns
 		bra.s	Level_NoTitleCard
-
-@runplc:
-		; run PLC now to avoid breaching the queue limit
-		move.b	#$C,($FFFFF62A).w
-		bsr	DelayProgram
-		bsr	PLC_Execute
-		tst.l	PLC_Pointer	; are there any items in the pattern load cue?
-		bne.s	@runplc		; if yes, branch
 
 @notmachine:
 		move.b	#$34,($FFFFD080).w ; load title	card object
@@ -4554,8 +4554,12 @@ byte_3FCF:	dc.b 0			; XREF: LZWaterSlides
 
 CinematicScreenFuzz:
 		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
-		beq.w	CinematicScreenFuzz_End	; if not, branch
-
+		bne.s	@fuzzallowed		; if yes, always enable fuzz
+		cmpi.w	#$400,($FFFFFE10).w	; are we in Uberhub?
+		beq.w	Fuzz_Uberhub		; if yes, go to its custom routine
+		bra.w	CinematicScreenFuzz_End	; otherwise, disallow fuzz
+		
+@fuzzallowed:
 		tst.b	($FFFFFF64).w		; camera shake currently set?
 		bne.w	CinematicScreenFuzz_End	; if yes, fuzz currently disabled cause holy shit is it slow
 		cmpi.b	#$10,($FFFFF600).w	; is game mode special stage?
@@ -4701,6 +4705,79 @@ LineLengths:
 		even
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
+
+Fuzz_Uberhub:
+		move.w	($FFFFFE04).w,d7 ; move timer into d7
+		and.w 	#1, d7 ; only use least significant bit
+
+		lea	(LineLengths).l,a2	; load line lengths address to a2
+		lea	($FFFFCC00).w,a1	; get h-scroll data
+		moveq	#0,d0			; by default, don't change scroll
+		btst	#0,($FFFFFE05).w	; are we on an odd frame?
+		bne.s	@odd			; if yes, branch
+		moveq	#0,d0			; otherwise, set to -1
+@odd:
+		move.w	#224-1,d1		; do for all scanlines
+		
+		; calculate the exact amount of lines we need, minus ones occupied by black bars
+		move.w	(BlackBars.Height).w,d2
+		ext.w	d2
+		sub.w	d2,d1
+		sub.w	d2,d1
+		bmi.w	@fuzzuberhubend
+@prefill:	adda.l	#4,a1
+		dbf	d2,@prefill
+
+		move.l	(CurrentRandomNumber).w,d2	; get random number
+		move.w	d2,d3
+; ---------------------------------------------------------------------------
+
+@loop:
+		bchg 	#0,d7			; change the least significant bit of the AND'ed timer, for alternating lines
+
+		moveq	#0,d4			; clear d4
+		tst.b	d3			; does Sonic move at all?
+		beq.s	@apply			; if not, skip
+
+		ror.l	#1,d2			; get next random number
+		move.b	d2,d4			; store working copy of current random byte
+		andi.b	#3,d4			; limit it to a random number between 0-3
+
+		and.b	d3,d4			; mask against current speed (effectively a cheap way of emulating Math.min(d3,d4))
+		ext.w	d4			; extend to word
+		add.w	d4,d4			; double for word addressing mode
+		
+		tst.b	d0			; are we on an even frame?
+		bne.s	@nolongline		; if not, branch
+		tst.b	d6			; are we doing a Y shift?
+		beq.s	@nolongline		; if yes, don't do long lines
+		btst	#4,d1			; are we in the allowed range?
+		bne.s	@nolongline		; if not, branch	
+		add.w	d4,d4			; increase line length
+
+@nolongline:
+		move.w	(a2,d4.w),d4		; get actual line length value from LUT
+		bmi.s	@apply			; if he's also walking left, branch
+		neg.w	d4			; otherwise, invert effect
+
+@apply:
+		move.w	(a1),d5			; get foreground scroll
+		add.w	d0,d5			; add manipulation
+		add.w	d4,d5			; apply RNG lines
+		add.w 	d7,d5			; apply alternating lines
+		move.w	d5,(a1)+		; store new position
+		
+		move.w	(a1),d5			; get background position
+		add.w	d0,d5			; add manipulation
+		add.w	d4,d5			; apply RNG lines
+		add.w 	d7,d5			; apply alternating lines
+		move.w	d5,(a1)+		; store new position
+		
+		not.w	d0			; invert manipulation for next row
+		dbf	d1,@loop		; loop
+
+@fuzzuberhubend:
+		rts				; return
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -16745,16 +16822,16 @@ Obj2E_ChkShield:
 		bne.s	Obj2E_ChkInvinc
 		tst.b	($FFFFFFE7).w	; has sonic destroyed a S monitor?
 		bne.s	Obj2E_ChkInvinc	; if yes, don't give sonic a shield
-	;	tst.b	($FFFFFE2C).w	; is sonic already having a shield?
-	;	bne.s	Obj2E_Shield_Add ; if yes, branch
-	;	clr.b	($FFFFFFFC).w
-; Obj2E_Shield_Add:
-	;	add.b	#1,($FFFFFFFC).w ; increase shield counter X with 1
-		move.b	#1,($FFFFFE2C).w ; give	Sonic a	shield
-	
-		move.b	#$38,($FFFFD180).w ; load shield object	($38)
+		move.w	#$AF,d0			; play shield sound
+		tst.b	($FFFFFE2C).w		; is sonic already having a shield?
+		beq.s	Obj2E_Shield_NoBonus	; if not, branch
+		addi.w	#30,($FFFFFE20).w	; give 30 bonus rings
+		ori.b	#1,($FFFFFE1D).w	; update the ring counter
+		move.w	#$C5,d0			; play ka-ching sound
 
-		move.w	#$AF,d0
+Obj2E_Shield_NoBonus:
+		move.b	#1,($FFFFFE2C).w ; give	Sonic a	shield	
+		move.b	#$38,($FFFFD180).w ; load shield object	($38)
 		jmp	(PlaySound).l	; play shield sound
 ; ===========================================================================
 
@@ -16839,16 +16916,12 @@ Obj2E_ChkS:
 
 		clr.b	($FFFFFE2D).w	; remove invinceblity
 		clr.b	($FFFFFE2C).w	; remove shield
-		cmpi.w	#$001,($FFFFFE10).w	; is this the intro cutscene?
-		bne.s	Obj2E_NotGHZ2
-		move.w	#$C3,d0		
-		jmp	(PlaySound).l	; play special stage entry sound
-		rts
+		cmpi.w	#$200,($FFFFFE10).w	; are we in Ruined Place?
+		beq.s	Obj2E_RuinedPlace	; if yes, branch
+		move.w	#$C3,d0			; play special stage entry sound
+		jmp	(PlaySound).l
 
-Obj2E_NotGHZ2:
-		tst.b	(FZEscape).w	; are we in the FZ escape?
-		bne.w	Obj2E_ChkEnd	; if yes, don't overwrite music
-
+Obj2E_RuinedPlace:
 		move.w	#$9F,d0		; set song $9F
 		jmp	PlaySound	; play inhuman mode music
 ; ===========================================================================
@@ -30667,8 +30740,6 @@ S_D_TimerEmpty:
 		move.w	#Sonic_Acceleration,($FFFFF762).w	; restore Sonic's acceleration
 
 S_D_NotFZ:
-		cmpi.w	#$202,($FFFFFE10).w	; is level MZ3?
-		beq.s	S_D_BA_NotEmpty		; if yes, branch
 		cmpi.b	#$0,($FFFFFE10).w	; is zone GHZ?
 		bne.s	S_D_NotGHZ2		; if not, branch
 		cmpi.w	#$002,($FFFFFE10).w	; is level GHZ3?
@@ -46477,6 +46548,7 @@ Obj21_Main:
 		move.l	d0,$32(a0)
 		move.l	d0,$36(a0)
 		move.l	d0,$3A(a0)
+		move.w	d0,$3E(a0)
 		
 		addq.b	#2,obRoutine(a0)		; increase routine counter
 		move.w	#0,obScreenY(a0)		; Y-position
@@ -46693,9 +46765,14 @@ Obj21_NoUpdate:
 		bra.s	Obj21_Display
 
 @cont:
-		moveq	#2,d0			; clear d0
+		moveq	#2,d0			; set default ring frame to d0
 		tst.w	($FFFFFE20).w		; do you have any rings?
-		beq.s	Obj21_Flash2		; if not, branch
+		beq.s	Obj21_Flash2		; if not, make ring counter flash
+		move.w	($FFFFFE20).w,d1	; get current rings
+		cmp.w	$3E(a0),d1		; does it match the previous rings?
+		beq.s	@0
+		addq.w	#1,d0
+@0:
 		bra.s	Obj21_Cont
 ; ---------------------------------------------------------------------------
 
@@ -46707,6 +46784,7 @@ Obj21_Flash2:
 
 Obj21_Cont:
 		move.b	d0,obFrame(a0)
+		move.w	($FFFFFE20).w,$3E(a0)
 
 Obj21_Display:
 		cmpi.b	#6,($FFFFD024).w	; is Sonic dying?
@@ -47538,7 +47616,35 @@ loc_1D066:
 		move.l	d3,obX(a0)	; set final X position of debug object
 
 Debug_Exit:
-		btst	#4,($FFFFF605).w ; is button B pressed?
+		moveq	#0,d0
+		move.b	($FFFFF605).w,d0	; get button presses
+		andi.b	#$70,d0			; any of ABC pressed?
+		beq.w	Debug_DoNothing		; if not, branch
+		
+		btst	#6,d0			; is button A pressed?
+		beq.s	@nota
+		jsr	SingleObjLoad
+		bne.s	@nota
+		move.b	#$3F,(a1)
+		clr.b	obRoutine(a1)
+		move.w	($FFFFD008).w,obX(a1)
+		move.w	($FFFFD00C).w,obY(a1)
+		bra.w	Debug_DoNothing
+		
+@nota:
+		btst	#5,d0			; is button C pressed?
+		beq.s	@notc			; if not, branch
+		jsr	SingleObjLoad
+		bne.s	@notc
+		move.b	#$25,(a1)
+		clr.b	obRoutine(a1)
+		move.w	($FFFFD008).w,obX(a1)
+		move.w	($FFFFD00C).w,obY(a1)
+		clr.b    ($FFFFFC02).w    ; clear 1st entry in object state table
+		bra.w	Debug_DoNothing
+
+@notc:
+		btst	#4,d0			; is button B pressed?
 		beq.s	Debug_DoNothing	; if not, branch
 		moveq	#0,d0
 		move.w	d0,($FFFFFE08).w ; deactivate debug mode

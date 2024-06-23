@@ -3772,9 +3772,11 @@ Level_GetBgm:
 		jsr	PlaySound_Special
 
 		; tutorial introduction text
-		; TODO: don't replay this on death
 		cmpi.w	#$501,($FFFFFE10).w	; are we starting the tutorial?
 		bne.s	Level_NoPreTut		; if not, branch
+		
+		tst.b	($FFFFF5E1).w		; did the player die?
+		bne.s	Level_NoPreTut		; if yes, don't replay intro text
 		
 		move.b	#$99,d0			; play introduction music
 		jsr	PlaySound_Special
@@ -4796,6 +4798,7 @@ ClearEverySpecialFlag:
 		clr.b	(FZEscape).w
 		clr.w	($FFFFC904).w
 		clr.b	($FFFFF5E0).w
+		clr.b	($FFFFF5E1).w
 		clr.b	($FFFFFF5F).w
 		clr.l	($FFFFFF60).w
 		clr.l	($FFFFFF64).w
@@ -5197,9 +5200,31 @@ SS_MainLoop:
 		bhs.s	SS_NoPauseGame		; if yes, branch
 		bsr	PauseGame		; make the game pausing when pressing start
 
-		; SS hard part skipper
+		; respawn at last checkpoint when pressing A (inteded to be used when you get stuck)
+		btst	#6,($FFFFF603).w	; was A pressed this frame?
+		beq.s	@nota			; if not, branch
+		lea	($FFFFD000).w,a0	; load Sonic object
+		jsr	TouchGoalBlock		; respawn at last checkpoint
+@nota:
+		
+		; Casual Mode accessibility features
 		frantic				; is frantic mode enabled?
-		bne.s	SS_NoPauseGame		; if yes, disallow hard part skippers
+		bne.s	SS_NoPauseGame		; if yes, disallow these accessibility features
+
+		; reduce Sonic's vertical movement when holding C in Unreal Place
+		btst	#5,($FFFFF602).w	; is C held?
+		beq.s	@notc			; if not, branch
+		tst.b	($FFFFFFBF).w		; Unreal Place floating challenge enabled?
+		beq.s	@notc			; if not, branch
+		move.w	($FFFFFE0E).w,d0
+		andi.w	#7,d0
+		bne.s	@notc
+		move.w	($FFFFD012).w,d0
+		asr.w	#1,d0
+		move.w	d0,($FFFFD012).w	; reduce Sonic's vertical speed
+@notc:
+
+		; SS hard part skipper
 		tst.b	($FFFFFF5F).w		; is this the blackout special stage?
 		bne.s	SS_NoPauseGame		; if yes, disallow hard part skippers
 		move.b	($FFFFF602).w,d0	; get button presses
@@ -29781,9 +29806,15 @@ Obj03_Display:
 Obj03_BackgroundColor:
 		moveq	#$000,d1		; set default BG color to black
 	
-		moveq	#0,d0
-		move.b	($FFFFF700).w,d0
-		subi.b	#5,d0
+		moveq	#0,d0			; clear d0
+		move.b	($FFFFF700).w,d0	; get upper X camera position (1 unit = $100 pixels)
+		subi.b	#2,d0
+		bpl.s	@chktutsign
+		move.w	#$444,d1		; set color for options sign
+		bra.s	@applybgcolor
+	
+	@chktutsign:
+		subi.b	#3,d0
 		bmi.s	@applybgcolor
 		cmpi.b	#$13-5,d0
 		bhs.s	@applybgcolor
@@ -30095,8 +30126,8 @@ Obj06_Display:
 ; ===========================================================================
 
 Obj06_InfoBox:
-		btst	#1,($FFFFD022).w
-		bne.w	Obj06_NoA
+		btst	#1,($FFFFD022).w	; is Sonic airbourne?
+		bne.w	Obj06_NoA		; if yes, disallow interaction
 		move.b	#2,obFrame(a0)		; show A button
 		move.w	($FFFFD008).w,d0	; get Sonic's X-pos
 		sub.w	obX(a0),d0		; substract the X-pos from the current object from it
@@ -30127,6 +30158,23 @@ Obj06_ChkA:
 @notuberhubeasteregg:
 		jsr	DisplaySprite		; VLADIK => Make sure sprite is displayed
 		move.b	obSubtype(a0),d0	; VLADIK => Load hint number based on subtype
+
+		tst.b	(FZEscape).w		; are we in the FZ escape sequence?
+		beq.s	@displayhint		; if not, branch
+		cmpi.b	#1,d0			; is this the first text box?
+		beq.s	@first			; if yes, branch
+		cmpi.b	#$B,d0			; is this the last text box?
+		beq.s	@lasteaster		; if yes, branch
+		move.b	#$3F,(a0)		; blow up the tutorial box
+		clr.b	obRoutine(a0)		; make sure it's set to the init routine
+		rts				; don't do anything else here
+	@first:
+		move.b	#5,d0			; show alternate text for first monitor
+		bra.s	@displayhint		; display hint
+	@lasteaster:
+		move.b	#$E,d0			; show alternate text for last monitor
+		
+@displayhint:
 		jmp	Tutorial_DisplayHint	; VLADIK => Display hint
 
 Obj06_NoA:
@@ -43852,6 +43900,7 @@ KillSonic:
 		beq.w	Kill_InhumanMode	; if not, don't stop the time counter / don't kill sonic
 
 Kill_DoKill:
+		move.b	#1,($FFFFF5E1).w	; set death flag
 		jsr	Pal_MakeBlackWhite	; turn palette black and white
 
 		cmpi.b	#$18,($FFFFF600).w	; is this the ending sequence?
@@ -44791,6 +44840,9 @@ Obj09_Display:				; XREF: Obj09_OnWall
 
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 
+Unreal_Speed = $160
+Unreal_Accel = 8
+
 Obj09_Move:				; XREF: Obj09_OnWall; Obj09_InAir
 		tst.b	($FFFFFF5F).w		; is easter egg SS enabled?
 		bne.s	loc_1BA78		; disabled movement
@@ -44805,25 +44857,23 @@ Obj09_ChkRight:
 		jsr	obj09_MoveRight
 
 loc_1BA78:
-		tst.b	($FFFFFFBF).w
-		beq.s	@cont
-		cmpi.b	#1,($FFFFFFBF).w
-		bne.s	@contx
-		cmpi.w	#-$160,obVelY(a0)
-		beq.s	@cont
-		subq.w	#8,obVelY(a0)
-	;	move.w	#-$160,obVelY(a0)
-		bra.s	@cont
+		; Unreal Place Sonic movement logic
+		tst.b	($FFFFFFBF).w			; is unreal challenge enabled?
+		beq.s	@unrealend			; if not, branch
+		cmpi.b	#1,($FFFFFFBF).w		; are we going up?
+		bne.s	@checkdown			; if not, branch
+		cmpi.w	#-Unreal_Speed,obVelY(a0)	; did we reach the max up speed?
+		bmi.s	@unrealend			; if yes, branch
+		subq.w	#Unreal_Accel,obVelY(a0)	; increase up speed
+		bra.s	@unrealend			; branch
+@checkdown:
+		cmpi.b	#2,($FFFFFFBF).w		; are we going down?
+		bne.s	@unrealend			; if not, branch
+		cmpi.w	#Unreal_Speed,obVelY(a0)	; did we reach the max down speed?
+		bhi.s	@unrealend			; if yes, branch
+		addq.w	#Unreal_Accel,obVelY(a0)	; increase down speed
+@unrealend:
 
-@contx:
-		cmpi.b	#2,($FFFFFFBF).w
-		bne.s	@cont
-		cmpi.w	#$160,obVelY(a0)
-		beq.s	@cont
-		addq.w	#8,obVelY(a0)
-	;	move.w	#$160,obVelY(a0)
-
-@cont:
 		move.b	($FFFFF602).w,d0
 		andi.b	#$C,d0
 		bne.s	loc_1BAA8
@@ -45634,6 +45684,7 @@ Obj09_GOAL:
 		btst	#4,($FFFFFF92).w	; is nonstop inhuman enabled?
 		bne.w	Obj09_DoBumper		; if yes, branch
 
+TouchGoalBlock:
 		move.w	#$C3,d0			; play giant ring sound
 		clr.b	($FFFFFF9F).w		; make R block usable again
 
@@ -45655,12 +45706,7 @@ Obj09_CPTeleEnd:
 		move.w	d1,obX(a0)		; restore X-pos
 		move.w	d2,obY(a0)		; restore Y-pos
 
-	;	tst.b	($FFFFFF5F).w	; is this the blackout blackout special stage?
-	;	bne.s	@conty
 		jsr	WhiteFlash2
-
-@conty:
-
 
 		cmpi.w	#$401,($FFFFFE10).w
 		beq.s	Obj09_IsSS2
@@ -45734,7 +45780,7 @@ Obj09_UPsnd:
 		bra.s	Obj09_UPsnd2		; go to sound
 
 @conty:
-		move.w	#-$160,obVelY(a0)		; move Sonic upwards
+		move.w	#-Unreal_Speed,obVelY(a0) ; move Sonic upwards
 
 Obj09_UPsnd2:
 		move.b	#1,($FFFFFFBF).w	; set Unreal Place floating challenge flag
@@ -45757,7 +45803,7 @@ Obj09_DOWNblock:
 		bra.s	Obj09_DOWNsnd
 @conty:
 
-		move.w	#$160,obVelY(a0)
+		move.w	#Unreal_Speed,obVelY(a0) ; move Sonic downwards
 		move.w	#$DA,d0
 
 

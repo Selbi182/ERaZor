@@ -387,7 +387,7 @@ Options_SelectedLinePalCycle:
 ; ---------------------------------------------------------------------------
 
 OptionsScreen_MainLoop:
-		move.b	#2,($FFFFF62A).w
+		move.b	#2,VBlankRoutine
 		jsr	DelayProgram
 		jsr	ObjectsLoad
 		jsr	BuildSprites
@@ -550,7 +550,7 @@ Options_HandleDeleteSaveGame:
 		move.b	#$C4,d0			; play explosion sound
 		jsr	PlaySound_Special	; ''
 
-@1		move.b	#2,($FFFFF62A).w	; run V-Blank
+@1		move.b	#2,VBlankRoutine	; run V-Blank
 		jsr	DelayProgram		; ''
 		bra.s	@delete_fadeoutloop	; loop
 

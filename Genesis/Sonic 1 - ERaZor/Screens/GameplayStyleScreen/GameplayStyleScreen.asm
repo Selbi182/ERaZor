@@ -78,7 +78,7 @@ GSS_SetColor:
 
 ; I HATE THIS CODE SO MUCH
 GSS_MainLoop:
-		move.b	#$4,($FFFFF62A).w
+		move.b	#$4,VBlankRoutine
 		jsr	DelayProgram
 		jsr	ObjectsLoad
 		jsr	BuildSprites
@@ -106,7 +106,7 @@ GSS_MainLoop:
 		move.w  #$20, ($FFFFF614).w
 
 @Wait:
-		move.b	#$4, ($FFFFF62A).w
+		move.b	#$4, VBlankRoutine
 		jsr	DelayProgram
 
 		tst.w 	($FFFFF614).w

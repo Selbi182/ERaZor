@@ -15,12 +15,12 @@ CreditsJest:
 		ints_disable
 		jsr	ClearScreen				; clear the screen
 
-		move.b	#4,($FFFFF62A).w
+		move.b	#4,VBlankRoutine
 		jsr	DelayProgram
 		
 		; opening delay to sync the screen
 		move.w	#120,d0
-	@delay:	move.b	#4,($FFFFF62A).w
+	@delay:	move.b	#4,VBlankRoutine
 		jsr	DelayProgram
 		dbf	d0,@delay
 
@@ -58,7 +58,7 @@ CJ_RepPal:	move.l	(a0)+,(a1)+				; dump palette
 ; ---------------------------------------------------------------------------
 
 CreditsJest_Loop:
-		move.b	#$04,($FFFFF62A).w			; set V-Blank routine to run
+		move.b	#$04,VBlankRoutine			; set V-Blank routine to run
 		jsr	DelayProgram				; hult main program to run V-Blank
 		bsr	CJ_ScrollMappings			; run scrolling/deformation
 		bsr	CJ_MapLetters				; run mapping
@@ -251,14 +251,14 @@ CJML_FinalLoop:
 		bra	CJML_FinalLoop2				; if so, branch
 
 CJML_FinalScreenScroll:
-		move.b	#$04,($FFFFF62A).w			; set V-Blank routine to run
+		move.b	#$04,VBlankRoutine			; set V-Blank routine to run
 		jsr	DelayProgram				; hult main program to run V-Blank
 		subi.w	#$10,($FFFFFFA0).w			; decrease X scroll position left
 		bsr	CJ_ScrollMappings			; run scrolling/deformation
 		bra	CJML_FinalLoop				; loop
 
 CJML_FinalLoop2:
-		move.b	#$04,($FFFFF62A).w
+		move.b	#$04,VBlankRoutine
 		jsr	DelayProgram
 		tst.b	($FFFFF605).w				; test button input
 		bmi.s	CJML_End				; is start pressed? if yes, branch
@@ -271,7 +271,7 @@ CJML_NormalScreen:
 		andi.w	#$01FF,d0				; keep within the X line
 		cmp.w	#OffScreenPos,d0			; has it reached in screen?
 		bmi	CJML_ScrollSlow				; if so, branch
-		move.b	#$04,($FFFFF62A).w			; set V-Blank routine to run
+		move.b	#$04,VBlankRoutine			; set V-Blank routine to run
 		jsr	DelayProgram				; hult main program to run V-Blank
 		bsr	CJ_ScrollMappings			; run scrolling/deformation
 		bra	CJML_ScrollIn				; loop
@@ -287,7 +287,7 @@ CJML_ScrollSlow:
 		beq	CJML_FinishUp				; if so, branch
 
 xcont:
-		move.b	#$04,($FFFFF62A).w			; set V-Blank routine to run
+		move.b	#$04,VBlankRoutine			; set V-Blank routine to run
 		jsr	DelayProgram				; hult main program to run V-Blank
 		bsr	CJ_ScrollMappings			; run scrolling/deformation
 		bra	CJML_ScrollSlow				; loop

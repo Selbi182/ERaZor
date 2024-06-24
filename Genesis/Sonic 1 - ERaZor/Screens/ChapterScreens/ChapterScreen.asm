@@ -198,7 +198,7 @@ CS_SetUpLoop:
 CS_Loop:
 		jsr	ObjectsLoad
 		jsr	BuildSprites
-		move.b	#4,($FFFFF62A).w
+		move.b	#4,VBlankRoutine
 		jsr	DelayProgram
 		move.b	($FFFFF605).w,d1	; get button presses
 		andi.b	#$E0,d1			; is A, B, C, or start pressed?
@@ -272,7 +272,7 @@ CS_Loop_OHDIGHZ:
 @nottutorial:
 		jsr	ObjectsLoad
 		jsr	BuildSprites
-		move.b	#4,($FFFFF62A).w
+		move.b	#4,VBlankRoutine
 		jsr	DelayProgram
 		move.b	($FFFFF605).w,d1	; get button presses
 		andi.b	#$E0,d1			; is A, B, C, or start pressed?

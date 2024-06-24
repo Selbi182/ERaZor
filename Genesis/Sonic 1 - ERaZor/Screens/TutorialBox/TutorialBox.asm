@@ -409,7 +409,7 @@ _CooldownVal	= 2
 @InstantWrite_Loop:
 	moveq	#0,d0
 	move.b	(a1)+,d0		; get a char
-	beq.s	@Call_LoadNextRow	; --
+	beq	@Call_LoadNextRow	; --
 	bmi.s	@InstantWrite_Flags	; --
 	cmpi.b	#' ',d0			; --
 	beq.s	@FF			; --
@@ -430,7 +430,7 @@ _CooldownVal	= 2
 	
 @InstantWrite_SkipDelay:
 	addq.w	#1,a1			; skip delay value
-	bra.s	@InstantWrite_Loop
+	bra	@InstantWrite_Loop
 
 @Call_LoadNextRow:
 	pea	@InstantWrite_Loop
@@ -478,7 +478,7 @@ _CooldownVal	= 2
 	rts
 
 @0	addi.w	#4*$20,vram_pos(a0)	; set pointer for next char (+4 tiles)
-	bra.s	@Retry
+	bra	@Retry
 
 @CheckFlags:
 	addq.b	#1,d0

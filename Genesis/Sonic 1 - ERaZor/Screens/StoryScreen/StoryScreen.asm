@@ -110,7 +110,7 @@ STS_ClrVram:	move.l	d0,(a6)
 StoryScreen_MainLoop:
 		bsr	StoryScreen_CenterText
 
-		move.b	#2,($FFFFF62A).w
+		move.b	#2,VBlankRoutine
 		jsr	DelayProgram
 		jsr	ObjectsLoad
 		jsr	BuildSprites

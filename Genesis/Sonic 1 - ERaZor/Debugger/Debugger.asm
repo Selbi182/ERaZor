@@ -1,11 +1,11 @@
 
 ; ===============================================================
 ; ---------------------------------------------------------------
-; Error handling and debugging modules
+; MD Debugger and Error Handler v.2.6
 ;
-; (c) 2016-2023, Vladikcomper
+; (c) 2016-2024, Vladikcomper
 ; ---------------------------------------------------------------
-; Debugging macros definitions file
+; Debugger definitions
 ; ---------------------------------------------------------------
 
 ; ---------------------------------------------------------------
@@ -15,13 +15,25 @@
 ; Enable debugger extensions
 ; Pressing A/B/C on the exception screen can open other debuggers
 ; Pressing Start or unmapped button returns to the exception
-DEBUGGER__EXTENSIONS__ENABLE:			equ		1		; 0 = OFF, 1 = ON
+DEBUGGER__EXTENSIONS__ENABLE:			equ		1		; 0 = OFF, 1 = ON (default)
+
+; Whether to show SR and USP registers in exception handler
+DEBUGGER__SHOW_SR_USP:					equ		0		; 0 = OFF (default), 1 = ON
 
 ; Debuggers mapped to pressing A/B/C on the exception screen
 ; Use 0 to disable button, use debugger's entry point otherwise.
-DEBUGGER__EXTENSIONS__BTN_A_DEBUGGER:	equ		Debugger_AddressRegisters	; display address register symbols
-DEBUGGER__EXTENSIONS__BTN_B_DEBUGGER:	equ		Debugger_Backtrace			; display exception backtrace
+DEBUGGER__EXTENSIONS__BTN_A_DEBUGGER:	equ		MDDBG__Debugger_AddressRegisters	; display address register symbols
+DEBUGGER__EXTENSIONS__BTN_B_DEBUGGER:	equ		MDDBG__Debugger_Backtrace			; display exception backtrace
 DEBUGGER__EXTENSIONS__BTN_C_DEBUGGER:	equ		0		; disabled
+
+; Selects between 24-bit (compact) and 32-bit (full) offset format.
+; This affects offset format next to the symbols in the exception screen header.
+; M68K bus is limited to 24 bits anyways, so not displaying unused bits saves screen space.
+; Possible values:
+; - MDDBG__Str_OffsetLocation_24bit (example: 001C04 SomeLoc+4)
+; - MDDBG__Str_OffsetLocation_32bit (example: 00001C04 SomeLoc+4)
+DEBUGGER__STR_OFFSET_SELECTOR:			equ		MDDBG__Str_OffsetLocation_24bit
+
 
 
 ; ===============================================================
@@ -90,8 +102,23 @@ setoff	equ		$F4				; set tile offset: lower byte of base pattern, which points t
 setpat	equ		$F8				; set tile pattern: high byte of base pattern, which determines palette flags and $100-tile section id
 setx	equ		$FA				; set x-position
 
+; -----------------------------
+; Error handler control flags
+; -----------------------------
+
+; Screen appearence flags
+_eh_address_error	equ	$01		; use for address and bus errors only (tells error handler to display additional "Address" field)
+_eh_show_sr_usp		equ	$02		; displays SR and USP registers content on error screen
+
+; Advanced execution flags
+; WARNING! For experts only, DO NOT USE them unless you know what you're doing
+_eh_return			equ	$20
+_eh_enter_console	equ	$40
+_eh_align_offset	equ	$80
 
 
+
+; ===============================================================
 ; ---------------------------------------------------------------
 ; Macros
 ; ---------------------------------------------------------------
@@ -113,11 +140,17 @@ assert	macro	src, cond, dest
 		cmp.\0	\dest, \src
 	else narg=2
 		tst.\0	\src
-	endc
+	endif
+	pusho
+	opt l-
 		b\cond\.s	@skip\@
-		RaiseError	"Assertion failed:%<endl>\src \cond \dest"
+	popo
+		RaiseError	"Assertion failed:%<endl,pal2>> assert.\0 %<pal0>\src,%<pal2>\cond%<pal0>,\dest%<endl,pal1>Got: %<.\0 \src>"
+	pusho
+	opt l-
 	@skip\@:
-	endc
+	popo
+	endif
 	endm
 
 ; ---------------------------------------------------------------
@@ -135,27 +168,27 @@ RaiseError &
 	pea		*(pc)
 	move.w	sr, -(sp)
 	__FSTRING_GenerateArgumentsCode \string
-	jsr		__global__ErrorHandler
+	jsr		MDDBG__ErrorHandler
 	__FSTRING_GenerateDecodedString \string
 	if strlen("\console_program")			; if console program offset is specified ...
 		dc.b	\opts+_eh_enter_console|(((*&1)^1)*_eh_align_offset)	; add flag "_eh_align_offset" if the next byte is at odd offset ...
 		even															; ... to tell Error handler to skip this byte, so it'll jump to ...
 		if DEBUGGER__EXTENSIONS__ENABLE
 			jsr		\console_program										; ... an aligned "jsr" instruction that calls console program itself
-			jmp		__global__ErrorHandler_PagesController
+			jmp		MDDBG__ErrorHandler_PagesController
 		else
 			jmp		\console_program										; ... an aligned "jmp" instruction that calls console program itself
-		endc
+		endif
 	else
 		if DEBUGGER__EXTENSIONS__ENABLE
 			dc.b	\opts+_eh_return|(((*&1)^1)*_eh_align_offset)			; add flag "_eh_align_offset" if the next byte is at odd offset ...
 			even															; ... to tell Error handler to skip this byte, so it'll jump to ...
-			jmp		__global__ErrorHandler_PagesController
+			jmp		MDDBG__ErrorHandler_PagesController
 		else
 			dc.b	\opts+0						; otherwise, just specify \opts for error handler, +0 will generate dc.b 0 ...
 			even								; ... in case \opts argument is empty or skipped
-		endc
-	endc
+		endif
+	endif
 	even
 
 	endm
@@ -180,47 +213,52 @@ Console &
 
 		__FSTRING_GenerateArgumentsCode \1
 
+		pusho
+		opt l-
+
 		; If we have any arguments in string, use formatted string function ...
 		if (__sp>0)
 			movem.l	a0-a2/d7, -(sp)
 			lea		4*4(sp), a2
 			lea		@str\@(pc), a1
-			jsr		__global__Console_\0\_Formatted
+			jsr		MDDBG__Console_\0\_Formatted
 			movem.l	(sp)+, a0-a2/d7
 			if (__sp>8)
 				lea		__sp(sp), sp
 			else
 				addq.w	#__sp, sp
-			endc
+			endif
 
 		; ... Otherwise, use direct write as an optimization
 		else
 			move.l	a0, -(sp)
 			lea		@str\@(pc), a0
-			jsr		__global__Console_\0
+			jsr		MDDBG__Console_\0
 			move.l	(sp)+, a0
-		endc
+		endif
 
 		move.w	(sp)+, sr
+
 		bra.w	@instr_end\@
 	@str\@:
 		__FSTRING_GenerateDecodedString \1
 		even
 	@instr_end\@:
+		popo	
 
 	elseif strcmp("\0","run")|strcmp("\0","Run")
-		jsr		__global__ErrorHandler_ConsoleOnly
+		jsr		MDDBG__ErrorHandler_ConsoleOnly
 		jsr		\1
 		bra.s	*
 
 	elseif strcmp("\0","clear")|strcmp("\0","Clear")
 		move.w	sr, -(sp)
-		jsr		__global__ErrorHandler_ClearConsole
+		jsr		MDDBG__ErrorHandler_ClearConsole
 		move.w	(sp)+, sr
 
 	elseif strcmp("\0","pause")|strcmp("\0","Pause")
 		move.w	sr, -(sp)
-		jsr		__global__ErrorHandler_PauseConsole
+		jsr		MDDBG__ErrorHandler_PauseConsole
 		move.w	(sp)+, sr
 
 	elseif strcmp("\0","sleep")|strcmp("\0","Sleep")
@@ -231,7 +269,7 @@ Console &
 		subq.w	#1, d0
 		bcs.s	@sleep_done\@
 		@sleep_loop\@:
-			jsr		__global__VSync
+			jsr		MDDBG__VSync
 			dbf		d0, @sleep_loop\@
 
 	@sleep_done\@:
@@ -244,52 +282,70 @@ Console &
 		movem.l	d0-d1, -(sp)
 		move.w	\2, -(sp)
 		move.w	\1, -(sp)
-		jsr		__global__Console_SetPosAsXY_Stack
+		jsr		MDDBG__Console_SetPosAsXY_Stack
 		addq.w	#4, sp
 		movem.l	(sp)+, d0-d1
 		move.w	(sp)+, sr
 
 	elseif strcmp("\0","breakline")|strcmp("\0","BreakLine")
 		move.w	sr, -(sp)
-		jsr		__global__Console_StartNewLine
+		jsr		MDDBG__Console_StartNewLine
 		move.w	(sp)+, sr
 
 	else
 		inform	2,"""\0"" isn't a member of ""Console"""
 
-	endc
+	endif
 	endm
 
 ; ---------------------------------------------------------------
+; KDebug integration interface
+; ---------------------------------------------------------------
+
 KDebug &
 	macro
 
 	if def(__DEBUG__)	; KDebug interface is only available in DEBUG builds
 	if strcmp("\0","write")|strcmp("\0","writeline")|strcmp("\0","Write")|strcmp("\0","WriteLine")
 		move.w	sr, -(sp)
+
 		__FSTRING_GenerateArgumentsCode \1
-		movem.l	a0-a2/d7, -(sp)
+
+		pusho
+		opt l-
+
+		; If we have any arguments in string, use formatted string function ...
 		if (__sp>0)
+			movem.l	a0-a2/d7, -(sp)
 			lea		4*4(sp), a2
-		endc
-		lea		@str\@(pc), a1
-		jsr		__global__KDebug_\0\_Formatted
-		movem.l	(sp)+, a0-a2/d7
-		if (__sp>8)
-			lea		__sp(sp), sp
-		elseif (__sp>0)
-			addq.w	#__sp, sp
-		endc
+			lea		@str\@(pc), a1
+			jsr		MDDBG__KDebug_\0\_Formatted
+			movem.l	(sp)+, a0-a2/d7
+			if (__sp>8)
+				lea		__sp(sp), sp
+			elseif (__sp>0)
+				addq.w	#__sp, sp
+			endif
+
+		; ... Otherwise, use direct write as an optimization
+		else
+			move.l	a0, -(sp)
+			lea		@str\@(pc), a0
+			jsr		MDDBG__KDebug_\0
+			move.l	(sp)+, a0
+		endif
+
 		move.w	(sp)+, sr
 		bra.w	@instr_end\@
 	@str\@:
 		__FSTRING_GenerateDecodedString \1
 		even
 	@instr_end\@:
+		popo	
 
 	elseif strcmp("\0","breakline")|strcmp("\0","BreakLine")
 		move.w	sr, -(sp)
-		jsr		__global__KDebug_FlushLine
+		jsr		MDDBG__KDebug_FlushLine
 		move.w	(sp)+, sr
 
 	elseif strcmp("\0","starttimer")|strcmp("\0","StartTimer")
@@ -310,43 +366,43 @@ KDebug &
 	else
 		inform	2,"""\0"" isn't a member of ""KDebug"""
 
-	endc
-	endc
+	endif
+	endif
 	endm
 
 ; ---------------------------------------------------------------
 __ErrorMessage &
 	macro	string, opts
 		__FSTRING_GenerateArgumentsCode \string
-		jsr		__global__ErrorHandler
+		jsr		MDDBG__ErrorHandler
 		__FSTRING_GenerateDecodedString \string
 		if DEBUGGER__EXTENSIONS__ENABLE
 			dc.b	\opts+_eh_return|(((*&1)^1)*_eh_align_offset)	; add flag "_eh_align_offset" if the next byte is at odd offset ...
 			even													; ... to tell Error handler to skip this byte, so it'll jump to ...
-			jmp		__global__ErrorHandler_PagesController	; ... extensions controller
+			jmp		MDDBG__ErrorHandler_PagesController				; ... extensions controller
 		else
 			dc.b	\opts+0
 			even
-		endc
+		endif
 	endm
 
 ; ---------------------------------------------------------------
 __FSTRING_GenerateArgumentsCode &
 	macro	string
 
-	__pos:	set 	instr(\string,'%<')		; token position
-	__stack:set		0						; size of actual stack
-	__sp:	set		0						; stack displacement
+	__pos:	= instr(\string,'%<')		; token position
+	__stack:= 0						; size of actual stack
+	__sp:	= 0						; stack displacement
 
 	; Parse string itself
 	while (__pos)
 
 		; Retrive expression in brackets following % char
-    	__endpos:	set		instr(__pos+1,\string,'>')
-    	__midpos:	set		instr(__pos+5,\string,' ')
+    	__endpos:	= instr(__pos+1,\string,'>')
+    	__midpos:	= instr(__pos+5,\string,' ')
     	if (__midpos<1)|(__midpos>__endpos)
 			__midpos: = __endpos
-    	endc
+    	endif
 		__substr:	substr	__pos+1+1,__endpos-1,\string			; .type ea param
 		__type:		substr	__pos+1+1,__pos+1+1+1,\string			; .type
 
@@ -373,10 +429,10 @@ __FSTRING_GenerateArgumentsCode &
 
 			else
 				fatal 'Unrecognized type in string operand: %<\__substr>'
-			endc
-		endc
+			endif
+		endif
 
-		__pos:	set		instr(__pos+1,\string,'%<')
+		__pos:	= instr(__pos+1,\string,'%<')
 	endw
 
 	; Generate stack code
@@ -391,8 +447,8 @@ __FSTRING_GenerateArgumentsCode &
 __FSTRING_GenerateDecodedString &
 	macro string
 
-	__lpos:	set		1						; start position
-	__pos:	set 	instr(\string,'%<')		; token position
+	__lpos:	= 1							; start position
+	__pos:	= instr(\string,'%<')		; token position
 
 	while (__pos)
 
@@ -401,11 +457,11 @@ __FSTRING_GenerateDecodedString &
 		dc.b	"\__substr"
 
 		; Retrive expression in brakets following % char
-    	__endpos:	set		instr(__pos+1,\string,'>')
-    	__midpos:	set		instr(__pos+5,\string,' ')
+    	__endpos:	= instr(__pos+1,\string,'>')
+    	__midpos:	= instr(__pos+5,\string,' ')
     	if (__midpos<1)|(__midpos>__endpos)
 			__midpos: = __endpos
-    	endc
+    	endif
 		__type:		substr	__pos+1+1,__pos+1+1+1,\string			; .type
 
 		; Expression is an effective address (e.g. %<.w d0 hex> )
@@ -417,11 +473,11 @@ __FSTRING_GenerateDecodedString &
 				__param: substr ,,"hex"			; if param is ommited, set it to "hex"
 			elseif strcmp("\__param","signed")
 				__param: substr ,,"hex+signed"	; if param is "signed", correct it to "hex+signed"
-			endc
+			endif
 
 			if (\__param < $80)
 				inform	2,"Illegal operand format setting: ""\__param\"". Expected ""hex"", ""dec"", ""bin"", ""sym"", ""str"" or their derivatives."
-			endc
+			endif
 
 			if "\__type"=".b"
 				dc.b	\__param
@@ -429,16 +485,16 @@ __FSTRING_GenerateDecodedString &
 				dc.b	\__param|1
 			else
 				dc.b	\__param|3
-			endc
+			endif
 
 		; Expression is an inline constant (e.g. %<endl> )
 		else
 			__substr:	substr	__pos+1+1,__endpos-1,\string
 			dc.b	\__substr
-		endc
+		endif
 
-		__lpos:	set		__endpos+1
-		__pos:	set		instr(__pos+1,\string,'%<')
+		__lpos:	= __endpos+1
+		__pos:	= instr(__pos+1,\string,'%<')
 	endw
 
 	; Write part of string before the end

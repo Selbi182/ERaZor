@@ -10,7 +10,6 @@ STS_FullyWritten:	rs.b 1
 STS_Row:		rs.b 1
 STS_Column:		rs.b 1
 STS_CurrentChar:	rs.w 1
-STS_DrawCounter:	rs.b 1
 STS_FinalPhase:		rs.b 1
 STS_SkipBottomMeta:	rs.b 1
 STS_ScreenID	equ	$FFFFFF9E ; hardcoded because it's fragile
@@ -78,9 +77,9 @@ STS_LoadText:	move.w	(a5)+,(a6)
 @erzpalloop:	move.l	(a1)+,(a2)+		; load 2 colours (4 bytes)
 		dbf	d0,@erzpalloop		; loop
 		movem.l	(sp)+,d0-a2		; restore d0 to a2
-		
+
 		bsr	STS_ClearFlags
-				
+
 		lea	($FFFFCC00).w,a1
 		moveq	#0,d0
 		move.w	#$DF,d1
@@ -98,7 +97,6 @@ STS_ClrVram:	move.l	d0,(a6)
 		cmpi.b	#9,(STS_ScreenID).w	; is this the blackout special stage?
 		bne.s	@bottommeta		; if not, branch
 		move.b	#1,(STS_SkipBottomMeta)	; if yes, don't draw bottom line and "Press Start..." stuff because the text is too long
-
 @bottommeta:
 		display_enable
 		VBlank_UnsetMusicOnly
@@ -110,6 +108,8 @@ STS_ClrVram:	move.l	d0,(a6)
 
 ; LevelSelect:
 StoryScreen_MainLoop:
+		bsr	StoryScreen_CenterText
+
 		move.b	#2,($FFFFF62A).w
 		jsr	DelayProgram
 		jsr	ObjectsLoad
@@ -117,17 +117,20 @@ StoryScreen_MainLoop:
 		jsr	Options_BackgroundEffects
 		jsr	Options_ERZPalCycle
 
+		VBlank_SetMusicOnly
 		bsr	StoryScreen_ContinueWriting
-		bsr	StoryScreen_CenterText
+		VBlank_UnsetMusicOnly
 
 		move.b	($FFFFF605).w,d1	; get button presses
 		andi.b	#$E0,d1			; is A, B, C, or start pressed?
-		beq.s	StoryScreen_MainLoop	; if not, branch
+		beq	StoryScreen_MainLoop	; if not, branch
 
 		tst.b	(STS_FullyWritten).w	; is text already fully written?
 		bne.s	STS_ExitScreen		; if yes, exit screen
-		bsr.w	StoryText_WriteFull	; write the complete text
-		bra.s	StoryScreen_MainLoop	; loop
+		VBlank_SetMusicOnly
+		bsr	StoryText_WriteFull	; write the complete text
+		VBlank_UnsetMusicOnly
+		bra	StoryScreen_MainLoop	; loop
 ; ---------------------------------------------------------------------------
 
 STS_ExitScreen:
@@ -168,7 +171,6 @@ STS_ClearFlags:
 		clr.b	(STS_Row).w
 		clr.b	(STS_Column).w
 		clr.w	(STS_CurrentChar).w
-		clr.w	(STS_DrawCounter).w
 		clr.b	(STS_FinalPhase).w
 		rts
 
@@ -221,7 +223,7 @@ StoryScreen_ContinueWriting:
 		move.b	#1,(STS_FinalPhase).w		; set final phase flag
 		clr.w	(STS_CurrentChar).w		; reset current char counter
 		clr.b	(STS_Column).w			; reset column counter
-		tst.b	(STS_SkipBottomMeta).l		; is bottom meta set to be not drawn?
+		tst.b	(STS_SkipBottomMeta).w		; is bottom meta set to be not drawn?
 		beq.s	@noskipbottom			; if not, branch
 		move.b	#1,(STS_FullyWritten).w		; set the fully written flag now
 @noskipbottom:
@@ -245,19 +247,13 @@ StoryScreen_ContinueWriting:
 		swap	d1				; convert to the format we want
 		add.l	d1,d3				; add to base address
 
-		VBlank_SetMusicOnly
 		move.l	d3,4(a6)			; write final position to VDP
 		add.w	#STS_VRAMSettings,d0		; apply VRAM settings (high plane, palette line 4, VRAM address $D000)
 		move.w	d0,(a6)				; write char to screen
-		VBlank_UnsetMusicOnly
 
-		add.b 	#1,STS_DrawCounter 		; add 1 to total drawn counter
-		and.b 	#%00000011,STS_DrawCounter	; reset every 3 draws
-
-		tst.b 	STS_DrawCounter			;  is the counter over 0?
-		bne.s 	@gotonextpos			; if so, don't play sound
-
-		move.b	#STS_Sound,d0			; play...
+		tst.b	1(a1)				; is the next character a space?
+		bne.s	@gotonextpos			; if not, branch
+		move.w	#STS_Sound,d0			; play...
 		jsr	PlaySound_Special		; ... text writing sound
 
 @gotonextpos:
@@ -298,11 +294,9 @@ StoryScreen_WritePressStart:
 		swap	d1				; convert to the format we want
 		add.l	d1,d3				; add to base address
 
-		VBlank_SetMusicOnly
 		move.l	d3,4(a6)			; write final position to VDP
 		add.w	#STS_PressStart_VRAMSettings,d0	; apply VRAM settings (high plane, palette line 3, VRAM address $D000)
 		move.w	d0,(a6)				; write char to screen
-		VBlank_UnsetMusicOnly
 
 		addq.b	#1,(STS_Column).w		; go to next column
 		addq.w	#1,(STS_CurrentChar).w		; go to next char for the next iteration
@@ -316,7 +310,6 @@ StoryScreen_WritePressStart:
 ; ---------------------------------------------------------------------------
 
 StoryText_WriteFull:
-		VBlank_SetMusicOnly
 		bsr	STS_ClearFlags			; make sure any previously written text doesn't interfere	
 		
 		move.w	#STS_DrawnLine_Length*2,(STS_CurrentChar).w ; full line (times 2 because its speed is halved)
@@ -345,7 +338,7 @@ StoryText_WriteFull:
 
 @endwrite:
 		; "Press Start to Continue..." text
-		tst.b	(STS_SkipBottomMeta).l		; is bottom meta set to be not drawn?
+		tst.b	(STS_SkipBottomMeta).w		; is bottom meta set to be not drawn?
 		bne.s	@finished			; if yes, skip
 		tst.b	(STS_FinalPhase).w		; did we already write the final text?
 		bne.s	@finished			; if yes, branch
@@ -357,7 +350,6 @@ StoryText_WriteFull:
 
 @finished:
 		move.b	#1,(STS_FullyWritten).w		; set "fully-written" flag
-		VBlank_UnsetMusicOnly
 		rts
 
 ; ===========================================================================
@@ -366,19 +358,16 @@ StoryText_WriteFull:
 ; ---------------------------------------------------------------------------
 
 StoryScreen_DrawLines:
-		VBlank_SetMusicOnly
 		move.l	#STS_VRAMBase_Line|($800000*STS_TopLine_Offset),d0
 		moveq	#0,d2			; draw from left to right
 		bsr.s	STS_DrawLine		; draw top line
 
-		tst.b	(STS_SkipBottomMeta).l	; is bottom meta set to be not drawn?
+		tst.b	(STS_SkipBottomMeta).w	; is bottom meta set to be not drawn?
 		bne.s	@nobottomline		; if yes, skip
 		move.l	#STS_VRAMBase_Line|($800000*STS_BottomLine_Offset),d0
 		moveq	#1,d2			; draw from right to left
 		bsr.s	STS_DrawLine		; draw bottom line
 @nobottomline:
-		VBlank_UnsetMusicOnly
-@end:
 		rts
 ; ---------------------------------------------------------------------------
 
@@ -430,25 +419,33 @@ StoryScreen_CenterText:
 		bsr	StoryText_Load			; load story text into a1
 		lea	($FFFFCC00+STS_BaseRow*32).w,a0	; set up H-scroll buffer to the point where the main text is located
 		move.w	#STS_LineLength,d0		; set line length
-		moveq	#STS_LinesTotal-1,d1		; set loop count of line count
+		moveq	#STS_LinesTotal,d1		; set default loop count of line count
+		tst.b	(STS_FullyWritten).w		; is text already fully written?
+		bne.s	@centertextloop			; if yes, branch
+		move.b	(STS_Row).w,d1			; set number of repetitions to current row count
 
 @centertextloop:
 		moveq	#0,d2				; clear d2
+		tst.w	d1				; are we on the last row?
+		bne.s	@notend				; if not, branch
+		move.w	d0,d2				; copy line length to d2
+		sub.b	(STS_Column),d2			; subtract current column length
+		bra.s	@writescroll			; skip normal calculation
+
+@notend:
 		movea.l	a1,a2				; create copy of story text address
 		adda.w	d0,a2				; add line length to the offset (so we start at the end)
-
-@findlineend:
-		tst.b	-(a2)				; is current character a space?
-		bne.s	@foundend			; if not, we found the end of the line, branch
+@findlineend:	tst.b	-(a2)				; is current character a space?
+		bne.s	@writescroll			; if not, we found the end of the line, branch
 		addq.l	#1,d2				; increase 1 to center alignment counter
 		bra.s	@findlineend			; loop until we found the end
 
-@foundend:
-		adda.w	d0,a1				; go to next line
+@writescroll:
 		lsl.l	#2,d2				; multiply by 4px per space
 		rept	8				; 8 scanlines (one row)
 		add.l	d2,(a0)+			; write offset to scroll buffer
 		endr					; rept end
+		adda.w	d0,a1				; go to next line
 		dbf	d1,@centertextloop		; loop
 		rts					; return
 

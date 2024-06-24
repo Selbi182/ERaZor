@@ -12,6 +12,7 @@ STS_Column:		rs.b 1
 STS_CurrentChar:	rs.w 1
 STS_DrawCounter:	rs.b 1
 STS_FinalPhase:		rs.b 1
+STS_SkipBottomMeta:	rs.b 1
 STS_ScreenID	equ	$FFFFFF9E ; hardcoded because it's fragile
 ; ---------------------------------------------------------------------------
 
@@ -94,7 +95,11 @@ STS_ClrScroll:	move.l	d0,(a1)+
 STS_ClrVram:	move.l	d0,(a6)
 		dbf	d1,STS_ClrVram		; fill VRAM with 0
 		
-		move.w	#STS_LinesTotal,($FFFFFF82).w
+		cmpi.b	#9,(STS_ScreenID).w	; is this the blackout special stage?
+		bne.s	@bottommeta		; if not, branch
+		move.b	#1,(STS_SkipBottomMeta)	; if yes, don't draw bottom line and "Press Start..." stuff because the text is too long
+
+@bottommeta:
 		display_enable
 		VBlank_UnsetMusicOnly
 		jsr	Pal_FadeTo
@@ -113,7 +118,7 @@ StoryScreen_MainLoop:
 		jsr	Options_ERZPalCycle
 
 		bsr	StoryScreen_ContinueWriting
-		bsr	StoryScreen_DrawLines
+		bsr	StoryScreen_CenterText
 
 		move.b	($FFFFF605).w,d1	; get button presses
 		andi.b	#$E0,d1			; is A, B, C, or start pressed?
@@ -177,6 +182,11 @@ STS_BaseCol = 6
 STS_VRAMBase = $60000003|($800000*STS_BaseRow)|($20000*STS_BaseCol)
 STS_VRAMSettings = $8000|$6000|($D000/$20)
 
+; "Press Start..." text
+STS_PressStartButton_Row = STS_BaseRow + STS_LinesTotal - 2
+STS_PressStart_VRAMBase = $60000003|($800000*STS_PressStartButton_Row)|($20000*STS_BaseCol)
+STS_PressStart_VRAMSettings = $8000|$4000|($D000/$20)
+
 ; lines at top and bottom
 STS_DrawnLine_Extra	= 4
 STS_DrawnLine_Length	= STS_LineLength+STS_DrawnLine_Extra-1
@@ -187,11 +197,6 @@ STS_LineChar_Left	= $C0/$20
 STS_LineChar_Middle	= $E0/$20
 STS_LineChar_Right	= $100/$20
 STS_LineChar_Arrow	= $120/$20 ; unused
-
-; "Press Start..." text
-STS_PressStartButton_Row = STS_BaseRow + STS_LinesTotal - 2
-STS_PressStart_VRAMBase = $60000003|($800000*STS_PressStartButton_Row)|($20000*STS_BaseCol)
-STS_PressStart_VRAMSettings = $8000|$4000|($D000/$20)
 ; ---------------------------------------------------------------------------
 
 StoryScreen_ContinueWriting:
@@ -199,10 +204,11 @@ StoryScreen_ContinueWriting:
 		bne.w	@writeend			; if yes, don't continue writing
 		tst.b	(STS_FinalPhase).w		; are we currently set to write the "Press Start..." text?
 		bne.w	StoryScreen_WritePressStart	; if yes, branch
+		bsr	StoryScreen_DrawLines		; continue drawing the lines, if necessary
 
-@skipspaces:	bsr	StoryText_Load			; load story text into a1
+@skipspaces:
+		bsr	StoryText_Load			; load story text into a1
 		adda.w	(STS_CurrentChar).w,a1		; find the char we want to write
-
 		moveq	#0,d0				; clear d0
 		move.b	(a1),d0				; move current char to d0
 		bne.s	@notspace			; if it isn't a space, branch
@@ -215,6 +221,10 @@ StoryScreen_ContinueWriting:
 		move.b	#1,(STS_FinalPhase).w		; set final phase flag
 		clr.w	(STS_CurrentChar).w		; reset current char counter
 		clr.b	(STS_Column).w			; reset column counter
+		tst.b	(STS_SkipBottomMeta).l		; is bottom meta set to be not drawn?
+		beq.s	@noskipbottom			; if not, branch
+		move.b	#1,(STS_FullyWritten).w		; set the fully written flag now
+@noskipbottom:
 		rts					; don't continue writing
 
 @dowrite:
@@ -309,7 +319,7 @@ StoryText_WriteFull:
 		VBlank_SetMusicOnly
 		bsr	STS_ClearFlags			; make sure any previously written text doesn't interfere	
 		
-		move.w	#STS_DrawnLine_Length*2,(STS_CurrentChar).w ; full line
+		move.w	#STS_DrawnLine_Length*2,(STS_CurrentChar).w ; full line (times 2 because its speed is halved)
 		bsr	StoryScreen_DrawLines		; finish drawing lines
 		
 		bsr	StoryText_Load			; reload beginning of story text into a1
@@ -335,6 +345,8 @@ StoryText_WriteFull:
 
 @endwrite:
 		; "Press Start to Continue..." text
+		tst.b	(STS_SkipBottomMeta).l		; is bottom meta set to be not drawn?
+		bne.s	@finished			; if yes, skip
 		tst.b	(STS_FinalPhase).w		; did we already write the final text?
 		bne.s	@finished			; if yes, branch
 		move.b	#1,(STS_FinalPhase).w		; set "final phase" flag
@@ -354,16 +366,15 @@ StoryText_WriteFull:
 ; ---------------------------------------------------------------------------
 
 StoryScreen_DrawLines:
-		tst.b	(STS_FinalPhase).w	; are we in the final phase?
-		bne.s	@end			; if yes, branch (because STS_CurrentChar got reset)
-
 		VBlank_SetMusicOnly
 		move.l	#STS_VRAMBase_Line|($800000*STS_TopLine_Offset),d0
+		moveq	#0,d2			; draw from left to right
 		bsr.s	STS_DrawLine		; draw top line
 
-		cmpi.b	#9,(STS_ScreenID).w	; is this the blackout special stage?
-		beq.s	@nobottomline		; if yes, don't draw bottom line because that text is too long
+		tst.b	(STS_SkipBottomMeta).l	; is bottom meta set to be not drawn?
+		bne.s	@nobottomline		; if yes, skip
 		move.l	#STS_VRAMBase_Line|($800000*STS_BottomLine_Offset),d0
+		moveq	#1,d2			; draw from right to left
 		bsr.s	STS_DrawLine		; draw bottom line
 @nobottomline:
 		VBlank_UnsetMusicOnly
@@ -373,15 +384,24 @@ StoryScreen_DrawLines:
 
 STS_DrawLine:
 		lea	($C00000).l,a6
-		move.l	d0,4(a6)			; set VDP address given from d0
-		move.w	#STS_VRAMSettings,d0		; VRAM setting (high plane, palette line 4, VRAM address $D000)
-		moveq	#1,d3				; marker to make first char drawn the left-ending char
 		move.w	(STS_CurrentChar).w,d1		; make line length match the currently drawn text...
 		lsr.w	#1,d1				; ...with its speed cut in half
 		cmpi.w	#STS_DrawnLine_Length,d1	; are we at the maximum allowed line length?
-		bls.s	@drawline			; if not, draw line with given length
+		bls.s	@nolimit			; if not, draw line with given length
 		move.w	#STS_DrawnLine_Length,d1	; otherwise, limit it to its maximum
+@nolimit:
+		tst.b	d2				; is line to be drawn from right to left?
+		beq.s	@noreverse			; if not, branch
+		move.l	#STS_DrawnLine_Length,d2	; get rightmost position
+		sub.w	d1,d2				; subtract the current length
+		add.b	d2,d2				; double ($20000-based)
+		swap	d2				; convert to the format we want
+		add.l	d2,d0				; add that as column offset to the base address
 
+@noreverse:
+		move.l	d0,4(a6)			; set VDP address given from d0
+		move.w	#STS_VRAMSettings,d0		; VRAM setting (high plane, palette line 4, VRAM address $D000)
+		moveq	#1,d3				; marker to make first char drawn the left-ending char
 @drawline:
 		move.w	d0,d2				; copy VRAM settings to d2
 		move.w	#STS_LineChar_Middle,d4		; set middle char
@@ -399,6 +419,37 @@ STS_DrawLine:
 		add.w	d4,d2				; apply chosen char to VRAM settings
 		move.w	d2,(a6)				; write to char to VDP
 		dbf	d1,@drawline			; loop until line is fully written
+		rts					; return
+
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Subroutine to center the text
+; ---------------------------------------------------------------------------
+
+StoryScreen_CenterText:
+		bsr	StoryText_Load			; load story text into a1
+		lea	($FFFFCC00+STS_BaseRow*32).w,a0	; set up H-scroll buffer to the point where the main text is located
+		move.w	#STS_LineLength,d0		; set line length
+		moveq	#STS_LinesTotal-1,d1		; set loop count of line count
+
+@centertextloop:
+		moveq	#0,d2				; clear d2
+		movea.l	a1,a2				; create copy of story text address
+		adda.w	d0,a2				; add line length to the offset (so we start at the end)
+
+@findlineend:
+		tst.b	-(a2)				; is current character a space?
+		bne.s	@foundend			; if not, we found the end of the line, branch
+		addq.l	#1,d2				; increase 1 to center alignment counter
+		bra.s	@findlineend			; loop until we found the end
+
+@foundend:
+		adda.w	d0,a1				; go to next line
+		lsl.l	#2,d2				; multiply by 4px per space
+		rept	8				; 8 scanlines (one row)
+		add.l	d2,(a0)+			; write offset to scroll buffer
+		endr					; rept end
+		dbf	d1,@centertextloop		; loop
 		rts					; return
 
 ; ===========================================================================

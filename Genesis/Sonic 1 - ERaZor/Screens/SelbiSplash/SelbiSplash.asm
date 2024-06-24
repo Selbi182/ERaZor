@@ -245,7 +245,7 @@ SelbiSplash_ChangePal:
 		
 		; cheat here
 		move.b	#%01111111,($FFFFFF8B).w	; unlock all doors
-		move.b	#1,($FFFFFF93).w		; mark game as beaten
+		move.b	#%11,($FFFFFF93).w		; unlock all bonus options
 		
 		tst.w	($FFFFFFFA).w			; was debug mode already enabled?
 		bne.s	SelbiSplash_DisableDebug	; if yes, disable it

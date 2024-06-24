@@ -122,6 +122,7 @@ Tutorial_DisplayHint:
 	move.b	#8,VBlankSub
 	jsr	DelayProgram			; perform vsync before operation, fix Sonic's DPCL
 	VBlank_SetMusicOnly			; disable interrupts
+	ints_push
 	bsr	DH_ClearWindow			; draw window
 	lea	Art_DH_WindowBorder,a1		; load border art
 	vram	_DH_VRAM_Border,(a6)
@@ -135,6 +136,7 @@ Tutorial_DisplayHint:
 	move.l	(a1)+,(a5)
 	move.l	(a1)+,(a5)
 	dbf	d0,@0
+	ints_pop
 	VBlank_UnsetMusicOnly
 
 	cmpi.b	#10,($FFFFFF6E).w	; is this the introduction text?
@@ -220,7 +222,7 @@ DH_Continue:
 	jsr	BuildSprites
 	jsr	PalCycle_Load
 
-	; red palette cycle
+	; palette cycle to highlight letters
 	cmpi.b	#5,($FFFFFE10).w
 	bne.s	@notsbz
 	move.w	($FFFFFE0E).w,d0

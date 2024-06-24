@@ -5,14 +5,14 @@ STS_LineLength = 28
 STS_LinesTotal = 20
 STS_Sound = $D8
 
-		rsset $FFFFFF95
+			rsset $FFFFFF95
 STS_FullyWritten:	rs.b 1
-STS_Row:			rs.b 1
-STS_Column:			rs.b 1
+STS_Row:		rs.b 1
+STS_Column:		rs.b 1
 STS_CurrentChar:	rs.w 1
 STS_DrawCounter:	rs.l 1 ; not actually a longword, just a byte with padding
 STS_ScreenID:		rs.b 1
-STS_Delay:			rs.b 1
+STS_Delay:		rs.b 1
 
 ; ---------------------------------------------------------------------------
 
@@ -149,15 +149,7 @@ STS_NoIntro:
 		rts
 
 STS_NoEnding:
-		cmpi.b	#9,(STS_ScreenID).w	; is this the easter egg?
-		bne.s	STS_NoEaster		; if not, branch
-		move.w	#$302,($FFFFFE10).w	; set level to SLZ3
-		move.b	#$C,($FFFFF600).w
-		move.w	#1,($FFFFFE02).w	; restart level
-		rts
-
-STS_NoEaster:
-		cmpi.b	#$A,(STS_ScreenID).w	; is this the blackout special stage?
+		cmpi.b	#9,(STS_ScreenID).w	; is this the blackout special stage?
 		bne.s	STS_NoBlack		; if not, branch
 		move.b	#$00,($FFFFF600).w	; set to sega screen ($00)
 		rts

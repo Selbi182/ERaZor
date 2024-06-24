@@ -5,12 +5,15 @@ STS_LineLength = 28
 STS_LinesTotal = 20
 STS_Sound = $D8
 
-STS_FullyWritten	equ $FFFFFF95 ; b
-STS_Row			equ $FFFFFF96 ; b
-STS_Column		equ $FFFFFF97 ; w
-STS_CurrentChar		equ $FFFFFF98 ; w
-STS_Delay		equ $FFFFFF9A ; b
-STS_ScreenID		equ $FFFFFF9E ; b
+		rsset $FFFFFF95
+STS_FullyWritten:	rs.b 1
+STS_Row:			rs.b 1
+STS_Column:			rs.b 1
+STS_CurrentChar:	rs.w 1
+STS_DrawCounter:	rs.l 1 ; not actually a longword, just a byte with padding
+STS_ScreenID:		rs.b 1
+STS_Delay:			rs.b 1
+
 ; ---------------------------------------------------------------------------
 
 ; StoryTextScreen:
@@ -224,6 +227,12 @@ StoryScreen_ContinueWriting:
 		move.w	d0,(a6)				; write char to screen
 		VBlank_UnsetMusicOnly
 
+		add.b 	#1, STS_DrawCounter 	; add 1 to total drawn counter
+		and.b 	#%00000011, STS_DrawCounter	; reset every 3 draws
+
+		tst.b 	STS_DrawCounter			;  is the counter over 0?
+		bne.s 	@gotonextpos			; if so, don't play sound
+
 		move.b	#STS_Sound,d0			; play...
 		jsr	PlaySound_Special		; ... text writing sound
 
@@ -406,7 +415,7 @@ StoryText_4:	; text after beating Ruined Place
 		ststxt	"SPIKES MADE FOR QUITE AN    "
 		ststxt	"ENTERTAINING WATCH. REALLY, "
 		ststxt	"I THINK YOU'VE GOT A GREAT  "
-		ststxt	"CAREER AS A COMMEDIAN AHEAD!"
+		ststxt	"CAREER AS A COMEDIAN AHEAD! "
 		ststxt	"                            "
 		ststxt	"ACTUALLY, THAT GIVES ME AN  "
 		ststxt	"IDEA. LET'S SEE WHAT HAPPENS"

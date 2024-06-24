@@ -41,8 +41,8 @@ VBlank_FrameCounter:	equ	$FFFFFE0C			; l	Global frame counter for VBlank (includ
 
 	if def(__MD_REPLAY__)
 ; __MD_REPLAY__ = 'rec'
-MDReplay_RecPtr:	equ		$FFFFF000			; l
-MDReplay_RLECount:	equ		$FFFFF000			; b
+MDReplay_RecPtr:	equ		$FFFFF100			; l
+MDReplay_RLECount:	equ		$FFFFF100			; b
 ; __MD_REPLAY__ = 'play'
-MDReplay_PlayPtr:	equ		$FFFFF000			; l
+MDReplay_PlayPtr:	equ		$FFFFF100			; l
 	endif

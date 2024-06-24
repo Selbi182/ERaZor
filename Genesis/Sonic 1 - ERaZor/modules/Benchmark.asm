@@ -240,7 +240,7 @@ Benchmark.RunSimulations:
 	lea	(sp), @simulation_stats
 	moveq	#@Num_Simulations-1, @simulation_cnt
 
-	@CollectSimluationStats:
+	@CollectSimulationStats:
 		Console.WriteLine "frames=%<.b 4(@simulation_stats)>, lagged=%<.b 5(@simulation_stats)>, wait=%<.l (@simulation_stats)>"
 
 		moveq	#0, @var0
@@ -251,7 +251,7 @@ Benchmark.RunSimulations:
 		Console.WriteLine "all=%<.l @var1>, busy=%<.l @var0>"
 
 		addq.w	#6, @simulation_stats			; next simulation stat
-		dbf	@simulation_cnt, @CollectSimluationStats
+		dbf	@simulation_cnt, @CollectSimulationStats
 
 	Console.BreakLine
 

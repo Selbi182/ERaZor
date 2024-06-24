@@ -652,7 +652,7 @@ Hints_List:
 	dc.l	Hint_2
 	dc.l	Hint_3
 	dc.l	Hint_4
-	dc.l	Hint_Null
+	dc.l	Hint_FZEscape
 	dc.l	Hint_6
 	dc.l	Hint_7
 	dc.l	Hint_8
@@ -661,6 +661,7 @@ Hints_List:
 	dc.l	Hint_Easter_Tutorial
 	dc.l	Hint_Easter_SLZ
 	dc.l	Hint_TutorialConclusion
+	dc.l	Hint_Easter_Tutorial_Escape
 
 ; ---------------------------------------------------------------
 ; Hints Scripts
@@ -670,7 +671,7 @@ Hints_List:
 mapchar macro char
 	if     \char = "'"
 		dc.b	$2+DH_CharOffset
-	elseif \char = "#"
+	elseif \char = '#'
 		dc.b	_font2, $2+DH_CharOffset
 	elseif \char = '.'
 		dc.b	$26+DH_CharOffset
@@ -735,7 +736,8 @@ boxtxt_next macro
 boxtxt_end macro
 	dc.b	_pause,_end
 	endm
-;		 --------------------
+
+; ---------------------------------------------------------------
 Hint_Null:
 	boxtxt	"you shouldn#t be"
 	boxtxt	"able to read this"
@@ -904,6 +906,25 @@ Hint_4:
 	boxtxt	"BITE ME."
 	boxtxt_end
 
+;		 --------------------
+Hint_FZEscape:
+	boxtxt	"HI, AND WELCOME TO"
+	boxtxt	"THE tutorial!"
+	boxtxt_pause
+	boxtxt	"WE'LL TAKE IT EASY,"
+	boxtxt	"SINCE THERE IS"
+	boxtxt	"ABSOLUTELY NO RUSH."
+	boxtxt_next
+
+	boxtxt	"..."
+	boxtxt_pause
+	boxtxt	"UHH..."
+	boxtxt_pause
+	boxtxt	"YOU BETTER GET OUT"
+	boxtxt	"OF HERE BEFORE THIS"
+	boxtxt	"WHOLE PLACE BLOWS"
+	boxtxt	"THE HELL UP."
+	boxtxt_end	
 ;		 --------------------
 Hint_6:
 	boxtxt	"hard part skipper"
@@ -1080,5 +1101,15 @@ Hint_TutorialConclusion:
 	boxtxt	" WILL ALSO SEE WHY."
 	boxtxt_end
 
-	even
+;		 --------------------
+Hint_Easter_Tutorial_Escape:
+	boxtxt	"IF IT SAVES YOU THE"
+	boxtxt	"EFFORT OF COMING"
+	boxtxt	"UP HERE AGAIN,"
+	boxtxt_pause
+	boxtxt	"YOU ARE STILL"
+	boxtxt	"A LOSER."
+	boxtxt_end
+
 ; ---------------------------------------------------------------
+	even

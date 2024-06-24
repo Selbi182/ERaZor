@@ -72,7 +72,7 @@ SelbiSplash_Sounds:
 
 ; ---------------------------------------------------------------------------------------------------------------------
 SelbiSplash_Loop:
-		move.b	#2,($FFFFF62A).w		; Function 2 in vInt
+		move.b	#2,VBlankRoutine		; Function 2 in vInt
 		jsr	DelayProgram			; Run delay program
 		tst.w	($FFFFF614).w			; Test wait time
 		beq.w	SelbiSplash_Next		; is it over? branch
@@ -212,7 +212,7 @@ SelbiSplash_LoadPRESENTS:
 		moveq	#0,d0
 		jsr	EniDec
 
-		move.b	#2,($FFFFF62A).w
+		move.b	#2,VBlankRoutine
 		jsr	DelayProgram			; VSync so gfx loading below isn't terribly out of VBlank
 		VBlank_SetMusicOnly
 		lea	($FF0000).l,a1			; Show screen

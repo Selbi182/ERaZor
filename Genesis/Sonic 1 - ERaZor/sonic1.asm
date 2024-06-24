@@ -21,6 +21,23 @@
 ; ------------------------------------------------------
 ; =======================================================
 
+; ------------------------------------------------------
+	if def(__BENCHMARK__)=0
+; Vladik's Debugger
+__DEBUG__: equ 1
+
+	else
+		; MD Replay state. Used for playing pre-recorded gameplay in benchmarks.
+		; Change to 'rec' to record benchmark gameplay to SRAM, then dump to to file.
+		__MD_REPLAY__:	equ 'play'
+
+		if def(__DEBUG__)
+			inform 2, "__DEBUG__ shouldn't be with __BENCHMARK__"
+		endif
+	endif
+
+; ------------------------------------------------------
+
 	include	"Variables.asm"
 	include	"Macros.asm"
 
@@ -38,6 +55,23 @@
 ; $302 - Star Agony Place
 ; $502 - Finalor Place
 ; $501 - Tutorial Place
+	if def(__BENCHMARK__)=0
+; ======================================================
+; RELEASE and DEBUG build settings:
+; ======================================================
+QuickLevelSelect = 0
+QuickLevelSelect_ID = $400
+; ------------------------------------------------------
+DebugModeDefault = 1
+DebugSurviveNoRings = 1
+; ------------------------------------------------------
+DoorsAlwaysOpen = 1
+LowBossHP = 1
+; ======================================================
+	else
+; ======================================================
+; BENCHMARK build settings (DO NOT CHANGE!)
+; ======================================================
 QuickLevelSelect = 0
 QuickLevelSelect_ID = $400
 ; ------------------------------------------------------
@@ -47,6 +81,7 @@ DebugSurviveNoRings = 1
 DoorsAlwaysOpen = 1
 LowBossHP = 1
 ; ------------------------------------------------------
+	endif
 
 ; ------------------------------------------------------
 ; Object variables
@@ -81,11 +116,8 @@ obSubtype:	equ $28	; object subtype
 obSolid:	equ $25 ; solid status flag
 
 ; ------------------------------------------------------
-; Vladik's Debugger
-__DEBUG__: equ 1
-; ------------------------------------------------------
 		include	"Debugger/Debugger.asm"
-		even
+		include	"modules/MD Replay.asm"
 ; ------------------------------------------------------
 
 ; ===========================================================================
@@ -127,9 +159,23 @@ RomEndLoc:	dc.l EndOfRom-1		; ROM end
 RamStartLoc:	dc.l $FF0000		; RAM start
 RamEndLoc:	dc.l $FFFFFF		; RAM end
 
+	; MD Replay allows to record and playback gameplay everywhere using SRAM
+	; It's used by Benchmark ROM to consistently reproduce the same gameplay.
+	if def(__MD_REPLAY__)
+	if __MD_REPLAY__='rec'
+		dc.b	'RA', %10100000, %00100000
+		dc.l	$200000
+		dc.l	$3FFFFF
+	else	; __MD_REPLAY__='play'
+		dc.l	$20202020
+		dc.l	$20202020
+		dc.l	$20202020
+	endif
+	else	; __MD_REPLAY__ not present, normal game
 SRAMSupport:	dc.l $5241F820		; create SRAM
 		dc.l $200000		; SRAM start
 		dc.l $2001FF		; SRAM end
+	endif
 
 Notes:		dc.b '                                                    '	; Notes
 
@@ -271,7 +317,11 @@ GameClrRAM:	move.l	d7,(a6)+
 
 		bsr	VDPSetupGame
 		bsr	JoypadInit
-		bsr.w	LoadSRAM
+		if def(__MD_REPLAY__)=0
+			bsr.w	LoadSRAM
+		else
+			bsr.w	ResetGameProgress
+		endif
 
 		jsr     MegaPCM_LoadDriver
 		lea     SampleTable, a0
@@ -306,9 +356,15 @@ GameClrRAM:	move.l	d7,(a6)+
 		move.b	#0,($FFFFF600).w ; set Game Mode to Sega Screen
 	endif
 
+	if def(__BENCHMARK__)
+		; Benchmark build uses a custom bootstrap program
+		jmp	Benchmark
+	else
 		bra.w	MainGameLoop	; continue to main game loop
+	endif
 
 ; ===========================================================================
+
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -340,6 +396,10 @@ SRAM_MagicNumber = 182
 ; ---------------------------------------------------------------------------
 
 LoadSRAM:
+	; Supress SRAM if MD Replay takes over it
+	if def(__MD_REPLAY__)
+		rts
+	else
 		moveq	#0,d0					; clear d0
 		move.b	#1,($A130F1).l				; enable SRAM
 		lea	($200000).l,a1				; base of SRAM
@@ -365,9 +425,13 @@ SRAMFound:
 SRAMEnd:
 		move.b	#0,($A130F1).l				; disable SRAM
 		rts
+	endif	; def(__MD_REPLAY__)=0
 ; ===========================================================================
 
 SRAM_Delete:
+	if def(__MD_REPLAY__)
+		rts
+	else
 		moveq	#$00,d0					; if not, set the whole SRAM to 0 for safety
 		move.b	#2,d1
 @ClearSRAM:	movep.l	d0,obRender(a1)
@@ -379,7 +443,9 @@ SRAM_Delete:
 		move.b	#%00000011,d0				; set default options (extended camera and story text screens)
 		move.b	d0,($FFFFFF92).w			; ^
 		move.b	d0,obRender(a1)				; ^
+	endif	; def(__MD_REPLAY__)=0
 		
+ResetGameProgress:
 		moveq	#0,d0
 		move.b	d0,($FFFFFFA7).w			; clear current chapter
 		move.b	d0,($FFFFFF8B).w			; clear open doors bitset
@@ -392,6 +458,10 @@ SRAM_Delete:
 ; ===========================================================================
 
 SRAM_SaveNow:
+	; Supress SRAM if MD Replay takes over it
+	if def(__MD_REPLAY__)
+		rts
+	else
 		move.b	#1,($A130F1).l				; enable SRAM
 		lea	($200000).l,a1				; base of SRAM
 		cmpi.b	#SRAM_MagicNumber,SRAM_Exists(a1)	; does SRAM exist?
@@ -417,6 +487,8 @@ SRAM_SaveNow:
 SRAM_SaveNow_End:
 		move.b	#0,($A130F1).l				; disable SRAM
 		rts
+	endif	; def(__MD_REPLAY__)=0
+
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -743,13 +815,14 @@ VBlank:				; XREF: StartOfRom
 		movem.l	d0-a6,-(sp)
 
 		tst.b	VBlank_MusicOnly		; is "music only" flag set (effectively disabled VBlank, only SMPS works)
-		bne.s	VBlank_Exit				; if yes, skip all of VBlank
+		bne.s	VBlank_Exit			; if yes, skip all of VBlank
 
 		bsr.w	BlackBars.VBlankUpdate
 		
-		tst.b	($FFFFF62A).w			; are we late for V-Blank?
-		beq.w	VBlank_Late			; if yes, oh shit oh fuck, go to the emergency routine immediately
+		tst.b	VBlankRoutine			; are we lagging (VBlank unwanted, interrupted game loop)
+		beq.w	VBlank_LagFrame			; if yes, oh shit oh fuck, go to the emergency routine immediately
 		
+		addq.l	#1, VBlank_NonLagFrameCounter
 		move.w	($C00004).l,d0
 		move.l	#$40000010,($C00004).l
 		move.l	($FFFFF616).w,($C00000).l
@@ -759,21 +832,24 @@ VBlank:				; XREF: StartOfRom
 		dbf	d0, *				; waste ~$700 * 10 cycles on PAL consoles
 
 loc_B42:
-		move.b	($FFFFF62A).w,d0
+		move.b	VBlankRoutine,d0
 		move.w	#1,($FFFFF644).w
 		andi.w	#$3E,d0
 		move.w	VBlankTable(pc,d0.w),d0
 		jsr	VBlankTable(pc,d0.w)
 
 ; loc_B5E:
-VBlank_Exit:				; XREF: VBlank_Late
-		move.b	#0,($FFFFF62A).w
+VBlank_Exit:				; XREF: VBlank_LagFrame
+		move.b	#0,VBlankRoutine
+	if def(__BENCHMARK__)=0
 		bsr.s	UpdateSoundDriver	; update sound driver stuff now
-		addq.l	#1,($FFFFFE0C).w	; increase 1 to V-Blank counter
+	endif
+		addq.l	#1,VBlank_FrameCounter	; increase 1 to V-Blank counter
 		movem.l	(sp)+,d0-a6
 		rte	
 ; ===========================================================================
-
+	; Benchmark builds exclude SMPS for timing consistency
+	if def(__BENCHMARK__)=0
 UpdateSoundDriver:
 		ints_enable			; enable interrupts (we can accept horizontal interrupts from now on)
 		tst.b	($FFFFF64F).w		; is SMPS currently running?
@@ -782,9 +858,10 @@ UpdateSoundDriver:
 		jsr	SoundDriverUpdate	; run SMPS
 		clr.b	($FFFFF64F).w		; reset "SMPS running flag"
 @end:		rts
+	endif
 
 ; ===========================================================================
-VBlankTable:	dc.w VBlank_Late-VBlankTable	; $00
+VBlankTable:	dc.w VBlank_LagFrame-VBlankTable	; $00
 		dc.w loc_C32-VBlankTable	; $02
 		dc.w loc_C44-VBlankTable	; $04
 		dc.w loc_C5E-VBlankTable	; $06
@@ -800,7 +877,7 @@ VBlankTable:	dc.w VBlank_Late-VBlankTable	; $00
 ; ===========================================================================
 
 ; loc_B88:
-VBlank_Late:				; XREF: VBlank; VBlankTable
+VBlank_LagFrame:				; XREF: VBlank; VBlankTable
 		cmpi.b	#$8C,($FFFFF600).w
 		beq.s	loc_B9A
 		cmpi.b	#$C,($FFFFF600).w	; are we in the level game mode?
@@ -1058,7 +1135,7 @@ loc_F8A:				; XREF: VBlankTable
 @0:		move.b	($FFFFF625).w,($FFFFFE07).w
 
 		addq.b	#1,($FFFFF628).w
-		move.b	#$E,($FFFFF62A).w
+		move.b	#$E,VBlankRoutine
 		rts	
 ; ===========================================================================
 
@@ -1162,7 +1239,11 @@ JoypadInit:				; XREF: GameClrRAM
 		move.b	d0,($A10009).l	; init port 1 (joypad 1)
 		move.b	d0,($A1000B).l	; init port 2 (joypad 2)
 		move.b	d0,($A1000D).l	; init port 3 (extra)
-		rts	
+
+		if def(__MD_REPLAY__)
+			MDReplay_Init
+		endif
+		rts
 ; End of function JoypadInit
 
 ; ---------------------------------------------------------------------------
@@ -1173,6 +1254,9 @@ JoypadInit:				; XREF: GameClrRAM
 
 
 ReadJoypads:
+	if def(__MD_REPLAY__)
+		MDReplay_Update
+	else
 		lea	($FFFFF604).w,a0 ; address where joypad	states are written
 		lea	($A10003).l,a1	; first	joypad port
 		bsr.s	Joypad_Read	; do the first joypad
@@ -1197,7 +1281,8 @@ Joypad_Read:
 		move.b	d0,(a0)+
 		and.b	d0,d1
 		move.b	d1,(a0)+
-		rts	
+		rts
+	endif
 ; End of function ReadJoypads
 
 
@@ -1437,7 +1522,7 @@ PG_NotGHZ2:
 		jsr	Pal_MakeBlackWhite
 
 Pause_MainLoop:
-		move.b	#$10,($FFFFF62A).w
+		move.b	#$10,VBlankRoutine
 		bsr	DelayProgram
 
 	;	cmpi.w	#$501,($FFFFFE10).w
@@ -2048,7 +2133,7 @@ loc_1DCE:
 		movem.l	d4/d6, -(sp)
 		bsr.w	PLC_Execute
 		movem.l	(sp)+, d4/d6
-		move.b	#$12,($FFFFF62A).w
+		move.b	#$12,VBlankRoutine
 		bsr.w	DelayProgram
 		bchg	#0,d6					; MJ: change delay counter
 		beq	loc_1DCE				; MJ: if null, delay a frame
@@ -2056,7 +2141,7 @@ loc_1DCE:
 		bsr.s	Pal_FadeIn
 		subq.b	#2,d4					; MJ: decrease colour check
 		bne	loc_1DCE				; MJ: if it has not reached null, branch
-		move.b	#$12,($FFFFF62A).w			; MJ: wait for V-blank again (so colours transfer)
+		move.b	#$12,VBlankRoutine			; MJ: wait for V-blank again (so colours transfer)
 		bra.w	DelayProgram				; MJ: ''
 ; ===========================================================================
 
@@ -2133,7 +2218,7 @@ Pal_FadeFrom:
 
 loc_1E5C:
 		bsr.w	PLC_Execute
-		move.b	#$12,($FFFFF62A).w
+		move.b	#$12,VBlankRoutine
 		bsr.w	DelayProgram
 		bchg	#$00,d6					; MJ: change delay counter
 		beq	loc_1E5C				; MJ: if null, delay a frame
@@ -2212,7 +2297,7 @@ PalWhite_Loop:
 		move.w	#$15,d4
 
 loc_1EF4:
-		move.b	#$12,($FFFFF62A).w
+		move.b	#$12,VBlankRoutine
 		bsr	DelayProgram
 		bsr.s	Pal_WhiteToBlack
 
@@ -2302,7 +2387,7 @@ Pal_MakeFlash:				; XREF: SpecialStage
 		move.w	#$15,d4
 
 loc_1F86:
-		move.b	#$12,($FFFFF62A).w
+		move.b	#$12,VBlankRoutine
 		bsr	DelayProgram
 		bsr.s	Pal_ToWhite
 		bsr	PLC_Execute
@@ -2717,12 +2802,20 @@ Pal_ERaZorBanner:	incbin	pallet\ERaZor.bin
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 
 
-DelayProgram:				; XREF: PauseGame
-		move	#$2300,sr
+DelayProgram:			; XREF: PauseGame
+		move	#$2300,sr	; enable interrupts
+		movem.l	d0-d2, -(sp)
+		movem.l	VSyncWaitTicks_64bit, d0-d1	; load 64-bit number
+		moveq	#0, d2
 
-loc_29AC:
-		tst.b	($FFFFF62A).w
-		bne.s	loc_29AC
+	@WaitVBlank:
+			addq.l	#1, d1			; 64-bit math (uses Blast processing(tm))
+			addx.l	d2, d0			; ''
+			tst.b	VBlankRoutine
+			bne.s	@WaitVBlank
+
+		movem.l	d0-d1, VSyncWaitTicks_64bit
+		movem.l	(sp)+, d0-d2
 		rts	
 ; End of function DelayProgram
 
@@ -2968,13 +3061,13 @@ SegaScreen:				; XREF: GameModeArray
 		move.b	#$00,($FF2000).l	; clear counter
 
 Sega_WhiteFadeIn:
-		move.b	#2,($FFFFF62A).w	; set to function 2 in V-blank
+		move.b	#2,VBlankRoutine	; set to function 2 in V-blank
 	;	bsr	DelayProgram		; do V-blank
 
 		move	#$2300,sr
 
 loc_29ACx:
-		tst.b	($FFFFF62A).w
+		tst.b	VBlankRoutine
 		bne.s	loc_29ACx
 
 		addi.w	#$0111,($FFFFFB00).w	; make background brighter
@@ -2982,7 +3075,7 @@ loc_29ACx:
 		bne.s	Sega_WhiteFadeIn	; if not, loop
 
 Sega_WaitFrames:
-		move.b	#2,($FFFFF62A).w	; set to function 2 in V-blank
+		move.b	#2,VBlankRoutine	; set to function 2 in V-blank
 		bsr	DelayProgram		; do V-blank
 		addq.b	#1,($FF2000).l		; increase wait timer
 		cmpi.b	#8,($FF2000).l		; has time been reached?
@@ -3007,7 +3100,7 @@ Sega_WaitPallet:
 		bne.s	@0
 		jsr	Options_BGDeformation2
 @0:
-		move.b	#2,($FFFFF62A).w
+		move.b	#2,VBlankRoutine
 		bsr	DelayProgram
 		andi.b	#$F0,($FFFFF605).w ; is	A, B, C, or Start pressed?
 		bne.w	Sega_GotoTitle	; if yes, branch
@@ -3020,7 +3113,7 @@ Sega_WaitPallet:
 
 		move	#120, d6
 @Wait_SegaPCM:
-		move.b	#$14,($FFFFF62A).w
+		move.b	#$14,VBlankRoutine
 		bsr	DelayProgram
 		dbf	d6, @Wait_SegaPCM
 
@@ -3071,7 +3164,7 @@ Sega_WaitEnd:
 		dbf	d1,@white
 		
 Sega_NoSound:
-		move.b	#2,($FFFFF62A).w
+		move.b	#2,VBlankRoutine
 		bsr	DelayProgram
 		tst.w	($FFFFF614).w
 		beq.s	Sega_GotoTitle
@@ -3221,7 +3314,7 @@ Title_SonPalLoop:
 Title_MainLoop:
 		addq.w	#3,($FFFFD008).w
 
-		move.b	#4,($FFFFF62A).w
+		move.b	#4,VBlankRoutine
 		bsr	DelayProgram
 		jsr	ObjectsLoad
 		bsr	DeformBgLayer
@@ -3320,11 +3413,11 @@ ERZ_FadeOut:
 		jsr	PlaySound
 		move.w	#50,($FFFFF614).w
 @fade
-		move.b	#4,($FFFFF62A).w
+		move.b	#4,VBlankRoutine
 		bsr	DelayProgram
-		move.b	#4,($FFFFF62A).w
+		move.b	#4,VBlankRoutine
 		bsr	DelayProgram
-		move.b	#4,($FFFFF62A).w
+		move.b	#4,VBlankRoutine
 		bsr	DelayProgram
 		move.w	#$00E,($FFFFFB60+$14).w
 		move.w	#$00E,($FFFFFB60+$16).w
@@ -3394,7 +3487,7 @@ ERaZorBannerPalette:
 ; ---------------------------------------------------------------------------
 
 LevelSelect:
-		move.b	#4,($FFFFF62A).w
+		move.b	#4,VBlankRoutine
 		bsr.w	DelayProgram
 		bsr.w	LevSelControls
 		bsr.w	PLC_Execute
@@ -3848,7 +3941,7 @@ Level_NoMusic2:
 
 @runplc:
 		; run PLC now to avoid breaching the queue limit
-		move.b	#$C,($FFFFF62A).w
+		move.b	#$C,VBlankRoutine
 		bsr	DelayProgram
 		bsr	PLC_Execute
 		tst.l	PLC_Pointer	; are there any items in the pattern load cue?
@@ -3874,7 +3967,7 @@ Level_NoTitleCard:
 		bsr	PalLoad2	; load Sonic's pallet line
 
 Level_TtlCard:
-		move.b	#$C,($FFFFF62A).w
+		move.b	#$C,VBlankRoutine
 		bsr	DelayProgram
 		jsr	ObjectsLoad
 		jsr	BuildSprites
@@ -4006,7 +4099,7 @@ Level_Delay:
 
 	;	move.w	#3,d1
 Level_DelayLoop:
-	;	move.b	#8,($FFFFF62A).w
+	;	move.b	#8,VBlankRoutine
 	;	bsr	DelayProgram
 	;	dbf	d1,Level_DelayLoop
 
@@ -4036,9 +4129,8 @@ Level_MainLoop:
 
 Level_DemoOK:
 	;	move.b	($FFFFF7CC).w,($FFFFFF7F).w
-
 		bsr	PauseGame
-		move.b	#8,($FFFFF62A).w
+		move.b	#8,VBlankRoutine
 		bsr	DelayProgram
 		addq.w	#1,($FFFFFE04).w ; add 1 to level timer
 		bsr	LZWaterEffects
@@ -4413,7 +4505,7 @@ LZWind_Loop:
 		bcs.s	loc_3EF4
 		cmp.w	6(a2),d2
 		bcc.s	loc_3EF4
-		move.b	($FFFFFE0F).w,d0
+		move.b	($FFFFFE05).w,d0
 		andi.b	#$3F,d0
 		bne.s	loc_3E90
 		move.w	#$D0,d0
@@ -4529,7 +4621,7 @@ loc_3F9A:
 		clr.b	$15(a1)
 		move.b	#$1B,obAnim(a1)	; use Sonic's "sliding" animation
 		move.b	#1,($FFFFF7CA).w ; lock	controls (except jumping)
-		move.b	($FFFFFE0F).w,d0
+		move.b	($FFFFFE05).w,d0
 		andi.b	#$1F,d0
 		bne.s	locret_3FBE
 		move.w	#$D0,d0
@@ -5074,7 +5166,7 @@ SpecialStage:				; XREF: GameModeArray
 		move.l	d1,(a1)+
 		dbf	d2,@clearpalafter
 
-		move.b	#$12,($FFFFF62A).w	; apply palette changes before we move on
+		move.b	#$12,VBlankRoutine	; apply palette changes before we move on
 		bsr	DelayProgram
 		bra.s	@cont
 
@@ -5218,7 +5310,7 @@ SS_MainLoop:
 		clr.w	($FFFFFE20).w		; lose all your rings, loser
 
 SS_NoPauseGame:
-		move.b	#$A,($FFFFF62A).w
+		move.b	#$A,VBlankRoutine
 		bsr	DelayProgram
 		move.w	($FFFFF604).w,($FFFFF602).w
 		jsr	ObjectsLoad
@@ -5238,7 +5330,7 @@ SS_NoPauseGame:
 		clr.w	($FFFFF794).w
 
 SS_EndLoop:
-		move.b	#$16,($FFFFF62A).w
+		move.b	#$16,VBlankRoutine
 		bsr	DelayProgram
 		move.w	($FFFFF604).w,($FFFFF602).w
 		jsr	ObjectsLoad
@@ -5286,7 +5378,7 @@ SS_EndClrObjRamX:
 		jsr	Sonic_ResetOnFloor
 		move.l	(sp)+,a0
 
-		move.b	#$C,($FFFFF62A).w
+		move.b	#$C,VBlankRoutine
 		bsr	DelayProgram
 		jsr	ObjectsLoad
 		jsr	BuildSprites
@@ -5677,7 +5769,7 @@ Cont_ClrObjRam:
 ; ---------------------------------------------------------------------------
 
 Cont_MainLoop:
-		move.b	#$16,($FFFFF62A).w
+		move.b	#$16,VBlankRoutine
 		bsr	DelayProgram
 		cmpi.b	#6,($FFFFD024).w
 		bcc.s	loc_4DF2
@@ -5974,7 +6066,7 @@ End_ClrRam3:	move.l	d0,(a1)+
 	;	move.w	#$00F8,($FFFFD3CA).w		; set Y-position
 
 End_LoadData:
-		move.b	#4,($FFFFF62A).w
+		move.b	#4,VBlankRoutine
 		bsr	DelayProgram
 		moveq	#$1C,d0
 		bsr	PLC_ExecuteOnce	; load ending sequence patterns
@@ -5999,7 +6091,7 @@ End_LoadSonic:
 		move.b	#1,($FFFFF7CC).w ; lock	controls
 		move.w	#$400,($FFFFF602).w ; move Sonic to the	left
 		move.w	#-$800,($FFFFD014).w ; set Sonic's speed
-		move.b	#4,($FFFFF62A).w
+		move.b	#4,VBlankRoutine
 		bsr	DelayProgram
 		jsr	ObjPosLoad
 		jsr	ObjectsLoad
@@ -6021,7 +6113,7 @@ End_LoadSonic:
 		move.b	#1,($FFFFFE1D).w
 		move.b	#0,($FFFFFE1E).w
 		move.w	#1800,($FFFFF614).w
-		move.b	#$18,($FFFFF62A).w
+		move.b	#$18,VBlankRoutine
 		bsr	DelayProgram
 		move.w	#$8014,($C00004).l	; enable h-ints
 		display_enable
@@ -6037,7 +6129,7 @@ End_MainLoop:
 
 	;	move.b	($FFFFF7CC).w,($FFFFFF7F).w
 
-		move.b	#$18,($FFFFF62A).w
+		move.b	#$18,VBlankRoutine
 		bsr	DelayProgram
 		addq.w	#1,($FFFFFE04).w
 		bsr	End_MoveSonic
@@ -6068,7 +6160,7 @@ loc_52DA:
 
 End_AllEmlds:				; XREF: loc_5334
 		bsr	PauseGame
-		move.b	#$18,($FFFFF62A).w
+		move.b	#$18,VBlankRoutine
 		bsr	DelayProgram
 		addq.w	#1,($FFFFFE04).w
 		bsr	End_MoveSonic
@@ -6431,7 +6523,7 @@ loc_5862:
 		bsr	Pal_FadeTo
 
 Cred_WaitLoop:
-		move.b	#4,($FFFFF62A).w
+		move.b	#4,VBlankRoutine
 		bsr	DelayProgram
 		bsr	PLC_Execute
 		tst.w	($FFFFF614).w	; have 2 seconds elapsed?
@@ -6493,7 +6585,7 @@ TryAg_ClrPallet:
 ; ---------------------------------------------------------------------------
 TryAg_MainLoop:
 		bsr	PauseGame
-		move.b	#4,($FFFFF62A).w
+		move.b	#4,VBlankRoutine
 		bsr	DelayProgram
 		jsr	ObjectsLoad
 		jsr	BuildSprites
@@ -10638,7 +10730,7 @@ Resize_FZEscape_Nuke:
 		move.w	($FFFFF700).w,($FFFFF728).w	; lock left boundary as you walk right
 		
 		tst.b	($FFFFFFA5).w		; egg prison opened?
-		beq.s	@0			; if not, branch
+		beq	@0			; if not, branch
 		
 		VBlank_SetMusicOnly 		; VBlank won't touch VDP now
 		vram	$6C00			; load HPS and info box graphics
@@ -12761,7 +12853,7 @@ Obj1D_Action:
 		subi.w	#$80,d1
 		lsr.w	#8,d0
 		subi.w	#$50,d0
-		btst	#0,($FFFFFE0F).w
+		btst	#0,($FFFFFE05).w
 		beq.s	@set
 		asl.w	#1,d1
 		asl.w	#1,d0
@@ -13735,7 +13827,7 @@ loc_912A:				; XREF: Obj28_Index
 		move.b	d0,obRoutine(a0)
 		tst.b	($FFFFF7A7).w
 		beq.s	loc_9180
-		btst	#4,($FFFFFE0F).w
+		btst	#4,($FFFFFE05).w
 		beq.s	loc_9180
 		neg.w	obVelX(a0)
 		bchg	#0,obRender(a0)
@@ -14821,7 +14913,7 @@ Obj22_NotInhumanCrush:
 		
 		; buzz bomber is in waterfall section
 		move.b	#0,obColType(a0)	; make the buzz bomber not destroyable
-		move.b	($FFFFFE0F).w,d0
+		move.b	($FFFFFE05).w,d0
 		btst	#1,d0			; every other pair of frames
 		beq.s	@0
 		move.w	#$6444,obGfx(a0)	; use fourth palette line
@@ -14889,7 +14981,7 @@ Obj22_YChk:
 		bge.w	Obj22_End		; if not, branch
 	;	bsr	BossDefeated3		; load random explosion (harmful)
 
-		move.b	($FFFFFE0F).w,d0
+		move.b	($FFFFFE05).w,d0
 		andi.b	#7,d0
 		bne.s	Obj22_Return2
 		move.b	#1,($FFFFFFA3).w
@@ -15660,7 +15752,7 @@ Obj37_NoRingsMove:
 @skipbounceslow:
 	
 		bmi.s	Obj37_ChkDel
-		move.b	($FFFFFE0F).w,d0
+		move.b	($FFFFFE05).w,d0
 		add.b	d7,d0
 		andi.b	#3,d0
 		bne.s	Obj37_ChkDel
@@ -17256,7 +17348,7 @@ Map_obj2B:
 		
 ; ===========================================================================
 BossDefeated2:
-		move.b	($FFFFFE0F).w,d0
+		move.b	($FFFFFE05).w,d0
 		andi.b	#7,d0
 		bne.s	locret_178A22
 		move.b	#1,($FFFFFFA3).w
@@ -17284,7 +17376,7 @@ locret_178A22:
 ; End of function BossDefeated
 
 BossDefeated3:
-		move.b	($FFFFFE0F).w,d0
+		move.b	($FFFFFE05).w,d0
 		andi.b	#7,d0
 		bne.s	locret_178A22XX
 		move.b	#1,($FFFFFFA3).w
@@ -17310,7 +17402,7 @@ locret_178A22XX:
 ; End of function BossDefeated
 
 BossDefeated4:
-		move.b	($FFFFFE0F).w,d0
+		move.b	($FFFFFE05).w,d0
 		andi.b	#7,d0
 		bne.s	locret_178A22XXX
 		bsr	SingleObjLoad
@@ -17505,7 +17597,7 @@ loc_AD78:				; XREF: Obj2D_Move
 ; ===========================================================================
 
 loc_AD84:				; XREF: Obj2D_Move
-		btst	#2,($FFFFFE0F).w
+		btst	#2,($FFFFFE05).w
 		beq.s	loc_ADA4
 		subq.b	#2,ob2ndRout(a0)
 		move.w	#$3B,$30(a0)
@@ -18411,7 +18503,7 @@ Obj31_Type00:				; XREF: Obj31_TypeIndex
 loc_B872:
 		tst.w	$32(a0)
 		beq.s	loc_B8A0
-		move.b	($FFFFFE0F).w,d0
+		move.b	($FFFFFE05).w,d0
 		andi.b	#$F,d0
 		bne.s	loc_B892
 		tst.b	obRender(a0)
@@ -18468,7 +18560,7 @@ Obj31_Type01:				; XREF: Obj31_TypeIndex
 ; ===========================================================================
 
 loc_B902:
-		move.b	($FFFFFE0F).w,d0
+		move.b	($FFFFFE05).w,d0
 		andi.b	#$F,d0
 		bne.s	loc_B91C
 		tst.b	obRender(a0)
@@ -20056,7 +20148,7 @@ Obj3A_Tube:
 		addi.w	#$18,obVelY(a0)	; increase vertical speed
 		jsr	SpeedToPos
 
-		move.b	($FFFFFE0F).w,d0
+		move.b	($FFFFFE05).w,d0
 		andi.b	#7,d0
 		bne.s	@cont
 		jsr	SingleObjLoad
@@ -20865,7 +20957,7 @@ Obj49_Main:				; XREF: Obj49_Index
 		move.b	#4,obRender(a0)
 
 Obj49_PlaySnd:				; XREF: Obj49_Index
-		move.b	($FFFFFE0F).w,d0
+		move.b	($FFFFFE05).w,d0
 		andi.b	#$3F,d0
 		bne.s	Obj49_ChkDel
 		move.w	#$D0,d0
@@ -25096,7 +25188,7 @@ Obj55_ChkDrop:				; XREF: Obj55_Index2
 		bcc.s	Obj55_NoDrop	; if not, branch
 		tst.w	($FFFFFE08).w	; is debug mode	on?
 		bne.s	Obj55_NoDrop	; if yes, branch
-		move.b	($FFFFFE0F).w,d0
+		move.b	($FFFFFE05).w,d0
 		add.b	d7,d0
 		andi.b	#7,d0
 		bne.s	Obj55_NoDrop
@@ -25133,7 +25225,7 @@ Obj55_ChkDel:				; XREF: Obj55_DropFly
 ; ===========================================================================
 
 Obj55_PlaySnd:				; XREF: Obj55_Index2
-		move.b	($FFFFFE0F).w,d0
+		move.b	($FFFFFE05).w,d0
 		andi.b	#$F,d0
 		bne.s	loc_101A0
 		move.w	#$C0,d0
@@ -25149,7 +25241,7 @@ loc_101A0:
 loc_101B0:
 		cmpi.w	#$80,d0
 		bcs.s	locret_101C6
-		move.b	($FFFFFE0F).w,d0
+		move.b	($FFFFFE05).w,d0
 		add.b	d7,d0
 		andi.b	#7,d0
 		bne.s	locret_101C6
@@ -38383,7 +38475,7 @@ loc_1784C:				; XREF: loc_177E6
 
 
 BossDefeated:
-		move.b	($FFFFFE0F).w,d0
+		move.b	($FFFFFE05).w,d0
 		andi.b	#7,d0
 		bne.s	locret_178A2
 		jsr	SingleObjLoad
@@ -42913,7 +43005,7 @@ locret2_1A602:
 		rts	
 ; ===========================================================================
 BossDefeatedX:
-		move.b	($FFFFFE0F).w,d0
+		move.b	($FFFFFE05).w,d0
 		andi.b	#7,d0
 		bne.s	xlocret_178A2x
 		jsr	SingleObjLoad
@@ -43357,7 +43449,7 @@ locret_1AC60:
 
 Obj3E_Explosion:			; XREF: Obj3E_Index
 		moveq	#7,d0
-		and.b	($FFFFFE0F).w,d0
+		and.b	($FFFFFE05).w,d0
 		bne.s	loc_1ACA0
 		jsr	SingleObjLoad
 		bne.s	loc_1ACA0
@@ -48334,6 +48426,13 @@ FixBugs:	equ	1	; want to fix SMPS bugs
 		include	"Screens/TutorialBox/TutorialBox.asm"
 		include	"Screens/GameplayStyleScreen/GameplayStyleScreen.asm"
 ; ---------------------------------------------------------------------------
+	if def(__BENCHMARK__)
+		include "modules/Benchmark.asm"
+	endif
+	if def(__MD_REPLAY__)
+		MDReplay_IncludeMovie "bench-ghp.mdr"
+	endif
+
 ; ===========================================================================
 
 ; ===========================================================================
@@ -48356,6 +48455,14 @@ FixBugs:	equ	1	; want to fix SMPS bugs
 		; "if def(__DEBUG__)" will always be true, even if __DEBUG__=0
 		inform 2, "__DEBUG__=0 doesn't have any effect, comment it out instead"
 	endif
+	endif
+
+; Sanity check for __BENCHMARK__ symbol to avoid pitfals
+	if def(__BENCHMARK__)
+	if __BENCHMARK__=0
+		; "if def(__BENCHMARK__)" will always be true, even if __BENCHMARK__=0
+		inform 2, "__BENCHMARK__=0 doesn't have any effect, comment it out instead"
+	endif	
 	endif
 
 ; ===========================================================================

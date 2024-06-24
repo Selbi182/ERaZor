@@ -104,7 +104,7 @@ STS_ClrVram:	move.l	d0,(a6)
 
 ; LevelSelect:
 StoryScreen_MainLoop:
-		move.b	#2,($FFFFF62A).w
+		move.b	#2,VBlankRoutine
 		jsr	DelayProgram
 		jsr	ObjectsLoad
 		jsr	BuildSprites

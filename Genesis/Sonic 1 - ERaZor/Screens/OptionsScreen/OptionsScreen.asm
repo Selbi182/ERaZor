@@ -14,7 +14,7 @@ OptionsScreen:				; XREF: GameModeArray
 		VBlank_SetMusicOnly
 
 		lea	($C00004).l,a6
-	;	move.w	#$8004,(a6)
+		move.w	#$8004,(a6)
 		move.w	#$8230,(a6)
 		move.w	#$8407,(a6)
 		move.w	#$9001,(a6)
@@ -365,18 +365,19 @@ Options_BGVScroll:
 		rts
 ; ---------------------------------------------------------------------------
 
-; ERaZor banner palette cycle
+; ERaZor banner and selected line palette cycle
 Options_ERZPalCycle:
-		; banner itself
 		moveq	#0,d1
 		lea	($FFFFFB20).w,a2
 		jsr	ERaZorBannerPalette
+		rts
 		
-		; selected line
+Options_SelectedLinePalCycle:
 		moveq	#0,d1
 		lea	($FFFFFB40-6*2).w,a2
 		jsr	ERaZorBannerPalette
 		rts
+
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -396,6 +397,7 @@ OptionsScreen_MainLoop:
 		
 		bsr.w	Options_BackgroundEffects
 		bsr.w	Options_ERZPalCycle
+		bsr.w	Options_SelectedLinePalCycle
 
 		tst.l	PLC_Pointer		; are pattern load cues empty?
 		bne.s	OptionsScreen_MainLoop	; if not, branch to avoid visual corruptions
@@ -495,6 +497,13 @@ Options_HandleCinematicMode:
 		move.b	($FFFFF605).w,d1	; get button presses
 		andi.b	#$FC,d1			; is left, right, A, B, C, or Start pressed?
 		beq.w	Options_Return		; if not, branch
+		btst	#0,($FFFFFF93).w	; has the player beaten the base game?
+		bne.s	@cinematicmodeallowed	; if yes, branch
+		move.w	#$DA,d0			; play option disallowed sound
+		jsr	PlaySound_Special
+		bra.w	Options_UpdateTextAfterChange_NoSound
+		
+@cinematicmodeallowed:
 		bchg	#3,($FFFFFF92).w	; toggle cinematic HUD
 		bsr	Options_LoadPal
 		bra.w	Options_UpdateTextAfterChange
@@ -504,7 +513,7 @@ Options_HandleNonstopInhuman:
 		move.b	($FFFFF605).w,d1	; get button presses
 		andi.b	#$FC,d1			; is left, right, A, B, C, or Start pressed?
 		beq.w	Options_Return		; if not, branch
-		tst.b	($FFFFFF93).w		; has the player beaten the game?
+		btst	#1,($FFFFFF93).w	; has the player beaten the blackout challenge?
 		bne.s	@nonstopinhumanallowed	; if yes, branch
 		move.w	#$DA,d0			; play option disallowed sound
 		jsr	PlaySound_Special
@@ -827,20 +836,27 @@ GetOptionsText:
 		bsr.w	Options_Write			; write text
 
 		adda.w	#Options_LineLength,a1		; make one empty line
-		
-		lea	(OpText_CinematicMode).l,a2	; set text location
+
+		move.l	#OpText_Locked,d6		; set locked text location	
+		btst	#0,($FFFFFF93).w		; has the player beaten the base game?
+		beq.s	@basegamenotbeaten		; if not, branch
+		move.l	#OpText_CinematicMode,d6	; set unlocked text location
+
+@basegamenotbeaten:
+		movea.l	d6,a2				; set text location
 		moveq	#5,d2				; set d2 to 3
 		bsr.w	Options_Write			; write text
 		moveq	#5,d2				; set d2 to 3
 		bsr.w	GOT_ChkOption			; check if option is ON or OFF
+		moveq	#5,d2				; set d2 to 3
 		bsr.w	Options_Write			; write text
 
 		adda.w	#Options_LineLength,a1		; make one empty line
 		
-		move.l	#OpText_EasterEgg_Locked,d6	; set locked text location	
-		tst.b	($FFFFFF93).w			; has the player beaten the game?
+		move.l	#OpText_Locked,d6		; set locked text location	
+		btst	#1,($FFFFFF93).w		; has the player beaten the blackout challenge?
 		beq.s	@uselockedtext			; if not, branch
-		move.l	#OpText_EasterEgg_Unlocked,d6	; set unlocked text location
+		move.l	#OpText_NonstopInhuman,d6	; set unlocked text location
 @uselockedtext:
 		movea.l	d6,a2				; set text location
 		moveq	#6,d2				; set d2 to 4
@@ -1088,16 +1104,16 @@ OpText_SkipStory:
 OpText_SkipUberhub:
 		dc.b	'SKIP UBERHUB PLACE   ', $FF
 		even
+
+OpText_Locked:
+		dc.b	'???????????????      ', $FF
+		even
 		
 OpText_CinematicMode:
 		dc.b	'CINEMATIC MODE       ', $FF
 		even
-		
-OpText_EasterEgg_Locked:
-		dc.b	'???????????????      ', $FF
-		even
 
-OpText_EasterEgg_Unlocked:
+OpText_NonstopInhuman:
 		dc.b	'NONSTOP INHUMAN      ', $FF
 		even
 

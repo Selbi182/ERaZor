@@ -669,6 +669,8 @@ BlackBars.SetState:
 		bra.s	BlackBars_DontShow		; don't show black bars in any other game modes
 
 @validgamemode:
+		tst.b	($FFFFFF6E).w			; are tutorial boxes currently shown?
+		bne.w	BlackBars_DontShow		; if yes, don't show to not mess with the h-ints
 		move.w	($FFFFFE10).w,d0		; get current level ID
 		cmpi.w	#$500,d0			; is this the bomb machine cutscene?
 		bne.s	@notmachine			; if not, branch
@@ -682,8 +684,7 @@ BlackBars.SetState:
 		cmpi.w	#$002,d0			; are we in Green Hill Place?
 		bne.s	@notghp				; if not, branch
 		cmpi.b	#4,($FFFFFE30).w		; did we hit the final checkpoint yet?
-		beq.s	BlackBars_DontShow		; if yes, disable black bars
-		bra.s	BlackBars.GHP			; update GHP black bars
+		bne.s	BlackBars.GHP			; if not, go to custom GHP black bars logic
 
 @notghp:
 		tst.b	($FFFFF7CC).w			; are controls locked?
@@ -720,7 +721,7 @@ BlackBars_DontShow:
 		move.w	#0,d0				; make sure we don't exceed the minimum
 
 BlackBars_SetHeight:
-		move.w	d0,BlackBars.Height		; set crops off
+		move.w	d0,BlackBars.Height		; set final black bars height
 		rts					; return
 ; ===========================================================================
 
@@ -776,7 +777,7 @@ MainGameLoop:
 		movea.l	GameModeArray(pc,d0.w),a1	; locate address in GameModeArray
 		KDebug.WriteLine "MainGameLoop(): Launching %<.l a1 sym>..."
 		jsr	(a1)				; enter game mode
-		jsr	BlackBars.FullReset		; reset black bars between game mode transitions
+	;	jsr	BlackBars.FullReset		; reset black bars between game mode transitions
 		bra.s	MainGameLoop			; if we're here, we exited the game mode; load new one
 
 ; ===========================================================================
@@ -5459,7 +5460,6 @@ SS_EndClrObjRamX:
 		move.l	d0,(a1)+
 		dbf	d1,SS_EndClrObjRamX ; clear object RAM
 
-		clr.b	($FFFFFF5F).w	; clear blackout special stage flag
 		clr.b	($FFFFFFE7).w	; make sonic mortal
 		clr.b	($FFFFFFE1).w	; make sonic not being on the foreground
 		clr.b	($FFFFFFAA).w		; clear crabmeat boss flag 1
@@ -5512,6 +5512,7 @@ SpecialStage_Beaten:
 		move.b	#9,($FFFFFF9E).w	; set number for text to 9 instead
 
 @runinfoscreen:
+		clr.b	($FFFFFF5F).w		; clear blackout special stage flag
 		move.b	#$20,($FFFFF600).w	; set to info screen
 		rts
 ; ===========================================================================
@@ -6113,9 +6114,9 @@ Map_obj80:
 ; ---------------------------------------------------------------------------
 
 EndingSequence:				; XREF: GameModeArray
-	;	move.b	#1,($FFFFFF93).w	; you have beaten the game, congrats
-	;	jsr	SRAM_SaveNow		; save
-	; moved to blackout challenge reward
+		bset	#0,($FFFFFF93).w	; you have beaten the base game, congrats
+		jsr	SRAM_SaveNow		; save
+
 		bsr	Pal_FadeFrom
 
 		lea	($FFFFD000).w,a1
@@ -13005,15 +13006,15 @@ Obj2A_Main:				; XREF: Obj2A_Index
 
 		cmpi.w	#$400,($FFFFFE10).w	; is level SYZ1 (overworld)?
 		bne.s	@nosoundstopper		; if not, branch
-		tst.b	obSubtype(a0)			; is this the door leading to the blackout challenge?
+		tst.b	obSubtype(a0)		; is this the door leading to the blackout challenge?
 		bpl.s	@nosoundstopper		; if not, branch
-		tst.b	($FFFFFF93).w		; has the player beaten the game?
+		btst	#0,($FFFFFF93).w	; has the player beaten the base game?
 		beq.s	@nosoundstopper		; if not, don't load sound stopper
 
 		bsr	SingleObjLoad
 		bne.s	@nosoundstopper
 		move.b	#$7D,0(a1)		; load emblem object
-		move.b	#6,obRoutine(a1)		; set to "sound stopper" mode
+		move.b	#6,obRoutine(a1)	; set to "sound stopper" mode
 		move.w	obX(a0),d0		; copy X coordinate of door
 		subi.w	#27,d0			; move a few pixels to the left
 		move.w	d0,obX(a1)		; write to thingy
@@ -13056,7 +13057,7 @@ Obj2A_OpenShut:				; XREF: Obj2A_Index
 		bra.w	Obj2A_Animate		; force door to be red
 
 @finaldoornotpassed:
-		tst.b	($FFFFFF93).w		; has the player beaten the game?
+		btst	#0,($FFFFFF93).w	; has the player beaten the base game?
 		bne.s	@usegreendoor		; if yes, open the door
 		bra.w	Obj2A_Animate		; otherwise, keep it locked
 
@@ -45578,7 +45579,8 @@ Emershit:
 		moveq	#$FFFFFF88,d0		; play regular special stage beaten jingle
 		tst.b	($FFFFFF5F).w		; is this the blackout blackout special stage?
 		beq.s	@cont			; if not, branch
-		move.b	#1,($FFFFFF93).w	; you have beaten the game, congrats
+		bset	#1,($FFFFFF93).w	; you have beaten the blackout challenge, congrats
+		bset	#0,($FFFFFF93).w	; also set base game beaten state, just in case
 		jsr	SRAM_SaveNow		; save
 		moveq	#$FFFFFF91,d0		; play true ending music
 
@@ -47733,12 +47735,14 @@ Debug_Exit:
 		move.b	($FFFFF605).w,d0	; get button presses
 		andi.b	#$70,d0			; any of ABC pressed?
 		beq.w	Debug_DoNothing		; if not, branch
-		
+		cmpi.b	#$10,($FFFFF600).w	; are we in a special stage?
+		beq.s	@notc			; if yes, branch
+
 		btst	#6,d0			; is button A pressed?
 		beq.s	@nota
 		jsr	SingleObjLoad
 		bne.s	@nota
-		move.b	#$3F,(a1)
+		move.b	#$3F,(a1)		; spawn explosion object
 		clr.b	obRoutine(a1)
 		move.w	($FFFFD008).w,obX(a1)
 		move.w	($FFFFD00C).w,obY(a1)
@@ -47749,11 +47753,11 @@ Debug_Exit:
 		beq.s	@notc			; if not, branch
 		jsr	SingleObjLoad
 		bne.s	@notc
-		move.b	#$25,(a1)
+		move.b	#$25,(a1)		; spawn ring
 		clr.b	obRoutine(a1)
 		move.w	($FFFFD008).w,obX(a1)
 		move.w	($FFFFD00C).w,obY(a1)
-		clr.b    ($FFFFFC02).w    ; clear 1st entry in object state table
+		clr.b	($FFFFFC02).w		; clear 1st entry in object state table
 		bra.w	Debug_DoNothing
 
 @notc:

@@ -365,18 +365,19 @@ Options_BGVScroll:
 		rts
 ; ---------------------------------------------------------------------------
 
-; ERaZor banner palette cycle
+; ERaZor banner and selected line palette cycle
 Options_ERZPalCycle:
-		; banner itself
 		moveq	#0,d1
 		lea	($FFFFFB20).w,a2
 		jsr	ERaZorBannerPalette
+		rts
 		
-		; selected line
+Options_SelectedLinePalCycle:
 		moveq	#0,d1
 		lea	($FFFFFB40-6*2).w,a2
 		jsr	ERaZorBannerPalette
 		rts
+
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -396,6 +397,7 @@ OptionsScreen_MainLoop:
 		
 		bsr.w	Options_BackgroundEffects
 		bsr.w	Options_ERZPalCycle
+		bsr.w	Options_SelectedLinePalCycle
 
 		tst.l	PLC_Pointer		; are pattern load cues empty?
 		bne.s	OptionsScreen_MainLoop	; if not, branch to avoid visual corruptions

@@ -5,15 +5,14 @@ STS_LineLength = 28
 STS_LinesTotal = 20
 STS_Sound = $D8
 
-			rsset $FFFFFF95
+		rsset	$FFFFFF95
 STS_FullyWritten:	rs.b 1
 STS_Row:		rs.b 1
 STS_Column:		rs.b 1
 STS_CurrentChar:	rs.w 1
-STS_DrawCounter:	rs.l 1 ; not actually a longword, just a byte with padding
-STS_ScreenID:		rs.b 1
-STS_Delay:		rs.b 1
-
+STS_DrawCounter:	rs.b 1
+STS_FinalPhase:		rs.b 1
+STS_ScreenID	equ	$FFFFFF9E ; hardcoded because it's fragile
 ; ---------------------------------------------------------------------------
 
 ; StoryTextScreen:
@@ -100,7 +99,6 @@ STS_ClrVram:	move.l	d0,(a6)
 		VBlank_UnsetMusicOnly
 		jsr	Pal_FadeTo
 
-; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Info Screen - Main Loop
 ; ---------------------------------------------------------------------------
@@ -115,6 +113,7 @@ StoryScreen_MainLoop:
 		jsr	Options_ERZPalCycle
 
 		bsr	StoryScreen_ContinueWriting
+		bsr	StoryScreen_DrawLines
 
 		move.b	($FFFFF605).w,d1	; get button presses
 		andi.b	#$E0,d1			; is A, B, C, or start pressed?
@@ -164,21 +163,42 @@ STS_ClearFlags:
 		clr.b	(STS_Row).w
 		clr.b	(STS_Column).w
 		clr.w	(STS_CurrentChar).w
-		clr.b	(STS_Delay).w
+		clr.w	(STS_DrawCounter).w
+		clr.b	(STS_FinalPhase).w
 		rts
-; ===========================================================================
 
+; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Subroutine to continue loading the story text, if necessary
 ; ---------------------------------------------------------------------------
+; general values
 STS_BaseRow = 7
 STS_BaseCol = 6
 STS_VRAMBase = $60000003|($800000*STS_BaseRow)|($20000*STS_BaseCol)
+STS_VRAMSettings = $8000|$6000|($D000/$20)
+
+; lines at top and bottom
+STS_DrawnLine_Extra	= 4
+STS_DrawnLine_Length	= STS_LineLength+STS_DrawnLine_Extra-1
+STS_VRAMBase_Line 	= $60000003|($20000*(STS_BaseCol-(STS_DrawnLine_Extra/2)))
+STS_TopLine_Offset	= STS_BaseRow-2
+STS_BottomLine_Offset	= STS_TopLine_Offset+STS_LinesTotal-2
+STS_LineChar_Left	= $C0/$20
+STS_LineChar_Middle	= $E0/$20
+STS_LineChar_Right	= $100/$20
+STS_LineChar_Arrow	= $120/$20 ; unused
+
+; "Press Start..." text
+STS_PressStartButton_Row = STS_BaseRow + STS_LinesTotal - 2
+STS_PressStart_VRAMBase = $60000003|($800000*STS_PressStartButton_Row)|($20000*STS_BaseCol)
+STS_PressStart_VRAMSettings = $8000|$4000|($D000/$20)
 ; ---------------------------------------------------------------------------
 
 StoryScreen_ContinueWriting:
 		tst.b	(STS_FullyWritten).w		; is text already fully written?
 		bne.w	@writeend			; if yes, don't continue writing
+		tst.b	(STS_FinalPhase).w		; are we currently set to write the "Press Start..." text?
+		bne.w	StoryScreen_WritePressStart	; if yes, branch
 
 @skipspaces:	bsr	StoryText_Load			; load story text into a1
 		adda.w	(STS_CurrentChar).w,a1		; find the char we want to write
@@ -192,7 +212,9 @@ StoryScreen_ContinueWriting:
 
 @notspace:
 		bpl.s	@dowrite			; did we reach the end of the list (-1)? if not, branch
-		move.b	#1,(STS_FullyWritten).w		; otherwise, mark as complete
+		move.b	#1,(STS_FinalPhase).w		; set final phase flag
+		clr.w	(STS_CurrentChar).w		; reset current char counter
+		clr.b	(STS_Column).w			; reset column counter
 		rts					; don't continue writing
 
 @dowrite:
@@ -215,12 +237,12 @@ StoryScreen_ContinueWriting:
 
 		VBlank_SetMusicOnly
 		move.l	d3,4(a6)			; write final position to VDP
-		add.w	#$8000|$6000|($D000/$20),d0	; apply VRAM settings (high plane, palette line 4, VRAM address $D000)
+		add.w	#STS_VRAMSettings,d0		; apply VRAM settings (high plane, palette line 4, VRAM address $D000)
 		move.w	d0,(a6)				; write char to screen
 		VBlank_UnsetMusicOnly
 
-		add.b 	#1, STS_DrawCounter 	; add 1 to total drawn counter
-		and.b 	#%00000011, STS_DrawCounter	; reset every 3 draws
+		add.b 	#1,STS_DrawCounter 		; add 1 to total drawn counter
+		and.b 	#%00000011,STS_DrawCounter	; reset every 3 draws
 
 		tst.b 	STS_DrawCounter			;  is the counter over 0?
 		bne.s 	@gotonextpos			; if so, don't play sound
@@ -240,16 +262,61 @@ StoryScreen_ContinueWriting:
 
 @writeend:
 		rts
+
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Subroutine to write the "Press Start to Continue..." text at the end
+; ---------------------------------------------------------------------------
+
+StoryScreen_WritePressStart:
+		lea	(STS_Continue).l,a1		; load "Press Start..." text to a1
+		adda.w	(STS_CurrentChar).w,a1		; find the char we want to write
+
+		moveq	#0,d0				; clear d0
+		move.b	(a1),d0				; move current char to d0
+		bpl.s	@dowrite			; did we reach the end of the list (-1)? if not, branch
+		move.b	#1,(STS_FullyWritten).w		; set flag that we're done
+		rts					; don't continue writing
+
+@dowrite:
+		lea	($C00000).l,a6			; load VDP data port to a6
+		move.l	#STS_PressStart_VRAMBase,d3	; base screen position
+		
+		moveq	#0,d1				; clear d1
+		move.b	(STS_Column).w,d1		; get current column
+		add.b	d1,d1				; double ($20000-based)
+		swap	d1				; convert to the format we want
+		add.l	d1,d3				; add to base address
+
+		VBlank_SetMusicOnly
+		move.l	d3,4(a6)			; write final position to VDP
+		add.w	#STS_PressStart_VRAMSettings,d0	; apply VRAM settings (high plane, palette line 3, VRAM address $D000)
+		move.w	d0,(a6)				; write char to screen
+		VBlank_UnsetMusicOnly
+
+		addq.b	#1,(STS_Column).w		; go to next column
+		addq.w	#1,(STS_CurrentChar).w		; go to next char for the next iteration
+
+@writeend:
+		rts
+
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Subroutine to write the full text if Start is pressed
 ; ---------------------------------------------------------------------------
 
 StoryText_WriteFull:
 		VBlank_SetMusicOnly
 		bsr	STS_ClearFlags			; make sure any previously written text doesn't interfere	
+		
+		move.w	#STS_DrawnLine_Length*2,(STS_CurrentChar).w ; full line
+		bsr	StoryScreen_DrawLines		; finish drawing lines
+		
 		bsr	StoryText_Load			; reload beginning of story text into a1
 		
 		lea	($C00000).l,a6
 		move.l	#STS_VRAMBase,d4		; base screen position
-		move.w	#$8000|$6000|($D000/$20),d3	; VRAM setting (high plane, palette line 4, VRAM address $D000)
+		move.w	#STS_VRAMSettings,d3		; VRAM setting (high plane, palette line 4, VRAM address $D000)
 		moveq	#STS_LinesTotal,d1		; number of lines of text
 
 @nextline:
@@ -267,14 +334,78 @@ StoryText_WriteFull:
 		dbf	d1,@nextline			; loop until entire text is written
 
 @endwrite:
-		move.b	#1,(STS_FullyWritten).w		; set flag
+		; "Press Start to Continue..." text
+		tst.b	(STS_FinalPhase).w		; did we already write the final text?
+		bne.s	@finished			; if yes, branch
+		move.b	#1,(STS_FinalPhase).w		; set "final phase" flag
+		lea	(STS_Continue).l,a1		; load "Press Start..." text to a1
+		move.w	#STS_PressStart_VRAMSettings,d3	; use red palette line
+		move.l	#STS_PressStart_VRAMBase,d4	; adjust position
+		bra.s	@nextline			; write the line
+
+@finished:
+		move.b	#1,(STS_FullyWritten).w		; set "fully-written" flag
 		VBlank_UnsetMusicOnly
 		rts
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
+; Subroutine to draw the lines above and below text
+; ---------------------------------------------------------------------------
+
+StoryScreen_DrawLines:
+		tst.b	(STS_FinalPhase).w	; are we in the final phase?
+		bne.s	@end			; if yes, branch (because STS_CurrentChar got reset)
+
+		VBlank_SetMusicOnly
+		move.l	#STS_VRAMBase_Line|($800000*STS_TopLine_Offset),d0
+		bsr.s	STS_DrawLine		; draw top line
+
+		cmpi.b	#9,(STS_ScreenID).w	; is this the blackout special stage?
+		beq.s	@nobottomline		; if yes, don't draw bottom line because that text is too long
+		move.l	#STS_VRAMBase_Line|($800000*STS_BottomLine_Offset),d0
+		bsr.s	STS_DrawLine		; draw bottom line
+@nobottomline:
+		VBlank_UnsetMusicOnly
+@end:
+		rts
+; ---------------------------------------------------------------------------
+
+STS_DrawLine:
+		lea	($C00000).l,a6
+		move.l	d0,4(a6)			; set VDP address given from d0
+		move.w	#STS_VRAMSettings,d0		; VRAM setting (high plane, palette line 4, VRAM address $D000)
+		moveq	#1,d3				; marker to make first char drawn the left-ending char
+		move.w	(STS_CurrentChar).w,d1		; make line length match the currently drawn text...
+		lsr.w	#1,d1				; ...with its speed cut in half
+		cmpi.w	#STS_DrawnLine_Length,d1	; are we at the maximum allowed line length?
+		bls.s	@drawline			; if not, draw line with given length
+		move.w	#STS_DrawnLine_Length,d1	; otherwise, limit it to its maximum
+
+@drawline:
+		move.w	d0,d2				; copy VRAM settings to d2
+		move.w	#STS_LineChar_Middle,d4		; set middle char
+		
+		tst.b	d3				; are we drawing the first char?
+		beq.s	@notfirst			; if not, branch
+		move.w	#STS_LineChar_Left,d4		; set left char
+		moveq	#0,d3				; clear first-char flag
+		bra.s	@notlast			; branch
+@notfirst:
+		tst.b	d1				; are we drawing the last char?
+		bne.s	@notlast			; if not, branch
+		move.w	#STS_LineChar_Right,d4		; set right char
+@notlast:	
+		add.w	d4,d2				; apply chosen char to VRAM settings
+		move.w	d2,(a6)				; write to char to VDP
+		dbf	d1,@drawline			; loop until line is fully written
+		rts					; return
+
+; ===========================================================================
+; ---------------------------------------------------------------------------
 ; Story Texts
 ; ---------------------------------------------------------------------------
+
 ; Macro to preprocess and output a character to its correct mapping
 stschar macro char		
 	if     \char = ' '
@@ -334,7 +465,7 @@ StoryText_Index:
 		dc.l	StoryText_9	; text after beating the blackout challenge special stage
 ; ---------------------------------------------------------------------------
 
-STS_Continue:	ststxt	"PRESS START TO CONTINUE...  "
+STS_Continue:	ststxt	" PRESS START TO CONTINUE... "
 		dc.b	-1
 		even
 ; ---------------------------------------------------------------------------
@@ -500,21 +631,25 @@ StoryText_8:	; text after jumping in the ring for the Ending Sequence
 ; ---------------------------------------------------------------------------
 
 StoryText_9:	; text after beating the blackout challenge special stage
-		ststxt	"CONGRATULATIONS!            "
-		ststxt	"                            "
-		ststxt	"YOU HAVE BEATEN THE         "
+		ststxt	"HOLY CRAP... YOU DID IT!    "
+		ststxt	"YOU'VE CONQUERED THE        "
 		ststxt	"BLACKOUT CHALLENGE.         "
 		ststxt	"                            "
-		ststxt	"CHECK OUT THE OPTIONS MENU, "
-		ststxt	"A NEW COOL FEATURE HAS BEEN "
-		ststxt	"UNLOCKED FOR YOU TO MESS    "
-		ststxt	"AROUND WITH!                "
+		ststxt	"WHEN I MOCKED YOU BACK IN   "
+		ststxt	"UNREAL PLACE AND SAID YOU'D "
+		ststxt	"HAVE TO DO THE STAGE        "
+		ststxt	"BLINDFOLDED, I DIDN'T THINK "
+		ststxt	"YOU'D ACTUALLY DO IT.       "
 		ststxt	"                            "
-		ststxt	"HAVE FUN AND THANK YOU SO   "
-		ststxt	"MUCH FOR PLAYING MY GAME!   "
+		ststxt	"CHECK OUT THE OPTIONS MENU  "
+		ststxt	"FOR SOMETHING SPECIAL JUST  "
+		ststxt	"FOR YOU. YOU'VE EARNED IT!  "
 		ststxt	"                            "
+		ststxt	"THANK YOU FOR STICKING WITH "
+		ststxt	"MY GAME TO THE BITTER END!  "
+		ststxt	"IT MEANS THE WORLD TO ME.   "
 		ststxt	"                            "
-		ststxt	"SELBI                       "
+		ststxt	"                      -SELBI"
 		dc.b	-1
 		even
 ; ---------------------------------------------------------------------------

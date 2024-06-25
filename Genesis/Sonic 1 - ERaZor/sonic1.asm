@@ -5353,17 +5353,14 @@ SS_MainLoop:
 		bhs.s	SS_NoPauseGame		; if yes, branch
 		bsr	PauseGame		; make the game pausing when pressing start
 
-		; respawn at last checkpoint when pressing A (inteded to be used when you get stuck)
+		; respawn at last checkpoint when pressing A (inteded to be used when you get stuck in nonstop inhuman)
 		btst	#6,($FFFFF603).w	; was A pressed this frame?
+		beq.s	@nota			; if not, branch
+		btst	#4,($FFFFFF92).w	; is nonstop inhuman enabled?
 		beq.s	@nota			; if not, branch
 		lea	($FFFFD000).w,a0	; load Sonic object
 		jsr	TouchGoalBlock		; respawn at last checkpoint
 @nota:
-		
-		; Casual Mode accessibility features
-		frantic				; is frantic mode enabled?
-		bne.s	SS_NoPauseGame		; if yes, disallow these accessibility features
-
 		; reduce Sonic's vertical movement when holding C in Unreal Place
 		btst	#5,($FFFFF602).w	; is C held?
 		beq.s	@notc			; if not, branch
@@ -5371,13 +5368,14 @@ SS_MainLoop:
 		beq.s	@notc			; if not, branch
 		move.w	($FFFFFE0E).w,d0
 		andi.w	#7,d0
-		bne.s	@notc
+		bne.s	@notc			; only every 8th frame
 		move.w	($FFFFD012).w,d0
 		asr.w	#1,d0
 		move.w	d0,($FFFFD012).w	; reduce Sonic's vertical speed
 @notc:
-
 		; SS hard part skipper
+		frantic				; is frantic mode enabled?
+		bne.s	SS_NoPauseGame		; if yes, disallow hard part skippers
 		tst.b	($FFFFFF5F).w		; is this the blackout special stage?
 		bne.s	SS_NoPauseGame		; if yes, disallow hard part skippers
 		move.b	($FFFFF602).w,d0	; get button presses
@@ -12034,9 +12032,10 @@ Obj18_NoMovingPlatforms:
 		move.b	#$A1,d0
 		jsr	PlaySound_Special
 
-		tst.w	($FFFFFF86).w
-		bne.s	@notfirstcheckpoint
-		jsr	SetupSAPItems
+		tst.w	($FFFFFF86).w		; was at least one checkpoint already touched?
+		bne.s	@notfirstcheckpoint	; if not, branch
+		jsr	SetupSAPItems		; set up SAP items (this is only necessary for nonstop inhuman)
+
 @notfirstcheckpoint:
 		move.w	obX(a0),($FFFFFF86).w	; save Sonic's X-position
 		move.w	obY(a0),($FFFFFF88).w	; save Sonic's Y-position
@@ -32569,8 +32568,8 @@ SLZHitWall:
 @yesrings:
 		move.w	#$0C40,($FFFFD008).w
 		move.w	#$0470,($FFFFD00C).w
-		tst.w	($FFFFFF86).w
-		beq.s	@contx
+		tst.w	($FFFFFF86).w		; at least one checkpoint touched yet?
+		beq.s	@contx			; if not, branch
 		move.w	($FFFFFF86).w,obX(a0)	; restore saved X-position for Sonic
 		move.w	($FFFFFF88).w,obY(a0)	; restore saved Y-position for Sonic
 	;	jsr	FixLevel		; ideally this would work flawlessly but idfk how
@@ -44187,20 +44186,8 @@ SS_AniGlassBlock:			; XREF: SS_AniIndex
 locret_1B640:
 		rts	
 ; ===========================================================================
-SS_AniGlassData:dc.b $4B, $4C, $4D, $4E, $4B, $4C, $4D,	$4E, 0,	0
-; ---------------------------------------------------------------------------
-; Special stage	layout pointers
-; ---------------------------------------------------------------------------
-SS_LayoutIndex:
-	dc.l	SS_1
-	dc.l	SS_2
-	dc.l	SS_Blackout
-	even
-
-; ---------------------------------------------------------------------------
-; Special stage	start locations
-; ---------------------------------------------------------------------------
-SS_StartLoc:	include	"misc\sloc_ss.asm"
+SS_AniGlassData:
+		dc.b	$4B, $4C, $4D, $4E, $4B, $4C, $4D, $4E, 0, 0
 		even
 
 ; ---------------------------------------------------------------------------
@@ -44210,95 +44197,61 @@ SS_StartLoc:	include	"misc\sloc_ss.asm"
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 
 
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Starting Location for the Special Stage
+; ---------------------------------------------------------------------------
+
 SS_Load:				; XREF: SpecialStage
-		bra.s	SS_AlwaysStage12 ; I only want special stage 1 and 2
-; ===========================================================================
+		; load layout and starting location
+		cmpi.w	#$300,($FFFFFE10).w	; is this Special Place?
+		bne.s	@unreal			; if not, we're in Unreal Place (or the Blackout Challenge)
+		move.w	#$03E8,($FFFFD008).w	; start X pos for Sonic
+		move.w	#$0310,($FFFFD00C).w	; start Y pos for Sonic
+		lea	(SS_1_Casual).l,a0	; load casual Special Place layout
+		frantic				; are we in frantic mode?
+		beq.s	SS_LoadLevel		; if not, branch
+		lea	(SS_1_Frantic).l,a0	; load frantic Special Place layout
+		bra.s	SS_LoadLevel		; branch
+@unreal:
+		move.w	#$031F,($FFFFD008).w	; start X pos for Sonic
+		move.w	#$0587,($FFFFD00C).w	; start Y pos for Sonic
+		tst.b	($FFFFFF5F).w		; is this the blackout special stage?
+		beq.s	@notblackout		; if not, branch
+		lea	(SS_2_Blackout).l,a0	; load blackout layout (there's no frantic variant)
+		bra.s	SS_LoadLevel		; branch
+@notblackout:
+		lea	(SS_2_Casual).l,a0	; load casual Unreal Place layout
+		frantic				; are we in frantic mode?
+		beq.s	SS_LoadLevel		; if not, branch
+		lea	(SS_2_Frantic).l,a0	; load frantic Unreal Place layout
+; ---------------------------------------------------------------------------
 
-		moveq	#0,d0
-		move.b	($FFFFFE16).w,d0 ; load	number of last special stage entered
-		addq.b	#1,($FFFFFE16).w
-		cmpi.b	#6,($FFFFFE16).w
-		bcs.s	SS_ChkEmldNum
-		move.b	#0,($FFFFFE16).w ; reset if higher than	6
-
-SS_ChkEmldNum:
-		cmpi.b	#6,($FFFFFE57).w ; do you have all emeralds?
-		beq.s	SS_LoadData	; if yes, branch
-		moveq	#0,d1
-		move.b	($FFFFFE57).w,d1
-		subq.b	#1,d1
-		bcs.s	SS_LoadData
-		lea	($FFFFFE58).w,a3 ; check which emeralds	you have
-
-SS_ChkEmldLoop:	
-		cmp.b	(a3,d1.w),d0
-		bne.s	SS_ChkEmldRepeat
-		bra.s	SS_Load
-; ===========================================================================
-
-SS_ChkEmldRepeat:
-		dbf	d1,SS_ChkEmldLoop
-
-SS_LoadData:
-		lsl.w	#2,d0
-; ===========================================================================
-
-SS_AlwaysStage12:
-		moveq	#0,d0
-		lea	SS_StartLoc(pc,d0.w),a1
-		move.w	(a1)+,($FFFFD008).w
-		move.w	(a1)+,($FFFFD00C).w
-		cmpi.w	#$401,($FFFFFE10).w
-		bne.s	SSAS_Not2
-		move.w	(a1)+,($FFFFD008).w
-		move.w	(a1)+,($FFFFD00C).w
-		moveq	#4,d0
-
-
-SSAS_Not2:
-		tst.b	($FFFFFF5F).w	; is this the blackout blackout special stage?
-		beq.s	@cont		; if not, branch
-		move.l	#8,d0		; use alternate layout 
-
-@cont:
-		movea.l	SS_LayoutIndex(pc,d0.w),a0	; set layout pointer
+SS_LoadLevel:
 		lea	($FF4000).l,a1			; set destination
 		move.w	#$3FC,d0			; set number of repeats to $3FC
-
-SS_LoadLoop:
-		move.l	(a0)+,(a1)+			; move 4 bytes from pointer into location
+SS_LoadLoop:	move.l	(a0)+,(a1)+			; move 4 bytes from pointer into location
 		dbf	d0,SS_LoadLoop			; loop
 
 SSAS_End:
-	;	move.w	#0,d0
-	;	jsr	(EniDec).l
 		lea	($FF0000).l,a1
 		move.w	#$FFF,d0
-
-SS_ClrRAM3:
-		clr.l	(a1)+
+SS_ClrRAM3:	clr.l	(a1)+
 		dbf	d0,SS_ClrRAM3
 
 		lea	($FF1020).l,a1
 		lea	($FF4000).l,a0
 		moveq	#$3F,d1
-
-loc_1B6F6:
-		moveq	#$3F,d2
-
-loc_1B6F8:
-		move.b	(a0)+,(a1)+
+loc_1B6F6:	moveq	#$3F,d2
+loc_1B6F8:	move.b	(a0)+,(a1)+
 		dbf	d2,loc_1B6F8
-
 		lea	$40(a1),a1
 		dbf	d1,loc_1B6F6
 
 		lea	($FF4008).l,a1
 		lea	(SS_MapIndex).l,a0
 		moveq	#$4D,d1
-
-loc_1B714:
-		move.l	(a0)+,(a1)+
+loc_1B714:	move.l	(a0)+,(a1)+
 		move.w	#0,(a1)+
 		move.b	-obMap(a0),-obRender(a1)
 		move.w	(a0)+,(a1)+
@@ -44306,19 +44259,13 @@ loc_1B714:
 
 		lea	($FF4400).l,a1
 		move.w	#$3F,d1
-
-loc_1B730:
-
-		clr.l	(a1)+
+loc_1B730:	clr.l	(a1)+
 		dbf	d1,loc_1B730
-
 
 		lea	($FF1020).l,a1		; load SS blocks (layout?) into a1
 		moveq	#$3F,d1			; set normal loop
-
 SSL_GoalLoop2:
 		moveq	#$3F,d2			; set alternate loop
-
 SSL_GoalLoop:
 		cmpi.b	#$2C,(a1)		; is the item a	goal block?
 		bne.s	SSL_NoReplace2	; if not, branch
@@ -44445,8 +44392,8 @@ Obj09_Main:				; XREF: Obj09_Index
 		bset	#2,obStatus(a0)
 		bset	#1,obStatus(a0)
 		clr.b	($FFFFFFAE).w
-		clr.w	($FFFFFF86).w	; clear stored X-pos
-		clr.w	($FFFFFF88).w	; clear stored Y-pos
+		move.w	obX(a0),($FFFFFF86).w	; copy starting X position to last checkoing X-pos
+		move.w	obY(a0),($FFFFFF88).w	; copy starting Y position to last checkoing Y-pos
 ; ---------------------------------------------------------------------------
 
 Obj09_ChkDebug:				; XREF: Obj09_Index
@@ -44483,12 +44430,23 @@ SS_NoTeleport:
 		jsr	obj09_Modes(pc,d1.w)
 		jsr	LoadSonicDynPLC
 
+		tst.b	($FFFFF7CC).w
+		beq.s	@notlocked
+		move.w	($FFFFD010).w,d0
+		asr.w	#1,d0
+		move.w	d0,($FFFFD010).w
+		move.w	($FFFFD012).w,d0
+		asr.w	#1,d0
+		move.w	d0,($FFFFD012).w
+		
+@notlocked:
 		btst	#4,($FFFFFF92).w	; is nonstop inhuman enabled?
-		beq.s	@cont			; if not, branch
+		beq.s	@notnonstopinhuman	; if not, branch
 		add.w	#$0100,($FFFFFB04)	; increase Sonic's palette (color 3)
 		add.w	#$0100,($FFFFFB06)	; increase Sonic's palette (color 4)
 		add.w	#$0100,($FFFFFB08)	; increase Sonic's palette (color 5)
-@cont:
+
+@notnonstopinhuman:
 		jmp	DisplaySprite
 ; ===========================================================================
 Obj09_Modes:	dc.w Obj09_OnWall-Obj09_Modes
@@ -44526,6 +44484,11 @@ Unreal_Speed = $160
 Unreal_Accel = 8
 
 Obj09_Move:				; XREF: Obj09_OnWall; Obj09_InAir
+		tst.b	($FFFFF7CC).w		; are controls locked?
+		beq.s	@cont			; if not, branch
+		rts				; block affecting controls
+
+@cont:
 		tst.b	($FFFFFF5F).w		; is easter egg SS enabled?
 		bne.s	loc_1BA78		; disabled movement
 
@@ -45072,6 +45035,8 @@ Obj09_ChkEmer:
 		bne.s	Obj09_EmerNotAll
 
 Emershit:
+		move.b	#1,($FFFFF7CC).w	; lock controls
+		
 		move.b	#5,(a2)			; this is important to end the stage
 		moveq	#$FFFFFF88,d0		; play regular special stage beaten jingle
 		tst.b	($FFFFFF5F).w		; is this the blackout blackout special stage?
@@ -45082,7 +45047,6 @@ Emershit:
 		moveq	#$FFFFFF91,d0		; play true ending music
 
 @cont:
-		move.b	#1,($FFFFF7CC).w		; lock controls
 		bra.s	Obj09_EmerPlaySound
 
 Obj09_EmerNotAll:
@@ -45227,13 +45191,6 @@ Obj09_GoalNotSolid:
 		jsr	Pal_MakeWhite		; make white flash
 		movem.l (sp)+,d0-a7		; restore from stack
 		move.b	#2,($FFFFFFD6).w	; make sure it doesn't happen again
-	;	lea	(SS1_StartLoc).l,a1
-	;	move.w	(a1)+,($FFFFD008).w	; set Sonic's X-position
-	;	move.w	(a1)+,($FFFFD00C).w	; set Sonic's Y-position
-
-	;	clr.w	($FFFFF780).w		; flip special stage again
-	;	move.w	#$801,($FFFFF780).w	; flip special stage again
-
 
 		move.b	#0,($FF1C28).l		; make sure there is no pink glass block
 		move.b	#0,($FF1DA7).l		; make sure there is no yellow glass block
@@ -45368,28 +45325,13 @@ Obj09_GOAL:
 		bne.w	Obj09_DoBumper		; if yes, branch
 
 TouchGoalBlock:
-		move.w	#$C3,d0			; play giant ring sound
+		move.w	($FFFFFF86).w,obX(a0)	; restore saved X-pos
+		move.w	($FFFFFF88).w,obY(a0)	; restore saved Y-pos
 		clr.b	($FFFFFF9F).w		; make R block usable again
 
-		lea	(SS1_StartLoc).l,a1
-		move.w	(a1)+,d1		; set Sonic's X-position
-		move.w	(a1)+,d2		; set Sonic's Y-position
-		cmpi.w	#$401,($FFFFFE10).w
-		bne.s	@cont
-		move.w	(a1)+,d1		; set Sonic's X-position
-		move.w	(a1)+,d2		; set Sonic's Y-position
-
-@cont:
-		tst.w	($FFFFFF86).w		; did he pass a checkpoint yet?
-		beq.s	Obj09_CPTeleEnd		; if not, branch
-		move.w	($FFFFFF86).w,d1	; get saved X-pos
-		move.w	($FFFFFF88).w,d2	; get saved Y-pos
-
-Obj09_CPTeleEnd:
-		move.w	d1,obX(a0)		; restore X-pos
-		move.w	d2,obY(a0)		; restore Y-pos
-
 		jsr	WhiteFlash2
+
+		move.w	#$C3,d0			; play giant ring sound
 
 		cmpi.w	#$401,($FFFFFE10).w
 		beq.s	Obj09_IsSS2
@@ -47796,11 +47738,15 @@ Col_SBZ:	incbin	collide\sbz.bin		; SBZ index
 ; ---------------------------------------------------------------------------
 ; Special layouts
 ; ---------------------------------------------------------------------------
-SS_1:		incbin	sslayout\1.bin
+SS_1_Casual:	incbin	sslayout\1-Casual.bin
 		even
-SS_2:		incbin	sslayout\2.bin
+SS_1_Frantic:	incbin	sslayout\1-Frantic.bin
 		even
-SS_Blackout:	incbin	sslayout\blackout.bin
+SS_2_Casual:	incbin	sslayout\2-Casual.bin
+		even
+SS_2_Frantic:	incbin	sslayout\2-Frantic.bin
+		even
+SS_2_Blackout:	incbin	sslayout\2-Blackout.bin
 		even
 ; ---------------------------------------------------------------------------
 ; Animated uncompressed graphics

@@ -172,6 +172,7 @@ STS_ClearFlags:
 		clr.b	(STS_Column).w
 		clr.w	(STS_CurrentChar).w
 		clr.b	(STS_FinalPhase).w
+		clr.b	(STS_SkipBottomMeta).w
 		rts
 
 ; ===========================================================================

@@ -4072,12 +4072,6 @@ loc_39E8:
 		move.w	#0,($FFFFF790).w
 
 		move.w	#1800,($FFFFF614).w
-		tst.w	($FFFFFFF0).w
-		beq.s	Level_ChkWaterPal
-		move.w	#540,($FFFFF614).w
-		cmpi.w	#4,($FFFFFFF4).w
-		bne.s	Level_ChkWaterPal
-		move.w	#510,($FFFFF614).w
 
 Level_ChkWaterPal:
 		cmpi.b	#1,($FFFFFE10).w ; is level LZ/SBZ3?
@@ -4121,32 +4115,21 @@ Level_StartGame:
 ; ---------------------------------------------------------------------------
 
 Level_MainLoop:
-		jsr	RandomNumber		; constantly create a new random number every frame to make use of RandomNumber_Next
-		jsr	CinematicScreenFuzz	; do cinematic screen fuzz if applicable
-
-		cmpi.b	#$3F,($FFFFFFF0).w		; was demo mode set to $3F for some reason?
-		bne.s	Level_DemoOK			; thanks god if no
-		clr.w	($FFFFFFF0).w			; otherwise, clear it and hope that nothing bad happened
-
-Level_DemoOK:
-	;	move.b	($FFFFF7CC).w,($FFFFFF7F).w
-		bsr	PauseGame
 		move.b	#8,VBlankRoutine
 		bsr	DelayProgram
+
 		addq.w	#1,($FFFFFE04).w ; add 1 to level timer
+
+		bsr	RandomNumber		; constantly create a new random number every frame to make use of RandomNumber_Next
+		bsr	PauseGame
 		bsr	LZWaterEffects
 		jsr	ObjectsLoad
-		tst.w	($FFFFFE02).w	; is the level set to restart?
-		bne.w	Level		; if yes, branch
-		tst.w	($FFFFFE08).w
-		bne.s	loc_3B10
-		cmpi.b	#6,($FFFFD024).w
-		bcc.s	loc_3B14
+		bsr	CinematicScreenFuzz	; do cinematic screen fuzz if applicable
 
-loc_3B10:
+		tst.w	($FFFFFE02).w		; is the level set to restart?
+		bne.w	Level			; if yes, branch
+
 		bsr	DeformBgLayer
-
-loc_3B14:
 		jsr	BuildSprites
 		jsr	ObjPosLoad
 		tst.b	($FFFFFFAC).w
@@ -5193,6 +5176,8 @@ SignpostArtLoad:			; XREF: Level
 		blt.s	Signpost_Exit		; if not, branch
 		tst.b	($FFFFF5E0).w		; sign post art already loaded?
 		bne.s	Signpost_Exit		; if yes, don't load again
+		cmpi.b	#6,($FFFFD024).w	; is Sonic dying?
+		bhs.s	Signpost_Exit		; if yes, don't load
 
 		move.w	($FFFFFE10).w,d0	; get current Level ID
 		cmpi.w	#$002,d0		; is level GHP?
@@ -7180,51 +7165,21 @@ BgScroll_End:				; XREF: BgScroll_Index
 
 
 DeformBgLayer:				; XREF: TitleScreen; Level; EndingSequence
-		tst.b	($FFFFF744).w
-		beq.s	loc_628E
-		rts	
+		tst.b	($FFFFF744).w	; did Sonic drown?
+		bra.w	loc_628E	; if not, branch
+		beq.w	loc_628E	; if not, branch
+		rts			; don't deform layers?
 ; ===========================================================================
 
-loc_628E:
-		clr.w	($FFFFF754).w
-		clr.w	($FFFFF756).w
-		clr.w	($FFFFF758).w
-		clr.w	($FFFFF75A).w
-		bsr	ScrollHoriz
-		bsr	ScrollVertical
-		bsr	DynScrResizeLoad
-		move.w	($FFFFF700).w,($FFFFF61A).w
-		move.w	($FFFFF704).w,($FFFFF616).w
-		move.w	($FFFFF708).w,($FFFFF61C).w
-		move.w	($FFFFF70C).w,($FFFFF618).w
-		move.w	($FFFFF718).w,($FFFFF620).w
-		move.w	($FFFFF71C).w,($FFFFF61E).w
-;
-;
-;Deform_Cameraing:
-;		tst.b	($FFFFD4C0+$30).w	; test if flag in Obj10 was being set
-;		beq.s	Deform_NoCamShake	; if not, don't shake the camera
-;		cmpi.w	#$601,($FFFFFE10).w	; is this the ending sequence?
-;		beq.s	Deform_NoCamShake	; if yes, don't make the shaking
-;		moveq	#0,d0			; clear d0
-;		move.w	($FFFFFE04).w,d0	; copy game frame timer to d0
-;		andi.w	#$3F,d0			; and it by $3F
-;		lea	Deform_CamMovingData(pc),a1 ; load camera moving data
-;		lea	(a1,d0.w),a1		; somehow modify a1
-;		muls.w	#500,d0
-;		moveq	#0,d0			; clear d0 again
-;		move.b	(a1)+,d0		; set d0 to (a1)+
-;		add.w	d0,($FFFFF616).w	; $F616 = Plane A Y-pos for prev. frame
-
-;Deform_NoCamShake:
 ShakePw1 = $0007
 ShakePw2 = $0001
 ShakePw3 = $0003
 
 GenerateCameraShake:
-		tst.b	($FFFFFF64).w
-		beq.s	@cont
-		subq.b	#1,($FFFFFF64).w
+		tst.b	($FFFFFF64).w		; is camera shake currently active?
+		beq.w	@contxx			; if not, branch
+		subq.b	#1,($FFFFFF64).w	; subtract one from timer
+
 		jsr	RandomNumber_Next	; random number
 		swap	d0
 		move.w	d0,d1
@@ -7263,31 +7218,38 @@ GenerateCameraShake:
 		move.w	($FFFFFF62).w,d0
 		add.w	d0,($FFFFF700).w	; backup for sprite shaking
 @contxx:
+		rts
+; ===========================================================================		
+
+loc_628E:
+		clr.w	($FFFFF754).w
+		clr.w	($FFFFF756).w
+		clr.w	($FFFFF758).w
+		clr.w	($FFFFF75A).w
+		bsr	ScrollHoriz
+		bsr	ScrollVertical
+		bsr	DynScrResizeLoad
+		move.w	($FFFFF700).w,($FFFFF61A).w
+		move.w	($FFFFF704).w,($FFFFF616).w
+		move.w	($FFFFF708).w,($FFFFF61C).w
+		move.w	($FFFFF70C).w,($FFFFF618).w
+		move.w	($FFFFF718).w,($FFFFF620).w
+		move.w	($FFFFF71C).w,($FFFFF61E).w
+
+		bsr	GenerateCameraShake
+
 		moveq	#0,d0
 		move.b	($FFFFFE10).w,d0
 		add.w	d0,d0
 		move.w	Deform_Index(pc,d0.w),d0
-		jsr	Deform_Index(pc,d0.w)
-		tst.b	($FFFFFF64).w
-		beq.s	@contxxx
+		jsr	Deform_Index(pc,d0.w)		
+		tst.b	($FFFFFF64).w		; is cam shake enabled?
+		beq.s	@contxxx		; if not, branch
 		move.w	($FFFFFF62).w,d0	; backup for sprite shaking
 		sub.w	d0,($FFFFF700).w
 @contxxx:
 		rts
 ; End of function DeformBgLayer
-
-; ===========================================================================
-
-; ===========================================================================
-; horizontal offsets for the water rippling effect (ported from Sonic 2)
-; byte_C682:
-; SwScrl_RippleData:
-Deform_CamMovingData:
-	dc.b   1,  2,  1,  3,  1,  2,  2,  1,  2,  3,  1,  2,  1,  2,  0,  0; 16
-	dc.b   2,  0,  3,  2,  2,  3,  2,  2,  1,  3,  0,  0,  1,  0,  1,  3; 32
-	dc.b   1,  2,  1,  3,  1,  2,  2,  1,  2,  3,  1,  2,  1,  2,  0,  0; 48
-	dc.b   2,  0,  3,  2,  2,  3,  2,  2,  1,  3,  0,  0,  1,  0,  1,  3; 64
-	dc.b   1,  2	; 66
 ; ===========================================================================
 
 ; ---------------------------------------------------------------------------
@@ -9873,6 +9835,9 @@ Sub_ChangeChunk:
 
 
 DynScrResizeLoad:			; XREF: DeformBgLayer
+		cmpi.b	#6,($FFFFD024).w	; is Sonic dead?
+		bhs.s	locret_6DAA		; if yes, branch
+
 		moveq	#0,d0
 		move.b	($FFFFFE10).w,d0
 		add.w	d0,d0
@@ -10537,7 +10502,7 @@ Resize_SYZ1:
 		blo.s	@uberhubend		; if not, branch
 		cmpi.w	#$600,($FFFFD008).w	; make sure Sonic is in the right area
 		blo.s	@uberhubend		; if before that, branch
-		move.w	#$430,d0		; set boundary bottom for tubes
+		move.w	#$440,d0		; set boundary bottom for tubes
 		move.w	d0,($FFFFF726).w	; target boundary
 		move.w	d0,($FFFFF72E).w	; current boundary
 
@@ -10831,7 +10796,7 @@ Resize_FZEscape_Nuke:
 		move.w	($FFFFF700).w,($FFFFF728).w	; lock left boundary as you walk right
 		
 		tst.b	($FFFFFFA5).w		; egg prison opened?
-		beq	@0			; if not, branch
+		beq	@prisonnotyetopen	; if not, branch
 		
 		VBlank_SetMusicOnly 		; VBlank won't touch VDP now
 		vram	$6C00			; load HPS and info box graphics
@@ -10845,7 +10810,7 @@ Resize_FZEscape_Nuke:
 		move.b	#1,($FFFFFE2E).w	; speed up the BG music
 		move.w	#180*60,($FFFFD034).w	; give Sonic super speed to make the walking-left part less tedious
 
-@0:
+@prisonnotyetopen:
 		rts
 ; ===========================================================================
 
@@ -16001,7 +15966,7 @@ Obj4B_Main_Cont:
 Obj4B_Okay:				; XREF: Obj4B_Main
 		addq.b	#2,obRoutine(a0)
 		move.b	#2,obPriority(a0)
-		move.w	#$C40,($FFFFF7BE).w
+		move.w	#$C40,($FFFFF7BE).w	; load giant ring patterns
 ; ---------------------------------------------------------------------------
 
 Obj4B_Animate:				; XREF: Obj4B_Index
@@ -43630,6 +43595,10 @@ KillSonic:
 Kill_DoKill:
 		move.b	#1,($FFFFF5E1).w	; set death flag
 		jsr	Pal_MakeBlackWhite	; turn palette black and white
+		move.w	($FFFFF700).w,($FFFFF728).w	; lock left screen position
+		move.w	($FFFFF700).w,($FFFFF72A).w	; lock right screen position		
+		move.w	($FFFFF704).w,($FFFFF72C).w	; lock top screen position
+		move.w	($FFFFF704).w,($FFFFF72E).w	; lock bottom screen position
 
 		cmpi.b	#$18,($FFFFF600).w	; is this the ending sequence?
 		bne.s	SH_NotEnding		; if not, branch
@@ -43650,53 +43619,38 @@ SH_NotEnding:
 		clr.b 	($FFFFFFF9).w		; clear LZ palette change flag (lol)
 		move.b	#6,obRoutine(a0)	; comment this out, and sonic can't die (the main line for the inhuman mode)
 		move.w	obY(a0),$38(a0)		; something with Y and bosses...
-	;	bset	#7,obGfx(a0)		; make sonic being on the foreground (because of the new style disabled)
+		bset	#7,obGfx(a0)		; make sonic being on the foreground
 		move.w	#-$700,d0		; move sonic upwards (normal)
-		
+	
 Kill_InhumanMode:
 		jsr	Sonic_ResetOnFloor	; do all the shit which is in Sonic_ResetOnFloor
 		bset	#1,obStatus(a0)		; make sonic to be in the air
 
-		
 		btst	#4,($FFFFFF92).w	; is nonstop inhuman enabled?
-		beq.s	@0			; if not, branch
+		beq.s	@moveup			; if not, branch
 		btst	#1,obStatus(a2)		; is killer object vertically flipped?
-		beq.s	@0			; if not, branch
+		beq.s	@moveup			; if not, branch
 		cmpi.b	#$36,(a2)		; was damage caused by spikes?
-		bne.s	@0			; if not, branch
+		bne.s	@moveup			; if not, branch
 		move.w	#$500,d0		; move sonic downwards
-@0:
-		
+@moveup:
 		move.w	d0,obVelY(a0)		; move sonic upwards
-		
-		tst.b	($FFFFFFA1).w		; died because of boundary bottom?
-		bne.s	Kill_IfBoundary		; if yes, use the normal stuff
+
 		tst.b	($FFFFFFE7).w		; has sonic destroyed a S monitor?
 		bne.s	KS_AllTheRest		; if yes, don't do anything with the X-velocity
 
-Kill_IfBoundary:
-		moveq	#0,d0
-		cmpi.w	#-450,obVelX(a0)		; check max allowed left velocity
-		bgt.s	KS_CheckGT500		; if more than -500, branch
-		move.w	#-450,obVelX(a0)		; if sonic's velocity is less than -500, set it to -500
-		bra.s	KS_AllTheRest		; skip KS_CheckGT500
-		
-KS_CheckGT500:
-		cmpi.w	#450,obVelX(a0)		; check max allowed right velocity
-		blt.s	KS_AlltheRest		; if less than 500, branch
-		move.w	#450,obVelX(a0)		; if sonic's velocity is greater than 500, set it to 500
+		move.w	obVelX(a0),d0		; get Sonic's X speed has he died
+		move.w	d0,d1			; copy to d1
+		bpl.s	@xpos			; if positive, branch
+		neg.w	d1			; make positive
+@xpos:		cmpi.w	#$100,d1		; did Sonic die with a speed below $100?
+		bhi.s	@speedfine		; if not, branch
+		moveq	#0,d0			; otherwise, set to 0 straight cause otherwise it looks ugly
+@speedfine:
+		asr.w	#1,d0			; half speed
+		move.w	d0,obVelX(a0)		; apply
 
 KS_AllTheRest:
-		tst.b	($FFFFFFA1).w		; died because of boundary bottom?
-		bne.s	Kill_NormalCode		; if yes, use the normal stuff
-		tst.b	($FFFFFFE7).w		; has sonic destroyed a S monitor?
-		beq.s	Kill_NormalCode		; if not, use normal code
-	;	move.b	#2,obAnim(a0)		; use rolling death animation
-	;	move.w	#$A4,d0			; play inhuman death sound
-	;	bra.s	Kill_PlaySound		; branch
-	nop
-		
-Kill_NormalCode:
 		move.b	#$25,obAnim(a0)		; use death animation
 		move.w	#$A3,d0			; play normal death sound
 		cmpi.b	#$36,(a2)		; was sonic killed by spikes?
@@ -46199,7 +46153,7 @@ Obj21_Main:
 		beq.s	@noblackbars
 		tst.w	BlackBars.TargetHeight	; are any black bars currently visible?
 		beq.s	@noblackbars		; if not, branch
-		rts				; if yes, don't display HUD
+		rts				; if yes, don't load HUD yet
 
 @noblackbars:
 		moveq	#0,d0
@@ -46262,12 +46216,14 @@ Obj21_FrameSelected:
 ; ===========================================================================
 
 Obj21_Flash:
-		tst.w	BlackBars.Height
-		beq.s	@noblackbars
+		tst.w	BlackBars.Height	; are any black bars currently visible?
+		beq.s	@noblackbars		; if not, branch
 		tst.w	BlackBars.TargetHeight	; are any black bars currently visible?
 		beq.s	@noblackbars		; if not, display
 		tst.w	($FFFFF63A).w		; is the game paused?
 		bne.s	@noblackbars		; if yes, display anyway
+		cmpi.b	#6,($FFFFD024).w	; is Sonic dying?
+		bhs.s	@noblackbars		; if yes, display anyway
 		move.b	#0,obRoutine(a0)	; make the HUD redo the animation once the bars are gone
 		rts				; if yes, don't display HUD
 
@@ -46316,29 +46272,33 @@ Obj21_Display2:
 Obj21_NoSignPost:
 		cmpi.b	#6,($FFFFD024).w	; is Sonic dying?
 		blo.s	Obj21_NotDying		; if not, branch
-		cmpi.b	#4,$30(a0)		; is object set to LIVES?
-		bne.s	@0			; if not, branch
-		;move.w	#$14B-$30,obScreenY(a0)		; set Y-position
-
-		cmpi.w	#$130,obX(a0)
-		bls.s	@1
-		subi.w	#$6,obX(a0)		; set X-position
 		
-@1:
-		cmpi.w	#$14B-$30,obScreenY(a0)
-		bls.s	Obj21_NotDying
-		subi.w	#$3,obScreenY(a0)		; set Y-position
+		cmpi.b	#4,$30(a0)		; is object set to LIVES?
+		bne.s	@nodeathsmove		; if not, branch
+
+		cmpi.w	#$130,obX(a0)		; reached target X position?
+		bls.s	@xreached		; if yes, branch
+		subi.w	#6,obX(a0)		; move to the left	
+@xreached:
+		move.w	#$14B-$30,d0		; default target height
+		cmpi.b	#1,($FFFFFE10).w	; are we in LZ?
+		bne.s	@notlz			; if not, branch
+		move.w	#$14B-$10,d0		; use lower target height (cause black bars are missing) 
+@notlz:
+		cmp.w	obScreenY(a0),d0	; reached target Y position?
+		bhi.s	Obj21_NotDying		; if yes, branch
+		subi.w	#3,obScreenY(a0)	; move upwards
 		bra.s	Obj21_NotDying		; branch
 
-@0:
-		cmpi.w	#$30,obScreenY(a0)		; is Y-position < $30?
+@nodeathsmove:
+		cmpi.w	#$30,obScreenY(a0)	; is Y-position < $30?
 		bmi.w	Obj21_Delete		; if yes, delete object
-		cmpi.w	#$170,obScreenY(a0)		; is Y-position > $170?
+		cmpi.w	#$170,obScreenY(a0)	; is Y-position > $170?
 		bpl.w	Obj21_Delete		; if yes, delete object
 		move.w	$32(a0),d0		; move $32(a0) to d0
 		add.w	d0,obX(a0)		; add $32(a0) pixels to X-position
 		move.w	$34(a0),d0		; move $34(a0) to d0
-		add.w	d0,obScreenY(a0)		; add $34(a0) pixels to Y-position
+		add.w	d0,obScreenY(a0)	; add $34(a0) pixels to Y-position
 		addq.w	#1,$34(a0)		; increase falling speed
 		jmp	DisplaySprite		; display sprite
 ; ---------------------------------------------------------------------------

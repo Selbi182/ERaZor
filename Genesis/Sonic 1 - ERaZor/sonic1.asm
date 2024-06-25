@@ -3687,7 +3687,6 @@ LevelMenuText:
 		dc.b	'   2 GREEN HILL PLACE   '
 		dc.b	'   3 SPECIAL PLACE      '
 		dc.b	'   4 RUINED PLACE       '
-		dc.b	'     RUINED PLACE 2     '
 		dc.b	'   5 LABYRINTHY PLACE   '
 		dc.b	'   6 UNREAL PLACE       '
 		dc.b	'   7 SCAR NIGHT PLACE   '
@@ -3708,7 +3707,6 @@ LSelectPointers:
 		dc.w	$002	; Green Hill Place
 		dc.w	$300	; Special Place
 		dc.w	$200	; Ruined Place
-		dc.w	$201	; Ruined Place part 2
 		dc.w	$101	; Labyrinthy Place
 		dc.w	$401	; Unreal Place
 		dc.w	$301	; Scar Night Place
@@ -15933,7 +15931,6 @@ GRing_NightHill  = 1
 GRing_GreenHill  = 2
 GRing_Special    = 3
 GRing_Ruined     = 4
-GRing_Ruined2    = $84
 GRing_Labyrinthy = 5
 GRing_Unreal     = 6
 GRing_ScarNight  = 7
@@ -15983,18 +15980,12 @@ Obj4B_Main:				; XREF: Obj4B_Index
 		bne.s	Obj4B_Main_Cont			; if yes, branch
 		jmp	DeleteObject			; otherwise, delete this ring
 @tempringcont1:
-		cmpi.b	#GRing_Ruined2,obSubtype(a0)	; is this a ring leading to Ruined Place part 2?
-		bne.s	@tempringcont2			; if not, branch
-		btst	#2,($FFFFFF8B).w		; has the player beaten this level before?
-		bne.s	Obj4B_Main_Cont			; if yes, branch
-		jmp	DeleteObject			; otherwise, delete this ring
-@tempringcont2:
 		cmpi.b	#GRing_StarAgony,obSubtype(a0)	; is this a ring leading to Star Agony Place (SNP act 2)?
-		bne.s	@tempringcont3			; if not, branch
+		bne.s	@tempringcont2			; if not, branch
 		btst	#5,($FFFFFF8B).w		; has the player beaten this level before?
 		bne.s	Obj4B_Main_Cont			; if yes, branch
 		jmp	DeleteObject			; otherwise, delete this ring	
-@tempringcont3:
+@tempringcont2:
 	endif
 	
 		cmpi.b	#GRing_Blackout,obSubtype(a0)	; is this the blackout challenge ring?
@@ -16299,19 +16290,9 @@ Obj4B_ChkSpecial1:
 
 Obj4B_ChkMZ:
 		cmpi.b	#GRing_Ruined,obSubtype(a0)	; is this the ring to Ruined Place?
-		bne.s	Obj4B_ChkMZ2			; if not, branch
-		move.w	#$200,($FFFFFE10).w		; set level to MZ1
-		bsr	MakeChapterScreen
-		bra.w	Obj4B_PlayLevel
-
-Obj4B_ChkMZ2:
-		cmpi.b	#GRing_Ruined2,obSubtype(a0)	; is this the ring to Ruined Place part 2?
 		bne.s	Obj4B_ChkLZ2			; if not, branch
 		move.w	#$200,($FFFFFE10).w		; set level to MZ1
-		move.b	#1,($FFFFFE30).w 		; lamppost number
-		move.b	($FFFFFE30).w,($FFFFFE31).w
-		move.w	#$1120,($FFFFFE32).w		; x-position
-		move.w	#$350,($FFFFFE34).w		; y-position
+		bsr	MakeChapterScreen
 		bra.w	Obj4B_PlayLevel
 
 Obj4B_ChkLZ2:

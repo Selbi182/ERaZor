@@ -20072,86 +20072,11 @@ Obj34_ConData:
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Object 39 - "GAME OVER" and "TIME OVER"
+; Object 39 - Unusued (previously "GAME OVER" and "TIME OVER")
 ; ---------------------------------------------------------------------------
 
 Obj39:					; XREF: Obj_Index
-		moveq	#0,d0
-		move.b	obRoutine(a0),d0
-		move.w	Obj39_Index(pc,d0.w),d1
-		jmp	Obj39_Index(pc,d1.w)
-; ===========================================================================
-Obj39_Index:	dc.w Obj39_ChkPLC-Obj39_Index
-		dc.w loc_C50C-Obj39_Index
-		dc.w Obj39_Wait-Obj39_Index
-; ===========================================================================
-
-Obj39_ChkPLC:				; XREF: Obj39_Index
-		tst.l	PLC_Pointer	; are the pattern load cues empty?
-		beq.s	Obj39_Main	; if yes, branch
-		rts	
-; ===========================================================================
-
-Obj39_Main:
-		addq.b	#2,obRoutine(a0)
-		move.w	#$50,obX(a0)	; set x-position
-		btst	#0,obFrame(a0)	; is the object	"OVER"?
-		beq.s	loc_C4EC	; if not, branch
-		move.w	#$1F0,obX(a0)	; set x-position for "OVER"
-
-loc_C4EC:
-		move.w	#$F0,obScreenY(a0)
-		move.l	#Map_obj39,obMap(a0)
-		move.w	#$855E,obGfx(a0)
-		move.b	#0,obRender(a0)
-		move.b	#0,obPriority(a0)
-
-loc_C50C:				; XREF: Obj39_Index
-		moveq	#$10,d1		; set horizontal speed
-		cmpi.w	#$120,obX(a0)	; has item reached its target position?
-		beq.s	Obj39_SetWait	; if yes, branch
-		bcs.s	Obj39_Move
-		neg.w	d1
-
-Obj39_Move:
-		add.w	d1,obX(a0)	; change item's position
-		bra.w	DisplaySprite
-; ===========================================================================
-
-Obj39_SetWait:				; XREF: Obj39_Main
-		move.w	#720,obTimeFrame(a0)	; set time delay to 12 seconds
-		addq.b	#2,obRoutine(a0)
-		rts	
-; ===========================================================================
-
-Obj39_Wait:				; XREF: Obj39_Index
-		move.b	($FFFFF605).w,d0
-		andi.b	#$70,d0		; is button A, B or C pressed?
-		bne.s	Obj39_ChgMode	; if yes, branch
-		btst	#0,obFrame(a0)
-		bne.s	Obj39_Display
-		tst.w	obTimeFrame(a0)		; has time delay reached zero?
-		beq.s	Obj39_ChgMode	; if yes, branch
-		subq.w	#1,obTimeFrame(a0)	; subtract 1 from time delay
-		bra.w	DisplaySprite
-; ===========================================================================
-
-Obj39_ChgMode:				; XREF: Obj39_Wait
-		tst.b	($FFFFFE1A).w	; is time over flag set?
-		bne.s	Obj39_ResetLvl	; if yes, branch
-		move.b	#$14,($FFFFF600).w ; set mode to $14 (continue screen)
-		tst.b	($FFFFFE18).w	; do you have any continues?
-		bne.s	Obj39_Display	; if yes, branch
-		move.b	#0,($FFFFF600).w ; set mode to 0 (Sega screen)
-		bra.s	Obj39_Display
-; ===========================================================================
-
-Obj39_ResetLvl:				; XREF: Obj39_ChgMode
-		clr.l	($FFFFFE38).w
-		move.w	#1,($FFFFFE02).w ; restart level
-
-Obj39_Display:				; XREF: Obj39_ChgMode
-		bra.w	DisplaySprite
+		jmp	DeleteObject
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -20297,7 +20222,7 @@ Obj3A_Tube:
 		bra.w	DisplaySprite
 
 ; ---------------------------------------------------------------------------
-;  Includes - Bomb Machine
+; Includes - Bomb Machine
 ; ---------------------------------------------------------------------------
 Map_BombMachine:
 		include	"_maps\BombMachine.asm"
@@ -20312,381 +20237,29 @@ A_BM2:		dc.b 2, 5, 6, 7, $FF
 A_BM3:		dc.b 3, 8, 9, $A, $B, $FF
 A_BM4:		dc.b 3, $C, $D, $E, $F, $10, $11, $12, $13, $FE, 2
 		even
-; ===========================================================================
 
+; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Object 7E - special stage results screen
+; Object 7E - Unusued (previously special stage results screen)
 ; ---------------------------------------------------------------------------
 
 Obj7E:					; XREF: Obj_Index
-		moveq	#0,d0
-		move.b	obRoutine(a0),d0
-		move.w	Obj7E_Index(pc,d0.w),d1
-		jmp	Obj7E_Index(pc,d1.w)
-; ===========================================================================
-Obj7E_Index:	dc.w Obj7E_ChkPLC-Obj7E_Index
-		dc.w Obj7E_ChkPos-Obj7E_Index
-		dc.w Obj7E_Wait-Obj7E_Index
-		dc.w Obj7E_RingBonus-Obj7E_Index
-		dc.w Obj7E_Wait-Obj7E_Index
-		dc.w Obj7E_Exit-Obj7E_Index
-		dc.w Obj7E_Wait-Obj7E_Index
-		dc.w Obj7E_Continue-Obj7E_Index
-		dc.w Obj7E_Wait-Obj7E_Index
-		dc.w Obj7E_Exit-Obj7E_Index
-		dc.w loc_C91A-Obj7E_Index
-; ===========================================================================
+		jmp	DeleteObject
 
-Obj7E_ChkPLC:				; XREF: Obj7E_Index
-		tst.l	PLC_Pointer	; are the pattern load cues empty?
-		beq.s	Obj7E_Main	; if yes, branch
-		rts	
-; ===========================================================================
-
-Obj7E_Main:
-	;	cmpi.w	#$501,($FFFFFE10).w ; is level SBZ2?
-	;	beq.s	Obj7E_Main_cont	; if yes, branch
-	;	jmp	Obj7E_Exit	; skip this shit
-
-Obj7E_Main_cont:
-		movea.l	a0,a1
-		lea	(Obj7E_Config).l,a2
-		moveq	#3,d1
-		cmpi.w	#50,($FFFFFE20).w ; do you have	50 or more rings?
-		bcs.s	Obj7E_Loop	; if no, branch
-		addq.w	#1,d1		; if yes, add 1	to d1 (number of sprites)
-
-Obj7E_Loop:
-		move.b	#$7E,0(a1)
-		move.w	(a2)+,obX(a1)	; load start x-position
-		move.w	(a2)+,$30(a1)	; load main x-position
-		move.w	(a2)+,obScreenY(a1)	; load y-position
-		move.b	(a2)+,obRoutine(a1)
-		move.b	(a2)+,obFrame(a1)
-		move.l	#Map_obj7E,obMap(a1)
-		move.w	#$8580,obGfx(a1)
-		move.b	#0,obRender(a1)
-		lea	$40(a1),a1
-		dbf	d1,Obj7E_Loop	; repeat sequence 3 or 4 times
-
-		moveq	#7,d0
-		move.b	($FFFFFE57).w,d1
-		beq.s	loc_C842
-		moveq	#0,d0
-		cmpi.b	#6,d1		; do you have all chaos	emeralds?
-		bne.s	loc_C842	; if not, branch
-		moveq	#8,d0		; load "Sonic got them all" text
-		move.w	#$18,obX(a0)
-		move.w	#$118,$30(a0)	; change position of text
-
-loc_C842:
-		move.b	d0,obFrame(a0)
-
-Obj7E_ChkPos:				; XREF: Obj7E_Index
-		moveq	#$10,d1		; set horizontal speed
-		move.w	$30(a0),d0
-		cmp.w	obX(a0),d0	; has item reached its target position?
-		beq.s	loc_C86C	; if yes, branch
-		bge.s	Obj7E_Move
-		neg.w	d1
-
-Obj7E_Move:
-		add.w	d1,obX(a0)	; change item's position
-
-loc_C85A:				; XREF: loc_C86C
-		move.w	obX(a0),d0
-		bmi.s	locret_C86A
-		cmpi.w	#$200,d0	; has item moved beyond	$200 on	x-axis?
-		bcc.s	locret_C86A	; if yes, branch
-		bra.w	DisplaySprite
-; ===========================================================================
-
-locret_C86A:
-		rts	
-; ===========================================================================
-
-loc_C86C:				; XREF: Obj7E_ChkPos
-		cmpi.b	#2,obFrame(a0)
-		bne.s	loc_C85A
-		addq.b	#2,obRoutine(a0)
-		move.w	#180,obTimeFrame(a0)	; set time delay to 3 seconds
-		move.b	#$7F,($FFFFD800).w ; load chaos	emerald	object
-
-Obj7E_Wait:				; XREF: Obj7E_Index
-		subq.w	#1,obTimeFrame(a0)	; subtract 1 from time delay
-		bne.s	Obj7E_Display
-		addq.b	#2,obRoutine(a0)
-
-Obj7E_Display:
-		bra.w	DisplaySprite
-; ===========================================================================
-
-Obj7E_RingBonus:			; XREF: Obj7E_Index
-		bsr	DisplaySprite
-		move.b	#1,($FFFFF7D6).w ; set ring bonus update flag
-		tst.w	($FFFFF7D4).w	; is ring bonus	= zero?
-		beq.s	loc_C8C4	; if yes, branch
-		subi.w	#10,($FFFFF7D4).w ; subtract 10	from ring bonus
-		moveq	#10,d0		; add 10 to score
-		jsr	AddPoints
-		move.b	($FFFFFE0F).w,d0
-		andi.b	#3,d0
-		bne.s	locret_C8EA
-		move.w	#$CD,d0
-		jmp	(PlaySound_Special).l ;	play "blip" sound
-; ===========================================================================
-
-loc_C8C4:				; XREF: Obj7E_RingBonus
-		move.w	#$C5,d0
-		jsr	(PlaySound_Special).l ;	play "ker-ching" sound
-		addq.b	#2,obRoutine(a0)
-		move.w	#180,obTimeFrame(a0)	; set time delay to 3 seconds
-		cmpi.w	#50,($FFFFFE20).w ; do you have	at least 50 rings?
-		bcs.s	locret_C8EA	; if not, branch
-		move.w	#60,obTimeFrame(a0)	; set time delay to 1 second
-		addq.b	#4,obRoutine(a0)	; goto "Obj7E_Continue"	routine
-
-locret_C8EA:
-		rts	
-; ===========================================================================
-
-Obj7E_Exit:				; XREF: Obj7E_Index
-		move.w	#1,($FFFFFE02).w ; restart level
-		bra.w	DisplaySprite
-; ===========================================================================
-
-Obj7E_Continue:				; XREF: Obj7E_Index
-		move.b	#4,($FFFFD6DA).w
-		move.b	#$14,($FFFFD6E4).w
-		move.w	#$BF,d0
-		jsr	(PlaySound_Special).l ;	play continues music
-		addq.b	#2,obRoutine(a0)
-		move.w	#360,obTimeFrame(a0)	; set time delay to 6 seconds
-		bra.w	DisplaySprite
-; ===========================================================================
-
-loc_C91A:				; XREF: Obj7E_Index
-		move.b	($FFFFFE0F).w,d0
-		andi.b	#$F,d0
-		bne.s	Obj7E_Display2
-		bchg	#0,obFrame(a0)
-
-Obj7E_Display2:
-		bra.w	DisplaySprite
-; ===========================================================================
-Obj7E_Config:	dc.w $20, $120,	$C4	; start	x-pos, main x-pos, y-pos
-		dc.b 2,	0		; rountine number, frame number
-		dc.w $320, $120, $118
-		dc.b 2,	1
-		dc.w $360, $120, $128
-		dc.b 2,	2
-		dc.w $1EC, $11C, $C4
-		dc.b 2,	3
-		dc.w $3A0, $120, $138
-		dc.b 2,	6
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Object 7F - chaos emeralds from the special stage results screen
+; Object 7F - Unusued (previously chaos emeralds from the special stage results screen)
 ; ---------------------------------------------------------------------------
 
 Obj7F:					; XREF: Obj_Index
-		moveq	#0,d0
-		move.b	obRoutine(a0),d0
-		move.w	Obj7F_Index(pc,d0.w),d1
-		jmp	Obj7F_Index(pc,d1.w)
-; ===========================================================================
-Obj7F_Index:	dc.w Obj7F_Main-Obj7F_Index
-		dc.w Obj7F_Flash-Obj7F_Index
+		jmp	DeleteObject
 
-; ---------------------------------------------------------------------------
-; X-axis positions for chaos emeralds
-; ---------------------------------------------------------------------------
-Obj7F_PosData:	dc.w $110, $128, $F8, $140, $E0, $158
-; ===========================================================================
-
-Obj7F_Main:				; XREF: Obj7F_Index
-		movea.l	a0,a1
-		lea	(Obj7F_PosData).l,a2
-		moveq	#0,d2
-		moveq	#0,d1
-		move.b	($FFFFFE57).w,d1 ; d1 is number	of emeralds
-		subq.b	#1,d1		; subtract 1 from d1
-		bcs.w	DeleteObject	; if you have 0	emeralds, branch
-
-Obj7F_Loop:
-		move.b	#$7F,0(a1)
-		move.w	(a2)+,obX(a1)	; set x-position
-		move.w	#$F0,obScreenY(a1)	; set y-position
-		lea	($FFFFFE58).w,a3 ; check which emeralds	you have
-		move.b	(a3,d2.w),d3
-		move.b	d3,obFrame(a1)
-		move.b	d3,obAnim(a1)
-		addq.b	#1,d2
-		addq.b	#2,obRoutine(a1)
-		move.l	#Map_obj7F,obMap(a1)
-		move.w	#$8541,obGfx(a1)
-		move.b	#0,obRender(a1)
-		lea	$40(a1),a1	; next object
-		dbf	d1,Obj7F_Loop	; loop for d1 number of	emeralds
-
-Obj7F_Flash:				; XREF: Obj7F_Index
-		move.b	obFrame(a0),d0
-		move.b	#6,obFrame(a0)	; load 6th frame (blank)
-		cmpi.b	#6,d0
-		bne.s	Obj7F_Display
-		move.b	obAnim(a0),obFrame(a0)	; load visible frame
-
-Obj7F_Display:
-		bra.w	DisplaySprite
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Sprite mappings - zone title cards
 ; ---------------------------------------------------------------------------
-Map_obj34:
+;Map_Obj34: ; moved to the file itself for compatibility with ClownMapEd
 		include	"_maps\TitleCards.asm"
-
-; ---------------------------------------------------------------------------
-; Sprite mappings - "SONIC HAS PASSED" title card
-; ---------------------------------------------------------------------------
-Map_obj3A:	dc.w byte_CBEA-Map_obj3A
-		dc.w byte_CC13-Map_obj3A
-		dc.w byte_CC32-Map_obj3A
-		dc.w byte_CC51-Map_obj3A
-		dc.w byte_CC75-Map_obj3A
-		dc.w byte_CB47-Map_obj3A
-		dc.w byte_CB26-Map_obj3A
-		dc.w byte_CB31-Map_obj3A
-		dc.w byte_CB3C-Map_obj3A
-byte_CBEA:	dc.b 8			; SONIC HAS
-		dc.b $F8, 5, 0,	$3E, $B8
-		dc.b $F8, 5, 0,	$32, $C8
-		dc.b $F8, 5, 0,	$2E, $D8
-		dc.b $F8, 1, 0,	$20, $E8
-		dc.b $F8, 5, 0,	8, $F0
-		dc.b $F8, 5, 0,	$1C, $10
-		dc.b $F8, 5, 0,	0, $20
-		dc.b $F8, 5, 0,	$3E, $30
-byte_CC13:	dc.b 6			; PASSED
-		dc.b $F8, 5, 0,	$36, $D0
-		dc.b $F8, 5, 0,	0, $E0
-		dc.b $F8, 5, 0,	$3E, $F0
-		dc.b $F8, 5, 0,	$3E, 0
-		dc.b $F8, 5, 0,	$10, $10
-		dc.b $F8, 5, 0,	$C, $20
-byte_CC32:	dc.b 6			; SCORE
-		dc.b $F8, $D, 1, $4A, $B0
-		dc.b $F8, 1, 1,	$62, $D0
-		dc.b $F8, 9, 1,	$64, $18
-		dc.b $F8, $D, 1, $6A, $30
-		dc.b $F7, 4, 0,	$6E, $CD
-		dc.b $FF, 4, $18, $6E, $CD
-byte_CC51:	dc.b 7			; TIME BONUS
-		dc.b $F8, $D, 1, $5A, $B0
-		dc.b $F8, $D, 0, $66, $D9
-		dc.b $F8, 1, 1,	$4A, $F9
-		dc.b $F7, 4, 0,	$6E, $F6
-		dc.b $FF, 4, $18, $6E, $F6
-		dc.b $F8, $D, $FF, $F0,	$28
-		dc.b $F8, 1, 1,	$70, $48
-byte_CC75:	dc.b 7			; RING BONUS
-		dc.b $F8, $D, 1, $52, $B0
-		dc.b $F8, $D, 0, $66, $D9
-		dc.b $F8, 1, 1,	$4A, $F9
-		dc.b $F7, 4, 0,	$6E, $F6
-		dc.b $FF, 4, $18, $6E, $F6
-		dc.b $F8, $D, $FF, $F8,	$28
-		dc.b $F8, 1, 1,	$70, $48
-		even
-; ---------------------------------------------------------------------------
-; Sprite mappings - special stage results screen
-; ---------------------------------------------------------------------------
-Map_obj7E:	dc.w byte_CCAC-Map_obj7E
-		dc.w byte_CCEE-Map_obj7E
-		dc.w byte_CD0D-Map_obj7E
-		dc.w byte_CB47-Map_obj7E
-		dc.w byte_CD31-Map_obj7E
-		dc.w byte_CD46-Map_obj7E
-		dc.w byte_CD5B-Map_obj7E
-		dc.w byte_CD6B-Map_obj7E
-		dc.w byte_CDA8-Map_obj7E
-byte_CCAC:	dc.b $D			; "CHAOS EMERALDS"
-		dc.b $F8, 5, 0,	8, $90
-		dc.b $F8, 5, 0,	$1C, $A0
-		dc.b $F8, 5, 0,	0, $B0
-		dc.b $F8, 5, 0,	$32, $C0
-		dc.b $F8, 5, 0,	$3E, $D0
-		dc.b $F8, 5, 0,	$10, $F0
-		dc.b $F8, 5, 0,	$2A, 0
-		dc.b $F8, 5, 0,	$10, $10
-		dc.b $F8, 5, 0,	$3A, $20
-		dc.b $F8, 5, 0,	0, $30
-		dc.b $F8, 5, 0,	$26, $40
-		dc.b $F8, 5, 0,	$C, $50
-		dc.b $F8, 5, 0,	$3E, $60
-byte_CCEE:	dc.b 6			; "SCORE"
-		dc.b $F8, $D, 1, $4A, $B0
-		dc.b $F8, 1, 1,	$62, $D0
-		dc.b $F8, 9, 1,	$64, $18
-		dc.b $F8, $D, 1, $6A, $30
-		dc.b $F7, 4, 0,	$6E, $CD
-		dc.b $FF, 4, $18, $6E, $CD
-byte_CD0D:	dc.b 7
-		dc.b $F8, $D, 1, $52, $B0
-		dc.b $F8, $D, 0, $66, $D9
-		dc.b $F8, 1, 1,	$4A, $F9
-		dc.b $F7, 4, 0,	$6E, $F6
-		dc.b $FF, 4, $18, $6E, $F6
-		dc.b $F8, $D, $FF, $F8,	$28
-		dc.b $F8, 1, 1,	$70, $48
-byte_CD31:	dc.b 4
-		dc.b $F8, $D, $FF, $D1,	$B0
-		dc.b $F8, $D, $FF, $D9,	$D0
-		dc.b $F8, 1, $FF, $E1, $F0
-		dc.b $F8, 6, $1F, $E3, $40
-byte_CD46:	dc.b 4
-		dc.b $F8, $D, $FF, $D1,	$B0
-		dc.b $F8, $D, $FF, $D9,	$D0
-		dc.b $F8, 1, $FF, $E1, $F0
-		dc.b $F8, 6, $1F, $E9, $40
-byte_CD5B:	dc.b 3
-		dc.b $F8, $D, $FF, $D1,	$B0
-		dc.b $F8, $D, $FF, $D9,	$D0
-		dc.b $F8, 1, $FF, $E1, $F0
-byte_CD6B:	dc.b $C			; "SPECIAL STAGE"
-		dc.b $F8, 5, 0,	$3E, $9C
-		dc.b $F8, 5, 0,	$36, $AC
-		dc.b $F8, 5, 0,	$10, $BC
-		dc.b $F8, 5, 0,	8, $CC
-		dc.b $F8, 1, 0,	$20, $DC
-		dc.b $F8, 5, 0,	0, $E4
-		dc.b $F8, 5, 0,	$26, $F4
-		dc.b $F8, 5, 0,	$3E, $14
-		dc.b $F8, 5, 0,	$42, $24
-		dc.b $F8, 5, 0,	0, $34
-		dc.b $F8, 5, 0,	$18, $44
-		dc.b $F8, 5, 0,	$10, $54
-byte_CDA8:	dc.b $F			; "SONIC GOT THEM ALL"
-		dc.b $F8, 5, 0,	$3E, $88
-		dc.b $F8, 5, 0,	$32, $98
-		dc.b $F8, 5, 0,	$2E, $A8
-		dc.b $F8, 1, 0,	$20, $B8
-		dc.b $F8, 5, 0,	8, $C0
-		dc.b $F8, 5, 0,	$18, $D8
-		dc.b $F8, 5, 0,	$32, $E8
-		dc.b $F8, 5, 0,	$42, $F8
-		dc.b $F8, 5, 0,	$42, $10
-		dc.b $F8, 5, 0,	$1C, $20
-		dc.b $F8, 5, 0,	$10, $30
-		dc.b $F8, 5, 0,	$2A, $40
-		dc.b $F8, 5, 0,	0, $58
-		dc.b $F8, 5, 0,	$26, $68
-		dc.b $F8, 5, 0,	$26, $78
-		even
-; ---------------------------------------------------------------------------
-; Sprite mappings - chaos emeralds from	the special stage results screen
-; ---------------------------------------------------------------------------
-Map_obj7F:
-		include	"_maps\obj7F.asm"
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -30036,7 +29609,6 @@ Obj03_BackgroundColor:
 		rts
 ; ---------------------------------------------------------------------------
 Obj03_BG:
-	
 		dc.w	$2E4	; GHP
 		dc.w	$E2E	; SP
 		dc.w	$02E	; RP
@@ -30044,17 +29616,7 @@ Obj03_BG:
 		dc.w	$E2A	; UP
 		dc.w	$E24	; SAP
 		dc.w	$000	; FP
-		dc.w	$000	; invalid
-		even
-
-		dc.w	$0E0	; GHP
-		dc.w	$E0E	; SP
-		dc.w	$00E	; RP
-		dc.w	$EA0	; LP
-		dc.w	$80E	; UP
-		dc.w	$E00	; SAP
-		dc.w	$000	; FP
-		dc.w	$000	; invalid
+		dc.w	$0E4	; options menu
 		even
 ; ---------------------------------------------------------------------------
 Obj03_BGMask:

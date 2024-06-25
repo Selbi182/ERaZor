@@ -62,6 +62,7 @@ OptionsScreen:				; XREF: GameModeArray
 		move.b	#$99,d0		; play Options screen music (introduction text music)
 		jsr	PlaySound_Special
 		bsr	Options_LoadPal
+		move.b	#9,($FFFFFF9E).w ; BG pal
   
 		bra.s	Options_ContinueSetup
 		
@@ -837,7 +838,7 @@ GetOptionsText:
 
 		adda.w	#Options_LineLength,a1		; make one empty line
 
-		move.l	#OpText_Locked,d6		; set locked text location	
+		move.l	#OpText_CinematicMode_Locked,d6	; set locked text location	
 		btst	#0,($FFFFFF93).w		; has the player beaten the base game?
 		beq.s	@basegamenotbeaten		; if not, branch
 		move.l	#OpText_CinematicMode,d6	; set unlocked text location
@@ -853,7 +854,7 @@ GetOptionsText:
 
 		adda.w	#Options_LineLength,a1		; make one empty line
 		
-		move.l	#OpText_Locked,d6		; set locked text location	
+		move.l	#OpText_NonstopInhuman_Locked,d6; set locked text location	
 		btst	#1,($FFFFFF93).w		; has the player beaten the blackout challenge?
 		beq.s	@uselockedtext			; if not, branch
 		move.l	#OpText_NonstopInhuman,d6	; set unlocked text location
@@ -1105,16 +1106,18 @@ OpText_SkipUberhub:
 		dc.b	'SKIP UBERHUB PLACE   ', $FF
 		even
 
-OpText_Locked:
-		dc.b	'???????????????      ', $FF
-		even
-		
 OpText_CinematicMode:
 		dc.b	'CINEMATIC MODE       ', $FF
 		even
-
+OpText_CinematicMode_Locked:
+		dc.b	'????????? ????       ', $FF
+		even
+		
 OpText_NonstopInhuman:
-		dc.b	'NONSTOP INHUMAN      ', $FF
+		dc.b	'TRUE INHUMAN MODE    ', $FF
+		even
+OpText_NonstopInhuman_Locked:
+		dc.b	'???? ??????? ????    ', $FF
 		even
 
 OpText_DeleteSRAM:

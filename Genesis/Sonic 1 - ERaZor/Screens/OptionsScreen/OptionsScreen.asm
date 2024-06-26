@@ -27,6 +27,7 @@ OptionsScreen:				; XREF: GameModeArray
 		move.w	#$8720,(a6)
 		clr.b	($FFFFF64E).w
 		jsr	ClearScreen
+		VBlank_UnsetMusicOnly
 
 		lea	($FFFFD000).w,a1
 		moveq	#0,d0
@@ -36,6 +37,7 @@ OptionsScreen:				; XREF: GameModeArray
 
 		jsr	Pal_FadeFrom
 
+		VBlank_SetMusicOnly
 		lea	($C00000).l,a6
 		move.l	#$6E000002,4(a6)
 		lea	(Options_TextArt).l,a5
@@ -43,7 +45,6 @@ OptionsScreen:				; XREF: GameModeArray
 @loadtextart:	move.w	(a5)+,(a6)
 		dbf	d1,@loadtextart ; load uncompressed text patterns
 
-		VBlank_SetMusicOnly
 		move.l	#$64000002,4(a6)
 		lea	(ArtKospM_ERaZorNoBG).l,a0
 		jsr	KosPlusMDec_VRAM
@@ -65,14 +66,11 @@ OptionsScreen:				; XREF: GameModeArray
 		move.b	#9,($FFFFFF9E).w ; BG pal
   
 		bra.s	Options_ContinueSetup
-		
-
+	
 ; ---------------------------------------------------------------------------
 Options_LoadPal:
 		moveq	#2,d0		; load level select palette
 		jsr	PalLoad1
-	;	moveq	#3,d0		; load Sonic palette
-	;	jsr	PalLoad1
 
 		movem.l	d0-a2,-(sp)		; backup d0 to a2
 		lea	(Pal_ERaZorBanner).l,a1	; set ERaZor banner's palette pointer
@@ -126,7 +124,6 @@ Options_FinishSetup:
 		bsr	OptionsTextLoad		; load options text
 		display_enable
 		jsr	Pal_FadeTo
-		VBlank_UnsetMusicOnly
 
 		bra.w	OptionsScreen_MainLoop
 
@@ -393,7 +390,7 @@ OptionsScreen_MainLoop:
 		jsr	ObjectsLoad
 		jsr	BuildSprites
 
-		bsr	OptionsControls
+		bsr	Options_UpDown
 		jsr	PLC_Execute
 		
 		bsr.w	Options_BackgroundEffects
@@ -409,8 +406,8 @@ OptionsScreen_MainLoop:
 ;  bit 0 = Extended Camera
 ;  bit 1 = Skip Story Screens
 ;  bit 2 = Skip Uberhub Place
-;  bit 3 = Cinematic Mode
-;  bit 4 = Nonstop Inhuman (Unlockable)
+;  bit 3 = Cinematic Mode (unlocked after beating the base game)
+;  bit 4 = True Inhuman Mode (unlocked after beating the blackout challenge)
 ;  bit 5 = Gamplay Style (0 - Casual Mode // 1 - Frantic Mode)
 ;  bit 6 = [unused]
 ;  bit 7 = [unused]
@@ -420,20 +417,6 @@ Options_HandleChange:
 		tst.b	($FFFFF605).w		; was anything at all pressed this frame?
 		beq.s	OptionsScreen_MainLoop	; if not, branch
 
-
-; randomize BG color with B, just for testing
-@newbgcolor:	btst	#4,($FFFFF605).w	; has B been pressed?
-		beq.s	@0
-		jsr	RandomNumber
-		add.w	d0,($FFFFFF9E).w
-		subq.b	#2,d0
-		add.w	d0,d0
-		adda.w	d0,a3
-		move.w	(a3),d0
-		beq.s	@newbgcolor
-		bra.w	Options_Return
-@0:
-	
 		moveq	#0,d0			; make sure d0 is empty
 		move.w	($FFFFFF82).w,d0	; get current selection
 		subq.w	#3,d0			; first option starts at line 3
@@ -498,6 +481,15 @@ Options_HandleCinematicMode:
 		move.b	($FFFFF605).w,d1	; get button presses
 		andi.b	#$FC,d1			; is left, right, A, B, C, or Start pressed?
 		beq.w	Options_Return		; if not, branch
+
+		tst.w	($FFFFFFFA).w		; is debug mode enabled?
+		beq.s	@nodebugunlock		; if not, branch
+		cmpi.b	#$70,($FFFFF604).w	; is exactly ABC held?
+		bne.s	@nodebugunlock		; if not, branch
+		bchg	#0,($FFFFFF93).w	; toggle base game as beaten to toggle the unlock for cinematic mode
+		bra.w	Options_UpdateTextAfterChange_NoSound
+
+@nodebugunlock:
 		btst	#0,($FFFFFF93).w	; has the player beaten the base game?
 		bne.s	@cinematicmodeallowed	; if yes, branch
 		move.w	#$DA,d0			; play option disallowed sound
@@ -505,7 +497,7 @@ Options_HandleCinematicMode:
 		bra.w	Options_UpdateTextAfterChange_NoSound
 		
 @cinematicmodeallowed:
-		bchg	#3,($FFFFFF92).w	; toggle cinematic HUD
+		bchg	#3,($FFFFFF92).w	; toggle cinematic mode
 		bsr	Options_LoadPal
 		bra.w	Options_UpdateTextAfterChange
 ; ---------------------------------------------------------------------------
@@ -514,7 +506,16 @@ Options_HandleNonstopInhuman:
 		move.b	($FFFFF605).w,d1	; get button presses
 		andi.b	#$FC,d1			; is left, right, A, B, C, or Start pressed?
 		beq.w	Options_Return		; if not, branch
-		btst	#1,($FFFFFF93).w	; has the player beaten the blackout challenge?
+
+		tst.w	($FFFFFFFA).w		; is debug mode enabled?
+		beq.s	@nodebugunlock		; if not, branch
+		cmpi.b	#$70,($FFFFF604).w	; is exactly ABC held?
+		bne.s	@nodebugunlock		; if not, branch
+		bchg	#1,($FFFFFF93).w	; toggle blackout challenge beaten state to toggle the unlock for nonstop inhuman
+		bra.w	Options_UpdateTextAfterChange_NoSound
+
+@nodebugunlock:
+		btst	#1,($FFFFFF93).w	; has the player specifically beaten the blackout challenge?
 		bne.s	@nonstopinhumanallowed	; if yes, branch
 		move.w	#$DA,d0			; play option disallowed sound
 		jsr	PlaySound_Special
@@ -562,47 +563,60 @@ Options_HandleDeleteSaveGame:
 		jmp	Init			; restart the game
 ; ---------------------------------------------------------------------------
 
+SoundTest_Min = $80
+SoundTest_Max = $DF
+SoundTest_AStep = $10
+
 Options_HandleSoundTest:
-		tst.b	($FFFFF605).w		; anything pressed this frame?
-		beq.w	Options_Return		; if not, branch
+		move.w	#$80,d0			; default sound (null)
 		move.b	($FFFFF605).w,d1	; get button presses
-		btst	#4,d1			; is button B pressed?
-		bne.s	@soundtest_stop		; if yes, branch
-		andi.b	#$A0,d1			; is C or Start pressed?
-		beq.s	@soundtest_checkL	; if not, branch
-		move.b	($FFFFFF84).w,d0	; move sound test ID to d0
-		cmpi.b	#$80,d0			; is this ID $80?
-		bne.s	@soundtest_not80	; if not, branch
-@soundtest_stop:
-		move.b	#$E4,d0			; otherwise, make it stop all sound
-@soundtest_not80:
-		jsr	PlaySound_Special	; play music
+		move.b	($FFFFFF84).w,d2	; move current sound test ID to d2
 
 @soundtest_checkL:
-		btst	#2,($FFFFF605).w	; has left been pressed?
+		btst	#2,d1			; has left been pressed?
 		beq.s	@soundtest_checkR	; if not, branch
-		subq.b	#1,($FFFFFF84).w	; decrease sound test ID by 1
-		cmpi.b	#$7F,($FFFFFF84).w	; is ID now $7F?
-		bne.s	@soundtest_checkR	; if not, branch
-		move.b	#$DF,($FFFFFF84).w	; set ID to $DF
+		subq.b	#1,d2			; decrease sound test ID by 1
+		cmpi.b	#SoundTest_Min-1,d2	; is ID below the minimum now?
+		bne.w	@soundtest_end		; if not, branch
+		move.b	#SoundTest_Max,d2	; reset ID to max
+		bra.w	@soundtest_end		; branch
 
 @soundtest_checkR:
-		btst	#3,($FFFFF605).w	; has right been pressed?
+		btst	#3,d1			; has right been pressed?
 		beq.s	@soundtest_checkA	; if not, branch
-		addq.b	#1,($FFFFFF84).w	; increase sound test ID by 1
-		cmpi.b	#$E0,($FFFFFF84).w	; is ID now $E0?
-		bne.s	@soundtest_checkA	; if not, branch
-		move.b	#$80,($FFFFFF84).w	; set ID to $80
+		addq.b	#1,d2			; increase sound test ID by 1
+		cmpi.b	#SoundTest_Max+1,d2	; is ID above the maximum now?
+		bne.w	@soundtest_end		; if not, branch
+		move.b	#SoundTest_Min,d2	; reset ID to min
+		bra.w	@soundtest_end		; branch
 
 @soundtest_checkA:
-		btst	#6,($FFFFF605).w	; has A been pressed?
+		btst	#6,d1			; has A been pressed?
+		beq.s	@soundtest_chkb		; if not, branch
+		addi.b	#SoundTest_AStep,d2	; increase sound test ID by $10
+		cmpi.b	#SoundTest_Max+1,d2	; is ID above the maximum now?
+		blt.w	@soundtest_end		; if not, branch
+		subi.b	#SoundTest_Max-SoundTest_Min+1,d2 ; restart on the other side
+		bra.w	@soundtest_end		; branch
+
+@soundtest_chkb:
+		btst	#4,d1			; is button B pressed?
+		beq.s	@soundtest_chkplay	; if not, branch
+		move.b	#$E4,d0			; set to stop all sound
+		bra.s	@soundtest_play		; branch
+
+@soundtest_chkplay:
+		andi.b	#$A0,d1			; is C or Start pressed?
 		beq.s	@soundtest_end		; if not, branch
-		addi.b	#$10,($FFFFFF84).w	; increase sound test ID by $10
-		cmpi.b	#$E0,($FFFFFF84).w	; is ID over or at $E0 now?
-		blt.s	@soundtest_end		; if not, branch
-		subi.b	#$60,($FFFFFF84).w	; restart on the other side
+		move.b	d2,d0			; set to play the selected sound
+		cmpi.b	#$80,d2			; is current song selection ID $80?
+		bne.s	@soundtest_play		; if not, branch
+		move.b	#$E4,d0			; set to stop all sound (for convenience)
+@soundtest_play:
+		jsr	PlaySound_Special	; play selected sound
 
 @soundtest_end:
+		move.b	d2,($FFFFFF84).w	; update ID
 		bra.w	Options_UpdateTextAfterChange_NoSound
 ; ---------------------------------------------------------------------------
 
@@ -643,60 +657,40 @@ Options_UpdateTextAfterChange_NoSound:
 
 Options_Return:
 		bra.w	OptionsScreen_MainLoop	; return
+
 ; ===========================================================================
-
 ; ---------------------------------------------------------------------------
-; Subroutine to	change what you're selecting in the level select
+; Subroutine to	change the selected option when pressing up or down
 ; ---------------------------------------------------------------------------
 
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
-
-OptionsControls:				; XREF: OptionsScreen_MainLoop
-		move.b	($FFFFF605).w,d1
-		andi.b	#3,d1		; is up/down pressed and held?
-		bne.s	Options_UpDown	; if yes, branch
-		subq.w	#1,($FFFFFF80).w ; subtract 1 from time	to next	move
-		bpl.s	Options_SndTest	; if time remains, branch
-
-Options_UpDown:
-		move.w	#9,($FFFFFF80).w ; reset time delay ($B)
-		move.b	($FFFFF604).w,d1
-		andi.b	#3,d1		; is up/down pressed?
-		beq.s	Options_SndTest	; if not, branch
-		move.b	#$D8,d0
-		jsr	PlaySound_Special
-		move.w	($FFFFFF82).w,d0
-		btst	#0,d1		; is up	pressed?
-		beq.s	Options_Down	; if not, branch
-		subq.w	#2,d0		; move up 1 selection
-		cmpi.w	#3,d0
-		bge.s	Options_Down
-		moveq	#19,d0		; if selection moves below 4, jump to selection	19 (exit)
+Options_UpDown:				; XREF: OptionsScreen_MainLoop
+		move.w	($FFFFFF82).w,d0	; get current selection
+		move.b	($FFFFF605).w,d1	; get button presses
+		btst	#0,d1			; is up	pressed?
+		beq.s	Options_Down		; if not, check down
+		subq.w	#2,d0			; move up 1 selection
+		cmpi.w	#3,d0			; did we move to before the first option?
+		bge.s	Options_Refresh		; if not, branch
+		moveq	#19,d0			; if selection moves below 4, jump to selection 19 (exit)
+		bra.s	Options_Refresh		; branch
 
 Options_Down:
-		btst	#1,d1		; is down pressed?
-		beq.s	Options_Refresh	; if not, branch
-		addq.w	#2,d0		; move down 1 selection
-		cmpi.w	#19,d0
-		ble.s	Options_Refresh
-		moveq	#3,d0		; if selection moves above 19,	jump to	selection 4 (first option)
+		btst	#1,d1			; is down pressed?
+		beq.s	Options_NoMove		; if not, branch
+		addq.w	#2,d0			; move down 1 selection
+		cmpi.w	#19,d0			; did we move past the last option?
+		ble.s	Options_Refresh		; if not, branch
+		moveq	#3,d0			; if selection moves above 19, jump to selection 4 (first option)
 
 Options_Refresh:
-		move.w	d0,($FFFFFF82).w ; set new selection
-		bsr	OptionsTextLoad	; refresh text
-		rts
-; ===========================================================================
-
-Options_SndTest:				; XREF: OptionsControls
-		move.b	($FFFFF605).w,d1
-		andi.b	#$C,d1		; is left/right	pressed?
-		beq.s	Options_NoMove	; if not, branch
-		bsr	OptionsTextLoad	; refresh text
+		move.w	d0,($FFFFFF82).w	; set new selection
+		bsr	OptionsTextLoad		; refresh text
+		move.b	#$D8,d0			; play move sound
+		jsr	PlaySound_Special
 
 Options_NoMove:
 		rts	
-; End of function OptionsControls
+; End of function Options_UpDown
 
 ; ---------------------------------------------------------------------------
 ; Subroutine to load the Options menu text
@@ -727,6 +721,8 @@ OptionsTextLoad:				; XREF: TitleScreen
 		lea	($FFFFC900).w,a1	; get preloaded text buffer	
 		lea	($C00000).l,a6
 		move.l	#Options_VDP,d4		; screen position (text)
+
+		VBlank_SetMusicOnly
 		
 		; prefill top with non-shadowy blank tiles
 		blankline 4
@@ -748,6 +744,7 @@ OptionsTextLoad:				; XREF: TitleScreen
 		; postfill bottom with non-shadowy blank tiles
 		blankline 2
 
+		VBlank_UnsetMusicOnly
 		rts	
 ; End of function OptionsTextLoad
 
@@ -839,10 +836,9 @@ GetOptionsText:
 		adda.w	#Options_LineLength,a1		; make one empty line
 
 		move.l	#OpText_CinematicMode_Locked,d6	; set locked text location	
-		btst	#0,($FFFFFF93).w		; has the player beaten the base game?
+		btst	#0,($FFFFFF93).w		; has the player beaten base game?
 		beq.s	@basegamenotbeaten		; if not, branch
 		move.l	#OpText_CinematicMode,d6	; set unlocked text location
-
 @basegamenotbeaten:
 		movea.l	d6,a2				; set text location
 		moveq	#5,d2				; set d2 to 3
@@ -855,10 +851,10 @@ GetOptionsText:
 		adda.w	#Options_LineLength,a1		; make one empty line
 		
 		move.l	#OpText_NonstopInhuman_Locked,d6; set locked text location	
-		btst	#1,($FFFFFF93).w		; has the player beaten the blackout challenge?
-		beq.s	@uselockedtext			; if not, branch
+		btst	#1,($FFFFFF93).w		; has the player specifically beaten the blackout challenge?
+		beq.s	@blackoutchallengenotbeaten	; if not, branch
 		move.l	#OpText_NonstopInhuman,d6	; set unlocked text location
-@uselockedtext:
+@blackoutchallengenotbeaten:
 		movea.l	d6,a2				; set text location
 		moveq	#6,d2				; set d2 to 4
 		bsr.w	Options_Write			; write text
@@ -875,30 +871,13 @@ GetOptionsText:
 
 		adda.w	#Options_LineLength+3,a1	; make one empty line + 3 characters (because the delete save option is a one-time action button)
 
-; ---------------------------------------------------------------------------
+; ---------------------------------------------------------------------------	
 		lea	(OpText_SoundTest).l,a2		; set text location
 		moveq	#8,d2				; set d2 to 4
 		bsr.w	Options_Write			; write text
-		
 		move.b	#$0D,-3(a1)			; write < before the ID
 		move.b	#$0E,2(a1)			; write > after the ID
-
-		moveq	#0,d0
-		move.b	($FFFFFF84).w,d0		; get sound test ID
-		lsr.b	#4,d0				; swap first and second short
-		andi.b	#$0F,d0				; clear first short
-		cmpi.b	#9,d0				; is result greater than 9?
-		ble.s	GOT_Snd_Skip1			; if not, branch
-		addi.b	#5,d0				; skip the special chars (!, ?, etc.)
-GOT_Snd_Skip1:	move.b	d0,-1(a1)			; set result to first digit ("8" 1)
-
-		move.b	($FFFFFF84).w,d0		; get sound test ID
-		andi.b	#$0F,d0				; clear first short
-		cmpi.b	#9,d0				; is result greater than 9?
-		ble.s	GOT_Snd_Skip2			; if not, branch
-		addi.b	#5,d0				; skip the special chars (!, ?, etc.)
-GOT_Snd_Skip2:	move.b	d0,0(a1)			; set result to second digit (8 "1")
-
+		bsr	Options_SoundTestID		; write the sound test ID
 		adda.w	#3,a1				; adjust for the earlier sound test offset
 ; ---------------------------------------------------------------------------
 
@@ -927,6 +906,27 @@ Options_HighlightLine:
 		moveq	#Options_LineLength-1,d2
 @redline:	ori.b	#$80,(a1)+				; mark line to use red
 		dbf	d2,@redline
+		rts
+; ===========================================================================
+
+; write the sound test ID ($FFFFFF84) at offset -1(a1)
+Options_SoundTestID:
+		moveq	#0,d0
+		move.b	($FFFFFF84).w,d0		; get sound test ID
+		lsr.b	#4,d0				; swap first and second short
+		andi.b	#$0F,d0				; clear first short
+		cmpi.b	#9,d0				; is result greater than 9?
+		ble.s	GOT_Snd_Skip1			; if not, branch
+		addi.b	#5,d0				; skip the special chars (!, ?, etc.)
+GOT_Snd_Skip1:	move.b	d0,-1(a1)			; set result to first digit ("8" 1)
+
+		move.b	($FFFFFF84).w,d0		; get sound test ID
+		andi.b	#$0F,d0				; clear first short
+		cmpi.b	#9,d0				; is result greater than 9?
+		ble.s	GOT_Snd_Skip2			; if not, branch
+		addi.b	#5,d0				; skip the special chars (!, ?, etc.)
+GOT_Snd_Skip2:	move.b	d0,0(a1)			; set result to second digit (8 "1")
+
 		rts
 
 ; ===========================================================================

@@ -5446,7 +5446,6 @@ SS_EndClrObjRamX:
 		clr.b	($FFFFFFAA).w		; clear crabmeat boss flag 1
 		clr.b	($FFFFFFAB).w		; clear crabmeat boss flag 2
 		clr.b	($FFFFFFA9).w		; clear crabmeat boss flag 3
-		clr.b	($FFFFFFB3).w
 		clr.b	($FFFFFFB4).w
 		clr.b	($FFFFFFB8).w
 		clr.b	($FFFFFFB7).w
@@ -16940,25 +16939,15 @@ Obj2E_ChkS:
 		cmpi.w	#$200,($FFFFFE10).w	; is this Ruined Place?
 		bne.s	@notruinedplace		; if not, branch
 
-		; block off a few chunks offscreen
+		; block off a chunk offscreen
 		movem.l	d0-a1,-(sp)		; backup
 
-		move.w	#$118E,d0
-		move.w	#$02D5,d1
-		move.b	#$20,d2
-		jsr	Sub_ChangeChunk
-
-		move.w	#$1252,d0
-		move.w	#$02D5,d1
-		move.b	#$20,d2
-		jsr	Sub_ChangeChunk
-
-		move.w	#$1239,d0
-		move.w	#$01AB,d1
+		move.w	#$1000,d0
+		move.w	#$0300,d1
 		move.b	#$20,d2
 		jsr	Sub_ChangeChunk
 		
-		; load bloody spikes are now
+		; load bloody spikes art now
 		lea	Obj2E_SpikesBlood, a1
 		jsr	LoadPLC_Direct
 
@@ -20253,12 +20242,6 @@ Obj36_Solid:				; XREF: Obj36_Index
 		cmpi.w	#$200,($FFFFFE10).w	; are we in Ruined Place?
 		bne.s	Obj36_NotInhuman	; if not, branch
 		ori.w	#$6000,obGfx(a0)	; use palette line four from now now
-		tst.b	($FFFFFFB3).w		; was the spike already destroyed?
-		bne.s	Obj36_NotInhuman	; if yes, branch
-	
-		cmpi.w	#$1190,obX(a0)		; is this that one specific spike guarding off the spikes challenge in Ruined Place?
-		bne.s	Obj36_NotInhuman	; if not, branch
-		bra.w	Obj36_Explode		; if yes, explode and delete this spike
 
 Obj36_NotInhuman:
 		jsr	obj36_Type0x	; make the object move
@@ -20285,34 +20268,11 @@ Obj36_SideWays:				; XREF: Obj36_Solid
 ; ===========================================================================
 
 Obj36_Explode:
-		move.b	#1,($FFFFFFB3).w
-		bra.s	Obj36_Explode_Spring
-		movem.l	d0-a1,-(sp)		; backup a1
-
-		move.w	#$118E,d0
-		move.w	#$02D5,d1
-		move.b	#$20,d2
-		jsr	Sub_ChangeChunk
-
-		move.w	#$1252,d0
-		move.w	#$02D5,d1
-		move.b	#$20,d2
-		jsr	Sub_ChangeChunk
-
-		move.w	#$1239,d0
-		move.w	#$01AB,d1
-		move.b	#$20,d2
-		jsr	Sub_ChangeChunk
-
-		movem.l	(sp)+,d0-a1		; restore a1
-
-
-Obj36_Explode_Spring:
 		move.b	#10,($FFFFFF64).w
 		move.b	#$C4,d0				; load boost SFX
 		jsr	PlaySound_Special		; play boost SFX
 		jsr	SingleObjLoad
-		move.b	#$3F,0(a1)			; change bomb into an explosion
+		move.b	#$3F,0(a1)			; change spike into an explosion
 		move.b	#1,$30(a1)
 		move.w	obX(a0),obX(a1)
 		move.w	obY(a0),obY(a1)
@@ -21817,16 +21777,6 @@ Obj41_ResetUp:				; XREF: Obj41_Index
 ; ===========================================================================
 
 Obj41_LR:				; XREF: Obj41_Index
-		tst.b	($FFFFFFE7).w ; is inhuman mode on?
-		beq.s	Obj41_NotInhuman ; if not, branch
-		cmpi.b	#2,($FFFFFFB3).w ; was srping set to be destroyed?
-		bne.s	Obj41_NotInhuman ; if not, branch
-	;	tst.b	obRender(a0)		; is spike on screen?
-	;	bpl.s	Obj41_NotInhuman ; if not, branch
-		cmpi.w	#$200,($FFFFFE10).w ; is level MZ1?
-		beq.w	Obj36_Explode_Spring	; if yes, branch
-
-Obj41_NotInhuman:
 		move.w	#$13,d1
 		move.w	#$E,d2
 		move.w	#$F,d3
@@ -23199,7 +23149,6 @@ NextLevelX:
 		clr.b	($FFFFFFAA).w		; clear crabmeat boss flag 1
 		clr.b	($FFFFFFAB).w		; clear crabmeat boss flag 2
 		clr.b	($FFFFFFA9).w		; clear crabmeat boss flag 3
-		clr.b	($FFFFFFB3).w
 		clr.b	($FFFFFFB4).w
 		clr.b	($FFFFFFB8).w
 		clr.b	($FFFFFFB7).w
@@ -29701,30 +29650,9 @@ Obj06_ChkDist:
 		beq.s	@notdebug		; if not, branch
 		move.b	($FFFFF602).w,d0	; get button presses
 		eori.b	#$60,d0			; filter out B to not interfere with debug mode
-@notdebug:
-		tst.b	d0			; all buttons pressed?
+@notdebug:	tst.b	d0			; all buttons pressed?
 		bne.w	Obj06_Display		; if not, branch
 
-		frantic				; are we in Frantic mode?
-		beq.s	Obj06_DoHardPartSkip	; if not, branch
-
-		jsr	SingleObjLoad2
-		bne.w	@noobjectleft
-		move.b	#$3F,(a1)		; load singular explosion object
-		move.w	obX(a0),obX(a1)
-		move.w	obY(a0),obY(a1)
-		move.b	#10,($FFFFFF64).w
-@noobjectleft:
-		jsr	DeleteObject		; delete Hard Part Skipper
-
-		move.w	#$8F,d0			; play game over jingle
-		jsr	PlaySound
-		lea	($FFFFD000).w,a0	; set self to Sonic
-		movea.l	a0,a2			; set killer to self
-		clr.b	($FFFFFFE7).w		; disable inhuman mode
-		jmp	KillSonic		; get fucking trolled lmao
-
-Obj06_DoHardPartSkip:
 		move.w	($FFFFD008).w,d0	; get Sonic's X-pos
 		sub.w	obX(a0),d0		; substract the X-pos from the current object from it
 		addi.w	#$10,d0			; add $10 to it
@@ -29735,7 +29663,22 @@ Obj06_DoHardPartSkip:
 		addi.w	#$10,d0			; add $10 to it
 		cmpi.w	#$20,d0			; is Sonic within $10 pixels of that object?
 		bhi.w	Obj06_Display		; if not, branch
+		
+Obj06_DoHardPartSkip:
+		frantic				; are we in Frantic mode?
+		beq.s	@notfrantic		; if not, branch
+		jsr	SingleObjLoad2
+		bne.w	@noobjectleft
+		move.b	#$3F,(a1)		; load singular explosion object
+		move.w	obX(a0),obX(a1)
+		move.w	obY(a0),obY(a1)
+		move.b	#10,($FFFFFF64).w
+@noobjectleft:	jsr	DeleteObject		; delete Hard Part Skipper
+		move.w	#$8F,d0			; play game over jingle
+		jsr	PlaySound
+		jmp	KillSonic_Inhuman
 
+@notfrantic:
 		jsr	CheckIfMainLevel	; get level ID
 		lsl.w	#2,d5			; multiply it by 4
 		lea	(Obj06_Locations).l,a1	; get location
@@ -30396,22 +30339,37 @@ Obj01_JD_Minus:
 ; Start of S monitor code
 Obj01_ChkS:
 		btst	#4,($FFFFFF92).w	; is nonstop inhuman enabled?
-		beq.s	@contx			; if not, branch
-		cmpi.w	#$601,($FFFFFE10).w	; is this the ending sequence?
-		beq.s	Obj01_ChkInvin		; if yes, branch
+		beq.s	Obj01_Inhuman		; if not, branch
 		move.b	#1,($FFFFFFE7).w 	; enable inhuman mode automatically. have fun, nerd
 
-@contx:
-		tst.b	($FFFFFFE7).w		; has sonic destroyed a S monitor?
-		beq.s	Obj01_ChkInvin		; if not, branch
-
-Obj01_S_NotMZ1:
-	;	add.w	#$0100,($FFFFFB02)	; increase Sonic's palette (color 2)
+Obj01_Inhuman:
+		tst.b	($FFFFFFE7).w		; is inhuman mode enabled?
+		beq.s	Obj01_ChkInvin		; if not, branch	
+		move.b	#1,($FFFFFE2C).w	; make sure sonic has a shield
 		add.w	#$0100,($FFFFFB04)	; increase Sonic's palette (color 3)
 		add.w	#$0100,($FFFFFB06)	; increase Sonic's palette (color 4)
 		add.w	#$0100,($FFFFFB08)	; increase Sonic's palette (color 5)
-	;	add.w	#$0100,($FFFFFB0A)	; increase Sonic's palette (color 6)
-		move.b	#1,($FFFFFE2C).w	; make sure sonic has a shield
+		
+		; frantic mode ring drain in RP
+		frantic				; are we in frantic?
+		beq.s	Obj01_ChkInvin		; if not, branch
+		cmpi.w	#$200,($FFFFFE10).w	; are we in RP?
+		bne.s	Obj01_ChkInvin		; if not, branch
+		btst	#1,($FFFFD022).w	; is sonic airbourne?
+		bne.s	Obj01_ChkInvin		; if yes, branch
+		btst	#4,($FFFFFF92).w	; is nonstop inhuman enabled?
+		bne.s	Obj01_ChkInvin		; if yes, branch
+
+		move.w	($FFFFFE04).w,d0	; get level timer
+		andi.w	#3,d0			; subtract a ring every 4 frames
+		bne.s	Obj01_ChkInvin		; if not on allowed frame, branch
+		ori.b	#1,($FFFFFE1D).w	; update rings counter
+		subq.w	#1,($FFFFFE20).w	; subtract 1 ring
+		bhi.s	@notdead		; if rings remain, branch
+		jmp	KillSonic_Inhuman	; you ran out of rings, hecking die noob
+@notdead:
+		move.w	#$A9,d0			; play blip ring sound...
+		jsr	(PlaySound_Special).l	; ...to indicate the draining
 ; End of S monitor code
 
 Obj01_ChkInvin:
@@ -43609,7 +43567,6 @@ SH_NotEnding:
 		clr.b	($FFFFFFBB).w
 		move.b	#1,($FFFFF7CC).w	; lock controls
 		move.b	#0,($FFFFFFD3).w	; $FFD3
-		clr.b	($FFFFFFB3).w		; clear MZ1 spike flag
 		move.b	#1,($FFFFFFAC).w	; set flag to delete afterimage
 		clr.b	($FFFFFFA9).w		; clear crabmeat boss flag 3
 		clr.w	($FFFFFE20).w		; clear rings
@@ -43668,11 +43625,19 @@ Kill_End:
 @cont:
 		moveq	#-1,d0			; sub 1 from d0, although I don't know why...
 		rts				; return
+; ---------------------------------------------------------------------------
+
+; special routine to kill Sonic programmaticaly while he is in inhuman mode
+KillSonic_Inhuman:
+		lea	($FFFFD000).w,a0	; set self to Sonic
+		movea.l	a0,a2			; set killer to self
+		clr.b	($FFFFFFE7).w		; disable inhuman mode
+		bra.w	KillSonic		; get fucking trolled lmao
 ; End of function KillSonic
 
+; ===========================================================================
 
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
 
 Touch_Special:				; XREF: Touch_ChkValue
 		move.b	obColType(a1),d1

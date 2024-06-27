@@ -30196,16 +30196,17 @@ Sonic_Display:				; XREF: loc_12C7E
 
 		frantic				; is frantic mode enabled?
 		beq.s	@notfrantic		; if not, don't do ring penalties
-		cmpi.w	#20,($FFFFFE20).w	; do you have at least 20 rings?
+		cmpi.w	#10,($FFFFFE20).w	; do you have at least 10 rings?
 		bhs.s	@enough			; if yes, branch
 		move.b	#1,($FFFFFF95).w	; make Sonic die
-		bra.s	S_D_NoTeleport
+		move.w	($FFFFFE20).w,($FFFFF5E2).w ; drain whatever rings remain
+		bra.s	S_D_NoTeleport		; skip
 
 @enough:
 		move.w	#$12A0,obX(a0)		; set new location for Sonic's X-pos
 		move.w	#$21A,obY(a0)		; set new location for Sonic's Y-pos
-		jsr	HurtSonic		; make Sonic hurt (this removes 20 rings)
-		bra.s	@teleportend
+		addi.w	#10,($FFFFF5E2).w	; add 10 rings to be drained
+		bra.s	@teleportend		; skip
 
 @notfrantic:
 		move.w	#$12A0,obX(a0)		; set new location for Sonic's X-pos
@@ -31171,54 +31172,34 @@ Boundary_Bottom:
 		clr.b	($FFFFFFB8).w
 		clr.b	($FFFFFFB7).w
 		clr.b	($FFFFFFB6).w
+
+Boundary_Bottom_locret:
 		rts
 ; ===========================================================================
 
 BB_NotGHZ2:
 		cmpi.w	#$000,($FFFFFE10).w	; is level GHZ1?
-		bne.s	BB_NotGHZ1		; if not, branch
+		bne.s	KillSonic_JMP		; if not, branch
 		tst.b	($FFFFFFE7).w		; is inhuman mode on?
 		beq.s	BB_DoTele		; if not, branch
-		bra.s	BB_NotGHZ1		; otherwise skip
-; ===========================================================================
+		bra.s	KillSonic_JMP		; otherwise skip this to allow bouncing
 
 BB_DoTele:
-		tst.b	($FFFFFF95).w		; was flag set?
-		bne.s	BB_NotGHZ1		; if yes, branch
+		tst.b	($FFFFFF95).w		; was forced-kill flag set?
+		bne.s	KillSonic_JMP		; if yes, branch
 		cmpi.w	#$18B0,($FFFFD008).w	; is Sonic past the X-location $18B0?
-		bpl.s	BB_NotGHZ1		; if yes, branch
+		bpl.s	KillSonic_JMP		; if yes, branch
 		cmpi.w	#$1320,($FFFFD008).w	; is Sonic before the X-location $1320?
-		bmi.s	BB_NotGHZ1		; if yes, branch
-		rts
-
-BB_NotGHZ1:
-		cmpi.w	#$201,($FFFFFE10).w ; is level MZ2 ?
-		beq.s	BB_MZ2		; if yes, branch
-		cmpi.w	#$501,($FFFFFE10).w ; is level SBZ2 ?
-		bne.w	KillSonic_JMP	; if not, kill Sonic
-		cmpi.w	#$2000,($FFFFD008).w
-		bcs.w	KillSonic_JMP
-		clr.b	($FFFFFE30).w	; clear	lamppost counter
-		move.w	#1,($FFFFFE02).w ; restart the level
-		move.w	#$502,($FFFFFE10).w ; set level	to FZ
-	
-Boundary_Bottom_locret:
-		rts
+		bmi.s	KillSonic_JMP		; if yes, branch
+		rts				; otherwise we're in the waterfall section, don't kill here
+; ===========================================================================
 
 KillSonic_JMP:
 		cmpi.w	#$601,($FFFFFE10).w	; is this the ending sequence?
 		bne.s	NOSBBDead		; if not, branch
 		move.b	#1,($FFFFFFA1).w	; make sure Sonic dies from boundary bottom, even during inhuman mode
-
 NOSBBDead:
-		jmp	KillSonic
-; ===========================================================================
-
-BB_MZ2:
-		clr.b	($FFFFFE30).w	; clear	lamppost counter
-		move.w	#1,($FFFFFE02).w ; restart the level
-		move.w	#$202,($FFFFFE10).w ; set level	to MZ3
-		rts
+		jmp	KillSonic		; friggin die noob
 ; ===========================================================================
 
 Boundary_Sides:
@@ -31250,7 +31231,6 @@ Sonic_Roll:				; XREF: Obj01_MdNormal
 		neg.w	d0
 
 loc_13392:
-
 		cmpi.w	#$80,d0		; is Sonic moving at $80 speed or faster?
 		bcs.s	Obj01_NoRoll	; if not, branch
 		move.b	($FFFFF602).w,d0
@@ -32515,10 +32495,13 @@ SAP_HitWall:
 		frantic					; are we in frantic mode?
 		beq.s	@resetstuff			; if not, branch
 		ori.b	#1,($FFFFFE1D).w		; update ring counter
-		subq.w	#SAP_FranticRings,($FFFFFE20).w	; subtract 5 rings
-		bpl.s	@resetstuff			; if you still have enough rings, branch
-		move.b	#0,($FFFFFE20).w		; make sure rings don't underflow
+		
+		cmpi.w	#SAP_FranticRings,($FFFFFE20).w	; do you have enough rings to tank the hit?
+		bpl.s	@tankhit			; if yes, branch
+		move.w	($FFFFFE20).w,($FFFFF5E2).w	; drain whatever rings remain
 		jmp	KillSonic			; you hecking died noob
+@tankhit:
+		addq.w	#SAP_FranticRings,($FFFFF5E2).w	; add ring drain penalty
 ; ---------------------------------------------------------------------------
 
 @resetstuff:
@@ -43473,7 +43456,7 @@ Touch_ChkHurt:				; XREF: Touch_ChkValue
 		bne.s	Touch_Hurt		; if not, regular hurt
 		tst.b 	($FFFFFFFE).w		; is the =P monitor enabled?
 		bne.s	Touch_Hurt		; if yes, all good
-		jmp	KillSonic
+		jmp	KillSonic		; force kill on the gargoyle no matter what
 
 		tst.b	($FFFFFE2D).w	; is Sonic invincible?
 		beq.s	Touch_Hurt	; if not, branch
@@ -46321,8 +46304,12 @@ Obj21_NormalUpdateY:
 Obj21_NoUpdate:
 		cmpi.b	#2,$30(a0)		; is object set to RINGS?
 		beq.s	@ringshud		; if yes, branch
+		cmpi.b	#3,$30(a0)		; is object set to TIMES?
+		beq.s	@timeshud		; if yes, branch
 		cmpi.b	#4,$30(a0)		; is object set to LIVES?
 		bne.s	Obj21_Display		; if not, branch
+
+@liveshud:
 		move.b	#5,obFrame(a0)
 		tst.b	($FFFFFF68).w
 		beq.s	Obj21_Display
@@ -46330,6 +46317,18 @@ Obj21_NoUpdate:
 		bhs.s	Obj21_Display		; if yes, branch
 		move.b	#6,obFrame(a0)
 		bra.s	Obj21_Display
+; ---------------------------------------------------------------------------
+
+@timeshud:
+		cmpi.b	#9,($FFFFFE23).w	; is hundredth digit currently showing a 9?
+		bne.s	Obj21_Display		; if not, branch
+		move.w	#$06CA,obGfx(a0)	; use palette line 1
+		ori.b	#1,($FFFFFE1E).w 	; update time counter
+		btst	#3,($FFFFFE05).w	; change the time counter palette every X frames
+		bne.s	Obj21_Display		; if that time isn't over yet, branch
+		move.w	#$26CA,obGfx(a0)	; use palette line 2
+		bra.s	Obj21_Display
+; ---------------------------------------------------------------------------
 
 @ringshud:
 		moveq	#2,d0			; set default ring frame to d0
@@ -46341,7 +46340,6 @@ Obj21_NoUpdate:
 		addq.w	#1,d0
 @0:
 		bra.s	Obj21_Cont
-; ---------------------------------------------------------------------------
 
 Obj21_Flash2:
 		ori.b	#1,($FFFFFE1D).w	; update ring counter
@@ -46455,9 +46453,9 @@ Hud_ChkTime:
 		bne.s	Hud_ChkLives	; if yes, branch
 
 		lea	($FFFFFE22).w,a1
-		cmpi.l	#$9631D,(a1)+	; is the time 999? ($9631D)
-		beq.w	TimeOver	; if yes, time over noob
-		
+		cmpi.l	#$96300,(a1)+	; is the time 999? ($96300)
+		bhi.w	TimeOver	; if yes, time over noob
+
 		moveq	#1,d0			; regular timer speed (1 tick per second; at 999 ticks, that's roughly 16 minutes)
 		frantic				; frantic mode selected?
 		beq.s	@notfrantic		; if not, branch
@@ -46822,7 +46820,7 @@ Hud_1:		dc.l 1			; XREF: Hud_Mins
 
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 
-
+; Hud_Time:
 Hud_Mins:				; XREF: Hud_ChkTime
 		lea	(Hud_1).l,a2
 		moveq	#0,d6

@@ -29708,7 +29708,7 @@ Obj06_DoHardPartSkip:
 
 @notinhuman:
 		jsr	WhiteFlash2		; make a white flash
-	;	jsr	FixLevel		; instantly move the camera
+		jsr	FixLevel		; instantly move the camera
 
 Obj06_Display:
 		bsr	DisplaySprite		; display sprite
@@ -31303,6 +31303,9 @@ FixLevel:
 		moveq	#0,d0
 @1:		move.w	d0,($FFFFF704).w	; put result into Y-camera location
 
+		clr.l	($FFFFF754).w		; clear redraw flags
+		clr.l	($FFFFF758).w		; clear redraw flags
+		
 		ints_push
 		movem.l	d0-a6,-(sp)		; backup all data and address registers
 		jsr	DeformBgLayer		; fix the background position
@@ -32529,7 +32532,7 @@ SAP_HitWall:
 		move.w	d0,obX(a0)			; set respawn X position
 		move.w	d1,obY(a0)			; set  respawn Y position
 
-	;	jsr	FixLevel			; instantly move the camera to where Sonic teleported to (ideally this would work flawlessly but idfk how)
+		jsr	FixLevel			; instantly move the camera to where Sonic teleported to
 
 		clr.b	($FFFFFFE5).w			; clear air freeze flags
 		clr.w	obVelX(a0)			; clear X speed

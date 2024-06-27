@@ -793,7 +793,7 @@ GameModeArray:
 		dc.l	ContinueScreen		; Continue Screen	($14)
 		dc.l	EndingSequence		; Ending Sequence	($18)
 		dc.l	Credits			; Credits		($1C)
-		dc.l	StoryScreen		; Story Screen		($20)
+		dc.l	StoryTextScreen		; Story Text Screen	($20)
 		dc.l	OptionsScreen		; Options Screen	($24)
 		dc.l	ChapterScreen		; Chapters Screen	($28)
 		dc.l	CreditsJest		; Markey's Credits	($2C)
@@ -3182,11 +3182,12 @@ Sega_GotoTitle:
 ; ---------------------------------------------------------------------------
 
 TitleScreen:				; XREF: GameModeArray
-		move.b	#$E4,d0
-		bsr	PlaySound_Special ; stop music
-		bsr	PLC_ClearQueue
+		move.b	#$E0,d0
+		bsr	PlaySound_Special ; fade out music
 		bsr	Pal_FadeFrom
-		move	#$2700,sr
+
+		VBlank_SetMusicOnly
+		bsr	PLC_ClearQueue
 		lea	($C00004).l,a6
 		move.w	#$8004,(a6)
 		move.w	#$8230,(a6)
@@ -3197,24 +3198,22 @@ TitleScreen:				; XREF: GameModeArray
 		move.w	#$8720,(a6)
 		clr.b	($FFFFF64E).w
 		bsr	ClearScreen
+		VBlank_UnsetMusicOnly
+
 		lea	($FFFFD000).w,a1
 		moveq	#0,d0
 		move.w	#$7FF,d1
-
 Title_ClrObjRam:
 		move.l	d0,(a1)+
 		dbf	d1,Title_ClrObjRam ; fill object RAM ($D000-$EFFF) with	$0
 
-		move	#$2700, sr		; disable unterbrechen
+		VBlank_SetMusicOnly		; disable unterbrechen
 		move.l	#$40000001,($C00004).l
-		lea	(ArtKospM_TitleFg).l,a0 ; load title	screen patterns
+		lea	(ArtKospM_TitleFg).l,a0 ; load title screen patterns
 		bsr	KosPlusMDec_VRAM
 		move.l	#$60000001,($C00004).l
-		lea	(ArtKospM_TitleSonic).l,a0 ;	load Sonic title screen	patterns
+		lea	(ArtKospM_TitleSonic).l,a0 ; load Sonic title screen patterns
 		bsr	KosPlusMDec_VRAM
-	;	move.l	#$62000002,($C00004).l
-	;	lea	(ArtKospM_TitleTM).l,a0 ; load "TM" patterns
-	;	bsr	KosPlusMDec_VRAM
 
 		move.b	#0,($FFFFFE30).w ; clear lamppost counter
 		move.w	#0,($FFFFFE08).w ; disable debug item placement	mode
@@ -3231,19 +3230,16 @@ Title_ClrObjRam:
 		lea	($FF0000).l,a1
 		bsr	KosDec
 		bsr	LevelLayoutLoad
+		VBlank_UnsetMusicOnly
 
 		bsr	Pal_FadeFrom
-		move	#$2700,sr
-		bsr	ClearScreen
+
+		VBlank_SetMusicOnly
 		lea	($C00004).l,a5
 		lea	($C00000).l,a6
 		lea	($FFFFF708).w,a3
-		lea	($FFFFA440).w,a4
-		tst.b	($FFFFFE10).w		; is zone GHZ?
-		bne.s	@cont			; if not, branch
 		lea	($FFFFA6C0).w,a4
 
-@cont:
 		move.w	#$6000,d2
 		bsr	LoadTilesFromStart2
 		lea	($FF0000).l,a1
@@ -3269,21 +3265,17 @@ Title_ClrObjRam:
 		move.b	#$8A,d0		; play title screen music
 		bsr	PlaySound_Special
 
-		move.w	#$618,($FFFFF614).w ; run title screen for $618 frames
-	;	move.w	#$FFFF,($FFFFF614).w
+		move.w	#$618,($FFFFF614).w ; run title screen for $618 frames (this matches the music length)
+
 		lea	($FFFFD080).w,a1
 		moveq	#0,d0
 		move.w	#7,d1
-
 Title_ClrObjRam2:
 		move.l	d0,(a1)+
 		dbf	d1,Title_ClrObjRam2
-		jsr	DeleteObject2
 
 		move.b	#$E,($FFFFD040).w ; load big Sonic object
 		move.b	#$F,($FFFFD080).w ; load "PRESS	START BUTTON" object
-	;	move.b	#$F,($FFFFD0C0).w ; load "TM" object
-	;	move.b	#3,($FFFFD0DA).w
 		move.b	#$2,($FFFFD0C0).w	; load ERaZor banner object
 		move.b	#$F,($FFFFD100).w
 		move.b	#2,($FFFFD11A).w
@@ -3292,7 +3284,6 @@ Title_ClrObjRam2:
 		lea	(Pal_ERaZorBanner).l,a1	; set ERaZor banner's palette pointer
 		lea	($FFFFFBE0).l,a2	; set palette location
 		moveq	#7,d0			; set number of loops to 7
-
 Title_SonPalLoop:
 		move.l	(a1)+,(a2)+		; load 2 colours (4 bytes)
 		dbf	d0,Title_SonPalLoop	; loop
@@ -3305,6 +3296,7 @@ Title_SonPalLoop:
 		bsr	LoadPLC2
 		move.w	#0,($FFFFFFE4).w
 		move.w	#0,($FFFFFFE6).w
+		VBlank_UnsetMusicOnly
 		display_enable
 		bsr	Pal_FadeTo
 
@@ -3344,12 +3336,12 @@ StartGame:
 		move.b	($FFFFF604).w,d0	; get button presses
 		andi.b	#$40,d0			; check A
 		beq.w	Title_NoLevSel		; if not pressed, start game normally
-		
+
+LevelSelect_Load:
 		move.w	#$E0,d0			; fade out music for level select
 		bsr	PlaySound_Special
 
-		; instantly turn the entire palette black, except the outlines of the text
-		moveq	#0,d1
+		moveq	#0,d1			; instantly turn the entire palette black, except the outlines of the text
 		lea	($FFFFFB00).w,a1
 		move.w	#$3F,d2
 @clearpalafter:	move.w	d1,(a1)+
@@ -3360,7 +3352,7 @@ StartGame:
 		moveq	#7,d1
 @grayfilling:	move.w	d0,(a1)+
 		dbf	d1,@grayfilling
-		
+
 		lea	($FFFFCC00).w,a1
 		moveq	#0,d0
 		move.w	#$DF,d1
@@ -3382,7 +3374,9 @@ StartGame:
 @loadtextart:	move.w	(a5)+,(a6)
 		dbf	d1,@loadtextart
 
-		clr.w	($FFFFFF82).w
+		clr.b	($FFFFD040).w		; delete big Sonic object
+		clr.b	($FFFFD080).w		; delete "PRESS START BUTTON" object
+		move.w	#0,($FFFFFF82).w	; set initial cursor position to entry 1
 		bsr.w	LevSelTextLoad
 		bra.w	LevelSelect
 ; ===========================================================================
@@ -3395,13 +3389,6 @@ Title_NoLevSel:
 		move.b	#%00000011,($FFFFFF92).w ; load default options (extended camera and story text screens)
 		move.b	#1,($FFFFFF9E).w	; set number for text to 1
 		move.b	#1,($FFFFFFA7).w	; set number for chapter to 1
-
-	;	move.b	#$E0,d0			; fade out music
-	;	jsr	PlaySound
-	;	jsr	Pal_MakeWhite		; Fade out previous palette
-	;	bsr.s	ERZ_FadeOut
-	;	move.b	#$30,($FFFFF600).w	; set to GameplayStyleScreen
-	;	rts
 
 SG_ResumeFromSaveGame:
 		bsr.s	ERZ_FadeOut
@@ -3436,11 +3423,11 @@ PlayLevelX:
 	;	move.w	d0,($FFFFFE20).w ; clear rings
 		move.l	d0,($FFFFFE22).w ; clear time
 	;	move.l	d0,($FFFFFE26).w ; clear score
-	;	move.b	d0,($FFFFFE16).w ; clear special stage number
-	;	move.b	d0,($FFFFFE57).w ; clear emeralds
-	;	move.l	d0,($FFFFFE58).w ; clear emeralds
-	;	move.l	d0,($FFFFFE5C).w ; clear emeralds
-	;	move.b	d0,($FFFFFE18).w ; clear continues
+		move.b	d0,($FFFFFE16).w ; clear special stage number
+		move.b	d0,($FFFFFE57).w ; clear emeralds
+		move.l	d0,($FFFFFE58).w ; clear emeralds
+		move.l	d0,($FFFFFE5C).w ; clear emeralds
+		move.b	d0,($FFFFFE18).w ; clear continues
 		rts	
 ; ===========================================================================
 
@@ -3509,16 +3496,6 @@ LevSel_Ending:
 		move.b	#8,($FFFFFF9E).w		; set number for text to 8
 		move.b	#$9D,d0				; play ending sequence music
 		jmp	PlaySound
-
-LevSel_RP2:
-		move.w	#$200,($FFFFFE10).w		; set level to MZ1
-		move.b	#3,($FFFFFE30).w 		; lamppost number
-		move.b	($FFFFFE30).w,($FFFFFE31).w
-		move.w	#$1120,($FFFFFE32).w		; x-position
-		move.w	#$350,($FFFFFE34).w		; y-position
-		move.w	#$1077,($FFFFFE40).w 	; screen x-position
-		move.w	#$02EC,($FFFFFE42).w 	; screen y-position
-		bra.w	PlayLevelX
 ; ===========================================================================
 
 LevSel_Level_SS:			; XREF: LevelSelect
@@ -3535,8 +3512,6 @@ LevSel_Level_SS:			; XREF: LevelSelect
 		beq.s	LevSel_Intro	; if yes, branch
 		cmpi.w	#$601,d0	; is this the ending sequence?
 		beq.s	LevSel_Ending	; if yes, branch
-		cmpi.w	#$201,d0	; is this Ruined Place part 2?
-		beq.s	LevSel_RP2	; if yes, branch
 		
 		cmpi.w	#$300,d0	; is Special Place?
 		beq.s	@dospecial	; if yes, branch
@@ -3568,7 +3543,8 @@ Demo:					; XREF: TitleScreen
 ; ---------------------------------------------------------------------------
 
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-LevSelEntries = 15
+
+LevSelEntries = 14
 
 LevSelControls:				; XREF: LevelSelect
 		move.b	($FFFFF605).w,d1
@@ -3678,7 +3654,7 @@ loc_3598:				; XREF: LevSel_ChgLine
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Level	select menu text and pointersr
+; Level	select menu text and pointer
 ; ---------------------------------------------------------------------------
 
 LevelMenuText:
@@ -3696,7 +3672,7 @@ LevelMenuText:
 		dc.b	'   INTRO SEQUENCE       '
 		dc.b	'   ENDING SEQUENCE      '
 		dc.b	'   BLACKOUT CHALLENGE   '		
-		rept 6 ; padding
+		rept 21-LevSelEntries ; padding
 		dc.b	'                        '
 		endr
 		even
@@ -3988,24 +3964,17 @@ loc_3946:
 		bset	#2,($FFFFF754).w
 		bsr	MainLoadBlockLoad	; load block mappings and palettes
 
-		cmpi.b	#1,($FFFFFE10).w
-		beq.s	@0
+		cmpi.b	#1,($FFFFFE10).w	; are we in LZ
+		beq.s	@notlz			; if not, branch
 		moveq	#0,d0
-		bsr	LoadPLC		; (re-)load standard patterns 1
-@0:
-	;	move.b	#$07,($FFFFD380).w	; load cropped screen object (left half)
-	;	move.w	#$00D4,($FFFFD388).w		; set X-position
-	;	move.w	#$00F8,($FFFFD38A).w		; set Y-position
-	;	move.b	#$07,($FFFFD3C0).w	; load cropped screen object (right half)
-	;	move.w	#$0174,($FFFFD3C8).w		; set X-position
-	;	move.w	#$00F8,($FFFFD3CA).w		; set Y-position
+		bsr	LoadPLC			; (re-)load standard patterns 1
+@notlz:
+		cmpi.w	#$400,($FFFFFE10).w	; are we in Uberhub?
+		bne.s	@notuberhub		; if not, branch
+		move.b	#0,($FFFFFF7F).w	; set intro tube flag
+		move.b	#1,($FFFFF7CC).w	; lock controls
 
-		cmpi.w	#$400,($FFFFFE10).w
-		bne.s	@cont
-		move.b	#0,($FFFFFF7F).w
-		move.b	#1,($FFFFF7CC).w
-@cont:
-
+@notuberhub:
 		bsr	LoadTilesFromStart
 		jsr	FloorLog_Unk
 		bsr	ColIndexLoad
@@ -4053,6 +4022,17 @@ Level_LoadObj:
 		bne.s	loc_39E8	; if yes, branch
 		move.l	d0,($FFFFFE22).w ; clear time
 		move.b	d0,($FFFFFE1B).w ; clear lives counter
+
+		clr.w	($FFFFF5E2).w		; clear frantic ring drain
+		cmpi.w	#$400,($FFFFFE10).w	; are we in Uberhub?
+		beq.s	loc_39E8		; if yes, don't do ring drain
+		move.w	($FFFFFE20).w,d1	; get your rings from the last level
+		cmpi.w	#999,d1			; did it somehow end up above the allowed maximum?
+		bls.s	@allgood		; if not, branch
+		move.w	#999,d1			; otherwise, cap it to 999
+@allgood:
+		move.w	d1,($FFFFF5E2).w	; copy previous amount of rings to frantic ring draining
+		move.w	d1,($FFFFFE20).w	; cap rings if necessary
 
 loc_39E8:
 		move.b	d0,($FFFFFE1A).w
@@ -4950,6 +4930,7 @@ ClearEverySpecialFlag:
 		clr.w	($FFFFC904).w
 		clr.b	($FFFFF5E0).w
 		clr.b	($FFFFF5E1).w
+		clr.w	($FFFFF5E2).w
 		clr.b	($FFFFFF5F).w
 		clr.l	($FFFFFF60).w
 		clr.l	($FFFFFF64).w
@@ -30287,9 +30268,9 @@ S_D_NotGHZ2_PalX:
 S_D_NoInhumanCrush:
 		cmpi.b	#$10,obAnim(a0)		; is spring animation being showed?
 		bne.s	S_D_NoSpring		; if not, branch
-		tst.w	obVelY(a0)			; is Y-speed negative (is sonic moving upwards)?
+		tst.w	obVelY(a0)		; is Y-speed negative (is sonic moving upwards)?
 		bmi.s	S_D_NoSpring		; if yes, branch
-		move.b	#2,obAnim(a0)		; otherwise change to rolling animation
+		move.b	#2,obAnim(a0)		; otherwise change to rolling animation at the apex of the bounce
 
 S_D_NoSpring:
 		cmpi.w	#$502,($FFFFFE10).w	; is level FZ?
@@ -30318,6 +30299,31 @@ S_D_BA_NotEmpty:
 		bset	#0,obStatus(a0)		; make sonic facing right
 
 S_D_NotGHZ2:
+		frantic				; are we in frantic mode?
+		beq.s	S_D_AfterImage	 	; if not, branch
+		tst.w	($FFFFF5E2).w		; are any rings left to be drained at level start?
+		bls.s	S_D_AfterImage		; if not, branch		
+		tst.b	($FFFFD400+$3A).w	; is intro animation for rings HUD finished?
+		beq.s	S_D_AfterImage		; if not, branch
+		move.w	($FFFFFE04).w,d0	; get level timer
+		andi.w	#3,d0			; drain every 4 frames
+		bne.s	S_D_AfterImage		; if not on allowed frame, branch
+
+		move.w	($FFFFF5E2).w,d0	; get currently remaining drain limit
+		lsr.w	#4,d0			; divide by 16
+		bne.s	@notzero		; if not zero, branch (which means we still have more than 15 rings)
+		moveq	#1,d0			; set slowest speed while under 15 rings
+@notzero:	sub.w	d0,($FFFFF5E2).w	; subtract from drain limit
+		sub.w	d0,($FFFFFE20).w	; subtract from rings
+		bpl.s	@positive		; if still positive, branch
+		clr.w	($FFFFF5E2).w		; skip remaining ring drain, player probably got hurt before it finished
+		clr.w	($FFFFFE20).w		; set rings to 0
+@positive:
+		ori.b	#1,($FFFFFE1D).w	; update rings counter
+		move.w	#$A9,d0			; play blip ring sound...
+		jsr	(PlaySound_Special).l	; ...to indicate the draining
+
+S_D_AfterImage:	
 		move.w	$30(a0),d0
 		beq.s	Obj01_Display
 		subq.w	#1,$30(a0)
@@ -46278,7 +46284,7 @@ Obj21_NormalUpdateY:
 
 Obj21_NoUpdate:
 		cmpi.b	#2,$30(a0)		; is object set to RINGS?
-		beq.s	@cont			; if yes, branch
+		beq.s	@ringshud		; if yes, branch
 		cmpi.b	#4,$30(a0)		; is object set to LIVES?
 		bne.s	Obj21_Display		; if not, branch
 		move.b	#5,obFrame(a0)
@@ -46289,7 +46295,7 @@ Obj21_NoUpdate:
 		move.b	#6,obFrame(a0)
 		bra.s	Obj21_Display
 
-@cont:
+@ringshud:
 		moveq	#2,d0			; set default ring frame to d0
 		tst.w	($FFFFFE20).w		; do you have any rings?
 		beq.s	Obj21_Flash2		; if not, make ring counter flash

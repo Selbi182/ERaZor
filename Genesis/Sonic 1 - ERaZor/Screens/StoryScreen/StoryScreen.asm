@@ -2,7 +2,8 @@
 ; Story Text Screens
 ; ---------------------------------------------------------------------------
 STS_LineLength = 28
-STS_LinesTotal = 20
+STS_LinesMain = 16
+STS_LinesTotal = STS_LinesMain + 4
 STS_Sound = $D8
 
 		rsset	$FFFFFF95
@@ -13,10 +14,31 @@ STS_CurrentChar:	rs.w 1
 STS_FinalPhase:		rs.b 1
 STS_SkipBottomMeta:	rs.b 1
 STS_ScreenID	equ	$FFFFFF9E ; hardcoded because it's fragile
+
+; general values
+STS_BaseRow = 7
+STS_BaseCol = 6
+STS_VRAMBase = $60000003|($800000*STS_BaseRow)|($20000*STS_BaseCol)
+STS_VRAMSettings = $8000|$6000|($D000/$20)
+
+; "Press Start..." text
+STS_PressStartButton_Row = STS_BaseRow + STS_LinesTotal - 2
+STS_PressStart_VRAMBase = $60000003|($800000*STS_PressStartButton_Row)|($20000*STS_BaseCol)
+STS_PressStart_VRAMSettings = $8000|$4000|($D000/$20)
+
+; lines at top and bottom
+STS_DrawnLine_Extra	= 4
+STS_DrawnLine_Length	= STS_LineLength+STS_DrawnLine_Extra-1
+STS_VRAMBase_Line 	= $60000003|($20000*(STS_BaseCol-(STS_DrawnLine_Extra/2)))
+STS_TopLine_Offset	= STS_BaseRow-2
+STS_BottomLine_Offset	= STS_TopLine_Offset+STS_LinesTotal-2
+STS_LineChar_Left	= $C0/$20
+STS_LineChar_Middle	= $E0/$20
+STS_LineChar_Right	= $100/$20
+STS_LineChar_Arrow	= $120/$20 ; unused
 ; ---------------------------------------------------------------------------
 
-; StoryTextScreen:
-StoryScreen:				; XREF: GameModeArray
+StoryTextScreen:				; XREF: GameModeArray
 		jsr	PLC_ClearQueue
 		jsr	Pal_FadeFrom
 		VBlank_SetMusicOnly
@@ -126,11 +148,45 @@ StoryScreen_MainLoop:
 		beq	StoryScreen_MainLoop	; if not, branch
 
 		tst.b	(STS_FullyWritten).w	; is text already fully written?
-		bne.s	STS_ExitScreen		; if yes, exit screen
+		bne.s	STS_FadeOutScreen		; if yes, exit screen
 		VBlank_SetMusicOnly
 		bsr	StoryText_WriteFull	; write the complete text
 		VBlank_UnsetMusicOnly
 		bra	StoryScreen_MainLoop	; loop
+; ---------------------------------------------------------------------------
+
+STS_FadeOutScreen:
+		bsr	StoryScreen_CenterText	; center text one last time
+		move.w	#$E0,d0
+		jsr	PlaySound_Special
+		move.b	#16,(STS_FinalPhase).w	; set fadeout time (using a RAM address we don't need at this point anymore) 
+
+@finalfadeout:
+		move.b	#2,VBlankRoutine
+		jsr	DelayProgram
+		jsr	ObjectsLoad
+		jsr	BuildSprites
+
+		lea	($FFFFCC00+STS_BaseRow*32).w,a0	; set up H-scroll buffer to the point where the main text is located
+		moveq	#(STS_LinesMain)-1,d2		; set loop count of line count
+@loopout:
+		moveq	#0,d0				; clear d0
+		move.b	(STS_FinalPhase).w,d0		; get current
+		btst	#0,d2				; are we on an odd row?
+		beq.s	@notodd				; if not, branch
+		neg.w	d0
+@notodd:	rept 8
+		add.l	d0,(a0)+			; write to h-scroll buffer (plane B)
+		endr 
+		dbf	d2,@loopout			; loop
+		
+		btst	#0,(STS_FinalPhase).w		; are we on an odd frame?
+		bne.s	@oddframe			; if yes, branch
+		jsr	Pal_FadeOut			; manually fade out
+@oddframe:
+		subq.b	#1,(STS_FinalPhase).w		; subtract 1 from timer
+		bhi.s	@finalfadeout			; if we didn't reach the end, loop
+
 ; ---------------------------------------------------------------------------
 
 STS_ExitScreen:
@@ -178,28 +234,6 @@ STS_ClearFlags:
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Subroutine to continue loading the story text, if necessary
-; ---------------------------------------------------------------------------
-; general values
-STS_BaseRow = 7
-STS_BaseCol = 6
-STS_VRAMBase = $60000003|($800000*STS_BaseRow)|($20000*STS_BaseCol)
-STS_VRAMSettings = $8000|$6000|($D000/$20)
-
-; "Press Start..." text
-STS_PressStartButton_Row = STS_BaseRow + STS_LinesTotal - 2
-STS_PressStart_VRAMBase = $60000003|($800000*STS_PressStartButton_Row)|($20000*STS_BaseCol)
-STS_PressStart_VRAMSettings = $8000|$4000|($D000/$20)
-
-; lines at top and bottom
-STS_DrawnLine_Extra	= 4
-STS_DrawnLine_Length	= STS_LineLength+STS_DrawnLine_Extra-1
-STS_VRAMBase_Line 	= $60000003|($20000*(STS_BaseCol-(STS_DrawnLine_Extra/2)))
-STS_TopLine_Offset	= STS_BaseRow-2
-STS_BottomLine_Offset	= STS_TopLine_Offset+STS_LinesTotal-2
-STS_LineChar_Left	= $C0/$20
-STS_LineChar_Middle	= $E0/$20
-STS_LineChar_Right	= $100/$20
-STS_LineChar_Arrow	= $120/$20 ; unused
 ; ---------------------------------------------------------------------------
 
 StoryScreen_ContinueWriting:
@@ -321,7 +355,7 @@ StoryText_WriteFull:
 		lea	($C00000).l,a6
 		move.l	#STS_VRAMBase,d4		; base screen position
 		move.w	#STS_VRAMSettings,d3		; VRAM setting (high plane, palette line 4, VRAM address $D000)
-		moveq	#STS_LinesTotal,d1		; number of lines of text
+		moveq	#STS_LinesMain-1,d1		; number of lines of text
 
 @nextline:
 		move.l	d4,4(a6)			; write whatever line we're on right now to the VDP
@@ -420,7 +454,7 @@ StoryScreen_CenterText:
 		bsr	StoryText_Load			; load story text into a1
 		lea	($FFFFCC00+STS_BaseRow*32).w,a0	; set up H-scroll buffer to the point where the main text is located
 		move.w	#STS_LineLength,d0		; set line length
-		moveq	#STS_LinesTotal,d1		; set default loop count of line count
+		moveq	#STS_LinesMain-1,d1		; set default loop count of line count
 		tst.b	(STS_FullyWritten).w		; is text already fully written?
 		bne.s	@centertextloop			; if yes, branch
 		move.b	(STS_Row).w,d1			; set number of repetitions to current row count

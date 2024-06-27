@@ -287,9 +287,22 @@ StoryScreen_ContinueWriting:
 		move.w	d0,(a6)				; write char to screen
 
 		tst.b	1(a1)				; is the next character a space?
-		bne.s	@gotonextpos			; if not, branch
+		bne.s	@notspacenext			; if not, branch
+		bsr	@playwritingsound		; play sound
+@notspacenext:
+		bsr	@gotonextpos			; go to next character
+		tst.b	(STS_Column).w			; did column reset?
+		bne.s	@writeend			; if not, branch
+		bsr	@playwritingsound		; play sound
+
+@writeend:
+		rts
+; ---------------------------------------------------------------------------
+
+@playwritingsound:	
 		move.w	#STS_Sound,d0			; play...
 		jsr	PlaySound_Special		; ... text writing sound
+		rts
 
 @gotonextpos:
 		addq.b	#1,(STS_Column).w		; go to next column
@@ -300,9 +313,8 @@ StoryScreen_ContinueWriting:
 
 @nottheendoftherow:
 		addq.w	#1,(STS_CurrentChar).w		; go to next char for the next iteration
-
-@writeend:
 		rts
+
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------

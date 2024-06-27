@@ -3980,6 +3980,10 @@ loc_3946:
 		bsr	ColIndexLoad
 		bsr	LZWaterEffects
 		
+		cmpi.w	#$302,($FFFFFE10).w		; is current level SAP?
+		bne.s	@notsap				; if not, branch
+		jsr	SAP_ResetChallengeObjects	; set up challenge objects
+@notsap:
 		; bomb machine cutscene setup
 		cmpi.w	#$500,($FFFFFE10).w
 		bne.s	@SBZcont2
@@ -10386,13 +10390,14 @@ Resize_SLZ3:
 		cmpi.w	#$1F00,($FFFFD008).w	; is Sonic at the end of the stage?
 		bcs.w	@contret		; if not, branch
 		
-		clr.b	($FFFFFF77).w
-		clr.b	($FFFFFFE5).w
+		bclr	#0,($FFFFD022).w	; make Sonic face right	
+		clr.b	($FFFFFFE5).w		; clear air freeze flag
 		
 		tst.b	($FFFFF7CC).w		; are controls already locked?
 		bne.s	@cont5			; if yes, branch
 		moveq	#$12,d0
 		jsr	LoadPLC2		; load signpost	patterns
+		clr.l	($FFFFF602).l		; clear button inputs
 
 @cont5:
 		cmpi.w	#$1FC0,($FFFFD008).w
@@ -12011,10 +12016,6 @@ Obj18_NoMovingPlatforms:
 		move.b	#1,obFrame(a0)
 		move.b	#$A1,d0
 		jsr	PlaySound_Special
-
-		tst.w	($FFFFFF86).w		; was at least one checkpoint already touched?
-		bne.s	@notfirstcheckpoint	; if not, branch
-		jsr	SetupSAPItems		; set up SAP items (this is only necessary for nonstop inhuman)
 
 @notfirstcheckpoint:
 		move.w	obX(a0),($FFFFFF86).w	; save Sonic's X-position
@@ -18962,8 +18963,9 @@ loc_BDD6:
 @notmzswitch:
 		cmpi.b	#$5,($FFFFFE10).w	; is this the tutorial or FP?
 		bne.s	@nottutorialswitch	; if not, branch
+		move.w	#-$1800,d1		; set first launch speed for escape sequence switch
 		cmpi.b	#$2,($FFFFFE11).w	; specifically FP?
-		beq.s	@Explode		; if yes, branch
+		beq.w	@Explode		; if yes, branch
 
 		tst.b	($FFFFFF77).w		; is antigrav already enabled?
 		bne.w	Obj32_ShowPressed	; if yes, branch
@@ -18985,38 +18987,48 @@ loc_BDD6:
 		cmpi.w	#$302,($FFFFFE10).w	; is this Star Agony Place?
 		bne.w	Obj32_ShowPressed	; if not, branch
 		btst	#4,($FFFFFF92).w	; is nonstop inhuman enabled?
-		beq.s	@notnonstopinhuman	; if not, branch
-		
+		beq.s	@notnonstopinhuman	; if not, branch	
 		move.b	#$3F,0(a0)		; change switch into explodion (no double fun allowed, sorry)
 		move.b	#0,obRoutine(a0)	; set to initial routine
-		jsr	SetupSAPItems
 		rts				; don't do anything else
 
 @notnonstopinhuman:
+		move.w	#-$1000,d1		; default speed
 		tst.b	($FFFFFF77).w		; is antigrav already enabled?
 		bne.w	@Explode		; if yes, branch
 		move.b	#1,($FFFFFF77).w	; enable antigrav ability
-		move.b	#$96,d0			; play music
-		jsr	PlaySound
-		bsr.w	SetupSAPItems
-		; fuzzy forgot an rts here but this mistake was actually ingenious
+		move.b	#$96,d0			; play the sick music
+		jsr	PlaySound		; hell yea
+		move.w	#-$1800,d1		; set first launch speed (needs to be different cause of the alternate gravity)
+
+		frantic				; is frantic mode enabled?
+		beq.s	@Explode		; if not, branch
+		addi.w	#100,($FFFFFE20).w	; be generous and give the brave troopers 100 extra rings
+		cmpi.w	#999,($FFFFFE20).w	; did we exceed the maximum?
+		bls.s	@nocap			; if not, branch
+		move.w	#999,($FFFFFE20).w	; cap rings
+@nocap:		ori.b	#1,($FFFFFE1D).w	; update rings counter
+
 
 @Explode:
 		lea	$FFFFD000,a1
+		move.w	d1,obVelY(a1)	; move Sonic upwards
 		addq.w	#8,obY(a1)
 		bset	#1,obStatus(a1) ; in air
 		bset	#2,obStatus(a1) ; rolling
 		bclr	#3,obStatus(a1) ; not standing
 		move.b	#$25,obAnim(a1)	; use inhuman rotate animation
 		move.b	#2,obRoutine(a1)
-		move.w	#-$1800,obVelY(a1)	; move Sonic upwards
 		move.b	#1,($FFFFFFEB).w	; set jumpdash flag
 
-		move.b	#$DB,d0
+		move.b	#$DB,d0			; play epic explosion sound
 		jsr	PlaySound_Special
 
 		jsr	SingleObjLoad
+		bne.s	@endboom
 		move.b	#$3F,0(a1)	; load explosion object
+
+@endboom:
 		rts
 ; ---------------------------------------------------------------------------
 
@@ -19090,42 +19102,8 @@ RestorePaletteRP:
 		move.w	#$0228,($FFFFFB6A).w ; lava
 		move.w	#$026C,($FFFFFB6C).w ; lava
 
-		jsr		WhiteFlash2
+		jsr	WhiteFlash2
 
-		rts
-
-; ===========================================================================
-
-SetupSAPItems:
-		; place 6th emblem in the looping section
-		lea	($FFFFDFC0).w,a1
-		move.b	#$7D,(a1)
-		move.w	#$1DB8,obX(a1)
-		move.w	#$0200,obY(a1)
-		move.b	#2,obRoutine(a1)
-		move.l	#Map_obj7D,obMap(a1)
-		move.w	#$84B6,obGfx(a1)
-		ori.b	#$84,obRender(a1)
-		move.b	#3,obPriority(a1)
-		move.b	#0,obFrame(a1)
-
-		; place P monitor required to open a door (underneath the exploding bombs)
-		lea	($FFFFDF40).w,a1
-		move.b	#$26,(a1)
-		move.w	#$17E0,obX(a1)
-		move.w	#$03F0,obY(a1)
-		move.b	#2,obRoutine(a1)
-		move.b	#$E,obHeight(a1)
-		move.b	#$E,obWidth(a1)
-		move.l	#Map_obj26,obMap(a1)
-		move.b	#8,obSubtype(a1)
-		move.w	#$680,obGfx(a1)
-		move.b	#$84,obRender(a1)
-		move.b	#3,obPriority(a1)
-		move.b	#$F,obActWid(a1)
-		move.b	#$46,obColType(a1)
-		move.b	#8,obAnim(a1)
-		
 		rts
 ; ===========================================================================
 
@@ -27448,10 +27426,7 @@ Obj5F_BossDelete:
 		clr.b	($FFFFFF76).w
 		clr.b	($FFFFF7AA).w
 		move.b	#0,($FFFFFE2D).w		; disable invincibility
-		
-		tst.b	($FFFFFFE7).w	; inhuman?
-		beq.s	@noearlyload
-		jsr	SetupSAPItems
+		jsr	SAP_ResetChallengeObjects	; set up SAP challenge objects now
 		
 @noearlyload:
 		move.b	#$84,d0
@@ -29670,15 +29645,17 @@ Obj06_DoHardPartSkip:
 		clr.w	($FFFFD012).w		; clear Sonic's Y-speed
 		clr.w	($FFFFD014).w		; clear Sonic's interia
 
-		cmpi.w	#$101,($FFFFFE10).w
-		bne.s	@notlp
+		cmpi.w	#$101,($FFFFFE10).w	; are we in LP?
+		bne.s	@notlp			; if not, branch
 		move.b	#1,($FFFFFFFE).w	; make sure =P monitor is enabled
 		move.b	#3,($FFFFFF97).w	; set to final checkpoint
 
 @notlp:
-		cmpi.w	#$302,($FFFFFE10).w
-		bne.s	@notsap
-		move.b	#6,($FFFFFFA0).w
+		cmpi.w	#$302,($FFFFFE10).w	; are we in Star Agony Place?
+		bne.w	@notsap			; if not, branch
+		
+		move.b	#6,($FFFFFFA0).w	; mark all emblems as collected
+
 		movem.l	d0-a1,-(sp)
 		move.w	#$1D80,d0
 		move.w	#$0280,d1
@@ -29696,18 +29673,21 @@ Obj06_DoHardPartSkip:
 		move.w	#$0280,d1
 		move.b	#$47,d2
 		jsr	Sub_ChangeChunk
+		
 		lea	($FFFFDF80).w,a1
 		jsr	DeleteObject2
 		lea	($FFFFDFC0).w,a1
 		jsr	DeleteObject2
 		movem.l	(sp)+,d0-a1
+
 		jsr	FixLevel		; instantly move the camera
-		move.b	#1,($FFFFFF77).w
+		move.b	#1,($FFFFFF77).w	; enable antigrav
 		move.b	#$96,d0			; play music
 		jsr	PlaySound
+
 @notsap:
-		clr.w	($FFFFFE20).w
-		clr.b	($FFFFFE1D).w
+		clr.w	($FFFFFE20).w		; delete all your rings you cheating bastard
+		ori.b	#1,($FFFFFE1D).w	; update ring counter
 		move.w	#$C3,d0			; set giant ring sound
 		jsr	PlaySound_Special	; play it
 		tst.b	($FFFFFFE7).w		; is Sonic in Inhuman Mode?
@@ -32513,75 +32493,94 @@ locret_135A2:
 		rts	
 ; End of function Sonic_JumpAngle
 
-
+; ===========================================================================
 ; ---------------------------------------------------------------------------
-SLZHitWall:
-		cmpi.w	#$302,($FFFFFE10).w
-		bne.w	@cont
-		tst.b	($FFFFFF77).w
-		beq.w	@cont
-		tst.b	($FFFFF7CC).w
-		bne.w	@cont
+; Subroutine to control what happens when the player touches the wall
+; ---------------------------------------------------------------------------
+SAP_FranticRings = 5
+; ---------------------------------------------------------------------------
 
-		cmpi.w	#5,($FFFFFE20).w
-		bra.s	@yesrings
-		move.b	#0,($FFFFFE20).w
-		move.b	#$80,($FFFFFE1D).w
-		jmp	KillSonic
+; SLZHitWall:
+SAP_HitWall:
+		cmpi.w	#$302,($FFFFFE10).w		; are we in SAP?
+		bne.w	@end				; if not, branch
+		tst.b	($FFFFFF77).w			; is antigrav enabled?
+		beq.w	@end				; if not, branch
+		tst.b	($FFFFF7CC).w			; are controls locked?
+		bne.w	@end				; if yes, branch (this is for the ending sequence)
 
-@yesrings:
-		move.w	#$0C40,($FFFFD008).w
-		move.w	#$0470,($FFFFD00C).w
-		tst.w	($FFFFFF86).w		; at least one checkpoint touched yet?
-		beq.s	@contx			; if not, branch
-		move.w	($FFFFFF86).w,obX(a0)	; restore saved X-position for Sonic
-		move.w	($FFFFFF88).w,obY(a0)	; restore saved Y-position for Sonic
-	;	jsr	FixLevel		; ideally this would work flawlessly but idfk how
+		frantic					; are we in frantic mode?
+		beq.s	@resetstuff			; if not, branch
+		ori.b	#1,($FFFFFE1D).w		; update ring counter
+		subq.w	#SAP_FranticRings,($FFFFFE20).w	; subtract 5 rings
+		bpl.s	@resetstuff			; if you still have enough rings, branch
+		move.b	#0,($FFFFFE20).w		; make sure rings don't underflow
+		jmp	KillSonic			; you hecking died noob
+; ---------------------------------------------------------------------------
 
-@contx:
-		clr.b	($FFFFFFE5).w	; clear air freeze flags
+@resetstuff:
+		move.w	#$0C40,d0			; set default respawn X position
+		move.w	#$0470,d1			; set default respawn Y position
+		tst.w	($FFFFFF86).w			; at least one checkpoint touched yet?
+		beq.s	@nocheckpoint			; if not, branch
+		move.w	($FFFFFF86).w,d0		; restore saved X-position for Sonic
+		move.w	($FFFFFF88).w,d1		; restore saved Y-position for Sonic
+@nocheckpoint:
+		move.w	d0,obX(a0)			; set respawn X position
+		move.w	d1,obY(a0)			; set  respawn Y position
 
-		clr.w	($FFFFD010).w
-		clr.w	($FFFFD012).w
-		clr.w	($FFFFD014).w
+	;	jsr	FixLevel			; instantly move the camera to where Sonic teleported to (ideally this would work flawlessly but idfk how)
 
-		jsr	WhiteFlash2
-		move.b	#2,($FFFFD01C).w
-		move.b	#$C3,d0
-		jsr	PlaySound_Special
-		bset	#1,obStatus(a0)
+		clr.b	($FFFFFFE5).w			; clear air freeze flags
+		clr.w	obVelX(a0)			; clear X speed
+		clr.w	obVelY(a0)			; clear Y speed
+		clr.w	obInertia(a0)			; clear inertia
+		move.b	#2,obAnim(a0)			; use rolling animation
+		bset	#1,obStatus(a0)			; set status to be airbourne
 
-		tst.b	($FFFFFFE1).w
-		beq.s	@conty
-		clr.b	($FFFFFFE1).w
+		move.b	#$C3,d0				; play flash sound
+		jsr	PlaySound_Special		; really hope this won't get on your nerves
+		jsr	WhiteFlash2			; do a white flash
 
-		movem.l	d0-a1,-(sp)
-		lea	($FFFFDF40).w,a1
-		move.b	#2,obRoutine(a1)
-		move.b	#8,obSubtype(a1)
-		move.b	#$84,obRender(a1)
-		move.b	#$46,obColType(a1)
-		move.b	#8,obAnim(a1)
-
+		tst.b	($FFFFFFE1).w			; has the P monitor been destroyed?
+		beq.s	@notp				; if not, branch
+		clr.b	($FFFFFFE1).w			; clear P monitor flag
+		bsr	SAP_ResetP			; reset P monitor
 		move.w	#$1480,d0
 		move.w	#$0380,d1
 		move.b	#$4F,d2
-		jsr	Sub_ChangeChunk
-		movem.l	(sp)+,d0-a1
+		move.l	a0,-(sp)
+		jsr	Sub_ChangeChunk			; reset blocker chunk
+		move.l	(sp)+,a0
 
-@conty:
-		tst.b	($FFFFFFA0).w
-		beq.w	@cont
-		movem.l	d0-a1,-(sp)
+@notp:
+		cmpi.b	#6,($FFFFFFA0).w		; have all 6 emblems been collected?
+		blt.s	@resetloop			; if not, branch
+		cmpi.w	#$1EE0,($FFFFFF86).w		; has the final checkpoint been touched?
+		bne.s	@resetloop			; if not, branch
+		moveq	#2,d0				; keep loop unlocked on the right
+		bsr	SAP_SetLoopState		; set loop state
+		bra.s	@end				; skip
 
-		clr.b	($FFFFFFA0).w
-		lea	($FFFFDF80).w,a1
-		jsr	DeleteObject2
-		lea	($FFFFDFC0).w,a1
-		jsr	DeleteObject2
+@resetloop:
+		clr.b	($FFFFFFA0).w			; reset emblem counter
+		moveq	#0,d0				; reset loop challenge state
+		bsr	SAP_SetLoopState		; set loop state
+		bsr	SAP_ResetEmblems		; reset the 6th emblem
 
-		cmpi.w	#$1EE0,($FFFFFF86).w
-		beq.w	@contxx
+@end:
+		rts
+; ===========================================================================
+
+; SetupSAPItems:
+SAP_ResetChallengeObjects:
+		bsr	SAP_ResetEmblems
+		bsr	SAP_ResetP
+		rts
+; ---------------------------------------------------------------------------
+
+SAP_ResetEmblems:
+		; place 6th emblem in the looping section
 		lea	($FFFFDFC0).w,a1
 		move.b	#$7D,(a1)
 		move.w	#$1DB8,obX(a1)
@@ -32592,30 +32591,28 @@ SLZHitWall:
 		ori.b	#$84,obRender(a1)
 		move.b	#3,obPriority(a1)
 		move.b	#0,obFrame(a1)
-		move.w	#$1B80,d0
-		move.w	#$0280,d1
-		move.b	#$50,d2
-		jsr	Sub_ChangeChunk
-		move.w	#$1C80,d0
-		move.w	#$0280,d1
-		move.b	#$0D,d2
-		jsr	Sub_ChangeChunk
-		move.w	#$1D80,d0
-		move.w	#$0280,d1
-		move.b	#$46,d2
-		jsr	Sub_ChangeChunk
-		move.w	#$1E80,d0
-		move.w	#$0280,d1
-		move.b	#$16,d2
-		jsr	Sub_ChangeChunk
-
-@contxx:
-		movem.l	(sp)+,d0-a1
-
-@cont:
 		rts
 ; ---------------------------------------------------------------------------
 
+SAP_ResetP:
+		; place P monitor required to open a door
+		lea	($FFFFDF40).w,a1
+		move.b	#$26,(a1)
+		move.w	#$17E0,obX(a1)
+		move.w	#$03F0,obY(a1)
+		move.b	#2,obRoutine(a1)
+		move.b	#$E,obHeight(a1)
+		move.b	#$E,obWidth(a1)
+		move.l	#Map_obj26,obMap(a1)
+		move.b	#8,obSubtype(a1)
+		move.w	#$680,obGfx(a1)
+		move.b	#$84,obRender(a1)
+		move.b	#3,obPriority(a1)
+		move.b	#$F,obActWid(a1)
+		move.b	#$46,obColType(a1)
+		move.b	#8,obAnim(a1)
+		rts
+; ===========================================================================
 
 ; ---------------------------------------------------------------------------
 ; Subroutine for Sonic to interact with	the floor after	jumping/falling
@@ -32644,7 +32641,7 @@ Sonic_Floor:				; XREF: Obj01_MdJump; Obj01_MdJump2
 		bpl.s	loc_135F0
 		sub.w	d1,obX(a0)
 		move.w	#0,obVelX(a0)
-		bsr.w	SLZHitWall	; teleport Sonic in SLZ3
+		bsr.w	SAP_HitWall	; teleport Sonic in SLZ3
 
 loc_135F0:
 		bsr	sub_14EB4
@@ -32652,14 +32649,14 @@ loc_135F0:
 		bpl.s	loc_13602
 		add.w	d1,obX(a0)
 		move.w	#0,obVelX(a0)
-		bsr.w	SLZHitWall	; teleport Sonic in SLZ3
+		bsr.w	SAP_HitWall	; teleport Sonic in SLZ3
 
 loc_13602:
 		bsr	Sonic_HitFloor
 		move.b	d1,($FFFFFFEF).w
 		tst.w	d1
 		bpl.w	locret_1367E
-		bsr.w	SLZHitWall	; teleport Sonic in SLZ3
+		bsr.w	SAP_HitWall	; teleport Sonic in SLZ3
 		move.b	obVelY(a0),d2
 		addq.b	#8,d2
 		neg.b	d2
@@ -32673,7 +32670,7 @@ loc_1361E:
 		move.b	d3,obAngle(a0)
 		bsr	Sonic_ResetOnFloor
 		move.b	#0,obAnim(a0)
-		bsr.w	SLZHitWall	; teleport Sonic in SLZ3
+		bsr.w	SAP_HitWall	; teleport Sonic in SLZ3
 		move.b	d3,d0
 		addi.b	#$20,d0
 		andi.b	#$40,d0
@@ -32689,13 +32686,13 @@ loc_1361E:
 loc_1364E:
 		move.w	#0,obVelY(a0)
 		move.w	obVelX(a0),obInertia(a0)
-		bsr.w	SLZHitWall	; teleport Sonic in SLZ3
+		bsr.w	SAP_HitWall	; teleport Sonic in SLZ3
 		rts	
 ; ===========================================================================
 
 loc_1365C:
 		move.w	#0,obVelX(a0)
-		bsr.w	SLZHitWall	; teleport Sonic in SLZ3
+		bsr.w	SAP_HitWall	; teleport Sonic in SLZ3
 		cmpi.w	#$FC0,obVelY(a0)
 		ble.s	loc_13670
 		move.w	#$FC0,obVelY(a0)
@@ -32705,7 +32702,7 @@ loc_13670:
 		tst.b	d3
 		bpl.s	locret_1367E
 		neg.w	obInertia(a0)
-		bsr.w	SLZHitWall	; teleport Sonic in SLZ3
+		bsr.w	SAP_HitWall	; teleport Sonic in SLZ3
 
 locret_1367E:
 		rts	
@@ -32717,7 +32714,7 @@ loc_13680:
 		bpl.s	loc_1369A
 		sub.w	d1,obX(a0)
 		move.w	#0,obVelX(a0)
-		bsr.w	SLZHitWall	; teleport Sonic in SLZ3
+		bsr.w	SAP_HitWall	; teleport Sonic in SLZ3
 		move.w	obVelY(a0),obInertia(a0)
 		rts	
 ; ===========================================================================
@@ -32730,7 +32727,7 @@ loc_1369A:
 		tst.w	obVelY(a0)
 		bpl.s	locret_136B2
 		move.w	#0,obVelY(a0)
-		bsr.w	SLZHitWall	; teleport Sonic in SLZ3
+		bsr.w	SAP_HitWall	; teleport Sonic in SLZ3
 
 locret_136B2:
 		rts	
@@ -32748,7 +32745,7 @@ loc_136B4:
 		move.b	#0,obAnim(a0)
 		move.w	#0,obVelY(a0)
 		move.w	obVelX(a0),obInertia(a0)
-		bsr.w	SLZHitWall	; teleport Sonic in SLZ3
+		bsr.w	SAP_HitWall	; teleport Sonic in SLZ3
 
 locret_136E0:
 		rts	
@@ -32760,7 +32757,7 @@ loc_136E2:
 		bpl.s	loc_136F4
 		sub.w	d1,obX(a0)
 		move.w	#0,obVelX(a0)
-		bsr.w	SLZHitWall	; teleport Sonic in SLZ3
+		bsr.w	SAP_HitWall	; teleport Sonic in SLZ3
 
 loc_136F4:
 		bsr	sub_14EB4
@@ -32768,7 +32765,7 @@ loc_136F4:
 		bpl.s	loc_13706
 		add.w	d1,obX(a0)
 		move.w	#0,obVelX(a0)
-		bsr.w	SLZHitWall	; teleport Sonic in SLZ3
+		bsr.w	SAP_HitWall	; teleport Sonic in SLZ3
 
 loc_13706:
 		bsr	Sonic_DontRunOnWalls
@@ -32780,7 +32777,7 @@ loc_13706:
 		andi.b	#$40,d0
 		bne.s	loc_13726
 		move.w	#0,obVelY(a0)
-		bsr.w	SLZHitWall	; teleport Sonic in SLZ3
+		bsr.w	SAP_HitWall	; teleport Sonic in SLZ3
 		rts	
 ; ===========================================================================
 
@@ -32791,7 +32788,7 @@ loc_13726:
 		tst.b	d3
 		bpl.s	locret_1373C
 		neg.w	obInertia(a0)
-		bsr.w	SLZHitWall	; teleport Sonic in SLZ3
+		bsr.w	SAP_HitWall	; teleport Sonic in SLZ3
 
 locret_1373C:
 		rts	
@@ -32804,7 +32801,7 @@ loc_1373E:
 		add.w	d1,obX(a0)
 		move.w	#0,obVelX(a0)
 		move.w	obVelY(a0),obInertia(a0)
-		bsr.w	SLZHitWall	; teleport Sonic in SLZ3
+		bsr.w	SAP_HitWall	; teleport Sonic in SLZ3
 		rts	
 ; ===========================================================================
 
@@ -32816,7 +32813,7 @@ loc_13758:
 		tst.w	obVelY(a0)
 		bpl.s	locret_13770
 		move.w	#0,obVelY(a0)
-		bsr.w	SLZHitWall	; teleport Sonic in SLZ3
+		bsr.w	SAP_HitWall	; teleport Sonic in SLZ3
 
 locret_13770:
 		rts	
@@ -32834,7 +32831,7 @@ loc_13772:
 		move.b	#0,obAnim(a0)
 		move.w	#0,obVelY(a0)
 		move.w	obVelX(a0),obInertia(a0)
-		bsr.w	SLZHitWall	; teleport Sonic in SLZ3
+		bsr.w	SAP_HitWall	; teleport Sonic in SLZ3
 
 locret_1379E:
 		rts	
@@ -33371,7 +33368,7 @@ SAnim_Push:				; XREF: SAnim_RollJump
 		bne.s	@cont
 		tst.b	($FFFFFF77).w
 		beq.s	@cont
-		jsr	SLZHitWall
+		jsr	SAP_HitWall
 
 @cont:
 		move.w	obInertia(a0),d2	; get Sonic's speed
@@ -37679,7 +37676,7 @@ Obj7D_Main:				; XREF: Obj7D_Index
 		bne.s 	Obj7D_Main_SLZ		; if not, branch
 		move.b	#6,obRoutine(a0)	; set to "sound stopper" mode
 		bra.w	Obj7D_SoundStopper
-        move.b  #6,obAnim(a0)
+		move.b  #6,obAnim(a0)
 
 Obj7D_Main_SLZ:
 		addq.b	#2,obRoutine(a0)
@@ -37688,7 +37685,7 @@ Obj7D_Main_SLZ:
 		ori.b	#$84,obRender(a0)
 		move.b	#3,obPriority(a0)
 		move.b	#3,obFrame(a0)
-        move.b  #6,obAnim(a0)
+		move.b  #6,obAnim(a0)
 
 Obj7D_RightEmblem:
 		moveq	#$20,d2
@@ -37735,18 +37732,8 @@ Obj7D_RightEmblem:
 		move.w	#$B7,d0
 		jsr	(PlaySound_Special).l	; play rumbling sound
 		
-		; update layout to lock you into a loop
-		movem.l	d0-a1,-(sp)
-		move.w	#$1B80,d0
-		move.w	#$0280,d1
-		move.b	#$3B,d2
-		jsr	Sub_ChangeChunk
-		move.w	#$1C80,d0
-		move.w	#$0280,d1
-		move.b	#$47,d2
-		jsr	Sub_ChangeChunk
-		movem.l	(sp)+,d0-a1
-
+		moveq	#1,d0			; lock loop
+		bsr	SAP_SetLoopState	; set loop state
 		bra.w	Obj7D_Delete
 
 Obj7D_NoTouch:
@@ -37755,8 +37742,63 @@ Obj7D_NoTouch:
 Obj7D_Explode:
 		move.b	#$3F,(a0)
 		clr.b	obRoutine(a0)
-		jmp	    DisplaySprite
+		jmp	DisplaySprite
 ; ===========================================================================
+
+SAP_SetLoopState:
+		move.l	a0,-(sp)		; backup a0
+
+		; update layout to lock you into a loop
+		cmpi.b	#1,d0			; set to lock loop?
+		bne.s	@checkloopbeaten	; if not, branch
+		move.w	#$1B80,d0
+		move.w	#$0280,d1
+		move.b	#$3B,d2
+		jsr	Sub_ChangeChunk
+		move.w	#$1C80,d0
+		move.w	#$0280,d1
+		move.b	#$47,d2
+		jsr	Sub_ChangeChunk
+		bra.w	@setloopend
+
+@checkloopbeaten:
+		; update layout to open up the loop on the right
+		cmpi.b	#2,d0			; set to unlock loop on the right?
+		bne.s	@resetloop		; if not, branch
+		move.w	#$1D80,d0
+		move.w	#$0280,d1
+		move.b	#$18,d2
+		jsr	Sub_ChangeChunk
+		move.w	#$1E80,d0
+		move.w	#$0280,d1
+		move.b	#$21,d2
+		jsr	Sub_ChangeChunk
+		bra.s	@setloopend
+
+@resetloop:
+		; reset layout to its initial state
+		move.w	#$1B80,d0
+		move.w	#$0280,d1
+		move.b	#$50,d2
+		jsr	Sub_ChangeChunk
+		move.w	#$1C80,d0
+		move.w	#$0280,d1
+		move.b	#$0D,d2
+		jsr	Sub_ChangeChunk
+		move.w	#$1D80,d0
+		move.w	#$0280,d1
+		move.b	#$46,d2
+		jsr	Sub_ChangeChunk
+		move.w	#$1E80,d0
+		move.w	#$0280,d1
+		move.b	#$16,d2
+		jsr	Sub_ChangeChunk
+
+@setloopend:
+		move.l	(sp)+,a0
+		rts
+; ===========================================================================
+		
 
 Obj7D_LeftEmblem:
 		moveq	#$20,d2
@@ -37787,17 +37829,8 @@ Obj7D_LeftEmblem:
 		move.w	#$B7,d0
 		jsr	(PlaySound_Special).l	; play rumbling sound
 		
-		; update layout to open up the loop on the right
-		movem.l	d0-a1,-(sp)
-		move.w	#$1D80,d0
-		move.w	#$0280,d1
-		move.b	#$18,d2
-		jsr	Sub_ChangeChunk
-		move.w	#$1E80,d0
-		move.w	#$0280,d1
-		move.b	#$21,d2
-		jsr	Sub_ChangeChunk
-		movem.l	(sp)+,d0-a1
+		moveq	#2,d0			; open loop on the right
+		bsr	SAP_SetLoopState	; set loop state
 		bra.w	Obj7D_Delete
 
 Obj7D_No6:

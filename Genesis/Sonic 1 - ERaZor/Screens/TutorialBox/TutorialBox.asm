@@ -1032,27 +1032,28 @@ Hint_Easter_Tutorial:
 
 ;		 --------------------
 Hint_Easter_SLZ:
-	boxtxt	"AREN'T THE TRUE"
+	boxtxt	"  AREN'T THE TRUE   "
 	boxtxt_line
-	boxtxt	"EASTER EGGS"
+	boxtxt	"    EASTER EGGS     "
 	boxtxt_line
-	boxtxt	"THE FRIENDS WE"
-	boxtxt	"MADE ALONG THE"
-	boxtxt	"WAY?"
+	boxtxt	"    THE FRIENDS     "
+	boxtxt	"      WE MADE       "
+	boxtxt	"   ALONG THE WAY?   "
 	boxtxt_next
 
 	boxtxt	"..."
 	boxtxt_pause
+	boxtxt_line
 	boxtxt	"..."
 	boxtxt_pause
+	boxtxt_line
 	boxtxt	"..."
 	boxtxt_next
 
 	boxtxt	"WHAT?"
 	boxtxt_pause
 	boxtxt	"WERE YOU EXPECTING"
-	boxtxt	"ANYTHING NAUGHTY"
-	boxtxt	"UP HERE?"
+	boxtxt	"ANYTHING NAUGHTY?"
 	boxtxt_next
 
 	boxtxt	"YOU ARE"

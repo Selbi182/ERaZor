@@ -14334,12 +14334,9 @@ Obj1F_BossDefeated:
 		move.b	#1,($FFFFF7CC).w		; lock controls
 		clr.b	($FFFFFFEB).w
 		clr.b	($FFFFF602).w
-		clr.b	($FFFFFF68).w
-		addq.b	#1,($FFFFFE1C).w ; update lives	counter
 
 		move.b	#1,($FFFFFFD5).w		; set flag 3
-		clr.w	obVelX(a0)				; clear X-speed
-	;	subq.w	#1,$3C(a0)			; sub 1 from timer
+		clr.w	obVelX(a0)			; clear X-speed
 		cmpi.b	#8,obAnim(a0)			; is the correct animation set?
 		bge.s	@conxt				; if yes, branch
 		move.b	#8,obAnim(a0)
@@ -14353,11 +14350,12 @@ Obj1F_BossDefeated:
 ; ===========================================================================
 
 Obj1F_BossDelete:
-
-		move.b	#0,($FFFFFF68).w
-		move.b	#1,($FFFFFE1C).w
-
 		move.b	#0,($FFFFF7CC).w		; unlock controls
+
+		clr.b	($FFFFFF68).w			; revert lives counter to normal
+		ori.b	#1,($FFFFFE1C).w		; update lives counter (to reset it from the boss)
+		clr.l	($FFFFFE22).w			; clear time
+		ori.b	#1,($FFFFFE1E).w 		; update time counter
 
 		move.b	#2,($FFFFFFD4).w		; set flag 4, 2
 		move.b	#0,($FFFFF7AA).w		; unlock screen
@@ -27176,29 +27174,27 @@ loc_11AA8:
 ; ===========================================================================
 
 Obj5F_Explode:				; XREF: Obj5F_Index2
-	;	bsr	Obj5F_FaceSonic
 		move.b	#0,obAnim(a0)	; stop animation
 		move.b	#4,obPriority(a0)
 		subq.w	#1,$30(a0)
 		bpl.w	locret_11AD0
 
-		subq.b	#1,($FFFFFF75).w	; remove one life
-		cmpi.w	#$302,($FFFFFE10).w
-		beq.s	@conty
-		move.b	($FFFFFF75).w,($FFFFFF68).w
-		tst.b	($FFFFFF75).w
-		bne.s	@conty
-		move.b	#1,($FFFFFE1C).w
-		clr.w	($FFFFD010).w
-		clr.w	($FFFFD014).w
+		subq.b	#1,($FFFFFF75).w		; remove one life
+		move.b	($FFFFFF75).w,($FFFFFF68).w	; update boss health in HUD
+		move.b	#1,($FFFFFE1C).w		; update lives
+
+		tst.b	($FFFFFF75).w			; has bomb boss been defeated?
+		bhi.s	@notdefeated			; if not, branch
+		clr.w	($FFFFD010).w			; clear Sonic's X speed
+		clr.w	($FFFFD014).w			; clear Sonic's intertia
 		move.b	#1,($FFFFF7CC).w		; lock controls
 		move.b	#1,($FFFFFE2D).w		; make Sonic invincible
-		clr.b	($FFFFF602).w
-		clr.w	obVelX(a0)				; clear X-speed
-		move.b	#$A,obRoutine(a0)
-	;	jmp	DeleteObject
+		clr.l	($FFFFF602).w			; clear any remaining button presses
+		clr.w	obVelX(a0)			; clear bomb's X-speed
+		move.b	#$A,obRoutine(a0)		; set frame
 		rts
-@conty:
+
+@notdefeated:
 		moveq	#10,d0		; add 100 ...
 		jsr	AddPoints	; ... points
 
@@ -27400,18 +27396,17 @@ Obj5F_BossDefeatedend2:
 		beq.s	Obj5F_BossDelete
 		move.w	#7,($FFFFFF78).w
 		subq.b	#4,($FFFFFF76).w
-		bra.s	locret_715Cx
+		bra.w	locret_715Cx
 ; ===========================================================================
 
 Obj5F_BossDelete:
 		move.l	#10000,d0	; add 100000 ...
 		jsr	AddPoints	; ... points
 
+		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
+		bne.s	@bombbossdel		; if yes, branch
 		move.b	#$34,($FFFFD080).w 		; load title card object
 		move.b	#35,($FFFFD0B0).w
-
-;		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
-;		bne.s	@bombbossdel		; if yes, branch
 		moveq	#$10,d0				; set d0 to $10
 		jsr	(LoadPLC).l			; load title card patterns
 @bombbossdel:
@@ -27425,7 +27420,13 @@ Obj5F_BossDelete:
 		clr.b	($FFFFFFA9).w
 		clr.b	($FFFFFF76).w
 		clr.b	($FFFFF7AA).w
-		move.b	#0,($FFFFFE2D).w		; disable invincibility
+		clr.b	($FFFFFE2D).w			; disable invincibility
+
+		clr.b	($FFFFFF68).w			; revert lives counter to normal
+		ori.b	#1,($FFFFFE1C).w		; update lives counter (to reset it from the boss)
+		clr.l	($FFFFFE22).w			; clear time
+		ori.b	#1,($FFFFFE1E).w 		; update time counter
+
 		jsr	SAP_ResetChallengeObjects	; set up SAP challenge objects now
 		
 @noearlyload:
@@ -46311,8 +46312,8 @@ Obj21_NoUpdate:
 
 @liveshud:
 		move.b	#5,obFrame(a0)
-		tst.b	($FFFFFF68).w
-		beq.s	Obj21_Display
+		tst.b	($FFFFFF68).w		; is boss health currently meant to be displayed?
+		beq.s	Obj21_Display		; if yes, branch
 		cmpi.b	#6,($FFFFD024).w	; is Sonic dying?
 		bhs.s	Obj21_Display		; if yes, branch
 		move.b	#6,obFrame(a0)
@@ -46487,13 +46488,12 @@ loc_1C734:
 		bsr.w	Hud_Secs
 
 Hud_ChkLives:
-		tst.b	($FFFFFF68).w
-		bne.s	@cont
+		tst.b	($FFFFFF68).w		; is boss health currently meant to be displayed?
+		bne.s	@boss			; if yes, branch
 		tst.b	($FFFFFE1C).w	; does the lives counter need updating?
 		beq.s	Hud_ChkBonus	; if not, branch
 		clr.b	($FFFFFE1C).w
-
-@cont:
+@boss:
 		bsr	Hud_Lives
 
 Hud_ChkBonus:
@@ -46542,13 +46542,12 @@ HudDb_ObjCount:
 		move.b	($FFFFF62C).w,d1 ; load	"number	of objects" counter
 		bsr	Hud_Secs
 
-		tst.b	($FFFFFF68).w
-		bne.s	@cont
+		tst.b	($FFFFFF68).w	; is boss health currently meanth to be displayed?
+		bne.s	@boss		; if yes, branch
 		tst.b	($FFFFFE1C).w	; does the lives counter need updating?
 		beq.s	HudDb_ChkBonus	; if not, branch
 		clr.b	($FFFFFE1C).w
-
-@cont:
+@boss:
 		bsr	Hud_Lives
 
 HudDb_ChkBonus:
@@ -46962,11 +46961,11 @@ Hud_Lives:				; XREF: Hud_ChkLives
 		moveq	#0,d1
 		move.w	($FFFFFE12).w,d1	; load number of lives
 	;	divu.w	#100,d1			; only look at the first two decimal digits
-		tst.b	($FFFFFF68).w
-		beq.s	@cont
-		move.b	($FFFFFF68).w,d1
+		tst.b	($FFFFFF68).w		; is boss HUD currently meant to be displayed?
+		beq.s	@notboss		; if not, branch
+		move.b	($FFFFFF68).w,d1	; load boss health as lives instead
 
-@cont:
+@notboss:
 		lea	(Hud_10).l,a2
 		moveq	#1,d6
 		moveq	#0,d4

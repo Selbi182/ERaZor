@@ -6080,8 +6080,9 @@ Map_obj80:
 ; ---------------------------------------------------------------------------
 
 EndingSequence:				; XREF: GameModeArray
-		bset	#0,($FFFFFF93).w	; you have beaten the base game, congrats
-		jsr	SRAM_SaveNow		; save
+	;	bset	#0,($FFFFFF93).w	; you have beaten the base game, congrats
+	;	jsr	SRAM_SaveNow		; save
+	; moved to CreditsScreen to conditionally show the final message
 
 		bsr	Pal_FadeFrom
 
@@ -29729,7 +29730,7 @@ Obj06_Display:
 ; ===========================================================================
 
 Obj06_InfoBox:
-		btst	#1,($FFFFD022).w	; is Sonic airbourne?
+		btst	#1,($FFFFD022).w	; is Sonic airborne?
 		bne.w	Obj06_NoA		; if yes, disallow interaction
 		move.b	#2,obFrame(a0)		; show A button
 		move.w	($FFFFD008).w,d0	; get Sonic's X-pos
@@ -30008,10 +30009,10 @@ Obj01_Speedcont:
 		bra.s	Obj01_Control
 
 ; ===========================================================================
-Obj01_Modes:	dc.w Obj01_MdNormal-Obj01_Modes	; neither jumping, rolling, or airbourne
-		dc.w Obj01_MdJump-Obj01_Modes	; airbourne but not by a manual jump
+Obj01_Modes:	dc.w Obj01_MdNormal-Obj01_Modes	; neither jumping, rolling, or airborne
+		dc.w Obj01_MdJump-Obj01_Modes	; airborne but not by a manual jump
 		dc.w Obj01_MdRoll-Obj01_Modes	; rolling on the ground
-		dc.w Obj01_MdJump2-Obj01_Modes	; airbourne as a result of a manual jump
+		dc.w Obj01_MdJump2-Obj01_Modes	; airborne as a result of a manual jump
 ; ===========================================================================
 
 Obj01_Control:
@@ -30024,7 +30025,7 @@ loc_12C64:
 		bne.s	loc_12C7E	; if yes, branch
 		moveq	#0,d0
 		move.b	obStatus(a0),d0
-		andi.w	#%0110,d0			; only look at bit 1 (airbourne flag) and 2 (jumping/rolling flag)
+		andi.w	#%0110,d0			; only look at bit 1 (airborne flag) and 2 (jumping/rolling flag)
 		move.w	Obj01_Modes(pc,d0.w),d1
 		jsr	obj01_Modes(pc,d1.w)
 
@@ -30347,7 +30348,7 @@ Obj01_Inhuman:
 		beq.s	Obj01_ChkInvin		; if not, branch
 		cmpi.w	#$200,($FFFFFE10).w	; are we in RP?
 		bne.s	Obj01_ChkInvin		; if not, branch
-		btst	#1,($FFFFD022).w	; is sonic airbourne?
+		btst	#1,($FFFFD022).w	; is sonic airborne?
 		bne.s	Obj01_ChkInvin		; if yes, branch
 		btst	#4,($FFFFFF92).w	; is nonstop inhuman enabled?
 		bne.s	Obj01_ChkInvin		; if yes, branch
@@ -32527,7 +32528,7 @@ SAP_HitWall:
 		clr.w	obVelY(a0)			; clear Y speed
 		clr.w	obInertia(a0)			; clear inertia
 		move.b	#2,obAnim(a0)			; use rolling animation
-		bset	#1,obStatus(a0)			; set status to be airbourne
+		bset	#1,obStatus(a0)			; set status to be airborne
 
 		move.b	#$C3,d0				; play flash sound
 		jsr	PlaySound_Special		; really hope this won't get on your nerves

@@ -223,8 +223,8 @@ DH_Continue:
 	jsr	PalCycle_Load
 
 	; palette cycle to highlight letters
-	cmpi.b	#5,($FFFFFE10).w
-	bne.s	@notsbz
+	cmpi.b	#4,($FFFFFE10).w	; are we in uberhub?
+	beq.s	@noletterflashing	; if yes, branch
 	move.w	($FFFFFE0E).w,d0
 	lsl.w	#4,d0
 	jsr	CalcSine
@@ -243,7 +243,7 @@ DH_Continue:
 	move.w	d0,(a1)
 	move.w	d0,($FFFFFB34).w
 	
-@notsbz:
+@noletterflashing:
 	; Check if it's over
 	tst.b	_DH_WindowObj	; object window dead?
 	bne.w	DH_MainLoop	; if not, branch
@@ -492,8 +492,6 @@ _CooldownVal	= 2
 					; assume it's flag '_frantic' then
 
 @FranticTextCheck:
-	bra.w	@ClearWindow		; yeah that was dumb, no player is gonna replay the tutorial
-
 	frantic				; is frantic mode enabled?
 	bne.s	@ClearWindow		; if yes, make _frantic act like _cls
 	bra.w	@GotoDisappear		; in casual, make it act like _end
@@ -664,6 +662,10 @@ Hints_List:
 	dc.l	Hint_Easter_SLZ
 	dc.l	Hint_TutorialConclusion
 	dc.l	Hint_Easter_Tutorial_Escape
+	dc.l	Hint_End_AfterCasual
+	dc.l	Hint_End_AfterFrantic
+	dc.l	Hint_End_CinematicUnlock
+	dc.l	Hint_End_BlackoutTeaser
 
 ; ---------------------------------------------------------------
 ; Hints Scripts
@@ -823,7 +825,7 @@ Hint_1:
 
 ;		 --------------------
 Hint_2:
-	boxtxt	"CONTROLS - airbourne"
+	boxtxt	"CONTROLS - airborne"
 	boxtxt_pause
 	boxtxt	" c - JUMP DASH"
 	boxtxt	"     HOMING ATTACK"
@@ -849,6 +851,16 @@ Hint_3:
 	boxtxt	"EVERYTHING!"
 	boxtxt_pause
 	boxtxt	"...EXCEPT SPIKES."
+	boxtxt_pause
+
+	dc.b	_frantic
+	boxtxt	"    frantic mode"
+	boxtxt_pause
+	boxtxt	" THE FLOOR IS LAVA! "
+	boxtxt_pause
+	boxtxt	"AND THE LAVA HUNGERS"
+	boxtxt	"FOR YOUR RINGS UNTIL"
+	boxtxt	"      YOU DIE.      "
 	boxtxt_end
 
 ;		 --------------------
@@ -1112,6 +1124,65 @@ Hint_Easter_Tutorial_Escape:
 	boxtxt_pause
 	boxtxt	"YOU ARE STILL"
 	boxtxt	"A LOSER."
+	boxtxt_end
+
+;		 --------------------
+Hint_End_AfterCasual:
+	boxtxt	"CONGRATULATIONS FOR"
+	boxtxt	"BEATING THE GAME IN"
+	boxtxt	"casual mode!"
+	boxtxt_next
+
+	boxtxt	"TRY TO GIVE THE GAME"
+	boxtxt	"ANOTHER SPIN IN"
+	boxtxt	"frantic mode!"
+	boxtxt_pause
+	boxtxt	"IF YOU DO, BE SURE"
+	boxtxt	"TO REVISIT THE"
+	boxtxt	"TUTORIAL, AS SOME"
+	boxtxt	"STUFF IS DIFFERENT."
+	boxtxt_end
+
+;		 --------------------
+Hint_End_AfterFrantic:
+	boxtxt	"CONGRATULATIONS FOR"
+	boxtxt	"BEATING THE GAME IN"
+	boxtxt	"frantic mode!"
+	boxtxt_next
+
+	boxtxt	"IF YOU MADE IT HERE,"
+	boxtxt	"YOU HAVE MY UTMOST"
+	boxtxt	"RESPECT. I'M SORRY"
+	boxtxt	"ANY BRAIN CELLS LOST"
+	boxtxt	"ALONG THE WAY."
+	boxtxt_end
+
+;		 --------------------
+Hint_End_CinematicUnlock:
+	boxtxt	"YOU HAVE UNLOCKED"
+	boxtxt	"cinematic mode!"
+	boxtxt_pause	
+	boxtxt	"IT'S COMPLETELY"
+	boxtxt	"USELESS! BUT KINDA"
+	boxtxt	"COOL, I GUESS."
+	boxtxt_end
+
+;		 --------------------
+Hint_End_BlackoutTeaser:
+	boxtxt	"AND ONE LAST THING."
+	boxtxt_pause
+	boxtxt	"IF YOU SAW ANYTHING"
+	boxtxt	"WEIRD IN uberhub..."
+	boxtxt_pause
+	boxtxt	"IGNORE IT."
+	boxtxt_next
+
+	boxtxt	"OR... DON'T."
+	boxtxt_pause
+	boxtxt	"HONESTLY, I DON'T"
+	boxtxt	"REALLY CARE. JUST"
+	boxtxt	"DON'T SAY THAT"
+	boxtxt	"I DIDN'T WARN YOU."
 	boxtxt_end
 
 ; ---------------------------------------------------------------

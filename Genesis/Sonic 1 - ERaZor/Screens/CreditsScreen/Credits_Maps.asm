@@ -217,18 +217,18 @@ StartText:
 	; 12
 	dc.b	$0D						; Number of lines
 	dc.b	"                    ",$FF
-	dc.b	"   THANK YOU FOR    ",$FF
 	dc.b	"                    ",$FF
-	dc.b	"      PLAYING       ",$FF
-	dc.b	"                    ",$FF
+	dc.b	"     THANK YOU      ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
-	dc.b	"    PRESS START     ",$FF
 	dc.b	"                    ",$FF
-	dc.b	"     TO RETURN      ",$FF
 	dc.b	"                    ",$FF
-	dc.b	"   TO SEGA SCREEN   ",$FF
+	dc.b	"                    ",$FF
+	dc.b	"                    ",$FF
+	dc.b	"    FOR PLAYING     ",$FF
+	dc.b	"                    ",$FF
+	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF

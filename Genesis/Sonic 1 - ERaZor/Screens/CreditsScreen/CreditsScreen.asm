@@ -24,7 +24,6 @@ CreditsJest:
 		jsr	DelayProgram
 		dbf	d0,@delay
 
-		
 		VBlank_SetMusicOnly
 		move.l	#$40000000,($C00004).l			; set VDP to V-Ram write mode with address
 		lea	(ArtKospM_Credits).l,a0			; load address of compressed art
@@ -46,10 +45,8 @@ CJ_RepPal:	move.l	(a0)+,(a1)+				; dump palette
 		dbf	d1,CJ_RepPal				; repeat til palette is dumped
 		VBlank_UnsetMusicOnly
 
-		clr.b	($FFFFFF91).w
+		clr.b	($FFFFFF91).w				; set current page ID to 0
 
-	;	move.b	#$97,d0					; prepare Credits music ID
-	;	jsr	PlaySound				; play music ID
 		display_enable
 		jsr	Pal_FadeTo				; fade palette in
 
@@ -150,10 +147,8 @@ CJSM_FO_Array:
 			
 		dc.b	11, 1
 		
-		dc.b	12, 1
-		dc.b	12, 3
-		dc.b	12, 7
-		dc.b	12, 9
+		dc.b	12, 2
+		dc.b	12, 10
 		
 		dc.b	$FF, $FF
 		even
@@ -177,7 +172,6 @@ CJ_MapLetters:
 		cmp.w	#OffScreenPos*4,d0			; has it reached out of screen?
 		ble	CJML_WriteMappings			; if so, load the next page
 		rts						; return
-
 
 CJML_WriteMappings:
 		lea	($00FF0004).l,a0			; load address of mappings
@@ -300,7 +294,31 @@ CJML_FinishUp:
 ; ---------------------------------------------------------------------------
 
 CJML_End:
-		move.b	#$00,($FFFFF600).w
+		moveq	#$E,d0			; load FZ pallet (cause tutorial boxes are built into SBZ)
+		jsr	PalLoad2		; load pallet
+
+		moveq	#$F,d0			; load text after beating the game in casual mode
+		frantic				; have you beaten the game in frantic mode?
+		beq.s	@basegamehint		; if not, pussy 
+		moveq	#$10,d0			; load text after beating the game in frantic mode
+@basegamehint:	jsr	Tutorial_DisplayHint	; VLADIK => Display hint
+
+		btst	#0,($FFFFFF93).w	; have you already beaten the base game?
+		bne.s	@checkblackout		; if yes, branch
+		moveq	#$11,d0			; load Cinematic Mode unlock text
+		jsr	Tutorial_DisplayHint	; VLADIK => Display hint
+
+@checkblackout:
+		btst	#1,($FFFFFF93).w	; have you already beaten the blackout challenge?
+		bne.s	@markgameasbeaten	; if yes, branch
+		moveq	#$12,d0			; load Blackout Challenge teaser text
+		jsr	Tutorial_DisplayHint	; VLADIK => Display hint
+
+@markgameasbeaten:
+		bset	#0,($FFFFFF93).w	; you have beaten the base game, congrats
+		jsr	SRAM_SaveNow		; save
+
+		move.b	#$00,($FFFFF600).w	; restart from Sega Screen
 		jmp	MainGameLoop
 
 ; ---------------------------------------------------------------------------

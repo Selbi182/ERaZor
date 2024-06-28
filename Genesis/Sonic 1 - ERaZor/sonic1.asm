@@ -7845,26 +7845,26 @@ Deform_SYZ:
 		lea	(a2,d0.w),a2
 		bsr.w	Deform_All
 
-		lea	($FFFFCC00+(112*4)).w,a1 ; start at the bottom
-		move.w	($FFFFFE0E).w,d0	; automatically scroll background
+		lea	($FFFFCC00+(112*4)-2).w,a1 ; start at the bottom
+		moveq	#0,d0
+		move.w	($FFFFFE04).w,d0	; automatically scroll background
 		addi.w	#$1000,d0		; give us a head start cause otherwise it looks awkward at the start
-		ext.l	d0			; extend to long
-		lsl.l	#8,d0			; multiply it by $100
-		lsl.l	#2,d0			; multiply it by 4
-		neg.l	d0			; negate it
-		moveq	#0,d3			; clear d3
-		move.w	#112-1,d2		; do it for the bottom half of the screen
-@skydeform:
-		moveq	#0,d1			; clear d1
-		move.w	d3,d1			; get deformation speed for the current line
-		add.l	d1,-(a1)		; set it to scroll buffer
-		add.l	d0,d3			; increase speed for next row
-		swap	d3			; swap it
-		dbf	d2,@skydeform		; loop
+		swap	d0
+		lsr.l	#3,d0
+		move.l	d0,d3
+		lsr.l	#3,d3
+		moveq	#112/2-1,d2		; do it for the bottom half of the screen
 
+	@skydeform:
+		move.l	d0, d1
+		swap	d1
+		sub.w	d1, (a1)
+		subq.w	#4, a1
+		sub.w	d1, (a1)
+		subq.w	#4, a1
+		add.l	d3, d0
+		dbf	d2, @skydeform
 		rts
-
-
 ; End of function Deform_SYZ
  
  

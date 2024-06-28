@@ -3954,6 +3954,9 @@ Level_TtlCard:
 		bne.s	Level_TtlCard	; if not, branch
 		tst.l	PLC_Pointer		 	; are there any items in the pattern load cue?
 		bne.s	Level_TtlCard		; if yes, branch
+		
+		move.b	#$C,VBlankRoutine	; run for one more frame to avoid hiccups in the title card
+		bsr	DelayProgram
 		jsr	Hud_Base
 
 loc_3946:
@@ -4099,16 +4102,15 @@ Level_StartGame:
 ; ---------------------------------------------------------------------------
 
 Level_MainLoop:
+		bsr	RandomNumber		; constantly create a new random number every frame to make use of RandomNumber_Next
+		bsr	CinematicScreenFuzz	; do cinematic screen fuzz if applicable
+
+		bsr	PauseGame
+		addq.w	#1,($FFFFFE04).w ; add 1 to level timer
 		move.b	#8,VBlankRoutine
 		bsr	DelayProgram
-
-		addq.w	#1,($FFFFFE04).w ; add 1 to level timer
-
-		bsr	RandomNumber		; constantly create a new random number every frame to make use of RandomNumber_Next
-		bsr	PauseGame
 		bsr	LZWaterEffects
 		jsr	ObjectsLoad
-		bsr	CinematicScreenFuzz	; do cinematic screen fuzz if applicable
 
 		tst.w	($FFFFFE02).w		; is the level set to restart?
 		bne.w	Level			; if yes, branch
@@ -15945,6 +15947,10 @@ Obj4B_Okay:				; XREF: Obj4B_Main
 		addq.b	#2,obRoutine(a0)
 		move.b	#2,obPriority(a0)
 		move.w	#$C40,($FFFFF7BE).w	; load giant ring patterns
+		cmpi.w	#$400,($FFFFFE10).w	; are we in Uberhub?
+		bne.s	Obj4B_Animate		; if not, branch
+		move.w	#0,($FFFFF7BE).w	; don't load giant ring patterns systematically, because they're preloaded from PLC
+		
 ; ---------------------------------------------------------------------------
 
 Obj4B_Animate:				; XREF: Obj4B_Index
@@ -19590,13 +19596,13 @@ Obj34:					; XREF: Obj_Index
 		move.w	Obj34_Index(pc,d0.w),d1
 		jmp	Obj34_Index(pc,d1.w)
 ; ===========================================================================
-Obj34_Index:	dc.w Obj34_CheckSBZ3-Obj34_Index
+Obj34_Index:	dc.w Obj34_Setup-Obj34_Index
 		dc.w Obj34_ChkPos-Obj34_Index
 		dc.w Obj34_Wait-Obj34_Index
 		dc.w Obj34_Wait-Obj34_Index
 ; ===========================================================================
 
-Obj34_CheckSBZ3:			; XREF: Obj34_Index
+Obj34_Setup:				; XREF: Obj34_Index
 		cmpi.w	#$302,($FFFFFE10).w
 		beq.s	@contx
 		cmpi.w	#$002,($FFFFFE10).w
@@ -19703,21 +19709,21 @@ Obj34_MakeSprite:
 		movem.l	(sp)+,d0-d2/a0-a2	; ...controls are still locked
 
 		cmpi.b	#$70,($FFFFF604).w	; exactly ABC held?
-		bne.s	@0			; if not, branch
+		bne.s	@noeasteregg		; if not, branch
 		cmpi.b	#4,$3F(a1)		; is current object the Oval?
-		beq.s	@0			; if yes, branch
+		beq.s	@noeasteregg		; if yes, branch
 		move.b	#6,obFrame(a1)		; PLACE PLACE PLACE
 		cmpi.b	#3,$3F(a1)		; is this the Act?
-		bne.s	@0			; if not, branch
+		bne.s	@noeasteregg		; if not, branch
 		addi.w	#$28,$30(a1)		; adjust target X position
 		subi.w	#$1A,obScreenY(a1)	; adjust Y positon
-@0:
+@noeasteregg:
 	
 		move.l	#Map_obj34,obMap(a1)
 		move.w	#$855C,obGfx(a1)
 		cmpi.b	#$10,($FFFFF600).w	; is current level a special stage?
 		bne.s	Obj34_NotSpecial2	; if not, branch
-		move.w	#$8051,obGfx(a1)		; if yes, use alternate tile offset
+		move.w	#$8051,obGfx(a1)	; if yes, use alternate tile offset
 
 Obj34_NotSpecial2:
 		move.b	#$78,obActWid(a1)
@@ -19730,6 +19736,7 @@ Obj34_NotSpecial2:
 		moveq	#3,d0
 		jsr	PalLoad2	; load Sonic's pallet line
 		movem.l	(sp)+,d0-a7
+; ---------------------------------------------------------------------------
 
 Obj34_ChkPos:				; XREF: Obj34_Index
 		moveq	#8,d1		; set horizontal speed
@@ -19893,13 +19900,11 @@ Obj34_JustDelete:
 ; ===========================================================================
 
 Obj34_Display:
-		cmpi.w	#$400,($FFFFFE10).w	; is current level SYZ1?
-		beq.s	@cont3			; if not, branch
-		cmpi.w	#$501,($FFFFFE10).w	; is current level SBZ2?
+		cmpi.w	#$400,($FFFFFE10).w	; is current level Uberhub?
+		beq.s	@notactnumber		; if yes, branch
+		cmpi.w	#$501,($FFFFFE10).w	; is current level the tutorial?
 		bne.s	Obj34_DoDisplay		; if not, branch
-
-@cont3:
-		cmpi.b	#3,$3F(a0)		; is current object the Act Number?
+@notactnumber:	cmpi.b	#3,$3F(a0)		; is current object the Act Number?
 		bne.s	Obj34_DoDisplay		; if not, branch
 		rts				; otherwise don't display act number
 
@@ -45981,7 +45986,7 @@ AniArt_GiantRing:			; XREF: AniArt_Load
 
 loc_1C518:
 		subi.w	#$1C0,($FFFFF7BE).w
-		lea	(Art_BigRing).l,a1 ; load giant	ring patterns
+		lea	(Art_BigRing).l,a1 ; load uncompressed giant ring patterns
 		moveq	#0,d0
 		move.w	($FFFFF7BE).w,d0
 		lea	(a1,d0.w),a1
@@ -45990,10 +45995,6 @@ loc_1C518:
 		lsr.w	#2,d0
 		ori.w	#$4000,d0
 		swap	d0
-		cmpi.w	#$400,($FFFFFE10).w
-		bne.s	@cont
-		addi.l	#$04400000,d0
-@cont:
 		move.l	d0,obMap(a6)
 		move.w	#$D,d1
 		bra.w	LoadTiles
@@ -47914,7 +47915,8 @@ byte_6A320:	dc.b 0,	0, 0, 0
 ; ---------------------------------------------------------------------------
 Art_BigRing:	incbin	artunc\bigring.bin
 		even
-
+ArtKospM_BigRing: incbin artkosp\bigring.kospm
+		  even
 ArtKospM_SGMC:	incbin artkosp\sgmc.kospm
 		even
 		

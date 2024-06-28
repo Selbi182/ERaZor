@@ -250,20 +250,17 @@ PLC_SLZ2:
 PLC_SYZ:
 		dc.l ArtKospM_SYZ		; SYZ main patterns
 		dc.w 0
-		dc.l ArtKospM_SYZDoors	; SYZ doors
+		dc.l ArtKospM_SYZDoors		; SYZ doors
 		dc.w $6000
 		dc.l ArtKospM_LevelSigns	; level signs
 		dc.w $6E40
 		dc.w -1
 
 PLC_SYZ2:
-		dc.l ArtKospM_SYZPlat	; platform
+		dc.l ArtKospM_BigRing		; big rings
+		dc.w $8440
+		dc.l ArtKospM_SYZPlat		; exploding platform
 		dc.w $A660
-	;	dc.w $9200
-		dc.l ArtKospM_LzSwitch	; switch
-		dc.w $A1E0
-		dc.l ArtKospM_HSpring	; horizontal spring
-		dc.w $A460
 		dc.w -1
 
 ; ---------------------------------------------------------------------------

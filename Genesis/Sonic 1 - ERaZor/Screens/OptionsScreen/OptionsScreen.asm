@@ -487,6 +487,7 @@ Options_HandleCinematicMode:
 		cmpi.b	#$70,($FFFFF604).w	; is exactly ABC held?
 		bne.s	@nodebugunlock		; if not, branch
 		bchg	#0,($FFFFFF93).w	; toggle base game as beaten to toggle the unlock for cinematic mode
+		bclr	#3,($FFFFFF92).w	; make sure option doesn't stay accidentally enabled
 		bra.w	Options_UpdateTextAfterChange_NoSound
 
 @nodebugunlock:
@@ -512,6 +513,7 @@ Options_HandleNonstopInhuman:
 		cmpi.b	#$70,($FFFFF604).w	; is exactly ABC held?
 		bne.s	@nodebugunlock		; if not, branch
 		bchg	#1,($FFFFFF93).w	; toggle blackout challenge beaten state to toggle the unlock for nonstop inhuman
+		bclr	#4,($FFFFFF92).w	; make sure option doesn't stay accidentally enabled
 		bra.w	Options_UpdateTextAfterChange_NoSound
 
 @nodebugunlock:

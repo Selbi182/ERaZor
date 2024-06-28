@@ -169,6 +169,9 @@ STS_FadeOutScreen:
 
 		lea	($FFFFCC00+STS_BaseRow*32).w,a0	; set up H-scroll buffer to the point where the main text is located
 		moveq	#(STS_LinesMain)-1,d2		; set loop count of line count
+		tst.b	(STS_SkipBottomMeta).w		; is bottom meta set to be skipped?
+		beq.s	@loopout			; if not, branch
+		addq.w	#2,d2				; add two extra lines to fade out
 @loopout:
 		moveq	#0,d0				; clear d0
 		move.b	(STS_FinalPhase).w,d0		; get current
@@ -357,7 +360,9 @@ StoryScreen_WritePressStart:
 ; ---------------------------------------------------------------------------
 
 StoryText_WriteFull:
+		move.b	(STS_SkipBottomMeta).w,d0	; backup skip bottom meta flag
 		bsr	STS_ClearFlags			; make sure any previously written text doesn't interfere	
+		move.b	d0,(STS_SkipBottomMeta).w	; restore skip bottom meta flag (it's the only one still used here)
 		
 		move.w	#STS_DrawnLine_Length*2,(STS_CurrentChar).w ; full line (times 2 because its speed is halved)
 		bsr	StoryScreen_DrawLines		; finish drawing lines
@@ -369,6 +374,10 @@ StoryText_WriteFull:
 		move.w	#STS_VRAMSettings,d3		; VRAM setting (high plane, palette line 4, VRAM address $D000)
 		moveq	#STS_LinesMain-1,d1		; number of lines of text
 
+		tst.b	(STS_SkipBottomMeta).w		; is bottom meta set to be skipped?
+		beq.s	@nextline			; if not, branch
+		addq.w	#3,d1				; add two extra lines
+	
 @nextline:
 		move.l	d4,4(a6)			; write whatever line we're on right now to the VDP
 		moveq	#STS_LineLength-1,d2		; number of characters per line
@@ -467,6 +476,10 @@ StoryScreen_CenterText:
 		lea	($FFFFCC00+STS_BaseRow*32).w,a0	; set up H-scroll buffer to the point where the main text is located
 		move.w	#STS_LineLength,d0		; set line length
 		moveq	#STS_LinesMain-1,d1		; set default loop count of line count
+		tst.b	(STS_SkipBottomMeta).w		; is bottom meta set to be skipped?
+		beq.s	@notskipbottommeta		; if not, branch
+		addq.w	#2,d1				; add two extra lines
+@notskipbottommeta:
 		tst.b	(STS_FullyWritten).w		; is text already fully written?
 		bne.s	@centertextloop			; if yes, branch
 		move.b	(STS_Row).w,d1			; set number of repetitions to current row count

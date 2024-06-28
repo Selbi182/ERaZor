@@ -5301,7 +5301,6 @@ SS_ClrNemRam:	move.l	d0,(a1)+
 		beq.s	@contx		; if not, branch
 		moveq	#22,d0		; load dark/red palette
 @contx:		bsr	PalLoad1	; load special stage pallet
-
 		jsr	SS_Load
 
 		move.l	#0,($FFFFF700).w
@@ -5525,7 +5524,7 @@ BlackoutChallenge:
 		move.w	d0,(a1)+		; set new colour
 		dbf	d3,@blackoutpalette	; loop for each colour
 		movem.l	(sp)+,d0-a1
-		
+
 		; blackout challenge controls
 		clr.w	($FFFFF782).w		; clear rotation speed
 
@@ -44214,7 +44213,10 @@ SS_Load:				; XREF: SpecialStage
 		move.w	#$0587,($FFFFD00C).w	; start Y pos for Sonic
 		tst.b	($FFFFFF5F).w		; is this the blackout special stage?
 		beq.s	@notblackout		; if not, branch
-		lea	(SS_2_Blackout).l,a0	; load blackout layout (there's no frantic variant)
+		lea	(SS_Blackout_Casual).l,a0 ; load casual blackout layout
+		frantic				; are we in frantic mode?
+		beq.s	SS_LoadLevel		; if not, branch
+		lea	(SS_Blackout_Frantic).l,a0 ; load casual blackout layout (you masochist)
 		bra.s	SS_LoadLevel		; branch
 @notblackout:
 		lea	(SS_2_Casual).l,a0	; load casual Unreal Place layout
@@ -45318,54 +45320,58 @@ Obj09_GOAL:
 		bne.w	Obj09_UPblock		; if not, branch
 
 		btst	#4,($FFFFFF92).w	; is nonstop inhuman enabled?
-		bne.w	Obj09_DoBumper		; if yes, branch
+		bne.w	Obj09_DoBumper		; if yes, convert goal block into bumber
 
 TouchGoalBlock:
-		move.w	($FFFFFF86).w,obX(a0)	; restore saved X-pos
-		move.w	($FFFFFF88).w,obY(a0)	; restore saved Y-pos
-		clr.b	($FFFFFF9F).w		; make R block usable again
-
 		jsr	WhiteFlash2
 
-		move.w	#$C3,d0			; play giant ring sound
+		move.w	($FFFFFF86).w,obX(a0)	; restore saved X-pos
+		move.w	($FFFFFF88).w,obY(a0)	; restore saved Y-pos
 
-		cmpi.w	#$401,($FFFFFE10).w
-		beq.s	Obj09_IsSS2
-		move.b	#$30,($FF1C28).l	; restore pink glass block
-		move.b	#$2F,($FF1DA7).l	; restore yellow glass block
-		clr.w	($FFFFF780).w		; clear rotation
-		bra.s	Obj09_NotSS1x
-
-Obj09_IsSS2:
-		move.b	#$3F,($FF11BD).l	; restore red emerald
-		move.b	#$40,($FF11C1).l	; restore grey emerald
-		clr.b	($FFFFFE57).w		; clear emerald counter
-
-		move.b	#$2D,($FF244A).l
-		move.b	#$2E,($FF24CA).l
-		move.b	#$2F,($FF254A).l
-		move.b	#$30,($FF25CA).l
-		
-		move.b	#$3A,($FF1EC7).l
-
-Obj09_NotSS1x:
 		clr.w	obVelX(a0)
 		clr.w	obVelY(a0)
 		clr.w	obInertia(a0)
 
+		move.w	#$C3,d0			; play giant ring sound by default
+
+		cmpi.w	#$401,($FFFFFE10).w	; are we in Unreal Place?
+		beq.s	TouchGoal_Unreal	; if yes, branch
+		
+		; restoration for Special Place
+		clr.b	($FFFFFF9F).w		; make R block usable again
+		move.b	#$30,($FF1C28).l	; restore pink glass block
+		move.b	#$2F,($FF1DA7).l	; restore yellow glass block
+		clr.w	($FFFFF780).w		; clear rotation
+		bra.s	TouchGoal_PlaySound
+
+TouchGoal_Unreal:
+		clr.b	($FFFFFE57).w		; clear emerald counter
+		move.b	#$3F,($FF11BD).l	; restore red emerald
+		move.b	#$40,($FF11C1).l	; restore grey emerald
+		move.b	#$3A,($FF1EC7).l	; reset ring to open glass blocks door
+
 		tst.b	($FFFFFF5F).w		; is this the blackout blackout special stage?
-		beq.s	@cont			; if not, branch
+		beq.s	@notblackout		; if not, branch
+		move.b	#$2F,($FF24CA).l	; reset glass blocks
+		move.b	#$2F,($FF254A).l
+		move.b	#$2F,($FF25CA).l
+
 		move.w	#$A3,d0			; play death sound
 		frantic				; are we in Frantic mode?
-		beq.s	@cont			; if not, branch
+		beq.s	TouchGoal_PlaySound	; if not, branch
 		move.w	#$B9,d0			; play annoying crumbling sound instead
-		jsr	(PlaySound).l	; play sound
+		jsr	PlaySound		; play sound
 		move.w	#$DB,d0			; play annoying crumbling sound instead
-		
+		bra.s	TouchGoal_PlaySound
 
-@cont:
-		jsr	(PlaySound_Special).l	; play sound
-		rts				; return
+@notblackout:
+		move.b	#$2D,($FF244A).l	; reset glass blocks
+		move.b	#$2E,($FF24CA).l
+		move.b	#$2F,($FF254A).l
+		move.b	#$30,($FF25CA).l
+
+TouchGoal_PlaySound:
+		jmp	PlaySound_Special	; play selected sound
 ; ===========================================================================
 
 Obj09_UPblock:
@@ -47069,8 +47075,11 @@ Debug_Main:				; XREF: Debug_Index
 		cmpi.b	#$10,($FFFFF600).w ; is	game mode = $10	(special stage)?
 		bne.s	Debug_Zone	; if not, branch
 		move.w	#0,($FFFFF782).w ; stop	special	stage rotating
-	;	move.w	#0,($FFFFF780).w ; make	special	stage "upright"
+		
 		moveq	#6,d0		; use 6th debug	item list
+		tst.b	($FFFFFF5F).w		; is this the blackout special stage?
+		beq.s	Debug_UseList		; if not, branch
+		move.w	#0,($FFFFF780).w 	; make	special	stage "upright"
 		bra.s	Debug_UseList
 ; ===========================================================================
 DebugList:	; just a ring
@@ -47751,8 +47760,10 @@ SS_2_Casual:	incbin	sslayout\2-Casual.bin
 		even
 SS_2_Frantic:	incbin	sslayout\2-Frantic.bin
 		even
-SS_2_Blackout:	incbin	sslayout\2-Blackout.bin
-		even
+SS_Blackout_Casual:	incbin	sslayout\Blackout-Casual.bin
+			even
+SS_Blackout_Frantic:	incbin	sslayout\Blackout-Frantic.bin
+			even
 ; ---------------------------------------------------------------------------
 ; Animated uncompressed graphics
 ; ---------------------------------------------------------------------------

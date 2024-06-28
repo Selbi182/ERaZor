@@ -24,4 +24,3 @@ if exist s1erz.bin (
 	echo !!! BUILD FAILED !!!
 )
 echo ============================================
-pause

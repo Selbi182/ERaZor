@@ -4,7 +4,7 @@
 SelbiSplash_MusicID		EQU	$B7		; Music to play
 SelbiSplash_Wait		EQU	$30		; Time to wait ($100)
 SelbiSplash_PalChgSpeed		EQU	$200		; Speed for the palette to be changed ($200)
-
+Selbi_DebugCheat		EQU	20		; Inputs required to unlock debug cheat
 ; ---------------------------------------------------------------------------------------------------------------------
 SelbiSplash:
 		move.b	#$E4,d0
@@ -58,6 +58,7 @@ SelbiSplash_SetWait:
 		vram	$4E40, ($FFFFFF7A).w
 		move.w	#0,($FFFFFF7E).w
 		move.w	#6,($FFFFF5B0).w
+		move.w	#Selbi_DebugCheat,($FFFFFFE4).w		; set up to inputs required to unlock debug mode
 		display_enable
 		bra.s	SelbiSplash_Loop
 ; ---------------------------------------------------------------------------------------------------------------------
@@ -233,23 +234,30 @@ SelbiSplash_PL2Passed:
 		move.b	#1,($FFFFFFAF).w		; set flag that we are in the final phase of the screen
 
 SelbiSplash_ChangePal:
-		
 		; hidden debug mode cheat
 		tst.b	($FFFFFFAF).w			; are we in the final phase of the screen?
 		beq.s	SelbiSplash_LoopEnd		; if not, branch
-		tst.b	($FFFFF605).w			; get any button press
-		beq.s	SelbiSplash_LoopEnd		; if none are pressed, skip
-		addq.w	#1,($FFFFFFE4).w		; increase counter
-		cmpi.w	#10,($FFFFFFE4).w		; check if 10 buttons have been pressed
-		bne.s	SelbiSplash_LoopEnd		; if not, branch
+		moveq	#0,d0				; clear d0
+		move.b	($FFFFF605).w,d0		; get button press
+		andi.b	#$70,d0				; filter ABC only
+		beq.s	SelbiSplash_LoopEnd		; if none were pressed, skip
 		
-		; cheat here
+		subq.w	#1,($FFFFFFE4).w		; sub 1 from button presses remaining
+		beq.s	@firecheat			; if we reached 0, activate cheat
+		bmi.s	SelbiSplash_LoopEnd		; for any further than the set input presses, don't do anything
+		move.b	#$A9,d0				; set blip sound
+		jsr	PlaySound_Special		; play it
+		bra.s	SelbiSplash_LoopEnd		; skip
+
+@firecheat:
 		move.b	#%01111111,($FFFFFF8B).w	; unlock all doors
 		move.b	#%11,($FFFFFF93).w		; unlock all bonus options
 		
 		tst.w	($FFFFFFFA).w			; was debug mode already enabled?
 		bne.s	SelbiSplash_DisableDebug	; if yes, disable it
 		move.w	#1,($FFFFFFFA).w	 	; enable debug mode
+		move.w	#$90,($FFFFF614).w		; reset ending timer
+		jsr	Pal_MakeWhite			; white flash
 		move.b	#$A8,d0				; set enter SS sound
 		jsr	PlaySound_Special		; play it
 

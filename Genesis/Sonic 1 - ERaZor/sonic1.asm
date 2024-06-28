@@ -7845,24 +7845,24 @@ Deform_SYZ:
 		lea	(a2,d0.w),a2
 		bsr.w	Deform_All
 
-		lea	($FFFFCC00+(112*4)-2).w,a1 ; start at the bottom
+		; Apply deformation to the sky
+		lea	$FFFFCC00+2,a1
 		moveq	#0,d0
-		move.w	($FFFFFE04).w,d0	; automatically scroll background
-		addi.w	#$1000,d0		; give us a head start cause otherwise it looks awkward at the start
-		swap	d0
-		lsr.l	#3,d0
+		move.w	($FFFFFE04).w,d0		; d0 = FrameCounter
+		addi.w	#$1000,d0			; d0 = FrameCounter + $1000
+		swap	d0				; d0 = FrameCounter + $1000 (16.16 FIXED)
 		move.l	d0,d3
-		lsr.l	#3,d3
-		moveq	#112/2-1,d2		; do it for the bottom half of the screen
+		lsr.l	#6,d3				; d3 = (FrameCounter + $1000) / 64
+		moveq	#112/2-1,d2			; do it for the first 112 lines (2 lines per iteration)
 
 	@skydeform:
 		move.l	d0, d1
 		swap	d1
-		sub.w	d1, (a1)
-		subq.w	#4, a1
-		sub.w	d1, (a1)
-		subq.w	#4, a1
-		add.l	d3, d0
+		sub.w	d1, (a1)			; alter two lines of the BG
+		addq.w	#4, a1				; ''
+		sub.w	d1, (a1)			; ''
+		addq.w	#4, a1				; ''
+		sub.l	d3, d0				; d0 -= d3 (parallax for the next stripe)
 		dbf	d2, @skydeform
 		rts
 ; End of function Deform_SYZ

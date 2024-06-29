@@ -81,7 +81,7 @@ SelbiSplash_Loop:
 		cmpi.l	#$4EE00001,($FFFFFF7A).w	; vram=$4EE0
 		beq.w	@cont
 		cmpi.w	#$20,($FFFFF614).w		; is time less than $20?
-		bpl	SelbiSplash_ChangePal		; if not, branch
+		bpl	SelbiSplash_WaitEnd		; if not, branch
 
 		VBlank_SetMusicOnly
 		lea	($C00000).l,a5			; load VDP data port address to a5
@@ -109,7 +109,7 @@ SelbiSplash_Loop:
 		beq.s	@cont2
 		addi.w	#$20,($FFFFF614).w
 
-		bra	SelbiSplash_ChangePal
+		bra	SelbiSplash_WaitEnd
 @cont2:
 		move.w	#$D0,($FFFFF614).w
 		lea	($C00000).l,a5
@@ -136,7 +136,6 @@ SelbiSplash_Loop:
 		move.w	d0,(a1)
 		dbf	d4,@boost
 
-
 		cmpi.w	#$90,($FFFFF614).w		; is time less than $90?
 		bpl.w	@0
 		move.w	#$8B07,($C00004).l
@@ -147,7 +146,7 @@ SelbiSplash_Loop:
 		cmpi.w	#$90,($FFFFF614).w		; is time less than $90?
 		bmi.w	SelbiSplash_DontChangePal	; if yes, branch
 		cmpi.w	#$D0,($FFFFF614).w		; is time more than $D0?
-		bpl.w	SelbiSplash_ChangePal		; if yes, branch
+		bpl.w	SelbiSplash_WaitEnd		; if yes, branch
 
 		; screen shake Y
 		move.w	($FFFFF5B0).w,d0
@@ -188,30 +187,34 @@ SelbiSplash_Loop:
 	
 		move.b	($FFFFFE0F).w,d0
 		andi.b	#3,d0
-		bne.w	SelbiSplash_ChangePal
+		bne.w	SelbiSplash_WaitEnd
 
 		jsr	Pal_ToWhite	; increase brightness
 
-
 		move.b	($FFFFFE0F).w,d0
 		andi.b	#5,d0
-		beq.w	SelbiSplash_ChangePal
+		beq.w	SelbiSplash_WaitEnd
 
 		move.b	(SelbiSplash_Sounds+4),d0
 		jsr	PlaySound_Special
-		bra	SelbiSplash_ChangePal
+		bra	SelbiSplash_WaitEnd
 
 SelbiSplash_DontChangePal:
 		tst.b	($FFFFFFAF).w			; has final screen already been loaded?
-		bne.w	SelbiSplash_ChangePal		; if yes, branch
+		bne.w	SelbiSplash_WaitEnd		; if yes, branch
 		move.b	#$B9,d0				; play massive explosion sound
 		jsr	PlaySound		
 
 SelbiSplash_LoadPRESENTS:
+		move.b	#2,VBlankRoutine
+		jsr	DelayProgram			; VSync so gfx loading below isn't terribly out of VBlank
+
+		VBlank_SetMusicOnly
 		lea	($FF0000).l,a1			; Load screen mappings
 		lea	(Map2_SelbiSplash).l,a0
 		moveq	#0,d0
 		jsr	EniDec
+		VBlank_UnsetMusicOnly
 
 		move.b	#2,VBlankRoutine
 		jsr	DelayProgram			; VSync so gfx loading below isn't terribly out of VBlank
@@ -223,17 +226,16 @@ SelbiSplash_LoadPRESENTS:
 		jsr	ShowVDPGraphics
 		VBlank_UnsetMusicOnly
 
-SelbiSplash_PL2Passed:
 		lea	(Pal_SelbiSplash).l,a1		; Load palette
 		lea	($FFFFFB00).w,a2
 		rept 8
-			move.l	(a1)+,(a2)+
+		move.l	(a1)+,(a2)+
 		endr
 
 	;	jsr	Pal_MakeWhite			; white flash
 		move.b	#1,($FFFFFFAF).w		; set flag that we are in the final phase of the screen
 
-SelbiSplash_ChangePal:
+SelbiSplash_WaitEnd:
 		; hidden debug mode cheat
 		tst.b	($FFFFFFAF).w			; are we in the final phase of the screen?
 		beq.s	SelbiSplash_LoopEnd		; if not, branch
@@ -241,7 +243,9 @@ SelbiSplash_ChangePal:
 		move.b	($FFFFF605).w,d0		; get button press
 		andi.b	#$70,d0				; filter ABC only
 		beq.s	SelbiSplash_LoopEnd		; if none were pressed, skip
-		
+		tst.b	($FFFFFFA7).w			; is this the first time the game is being played?
+		beq.s	SelbiSplash_LoopEnd		; if yes, avoid newbies accidentally discovering debug mode immediately lol
+
 		subq.w	#1,($FFFFFFE4).w		; sub 1 from button presses remaining
 		beq.s	@firecheat			; if we reached 0, activate cheat
 		bmi.s	SelbiSplash_LoopEnd		; for any further than the set input presses, don't do anything
@@ -274,23 +278,8 @@ SelbiSplash_LoopEnd:
 SelbiSplash_Next:
 		clr.b	($FFFFFFAF).w
 		clr.l	($FFFFFF7A).w
-	
-	if QuickLevelSelect=1
-		move.b	#4,($FFFFF600).w		; go to title screen
-		rts
-	endif
 
-		tst.b	($FFFFFFA7).w			; is this the first time the game is being played?
-		beq.s	SelbiSplash_FirstTime		; if yes, branch
-		move.b	#4,($FFFFF600).w		; otherwise go to title screen
-		rts	
-
-SelbiSplash_FirstTime:
-	;	move.b	#$E0,d0			; fade out music
-	;	jsr	PlaySound
-	;	jsr	Pal_MakeWhite		; Fade out previous palette
-	;	bsr.s	ERZ_FadeOut
-		move.b	#$30,($FFFFF600).w	; set to GameplayStyleScreen
+		move.b	#4,($FFFFF600).w	; set to title screen
 		rts
 
 SelbiSplash_DisableDebug:

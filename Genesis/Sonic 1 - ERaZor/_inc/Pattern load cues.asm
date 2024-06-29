@@ -253,7 +253,9 @@ PLC_SYZ:
 		dc.l ArtKospM_SYZDoors		; SYZ doors
 		dc.w $6000
 		dc.l ArtKospM_LevelSigns	; level signs
-		dc.w $6E40
+		dc.w $6200
+		dc.l ArtKospM_SYZEmblems	; SYZ casual/frantic progression emblems
+		dc.w $6C00
 		dc.w -1
 
 PLC_SYZ2:

@@ -240,7 +240,6 @@ DH_Continue:
 	or.w	d1,d0
 	rol.w	#4,d1
 	or.w	d1,d0
-	move.w	d0,(a1)
 	move.w	d0,($FFFFFB34).w
 	
 @noletterflashing:
@@ -871,51 +870,51 @@ Hint_4:
 	boxtxt	"#D )26aEd0a..oh my g"
 	boxtxt	"od what have you don"
 	boxtxt	"e everything is ruin"
-	boxtxt	"ed now.:."
+	boxtxt	"ed now:::"
 	boxtxt_next
 
-	boxtxt	"but hey, seeing"
-	boxtxt	"that you've made it"
-	boxtxt	"here, exploring"
+	boxtxt	"but hey; seeing"
+	boxtxt	"that you#ve made it"
+	boxtxt	"here; exploring"
 	boxtxt	"seems to be just"
-	boxtxt	"your thing."
+	boxtxt	"your thing:"
 	boxtxt_next
 
-	boxtxt	"so tell ya what,"
+	boxtxt	"so tell ya what;"
 	boxtxt	"if you want to"
 	boxtxt	"explore even more"
-	boxtxt	"here's the link to"
+	boxtxt	"here#s the link to"
 	boxtxt	"the source code"
-	boxtxt	"of sonic erazor!"
+	boxtxt	"of sonic erazor1"
 	boxtxt_next
 
 	boxtxt	"HTTPS0//"
 	boxtxt	"ERAZOR.SELBI.CLUB"
 	boxtxt_line	
 	boxtxt	"i hope you can"	
-	boxtxt	"decipher that link."	
+	boxtxt	"decipher that url:"	
 	boxtxt	"i was too lazy to"	
-	boxtxt	"add colons."
+	boxtxt	"add colons:"
 	boxtxt_next
 	
 	boxtxt "and, as a little"
-	boxtxt "bonus on top, here's"
+	boxtxt "bonus on top; here#s"
 	boxtxt "how you can enable"
 	boxtxt "debug mode1"
 	boxtxt_next
 	boxtxt "when you are in the"
 	boxtxt "final phase of the"
-	boxtxt "SELBI screen, mash"
-	boxtxt "the ABC buttons"
-	boxtxt "ten times1"
+	boxtxt "selbi screen; mash"
+	boxtxt "the a b c buttons"
+	boxtxt "twenty times1"
 	boxtxt_next
 
-	boxtxt	"have fun! and oh yea"
+	boxtxt	"have fun1 and oh yea"
 	boxtxt	"the level is still a"
-	boxtxt	"complete mess."
+	boxtxt	"complete mess:"
 	boxtxt_pause
-	boxtxt	"YES, I WAS TOO LAZY"
-	boxtxt	"TO FIX THAT TOO."
+	boxtxt	"yes; i was too lazy"
+	boxtxt	"to fix that:"
 	boxtxt_pause
 	boxtxt	"BITE ME."
 	boxtxt_end
@@ -927,7 +926,7 @@ Hint_FZEscape:
 	boxtxt_pause
 	boxtxt	"WE'LL TAKE IT EASY,"
 	boxtxt	"SINCE THERE IS"
-	boxtxt	"ABSOLUTELY NO RUSH."
+	boxtxt	"ABSOLUTELY-"
 	boxtxt_next
 
 	boxtxt	"..."
@@ -968,12 +967,12 @@ Hint_6:
 	dc.b	_frantic
 	boxtxt	"    frantic mode"
 	boxtxt_pause
-	boxtxt	"  UNFORTUNATELY..."
+	boxtxt	"  IN CASUAL MODE,"
 	boxtxt	" HARD PART SKIPPERS"
-	boxtxt	" ARE ONLY AVAILABLE"
-	boxtxt	" IN CASUAL MODE AND"
-	boxtxt	"  MUST not BE USED"
-	boxtxt	"  IN FRANTIC MODE!"
+	boxtxt	" ARE YOUR FRIENDS!"
+	boxtxt_pause
+	boxtxt	"  IN FRANTIC MODE,"
+	boxtxt	"   THEY HATE YOU."
 	boxtxt_end
 
 ;		 --------------------

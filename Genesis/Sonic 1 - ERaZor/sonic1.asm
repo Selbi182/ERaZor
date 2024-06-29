@@ -371,26 +371,26 @@ GameClrRAM:	move.l	d7,(a6)+
 ; SRAM Loading Routine
 ; ---------------------------------------------------------------------------
 ; Format (note, SRAM can only be written to odd addresses):
-; 00 op 00 ch  00 do 00 l1  00 l2 00 r1  00 r2 00 s1  00 s2 00 s3  00 s4 00 cm  00 mg
-;    01    03     05    07     09    0B     0D    0F     11    13     15    17     19
+; 00 op 00 ch  00 d1 00 d2  00 l1 00 l2  00 r1 00 r2  00 s1 00 s2  00 s3 00 s4  00 cm 00 mg
+;    01    03     05    07     09    0B     0D    0F     11    13     15    17     19    1A
 ;
 ;  op = Options Flags ($FFFFFF92)
 ;  ch = Current Chapter ($FFFFFFA7)
-;  do = Open Doors Bitset ($FFFFFF8B)
+;  d_ = Open Doors Bitset - Casual/Frantic  ($FFFFFF8A-$FFFFFF8B)
 ;  l_ = Lives (or Deaths rather, lol) ($FFFFFE12-FFFFFE13)
 ;  r_ = Rings ($FFFFFE20-FFFFFE21)
 ;  s_ = Score ($FFFFFE26-FFFFFE29)
-;  cm = Complete (beat Blackout challenge) ($FFFFFF93)
+;  cm = Complete (Base Game / Blackout challenge) ($FFFFFF93)
 ;  mg = Magic Number (always set to 182, absence implies no SRAM)
 ; ---------------------------------------------------------------------------
-SRAM_Options	= $01
-SRAM_Chapter	= $03
-SRAM_Doors	= $05
-SRAM_Lives	= $07 ; 2 bytes
-SRAM_Rings	= $0B ; 2 bytes
-SRAM_Score	= $0F ; 4 bytes
-SRAM_Complete	= $17
-SRAM_Exists	= $19
+SRAM_Options	= 1
+SRAM_Chapter	= 2 + SRAM_Options
+SRAM_Doors	= 2 + SRAM_Chapter ; 2 bytes
+SRAM_Lives	= 4 + SRAM_Doors ; 2 bytes
+SRAM_Rings	= 4 + SRAM_Lives ; 2 bytes
+SRAM_Score	= 4 + SRAM_Rings ; 4 bytes
+SRAM_Complete	= 8 + SRAM_Score
+SRAM_Exists	= 2 + SRAM_Complete
 
 SRAM_MagicNumber = 182
 ; ---------------------------------------------------------------------------
@@ -413,7 +413,8 @@ SRAMFound:
 		lea	($200000).l,a1				; base of SRAM
 		move.b	SRAM_Options(a1),($FFFFFF92).w		; load options flags
 		move.b	SRAM_Chapter(a1),($FFFFFFA7).w		; load current chapter
-		move.b	SRAM_Doors(a1),($FFFFFF8B).w		; load open doors bitset
+		movep.w	SRAM_Doors(a1),d0			; load...
+		move.w	d0,($FFFFFF8A).w			; ...open doors bitsets
 		movep.w	SRAM_Lives(a1),d0			; load...
 		move.w	d0,($FFFFFE12).w			; ...lives/deaths counter
 		movep.w	SRAM_Rings(a1),d0			; load...
@@ -448,7 +449,7 @@ SRAM_Delete:
 ResetGameProgress:
 		moveq	#0,d0
 		move.b	d0,($FFFFFFA7).w			; clear current chapter
-		move.b	d0,($FFFFFF8B).w			; clear open doors bitset
+		move.w	d0,($FFFFFF8A).w			; clear open doors bitsets
 		move.w	d0,($FFFFFE12).w			; clear lives/deaths counter
 		move.w	d0,($FFFFFE20).w			; clear rings
 		move.l	d0,($FFFFFE26).w			; clear score
@@ -473,8 +474,8 @@ SRAM_SaveNow:
 		move.b	d0,SRAM_Options(a1)			; backup option flags
 		move.b	($FFFFFFA7).w,d0			; move current chapter to d0
 		move.b	d0,SRAM_Chapter(a1)			; backup current chapter
-		move.b	($FFFFFF8B).w,d0			; move open doors bitset to d0
-		move.b	d0,SRAM_Doors(a1)			; backup open doors bitset
+		move.w	($FFFFFF8A).w,d0			; move open doors bitset to d0
+		movep.w	d0,SRAM_Doors(a1)			; backup open doors bitset
 		move.w	($FFFFFE12).w,d0			; move lives/deaths to d0
 		movep.w	d0,SRAM_Lives(a1)			; backup lives/deaths
 		move.w	($FFFFFE20).w,d0			; move rings to d0
@@ -488,6 +489,79 @@ SRAM_SaveNow_End:
 		move.b	#0,($A130F1).l				; disable SRAM
 		rts
 	endif	; def(__MD_REPLAY__)=0
+
+
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Subtroutines to ease coordinating the game progress (casual/frantic)
+; ---------------------------------------------------------------------------
+
+IsDoorOpen:
+		frantic				; are we in frantic?
+		bne.s	@frantic		; if yes, branch
+		btst	d0,($FFFFFF8A).w	; check if door is open (casual)
+		rts
+@frantic:
+		btst	d0,($FFFFFF8B).w	; check if door is open (frantic)
+		rts
+; ---------------------------------------------------------------------------
+
+OpenDoor:
+		bset	d0,($FFFFFF8A).w	; unlock door (casual)
+		frantic				; are we in frantic?
+		beq.s	@end			; if not, branch
+		bset	d0,($FFFFFF8B).w	; unlock door (frantic)
+@end:		rts
+
+; ===========================================================================
+Casual_BaseGame  = 0
+Casual_Blackout  = 1
+Frantic_BaseGame = 2
+Frantic_Blackout = 3
+; ---------------------------------------------------------------------------
+
+IsBaseGameBeaten:
+		btst	#Frantic_BaseGame,($FFFFFF93).w	; has the player beaten the base game in frantic?
+		bne.s	StateCheck_Yes			; if yes, branch
+		frantic					; are we in frantic?
+		bne.s	StateCheck_No			; if yes, branch
+		btst	#Casual_BaseGame,($FFFFFF93).w	; has the player beaten the base game in casual?
+		rts					; ccr is returned
+; ---------------------------------------------------------------------------
+
+IsBlackoutBeaten:
+		btst	#Frantic_Blackout,($FFFFFF93).w	; has the player beaten the blackout challenge in frantic?
+		bne.s	StateCheck_Yes			; if yes, branch
+		frantic					; are we in frantic?
+		bne.s	StateCheck_No			; if yes, branch
+		btst	#Casual_Blackout,($FFFFFF93).w	; has the player beaten the blackout challenge in casual?
+		rts					; ccr is returned
+; ---------------------------------------------------------------------------
+
+BaseGameDone:
+		bset	#Casual_BaseGame,($FFFFFF93).w	; you have beaten the base game in casual, congrats
+		frantic					; or was it acutally in frantic?
+		beq.s	@save				; nah? that's a shame
+		bset	#Frantic_BaseGame,($FFFFFF93).w	; you have beaten the base game in frantic, mad respect
+@save:		jmp	SRAM_SaveNow			; save
+; ---------------------------------------------------------------------------
+
+BlackoutDone:
+		bset	#Casual_Blackout,($FFFFFF93).w	; you have beaten the blackout challenge in casual, congrats
+		frantic					; or was it acutally in frantic?
+		beq.s	@save				; nah? that's a shame
+		bset	#Frantic_Blackout,($FFFFFF93).w	; you have beaten the base game in frantic, mad respect
+@save:		bsr	BaseGameDone			; also set base game beaten state, just in case
+		jmp	SRAM_SaveNow			; save
+; ---------------------------------------------------------------------------
+
+StateCheck_Yes:
+		tst.b	($FFFFF600).w
+		rts
+
+StateCheck_No:
+		cmpi.b	#-1,($FFFFF600).w
+		rts
 
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
@@ -5450,12 +5524,14 @@ SpecialStage_Beaten:
 		bra.s	SpecialStage_Quitter	; uhh idk how this could ever happen, but just in case
 
 @spbeaten:
-		bset	#1,($FFFFFF8B).w	; open second door after Special Place
+		moveq	#1,d0			; open door after Special Place
+		jsr	OpenDoor
 		move.b	#3,($FFFFFF9E).w	; set number for text to 3
 		bra.s	@runinfoscreen
 
 @upbeaten:
-		bset	#4,($FFFFFF8B).w	; open door after Unreal Place
+		moveq	#4,d0			; open door after Unreal Place
+		jsr	OpenDoor
 		move.b	#6,($FFFFFF9E).w	; set number for text to 6
 		tst.b	($FFFFFF5F).w		; is this the blackout special stage?
 		beq.s	@runinfoscreen		; if not, branch
@@ -6929,7 +7005,7 @@ LevSz_StartLoc:				; XREF: LevelSizeLoad
 		bne.s 	@load			; if not, branch
 		frantic				; are we in frantic mode
 		beq.s	@load			; if not, branch
-		tst.b	($FFFFFF8B).w		; have any levels been beaten yet?
+		tst.w	($FFFFFF8A).w		; have any levels been beaten yet?
 		beq.s	@load			; if not, branch
 		addq.w	#1,d0			; use SYZ2 start locations (unused anyway, has the frantic coordinates)
 @load:
@@ -12932,7 +13008,7 @@ Obj2A_Main:				; XREF: Obj2A_Index
 		bne.s	@nosoundstopper		; if not, branch
 		tst.b	obSubtype(a0)		; is this the door leading to the blackout challenge?
 		bpl.s	@nosoundstopper		; if not, branch
-		btst	#0,($FFFFFF93).w	; has the player beaten the base game?
+		jsr	IsBaseGameBeaten	; has the player beaten the base game?
 		beq.s	@nosoundstopper		; if not, don't load sound stopper
 
 		bsr	SingleObjLoad
@@ -12981,13 +13057,18 @@ Obj2A_OpenShut:				; XREF: Obj2A_Index
 		bra.w	Obj2A_Animate		; force door to be red
 
 @finaldoornotpassed:
-		btst	#0,($FFFFFF93).w	; has the player beaten the base game?
+		jsr	IsBaseGameBeaten	; has the player beaten the base game?
 		bne.s	@usegreendoor		; if yes, open the door
 		bra.w	Obj2A_Animate		; otherwise, keep it locked
 
 @notfinaldoor:
-		move.b	($FFFFFF8B).w,d0	; get ammount of beat levels
-		and.b	obSubtype(a0),d0		; and it by subtype of door (always a single bit)
+		move.b	($FFFFFF8A).w,d0	; get beaten levels bitset (casual)
+		frantic				; are we in frantic?
+		beq.s	@checkdoor		; if not, branch
+		move.b	($FFFFFF8B).w,d0	; use frantic door bitset instead
+
+@checkdoor:
+		and.b	obSubtype(a0),d0	; and it by subtype of door (always a single bit)
 		beq.s	Obj2A_Animate		; if the required level hasn't been beaten, keep door locked
 
 @usegreendoor:
@@ -15901,13 +15982,15 @@ Obj4B_Main:				; XREF: Obj4B_Index
 	if DoorsAlwaysOpen=0
 		cmpi.b	#GRing_GreenHill,obSubtype(a0)	; is this a ring leading to Green Hill Place (NHP act 2)?
 		bne.s	@tempringcont1			; if not, branch
-		btst	#0,($FFFFFF8B).w		; has the player beaten this level before?
+		moveq	#0,d0				; has the player beaten this level before?
+		jsr	IsDoorOpen
 		bne.s	Obj4B_Main_Cont			; if yes, branch
 		jmp	DeleteObject			; otherwise, delete this ring
 @tempringcont1:
 		cmpi.b	#GRing_StarAgony,obSubtype(a0)	; is this a ring leading to Star Agony Place (SNP act 2)?
 		bne.s	@tempringcont2			; if not, branch
-		btst	#5,($FFFFFF8B).w		; has the player beaten this level before?
+		moveq	#5,d0				; has the player beaten this level before?
+		jsr	IsDoorOpen
 		bne.s	Obj4B_Main_Cont			; if yes, branch
 		jmp	DeleteObject			; otherwise, delete this ring	
 @tempringcont2:
@@ -22745,27 +22828,46 @@ Obj12_Index:	dc.w Obj12_CheckGameState-Obj12_Index
 
 Obj12_CheckGameState:
 		addq.b	#2,obRoutine(a0)
-		move.b	#0,obFrame(a0)		; user silver star frame
-	;	move.b	#1,obFrame(a0)		; use red star frame
+		move.b	#0,obFrame(a0)		; use silver star frame
+		move.b	#0,$30(a0)		; disable red frame
 
-		move.b	obSubtype(a0),d0
-		cmpi.b	#7,d0
-		beq.s	@basegame
-		cmpi.b	#8,d0
-		beq.s	@blackout
-		subq.b	#1,d0
-		btst	d0,($FFFFFF8B).w
-		bne.s	Obj12_Init
-		jmp	DeleteObject
+		moveq	#0,d0
+		move.b	obSubtype(a0),d0	; get subtype (1-8)
+		cmpi.b	#7,d0			; is this the orb for the base game?
+		beq.s	@basegame		; if yes, branch
+		cmpi.b	#8,d0			; is this the orb for the blackout challenge?
+		beq.s	@blackout		; if yes, branch
+		subq.b	#1,d0			; adjust for bit test
+
+		btst	d0,($FFFFFF8B).w	; stage beaten in frantic?
+		beq.s	@regularstar		; if not, branch
+		move.b	#1,$30(a0)		; use red star frame		
+		bra.s	Obj12_Init		; display
+@regularstar:
+		btst	d0,($FFFFFF8A).w	; stage beaten in casual?
+		bne.s	Obj12_Init		; if yes, branch
+		jmp	DeleteObject		; not even that? you suck. no stars for you.
+; ---------------------------------------------------------------------------
 
 @basegame:
-		btst	#0,($FFFFFF93).w	; have you beaten the base game?
-		bne.s	Obj12_Init		; if yes, branch
+		btst	#Frantic_BaseGame,($FFFFFF93).w	; has the player beaten the base game in frantic?
+		beq.s	@bgnotfrantic			; if yes, branch
+		move.b	#1,$30(a0)			; use red star frame
+		bra.s	Obj12_Init
+@bgnotfrantic:
+		btst	#Casual_BaseGame,($FFFFFF93).w	; has the player beaten the base game in casual?
+		bne.s	Obj12_Init
 		jmp	DeleteObject
-	
+; ---------------------------------------------------------------------------
+
 @blackout:
-		btst	#1,($FFFFFF93).w	; have you beaten the blackout challenge?
-		bne.s	Obj12_Init		; if yes, branch
+		btst	#Frantic_Blackout,($FFFFFF93).w	; has the player beaten the blackout challenge in frantic?
+		beq.s	@bcnotfrantic			; if yes, branch
+		move.b	#1,$30(a0)			; use red star frame
+		bra.s	Obj12_Init
+@bcnotfrantic:
+		btst	#Casual_Blackout,($FFFFFF93).w	; has the player beaten the blackout challenge in casual?
+		bne.s	Obj12_Init
 		jmp	DeleteObject
 
 ; ---------------------------------------------------------------------------
@@ -22777,32 +22879,33 @@ Obj12_Init:
 		move.b	#4,obRender(a0)
 		move.b	#$10,obActWid(a0)
 		move.b	#6,obPriority(a0)
+		move.w	obY(a0),$32(a0)
+		
+		moveq	#0,d0
+		move.b	obSubtype(a0),d0
+		lsl.w	#4,d0
+		move.w	d0,$34(a0)
 ; ---------------------------------------------------------------------------
 
 Obj12_Animate:
-		jmp	MarkObjGone
-
-		tst.b	$30(a0)
-		beq.s	@0
-		bset	#0,obFrame(a0)
-		move.w	($FFFFFE04).w,d0
-		andi.w	#$F,d0
-		bne.s	@0
-		bclr	#0,obFrame(a0)
-
-@0:
-		jmp	MarkObjGone
-
-
-
 		; sway
 		move.w	($FFFFFE04).w,d0
+		add.w	$34(a0),d0
 		jsr	(CalcSine).l
-		asr.w	#2,d0
-		move.w	d0,obVelY(a0)
-		jsr     SpeedToPos
+		asr.w	#5,d0
+		add.w	$32(a0),d0
+		move.w	d0,obY(a0)
 
-		jmp	MarkObjGone
+		; red frame
+		tst.b	$30(a0)
+		beq.s	@0
+		move.w	($FFFFFE04).w,d0
+		andi.w	#$3,d0
+		bne.s	@0
+		bchg	#0,obFrame(a0)
+@0:		jmp	MarkObjGone
+
+
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -23076,8 +23179,8 @@ loc_EC86:
 ; ---------------------------------------------------------------------------
 ; Subroutine to unlock the doors in SYZ1 after you finish a normal level
 
-; ($FFFFFF8A).w	- frantic TODO
-; ($FFFFFF8B).w	- casual
+; ($FFFFFF8A).w	- casual
+; ($FFFFFF8B).w	- frantic
 ; Bit 0 = GHZ | SS1
 ; Bit 1 = SS1 | MZ
 ; Bit 2 = MZ | LZ
@@ -23093,25 +23196,29 @@ loc_EC86:
 GotThroughAct:				; XREF: Obj3E_EndAct
 		cmpi.w	#$002,($FFFFFE10).w	; is level GHZ3?
 		bne.s	GTA_ChkMZ1		; if not, branch
-		bset	#0,($FFFFFF8B).w	; unlock first door
+		moveq	#0,d0			; unlock first door
+		jsr	OpenDoor
 		move.b	#2,($FFFFFF9E).w	; set number for text to 2
 
 GTA_ChkMZ1:
 		cmpi.w	#$200,($FFFFFE10).w	; is level MZ1?
 		bne.s	GTA_ChkLZ2		; if not, branch
-		bset	#2,($FFFFFF8B).w	; unlock third door
+		moveq	#2,d0			; unlock third door
+		jsr	OpenDoor
 		move.b	#4,($FFFFFF9E).w	; set number for text to 4
 
 GTA_ChkLZ2:
 		cmpi.w	#$101,($FFFFFE10).w	; is level LZ2?
 		bne.s	GTA_ChkSLZ2		; if not, branch
-		bset	#3,($FFFFFF8B).w	; unlock fourth door
+		moveq	#3,d0			; unlock fourth door
+		jsr	OpenDoor
 		move.b	#5,($FFFFFF9E).w	; set number for text to 5
 
 GTA_ChkSLZ2:
 		cmpi.w	#$302,($FFFFFE10).w	; is level SLZ3?
 		bne.s	GTA_NoDoor		; if not, branch
-		bset	#5,($FFFFFF8B).w	; unlock fifth door
+		moveq	#5,d0			; unlock fifth door
+		jsr	OpenDoor
 		move.b	#7,($FFFFFF9E).w	; set number for text to 7
 
 GTA_NoDoor:
@@ -23120,7 +23227,6 @@ GTA_NoDoor:
 locret_ECEE:
 		rts				; return
 ; End of function GotThroughAct
-
 ; ===========================================================================
 
 ; This gets called from the Info Screen (exit)
@@ -42237,7 +42343,8 @@ FinalBoss_Exit:
 		jsr	Pal_MakeWhite		; make white flash
 		move.l (sp)+,a0			; restore from stack
 
-		bset	#6,($FFFFFF8B).w	; unlock door to the credits
+		moveq	#6,d0			; unlock door to the credits
+		jsr	OpenDoor
 		
 		btst	#2,($FFFFFF92).w	; is Skip Uberhub Place enabled?
 		bne.s	@straighttoend		; if yes, go directly to ending sequence instead of back to Uberhub
@@ -45068,9 +45175,7 @@ Emershit:
 		moveq	#$FFFFFF88,d0		; play regular special stage beaten jingle
 		tst.b	($FFFFFF5F).w		; is this the blackout blackout special stage?
 		beq.s	@cont			; if not, branch
-		bset	#1,($FFFFFF93).w	; you have beaten the blackout challenge, congrats
-		bset	#0,($FFFFFF93).w	; also set base game beaten state, just in case
-		jsr	SRAM_SaveNow		; save
+		jsr	BlackoutDone		; you have beaten the blackout challenge, congrats
 		moveq	#$FFFFFF91,d0		; play true ending music
 
 @cont:

@@ -39,6 +39,7 @@ __DEBUG__: equ 1
 ; ------------------------------------------------------
 
 	include	"Variables.asm"
+	include	"Constants.asm"
 	include	"Macros.asm"
 
 ; ------------------------------------------------------
@@ -82,38 +83,6 @@ DoorsAlwaysOpen = 1
 LowBossHP = 1
 ; ------------------------------------------------------
 	endif
-
-; ------------------------------------------------------
-; Object variables
-; ------------------------------------------------------
-obRender:	equ 1	; bitfield for x/y flip, display mode
-obGfx:		equ 2	; palette line & VRAM setting (2 bytes)
-obMap:		equ 4	; mappings address (4 bytes)
-obX:		equ 8	; x-axis position (2-4 bytes)
-obScreenY:	equ $A	; y-axis position for screen-fixed items (2 bytes)
-obY:		equ $C	; y-axis position (2-4 bytes)
-obVelX:		equ $10	; x-axis velocity (2 bytes)
-obVelY:		equ $12	; y-axis velocity (2 bytes)
-obInertia:	equ $14	; potential speed (2 bytes)
-obHeight:	equ $16	; height/2
-obWidth:	equ $17	; width/2
-obPriority:	equ $18	; sprite stack priority -- 0 is front
-obActWid:	equ $19	; action width
-obFrame:	equ $1A	; current frame displayed
-obAniFrame:	equ $1B	; current frame in animation script
-obAnim:		equ $1C	; current animation
-obNextAni:	equ $1D	; next animation
-obTimeFrame:	equ $1E	; time to next frame
-obDelayAni:	equ $1F	; time to delay animation
-obColType:	equ $20	; collision response type
-obColProp:	equ $21	; collision extra property
-obStatus:	equ $22	; orientation or mode
-obRespawnNo:	equ $23	; respawn list index number
-obRoutine:	equ $24	; routine number
-ob2ndRout:	equ $25	; secondary routine number
-obAngle:	equ $26	; angle
-obSubtype:	equ $28	; object subtype
-obSolid:	equ $25 ; solid status flag
 
 ; ------------------------------------------------------
 		include	"Debugger/Debugger.asm"
@@ -337,6 +306,8 @@ GameClrRAM:	move.l	d7,(a6)+
 @SampleTableOk:
 
 		jsr	PLC_ClearQueue	; setup PLC system
+
+		jsr	DrawBuffer_Clear		; initialize drawing buffer
 
 		jsr	BlackBars.FullReset		; setup black bars
 		move.l	HBlank_BaseHandler, HBlankHndl	; setup HBlank handler
@@ -806,427 +777,9 @@ GameModeArray:
 Art_Text:	incbin	Screens\OptionsScreen\Options_TextArt.bin
 		even
 
-; ===========================================================================
-; ---------------------------------------------------------------------------
-; V-blanking routine
-; ---------------------------------------------------------------------------
 
-; loc_B10:
-VBlank:				; XREF: StartOfRom
-		movem.l	d0-a6,-(sp)
-
-		tst.b	VBlank_MusicOnly		; is "music only" flag set (effectively disabled VBlank, only SMPS works)
-		bne.s	VBlank_Exit			; if yes, skip all of VBlank
-
-		bsr.w	BlackBars.VBlankUpdate
-		
-		tst.b	VBlankRoutine			; are we lagging (VBlank unwanted, interrupted game loop)
-		beq.w	VBlank_LagFrame			; if yes, oh shit oh fuck, go to the emergency routine immediately
-		
-		addq.l	#1, VBlank_NonLagFrameCounter
-		move.w	($C00004).l,d0
-		move.l	#$40000010,($C00004).l
-		move.l	($FFFFF616).w,($C00000).l
-		btst	#6,($FFFFFFF8).w		; are we PAL?
-		beq.s	loc_B42				; if not, branch
-		move.w	#$700,d0
-		dbf	d0, *				; waste ~$700 * 10 cycles on PAL consoles
-
-loc_B42:
-		move.b	VBlankRoutine,d0
-		move.w	#1,($FFFFF644).w
-		andi.w	#$3E,d0
-		move.w	VBlankTable(pc,d0.w),d0
-		jsr	VBlankTable(pc,d0.w)
-
-; loc_B5E:
-VBlank_Exit:				; XREF: VBlank_LagFrame
-		move.b	#0,VBlankRoutine
-	if def(__BENCHMARK__)=0
-		bsr.s	UpdateSoundDriver	; update sound driver stuff now
-	endif
-		addq.l	#1,VBlank_FrameCounter	; increase 1 to V-Blank counter
-		movem.l	(sp)+,d0-a6
-		rte	
-; ===========================================================================
-	; Benchmark builds exclude SMPS for timing consistency
-	if def(__BENCHMARK__)=0
-UpdateSoundDriver:
-		ints_enable			; enable interrupts (we can accept horizontal interrupts from now on)
-		tst.b	($FFFFF64F).w		; is SMPS currently running?
-		bne.s	@end			; if yes, branch
-		move.b	#1,($FFFFF64F).w	; set "SMPS running flag"
-		jsr	SoundDriverUpdate	; run SMPS
-		clr.b	($FFFFF64F).w		; reset "SMPS running flag"
-@end:		rts
-	endif
-
-; ===========================================================================
-VBlankTable:	dc.w VBlank_LagFrame-VBlankTable	; $00
-		dc.w loc_C32-VBlankTable	; $02
-		dc.w loc_C44-VBlankTable	; $04
-		dc.w loc_C5E-VBlankTable	; $06
-		dc.w VBlank_Level-VBlankTable	; $08 (main one for levels)
-		dc.w loc_DA6-VBlankTable	; $0A
-		dc.w loc_E72-VBlankTable	; $0C
-		dc.w loc_F8A-VBlankTable	; $0E
-		dc.w loc_C64-VBlankTable	; $10 (pause)
-		dc.w loc_F9A-VBlankTable	; $12
-		dc.w loc_C36-VBlankTable	; $14
-		dc.w loc_FA6-VBlankTable	; $16
-		dc.w loc_E72-VBlankTable	; $18
-; ===========================================================================
-
-; loc_B88:
-VBlank_LagFrame:				; XREF: VBlank; VBlankTable
-		cmpi.b	#$8C,($FFFFF600).w
-		beq.s	loc_B9A
-		cmpi.b	#$C,($FFFFF600).w	; are we in the level game mode?
-		bne.w	VBlank_Exit		; if not, branch
-
-loc_B9A:
-		cmpi.b	#1,($FFFFFE10).w	; is level LZ?
-		bne.w	VBlank_Exit		; if not, branch
-
-		move.w	($C00004).l,d0
-		btst	#6,($FFFFFFF8).w
-		beq.s	loc_BBA
-		move.w	#$700,d0
-		dbf	d0,*
-
-loc_BBA:
-		move.w	#1,($FFFFF644).w
-
-		tst.b	($FFFFF64E).w
-		bne.s	loc_BFE
-		lea	($C00004).l,a5
-		move.l	#$94009340,(a5)
-		move.l	#$96FD9580,(a5)
-		move.w	#$977F,(a5)
-		move.w	#$C000,(a5)
-		move.w	#$80,($FFFFF640).w
-		move.w	($FFFFF640).w,(a5)
-		bra.s	loc_C22
-; ===========================================================================
-
-loc_BFE:				; XREF: loc_BC8
-		lea	($C00004).l,a5
-		move.l	#$94009340,(a5)
-		move.l	#$96FD9540,(a5)
-		move.w	#$977F,(a5)
-		move.w	#$C000,(a5)
-		move.w	#$80,($FFFFF640).w
-		move.w	($FFFFF640).w,(a5)
-
-loc_C22:				; XREF: loc_BC8
-		cmpi.b	#1,($FFFFFE10).w
-		bne.s	@0
-		move.w	($FFFFF624).w,(a5)
-@0:		move.b	($FFFFF625).w,($FFFFFE07).w
-
-		bra.w	VBlank_Exit
-; ===========================================================================
-
-loc_C32:				; XREF: VBlankTable
-		bsr	sub_106E
-		cmpi.b	#1,($FFFFFE10).w
-		bne.s	@0
-		move.w	($FFFFF624).w,(a5)
-@0:		move.b	($FFFFF625).w,($FFFFFE07).w
-
-
-loc_C36:				; XREF: VBlankTable
-		tst.w	($FFFFF614).w
-		beq.w	locret_C42
-		subq.w	#1,($FFFFF614).w
-
-locret_C42:
-		rts	
-; ===========================================================================
-
-loc_C44:				; XREF: VBlankTable
-		bsr	sub_106E
-		cmpi.b	#1,($FFFFFE10).w
-		bne.s	@0
-		move.w	($FFFFF624).w,(a5)
-@0:		move.b	($FFFFF625).w,($FFFFFE07).w
-
-		bsr	sub_6886
-		tst.w	($FFFFF614).w
-		beq.w	locret_C5C
-		subq.w	#1,($FFFFF614).w
-
-locret_C5C:
-		rts	
-; ===========================================================================
-
-loc_C5E:				; XREF: VBlankTable
-		bsr	sub_106E
-		cmpi.b	#1,($FFFFFE10).w
-		bne.s	@0
-		move.w	($FFFFF624).w,(a5)
-@0:		move.b	($FFFFF625).w,($FFFFFE07).w
-
-		rts	
-; ===========================================================================
-
-loc_C64:				; XREF: VBlankTable
-		cmpi.b	#$10,($FFFFF600).w ; is	game mode = $10	(special stage)	?
-		beq.w	loc_DA6		; if yes, branch
-
-;loc_C6E:				; XREF: VBlankTable
-VBlank_Level:
-		bsr	ReadJoypads
-		tst.b	($FFFFF64E).w
-		bne.s	loc_CB0
-		lea	($C00004).l,a5
-		move.l	#$94009340,(a5)
-		move.l	#$96FD9580,(a5)
-		move.w	#$977F,(a5)
-		move.w	#$C000,(a5)
-		move.w	#$80,($FFFFF640).w
-		move.w	($FFFFF640).w,(a5)
-		bra.s	loc_CD4
-; ===========================================================================
-
-loc_CB0:				; XREF: loc_C76
-		lea	($C00004).l,a5
-		move.l	#$94009340,(a5)
-		move.l	#$96FD9540,(a5)
-		move.w	#$977F,(a5)
-		move.w	#$C000,(a5)
-		move.w	#$80,($FFFFF640).w
-		move.w	($FFFFF640).w,(a5)
-
-loc_CD4:				; XREF: loc_C76
-		cmpi.b	#1,($FFFFFE10).w
-		bne.s	@0
-		move.w	($FFFFF624).w,(a5)
-@0:		move.b	($FFFFF625).w,($FFFFFE07).w
-
-		lea	($C00004).l,a5
-		move.l	#$940193C0,(a5)
-		move.l	#$96E69500,(a5)
-		move.w	#$977F,(a5)
-		move.w	#$7C00,(a5)
-		move.w	#$83,($FFFFF640).w
-		move.w	($FFFFF640).w,(a5)
-		lea	($C00004).l,a5
-		move.l	#$94019340,(a5)
-		move.l	#$96FC9500,(a5)
-		move.w	#$977F,(a5)
-		move.w	#$7800,(a5)
-		move.w	#$83,($FFFFF640).w
-		move.w	($FFFFF640).w,(a5)
-		jsr	(ProcessDMAQueue).l
-
-loc_D50:
-		movem.l	($FFFFF700).w,d0-d7
-		movem.l	d0-d7,($FFFFFF10).w
-		movem.l	($FFFFF754).w,d0-d1
-		movem.l	d0-d1,($FFFFFF30).w
-
-;Demo_Time:
-		bsr	LoadTilesAsYouMove
-		jsr	AniArt_Load
-		jsr	HudUpdate
-		rts
-; End of function Demo_Time
-
-; ===========================================================================
-
-loc_DA6:				; XREF: VBlankTable
-		bsr	ReadJoypads
-		lea	($C00004).l,a5
-		move.l	#$94009340,(a5)
-		move.l	#$96FD9580,(a5)
-		move.w	#$977F,(a5)
-		move.w	#$C000,(a5)
-		move.w	#$80,($FFFFF640).w
-		move.w	($FFFFF640).w,(a5)
-		lea	($C00004).l,a5
-		move.l	#$94019340,(a5)
-		move.l	#$96FC9500,(a5)
-		move.w	#$977F,(a5)
-		move.w	#$7800,(a5)
-		move.w	#$83,($FFFFF640).w
-		move.w	($FFFFF640).w,(a5)
-		lea	($C00004).l,a5
-		move.l	#$940193C0,(a5)
-		move.l	#$96E69500,(a5)
-		move.w	#$977F,(a5)
-		move.w	#$7C00,(a5)
-		move.w	#$83,($FFFFF640).w
-		move.w	($FFFFF640).w,(a5)
-		bsr	PalCycle_SS
-		jsr	(ProcessDMAQueue).l
-
-loc_E64:
-		tst.w	($FFFFF614).w
-		beq.w	locret_E70
-		subq.w	#1,($FFFFF614).w
-
-locret_E70:
-		rts	
-; ===========================================================================
-
-loc_E72:				; XREF: VBlankTable
-		bsr	ReadJoypads
-		tst.b	($FFFFF64E).w
-		bne.s	loc_EB4
-		lea	($C00004).l,a5
-		move.l	#$94009340,(a5)
-		move.l	#$96FD9580,(a5)
-		move.w	#$977F,(a5)
-		move.w	#$C000,(a5)
-		move.w	#$80,($FFFFF640).w
-		move.w	($FFFFF640).w,(a5)
-		bra.s	loc_ED8
-; ===========================================================================
-
-loc_EB4:				; XREF: loc_E7A
-		lea	($C00004).l,a5
-		move.l	#$94009340,(a5)
-		move.l	#$96FD9540,(a5)
-		move.w	#$977F,(a5)
-		move.w	#$C000,(a5)
-		move.w	#$80,($FFFFF640).w
-		move.w	($FFFFF640).w,(a5)
-
-loc_ED8:				; XREF: loc_E7A
-		cmpi.b	#1,($FFFFFE10).w
-		bne.s	@0
-		move.w	($FFFFF624).w,(a5)
-@0:		move.b	($FFFFF625).w,($FFFFFE07).w
-
-		lea	($C00004).l,a5
-		move.l	#$940193C0,(a5)
-		move.l	#$96E69500,(a5)
-
-loc_EEE:
-		move.w	#$977F,(a5)
-		move.w	#$7C00,(a5)
-		move.w	#$83,($FFFFF640).w
-		move.w	($FFFFF640).w,(a5)
-		lea	($C00004).l,a5
-		move.l	#$94019340,(a5)
-		move.l	#$96FC9500,(a5)
-		move.w	#$977F,(a5)
-		move.w	#$7800,(a5)
-		move.w	#$83,($FFFFF640).w
-		move.w	($FFFFF640).w,(a5)
-		jsr	(ProcessDMAQueue).l
-
-loc_F54:
-		movem.l	($FFFFF700).w,d0-d7
-		movem.l	d0-d7,($FFFFFF10).w
-		movem.l	($FFFFF754).w,d0-d1
-		movem.l	d0-d1,($FFFFFF30).w
-		bsr	LoadTilesAsYouMove
-		jsr	AniArt_Load
-		jsr	HudUpdate
-		rts	
-; ===========================================================================
-
-loc_F8A:				; XREF: VBlankTable
-		bsr	sub_106E
-		cmpi.b	#1,($FFFFFE10).w
-		bne.s	@0
-		move.w	($FFFFF624).w,(a5)
-@0:		move.b	($FFFFF625).w,($FFFFFE07).w
-
-		addq.b	#1,($FFFFF628).w
-		move.b	#$E,VBlankRoutine
-		rts	
-; ===========================================================================
-
-loc_F9A:				; XREF: VBlankTable
-		bsr	sub_106E
-		cmpi.b	#1,($FFFFFE10).w
-		bne.s	@0
-		move.w	($FFFFF624).w,(a5)
-@0:		move.b	($FFFFF625).w,($FFFFFE07).w
-
-		rts
-; ===========================================================================
-
-loc_FA6:				; XREF: VBlankTable
-		bsr	ReadJoypads
-		lea	($C00004).l,a5
-		move.l	#$94009340,(a5)
-		move.l	#$96FD9580,(a5)
-		move.w	#$977F,(a5)
-		move.w	#$C000,(a5)
-		move.w	#$80,($FFFFF640).w
-		move.w	($FFFFF640).w,(a5)
-		lea	($C00004).l,a5
-		move.l	#$94019340,(a5)
-		move.l	#$96FC9500,(a5)
-		move.w	#$977F,(a5)
-		move.w	#$7800,(a5)
-		move.w	#$83,($FFFFF640).w
-		move.w	($FFFFF640).w,(a5)
-		lea	($C00004).l,a5
-		move.l	#$940193C0,(a5)
-		move.l	#$96E69500,(a5)
-		move.w	#$977F,(a5)
-		move.w	#$7C00,(a5)
-		move.w	#$83,($FFFFF640).w
-		move.w	($FFFFF640).w,(a5)
-		jsr	(ProcessDMAQueue).l
-
-loc_1060:
-		tst.w	($FFFFF614).w
-		beq.w	locret_106C
-		subq.w	#1,($FFFFF614).w
-
-locret_106C:
-		rts	
-
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
-
-sub_106E:				; XREF: loc_C32; et al
-		bsr	ReadJoypads
-		tst.b	($FFFFF64E).w
-		bne.s	loc_10B0
-		lea	($C00004).l,a5
-		move.l	#$94009340,(a5)
-		move.l	#$96FD9580,(a5)
-		move.w	#$977F,(a5)
-		move.w	#$C000,(a5)
-		move.w	#$80,($FFFFF640).w
-		move.w	($FFFFF640).w,(a5)
-		bra.s	loc_10D4
-; ===========================================================================
-
-loc_10B0:				; XREF: sub_106E
-		lea	($C00004).l,a5
-		move.l	#$94009340,(a5)
-		move.l	#$96FD9540,(a5)
-		move.w	#$977F,(a5)
-		move.w	#$C000,(a5)
-		move.w	#$80,($FFFFF640).w
-		move.w	($FFFFF640).w,(a5)
-
-loc_10D4:				; XREF: sub_106E
-		lea	($C00004).l,a5
-		move.l	#$94019340,(a5)
-		move.l	#$96FC9500,(a5)
-		move.w	#$977F,(a5)
-		move.w	#$7800,(a5)
-		move.w	#$83,($FFFFF640).w
-		move.w	($FFFFF640).w,(a5)
-		lea	($C00004).l,a5
-		move.l	#$940193C0,(a5)
-		move.l	#$96E69500,(a5)
-		move.w	#$977F,(a5)
-		move.w	#$7C00,(a5)
-		move.w	#$83,($FFFFF640).w
-		move.w	($FFFFF640).w,(a5)
-		jsr	(ProcessDMAQueue).l
-		rts	
-; End of function sub_106E
+*VBlank:
+		include	"modules/VBlank.asm"
 
 ; ---------------------------------------------------------------------------
 ; Subroutine to	initialise joypads
@@ -1624,7 +1177,7 @@ MapScreen_Column:
 
 ; sub_144E: DMA_68KtoVRAM: QueueCopyToVRAM: QueueVDPCommand: Add_To_DMA_Queue:
 QueueDMATransfer:
-		movea.l	($FFFFC8FC).w,a1
+		movea.l	DMAQueuePos, a1
 
 		;move.l	a0, -(sp)
 		;movea.l	4(sp), a0
@@ -1666,7 +1219,7 @@ QueueDMATransfer:
 		ori.l	#$40000080,d2 ; set bits to specify VRAM transfer
 		move.l	d2,(a1)+ ; store command
 
-		move.l	a1,($FFFFC8FC).w ; set the next free slot address
+		move.l	a1, DMAQueuePos	; set the next free slot address
 		cmpa.w	#$C8FC,a1
 		beq.s	QueueDMATransfer_Done ; return if there's no more room in the buffer
 		move.w	#0,(a1) ; put a stop token at the end of the used part of the buffer
@@ -1696,9 +1249,8 @@ ProcessDMAQueue:
 		@interrupts_ok:
 		endif
 
-		lea	($C00004).l,a5
-		lea	($FFFFC800).w,a1
-
+		lea	VDP_Ctrl, a5
+		lea	DMAQueue, a1
 ; loc_14B6:
 ProcessDMAQueue_Loop:
 		move.w	(a1)+,d0
@@ -1715,8 +1267,8 @@ ProcessDMAQueue_Loop:
 		bne.s	ProcessDMAQueue_Loop ; loop if we haven't reached the end of the buffer
 ; loc_14CE:
 ProcessDMAQueue_Done:
-		move.w	#0,($FFFFC800).w
-		move.l	#$FFFFC800,($FFFFC8FC).w
+		move.w	#0, DMAQueue			; put end marker at the start of the queue
+		move.l	#DMAQueue, DMAQueuePos		; reset queue position to start
 		rts
 ; End of function ProcessDMAQueue
 ; ---------------------------------------------------------------------------
@@ -1736,6 +1288,10 @@ ProcessDMAQueue_Done:
 	; TODO: Completely replace remaining Kosinski art with Kosinski+, remove this decompressor
 *KosDec:
 	include	'modules\Kosinski Decompressor.asm'
+
+; ---------------------------------------------------------------------------
+
+	include	'modules\Draw Buffer.asm'
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -3238,10 +2794,9 @@ Title_ClrObjRam:
 		lea	($C00004).l,a5
 		lea	($C00000).l,a6
 		lea	($FFFFF708).w,a3
-		lea	($FFFFA6C0).w,a4
 
-		move.w	#$6000,d2
-		bsr	LoadTilesFromStart2
+		jsr 	LevelRenderer_DrawLayout_BG
+
 		lea	($FF0000).l,a1
 		lea	(Eni_Title).l,a0 ; load	title screen mappings
 		move.w	#0,d0
@@ -3267,7 +2822,7 @@ Title_ClrObjRam:
 
 		move.w	#$618,($FFFFF614).w ; run title screen for $618 frames (this matches the music length)
 
-		lea	($FFFFD080).w,a1
+		lea	($FFFFD000).w,a1
 		moveq	#0,d0
 		move.w	#7,d1
 Title_ClrObjRam2:
@@ -3301,9 +2856,6 @@ Title_SonPalLoop:
 		bsr	Pal_FadeTo
 
 ; ===========================================================================
-
-	KDebug.WriteLine "Reached Title_MainLoop..."
-
 Title_MainLoop:
 		addq.w	#3,($FFFFD008).w
 
@@ -3702,6 +3254,7 @@ Level:					; XREF: GameModeArray
 		clr.b	($FFFFFF94).w
 		bset	#7,($FFFFF600).w ; add $80 to screen mode (for pre level sequence)
 		bsr	PLC_ClearQueue
+		jsr	DrawBuffer_Clear
 		
 		move.w	#$8004,($C00004).l	; disable h-ints
 		display_enable
@@ -3790,8 +3343,8 @@ Level_ClrVars3:	move.l	d0,(a1)+
 		move.w	#$8A00|$DF,($FFFFF624).w	; set initial H-int counter value to apply once per frame
 		move.w	($FFFFF624).w,(a6)		; apply H-int counter
 		
-		clr.w	($FFFFC800).w
-		move.l	#$FFFFC800,($FFFFC8FC).w
+		clr.w	DMAQueue
+		move.l	#DMAQueue, DMAQueuePos
 
 		cmpi.b	#1,($FFFFFE10).w	; is level LZ?
 		beq.s	Level_LZWaterSetup	; if yes, branch
@@ -3978,7 +3531,10 @@ loc_3946:
 		move.b	#1,($FFFFF7CC).w	; lock controls
 
 @notuberhub:
-		bsr	LoadTilesFromStart
+		VBlank_SetMusicOnly
+		jsr 	LevelRenderer_DrawLayout_FG
+		jsr 	LevelRenderer_DrawLayout_BG
+		VBlank_UnsetMusicOnly
 		jsr	FloorLog_Unk
 		bsr	ColIndexLoad
 		bsr	LZWaterEffects
@@ -4116,6 +3672,8 @@ Level_MainLoop:
 		bne.w	Level			; if yes, branch
 
 		bsr	DeformBgLayer
+		jsr 	LevelRenderer_Update_FG
+		jsr 	LevelRenderer_Update_BG
 		jsr	BuildSprites
 		jsr	ObjPosLoad
 		tst.b	($FFFFFFAC).w
@@ -4334,7 +3892,7 @@ DynWater_LZ3:				; XREF: DynWater_Index
 		cmpi.w	#$600,($FFFFD00C).w
 		bcc.s	loc_3D54
 		move.w	#$4C8,d1
-		move.b	#$4B,($FFFFA506).w ; change level layout
+		move.b	#$4B, LevelLayout_FG+$40*2+6 ; change level layout
 		move.b	#1,($FFFFF64D).w
 		move.w	#$B7,d0
 		bsr	PlaySound_Special ; play sound $B7 (rumbling)
@@ -4550,12 +4108,12 @@ LZWaterSlides:				; XREF: LZWaterEffects
 		btst	#1,obStatus(a1)
 		bne.s	loc_3F6A
 		move.w	obY(a1),d0
-		lsr.w	#1,d0
-		andi.w	#$380,d0
+		lsr.w	#2,d0
+		andi.w	#$1C0,d0
 		move.b	obX(a1),d1
 		andi.w	#$7F,d1
 		add.w	d1,d0
-		lea	($FFFFA400).w,a2
+		lea	LevelLayout_FG,a2
 		move.b	(a2,d0.w),d0
 		lea	byte_3FCF(pc),a2
 		moveq	#6,d1
@@ -5284,7 +4842,7 @@ SS_ClrRam2:	move.l	d0,(a1)+
 		moveq	#0,d0
 		move.w	#$7F,d1
 SS_ClrNemRam:	move.l	d0,(a1)+
-		dbf	d1,SS_ClrNemRam	; clear	Nemesis	buffer
+		dbf	d1,SS_ClrNemRam	; clear	BG buffer
 
 		lea	PLC_TitleCard, a1
 		jsr	LoadPLC_Direct
@@ -6146,7 +5704,10 @@ End_LoadData:
 		bset	#2,($FFFFF754).w
 		
 		bsr	MainLoadBlockLoad	; load block mappings and palettes
-		bsr	LoadTilesFromStart
+		VBlank_SetMusicOnly
+		jsr 	LevelRenderer_DrawLayout_FG
+		jsr 	LevelRenderer_DrawLayout_BG
+		VBlank_UnsetMusicOnly
 		move.l	#Col_GHZ,($FFFFF796).w ; load collision	index
 		move	#$2300,sr
 		lea	(Kos_EndFlowers).l,a0 ;	load extra flower patterns
@@ -6205,6 +5766,8 @@ End_MainLoop:
 		bsr	End_MoveSonic
 		jsr	ObjectsLoad
 		bsr	DeformBgLayer
+		jsr 	LevelRenderer_Update_FG
+		jsr 	LevelRenderer_Update_BG
 		jsr	BuildSprites
 		jsr	ObjPosLoad
 		bsr	PalCycle_Load
@@ -6249,13 +5812,12 @@ loc_5334:
 		tst.w	($FFFFFE02).w
 		beq.w	End_AllEmlds
 		clr.w	($FFFFFE02).w
-		move.w	#$2E2F,($FFFFA480).w ; modify level layout
-		lea	($C00004).l,a5
-		lea	($C00000).l,a6
-		lea	($FFFFF700).w,a3
-		lea	($FFFFA400).w,a4
-		move.w	#$4000,d2
-		bsr	LoadTilesFromStart2
+		move.w	#$2E2F, LevelLayout_FG+$40 ; modify level layout
+
+		VBlank_SetMusicOnly
+		jsr 	LevelRenderer_DrawLayout_FG
+		VBlank_UnsetMusicOnly
+
 		moveq	#$13,d0
 		bsr	PalLoad1	; load ending pallet
 		bsr	Pal_MakeWhite
@@ -7040,2628 +6602,13 @@ dword_61B4:	dc.l $700100, $1000100
 		dc.l $8000100, $1000000
 		dc.l $8000100, $1000000
 		dc.l $700100, $1000100
-
-; ---------------------------------------------------------------------------
-; Subroutine to	set scroll speed of some backgrounds
-; ---------------------------------------------------------------------------
-
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
-
-BgScrollSpeed:				; XREF: LevelSizeLoad
-		tst.b	($FFFFFE30).w
-		bne.s	loc_6206
-		move.w	d0,($FFFFF70C).w
-		move.w	d0,($FFFFF714).w
-		move.w	d1,($FFFFF708).w
-		move.w	d1,($FFFFF710).w
-		move.w	d1,($FFFFF718).w
-
-loc_6206:
-		moveq	#0,d2
-		move.b	($FFFFFE10).w,d2
-		add.w	d2,d2
-		move.w	BgScroll_Index(pc,d2.w),d2
-		jmp	BgScroll_Index(pc,d2.w)
-; End of function BgScrollSpeed
-
-; ===========================================================================
-BgScroll_Index:	dc.w BgScroll_GHZ-BgScroll_Index, BgScroll_LZ-BgScroll_Index
-		dc.w BgScroll_MZ-BgScroll_Index, BgScroll_SLZ-BgScroll_Index
-		dc.w BgScroll_SYZ-BgScroll_Index, BgScroll_SBZ-BgScroll_Index
-		dc.w BgScroll_End-BgScroll_Index
-; ===========================================================================
-
-BgScroll_GHZ:				; XREF: BgScroll_Index
-		clr.l	($FFFFF708).w
-		clr.l	($FFFFF70C).w
-		clr.l	($FFFFF714).w
-		clr.l	($FFFFF71C).w
-		lea	($FFFFA800).w,a2
-		clr.l	(a2)+
-		clr.l	(a2)+
-		clr.l	(a2)+
-		rts 
-; ===========================================================================
- 
-BgScroll_LZ:				; XREF: BgScroll_Index
-		asr.l	#1,d0
-		move.w	d0,($FFFFF70C).w
-		rts	
-; ===========================================================================
- 
-BgScroll_MZ:				; XREF: BgScroll_Index
-		rts	
-; ===========================================================================
- 
-BgScroll_SLZ:				; XREF: BgScroll_Index
-		asr.l	#1,d0
-		addi.w	#$C0,d0
-		move.w	d0,($FFFFF70C).w
-		clr.l	($FFFFF708).w
-		rts	
-; ===========================================================================
- 
-BgScroll_SYZ:				; XREF: BgScroll_Index
-		asl.l	#4,d0
-		move.l	d0,d2
-		asl.l	#1,d0
-		add.l	d2,d0
-		asr.l	#8,d0
-		addq.w	#1,d0
-		move.w	d0,($FFFFF70C).w
-		clr.l	($FFFFF708).w
-		rts	
-; ===========================================================================
- 
-BgScroll_SBZ:				; XREF: BgScroll_Index
-		andi.w	#$7F8,d0
-		asr.w	#3,d0
-		addq.w	#1,d0
-		move.w	d0,($FFFFF70C).w
-		rts	
-; ===========================================================================
- 
-BgScroll_End:				; XREF: BgScroll_Index
-		move.w	($FFFFF700).w,d0
-		asr.w	#1,d0
-		move.w	d0,($FFFFF708).w
-		move.w	d0,($FFFFF710).w
-		asr.w	#2,d0
-		move.w	d0,d1
-		add.w	d0,d0
-		add.w	d1,d0
-		move.w	d0,($FFFFF718).w
-		clr.l	($FFFFF70C).w
-		clr.l	($FFFFF714).w
-		clr.l	($FFFFF71C).w
-		lea	($FFFFA800).w,a2
-		clr.l	(a2)+
-		clr.l	(a2)+
-		clr.l	(a2)+
-		rts   
-
-; ---------------------------------------------------------------------------
-; Background layer deformation subroutines
-; ---------------------------------------------------------------------------
-
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
-
-DeformBgLayer:				; XREF: TitleScreen; Level; EndingSequence
-		tst.b	($FFFFF744).w	; did Sonic drown?
-		bra.w	loc_628E	; if not, branch
-		beq.w	loc_628E	; if not, branch
-		rts			; don't deform layers?
-; ===========================================================================
-
-ShakePw1 = $0007
-ShakePw2 = $0001
-ShakePw3 = $0003
-
-GenerateCameraShake:
-		tst.b	($FFFFFF64).w		; is camera shake currently active?
-		beq.w	@contxx			; if not, branch
-		subq.b	#1,($FFFFFF64).w	; subtract one from timer
-
-		jsr	RandomNumber_Next	; random number
-		swap	d0
-		move.w	d0,d1
-		swap	d0
-		cmpi.w	#$502,($FFFFFE10).w
-		beq.s	@FZ
-		andi.w	#ShakePw1,d0			; limit to 15
-		andi.w	#ShakePw1,d1			; limit to 15
-		bra.s	@NoFZ
-@FZ:
-		cmpi.b	#10,($FFFFFF68).w
-		ble.s	@reFZ
-		andi.w	#ShakePw2,d0
-		andi.w	#ShakePw2,d1
-		bra.s	@NoFZ
-
-@reFZ
-		andi.w	#ShakePw3,d0
-		andi.w	#ShakePw3,d1
-
-@NoFZ:
-		btst	#0,($FFFFFE05).w
-		beq.s	@x
-		neg.w	d0
-@x:
-		btst	#0,($FFFFFE05).w
-		beq.s	@y
-		neg.w	d1
-@y:
-		move.w	d0,($FFFFFF60).w
-		move.w	d1,($FFFFFF62).w
-
-@cont:
-		tst.b	($FFFFFF64).w
-		beq.s	@contxx
-		move.w	($FFFFFF62).w,d0
-		add.w	d0,($FFFFF700).w	; backup for sprite shaking
-@contxx:
-		rts
-; ===========================================================================		
-
-loc_628E:
-		clr.w	($FFFFF754).w
-		clr.w	($FFFFF756).w
-		clr.w	($FFFFF758).w
-		clr.w	($FFFFF75A).w
-		bsr	ScrollHoriz
-		bsr	ScrollVertical
-		bsr	DynScrResizeLoad
-		move.w	($FFFFF700).w,($FFFFF61A).w
-		move.w	($FFFFF704).w,($FFFFF616).w
-		move.w	($FFFFF708).w,($FFFFF61C).w
-		move.w	($FFFFF70C).w,($FFFFF618).w
-		move.w	($FFFFF718).w,($FFFFF620).w
-		move.w	($FFFFF71C).w,($FFFFF61E).w
-
-		bsr	GenerateCameraShake
-
-		moveq	#0,d0
-		move.b	($FFFFFE10).w,d0
-		add.w	d0,d0
-		move.w	Deform_Index(pc,d0.w),d0
-		jsr	Deform_Index(pc,d0.w)		
-		tst.b	($FFFFFF64).w		; is cam shake enabled?
-		beq.s	@contxxx		; if not, branch
-		move.w	($FFFFFF62).w,d0	; backup for sprite shaking
-		sub.w	d0,($FFFFF700).w
-@contxxx:
-		rts
-; End of function DeformBgLayer
-; ===========================================================================
-
-; ---------------------------------------------------------------------------
-; Offset index for background layer deformation	code
-; ---------------------------------------------------------------------------
-Deform_Index:	dc.w Deform_GHZ-Deform_Index, Deform_LZ-Deform_Index
-		dc.w Deform_MZ-Deform_Index, Deform_SLZ-Deform_Index
-		dc.w Deform_SYZ-Deform_Index, Deform_SBZ-Deform_Index
-		dc.w Deform_GHZ-Deform_Index
-; ---------------------------------------------------------------------------
-; Green	Hill Zone background layer deformation code
-; ---------------------------------------------------------------------------
-
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
-Deform_GHZ:
-		cmpi.b	#4,($FFFFF600).w ; is this the title screen?
-		beq.w	Deform_TS ; if yes, use optimized deformation
-	;	cmpi.w	#$001,($FFFFFE10).w ; check if level is	GHZ 2
-	;	beq.w	Deform_LZ
-		move.w	($FFFFF73A).w,d4
-		ext.l	d4
-		asl.l	#5,d4
-		move.l	d4,d1
-		asl.l	#1,d4
-		add.l	d1,d4
-		moveq	#0,d6
-		bsr	ScrollBlock6
-		move.w	($FFFFF73A).w,d4
-		ext.l	d4
-		asl.l	#7,d4
-		moveq	#0,d6
-		bsr	ScrollBlock5
-		lea	($FFFFCC00).w,a1
-		move.w	($FFFFF704).w,d0
-		andi.w	#$7FF,d0
-		lsr.w	#5,d0
-		neg.w	d0
-		addi.w	#$20,d0	; ' '
-		bpl.s	Deform_GHZ_1
-		moveq	#0,d0
-Deform_GHZ_1:				; CODE XREF: Deform_GHZ+36?j
-		move.w	d0,d4
-		move.w	d0,($FFFFF618).w
-		move.w	($FFFFF700).w,d0
-		cmpi.b	#4,($FFFFF600).w
-		bne.s	Deform_GHZ_2
-		moveq	#0,d0
- 
-Deform_GHZ_2:				; CODE XREF: Deform_GHZ+4A?j
-		neg.w	d0
-		swap	d0
-		lea	($FFFFA800).w,a2
-		addi.l	#$10000,(a2)+
-		addi.l	#$C000,(a2)+
-		addi.l	#$8000,(a2)+
-		move.w	($FFFFA800).w,d0
-		add.w	($FFFFF718).w,d0
-		neg.w	d0
-		move.w	#$1F,d1
-		sub.w	d4,d1
-		bcs.s	Deform_GHZ_4
- 
-Deform_GHZ_3:				; CODE XREF: Deform_GHZ+7C?j
-		move.l	d0,(a1)+
-		dbf	d1,Deform_GHZ_3
- 
-Deform_GHZ_4:				; CODE XREF: Deform_GHZ+78?j
-		move.w	($FFFFA804).w,d0
-		add.w	($FFFFF718).w,d0
-		neg.w	d0
-		move.w	#$F,d1
- 
-Deform_GHZ_5:				; CODE XREF: Deform_GHZ+90?j
-		move.l	d0,(a1)+
-		dbf	d1,Deform_GHZ_5
-		move.w	($FFFFA808).w,d0
-		add.w	($FFFFF718).w,d0
-		neg.w	d0
-		move.w	#$F,d1
- 
-Deform_GHZ_6:				; CODE XREF: Deform_GHZ+A4?j
-		move.l	d0,(a1)+
-		dbf	d1,Deform_GHZ_6
-		move.w	#$2F,d1	; '/'
-		move.w	($FFFFF718).w,d0
-		neg.w	d0
- 
-Deform_GHZ_7:				; CODE XREF: Deform_GHZ+B4?j
-		move.l	d0,(a1)+
-		dbf	d1,Deform_GHZ_7
-		move.w	#$27,d1	; '''
-		move.w	($FFFFF710).w,d0
-		neg.w	d0
- 
-Deform_GHZ_8:				; CODE XREF: Deform_GHZ+C4?j
-		move.l	d0,(a1)+
-		dbf	d1,Deform_GHZ_8
-		move.w	($FFFFF710).w,d0
-		move.w	($FFFFF700).w,d2
-		sub.w	d0,d2
-		ext.l	d2
-		asl.l	#8,d2
-		divs.w	#$68,d2	; 'h'
-		ext.l	d2
-		asl.l	#8,d2
-		moveq	#0,d3
-		move.w	d0,d3
-		move.w	#$47,d1	; 'G'		; $47
-		add.w	d4,d1
- 
-Deform_GHZ_9:				; CODE XREF: Deform_GHZ+F4?j
-		move.w	d3,d0
-		neg.w	d0
-		move.l	d0,(a1)+
-		swap	d3
-		add.l	d2,d3
-		swap	d3
-		dbf	d1,Deform_GHZ_9
-		rts	
-; End of function Deform_GHZ
-
-
-; ---------------------------------------------------------------------------
-;Title Screen background layer deformation code
-; ---------------------------------------------------------------------------
-
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
-
-Deform_TS:				; XREF: Deform_Index
-		lea	($FFFFCC00).w,a1	; set a1 to horizontal scroll buffer
-
-		move.w	($FFFFD008).w,d0	; load screen's X position
-		neg.w	d0			; negate (positive to negative)
-		asr.w	#$01,d0			; divide by 2 (Slow down the scroll position)
-		move.w	#$000F,d1		; set number of scan lines to dump (minus 1 for dbf)
-DeformLoop1:
-		move.l	d0,(a1)+		; dump both the FG and BG scanline position to buffer
-		dbf	d1,DeformLoop1		; repeat d1 number of scanlines
-
-		move.w	($FFFFD008).w,d0	; load screen's X position
-		neg.w	d0			; negate (positive to negative)
-		asr.w	#$02,d0			; divide by 2 (Slow down the scroll position)
-		move.w	#$000F,d1		; set number of scan lines to dump (minus 1 for dbf)
-DeformLoop2:
-		move.l	d0,(a1)+		; dump both the FG and BG scanline position to buffer
-		dbf	d1,DeformLoop2		; repeat d1 number of scanlines
-
-		move.w	($FFFFD008).w,d0	; load screen's X position
-		neg.w	d0			; negate (positive to negative)
-		asr.w	#$03,d0			; divide by 2 (Slow down the scroll position)
-		move.w	#$0007,d1		; set number of scan lines to dump (minus 1 for dbf)
-DeformLoop3:
-		move.l	d0,(a1)+		; dump both the FG and BG scanline position to buffer
-		dbf	d1,DeformLoop3		; repeat d1 number of scanlines
-
-		move.w	($FFFFD008).w,d0	; load screen's X position
-		neg.w	d0			; negate (positive to negative)
-		asr.w	#$04,d0			; divide by 2 (Slow down the scroll position)
-		move.w	#$0007,d1		; set number of scan lines to dump (minus 1 for dbf)
-DeformLoop3x:
-		move.l	d0,(a1)+		; dump both the FG and BG scanline position to buffer
-		dbf	d1,DeformLoop3x		; repeat d1 number of scanlines
-
-		move.w	($FFFFD008).w,d0	; load screen's X position
-		neg.w	d0			; negate (positive to negative)
-		asr.w	#$05,d0			; divide by 2 (Slow down the scroll position)
-		move.w	#$000F,d1		; set number of scan lines to dump (minus 1 for dbf)
-DeformLoop4:
-		move.l	d0,(a1)+		; dump both the FG and BG scanline position to buffer
-		dbf	d1,DeformLoop4		; repeat d1 number of scanlines
-
-
-
-		move.w	($FFFFD008).w,d0	; load screen's X position
-		neg.w	d0			; negate (positive to negative)
-		asr.w	#$06,d0			; divide by 2 (Slow down the scroll position)
-		move.w	#$001F,d1		; set number of scan lines to dump (minus 1 for dbf)
-DeformLoop5:
-		move.l	d0,(a1)+		; dump both the FG and BG scanline position to buffer
-		dbf	d1,DeformLoop5		; repeat d1 number of scanlines
-
-
-		move.w	($FFFFD008).w,d0	; set d0 to camera position
-		ext.l	d0			; extend to long
-		lsl.l	#8,d0			; multiply it by $100
-		lsl.l	#2,d0			; multiply it by 4
-		neg.l	d0			; negate it
-		move.w	#$80,d2			; set loops to $80 (yes $80, not $7F)
-		moveq	#0,d3
-DTS_Loop:
-		move.w	d3,d1			; get deformation speed for the current line
-		move.l	d1,(a1)+		; set it to scroll buffer
-		add.l	d0,d3			; increase speed for next row
-		swap	d3			; swap it
-		dbf	d2,DTS_Loop		; loop
-		rts				; return
-; End of function Deform_TS
-
-; ===========================================================================
-
-Deform_LZ:
-		tst.b 	($FFFFFFFE).w		; is the =P monitor enabled?
-		bne.s	Deform_LZ_Extended	; if yes, use alternate deformation
-
-	; original code, takes A LOT less cycles than the extended code
-		move.w	($FFFFF73A).w,d4
-		ext.l	d4
-		asl.l	#7,d4
-		move.w	($FFFFF73C).w,d5
-		ext.l	d5
-		asl.l	#7,d5
-		bsr.w	ScrollBlock1
-		move.w	($FFFFF70C).w,($FFFFF618).w
-		lea	($FFFFCC00).w,a1
-		move.w	#$DF,d1
-		move.w	($FFFFF700).w,d0
-		neg.w	d0
-		swap	d0
-		move.w	($FFFFF708).w,d0
-		neg.w	d0
-
-loc_63C6:
-		move.l	d0,(a1)+
-		dbf	d1,loc_63C6
-		move.w	($FFFFF646).w,d0
-		sub.w	($FFFFF704).w,d0
-		rts	
-; End of function Deform_LZ
-; ===========================================================================
-
-; extended code, takes way a ton more cycles
-Deform_LZ_Extended:
-		move.w	($FFFFF73A).w,d4	; d4 = Cam_X_shift (8 fixed)
-		ext.l	d4
-		asl.l	#7,d4			; d4 = Cam_X_shift / 2 (16 fixed)
-		move.w	($FFFFF73C).w,d5	; d5 = Cam_Y_shift (8 fixed)
-		ext.l	d5
-		asl.l	#7,d5			; d5 = Cam_Y_shify / 2 (16 fixed)
-		bsr	ScrollBlock1		; scroll layer, setup redraw flags
-		move.w	($FFFFF70C).w,($FFFFF618).w	; load 'Cam_BG_Y' into VSRAM buffer
-
-		; Setup scroll value
-		lea	($FFFFCC00).w,a1
-		move.w	($FFFFF700).w,d0
-		neg.w	d0			; d0 = Plane A scrolling
-		move.w	d0,d1			; d1 = Plane A scrolling (backup)
-		swap	d0
-		move.w	($FFFFF708).w,d0
-		neg.w	d0			; d0 = Plane B scrolling
-
-		; Calculate water line and decide where to start
-		moveq	#0,d2
-		move.b	($FFFFF7D8).w,d2
-		move.w	d2,d3
-		addi.w	#$80,($FFFFF7D8).w	; WaveValue += 0.5    
-		add.b	($FFFFF704+1).w,d3	; d3 = (WaveValue + Cam_Y) & $FF
-		add.b	($FFFFF70C+1).w,d2	; d2 = (WaveValue + Cam_Y) & $FF
-		move.w	#224,d6			; d6 = Number of lines
-		move.w	($FFFFF646).w,d4	; d4 = WaterLevel
-		sub.w	($FFFFF704).w,d4	; d4 = WaterLevel - Cam_Y
-		beq.s	@DeformWater_2
-		bmi.s	@DeformWater_2		; if water line is above screen, branch
-		cmp.w	d6,d4			; d4 > Lines on screen?
-		blt.s	@DeformDry_Partial	; if not, branch
-
-; ---------------------------------------------------------------------------
-; Works, if full screen is dry
-
-		subq.w	#1,d6
-
-@DeformDry_Full:
-		move.l	d0,(a1)+
-		dbf	d6,@DeformDry_Full
-		rts
-
-; ---------------------------------------------------------------------------
-; Works, if only part of screen is dry
-
-@DeformDry_Partial:
-		move.w	d4,d5			; d5 = WaterLevel
-		subq.w	#1,d4
-
-	@0:	move.l	d0,(a1)+
-		dbf	d4,@0
-
-; ---------------------------------------------------------------------------
-; Works if screen is full of water, or water at least takes place
-
-@DeformWater:
-		sub.w	d5,d6			; d6 = 224 - WaterLevel = Lines left for water
-		add.b	d5,d2			;
-		add.b	d5,d3			;
-
-@DeformWater_2:
-		subq.w	#1,d6
-		lea	(Obj0A_WobbleData).l,a2	; a2 = Water Deformation Data for Plane B
-		lea	LZ_Wave_Data(pc),a3	; a3 = Water Deformation Data for Plane A
-		add.w	d2,a2			; load array from position of water line
-		add.w	d3,a3			;
-
-	@1:	move.b	(a3)+,d2
-		ext.w	d2
-		add.w	d1,d2			; d2 = Plane A scrolling
-		move.w	d2,(a1)+
-		move.b	(a2)+,d2
-		ext.w	d2
-		add.w	d0,d2			; d2 = Plane B scrolling
-		move.w	d2,(a1)+
-		dbf	d6,@1
-		rts
-
-; ===========================================================================
-LZ_Wave_Data:	dc.b   1,  1,  2,  2,  3,  3,  3,  3,  2,  2,  1,  1,  0,  0,  0,  0
-		dc.b   1,  1,  2,  2,  3,  3,  3,  3,  2,  2,  1,  1,  0,  0,  0,  0
-		dc.b   1,  1,  2,  2,  3,  3,  3,  3,  2,  2,  1,  1,  0,  0,  0,  0
-		dc.b   1,  1,  2,  2,  3,  3,  3,  3,  2,  2,  1,  1,  0,  0,  0,  0
-		dc.b   1,  1,  2,  2,  3,  3,  3,  3,  2,  2,  1,  1,  0,  0,  0,  0
-		dc.b   1,  1,  2,  2,  3,  3,  3,  3,  2,  2,  1,  1,  0,  0,  0,  0
-		dc.b   1,  1,  2,  2,  3,  3,  3,  3,  2,  2,  1,  1,  0,  0,  0,  0
-		dc.b   1,  1,  2,  2,  3,  3,  3,  3,  2,  2,  1,  1,  0,  0,  0,  0
-		dc.b   1,  1,  2,  2,  3,  3,  3,  3,  2,  2,  1,  1,  0,  0,  0,  0
-		dc.b   1,  1,  2,  2,  3,  3,  3,  3,  2,  2,  1,  1,  0,  0,  0,  0
-		dc.b   1,  1,  2,  2,  3,  3,  3,  3,  2,  2,  1,  1,  0,  0,  0,  0
-		dc.b   1,  1,  2,  2,  3,  3,  3,  3,  2,  2,  1,  1,  0,  0,  0,  0
-		dc.b   1,  1,  2,  2,  3,  3,  3,  3,  2,  2,  1,  1,  0,  0,  0,  0
-		dc.b   1,  1,  2,  2,  3,  3,  3,  3,  2,  2,  1,  1,  0,  0,  0,  0
-		dc.b   1,  1,  2,  2,  3,  3,  3,  3,  2,  2,  1,  1,  0,  0,  0,  0
-		dc.b   1,  1,  2,  2,  3,  3,  3,  3,  2,  2,  1,  1,  0,  0,  0,  0
-		dc.b   1,  1,  2,  2,  3,  3,  3,  3,  2,  2,  1,  1,  0,  0,  0,  0
-		dc.b   1,  1,  2,  2,  3,  3,  3,  3,  2,  2,  1,  1,  0,  0,  0,  0
-		dc.b   1,  1,  2,  2,  3,  3,  3,  3,  2,  2,  1,  1,  0,  0,  0,  0
-		dc.b   1,  1,  2,  2,  3,  3,  3,  3,  2,  2,  1,  1,  0,  0,  0,  0
-		dc.b   1,  1,  2,  2,  3,  3,  3,  3,  2,  2,  1,  1,  0,  0,  0,  0
-		dc.b   1,  1,  2,  2,  3,  3,  3,  3,  2,  2,  1,  1,  0,  0,  0,  0
-		dc.b   1,  1,  2,  2,  3,  3,  3,  3,  2,  2,  1,  1,  0,  0,  0,  0
-		dc.b   1,  1,  2,  2,  3,  3,  3,  3,  2,  2,  1,  1,  0,  0,  0,  0
-		dc.b   1,  1,  2,  2,  3,  3,  3,  3,  2,  2,  1,  1,  0,  0,  0,  0
-		dc.b   1,  1,  2,  2,  3,  3,  3,  3,  2,  2,  1,  1,  0,  0,  0,  0
-		dc.b   1,  1,  2,  2,  3,  3,  3,  3,  2,  2,  1,  1,  0,  0,  0,  0
-		dc.b   1,  1,  2,  2,  3,  3,  3,  3,  2,  2,  1,  1,  0,  0,  0,  0
-		dc.b   1,  1,  2,  2,  3,  3,  3,  3,  2,  2,  1,  1,  0,  0,  0,  0
-		dc.b   1,  1,  2,  2,  3,  3,  3,  3,  2,  2,  1,  1,  0,  0,  0,  0
-		dc.b   1,  1,  2,  2,  3,  3,  3,  3,  2,  2,  1,  1,  0,  0,  0,  0
-		dc.b   1,  1,  2,  2,  3,  3,  3,  3,  2,  2,  1,  1,  0,  0,  0,  0
-
-; ===============================================================================
-
- 
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
- 
- 
-Deform_MZ:
-		move.w	($FFFFF73A).w,d4
-		ext.l	d4
-		asl.l	#6,d4
-		move.l	d4,d1
-		asl.l	#1,d4
-		add.l	d1,d4
-		moveq	#2,d6
-		bsr	ScrollBlock4
-		move.w	($FFFFF73A).w,d4
-		ext.l	d4
-		asl.l	#6,d4
-		moveq	#6,d6
-		bsr	ScrollBlock6
-		move.w	($FFFFF73A).w,d4
-		ext.l	d4
-		asl.l	#7,d4
-		moveq	#4,d6
-		bsr	ScrollBlock5
-		move.w	#$200,d0
-		move.w	($FFFFF704).w,d1
-		subi.w	#$1C8,d1
-		bcs.s	Deform_MZ_1
-		move.w	d1,d2
-		add.w	d1,d1
-		add.w	d2,d1
-		asr.w	#2,d1
-		add.w	d1,d0
- 
-Deform_MZ_1:				; CODE XREF: Deform_MZ+3C?j
-		move.w	d0,($FFFFF714).w
-		move.w	d0,($FFFFF71C).w
-		bsr	ScrollBlock3
-		move.w	($FFFFF70C).w,($FFFFF618).w
-		move.b	($FFFFF756).w,d0
-		or.b	($FFFFF758).w,d0
-		or.b	d0,($FFFFF75A).w
-		clr.b	($FFFFF756).w
-		clr.b	($FFFFF758).w
-
-		lea	($FFFFA800).w,a1
-		move.w	($FFFFF700).w,d2
-		neg.w	d2
-		move.w	d2,d0
-		asr.w	#2,d0
-		sub.w	d2,d0
-		ext.l	d0
-		asl.l	#3,d0
-		divs.w	#5,d0
-		ext.l	d0
-		asl.l	#4,d0
-		asl.l	#8,d0
-		moveq	#0,d3
-		move.w	d2,d3
-		asr.w	#1,d3
-		move.w	#4,d1
-Deform_MZ_2:	move.w	d3,(a1)+
-		swap	d3
-		add.l	d0,d3
-		swap	d3
-		dbf	d1,Deform_MZ_2
-
-		move.w	($FFFFF718).w,d0
-		neg.w	d0
-		move.w	#1,d1 
-Deform_MZ_3:	move.w	d0,(a1)+
-		dbf	d1,Deform_MZ_3
-		move.w	($FFFFF710).w,d0
-		neg.w	d0
-		move.w	#8,d1
- 
-Deform_MZ_4:	move.w	d0,(a1)+
-		dbf	d1,Deform_MZ_4
-
-		move.w	($FFFFF708).w,d0
-		neg.w	d0
-		move.w	#$F,d1 
-Deform_MZ_5:	move.w	d0,(a1)+
-		dbf	d1,Deform_MZ_5
-
-		lea	($FFFFA800).w,a2
-		move.w	($FFFFF70C).w,d0
-		subi.w	#$200,d0
-		move.w	d0,d2
-		cmpi.w	#$100,d0
-		bcs.s	Deform_MZ_6
-		move.w	#$100,d0 
-Deform_MZ_6:	andi.w	#$1F0,d0
-		lsr.w	#3,d0
-		lea	(a2,d0.w),a2
-		bra.w	Deform_All
-; ===========================================================================
-
-DSLZ_Pos = $120
-DSLZ_PosX = $000
-
-Deform_SLZ:
-		move.w	#DSLZ_Pos,($FFFFF70C).w
-		move.w	($FFFFF70C).w,($FFFFF618).w
-
-		lea	($FFFFCC00).w,a1	; load beginning address of horizontal scroll buffer to a1
-		move.w	($FFFFF700).w,d4	; load FG screen's X position
-		neg.w	d4			; negate (positive to negative)
-
-		move.w	($FFFFFE04).w,d2
-		ori.w	#1,d2
-	;	add.w	d2,d2
-
-		cmpi.w	#$301,($FFFFFE10).w
-		bne.s	@cont
-		cmpi.w	#$3D0,($FFFFF726).w	; is boss playing?
-		bne.s	@cont
-
-		add.w	d2,d2
-		add.w	d2,d2
-		move.w	#DSLZ_PosX,($FFFFF70C).w
-
-@cont:
-		cmpi.w	#$302,($FFFFFE10).w
-		bne.s	@cont2
-		tst.b	($FFFFFF77).w
-		beq.s	@cont2
-
-		add.w	d2,d2
-		move.w	#DSLZ_Pos,($FFFFF70C).w
-
-@cont2:
-		neg.w	d2
-		move.w	d2,d0
-		asr.w	#3,d0
-		sub.w	d2,d0
-		ext.l	d0
-		asl.l	#4,d0
-		divs.w	#$1C,d0
-		ext.l	d0
-		asl.l	#4,d0
-		asl.l	#8,d0
-
-		moveq	#0,d3
-		move.w	d2,d3
-
-		move.w	#$E0/8-1,d1		; set number of scan lines to dump (minus 1 for dbf)
-SLZ_DeformLoop_1:
-		move.w	d4,(a1)+
-		move.w	d3,(a1)+
-		move.w	d4,(a1)+
-		move.w	d3,(a1)+
-		move.w	d4,(a1)+
-		move.w	d3,(a1)+
-		move.w	d4,(a1)+
-		move.w	d3,(a1)+
-		move.w	d4,(a1)+
-		move.w	d3,(a1)+
-		move.w	d4,(a1)+
-		move.w	d3,(a1)+
-		move.w	d4,(a1)+
-		move.w	d3,(a1)+
-		move.w	d4,(a1)+
-		move.w	d3,(a1)+
-
-		swap	d3
-		add.l	d0,d3
-		swap	d3
-		dbf	d1,SLZ_DeformLoop_1	; repeat d1 number of scanlines
-		rts
-; End of function Deform_SLZ
-; ===========================================================================
-
-Deform_All:				; CODE XREF: Deform_MZ+F4?j
-		lea	($FFFFCC00).w,a1
-		move.w	#$E,d1
-		move.w	($FFFFF700).w,d0
-		neg.w	d0
-		swap	d0
-		andi.w	#$F,d2
-		add.w	d2,d2
-		move.w	(a2)+,d0
-		jmp	Deform_All_2(pc,d2.w)
-
-Deform_All_1:				; CODE XREF: ROM:0000670A?j
-		move.w	(a2)+,d0
-
-Deform_All_2:
-		move.l	d0,(a1)+
-		move.l	d0,(a1)+
-		move.l	d0,(a1)+
-		move.l	d0,(a1)+
-		move.l	d0,(a1)+
-		move.l	d0,(a1)+
-		move.l	d0,(a1)+
-		move.l	d0,(a1)+
-		move.l	d0,(a1)+
-		move.l	d0,(a1)+
-		move.l	d0,(a1)+
-		move.l	d0,(a1)+
-		move.l	d0,(a1)+
-		move.l	d0,(a1)+
-		move.l	d0,(a1)+
-		move.l	d0,(a1)+
-		dbf	d1,Deform_All_1
-		rts	
- 
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-        rsset   $FFFF8000
-DistortScrollTimer:       rs.l    1               ; scroll count
-
-Sine_SYZ:
-		moveq   #0, d4
-		moveq   #0, d5
-		lea     ($FFFFCC00).w, a1
-		move.b  ($FFFFA800).w, d6
-
-		move.w  ($FFFFF710).w, d2
-		neg.w   d2
-		swap    d2                      ;Puts plane A's X pos in topmost word
-
-		move.w  #224, d3
-
-@Deform:
-		move.b  d6, d0
-		bchg.l  #7, d4                  ;This handles flipping the sign
-		;add.w   d4, d0                  ;Adds flipped sign to wave
-		add.w   d5, d0
-		jsr     CalcSine
-		asr.w   #3, d1                  ;Increase to decrease amplitude
-		move.w  d1, (a1)+               ;Send AAAA HScroll entry
-		adda.l  #2, a1
-		add.w   d3, d5                  ;Inc wave every line (increase for higher freq.)
-		dbra    d3, @Deform
-
-		rts
- 
-Deform_SYZ:
-		tst.b   ($FFFFFFD0).w
-		beq.s   @RegularDeform
-
-		lea     DistortScrollTimer, a1
-		addi.l  #65536*32/16, (a1)
-		move.w  (a1), d0
-		neg.w   d0 ; go left
-		move.w  d0, ($FFFFCC00).w
-
-		bsr.w   Sine_SYZ
-
-		add.b   #8, ($FFFFA800).w
-		rts
-
-@RegularDeform:
-		; force background Y camera to always be at the top
-		move.w	#0,($FFFFF70C).w
-		move.w	($FFFFF70C).w,($FFFFF618).w
-
-		lea	($FFFFA800).w,a2
-		move.w	($FFFFF70C).w,d0
-		move.w	d0,d2
-		andi.w	#$1F0,d0
-		lsr.w	#3,d0
-		lea	(a2,d0.w),a2
-		bsr.w	Deform_All
-
-		; Apply deformation to the sky
-		lea	$FFFFCC00+2,a1
-		moveq	#0,d0
-		move.w	($FFFFFE04).w,d0		; d0 = FrameCounter
-		addi.w	#$1000,d0			; d0 = FrameCounter + $1000
-		swap	d0				; d0 = FrameCounter + $1000 (16.16 FIXED)
-		move.l	d0,d3
-		lsr.l	#6,d3				; d3 = (FrameCounter + $1000) / 64
-		moveq	#112/2-1,d2			; do it for the first 112 lines (2 lines per iteration)
-
-	@skydeform:
-		move.l	d0, d1
-		swap	d1
-		sub.w	d1, (a1)			; alter two lines of the BG
-		addq.w	#4, a1				; ''
-		sub.w	d1, (a1)			; ''
-		addq.w	#4, a1				; ''
-		sub.l	d3, d0				; d0 -= d3 (parallax for the next stripe)
-		dbf	d2, @skydeform
-		rts
-; End of function Deform_SYZ
- 
- 
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
- 
- 
-Deform_SBZ:
-		cmpi.w	#$502,($FFFFFE10).w	; is this Finalor Place?
-		beq.w	Deform_FZ		; if yes, use alternate deformation
-
-		tst.b	($FFFFFE11).w
-		bne.w	Deform_SBZ_Act2
-		move.w	($FFFFF73A).w,d4
-		ext.l	d4
-		asl.l	#7,d4
-		moveq	#2,d6
-		bsr	ScrollBlock4
-		move.w	($FFFFF73A).w,d4
-		ext.l	d4
-		asl.l	#6,d4
-		moveq	#6,d6
-		bsr	ScrollBlock6
-		move.w	($FFFFF73A).w,d4
-		ext.l	d4
-		asl.l	#5,d4
-		move.l	d4,d1
-		asl.l	#1,d4
-		add.l	d1,d4
-		moveq	#4,d6
-		bsr	ScrollBlock5
-		moveq	#0,d4
-		move.w	($FFFFF73C).w,d5
-		ext.l	d5
-		asl.l	#5,d5
-		bsr	ScrollBlock1_2
-		move.w	($FFFFF70C).w,d0
-		move.w	d0,($FFFFF714).w
-		move.w	d0,($FFFFF71C).w
-		move.w	d0,($FFFFF618).w
-		move.b	($FFFFF756).w,d0
-		or.b	($FFFFF75A).w,d0
-		or.b	d0,($FFFFF758).w
-		clr.b	($FFFFF756).w
-		clr.b	($FFFFF75A).w
-		lea	($FFFFA800).w,a1
-		move.w	($FFFFF700).w,d2
-		neg.w	d2
-		asr.w	#2,d2
-		move.w	d2,d0
-		asr.w	#1,d0
-		sub.w	d2,d0
-		ext.l	d0
-		asl.l	#3,d0
-		divs.w	#4,d0
-		ext.l	d0
-		asl.l	#4,d0
-		asl.l	#8,d0
-		moveq	#0,d3
-		move.w	d2,d3
-		move.w	#3,d1
- 
-Deform_SBZ_1:				; CODE XREF: Deform_SBZ+9A?j
-		move.w	d3,(a1)+
-		swap	d3
-		add.l	d0,d3
-		swap	d3
-		dbf	d1,Deform_SBZ_1
-		move.w	($FFFFF718).w,d0
-		neg.w	d0
-		move.w	#9,d1
- 
-Deform_SBZ_2:				; CODE XREF: Deform_SBZ+AA?j
-		move.w	d0,(a1)+
-		dbf	d1,Deform_SBZ_2
-		move.w	($FFFFF710).w,d0
-		neg.w	d0
-		move.w	#6,d1
- 
-Deform_SBZ_3:				; CODE XREF: Deform_SBZ+BA?j
-		move.w	d0,(a1)+
-		dbf	d1,Deform_SBZ_3
-		move.w	($FFFFF708).w,d0
-		neg.w	d0
-		move.w	#$A,d1
- 
-Deform_SBZ_4:				; CODE XREF: Deform_SBZ+CA?j
-		move.w	d0,(a1)+
-		dbf	d1,Deform_SBZ_4
-		lea	($FFFFA800).w,a2
-		move.w	($FFFFF70C).w,d0
-		move.w	d0,d2
-		andi.w	#$1F0,d0
-		lsr.w	#3,d0
-		lea	(a2,d0.w),a2
-		bra.w	Deform_All
-; ===========================================================================
- 
-Deform_SBZ_Act2:			; CODE XREF: Deform_SBZ+4?j
-		move.w	($FFFFF73A).w,d4
-		ext.l	d4
-		asl.l	#6,d4
-		move.w	($FFFFF73C).w,d5
-		ext.l	d5
-		asl.l	#5,d5
-		bsr	ScrollBlock1
-		move.w	($FFFFF70C).w,($FFFFF618).w
-		lea	($FFFFCC00).w,a1
-		move.w	#$DF,d1	; '?'
-		move.w	($FFFFF700).w,d0
-		neg.w	d0
-		swap	d0
-		move.w	($FFFFF708).w,d0
-		neg.w	d0
- 
-Deform_SBZ_Act2_1:			; CODE XREF: Deform_SBZ+118?j
-		move.l	d0,(a1)+
-		dbf	d1,Deform_SBZ_Act2_1
-		rts	
-; End of function Deform_SBZ
-
-
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
-DFZ_Pos = $120
-
-Deform_FZ:
-		move.w	#DFZ_Pos,($FFFFF70C).w		; force vertical background position in place
-		move.w	($FFFFF70C).w,($FFFFF618).w 
-
-		lea	($FFFFCC00).w,a1	; load beginning address of horizontal scroll buffer to a1
-		move.w	($FFFFF700).w,d4	; load FG screen's X position
-		neg.w	d4			; negate (positive to negative)
-
-		move.w	($FFFFFE04).w,d2	; get current level timer
-		lsl.w	#2,d2			; speed it up
-
-		neg.w	d2
-		move.w	d2,d0
-		asr.w	#3,d0
-		sub.w	d2,d0
-		ext.l	d0
-		asl.l	#4,d0
-		divs.w	#$1C,d0
-		ext.l	d0
-		asl.l	#4,d0
-		asl.l	#8,d0
-
-		moveq	#0,d3
-		move.w	d2,d3
-
-		move.w	#$1B,d1		; set number of scan lines to dump (minus 1 for dbf)
-FZ_DeformLoop:
-		move.w	d4,(a1)+
-		move.w	d3,(a1)+
-		move.w	d4,(a1)+
-		move.w	d3,(a1)+
-		move.w	d4,(a1)+
-		move.w	d3,(a1)+
-		move.w	d4,(a1)+
-		move.w	d3,(a1)+
-		move.w	d4,(a1)+
-		move.w	d3,(a1)+
-		move.w	d4,(a1)+
-		move.w	d3,(a1)+
-		move.w	d4,(a1)+
-		move.w	d3,(a1)+
-		move.w	d4,(a1)+
-		move.w	d3,(a1)+
-
-		swap	d3
-		add.l	d0,d3
-		swap	d3
-		dbf	d1,FZ_DeformLoop	; repeat d1 number of scanlines
-		rts
-; End of function Deform_FZ
-
-; ---------------------------------------------------------------------------
-; Subroutine to	scroll the level horizontally as Sonic moves
-; ---------------------------------------------------------------------------
-
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
-
-ScrollHoriz:				; XREF: DeformBgLayer
-		cmpi.w	#$200,($FFFFFE10).w	; is level MZ1?
-		beq.s	@cont1			; if yes, branch
-		cmpi.b	#1,($FFFFFFAA).w	; is Sonic fighting against the crabmeat?
-		bne.s	@cont1			; if not, branch
-		move.w	($FFFFF72A).w,($FFFFF728).w	; lock left screen position
-
-@cont1:
-		move.w	($FFFFF700).w,d4
-		bsr.s	ScrollHoriz2
-		move.w	($FFFFF700).w,d0
-		andi.w	#$10,d0
-		move.b	($FFFFF74A).w,d1
-		eor.b	d1,d0
-		bne.s	locret_65B0
-		eori.b	#$10,($FFFFF74A).w
-		move.w	($FFFFF700).w,d0
-		sub.w	d4,d0
-		bpl.s	loc_65AA
-		bset	#2,($FFFFF754).w
-		rts	
-; ===========================================================================
-
-loc_65AA:
-		bset	#3,($FFFFF754).w
-
-locret_65B0:
-		rts	
-; End of function ScrollHoriz
-
-
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
-
-ScrollHoriz2:				; XREF: ScrollHoriz
-		tst.b	($FFFFFFB2).w	; is camera delay set?
-		beq.s	SH_NoDelay	; if not, branch
-		subq.b	#1,($FFFFFFB2).w ; sub one from camera delay
-		clr.w	($FFFFF73A).w
-		rts
-; ===========================================================================
-
-SH_NoDelay:
-		move.w	($FFFFC904).w,d1
-		beq.s	@cont1
-		sub.w	#$100,d1
-		move.w	d1,($FFFFC904).w
-		moveq	#0,d1
-		move.b	($FFFFC904).w,d1
-		lsl.b	#2,d1
-		addq.b	#4,d1
-		move.w	($FFFFF7A8).w,d0
-		sub.b	d1,d0
-		lea	($FFFFCB00).w,a1
-		move.w	(a1,d0.w),d0
-		and.w	#$3FFF,d0
-		bra.w	S_H_NoExtendedCam
-		
-@cont1:
-		move.w	($FFFFD008).w,d0	; move Sonic's X-pos to d0
-
-CamSpeed = 2					; set camera moving speed (standart 2 or 3)
-
-		cmpi.w	#$601,($FFFFFE10).w	; is this the ending sequence?
-		bne.s	S_H_NoEnding		; if not, branch
-		sub.w	#$60,d0			; substract $40 from the camera position constantly
-		bra.w	S_H_NoExtendedCam	; skip
-; ===========================================================================
-
-S_H_NoEnding:
-		cmpi.w	#$001,($FFFFFE10).w	; is level GHZ2?
-		bne.s	S_H_NotGHZ2		; if not, branch
-		tst.b	($FFFFFFD8).w		; has Buzz Bomber been destroyed?
-		bne.s	S_H_BuzzIgnore		; if yes, branch
-		sub.w	#$35,d0			; make the middle between Sonic and the Bomber the cam-position
-		bra.w	S_H_NoExtendedCam	; skip
-; ===========================================================================
-
-S_H_NotGHZ2:
-		btst	#0,($FFFFFF92).w	; is extended camera enabled?
-		beq.w	S_H_NoExtendedCam	; if not, branch
-		cmpi.w	#$302,($FFFFFE10).w	; is this SLZ3?
-		bne.s	S_H_BuzzIgnore		; if not, branch
-		tst.b	($FFFFFF77).w		; is special mode enabled?
-		bne.s	S_H_ResetCamera		; if yes, branch
-
-S_H_BuzzIgnore:
-		tst.b	($FFFFF7CD).w
-		bne.s	S_H_ResetCamera
-
-		cmpi.w	#$501,($FFFFFE10).w
-		bne.s	@cont
-		cmpi.w	#$1B00,($FFFFD008).w
-		bcs.s	@cont
-		cmpi.w	#$2100,($FFFFD008).w
-		bcc.s	@cont
-		tst.b	($FFFFFFEB).w
-		beq.s	@cont
-		bra.s	S_H_ResetCamera
-
-@cont:
-		tst.b	($FFFFFFAF).w		; has a flag been set to do this? (Peelout / Spindash)
-		bne.s	S_H_PeeloutSpindash	; if yes, branch
-		move.w	($FFFFD014).w,d2	; load sonic's ground speed to d2
-		btst	#1,($FFFFD022).w	; is sonic in the air?
-		beq.s	S_H_ChkDirection	; if not, branch
-		move.w	($FFFFD010).w,d2	; load sonic's general speed to d2 instead
-
-S_H_ChkDirection:
-		tst.w	d2			; is speed positve?
-		bpl.s	S_H_SpeedPositive	; if yes, branch
-		neg.w	d2			; otherwise negate it
-
-S_H_SpeedPositive:
-		cmpi.w	#$600,d2		; is Sonic's speed more than $600 (or less than -$600)?
-		blt.s	S_H_ResetCamera		; if not, branch
-		tst.w	($FFFFD010).w		; is Speed negative?
-		bpl.s	S_H_FastEnough_Right	; if yes, branch to code when Sonic's running to the right
-		bra.s	S_H_FastEnough_Left	; otherwise use the code when Sonic's running to the left
-; ===========================================================================
-
-S_H_PeeloutSpindash:
-		btst	#0,($FFFFD022).w	; is Sonic facing right while performing a Peelout / Spindash?
-		beq.s	S_H_FastEnough_Right	; if yes, branch
-		bra.s	S_H_FastEnough_Left	; otherwise, use code for left
-; ===========================================================================
-
-S_H_FastEnough_Right:
-		cmpi.w	#$40,($FFFFFFCE).w	; is camera moving counter at or over $40?
-		bge.s	S_H_CameraMove_End	; if yes, don't change camera moving
-		add.w	#CamSpeed,($FFFFFFCE).w	; otherwise, make camera move to the left
-		bra.s	S_H_CameraMove_End	; skip to processing code
-; ===========================================================================
-
-S_H_FastEnough_Left:
-		cmpi.w	#-$40,($FFFFFFCE).w	; is camera moving counter at or below -$40?
-		ble.s	S_H_CameraMove_End	; if yes, don't change camera moving
-		sub.w	#CamSpeed,($FFFFFFCE).w	; otherwise, make camera move to the right
-		bra.s	S_H_CameraMove_End	; skip to processing code
-; ===========================================================================
-
-S_H_ResetCamera:
-		tst.w	($FFFFFFCE).w		; is camera moving counter empty?
-		beq.s	S_H_CameraMove_End	; if yes, branch to end
-		bpl.s	S_H_ResetCamera_Left	; is it positive? if yes, branch to code for left moving
-		add.w	#CamSpeed,($FFFFFFCE).w	; otherwise make it move to the right again
-		bra.s	S_H_CameraMove_End	; skip to end
-; ===========================================================================
-
-S_H_ResetCamera_Left:
-		sub.w	#CamSpeed,($FFFFFFCE).w	; make camera move to the elft again
-
-S_H_CameraMove_End:
-		add.w	($FFFFFFCE).w,d0	; add counter to normal camera location
-
-S_H_NoExtendedCam:
-		sub.w	($FFFFF700).w,d0
-		subi.w	#$90,d0
-		bmi.s	loc_65F6
-		subi.w	#$10,d0
-		bpl.s	loc_65CC
-		clr.w	($FFFFF73A).w
-		rts
-; ===========================================================================
-
-loc_65CC:
-		cmpi.w	#$10,d0
-		bcs.s	loc_65D6
-		move.w	#$10,d0
-
-loc_65D6:
-		add.w	($FFFFF700).w,d0
-		cmp.w	($FFFFF72A).w,d0
-		blt.s	loc_65E4
-		move.w	($FFFFF72A).w,d0
-
-loc_65E4:
-		move.w	d0,d1
-		sub.w	($FFFFF700).w,d1
-		asl.w	#8,d1
-		move.w	d0,($FFFFF700).w
-		move.w	d1,($FFFFF73A).w
-		rts	
-; ===========================================================================
-
-loc_65F6:				; XREF: ScrollHoriz2
-		cmpi.w	#-$10,d0
-		bcc.s	@cont
-		move.w	#-$10,d0	
-		
-@cont:
-		add.w	($FFFFF700).w,d0
-		cmp.w	($FFFFF728).w,d0
-		bgt.s	loc_65E4
-		move.w	($FFFFF728).w,d0
-		bra.s	loc_65E4
-; End of function ScrollHoriz2
-
-; ===========================================================================
-		tst.w	d0
-		bpl.s	loc_6610
-		move.w	#-2,d0
-		bra.s	loc_65F6
-; ===========================================================================
-
-loc_6610:
-		move.w	#2,d0
-		bra.s	loc_65CC
-
-; ---------------------------------------------------------------------------
-; Subroutine to	scroll the level vertically as Sonic moves
-; ---------------------------------------------------------------------------
-
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
-
-ScrollVertical:				; XREF: DeformBgLayer
-		cmpi.w	#$301,($FFFFFE10).w	; is level SLZ2?
-		bra.s	SV_NotSLZ2		; if not, branch
-		tst.b	($FFFFFF75).w
-		beq.s	SV_NotSLZ2
-		rts
-
-; ===========================================================================
-
-SV_NotSLZ2:
-		; one part of the Labyrinthy Place camera code (the other half is in Resize_LZ2)
-		cmpi.w	#$101,($FFFFFE10).w	; is level LZ2?
-		bne.s	SV_NotLZ2		; if not, branch
-		tst.b 	($FFFFFFFE).w
-		beq.w	SV_NotGHZ2
-		move.w	#-$250,($FFFFF73C).w	; move background up
-		cmpi.b	#1,($FFFFFF97).w	; was first lamppost passed?
-		beq.s	SV_Lamppost		; if yes, branch
-		cmpi.b	#3,($FFFFFF97).w	; was third lamppost passed?
-		beq.s	SV_Lamppost		; if yes, branch
-		tst.b	($FFFFFF96).w		; Sonic on a spring?
-		bne.s	SV_NotLZ2		; if yes, branch
-		btst	#1,($FFFFD022).w	; is Sonic on the ground?
-		beq.s	SV_NotLZ2		; if yes, branch
-		rts				; otherwise don't move camera
-; ===========================================================================
-		
-SV_Lamppost:
-		move.w	#$250,($FFFFF73C).w	; move background down
-
-SV_NotLZ2:
-		cmpi.w	#$001,($FFFFFE10).w	; is level GHZ2 (intro level)?
-		bne.s	SV_NotGHZ2		; if not, branch
-		cmpi.b	#3,($FFFFFFB4).w	; is sonic jumped on a spring 3 times yet?
-		blt.s	SV_NotGHZ2		; if not, branch
-		rts				; don't move camera vertically
-; ===========================================================================
-
-SV_NotGHZ2:
-		moveq	#0,d1
-		moveq	#0,d0			; clear d0
-
-		add.w	($FFFFD00C).w,d0	; changed from move.w
-		cmpi.w	#$101,($FFFFFE10).w	; is level LZ2?
-		bne.s	SV_NotLZ2_2		; if not, branch
-		tst.b 	($FFFFFFFE).w
-		beq.w	SV_NotLZ2_2
-		subi.w	#$45,d0			; substract $45 pixels from Sonic's cam position
-		cmpi.b	#1,($FFFFFF97).w
-		beq.s	@cont
-		cmpi.b	#3,($FFFFFF97).w
-		beq.s	@cont
-		bra.s	SV_NotLZ2_2
-
-@cont:
-		addi.w	#$45,d0			; vertical camera offset when moving down in LZ
-
-SV_NotLZ2_2:
-		sub.w	($FFFFF704).w,d0
-		btst	#2,($FFFFD022).w 	; is Sonic jumping or rolling?
-		beq.s	loc_662A
-		subq.w	#5,d0
-
-loc_662A:
-		btst	#1,($FFFFD022).w	; is Sonic in air?
-		beq.s	loc_664A
-		addi.w	#$20,d0
-		sub.w	($FFFFF73E).w,d0
-		bcs.s	loc_6696
-		subi.w	#$40,d0
-		bcc.s	loc_6696
-		tst.b	($FFFFF75C).w
-		bne.s	loc_66A8
-		bra.s	loc_6656
-; ===========================================================================
-
-loc_664A:
-		sub.w	($FFFFF73E).w,d0
-		bne.s	loc_665C
-		tst.b	($FFFFF75C).w
-		bne.s	loc_66A8
-
-loc_6656:
-		cmpi.w	#$101,($FFFFFE10).w	; is level LZ2?
-		bne.s	@cont			; if not, branch
-		tst.b 	($FFFFFFFE).w
-		bne.s	@cont2
-@cont:	
-		clr.w	($FFFFF73C).w 		; clear camera Y-shift
-
-@cont2:
-		tst.b	($FFFFFF64).w 		; is camera shaking counter empty?
-		beq.s	@contx			; if yes, branch
-		move.w	($FFFFFF60).w,d0	; backup for sprite shaking
-		add.w	d0,d1			; add to camera shaking
-		bra	ScrVert_ShakeCam	; ~~
-@contx
-		rts	
-; ===========================================================================
-
-loc_665C:
-		cmpi.w	#$60,($FFFFF73E).w
-		bne.s	loc_6684
-		move.w	($FFFFD014).w,d1
-		bpl.s	loc_666C
-		neg.w	d1
-
-loc_666C:
-		move.w	#$1000,d1
-		cmpi.w	#$10,d0
-		bgt.s	loc_66F6
-		cmpi.w	#-$10,d0
-		blt.s	loc_66C0
-		bra.s	loc_66AE
-; ===========================================================================
-
-loc_6684:
-		move.w	#$200,d1
-		cmpi.w	#2,d0
-		bgt.s	loc_66F6
-		cmpi.w	#-2,d0
-		blt.s	loc_66C0
-		bra.s	loc_66AE
 ; ===========================================================================
 
-loc_6696:
-		move.w	#$1000,d1
-		cmpi.w	#$10,d0
-		bgt.s	loc_66F6
-		cmpi.w	#-$10,d0
-		blt.s	loc_66C0
-		bra.s	loc_66AE
-; ===========================================================================
-
-loc_66A8:
-		moveq	#0,d0
-		move.b	d0,($FFFFF75C).w
-
-loc_66AE:
-		moveq	#0,d1
-		move.w	d0,d1
-		add.w	($FFFFF704).w,d1
-		tst.w	d0
-		bpl.w	loc_6700
-		bra.w	loc_66CC
-; ===========================================================================
-
-loc_66C0:
-		neg.w	d1
-		ext.l	d1
-		asl.l	#8,d1
-		add.l	($FFFFF704).w,d1
-		swap	d1
-
-loc_66CC:
-		cmp.w	($FFFFF72C).w,d1
-		bgt.s	loc_6724
-		cmpi.w	#-$100,d1
-		bgt.s	loc_66F0
-		andi.w	#$7FF,d1
-		andi.w	#$7FF,($FFFFD00C).w
-		andi.w	#$7FF,($FFFFF704).w
-		andi.w	#$3FF,($FFFFF70C).w
-		bra.s	loc_6724
-; ===========================================================================
-
-loc_66F0:
-		move.w	($FFFFF72C).w,d1
-		bra.s	loc_6724
-; ===========================================================================
-
-loc_66F6:
-		ext.l	d1
-		asl.l	#8,d1
-		add.l	($FFFFF704).w,d1
-		swap	d1
-
-loc_6700:
-		cmp.w	($FFFFF72E).w,d1
-		blt.s	loc_6724
-		subi.w	#$800,d1
-		bcs.s	loc_6720
-		andi.w	#$7FF,($FFFFD00C).w
-		subi.w	#$800,($FFFFF704).w
-		andi.w	#$3FF,($FFFFF70C).w
-		bra.s	loc_6724
-; ===========================================================================
-
-ScrVert_ShakeCam:
-		move.w	($FFFFF704).w,d1
-		bra.s	ScrVert_ShakeCam2
-
-; ---------------------------------------------------------------------------
-loc_6720:
-		move.w	($FFFFF72E).w,d1	; set y-pos to bottom boundary
-
-; ---------------------------------------------------------------------------
-loc_6724:
-		tst.b	($FFFFFF64).w 		; is camera shaking counter empty?
-		beq.s	contx			; if yes, branch
-
-ScrVert_ShakeCam2:
-		move.w	($FFFFFF60).w,d0	; backup for sprite shaking
-		add.w	d0,d0
-	;	add.w	d0,($FFFFF70C).w
-		move.w	($FFFFFF60).w,d0	; backup for sprite shaking
-		add.w	d0,d1	; add to camera shaking
-		move.w	($FFFFFF66).w,d5
-		addi.w	#$10,d5
-		cmp.w	d5,d1
-		bcs.s	@contx
-		move.w	d5,d1
-		bra.s	@contxx
-
-@contx:
-		subi.w	#$20,d5
-		cmp.w	d5,d1
-		bcc.s	@contxx
-		move.w	d5,d1
-
-@contxx:
-		tst.w	d1
-		bpl.s	contx
-		moveq	#0,d1
-contx:
-
-		move.w	($FFFFF704).w,d4
-		swap	d1
-		move.l	d1,d3
-		sub.l	($FFFFF704).w,d3
-		ror.l	#8,d3
-		
-		cmpi.w	#$101,($FFFFFE10).w	; is level LZ2?
-		bne.s	@cont			; if not, branch
-		tst.b 	($FFFFFFFE).w
-		bne.s	@cont2
-
-@cont:
-		move.w	d3,($FFFFF73C).w
-
-@cont2:
-		move.l	d1,($FFFFF704).w
-		move.w	($FFFFF704).w,($FFFFFF66).w
-
-		move.w	($FFFFF704).w,d0
-		andi.w	#$10,d0
-		move.b	($FFFFF74B).w,d1
-		eor.b	d1,d0
-		bne.s	locret_6766
-		eori.b	#$10,($FFFFF74B).w
-		move.w	($FFFFF704).w,d0
-		sub.w	d4,d0
-		bpl.s	loc_6760
-		bset	#0,($FFFFF754).w
-		rts	
-; ===========================================================================
-
-loc_6760:
-		bset	#1,($FFFFF754).w
-
-locret_6766:
-		rts	
-; End of function ScrollVertical
-
-
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
-
-ScrollBlock1:				; CODE XREF: Deform_LZ+10?p
-					; Deform_SBZ+F6?p
-		move.l	($FFFFF708).w,d2
-		move.l	d2,d0
-		add.l	d4,d0
-		move.l	d0,($FFFFF708).w
-		move.l	d0,d1
-		swap	d1
-		andi.w	#$10,d1
-		move.b	($FFFFF74C).w,d3
-		eor.b	d3,d1
-		bne.s	ScrollBlock1_2
-		eori.b	#$10,($FFFFF74C).w
-		sub.l	d2,d0
-		bpl.s	ScrollBlock1_1
-		bset	#2,($FFFFF756).w
-		bra.s	ScrollBlock1_2
-; ===========================================================================
- 
-ScrollBlock1_1:				; CODE XREF: ScrollBlock1+24?j
-		bset	#3,($FFFFF756).w
- 
-ScrollBlock1_2:				; CODE XREF: Deform_SBZ+42?p
-					; ScrollBlock1+1A?j ...
-		move.l	($FFFFF70C).w,d3
-		move.l	d3,d0
-		add.l	d5,d0
-		move.l	d0,($FFFFF70C).w
-		move.l	d0,d1
-		swap	d1
-		andi.w	#$10,d1
-		move.b	($FFFFF74D).w,d2
-		eor.b	d2,d1
-		bne.s	ScrollBlock1_End
-		eori.b	#$10,($FFFFF74D).w
-		sub.l	d3,d0
-		bpl.s	ScrollBlock1_3
-		bset	#0,($FFFFF756).w
-		rts	
-; ===========================================================================
- 
-ScrollBlock1_3:				; CODE XREF: ScrollBlock1+58?j
-		bset	#1,($FFFFF756).w
- 
-ScrollBlock1_End:			; CODE XREF: ScrollBlock1+4E?j
-		rts	
-; End of function ScrollBlock1
- 
- 
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
- 
- 
-ScrollBlock2:				; CODE XREF: Deform_MZ+100?p
-					; Deform_SYZ+E?p
-		move.l	($FFFFF70C).w,d3
-		move.l	d3,d0
-		add.l	d5,d0
-		move.l	d0,($FFFFF70C).w
-		move.l	d0,d1
-		swap	d1
-		andi.w	#$10,d1
-		move.b	($FFFFF74D).w,d2
-		eor.b	d2,d1
-		bne.s	ScrollBlock2_End
-		eori.b	#$10,($FFFFF74D).w
-		sub.l	d3,d0
-		bpl.s	ScrollBlock2_1
-		bset	#4,($FFFFF756).w
-		rts	
-; ===========================================================================
- 
-ScrollBlock2_1:				; CODE XREF: ScrollBlock2+24?j
-		bset	#5,($FFFFF756).w
- 
-ScrollBlock2_End:			; CODE XREF: ScrollBlock2+1A?j
-		rts	
-; End of function ScrollBlock2
- 
- 
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
- 
- 
-ScrollBlock3:				; CODE XREF: Deform_MZ+50?p
-		move.w	($FFFFF70C).w,d3
-		move.w	d0,($FFFFF70C).w
-		move.w	d0,d1
-		andi.w	#$10,d1
-		move.b	($FFFFF74D).w,d2
-		eor.b	d2,d1
-		bne.s	ScrollBlock3_End
-		eori.b	#$10,($FFFFF74D).w
-		sub.w	d3,d0
-		bpl.s	ScrollBlock3_1
-		bset	#0,($FFFFF756).w
-		rts	
-; ===========================================================================
- 
-ScrollBlock3_1:				; CODE XREF: ScrollBlock3+1E?j
-		bset	#1,($FFFFF756).w
- 
-ScrollBlock3_End:			; CODE XREF: ScrollBlock3+14?j
-		rts	
-; End of function ScrollBlock3
- 
- 
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
- 
- 
-ScrollBlock4:				; CODE XREF: Deform_MZ+10?p
-					; Deform_SBZ+12?p
-		move.l	($FFFFF708).w,d2
-		move.l	d2,d0
-		add.l	d4,d0
-		move.l	d0,($FFFFF708).w
-		move.l	d0,d1
-		swap	d1
-		andi.w	#$10,d1
-		move.b	($FFFFF74C).w,d3
-		eor.b	d3,d1
-		bne.s	ScrollBlock4_End
-		eori.b	#$10,($FFFFF74C).w
-		sub.l	d2,d0
-		bpl.s	ScrollBlock4_1
-		bset	d6,($FFFFF756).w
-		bra.s	ScrollBlock4_End
-; ===========================================================================
- 
-ScrollBlock4_1:				; CODE XREF: ScrollBlock4+24?j
-		addq.b	#1,d6
-		bset	d6,($FFFFF756).w
- 
-ScrollBlock4_End:			; CODE XREF: ScrollBlock4+1A?j
-					; ScrollBlock4+2A?j
-		rts	
-; End of function ScrollBlock4
- 
- 
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
- 
- 
-ScrollBlock5:				; CODE XREF: Deform_GHZ+1E?p
-					; Deform_MZ+2C?p ...
-		move.l	($FFFFF710).w,d2
-		move.l	d2,d0
-		add.l	d4,d0
-		move.l	d0,($FFFFF710).w
-		move.l	d0,d1
-		swap	d1
-		andi.w	#$10,d1
-		move.b	($FFFFF74E).w,d3
-		eor.b	d3,d1
-		bne.s	ScrollBlock5_End
-		eori.b	#$10,($FFFFF74E).w
-		sub.l	d2,d0
-		bpl.s	ScrollBlock5_1
-		bset	d6,($FFFFF758).w
-		bra.s	ScrollBlock5_End
-; ===========================================================================
- 
-ScrollBlock5_1:				; CODE XREF: ScrollBlock5+24?j
-		addq.b	#1,d6
-		bset	d6,($FFFFF758).w
- 
-ScrollBlock5_End:			; CODE XREF: ScrollBlock5+1A?j
-					; ScrollBlock5+2A?j
-		rts	
-; End of function ScrollBlock5
- 
- 
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
- 
- 
-ScrollBlock6:				; CODE XREF: Deform_GHZ+10?p
-					; Deform_MZ+1E?p ...
-		move.l	($FFFFF718).w,d2
-		move.l	d2,d0
-		add.l	d4,d0
-		move.l	d0,($FFFFF718).w
-		move.l	d0,d1
-		swap	d1
-		andi.w	#$10,d1
-		move.b	($FFFFF750).w,d3
-		eor.b	d3,d1
-		bne.s	ScrollBlock6_End
-		eori.b	#$10,($FFFFF750).w
-		sub.l	d2,d0
-		bpl.s	ScrollBlock6_1
-		bset	d6,($FFFFF75A).w
-		bra.s	ScrollBlock6_End
-; ===========================================================================
- 
-ScrollBlock6_1:				; CODE XREF: ScrollBlock6+24?j
-		addq.b	#1,d6
-		bset	d6,($FFFFF75A).w
- 
-ScrollBlock6_End:			; CODE XREF: ScrollBlock6+1A?j
-					; ScrollBlock6+2A?j
-		rts	
-; End of function ScrollBlock6
-
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
-
-sub_6886:		
-		lea	($C00004).l,a5
-		lea	($C00000).l,a6
-		lea	($FFFFF756).w,a2
-		lea	($FFFFF708).w,a3
-		lea	($FFFFA440).w,a4
-		tst.b	($FFFFFE10).w		; is zone GHZ?
-		bne.s	@cont			; if not, branch
-		lea	($FFFFA6C0).w,a4
-
-@cont:
-		move.w	#$6000,d2
-		bsr	sub_6D0A
-		lea	($FFFFF758).w,a2
-		lea	($FFFFF710).w,a3
-		bra.w	sub_6DA6
-; End of function sub_6886
- 
-; ---------------------------------------------------------------------------
-; Subroutine to	display	correct	tiles as you move
-; ---------------------------------------------------------------------------
- 
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
- 
- 
-LoadTilesAsYouMove:			; XREF: 
-		lea	($C00004).l,a5
-		lea	($C00000).l,a6
-		lea	($FFFFFF32).w,a2
-		lea	($FFFFFF18).w,a3
-		lea	($FFFFA440).w,a4
-		tst.b	($FFFFFE10).w		; is zone GHZ?
-		bne.s	@cont			; if not, branch
-		lea	($FFFFA6C0).w,a4
-
-@cont:
-		move.w	#$6000,d2
-		bsr	sub_6D0A
-		lea	($FFFFFF34).w,a2
-		lea	($FFFFFF20).w,a3
-		bsr	sub_6DA6
-		lea	($FFFFFF36).w,a2
-		lea	($FFFFFF28).w,a3
-		bsr	sub_6EA4
-		lea	($FFFFFF30).w,a2
-		lea	($FFFFFF10).w,a3
-		lea	($FFFFA400).w,a4
-		move.w	#$4000,d2
-		tst.b	($FFFFF745).w
-		beq.s	Draw_FG
-		move.b	#0,($FFFFF745).w	;Reset the redraw flag
-		moveq	#-$10,d4			;Go to top line oflevel data relative camera position
-		moveq	#$F,d6				;
- 
-Draw_All:				; CODE XREF: ROM:0000DAEA?j
-		movem.l	d4-d6,-(sp)			; This whole routine basically redraws the whole
-		moveq	#-$10,d5			; area instead of merely a line of tiles
-		move.w	d4,d1
-		bsr	Calc_VRAM_Pos
-		move.w	d1,d4
-		moveq	#-$10,d5
-		bsr	DrawTiles_LR
-		movem.l	(sp)+,d4-d6
-		addi.w	#$10,d4
-		dbf	d6,Draw_All
-		rts	
- 
-Draw_FG:
-		tst.b	(a2)
-		beq.s	locret_6D08
-		bclr	#0,(a2)
-		beq.s	loc_6CBE
-		moveq	#-$10,d4
-		moveq	#-$10,d5
-		bsr	Calc_VRAM_Pos
-		moveq	#-$10,d4
-		moveq	#-$10,d5
-		bsr	DrawTiles_LR
- 
-loc_6CBE:				; CODE XREF: ROM:00006CAC?j
-		bclr	#1,(a2)
-		beq.s	loc_6CD8
-		move.w	#$E0,d4	; '?'
-		moveq	#-$10,d5
-		bsr	Calc_VRAM_Pos
-		move.w	#$E0,d4	; '?'
-		moveq	#-$10,d5
-		bsr	DrawTiles_LR
- 
-loc_6CD8:				; CODE XREF: ROM:00006CC2?j
-		bclr	#2,(a2)
-		beq.s	loc_6CEE
-		moveq	#-$10,d4
-		moveq	#-$10,d5
-		bsr	Calc_VRAM_Pos
-		moveq	#-$10,d4
-		moveq	#-$10,d5
-		bsr	DrawTiles_TB
- 
-loc_6CEE:				; CODE XREF: ROM:00006CDC?j
-		bclr	#3,(a2)
-		beq.s	locret_6D08
-		moveq	#-$10,d4
-		move.w	#$140,d5
-		bsr	Calc_VRAM_Pos
-		moveq	#-$10,d4
-		move.w	#$140,d5
-		bsr	DrawTiles_TB
- 
-locret_6D08:				; CODE XREF: ROM:00006CA6?j
-					; ROM:00006CF2?j
-		rts	
- 
-; End of function LoadTilesAsYouMove
- 
- 
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
- 
- 
-sub_6D0A:				; CODE XREF: ROM:00006C4C?p
-					; ROM:00006C78?p
-		tst.b	(a2)
-		beq.w	locret_6DA4
-		bclr	#0,(a2)
-		beq.s	loc_6D26
-		moveq	#-$10,d4
-		moveq	#-$10,d5
-		bsr	Calc_VRAM_Pos
-		moveq	#-$10,d4
-		moveq	#-$10,d5
-		bsr	DrawTiles_LR
- 
-loc_6D26:				; CODE XREF: sub_6D0A+A?j
-		bclr	#1,(a2)
-		beq.s	loc_6D40
-		move.w	#$E0,d4	; '?'
-		moveq	#-$10,d5
-		bsr	Calc_VRAM_Pos
-		move.w	#$E0,d4	; '?'
-		moveq	#-$10,d5
-		bsr	DrawTiles_LR
- 
-loc_6D40:				; CODE XREF: sub_6D0A+20?j
-		bclr	#2,(a2)
-		beq.s	loc_6D56
-		moveq	#-$10,d4
-		moveq	#-$10,d5
-		bsr	Calc_VRAM_Pos
-		moveq	#-$10,d4
-		moveq	#-$10,d5
-		bsr	DrawTiles_TB
- 
-loc_6D56:				; CODE XREF: sub_6D0A+3A?j
-		bclr	#3,(a2)
-		beq.s	loc_6D70
-		moveq	#-$10,d4
-		move.w	#$140,d5
-		bsr	Calc_VRAM_Pos
-		moveq	#-$10,d4
-		move.w	#$140,d5
-		bsr	DrawTiles_TB
- 
-loc_6D70:				; CODE XREF: sub_6D0A+50?j
-		bclr	#4,(a2)
-		beq.s	loc_6D88
-		moveq	#-$10,d4
-		moveq	#0,d5
-		bsr	loc_7176
-		moveq	#-$10,d4
-		moveq	#0,d5
-		moveq	#$1F,d6
-		bsr	DrawTiles_LR3
- 
-loc_6D88:				; CODE XREF: sub_6D0A+6A?j
-		bclr	#5,(a2)
-		beq.s	locret_6DA4
-		move.w	#$E0,d4	; '?'
-		moveq	#0,d5
-		bsr	loc_7176
-		move.w	#$E0,d4	; '?'
-		moveq	#0,d5
-		moveq	#$1F,d6
-		bsr	DrawTiles_LR3
- 
-locret_6DA4:				; CODE XREF: sub_6D0A+2?j sub_6D0A+82?j
-		rts	
-; End of function sub_6D0A
- 
- 
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
- 
- 
-sub_6DA6:				; CODE XREF: ROM:00006C58?j
-					; ROM:00006C84?p
-		tst.b	(a2)
-		beq.w	locret_6DF2
-		cmpi.b	#5,($FFFFFE10).w
-		beq.w	loc_6E16
-		bclr	#0,(a2)
-		beq.s	loc_6DD2
-		move.w	#$70,d4	; 'p'
-		moveq	#-$10,d5
-		bsr	Calc_VRAM_Pos
-		move.w	#$70,d4	; 'p'
-		moveq	#-$10,d5
-		moveq	#2,d6
-		bsr	DrawTiles_TB2
- 
-loc_6DD2:				; CODE XREF: sub_6DA6+14?j
-		bclr	#1,(a2)
-		beq.s	locret_6DF2
-		move.w	#$70,d4	; 'p'
-		move.w	#$140,d5
-		bsr	Calc_VRAM_Pos
-		move.w	#$70,d4	; 'p'
-		move.w	#$140,d5
-		moveq	#2,d6
-		bsr	DrawTiles_TB2
- 
-locret_6DF2:				; CODE XREF: sub_6DA6+2?j sub_6DA6+30?j
-		rts	
-; ===========================================================================
-unk_6DF4:	dc.b   0 ;		; DATA XREF: sub_6DA6+E6?o
-unk_6DF5:	dc.b   0 ;		; DATA XREF: sub_6DA6+82?o
-					; ROM:00007290?o
-		dc.b   0 ;  
-		dc.b   0 ;  
-		dc.b   0 ;  
-		dc.b   6 ;  
-		dc.b   6 ;  
-		dc.b   6 ;  
-		dc.b   6 ;  
-		dc.b   6 ;  
-		dc.b   6 ;  
-		dc.b   6 ;  
-		dc.b   6 ;  
-		dc.b   6 ;  
-		dc.b   6 ;  
-		dc.b   4 ;  
-		dc.b   4 ;  
-		dc.b   4 ;  
-		dc.b   4 ;  
-		dc.b   4 ;  
-		dc.b   4 ;  
-		dc.b   4 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   0 ;  
-; ===========================================================================
- 
-loc_6E16:				; CODE XREF: sub_6DA6+C?j
-		moveq	#-$10,d4
-		bclr	#0,(a2)
-		bne.s	loc_6E28
-		bclr	#1,(a2)
-		beq.s	loc_6E72
-		move.w	#$E0,d4	; '?'
- 
-loc_6E28:				; CODE XREF: sub_6DA6+76?j
-		lea	(unk_6DF5).l,a0
-		move.w	($FFFFF70C).w,d0
-		add.w	d4,d0
-		andi.w	#$1F0,d0
-		lsr.w	#4,d0
-		move.b	(a0,d0.w),d0
-		lea	(unk_6FE4).l,a3
-		movea.w	(a3,d0.w),a3
-		beq.s	loc_6E5E
-		moveq	#-$10,d5
-		movem.l	d4-d5,-(sp)
-		bsr	Calc_VRAM_Pos
-		movem.l	(sp)+,d4-d5
-		bsr	DrawTiles_LR
-		bra.s	loc_6E72
-; ===========================================================================
- 
-loc_6E5E:				; CODE XREF: sub_6DA6+A2?j
-		moveq	#0,d5
-		movem.l	d4-d5,-(sp)
-		bsr	loc_7176
-		movem.l	(sp)+,d4-d5
-		moveq	#$1F,d6
-		bsr	DrawTiles_LR3
- 
-loc_6E72:				; CODE XREF: sub_6DA6+7C?j sub_6DA6+B6?j
-		tst.b	(a2)
-		bne.s	loc_6E78
-		rts	
-; ===========================================================================
- 
-loc_6E78:				; CODE XREF: sub_6DA6+CE?j
-		moveq	#-$10,d4
-		moveq	#-$10,d5
-		move.b	(a2),d0
-		andi.b	#-$58,d0
-		beq.s	loc_6E8C
-		lsr.b	#1,d0
-		move.b	d0,(a2)
-		move.w	#$140,d5
- 
-loc_6E8C:				; CODE XREF: sub_6DA6+DC?j
-		lea	(unk_6DF4).l,a0
-		move.w	($FFFFF70C).w,d0
-		andi.w	#$1F0,d0
-		lsr.w	#4,d0
-		lea	(a0,d0.w),a0
-		bra.w	loc_6FEC
-; End of function sub_6DA6
- 
- 
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
- 
- 
-sub_6EA4:				; CODE XREF: ROM:00006C90?p
-		tst.b	(a2)
-		beq.w	locret_6EF0
-		cmpi.b	#2,($FFFFFE10).w
-		beq.w	loc_6F54
-		bclr	#0,(a2)
-		beq.s	loc_6ED0_2
-		move.w	#$40,d4	; '@'
-		moveq	#-$10,d5
-		bsr	Calc_VRAM_Pos
-		move.w	#$40,d4	; '@'
-		moveq	#-$10,d5
-		moveq	#2,d6
-		bsr	DrawTiles_TB2
- 
-loc_6ED0_2:				; CODE XREF: sub_6EA4+14?j
-		bclr	#1,(a2)
-		beq.s	locret_6EF0
-		move.w	#$40,d4	; '@'
-		move.w	#$140,d5
-		bsr	Calc_VRAM_Pos
-		move.w	#$40,d4	; '@'
-		move.w	#$140,d5
-		moveq	#2,d6
-		bsr	DrawTiles_TB2
- 
-locret_6EF0:				; CODE XREF: sub_6EA4+2?j sub_6EA4+30?j
-		rts	
-; ===========================================================================
-unk_6EF2:	dc.b   0 ;		; DATA XREF: sub_6EA4+124?o
-unk_6EF3:	dc.b   0 ;		; DATA XREF: sub_6EA4+C2?o
-					; ROM:00007262?o
-		dc.b   0 ;  
-		dc.b   0 ;  
-		dc.b   0 ;  
-		dc.b   0 ;  
-		dc.b   6 ;  
-		dc.b   6 ;  
-		dc.b   4 ;  
-		dc.b   4 ;  
-		dc.b   4 ;  
-		dc.b   4 ;  
-		dc.b   4 ;  
-		dc.b   4 ;  
-		dc.b   4 ;  
-		dc.b   4 ;  
-		dc.b   4 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   2 ;  
-		dc.b   0 ;  
-; ===========================================================================
- 
-loc_6F54:				; CODE XREF: sub_6EA4+C?j
-		moveq	#-$10,d4
-		bclr	#0,(a2)
-		bne.s	loc_6F66
-		bclr	#1,(a2)
-		beq.s	loc_6FAE
-		move.w	#$E0,d4	; '?'
- 
-loc_6F66:				; CODE XREF: sub_6EA4+B6?j
-		lea	(unk_6EF3).l,a0
-		move.w	($FFFFF70C).w,d0
-		subi.w	#$200,d0
-		add.w	d4,d0
-		andi.w	#$7F0,d0
-		lsr.w	#4,d0
-		move.b	(a0,d0.w),d0
-		movea.w	unk_6FE4(pc,d0.w),a3
-		beq.s	loc_6F9A
-		moveq	#-$10,d5
-		movem.l	d4-d5,-(sp)
-		bsr	Calc_VRAM_Pos
-		movem.l	(sp)+,d4-d5
-		bsr	DrawTiles_LR
-		bra.s	loc_6FAE
-; ===========================================================================
- 
-loc_6F9A:				; CODE XREF: sub_6EA4+E0?j
-		moveq	#0,d5
-		movem.l	d4-d5,-(sp)
-		bsr	loc_7176
-		movem.l	(sp)+,d4-d5
-		moveq	#$1F,d6
-		bsr	DrawTiles_LR3
- 
-loc_6FAE:				; CODE XREF: sub_6EA4+BC?j sub_6EA4+F4?j
-		tst.b	(a2)
-		bne.s	loc_6FB4
-		rts	
-; ===========================================================================
- 
-loc_6FB4:				; CODE XREF: sub_6EA4+10C?j
-		moveq	#-$10,d4
-		moveq	#-$10,d5
-		move.b	(a2),d0
-		andi.b	#-$58,d0
-		beq.s	loc_6FC8
-		lsr.b	#1,d0
-		move.b	d0,(a2)
-		move.w	#$140,d5
- 
-loc_6FC8:				; CODE XREF: sub_6EA4+11A?j
-		lea	(unk_6EF2).l,a0
-		move.w	($FFFFF70C).w,d0
-		subi.w	#$200,d0
-		andi.w	#$7F0,d0
-		lsr.w	#4,d0
-		lea	(a0,d0.w),a0
-		bra.w	loc_6FEC
-; ===========================================================================
-unk_6FE4:	dc.b $FF ;		; DATA XREF: sub_6DA6+98?o
-		dc.b $18 ;  
-		dc.b $FF ;  
-		dc.b $18 ;  
-		dc.b $FF ;  
-		dc.b $20 ;  
-		dc.b $FF ;  
-		dc.b $28 ; (
-; ===========================================================================
- 
-loc_6FEC:				; CODE XREF: sub_6DA6+FA?j
-					; sub_6EA4+13C?j
-		moveq	#$F,d6
-		move.l	#$800000,d7
- 
-loc_6FF4:				; CODE XREF: sub_6EA4+17C?j
-		moveq	#0,d0
-		move.b	(a0)+,d0
-		btst	d0,(a2)
-		beq.s	loc_701C
-		movea.w	unk_6FE4(pc,d0.w),a3
-		movem.l	d4-d5/a0,-(sp)
-		movem.l	d4-d5,-(sp)
-		bsr	sub_712A
-		movem.l	(sp)+,d4-d5
-		bsr	Calc_VRAM_Pos
-		bsr	sub_70AC
-		movem.l	(sp)+,d4-d5/a0
- 
-loc_701C:				; CODE XREF: sub_6EA4+156?j
-		addi.w	#$10,d4
-		dbf	d6,loc_6FF4
-		clr.b	(a2)
-		rts	
-; End of function sub_6EA4
- 
- 
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
- 
- 
-DrawTiles_LR:				; CODE XREF: ROM:00006CBA?p
-		moveq	#$15,d6
- 
-DrawTiles_LR2:				; CODE XREF: LoadTilesFromStart2+16?p
-		move.l	#$800000,d7
-		move.l	d0,d1
- 
-loc_7032:				; CODE XREF: DrawTiles_LR2+24?j
-		movem.l	d4-d5,-(sp)
-		bsr	sub_712A
-		move.l	d1,d0
-		bsr	sub_70AC
-		addq.b	#4,d1
-		andi.b	#$7F,d1
-		movem.l	(sp)+,d4-d5
-		addi.w	#$10,d5
-		dbf	d6,loc_7032
-		rts	
-; End of function DrawTiles_LR2
- 
- 
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
- 
- 
-DrawTiles_LR3:				; CODE XREF: sub_6D0A+7A?p sub_6D0A+96?p ...
-		move.l	#$800000,d7
-		move.l	d0,d1
- 
-loc_705C:				; CODE XREF: DrawTiles_LR3+24?j
-		movem.l	d4-d5,-(sp)
-		bsr	loc_712C
-		move.l	d1,d0
-		bsr	sub_70AC
-		addq.b	#4,d1
-		andi.b	#$7F,d1	; ''
-		movem.l	(sp)+,d4-d5
-		addi.w	#$10,d5
-		dbf	d6,loc_705C
-		rts	
-; End of function DrawTiles_LR3
- 
- 
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
- 
- 
-DrawTiles_TB:				; CODE XREF: ROM:00006CEA?p
-		moveq	#$F,d6
- 
-DrawTiles_TB2:				; CODE XREF: sub_6DA6+28?p sub_6DA6+48?p ...
-		move.l	#$800000,d7
-		move.l	d0,d1
- 
-loc_7088:				; CODE XREF: DrawTiles_TB2+26?j
-		movem.l	d4-d5,-(sp)
-		bsr	sub_712A
-		move.l	d1,d0
-		bsr	sub_70AC
-		addi.w	#$100,d1
-		andi.w	#$FFF,d1
-		movem.l	(sp)+,d4-d5
-		addi.w	#$10,d4
-		dbf	d6,loc_7088
-		rts	
-; End of function DrawTiles_TB2
- 
- 
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
- 
-; MAGICSUB:
-sub_70AC:				; CODE XREF: sub_6EA4+170?p
-					; DrawTiles_LR2+12?p ...
-		or.w	d2,d0
-		swap	d0
-		btst	#4,(a0)
-		bne.s	loc_70E8
-		btst	#3,(a0)
-		bne.s	loc_70C8
-		move.l	d0,(a5)
-		move.l	(a1)+,(a6)
-		add.l	d7,d0
-		move.l	d0,(a5)
-		move.l	(a1)+,(a6)
-		rts	
-; ===========================================================================
- 
-loc_70C8:				; CODE XREF: sub_70AC+E?j
-		move.l	d0,(a5)
-		move.l	(a1)+,d4
-		eori.l	#$8000800,d4
-		swap	d4
-		move.l	d4,(a6)
-		add.l	d7,d0
-		move.l	d0,(a5)
-		move.l	(a1)+,d4
-		eori.l	#$8000800,d4
-		swap	d4
-		move.l	d4,(a6)
-		rts	
-; ===========================================================================
- 
-loc_70E8:				; CODE XREF: sub_70AC+8?j
-		btst	#3,(a0)
-		bne.s	loc_710A
-		move.l	d0,(a5)
-		move.l	(a1)+,d5
-		move.l	(a1)+,d4
-		eori.l	#$10001000,d4
-		move.l	d4,(a6)
-		add.l	d7,d0
-		move.l	d0,(a5)
-		eori.l	#$10001000,d5
-		move.l	d5,(a6)
-		rts	
-; ===========================================================================
- 
-loc_710A:				; CODE XREF: sub_70AC+40?j
-		move.l	d0,(a5)
-		move.l	(a1)+,d5
-		move.l	(a1)+,d4
-		eori.l	#$18001800,d4
-		swap	d4
-		move.l	d4,(a6)
-		add.l	d7,d0
-		move.l	d0,(a5)
-		eori.l	#$18001800,d5
-		swap	d5
-		move.l	d5,(a6)
-		rts	
-; End of function sub_70AC
- 
- 
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
- 
- 
-sub_712A:				; CODE XREF: sub_6EA4+164?p
-					; DrawTiles_LR2+C?p ...
-		add.w	(a3),d5
- 
-loc_712C:				; CODE XREF: DrawTiles_LR3+C?p
-		add.w	obMap(a3),d4
-		movea.l	BlocksAddress,a1
-		move.w	d4,d3
-		lsr.w	#1,d3
-		andi.w	#$380,d3
-		lsr.w	#3,d5
-		move.w	d5,d0
-		lsr.w	#5,d0
-		andi.w	#$7F,d0	; ''
-		add.w	d3,d0
-		moveq	#-1,d3
-		move.b	(a4,d0.w),d3
-		beq.s	locret_7172
-		subq.b	#1,d3
-		andi.w	#$7F,d3	; ''
-		ror.w	#7,d3
-		add.w	d4,d4
-		andi.w	#$1E0,d4
-		andi.w	#$1E,d5
-		add.w	d4,d3
-		add.w	d5,d3
-		movea.l	d3,a0
-		move.w	(a0),d3
-		andi.w	#$3FF,d3
-		lsl.w	#3,d3
-		adda.w	d3,a1
- 
-locret_7172:				; CODE XREF: sub_712A+24?j
-		rts	
-; End of function sub_712A
- 
- 
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
- 
- 
-Calc_VRAM_Pos:				; CODE XREF: ROM:00006CB2?p
-					; ROM:00006CCA?p ...
-		add.w	(a3),d5
- 
-loc_7176:				; CODE XREF: sub_6D0A+70?p sub_6D0A+8A?p ...
-		add.w	obMap(a3),d4
-		andi.w	#$F0,d4	; '?'
-		andi.w	#$1F0,d5
-		lsl.w	#4,d4
-		lsr.w	#2,d5
-		add.w	d5,d4
-		moveq	#3,d0
-		swap	d0
-		move.w	d4,d0
-		rts	
-; End of function Calc_VRAM_Pos
- 
-; ===========================================================================
-		add.w	obMap(a3),d4
-		add.w	(a3),d5
-		andi.w	#$F0,d4	; '?'
-		andi.w	#$1F0,d5
-		lsl.w	#4,d4
-		lsr.w	#2,d5
-		add.w	d5,d4
-		moveq	#2,d0
-		swap	d0
-		move.w	d4,d0
-		rts	
- 
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
- 
- 
-LoadTilesFromStart:			; CODE XREF: ROM:0000395A?p
-					; ROM:000051B8?p
-		lea	($C00004).l,a5
-		lea	($C00000).l,a6
-		lea	($FFFFF700).w,a3
-		lea	($FFFFA400).w,a4
-		move.w	#$4000,d2
-		bsr.s	LoadTilesFromStart2
-		lea	($FFFFF708).w,a3
-		lea	($FFFFA440).w,a4
-		tst.b	($FFFFFE10).w		; is zone GHZ?
-		bne.s	@cont			; if not, branch
-		lea	($FFFFA6C0).w,a4
-
-@cont:
-		move.w	#$6000,d2
-		tst.b	($FFFFFE10).w
-		beq.w	loc_7220
-		cmpi.b	#2,($FFFFFE10).w
-		beq.w	loc_725A
-		cmpi.w	#$500,($FFFFFE10).w
-		beq.w	loc_7288
-		cmpi.b	#6,($FFFFFE10).w
-		beq.w	loc_7220
-; End of function LoadTilesFromStart
- 
- 
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
- 
- 
-LoadTilesFromStart2:			; CODE XREF: ROM:00003096?p
-					; ROM:0000536A?p ...
-		moveq	#-$10,d4
-		moveq	#$F,d6
- 
-loc_71FC:				; CODE XREF: LoadTilesFromStart2+22?j
-		movem.l	d3-d6,-(sp)
-		moveq	#0,d3
-		cmpi.b	#4,($FFFFF600).w ; is this the title screen?
-		beq.s	@cont
-		moveq	#-$10,d3
-	;	cmpi.w	#$302,($FFFFFE10).w	; in SLZ3?
-	;	bne.s	@cont			; if not, branch
-	;	addi.w	#$10,d4
-
-@cont:
-		move.l	d3,d5				; moving up a tad
-		move.w	d4,d1
-		bsr	Calc_VRAM_Pos
-		move.w	d1,d4
-		move.l	d3,d5				; moving up a tad
-		moveq	#$1F,d6
-		bsr	DrawTiles_LR2
-		movem.l	(sp)+,d3-d6
-		addi.w	#$10,d4
-		dbf	d6,loc_71FC
-		rts	
-; End of function LoadTilesFromStart2
- 
-; ===========================================================================
- 
-loc_7220:				; CODE XREF: LoadTilesFromStart+2A?j
-					; LoadTilesFromStart+48?j
-		moveq	#0,d4
-		moveq	#$F,d6
- 
-loc_7224:				; CODE XREF: ROM:00007244?j
-		movem.l	d4-d6,-(sp)
-		lea	(unk_724A).l,a0
-		move.w	($FFFFF70C).w,d0
-		add.w	d4,d0
-		andi.w	#$F0,d0	; '?'
-		bsr	sub_72BA
-		movem.l	(sp)+,d4-d6
-		addi.w	#$10,d4
-		dbf	d6,loc_7224
-		rts	
-; ===========================================================================
-unk_724A:	dc.b   0 ;		; DATA XREF: ROM:00007228?o
-		dc.b   0 ;  
-		dc.b   0 ;  
-		dc.b   0 ;  
-		dc.b   6 ;  
-		dc.b   6 ;  
-		dc.b   6 ;  
-		dc.b   4 ;  
-		dc.b   4 ;  
-		dc.b   4 ;  
-		dc.b   0 ;  
-		dc.b   0 ;  
-		dc.b   0 ;  
-		dc.b   0 ;  
-		dc.b   0 ;  
-		dc.b   0 ;  
-; ===========================================================================
- 
-loc_725A:				; CODE XREF: LoadTilesFromStart+34?j
-		moveq	#-$10,d4
-		moveq	#$F,d6
- 
-loc_725E:				; CODE XREF: ROM:00007282?j
-		movem.l	d4-d6,-(sp)
-		lea	(unk_6EF3).l,a0
-		move.w	($FFFFF70C).w,d0
-		subi.w	#$200,d0
-		add.w	d4,d0
-		andi.w	#$7F0,d0
-		bsr	sub_72BA
-		movem.l	(sp)+,d4-d6
-		addi.w	#$10,d4
-		dbf	d6,loc_725E
-		rts	
-; ===========================================================================
- 
-loc_7288:				; CODE XREF: LoadTilesFromStart+3E?j
-		moveq	#-$10,d4
-		moveq	#$F,d6
- 
-loc_728C:				; CODE XREF: ROM:000072AC?j
-		movem.l	d4-d6,-(sp)
-		lea	(unk_6DF5).l,a0
-		move.w	($FFFFF70C).w,d0
-		add.w	d4,d0
-		andi.w	#$1F0,d0
-		bsr	sub_72BA
-		movem.l	(sp)+,d4-d6
-		addi.w	#$10,d4
-		dbf	d6,loc_728C
-		rts	
-; ===========================================================================
-unk_72B2:	dc.b $F7 ; ?
-		dc.b   8 ;  
-		dc.b $F7 ; ?
-		dc.b   8 ;  
-		dc.b $F7 ; ?
-		dc.b $10 ;  
-		dc.b $F7 ; ?
-		dc.b $18 ;  
- 
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
- 
- 
-sub_72BA:				; CODE XREF: ROM:00007238?p
-					; ROM:00007276?p ...
-		lsr.w	#4,d0
-		move.b	(a0,d0.w),d0
-		movea.w	unk_72B2(pc,d0.w),a3
-		beq.s	loc_72DA
-		moveq	#-$10,d5
-		movem.l	d4-d5,-(sp)
-		bsr	Calc_VRAM_Pos
-		movem.l	(sp)+,d4-d5
-		bsr	DrawTiles_LR
-		bra.s	locret_72EE
-; ===========================================================================
- 
-loc_72DA:				; CODE XREF: sub_72BA+A?j
-		moveq	#0,d5
-		movem.l	d4-d5,-(sp)
-		bsr	loc_7176
-		movem.l	(sp)+,d4-d5
-		moveq	#$1F,d6
-		bsr	DrawTiles_LR3
- 
-locret_72EE:				; CODE XREF: sub_72BA+1E?j
-		rts	
-; End of function sub_72BA
+*BgScrollSpeed:
+*DeformBgLayer:
+*GenerateCameraShake:
+*Deform_GHZ:
+		include	'modules/Plane Scrolling.asm'
 
 ; ---------------------------------------------------------------------------
 ; Main Load Block loading subroutine
@@ -9731,35 +6678,24 @@ locret_6D10:
 
 
 LevelLayoutLoad:			; XREF: TitleScreen; MainLoadBlockLoad
-		lea	($FFFFA400).w,a3
-		move.w	#$1FF,d1
+		lea	LevelLayout_RAM, a3
+		move.w	#$400/4-1,d1
 		moveq	#0,d0
 
-LevLoad_ClrRam:
-		move.l	d0,(a3)+
-		dbf	d1,LevLoad_ClrRam ; clear the RAM ($FFFFA400-A7FF)
+		@clear:
+			move.l	d0,(a3)+
+			dbf	d1,@clear
 
-		lea	($FFFFA400).w,a3 ; RAM address for level layout
+		lea	LevelLayout_FG, a3
 		moveq	#0,d1
-		bsr.s	LevelLayoutLoad2 ; load	level layout into RAM
-		lea	($FFFFA440).w,a3 ; RAM address for background layout
-		tst.b	($FFFFFE10).w		; is zone GHZ?
-		bne.s	@cont			; if not, branch
-		lea	($FFFFA6C0).w,a3
+		bsr.s	LevelLayoutLoad2
 
-@cont:
+		lea	LevelLayout_BG, a3
 		moveq	#2,d1
-; End of function LevelLayoutLoad
+		;fallthrough
 
-; "LevelLayoutLoad2" is	run twice - for	the level and the background
-
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
-
-LevelLayoutLoad2:			; XREF: LevelLayoutLoad
-		move.w	($FFFFFE10).w,d0
-
-LevelLayoutLoadManual:
+LevelLayoutLoad2:
+		move.w	CurrentLevel, d0
 		lsl.b	#6,d0
 		lsr.w	#5,d0
 		move.w	d0,d2
@@ -9774,15 +6710,17 @@ LevelLayoutLoadManual:
 		move.b	(a1)+,d1	; load level width (in tiles)
 		move.b	(a1)+,d2	; load level height (in	tiles)
 
-LevLoad_NumRows:
-		move.w	d1,d0
-		movea.l	a3,a0
+	LevLoad_NumRows:
+			move.w	d1, d0
+			movea.l	a3, a0
 
-LevLoad_Row:
-		move.b	(a1)+,(a0)+
-		dbf	d0,LevLoad_Row	; load 1 row
-		lea	$80(a3),a3	; do next row
-		dbf	d2,LevLoad_NumRows ; repeat for	number of rows
+		LevLoad_Row:
+				move.b	(a1)+, (a0)+
+				dbf	d0,LevLoad_Row	; load 1 row
+				lea	$40(a3), a3	; do next row
+
+			dbf	d2,LevLoad_NumRows ; repeat for	number of rows
+
 		rts	
 ; End of function LevelLayoutLoad2
 
@@ -9799,12 +6737,12 @@ LevLoad_Row:
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 
 Sub_ChangeChunk:
-		lsr.w	#7,d0
-		lsr.w	#1,d0
-		lsr.w	#1,d1
-		andi.w	#$FF80,d1
+		lsr.w	#7,d0			; d0 = X / $80
+		lsr.w	#1,d0			; d0 = X / $100
+		lsr.w	#2,d1			; d1 = Y / 4
+		andi.w	#$FFC0,d1		; d1 = (Y / 4) & $FFC0
 		add.w	d1,d0
-		lea	($FFFFA400).w,a0
+		lea	LevelLayout_FG, a0
 		adda.w	d0,a0
 		move.b	d2,(a0)
 		rts
@@ -10079,7 +7017,7 @@ Resize_LZ2:
 Resize_LZ3:
 		tst.b	($FFFFF7EF).w	; has switch $F	been pressed?
 		beq.s	loc_6F28	; if not, branch
-		lea	($FFFFA506).w,a1
+		lea 	LevelLayout_FG+($40*2)+6, a1
 		cmpi.b	#7,(a1)
 		beq.s	loc_6F28
 		move.b	#7,(a1)		; modify level layout
@@ -21574,6 +18512,7 @@ loc_DA94:
 		dbf	d0,loc_DA94	; repeat $5F times
 
 locret_DAA0:
+		assert.w a1, lo, #$F000
 		rts	
 ; End of function SingleObjLoad
 
@@ -28932,7 +25871,7 @@ Obj65_FixHeight:			; XREF: Obj65_Index
 
 loc_12B36:				; XREF: Obj65_Index
 		bclr	#7,obGfx(a0)
-		cmpi.b	#7,($FFFFA506).w
+		cmpi.b	#7, LevelLayout_FG+$40*2+6
 		bne.s	Obj65_Animate2
 		bset	#7,obGfx(a0)
 
@@ -31292,12 +28231,13 @@ FixLevel:
 		clr.l	($FFFFF754).w		; clear redraw flags
 		clr.l	($FFFFF758).w		; clear redraw flags
 		
-		ints_push
+		VBlank_SetMusicOnly
 		movem.l	d0-a6,-(sp)		; backup all data and address registers
 		jsr	DeformBgLayer		; fix the background position
-		jsr	LoadTilesFromStart	; make sure the correct tiles are being used
+		jsr 	LevelRenderer_DrawLayout_FG
+		jsr 	LevelRenderer_DrawLayout_BG
 		movem.l	(sp)+,d0-a6		; restore them
-		ints_pop
+		VBlank_UnsetMusicOnly
 		rts
 
 ; ---------------------------------------------------------------------------
@@ -33119,19 +30059,19 @@ Sonic_Drowned:
 
 
 Sonic_Loops:				; XREF: Obj01_Control
-		cmpi.b	#3,($FFFFFE10).w ; is level SLZ	?
+		cmpi.b	#3,CurrentZone	; is level SLZ ?
 		beq.s	loc_13926	; if yes, branch
-		tst.b	($FFFFFE10).w	; is level GHZ ?
+		tst.b	CurrentZone	; is level GHZ ?
 		bne.w	locret_139C2	; if not, branch
 
 loc_13926:
 		move.w	obY(a0),d0
-		lsr.w	#1,d0
-		andi.w	#$380,d0
+		lsr.w	#2,d0
+		andi.w	#$1C0,d0
 		move.b	obX(a0),d1
 		andi.w	#$7F,d1
 		add.w	d1,d0
-		lea	($FFFFA400).w,a1
+		lea	LevelLayout_FG, a1
 		move.b	(a1,d0.w),d1	; d1 is	the 256x256 tile Sonic is currently on
 		cmp.b	($FFFFF7AE).w,d1
 		beq.w	Obj01_ChkRoll
@@ -34436,67 +31376,69 @@ loc_14942:
 
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 
+; Vladikcomper: Heavily optimized
 
 Floor_ChkTile:				; XREF: FindFloor; et al
-		move.w	d2,d0
-		lsr.w	#1,d0
-		andi.w	#$380,d0
-		move.w	d3,d1
-		lsr.w	#8,d1
-		andi.w	#$7F,d1
-		add.w	d1,d0
+		move.w	d2,d0			; d0 = Y-pos (sensor)
+		lsr.w	#2,d0			; d0 = Y-pos / 4
+		andi.w	#$1C0,d0		; d0 = (Y-pos / $100) * $40
+		move.w	d3,d1			; d1 = X-pos (sensor)
+		lsr.w	#8,d1			; d1 = X-pos / $100
+		andi.w	#$7F,d1			; d1 = (X-pos / $100) & $7F
+		add.w	d1, d0			; d0 = in-layout pos
+
 		moveq	#-1,d1
-		lea	($FFFFA400).w,a1
-		move.b	(a1,d0.w),d1
-		beq.s	loc_14996
-		bmi.s	loc_1499A
-		subq.b	#1,d1
-		ext.w	d1
-		ror.w	#7,d1
+		clr.w	d1
+		lea	LevelLayout_FG, a1
+		move.b	(a1,d0.w),d1		; d1 = chunk id
+		beq.s	@EmptyChunk		; if chunk = $00, branch
+		bmi.s	@LoopChunk
+
+@GetChunk:
+		; Calculate address within chunk where object stands
+		add.w	d1, d1
+		move.w	@GetChunkOffset-2(pc,d1.w), d1
+		
 		move.w	d2,d0
 		add.w	d0,d0
 		andi.w	#$1E0,d0
 		add.w	d0,d1
+
 		move.w	d3,d0
 		lsr.w	#3,d0
 		andi.w	#$1E,d0
 		add.w	d0,d1
 
-loc_14996:
-		movea.l	d1,a1
-		rts	
+		movea.l d1,a1
+		rts
+
+@EmptyChunk:
+		lea	@NullBlock(pc), a1
+		rts
+
 ; ===========================================================================
 
-loc_1499A:
+@LoopChunk:
 		andi.w	#$7F,d1
-		btst	#6,obRender(a0)
-		beq.s	loc_149B2
-		addq.w	#1,d1
-		cmpi.w	#$29,d1
-		bne.s	loc_149B2
-		move.w	#$51,d1
+		btst	#6,1(a0)		; is object on the low plane?
+		beq.s	@GetChunk		; if not, branch
+		addq.w	#1,d1			; swap collision layer
+		bra.s	@GetChunk
 
-loc_149B2:
-		subq.b	#1,d1
-		ror.w	#7,d1
-		move.w	d2,d0
-		add.w	d0,d0
-		andi.w	#$1E0,d0
-		add.w	d0,d1
-		move.w	d3,d0
-		lsr.w	#3,d0
-		andi.w	#$1E,d0
-		add.w	d0,d1
-		movea.l	d1,a1
-		rts	
-; End of function Floor_ChkTile
-
+; ===========================================================================
+@NullBlock:					; they both start with $0000
+@GetChunkOffset:
+	disp: = 0
+        while disp<$A400
+                dc.w    disp
+disp = disp + $200
+        endw
 
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 
 
 FindFloor:				; XREF: Sonic_AnglePos; et al
-		bsr.s	Floor_ChkTile
+		bsr.w	Floor_ChkTile
 		move.w	(a1),d0
 		move.w	d0,d4
 		andi.w	#$7FF,d0
@@ -48045,6 +44987,11 @@ ObjPos_Null:	dc.w    $FFFF,$0000,$0000
 ; ---------------------------------------------------------------------------
 		incbin	misc\padding4.bin
 		even
+; ---------------------------------------------------------------------------
+
+
+		include	'modules\Level Renderer.asm'
+
 ; ---------------------------------------------------------------------------
 
 		include	'MegaPCM.asm'

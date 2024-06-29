@@ -9991,7 +9991,12 @@ locret_6E08X:
 
 Resize_GHZ2:
 		move.b	#1,($FFFFF7CC).w		; lock controls
-		move.w	#$300,($FFFFF726).w
+		move.w	#$210,($FFFFF726).w
+		cmpi.w	#$F00,($FFFFF700).w
+		bcs.s	locret_6E96
+		cmpi.w	#$15E0,($FFFFF700).w
+		bcc.s	locret_6E96
+		move.w	#$110,($FFFFF726).w		; alternate bottom boundary during the buzz bomber death
 		rts	
 ; ===========================================================================
 

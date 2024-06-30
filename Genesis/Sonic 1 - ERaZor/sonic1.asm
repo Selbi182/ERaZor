@@ -11195,10 +11195,11 @@ Obj1F_NotInhumanCrush:
 		bsr	AnimateSprite
 		bra.w	MarkObjGone
 ; ===========================================================================
-Obj1F_Index2:	dc.w Obj1F_WaitFire-Obj1F_Index2
-		dc.w Obj1F_WalkOnFloor-Obj1F_Index2
-		dc.w Obj1F_BossDefeated-Obj1F_Index2
-		dc.w Obj1F_BossDefeated-Obj1F_Index2
+Obj1F_Index2:	dc.w Obj1F_WaitFire-Obj1F_Index2	; $00
+		dc.w Obj1F_WalkOnFloor-Obj1F_Index2	; $02
+		dc.w Obj1F_BossDefeated-Obj1F_Index2	; $04
+		dc.w Obj1F_BossDefeated-Obj1F_Index2	; $06
+		dc.w Obj1F_LevelTransition-Obj1F_Index2	; $08
 ; ===========================================================================
 
 Obj1F_WaitFire:			; XREF: Obj1F_Index2
@@ -11266,11 +11267,20 @@ Obj1F_BossDefeated:
 
 @conxt:
 		cmpi.b	#$12,obAnim(a0)
-		beq.s	Obj1F_BossDelete		; if it's empty, delete boss
+		beq.s	@ToLevelTransition		; if it's empty, delete boss
 		bsr	BossDefeated2			; otherwise let it explode
 		move.b	#1,($FFFFFFD4).w		; set flag 4
 		rts					; return
+
+@ToLevelTransition:
+		move.b	#8, ob2ndRout(a0)		; => "Obj1F_LevelTransition"
+		move.b	#30, 4(a0)			; set timer
+		
 ; ===========================================================================
+Obj1F_LevelTransition:
+		subq.b	#1, 4(a0)
+		bmi.s	Obj1F_BossDelete
+		rts
 
 Obj1F_BossDelete:
 		move.b	#0,($FFFFF7CC).w		; unlock controls
@@ -11285,6 +11295,9 @@ Obj1F_BossDelete:
 		move.b	#2,($FFFFFFAA).w		; set flag 1, 2
 		move.w	#$5060,($FFFFF72A).w		; unlock screen
 		move.w	#$002,($FFFFFE10).w		; change level ID to GHZ3
+		movem.l	d7/a0,-(sp)
+		jsr	LevelLayoutLoad			; load GHZ3 layout
+		movem.l	(sp)+,d7/a0
 		move.b	#$86,d0				; set normal GHZ music
 		jsr	PlaySound			; play it
 		move.l	#10000,d0		; add 100000 ...

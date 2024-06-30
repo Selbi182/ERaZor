@@ -148,7 +148,7 @@ StoryScreen_MainLoop:
 		beq	StoryScreen_MainLoop	; if not, branch
 
 		tst.b	(STS_FullyWritten).w	; is text already fully written?
-		bne.s	STS_FadeOutScreen		; if yes, exit screen
+		bne	STS_FadeOutScreen		; if yes, exit screen
 		VBlank_SetMusicOnly
 		bsr	StoryText_WriteFull	; write the complete text
 		VBlank_UnsetMusicOnly

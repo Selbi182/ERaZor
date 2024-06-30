@@ -22,55 +22,6 @@ _DH_WindowObj_Art	= _DH_VRAM_Border/$20	; art pointer for window object
 ; Constants
 ; ---------------------------------------------------------------
 
-; Joypad Buttons
-
-Held	equ	0		; Bitfield ids
-Press	equ	1
-
-iStart	equ 	7		; Button Indexes
-iA	equ 	6
-iC	equ 	5
-iB	equ 	4
-iRight	equ 	3
-iLeft	equ 	2
-iDown	equ 	1
-iUp	equ 	0
-
-Start	equ 	1<<iStart	; Button values
-A	equ 	1<<iA
-C	equ 	1<<iC
-B	equ 	1<<iB
-Right	equ 	1<<iRight
-Left	equ 	1<<iLeft
-Down	equ 	1<<iDown
-Up	equ 	1<<iUp
-
-SonicControl	equ	$FFFFF602
-Joypad		equ	$FFFFF604
-
-Held		equ	0
-Press		equ	1
-
-; VRAM flags
-
-pri	equ	$8000
-tutpal0	equ	0
-tutpal1	equ	1<<13
-tutpal2	equ	2<<13
-tutpal3	equ	3<<13
-
-; IO Ports
-
-VDP_Data	equ	$C00000
-VDP_Ctrl	equ	$C00004
-
-; Game RAM
-
-Objects		equ	$FFFFD000	; ~	Objects RAM
-Pal_Active	equ	$FFFFFB00	; ~	Active palette
-Pal_Target	equ	$FFFFFB80	; ~	Target palette for fading
-VBlankSub	equ	$FFFFF62A	; b	VBlank routine id
-
 ; Objects
 
 render		equ	1
@@ -86,6 +37,12 @@ frame		equ	$1A
 anim		equ	$1C
 obj		equ	$3C	; Object code offset
 
+; VRAM flags
+pri	equ	$8000
+tutpal0	equ	0
+tutpal1	equ	1<<13
+tutpal2	equ	2<<13
+tutpal3	equ	3<<13
 
 ; You can use these flags to make it cooler:
 _br	= $00	; line break flags
@@ -119,7 +76,7 @@ Tutorial_DisplayHint:
 	move.l	-4(a1,d0.w),char_pos(a0)	; load hint text
 
 	; Init hint window gfx
-	move.b	#8,VBlankSub
+	move.b	#8,VBlankRoutine
 	jsr	DelayProgram			; perform vsync before operation, fix Sonic's DPCL
 	VBlank_SetMusicOnly			; disable interrupts
 	ints_push
@@ -150,7 +107,7 @@ Tutorial_DisplayHint:
 ; ---------------------------------------------------------------
 
 DH_MainLoop:
-	move.b	#2,VBlankSub
+	move.b	#2,VBlankRoutine
 	jsr	DelayProgram
 
 	cmpi.b	#10,($FFFFFF6E).w	; is this the introduction text?
@@ -466,7 +423,7 @@ _CooldownVal	= 2
 	beq	@LoadNextRow		; -- if line break flag, branch
 	bmi	@CheckFlags		; -- if special flag, branch
 	cmpi.b	#' ',d0			; -- is it a space?
-	beq.s	@0			; -- if yes, don't draw, don't play sound
+	beq	@0			; -- if yes, don't draw, don't play sound
 	VBlank_SetMusicOnly
 	move.l	vram_pos(a0),(a6)	; setup VDP access
 	bsr	DH_DrawChar		; draw da char

@@ -136,6 +136,7 @@ _eh_align_offset	equ	$80
 assert	macro	src, cond, dest
 	; Assertions only work in DEBUG builds
 	if def(__DEBUG__)
+	move.w	sr,-(sp);###
 	if narg=3
 		cmp.\0	\dest, \src
 	else narg=2
@@ -150,6 +151,7 @@ assert	macro	src, cond, dest
 	opt l-
 	@skip\@:
 	popo
+	move.w (sp)+, sr;###
 	endif
 	endm
 

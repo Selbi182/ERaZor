@@ -324,7 +324,7 @@ GameClrRAM:	move.l	d7,(a6)+
 			move.b	#$C,($FFFFF600).w		; set game mode to level
 		endif
 	else
-		move.b	#4,($FFFFF600).w ; set Game Mode to Sega Screen ###
+		move.b	#0,($FFFFF600).w ; set Game Mode to Sega Screen
 	endif
 
 	if def(__BENCHMARK__)

@@ -15,12 +15,10 @@ VBlank:				; XREF: StartOfRom
 		
 		tst.b	VBlankRoutine			; are we lagging (VBlank unwanted, interrupted game loop)
 		beq.w	VBlank_LagFrame			; if yes, oh shit oh fuck, go to the emergency routine immediately
-		
-		display_disable
 
 		addq.l	#1, VBlank_NonLagFrameCounter
-		move.w	($C00004).l,d0
-		move.l	#$40000010,($C00004).l
+		move.w	VDP_Ctrl,d0
+		move.l	#$40000010,VDP_Ctrl
 		move.l	($FFFFF616).w,($C00000).l
 		btst	#6,($FFFFFFF8).w		; are we PAL?
 		beq.s	loc_B42				; if not, branch
@@ -33,8 +31,6 @@ loc_B42:
 		andi.w	#$3E,d0
 		move.w	VBlankTable(pc,d0.w),d0
 		jsr	VBlankTable(pc,d0.w)
-
-		display_enable
 
 ; loc_B5E:
 VBlank_Exit:				; XREF: VBlank_LagFrame
@@ -82,10 +78,10 @@ VBlank_LagFrame:				; XREF: VBlank; VBlankTable
 		bne.w	VBlank_Exit		; if not, branch
 
 loc_B9A:
-		cmpi.b	#1,($FFFFFE10).w	; is level LZ?
+		cmpi.b	#1, CurrentZone		; are we LZ?	; is level LZ?
 		bne.w	VBlank_Exit		; if not, branch
 
-		move.w	($C00004).l,d0
+		move.w	VDP_Ctrl,d0
 		btst	#6,($FFFFFFF8).w
 		beq.s	loc_BBA
 		move.w	#$700,d0
@@ -96,27 +92,27 @@ loc_BBA:
 
 		tst.b	($FFFFF64E).w
 		bne.s	loc_BFE
-		lea	($C00004).l,a5
+		lea	VDP_Ctrl,a5
 		move.l	#$94009340,(a5)
 		move.l	#$96FD9580,(a5)
 		move.w	#$977F,(a5)
 		move.w	#$C000,(a5)
-		move.w	#$80,($FFFFF640).w
-		move.w	($FFFFF640).w,(a5)
+		move.w	#$80,-(sp)
+		move.w	(sp)+,(a5)
 		bra.s	loc_C22
 ; ===========================================================================
 
 loc_BFE:				; XREF: loc_BC8
-		lea	($C00004).l,a5
+		lea	VDP_Ctrl,a5
 		move.l	#$94009340,(a5)
 		move.l	#$96FD9540,(a5)
 		move.w	#$977F,(a5)
 		move.w	#$C000,(a5)
-		move.w	#$80,($FFFFF640).w
-		move.w	($FFFFF640).w,(a5)
+		move.w	#$80,-(sp)
+		move.w	(sp)+,(a5)
 
 loc_C22:				; XREF: loc_BC8
-		cmpi.b	#1,($FFFFFE10).w
+		cmpi.b	#1, CurrentZone		; are we LZ?
 		bne.s	@0
 		move.w	($FFFFF624).w,(a5)
 @0:		move.b	($FFFFF625).w,($FFFFFE07).w
@@ -126,7 +122,7 @@ loc_C22:				; XREF: loc_BC8
 
 loc_C32:				; XREF: VBlankTable
 		bsr	UpdateFrame
-		cmpi.b	#1,($FFFFFE10).w
+		cmpi.b	#1, CurrentZone		; are we LZ?
 		bne.s	@0
 		move.w	($FFFFF624).w,(a5)
 @0:		move.b	($FFFFF625).w,($FFFFFE07).w
@@ -143,7 +139,7 @@ locret_C42:
 
 loc_C44:				; XREF: VBlankTable
 		bsr	UpdateFrame
-		cmpi.b	#1,($FFFFFE10).w
+		cmpi.b	#1, CurrentZone		; are we LZ?
 		bne.s	@0
 		move.w	($FFFFF624).w,(a5)
 @0:		move.b	($FFFFF625).w,($FFFFFE07).w
@@ -159,7 +155,7 @@ locret_C5C:
 
 loc_C5E:				; XREF: VBlankTable
 		bsr	UpdateFrame
-		cmpi.b	#1,($FFFFFE10).w
+		cmpi.b	#1, CurrentZone		; are we LZ?
 		bne.s	@0
 		move.w	($FFFFF624).w,(a5)
 @0:		move.b	($FFFFF625).w,($FFFFFE07).w
@@ -176,45 +172,46 @@ VBlank_Level:
 		bsr	ReadJoypads
 		tst.b	($FFFFF64E).w
 		bne.s	loc_CB0
-		lea	($C00004).l,a5
+		lea	VDP_Ctrl,a5
 		move.l	#$94009340,(a5)
 		move.l	#$96FD9580,(a5)
 		move.w	#$977F,(a5)
 		move.w	#$C000,(a5)
-		move.w	#$80,($FFFFF640).w
-		move.w	($FFFFF640).w,(a5)
+		move.w	#$80,-(sp)
+		move.w	(sp)+,(a5)
 		bra.s	loc_CD4
 ; ===========================================================================
 
 loc_CB0:				; XREF: loc_C76
-		lea	($C00004).l,a5
+		lea	VDP_Ctrl,a5
 		move.l	#$94009340,(a5)
 		move.l	#$96FD9540,(a5)
 		move.w	#$977F,(a5)
 		move.w	#$C000,(a5)
-		move.w	#$80,($FFFFF640).w
-		move.w	($FFFFF640).w,(a5)
+		move.w	#$80,-(sp)
+		move.w	(sp)+,(a5)
 
 loc_CD4:				; XREF: loc_C76
-		cmpi.b	#1,($FFFFFE10).w
+		cmpi.b	#1, CurrentZone		; are we LZ?
 		bne.s	@0
 		move.w	($FFFFF624).w,(a5)
 @0:		move.b	($FFFFF625).w,($FFFFFE07).w
 
-		lea	($C00004).l,a5
+		lea	VDP_Ctrl,a5
 		move.l	#$940193C0,(a5)
 		move.l	#$96E69500,(a5)
 		move.w	#$977F,(a5)
 		move.w	#$7C00,(a5)
-		move.w	#$83,($FFFFF640).w
-		move.w	($FFFFF640).w,(a5)
-		lea	($C00004).l,a5
+		move.w	#$83,-(sp)
+		move.w	(sp)+,(a5)
+
+		lea	VDP_Ctrl,a5
 		move.l	#$94019340,(a5)
 		move.l	#$96FC9500,(a5)
 		move.w	#$977F,(a5)
 		move.w	#$7800,(a5)
-		move.w	#$83,($FFFFF640).w
-		move.w	($FFFFF640).w,(a5)
+		move.w	#$83,-(sp)
+		move.w	(sp)+,(a5)
 		jsr	(ProcessDMAQueue).l
 
 loc_D50:
@@ -230,27 +227,27 @@ loc_D50:
 
 loc_DA6:				; XREF: VBlankTable
 		bsr	ReadJoypads
-		lea	($C00004).l,a5
+		lea	VDP_Ctrl,a5
 		move.l	#$94009340,(a5)
 		move.l	#$96FD9580,(a5)
 		move.w	#$977F,(a5)
 		move.w	#$C000,(a5)
-		move.w	#$80,($FFFFF640).w
-		move.w	($FFFFF640).w,(a5)
-		lea	($C00004).l,a5
+		move.w	#$80,-(sp)
+		move.w	(sp)+,(a5)
+		lea	VDP_Ctrl,a5
 		move.l	#$94019340,(a5)
 		move.l	#$96FC9500,(a5)
 		move.w	#$977F,(a5)
 		move.w	#$7800,(a5)
-		move.w	#$83,($FFFFF640).w
-		move.w	($FFFFF640).w,(a5)
-		lea	($C00004).l,a5
+		move.w	#$83,-(sp)
+		move.w	(sp)+,(a5)
+		lea	VDP_Ctrl,a5
 		move.l	#$940193C0,(a5)
 		move.l	#$96E69500,(a5)
 		move.w	#$977F,(a5)
 		move.w	#$7C00,(a5)
-		move.w	#$83,($FFFFF640).w
-		move.w	($FFFFF640).w,(a5)
+		move.w	#$83,-(sp)
+		move.w	(sp)+,(a5)
 		bsr	PalCycle_SS
 		jsr	(ProcessDMAQueue).l
 
@@ -267,47 +264,47 @@ loc_E72:				; XREF: VBlankTable
 		bsr	ReadJoypads
 		tst.b	($FFFFF64E).w
 		bne.s	loc_EB4
-		lea	($C00004).l,a5
+		lea	VDP_Ctrl,a5
 		move.l	#$94009340,(a5)
 		move.l	#$96FD9580,(a5)
 		move.w	#$977F,(a5)
 		move.w	#$C000,(a5)
-		move.w	#$80,($FFFFF640).w
-		move.w	($FFFFF640).w,(a5)
+		move.w	#$80,-(sp)
+		move.w	(sp)+,(a5)
 		bra.s	loc_ED8
 ; ===========================================================================
 
 loc_EB4:				; XREF: loc_E7A
-		lea	($C00004).l,a5
+		lea	VDP_Ctrl,a5
 		move.l	#$94009340,(a5)
 		move.l	#$96FD9540,(a5)
 		move.w	#$977F,(a5)
 		move.w	#$C000,(a5)
-		move.w	#$80,($FFFFF640).w
-		move.w	($FFFFF640).w,(a5)
+		move.w	#$80,-(sp)
+		move.w	(sp)+,(a5)
 
 loc_ED8:				; XREF: loc_E7A
-		cmpi.b	#1,($FFFFFE10).w
+		cmpi.b	#1, CurrentZone		; are we LZ?
 		bne.s	@0
 		move.w	($FFFFF624).w,(a5)
 @0:		move.b	($FFFFF625).w,($FFFFFE07).w
 
-		lea	($C00004).l,a5
+		lea	VDP_Ctrl,a5
 		move.l	#$940193C0,(a5)
 		move.l	#$96E69500,(a5)
 
 loc_EEE:
 		move.w	#$977F,(a5)
 		move.w	#$7C00,(a5)
-		move.w	#$83,($FFFFF640).w
-		move.w	($FFFFF640).w,(a5)
-		lea	($C00004).l,a5
+		move.w	#$83,-(sp)
+		move.w	(sp)+,(a5)
+		lea	VDP_Ctrl,a5
 		move.l	#$94019340,(a5)
 		move.l	#$96FC9500,(a5)
 		move.w	#$977F,(a5)
 		move.w	#$7800,(a5)
-		move.w	#$83,($FFFFF640).w
-		move.w	($FFFFF640).w,(a5)
+		move.w	#$83,-(sp)
+		move.w	(sp)+,(a5)
 		jsr	(ProcessDMAQueue).l
 
 loc_F54:
@@ -319,7 +316,7 @@ loc_F54:
 
 loc_F8A:				; XREF: VBlankTable
 		bsr	UpdateFrame
-		cmpi.b	#1,($FFFFFE10).w
+		cmpi.b	#1, CurrentZone		; are we LZ?
 		bne.s	@0
 		move.w	($FFFFF624).w,(a5)
 @0:		move.b	($FFFFF625).w,($FFFFFE07).w
@@ -331,7 +328,7 @@ loc_F8A:				; XREF: VBlankTable
 
 loc_F9A:				; XREF: VBlankTable
 		bsr	UpdateFrame
-		cmpi.b	#1,($FFFFFE10).w
+		cmpi.b	#1, CurrentZone		; are we LZ?
 		bne.s	@0
 		move.w	($FFFFF624).w,(a5)
 @0:		move.b	($FFFFF625).w,($FFFFFE07).w
@@ -341,27 +338,27 @@ loc_F9A:				; XREF: VBlankTable
 
 loc_FA6:				; XREF: VBlankTable
 		bsr	ReadJoypads
-		lea	($C00004).l,a5
+		lea	VDP_Ctrl,a5
 		move.l	#$94009340,(a5)
 		move.l	#$96FD9580,(a5)
 		move.w	#$977F,(a5)
 		move.w	#$C000,(a5)
-		move.w	#$80,($FFFFF640).w
-		move.w	($FFFFF640).w,(a5)
-		lea	($C00004).l,a5
+		move.w	#$80,-(sp)
+		move.w	(sp)+,(a5)
+		lea	VDP_Ctrl,a5
 		move.l	#$94019340,(a5)
 		move.l	#$96FC9500,(a5)
 		move.w	#$977F,(a5)
 		move.w	#$7800,(a5)
-		move.w	#$83,($FFFFF640).w
-		move.w	($FFFFF640).w,(a5)
-		lea	($C00004).l,a5
+		move.w	#$83,-(sp)
+		move.w	(sp)+,(a5)
+		lea	VDP_Ctrl,a5
 		move.l	#$940193C0,(a5)
 		move.l	#$96E69500,(a5)
 		move.w	#$977F,(a5)
 		move.w	#$7C00,(a5)
-		move.w	#$83,($FFFFF640).w
-		move.w	($FFFFF640).w,(a5)
+		move.w	#$83,-(sp)
+		move.w	(sp)+,(a5)
 		jsr	(ProcessDMAQueue).l
 
 loc_1060:
@@ -379,40 +376,40 @@ UpdateFrame:				; XREF: loc_C32; et al
 		bsr	ReadJoypads
 		tst.b	($FFFFF64E).w
 		bne.s	loc_10B0
-		lea	($C00004).l,a5
+		lea	VDP_Ctrl,a5
 		move.l	#$94009340,(a5)
 		move.l	#$96FD9580,(a5)
 		move.w	#$977F,(a5)
 		move.w	#$C000,(a5)
-		move.w	#$80,($FFFFF640).w
-		move.w	($FFFFF640).w,(a5)
+		move.w	#$80,-(sp)
+		move.w	(sp)+,(a5)
 		bra.s	loc_10D4
 ; ===========================================================================
 
 loc_10B0:				; XREF: UpdateFrame
-		lea	($C00004).l,a5
+		lea	VDP_Ctrl,a5
 		move.l	#$94009340,(a5)
 		move.l	#$96FD9540,(a5)
 		move.w	#$977F,(a5)
 		move.w	#$C000,(a5)
-		move.w	#$80,($FFFFF640).w
-		move.w	($FFFFF640).w,(a5)
+		move.w	#$80,-(sp)
+		move.w	(sp)+,(a5)
 
 loc_10D4:				; XREF: UpdateFrame
-		lea	($C00004).l,a5
+		lea	VDP_Ctrl,a5
 		move.l	#$94019340,(a5)
 		move.l	#$96FC9500,(a5)
 		move.w	#$977F,(a5)
 		move.w	#$7800,(a5)
-		move.w	#$83,($FFFFF640).w
-		move.w	($FFFFF640).w,(a5)
-		lea	($C00004).l,a5
+		move.w	#$83,-(sp)
+		move.w	(sp)+,(a5)
+		lea	VDP_Ctrl,a5
 		move.l	#$940193C0,(a5)
 		move.l	#$96E69500,(a5)
 		move.w	#$977F,(a5)
 		move.w	#$7C00,(a5)
-		move.w	#$83,($FFFFF640).w
-		move.w	($FFFFF640).w,(a5)
+		move.w	#$83,-(sp)
+		move.w	(sp)+,(a5)
 		jsr	(ProcessDMAQueue).l
 		rts	
 ; End of function UpdateFrame

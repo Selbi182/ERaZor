@@ -324,7 +324,7 @@ GameClrRAM:	move.l	d7,(a6)+
 			move.b	#$C,($FFFFF600).w		; set game mode to level
 		endif
 	else
-		move.b	#0,($FFFFF600).w ; set Game Mode to Sega Screen
+		move.b	#4,($FFFFF600).w ; set Game Mode to Sega Screen ###
 	endif
 
 	if def(__BENCHMARK__)
@@ -2867,13 +2867,9 @@ Title_MainLoop:
 		tst.w	($FFFFF614).w	; is time over?
 		beq.s	StartGame	; if yes, start game
 
-		
-		move.l	a2,-(sp)		; backup d0 to a2
 		lea	($FFFFFB60).w,a2
 		moveq	#1,d2			; do blue rotation
 		bsr.w	ERaZorBannerPalette
-		move.l	(sp)+,a2		; backup d0 to a2
-
 
 		move.b	($FFFFF605).w,d1	; get button presses
 		andi.b	#$B0,d1			; is A, B, C, or Start pressed?

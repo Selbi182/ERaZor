@@ -53,6 +53,8 @@ Joypad:			equ	$FFFFF604			; w
 
 VBlankRoutine:		equ	$FFFFF62A			; b	VBlank routine id
 
+*			equ	$FFFFF640			; w	<<FREE>>
+
 PLC_RAM:		equ	$FFFFF680			;	PLC system variables (F680-F69E)
 
 ; == WARNING! F700 - F7FF is cleared upon Level initialization! ==

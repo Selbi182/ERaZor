@@ -157,9 +157,12 @@ StoryScreen_MainLoop:
 
 STS_FadeOutScreen:
 		bsr	StoryScreen_CenterText	; center text one last time
+		move.b	#16,(STS_FinalPhase).w	; set fadeout time (using a RAM address we don't need at this point anymore) 
+		
+		cmpi.b	#8,(STS_ScreenID).w	; is this the ending sequence?
+		beq.s	@finalfadeout		; if yes, don't fade out music
 		move.w	#$E0,d0
 		jsr	PlaySound_Special
-		move.b	#16,(STS_FinalPhase).w	; set fadeout time (using a RAM address we don't need at this point anymore) 
 
 @finalfadeout:
 		move.b	#2,VBlankRoutine
@@ -195,33 +198,29 @@ STS_FadeOutScreen:
 STS_ExitScreen:
 		moveq	#0,d2
 		jsr	Options_ClearBuffer
+		
+		bsr	STS_ClearFlags
 
-		cmpi.b	#1,(STS_ScreenID).w	; is this the intro dialouge?
+		move.b	(STS_ScreenID).w,d0
+		cmpi.b	#1,d0			; is this the intro dialouge?
 		bne.s	STS_NoIntro		; if not, branch
-		cmpi.b	#1,($FFFFFFA7).w	; is this the first time start of the game?
-		bgt.s	@notfirstvisit		; if not, branch
-		move.b	#1,($FFFFFFA7).w	; run first chapter screen
-		move.b	#1,($A130F1).l		; enable SRAM
-		move.b	#1,($200000+SRAM_Chapter).l	; save chapter to SRAM
-		move.b	#0,($A130F1).l		; disable SRAM
-@notfirstvisit:
-		move.b	#4,($FFFFF600).w	; set to title screen
+		move.w	#$400,($FFFFFE10).w	; set level to Uberhub
+		move.b	#$28,($FFFFF600).w	; set to chapters screen
 		rts
 
 STS_NoIntro:
-		cmpi.b	#8,(STS_ScreenID).w	; is this the ending sequence?
+		cmpi.b	#8,d0			; is this the ending sequence?
 		bne.s	STS_NoEnding		; if not, branch
 		move.b	#$18,($FFFFF600).w	; set to ending sequence ($18)
 		rts
 
 STS_NoEnding:
-		cmpi.b	#9,(STS_ScreenID).w	; is this the blackout special stage?
+		cmpi.b	#9,d0			; is this the blackout special stage?
 		bne.s	STS_NoBlack		; if not, branch
 		move.b	#$00,($FFFFF600).w	; set to sega screen ($00)
 		rts
 
 STS_NoBlack:
-		bsr	STS_ClearFlags
 		jmp	NextLevelX
 ; ===========================================================================
 
@@ -580,20 +579,20 @@ STS_Continue:	ststxt	" PRESS START TO CONTINUE... "
 
 StoryText_1:	; text after intro cutscene
 		ststxt	"THE SPIKED SUCKER DECIDED   "
-		ststxt	"TO GO BACK TO THE HILLS AND "
-		ststxt	"CHECK OUT WHAT WAS GOING ON."
+		ststxt	"TO RETURN TO THE HILLS,     "
+		ststxt	"JUST TO SEE WHAT'S UP.      "
 		ststxt	"                            "
-		ststxt	"WHEN SUDDENLY...            "
-		ststxt	"EXPLOSIONS! EVERYWHERE!     "
-		ststxt	"A GRAY METALLIC BUZZ BOMBER "
-		ststxt	"SHOWERED EXPLODING BOMBS ON "
-		ststxt	"HIM! SONIC ESCAPED IT, BUT  "
-		ststxt	"MINDLESSLY FELL INTO A RING "
-		ststxt	"TRAP AND LANDED IN A        "
-		ststxt	"STRANGE PARALLEL DIMENSION. "
+		ststxt	"WHEN SUDDENLY... EXPLOSIONS!"
+		ststxt	"EVERYWHERE! FROM BOMBS SHOT "
+		ststxt	"BY A GRAY BUZZ BOMBER!      "
+		ststxt	"SONIC ESCAPED IT, BUT WAS AN"
+		ststxt	"IDIOT AND LAUNCHED HIMSELF  "
+		ststxt	"INTO A VERY CONVENIENTLY    "
+		ststxt	"PLACED GIANT RING.          "
 		ststxt	"                            "
-		ststxt	"HE NEEDS TO BLAST HIS WAY TO"
-		ststxt	"EGGMAN AND ESCAPE IT...     "
+		ststxt	"NOW, HE'S IN SOME STRANGE   "
+		ststxt	"HUB WORLD. ESCAPE THIS PLACE"
+		ststxt	"AND BLAST YOUR WAY THROUGH! "
 		dc.b	-1
 		even
 ; ---------------------------------------------------------------------------

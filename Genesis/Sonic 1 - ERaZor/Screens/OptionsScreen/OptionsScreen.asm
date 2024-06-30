@@ -59,8 +59,7 @@ OptionsScreen:				; XREF: GameModeArray
 		jsr	ObjectsLoad
 		jsr	BuildSprites
 
-	;	move.b	#$86,d0		; play Options screen music (Spark Mandrill)
-		move.b	#$99,d0		; play Options screen music (introduction text music)
+		move.b	#$86,d0		; play Options screen music (Spark Mandrill)
 		jsr	PlaySound_Special
 		bsr	Options_LoadPal
 		move.b	#9,($FFFFFF9E).w ; BG pal
@@ -491,7 +490,7 @@ Options_HandleCinematicMode:
 		bra.w	Options_UpdateTextAfterChange_NoSound
 
 @nodebugunlock:
-		btst	#0,($FFFFFF93).w	; has the player beaten the base game?
+		jsr	IsBaseGameBeaten	; has the player beaten the base game?
 		bne.s	@cinematicmodeallowed	; if yes, branch
 		move.w	#$DA,d0			; play option disallowed sound
 		jsr	PlaySound_Special
@@ -517,7 +516,7 @@ Options_HandleNonstopInhuman:
 		bra.w	Options_UpdateTextAfterChange_NoSound
 
 @nodebugunlock:
-		btst	#1,($FFFFFF93).w	; has the player specifically beaten the blackout challenge?
+		jsr	IsBlackoutBeaten	; has the player specifically beaten the blackout challenge?
 		bne.s	@nonstopinhumanallowed	; if yes, branch
 		move.w	#$DA,d0			; play option disallowed sound
 		jsr	PlaySound_Special
@@ -838,7 +837,7 @@ GetOptionsText:
 		adda.w	#Options_LineLength,a1		; make one empty line
 
 		move.l	#OpText_CinematicMode_Locked,d6	; set locked text location	
-		btst	#0,($FFFFFF93).w		; has the player beaten base game?
+		jsr	IsBaseGameBeaten		; has the player beaten base game?
 		beq.s	@basegamenotbeaten		; if not, branch
 		move.l	#OpText_CinematicMode,d6	; set unlocked text location
 @basegamenotbeaten:
@@ -853,7 +852,7 @@ GetOptionsText:
 		adda.w	#Options_LineLength,a1		; make one empty line
 		
 		move.l	#OpText_NonstopInhuman_Locked,d6; set locked text location	
-		btst	#1,($FFFFFF93).w		; has the player specifically beaten the blackout challenge?
+		jsr	IsBlackoutBeaten		; has the player specifically beaten the blackout challenge?
 		beq.s	@blackoutchallengenotbeaten	; if not, branch
 		move.l	#OpText_NonstopInhuman,d6	; set unlocked text location
 @blackoutchallengenotbeaten:

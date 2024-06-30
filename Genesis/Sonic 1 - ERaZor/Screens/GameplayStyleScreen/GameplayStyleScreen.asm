@@ -1,15 +1,15 @@
-; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Gameplay Style Screen (Casual Mode / Frantic Mode)
 ; ---------------------------------------------------------------------------
-; ===========================================================================
+GSS_FirstStart = $FFFFFF95
+; ---------------------------------------------------------------------------
 
 GameplayStyleScreen:
 		move.b	#$E0,d0
 		jsr	PlaySound_Special		; fade out music
 		jsr	PLC_ClearQueue			; clear PLCs
 		jsr	Pal_FadeFrom			; fade out previous palette
-		move	#$2700,sr
+		VBlank_SetMusicOnly
 
 		lea	($C00004).l,a6			; Setup VDP
 		move.w	#$8004,(a6)
@@ -25,10 +25,8 @@ GameplayStyleScreen:
 		lea	($FFFFD000).w,a1
 		moveq	#0,d0
 		move.w	#$7FF,d1
-
-@ClrObjRam:
-		move.l	d0,(a1)+
-		dbf	d1, @ClrObjRam
+@ClrObjRam:	move.l	d0,(a1)+
+		dbf	d1,@ClrObjRam
 		
 		move.l	#$40000000,($C00004).l		; load art
 		lea	($C00000).l,a6
@@ -43,12 +41,18 @@ GameplayStyleScreen:
 
 		lea	(Pal_Difficulty).l,a1		; load palette
 		lea	($FFFFFB80).w,a2
-		moveq	#(128/4)-1,d0
-		
-@PalLoopOHD:
-		move.l	(a1)+,(a2)+
-		dbf	d0,@PalLoopOHD
-		
+		moveq	#(128/4)-1,d0		
+@PalLoop:	move.l	(a1)+,(a2)+
+		dbf	d0,@PalLoop
+
+		move.b	#0,GSS_FirstStart
+		tst.b	($FFFFFFA7).w		; is this the first time the game is being played?
+		bne.s	@notfirsttime		; if yes, branch
+		move.b	#%00000011,($FFFFFF92).w ; load default options (casual, extended camera, story text screens)
+		move.b	#1,GSS_FirstStart
+
+@notfirsttime:
+		VBlank_UnsetMusicOnly
 		display_enable
 		bsr	GSS_SetColor
 		jsr	Pal_FadeTo			; fade in
@@ -104,6 +108,8 @@ GSS_MainLoop:
 		jsr 	Pal_FadeFrom
 
 		move.w  #$20, ($FFFFF614).w
+		
+		jsr	SRAM_SaveNow
 
 @Wait:
 		move.b	#$4, VBlankRoutine
@@ -111,22 +117,15 @@ GSS_MainLoop:
 
 		tst.w 	($FFFFF614).w
 		bne.s 	@Wait
-		
-		cmpi.w	#3,($FFFFFF82).w	; did we come from the options menu?
-		bne.s	@StartTutorial		; if not, start tutorial
-		move.b	#$24,($FFFFF600).w	; otherwise return to options menu
+
+		tst.b	GSS_FirstStart		; first time?
+		bne.s	@firsttime		; if yes, branch
+		move.b	#$24,($FFFFF600).w	; we came from the options menu, return to it
 		rts
 
-@StartTutorial:
-		move.b	#$28,($FFFFF600).w	; load chapters screen (One Hot Day...)
-		move.w	#$501,($FFFFFE10).w	; set to use correct level
-	;	move.b	#$E0,d0			; fade out music
-	;	jmp	PlaySound_Special
-	;	move.w	#$501,($FFFFFE10).w	; set level to FZ
-	;	move.b	#$C,($FFFFF600).w	; set to level
-	;	move.w	#1,($FFFFFE02).w	; restart level
-
-@rts:
+@firsttime:
+		move.b	#$28,($FFFFF600).w	; load chapters screen for intro cutscene (One Hot Day...)
+		move.w	#$001,($FFFFFE10).w	; set to intro cutscene
 		rts
 
 ; ---------------------------------------------------------------------------

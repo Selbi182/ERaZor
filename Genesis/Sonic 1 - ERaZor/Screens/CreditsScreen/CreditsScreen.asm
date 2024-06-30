@@ -303,26 +303,25 @@ CJML_End:
 		moveq	#$10,d0			; load text after beating the game in frantic mode
 @basegamehint:	jsr	Tutorial_DisplayHint	; VLADIK => Display hint
 
-		btst	#0,($FFFFFF93).w	; have you already beaten the base game?
+		jsr	IsBaseGameBeaten	; have you already beaten the base game?
 		bne.s	@checkblackout		; if yes, branch
 		moveq	#$11,d0			; load Cinematic Mode unlock text
 		jsr	Tutorial_DisplayHint	; VLADIK => Display hint
 
 @checkblackout:
-		btst	#1,($FFFFFF93).w	; have you already beaten the blackout challenge?
+		jsr	IsBlackoutBeaten	; have you already beaten the blackout challenge?
 		bne.s	@markgameasbeaten	; if yes, branch
 		moveq	#$12,d0			; load Blackout Challenge teaser text
 		jsr	Tutorial_DisplayHint	; VLADIK => Display hint
 
 @markgameasbeaten:
-		bset	#0,($FFFFFF93).w	; you have beaten the base game, congrats
-		jsr	SRAM_SaveNow		; save
-
+		jsr	BaseGameDone		; you have beaten the base game, congrats
 		move.b	#$00,($FFFFF600).w	; restart from Sega Screen
 		jmp	MainGameLoop
 
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
+
 ; ---------------------------------------------------------------------------
 ; Palette Data
 ; ---------------------------------------------------------------------------

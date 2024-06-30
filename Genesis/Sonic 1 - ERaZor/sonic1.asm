@@ -66,7 +66,7 @@ QuickLevelSelect_ID = $400
 DebugModeDefault = 1
 DebugSurviveNoRings = 1
 ; ------------------------------------------------------
-DoorsAlwaysOpen = 1
+DoorsAlwaysOpen = 0
 LowBossHP = 1
 ; ======================================================
 	else
@@ -342,26 +342,26 @@ GameClrRAM:	move.l	d7,(a6)+
 ; SRAM Loading Routine
 ; ---------------------------------------------------------------------------
 ; Format (note, SRAM can only be written to odd addresses):
-; 00 op 00 ch  00 do 00 l1  00 l2 00 r1  00 r2 00 s1  00 s2 00 s3  00 s4 00 cm  00 mg
-;    01    03     05    07     09    0B     0D    0F     11    13     15    17     19
+; 00 op 00 ch  00 d1 00 d2  00 l1 00 l2  00 r1 00 r2  00 s1 00 s2  00 s3 00 s4  00 cm 00 mg
+;    01    03     05    07     09    0B     0D    0F     11    13     15    17     19    1A
 ;
 ;  op = Options Flags ($FFFFFF92)
 ;  ch = Current Chapter ($FFFFFFA7)
-;  do = Open Doors Bitset ($FFFFFF8B)
+;  d_ = Open Doors Bitset - Casual/Frantic  ($FFFFFF8A-$FFFFFF8B)
 ;  l_ = Lives (or Deaths rather, lol) ($FFFFFE12-FFFFFE13)
 ;  r_ = Rings ($FFFFFE20-FFFFFE21)
 ;  s_ = Score ($FFFFFE26-FFFFFE29)
-;  cm = Complete (beat Blackout challenge) ($FFFFFF93)
+;  cm = Complete (Base Game / Blackout challenge) ($FFFFFF93)
 ;  mg = Magic Number (always set to 182, absence implies no SRAM)
 ; ---------------------------------------------------------------------------
-SRAM_Options	= $01
-SRAM_Chapter	= $03
-SRAM_Doors	= $05
-SRAM_Lives	= $07 ; 2 bytes
-SRAM_Rings	= $0B ; 2 bytes
-SRAM_Score	= $0F ; 4 bytes
-SRAM_Complete	= $17
-SRAM_Exists	= $19
+SRAM_Options	= 1
+SRAM_Chapter	= 2 + SRAM_Options
+SRAM_Doors	= 2 + SRAM_Chapter ; 2 bytes
+SRAM_Lives	= 4 + SRAM_Doors ; 2 bytes
+SRAM_Rings	= 4 + SRAM_Lives ; 2 bytes
+SRAM_Score	= 4 + SRAM_Rings ; 4 bytes
+SRAM_Complete	= 8 + SRAM_Score
+SRAM_Exists	= 2 + SRAM_Complete
 
 SRAM_MagicNumber = 182
 ; ---------------------------------------------------------------------------
@@ -384,7 +384,8 @@ SRAMFound:
 		lea	($200000).l,a1				; base of SRAM
 		move.b	SRAM_Options(a1),($FFFFFF92).w		; load options flags
 		move.b	SRAM_Chapter(a1),($FFFFFFA7).w		; load current chapter
-		move.b	SRAM_Doors(a1),($FFFFFF8B).w		; load open doors bitset
+		movep.w	SRAM_Doors(a1),d0			; load...
+		move.w	d0,($FFFFFF8A).w			; ...open doors bitsets
 		movep.w	SRAM_Lives(a1),d0			; load...
 		move.w	d0,($FFFFFE12).w			; ...lives/deaths counter
 		movep.w	SRAM_Rings(a1),d0			; load...
@@ -419,7 +420,7 @@ SRAM_Delete:
 ResetGameProgress:
 		moveq	#0,d0
 		move.b	d0,($FFFFFFA7).w			; clear current chapter
-		move.b	d0,($FFFFFF8B).w			; clear open doors bitset
+		move.w	d0,($FFFFFF8A).w			; clear open doors bitsets
 		move.w	d0,($FFFFFE12).w			; clear lives/deaths counter
 		move.w	d0,($FFFFFE20).w			; clear rings
 		move.l	d0,($FFFFFE26).w			; clear score
@@ -444,8 +445,8 @@ SRAM_SaveNow:
 		move.b	d0,SRAM_Options(a1)			; backup option flags
 		move.b	($FFFFFFA7).w,d0			; move current chapter to d0
 		move.b	d0,SRAM_Chapter(a1)			; backup current chapter
-		move.b	($FFFFFF8B).w,d0			; move open doors bitset to d0
-		move.b	d0,SRAM_Doors(a1)			; backup open doors bitset
+		move.w	($FFFFFF8A).w,d0			; move open doors bitset to d0
+		movep.w	d0,SRAM_Doors(a1)			; backup open doors bitset
 		move.w	($FFFFFE12).w,d0			; move lives/deaths to d0
 		movep.w	d0,SRAM_Lives(a1)			; backup lives/deaths
 		move.w	($FFFFFE20).w,d0			; move rings to d0
@@ -459,6 +460,79 @@ SRAM_SaveNow_End:
 		move.b	#0,($A130F1).l				; disable SRAM
 		rts
 	endif	; def(__MD_REPLAY__)=0
+
+
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Subtroutines to ease coordinating the game progress (casual/frantic)
+; ---------------------------------------------------------------------------
+
+IsDoorOpen:
+		frantic				; are we in frantic?
+		bne.s	@frantic		; if yes, branch
+		btst	d0,($FFFFFF8A).w	; check if door is open (casual)
+		rts
+@frantic:
+		btst	d0,($FFFFFF8B).w	; check if door is open (frantic)
+		rts
+; ---------------------------------------------------------------------------
+
+OpenDoor:
+		bset	d0,($FFFFFF8A).w	; unlock door (casual)
+		frantic				; are we in frantic?
+		beq.s	@end			; if not, branch
+		bset	d0,($FFFFFF8B).w	; unlock door (frantic)
+@end:		rts
+
+; ===========================================================================
+Casual_BaseGame  = 0
+Casual_Blackout  = 1
+Frantic_BaseGame = 2
+Frantic_Blackout = 3
+; ---------------------------------------------------------------------------
+
+IsBaseGameBeaten:
+		btst	#Frantic_BaseGame,($FFFFFF93).w	; has the player beaten the base game in frantic?
+		bne.s	StateCheck_Yes			; if yes, branch
+		frantic					; are we in frantic?
+		bne.s	StateCheck_No			; if yes, branch
+		btst	#Casual_BaseGame,($FFFFFF93).w	; has the player beaten the base game in casual?
+		rts					; ccr is returned
+; ---------------------------------------------------------------------------
+
+IsBlackoutBeaten:
+		btst	#Frantic_Blackout,($FFFFFF93).w	; has the player beaten the blackout challenge in frantic?
+		bne.s	StateCheck_Yes			; if yes, branch
+		frantic					; are we in frantic?
+		bne.s	StateCheck_No			; if yes, branch
+		btst	#Casual_Blackout,($FFFFFF93).w	; has the player beaten the blackout challenge in casual?
+		rts					; ccr is returned
+; ---------------------------------------------------------------------------
+
+BaseGameDone:
+		bset	#Casual_BaseGame,($FFFFFF93).w	; you have beaten the base game in casual, congrats
+		frantic					; or was it acutally in frantic?
+		beq.s	@save				; nah? that's a shame
+		bset	#Frantic_BaseGame,($FFFFFF93).w	; you have beaten the base game in frantic, mad respect
+@save:		jmp	SRAM_SaveNow			; save
+; ---------------------------------------------------------------------------
+
+BlackoutDone:
+		bset	#Casual_Blackout,($FFFFFF93).w	; you have beaten the blackout challenge in casual, congrats
+		frantic					; or was it acutally in frantic?
+		beq.s	@save				; nah? that's a shame
+		bset	#Frantic_Blackout,($FFFFFF93).w	; you have beaten the base game in frantic, mad respect
+@save:		bsr	BaseGameDone			; also set base game beaten state, just in case
+		jmp	SRAM_SaveNow			; save
+; ---------------------------------------------------------------------------
+
+StateCheck_Yes:
+		tst.b	($FFFFF600).w
+		rts
+
+StateCheck_No:
+		cmpi.b	#-1,($FFFFF600).w
+		rts
 
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
@@ -2565,6 +2639,9 @@ SegaScreen:				; XREF: GameModeArray
 		bsr	PlaySound_Special ; stop music
 		bsr	PLC_ClearQueue
 		bsr	Pal_FadeFrom
+		display_disable
+		VBlank_SetMusicOnly
+
 		lea	($C00004).l,a6
 		move.w	#$8004,(a6)
 		move.w	#$8230,(a6)
@@ -2572,10 +2649,6 @@ SegaScreen:				; XREF: GameModeArray
 		move.w	#$8700,(a6)
 		move.w	#$8B07,(a6)
 		clr.b	($FFFFF64E).w
-		ints_disable
-		
-		display_disable
-		
 		bsr	ClearScreen
 
 		lea	($FFFFCC00).w,a1
@@ -2611,25 +2684,9 @@ SegaScreen:				; XREF: GameModeArray
 
 		moveq	#0,d0
 		bsr	PalLoad2	; load Sega logo pallet
-
-
 		move.w	#$0000,($FFFFFB00).w	; set background colour to black
 		move.w	#$0000,($FFFFFB02).w	; set background colour to black
 		move.b	#$00,($FF2000).l	; clear counter
-
-Sega_WhiteFadeIn:
-		move.b	#2,VBlankRoutine	; set to function 2 in V-blank
-	;	bsr	DelayProgram		; do V-blank
-
-		move	#$2300,sr
-
-loc_29ACx:
-		tst.b	VBlankRoutine
-		bne.s	loc_29ACx
-
-		addi.w	#$0111,($FFFFFB00).w	; make background brighter
-		cmpi.w	#$0FFF,($FFFFFB00).w	; has white been reached?
-		bne.s	Sega_WhiteFadeIn	; if not, loop
 
 Sega_WaitFrames:
 		move.b	#2,VBlankRoutine	; set to function 2 in V-blank
@@ -2645,6 +2702,7 @@ Sega_WaitFrames:
 		move.w	#0,($FFFFF660).w
 		
 		display_enable
+		VBlank_UnsetMusicOnly
 
 Sega_WaitPallet:
 		lea	($FFFFCC00).w,a1
@@ -2927,16 +2985,16 @@ LevelSelect_Load:
 ; ===========================================================================
 
 Title_NoLevSel:
+		bsr.s	ERZ_FadeOut		; ERZ fadeout hell yea
+
 		tst.b	($FFFFFFA7).w		; is this the first time the game is being played?
 		bne.s	SG_ResumeFromSaveGame	; if not, load whatever was in the SRAM at the time
 		
 		; first start
-		move.b	#%00000011,($FFFFFF92).w ; load default options (extended camera and story text screens)
-		move.b	#1,($FFFFFF9E).w	; set number for text to 1
-		move.b	#1,($FFFFFFA7).w	; set number for chapter to 1
+		move.b	#$30,($FFFFF600).w	; set to Gameplay Style Screen
+		rts
 
 SG_ResumeFromSaveGame:
-		bsr.s	ERZ_FadeOut
 		move.b	#$28,($FFFFF600).w	; set to Chapters Screen
 		rts				; return
 ; ===========================================================================
@@ -3260,7 +3318,7 @@ Level:					; XREF: GameModeArray
 		move.w	#0,VDP_Data
 		endr
 		
-	;	jsr	ClearVRAM
+	;	jsr	ClearVRAM	; only comment this in for testing, never in prod!
 
 		cmpi.w	#$001,($FFFFFE10).w
 		beq.s	@notitlecardart
@@ -4412,7 +4470,7 @@ PLM_NoMusic:
 
 MusicList:
 		dc.b	$81	; Night Hill Place
-		dc.b	$86	; Green Hill Place
+		dc.b	$90	; Green Hill Place
 		dc.b	$89	; Special Stage (Unused)
 		dc.b	$83	; Ruined Place
 		dc.b	$82	; Labyrinthy Place
@@ -5017,12 +5075,14 @@ SpecialStage_Beaten:
 		bra.s	SpecialStage_Quitter	; uhh idk how this could ever happen, but just in case
 
 @spbeaten:
-		bset	#1,($FFFFFF8B).w	; open second door after Special Place
+		moveq	#1,d0			; open door after Special Place
+		jsr	OpenDoor
 		move.b	#3,($FFFFFF9E).w	; set number for text to 3
 		bra.s	@runinfoscreen
 
 @upbeaten:
-		bset	#4,($FFFFFF8B).w	; open door after Unreal Place
+		moveq	#4,d0			; open door after Unreal Place
+		jsr	OpenDoor
 		move.b	#6,($FFFFFF9E).w	; set number for text to 6
 		tst.b	($FFFFFF5F).w		; is this the blackout special stage?
 		beq.s	@runinfoscreen		; if not, branch
@@ -6482,7 +6542,7 @@ LevSz_ChkLamp:				; XREF: LevelSizeLoad
 		beq.s	LevSz_StartLoc	; if not, branch
 		cmpi.w	#$400,($FFFFFE10).w	; is level SYZ?
 		bne.s 	@cont			; if not, branch
-		clr.b	($FFFFFE30).w
+		clr.b	($FFFFFE30).w		; make sure nothing with checkpoints ever happens in Uberhub
 		bra.s	LevSz_StartLoc
 
 @cont:
@@ -6494,6 +6554,16 @@ LevSz_ChkLamp:				; XREF: LevelSizeLoad
 
 LevSz_StartLoc:				; XREF: LevelSizeLoad
 		move.w	($FFFFFE10).w,d0
+		
+		; frantic Uberhub fast spawn
+		cmpi.w	#$400,($FFFFFE10).w	; is level SYZ?
+		bne.s 	@load			; if not, branch
+		frantic				; are we in frantic mode
+		beq.s	@load			; if not, branch
+		tst.w	($FFFFFF8A).w		; have any levels been beaten yet?
+		beq.s	@load			; if not, branch
+		addq.w	#1,d0			; use SYZ2 start locations (unused anyway, has the frantic coordinates)
+@load:
 		lsl.b	#6,d0
 		lsr.w	#4,d0
 		lea	StartLocArray(pc,d0.w),a1 ; load Sonic's start location
@@ -6854,7 +6924,12 @@ locret_6E08X:
 
 Resize_GHZ2:
 		move.b	#1,($FFFFF7CC).w		; lock controls
-		move.w	#$300,($FFFFF726).w
+		move.w	#$210,($FFFFF726).w
+		cmpi.w	#$F00,($FFFFF700).w
+		bcs.s	locret_6E96
+		cmpi.w	#$15E0,($FFFFF700).w
+		bcc.s	locret_6E96
+		move.w	#$110,($FFFFF726).w		; alternate bottom boundary during the buzz bomber death
 		rts	
 ; ===========================================================================
 
@@ -8774,10 +8849,8 @@ Obj18_NotLZ:
 		cmpi.b	#4,($FFFFFE10).w ; check if level is SYZ
 		bne.w	Obj18_NotSYZ
 		move.l	#Map_obj18a,obMap(a0) ; SYZ specific code
-	;	move.w	#$4490,obGfx(a0)
 		move.w	#$4000+($A660/$20),obGfx(a0)
-	;	move.b	#$30,obActWid(a0)
-		move.b	#$A0,obActWid(a0)	; make platforms SUPER wide for easy access
+		move.b	#$B0,obActWid(a0)	; make platforms SUPER wide for easy access
 		addq.w	#1,obY(a0)	; fix vertical pixel offset
 
 		; glowing yellow arrows when stepping on platform in Uberhub
@@ -8785,7 +8858,6 @@ Obj18_NotLZ:
 		move.b	#$18,(a1)
 		move.b	#$A,obRoutine(a1)	; set to arrow routine
 		move.l	#Map_obj18a,obMap(a1) ; SYZ specific code
-	;	move.w	#$6490,obGfx(a1)
 		move.w	#$6533,obGfx(a1)
 		move.w	obX(a0),obX(a1)
 		move.w	obY(a0),d0
@@ -9874,7 +9946,7 @@ Obj2A_Main:				; XREF: Obj2A_Index
 		bne.s	@nosoundstopper		; if not, branch
 		tst.b	obSubtype(a0)		; is this the door leading to the blackout challenge?
 		bpl.s	@nosoundstopper		; if not, branch
-		btst	#0,($FFFFFF93).w	; has the player beaten the base game?
+		jsr	IsBaseGameBeaten	; has the player beaten the base game?
 		beq.s	@nosoundstopper		; if not, don't load sound stopper
 
 		bsr	SingleObjLoad
@@ -9882,7 +9954,7 @@ Obj2A_Main:				; XREF: Obj2A_Index
 		move.b	#$7D,0(a1)		; load emblem object
 		move.b	#6,obRoutine(a1)	; set to "sound stopper" mode
 		move.w	obX(a0),d0		; copy X coordinate of door
-		subi.w	#27,d0			; move a few pixels to the left
+		subi.w	#$30,d0			; move a few pixels to the left
 		move.w	d0,obX(a1)		; write to thingy
 		move.w	obY(a0),obY(a1)		; copy Y coordinate of door
 		move.l	a0,$30(a1)		; make the stopper remember the location of this door
@@ -9891,7 +9963,7 @@ Obj2A_Main:				; XREF: Obj2A_Index
 		cmpi.w	#$501,($FFFFFE10).w	; is this the tutorial?
 		bne.s	Obj2A_OpenShut		; if not, branch
 		tst.b	obSubtype(a0)		; "don't appear in tutorial" flag set?
-		bne.s 	@Delete				; if yes, branch
+		bne.s 	@Delete			; if yes, branch
 
 		addq.b	#2,obRoutine(a0)
 		move.b	#1,obAnim(a0)
@@ -9923,13 +9995,18 @@ Obj2A_OpenShut:				; XREF: Obj2A_Index
 		bra.w	Obj2A_Animate		; force door to be red
 
 @finaldoornotpassed:
-		btst	#0,($FFFFFF93).w	; has the player beaten the base game?
+		jsr	IsBaseGameBeaten	; has the player beaten the base game?
 		bne.s	@usegreendoor		; if yes, open the door
 		bra.w	Obj2A_Animate		; otherwise, keep it locked
 
 @notfinaldoor:
-		move.b	($FFFFFF8B).w,d0	; get ammount of beat levels
-		and.b	obSubtype(a0),d0		; and it by subtype of door (always a single bit)
+		move.b	($FFFFFF8A).w,d0	; get beaten levels bitset (casual)
+		frantic				; are we in frantic?
+		beq.s	@checkdoor		; if not, branch
+		move.b	($FFFFFF8B).w,d0	; use frantic door bitset instead
+
+@checkdoor:
+		and.b	obSubtype(a0),d0	; and it by subtype of door (always a single bit)
 		beq.s	Obj2A_Animate		; if the required level hasn't been beaten, keep door locked
 
 @usegreendoor:
@@ -10419,7 +10496,7 @@ Obj27_LoadAnimal:			; XREF: Obj27_Index
 		move.b	#$80,($FFFFFE1D).w ; update ring counter
 		move.b	#1,$35(a1)
 
-		bsr	SingleObjLoad_Continue
+		bsr	SingleObjLoad2
 		bne.w	Obj27_Main
 @cont2:
 		move.b	#$27,0(a1)	; load animal object
@@ -10428,7 +10505,7 @@ Obj27_LoadAnimal:			; XREF: Obj27_Index
 		move.w	$3E(a0),$3E(a1)
 		move.b	#2,obRoutine(a1)
 
-		bsr	SingleObjLoad_Continue
+		bsr	SingleObjLoad2
 		bne.s	Obj27_Main
 		move.b	#$27,0(a1)	; load animal object
 		move.w	obX(a0),obX(a1)
@@ -10531,7 +10608,7 @@ Obj3F_Main:				; XREF: Obj3F_Index
 		
 		btst	#0,($FFFFFE05).w	; are we on an odd frame?
 		bne.s	Obj3F_Main2		; if yes, don't load a third explosion
-		bsr	SingleObjLoad_Continue
+		bsr	SingleObjLoad2
 		bne.s	Obj3F_Main2
 		move.b	#$3F,0(a1)	; load explosion object
 		move.w	obX(a0),obX(a1)
@@ -11298,7 +11375,7 @@ Obj1F_BossDelete:
 		movem.l	d7/a0,-(sp)
 		jsr	LevelLayoutLoad			; load GHZ3 layout
 		movem.l	(sp)+,d7/a0
-		move.b	#$86,d0				; set normal GHZ music
+		move.b	#$90,d0				; set normal GHZ music
 		jsr	PlaySound			; play it
 		move.l	#10000,d0		; add 100000 ...
 		jsr	AddPoints	; ... points
@@ -11446,7 +11523,7 @@ Obj1F_MakeFire_2:
 		move.w	#-$230,obVelX(a1)			; load GHZ1 X-speed
 
 Obj1F_MakeFire2:
-		bsr	SingleObjLoad_Continue		; load from SingleObjLoad
+		bsr	SingleObjLoad2		; load from SingleObjLoad
 		bne.s	locret_9618			; if it's in use, branch
 		move.b	#$1F,0(a1)			; load right fireball
 		move.b	#6,obRoutine(a1)			; set to fireball
@@ -12816,6 +12893,7 @@ GRing_ScarNight  = 7
 GRing_StarAgony  = 8
 GRing_Finalor    = 9
 GRing_Ending     = $A
+GRing_Intro      = $B
 GRing_Options    = $81
 GRing_Tutorial   = $82
 GRing_Blackout   = $83
@@ -12855,13 +12933,15 @@ Obj4B_Main:				; XREF: Obj4B_Index
 	if DoorsAlwaysOpen=0
 		cmpi.b	#GRing_GreenHill,obSubtype(a0)	; is this a ring leading to Green Hill Place (NHP act 2)?
 		bne.s	@tempringcont1			; if not, branch
-		btst	#0,($FFFFFF8B).w		; has the player beaten this level before?
+		moveq	#0,d0				; has the player beaten this level before?
+		jsr	IsDoorOpen
 		bne.s	Obj4B_Main_Cont			; if yes, branch
 		jmp	DeleteObject			; otherwise, delete this ring
 @tempringcont1:
 		cmpi.b	#GRing_StarAgony,obSubtype(a0)	; is this a ring leading to Star Agony Place (SNP act 2)?
 		bne.s	@tempringcont2			; if not, branch
-		btst	#5,($FFFFFF8B).w		; has the player beaten this level before?
+		moveq	#5,d0				; has the player beaten this level before?
+		jsr	IsDoorOpen
 		bne.s	Obj4B_Main_Cont			; if yes, branch
 		jmp	DeleteObject			; otherwise, delete this ring	
 @tempringcont2:
@@ -13095,8 +13175,8 @@ Obj4B_LoadLevel:
 		cmpi.b	#$5,($FFFFFE10).w	; is this the tutorial/finalor?
 		bne.s	Obj4B_SNZ		; if not, branch
 		move.w	#$400,($FFFFFE10).w	; set level to Uberhub
-		cmpi.w	#$502,($FFFFFE10).w	; is this also finalor?
-		bne.w	Obj4B_PlayLevel		; if not, branch
+		tst.b	(FZEscape).w		; is this also the Finalor escape sequence?
+		beq.w	Obj4B_PlayLevel		; if not, branch
 		jmp	FinalBoss_Exit		; this stuff was originally part of the FZ boss
 
 Obj4B_SNZ:
@@ -13204,7 +13284,7 @@ Obj4B_ChkSLZ3:
 		cmpi.b	#GRing_StarAgony,obSubtype(a0)	; is this the ring to Star Agony Place?
 		bne.s	Obj4B_ChkFZ			; if not, branch
 		move.w	#$302,($FFFFFE10).w		; set level to SLZ3
-		bra.s	Obj4B_PlayLevel
+		bra.w	Obj4B_PlayLevel
 
 Obj4B_ChkFZ:
 		cmpi.b	#GRing_Finalor,obSubtype(a0)	; is this the ring to Finalor Place?
@@ -13215,11 +13295,18 @@ Obj4B_ChkFZ:
 
 Obj4B_ChkEnding:
 		cmpi.b	#GRing_Ending,obSubtype(a0)	; is this the ring to the ending sequence?
-		bne.s	Obj4B_ChkOptions		; if not, branch
+		bne.s	Obj4B_ChkIntro			; if not, branch
 		move.b	#$20,($FFFFF600).w		; load info screen
 		move.b	#8,($FFFFFF9E).w		; set number for text to 8
 		move.b	#$9D,d0				; play ending sequence music
 		jmp	PlaySound
+
+Obj4B_ChkIntro:
+		cmpi.b	#GRing_Intro,obSubtype(a0)	; is this the ring to the intro sequence?
+		bne.s	Obj4B_ChkOptions		; if not, branch
+		move.b	#$28,($FFFFF600).w		; load chapters screen for intro cutscene (One Hot Day...)
+		move.w	#$001,($FFFFFE10).w		; set to intro cutscene
+		rts
 
 Obj4B_ChkOptions:
 		cmpi.b	#GRing_Options,obSubtype(a0)	; is this the ring to the options menu?
@@ -13264,11 +13351,13 @@ MakeChapterScreen:
 		bmi.s	MCS_NotSpecial
 		cmp.b	($FFFFFFA7).w,d5
 		bgt.s	MCS_DoChapter
-		cmpi.w	#$301,($FFFFFE10).w
-		bne.s	@cont
+		cmpi.w	#$301,($FFFFFE10).w	; are we enterting SNP?
+		bne.s	@notsnp			; if not, branch
+		frantic				; are we in frantic?
+		beq.s	@notsnp			; big boy bombs only in big boy game modes
 		move.w	#$500,($FFFFFE10).w
 		bra.s	MCS_NotSpecial
-@cont:
+@notsnp:
 		cmpi.w	#$300,($FFFFFE10).w
 		beq.s	MCS_Special
 		cmpi.w	#$401,($FFFFFE10).w
@@ -13904,10 +13993,11 @@ Obj2E_ChkGoggles: ;Power
 		jmp	(PlaySound).l		; play spindash sound
 
 Obj2E_Goggles_NotMZ:
+		cmpi.b	#$3,($FFFFFE10).w
+		bne.s	Obj2E_Goggles_NotSLZ3
+		move.b	#1,($FFFFFFE1).w	; disable blockers
 		cmpi.w	#$302,($FFFFFE10).w
 		bne.s	Obj2E_Goggles_NotSLZ3
-
-		move.b	#1,($FFFFFFE1).w	; disable blockers
 
 		movem.l	d0-a1,-(sp)
 		move.w	#$1480,d0
@@ -18497,8 +18587,6 @@ locret_DA8A:
 
 SingleObjLoad:
 		lea	($FFFFD800).w,a1 ; start address for object RAM
-
-SingleObjLoad_Continue:
 		move.w	#$5F,d0
 
 loc_DA94:
@@ -19679,7 +19767,7 @@ Map_obj46:
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Object 12 - lamp (SYZ)
+; Object 12 - Progress emblems in Uberhub (SYZ)
 ; ---------------------------------------------------------------------------
 
 Obj12:					; XREF: Obj_Index
@@ -19688,43 +19776,96 @@ Obj12:					; XREF: Obj_Index
 		move.w	Obj12_Index(pc,d0.w),d1
 		jmp	Obj12_Index(pc,d1.w)
 ; ===========================================================================
-Obj12_Index:	dc.w Obj12_Main-Obj12_Index
+Obj12_Index:	dc.w Obj12_CheckGameState-Obj12_Index
+		dc.w Obj12_Init-Obj12_Index
 		dc.w Obj12_Animate-Obj12_Index
 ; ===========================================================================
 
-Obj12_Main:				; XREF: Obj12_Index
+Obj12_CheckGameState:
 		addq.b	#2,obRoutine(a0)
-		move.l	#Map_obj12,obMap(a0)
-		move.w	#0,obGfx(a0)
+		move.b	#0,obFrame(a0)		; use silver star frame
+		move.b	#0,$30(a0)		; disable red frame
+
+		moveq	#0,d0
+		move.b	obSubtype(a0),d0	; get subtype (1-8)
+		cmpi.b	#7,d0			; is this the orb for the base game?
+		beq.s	@basegame		; if yes, branch
+		cmpi.b	#8,d0			; is this the orb for the blackout challenge?
+		beq.s	@blackout		; if yes, branch
+		subq.b	#1,d0			; adjust for bit test
+
+		btst	d0,($FFFFFF8B).w	; stage beaten in frantic?
+		beq.s	@regularstar		; if not, branch
+		move.b	#1,$30(a0)		; use red star frame		
+		bra.s	Obj12_Init		; display
+@regularstar:
+		btst	d0,($FFFFFF8A).w	; stage beaten in casual?
+		bne.s	Obj12_Init		; if yes, branch
+		jmp	DeleteObject		; not even that? you suck. no stars for you.
+; ---------------------------------------------------------------------------
+
+@basegame:
+		btst	#Frantic_BaseGame,($FFFFFF93).w	; has the player beaten the base game in frantic?
+		beq.s	@bgnotfrantic			; if yes, branch
+		move.b	#1,$30(a0)			; use red star frame
+		bra.s	Obj12_Init
+@bgnotfrantic:
+		btst	#Casual_BaseGame,($FFFFFF93).w	; has the player beaten the base game in casual?
+		bne.s	Obj12_Init
+		jmp	DeleteObject
+; ---------------------------------------------------------------------------
+
+@blackout:
+		btst	#Frantic_Blackout,($FFFFFF93).w	; has the player beaten the blackout challenge in frantic?
+		beq.s	@bcnotfrantic			; if yes, branch
+		move.b	#1,$30(a0)			; use red star frame
+		bra.s	Obj12_Init
+@bcnotfrantic:
+		btst	#Casual_Blackout,($FFFFFF93).w	; has the player beaten the blackout challenge in casual?
+		bne.s	Obj12_Init
+		jmp	DeleteObject
+
+; ---------------------------------------------------------------------------
+
+Obj12_Init:
+		addq.b	#2,obRoutine(a0)
+		move.l	#Map_Obj12,obMap(a0)
+		move.w	#($6C00/$20),obGfx(a0)
 		move.b	#4,obRender(a0)
 		move.b	#$10,obActWid(a0)
 		move.b	#6,obPriority(a0)
+		move.w	obY(a0),$32(a0)
+		
+		moveq	#0,d0
+		move.b	obSubtype(a0),d0
+		lsl.w	#4,d0
+		move.w	d0,$34(a0)
+; ---------------------------------------------------------------------------
 
-Obj12_Animate:				; XREF: Obj12_Index
-		subq.b	#1,obTimeFrame(a0)
-		bpl.s	Obj12_ChkDel
-		move.b	#7,obTimeFrame(a0)
-		addq.b	#1,obFrame(a0)
-		cmpi.b	#6,obFrame(a0)
-		bcs.s	Obj12_ChkDel
-		move.b	#0,obFrame(a0)
+Obj12_Animate:
+		; sway
+		move.w	($FFFFFE04).w,d0
+		add.w	$34(a0),d0
+		jsr	(CalcSine).l
+		asr.w	#5,d0
+		add.w	$32(a0),d0
+		move.w	d0,obY(a0)
 
-Obj12_ChkDel:
-		move.w	obX(a0),d0
-		andi.w	#$FF80,d0
-		move.w	($FFFFF700).w,d1
-		subi.w	#$80,d1
-		andi.w	#$FF80,d1
-		sub.w	d1,d0
-		cmpi.w	#$280,d0
-		bhi.w	DeleteObject
-		bra.w	DisplaySprite
+		; red frame
+		tst.b	$30(a0)
+		beq.s	@0
+		move.w	($FFFFFE04).w,d0
+		andi.w	#$3,d0
+		bne.s	@0
+		bchg	#0,obFrame(a0)
+@0:		jmp	MarkObjGone
+
+
+; ---------------------------------------------------------------------------
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Sprite mappings - lamp (SYZ)
-; ---------------------------------------------------------------------------
-Map_obj12:
-		include	"_maps\obj12.asm"
+Map_Obj12:
+		include	"_maps\SYZEmblems.asm"
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -19993,7 +20134,8 @@ loc_EC86:
 ; ---------------------------------------------------------------------------
 ; Subroutine to unlock the doors in SYZ1 after you finish a normal level
 
-; ($FFFFFF8B).w
+; ($FFFFFF8A).w	- casual
+; ($FFFFFF8B).w	- frantic
 ; Bit 0 = GHZ | SS1
 ; Bit 1 = SS1 | MZ
 ; Bit 2 = MZ | LZ
@@ -20009,25 +20151,29 @@ loc_EC86:
 GotThroughAct:				; XREF: Obj3E_EndAct
 		cmpi.w	#$002,($FFFFFE10).w	; is level GHZ3?
 		bne.s	GTA_ChkMZ1		; if not, branch
-		bset	#0,($FFFFFF8B).w	; unlock first door
+		moveq	#0,d0			; unlock first door
+		jsr	OpenDoor
 		move.b	#2,($FFFFFF9E).w	; set number for text to 2
 
 GTA_ChkMZ1:
 		cmpi.w	#$200,($FFFFFE10).w	; is level MZ1?
 		bne.s	GTA_ChkLZ2		; if not, branch
-		bset	#2,($FFFFFF8B).w	; unlock third door
+		moveq	#2,d0			; unlock third door
+		jsr	OpenDoor
 		move.b	#4,($FFFFFF9E).w	; set number for text to 4
 
 GTA_ChkLZ2:
 		cmpi.w	#$101,($FFFFFE10).w	; is level LZ2?
 		bne.s	GTA_ChkSLZ2		; if not, branch
-		bset	#3,($FFFFFF8B).w	; unlock fourth door
+		moveq	#3,d0			; unlock fourth door
+		jsr	OpenDoor
 		move.b	#5,($FFFFFF9E).w	; set number for text to 5
 
 GTA_ChkSLZ2:
 		cmpi.w	#$302,($FFFFFE10).w	; is level SLZ3?
 		bne.s	GTA_NoDoor		; if not, branch
-		bset	#5,($FFFFFF8B).w	; unlock fifth door
+		moveq	#5,d0			; unlock fifth door
+		jsr	OpenDoor
 		move.b	#7,($FFFFFF9E).w	; set number for text to 7
 
 GTA_NoDoor:
@@ -20036,7 +20182,6 @@ GTA_NoDoor:
 locret_ECEE:
 		rts				; return
 ; End of function GotThroughAct
-
 ; ===========================================================================
 
 ; This gets called from the Info Screen (exit)
@@ -20080,8 +20225,9 @@ NLX_ReturnToHub:
 
 ; ===========================================================================
 NextLevel_Array:
-		dc.w	$501	; Tutorial Place
 		dc.w	$001	; Intro Cutscene
+		dc.w	$400	; Uberhub Place
+		dc.w	$501	; Tutorial Place
 		dc.w	$000	; Night Hill Place
 		dc.w	$002	; Green Hill Place
 		dc.w	$300	; Special Place (yes, it uses SLZ1's ID)
@@ -20092,6 +20238,7 @@ NextLevel_Array:
 		dc.w	$302	; Star Agony Place
 		dc.w	$502	; Finalor Place
 		dc.w	$601	; Ending Sequence
+	;	dc.w	$666	; Blackout Challenge
 		dc.w	$FFFF	; uhhhhhhhh
 		even
 ; ===========================================================================
@@ -23494,12 +23641,14 @@ Obj71_Main:				; XREF: Obj71_Index
 		move.b	d1,obHeight(a0)	; set object height
 
 Obj71_Solid:				; XREF: Obj71_Index
-		cmpi.w	#$302,($FFFFFE10).w
-		bne.s	@cont
-		tst.b	($FFFFFFE1).w
-		bne.s	Obj71_ChkDel
+		cmpi.w	#$302,($FFFFFE10).w	; are we in SAP?
+		bne.s	@notsap			; if not, branch
+		tst.b	($FFFFFFE1).w		; has P monitor been destroyed?
+		beq.s	@notsap			; if not, branch
+		cmpi.b	#$72,obSubtype(a0)	; is this the one for the door?
+		beq.s	Obj71_ChkDel		; if yes, disable it
 
-@cont:
+@notsap:
 		bsr	ChkObjOnScreen
 		bne.s	Obj71_ChkDel
 		moveq	#0,d1
@@ -23557,63 +23706,56 @@ Obj5D_Index:	dc.w Obj5D_Main-Obj5D_Index
 Obj5D_Main:				; XREF: Obj5D_Index
 		addq.b	#2,obRoutine(a0)
 		move.l	#Map_obj5D,obMap(a0)
-		move.w	#$43A0,obGfx(a0)
+		move.w	#$4000|($7400/$20),obGfx(a0)
 		ori.b	#4,obRender(a0)
 		move.b	#$10,obActWid(a0)
 		move.b	#4,obPriority(a0)
 
 Obj5D_Delay:				; XREF: Obj5D_Index
-		btst	#1,obSubtype(a0)	; is object type 02/03?
-		bne.s	Obj5D_Blow	; if yes, branch
-		subq.w	#1,$30(a0)	; subtract 1 from time delay
-		bpl.s	Obj5D_Blow	; if time remains, branch
-		move.w	#120,$30(a0)	; set delay to 2 seconds
-		bchg	#0,$32(a0)	; switch fan on/off
-		beq.s	Obj5D_Blow	; if fan is off, branch
-		move.w	#180,$30(a0)	; set delay to 3 seconds
+		tst.b	($FFFFFFE1).w	; has P monitor been destroyed?
+		bne.w	Obj5D_ChkDel	; if yes, disable fan
 
-Obj5D_Blow:
-		tst.b	$32(a0)		; is fan switched on?
-		bne.w	Obj5D_ChkDel	; if not, branch
-		lea	($FFFFD000).w,a1
-		move.w	obX(a1),d0
-		sub.w	obX(a0),d0
-		btst	#0,obStatus(a0)
-		bne.s	Obj5D_ChkSonic
-		neg.w	d0
+		move.b	#0,$30(a0)
 
-Obj5D_ChkSonic:
-		addi.w	#$50,d0
-		cmpi.w	#$F0,d0		; is Sonic more	than $A0 pixels	from the fan?
-		bcc.s	Obj5D_Animate	; if yes, branch
-		move.w	obY(a1),d1
-		addi.w	#$60,d1
-		sub.w	obY(a0),d1
-		bcs.s	Obj5D_Animate
-		cmpi.w	#$70,d1
-		bcc.s	Obj5D_Animate
-		subi.w	#$50,d0
-		bcc.s	loc_1159A
-		not.w	d0
-		add.w	d0,d0
+		move.w	($FFFFD008).w,d0
+		move.w	obX(a0),d1
+		subi.w	#$40,d1
+		cmp.w	d1,d0
+		bls.s	Obj5D_Animate
+		
+		move.w	d1,d2	; target Sonic X pos
 
-loc_1159A:
-		addi.w	#$60,d0
-		btst	#0,obStatus(a0)
-		bne.s	loc_115A8
-		neg.w	d0
+		addi.w	#$100,d1
+		cmp.w	d1,d0
+		bhi.s	Obj5D_Animate
+		
+		move.w	($FFFFD00C).w,d0
+		move.w	obY(a0),d1
+		subi.w	#$100,d1
+		cmp.w	d0,d1
+		bhi.s	Obj5D_Animate
 
-loc_115A8:
-		neg.b	d0
-		asr.w	#4,d0
-		btst	#0,obSubtype(a0)
-		beq.s	Obj5D_MoveSonic
-		neg.w	d0
-
-Obj5D_MoveSonic:
-		add.w	d0,obX(a1)	; push Sonic away from the fan
+		move.b	#1,$30(a0)
+		move.w	d2,($FFFFD008).w
+		
+		btst	#0,($FFFFFE0F).w
+		bne.s	@0
+		move.w	#$B8,d0
+		jsr	PlaySound_Special
+@0:
+		btst	#3,($FFFFF602).w	; right still pressed?
+		bne.s	Obj5D_Animate
+		move.w	#-$800,d0
+		move.w	d0,($FFFFD010).w
+		move.w	d0,($FFFFD014).w
 
 Obj5D_Animate:				; XREF: Obj5D_ChkSonic
+		tst.b	$30(a0)
+		bne.s	@fast
+		move.w	($FFFFFE04).w,d0
+		andi.w	#3,d0
+		bne.s	Obj5D_ChkDel
+@fast:
 		subq.b	#1,obTimeFrame(a0)
 		bpl.s	Obj5D_ChkDel
 		move.b	#0,obTimeFrame(a0)
@@ -23624,11 +23766,6 @@ Obj5D_Animate:				; XREF: Obj5D_ChkSonic
 
 loc_115D8:
 		moveq	#0,d0
-		btst	#0,obSubtype(a0)
-		beq.s	loc_115E4
-		moveq	#2,d0
-
-loc_115E4:
 		add.b	obAniFrame(a0),d0
 		move.b	d0,obFrame(a0)
 
@@ -23666,6 +23803,11 @@ BombPellets = 4
 ; ===========================================================================
 
 Obj5E:					; XREF: Obj_Index
+		frantic
+		bne.s	@frantic
+		jmp	DeleteObject
+
+@frantic:
 		bsr.w	Obj5E_FaceSonic
 
 		moveq	#0,d0
@@ -23765,7 +23907,7 @@ Obj5E_Explode:				; XREF: Obj5E_Index
 		; load shotgun shrapnels
 		moveq	#BombPellets-1,d6
 @shrapnelloop:
-		jsr	SingleObjLoad_Continue
+		jsr	SingleObjLoad2
 		bne.w	@noobjectleft
 		move.b	#$5E,0(a1)		; load shrapnel	object
 		move.b	#$E,obRoutine(a1)
@@ -24361,6 +24503,7 @@ Obj5F_BossDelete:
 		clr.b	($FFFFFF76).w
 		clr.b	($FFFFF7AA).w
 		clr.b	($FFFFFE2D).w			; disable invincibility
+		clr.b	($FFFFFFE1).w
 
 		clr.b	($FFFFFF68).w			; revert lives counter to normal
 		ori.b	#1,($FFFFFE1C).w		; update lives counter (to reset it from the boss)
@@ -26266,7 +26409,7 @@ Obj02_Display:
 Obj02_DisplayE:
 		cmpi.b	#6,($FFFFD024).w	; is Sonic dying?
 		blt.s	Obj02_DE_No		; if not, branch
-		cmpi.w	#$14A,obScreenY(a0)		; has location been reached?
+		cmpi.w	#$140,obScreenY(a0)		; has location been reached?
 		bmi.s	Obj02_DE_No		; if yes, branch
 		subq.w	#1,obScreenY(a0)		; move up
 
@@ -26308,7 +26451,7 @@ Obj03_Setup:
 		move.b	#$56,obActWid(a0)	; set display width
 		move.b	obSubtype(a0),obFrame(a0) ; set frame to subtype ID
 		subi.w	#$C,obY(a0)		; adjust Y pos
-		move.w	#($6E40/$20),obGfx(a0)	; set art, use first palette line
+		move.w	#($6200/$20),obGfx(a0)	; set art, use first palette line
 		cmpi.w	#$501,($FFFFFE10).w	; is this the tutorial?
 		bne.s	@cont			; if not, branch
 		move.w	#($7300/$20),obGfx(a0)	; use alternate mappings
@@ -26330,7 +26473,7 @@ Obj03_Setup:
 		move.b	#4,obPriority(a1)	; set priority
 		move.b	#4,obRender(a1)		; set render flag
 		move.b	#86,obActWid(a1)	; set display width
-		move.w	#$0372,obGfx(a1)	; set art, use first palette line
+		move.w	#($6200/$20),obGfx(a1)	; set art, use first palette line
 		move.b	#9,obFrame(a1)		; set to "PLACE" frame
 		move.w	obY(a1),$38(a1)		; remember base Y pos
 		
@@ -39147,7 +39290,15 @@ loc_1A248:
 ; Used to be called right after the cutscene after the final boss finishes,
 ; now it's called from Obj4B
 FinalBoss_Exit:
-		bset	#6,($FFFFFF8B).w	; unlock door to the credits
+		move.w	#$DD,d0
+		jsr	PlaySound_Special
+
+		move.l	a0,-(sp)		; backup to stack
+		jsr	Pal_MakeWhite		; make white flash
+		move.l (sp)+,a0			; restore from stack
+
+		moveq	#6,d0			; unlock door to the credits
+		jsr	OpenDoor
 		
 		btst	#2,($FFFFFF92).w	; is Skip Uberhub Place enabled?
 		bne.s	@straighttoend		; if yes, go directly to ending sequence instead of back to Uberhub
@@ -41978,9 +42129,7 @@ Emershit:
 		moveq	#$FFFFFF88,d0		; play regular special stage beaten jingle
 		tst.b	($FFFFFF5F).w		; is this the blackout blackout special stage?
 		beq.s	@cont			; if not, branch
-		bset	#1,($FFFFFF93).w	; you have beaten the blackout challenge, congrats
-		bset	#0,($FFFFFF93).w	; also set base game beaten state, just in case
-		jsr	SRAM_SaveNow		; save
+		jsr	BlackoutDone		; you have beaten the blackout challenge, congrats
 		moveq	#$FFFFFF91,d0		; play true ending music
 
 @cont:
@@ -44464,6 +44613,8 @@ ArtKospM_LzSwitch:	incbin	artkosp\switch.kospm	; LZ/SYZ/SBZ switch
 ArtKospM_SYZDoors:	incbin	artkosp\SYZDoors.kospm	; SYZ doors
 		even
 ArtKospM_LevelSigns:	incbin	artkosp\LevelSigns.kospm	; SYZ level signs
+		even
+ArtKospM_SYZEmblems:	incbin	artkosp\SYZEmblems.kospm	; SYZ casual/frantic emblems
 		even
 ArtKospM_SYZPlat:	incbin	artkosp\SYZPlatform.kospm	; SLZ Platform
 		even

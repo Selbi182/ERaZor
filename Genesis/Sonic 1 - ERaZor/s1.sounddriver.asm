@@ -2618,7 +2618,7 @@ Music8A:	include	"sound\DalekSam\ENDING.asm"
 		even
 Music8B:	include	"sound\music8B.asm"
 		even
-Music8C:	incbin	sound\sadv3-bosspinch.bin
+Music8C:	include "sound\EK\m46-Boss.asm";incbin	sound\sadv3-bosspinch.bin
 		even
 Music8D:	incbin	sound\EK\m5A-FZIntro.bin
 		even
@@ -2626,7 +2626,7 @@ Music8E:	incbin	sound\music8E.bin
 		even
 Music8F:	incbin	sound\music8F.bin
 		even
-Music90:	incbin	sound\music90.bin
+Music90:	include	"sound\DalekSam\MMX3_IntroStage.asm"
 		even
 Music91:	incbin	sound\music91.bin
 		even

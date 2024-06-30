@@ -18,8 +18,7 @@ ChapterScreen:
 		jsr	PlaySound_Special		; fade out music
 		jsr	PLC_ClearQueue			; Clear PLCs
 		jsr	Pal_FadeFrom			; Fade out previous palette
-	;	jsr	ClearVRAM
-		move	#$2700,sr
+		VBlank_SetMusicOnly
 
 		lea	($C00004).l,a6			; Setup VDP
 		move.w	#$8004,(a6)
@@ -35,20 +34,13 @@ ChapterScreen:
 		lea	($FFFFD000).w,a1
 		moveq	#0,d0
 		move.w	#$7FF,d1
-
-CS_ClrObjRam:
-		move.l	d0,(a1)+
+CS_ClrObjRam:	move.l	d0,(a1)+
 		dbf	d1,CS_ClrObjRam
-		
-		display_enable
-
-		cmpi.w	#$501,($FFFFFE10).w		; is this the tutorial?
-		beq.s	CS_LoadIntroCutscene		; if yes, branch
-
-		tst.b	($FFFFFFA7).w			; is chapter ID 0 (first start)?
-		bne.s	CS_NotOHDIGHZ			; if not, branch
 
 CS_LoadIntroCutscene:
+		cmpi.w	#$001,($FFFFFE10).w		; is this the intro cutscene?
+		bne.w	CS_NotOHDIGHZ			; if not, branch
+
 		move.l	#$40000000,($C00004).l		; Load art
 		lea	($C00000).l,a6
 		lea	(Art_OHDIGHZ).l,a1		; load art
@@ -64,10 +56,10 @@ CS_LoadIntroCutscene:
 		lea	(Pal_OHDIGHZ).l,a1		; load chapter 3 stuff instead
 		lea	($FFFFFB80).w,a2
 		move.b	#7,d0				; 16 colours
-CS_PalLoopOHD:
-		move.l	(a1)+,(a2)+
+CS_PalLoopOHD:	move.l	(a1)+,(a2)+
 		dbf	d0,CS_PalLoopOHD
 
+		VBlank_UnsetMusicOnly
 		jsr	Pal_FadeTo
 
 		bra.w	CS_SetUpLoop			; skip
@@ -76,9 +68,17 @@ CS_PalLoopOHD:
 ; ---------------------------------------------------------------------------
 
 CS_NotOHDIGHZ:
+		tst.b	($FFFFFFA7).w			; is this a valid ID?
+		bhi.s	@valid				; if yes, branch
+		move.b	#1,($FFFFFFA7).w		; if not, it's either corrupt or simply the first start. set number for chapter to 1
+
+@valid:
 		btst	#1,($FFFFFF92).w		; are story text screens enabled?
-		beq.w	CS_EndLoop			; if not, auto-skip
-		
+		bne.s	CS_Regular			; if yes, branch
+		VBlank_UnsetMusicOnly
+		bra.w	CS_EndLoop			; skip chapter screens
+
+CS_Regular:
 		move.l	#$40000000,($C00004).l		; Load art
 		lea	($C00000).l,a6
 		lea	(Art_ChapterHeader).l,a1	; load chapter header
@@ -94,11 +94,8 @@ CS_NotOHDIGHZ:
 		lea	(Pal_ChapterHeader).l,a1	; load chapter 3 stuff instead
 		lea	($FFFFFB80).w,a2
 		move.b	#7,d0				; 16 colours
-CS_PalLoop1:
-		move.l	(a1)+,(a2)+
+CS_PalLoop1:	move.l	(a1)+,(a2)+
 		dbf	d0,CS_PalLoop1
-
-; ---------------------------------------------------------------------------
 
 		move.l	#$60000000,($C00004).l
 		lea	($C00000).l,a6
@@ -110,8 +107,6 @@ CS_PalLoop1:
 
 		jsr	ObjectsLoad
 		jsr	BuildSprites
-
-; ---------------------------------------------------------------------------
 
 		moveq	#0,d0
 		move.b	($FFFFFFA7).w,d0
@@ -179,7 +174,8 @@ CS_PalLoop2:
 		move.l	(a1)+,(a2)+
 		dbf	d0,CS_PalLoop2
 ; ---------------------------------------------------------------------------
-
+		
+		VBlank_UnsetMusicOnly
 		move.w	#$000F,($FFFFF626).w		; start at palette line 1, 16 colours ($F + 1)
 		jsr	Pal_FadeTo2
 		move.w	#$200F,($FFFFF626).w		; start at palette line 2, 16 colours ($F + 1)
@@ -189,9 +185,9 @@ CS_PalLoop2:
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
 
-CS_SetUpLoop:
+CS_SetUpLoop:	
 		move.w	#$C0,($FFFFF614).w	; set wait time
-		cmpi.w	#$501,($FFFFFE10).w	; is this the tutorial?
+		cmpi.w	#$001,($FFFFFE10).w	; is this the tutorial?
 		beq.w	CS_Loop_OHDIGHZ		; if yes, go to a different loop
 
 ; ---------------------------------------------------------------------------
@@ -208,15 +204,13 @@ CS_Loop:
 ; ---------------------------------------------------------------------------
 
 CS_EndLoop:
+		move.w	#$400,($FFFFFE10).w	; set level to SYZ1 (Uberhub)
+
 		cmpi.w	#$001,($FFFFFE10).w	; is this the intro cutscene?
-		bne.s	CS_NotIntro		; if not, branch
-		move.w	#$400,($FFFFFE10).w	; set level to SYZ1
-		bra.s 	CS_PlayLevel
-		
-CS_NotIntro:
-		move.w	#$400,($FFFFFE10).w	; set level to SYZ1
-		tst.b	($FFFFFF7D).w		; has chapters screen been entered through a giant ring SYZ?
-		beq.s	CS_PlayLevel		; if not, branch
+		beq.s 	CS_PlayLevel		; if yes, always return to Uberhub
+
+		tst.b	($FFFFFF7D).w		; has chapters screen been entered through a giant ring Uberhub?
+		beq.s	CS_PlayLevel		; if not, return to Uberhub
 
 		cmpi.b	#2,($FFFFFFA7).w	; is this chapter 2?
 		bne.s	CS_ChkChapter3		; if not, branch

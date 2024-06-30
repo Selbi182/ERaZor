@@ -2775,7 +2775,7 @@ Title_ClrObjRam:
 		move.w	#0,($FFFFFE08).w ; disable debug item placement	mode
 		move.w	#0,($FFFFFFF0).w ; disable demo mode
 		move.w	#0,($FFFFFFEA).w
-		move.w	#0,($FFFFFE10).w ; set level to	GHZ (00)
+		move.w	#0, CurrentLevel	; set level to	GHZ (00)
 		move.w	#0,($FFFFF634).w ; disable pallet cycling
 
 		bsr	LevelSizeLoad
@@ -6671,51 +6671,41 @@ locret_6D10:
 
 
 LevelLayoutLoad:			; XREF: TitleScreen; MainLoadBlockLoad
-		lea	LevelLayout_RAM, a3
-		move.w	#$400/4-1,d1
-		moveq	#0,d0
+		lea 	LevelLayout_FG, a1
+		moveq	#0, d1
+		bsr.s	LevelLayoutLoad_DecompressLayout
 
-		@clear:
-			move.l	d0,(a3)+
-			dbf	d1,@clear
+LevelLayoutLoad_BG:
+		lea 	LevelLayout_BG, a1 		; RAM address for background layout
+		moveq	#2, d1
+		;bra.s	LevelLayoutLoad_DecompressLayout
 
-		lea	LevelLayout_FG, a3
-		moveq	#0,d1
-		bsr.s	LevelLayoutLoad2
+	LevelLayoutLoad_DecompressLayout:
+			move.w	CurrentLevel, d0	; d0 = %0000zzzz 000000aa
+			ror.b	#2, d0			; d0 = %0000zzzz aa000000
+			lsr.w	#4, d0			; d0 = %00000000 zzzzaa00
+			add.w	d1, d0
+			lea 	Level_Index, a0
+			move.w	(a0, d0), d0
+			lea 	(a0, d0), a0		; a0 = layout base address
+		if def(__DEBUG__)
+			KDebug.WriteLine "LevelLayoutLoad(): Loaded layout: %<.l a0 sym>"
+			movem.l	a0-a1, -(sp)
+			jsr	KosPlusDec
+			move.w	a1, d1
+			movem.l	(sp)+, a0-a1
+			sub.w	a1, d1
+			cmp.w	#$200, d1
+			bne.s	@err_illegal_layout
+			rts
 
-		lea	LevelLayout_BG, a3
-		moveq	#2,d1
-		;fallthrough
+		@err_illegal_layout:
+			RaiseError	"Illegal layout size ($%<.w d1>)%<endl>Source: %<.l a0 sym>%<endl>Dest: %<.l a1 sym>"
 
-LevelLayoutLoad2:
-		move.w	CurrentLevel, d0
-		lsl.b	#6,d0
-		lsr.w	#5,d0
-		move.w	d0,d2
-		add.w	d0,d0
-		add.w	d2,d0
-		add.w	d1,d0
-		lea	(Level_Index).l,a1
-		move.w	(a1,d0.w),d0
-		lea	(a1,d0.w),a1
-		moveq	#0,d1
-		move.w	d1,d2
-		move.b	(a1)+,d1	; load level width (in tiles)
-		move.b	(a1)+,d2	; load level height (in	tiles)
+		else
+			jmp	KosPlusDec
+		endif
 
-	LevLoad_NumRows:
-			move.w	d1, d0
-			movea.l	a3, a0
-
-		LevLoad_Row:
-				move.b	(a1)+, (a0)+
-				dbf	d0,LevLoad_Row	; load 1 row
-				lea	$40(a3), a3	; do next row
-
-			dbf	d2,LevLoad_NumRows ; repeat for	number of rows
-
-		rts	
-; End of function LevelLayoutLoad2
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -44721,7 +44711,7 @@ Art_RingFlash:	incbin	artunc\ringflash.bin	; ring flash that appears when you en
 ; Level layout index entry macro
 ; ---------------------------------------------------------------------------
 LayoutEntry:	macro Layout, Background
-	dc.w \Layout-Level_Index, \Background-Level_Index, LevelIndexPadding-Level_Index
+	dc.w \Layout-Level_Index, \Background-Level_Index
 	endm
 	
 ; ---------------------------------------------------------------------------
@@ -44731,7 +44721,7 @@ Level_Index:
 		; 00XX
 		LayoutEntry Level_GHZ1, Level_GHZbg ; Night Hill Place
 		LayoutEntry Level_GHZ2, Level_GHZbg ; Intro
-		LayoutEntry Level_GHZ1, Level_GHZbg ; Green Hill Place
+		LayoutEntry Level_GHZ3, Level_GHZbg ; Green Hill Place
 		LayoutEntry LevelIndexPadding, LevelIndexPadding
 
 		; 01XX
@@ -44774,25 +44764,25 @@ Level_Index:
 
 LevelIndexPadding:	dc.b 0,	0, 0, 0
 
-Level_GHZ1:	incbin	levels\ghz1.bin
+Level_GHZ1:	incbin	'levels/ghz1.kosp'
 		even
 byte_68D70:	dc.b 0,	0, 0, 0
-Level_GHZ2:	incbin	levels\ghz2.bin
+Level_GHZ2:	incbin	'levels/ghz2.kosp'
 		even
 byte_68E3C:	dc.b 0,	0, 0, 0
-Level_GHZ3:	;incbin	levels\ghz3.bin
+Level_GHZ3:	incbin	'levels/ghz3.kosp'
 		even
-Level_GHZbg:	incbin	levels\ghzbg.bin
+Level_GHZbg:	incbin	'levels/ghzbg.kosp'
 		even
 byte_68F84:	dc.b 0,	0, 0, 0
 byte_68F88:	dc.b 0,	0, 0, 0
 
 Level_LZ1:	;incbin	levels\lz1.bin
 		even
-Level_LZbg:	incbin	levels\lzbg.bin
+Level_LZbg:	incbin	'levels/lzbg.kosp'
 		even
 byte_69190:	dc.b 0,	0, 0, 0
-Level_LZ2:	incbin	levels\lz2.bin
+Level_LZ2:	incbin	'levels/lz2.kosp'
 		even
 byte_6922E:	dc.b 0,	0, 0, 0
 Level_LZ3:	;incbin	levels\lz3.bin
@@ -44802,9 +44792,9 @@ Level_SBZ3:	;incbin	levels\sbz3.bin
 		even
 byte_6940A:	dc.b 0,	0, 0, 0
 
-Level_MZ1:	incbin	levels\mz1.bin
+Level_MZ1:	incbin	'levels/mz1.kosp'
 		even
-Level_MZ1bg:	incbin	levels\mz1bg.bin
+Level_MZ1bg:	incbin	'levels/mz1bg.kosp'
 		even
 Level_MZ2:	;incbin	levels\mz2.bin
 		even
@@ -44820,17 +44810,17 @@ byte_697EA:	dc.b 0,	0, 0, 0
 
 Level_SLZ1:;	incbin	levels\slz1.bin
 		even
-Level_SLZbg:	incbin	levels\slzbg.bin
+Level_SLZbg:	incbin	'levels/slzbg.kosp'
 		even
-Level_SLZ2:	incbin	levels\slz2.bin
+Level_SLZ2:	incbin	'levels/slz2.kosp'
 		even
-Level_SLZ3:	incbin	levels\slz2.bin
+Level_SLZ3:	incbin	'levels/slz2.kosp'
 		even
 byte_69B84:	dc.b 0,	0, 0, 0
 
-Level_SYZ1:	incbin	levels\syz1.bin
+Level_SYZ1:	incbin	'levels/syz1.kosp'
 		even
-Level_SYZbg:	incbin	levels\syzbg.bin
+Level_SYZbg:	incbin	'levels/syzbg.kosp'
 		even
 byte_69C7E:	dc.b 0,	0, 0, 0
 Level_SYZ2:	;incbin	levels\syz2.bin
@@ -44841,19 +44831,19 @@ Level_SLZ4:;	incbin	levels\slz2casual.bin
 byte_69EE4:	dc.b 0,	0, 0, 0
 byte_69EE8:	dc.b 0,	0, 0, 0
 
-Level_SBZ1:	incbin	levels\sbz2.bin
+Level_SBZ1:	incbin	'levels/sbz2.kosp'
 		even
-Level_SBZ2:	incbin	levels\sbz2.bin
+Level_SBZ2:	incbin	'levels/sbz2.kosp'
 		even
-Level_SBZ1bg:	incbin	levels\sbz2bg.bin
+Level_SBZ1bg:	incbin	'levels/sbz2bg.kosp'
 		even
-Level_SBZ2bg:	incbin	levels\sbz2bg.bin
+Level_SBZ2bg:	incbin	'levels/sbz2bg.kosp'
 		even
-Level_FZbg:	incbin	levels\fzbg.bin
+Level_FZbg:	incbin	'levels/fzbg.kosp'
 		even
 byte_6A2F8:	dc.b 0,	0, 0, 0
 byte_6A2FC:	dc.b 0,	0, 0, 0
-Level_End:	incbin	levels\ending.bin
+Level_End:	incbin	'levels/ending.kosp'
 		even
 byte_6A320:	dc.b 0,	0, 0, 0
 

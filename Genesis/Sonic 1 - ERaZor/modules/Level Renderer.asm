@@ -318,10 +318,10 @@ LevelRenderer_DrawLayout_BG_2:	equ	@draw_direct
 	and.b   CurrentZone, d0
 	add.w   d0, d0
 	add.w   d0, d0
-    @0: lea     LevelRend_LayerRAM_BG, a1
-	movea.l @BG_Configs(pc, d0), a0
+    @0: movea.l @BG_Configs(pc, d0), a0
 
 @draw_direct:
+	lea     LevelRend_LayerRAM_BG, a1
 	move.l  a0, LevelRend_BG_Config     ; save background configuration
 
     if def(__DEBUG__)

@@ -75,11 +75,11 @@ BgScroll_SYZ:				; XREF: BgScroll_Index
 ; ===========================================================================
  
 BgScroll_SBZ:				; XREF: BgScroll_Index
-		andi.w	#$7F8,d0
-		asr.w	#3,d0
-		addq.w	#1,d0
-		move.w	d0,($FFFFF70C).w
-		rts	
+		; Initialize y-position only (since warp happens on Y-axis exclusively)
+		move.l	CamYPos, d0
+		asr.l	#3, d0
+		move.l	d0, CamYPos2
+		rts
 ; ===========================================================================
  
 BgScroll_End:				; XREF: BgScroll_Index
@@ -989,88 +989,87 @@ Deform_SBZ:
 		cmpi.w	#$502,($FFFFFE10).w	; is this Finalor Place?
 		beq.w	Deform_FZ		; if yes, use alternate deformation
 
-		tst.b	($FFFFFE11).w
-		bne.w	Deform_SBZ_Act2
+		; Setup X-layers scrolling
+		move.l	CamXPos, d0
+		
+		asr.l	#1, d0				; layer 2 - black buildings
+		move.l	d0, CamXPos3			;
 
-		move.w	($FFFFF70C).w,d0
-		move.w	d0,($FFFFF714).w
-		move.w	d0,($FFFFF71C).w
-		move.w	d0,($FFFFF618).w
-		move.b	($FFFFF756).w,d0
-		or.b	($FFFFF75A).w,d0
-		or.b	d0,($FFFFF758).w
-		clr.b	($FFFFF756).w
-		clr.b	($FFFFF75A).w
-		lea	($FFFFA800).w,a1	; ### REPLACE !!!
-		move.w	($FFFFF700).w,d2
-		neg.w	d2
-		asr.w	#2,d2
-		move.w	d2,d0
-		asr.w	#1,d0
-		sub.w	d2,d0
-		ext.l	d0
-		asl.l	#3,d0
-		divs.w	#4,d0
-		ext.l	d0
-		asl.l	#4,d0
-		asl.l	#8,d0
-		moveq	#0,d3
-		move.w	d2,d3
-		move.w	#3,d1
- 
-Deform_SBZ_1:				; CODE XREF: Deform_SBZ+9A?j
-		move.w	d3,(a1)+
-		swap	d3
-		add.l	d0,d3
-		swap	d3
-		dbf	d1,Deform_SBZ_1
-		move.w	($FFFFF718).w,d0
-		neg.w	d0
-		move.w	#9,d1
- 
-Deform_SBZ_2:				; CODE XREF: Deform_SBZ+AA?j
-		move.w	d0,(a1)+
-		dbf	d1,Deform_SBZ_2
-		move.w	($FFFFF710).w,d0
-		neg.w	d0
-		move.w	#6,d1
- 
-Deform_SBZ_3:				; CODE XREF: Deform_SBZ+BA?j
-		move.w	d0,(a1)+
-		dbf	d1,Deform_SBZ_3
-		move.w	($FFFFF708).w,d0
-		neg.w	d0
-		move.w	#$A,d1
- 
-Deform_SBZ_4:				; CODE XREF: Deform_SBZ+CA?j
-		move.w	d0,(a1)+
-		dbf	d1,Deform_SBZ_4
-		lea	($FFFFA800).w,a2	; ### REPLACE !!!
-		move.w	($FFFFF70C).w,d0
-		move.w	d0,d2
-		andi.w	#$1F0,d0
-		lsr.w	#3,d0
-		lea	(a2,d0.w),a2
-		bra.w	Deform_All
-; ===========================================================================
- 
-Deform_SBZ_Act2:			; CODE XREF: Deform_SBZ+4?j
+		asr.l	#1, d0				; layer 1 - brown buildings
+		move.l	d0, CamXPos2			;
 
-		move.w	($FFFFF70C).w,($FFFFF618).w
-		lea	($FFFFCC00).w,a1
-		move.w	#$DF,d1	; '?'
-		move.w	($FFFFF700).w,d0
-		neg.w	d0
+		tst.b	($FFFFFE11).w			; is it Tutorial?
+		bne.w	DeformScreen_Generic		; if yes, branch
+
+		move.l	d0, d1				; layer 3 - near buildings
+		asr.l	#1, d1				;
+		add.l	d1, d0				;
+		move.l	d0, CamXPos4			;
+
+		; Calculate y-position for the background
+		; based on displacement since the last camera move
+		move.w	CamYShift, d0
+		ext.l	d0
+		lsl.l	#8-3, d0
+		add.l	d0, CamYPos2
+
+		lea	ScrollBlocks_Buffer, a1
+		
+		; Scroll clouds
+		;
+		; NOTICE:
+		; Clouds scrolling calculation has been re-implemented and improved.
+		;
+		move.l	CamXPos, d0
+		asr.l	#1, d0							; d0 = 1/2 * CamXPos
+		move.l	d0, d1
+		asr.l	#6-1, d1						; d1 = 1/64 * CamXPos
+
+		neg.l	d0
 		swap	d0
-		move.w	($FFFFF708).w,d0
-		neg.w	d0
- 
-Deform_SBZ_Act2_1:			; CODE XREF: Deform_SBZ+118?j
-		move.l	d0,(a1)+
-		dbf	d1,Deform_SBZ_Act2_1
-		rts	
-; End of function Deform_SBZ
+		moveq	#4-1, d2
 
+		@cloud_loop:
+			move.w	d0, (a1)+
+			swap	d0
+			add.l	d1, d0
+			swap	d0
+			dbf	d2, @cloud_loop
+
+		; Scroll distant brown buildings
+		move.w	CamXPos2, d0
+		neg.w	d0
+		moveq	#$A-1, d1
+
+		@buildings_loop1:
+			move.w	d0, (a1)+
+			dbf	d1, @buildings_loop1
+
+		; Scroll upper black buildings
+		move.w	CamXPos4, d0
+		neg.w	d0
+		moveq	#7-1, d1
+
+		@buildings_loop2:
+			move.w	d0, (a1)+
+			dbf	d1, @buildings_loop2
+
+		; Scroll lower black buildings
+		move.w	CamXPos3,d0
+		neg.w	d0
+		moveq	#$B-1, d1
+
+		@buildings_loop3:
+			move.w	d0, (a1)+
+			dbf	d1, @buildings_loop3
+
+		lea	ScrollBlocks_Buffer, a2
+		move.w	CamYPos2, d0
+		move.w	d0, d2
+		andi.w	#$1F0, d0
+		lsr.w	#3, d0
+		lea	(a2,d0), a2
+		bra.w	DeformScreen_ProcessBlocks
 
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 

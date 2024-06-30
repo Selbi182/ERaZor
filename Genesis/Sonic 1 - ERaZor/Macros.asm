@@ -59,9 +59,13 @@ frantic macro
 ; Diable VBlank, update sound driver only
 VBlank_SetMusicOnly:	macro
 	addq.b	#1, VBlank_MusicOnly
+	move.w	#$4E73, HBlankHndl		; override HBlank handler with `rte`
 	endm
 
 VBlank_UnsetMusicOnly:	macro
 	subq.b	#1, VBlank_MusicOnly
+	bne.s	@done\@
+	move.w	#$4EF8, HBlankHndl		; restore HBlank handler (`jmp xxx.w`)
+@done\@:
 	assert.b VBlank_MusicOnly, pl		; shouldn't underflow
 	endm

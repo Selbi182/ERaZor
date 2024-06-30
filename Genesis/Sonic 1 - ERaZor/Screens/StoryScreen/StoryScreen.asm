@@ -157,9 +157,12 @@ StoryScreen_MainLoop:
 
 STS_FadeOutScreen:
 		bsr	StoryScreen_CenterText	; center text one last time
+		move.b	#16,(STS_FinalPhase).w	; set fadeout time (using a RAM address we don't need at this point anymore) 
+		
+		cmpi.b	#8,(STS_ScreenID).w	; is this the ending sequence?
+		beq.s	@finalfadeout		; if yes, don't fade out music
 		move.w	#$E0,d0
 		jsr	PlaySound_Special
-		move.b	#16,(STS_FinalPhase).w	; set fadeout time (using a RAM address we don't need at this point anymore) 
 
 @finalfadeout:
 		move.b	#2,VBlankRoutine

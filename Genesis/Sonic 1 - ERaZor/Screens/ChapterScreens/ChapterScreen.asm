@@ -204,14 +204,13 @@ CS_Loop:
 ; ---------------------------------------------------------------------------
 
 CS_EndLoop:
+		move.w	#$400,($FFFFFE10).w	; set level to SYZ1 (Uberhub)
+
 		cmpi.w	#$001,($FFFFFE10).w	; is this the intro cutscene?
-		bne.s	CS_NotIntro		; if not, branch
-		bra.s 	CS_PlayLevel
-		
-CS_NotIntro:
-		move.w	#$400,($FFFFFE10).w	; set level to SYZ1
-		tst.b	($FFFFFF7D).w		; has chapters screen been entered through a giant ring SYZ?
-		beq.s	CS_PlayLevel		; if not, branch
+		beq.s 	CS_PlayLevel		; if yes, always return to Uberhub
+
+		tst.b	($FFFFFF7D).w		; has chapters screen been entered through a giant ring Uberhub?
+		beq.s	CS_PlayLevel		; if not, return to Uberhub
 
 		cmpi.b	#2,($FFFFFFA7).w	; is this chapter 2?
 		bne.s	CS_ChkChapter3		; if not, branch

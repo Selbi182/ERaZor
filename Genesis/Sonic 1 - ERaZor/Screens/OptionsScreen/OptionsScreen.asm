@@ -59,8 +59,7 @@ OptionsScreen:				; XREF: GameModeArray
 		jsr	ObjectsLoad
 		jsr	BuildSprites
 
-	;	move.b	#$86,d0		; play Options screen music (Spark Mandrill)
-		move.b	#$99,d0		; play Options screen music (introduction text music)
+		move.b	#$86,d0		; play Options screen music (Spark Mandrill)
 		jsr	PlaySound_Special
 		bsr	Options_LoadPal
 		move.b	#9,($FFFFFF9E).w ; BG pal

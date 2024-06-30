@@ -221,20 +221,22 @@ PLC_SLZ:
 		dc.w 0
 		dc.l ArtKospM_Bomb		; bomb enemy
 		dc.w $8000
-		dc.l ArtKospM_LzSwitch	; switch
+		dc.l ArtKospM_LzSwitch		; switch
 		dc.w $9000
 		dc.l ArtKospM_Spikes		; spikes
 		dc.w $A360
-		dc.l ArtKospM_HSpring	; horizontal spring
+		dc.l ArtKospM_HSpring		; horizontal spring
 		dc.w $A460
-		dc.l ArtKospM_VSpring	; vertical spring
+		dc.l ArtKospM_VSpring		; vertical spring
 		dc.w $A660
 		dc.w -1
 
 PLC_SLZ2:
+		dc.l ArtKospM_Fan		; fan
+		dc.w $7400
 		dc.l ArtKospM_Pylon		; foreground pylon
 		dc.w $7980
-		dc.l ArtKospM_GiantBomb	; giant bomb
+		dc.l ArtKospM_GiantBomb		; giant bomb
 		dc.w $8580
 		dc.l ArtKospM_Bonus		; bonus points
 		dc.w $96C0

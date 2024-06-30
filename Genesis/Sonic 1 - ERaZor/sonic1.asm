@@ -4919,7 +4919,7 @@ PLM_NoMusic:
 
 MusicList:
 		dc.b	$81	; Night Hill Place
-		dc.b	$86	; Green Hill Place
+		dc.b	$90	; Green Hill Place
 		dc.b	$89	; Special Stage (Unused)
 		dc.b	$83	; Ruined Place
 		dc.b	$82	; Labyrinthy Place
@@ -14429,7 +14429,7 @@ Obj1F_BossDelete:
 		move.b	#2,($FFFFFFAA).w		; set flag 1, 2
 		move.w	#$5060,($FFFFF72A).w		; unlock screen
 		move.w	#$002,($FFFFFE10).w		; change level ID to GHZ3
-		move.b	#$86,d0				; set normal GHZ music
+		move.b	#$90,d0				; set normal GHZ music
 		jsr	PlaySound			; play it
 		move.l	#10000,d0		; add 100000 ...
 		jsr	AddPoints	; ... points
@@ -16405,11 +16405,13 @@ MakeChapterScreen:
 		bmi.s	MCS_NotSpecial
 		cmp.b	($FFFFFFA7).w,d5
 		bgt.s	MCS_DoChapter
-		cmpi.w	#$301,($FFFFFE10).w
-		bne.s	@cont
+		cmpi.w	#$301,($FFFFFE10).w	; are we enterting SNP?
+		bne.s	@notsnp			; if not, branch
+		frantic				; are we in frantic?
+		beq.s	@notsnp			; big boy bombs only in big boy game modes
 		move.w	#$500,($FFFFFE10).w
 		bra.s	MCS_NotSpecial
-@cont:
+@notsnp:
 		cmpi.w	#$300,($FFFFFE10).w
 		beq.s	MCS_Special
 		cmpi.w	#$401,($FFFFFE10).w
@@ -17045,10 +17047,11 @@ Obj2E_ChkGoggles: ;Power
 		jmp	(PlaySound).l		; play spindash sound
 
 Obj2E_Goggles_NotMZ:
+		cmpi.b	#$3,($FFFFFE10).w
+		bne.s	Obj2E_Goggles_NotSLZ3
+		move.b	#1,($FFFFFFE1).w	; disable blockers
 		cmpi.w	#$302,($FFFFFE10).w
 		bne.s	Obj2E_Goggles_NotSLZ3
-
-		move.b	#1,($FFFFFFE1).w	; disable blockers
 
 		movem.l	d0-a1,-(sp)
 		move.w	#$1480,d0
@@ -26691,12 +26694,14 @@ Obj71_Main:				; XREF: Obj71_Index
 		move.b	d1,obHeight(a0)	; set object height
 
 Obj71_Solid:				; XREF: Obj71_Index
-		cmpi.w	#$302,($FFFFFE10).w
-		bne.s	@cont
-		tst.b	($FFFFFFE1).w
-		bne.s	Obj71_ChkDel
+		cmpi.w	#$302,($FFFFFE10).w	; are we in SAP?
+		bne.s	@notsap			; if not, branch
+		tst.b	($FFFFFFE1).w		; has P monitor been destroyed?
+		beq.s	@notsap			; if not, branch
+		cmpi.b	#$72,obSubtype(a0)	; is this the one for the door?
+		beq.s	Obj71_ChkDel		; if yes, disable it
 
-@cont:
+@notsap:
 		bsr	ChkObjOnScreen
 		bne.s	Obj71_ChkDel
 		moveq	#0,d1
@@ -26754,63 +26759,56 @@ Obj5D_Index:	dc.w Obj5D_Main-Obj5D_Index
 Obj5D_Main:				; XREF: Obj5D_Index
 		addq.b	#2,obRoutine(a0)
 		move.l	#Map_obj5D,obMap(a0)
-		move.w	#$43A0,obGfx(a0)
+		move.w	#$4000|($7400/$20),obGfx(a0)
 		ori.b	#4,obRender(a0)
 		move.b	#$10,obActWid(a0)
 		move.b	#4,obPriority(a0)
 
 Obj5D_Delay:				; XREF: Obj5D_Index
-		btst	#1,obSubtype(a0)	; is object type 02/03?
-		bne.s	Obj5D_Blow	; if yes, branch
-		subq.w	#1,$30(a0)	; subtract 1 from time delay
-		bpl.s	Obj5D_Blow	; if time remains, branch
-		move.w	#120,$30(a0)	; set delay to 2 seconds
-		bchg	#0,$32(a0)	; switch fan on/off
-		beq.s	Obj5D_Blow	; if fan is off, branch
-		move.w	#180,$30(a0)	; set delay to 3 seconds
+		tst.b	($FFFFFFE1).w	; has P monitor been destroyed?
+		bne.w	Obj5D_ChkDel	; if yes, disable fan
 
-Obj5D_Blow:
-		tst.b	$32(a0)		; is fan switched on?
-		bne.w	Obj5D_ChkDel	; if not, branch
-		lea	($FFFFD000).w,a1
-		move.w	obX(a1),d0
-		sub.w	obX(a0),d0
-		btst	#0,obStatus(a0)
-		bne.s	Obj5D_ChkSonic
-		neg.w	d0
+		move.b	#0,$30(a0)
 
-Obj5D_ChkSonic:
-		addi.w	#$50,d0
-		cmpi.w	#$F0,d0		; is Sonic more	than $A0 pixels	from the fan?
-		bcc.s	Obj5D_Animate	; if yes, branch
-		move.w	obY(a1),d1
-		addi.w	#$60,d1
-		sub.w	obY(a0),d1
-		bcs.s	Obj5D_Animate
-		cmpi.w	#$70,d1
-		bcc.s	Obj5D_Animate
-		subi.w	#$50,d0
-		bcc.s	loc_1159A
-		not.w	d0
-		add.w	d0,d0
+		move.w	($FFFFD008).w,d0
+		move.w	obX(a0),d1
+		subi.w	#$40,d1
+		cmp.w	d1,d0
+		bls.s	Obj5D_Animate
+		
+		move.w	d1,d2	; target Sonic X pos
 
-loc_1159A:
-		addi.w	#$60,d0
-		btst	#0,obStatus(a0)
-		bne.s	loc_115A8
-		neg.w	d0
+		addi.w	#$100,d1
+		cmp.w	d1,d0
+		bhi.s	Obj5D_Animate
+		
+		move.w	($FFFFD00C).w,d0
+		move.w	obY(a0),d1
+		subi.w	#$100,d1
+		cmp.w	d0,d1
+		bhi.s	Obj5D_Animate
 
-loc_115A8:
-		neg.b	d0
-		asr.w	#4,d0
-		btst	#0,obSubtype(a0)
-		beq.s	Obj5D_MoveSonic
-		neg.w	d0
-
-Obj5D_MoveSonic:
-		add.w	d0,obX(a1)	; push Sonic away from the fan
+		move.b	#1,$30(a0)
+		move.w	d2,($FFFFD008).w
+		
+		btst	#0,($FFFFFE0F).w
+		bne.s	@0
+		move.w	#$B8,d0
+		jsr	PlaySound_Special
+@0:
+		btst	#3,($FFFFF602).w	; right still pressed?
+		bne.s	Obj5D_Animate
+		move.w	#-$800,d0
+		move.w	d0,($FFFFD010).w
+		move.w	d0,($FFFFD014).w
 
 Obj5D_Animate:				; XREF: Obj5D_ChkSonic
+		tst.b	$30(a0)
+		bne.s	@fast
+		move.w	($FFFFFE04).w,d0
+		andi.w	#3,d0
+		bne.s	Obj5D_ChkDel
+@fast:
 		subq.b	#1,obTimeFrame(a0)
 		bpl.s	Obj5D_ChkDel
 		move.b	#0,obTimeFrame(a0)
@@ -26821,11 +26819,6 @@ Obj5D_Animate:				; XREF: Obj5D_ChkSonic
 
 loc_115D8:
 		moveq	#0,d0
-		btst	#0,obSubtype(a0)
-		beq.s	loc_115E4
-		moveq	#2,d0
-
-loc_115E4:
 		add.b	obAniFrame(a0),d0
 		move.b	d0,obFrame(a0)
 
@@ -26863,6 +26856,11 @@ BombPellets = 4
 ; ===========================================================================
 
 Obj5E:					; XREF: Obj_Index
+		frantic
+		bne.s	@frantic
+		jmp	DeleteObject
+
+@frantic:
 		bsr.w	Obj5E_FaceSonic
 
 		moveq	#0,d0
@@ -27558,6 +27556,7 @@ Obj5F_BossDelete:
 		clr.b	($FFFFFF76).w
 		clr.b	($FFFFF7AA).w
 		clr.b	($FFFFFE2D).w			; disable invincibility
+		clr.b	($FFFFFFE1).w
 
 		clr.b	($FFFFFF68).w			; revert lives counter to normal
 		ori.b	#1,($FFFFFE1C).w		; update lives counter (to reset it from the boss)
@@ -29463,7 +29462,7 @@ Obj02_Display:
 Obj02_DisplayE:
 		cmpi.b	#6,($FFFFD024).w	; is Sonic dying?
 		blt.s	Obj02_DE_No		; if not, branch
-		cmpi.w	#$14A,obScreenY(a0)		; has location been reached?
+		cmpi.w	#$140,obScreenY(a0)		; has location been reached?
 		bmi.s	Obj02_DE_No		; if yes, branch
 		subq.w	#1,obScreenY(a0)		; move up
 

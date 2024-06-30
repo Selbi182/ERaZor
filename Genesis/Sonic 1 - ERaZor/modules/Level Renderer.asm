@@ -1249,6 +1249,7 @@ ChunkStream_Load:
 
 	; Calculate in-layout offset
 	moveq   #-1,d2                          ; WARNING: Chunks array base address should be $FF0000!
+	andi.w	#$3FFF,d0			; d0 = Xpos % $4000
 	asr.w   #7-1,d0                         ; d0 = Xpos/$40
 	andi.w  #$700,d1                        ; d1 = Ypos % $100
 	add.w   d0,d1                           ; d1 = in-layout offset
@@ -1289,7 +1290,10 @@ ChunkStream_Load:
 
 ChunkStream_Reload_Horizontal:
 	moveq   #-1,d1                          ; WARNING: Chunks array base address should be $FF0000!
-	addq.w  #1,d2                           ; next in-layout offset
+	add.w	d2,d2
+	add.w	d2,d2
+	addq.b  #1<<2,d2
+	asr.w	#2,d2				; next in-layout offset (wraps every $40 chunks on X-axis)
 	bmi.s   @GetNullChunk
 	moveq   #$7F,d0
 	and.b   (a0,d2),d0                      ; d0 = chunk

@@ -4104,7 +4104,7 @@ LZWaterSlides:				; XREF: LZWaterEffects
 		lsr.w	#2,d0
 		andi.w	#$1C0,d0
 		move.b	obX(a1),d1
-		andi.w	#$7F,d1
+		andi.w	#$3F,d1
 		add.w	d1,d0
 		lea	LevelLayout_FG,a2
 		move.b	(a2,d0.w),d0
@@ -30062,7 +30062,7 @@ loc_13926:
 		lsr.w	#2,d0
 		andi.w	#$1C0,d0
 		move.b	obX(a0),d1
-		andi.w	#$7F,d1
+		andi.w	#$3F,d1
 		add.w	d1,d0
 		lea	LevelLayout_FG, a1
 		move.b	(a1,d0.w),d1	; d1 is	the 256x256 tile Sonic is currently on
@@ -31377,7 +31377,7 @@ Floor_ChkTile:				; XREF: FindFloor; et al
 		andi.w	#$1C0,d0		; d0 = (Y-pos / $100) * $40
 		move.w	d3,d1			; d1 = X-pos (sensor)
 		lsr.w	#8,d1			; d1 = X-pos / $100
-		andi.w	#$7F,d1			; d1 = (X-pos / $100) & $7F
+		andi.w	#$3F,d1			; d1 = (X-pos / $100) & $3F
 		add.w	d1, d0			; d0 = in-layout pos
 
 		moveq	#-1,d1

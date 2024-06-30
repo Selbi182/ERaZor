@@ -2791,11 +2791,8 @@ Title_ClrObjRam:
 		bsr	Pal_FadeFrom
 
 		VBlank_SetMusicOnly
-		lea	($C00004).l,a5
-		lea	($C00000).l,a6
-		lea	($FFFFF708).w,a3
-
-		jsr 	LevelRenderer_DrawLayout_BG
+		lea	LevelRenderer_DefaultConfig_BG, a0
+		jsr 	LevelRenderer_DrawLayout_BG_2
 
 		lea	($FF0000).l,a1
 		lea	(Eni_Title).l,a0 ; load	title screen mappings

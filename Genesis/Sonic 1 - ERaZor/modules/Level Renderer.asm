@@ -307,7 +307,10 @@ LevelRenderer_DrawLayout_FG:
 ; Subroutine to initially render level layout from start (BG)
 ; ---------------------------------------------------------------
 
-LevelRenderer_DrawLayout_BG: 
+LevelRenderer_DrawLayout_BG:
+
+LevelRenderer_DrawLayout_BG_2:	equ	@draw_direct
+
 	cmp.w   #$0500, CurrentLevel        ; is level SBZ1?
 	beq.s   @draw_bg_sbz1               ; if yes, branch
 
@@ -317,6 +320,8 @@ LevelRenderer_DrawLayout_BG:
 	add.w   d0, d0
     @0: lea     LevelRend_LayerRAM_BG, a1
 	movea.l @BG_Configs(pc, d0), a0
+
+@draw_direct:
 	move.l  a0, LevelRend_BG_Config     ; save background configuration
 
     if def(__DEBUG__)

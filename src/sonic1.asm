@@ -1369,7 +1369,7 @@ ProcessDMAQueue_Done:
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Pallet cycling routine loading subroutine
+; Palette cycling routine loading subroutine
 ; ---------------------------------------------------------------------------
 
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
@@ -1395,7 +1395,7 @@ PCL_Load:
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Pallet cycling routines
+; Palette cycling routines
 ; ---------------------------------------------------------------------------
 PalCycle:	dc.w PalCycle_GHZ-PalCycle
 		dc.w PalCycle_LZ-PalCycle
@@ -1715,28 +1715,54 @@ locret_1B64:
 
 
 ; ===========================================================================
-Pal_TitleCyc:	incbin	pallet\c_title.bin
-Pal_GHZCyc:	incbin	pallet\c_ghz.bin
-Pal_LZCyc1:	incbin	pallet\c_lz_wat.bin	; waterfalls pallet
-Pal_LZCyc2:	incbin	pallet\c_lz_bel.bin	; conveyor belt pallet
-Pal_LZCyc3:	incbin	pallet\c_lz_buw.bin	; conveyor belt (underwater) pallet
-Pal_SLZCyc:	incbin	pallet\c_slz.bin
-Pal_SYZCyc1:	incbin	pallet\c_syz_1.bin
-Pal_SYZCyc2:	incbin	pallet\c_syz_2.bin
+Pal_TitleCyc:	incbin	palette\c_title.bin
+Pal_GHZCyc:	incbin	palette\c_ghz.bin
+Pal_LZCyc1:	incbin	palette\c_lz_wat.bin	; waterfalls palette
+Pal_LZCyc2:	incbin	palette\c_lz_bel.bin	; conveyor belt palette
+Pal_LZCyc3:	incbin	palette\c_lz_buw.bin	; conveyor belt (underwater) palette
+Pal_SLZCyc:	incbin	palette\c_slz.bin
+Pal_SYZCyc1:	incbin	palette\c_syz_1.bin
+Pal_SYZCyc2:	incbin	palette\c_syz_2.bin
+; ===========================================================================
 
-Pal_SBZCycList:  include "_inc\SBZ pallet script 2.asm"
-Pal_SBZCycList2: include "_inc\SBZ pallet script 2.asm"
+Pal_SBZCycList2: 
+		dc.w 6
+		dc.b 7,	8
+		dc.w Pal_SBZCyc1
+		dc.w $FB50
+		dc.b $D, 8
+		dc.w Pal_SBZCyc2
+		dc.w $FB52
+		dc.b 9,	8
+		dc.w Pal_SBZCyc9
+		dc.w $FB70
+		dc.b 7,	8
+		dc.w Pal_SBZCyc6
+		dc.w $FB72
+		dc.b 3,	3
+		dc.w Pal_SBZCyc8
+		dc.w $FB78
+		dc.b 3,	3
+		dc.w Pal_SBZCyc8+2
+		dc.w $FB7A
+		dc.b 3,	3
+		dc.w Pal_SBZCyc8+4
+		dc.w $FB7C
+		dc.b 3, 8
+		dc.w Pal_SBZCyc2
+		dc.w $FB32
+		even
 
-Pal_SBZCyc1:	incbin	pallet\c_sbz_1.bin
-Pal_SBZCyc2:	incbin	pallet\c_sbz_2.bin
-Pal_SBZCyc3:	incbin	pallet\c_sbz_3.bin
-Pal_SBZCyc4:	incbin	pallet\c_sbz_4.bin
-Pal_SBZCyc5:	incbin	pallet\c_sbz_5.bin
-Pal_SBZCyc6:	incbin	pallet\c_sbz_6.bin
-Pal_SBZCyc7:	incbin	pallet\c_sbz_7.bin
-Pal_SBZCyc8:	incbin	pallet\c_sbz_8.bin
-Pal_SBZCyc9:	incbin	pallet\c_sbz_9.bin
-Pal_SBZCyc10:	incbin	pallet\c_sbz_10.bin
+Pal_SBZCyc1:	incbin	palette\c_sbz_1.bin
+Pal_SBZCyc2:	incbin	palette\c_sbz_2.bin
+Pal_SBZCyc3:	incbin	palette\c_sbz_3.bin
+Pal_SBZCyc4:	incbin	palette\c_sbz_4.bin
+Pal_SBZCyc5:	incbin	palette\c_sbz_5.bin
+Pal_SBZCyc6:	incbin	palette\c_sbz_6.bin
+Pal_SBZCyc7:	incbin	palette\c_sbz_7.bin
+Pal_SBZCyc8:	incbin	palette\c_sbz_8.bin
+Pal_SBZCyc9:	incbin	palette\c_sbz_9.bin
+Pal_SBZCyc10:	incbin	palette\c_sbz_10.bin
 		even
 
 ; ===========================================================================
@@ -1756,7 +1782,7 @@ Pal_FadeTo2:
 		moveq	#0,d1
 		move.b	($FFFFF627).w,d0
 Pal_ToBlack:	move.w	d1,(a0)+
-		dbf	d0,Pal_ToBlack	; fill pallet with $000	(black)
+		dbf	d0,Pal_ToBlack	; fill palette with $000	(black)
 
 		moveq	#$E,d4					; MJ: prepare maximum colour check
 		moveq	#0,d6					; MJ: clear d6
@@ -2084,7 +2110,7 @@ loc_2006:				; XREF: Pal_AddColor2
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Pallet cycling routine - Sega	logo
+; Palette cycling routine - Sega	logo
 ; ---------------------------------------------------------------------------
 
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
@@ -2181,9 +2207,9 @@ loc_20BC:
 
 ; ===========================================================================
 
-Pal_Sega1:	incbin	pallet\sega1.bin
-Pal_Sega2:	incbin	pallet\sega2.bin
-Pal_Sega2OG:	incbin	pallet\sega2_original.bin
+Pal_Sega1:	incbin	palette\sega1.bin
+Pal_Sega2:	incbin	palette\sega2.bin
+Pal_Sega2OG:	incbin	palette\sega2_original.bin
 
 ; ---------------------------------------------------------------------------
 ; Subroutines to load pallets
@@ -2199,7 +2225,7 @@ PalLoad1:
 		movea.l	(a1)+,a2		; pointer
 		movea.w	(a1)+,a3		; RAM address
 		adda.w	#$80,a3
-		move.w	(a1)+,d7		; (pallet length / 2) - 1
+		move.w	(a1)+,d7		; (palette length / 2) - 1
 		
 		bra.s	loc_2128
 ; End of function PalLoad1
@@ -2228,7 +2254,7 @@ loc_2128:
 ; End of function PalLoad2
 
 ; ---------------------------------------------------------------------------
-; Underwater pallet loading subroutine
+; Underwater palette loading subroutine
 ; ---------------------------------------------------------------------------
 
 ; ||||||||||||||| S U B R O U T I N E |||||||||||||||||||||||||||||||||||||||
@@ -2387,26 +2413,51 @@ ContrastBoost:
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Pallet pointers
+; Palette pointers
 ; ---------------------------------------------------------------------------
 PalPointers:
-         include "_inc\Pallet pointers.asm"
+	;    palette		RAM   length/2-1
+	dc.l Pal_SegaBG,	$FB00 001F
+	dc.l Pal_Title,		$FB00 001F
+	dc.l Pal_LevelSel,	$FB00 001F
+	dc.l Pal_Sonic,		$FB00 0007
+	dc.l Pal_GHZ,		$FB20 0017
+	dc.l Pal_LZ2,		$FB20 0017
+	dc.l Pal_MZ,		$FB20 0017
+	dc.l Pal_SLZ,		$FB20 0017
+	dc.l Pal_SYZ,		$FB20 0017
+	dc.l Pal_SBZ2,		$FB20 0017
+	dc.l Pal_Special,	$FB00 001F
+	dc.l Pal_LZWater2,	$FB00 001F
+	dc.l Pal_GHZ3,		$FB20 0017
+	dc.l Pal_GHZ2,		$FB20 0017
+	dc.l Pal_FZ,		$FB20 0017
+	dc.l Pal_LZSonWater,	$FB00 0007
+	dc.l Pal_Null,		$FB00 0007
+	dc.l Pal_Null,		$FB00 001F
+	dc.l Pal_SpeContinue,	$FB00 000F
+	dc.l Pal_Ending,	$FB00 001F
+	dc.l STS_Palette,	$FB00 001F
+	dc.l Pal_BCutscene,	$FB20 001F
+	dc.l Pal_SpecialEaster,	$FB00 001F
+	dc.l Pal_LZWater2_Evil,	$FB00 001F
+	even
 
 ; ---------------------------------------------------------------------------
-; Pallet data
+; Palette data
 ; ---------------------------------------------------------------------------
-Pal_SegaBG:		incbin	pallet\sega_bg.bin
-Pal_Title:		incbin	pallet\title.bin
+Pal_SegaBG:		incbin	palette\sega_bg.bin
+Pal_Title:		incbin	palette\title.bin
 Pal_LevelSel:		incbin	Screens\OptionsScreen\Options_Pal.bin
-Pal_Sonic:		incbin	pallet\sonic.bin
-Pal_GHZ:		incbin	pallet\ghz.bin
-Pal_GHZ2:		incbin	pallet\ghz2.bin
-Pal_GHZ3:		incbin	pallet\ghz3.bin
-Pal_LZ2:		incbin	pallet\lz2.bin
-Pal_LZWater2:		incbin	pallet\lz_uw2.bin
-Pal_MZ:			incbin	pallet\mz.bin
-Pal_SLZ:		incbin	pallet\slz.bin
-Pal_SYZ:		incbin	pallet\syz.bin
+Pal_Sonic:		incbin	palette\sonic.bin
+Pal_GHZ:		incbin	palette\ghz.bin
+Pal_GHZ2:		incbin	palette\ghz2.bin
+Pal_GHZ3:		incbin	palette\ghz3.bin
+Pal_LZ2:		incbin	palette\lz2.bin
+Pal_LZWater2:		incbin	palette\lz_uw2.bin
+Pal_MZ:			incbin	palette\mz.bin
+Pal_SLZ:		incbin	palette\slz.bin
+Pal_SYZ:		incbin	palette\syz.bin
 Pal_SYZGray:
 		dc.w	$0222,$0000,$0444,$0666,$0888,$0CCC,$0EEE,$0AAA,$0888,$0444,$0AAA,$0666,$00EE,$0088,$0044,$0444
 		dc.w	$0444,$0000,$0EEE,$0AAA,$0888,$0666,$0222,$0222,$0000,$0AAA,$0666,$0222,$0EEE,$0888,$0666,$0000
@@ -2414,17 +2465,17 @@ Pal_SYZGray:
 		even
 	
 	
-Pal_SBZ2:		incbin	pallet\fz.bin
-Pal_FZ:			incbin	pallet\fz.bin
-Pal_Special:		incbin	pallet\special.bin
-Pal_LZSonWater:		incbin	pallet\son_lzuw.bin
-Pal_SpeContinue:	incbin	pallet\sscontin.bin
-Pal_Ending:		incbin	pallet\ending.bin
-Pal_Null:		incbin	pallet\null.bin
-Pal_BCutscene:		incbin	pallet\bombcutscene.bin
-Pal_SpecialEaster:	incbin	pallet\specialeaster.bin
-Pal_LZWater2_Evil:	incbin	pallet\lz_uw2_evil.bin
-Pal_ERaZorBanner:	incbin	pallet\ERaZor.bin
+Pal_SBZ2:		incbin	palette\fz.bin
+Pal_FZ:			incbin	palette\fz.bin
+Pal_Special:		incbin	palette\special.bin
+Pal_LZSonWater:		incbin	palette\son_lzuw.bin
+Pal_SpeContinue:	incbin	palette\sscontin.bin
+Pal_Ending:		incbin	palette\ending.bin
+Pal_Null:		incbin	palette\null.bin
+Pal_BCutscene:		incbin	palette\bombcutscene.bin
+Pal_SpecialEaster:	incbin	palette\specialeaster.bin
+Pal_LZWater2_Evil:	incbin	palette\lz_uw2_evil.bin
+Pal_ERaZorBanner:	incbin	palette\ERaZor.bin
 
 ; ---------------------------------------------------------------------------
 ; Subroutine to	delay the program by ($FFFFF62A) frames
@@ -2683,7 +2734,7 @@ SegaScreen:				; XREF: GameModeArray
 		bsr	ShowVDPGraphics
 
 		moveq	#0,d0
-		bsr	PalLoad2	; load Sega logo pallet
+		bsr	PalLoad2	; load Sega logo palette
 		move.w	#$0000,($FFFFFB00).w	; set background colour to black
 		move.w	#$0000,($FFFFFB02).w	; set background colour to black
 		move.b	#$00,($FF2000).l	; clear counter
@@ -2834,7 +2885,7 @@ Title_ClrObjRam:
 		move.w	#0,($FFFFFFF0).w ; disable demo mode
 		move.w	#0,($FFFFFFEA).w
 		move.w	#0, CurrentLevel	; set level to	GHZ (00)
-		move.w	#0,($FFFFF634).w ; disable pallet cycling
+		move.w	#0,($FFFFF634).w ; disable palette cycling
 
 		bsr	LevelSizeLoad
 		bsr	DeformBgLayer
@@ -2869,7 +2920,7 @@ Title_ClrObjRam:
 		lea	(ArtKospM_ERaZor).l,a0
 		bsr	KosPlusMDec_VRAM
 
-		moveq	#1,d0		; load title screen pallet
+		moveq	#1,d0		; load title screen palette
 		bsr	PalLoad1
 
 		move.b	#$8A,d0		; play title screen music
@@ -3427,13 +3478,13 @@ Level_LoadPal:
 		move.w	#$1E,($FFFFFE14).w ; set oxygen timer
 		cmpi.b	#1,($FFFFFE10).w ; is level LZ?
 		bne.s	Level_GetBgm	; if not, branch
-		moveq	#$F,d0		; pallet number	$0F (LZ)
+		moveq	#$F,d0		; palette number	$0F (LZ)
 		cmpi.b	#3,($FFFFFE11).w ; is act number 3?
 		bne.s	Level_WaterPal	; if not, branch
-		moveq	#$10,d0		; pallet number	$10 (SBZ3)
+		moveq	#$10,d0		; palette number	$10 (SBZ3)
 
 Level_WaterPal:
-		bsr	PalLoad3_Water	; load underwater pallet (see d0)
+		bsr	PalLoad3_Water	; load underwater palette (see d0)
 		tst.b	($FFFFFE30).w
 		beq.s	Level_GetBgm
 		move.b	($FFFFFE53).w,($FFFFF64E).w
@@ -3453,8 +3504,8 @@ Level_GetBgm:
 		move.b	#$99,d0			; play introduction music
 		jsr	PlaySound_Special
 
-		moveq	#$E,d0		; use FZ pallet
-		bsr	PalLoad2	; load pallet (based on	d0)
+		moveq	#$E,d0		; use FZ palette
+		bsr	PalLoad2	; load palette (based on	d0)
 		move.w	#$0000,($FFFFFB40).w
 
 		move.b	#10,d0		; VLADIK => Load hint number
@@ -3535,7 +3586,7 @@ Level_NoMusic2:
 
 Level_CinematicHud:
 		moveq	#3,d0
-		bsr	PalLoad2	; load Sonic's pallet line
+		bsr	PalLoad2	; load Sonic's palette line
 	
 		moveq	#2,d0
 		jsr	LoadPLC		; load explosion patterns
@@ -3545,7 +3596,7 @@ Level_CinematicHud:
 
 Level_NoTitleCard:
 		moveq	#3,d0
-		bsr	PalLoad2	; load Sonic's pallet line
+		bsr	PalLoad2	; load Sonic's palette line
 
 Level_TtlCard:
 		move.b	#$C,VBlankRoutine
@@ -3565,7 +3616,7 @@ Level_TtlCard:
 
 loc_3946:
 		moveq	#3,d0
-		bsr	PalLoad1	; load Sonic's pallet line
+		bsr	PalLoad1	; load Sonic's palette line
 		bsr	LevelSizeLoad
 		bsr	DeformBgLayer
 		bset	#2,($FFFFF754).w
@@ -3670,10 +3721,10 @@ loc_39E8:
 Level_ChkWaterPal:
 		cmpi.b	#1,($FFFFFE10).w ; is level LZ/SBZ3?
 		bne.s	Level_Delay	; if not, branch
-		moveq	#$B,d0		; pallet $0B (LZ underwater)
+		moveq	#$B,d0		; palette $0B (LZ underwater)
 		cmpi.b	#3,($FFFFFE11).w ; is level SBZ3?
 		bne.s	Level_WaterPal2	; if not, branch
-		moveq	#$D,d0		; pallet $0D (SBZ3 underwater)
+		moveq	#$D,d0		; palette $0D (SBZ3 underwater)
 
 Level_WaterPal2:
 		bsr	PalLoad4_Water
@@ -4909,7 +4960,7 @@ SS_ClrNemRam:	move.l	d0,(a1)+
 		tst.b	($FFFFFF5F).w	; is this the blackout special stage?
 		beq.s	@contx		; if not, branch
 		moveq	#22,d0		; load dark/red palette
-@contx:		bsr	PalLoad1	; load special stage pallet
+@contx:		bsr	PalLoad1	; load special stage palette
 		jsr	SS_Load
 
 		move.l	#0,($FFFFF700).w
@@ -5178,7 +5229,7 @@ SS_BGLoad:				; XREF: SpecialStage
 ; End of function SS_BGLoad
 
 ; ---------------------------------------------------------------------------
-; Pallet cycling routine - special stage
+; Palette cycling routine - special stage
 ; ---------------------------------------------------------------------------
 
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
@@ -5281,9 +5332,9 @@ byte_4ABC:	dc.b $10, 1, $18, 0, $18, 1, $20, 0, $20, 1, $28, 0, $28, 1
 					; XREF: PalCycle_SS
 		even
 
-Pal_SSCyc1:	incbin	pallet\c_ss_1.bin
+Pal_SSCyc1:	incbin	palette\c_ss_1.bin
 		even
-Pal_SSCyc2:	incbin	pallet\c_ss_2.bin
+Pal_SSCyc2:	incbin	palette\c_ss_2.bin
 		even
 
 ; ---------------------------------------------------------------------------
@@ -5423,7 +5474,7 @@ Cont_ClrObjRam:
 		moveq	#$00,d1
 		jsr	ContScrCounter	; run countdown	(start from 10)
 		moveq	#$12,d0
-		bsr	PalLoad1	; load continue	screen pallet
+		bsr	PalLoad1	; load continue	screen palette
 		move.b	#$90,d0
 		bsr	PlaySound	; play continue	music
 		move.w	#659,($FFFFF614).w ; set time delay to 11 seconds
@@ -5762,12 +5813,12 @@ End_LoadData:
 		jsr 	LevelRenderer_DrawLayout_BG
 		VBlank_UnsetMusicOnly
 		move.l	#Col_GHZ,($FFFFF796).w ; load collision	index
-		move	#$2300,sr
-		lea	(Kos_EndFlowers).l,a0 ;	load extra flower patterns
-		lea	($FFFF9400).w,a1 ; RAM address to buffer the patterns
-		bsr	KosDec
+	;	move	#$2300,sr
+	;	lea	(Kos_EndFlowers).l,a0 ;	load extra flower patterns
+	;	lea	($FFFF9400).w,a1 ; RAM address to buffer the patterns
+	;	bsr	KosDec
 		moveq	#3,d0
-		bsr	PalLoad1	; load Sonic's pallet
+		bsr	PalLoad1	; load Sonic's palette
 
 End_LoadSonic:
 		move.b	#1,($FFFFD000).w ; load	Sonic object
@@ -5872,7 +5923,7 @@ loc_5334:
 		VBlank_UnsetMusicOnly
 
 		moveq	#$13,d0
-		bsr	PalLoad1	; load ending pallet
+		bsr	PalLoad1	; load ending palette
 		bsr	Pal_MakeWhite
 		bra.w	End_MainLoop
 
@@ -6184,10 +6235,10 @@ Cred_ClrObjRam:
 
 Cred_ClrPallet:
 		move.l	d0,(a1)+
-		dbf	d1,Cred_ClrPallet ; fill pallet	with black ($0000)
+		dbf	d1,Cred_ClrPallet ; fill palette	with black ($0000)
 
 		moveq	#3,d0
-		bsr	PalLoad1	; load Sonic's pallet
+		bsr	PalLoad1	; load Sonic's palette
 		move.b	#$8A,($FFFFD080).w ; load credits object
 		jsr	ObjectsLoad
 		jsr	BuildSprites
@@ -6254,10 +6305,10 @@ TryAg_ClrObjRam:
 
 TryAg_ClrPallet:
 		move.l	d0,(a1)+
-		dbf	d1,TryAg_ClrPallet ; fill pallet with black ($0000)
+		dbf	d1,TryAg_ClrPallet ; fill palette with black ($0000)
 
 		moveq	#$13,d0
-		bsr	PalLoad1	; load ending pallet
+		bsr	PalLoad1	; load ending palette
 		clr.w	($FFFFFBC0).w
 		move.b	#$8B,($FFFFD080).w ; load Eggman object
 		jsr	ObjectsLoad
@@ -6707,20 +6758,20 @@ MainLoadBlockLoad:			; XREF: Level; EndingSequence
 MLB_NotBCut:
 		cmpi.w	#$001,($FFFFFE10).w	; is level GHZ2?
 		bne.s	MLB_NotGHZ2		; if not, branch
-		moveq	#$D,d0			; use GHZ2 pallet
+		moveq	#$D,d0			; use GHZ2 palette
 
 MLB_NotGHZ2:
 		cmpi.w	#$002,($FFFFFE10).w	; is level GHZ3?
 		bne.s	MLB_NotGHZ3		; if not, branch
-		moveq	#$C,d0			; use GHZ3 pallet
+		moveq	#$C,d0			; use GHZ3 palette
 
 MLB_NotGHZ3:
 		cmpi.w	#$502,($FFFFFE10).w ; is level FZ?
 		bne.s	MLB_NormalPal	; if not, branch
-		moveq	#$E,d0		; use FZ pallet
+		moveq	#$E,d0		; use FZ palette
 
 MLB_NormalPal:
-		bsr	PalLoad1	; load pallet (based on	d0)
+		bsr	PalLoad1	; load palette (based on	d0)
 		movea.l	(sp)+,a2
 		addq.w	#4,a2
 		moveq	#0,d0
@@ -16758,7 +16809,7 @@ Obj34_NotSpecial2:
 		dbf	d1,Obj34_Loop	; repeat sequence another 3 times
 		movem.l	d0-a7,-(sp)
 		moveq	#3,d0
-		jsr	PalLoad2	; load Sonic's pallet line
+		jsr	PalLoad2	; load Sonic's palette line
 		movem.l	(sp)+,d0-a7
 ; ---------------------------------------------------------------------------
 
@@ -20042,7 +20093,7 @@ Obj0D_Touch:				; XREF: Obj0D_Index
 		beq.s	locret_EBBA		; if not, branch
 		clr.b	($FFFFFFE7).w		; disabled Inhuman Mode
 		move.w	d7,-(sp)		; back up d7
-		moveq	#3,d0			; load Sonic's pallet
+		moveq	#3,d0			; load Sonic's palette
 		jsr	PalLoad2		; restore sonic's palette
 		move.w	(sp)+,d7		; restore d7
 
@@ -26409,9 +26460,9 @@ Obj02_Display:
 Obj02_DisplayE:
 		cmpi.b	#6,($FFFFD024).w	; is Sonic dying?
 		blt.s	Obj02_DE_No		; if not, branch
-		cmpi.w	#$140,obScreenY(a0)		; has location been reached?
+		cmpi.w	#$141,obScreenY(a0)	; has target location been reached?
 		bmi.s	Obj02_DE_No		; if yes, branch
-		subq.w	#1,obScreenY(a0)		; move up
+		subq.w	#1,obScreenY(a0)	; move up
 
 Obj02_DE_No:		
 		jmp	DisplaySprite		; jump to DisplaySprite
@@ -26786,7 +26837,7 @@ Obj06_DoHardPartSkip:
 
 @nottutorial:
 		move.w	d7,-(sp)		; back up d7
-		moveq	#3,d0			; load Sonic's pallet
+		moveq	#3,d0			; load Sonic's palette
 		jsr	PalLoad2		; restore sonic's palette
 		move.w	(sp)+,d7		; restore d7
 
@@ -29265,10 +29316,10 @@ AM_End:
 Sonic_AutomaticRoll:
 		tst.b	obAnim(a0)		; are we on the walking/running animations?
 		beq.s	AR_ChangeAnim		; if yes, force roll
+		cmpi.b	#$18,($FFFFF600).w	; are we in the ending sequence?
+		beq.s	AR_End			; if yes, don't change animation to not mess up the gag
 		cmpi.b	#$D,obAnim(a0)		; are we on the stopping animation (sliding off a platform)?
 		bls.s	AR_ChangeAnim		; if yes, force roll
-	;	btst	#6,($FFFFF602).w	; is A pressed?
-	;	beq.s	AR_End			; if not, don't change animation
 		bra.s	AR_End			; actually you know what fuck you A
 
 AR_ChangeAnim:
@@ -34996,8 +35047,8 @@ Obj8A_Main:				; XREF: Obj8A_Index
 		beq.s	Obj8A_Display	; if not, branch
 		cmpi.b	#$72,($FFFFF604).w ; is	Start+A+C+Down being pressed?
 		bne.s	Obj8A_Display	; if not, branch
-		move.w	#$EEE,($FFFFFBC0).w ; 3rd pallet, 1st entry = white
-		move.w	#$880,($FFFFFBC2).w ; 3rd pallet, 2nd entry = cyan
+		move.w	#$EEE,($FFFFFBC0).w ; 3rd palette, 1st entry = white
+		move.w	#$880,($FFFFFBC2).w ; 3rd palette, 2nd entry = cyan
 		jmp	DeleteObject
 ; ===========================================================================
 
@@ -35162,7 +35213,7 @@ loopdashit:
 		move.w	d0,obVelY(a0)	; set final speed to upwarsd moving
 
 Obj3D_ShipFlash:
-		lea	($FFFFFB22).w,a1 ; load	2nd pallet, 2nd	entry
+		lea	($FFFFFB22).w,a1 ; load	2nd palette, 2nd	entry
 		moveq	#0,d0		; move 0 (black) to d0
 		tst.w	(a1)
 		bne.s	loc_1783C
@@ -41400,7 +41451,163 @@ SSL_NoReplace2:
 ; Special stage	mappings and VRAM pointers
 ; ---------------------------------------------------------------------------
 SS_MapIndex:
-		include	"_inc\Special stage mappings and VRAM pointers.asm"
+		dc.l Map_SSWalls	; address of mappings
+		dc.w $142		; VRAM setting
+		dc.l Map_SSWalls
+		dc.w $142
+		dc.l Map_SSWalls
+		dc.w $142
+		dc.l Map_SSWalls
+		dc.w $142
+		dc.l Map_SSWalls
+		dc.w $142
+		dc.l Map_SSWalls
+		dc.w $142
+		dc.l Map_SSWalls
+		dc.w $142
+		dc.l Map_SSWalls
+		dc.w $142
+		dc.l Map_SSWalls
+		dc.w $142
+		dc.l Map_SSWalls
+		dc.w $2142
+		dc.l Map_SSWalls
+		dc.w $2142
+		dc.l Map_SSWalls
+		dc.w $2142
+		dc.l Map_SSWalls
+		dc.w $2142
+		dc.l Map_SSWalls
+		dc.w $2142
+		dc.l Map_SSWalls
+		dc.w $2142
+		dc.l Map_SSWalls
+		dc.w $2142
+		dc.l Map_SSWalls
+		dc.w $2142
+		dc.l Map_SSWalls
+		dc.w $2142
+		dc.l Map_SSWalls
+		dc.w $4142
+		dc.l Map_SSWalls
+		dc.w $4142
+		dc.l Map_SSWalls
+		dc.w $4142
+		dc.l Map_SSWalls
+		dc.w $4142
+		dc.l Map_SSWalls
+		dc.w $4142
+		dc.l Map_SSWalls
+		dc.w $4142
+		dc.l Map_SSWalls
+		dc.w $4142
+		dc.l Map_SSWalls
+		dc.w $4142
+		dc.l Map_SSWalls
+		dc.w $4142
+		dc.l Map_SSWalls
+		dc.w $6142
+		dc.l Map_SSWalls
+		dc.w $6142
+		dc.l Map_SSWalls
+		dc.w $6142
+		dc.l Map_SSWalls
+		dc.w $6142
+		dc.l Map_SSWalls
+		dc.w $6142
+		dc.l Map_SSWalls
+		dc.w $6142
+		dc.l Map_SSWalls
+		dc.w $6142
+		dc.l Map_SSWalls
+		dc.w $6142
+		dc.l Map_SSWalls
+		dc.w $6142
+		dc.l Map_obj47
+		dc.w $23B
+		dc.l Map_SS_R
+		dc.w $570
+		dc.l Map_SS_R
+		dc.w $251
+		dc.l Map_SS_R
+		dc.w $370
+		dc.l Map_SS_Up
+		dc.w $263
+		dc.l Map_SS_Down
+		dc.w $263
+		dc.l Map_SS_R
+		dc.w $22F0
+		dc.l Map_SS_Glass
+		dc.w $470
+		dc.l Map_SS_Glass
+		dc.w $5F0
+		dc.l Map_SS_Glass
+		dc.w $65F0
+		dc.l Map_SS_Glass
+		dc.w $25F0
+		dc.l Map_SS_Glass
+		dc.w $45F0
+		dc.l Map_SS_R
+		dc.w $2F0
+		dc.l Map_obj47+$1000000	; add frame no.	* $1000000
+		dc.w $23B
+		dc.l Map_obj47+$2000000
+		dc.w $23B
+		dc.l Map_SS_R
+		dc.w $797
+		dc.l Map_SS_R
+		dc.w $7A0
+		dc.l Map_SS_R
+		dc.w $7A9
+		dc.l Map_SS_R
+		dc.w $797
+		dc.l Map_SS_R
+		dc.w $7A0
+		dc.l Map_SS_R
+		dc.w $7A9
+		dc.l Map_obj25
+		dc.w $27B2
+		dc.l Map_SS_Chaos3
+		dc.w $770
+		dc.l Map_SS_Chaos3
+		dc.w $2770
+		dc.l Map_SS_Chaos3
+		dc.w $4770
+		dc.l Map_SS_Chaos3
+		dc.w $6770
+		dc.l Map_SS_Chaos1
+		dc.w $770
+		dc.l Map_SS_Chaos2
+		dc.w $770
+		dc.l Map_SS_R
+		dc.w $4F0
+		dc.l Map_obj25+$4000000
+		dc.w $27B2
+		dc.l Map_obj25+$5000000
+		dc.w $27B2
+		dc.l Map_obj25+$6000000
+		dc.w $27B2
+		dc.l Map_obj25+$7000000
+		dc.w $27B2
+		dc.l Map_SS_Glass
+		dc.w $23F0
+		dc.l Map_SS_Glass+$1000000
+		dc.w $23F0
+		dc.l Map_SS_Glass+$2000000
+		dc.w $23F0
+		dc.l Map_SS_Glass+$3000000
+		dc.w $23F0
+		dc.l Map_SS_R+$2000000
+		dc.w $4F0
+		dc.l Map_SS_Glass
+		dc.w $5F0
+		dc.l Map_SS_Glass
+		dc.w $65F0
+		dc.l Map_SS_Glass
+		dc.w $25F0
+		dc.l Map_SS_Glass
+		dc.w $45F0
+		even
 
 ; ---------------------------------------------------------------------------
 ; Sprite mappings - special stage "R" block
@@ -44406,23 +44613,507 @@ MainLoadBlocks:
 ; Pattern load cues
 ; ---------------------------------------------------------------------------
 ArtLoadCues:
-		include	"_inc\Pattern load cues.asm"
-	;	incbin	misc\padding.bin
+; ---------------------------------------------------------------------------
+; Pattern load cues - index
+; ---------------------------------------------------------------------------
+	dc.w PLC_Main-ArtLoadCues	; $00
+	dc.w PLC_Main2-ArtLoadCues	; $01
+	dc.w PLC_Explode-ArtLoadCues	; $02
+	dc.w PLC_GameOver-ArtLoadCues	; $03
+	dc.w PLC_GHZ-ArtLoadCues	; $04
+	dc.w PLC_GHZ2-ArtLoadCues	; $05
+	dc.w PLC_LZ-ArtLoadCues		; $06
+	dc.w PLC_LZ2-ArtLoadCues	; $07
+	dc.w PLC_MZ-ArtLoadCues		; $08
+	dc.w PLC_MZ2-ArtLoadCues	; $09
+	dc.w PLC_SLZ-ArtLoadCues	; $0A
+	dc.w PLC_SLZ2-ArtLoadCues	; $0B
+	dc.w PLC_SYZ-ArtLoadCues	; $0C
+	dc.w PLC_SYZ2-ArtLoadCues	; $0D
+	dc.w PLC_SBZ-ArtLoadCues	; $0E
+	dc.w PLC_SBZ2-ArtLoadCues	; $0F
+	dc.w PLC_TitleCard-ArtLoadCues	; $10
+	dc.w PLC_Boss-ArtLoadCues	; $11
+	dc.w PLC_Signpost-ArtLoadCues	; $12
+	dc.w PLC_Warp-ArtLoadCues	; $13
+	dc.w PLC_SpeStage-ArtLoadCues	; $14
+	dc.w PLC_GHZAnimals-ArtLoadCues	; $15
+	dc.w PLC_LZAnimals-ArtLoadCues	; $16
+	dc.w PLC_MZAnimals-ArtLoadCues	; $17
+	dc.w PLC_SLZAnimals-ArtLoadCues	; $18
+	dc.w PLC_SYZAnimals-ArtLoadCues	; $19
+	dc.w PLC_SBZAnimals-ArtLoadCues	; $1A
+	dc.w PLC_SSBlackout-ArtLoadCues ; $1B
+	dc.w PLC_Ending-ArtLoadCues	; $1C
+	dc.w PLC_TryAgain-ArtLoadCues	; $1D
+	dc.w PLC_EggmanSBZ2-ArtLoadCues	; $1E
+	dc.w PLC_FZBoss-ArtLoadCues	; $1F
+; ---------------------------------------------------------------------------
+; Pattern load cues - standard block 1
+; ---------------------------------------------------------------------------
+PLC_Main:
+		dc.l ArtKospM_Lamp		; lamppost
+		dc.w $D800
+		dc.l ArtKospM_Hud		; HUD
+		dc.w $D940
+		dc.l ArtKospM_Lives		; lives	counter
+		dc.w $FA80
+		dc.l ArtKospM_Ring		; rings
+		dc.w $F640
+		dc.l ArtKospM_ExplBall	; exploding balls from Inhuman Mode
+		dc.w $D700
+		dc.w -1
+
+; ---------------------------------------------------------------------------
+; Pattern load cues - standard block 2
+; ---------------------------------------------------------------------------
+PLC_Main2:
+		dc.l ArtKospM_Monitors	; monitors
+		dc.w $D000
+		dc.l ArtKospM_Shield		; shield
+		dc.w $A820
+		dc.w -1
+; ---------------------------------------------------------------------------
+; Pattern load cues - explosion
+; ---------------------------------------------------------------------------
+PLC_Explode:
+		dc.l ArtKospM_Explode	; explosion
+		dc.w $B400
+		dc.w -1
+; ---------------------------------------------------------------------------
+; Pattern load cues - game/time	over
+; ---------------------------------------------------------------------------
+PLC_GameOver:
+		dc.l ArtKospM_GameOver	; game/time over
+		dc.w $ABC0
+		dc.w -1
+; ---------------------------------------------------------------------------
+; Pattern load cues - Green Hill
+; ---------------------------------------------------------------------------
+PLC_GHZ:
+		dc.l ArtKospM_GHZ		; GHZ main patterns
+		dc.w 0
+		dc.l ArtKospM_Stalk		; flower stalk
+		dc.w $6B00
+		dc.l ArtKospM_PplRock	; purple rock
+		dc.w $7A00
+		dc.l ArtKospM_Crabmeat	; crabmeat enemy
+		dc.w $8000
+		dc.l ArtKospM_Buzz		; buzz bomber enemy
+		dc.w $8880
+		dc.l ArtKospM_Chopper	; chopper enemy
+		dc.w $8F60
+		dc.l ArtKospM_HardPS		; hard part skipper
+		dc.w $9360
+		dc.l ArtKospM_Motobug	; motobug enemy
+		dc.w $9E00
+		dc.l ArtKospM_Spikes		; spikes
+		dc.w $A360
+		dc.l ArtKospM_HSpring	; horizontal spring
+		dc.w $A460
+		dc.l ArtKospM_VSpring	; vertical spring
+		dc.w $A660
+		dc.w -1
+
+PLC_GHZ2:
+		dc.l ArtKospM_Swing		; swinging platform
+		dc.w $7000
+		dc.l ArtKospM_Bridge		; bridge
+		dc.w $71C0
+		dc.l ArtKospM_SpikePole	; spiked pole
+		dc.w $7300
+		dc.l ArtKospM_Ball		; giant	ball
+		dc.w $7540
+		dc.l ArtKospM_GhzWall1	; breakable wall
+		dc.w $A1E0
+		dc.l ArtKospM_GhzWall2	; normal wall
+		dc.w $6980
+		dc.w -1
+
+; ---------------------------------------------------------------------------
+; Pattern load cues - Labyrinth
+; ---------------------------------------------------------------------------
+PLC_LZ:
+		dc.l ArtKospM_LZ		; LZ main patterns
+		dc.w 0
+		dc.l ArtKospM_LzBlock1	; block
+		dc.w $3C00
+		dc.l ArtKospM_LzBlock2	; blocks
+		dc.w $3E00
+		dc.l ArtKospM_Splash		; waterfalls and splash
+		dc.w $4B20
+		dc.l ArtKospM_LzSpikeBall	; spiked ball
+		dc.w $6200
+		dc.l ArtKospM_FlapDoor	; flapping door
+		dc.w $6500
+		dc.l ArtKospM_Bubbles	; bubbles and numbers
+		dc.w $6900
+		dc.l ArtKospM_LzBlock3	; block
+		dc.w $7780
+		dc.l ArtKospM_LzDoor1	; vertical door
+		dc.w $7880
+		dc.l ArtKospM_Cork		; cork block
+		dc.w $7980
+		dc.l ArtKospM_HardPS		; hard part skipper
+		dc.w $94C0
+		dc.w -1
+
+PLC_LZ2:
+		dc.l ArtKospM_LzPole		; pole that breaks
+		dc.w $7BC0
+		dc.l ArtKospM_LzDoor2	; large	horizontal door
+		dc.w $7CC0
+		dc.l ArtKospM_LzWheel	; wheel
+		dc.w $7EC0
+		dc.l ArtKospM_Gargoyle	; gargoyle head
+		dc.w $5D20
+		dc.l ArtKospM_LzPlatfm	; rising platform
+		dc.w $89E0
+		dc.l ArtKospM_Orbinaut	; orbinaut enemy
+		dc.w $8CE0
+		dc.l ArtKospM_Jaws		; jaws enemy
+		dc.w $90C0
+		dc.l ArtKospM_LzSwitch	; switch
+		dc.w $A1E0
+		dc.l ArtKospM_Spikes		; spikes
+		dc.w $A360
+		dc.l ArtKospM_HSpring	; horizontal spring
+		dc.w $A460
+		dc.l ArtKospM_VSpring	; vertical spring
+		dc.w $A660
+		dc.w -1
+
+; ---------------------------------------------------------------------------
+; Pattern load cues - Marble
+; ---------------------------------------------------------------------------
+PLC_MZ:
+		dc.l ArtKospM_MZ		; MZ main patterns
+		dc.w 0
+		dc.l ArtKospM_MzMetal	; metal	blocks
+		dc.w $6000
+		dc.l ArtKospM_MzFire		; fireballs
+		dc.w $68A0
+		dc.l ArtKospM_Swing		; swinging platform
+		dc.w $7000
+		dc.l ArtKospM_MzGlass	; green	glassy block
+		dc.w $71C0
+		dc.l ArtKospM_Lava		; lava
+		dc.w $7500
+		dc.l ArtKospM_Buzz		; buzz bomber enemy
+		dc.w $8880
+		dc.l ArtKospM_Yadrin		; yadrin enemy
+		dc.w $8F60
+		dc.l ArtKospM_Basaran	; basaran enemy
+		dc.w $9700
+		dc.l ArtKospM_HardPS		; hard part skipper
+		dc.w $9FE0
+		dc.w -1
+
+PLC_MZ2:
+		dc.l ArtKospM_MzSwitch	; switch
+		dc.w $A260
+		dc.l ArtKospM_Spikes		; spikes
+		dc.w $A360
+		dc.l ArtKospM_HSpring	; horizontal spring
+		dc.w $A460
+		dc.l ArtKospM_VSpring	; vertical spring
+		dc.w $A660
+		dc.l ArtKospM_MzBlock	; green	stone block
+		dc.w $5700
+		dc.w -1
+
+; ---------------------------------------------------------------------------
+; Pattern load cues - Star Light
+; ---------------------------------------------------------------------------
+PLC_SLZ:
+		dc.l ArtKospM_SLZ		; SLZ main patterns
+		dc.w 0
+		dc.l ArtKospM_Bomb		; bomb enemy
+		dc.w $8000
+		dc.l ArtKospM_LzSwitch		; switch
+		dc.w $9000
+		dc.l ArtKospM_Spikes		; spikes
+		dc.w $A360
+		dc.l ArtKospM_HSpring		; horizontal spring
+		dc.w $A460
+		dc.l ArtKospM_VSpring		; vertical spring
+		dc.w $A660
+		dc.w -1
+
+PLC_SLZ2:
+		dc.l ArtKospM_Fan		; fan
+		dc.w $7400
+		dc.l ArtKospM_Pylon		; foreground pylon
+		dc.w $7980
+		dc.l ArtKospM_GiantBomb		; giant bomb
+		dc.w $8580
+		dc.l ArtKospM_Bonus		; bonus points
+		dc.w $96C0
+		dc.l ArtKospM_SLZPlatform	; SLZ platform
+		dc.w $9C00
+		dc.l ArtKospM_HardPS		; hard part skipper
+		dc.w $9200
+		dc.w -1
+
+; ---------------------------------------------------------------------------
+; Pattern load cues - Spring Yard
+; ---------------------------------------------------------------------------
+PLC_SYZ:
+		dc.l ArtKospM_SYZ		; SYZ main patterns
+		dc.w 0
+		dc.l ArtKospM_SYZDoors		; SYZ doors
+		dc.w $6000
+		dc.l ArtKospM_LevelSigns	; level signs
+		dc.w $6200
+		dc.l ArtKospM_SYZEmblems	; SYZ casual/frantic progression emblems
+		dc.w $6C00
+		dc.w -1
+
+PLC_SYZ2:
+		dc.l ArtKospM_BigRing		; big rings
+		dc.w $8440
+		dc.l ArtKospM_SYZPlat		; exploding platform
+		dc.w $A660
+		dc.w -1
+
+; ---------------------------------------------------------------------------
+; Pattern load cues - Scrap Brain
+; ---------------------------------------------------------------------------
+PLC_SBZ:
+		dc.l ArtKospM_SBZ		; SBZ main patterns
+		dc.w 0
+		dc.l ArtKospM_HardPS_Tut	; hard part skipper
+		dc.w $6C00
+		dc.l ArtKospM_LzSwitch	; switch
+		dc.w $70A0
+		dc.l ArtKospM_LevelSigns	; level signs
+		dc.w $7300
+		dc.l ArtKospM_SbzDoor1	; door
+		dc.w $8000
+		dc.w -1
+
+PLC_SBZ2:
+		dc.l ArtKospM_Spikes		; spikes
+		dc.w $A360
+		dc.w -1
+
+; ---------------------------------------------------------------------------
+; Pattern load cues - title card
+; ---------------------------------------------------------------------------
+PLC_TitleCard:
+		dc.l ArtKospM_TitleCard
+		dc.w $AB80
+		dc.w -1
+
+; ---------------------------------------------------------------------------
+; Pattern load cues - act 3 boss
+; ---------------------------------------------------------------------------
+PLC_Boss:
+		dc.l ArtKospM_Eggman		; Eggman main patterns
+		dc.w $8000
+		dc.l ArtKospM_Weapons	; Eggman's weapons
+		dc.w $8D80
+		dc.l ArtKospM_Bomb		; bomb enemy (gets overwritten)
+		dc.w $A300
+		dc.l ArtKospM_Exhaust	; exhaust flame
+		dc.w $A540
+		dc.w -1
+
+; ---------------------------------------------------------------------------
+; Pattern load cues - act 1/2 signpost
+; ---------------------------------------------------------------------------
+PLC_Signpost:
+		dc.l ArtKospM_SignPost	; signpost
+		dc.w $D000
+		dc.l ArtKospM_HSpring	; horizontal spring
+		dc.w $A460
+		dc.w -1
+
+; ---------------------------------------------------------------------------
+; Pattern load cues - beta special stage warp effect
+; ---------------------------------------------------------------------------
+PLC_Warp:
+		dc.l ArtKospM_Stars		; invincibility	stars
+		dc.w $AB80
+		dc.w -1
+
+; ---------------------------------------------------------------------------
+; Pattern load cues - special stage
+; ---------------------------------------------------------------------------
+PLC_SpeStage:
+		dc.l ArtKospM_SSBgCloud	; bubble and cloud background
+		dc.w 0
+		dc.l ArtKospM_TitleCard	; title cards
+		dc.w $0A20
+		dc.l ArtKospM_SSWalls	; walls
+		dc.w $2840
+		dc.l ArtKospM_Bumper		; bumper
+		dc.w $4760
+		dc.l ArtKospM_SSGOAL		; GOAL block
+		dc.w $4A20
+		dc.l ArtKospM_SSUpDown	; UP and DOWN blocks
+		dc.w $4C60
+		dc.l ArtKospM_SSRBlock	; R block
+		dc.w $5E00
+		dc.l ArtKospM_SSEmStars	; emerald collection stars
+		dc.w $7E00
+		dc.l ArtKospM_SSRedWhite	; red and white	block
+		dc.w $8E00
+		dc.l ArtKospM_SSGhost	; ghost	block
+		dc.w $9E00
+		dc.l ArtKospM_SSWBlock	; W block
+		dc.w $AE00
+		dc.l ArtKospM_SSGlass	; glass	block
+		dc.w $BE00
+		dc.l ArtKospM_SSEmerald	; emeralds
+		dc.w $EE00
+		dc.w -1
+
+; ---------------------------------------------------------------------------
+; Pattern load cues - GHZ animals
+; ---------------------------------------------------------------------------
+PLC_GHZAnimals:
+		dc.l ArtKospM_Null
+		dc.w $B000
+		dc.w -1
+
+; ---------------------------------------------------------------------------
+; Pattern load cues - LZ animals
+; ---------------------------------------------------------------------------
+PLC_LZAnimals:
+		dc.l ArtKospM_Null
+		dc.w $B000
+		dc.w -1
+
+; ---------------------------------------------------------------------------
+; Pattern load cues - MZ animals
+; ---------------------------------------------------------------------------
+PLC_MZAnimals:
+		dc.l ArtKospM_Null
+		dc.w $B000
+		dc.w -1
+
+; ---------------------------------------------------------------------------
+; Pattern load cues - SLZ animals
+; ---------------------------------------------------------------------------
+PLC_SLZAnimals:
+		dc.l ArtKospM_Null
+		dc.w $B000
+		dc.w -1
+
+; ---------------------------------------------------------------------------
+; Pattern load cues - SYZ animals
+; ---------------------------------------------------------------------------
+PLC_SYZAnimals:
+		dc.l ArtKospM_Null
+		dc.w $B000
+		dc.w -1
+
+; ---------------------------------------------------------------------------
+; Pattern load cues - SBZ animals
+; ---------------------------------------------------------------------------
+PLC_SBZAnimals:
+		dc.l ArtKospM_Null
+		dc.w $B000
+		dc.w -1
+
+; ---------------------------------------------------------------------------
+; Pattern load cues - Blackout Challenge special stage overrides
+; ---------------------------------------------------------------------------
+PLC_SSBlackout:
+		dc.l ArtKospM_SSSkull	; Skull block
+		dc.w $4A20
+		dc.w -1
+
+; ---------------------------------------------------------------------------
+; Pattern load cues - ending sequence
+; ---------------------------------------------------------------------------
+PLC_Ending:
+		dc.l ArtKospM_GHZ		; GHZ patterns
+		dc.w 0
+		dc.l ArtKospM_Stalk		; flower stalk
+		dc.w $6B00
+		dc.l ArtKospM_EndFlower	; flowers
+		dc.w $7400
+		dc.l ArtKospM_EndEm		; emeralds
+		dc.w $78A0
+		dc.l ArtKospM_EndSonic	; Sonic
+		dc.w $7C20
+		dc.l ArtKospM_UMadBro	; U Mad Bro?!
+		dc.w $A480
+		dc.l ArtKospM_Rabbit		; rabbit
+		dc.w $AA60
+		dc.l ArtKospM_Chicken	; chicken
+		dc.w $ACA0
+		dc.l ArtKospM_BlackBird	; blackbird
+		dc.w $AE60
+		dc.l ArtKospM_Seal		; seal
+		dc.w $B0A0
+		dc.l ArtKospM_Pig		; pig
+		dc.w $B260
+		dc.l ArtKospM_Flicky		; flicky
+		dc.w $B4A0
+		dc.l ArtKospM_Squirrel	; squirrel
+		dc.w $B660
+		dc.l ArtKospM_EndStH		; "SONIC THE HEDGEHOG"
+		dc.w $B8A0
+		dc.w -1
+
+; ---------------------------------------------------------------------------
+; Pattern load cues - "TRY AGAIN" and "END" screens
+; ---------------------------------------------------------------------------
+PLC_TryAgain:
+		dc.l ArtKospM_EndEm		; emeralds
+		dc.w $78A0
+		dc.l ArtKospM_TryAgain	; Eggman
+		dc.w $7C20
+		dc.l ArtKospM_CreditText	; credits alphabet
+		dc.w $B400
+		dc.w -1
+
+; ---------------------------------------------------------------------------
+; Pattern load cues - Eggman on SBZ 2
+; ---------------------------------------------------------------------------
+PLC_EggmanSBZ2:
+		dc.l ArtKospM_Sbz2Eggman	; Eggman
+		dc.w $8000
+		dc.l ArtKospM_LzSwitch	; switch
+		dc.w $9400
+		dc.l ArtKospM_BombOld	; bomb enemy
+		dc.w $A660
+		dc.l ArtKospM_BombMach	; bomb machine
+		dc.w $5600
+		dc.w -1
+
+; ---------------------------------------------------------------------------
+; Pattern load cues - final boss
+; ---------------------------------------------------------------------------
+PLC_FZBoss:
+		dc.l ArtKospM_SbzDoor1	; door
+		dc.w $5500
+		dc.l ArtKospM_FzEggman	; Eggman after boss
+		dc.w $7400
+		dc.l ArtKospM_FzBoss		; FZ boss
+		dc.w $6000
+		dc.l ArtKospM_Eggman		; Eggman main patterns
+		dc.w $8000
+		dc.l ArtKospM_Sbz2Eggman	; Eggman without ship
+		dc.w $8E00
+		dc.l ArtKospM_Exhaust	; exhaust flame
+		dc.w $A540
+		dc.w -1
 		even
+; ---------------------------------------------------------------------------
 
 ArtKospM_SegaLogo:	incbin	artkosp\segalogo.kospm	; large Sega logo
 		even
-Eni_SegaLogo:	incbin	mapeni\segalogo.bin	; large Sega logo (mappings)
+Eni_SegaLogo:	incbin	misc\eni_segalogo.bin	; large Sega logo (mappings)
 		even
-Eni_Title:	incbin	mapeni\titlescr.bin	; title screen foreground (mappings)
+Eni_Title:	incbin	misc\eni_titlescr.bin	; title screen foreground (mappings)
 		even
 ArtKospM_TitleFg:	incbin	artkosp\titlefor.kospm	; title screen foreground
 		even
 ArtKospM_TitleSonic:	incbin	artkosp\titleson.kospm	; Sonic on title screen
-		even
-Eni_JapNames:;	incbin	mapeni\japcreds.bin	; Japanese credits (mappings)
-		even
-ArtKospM_JapNames:;	incbin	artkosp\japcreds.kospm	; Japanese credits
 		even
 ; ---------------------------------------------------------------------------
 ; Sprite mappings - Sonic
@@ -44431,7 +45122,7 @@ ArtKospM_JapNames:;	incbin	artkosp\japcreds.kospm	; Japanese credits
 ; ---------------------------------------------------------------------------
 Map_Sonic:	include	"_maps\Sonic.asm"
 		even
-SonicDynPLC:	include	"_inc\Sonic dynamic pattern load cues.asm"
+SonicDynPLC:	include	"_maps\Sonic DPLC.asm"
 		even
 Art_Sonic:	incbin	artunc\sonic.bin	; Sonic Normal
 		even
@@ -44481,7 +45172,7 @@ Map_SSWalls:
 ; ---------------------------------------------------------------------------
 ArtKospM_SSWalls:	incbin	artkosp\sswalls.kospm	; special stage walls
 		even
-Eni_SSBg2:	incbin	mapeni\ssbg2.bin	; special stage background (mappings)
+Eni_SSBg2:	incbin	misc\eni_ssbg2.bin	; special stage background (mappings)
 		even
 ArtKospM_SSBgCloud:	incbin	artkosp\ssbg2.kospm	; special stage clouds background
 		even
@@ -44804,8 +45495,8 @@ ArtKospM_EndSonic:	incbin	artkosp\endsonic.kospm	; ending sequence Sonic
 		even
 ArtKospM_TryAgain:	incbin	artkosp\tryagain.kospm	; ending "try again" screen
 		even
-Kos_EndFlowers:	incbin	artkos\flowers.bin	; ending sequence animated flowers
-		even
+;Kos_EndFlowers:	incbin	artkos\flowers.bin	; ending sequence animated flowers
+;		even
 ArtKospM_EndFlower:	incbin	artkosp\endflowe.kospm	; ending sequence flowers
 		even
 ArtKospM_CreditText:	incbin	artkosp\credits.kospm	; credits alphabet
@@ -44838,17 +45529,17 @@ Col_SBZ:	incbin	LevelData\collide\sbz.bin		; SBZ index
 ; ---------------------------------------------------------------------------
 ; Special layouts
 ; ---------------------------------------------------------------------------
-SS_1_Casual:	incbin	sslayout\1-Casual.bin
+SS_1_Casual:	incbin	LevelData\sslayout\1-Casual.bin
 		even
-SS_1_Frantic:	incbin	sslayout\1-Frantic.bin
+SS_1_Frantic:	incbin	LevelData\sslayout\1-Frantic.bin
 		even
-SS_2_Casual:	incbin	sslayout\2-Casual.bin
+SS_2_Casual:	incbin	LevelData\sslayout\2-Casual.bin
 		even
-SS_2_Frantic:	incbin	sslayout\2-Frantic.bin
+SS_2_Frantic:	incbin	LevelData\sslayout\2-Frantic.bin
 		even
-SS_Blackout_Casual:	incbin	sslayout\Blackout-Casual.bin
+SS_Blackout_Casual:	incbin	LevelData\sslayout\Blackout-Casual.bin
 			even
-SS_Blackout_Frantic:	incbin	sslayout\Blackout-Frantic.bin
+SS_Blackout_Frantic:	incbin	LevelData\sslayout\Blackout-Frantic.bin
 			even
 ; ---------------------------------------------------------------------------
 ; Animated uncompressed graphics

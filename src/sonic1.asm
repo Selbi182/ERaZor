@@ -38,9 +38,9 @@ __DEBUG__: equ 1
 
 ; ------------------------------------------------------
 
-	include	"Variables.asm"
-	include	"Constants.asm"
-	include	"Macros.asm"
+	include	"_Variables.asm"
+	include	"_Constants.asm"
+	include	"_Macros.asm"
 
 ; ------------------------------------------------------
 ; Developer Assembly Options
@@ -45141,15 +45141,15 @@ ObjPos_Null:	dc.w    $FFFF,$0000,$0000
 
 ; ---------------------------------------------------------------------------
 
-		include	'MegaPCM.asm'
-		include	'SampleTable.asm'
+		include	'SoundDriver\MegaPCM.asm'
+		include	'SoundDriver\SampleTable.asm'
 
 		pusho		; save previous options
 		opt	l+	; use "." for local labels (AS compatibility)
 FixBugs:	equ	1	; want to fix SMPS bugs
 
-		include	's1.sounddriver.defs.asm'
-		include	's1.sounddriver.asm'
+		include	'SoundDriver\s1.sounddriver.defs.asm'
+		include	'SoundDriver\s1.sounddriver.asm'
 		popo		; restore previous options
 
 ; ---------------------------------------------------------------------------
@@ -45165,10 +45165,10 @@ FixBugs:	equ	1	; want to fix SMPS bugs
 		include	"Screens/GameplayStyleScreen/GameplayStyleScreen.asm"
 ; ---------------------------------------------------------------------------
 	if def(__BENCHMARK__)
-		include "modules/Benchmark.asm"
+		include "Benchmark/Benchmark.asm"
 	endif
 	if def(__MD_REPLAY__)
-		MDReplay_IncludeMovie "bench-ghp.mdr"
+		MDReplay_IncludeMovie "Benchmark/bench-ghp.mdr"
 	endif
 
 ; ===========================================================================

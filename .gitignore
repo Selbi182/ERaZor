@@ -1,27 +1,20 @@
 /src/Debugger/Generated/*
-/src/CLOWNMAPED
-/src/MIDI
-/src/PlaneEd
 /src/SONLVL
 /src/SonPLN.log
-/src/SonPLN
-/src/blastem-win32-0.6.2
-/src/smps2asm
-/src/Sonic 1 Disassembly UNTOUCHED.lnk
-/src/blastem.exe.lnk
-/src/Screens/OptionsScreen/QuickNemConvert.exe
 /src/project.flex.json
-/src/__BLA
-/src/Sonic 1 with debug.bin
-/src/s1disasm-AS
 /src/__ClownMapEd.lnk
 /src/__SonLVL.lnk
-/src/capsule.pdn
-/src/nuke.pdn
-/src/pallev.png
-/src/stsmockup.pdn
-/src/Sonic 1 Disassembly UNTOUCHED
-/src/sslayout/Sonic 1 Special Stage Editor.exe
-/src/thumblol.jpg
-/src/.idea
+/SonPLN
+/CLOWNMAPED
+/MIDI
+/PlaneEd
+/blastem-win32-0.6.2
+/smps2asm
+/Sonic 1 Disassembly UNTOUCHED.lnk
+/Sonic 1 Disassembly UNTOUCHED
+/blastem.exe.lnk
+/__BLA
+/Sonic 1 with debug.bin
+/s1disasm-AS
+/.idea
 *.log

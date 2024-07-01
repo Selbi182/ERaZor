@@ -1,20 +1,10 @@
+/__BLA
 /src/Debugger/Generated/*
 /src/SONLVL
-/src/SonPLN.log
-/src/project.flex.json
-/src/__ClownMapEd.lnk
-/src/__SonLVL.lnk
-/SonPLN
-/CLOWNMAPED
-/MIDI
-/PlaneEd
-/blastem-win32-0.6.2
-/smps2asm
-/Sonic 1 Disassembly UNTOUCHED.lnk
-/Sonic 1 Disassembly UNTOUCHED
-/blastem.exe.lnk
-/__BLA
+project.flex.json
+__ClownMapEd.lnk
+__SonLVL.lnk
+Sonic 1 Disassembly UNTOUCHED.lnk
 /Sonic 1 with debug.bin
-/s1disasm-AS
 /.idea
 *.log

@@ -44739,51 +44739,47 @@ ArtKospM_MiniSonic:	incbin	artkosp\cntother.kospm	; mini Sonic and text on conti
 ; ---------------------------------------------------------------------------
 ArtKospM_TitleScreen:	incbin	artkosp\8x8title.kospm	; TS primary patterns
 			even
-Blk16_TitleScreen:	incbin	map16\title.unc
+Blk16_TitleScreen:	incbin	LevelData\map16\title.unc
 			even
-Blk256_TitleScreen:	incbin	map256\title.bin
+Blk256_TitleScreen:	incbin	LevelData\map256\title.bin
 			even
-Blk16_GHZ:	incbin	map16\ghz.unc
+Blk16_GHZ:	incbin	LevelData\map16\ghz.unc
 		even
 ArtKospM_GHZ:	incbin	artkosp\8x8ghz.kospm	; New GHZ file.
 		even
-;ArtKospM_GHZ_1st:	incbin	artkosp\8x8ghz1.kospm	; GHZ primary patterns
-;		even
-;ArtKospM_GHZ_2nd:	incbin	artkosp\8x8ghz2.kospm	; GHZ secondary patterns
-;		even
-Blk256_GHZ:	incbin	map256\ghz.bin
+Blk256_GHZ:	incbin	LevelData\map256\ghz.bin
 		even
-Blk16_LZ:	incbin	map16\lz.unc
+Blk16_LZ:	incbin	LevelData\map16\lz.unc
 		even
 ArtKospM_LZ:	incbin	artkosp\8x8lz.kospm	; LZ primary patterns
 		even
-Blk256_LZ:	incbin	map256\lz.bin
+Blk256_LZ:	incbin	LevelData\map256\lz.bin
 		even
-Blk16_MZ:	incbin	map16\mz.unc
+Blk16_MZ:	incbin	LevelData\map16\mz.unc
 		even
 ArtKospM_MZ:	incbin	artkosp\8x8mz.kospm	; MZ primary patterns
 		even
-Blk256_MZ:	incbin	map256\mz.bin
+Blk256_MZ:	incbin	LevelData\map256\mz.bin
 		even
-Blk16_SLZ:	incbin	map16\slz.unc
+Blk16_SLZ:	incbin	LevelData\map16\slz.unc
 		even
 ArtKospM_SLZ:	incbin	artkosp\8x8slz.kospm	; SLZ primary patterns
 		even
-Blk256_SLZ:	incbin	map256\slz.bin
+Blk256_SLZ:	incbin	LevelData\map256\slz.bin
 		even
-Blk16_SYZ:	incbin	map16\syz.unc
+Blk16_SYZ:	incbin	LevelData\map16\syz.unc
 		even
 ArtKospM_SYZ:	incbin	artkosp\8x8syz.kospm	; SYZ primary patterns
 		even
-Blk256_SYZ:	incbin	map256\syz.bin
+Blk256_SYZ:	incbin	LevelData\map256\syz.bin
 		even
-Blk16_SBZ:	incbin	map16\sbz.unc
+Blk16_SBZ:	incbin	LevelData\map16\sbz.unc
 		even
 ArtKospM_SBZ:	incbin	artkosp\8x8sbz.kospm	; SBZ primary patterns
 		even
-Blk256_SBZ:	incbin	map256\sbz.bin
+Blk256_SBZ:	incbin	LevelData\map256\sbz.bin
 		even
-Blk256_END:	incbin	map256\ghz_end.bin
+Blk256_END:	incbin	LevelData\map256\ghz_end.bin
 		even
 ; ---------------------------------------------------------------------------
 ; Compressed graphics - bosses and ending sequence
@@ -44816,28 +44812,28 @@ ArtKospM_CreditText:	incbin	artkosp\credits.kospm	; credits alphabet
 		even
 ArtKospM_EndStH:	incbin	artkosp\endtext.kospm	; ending sequence "Sonic the Hedgehog" text
 		even
-		incbin	misc\padding2.bin
-		even
+	;	incbin	misc\padding2.bin
+	;	even
 ; ---------------------------------------------------------------------------
 ; Collision data
 ; ---------------------------------------------------------------------------
-AngleMap:	incbin	collide\anglemap.bin	; floor angle map
+AngleMap:	incbin	LevelData\collide\anglemap.bin	; floor angle map
 		even
-CollArray1:	incbin	collide\carray_n.bin	; normal collision array
+CollArray1:	incbin	LevelData\collide\carray_n.bin	; normal collision array
 		even
-CollArray2:	incbin	collide\carray_r.bin	; rotated collision array
+CollArray2:	incbin	LevelData\collide\carray_r.bin	; rotated collision array
 		even
-Col_GHZ:	incbin	collide\ghz.bin		; GHZ index
+Col_GHZ:	incbin	LevelData\collide\ghz.bin		; GHZ index
 		even
-Col_LZ:		incbin	collide\lz.bin		; LZ index
+Col_LZ:		incbin	LevelData\collide\lz.bin		; LZ index
 		even
-Col_MZ:		incbin	collide\mz.bin		; MZ index
+Col_MZ:		incbin	LevelData\collide\mz.bin		; MZ index
 		even
-Col_SLZ:	incbin	collide\slz.bin		; SLZ index
+Col_SLZ:	incbin	LevelData\collide\slz.bin		; SLZ index
 		even
-Col_SYZ:	incbin	collide\syz.bin		; SYZ index
+Col_SYZ:	incbin	LevelData\collide\syz.bin		; SYZ index
 		even
-Col_SBZ:	incbin	collide\sbz.bin		; SBZ index
+Col_SBZ:	incbin	LevelData\collide\sbz.bin		; SBZ index
 		even
 ; ---------------------------------------------------------------------------
 ; Special layouts
@@ -44928,25 +44924,25 @@ Level_Index:
 
 LevelIndexPadding:	dc.b 0,	0, 0, 0
 
-Level_GHZ1:	incbin	'levels/ghz1.kosp'
+Level_GHZ1:	incbin	'LevelData/levels/ghz1.kosp'
 		even
 byte_68D70:	dc.b 0,	0, 0, 0
-Level_GHZ2:	incbin	'levels/ghz2.kosp'
+Level_GHZ2:	incbin	'LevelData/levels/ghz2.kosp'
 		even
 byte_68E3C:	dc.b 0,	0, 0, 0
-Level_GHZ3:	incbin	'levels/ghz3.kosp'
+Level_GHZ3:	incbin	'LevelData/levels/ghz3.kosp'
 		even
-Level_GHZbg:	incbin	'levels/ghzbg.kosp'
+Level_GHZbg:	incbin	'LevelData/levels/ghzbg.kosp'
 		even
 byte_68F84:	dc.b 0,	0, 0, 0
 byte_68F88:	dc.b 0,	0, 0, 0
 
 Level_LZ1:	;incbin	levels\lz1.bin
 		even
-Level_LZbg:	incbin	'levels/lzbg.kosp'
+Level_LZbg:	incbin	'LevelData/levels/lzbg.kosp'
 		even
 byte_69190:	dc.b 0,	0, 0, 0
-Level_LZ2:	incbin	'levels/lz2.kosp'
+Level_LZ2:	incbin	'LevelData/levels/lz2.kosp'
 		even
 byte_6922E:	dc.b 0,	0, 0, 0
 Level_LZ3:	;incbin	levels\lz3.bin
@@ -44956,9 +44952,9 @@ Level_SBZ3:	;incbin	levels\sbz3.bin
 		even
 byte_6940A:	dc.b 0,	0, 0, 0
 
-Level_MZ1:	incbin	'levels/mz1.kosp'
+Level_MZ1:	incbin	'LevelData/levels/mz1.kosp'
 		even
-Level_MZ1bg:	incbin	'levels/mz1bg.kosp'
+Level_MZ1bg:	incbin	'LevelData/levels/mz1bg.kosp'
 		even
 Level_MZ2:	;incbin	levels\mz2.bin
 		even
@@ -44974,17 +44970,17 @@ byte_697EA:	dc.b 0,	0, 0, 0
 
 Level_SLZ1:;	incbin	levels\slz1.bin
 		even
-Level_SLZbg:	incbin	'levels/slzbg.kosp'
+Level_SLZbg:	incbin	'LevelData/levels/slzbg.kosp'
 		even
-Level_SLZ2:	incbin	'levels/slz2.kosp'
+Level_SLZ2:	incbin	'LevelData/levels/slz2.kosp'
 		even
-Level_SLZ3:	incbin	'levels/slz2.kosp'
+Level_SLZ3:	incbin	'LevelData/levels/slz2.kosp'
 		even
 byte_69B84:	dc.b 0,	0, 0, 0
 
-Level_SYZ1:	incbin	'levels/syz1.kosp'
+Level_SYZ1:	incbin	'LevelData/levels/syz1.kosp'
 		even
-Level_SYZbg:	incbin	'levels/syzbg.kosp'
+Level_SYZbg:	incbin	'LevelData/levels/syzbg.kosp'
 		even
 byte_69C7E:	dc.b 0,	0, 0, 0
 Level_SYZ2:	;incbin	levels\syz2.bin
@@ -44995,19 +44991,19 @@ Level_SLZ4:;	incbin	levels\slz2casual.bin
 byte_69EE4:	dc.b 0,	0, 0, 0
 byte_69EE8:	dc.b 0,	0, 0, 0
 
-Level_SBZ1:	incbin	'levels/sbz2.kosp'
+Level_SBZ1:	incbin	'LevelData/levels/sbz2.kosp'
 		even
-Level_SBZ2:	incbin	'levels/sbz2.kosp'
+Level_SBZ2:	incbin	'LevelData/levels/sbz2.kosp'
 		even
-Level_SBZ1bg:	incbin	'levels/sbz2bg.kosp'
+Level_SBZ1bg:	incbin	'LevelData/levels/sbz2bg.kosp'
 		even
-Level_SBZ2bg:	incbin	'levels/sbz2bg.kosp'
+Level_SBZ2bg:	incbin	'LevelData/levels/sbz2bg.kosp'
 		even
-Level_FZbg:	incbin	'levels/fzbg.kosp'
+Level_FZbg:	incbin	'LevelData/levels/fzbg.kosp'
 		even
 byte_6A2F8:	dc.b 0,	0, 0, 0
 byte_6A2FC:	dc.b 0,	0, 0, 0
-Level_End:	incbin	'levels/ending.kosp'
+Level_End:	incbin	'LevelData/levels/ending.kosp'
 		even
 byte_6A320:	dc.b 0,	0, 0, 0
 
@@ -45021,126 +45017,115 @@ ArtKospM_BigRing: incbin artkosp\bigring.kospm
 ArtKospM_SGMC:	incbin artkosp\sgmc.kospm
 		even
 		
-		incbin	misc\padding3.bin
-		even
+	;	incbin	misc\padding3.bin
+	;	even
 
 ; ---------------------------------------------------------------------------
 ; Sprite locations index
 ; ---------------------------------------------------------------------------
 ObjPos_Index:	dc.w ObjPos_GHZ1-ObjPos_Index, ObjPos_Null-ObjPos_Index
 		dc.w ObjPos_GHZ2-ObjPos_Index, ObjPos_Null-ObjPos_Index
-		dc.w ObjPos_GHZ1-ObjPos_Index, ObjPos_Null-ObjPos_Index
-		dc.w ObjPos_GHZ1-ObjPos_Index, ObjPos_Null-ObjPos_Index
-		dc.w ObjPos_LZ1-ObjPos_Index, ObjPos_Null-ObjPos_Index
-		dc.w ObjPos_LZ2-ObjPos_Index, ObjPos_Null-ObjPos_Index
-		dc.w ObjPos_LZ3-ObjPos_Index, ObjPos_Null-ObjPos_Index
-		dc.w ObjPos_SBZ3-ObjPos_Index, ObjPos_Null-ObjPos_Index
-		dc.w ObjPos_MZ1-ObjPos_Index, ObjPos_Null-ObjPos_Index
-		dc.w ObjPos_MZ2-ObjPos_Index, ObjPos_Null-ObjPos_Index
-		dc.w ObjPos_MZ3-ObjPos_Index, ObjPos_Null-ObjPos_Index
-		dc.w ObjPos_MZ1-ObjPos_Index, ObjPos_Null-ObjPos_Index
-		dc.w ObjPos_SLZ1-ObjPos_Index, ObjPos_Null-ObjPos_Index
+		dc.w ObjPos_GHZ3-ObjPos_Index, ObjPos_Null-ObjPos_Index
+		dc.w ObjPos_Null-ObjPos_Index, ObjPos_Null-ObjPos_Index
+		dc.w ObjPos_Null-ObjPos_Index, ObjPos_Null-ObjPos_Index
+		dc.w ObjPos_LZ2-ObjPos_Index,  ObjPos_Null-ObjPos_Index
+		dc.w ObjPos_Null-ObjPos_Index, ObjPos_Null-ObjPos_Index
+		dc.w ObjPos_Null-ObjPos_Index, ObjPos_Null-ObjPos_Index
+		dc.w ObjPos_MZ1-ObjPos_Index,  ObjPos_Null-ObjPos_Index
+		dc.w ObjPos_Null-ObjPos_Index, ObjPos_Null-ObjPos_Index
+		dc.w ObjPos_Null-ObjPos_Index, ObjPos_Null-ObjPos_Index
+		dc.w ObjPos_Null-ObjPos_Index, ObjPos_Null-ObjPos_Index
+		dc.w ObjPos_Null-ObjPos_Index, ObjPos_Null-ObjPos_Index
 		dc.w ObjPos_SLZ2-ObjPos_Index, ObjPos_Null-ObjPos_Index
 		dc.w ObjPos_SLZ3-ObjPos_Index, ObjPos_Null-ObjPos_Index
-		dc.w ObjPos_SLZ1-ObjPos_Index, ObjPos_Null-ObjPos_Index
+		dc.w ObjPos_Null-ObjPos_Index, ObjPos_Null-ObjPos_Index
 		dc.w ObjPos_SYZ1-ObjPos_Index, ObjPos_Null-ObjPos_Index
-		dc.w ObjPos_SYZ2-ObjPos_Index, ObjPos_Null-ObjPos_Index
-		dc.w ObjPos_SYZ3-ObjPos_Index, ObjPos_Null-ObjPos_Index
-		dc.w ObjPos_SYZ1-ObjPos_Index, ObjPos_Null-ObjPos_Index
+		dc.w ObjPos_Null-ObjPos_Index, ObjPos_Null-ObjPos_Index
+		dc.w ObjPos_Null-ObjPos_Index, ObjPos_Null-ObjPos_Index
+		dc.w ObjPos_Null-ObjPos_Index, ObjPos_Null-ObjPos_Index
 		dc.w ObjPos_SBZ1-ObjPos_Index, ObjPos_Null-ObjPos_Index
 		dc.w ObjPos_SBZ2-ObjPos_Index, ObjPos_Null-ObjPos_Index
-		dc.w ObjPos_FZ-ObjPos_Index, ObjPos_Null-ObjPos_Index
-		dc.w ObjPos_SBZ1-ObjPos_Index, ObjPos_Null-ObjPos_Index
-		dc.w ObjPos_End-ObjPos_Index, ObjPos_Null-ObjPos_Index
-		dc.w ObjPos_End-ObjPos_Index, ObjPos_Null-ObjPos_Index
-		dc.w ObjPos_End-ObjPos_Index, ObjPos_Null-ObjPos_Index
-		dc.w ObjPos_End-ObjPos_Index, ObjPos_Null-ObjPos_Index
-		dc.w ObjPos_LZ1pf1-ObjPos_Index, ObjPos_LZ1pf2-ObjPos_Index
-		dc.w ObjPos_LZ2pf1-ObjPos_Index, ObjPos_LZ2pf2-ObjPos_Index
-		dc.w ObjPos_LZ3pf1-ObjPos_Index, ObjPos_LZ3pf2-ObjPos_Index
-		dc.w ObjPos_LZ1pf1-ObjPos_Index, ObjPos_LZ1pf2-ObjPos_Index
-		dc.w ObjPos_SBZ1pf1-ObjPos_Index, ObjPos_SBZ1pf2-ObjPos_Index
-		dc.w ObjPos_SBZ1pf3-ObjPos_Index, ObjPos_SBZ1pf4-ObjPos_Index
-		dc.w ObjPos_SBZ1pf5-ObjPos_Index, ObjPos_SBZ1pf6-ObjPos_Index
-		dc.w ObjPos_SBZ1pf1-ObjPos_Index, ObjPos_SBZ1pf2-ObjPos_Index
+		dc.w ObjPos_FZ-ObjPos_Index,   ObjPos_Null-ObjPos_Index
+		dc.w ObjPos_Null-ObjPos_Index, ObjPos_Null-ObjPos_Index
+		dc.w ObjPos_End-ObjPos_Index,  ObjPos_Null-ObjPos_Index
+		dc.w ObjPos_End-ObjPos_Index,  ObjPos_Null-ObjPos_Index
+		dc.w ObjPos_End-ObjPos_Index,  ObjPos_Null-ObjPos_Index
+		dc.w ObjPos_End-ObjPos_Index,  ObjPos_Null-ObjPos_Index
+		dc.w ObjPos_Null-ObjPos_Index, ObjPos_Null-ObjPos_Index
+		dc.w ObjPos_Null-ObjPos_Index, ObjPos_Null-ObjPos_Index
+		dc.w ObjPos_Null-ObjPos_Index, ObjPos_Null-ObjPos_Index
+		dc.w ObjPos_Null-ObjPos_Index, ObjPos_Null-ObjPos_Index
+		dc.w ObjPos_Null-ObjPos_Index, ObjPos_Null-ObjPos_Index
+		dc.w ObjPos_Null-ObjPos_Index, ObjPos_Null-ObjPos_Index
+		dc.w ObjPos_Null-ObjPos_Index, ObjPos_Null-ObjPos_Index
+		dc.w ObjPos_Null-ObjPos_Index, ObjPos_Null-ObjPos_Index
+	
+ObjPos_GHZ1:	incbin	LevelData\objpos\ghz1.bin
+		even
+ObjPos_GHZ2:	incbin	LevelData\objpos\ghz2.bin
+		even
+ObjPos_GHZ3:	incbin	LevelData\objpos\ghz3.bin
+		even
+
+ObjPos_LZ2:	incbin	LevelData\objpos\lz2.bin
+		even
+ObjPos_LZ2pf1:	incbin	LevelData\objpos\lz2pf1.bin
+		even
+ObjPos_LZ2pf2:	incbin	LevelData\objpos\lz2pf2.bin
+		even
+
 		dc.w    $FFFF,$0000,$0000
-ObjPos_GHZ1:	incbin	objpos\ghz1.bin
+ObjPos_MZ1:	incbin	LevelData\objpos\mz1.bin
 		even
-ObjPos_GHZ2:	incbin	objpos\ghz2.bin
+
+ObjPos_SLZ2:	incbin	LevelData\objpos\slz2.bin
 		even
-ObjPos_GHZ3:;	incbin	objpos\ghz3.bin
+ObjPos_SLZ3:	incbin	LevelData\objpos\slz2.bin
 		even
-ObjPos_LZ1:;	incbin	objpos\lz1.bin
+
+ObjPos_SYZ1:	incbin	LevelData\objpos\syz1.bin
 		even
-ObjPos_LZ2:	incbin	objpos\lz2.bin
+
+ObjPos_SBZ1:	incbin	LevelData\objpos\fz.bin
 		even
-ObjPos_LZ3:;	incbin	objpos\lz3.bin
+ObjPos_SBZ2:	incbin	LevelData\objpos\fz.bin
 		even
-ObjPos_SBZ3:;	incbin	objpos\sbz3.bin
+ObjPos_FZ:	incbin	LevelData\objpos\fz.bin
 		even
-ObjPos_LZ1pf1:;	incbin	objpos\lz1pf1.bin
-		even
-ObjPos_LZ1pf2:;	incbin	objpos\lz1pf2.bin
-		even
-ObjPos_LZ2pf1:	incbin	objpos\lz2pf1.bin
-		even
-ObjPos_LZ2pf2:	incbin	objpos\lz2pf2.bin
-		even
-ObjPos_LZ3pf1:;	incbin	objpos\lz3pf1.bin
-		even
-ObjPos_LZ3pf2:;	incbin	objpos\lz3pf2.bin
-		even
+
 		dc.w    $FFFF,$0000,$0000
-ObjPos_MZ1:	incbin	objpos\mz1.bin
+ObjPos_End:	incbin	LevelData\objpos\ending.bin
 		even
-ObjPos_MZ2:;	incbin	objpos\mz2.bin
-		even
-ObjPos_MZ3:;	incbin	objpos\mz3.bin
-		even
-ObjPos_SLZ1:;	incbin	objpos\slz1.bin
-		even
-ObjPos_SLZ2:	incbin	objpos\slz2.bin
-		even
-ObjPos_SLZ3:	incbin	objpos\slz2.bin
-		even
-ObjPos_SYZ1:	incbin	objpos\syz1.bin
-		even
-ObjPos_SYZ2:;	incbin	objpos\syz2.bin
-		even
-ObjPos_SYZ3:;	incbin	objpos\syz3.bin
-		even
-ObjPos_SBZ1:	incbin	objpos\fz.bin
-		even
-ObjPos_SBZ2:	incbin	objpos\fz.bin
-		even
-ObjPos_FZ:	incbin	objpos\fz.bin
-		even
-ObjPos_SBZ1pf1:;	incbin	objpos\sbz1pf1.bin
-		even
-ObjPos_SBZ1pf2:;	incbin	objpos\sbz1pf2.bin
-		even
-ObjPos_SBZ1pf3:;	incbin	objpos\sbz1pf3.bin
-		even
-ObjPos_SBZ1pf4:;	incbin	objpos\sbz1pf4.bin
-		even
-ObjPos_SBZ1pf5:;	incbin	objpos\sbz1pf5.bin
-		even
-ObjPos_SBZ1pf6:;	incbin	objpos\sbz1pf6.bin
-		even
-		dc.w    $FFFF,$0000,$0000
-ObjPos_End:	incbin	objpos\ending.bin
-		even
+
 ObjPos_Null:	dc.w    $FFFF,$0000,$0000
-; ---------------------------------------------------------------------------
-		incbin	misc\padding4.bin
 		even
+
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Various includes
+; ---------------------------------------------------------------------------
+; WARNING!
+;	DO NOT put any data from now on! DO NOT use ROM padding!
+;	Symbol data should be appended here after ROM is compiled
+;	by ConvSym utility, otherwise debugger modules won't be able
+;	to resolve symbol names.
 ; ---------------------------------------------------------------------------
 
+; Screens
+		include "Screens/SelbiSplash/SelbiSplash.asm"
+		include "Screens/ChapterScreens/ChapterScreen.asm"
+		include "Screens/OptionsScreen/OptionsScreen.asm"
+		include "Screens/StoryScreen/StoryScreen.asm"
+		include	"Screens/CreditsScreen/CreditsScreen.asm"
+		include	"Screens/TutorialBox/TutorialBox.asm"
+		include	"Screens/GameplayStyleScreen/GameplayStyleScreen.asm"
+; ---------------------------------------------------------------------------
 
+; Level Renderer
 		include	'modules\Level Renderer.asm'
-
 ; ---------------------------------------------------------------------------
-
+		
+; Sound Driver (MegaPCM)
 		include	'SoundDriver\MegaPCM.asm'
 		include	'SoundDriver\SampleTable.asm'
 
@@ -45151,19 +45136,9 @@ FixBugs:	equ	1	; want to fix SMPS bugs
 		include	'SoundDriver\s1.sounddriver.defs.asm'
 		include	'SoundDriver\s1.sounddriver.asm'
 		popo		; restore previous options
-
 ; ---------------------------------------------------------------------------
 
-; ===========================================================================
-; ---------------------------------------------------------------------------
-		include "Screens/SelbiSplash/SelbiSplash.asm"
-		include "Screens/ChapterScreens/ChapterScreen.asm"
-		include "Screens/OptionsScreen/OptionsScreen.asm"
-		include "Screens/StoryScreen/StoryScreen.asm"
-		include	"Screens/CreditsScreen/CreditsScreen.asm"
-		include	"Screens/TutorialBox/TutorialBox.asm"
-		include	"Screens/GameplayStyleScreen/GameplayStyleScreen.asm"
-; ---------------------------------------------------------------------------
+; Benchmark stuff
 	if def(__BENCHMARK__)
 		include "Benchmark/Benchmark.asm"
 	endif
@@ -45171,21 +45146,10 @@ FixBugs:	equ	1	; want to fix SMPS bugs
 		MDReplay_IncludeMovie "Benchmark/bench-ghp.mdr"
 	endif
 
-; ===========================================================================
+; ---------------------------------------------------------------------------
 
-; ===========================================================================
-; ---------------------------------------------------------------------------
 ; Vladik's Debugging modules
-; ---------------------------------------------------------------------------
-; WARNING!
-;	DO NOT put any data from now on! DO NOT use ROM padding!
-;	Symbol data should be appended here after ROM is compiled
-;	by ConvSym utility, otherwise debugger modules won't be able
-;	to resolve symbol names.
-; ---------------------------------------------------------------------------
-		include   "Debugger/ErrorHandler.asm"
-; ---------------------------------------------------------------------------
-; ===========================================================================
+		include   'Debugger/ErrorHandler.asm'
 
 ; Sanity check for __DEBUG__ symbol to avoid pitfals
 	if def(__DEBUG__)
@@ -45202,6 +45166,8 @@ FixBugs:	equ	1	; want to fix SMPS bugs
 		inform 2, "__BENCHMARK__=0 doesn't have any effect, comment it out instead"
 	endif	
 	endif
+; ---------------------------------------------------------------------------
+; ===========================================================================
 
 ; ===========================================================================
 EndOfRom:	END	; it's joever

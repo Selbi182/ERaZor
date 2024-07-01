@@ -278,9 +278,7 @@ SelbiSplash_LoopEnd:
 SelbiSplash_Next:
 		clr.b	($FFFFFFAF).w
 		clr.l	($FFFFFF7A).w
-
-		move.b	#4,($FFFFF600).w	; set to title screen
-		rts
+		jmp	Exit_SelbiSplash
 
 SelbiSplash_DisableDebug:
 		move.w	#0,($FFFFFFFA).w	 	; disable debug mode

@@ -2,29 +2,23 @@
 ; ---------------------------------------------------------------------------
 ; Credits Routine
 ; ---------------------------------------------------------------------------
-
 NumberOfCreditsPages = 12
+StartDelay = 135
+; ---------------------------------------------------------------------------
 
 CreditsJest:
+		move.b	#$97,d0
+		jsr	PlaySound_Special			; play credits music
+
 		jsr	Pal_FadeFrom				; fade palette out
 		moveq	#$00,d0					; clear d0
 		move.l	d0,($FFFFF616).w			; reset Y scroll positions
 		move.l	d0,($FFFFFFAC).w			; reset rumble positions
 		move.l	d0,($FFFFFFA0).w			; reset scroll positions
 		move.w	#$8004,($C00004).l			; disable h-ints
-		ints_disable
+		VBlank_SetMusicOnly
 		jsr	ClearScreen				; clear the screen
 
-		move.b	#4,VBlankRoutine
-		jsr	DelayProgram
-		
-		; opening delay to sync the screen
-		move.w	#120,d0
-	@delay:	move.b	#4,VBlankRoutine
-		jsr	DelayProgram
-		dbf	d0,@delay
-
-		VBlank_SetMusicOnly
 		move.l	#$40000000,($C00004).l			; set VDP to V-Ram write mode with address
 		lea	(ArtKospM_Credits).l,a0			; load address of compressed art
 		jsr	KosPlusMDec_VRAM			; decompress and dump
@@ -44,6 +38,15 @@ CJ_RepPal:	move.l	(a0)+,(a1)+				; dump palette
 		move.l	(a0)+,(a1)+				; ''
 		dbf	d1,CJ_RepPal				; repeat til palette is dumped
 		VBlank_UnsetMusicOnly
+
+		move.b	#4,VBlankRoutine
+		jsr	DelayProgram
+
+		; opening delay to sync the screen to the music
+		move.w	#StartDelay,d0
+	@delay:	move.b	#4,VBlankRoutine
+		jsr	DelayProgram
+		dbf	d0,@delay
 
 		clr.b	($FFFFFF91).w				; set current page ID to 0
 
@@ -299,7 +302,7 @@ CJML_End:
 
 		moveq	#$F,d0			; load text after beating the game in casual mode
 		frantic				; have you beaten the game in frantic mode?
-		beq.s	@basegamehint		; if not, pussy 
+		beq.s	@basegamehint		; if not, pussy
 		moveq	#$10,d0			; load text after beating the game in frantic mode
 @basegamehint:	jsr	Tutorial_DisplayHint	; VLADIK => Display hint
 
@@ -316,8 +319,7 @@ CJML_End:
 
 @markgameasbeaten:
 		jsr	BaseGameDone		; you have beaten the base game, congrats
-		move.b	#$00,($FFFFF600).w	; restart from Sega Screen
-		jmp	MainGameLoop
+		jmp	Exit_CreditsScreen
 
 ; ---------------------------------------------------------------------------
 ; ===========================================================================

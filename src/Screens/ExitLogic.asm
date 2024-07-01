@@ -42,6 +42,11 @@ ReturnToUberhub_Chapter:
 ; Various screen exiting routines
 ; ---------------------------------------------------------------------------
 
+Exit_SelbiSplash:
+		move.b	#4,($FFFFF600).w	; set to title screen
+		rts
+; ===========================================================================
+
 Exit_TitleScreen:
 		tst.b	d0			; d0 = 0 resume from savegame / 1 first time playing
 		bne.s	@firsttime
@@ -94,6 +99,38 @@ Exit_StoryScreen:
 		beq.w	ReturnToUberhub		; otherwise, return to Uberhub every time
 
 ; ===========================================================================
+
+Exit_EndingSequence:
+		move.b	#$2C,($FFFFF600).w ; set scene to $2C (new credits)
+		move.w	#0,($FFFFFFF4).w ; set credits index number to 0
+		move.w	#1,($FFFFFE02).w	; restart level
+		rts
+
+; ===========================================================================
+
+Exit_CreditsScreen:
+		addq.w	#4,sp			; skip return address (weird quirk from the credits screen)
+		move.b	#$00,($FFFFF600).w	; restart from Sega Screen
+		rts
+
+; ===========================================================================
+; ===========================================================================
+
+Exit_IntroCutscene:
+	;	bsr	ClearEverySpecialFlag	; clear flags
+		move.b	#$20,($FFFFF600).w	; set screen mode to $20 (Info Screen)
+		move.b	#1,($FFFFFF9E).w	; set number for text to 1
+	;	clr.b	($FFFFFFE7).w		; make sure Sonic is not inhuman
+		rts
+
+; ===========================================================================
+
+Exit_BombMachineCutscene:
+		move.w	#$301,($FFFFFE10).w	; set level to Scar Night Place
+		move.b	#$C,($FFFFF600).w
+		move.w	#1,($FFFFFE02).w
+		rts
+
 ; ===========================================================================
 ; ===========================================================================
 

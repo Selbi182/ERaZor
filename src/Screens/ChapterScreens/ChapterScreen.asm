@@ -37,48 +37,10 @@ ChapterScreen:
 CS_ClrObjRam:	move.l	d0,(a1)+
 		dbf	d1,CS_ClrObjRam
 
-CS_LoadIntroCutscene:
 		cmpi.w	#$001,($FFFFFE10).w		; is this the intro cutscene?
-		bne.w	CS_NotOHDIGHZ			; if not, branch
+		beq.w	CS_OHDIGHZ			; if yes, go to alternate code
 
-		move.l	#$40000000,($C00004).l		; Load art
-		lea	($C00000).l,a6
-		lea	(Art_OHDIGHZ).l,a1		; load art
-		move.w	#$8A,d1				; load $8A tiles
-		jsr	LoadTiles			; load tiles
-
-		lea	(Map_OHDIGHZ).l,a1		; load chapter header
-		move.l	#$40000003,d0
-		moveq	#$27,d1
-		moveq	#$1B,d2
-		jsr	ShowVDPGraphics
-
-		lea	(Pal_OHDIGHZ).l,a1		; load chapter 3 stuff instead
-		lea	($FFFFFB80).w,a2
-		move.b	#7,d0				; 16 colours
-CS_PalLoopOHD:	move.l	(a1)+,(a2)+
-		dbf	d0,CS_PalLoopOHD
-
-		VBlank_UnsetMusicOnly
-		jsr	Pal_FadeTo
-
-		bra.w	CS_SetUpLoop			; skip
-
-; ===========================================================================
-; ---------------------------------------------------------------------------
-
-CS_NotOHDIGHZ:
-		tst.b	($FFFFFFA7).w			; is this a valid ID?
-		bhi.s	@valid				; if yes, branch
-		move.b	#1,($FFFFFFA7).w		; if not, it's either corrupt or simply the first start. set number for chapter to 1
-
-@valid:
-		btst	#1,($FFFFFF92).w		; are story text screens enabled?
-		bne.s	CS_Regular			; if yes, branch
-		VBlank_UnsetMusicOnly
-		bra.w	CS_EndLoop			; skip chapter screens
-
-CS_Regular:
+		; load top half
 		move.l	#$40000000,($C00004).l		; Load art
 		lea	($C00000).l,a6
 		lea	(Art_ChapterHeader).l,a1	; load chapter header
@@ -94,8 +56,8 @@ CS_Regular:
 		lea	(Pal_ChapterHeader).l,a1	; load chapter 3 stuff instead
 		lea	($FFFFFB80).w,a2
 		move.b	#7,d0				; 16 colours
-CS_PalLoop1:	move.l	(a1)+,(a2)+
-		dbf	d0,CS_PalLoop1
+@palloop:	move.l	(a1)+,(a2)+
+		dbf	d0,@palloop
 
 		move.l	#$60000000,($C00004).l
 		lea	($C00000).l,a6
@@ -103,94 +65,137 @@ CS_PalLoop1:	move.l	(a1)+,(a2)+
 		move.w	#$E,d1
 		jsr	LoadTiles
 
-		move.b	#4,($FFFFD000).w
-
+		move.b	#4,($FFFFD000).w		; load chapter numbers object (<-- past Selbi, why the fuck did you make this an object???)
 		jsr	ObjectsLoad
 		jsr	BuildSprites
 
+		; load bottom half
 		moveq	#0,d0
-		move.b	($FFFFFFA7).w,d0
-		subq	#1,d0
-		add.b	d0,d0
-		move.w	CS_Tiles_Index(pc,d0.w),d1
-		jmp	CS_Tiles_Index(pc,d1.w)
-; ===========================================================================
-CS_Tiles_Index:	dc.w CS_Tiles1-CS_Tiles_Index
-		dc.w CS_Tiles2-CS_Tiles_Index
-		dc.w CS_Tiles3-CS_Tiles_Index
-		dc.w CS_Tiles4-CS_Tiles_Index
-		dc.w CS_Tiles5-CS_Tiles_Index
-		dc.w CS_Tiles6-CS_Tiles_Index
-		dc.w CS_Tiles7-CS_Tiles_Index
-; ===========================================================================
+		move.b	($FFFFFFA7).w,d0		; get set chapter ID
+		beq.s	@invalid			; first start of the game
+		bmi.s	@invalid			; corrupted
+		cmpi.b	#7,d0				; is ID for some reason set beyond the limit?
+		bhi.s	@invalid			; if yes, it's corrupted
+		bra.s	@valid				; all good
+@invalid:
+		moveq	#1,d0				; ID is either corrupted or simply the first start. set number for chapter to 1
+		move.b	d0,($FFFFFFA7).w		; also update it in RAM
+@valid:
+		subq.b	#1,d0				; adjust for 0-based indexing
+		add.w	d0,d0				; convert to long...
+		add.w	d0,d0				; ...so that d0 now holds the index for the current chapter screen
 
-CS_Tiles1:
-		lea	(Art_Chapter1).l,a1		; load chapter 1
-		bra.s	CS_Tiles_Load
-CS_Tiles2:
-		lea	(Art_Chapter2).l,a1		; load chapter 2
-		bra.s	CS_Tiles_Load
-CS_Tiles3:
-		lea	(Art_Chapter3).l,a1		; load chapter 3
-		bra.s	CS_Tiles_Load
-CS_Tiles4:
-		lea	(Art_Chapter4).l,a1		; load chapter 4
-		bra.s	CS_Tiles_Load
-CS_Tiles5:
-		lea	(Art_Chapter5).l,a1		; load chapter 5
-		bra.s	CS_Tiles_Load
-CS_Tiles6:
-		lea	(Art_Chapter6).l,a1		; load chapter 6
-		bra.s	CS_Tiles_Load
-CS_Tiles7:
-		lea	(Art_Chapter7).l,a1		; load chapter 7
+		bsr	CS_LoadChapterArt		; load art
+		bsr	CS_LoadChapterMaps		; load maps
+		bsr	CS_LoadChapterPal		; load palette
+		VBlank_UnsetMusicOnly
 
-CS_Tiles_Load:
+		; double fade-in
+		move.w	#$000F,($FFFFF626).w		; start at palette line 1, 16 colours ($F + 1)
+		jsr	Pal_FadeTo2			; fade in upper part
+
+		move.w	#$200F,($FFFFF626).w		; start at palette line 2, 16 colours ($F + 1)
+		jsr	Pal_FadeTo2			; fade in lower part
+
+		move.w	#$003F,($FFFFF626).w		; fix a really bad bug (<-- whatever that means, past Selbi)
+		bra.w	CS_SetupEndLoop			; go to end wait loop
+
+; ===========================================================================
+; ---------------------------------------------------------------------------
+
+CS_LoadChapterArt:
+		movea.l	CS_ChapterArt(pc,d0.w),a1
 		move.l	#$45A00000,($C00004).l		; Load art
 		lea	($C00000).l,a6
 		move.w	#$7C,d1				; load $7C tiles
+		move.l	d0,-(sp)
 		jsr	LoadTiles			; load tiles
+		move.l	(sp)+,d0
+		rts
 
-		lea	(Map_Chapter1).l,a1		; load chapter 1
-		moveq	#0,d0				; clear d0
-		move.b	($FFFFFFA7).w,d0		; get chapter ID
-		subq	#1,d0
-		mulu.w	#1520,d0			; multiply it by 1520 bytes
-		adda.w	d0,a1				; add result to a1
+CS_ChapterArt:
+		dc.l	Art_Chapter1
+		dc.l	Art_Chapter2
+		dc.l	Art_Chapter3
+		dc.l	Art_Chapter4
+		dc.l	Art_Chapter5
+		dc.l	Art_Chapter6
+		dc.l	Art_Chapter7
+; ===========================================================================
+
+CS_LoadChapterMaps:
+		movea.l	CS_ChapterMaps(pc,d0.w),a1
+		move.l	d0,-(sp)
 		move.l	#$44800003,d0
 		moveq	#$27,d1
 		moveq	#$12,d2
 		bsr	ShowVDPGraphics2
+		move.l	(sp)+,d0
+		rts
 
-		lea	(Pal_Chapter1).l,a1		; load chapter 1 palette
-		moveq	#0,d0				; clear d0
-		move.b	($FFFFFFA7).w,d0		; get chapter ID
-		subq	#1,d0
-		mulu.w	#32,d0				; multiply it by 32 bytes
-		adda.w	d0,a1				; add result to a1
-		lea	($FFFFFBA0).w,a2
-		move.b	#7,d0				; 16 colours
-CS_PalLoop2:
-		move.l	(a1)+,(a2)+
-		dbf	d0,CS_PalLoop2
-; ---------------------------------------------------------------------------
+CS_ChapterMaps:
+		dc.l	Map_Chapter1
+		dc.l	Map_Chapter2
+		dc.l	Map_Chapter3
+		dc.l	Map_Chapter4
+		dc.l	Map_Chapter5
+		dc.l	Map_Chapter6
+		dc.l	Map_Chapter7
+; ===========================================================================
 		
-		VBlank_UnsetMusicOnly
-		move.w	#$000F,($FFFFF626).w		; start at palette line 1, 16 colours ($F + 1)
-		jsr	Pal_FadeTo2
-		move.w	#$200F,($FFFFF626).w		; start at palette line 2, 16 colours ($F + 1)
-		jsr	Pal_FadeTo2
-		move.w	#$003F,($FFFFF626).w		; fix a really bad bug
+CS_LoadChapterPal:
+		movea.l	CS_ChapterPal(pc,d0.w),a1
+		lea	($FFFFFBA0).w,a2
+		rept	8
+		move.l	(a1)+,(a2)+
+		endr
+		rts
+
+CS_ChapterPal:
+		dc.l	Pal_Chapter1
+		dc.l	Pal_Chapter2
+		dc.l	Pal_Chapter3
+		dc.l	Pal_Chapter4
+		dc.l	Pal_Chapter5
+		dc.l	Pal_Chapter6
+		dc.l	Pal_Chapter7
 
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
 
-CS_SetUpLoop:	
-		move.w	#$C0,($FFFFF614).w	; set wait time
-		cmpi.w	#$001,($FFFFFE10).w	; is this the tutorial?
-		beq.w	CS_Loop_OHDIGHZ		; if yes, go to a different loop
+
+; ===========================================================================
+; ---------------------------------------------------------------------------
+
+CS_OHDIGHZ:
+		move.l	#$40000000,($C00004).l		; Load art
+		lea	($C00000).l,a6
+		lea	(Art_OHDIGHZ).l,a1		; load art
+		move.w	#$8A,d1				; load $8A tiles
+		jsr	LoadTiles			; load tiles
+
+		lea	(Map_OHDIGHZ).l,a1		; load chapter header
+		move.l	#$40000003,d0
+		moveq	#$27,d1
+		moveq	#$1B,d2
+		jsr	ShowVDPGraphics
+
+		lea	(Pal_OHDIGHZ).l,a1		; load palette
+		lea	($FFFFFB80).w,a2
+		move.b	#7,d0				; 16 colours
+CS_PalLoopOHD:	move.l	(a1)+,(a2)+
+		dbf	d0,CS_PalLoopOHD
+
+		VBlank_UnsetMusicOnly
+		jsr	Pal_FadeTo
 
 ; ---------------------------------------------------------------------------
+
+CS_SetupEndLoop:	
+		move.w	#$C0,($FFFFF614).w	; set wait time
+
+		cmpi.w	#$001,($FFFFFE10).w	; is this the intro cutscene?
+		beq.w	CS_Loop_OHDIGHZ		; if yes, go to a different loop
 CS_Loop:
 		jsr	ObjectsLoad
 		jsr	BuildSprites
@@ -198,83 +203,38 @@ CS_Loop:
 		jsr	DelayProgram
 		move.b	($FFFFF605).w,d1	; get button presses
 		andi.b	#$E0,d1			; is A, B, C, or start pressed?
-		bne.s	CS_EndLoop		; if yes, branch
+		bne.s	CS_Exit			; if yes, branch
 		tst.w	($FFFFF614).w		; test wait time
 		bne.s	CS_Loop			; if it isn't over, loop
 ; ---------------------------------------------------------------------------
 
-CS_EndLoop:
-		move.w	#$400,($FFFFFE10).w	; set level to SYZ1 (Uberhub)
-
-		cmpi.w	#$001,($FFFFFE10).w	; is this the intro cutscene?
-		beq.s 	CS_PlayLevel		; if yes, always return to Uberhub
-
-		tst.b	($FFFFFF7D).w		; has chapters screen been entered through a giant ring Uberhub?
-		beq.s	CS_PlayLevel		; if not, return to Uberhub
-
-		cmpi.b	#2,($FFFFFFA7).w	; is this chapter 2?
-		bne.s	CS_ChkChapter3		; if not, branch
-		move.w	#$300,($FFFFFE10).w	; use correct stage
-		move.b	#$10,($FFFFF600).w	; set to special stage
-		rts
-
-CS_ChkChapter3:
-		cmpi.b	#3,($FFFFFFA7).w	; is this chapter 3?
-		bne.s	CS_ChkChapter4		; if not, branch
-		move.w	#$200,($FFFFFE10).w	; set level to MZ1
-		bra.s 	CS_PlayLevel
-
-CS_ChkChapter4:
-		cmpi.b	#4,($FFFFFFA7).w	; is this chapter 4?
-		bne.s	CS_ChkChapter5		; if not, branch
-		move.w	#$101,($FFFFFE10).w	; set level to LZ2
-		bra.s 	CS_PlayLevel
-
-CS_ChkChapter5:
-		cmpi.b	#5,($FFFFFFA7).w	; is this chapter 5?
-		bne.s	CS_ChkChapter6		; if not, branch
-		move.w	#$401,($FFFFFE10).w	; use correct stage
-		move.b	#$10,($FFFFF600).w	; set to special stage
-		rts
-CS_ChkChapter6:
-		cmpi.b	#6,($FFFFFFA7).w	; is this chapter 6?
-		bne.s	CS_ChkChapter7		; if not, branch
-		move.w	#$500,($FFFFFE10).w	; set level to SBZ1
-		bra.s 	CS_PlayLevel
-
-CS_ChkChapter7:
-		cmpi.b	#7,($FFFFFFA7).w	; is this chapter 7?
-		bne.s	CS_PlayLevel		; if not, branch
-		move.w	#$502,($FFFFFE10).w	; set level to FZ
-
-CS_PlayLevel:
-		move.b	#$C,($FFFFF600).w	; set to level
-		move.w	#1,($FFFFFE02).w	; restart level
-		rts
+CS_Exit:
+		moveq	#0,d0
+		move.b	($FFFFFFA7).w,d0	; remember chapter ID we came from in d0
+		jmp	Exit_ChapterScreen	; return to main source
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
+; ---------------------------------------------------------------------------
 
 CS_Loop_OHDIGHZ:
 		cmpi.w	#$30,($FFFFF614).w	; wait $30 frames before starting the intro cutscene music
-		bne.s	@nottutorial
-@ohdighzstart:
-		move.b	#$95,d0			; play intro cutscene music
-		jsr	PlaySound
-		move.w	#$001,($FFFFFE10).w	; load intro cutscene
-		bra.w	CS_PlayLevel
+		beq.s	@ohdexit		; if time has passed, start intro
 
-@nottutorial:
 		jsr	ObjectsLoad
 		jsr	BuildSprites
 		move.b	#4,VBlankRoutine
 		jsr	DelayProgram
+		tst.w	($FFFFF614).w		; test wait time
+		beq.s	@ohdexit		; if it it's over, exit
 		move.b	($FFFFF605).w,d1	; get button presses
 		andi.b	#$E0,d1			; is A, B, C, or start pressed?
-		bne.s	@ohdighzstart		; if yes, branch
-		tst.w	($FFFFF614).w		; test wait time
-		bne.s	CS_Loop_OHDIGHZ		; if it isn't over, loop
-		bra.s	@ohdighzstart
-		
+		beq.s	CS_Loop_OHDIGHZ		; if not, loop
+@ohdexit:
+		jmp	Exit_ChapterScreen_StartIntro	; start intro cutscene in main source
+
+; ---------------------------------------------------------------------------
+; ===========================================================================
+
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Object 04 - Chapter Numbers
@@ -318,7 +278,7 @@ Map_Obj04:
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Modifyed version of ShowVDPGraphics which writes to second palette row
+; Modified version of ShowVDPGraphics which writes to the second palette row
 ; and goes $2D tiles further.
 ; ---------------------------------------------------------------------------
 
@@ -406,4 +366,5 @@ Pal_OHDIGHZ:	incbin	"Screens/ChapterScreens/ChapterFiles/Palette_OHDIGHZ.bin"
 ; ---------------------------------------------------------------------------
 Art_Numbers:	incbin	"Screens/ChapterScreens/Art_Numbers.bin"
 		even
+; ---------------------------------------------------------------------------
 ; ===========================================================================

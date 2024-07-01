@@ -98,7 +98,6 @@ GSS_MainLoop:
 @NoUpdate:
 		andi.b	#$F0,($FFFFF605).w	; is A, B, C, or Start pressed?
 		beq.s	GSS_MainLoop		; if not, branch
-
 ; ---------------------------------------------------------------------------
 
 @Exit:
@@ -106,28 +105,20 @@ GSS_MainLoop:
 		jsr	PlaySound_Special	; play giant ring sound
 		jsr 	WhiteFlash2
 		jsr 	Pal_FadeFrom
-
-		move.w  #$20, ($FFFFF614).w
-		
+		move.w  #$20,($FFFFF614).w
 		jsr	SRAM_SaveNow
 
 @Wait:
 		move.b	#$4, VBlankRoutine
 		jsr	DelayProgram
-
 		tst.w 	($FFFFF614).w
 		bne.s 	@Wait
 
+		moveq	#0,d0			; return to options menu
 		tst.b	GSS_FirstStart		; first time?
-		bne.s	@firsttime		; if yes, branch
-		move.b	#$24,($FFFFF600).w	; we came from the options menu, return to it
-		rts
-
-@firsttime:
-		move.b	#$28,($FFFFF600).w	; load chapters screen for intro cutscene (One Hot Day...)
-		move.w	#$001,($FFFFFE10).w	; set to intro cutscene
-		rts
-
+		beq.s	@exitfr			; if not, branch
+		moveq	#1,d0			; go to intro cutscene
+@exitfr:	jmp	Exit_GameplayStyleScreen
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
 

@@ -66,7 +66,7 @@ QuickLevelSelect_ID = $400
 DebugModeDefault = 1
 DebugSurviveNoRings = 1
 ; ------------------------------------------------------
-DoorsAlwaysOpen = 0
+DoorsAlwaysOpen = 1
 LowBossHP = 1
 ; ======================================================
 	else
@@ -1100,9 +1100,7 @@ PlaySound_Special:
 
 
 PauseGame:				; XREF: Level_MainLoop; et al
-		nop				; no operation
-	;	tst.w	($FFFFFE12).w		; do you have any lives	left?
-	;	beq.w	Unpause			; if not, branch
+	;	nop				; no operation
 		tst.w	($FFFFF63A).w		; is game already paused?
 		bne.s	loc_13BE		; if yes, branch
 		tst.b	($FFFFD000).w		; does Sonic exist? (e.g. has he not jumped into a ring)?
@@ -1111,15 +1109,17 @@ PauseGame:				; XREF: Level_MainLoop; et al
 		beq.w	Pause_DoNothing		; if not, branch
 
 loc_13BE:
+		; skip bomb machine cutscene
 		cmpi.w	#$500,($FFFFFE10).w	; is this the bomb machine cutscene?
-		bne.s	@cont			; if not, branch
+		bne.s	@notmachine		; if not, branch
 		move.w	#$301,($FFFFFE10).w	; set level to Scar Night Place
 		move.b	#$C,($FFFFF600).w
 		move.w	#1,($FFFFFE02).w
 		rts
 
-@cont:
-		cmpi.w	#$001,($FFFFFE10).w	; is level GHZ2?
+@notmachine:
+		; skip intro cutscene
+		cmpi.w	#$001,($FFFFFE10).w	; is level intro cutscene?
 		bne.s	PG_ChkHUD		; if not, branch
 		bsr	ClearEverySpecialFlag	; clear flags
 		move.b	#$20,($FFFFF600).w	; set screen mode to $20 (Info Screen)
@@ -1146,36 +1146,18 @@ PG_NotGHZ2:
 		bne.s	Pause_MainLoop		; if yes, branch
 		move.b	#1,($FFFFFFB5).w	; set flag
 		move.b	#1,($FFFFF003).w	; pause music
-
-		jsr	Pal_MakeBlackWhite
+		jsr	Pal_MakeBlackWhite	; make palette grayscale while game is paused
 
 Pause_MainLoop:
 		move.b	#$10,VBlankRoutine
 		bsr	DelayProgram
-
-	;	cmpi.w	#$501,($FFFFFE10).w
-	;	beq.s	Pause_ChkBC
-	;	cmpi.w	#$400,($FFFFFE10).w
-	;	beq.s	Pause_ChkBC
 		
 		btst	#6,($FFFFF605).w 	; is button A pressed?
 		beq.s	Pause_ChkBC		; if not, branch
 		move.b	#1,($FFFFFF94).w	; set "exited via Start+A" flag
-		cmpi.b	#$10,($FFFFF600).w	; is game mode = special stage?
-		beq.s	Pause_AExitSS		; if yes, branch
-
-		move.w	#$400,($FFFFFE10).w	; set level to SYZ1
-		move.b	#$C,($FFFFF600).w	; set to level
-		move.w	#1,($FFFFFE02).w	; restart level
-		jsr	ClearEverySpecialFlag
-		clr.b	($FFFFFFE7).w
-		bra.s	loc_1404		; skip to loc_1404
-
-Pause_AExitSS:
-		move.w	#$400,($FFFFFE10).w	; set level to SYZ1
-		move.b	#$C,($FFFFF600).w	; set to level
-		move.w	#1,($FFFFFE02).w	; restart level
-		bra.s	loc_1404		; skip to loc_1404
+		bsr.s	Pause_Restore		; restore from pause (grayscale palette, etc.)
+		moveq	#0,d0			; set to exited via Pause+A
+		jmp	Exit_Level
 ; ===========================================================================
 
 Pause_ChkBC:
@@ -1190,18 +1172,13 @@ Pause_ChkStart:
 		btst	#7,($FFFFF605).w 	; is Start button pressed?
 		beq.w	Pause_MainLoop		; if not, loop
 
-loc_1404:
+Pause_Restore:
 		move.b	#$80,($FFFFF003).w	; something with music
-
-Unpause:
 		lea	($FFFFFA80).w,a0	; get palette
 		lea	($FFFFC910).w,a1 	; get backup up palette
 		move.w	#$007F,d3		; set d3 to $3F (+1 for the first run)
-
-Pal_RTN_Loop
-		move.w	(a1)+,(a0)+		; set new palette
-		dbf	d3,Pal_RTN_Loop		; loop for each colour
-
+@restorepal:	move.w	(a1)+,(a0)+		; set new palette
+		dbf	d3,@restorepal		; loop for each colour
 		clr.b	($FFFFFFB5).w		; clear flag
 		move.w	#0,($FFFFF63A).w 	; unpause the game
 
@@ -3037,17 +3014,12 @@ LevelSelect_Load:
 
 Title_NoLevSel:
 		bsr.s	ERZ_FadeOut		; ERZ fadeout hell yea
-
+		moveq	#0,d0			; set to resume from save game
 		tst.b	($FFFFFFA7).w		; is this the first time the game is being played?
-		bne.s	SG_ResumeFromSaveGame	; if not, load whatever was in the SRAM at the time
-		
-		; first start
-		move.b	#$30,($FFFFF600).w	; set to Gameplay Style Screen
-		rts
-
-SG_ResumeFromSaveGame:
-		move.b	#$28,($FFFFF600).w	; set to Chapters Screen
-		rts				; return
+		bne.s	@exit			; if not, load whatever was in the SRAM at the time
+		moveq	#1,d0			; set to first start (intro cutscene)
+@exit:
+		jmp	Exit_TitleScreen
 ; ===========================================================================
 
 ERZ_FadeOut:
@@ -3346,7 +3318,86 @@ LSelectPointers:
 		dc.w	$001	; Intro Sequence
 		dc.w	$601	; Ending Sequence
 		dc.w	$666	; Blackout Challenge
-		even	
+		even
+
+
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Subroutine to check if the current level is one of the main ones
+; and set "Fake Level ID" in d5 if so.
+; ---------------------------------------------------------------------------
+
+; CheckIfMainLevel:
+FakeLevelID:
+		move.l	a1,-(sp)		; backup a1
+		moveq	#-1,d5			; set d5 to -1 (it'll be 0)
+		lea	(MainLevelArray).l,a1	; set level array index to a1
+CIML_Loop:
+		addq.w	#1,d5			; increase d5
+		move.w	(a1)+,d3		; get next level ID and load it into d3
+		bmi.s	CIML_Error		; end of the list? quit loop
+		cmp.w	($FFFFFE10).w,d3	; does it match with the current ID?
+		bne.s	CIML_Loop		; if not, loop
+		bra.s	CIML_End		; otherwise return
+
+CIML_Error:
+		moveq	#-1,d5			; set d5 to "no result"
+CIML_End:
+		move.l	(sp)+,a1		; restore a1
+		rts				; otherwise return
+; ---------------------------------------------------------------------------
+
+MainLevelArray:
+		; the order here is a historically grown mess,
+		; but it must stay like this or everything breaks
+		dc.w	$000	; 0 - Night Hill Place
+		dc.w	$002	; 1 - Green Hill Place
+		dc.w	$300	; 2 - Special Place (Yes, it uses SLZ's ID)
+		dc.w	$200	; 3 - Ruined Place
+		dc.w	$101	; 4 - Labyrinthy Place
+		dc.w	$401	; 5 - Unreal Place
+		dc.w	$301	; 6 - Scar Night Place
+		dc.w	$502	; 7 - Finalor Place
+		dc.w	$400	; 8 - Uberhub
+		dc.w	$501	; 9 - Tutorial Place (SBZ 2)
+		dc.w	$302	; A - Star Agony Place
+		dc.w	$FFFF	; None of the above
+		even
+
+
+; ---------------------------------------------------------------------------
+; Subroutine to play level music.
+; ---------------------------------------------------------------------------
+
+PlayLevelMusic:
+		jsr	FakeLevelID		; get main level ID and load it into d5
+		lea	(MusicList).l,a1	; load Playlist into a1
+		move.b	(a1,d5.w),d0		; get music ID
+		cmp.b	SoundDriverRAM+v_last_bgm,d0	; is last played music ID the same one as the one to be played?
+		beq.s	PLM_NoMusic		; if yes, don't restart music
+		bsr.w	PlaySound		; play music
+PLM_NoMusic:
+		rts				; return
+; ---------------------------------------------------------------------------
+
+MusicList:
+		dc.b	$81	; Night Hill Place
+		dc.b	$90	; Green Hill Place
+		dc.b	$89	; Special Stage (Unused)
+		dc.b	$83	; Ruined Place
+		dc.b	$82	; Labyrinthy Place
+		dc.b	$89	; Special Stage 2 (Unused)
+		dc.b	$84	; Scar Night Place
+		dc.b	$8D	; Finalor Place
+		dc.b	$85	; Spring Yard Place (Overworld)
+		dc.b	$87	; Tutorial Place (SBZ 2)
+		dc.b	$84	; Star Agony Place
+		even
+; ---------------------------------------------------------------------------
+; ===========================================================================
+
+
+; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Level
 ; ---------------------------------------------------------------------------
@@ -4499,92 +4550,6 @@ Fuzz_Uberhub:
 @fuzzuberhubend:
 		rts				; return
 
-; ===========================================================================
-; ---------------------------------------------------------------------------
-; Subroutine to play level music.
-; ---------------------------------------------------------------------------
-
-PlayLevelMusic:
-		bsr.s	CheckIfMainLevel	; get main level ID and load it into d5
-		lea	(MusicList).l,a1	; load Playlist into a1
-		move.b	(a1,d5.w),d0		; get music ID
-		cmp.b	SoundDriverRAM+v_last_bgm,d0	; is last played music ID the same one as the one to be played?
-		beq.s	PLM_NoMusic		; if yes, don't restart music
-		bsr.w	PlaySound		; play music
-
-PLM_NoMusic:
-		rts				; return
-
-; End of function PlayLevelMusic
-
-; ---------------------------------------------------------------------------
-
-MusicList:
-		dc.b	$81	; Night Hill Place
-		dc.b	$90	; Green Hill Place
-		dc.b	$89	; Special Stage (Unused)
-		dc.b	$83	; Ruined Place
-		dc.b	$82	; Labyrinthy Place
-		dc.b	$89	; Special Stage 2 (Unused)
-		dc.b	$84	; Scar Night Place
-		dc.b	$8D	; Finalor Place
-		dc.b	$85	; Spring Yard Place (Overworld)
-		dc.b	$87	; Tutorial Place (SBZ 2)
-		dc.b	$84	; Star Agony Place
-		even
-; ---------------------------------------------------------------------------
-; ===========================================================================
-
-
-; ===========================================================================
-; ---------------------------------------------------------------------------
-; Subroutine to check if the current level is one of the main ones
-; and set "Fake Level ID" if result is true.
-; (GHZ1, GHZ3, MZ1, LZ2, FZ, SYZ1)
-; ---------------------------------------------------------------------------
-
-CheckIfMainLevel:
-		move.l	a1,-(sp)		; backup a1
-
-		moveq	#-1,d5			; set d5 to -1 (it'll be 0)
-		lea	(MainLevelArray).l,a1	; set level array index to a1
-
-CIML_Loop:
-		addq.w	#1,d5			; increase d5
-		move.w	(a1)+,d3		; get next level ID and load it into d3
-		bmi.s	CIML_Error		; end of the list? quit loop
-		cmp.w	($FFFFFE10).w,d3	; does it match with the current ID?
-		bne.s	CIML_Loop		; if not, loop
-
-		move.l	(sp)+,a1		; restore a1
-		rts				; otherwise return
-; ---------------------------------------------------------------------------
-
-CIML_Error:
-		moveq	#-1,d5			; set d5 to "no result"
-		move.l	(sp)+,a1		; restore a1
-		rts				; otherwise return
-; End of function CheckIfMainLevel
-
-; ---------------------------------------------------------------------------
-
-MainLevelArray:
-		dc.w	$000	; Night Hill Place
-		dc.w	$002	; Green Hill Place
-		dc.w	$300	; Special Place (Yes, it uses SLZ's ID)
-		dc.w	$200	; Ruined Place
-		dc.w	$101	; Labyrinthy Place
-		dc.w	$401	; Unreal Place
-		dc.w	$301	; Scar Night Place
-		dc.w	$502	; Finalor Place
-		dc.w	$400	; Spring Yard Place (Overworld)
-		dc.w	$501	; Tutorial Place (SBZ 2)
-		dc.w	$302	; Star Agony Place
-		dc.w	$FFFF	; None of the above
-		even
-; ---------------------------------------------------------------------------
-; ===========================================================================
-
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -5112,44 +5077,14 @@ SS_EndClrObjRamX:
 		jsr	BuildSprites
 		bsr	Pal_MakeFlash
 
+		moveq	#0,d0			; set to exited via Pause+A
 		tst.b	($FFFFFF94).w		; was special stage exited via Pause+A?
-		bne.s	SpecialStage_Quitter	; if yes, don't modify progress
-
-SpecialStage_Beaten:
+		bne.s	@nopoints		; if yes, no points 4 u
 		move.l	#10000,d0		; add 100000 ...
 		jsr	AddPoints		; ... points
-
-		cmpi.w	#$300,($FFFFFE10).w	; did we beat Special Place?
-		beq.s	@spbeaten		; if yes, branch
-		cmpi.w	#$401,($FFFFFE10).w	; did we beat Unreal Place/Blackout Challenge?
-		beq.s	@upbeaten		; if yes, branch
-		bra.s	SpecialStage_Quitter	; uhh idk how this could ever happen, but just in case
-
-@spbeaten:
-		moveq	#1,d0			; open door after Special Place
-		jsr	OpenDoor
-		move.b	#3,($FFFFFF9E).w	; set number for text to 3
-		bra.s	@runinfoscreen
-
-@upbeaten:
-		moveq	#4,d0			; open door after Unreal Place
-		jsr	OpenDoor
-		move.b	#6,($FFFFFF9E).w	; set number for text to 6
-		tst.b	($FFFFFF5F).w		; is this the blackout special stage?
-		beq.s	@runinfoscreen		; if not, branch
-		move.b	#9,($FFFFFF9E).w	; set number for text to 9 instead
-
-@runinfoscreen:
-		clr.b	($FFFFFF5F).w		; clear blackout special stage flag
-		move.b	#$20,($FFFFF600).w	; set to info screen
-		rts
-; ===========================================================================
-
-SpecialStage_Quitter:
-		move.w	#$400,($FFFFFE10).w	; set level to Uberhub
-		move.b	#$C,($FFFFF600).w	; set to level
-		move.w	#1,($FFFFFE02).w	; restart level	
-		rts
+		moveq	#1,d0			; set to beaten legitimately
+@nopoints:
+		jmp	Exit_Level
 ; ===========================================================================
 
 Blackout_RotationSpeed = $140
@@ -12959,18 +12894,18 @@ Obj4B:					; XREF: Obj_Index
 Obj4B_Index:	dc.w Obj4B_Main-Obj4B_Index
 		dc.w Obj4B_Animate-Obj4B_Index
 		dc.w Obj4B_Collect-Obj4B_Index
-		dc.w Obj4B_Delete-Obj4B_Index
+		dc.w Obj4B_MoveOffScreen-Obj4B_Index
 ; ===========================================================================
 
 Obj4B_Main:				; XREF: Obj4B_Index
 		tst.b	(FZEscape).w
-		beq.s	@0
+		beq.s	@notfzescape
 		tst.b	obSubtype(a0)	; is this the skip ring?
-		bmi.s	@0		; if not, branch
+		bmi.s	@notfzescape	; if not, branch
 		move.b	#$3F,(a0)	; turn into explosion
 		move.b	#0,obRoutine(a0)
 		rts
-@0:
+@notfzescape:
 		move.w	obY(a0),$34(a0)
 		move.b	#5,$37(a0)
 		move.b	#5,$38(a0)
@@ -12997,7 +12932,7 @@ Obj4B_Main:				; XREF: Obj4B_Index
 		jmp	DeleteObject			; otherwise, delete this ring	
 @tempringcont2:
 	endif
-	
+
 		cmpi.b	#GRing_Blackout,obSubtype(a0)	; is this the blackout challenge ring?
 		bne.s	Obj4B_Main_Cont			; if not, branch
 		move.w	#$0422,obGfx(a0)		; use red palette
@@ -13055,7 +12990,7 @@ Obj4B_YPositive:
 
 		; new censored easter egg (overrides the old naughty one)
 		cmpi.w	#$302,($FFFFFE10).w	; is this Star Agony Place? (easter egg ring)
-		bne.s	@conty			; if yes, branch
+		bne.s	@notsap			; if not, branch
 		clr.w	($FFFFD010).w
 		clr.w	($FFFFD012).w
 		jsr	DeleteObject
@@ -13063,32 +12998,29 @@ Obj4B_YPositive:
 		jsr	PlaySound
 		move.b	#$C,d0			; VLADIK => Load hint number based on subtype
 		jsr	Tutorial_DisplayHint	; VLADIK => Display hint
+
 		moveq	#$A,d0			; reload SLZ patterns overwritten by the textbox
 		jsr	(LoadPLC).l		; (this is slow and inefficient as fuck lmao -- UPDATE: not anymore thanks to vlad!)
 		moveq	#$B,d0			; reload the other SLZ patterns overwritten by the textbox
 		jsr	(LoadPLC).l
-		
-		
 		move.b	#$96,d0			; restart regular music
 		btst	#4,($FFFFFF92).w	; is nonstop inhuman enabled?
-		beq.s	@notnonstopinhuman	; if not, branch
-		move.b	#$84,d0			; restart lame default music
-		
-@notnonstopinhuman:
-		jmp	PlaySound
-		
+		beq.s	@play			; if not, branch
+		move.b	#$84,d0			; restart lame default music	
+@play:		jmp	PlaySound
+; ===========================================================================
 
-@conty:
+@notsap:
 		cmpi.b	#GRing_Blackout,obSubtype(a0)	; is this the blackout challenge ring?
 		bne.s	@contnotredaircheck	; if not, branch
 		btst	#1,($FFFFD022).w	; is Sonic in air?
 		beq.s	Obj4B_DontCollect	; if not, don't collect
 		
-		move.b  #1, ($FFFFFFD0).w       ; FUZZY: I feel very light-headed...
-		move.b  #$FF, ($FFFFFF64).w     ; ...and dizzy...
+		move.b  #1,($FFFFFFD0).w	; FUZZY: I feel very light-headed...
+		move.b  #$FF,($FFFFFF64).w	; ...and dizzy...
 
 @contnotredaircheck:
-		move.b	#4,obRoutine(a0)		; mark ring as collected
+		move.b	#4,obRoutine(a0)	; mark ring as collected
 		move.b	#1,$3C(a0)		; disable interaction with ring
 
 Obj4B_DontCollect:
@@ -13105,7 +13037,7 @@ Obj4B_DontCollect:
 
 Obj4B_Collect:				; XREF: Obj4B_Index
 		move.l	a0,-(sp)
-		ints_disable
+		VBlank_SetMusicOnly
 		move.l	#$4C400002,d0
 		cmpi.w	#$400,($FFFFFE10).w
 		bne.s	@cont
@@ -13117,7 +13049,7 @@ Obj4B_Collect:				; XREF: Obj4B_Index
 Obj4B_ArtLoadLoop:
 		move.w	(a0)+,($C00000).l
 		dbf	d1,Obj4B_ArtLoadLoop
-		ints_enable
+		VBlank_UnsetMusicOnly
 		move.l	(sp)+,a0
 		
 		cmpi.b	#GRing_Blackout,obSubtype(a0)	; is this the blackout challenge ring?
@@ -13163,269 +13095,47 @@ Obj4B_PlaySnd:
 		bra.w	Obj4B_Animate
 ; ===========================================================================
 
-Obj4B_Delete:				; XREF: Obj4B_Index
+Obj4B_MoveOffScreen:			; XREF: Obj4B_Index
 		bsr.w	Obj4B_Animate		; still animate ring
 
-		cmpi.b	#$5,($FFFFFE10).w	; is this the tutorial/finalor?
-		beq.s	@conty			; if yes, branch
-
-		cmpi.w	#$302,($FFFFFE10).w	; is this Star Agony Place? (easter egg ring)
-		beq.s	@conty			; if yes, branch
-
-		cmpi.w	#$400,($FFFFFE10).w	; is level SYZ 1?
-		bne.w	Obj4B_ChkGHZ2		; if not, branch
-
-@conty:
 		cmpi.b	#GRing_Blackout,obSubtype(a0)	; is this the blackout challenge ring?
 		bne.s	@contnotred		; if not, branch
 		addi.w	#$20,obVelY(a0)		; move ring down
-		jsr	SpeedToPos
-		move.b	#0,$37(a0)		; use fast animation
-		move.b	#0,$38(a0)		; use fast animation
-		tst.b	($FFFFFF7D).w
-		bmi.w	Obj4B_ChkBlackout
-		subq.b	#1,($FFFFFF7D).w
 		bra.w	Obj4B_Return
 
 @contnotred:
-		btst	#3, $FFFFFF92		; is cinematic HUD enabled?
-		bne.s	@NoPaletteChange		; don't change the palette
-
-		cmp.b	#4, $FFFFFE10			; we in uberhub?
-		bne.s	@NoPaletteChange		; if not, don't change the palette
-
-		lea	 	Pal_SYZGray, a3
-		lea 	$FFFFFB20, a4
-		moveq	#$30, d0
-
-@MovePaletteLoop:
-		move.w 	(a3)+, (a4)+
-		dbf 	d0, @MovePaletteLoop
+		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
+		bne.s	@NoPaletteChange	; don't change the palette
+		cmp.b	#4,($FFFFFE10).w	; we in uberhub?
+		bne.s	@NoPaletteChange	; if not, don't change the palette
+		lea	(Pal_SYZGray).l,a3
+		lea 	($FFFFFB20).w,a4
+		moveq	#$30-1,d0
+@PaletteLoop:	move.w 	(a3)+,(a4)+
+		dbf 	d0,@PaletteLoop
 
 @NoPaletteChange:
 		tst.b	($FFFFFF7D).w		; is ring moving up?
 		bne.s	@cont2			; if yes, branch
 		addi.w	#$10,obVelY(a0)		; move ring down
-		move.b	#2,$38(a0)
-		cmpi.w	#$340,obVelY(a0)		; has a certain downward velocity been reached?
+		move.b	#2,$38(a0)		; spin slow
+		cmpi.w	#$340,obVelY(a0)	; has a certain downward velocity been reached?
 		bmi.s	@cont			; if not, branch
 		move.b	#1,($FFFFFF7D).w	; make ring move upwards
 		bra.s	@cont
 @cont2:
 		subi.w	#$50,obVelY(a0)		; move ring upwards
-		move.b	#0,$38(a0)
+		move.b	#0,$38(a0)		; spin fast
 @cont:
-		jsr	SpeedToPos
-; ---------------------------------------------------------------------------
-; Misc loading logic
+		jsr	SpeedToPos		; move giant ring
 
-Obj4B_LoadLevel:
-		tst.b	obRender(a0)		; is ring still on screen?
-		bmi.w	Obj4B_Return		; if yes, branch
-		
-		cmpi.b	#$5,($FFFFFE10).w	; is this the tutorial/finalor?
-		bne.s	Obj4B_SNZ		; if not, branch
-		move.w	#$400,($FFFFFE10).w	; set level to Uberhub
-		tst.b	(FZEscape).w		; is this also the Finalor escape sequence?
-		beq.w	Obj4B_PlayLevel		; if not, branch
-		jmp	FinalBoss_Exit		; this stuff was originally part of the FZ boss
-
-Obj4B_SNZ:
-		cmpi.w	#$302,($FFFFFE10).w	; is this the easter egg ring in Star Agony Place?
-		bne.s	Obj4B_ChkGHZ1		; if not, branch
-		move.b	#$20,($FFFFF600).w	; load info screen
-		move.b	#9,($FFFFFF9E).w	; set number for text to 9
-		move.b	#$9D,d0			; play ending sequence music (cause it fits for the easter egg lol)
-		jmp	PlaySound
-
-; ---------------------------------------------------------------------------
-; Logic specific to intro cutscene
-
-Obj4B_ChkGHZ2:
-		cmpi.w	#$001,($FFFFFE10).w	; is level intro cutscene?
-		bne.w	Obj4B_Return		; if not, branch
-
-		tst.b	($FFFFFF7D).w		; is ring moving up?
-		bne.s	@cont2			; if yes, branch
-		addi.w	#$10,obVelY(a0)		; move ring down
-		move.b	#2,$38(a0)
-		cmpi.w	#$340,obVelY(a0)		; has a certain downward velocity been reached?
-		bmi.s	@cont			; if not, branch
-		move.b	#1,($FFFFFF7D).w	; make ring move upwards
-		bra.s	@cont
-@cont2:
-		subi.w	#$50,obVelY(a0)		; move ring upwards
-		move.b	#0,$38(a0)
-@cont:
-		jsr	SpeedToPos
-
-		tst.b	obRender(a0)			; has ring moved off screen?
-		bmi.w	Obj4B_Return		; if not, branch
-		
-		clr.b	($FFFFFFB8).w
-		clr.b	($FFFFFFB7).w
-		clr.b	($FFFFFFB6).w
-		
-		move.b	#1,($FFFFFF9E).w	; set number for text to 1
-		move.b	#$20,($FFFFF600).w	; set screen mode to info screen
-		rts
-; ---------------------------------------------------------------------------
-; Uberhub loading logic
-
-Obj4B_ChkGHZ1:
-		cmpi.b	#GRing_NightHill,obSubtype(a0)	; is this the ring to Night Hill Place?
-		bne.s	Obj4B_ChkGHZ3			; if not, branch
-		move.w	#$000,($FFFFFE10).w		; set level to GHZ1
-		bra.w	Obj4B_PlayLevel
-	
-Obj4B_ChkGHZ3:
-		cmpi.b	#GRing_GreenHill,obSubtype(a0)	; is this the ring to Green Hill Place?
-		bne.s	Obj4B_ChkSpecial1		; if not, branch
-		move.w	#$002,($FFFFFE10).w		; set level to GHZ3
-		bra.w	Obj4B_PlayLevel
-
-Obj4B_ChkSpecial1:
-		cmpi.b	#GRing_Special,obSubtype(a0)		; is this the ring to Special Place?
-		bne.s	Obj4B_ChkMZ			; if not, branch
-		move.w	#$300,($FFFFFE10).w		; set level to Special Stage
-		clr.b	($FFFFFF5F).w			; clear blackout blackout special stage flag
-		bsr	MakeChapterScreen
-
-		move.b  #0, ($FFFFFFD0).w               ; FUZZY: Let's clear the distortion flag,
-		move.b  #0, ($FFFFFF64).w               ; and the shake timer.
-
-		lea     ($FFFFCC00).w, a1
-		move.w  #224, d3
-
-@ClearScroll:
-		move.w  #0, (a1)+               ;Send AAAA HScroll entry
-		dbra    d3, @ClearScroll
-		rts
-
-Obj4B_ChkMZ:
-		cmpi.b	#GRing_Ruined,obSubtype(a0)	; is this the ring to Ruined Place?
-		bne.s	Obj4B_ChkLZ2			; if not, branch
-		move.w	#$200,($FFFFFE10).w		; set level to MZ1
-		bsr	MakeChapterScreen
-		bra.w	Obj4B_PlayLevel
-
-Obj4B_ChkLZ2:
-		cmpi.b	#GRing_Labyrinthy,obSubtype(a0)	; is this the ring to Labyrinthy Place?
-		bne.s	Obj4B_ChkSpecial2		; if not, branch
-		move.w	#$101,($FFFFFE10).w		; set level to LZ2
-		bsr	MakeChapterScreen
-		bra.w	Obj4B_PlayLevel
-
-Obj4B_ChkSpecial2:
-		cmpi.b	#GRing_Unreal,obSubtype(a0)	; is this the ring to Unreal Place?
-		bne.s	Obj4B_ChkSLZ2			; if not, branch
-		move.w	#$401,($FFFFFE10).w		; set level to Special Stage 2
-		clr.b	($FFFFFF5F).w			; clear blackout blackout special stage flag
-		bsr	MakeChapterScreen
-		rts
-
-Obj4B_ChkSLZ2:
-		cmpi.b	#GRing_ScarNight,obSubtype(a0)	; is this the ring to Scar Night Place?
-		bne.s	Obj4B_ChkSLZ3			; if not, branch
-		move.w	#$301,($FFFFFE10).w		; set level to SLZ2
-		bsr	MakeChapterScreen
-		bra.w	Obj4B_PlayLevel
-
-Obj4B_ChkSLZ3:
-		cmpi.b	#GRing_StarAgony,obSubtype(a0)	; is this the ring to Star Agony Place?
-		bne.s	Obj4B_ChkFZ			; if not, branch
-		move.w	#$302,($FFFFFE10).w		; set level to SLZ3
-		bra.w	Obj4B_PlayLevel
-
-Obj4B_ChkFZ:
-		cmpi.b	#GRing_Finalor,obSubtype(a0)	; is this the ring to Finalor Place?
-		bne.s	Obj4B_ChkEnding			; if not, branch
-		move.w	#$502,($FFFFFE10).w		; set level to FZ
-		bsr	MakeChapterScreen
-		bra.s	Obj4B_PlayLevel
-
-Obj4B_ChkEnding:
-		cmpi.b	#GRing_Ending,obSubtype(a0)	; is this the ring to the ending sequence?
-		bne.s	Obj4B_ChkIntro			; if not, branch
-		move.b	#$20,($FFFFF600).w		; load info screen
-		move.b	#8,($FFFFFF9E).w		; set number for text to 8
-		move.b	#$9D,d0				; play ending sequence music
-		jmp	PlaySound
-
-Obj4B_ChkIntro:
-		cmpi.b	#GRing_Intro,obSubtype(a0)	; is this the ring to the intro sequence?
-		bne.s	Obj4B_ChkOptions		; if not, branch
-		move.b	#$28,($FFFFF600).w		; load chapters screen for intro cutscene (One Hot Day...)
-		move.w	#$001,($FFFFFE10).w		; set to intro cutscene
-		rts
-
-Obj4B_ChkOptions:
-		cmpi.b	#GRing_Options,obSubtype(a0)	; is this the ring to the options menu?
-		bne.s	Obj4B_ChkTutorial		; if not, branch
-		move.b	#$24,($FFFFF600).w		; load options menu
-		rts
-
-Obj4B_ChkTutorial:
-		cmpi.b	#GRing_Tutorial,obSubtype(a0)	; is this the ring to the tutorial?
-		bne.s	Obj4B_ChkBlackout		; if not, branch
-		move.w	#$501,($FFFFFE10).w		; set level to SBZ2
-		bra.w	Obj4B_PlayLevel
-
-Obj4B_ChkBlackout:
-		cmpi.b	#GRing_Blackout,obSubtype(a0)	; is this the blackout challenge ring?
-		bne.s	Obj4B_Fallback			; if not, branch
-		move.w	#$401,($FFFFFE10).w		; set level to Special Stage 2 Easter
-		move.b	#1,($FFFFFF5F).w		; set blackout blackout special stage flag
-		move.b	#$10,($FFFFF600).w		; set game mode to special stage (needs to be done manually since no chapter screen)
-		rts
-
-Obj4B_Fallback:
-		move.w	#$400,($FFFFFE10).w		; set level to Uberhub (as fallback; this should never happen)
-; ---------------------------------------------------------------------------
-
-Obj4B_PlayLevel:
-		cmpi.b	#$28,($FFFFF600).w	
-		beq.s	Obj4B_Return
-		move.b	#$C,($FFFFF600).w	; set to level
-		move.w	#1,($FFFFFE02).w	; restart level
+		move.w	($FFFFF704).w,d0	; get Y camera position (screen is currently locked)
+		subi.w	#$100,d0		; adjust upper offset
+		cmp.w	obY(a0),d0		; did ring move out of the top screen yet?
+		blt.w	Obj4B_Return		; if not, branch
+		jmp	Exit_GiantRing
 
 Obj4B_Return:
-		rts
-; ---------------------------------------------------------------------------
-; ===========================================================================
-
-; ===========================================================================
-; ---------------------------------------------------------------------------
-MakeChapterScreen:
-		jsr	CheckIfMainLevel
-		tst.b	d5
-		bmi.s	MCS_NotSpecial
-		cmp.b	($FFFFFFA7).w,d5
-		bgt.s	MCS_DoChapter
-		cmpi.w	#$301,($FFFFFE10).w	; are we enterting SNP?
-		bne.s	@notsnp			; if not, branch
-		frantic				; are we in frantic?
-		beq.s	@notsnp			; big boy bombs only in big boy game modes
-		move.w	#$500,($FFFFFE10).w
-		bra.s	MCS_NotSpecial
-@notsnp:
-		cmpi.w	#$300,($FFFFFE10).w
-		beq.s	MCS_Special
-		cmpi.w	#$401,($FFFFFE10).w
-		bne.s	MCS_NotSpecial
-
-MCS_Special:
-		move.b	#$10,($FFFFF600).w
-		rts
-
-MCS_NotSpecial:
-		move.b	#$C,($FFFFF600).w
-		move.w	#1,($FFFFFE02).w
-		rts
-
-MCS_DoChapter:
-		move.b	d5,($FFFFFFA7).w
-		move.b	#$28,($FFFFF600).w
 		rts
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
@@ -16755,16 +16465,16 @@ Obj34_Loop:
 Obj34_ActNumber:
 		cmpi.b	#7,d0			; is act number on the loading schedule right now?
 		bne.s	Obj34_MakeSprite	; if not, branch
-		cmpi.w	#$302,($FFFFFE10).w ; check if level is	SLZ 3
+		cmpi.w	#$302,($FFFFFE10).w	; check if level is SLZ 3
 		bne.s	Obj34_NotSLZ3X
 		addq.b	#7,d0
 		bra.s	Obj34_MakeSprite
 		
 Obj34_NotSLZ3X:
-		jsr	CheckIfMainLevel	; check for main level and get ID
+		jsr	FakeLevelID		; check for main level and get ID
 		add.b	d5,d0			; add ID to frame ID
 
-		cmpi.w	#$502,($FFFFFE10).w ; check if level is	FZ
+		cmpi.w	#$502,($FFFFFE10).w	; check if level is FZ
 		bne.s	Obj34_MakeSprite
 		moveq	#$15,d0
 
@@ -20181,117 +19891,12 @@ Obj0D_SonicRun:				; XREF: Obj0D_Index
 
 loc_EC86:
 		addq.b	#2,obRoutine(a0)
-
-; ---------------------------------------------------------------------------
-; Subroutine to unlock the doors in SYZ1 after you finish a normal level
-
-; ($FFFFFF8A).w	- casual
-; ($FFFFFF8B).w	- frantic
-; Bit 0 = GHZ | SS1
-; Bit 1 = SS1 | MZ
-; Bit 2 = MZ | LZ
-; Bit 3 = LZ | SS2
-; Bit 4 = SS2 | SLZ
-; Bit 5 = SLZ | FZ
-; Bit 6 = FZ | Ending Sequence and credits
-; ---------------------------------------------------------------------------
-
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
-
-GotThroughAct:				; XREF: Obj3E_EndAct
-		cmpi.w	#$002,($FFFFFE10).w	; is level GHZ3?
-		bne.s	GTA_ChkMZ1		; if not, branch
-		moveq	#0,d0			; unlock first door
-		jsr	OpenDoor
-		move.b	#2,($FFFFFF9E).w	; set number for text to 2
-
-GTA_ChkMZ1:
-		cmpi.w	#$200,($FFFFFE10).w	; is level MZ1?
-		bne.s	GTA_ChkLZ2		; if not, branch
-		moveq	#2,d0			; unlock third door
-		jsr	OpenDoor
-		move.b	#4,($FFFFFF9E).w	; set number for text to 4
-
-GTA_ChkLZ2:
-		cmpi.w	#$101,($FFFFFE10).w	; is level LZ2?
-		bne.s	GTA_ChkSLZ2		; if not, branch
-		moveq	#3,d0			; unlock fourth door
-		jsr	OpenDoor
-		move.b	#5,($FFFFFF9E).w	; set number for text to 5
-
-GTA_ChkSLZ2:
-		cmpi.w	#$302,($FFFFFE10).w	; is level SLZ3?
-		bne.s	GTA_NoDoor		; if not, branch
-		moveq	#5,d0			; unlock fifth door
-		jsr	OpenDoor
-		move.b	#7,($FFFFFF9E).w	; set number for text to 7
-
-GTA_NoDoor:
-		move.b	#$20,($FFFFF600).w	; set to Info Screen
+		moveq	#1,d0			; set to beaten legitimately
+		jmp	Exit_Level
 
 locret_ECEE:
 		rts				; return
-; End of function GotThroughAct
-; ===========================================================================
 
-; This gets called from the Info Screen (exit)
-NextLevelX:
-		clr.b	($FFFFFFE7).w	; make sonic mortal
-		clr.b	($FFFFFFE1).w	; make sonic not being on the foreground
-		clr.b	($FFFFFFAA).w		; clear crabmeat boss flag 1
-		clr.b	($FFFFFFAB).w		; clear crabmeat boss flag 2
-		clr.b	($FFFFFFA9).w		; clear crabmeat boss flag 3
-		clr.b	($FFFFFFB4).w
-		clr.b	($FFFFFFB8).w
-		clr.b	($FFFFFFB7).w
-		clr.b	($FFFFFFB9).w
-		clr.b	($FFFFFE30).w	; clear	lamppost counter
-		move.b	#0,($FFFFFFD3).w	; $FFD3
-		clr.b	($FFFFFFBB).w
-		clr.b	($FFFFFFB6).w
-		lea	($FFFFD000).w,a0
-		bsr	Sonic_ResetOnFloor
-
-		btst	#2,($FFFFFF92).w	; is Skip Uberhub Place enabled?
-		beq.s	NLX_ReturnToHub		; if not, return to Uberhub every time
-			
-		move.w	($FFFFFE10).w,d1	; get current level number
-		lea	(NextLevel_Array).l,a1	; load the next level array
-@autonextlevelloop:
-		move.w	(a1)+,d2		; get the current level ID in the list (and increase pointer to next)
-		tst.w	d2			; reached end of list?
-		bmi.s	NLX_ReturnToHub		; if yes, fall back to Uberhub
-		cmp.w	d1,d2			; does ID in list match with current level?
-		bne.s	@autonextlevelloop	; if not, loop
-	
-		move.w	(a1),($FFFFFE10).w	; write next level in list to level ID RAM
-		jmp	MakeChapterScreen	; start the level, potentially play a chapter screen
-
-NLX_ReturnToHub:
-		move.w	#$400,($FFFFFE10).w	; set level to SYZ1
-		move.b	#$C,($FFFFF600).w	; set to level
-		move.w	#1,($FFFFFE02).w	; restart level
-		rts
-
-; ===========================================================================
-NextLevel_Array:
-		dc.w	$001	; Intro Cutscene
-		dc.w	$400	; Uberhub Place
-		dc.w	$501	; Tutorial Place
-		dc.w	$000	; Night Hill Place
-		dc.w	$002	; Green Hill Place
-		dc.w	$300	; Special Place (yes, it uses SLZ1's ID)
-		dc.w	$200	; Ruined Place
-		dc.w	$101	; Labyrinthy Place
-		dc.w	$401	; Unreal Place
-		dc.w	$301	; Scar Night Place
-		dc.w	$302	; Star Agony Place
-		dc.w	$502	; Finalor Place
-		dc.w	$601	; Ending Sequence
-	;	dc.w	$666	; Blackout Challenge
-		dc.w	$FFFF	; uhhhhhhhh
-		even
 ; ===========================================================================
 Ani_obj0D:
 		include	"_anim\obj0D.asm"
@@ -26770,7 +26375,8 @@ Obj06_DoHardPartSkip:
 		jmp	KillSonic_Inhuman
 
 @notfrantic:
-		jsr	CheckIfMainLevel	; get level ID
+	; TODO: rework to not use FakeLevelID
+		jsr	FakeLevelID		; get level ID
 		lsl.w	#2,d5			; multiply it by 4
 		lea	(Obj06_Locations).l,a1	; get location
 		adda.w	d5,a1			; add result to it
@@ -27505,8 +27111,7 @@ Obj01_ChkInvin:
 		bne.w	Obj01_RmvInvin	; change to bne.w
 		cmpi.w	#$C,($FFFFFE14).w
 		bcs.w	Obj01_RmvInvin	; change to bcs.w
-
-		jsr	PlayLevelMusic
+		jsr	PlayLevelMusic	; restart level music
 
 Obj01_RmvInvin:
 		move.b	#0,($FFFFFE2D).w ; cancel invincibility
@@ -39326,48 +38931,16 @@ loc_1A23A:
 
 loc_1A248:
 		cmpi.w	#$29D0,obX(a0)
-		bcs.s	loc_1A260
+		bcs.w	loc_1A15C
 
 		tst.b	obRender(a0)		; has Eggman object been deleted after the crash cutscene?
-		bmi.s	loc_1A260		; if not, branch
+		bmi.w	loc_1A15C		; if not, branch
 		move.b	#0,($FFFFD000+obAniFrame).w ; reset Sonic waiting animation
 		move.b	#1,(FZEscape).w		; set final sequence flag
 		move.b	#0,($FFFFF7CC).w	; unlock controls
 		move.w	#$E0,d0
 		jsr	PlaySound		; fade out music
 		bra.w	Obj85_Delete
-; ===========================================================================
-
-; Used to be called right after the cutscene after the final boss finishes,
-; now it's called from Obj4B
-FinalBoss_Exit:
-		move.w	#$DD,d0
-		jsr	PlaySound_Special
-
-		move.l	a0,-(sp)		; backup to stack
-		jsr	Pal_MakeWhite		; make white flash
-		move.l (sp)+,a0			; restore from stack
-
-		moveq	#6,d0			; unlock door to the credits
-		jsr	OpenDoor
-		
-		btst	#2,($FFFFFF92).w	; is Skip Uberhub Place enabled?
-		bne.s	@straighttoend		; if yes, go directly to ending sequence instead of back to Uberhub
-		move.w	#$400,($FFFFFE10).w	; set level to SYZ1
-		move.b	#$C,($FFFFF600).w	; set game mdoe to level
-		move.w	#1,($FFFFFE02).w	; restart level
-		bra.w	Obj85_Delete
-
-@straighttoend:
-		move.b	#$20,($FFFFF600).w	; load info screen
-		move.b	#8,($FFFFFF9E).w	; set number for text to 8
-		move.b	#$9D,d0			; play ending sequence music
-		jmp	PlaySound
-		bra.w	Obj85_Delete
-; ===========================================================================
-
-loc_1A260:
-		bra.w	loc_1A15C
 ; ===========================================================================
 
 loc_1A264:				; XREF: Obj85_Index
@@ -45803,6 +45376,7 @@ ObjPos_Null:	dc.w    $FFFF,$0000,$0000
 ; ---------------------------------------------------------------------------
 
 ; Screens
+		include "Screens/ExitLogic.asm"
 		include "Screens/SelbiSplash/SelbiSplash.asm"
 		include "Screens/ChapterScreens/ChapterScreen.asm"
 		include "Screens/OptionsScreen/OptionsScreen.asm"

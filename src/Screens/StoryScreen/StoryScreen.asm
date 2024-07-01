@@ -198,30 +198,11 @@ STS_FadeOutScreen:
 STS_ExitScreen:
 		moveq	#0,d2
 		jsr	Options_ClearBuffer
-		
 		bsr	STS_ClearFlags
 
-		move.b	(STS_ScreenID).w,d0
-		cmpi.b	#1,d0			; is this the intro dialouge?
-		bne.s	STS_NoIntro		; if not, branch
-		move.w	#$400,($FFFFFE10).w	; set level to Uberhub
-		move.b	#$28,($FFFFF600).w	; set to chapters screen
-		rts
-
-STS_NoIntro:
-		cmpi.b	#8,d0			; is this the ending sequence?
-		bne.s	STS_NoEnding		; if not, branch
-		move.b	#$18,($FFFFF600).w	; set to ending sequence ($18)
-		rts
-
-STS_NoEnding:
-		cmpi.b	#9,d0			; is this the blackout special stage?
-		bne.s	STS_NoBlack		; if not, branch
-		move.b	#$00,($FFFFF600).w	; set to sega screen ($00)
-		rts
-
-STS_NoBlack:
-		jmp	NextLevelX
+		moveq	#0,d0
+		move.b	(STS_ScreenID).w,d0	; remember screen ID we came from in d0
+		jmp	Exit_StoryScreen	; return to main source
 ; ===========================================================================
 
 STS_ClearFlags:

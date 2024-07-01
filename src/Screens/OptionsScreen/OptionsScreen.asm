@@ -3,7 +3,6 @@
 ; ---------------------------------------------------------------------------
 Options_Blank = $29 ; blank character, high priority
 OptionsBuffer equ $FFFFC900 ; $200 bytes
-Options_ShadowMode = 0
 ; ---------------------------------------------------------------------------
 
 OptionsScreen:				; XREF: GameModeArray
@@ -20,10 +19,6 @@ OptionsScreen:				; XREF: GameModeArray
 		move.w	#$9001,(a6)
 		move.w	#$9200,(a6)
 		move.w	#$8B07,(a6)
-
-	if Options_ShadowMode=1
-		move.w	#$8C81|8,(a6) ; enable shadow mode
-	endif
 		move.w	#$8720,(a6)
 		clr.b	($FFFFF64E).w
 		jsr	ClearScreen
@@ -437,16 +432,11 @@ Options_HandleGameplayStyle:
 		move.b	($FFFFF605).w,d1	; get button presses
 	 	andi.b	#$FC,d1			; is left, right, A, B, C, or Start pressed?
 		beq.w	Options_Return		; if not, branch
-
-		btst	#6,d1			; is A pressed?
+		btst	#6,d1			; is specifically A pressed?
 		bne.s	@quicktoggle		; if yes, quick toggle
+		moveq	#1,d0			; set to GameplayStyleScreen
+		jmp	Exit_OptionsScreen
 
-	 	andi.b	#$FC,d1			; is left, right, A, B, C, or Start pressed?
-		move.b	#$30,($FFFFF600).w	; set to GameplayStyleScreen
-	if Options_ShadowMode=1
-		move.w	#$8C81|0,($C00004).l	; disable shadow mode		
-	endif
-		rts
 @quicktoggle:
 		bchg	#5,($FFFFFF92).w	; toggle gameplay style
 		bra.w	Options_UpdateTextAfterChange
@@ -641,12 +631,8 @@ Options_Exit:
 		move.b	($FFFFFF92).w,($200001).l	; backup options flags
 		move.b	#0,($A130F1).l		; disable SRAM
 
-		move.w	#$400,($FFFFFE10).w
-		move.b	#$C,($FFFFF600).w	; set screen mode to level ($C)
-	if Options_ShadowMode=1
-		move.w	#$8C81|0,($C00004).l	; disable shadow mode
-	endif
-		rts
+		moveq	#0,d0			; return to Uberhub
+		jmp	Exit_OptionsScreen
 ; ---------------------------------------------------------------------------
 
 Options_UpdateTextAfterChange:

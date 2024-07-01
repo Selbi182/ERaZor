@@ -832,25 +832,23 @@ MainGameLoop:
 GameModeArray:
 		dc.l	SegaScreen		; Sega Screen		($00)
 		dc.l	TitleScreen		; Title	Screen		($04)
-		dc.l	Level			; Demo Mode		($08)
+		dc.l	Deleted_Mode		; X Demo Mode		($08)
 		dc.l	Level			; Normal Level		($0C)
 		dc.l	SpecialStage		; Special Stage		($10)
-		dc.l	ContinueScreen		; Continue Screen	($14)
+		dc.l	Deleted_Mode		; X Continue Screen	($14)
 		dc.l	EndingSequence		; Ending Sequence	($18)
-		dc.l	Credits			; Credits		($1C)
+		dc.l	Deleted_Mode		; X Old Credits		($1C)
 		dc.l	StoryTextScreen		; Story Text Screen	($20)
 		dc.l	OptionsScreen		; Options Screen	($24)
 		dc.l	ChapterScreen		; Chapters Screen	($28)
 		dc.l	CreditsJest		; Markey's Credits	($2C)
 		dc.l	GameplayStyleScreen	; Gameplay Style Screen	($30)
 ; ---------------------------------------------------------------------------
+
+Deleted_Mode:
+		jmp	ReturnToUberhub		; we somehow ended up in a deleted game mode, immediately go back to Uberhub
+; ---------------------------------------------------------------------------
 ; ===========================================================================
-
-; ===========================================================================
-
-Art_Text:	incbin	Screens\OptionsScreen\Options_TextArt.bin
-		even
-
 
 *VBlank:
 		include	"modules/VBlank.asm"
@@ -3145,13 +3143,6 @@ LevSel_Level:				; XREF: LevSel_Level_SS
 ; ===========================================================================
 
 ; ---------------------------------------------------------------------------
-; Demo mode
-; ---------------------------------------------------------------------------
-
-Demo:					; XREF: TitleScreen
-		rts	; fucking eradicated from this source code
-
-; ---------------------------------------------------------------------------
 ; Subroutine to	change what you're selecting in the level select
 ; ---------------------------------------------------------------------------
 
@@ -5362,14 +5353,6 @@ byte_4CC4:	dc.b 6,	$30, $30, $30, $28, $18, $18, $18
 byte_4CCC:	dc.b 8,	2, 4, $FF, 2, 3, 8, $FF, 4, 2, 2, 3, 8,	$FD, 4,	2, 2, 3, 2, $FF
 		even
 					; XREF: SS_BGAnimate
-; ===========================================================================
-
-; ---------------------------------------------------------------------------
-; Continue screen
-; ---------------------------------------------------------------------------
-
-ContinueScreen:				; XREF: GameModeArray
-		rts	; eradicated
 ; ===========================================================================
 
 ; ---------------------------------------------------------------------------
@@ -43326,17 +43309,16 @@ MainLoadBlocks:
 		dc.b 0,	$86, $13, $13
 		even
 
+; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Pattern load cues
+; Pattern load cues (merged from the _inc file)
 ; ---------------------------------------------------------------------------
+
 ArtLoadCues:
-; ---------------------------------------------------------------------------
-; Pattern load cues - index
-; ---------------------------------------------------------------------------
 	dc.w PLC_Main-ArtLoadCues	; $00
 	dc.w PLC_Main2-ArtLoadCues	; $01
 	dc.w PLC_Explode-ArtLoadCues	; $02
-	dc.w PLC_GameOver-ArtLoadCues	; $03
+	dc.w PLC_Null-ArtLoadCues	; $03
 	dc.w PLC_GHZ-ArtLoadCues	; $04
 	dc.w PLC_GHZ2-ArtLoadCues	; $05
 	dc.w PLC_LZ-ArtLoadCues		; $06
@@ -43354,17 +43336,20 @@ ArtLoadCues:
 	dc.w PLC_Signpost-ArtLoadCues	; $12
 	dc.w PLC_Warp-ArtLoadCues	; $13
 	dc.w PLC_SpeStage-ArtLoadCues	; $14
-	dc.w PLC_GHZAnimals-ArtLoadCues	; $15
-	dc.w PLC_LZAnimals-ArtLoadCues	; $16
-	dc.w PLC_MZAnimals-ArtLoadCues	; $17
-	dc.w PLC_SLZAnimals-ArtLoadCues	; $18
-	dc.w PLC_SYZAnimals-ArtLoadCues	; $19
-	dc.w PLC_SBZAnimals-ArtLoadCues	; $1A
+	dc.w PLC_Null-ArtLoadCues	; $15
+	dc.w PLC_Null-ArtLoadCues	; $16
+	dc.w PLC_Null-ArtLoadCues	; $17
+	dc.w PLC_Null-ArtLoadCues	; $18
+	dc.w PLC_Null-ArtLoadCues	; $19
+	dc.w PLC_Null-ArtLoadCues	; $1A
 	dc.w PLC_SSBlackout-ArtLoadCues ; $1B
 	dc.w PLC_Ending-ArtLoadCues	; $1C
-	dc.w PLC_TryAgain-ArtLoadCues	; $1D
+	dc.w PLC_Null-ArtLoadCues	; $1D
 	dc.w PLC_EggmanSBZ2-ArtLoadCues	; $1E
 	dc.w PLC_FZBoss-ArtLoadCues	; $1F
+
+PLC_Null:	dc.w -1
+
 ; ---------------------------------------------------------------------------
 ; Pattern load cues - standard block 1
 ; ---------------------------------------------------------------------------
@@ -43390,6 +43375,7 @@ PLC_Main2:
 		dc.l ArtKospM_Shield		; shield
 		dc.w $A820
 		dc.w -1
+
 ; ---------------------------------------------------------------------------
 ; Pattern load cues - explosion
 ; ---------------------------------------------------------------------------
@@ -43397,13 +43383,7 @@ PLC_Explode:
 		dc.l ArtKospM_Explode	; explosion
 		dc.w $B400
 		dc.w -1
-; ---------------------------------------------------------------------------
-; Pattern load cues - game/time	over
-; ---------------------------------------------------------------------------
-PLC_GameOver:
-		dc.l ArtKospM_GameOver	; game/time over
-		dc.w $ABC0
-		dc.w -1
+
 ; ---------------------------------------------------------------------------
 ; Pattern load cues - Green Hill
 ; ---------------------------------------------------------------------------
@@ -43642,12 +43622,12 @@ PLC_Boss:
 PLC_Signpost:
 		dc.l ArtKospM_SignPost	; signpost
 		dc.w $D000
-		dc.l ArtKospM_HSpring	; horizontal spring
-		dc.w $A460
+	;	dc.l ArtKospM_HSpring	; horizontal spring
+	;	dc.w $A460
 		dc.w -1
 
 ; ---------------------------------------------------------------------------
-; Pattern load cues - beta special stage warp effect
+; Pattern load cues - invicibility stars
 ; ---------------------------------------------------------------------------
 PLC_Warp:
 		dc.l ArtKospM_Stars		; invincibility	stars
@@ -43686,59 +43666,8 @@ PLC_SpeStage:
 		dc.w $EE00
 		dc.w -1
 
-; ---------------------------------------------------------------------------
-; Pattern load cues - GHZ animals
-; ---------------------------------------------------------------------------
-PLC_GHZAnimals:
-		dc.l ArtKospM_Null
-		dc.w $B000
-		dc.w -1
-
-; ---------------------------------------------------------------------------
-; Pattern load cues - LZ animals
-; ---------------------------------------------------------------------------
-PLC_LZAnimals:
-		dc.l ArtKospM_Null
-		dc.w $B000
-		dc.w -1
-
-; ---------------------------------------------------------------------------
-; Pattern load cues - MZ animals
-; ---------------------------------------------------------------------------
-PLC_MZAnimals:
-		dc.l ArtKospM_Null
-		dc.w $B000
-		dc.w -1
-
-; ---------------------------------------------------------------------------
-; Pattern load cues - SLZ animals
-; ---------------------------------------------------------------------------
-PLC_SLZAnimals:
-		dc.l ArtKospM_Null
-		dc.w $B000
-		dc.w -1
-
-; ---------------------------------------------------------------------------
-; Pattern load cues - SYZ animals
-; ---------------------------------------------------------------------------
-PLC_SYZAnimals:
-		dc.l ArtKospM_Null
-		dc.w $B000
-		dc.w -1
-
-; ---------------------------------------------------------------------------
-; Pattern load cues - SBZ animals
-; ---------------------------------------------------------------------------
-PLC_SBZAnimals:
-		dc.l ArtKospM_Null
-		dc.w $B000
-		dc.w -1
-
-; ---------------------------------------------------------------------------
-; Pattern load cues - Blackout Challenge special stage overrides
-; ---------------------------------------------------------------------------
 PLC_SSBlackout:
-		dc.l ArtKospM_SSSkull	; Skull block
+		dc.l ArtKospM_SSSkull	; Skull block (overrides GOAL blocks in blackout challenge)
 		dc.w $4A20
 		dc.w -1
 
@@ -43752,10 +43681,6 @@ PLC_Ending:
 		dc.w $6B00
 		dc.l ArtKospM_EndFlower	; flowers
 		dc.w $7400
-		dc.l ArtKospM_EndEm		; emeralds
-		dc.w $78A0
-		dc.l ArtKospM_EndSonic	; Sonic
-		dc.w $7C20
 		dc.l ArtKospM_UMadBro	; U Mad Bro?!
 		dc.w $A480
 		dc.l ArtKospM_Rabbit		; rabbit
@@ -43772,24 +43697,10 @@ PLC_Ending:
 		dc.w $B4A0
 		dc.l ArtKospM_Squirrel	; squirrel
 		dc.w $B660
-		dc.l ArtKospM_EndStH		; "SONIC THE HEDGEHOG"
-		dc.w $B8A0
 		dc.w -1
 
 ; ---------------------------------------------------------------------------
-; Pattern load cues - "TRY AGAIN" and "END" screens
-; ---------------------------------------------------------------------------
-PLC_TryAgain:
-		dc.l ArtKospM_EndEm		; emeralds
-		dc.w $78A0
-		dc.l ArtKospM_TryAgain	; Eggman
-		dc.w $7C20
-		dc.l ArtKospM_CreditText	; credits alphabet
-		dc.w $B400
-		dc.w -1
-
-; ---------------------------------------------------------------------------
-; Pattern load cues - Eggman on SBZ 2
+; Pattern load cues - Bomb Machine Cutscene
 ; ---------------------------------------------------------------------------
 PLC_EggmanSBZ2:
 		dc.l ArtKospM_Sbz2Eggman	; Eggman
@@ -43820,7 +43731,14 @@ PLC_FZBoss:
 		dc.w $A540
 		dc.w -1
 		even
+
+; ===========================================================================
 ; ---------------------------------------------------------------------------
+; The massive list of resource includes
+; ---------------------------------------------------------------------------
+
+Art_Text:	incbin	Screens\OptionsScreen\Options_TextArt.bin	; uncompressed text for various text screens (not just options)
+		even
 
 ArtKospM_SegaLogo:	incbin	artkosp\segalogo.kospm	; large Sega logo
 		even
@@ -44422,8 +44340,8 @@ Art_BigRing:	incbin	artunc\bigring.bin
 		even
 ArtKospM_BigRing: incbin artkosp\bigring.kospm
 		  even
-ArtKospM_SGMC:	incbin artkosp\sgmc.kospm
-		even
+;ArtKospM_SGMC:	incbin artkosp\sgmc.kospm
+;		even
 		
 	;	incbin	misc\padding3.bin
 	;	even

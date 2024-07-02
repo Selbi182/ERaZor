@@ -80,7 +80,7 @@ DebugModeDefault = 1
 DebugSurviveNoRings = 1
 ; ------------------------------------------------------
 DoorsAlwaysOpen = 1
-LowBossHP = 1
+LowBossHP = 0
 ; ------------------------------------------------------
 	endif
 
@@ -7410,11 +7410,11 @@ Resize_SLZ2boss2:
 		move.w	#$BD0,obX(a1)
 		move.w	#$048C,obY(a1)
 		
-	if LowBossHP=1
-		move.b	#2,($FFFFFF75).w	; set lives
-	else
+	; if LowBossHP=1
+	; 	move.b	#2,($FFFFFF75).w	; set lives
+	; else
 		move.b	#21,($FFFFFF75).w	; set lives
-	endif
+	; endif
 		
 		move.b	($FFFFFF75).w,($FFFFFF68).w
 
@@ -24168,6 +24168,7 @@ Obj5F_Index:	dc.w Obj5F_Main-Obj5F_Index		; [$0]
 		dc.w Obj5F_SBZ1-Obj5F_Index		; [$8]
 		dc.w Obj5F_BossDefeated-Obj5F_Index	; [$A]
 		dc.w Obj5F_Display_Spark-Obj5F_Index	; [$C]
+		dc.w Obj5F_Transition-Obj5F_Index	; [$E]
 ; ===========================================================================
 
 Obj5F_Main:				; XREF: Obj5F_Index
@@ -24330,7 +24331,7 @@ Obj5F_Explode:				; XREF: Obj5F_Index2
 		move.b	#1,($FFFFFE2D).w		; make Sonic invincible
 		clr.l	($FFFFF602).w			; clear any remaining button presses
 		clr.w	obVelX(a0)			; clear bomb's X-speed
-		move.b	#$A,obRoutine(a0)		; set frame
+		move.b	#$E,obRoutine(a0)		; set routine
 		rts
 
 @notdefeated:
@@ -24444,6 +24445,87 @@ loc_11B54:
 
 locret_11B5E:
 		rts	
+; ===========================================================================
+
+Obj5F_Transition:
+		move.b	($FFFFFF76).w, d0
+		move.w	@JumpTable(pc, d0.w), d0
+		jmp		@JumpTable(pc, d0.w)
+
+; ===========================================================================
+@JumpTable:
+		dc.w 	@StartSequence-@JumpTable
+		dc.w 	@CheckAirborne-@JumpTable
+		dc.w 	@Explode-@JumpTable
+		dc.w 	@CheckExplosions-@JumpTable
+		dc.w	@ContinueBoss-@JumpTable
+; ===========================================================================
+
+@StartSequence:
+		addq.b	#2, $FFFFFF76
+		
+		; fade out music
+		move.b	#$E0, d0
+		jsr		PlaySound_Special
+
+		; clear shit
+		bset	#0, $FFFFD022
+		clr.w	$FFFFFF8C
+		clr.w	$FFFFFF8E
+		clr.b	$FFFFFFEB
+		rts
+
+@CheckAirborne:
+		btst	#1, $FFFFD022		; test airborne bit
+		bne.s	@NotAirborne		; if 0, branch
+		rts
+
+@NotAirborne:
+		addq.b	#2, $FFFFFF76		; continue with sequence
+
+@Explode:
+		addq.b	#2, $FFFFFF76
+
+		; not my code, blame selbi
+		bsr	SingleObjLoad
+		move.b	#$3F,0(a1)	; load explosion object
+		move.w	obX(a0),obX(a1)
+		move.w	obY(a0),obY(a1)
+		move.b	#1,$30(a1)
+		jsr	(RandomNumber_Next).l
+
+		; move.w	d0,d1
+		; moveq	#0,d1
+		; move.b	d0,d1
+		; lsr.b	#2,d1
+		; subi.w	#$20,d1
+		; add.w	d1,obX(a1)
+		; lsr.w	#8,d0
+		; lsr.b	#3,d0
+		; add.w	d0,obY(a1)
+		; subq.w	#8,obY(a1)
+		move.b	#10,($FFFFFF64).w
+		bra.w 	@Return
+
+@CheckExplosions:
+		cmpi.w	#10,($FFFFFF7A).w
+		ble.w	@ContinueBoss
+
+		move.w	($FFFFFF7A).w,($FFFFFF78).w
+		subq.b	#4,($FFFFFF76).w
+		subi.w	#10,($FFFFFF7A).w
+		move.w	#20,($FFFFFF7C).w
+		bra.w	@Return
+
+@ContinueBoss:
+		move.b	#21,($FFFFFF75).w	; set lives
+		move.b	#$2, obRoutine(a0)
+		move.b	#0, $FFFFFF76
+		rts
+
+@Return:
+		rts
+
 ; ===========================================================================
 
 Obj5F_BossDefeated:
@@ -24776,8 +24858,10 @@ Obj5F_End:				; XREF: Obj5F_Index
 		tst.b	obRender(a0)
 		bpl.w	DeleteObject
 		bra.w	DisplaySprite
-; ===========================================================================
 
+; ===========================================================================
+; Routine for Scar Night cutscene
+; ===========================================================================
 Obj5F_SBZ1:
 		jsr	ObjectFall
 		jsr	SpeedToPos

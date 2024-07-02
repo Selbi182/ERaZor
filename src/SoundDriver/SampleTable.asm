@@ -44,9 +44,9 @@ SampleTable:
 	dcSample	TYPE_DPCM, Sample_AB, 10765	; AB: Choir 'Oooh!' 1
 	dcSample	TYPE_DPCM, Sample_AB, 10765	; AC: Choir 'Oooh!' 2
 	dcSample	TYPE_DPCM, Sample_AB, 10765	; AD: Choir 'Oooh!' 3
-	dcSample	TYPE_DPCM, Sample_AE, 13381	; AE: Parte 1 da sequência da Palmtree Panic Past
-	dcSample	TYPE_DPCM, Sample_AF, 13381	; AF: Parte 2 da sequência da Palmtree Panic Past
-	dcSample	TYPE_DPCM, Sample_B0, 13381	; B0: Parte 3 da sequência da Palmtree Panic Past
+	dcSample	TYPE_PCM,  Choir,	  22050	; AE: Custom Choir
+	dcSample	TYPE_NONE	; AF: 
+	dcSample	TYPE_NONE	; B0: 
 	dcSample	TYPE_DPCM, Sample_B1, 7327	; B1: Knuckles Chaotix Snare
 	dcSample	TYPE_DPCM, Sample_B2, 8452	; B2: Knuckles Chaotix Kick
 	dcSample	TYPE_DPCM, Sample_B3, 13381	; B3: Crackers Snare
@@ -102,9 +102,9 @@ SampleTable:
 	incdac	Sample_A6, "sound/dac/Sample_A6.dpcm"
 	incdac	Sample_AA, "sound/dac/Sample_AA.dpcm"
 	incdac	Sample_AB, "sound/dac/Sample_AB.dpcm"
-	incdac	Sample_AE, "sound/dac/Sample_AE.dpcm"
-	incdac	Sample_AF, "sound/dac/Sample_AF.dpcm"
-	incdac	Sample_B0, "sound/dac/Sample_B0.dpcm"
+	;incdac	Sample_AE, "sound/dac/Sample_AE.dpcm"
+	;incdac	Sample_AF, "sound/dac/Sample_AF.dpcm"
+	;incdac	Sample_B0, "sound/dac/Sample_B0.dpcm"
 	incdac	Sample_B1, "sound/dac/Sample_B1.dpcm"
 	incdac	Sample_B2, "sound/dac/Sample_B2.dpcm"
 	incdac	Sample_B3, "sound/dac/Sample_B3.dpcm"
@@ -132,6 +132,7 @@ SampleTable:
 	incdac	Sample_CE, "sound/dac/Sample_CE.dpcm"
 	incdac	Sample_D1, "sound/dac/Sample_D1.dpcm"
 
+	incdac	Choir, "sound/dac/Choir.wav"
 	incdac	SegaPCM, "sound/segapcm.wav"
 
 	even

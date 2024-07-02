@@ -42224,19 +42224,37 @@ Obj09_ColCheck:				; XREF: Obj09_Collision
 		beq.s	@notsolid    	; if current block is just an empty space, branch
 
 		cmpi.b	#$3A,d4		; is block in range $3A-$4B (rings, emeralds...)?
-		blo.s	@solid		; if not, it's a solid block
+		bcs.s	@solid		; if not, it's a solid block
 		cmpi.b	#$4B,d4		; $4B is the end of shiny collectibles
-		bls.s	@notsolid
+		bcs.s	@notsolid
+
 @solid:
 		move.b	d4,$30(a0)	; copy collided ID of block to d4
 		move.l	a1,$32(a0)	; copy RAM location of collided block to a1
 		cmpi.b	#$27,d4		; is object a goal block?
-		beq.s	@notsolid    	; if yes, don't collide normally (special logic is run from the block itself)
+		bne.s	@setsolid    	; if not, branch
+		btst	#1,obStatus(a0)	; is Sonic airborne?
+		bne.s	@notsolid	; if yes, mark goal block as not solid (special logic is run from the block routine itself)
+@setsolid:
 		moveq	#-1,d5		; set to block
 @notsolid:
 		rts			; block is not solid
 ; End of function Obj09_ColCheck
 
+		cmpi.b	#$3A,d4
+		bcs.s	loc_1BD46       ; $3A means the usual BIG HITBOX
+		cmpi.b	#$4B,d4
+		bcc.s	loc_1BD46       ; $4B means collectible mmm shiny
+
+locret_1BD44:
+		rts	
+; ===========================================================================
+
+loc_1BD46:
+		move.b	d4,$30(a0)      ; what
+		move.l	a1,$32(a0)      ; WHAT
+		moveq	#-1,d5          ; ???
+		rts	
 
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 
@@ -42412,9 +42430,9 @@ Obj09_ChkItems_Solid:		; I never understood why this is a subroutine
 		move.b	$30(a0),d0	; get ID of collided item
 		bne.s	Obj09_ChkGOAL	; if it isn't empty, start check
 
+		tst.b	$36(a0)
+		beq.s	locret_1BEAC
 		subq.b	#1,$36(a0)	; subtract 1 from disabled block timer (after touching R, up, down)
-		bpl.s	locret_1BEAC	; if time remains, branch
-		move.b	#0,$36(a0)	; reset to 0
 
 locret_1BEAC:
 		rts	
@@ -42425,6 +42443,7 @@ Obj09_ChkGOAL:
 		cmpi.b	#$27,d0			; is the item a	"GOAL"?
 		bne.w	Obj09_ChkBumper		; if not, branch
 
+		; radial hitboxes
 		move.w	$34(a0),d2			; load layout address
 		subq.w	#$01,d2				; align to first block
 		moveq	#$7F,d1				; get only X range of the layout
@@ -42561,7 +42580,7 @@ Obj09_UPblock:
 		bne.w	Obj09_DOWNblock		; if not, branch
 
 		tst.b	$36(a0)			; has an up block been touched recently?
-		bne.w	Obj09_NoGlass		; if yes, branch
+		bne.w	Obj09_ChkItemsEnd		; if yes, branch
 		move.b	#$1E,$36(a0)		; disable interaction with this block $1E frames
 		
 		tst.b	($FFFFFF5F).w		; is this the blackout blackout special stage?
@@ -42600,7 +42619,7 @@ Obj09_DOWNblock:
 		cmpi.b	#$2A,d0		; is the item a	"DOWN" block?
 		bne.s	Obj09_Rblock
 		tst.b	$36(a0)
-		bne.w	Obj09_NoGlass
+		bne.w	Obj09_ChkItemsEnd
 		move.b	#$1E,$36(a0)
 	;	btst	#6,($FFFFF783).w
 	;	bne.s	Obj09_DOWNsnd
@@ -42624,7 +42643,7 @@ Obj09_Rblock:
 		cmpi.b	#$2B,d0		; is the item an "R" block?
 		bne.s	Obj09_ChkGlass
 		tst.b	$36(a0)
-		bne.w	Obj09_NoGlass
+		bne.w	Obj09_ChkItemsEnd
 		move.b	#$1E,$36(a0)
 		bsr	SS_RemoveCollectedItem
 		bne.s	Obj09_RevStage
@@ -42653,14 +42672,13 @@ Obj09_ChkGlass:
 		cmpi.b	#$2F,d0
 		beq.s	Obj09_Glass
 		cmpi.b	#$30,d0
-		bne.s	Obj09_NoGlass	; if not, branch
+		bne.s	Obj09_ChkItemsEnd	; if not, branch
 
 Obj09_Glass:
-		cmpi.w	#$401,($FFFFFE10).w
-		bne.s	@cont
-		rts
-
-@cont:
+		cmpi.w	#$401,($FFFFFE10).w	; are we in Unreal?
+		bne.s	@regular		; if not, branch
+		rts				; glass blocks are decorative walls only
+@regular:
 		bsr	SS_RemoveCollectedItem
 		bne.s	Obj09_GlassSnd
 		move.b	#6,(a2)
@@ -42681,7 +42699,7 @@ Obj09_GlassSnd:
 		jmp	(PlaySound_Special).l ;	play glass block sound
 ; ===========================================================================
 
-Obj09_NoGlass:
+Obj09_ChkItemsEnd:
 		rts	
 ; End of function Obj09_ChkItems_Solid
 

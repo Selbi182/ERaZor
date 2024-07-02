@@ -2698,7 +2698,7 @@ SegaScreen:				; XREF: GameModeArray
 		move.w	#$8230,(a6)
 		move.w	#$8407,(a6)
 		move.w	#$8700,(a6)
-		move.w	#$8B07,(a6)
+		move.w	#$8B03,(a6)
 		clr.b	($FFFFF64E).w
 		bsr	ClearScreen
 
@@ -2792,21 +2792,26 @@ Sega_WaitEnd:
 		move.b	#25,d0
 		sub.b	($FFFFFFBD).w,d0
 		lsr.w	#7,d0
-		jsr	Options_BGDeformation2
-				
-		lea	($FFFFCC00+80*4).w,a1
-		move.l	#$00010000,d0
-		btst	#1,($FFFFFE0F).w
-		beq.s	@0
-		moveq	#0,d0
-@0:
-		move.w	#64-1,d1
-@clearscroll:
-		move.l	(a1),d0
-		asr.l	#5,d0
-		andi.l	#$FFFF0000,d0
-		move.l	d0,(a1)+
-		dbf	d1,@clearscroll
+		
+		move.w	($FFFFFE0E).w, d5 	; timer
+		lea	($FFFFCC00+80*4).w, a1	; scroll location
+		move.w	#64-1, d2			; how many lines we want
+
+@Smegma:
+		move.b	d5, d0
+		jsr	CalcSine
+		asr.w	#5, d1
+
+		btst	#0,	d5
+		beq.s 	@NoNegation
+
+		neg.l	d1
+
+@NoNegation:
+		addq 	#1, d5
+		move.w	d1, (a1)+
+		move.w	d1, (a1)+
+		dbf	d2, @Smegma
 
 @notendphase:
 		tst.b	($FFFFFFBE).w
@@ -17937,6 +17942,7 @@ ObjectFall_Sonic:
 		subi.w	#Gravity,d3		; inverse gravity
 		btst	#6,($FFFFF602).w	; is A pressed?
 		beq.s	@OFS_NoA		; if not, branch
+		move.b	#2,obAnim(a0)		; change to rolling animation
 		move.b	#1,($FFFFFFEB).w	; set jumpdash flag (to prevent it)
 		tst.w	obVelY(a0)
 		bmi.s	@OFS_Negative
@@ -39325,7 +39331,7 @@ loc_1A23A:
 		move.w	#$27E0,($FFFFD008).w
 
 loc_1A248:
-		cmpi.w	#$29D0,obX(a0)
+		cmpi.w	#$2900,obX(a0)
 		bcs.s	loc_1A260
 
 		tst.b	obRender(a0)		; has Eggman object been deleted after the crash cutscene?
@@ -39440,14 +39446,14 @@ loc_1A2E4:
 
 @NoFall:
 		move.b	#1,obAnim(a0)
-		; tst.b	obColProp(a1)
-		; ble.s	loc_1A312
-		; move.b	#6,obAnim(a0)
-		; move.l	#Map_Eggman,obMap(a0)
-		; move.w	#$400,obGfx(a0)
-		; lea	Ani_Eggman(pc),a1
-		; jsr	AnimateSprite
-		; bra.w	loc_1A296
+		tst.b	obColProp(a1)
+		ble.s	loc_1A312
+		move.b	#6,obAnim(a0)
+		move.l	#Map_Eggman,obMap(a0)
+		move.w	#$400,obGfx(a0)
+		lea	Ani_Eggman(pc),a1
+		jsr	AnimateSprite
+		bra.w	loc_1A296
 ; ===========================================================================
 
 loc_1A312:

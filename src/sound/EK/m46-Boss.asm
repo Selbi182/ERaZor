@@ -674,9 +674,9 @@ M46_Boss_DAC:
 	dc.b		$8F,	dKick,	nRst,	$8F,	nRst,	dKick,	dKick,	$8F
 	dc.b		dKick,	nRst,	dKick,	$8F,	dKick,	$8F,	nRst,	dKick
 	dc.b		$8F,	dKick,	nRst,	$8F,	nRst,	dKick,	dKick,	$8F
-	dc.b		dKick,	nRst,	$14,	$B5,	nRst,	$B5,	nRst,	$B5
-	dc.b		nRst,	$B5,	nRst,	$B5,	nRst,	$B5,	nRst,	$B5
-	dc.b		nRst,	$B5
+	dc.b		dKick,	nRst,	$14,	$AE,	nRst,	$AE,	nRst,	$AE
+	dc.b		nRst,	$AE,	nRst,	$AE,	nRst,	$AE,	nRst,	$AE
+	dc.b		nRst,	$AE
 	smpsJump	M46_Boss_DAC
 
 M46_Boss_Voices:

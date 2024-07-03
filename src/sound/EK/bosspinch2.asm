@@ -813,7 +813,7 @@ BossPinch2_Call52:
 	dc.b		nCs0
 	smpsReturn
 
-BP2Kick = $81
+BP2Kick = $90
 BP2Snare = $8F
 
 BossPinch2_Call53:
@@ -852,8 +852,7 @@ BossPinch2_Call57:
 	smpsReturn
 
 BossPinch2_Voices:
-	dc.b		$3D,$01,$02,$02,$02,$10,$50,$50,$50,$07,$08,$08,$08,$01,$00,$00
-	dc.b		$00,$20,$17,$17,$17,$1C,$88,$88,$88;			Voice 00
+	dc.b	$F2, $31, $21, $51, $21, $1F, $1F, $1F, $1F, $01, $04, $04, $82, $00, $00, $00, $00, $03, $05, $05, $07, $13, $18, $1B, $05
 	dc.b	$3a,$31,$20,$41,$61,$8f,$8f,$8e,$54,$e,$3,$e,$3,$0,$0,$0
 	dc.b	$0,$13,$f3,$13,$a,$18,$22,$1b,$80	; Voice 2 (DangerousSeed-3rdTube-3:FM1 Lead (Mod $1E, $01, $05, $05))
 	dc.b		$38,$33,$01,$51,$01,$10,$13,$1A,$1B,$0F,$1F,$1F,$1F,$01,$01,$01
@@ -866,7 +865,7 @@ BossPinch2_Voices:
 	dc.b	$2,$34,$5,$14,$15,$1a,$19,$18,$80	; Voice 0 (G:\Sam\hax\music\graveyard_1.tfi)
 	dc.b	$39,$38,$d8,$8,$8,$90,$8f,$94,$91,$9,$6,$3,$3,$0,$0,$0
 	dc.b	$0,$38,$17,$16,$17,$16,$18,$1a,$80	; Voice 1 (G:\Sam\hax\music\graveyard_0.tfi)
-	dc.b	$20,$fb,$0,$31,$1,$1e,$1f,$1f,$1f,$c,$11,$11,$c,$2,$c,$2
+	dc.b	$10,$fb,$0,$31,$1,$1e,$1f,$1f,$1f,$c,$11,$11,$c,$2,$c,$2
 	dc.b	$1,$1d,$25,$36,$6,$11,$2e,$10,$80	; Voice 2 (G:\Sam\hax\music\airpassage_2.tfi)
 
 

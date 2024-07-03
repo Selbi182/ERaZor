@@ -288,23 +288,17 @@ StoryScreen_ContinueWriting:
 		add.w	#STS_VRAMSettings,d0		; apply VRAM settings (high plane, palette line 4, VRAM address $D000)
 		move.w	d0,(a6)				; write char to screen
 
-		tst.b	1(a1)				; is the next character a space?
-		bne.s	@notspacenext			; if not, branch
-		bsr	@playwritingsound		; play sound
-@notspacenext:
 		bsr	@gotonextpos			; go to next character
-		tst.b	(STS_Column).w			; did column reset?
-		bne.s	@writeend			; if not, branch
-		bsr	@playwritingsound		; play sound
+
+		move.w	($FFFFFE0E).w,d0		; get frame counter
+		andi.w	#3,d0				; only every four frames
+		bne.s	@writeend			; if not on one, branch
+		move.w	#STS_Sound,d0			; play...
+		jsr	PlaySound_Special		; ... text writing sound
 
 @writeend:
 		rts
 ; ---------------------------------------------------------------------------
-
-@playwritingsound:	
-		move.w	#STS_Sound,d0			; play...
-		jsr	PlaySound_Special		; ... text writing sound
-		rts
 
 @gotonextpos:
 		addq.b	#1,(STS_Column).w		; go to next column
@@ -494,10 +488,12 @@ StoryScreen_CenterText:
 @notend:
 		movea.l	a1,a2				; create copy of story text address
 		adda.w	d0,a2				; add line length to the offset (so we start at the end)
+		moveq	#STS_LineLength,d3		; make sure we don't exceed the line limit (for blank lines)
 @findlineend:	tst.b	-(a2)				; is current character a space?
 		bne.s	@writescroll			; if not, we found the end of the line, branch
 		addq.l	#1,d2				; increase 1 to center alignment counter
-		bra.s	@findlineend			; loop until we found the end
+		subq.b	#1,d3				; subtract one remaining line length limit to check
+		bhi.s	@findlineend			; loop until we found the end, or move on if it's a blank line
 
 @writescroll:
 		lsl.l	#2,d2				; multiply by 4px per space

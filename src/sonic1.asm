@@ -62,13 +62,13 @@ __DEBUG__: equ 1
 ; RELEASE and DEBUG build settings:
 ; ======================================================
 QuickLevelSelect = 0
-QuickLevelSelect_ID = $000
+QuickLevelSelect_ID = $300
 ; ------------------------------------------------------
 DebugModeDefault = 1
-DebugSurviveNoRings = 1
+DebugSurviveNoRings = 0
 ; ------------------------------------------------------
 DoorsAlwaysOpen = 0
-LowBossHP = 1
+LowBossHP = 0
 ; ======================================================
 	else
 ; ======================================================
@@ -1532,7 +1532,7 @@ PalCycle_MZ:				; XREF: PalCycle
 
 PalCycle_SLZ:				; XREF: PalCycle
 		subq.w	#1,($FFFFF634).w
-		bpl.w	locret_1A80
+		bpl.w	PalCycle_SAP
 		move.w	#5,($FFFFF634).w
 		cmpi.w	#$3D0,($FFFFF726).w	; is boss playing?
 		bne.s	@cont
@@ -1555,12 +1555,31 @@ loc_1A60:
 		lea	($FFFFFB56).w,a1
 		move.w	(a0,d0.w),(a1)
 		move.l	obGfx(a0,d0.w),obMap(a1)
+; ---------------------------------------------------------------------------
 
-locret_1A80:
-		cmpi.w	#$302,($FFFFFE10).w
-		bne.s	PCSLZ_Red_End
-		tst.b	($FFFFFF77).w
-		beq.s	PCSLZ_Red_End
+PalCycle_SAP:
+		cmpi.w	#$302,($FFFFFE10).w	; are we in SAP?
+		bne.s	PCSLZ_Red_End		; if not, branch
+		tst.b	($FFFFFF77).w		; is antigrav enabled?
+		beq.s	PCSLZ_Red_End		; if not, branch
+
+		; palette rotation for Sonic
+cyoff = 4
+cylen = 8
+		lea	($FFFFFB00).w,a2
+		move.w	($FFFFFE04).w,d0		; load V-Blank counter into d0
+		move.w	d0,d2				; copy to d2
+		andi.w	#3,d0				; mask it against 3
+		bne.s	@redwalls			; if result isn't 0, branch	
+		move.w	cyoff(a2),d0			; load first blue colour of sonic's palette into d0
+		moveq	#cylen-1,d1			; set loop counter to 7
+		lea	cyoff+2(a2),a1			; load second blue colour into a1
+@blueloop:	move.w	(a1),-2(a1)			; move colour to last spot
+		adda.l	#2,a1				; increase location pointer
+		dbf	d1,@blueloop			; loop
+		move.w	d0,cyoff+(cylen-1)*2(a2)			; move first colour to last one
+
+@redwalls:
 		btst	#0,($FFFFFE05).w
 		beq.s	PCSLZ_Red_End
 		moveq	#0,d1
@@ -1956,7 +1975,7 @@ Pal_MakeWhite:				; XREF: SpecialStage
 PalWhite_Loop:
 		move.w	d1,(a0)+
 		dbf	d0,PalWhite_Loop
-		move.w	#$15,d4
+		move.w	#$15,d5
 
 loc_1EF4:
 		move.b	#$12,VBlankRoutine
@@ -1965,7 +1984,7 @@ loc_1EF4:
 
 	;	bsr	PLC_Execute	; this was in the original game, now it just causes trouble
 
-		dbf	d4,loc_1EF4
+		dbf	d5,loc_1EF4
 		rts	
 ; ===========================================================================
 
@@ -2008,35 +2027,74 @@ locret_1F4A:
 
 ;WhiteIn_DecColor:
 Pal_DecColor2:				; XREF: Pal_WhiteToBlack
-		move.w	(a1)+,d2
-		move.w	(a0),d3
-		cmp.w	d2,d3
-		beq.s	loc_1F78
-		move.w	d3,d1
-		subi.w	#$200,d1	; decrease blue	value
-		bcs.s	loc_1F64
-		cmp.w	d2,d1
-		bcs.s	loc_1F64
-		move.w	d1,(a0)+
-		rts	
+		move.w	(a1)+,d2	; get current source color
+		move.w	(a0),d3		; get current target color
+		move.w	d3,d4		; copy for later
+		cmp.w	d2,d3		; are they identical?
+		beq.s	loc_1F78	; if yes, we already reached our source color
+
+		andi.w	#$EEE,d2
+		andi.w	#$EEE,d4
+		subi.w	#$200,d4	; decrease blue	value
+		bcs.s	loc_1F64	; if we reached black, branch
+		cmp.w	d2,d4		; did we reach the source color?
+		bcs.s	loc_1F64	; if yes, branch
+		subi.w	#$200,d3	; decrease blue	value
 
 loc_1F64:				; XREF: Pal_DecColor2
-		move.w	d3,d1
-		subi.w	#$20,d1		; decrease green value
-		bcs.s	loc_1F74
-		cmp.w	d2,d1
-		bcs.s	loc_1F74
-		move.w	d1,(a0)+
-		rts	
+		andi.w	#$0EE,d2
+		andi.w	#$0EE,d4
+		subi.w	#$20,d4		; decrease green value
+		bcs.s	loc_1F74	; if we reached black, branch
+		cmp.w	d2,d4		; did we reach the source color?
+		bcs.s	loc_1F74	; if yes, branch
+		subi.w	#$20,d3		; decrease green value
 
 loc_1F74:				; XREF: loc_1F64
-		subq.w	#2,(a0)+	; decrease red value
-		rts	
+		andi.w	#$00E,d2
+		andi.w	#$00E,d4
+		subi.w	#2,d4		; decrease red value
+		bcs.s	loc_1F78	; if we reached black, branch
+		cmp.w	d2,d4		; did we reach the source color?
+		bcs.s	loc_1F78	; if yes, branch
+		subi.w	#2,d3		; decrease red value
 
 loc_1F78:				; XREF: Pal_DecColor2
-		addq.w	#2,a0
+		move.w	d3,(a0)+		; write updated color
 		rts	
 ; End of function Pal_MakeWhite
+
+
+
+		move.b	(a1),d5					; MJ: load blue
+		move.w	(a1)+,d1				; MJ: load green and red
+		move.b	d1,d2					; MJ: load red
+		lsr.b	#4,d1					; MJ: get only green
+		andi.b	#$00E,d2				; MJ: get only red
+
+		move.w	(a0),d3					; MJ: load current colour in buffer
+		cmp.b	d5,d4					; MJ: is it time for blue to fade?
+		bls	@NoBlue					; MJ: if not, branch
+		subi.w	#$200,d3				; MJ: increase blue
+
+@NoBlue:
+		andi.w	#$0EE,d1
+		andi.w	#$0EE,d4
+		cmp.b	d1,d4					; MJ: is it time for green to fade?
+		bls	@NoGreen				; MJ: if not, branch
+		subi.b	#$20,d3					; MJ: increase green
+
+@NoGreen:
+		cmp.b	d2,d4					; MJ: is it time for red to fade?
+		bls	@NoRed					; MJ: if not, branch
+		subq.b	#2,d3					; MJ: increase red
+
+@NoRed:
+		move.w	d3,(a0)+				; MJ: save colour
+		rts						; MJ: return
+
+
+
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -2082,34 +2140,31 @@ loc_1FC2:
 
 ;WhiteOut_AddColour:
 Pal_AddColor2:				; XREF: Pal_ToWhite
-		move.w	(a0),d2
-		cmpi.w	#$EEE,d2
-		beq.s	loc_2006
-		move.w	d2,d1
-		andi.w	#$E,d1
-		cmpi.w	#$E,d1
-		beq.s	loc_1FE2
-		addq.w	#2,(a0)+	; increase red value
-		rts	
+		move.w	(a0),d2		; get current color
+		cmpi.w	#$EEE,d2	; is it already full white?
+		beq.s	loc_2006	; if yes, branch
+		move.w	d2,d1		; move current color to d1
+		andi.w	#$E,d1		; get only red part
+		cmpi.w	#$E,d1		; is it at full redness?
+		beq.s	loc_1FE2	; if yes, branch
+		addq.w	#2,(a0)		; increase red value
 
 loc_1FE2:				; XREF: Pal_AddColor2
-		move.w	d2,d1
-		andi.w	#$E0,d1
-		cmpi.w	#$E0,d1
-		beq.s	loc_1FF4
-		addi.w	#$20,(a0)+	; increase green value
-		rts	
+		move.w	d2,d1		; move current color to d1
+		andi.w	#$E0,d1		; get only green part
+		cmpi.w	#$E0,d1		; is it at full greenness?
+		beq.s	loc_1FF4	; if yes, branch
+		addi.w	#$20,(a0)	; increase green value
 
 loc_1FF4:				; XREF: loc_1FE2
-		move.w	d2,d1
-		andi.w	#$E00,d1
-		cmpi.w	#$E00,d1
-		beq.s	loc_2006
-		addi.w	#$200,(a0)+	; increase blue	value
-		rts	
+		move.w	d2,d1		; move current color to d1
+		andi.w	#$E00,d1	; get only blue part
+		cmpi.w	#$E00,d1	; is it at full blueness?
+		beq.s	loc_2006	; if yes, branch
+		addi.w	#$200,(a0)	; increase blue	value
 
 loc_2006:				; XREF: Pal_AddColor2
-		addq.w	#2,a0
+		addq.w	#2,a0		; go to next color
 		rts	
 ; End of function Pal_MakeFlash
 
@@ -2237,7 +2292,7 @@ PalLoad1:
 
 
 ; ||||||||||||||| S U B R O U T I N E |||||||||||||||||||||||||||||||||||||||
-	
+
 
 PalLoad2:	; virtually identical to PalLoad1, except the missing +$80 on a3
 		lea	(PalPointers).l,a1
@@ -2438,7 +2493,7 @@ PalPointers:
 	dc.l Pal_GHZ2,		$FB20 0017
 	dc.l Pal_FZ,		$FB20 0017
 	dc.l Pal_LZSonWater,	$FB00 0007
-	dc.l Pal_Null,		$FB00 0007
+	dc.l Pal_SonicAntigrav,	$FB00 0007
 	dc.l Pal_Null,		$FB00 001F
 	dc.l Pal_SpeContinue,	$FB00 000F
 	dc.l Pal_Ending,	$FB00 001F
@@ -2455,6 +2510,7 @@ Pal_SegaBG:		incbin	palette\sega_bg.bin
 Pal_Title:		incbin	palette\title.bin
 Pal_LevelSel:		incbin	Screens\OptionsScreen\Options_Pal.bin
 Pal_Sonic:		incbin	palette\sonic.bin
+Pal_SonicAntigrav:	incbin	palette\sonic_antigrav.bin
 Pal_GHZ:		incbin	palette\ghz.bin
 Pal_GHZ2:		incbin	palette\ghz2.bin
 Pal_GHZ3:		incbin	palette\ghz3.bin
@@ -3581,6 +3637,12 @@ Level_NoMusic2:
 		tst.l	PLC_Pointer	; are there any items in the pattern load cue?
 		bne.s	@runplc		; if yes, branch
 
+
+		cmpi.w	#$502,($FFFFFE10).w	; is this Finalor Place?
+		bne.s	@notfinalor		; if not, branch
+		moveq	#$1F,d0
+		jsr	LoadPLC			; load FZ boss patterns
+@notfinalor:
 		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
 		bne.s	Level_CinematicHud	; if yes, branch
 		
@@ -4900,8 +4962,9 @@ SpecialStage:				; XREF: GameModeArray
 		bsr	Pal_MakeFlash
 @cont:
 		jsr	SRAM_SaveNow		; save our progress on entering a special stage
+; ---------------------------------------------------------------------------
 
-		ints_disable
+		VBlank_SetMusicOnly
 		lea	($C00004).l,a6
 		move.w	#$8B03,(a6)
 		move.w	#$8004,(a6)		; disable h-ints (VERY important, because otherwise we get massive slowdowns!)
@@ -4924,7 +4987,7 @@ loc_463C:
 		
 		bsr	SS_BGLoad
 		
-		ints_enable
+		VBlank_UnsetMusicOnly
 
 		moveq	#$14,d0
 		bsr	PLC_ExecuteOnce	; load special stage patterns
@@ -5020,8 +5083,9 @@ SS_MainLoop:
 		lea	($FFFFD000).w,a0	; load Sonic object
 		jsr	TouchGoalBlock		; respawn at last checkpoint
 @nota:
-		; reduce Sonic's vertical movement when holding C in Unreal Place
-		btst	#5,($FFFFF602).w	; is C held?
+		; reduce Sonic's vertical movement when holding ABC in Unreal Place
+		move.b	($FFFFF602).w,d0	; get held buttons
+		andi.w	#$70,d0			; is ABC held?
 		beq.s	@notc			; if not, branch
 		tst.b	($FFFFFFBF).w		; Unreal Place floating challenge enabled?
 		beq.s	@notc			; if not, branch
@@ -7375,7 +7439,7 @@ Resize_SLZ2main:
 		addq.b	#2,($FFFFF742).w		; go to SLZboss1 next frame
 		move.w	#$3D0,($FFFFF726).w
 		move.w	#$A10,($FFFFD008).w
-		clr.w	($FFFFF602).w
+		clr.l	($FFFFF602).w			; clear any remaining button presses
 		clr.w	($FFFFD010).w
 		clr.w	($FFFFD014).w
 		move.b	#$E0,d0				; fade out music
@@ -7409,7 +7473,7 @@ Resize_SLZ2boss1:
 Resize_SLZ2boss2:
 		cmpi.w	#$B00,($FFFFD008).w
 		bcs.s	locret_715C
-		clr.w	($FFFFF602).w
+		clr.l	($FFFFF602).w			; clear any remaining button presses
 		clr.w	($FFFFD010).w
 		clr.w	($FFFFD014).w
 
@@ -7418,11 +7482,11 @@ Resize_SLZ2boss2:
 		move.w	#$BD0,obX(a1)
 		move.w	#$048C,obY(a1)
 		
-	; if LowBossHP=1
-	; 	move.b	#2,($FFFFFF75).w	; set lives
-	; else
+	if LowBossHP=1
+	 	move.b	#2,($FFFFFF75).w	; set lives
+	else
 		move.b	#21,($FFFFFF75).w	; set lives
-	; endif
+	endif
 		
 		move.b	($FFFFFF75).w,($FFFFFF68).w
 
@@ -7732,8 +7796,8 @@ Resize_FZmain:
 		cmpi.w	#$2148,($FFFFF700).w
 		bcs.s	loc_72F4
 		addq.b	#2,($FFFFF742).w
-		moveq	#$1F,d0
-		bsr	LoadPLC		; load FZ boss patterns
+	;	moveq	#$1F,d0
+	;	bsr	LoadPLC		; load FZ boss patterns
 
 loc_72F4:
 		rts	; don't lock screen until you're at the boss
@@ -10736,7 +10800,7 @@ Obj3F_PlaySound:
 		move.w	($FFFFFE0E).w,d1	; get timer
 		andi.w	#$3F,d1			; only allow every once in a while
 		bne.s	@notjester		; ''
-		move.w	#$D6,d0			; play Jester explosion sound
+		move.w	#$DF,d0			; play Jester explosion sound
 @notjester:	jmp	(PlaySound_Special).l
 	else
 		move.w	#$D7,d0			; play boring ass baby explosion sound
@@ -11398,7 +11462,7 @@ Obj1F_NoCamShake:
 Obj1F_BossDefeated:
 		move.b	#1,($FFFFF7CC).w		; lock controls
 		clr.b	($FFFFFFEB).w
-		clr.b	($FFFFF602).w
+		clr.l	($FFFFF602).w			; clear any remaining button presses
 
 		move.b	#1,($FFFFFFD5).w		; set flag 3
 		clr.w	obVelX(a0)			; clear X-speed
@@ -12042,8 +12106,8 @@ Obj22_NotInhumanCrush:
 		beq.s	@0
 		move.w	#$2444,obGfx(a0)	; use second palette line
 @0:
-		frantic				; are we in Frantic mode?
-		beq.w	Obj22_MoveEnd		; if not, disable movement
+	;	frantic				; are we in Frantic mode?
+	;	beq.w	Obj22_MoveEnd		; if not, disable movement
 	
 		bra.s	Obj22_NotHigher		; skip
 ; ===========================================================================
@@ -14012,6 +14076,11 @@ Obj2E_ChkS:
 		cmpi.w	#$200,($FFFFFE10).w	; is this Ruined Place?
 		bne.s	@notruinedplace		; if not, branch
 
+		cmpi.w	#100,($FFFFFE20).w	; do you have at least 00 rings?
+		bhs.s	@notanoob		; if yes, branch
+		move.w	#100,($FFFFFE20).w	; give 100 rings (you'll probably still die, but at least it isn't instant)
+		ori.b	#1,($FFFFFE1D).w	; update rings counter
+@notanoob:
 		; block off a chunk offscreen
 		movem.l	d0-a1,-(sp)		; backup
 
@@ -16085,6 +16154,7 @@ loc_BDD6:
 		rts				; don't do anything else
 
 @notnonstopinhuman:
+
 		move.w	#-$1000,d1		; default speed
 		tst.b	($FFFFFF77).w		; is antigrav already enabled?
 		bne.w	@Explode		; if yes, branch
@@ -16092,6 +16162,11 @@ loc_BDD6:
 		move.b	#$96,d0			; play the sick music
 		jsr	PlaySound		; hell yea
 		move.w	#-$1800,d1		; set first launch speed (needs to be different cause of the alternate gravity)
+
+		movem.l	d7/a1-a3,-(sp)
+		moveq	#$10,d0
+		jsr	PalLoad2		; load Sonic's antigrav palette line
+		movem.l	(sp)+,d7/a1-a3
 
 		frantic				; is frantic mode enabled?
 		beq.s	@Explode		; if not, branch
@@ -23803,6 +23878,9 @@ Obj5D_Delay:				; XREF: Obj5D_Index
 		move.b	#1,$30(a0)
 		move.w	d2,($FFFFD008).w
 		
+		move.b	($FFFFFE05).w,d0
+		andi.b	#%11,d0
+		bne.s	@0
 		btst	#0,($FFFFFE0F).w
 		bne.s	@0
 		move.w	#$B8,d0
@@ -24172,6 +24250,12 @@ BombPellets_Boss = 13
 ; ===========================================================================
 
 Obj5F:					; XREF: Obj_Index
+		cmpi.w	#$301,($FFFFFE10).w
+		beq.s	@0
+		move.b	#$3F,(a0)
+		move.b	#0,obRoutine(a0)
+		rts
+@0:
 		moveq	#0,d0
 		move.b	obRoutine(a0),d0
 		move.w	Obj5F_Index(pc,d0.w),d1
@@ -24347,7 +24431,8 @@ Obj5F_Explode:				; XREF: Obj5F_Index2
 		move.b	#1,($FFFFFE2D).w		; make Sonic invincible
 		clr.l	($FFFFF602).w			; clear any remaining button presses
 		clr.w	obVelX(a0)			; clear bomb's X-speed
-		move.b	#$E,obRoutine(a0)		; set routine
+	;	move.b	#$E,obRoutine(a0)		; set routine (WIP transition)
+		move.b	#$A,obRoutine(a0)		; set routine
 		rts
 
 @notdefeated:
@@ -27300,7 +27385,7 @@ Obj01_Not0B00:
 		cmpi.w	#$2224,($FFFFD008).w		; has Sonic reached position $2224 on x-axis?
 		bcs.s	Obj01_NotGHZ1_Main		; if not, branch
 	;	move.w	#$2185,($FFFFF728).w
-		clr.b	($FFFFF602).w			; cancel any presses
+		clr.l	($FFFFF602).w			; cancel any presses
 		clr.w	obVelX(a0)				; clear X-speed
 		clr.w	obInertia(a0)				; clear interia
 		move.b	#1,($FFFFFFAB).w		; set crabmeat boss flag 3
@@ -29285,12 +29370,12 @@ AM_APressed:
 		bge.s	@NormalSound
 		
 		move.w	#$C7,d0			; continously...
-		jsr	(PlaySound_Special).l	; ... play sound while holding A
+		jsr	(PlaySound_Special).l	; ... play sound while holding A (empty)
 		bra.s 	@NothingPressedSet
 
 @NormalSound:
 		move.w	#$B8,d0			; continously...
-		jsr	(PlaySound_Special).l	; ... play sound while holding A
+		jsr	(PlaySound_Special).l	; ... play sound while holding A (still got juice)
 
 @NothingPressedSet:
 		moveq	#0,d0			; set to nothing was pressed
@@ -30893,20 +30978,19 @@ Obj0A_WarnSound:			; XREF: Obj0A_Countdown
 Obj0A_ReduceAir:
 		subq.w	#1,($FFFFFE14).w ; subtract 1 from air remaining
 		bcc.w	Obj0A_GoMakeItem ; if air is above 0, branch
-	;	tst.b 	($FFFFFFFE).w	; is the =P monitor enabled?
-	;	bne.w	@NoResume		; if yes, do not resume music
-		bsr	ResumeMusic
 
-@NoResume:
+Obj0A_Drowned:
+		bsr	ResumeMusic
 		move.b	#$81,($FFFFF7C8).w ; lock controls
 		move.w	#$B2,d0
 		jsr	(PlaySound_Special).l ;	play drowning sound
+
 		move.b	#$A,$34(a0)
 		move.w	#1,$36(a0)
 		move.w	#$78,$2C(a0)
 		move.l	a0,-(sp)
 		lea	($FFFFD000).w,a0
-		bsr	Sonic_ResetOnFloor
+		bsr	Kill_DoKill
 	;	move.b	#$0,($FFFFFFFE).w ; reset =P flag
 		move.b	#$17,obAnim(a0)	; use Sonic's drowning animation
 		bset	#1,obStatus(a0)
@@ -34553,6 +34637,13 @@ Obj79_Index:	dc.w Obj79_Main-Obj79_Index
 ; ===========================================================================
 
 Obj79_Main:				; XREF: Obj79_Index
+		frantic			
+		beq.s	@notrpfrantic
+		cmpi.w	#$200,($FFFFFE10).w
+		bne.s	@notrpfrantic
+		jmp	DeleteObject
+
+@notrpfrantic:
 		addq.b	#2,obRoutine(a0)
 		move.l	#Map_obj79,obMap(a0)
 		move.w	#($D800/$20),obGfx(a0)
@@ -35154,7 +35245,7 @@ Obj3D_ShipIndex:dc.w Obj3D_ShipStart-Obj3D_ShipIndex
 
 Obj3D_ShipStart:			; XREF: Obj3D_ShipIndex
 		move.b	#1,($FFFFF7CC).w		; lock controls
-		clr.b	($FFFFF602).w
+		clr.l	($FFFFF602).w			; clear any remaining button presses
 		move.w	#-$100,obVelY(a0)	; move ship up
 		bsr	BossMove
 		cmpi.w	#$338,$38(a0)
@@ -38984,8 +39075,11 @@ loc_19EA8:				; XREF: off_19E80
 		exg	d1,d0
 
 loc_19EC6:
-		lea	word_19FD6(pc),a1
-		move.w	(a1,d0.w),d0	; the pillar Robotnik will be in
+		lea	Obj85_PillarPossibilties_Casusal(pc),a1
+		frantic
+		beq.s	@0
+		lea	Obj85_PillarPossibilties_Frantic(pc),a1
+@0:		move.w	(a1,d0.w),d0	; the pillar Robotnik will be in
 		move.w	(a1,d1.w),d1	; the other (empty) pillar
 		move.w	d0,$30(a0)
 		moveq	#-1,d2
@@ -39119,13 +39213,22 @@ pillar4 = 2
 ;		dc.w pillar1, pillar3
 ;		dc.w pillar3, pillar2
 
-word_19FD6:
+; word_19FD6:
+Obj85_PillarPossibilties_Casusal:
 		dc.w pillar1, pillar2	; 00
 		dc.w pillar1, pillar3	; 04
 		dc.w pillar1, pillar4	; 08
 		dc.w pillar2, pillar3	; 0C
 		dc.w pillar2, pillar4	; 10
 		dc.w pillar3, pillar4	; 14
+
+Obj85_PillarPossibilties_Frantic:
+		dc.w pillar2, pillar4
+		dc.w pillar4, pillar2
+		dc.w pillar4, pillar1
+		dc.w pillar1, pillar3
+		dc.w pillar3, pillar1
+		dc.w pillar3, pillar2
 
 ; ===========================================================================
 
@@ -40733,6 +40836,7 @@ KillSonic:
 Kill_DoKill:
 		move.b	#1,($FFFFF5E1).w	; set death flag
 		jsr	Pal_MakeBlackWhite	; turn palette black and white
+		
 		move.w	($FFFFF700).w,($FFFFF728).w	; lock left screen position
 		move.w	($FFFFF700).w,($FFFFF72A).w	; lock right screen position		
 		move.w	($FFFFF704).w,($FFFFF72C).w	; lock top screen position
@@ -43663,10 +43767,10 @@ Obj21_NoUpdate:
 		tst.w	($FFFFFE20).w		; do you have any rings?
 		beq.s	Obj21_Flash2		; if not, make ring counter flash
 		move.w	($FFFFFE20).w,d1	; get current rings
-		cmp.w	$3E(a0),d1		; does it match the previous rings?
-		beq.s	@0
-		addq.w	#1,d0
-@0:
+		cmp.w	$3E(a0),d1		; compare against previous rings
+		bhs.s	@nodrainflash		; if we have the same or more rings than previously, branch
+		addq.w	#1,d0			; otherwise, ring count got reduced, make flash
+@nodrainflash:
 		bra.s	Obj21_Cont
 
 Obj21_Flash2:
@@ -44560,6 +44664,7 @@ Debug_Exit:
 		cmpi.b	#$10,($FFFFF600).w	; are you in the special stage?
 		beq.s	Debug_Exit_SS		; if yes, branch
 		jsr	Hud_Base		; restore HUD after using debug mode
+		ori.b	#1,($FFFFFE1D).w	; update rings counter
 		bra.s	Debug_DoNothing
 
 Debug_Exit_SS:

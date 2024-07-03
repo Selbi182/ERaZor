@@ -202,8 +202,10 @@ SelbiSplash_Loop:
 		andi.b	#3,d0
 		bne.w	SelbiSplash_WaitEnd
 
+		btst	#2,($FFFFFE0F).w
+		beq.s	@nowhite
 		jsr	Pal_ToWhite	; increase brightness
-
+@nowhite:
 		move.b	($FFFFFE0F).w,d0
 		andi.b	#5,d0
 		beq.w	SelbiSplash_WaitEnd

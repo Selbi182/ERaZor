@@ -2799,7 +2799,7 @@ SoundD4:	incbin	sound\soundD4.bin
 		even
 SoundD5:	incbin	sound\soundD5.bin
 		even
-SoundD6:	incbin	sound\jesterExplosion.bin
+SoundD6:	incbin	sound\soundD6.bin
 		even
 SoundD7:	incbin	sound\soundD7.bin
 		even
@@ -2817,5 +2817,5 @@ SoundDD:	incbin	sound\GunstarSFX\1E.sfx
 		even
 SoundDE:	incbin	sound\GunstarSFX\29.sfx
 		even
-SoundDF:	incbin	sound\soundNULL.bin
+SoundDF:	incbin	sound\jesterExplosion.bin
 		even

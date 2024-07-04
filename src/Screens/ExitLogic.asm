@@ -1,10 +1,6 @@
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Exit Logic - All the code that takes care of game progression
-; ---------------------------------------------------------------------------
-; Overview of this mess:
-; - Exit_Level: called from Obj0D after it spins a while and special stages
-; - Exit_GiantRing: called from within Obj4B after it moved off screen
+; Exit Logic
 ; ---------------------------------------------------------------------------
 ; BOOT
 ; Sega Screen > Selbi Screen > Title Screen > GameplayStyleScreen/Chapter Screen
@@ -70,7 +66,6 @@ Exit_SegaScreen:
 		rts
 ; ===========================================================================
 
-
 Exit_SelbiSplash:
 		move.b	#4,($FFFFF600).w	; set to title screen
 		rts
@@ -112,7 +107,7 @@ Exit_StoryScreen:
 @checkblackout:
 		cmpi.b	#9,d0			; is this the end of the blackout challenge?
 		bne.s	@exitregular		; if not, branch
-		move.b	#$00,($FFFFF600).w	; set to sega screen ($00)
+		move.b	#$00,($FFFFF600).w	; set to Sega screen ($00)
 		rts
 
 @exitregular:
@@ -124,8 +119,8 @@ Exit_StoryScreen:
 ; ===========================================================================
 
 Exit_CreditsScreen:
-		moveq	#$E,d0			; load FZ pallet (cause tutorial boxes are built into SBZ)
-		jsr	PalLoad2		; load pallet
+		moveq	#$E,d0			; load FZ palette (cause tutorial boxes are built into SBZ)
+		jsr	PalLoad2		; load palette
 
 		moveq	#$F,d0			; load text after beating the game in casual mode
 		frantic				; have you beaten the game in frantic mode?
@@ -164,7 +159,7 @@ Exit_ChapterScreen_StartIntro:
 
 Exit_IntroCutscene:
 		move.b	#$20,($FFFFF600).w	; set screen mode to story text screens
-		move.b	#1,($FFFFFF9E).w	; set number for text to 1 (this also controls the start of the intro cutscene itself)
+		move.b	#1,($FFFFFF9E).w	; set number for text to 1 ("The spiked sucker...")
 		rts
 ; ===========================================================================
 
@@ -182,12 +177,13 @@ Exit_EndingSequence:
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Routine to show chapter screen or go straight to level
+; Routines to show chapter screen and story screens or go straight to level
 ; ---------------------------------------------------------------------------
 
-MakeChapterScreen:
+; MakeChapterScreen:
+RunChapter:
 		btst	#1,($FFFFFF92).w	; is "Skip Story Screens" enabled?
-		bne.w	StartLevel		; if yes, start level straight away
+		beq.w	StartLevel		; if yes, start level straight away
 
 		jsr	FakeLevelID		; get fake level ID for current level
 		tst.b	d5			; did we get a valid ID?
@@ -195,9 +191,19 @@ MakeChapterScreen:
 
 		cmp.b	($FFFFFFA7).w,d5	; compare currently saved chapter number to fake level ID
 		bls.w	StartLevel		; if this is a chapter from a level we already visited, skip chapter screen
+
 		move.b	d5,($FFFFFFA7).w	; we've entered a new level, update progress chapter ID
 		move.b	#$28,($FFFFF600).w	; run chapter screen
-		rts
+		rts				; return
+; ===========================================================================
+
+RunStory:
+		move.b	($FFFFFF9E).w,d0	; copy story ID to d0 (needed for Exit_StoryScreen)
+		btst	#1,($FFFFFF92).w	; is "Skip Story Screens" enabled?
+		beq.w	Exit_StoryScreen	; if yes, well, skip it
+
+		move.b	#$20,($FFFFF600).w	; otherwise start Story Screen
+		rts				; return
 
 
 ; ===========================================================================
@@ -214,7 +220,7 @@ Exit_GiantRing:
 		beq.w	MiscRing_IntroEnd	; if yes, branch
 		cmpi.w	#$302,($FFFFFE10).w	; is this the easter egg ring in Star Agony Place?
 		beq.w	MiscRing_SAP		; if yes, branch
-		cmpi.b	#$5,($FFFFFE10).w	; is this the a ring in the tutorial/finalor?
+		cmpi.b	#5,($FFFFFE10).w	; is this the a ring in the tutorial/Finalor?
 		beq.w	MiscRing_TutorialFP	; if yes, branch
 
 		bra.w	ReturnToUberhub		; otherwise something went wrong, return to Uberhub as fallback
@@ -263,34 +269,34 @@ HubRing_GHP:	move.w	#$002,($FFFFFE10).w	; set level to GHZ3
 
 HubRing_SP:	move.w	#$300,($FFFFFE10).w	; set level to Special Stage
 		clr.b	($FFFFFF5F).w		; clear blackout special stage flag
-		bra.w	MakeChapterScreen
+		bra.w	RunChapter
 
 HubRing_RP:	move.w	#$200,($FFFFFE10).w	; set level to MZ1
-		bra.w	MakeChapterScreen
+		bra.w	RunChapter
 
 HubRing_LP:	move.w	#$101,($FFFFFE10).w	; set level to LZ2
-		bra.w	MakeChapterScreen
+		bra.w	RunChapter
 
 HubRing_UP:	move.w	#$401,($FFFFFE10).w	; set level to Special Stage 2
 		clr.b	($FFFFFF5F).w		; clear blackout special stage flag
-		bra.w	MakeChapterScreen
+		bra.w	RunChapter
 
 HubRing_SNP:	move.w	#$301,($FFFFFE10).w	; set level to SLZ2
 		frantic				; are we in frantic?
-		beq.w	MakeChapterScreen	; big boy bombs only in big boy game modes
+		beq.w	RunChapter	; big boy bombs only in big boy game modes
 		move.w	#$500,($FFFFFE10).w	; start bomb machine cutscene
-		bra.w	MakeChapterScreen
+		bra.w	RunChapter
 
 HubRing_SAP:	move.w	#$302,($FFFFFE10).w	; set level to SLZ3
-		bra.w	MakeChapterScreen
+		bra.w	RunChapter
 
 HubRing_FP:	move.w	#$502,($FFFFFE10).w	; set level to FZ
-		bra.w	MakeChapterScreen
+		bra.w	RunChapter
 ; ---------------------------------------------------------------------------
 
 HubRing_IntroStart:
-		move.w	#$001,($FFFFFE10).w	; set to intro cutscene
-		move.b	#$28,($FFFFF600).w	; load chapters screen for intro cutscene (One Hot Day...)
+		move.w	#$001,($FFFFFE10).w	; set to intro cutscene (this also controls the start of the intro cutscene itself)
+		move.b	#$28,($FFFFF600).w	; load chapters screen for intro cutscene ("One Hot Day...")
 		rts
 
 HubRing_Ending:
@@ -308,9 +314,9 @@ HubRing_Tutorial:
 		bra.w	StartLevel
 
 HubRing_Blackout:
-		move.w	#$401,($FFFFFE10).w	; set level to Special Stage 2 Easter
-		move.b	#1,($FFFFFF5F).w	; set blackout special stage flag
-		bra.w	StartLevel
+		move.w	#$401,($FFFFFE10).w	; set level to Unreal
+		move.b	#1,($FFFFFF5F).w	; set Blackout Challenge flag
+		bra.w	StartLevel		; good luck
 ; ---------------------------------------------------------------------------
 
 MiscRing_IntroEnd:
@@ -320,7 +326,7 @@ MiscRing_IntroEnd:
 
 MiscRing_SAP:
 		move.b	#$20,($FFFFF600).w	; load info screen
-		move.b	#9,($FFFFFF9E).w	; set number for text to 9
+		move.b	#9,($FFFFFF9E).w	; set number for text to 9 (easter egg text)
 		move.b	#$9D,d0			; play ending sequence music (cause it fits for the easter egg lol)
 		jmp	PlaySound
 
@@ -379,32 +385,32 @@ GTA_Tutorial:	btst	#2,($FFFFFF92).w	; is Skip Uberhub Place enabled?
 GTA_NHPGHP:	moveq	#0,d0			; unlock first door
 		bsr	Set_DoorOpen
 		move.b	#2,($FFFFFF9E).w	; set number for text to 2
-		bra	Exit_RunStory
+		bra.w	RunStory
 
 GTA_SP:		moveq	#1,d0			; unlock second door
 		bsr	Set_DoorOpen
 		move.b	#3,($FFFFFF9E).w	; set number for text to 3
-		bra	Exit_RunStory
+		bra.w	RunStory
 
 GTA_RP:		moveq	#2,d0			; unlock third door
 		bsr	Set_DoorOpen
 		move.b	#4,($FFFFFF9E).w	; set number for text to 4
-		bra	Exit_RunStory
+		bra.w	RunStory
 
 GTA_LP:		moveq	#3,d0			; unlock fourth door
 		bsr	Set_DoorOpen
 		move.b	#5,($FFFFFF9E).w	; set number for text to 5
-		bra	Exit_RunStory
+		bra.w	RunStory
 
 GTA_UP:		moveq	#4,d0			; open fifth door
 		bsr	Set_DoorOpen
 		move.b	#6,($FFFFFF9E).w	; set number for text to 6
-		bra	Exit_RunStory
+		bra.w	RunStory
 
 GTA_SNPSAP:	moveq	#5,d0			; unlock sixth door
 		bsr	Set_DoorOpen
 		move.b	#7,($FFFFFF9E).w	; set number for text to 7
-		bra	Exit_RunStory
+		bra.w	RunStory
 
 GTA_FP:		moveq	#6,d0			; unlock seventh door (door to the credits)
 		bsr	Set_DoorOpen
@@ -413,16 +419,9 @@ GTA_FP:		moveq	#6,d0			; unlock seventh door (door to the credits)
 		bra.w	HubRing_Ending		; otherwise go straight to the ending
 
 GTA_Blackout:	clr.b	($FFFFFF5F).w		; clear blackout special stage flag
-		move.b	#9,($FFFFFF9E).w	; set number for text to 9 instead
-		bra	Exit_RunStory
-; ---------------------------------------------------------------------------
+		move.b	#9,($FFFFFF9E).w	; set number for text to 9 (final congratulations)
+		bra.w	RunStory
 
-Exit_RunStory:
-		move.b	($FFFFFF9E).w,d0	; move story ID to d0
-		btst	#1,($FFFFFF92).w	; is "Skip Story Screens" enabled?
-		bne.w	Exit_StoryScreen	; if yes, well, skip it
-		move.b	#$20,($FFFFF600).w	; set to Story Screen
-		rts				; return
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -440,7 +439,7 @@ SkipUberhub:
 		bne.s	@autonextlevelloop	; if not, loop
 
 		move.w	(a1),($FFFFFE10).w	; write next level in list to level ID RAM
-		bra.w	MakeChapterScreen	; start the level, potentially play a chapter screen
+		bra.w	RunChapter	; start the level, potentially play a chapter screen
 
 NextLevel_Array:
 		dc.w	$001	; Intro Cutscene
@@ -519,6 +518,7 @@ StateCheck_No:	moveq #-1,d0
 ; ---------------------------------------------------------------------------
 
 Set_DoorOpen:
+		; d0 = door bit index we want to open
 		bset	d0,($FFFFFF8A).w	; unlock door (casual, but also in frantic)
 		frantic				; are we in frantic?
 		beq.s	@end			; if not, branch

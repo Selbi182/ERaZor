@@ -64,7 +64,7 @@ __DEBUG__: equ 1
 QuickLevelSelect = 0
 QuickLevelSelect_ID = $300
 ; ------------------------------------------------------
-DebugModeDefault = 0
+DebugModeDefault = 1
 DebugSurviveNoRings = 0
 ; ------------------------------------------------------
 DoorsAlwaysOpen = 0
@@ -921,6 +921,8 @@ VDPSetupArray:	dc.w $8004	; 8-colour mode
 
 
 ClearScreen:
+		jsr	DrawBuffer_Clear
+
 		lea	($C00004).l,a5
 		move.w	#$8F01,(a5)
 		move.l	#$940F93FF,(a5)
@@ -964,6 +966,7 @@ loc_133A:
 loc_134A:
 		move.l	d0,(a1)+
 		dbf	d1,loc_134A
+
 		rts	
 ; End of function ClearScreen
 
@@ -2958,17 +2961,7 @@ LevelSelect_Load:
 		move.w	#$E0,d0			; fade out music for level select
 		bsr	PlaySound_Special
 
-		moveq	#0,d1			; instantly turn the entire palette black, except the outlines of the text
-		lea	($FFFFFB00).w,a1
-		move.w	#$3F,d2
-@clearpalafter:	move.w	d1,(a1)+
-		dbf	d2,@clearpalafter
-		move.w	#$EEE,($FFFFFB42).w	; white outline for selected line
-		move.w	#$222,d0		; gray filling for everything else
-		lea	($FFFFFB64).w,a1
-		moveq	#7,d1
-@grayfilling:	move.w	d0,(a1)+
-		dbf	d1,@grayfilling
+		bsr	LevelSelect_Palette
 
 		lea	($FFFFCC00).w,a1
 		moveq	#0,d0
@@ -3080,28 +3073,35 @@ ERaZorBannerPalette:
 LevelSelect:
 		move.b	#4,VBlankRoutine
 		bsr.w	DelayProgram
-		bsr.w	LevSelControls
 		bsr.w	PLC_Execute
 		tst.l	PLC_Pointer
 		bne.s	LevelSelect
-		andi.b	#$F0,($FFFFF605).w ; is	A, B, C, or Start pressed?
-		beq.s	LevelSelect	; if not, branch
-		bra.s	LevSel_Level_SS
-; ===========================================================================
 
-LevSel_Intro:
-		move.b	#$95,d0				; play intro sequence music
-		jsr	PlaySound
-		bra.w	LevSel_Level
+		bsr.w	LevSelControls		; up/down controls
+		andi.b	#$F0,($FFFFF605).w	; is A, B, C, or Start pressed?
+		beq.s	LevelSelect		; if not, loop
 
-LevSel_Ending:
-		move.b	#$20,($FFFFF600).w		; load info screen
-		move.b	#8,($FFFFFF9E).w		; set number for text to 8
-		move.b	#$9D,d0				; play ending sequence music
-		jmp	PlaySound
-; ===========================================================================
+		; quick casual/frantic toggle with A
+		andi.b	#$40,($FFFFF605).w	; was specifically A pressed?
+		beq.s	LevelSelect_DoSelect	; if not, start level
+		move.w	#$DA,d0			; set option off sound
+		bchg	#5,($FFFFFF92).w	; toggle gameplay style
+		bne.s	@playsound		; if it's now set to casual, branch
+		move.w	#$D9,d0			; set option on sound
+@playsound:	jsr	PlaySound_Special	; play it
+		bsr	LevelSelect_Palette	; update palette
+		bra.s	LevelSelect		; loop (don't make A start any level)
+; ---------------------------------------------------------------------------
 
-LevSel_Level_SS:			; XREF: LevelSelect
+LevelSelect_DoSelect:
+		moveq	#0,d0
+		move.l	d0,($FFFFFE22).w ; clear time
+		move.b	d0,($FFFFFE16).w ; clear special stage number
+		move.b	d0,($FFFFFE57).w ; clear emeralds
+		move.l	d0,($FFFFFE58).w ; clear emeralds
+		move.l	d0,($FFFFFE5C).w ; clear emeralds
+		move.b	d0,($FFFFFE18).w ; clear continues
+
 		move.w	($FFFFFF82),d0
 		add.w	d0,d0
 		lea	(LSelectPointers).l,a1
@@ -3115,42 +3115,49 @@ LevSel_Level_SS:			; XREF: LevelSelect
 		beq.s	LevSel_Intro	; if yes, branch
 		cmpi.w	#$601,d0	; is this the ending sequence?
 		beq.s	LevSel_Ending	; if yes, branch
-		
-		cmpi.w	#$300,d0	; is Special Place?
-		beq.s	@dospecial	; if yes, branch
-		cmpi.w	#$401,d0	; is Unreal Place?
-		beq.s	@dospecial	; if yes, branch
 		cmpi.w	#$666,d0	; is blackout challenge?
-		bne.s	LevSel_Level	; if not, branch
-		move.w	#$401,($FFFFFE10).w	; set to SS2 layout
-		move.b	#1,($FFFFFF5F).w	; set blackout blackout special stage flag
+		beq.s	LevSel_Blackout	; if yes, branch
 
-@dospecial:
-		move.b	#$10,($FFFFF600).w	; set to special stage
-		rts	
+		jmp	StartLevel	; otherwise, start level normally
+
+; jumpers, cause the exit logic is too far out of range
+LevSel_Intro:	jmp	HubRing_IntroStart
+LevSel_Ending:	jmp	HubRing_Ending
+LevSel_Blackout:jmp	HubRing_Blackout
 ; ===========================================================================
 
-LevSel_Level:				; XREF: LevSel_Level_SS
-		move.b	#$C,($FFFFF600).w ; set	screen mode to $0C (level)
-		moveq	#0,d0
-	;	move.w	d0,($FFFFFE20).w ; clear rings
-		move.l	d0,($FFFFFE22).w ; clear time
-	;	move.l	d0,($FFFFFE26).w ; clear score
-		move.b	d0,($FFFFFE16).w ; clear special stage number
-		move.b	d0,($FFFFFE57).w ; clear emeralds
-		move.l	d0,($FFFFFE58).w ; clear emeralds
-		move.l	d0,($FFFFFE5C).w ; clear emeralds
-		move.b	d0,($FFFFFE18).w ; clear continues
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Subroutine to	load the palette, based on gameplay style
+; (casual white / frantic red)
+; ---------------------------------------------------------------------------
+
+LevelSelect_Palette:
+		moveq	#0,d1			; instantly turn the entire palette black
+		lea	($FFFFFB00).w,a1
+		move.w	#$3F,d2
+@clearpalafter:	move.w	d1,(a1)+
+		dbf	d2,@clearpalafter
+
+		move.w	#$222,d0		; gray filling for the text
+		lea	($FFFFFB64).w,a1
+		moveq	#7,d1
+@grayfilling:	move.w	d0,(a1)+
+		dbf	d1,@grayfilling
+
+		move.w	#$EEE,d0		; white outline for selected line
+		frantic				; is frantic enabled?
+		beq.s	@selectedline		; if not, branch
+		move.w	#$00E,d0		; red outline for selected line
+@selectedline:	move.w	d0,($FFFFFB42).w	; write select line color
 		rts
-; ===========================================================================
 
+; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Subroutine to	change what you're selecting in the level select
 ; ---------------------------------------------------------------------------
-
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
 LevSelEntries = 14
+; ---------------------------------------------------------------------------
 
 LevSelControls:				; XREF: LevelSelect
 		move.b	($FFFFF605).w,d1
@@ -3163,7 +3170,7 @@ LevSelControls:				; XREF: LevelSelect
 		beq.s	LevSel_Down	; if not, branch
 		subq.w	#1,d0		; move up 1 selection
 		bpl.s	LevSel_Down
-		moveq	#LevSelEntries-1,d0		; if selection moves below 0, jump to selection	13
+		moveq	#LevSelEntries-1,d0	; if selection moves below 0, jump to selection	13
 
 LevSel_Down:
 		btst	#1,d1		; is down pressed?
@@ -3184,9 +3191,6 @@ LevSel_End:
 ; ---------------------------------------------------------------------------
 ; Subroutine to load level select text
 ; ---------------------------------------------------------------------------
-
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
 
 LevSelTextLoad:				; XREF: TitleScreen
 		lea	(LevelMenuText).l,a1
@@ -3220,8 +3224,8 @@ loc_34FE:
 		rts	
 ; End of function LevSelTextLoad
 
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 
+; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 
 LevSel_ChgLine:				; XREF: LevSelTextLoad
 		moveq	#$17,d2		; number of characters per line
@@ -4539,7 +4543,6 @@ ClearEverySpecialFlag:
 		clr.b	($FFFFF5E0).w
 		clr.b	($FFFFF5E1).w
 		clr.w	($FFFFF5E2).w
-		clr.b	($FFFFFF5F).w
 		clr.l	($FFFFFF60).w
 		clr.l	($FFFFFF64).w
 		clr.l	($FFFFFF68).w

@@ -188,29 +188,29 @@ StartText:
 	dc.b	"         TO         ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
-	dc.b	"                    ",$FF
 	dc.b	"     MAINMEMORY     ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"       JORGE        ",$FF
 	dc.b	"                    ",$FF
-	dc.b	"                    ",$FF
+	dc.b	"     SONIC TEAM     ",$FF
+	dc.b	"        SEGA        ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
 
 	; 11
 	dc.b	$0D						; Number of lines
 	dc.b	"                    ",$FF
-	dc.b	"   ORIGINAL GAME    ",$FF
+	dc.b	"  A HUGE THANKS TO  ",$FF
 	dc.b	"                    ",$FF
-	dc.b	"         BY         ",$FF
-	dc.b	"                    ",$FF
-	dc.b	"                    ",$FF
-	dc.b	"                    ",$FF
-	dc.b	"     SONIC TEAM     ",$FF
-	dc.b	"                    ",$FF
-	dc.b	"        SEGA        ",$FF
+	dc.b	" THE ERAZOR \ SQUAD ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
+	dc.b	"    VLADIKCOMPER    ",$FF
+	dc.b	"     SONICFAN[      ",$FF
+	dc.b	"       FUZZY        ",$FF
+	dc.b	"       AJCOX        ",$FF
+	dc.b	"     NEONSYNTH      ",$FF
+	dc.b	"    MARKEYJESTER    ",$FF
 	dc.b	"                    ",$FF
 	dc.b	"                    ",$FF
 

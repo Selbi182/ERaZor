@@ -3102,6 +3102,11 @@ LevelSelect_Load:
 		clr.b	($FFFFD080).w		; delete "PRESS START BUTTON" object
 		move.w	#0,($FFFFFF82).w	; set initial cursor position to entry 1
 		bsr.w	LevSelTextLoad
+
+		addi.w	#7,($FFFFD0C0+obScreenY).w	; slightly adjust banner
+		jsr	ObjectsLoad
+		jsr	BuildSprites
+
 		bra.w	LevelSelect
 ; ===========================================================================
 
@@ -3309,12 +3314,12 @@ LevSel_End:
 LevSelTextLoad:				; XREF: TitleScreen
 		lea	(LevelMenuText).l,a1
 		lea	($C00000).l,a6
-		move.l	#$62100003,d4	; screen position (text)
+		move.l	#$62900003,d4	; screen position (text)
 		move.w	#$E680,d3	; VRAM setting
 		moveq	#$14,d1		; number of lines of text
 
 loc_34FE:
-		move.l	d4,obMap(a6)
+		move.l	d4,4(a6)
 		bsr	LevSel_ChgLine
 		addi.l	#$800000,d4
 		dbf	d1,loc_34FE
@@ -3322,7 +3327,7 @@ loc_34FE:
 		moveq	#0,d0
 		move.w	($FFFFFF82).w,d0
 		move.w	d0,d1
-		move.l	#$62100003,d4
+		move.l	#$62900003,d4
 		lsl.w	#7,d0
 		swap	d0
 		add.l	d0,d4
@@ -3333,7 +3338,7 @@ loc_34FE:
 		add.w	d0,d1
 		adda.w	d1,a1
 		move.w	#$C680,d3
-		move.l	d4,obMap(a6)
+		move.l	d4,4(a6)
 		bsr	LevSel_ChgLine
 		rts	
 ; End of function LevSelTextLoad

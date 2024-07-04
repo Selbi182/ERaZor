@@ -6434,6 +6434,7 @@ Obj8B:
 ; ===========================================================================
 
 @Emitter:
+	
 		move.b	#Starfield_SpawnInterval,$31(a0)	; set casual spawn interval
 		move.w 	#$125,obX(a0)				; horizontally center emitter
 		move.w 	#$80,obScreenY(a0)			; set emitter to top of screen
@@ -6460,7 +6461,12 @@ Obj8B:
 @Particle:
 		addq.b	#2,obRoutine(a0)
 		move.l	#Map_obj8B,obMap(a0)
-		move.w	#$0,obGfx(a0)
+		move.w	#($2000/$20),obGfx(a0)
+		
+	;	move.w	($FFFFFE0E).w,d0
+	;	andi.w	#$3F,d0
+	;	add.w	d0,obGfx(a0)
+		
 		move.b	#0,obRender(a0)
 		
 		jsr	RandomDirection
@@ -6610,12 +6616,11 @@ loc_5B96:
 
 locret_5BBA:
 		rts	
-; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Sprite mappings - Eggman on	the "TRY AGAIN"	and "END" screens
-; ---------------------------------------------------------------------------
+
 Map_obj8B:
 		include	"_maps\obj8B.asm"
+; ===========================================================================
 
 ; ---------------------------------------------------------------------------
 ; Subroutine to	load level boundaries and start	locations

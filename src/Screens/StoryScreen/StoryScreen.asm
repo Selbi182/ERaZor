@@ -269,23 +269,17 @@ StoryScreen_ContinueWriting:
 		add.w	#STS_VRAMSettings,d0		; apply VRAM settings (high plane, palette line 4, VRAM address $D000)
 		move.w	d0,(a6)				; write char to screen
 
-		tst.b	1(a1)				; is the next character a space?
-		bne.s	@notspacenext			; if not, branch
-		bsr	@playwritingsound		; play sound
-@notspacenext:
 		bsr	@gotonextpos			; go to next character
-		tst.b	(STS_Column).w			; did column reset?
-		bne.s	@writeend			; if not, branch
-		bsr	@playwritingsound		; play sound
+
+		move.w	($FFFFFE0E).w,d0		; get frame counter
+		andi.w	#3,d0				; only every four frames
+		bne.s	@writeend			; if not on one, branch
+		move.w	#STS_Sound,d0			; play...
+		jsr	PlaySound_Special		; ... text writing sound
 
 @writeend:
 		rts
 ; ---------------------------------------------------------------------------
-
-@playwritingsound:	
-		move.w	#STS_Sound,d0			; play...
-		jsr	PlaySound_Special		; ... text writing sound
-		rts
 
 @gotonextpos:
 		addq.b	#1,(STS_Column).w		; go to next column
@@ -475,10 +469,12 @@ StoryScreen_CenterText:
 @notend:
 		movea.l	a1,a2				; create copy of story text address
 		adda.w	d0,a2				; add line length to the offset (so we start at the end)
+		moveq	#STS_LineLength,d3		; make sure we don't exceed the line limit (for blank lines)
 @findlineend:	tst.b	-(a2)				; is current character a space?
 		bne.s	@writescroll			; if not, we found the end of the line, branch
 		addq.l	#1,d2				; increase 1 to center alignment counter
-		bra.s	@findlineend			; loop until we found the end
+		subq.b	#1,d3				; subtract one remaining line length limit to check
+		bhi.s	@findlineend			; loop until we found the end, or move on if it's a blank line
 
 @writescroll:
 		lsl.l	#2,d2				; multiply by 4px per space
@@ -560,20 +556,20 @@ STS_Continue:	ststxt	" PRESS START TO CONTINUE... "
 
 StoryText_1:	; text after intro cutscene
 		ststxt	"THE SPIKED SUCKER DECIDED   "
-		ststxt	"TO RETURN TO THE HILLS,     "
+		ststxt	"TO GO BACK TO THE HILLS,    "
 		ststxt	"JUST TO SEE WHAT'S UP.      "
 		ststxt	"                            "
 		ststxt	"WHEN SUDDENLY... EXPLOSIONS!"
-		ststxt	"EVERYWHERE! FROM BOMBS SHOT "
-		ststxt	"BY A GRAY BUZZ BOMBER!      "
-		ststxt	"SONIC ESCAPED IT, BUT WAS AN"
-		ststxt	"IDIOT AND LAUNCHED HIMSELF  "
-		ststxt	"INTO A VERY CONVENIENTLY    "
-		ststxt	"PLACED GIANT RING.          "
+		ststxt	"EVERYWHERE! A GRAY METALLIC "
+		ststxt	"BUZZ BOMBER SHOWERED HIM    "
+		ststxt	"WITH MISSILES! SONIC MANAGED"
+		ststxt	"TO ESCAPE IT, BUT MINDLESSLY"
+		ststxt	"FELL INTO A CONVENIENTLY    "
+		ststxt	"PLACED RING TRAP.           "
 		ststxt	"                            "
-		ststxt	"NOW, HE'S IN SOME STRANGE   "
-		ststxt	"HUB WORLD. ESCAPE THIS PLACE"
-		ststxt	"AND BLAST YOUR WAY THROUGH! "
+		ststxt	"UPON WARPING, HE FINDS      "
+		ststxt	"HIMSELF IN A STRANGE        "
+		ststxt	"PARALLEL DIMENSION...       "
 		dc.b	-1
 		even
 ; ---------------------------------------------------------------------------
@@ -583,8 +579,8 @@ StoryText_2:	; text after beating Night Hill Place
 		ststxt	"CRABMEATS WITH EXPLODING    "
 		ststxt	"BALLS, AND THE ORIGINAL     "
 		ststxt	"GREEN HILL ZONE TRANSFORMED "
-		ststxt	"INTO AN ACTION MOVIE OR     "
-		ststxt	"SOMETHING. TOP IT OFF WITH  "
+		ststxt	"INTO SOMETHING OF AN ACTION "
+		ststxt	"MOVIE. TOP IT OFF WITH      "
 		ststxt	"EGGMAN AND HIS THREE SPIKED "
 		ststxt	"BALLS OF STEEL, AND YOU CAN "
 		ststxt	"TELL SONIC ISN'T EXACTLY    "

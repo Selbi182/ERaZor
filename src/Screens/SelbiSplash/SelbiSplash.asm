@@ -140,7 +140,20 @@ SelbiSplash_Loop:
 		bpl.w	@0
 		move.w	#$8B07,($C00004).l
 		moveq	#8,d0
-		jsr	Options_BGDeformation2
+
+		move.w	($FFFFFE0E).w,d6	; get timer
+
+		lea	($FFFFCC00).w,a1
+		move.l	#1,d0
+		move.w	#223,d1
+		btst	#1,($FFFFFE0F).w
+		beq.s	@scrollshitfuckass
+		neg.l	d0
+
+@scrollshitfuckass:
+		move.l	d0,(a1)+
+		neg.l	d0
+		dbf	d1,@scrollshitfuckass
 
 @0:
 		cmpi.w	#$90,($FFFFF614).w		; is time less than $90?
@@ -189,8 +202,10 @@ SelbiSplash_Loop:
 		andi.b	#3,d0
 		bne.w	SelbiSplash_WaitEnd
 
+		btst	#2,($FFFFFE0F).w
+		beq.s	@nowhite
 		jsr	Pal_ToWhite	; increase brightness
-
+@nowhite:
 		move.b	($FFFFFE0F).w,d0
 		andi.b	#5,d0
 		beq.w	SelbiSplash_WaitEnd

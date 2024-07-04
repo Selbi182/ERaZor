@@ -487,11 +487,13 @@ _CooldownVal	= 2
 	beq.s	@Return			; if not, branch
 	move.l	#@ProcessChar,obj(a0)	; set main routine
 	move.w	#_CooldownVal,cooldown(a0) ; set cooldown between screens
-	moveq	#$FFFFFFD9,d0
-	jmp	PlaySound
+	rts
 
 ; ---------------------------------------------------------------
 @ClearWindow:
+	moveq	#$FFFFFFD9,d0
+	jsr	PlaySound
+
 	jsr	DH_ClearWindow
 	move.w	#0,row(a0)		; reset row
 	bra.s	@LoadRow		; reload row

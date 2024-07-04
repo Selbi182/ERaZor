@@ -45,6 +45,7 @@ __DEBUG__: equ 1
 ; ------------------------------------------------------
 ; Developer Assembly Options
 ; ------------------------------------------------------
+; $000 - title screen level select
 ; $400 - Uberhub Place
 ; $000 - Night Hill Place
 ; $002 - Green Hill Place
@@ -61,13 +62,13 @@ __DEBUG__: equ 1
 ; RELEASE and DEBUG build settings:
 ; ======================================================
 QuickLevelSelect = 0
-QuickLevelSelect_ID = $400
+QuickLevelSelect_ID = $300
 ; ------------------------------------------------------
 DebugModeDefault = 1
-DebugSurviveNoRings = 1
+DebugSurviveNoRings = 0
 ; ------------------------------------------------------
 DoorsAlwaysOpen = 1
-LowBossHP = 1
+LowBossHP = 0
 ; ======================================================
 	else
 ; ======================================================
@@ -80,7 +81,7 @@ DebugModeDefault = 1
 DebugSurviveNoRings = 1
 ; ------------------------------------------------------
 DoorsAlwaysOpen = 1
-LowBossHP = 1
+LowBossHP = 0
 ; ------------------------------------------------------
 	endif
 
@@ -317,11 +318,15 @@ GameClrRAM:	move.l	d7,(a6)+
 	endif
 
 	if QuickLevelSelect=1
+		if (QuickLevelSelect_ID=$000)
+			move.b	#4,($FFFFF600).w ; set Game Mode to title scren
+		else
 		move.w	#QuickLevelSelect_ID,($FFFFFE10).w	; set level to QuickLevelSelect_ID
 		if (QuickLevelSelect_ID=$300) | (QuickLevelSelect_ID=$401)
 			move.b	#$10,($FFFFF600).w		; set game mode to special stage
 		else
 			move.b	#$C,($FFFFF600).w		; set game mode to level
+		endif
 		endif
 	else
 		move.b	#0,($FFFFF600).w ; set Game Mode to Sega Screen
@@ -1493,7 +1498,7 @@ PalCycle_MZ:				; XREF: PalCycle
 
 PalCycle_SLZ:				; XREF: PalCycle
 		subq.w	#1,($FFFFF634).w
-		bpl.w	locret_1A80
+		bpl.w	PalCycle_SAP
 		move.w	#5,($FFFFF634).w
 		cmpi.w	#$3D0,($FFFFF726).w	; is boss playing?
 		bne.s	@cont
@@ -1516,12 +1521,31 @@ loc_1A60:
 		lea	($FFFFFB56).w,a1
 		move.w	(a0,d0.w),(a1)
 		move.l	obGfx(a0,d0.w),obMap(a1)
+; ---------------------------------------------------------------------------
 
-locret_1A80:
-		cmpi.w	#$302,($FFFFFE10).w
-		bne.s	PCSLZ_Red_End
-		tst.b	($FFFFFF77).w
-		beq.s	PCSLZ_Red_End
+PalCycle_SAP:
+		cmpi.w	#$302,($FFFFFE10).w	; are we in SAP?
+		bne.s	PCSLZ_Red_End		; if not, branch
+		tst.b	($FFFFFF77).w		; is antigrav enabled?
+		beq.s	PCSLZ_Red_End		; if not, branch
+
+		; palette rotation for Sonic
+cyoff = 4
+cylen = 8
+		lea	($FFFFFB00).w,a2
+		move.w	($FFFFFE04).w,d0		; load V-Blank counter into d0
+		move.w	d0,d2				; copy to d2
+		andi.w	#3,d0				; mask it against 3
+		bne.s	@redwalls			; if result isn't 0, branch	
+		move.w	cyoff(a2),d0			; load first blue colour of sonic's palette into d0
+		moveq	#cylen-1,d1			; set loop counter to 7
+		lea	cyoff+2(a2),a1			; load second blue colour into a1
+@blueloop:	move.w	(a1),-2(a1)			; move colour to last spot
+		adda.l	#2,a1				; increase location pointer
+		dbf	d1,@blueloop			; loop
+		move.w	d0,cyoff+(cylen-1)*2(a2)			; move first colour to last one
+
+@redwalls:
 		btst	#0,($FFFFFE05).w
 		beq.s	PCSLZ_Red_End
 		moveq	#0,d1
@@ -1917,7 +1941,7 @@ Pal_MakeWhite:				; XREF: SpecialStage
 PalWhite_Loop:
 		move.w	d1,(a0)+
 		dbf	d0,PalWhite_Loop
-		move.w	#$15,d4
+		move.w	#$15,d5
 
 loc_1EF4:
 		move.b	#$12,VBlankRoutine
@@ -1926,7 +1950,7 @@ loc_1EF4:
 
 	;	bsr	PLC_Execute	; this was in the original game, now it just causes trouble
 
-		dbf	d4,loc_1EF4
+		dbf	d5,loc_1EF4
 		rts	
 ; ===========================================================================
 
@@ -1969,35 +1993,74 @@ locret_1F4A:
 
 ;WhiteIn_DecColor:
 Pal_DecColor2:				; XREF: Pal_WhiteToBlack
-		move.w	(a1)+,d2
-		move.w	(a0),d3
-		cmp.w	d2,d3
-		beq.s	loc_1F78
-		move.w	d3,d1
-		subi.w	#$200,d1	; decrease blue	value
-		bcs.s	loc_1F64
-		cmp.w	d2,d1
-		bcs.s	loc_1F64
-		move.w	d1,(a0)+
-		rts	
+		move.w	(a1)+,d2	; get current source color
+		move.w	(a0),d3		; get current target color
+		move.w	d3,d4		; copy for later
+		cmp.w	d2,d3		; are they identical?
+		beq.s	loc_1F78	; if yes, we already reached our source color
+
+		andi.w	#$EEE,d2
+		andi.w	#$EEE,d4
+		subi.w	#$200,d4	; decrease blue	value
+		bcs.s	loc_1F64	; if we reached black, branch
+		cmp.w	d2,d4		; did we reach the source color?
+		bcs.s	loc_1F64	; if yes, branch
+		subi.w	#$200,d3	; decrease blue	value
 
 loc_1F64:				; XREF: Pal_DecColor2
-		move.w	d3,d1
-		subi.w	#$20,d1		; decrease green value
-		bcs.s	loc_1F74
-		cmp.w	d2,d1
-		bcs.s	loc_1F74
-		move.w	d1,(a0)+
-		rts	
+		andi.w	#$0EE,d2
+		andi.w	#$0EE,d4
+		subi.w	#$20,d4		; decrease green value
+		bcs.s	loc_1F74	; if we reached black, branch
+		cmp.w	d2,d4		; did we reach the source color?
+		bcs.s	loc_1F74	; if yes, branch
+		subi.w	#$20,d3		; decrease green value
 
 loc_1F74:				; XREF: loc_1F64
-		subq.w	#2,(a0)+	; decrease red value
-		rts	
+		andi.w	#$00E,d2
+		andi.w	#$00E,d4
+		subi.w	#2,d4		; decrease red value
+		bcs.s	loc_1F78	; if we reached black, branch
+		cmp.w	d2,d4		; did we reach the source color?
+		bcs.s	loc_1F78	; if yes, branch
+		subi.w	#2,d3		; decrease red value
 
 loc_1F78:				; XREF: Pal_DecColor2
-		addq.w	#2,a0
+		move.w	d3,(a0)+		; write updated color
 		rts	
 ; End of function Pal_MakeWhite
+
+
+
+		move.b	(a1),d5					; MJ: load blue
+		move.w	(a1)+,d1				; MJ: load green and red
+		move.b	d1,d2					; MJ: load red
+		lsr.b	#4,d1					; MJ: get only green
+		andi.b	#$00E,d2				; MJ: get only red
+
+		move.w	(a0),d3					; MJ: load current colour in buffer
+		cmp.b	d5,d4					; MJ: is it time for blue to fade?
+		bls	@NoBlue					; MJ: if not, branch
+		subi.w	#$200,d3				; MJ: increase blue
+
+@NoBlue:
+		andi.w	#$0EE,d1
+		andi.w	#$0EE,d4
+		cmp.b	d1,d4					; MJ: is it time for green to fade?
+		bls	@NoGreen				; MJ: if not, branch
+		subi.b	#$20,d3					; MJ: increase green
+
+@NoGreen:
+		cmp.b	d2,d4					; MJ: is it time for red to fade?
+		bls	@NoRed					; MJ: if not, branch
+		subq.b	#2,d3					; MJ: increase red
+
+@NoRed:
+		move.w	d3,(a0)+				; MJ: save colour
+		rts						; MJ: return
+
+
+
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -2043,34 +2106,31 @@ loc_1FC2:
 
 ;WhiteOut_AddColour:
 Pal_AddColor2:				; XREF: Pal_ToWhite
-		move.w	(a0),d2
-		cmpi.w	#$EEE,d2
-		beq.s	loc_2006
-		move.w	d2,d1
-		andi.w	#$E,d1
-		cmpi.w	#$E,d1
-		beq.s	loc_1FE2
-		addq.w	#2,(a0)+	; increase red value
-		rts	
+		move.w	(a0),d2		; get current color
+		cmpi.w	#$EEE,d2	; is it already full white?
+		beq.s	loc_2006	; if yes, branch
+		move.w	d2,d1		; move current color to d1
+		andi.w	#$E,d1		; get only red part
+		cmpi.w	#$E,d1		; is it at full redness?
+		beq.s	loc_1FE2	; if yes, branch
+		addq.w	#2,(a0)		; increase red value
 
 loc_1FE2:				; XREF: Pal_AddColor2
-		move.w	d2,d1
-		andi.w	#$E0,d1
-		cmpi.w	#$E0,d1
-		beq.s	loc_1FF4
-		addi.w	#$20,(a0)+	; increase green value
-		rts	
+		move.w	d2,d1		; move current color to d1
+		andi.w	#$E0,d1		; get only green part
+		cmpi.w	#$E0,d1		; is it at full greenness?
+		beq.s	loc_1FF4	; if yes, branch
+		addi.w	#$20,(a0)	; increase green value
 
 loc_1FF4:				; XREF: loc_1FE2
-		move.w	d2,d1
-		andi.w	#$E00,d1
-		cmpi.w	#$E00,d1
-		beq.s	loc_2006
-		addi.w	#$200,(a0)+	; increase blue	value
-		rts	
+		move.w	d2,d1		; move current color to d1
+		andi.w	#$E00,d1	; get only blue part
+		cmpi.w	#$E00,d1	; is it at full blueness?
+		beq.s	loc_2006	; if yes, branch
+		addi.w	#$200,(a0)	; increase blue	value
 
 loc_2006:				; XREF: Pal_AddColor2
-		addq.w	#2,a0
+		addq.w	#2,a0		; go to next color
 		rts	
 ; End of function Pal_MakeFlash
 
@@ -2399,7 +2459,7 @@ PalPointers:
 	dc.l Pal_GHZ2,		$FB20 0017
 	dc.l Pal_FZ,		$FB20 0017
 	dc.l Pal_LZSonWater,	$FB00 0007
-	dc.l Pal_Null,		$FB00 0007
+	dc.l Pal_SonicAntigrav,	$FB00 0007
 	dc.l Pal_Null,		$FB00 001F
 	dc.l Pal_SpeContinue,	$FB00 000F
 	dc.l Pal_Ending,	$FB00 001F
@@ -2416,6 +2476,7 @@ Pal_SegaBG:		incbin	palette\sega_bg.bin
 Pal_Title:		incbin	palette\title.bin
 Pal_LevelSel:		incbin	Screens\OptionsScreen\Options_Pal.bin
 Pal_Sonic:		incbin	palette\sonic.bin
+Pal_SonicAntigrav:	incbin	palette\sonic_antigrav.bin
 Pal_GHZ:		incbin	palette\ghz.bin
 Pal_GHZ2:		incbin	palette\ghz2.bin
 Pal_GHZ3:		incbin	palette\ghz3.bin
@@ -2664,7 +2725,7 @@ SegaScreen:				; XREF: GameModeArray
 		move.w	#$8230,(a6)
 		move.w	#$8407,(a6)
 		move.w	#$8700,(a6)
-		move.w	#$8B07,(a6)
+		move.w	#$8B03,(a6)
 		clr.b	($FFFFF64E).w
 		bsr	ClearScreen
 
@@ -2758,21 +2819,26 @@ Sega_WaitEnd:
 		move.b	#25,d0
 		sub.b	($FFFFFFBD).w,d0
 		lsr.w	#7,d0
-		jsr	Options_BGDeformation2
 				
-		lea	($FFFFCC00+80*4).w,a1
-		move.l	#$00010000,d0
-		btst	#1,($FFFFFE0F).w
-		beq.s	@0
-		moveq	#0,d0
-@0:
-		move.w	#64-1,d1
-@clearscroll:
-		move.l	(a1),d0
-		asr.l	#5,d0
-		andi.l	#$FFFF0000,d0
-		move.l	d0,(a1)+
-		dbf	d1,@clearscroll
+		move.w	($FFFFFE0E).w, d5 	; timer
+		lea	($FFFFCC00+80*4).w, a1	; scroll location
+		move.w	#64-1, d2			; how many lines we want
+
+@Smegma:
+		move.b	d5, d0
+		jsr	CalcSine
+		asr.w	#5, d1
+
+		btst	#0,	d5
+		beq.s 	@NoNegation
+
+		neg.l	d1
+
+@NoNegation:
+		addq 	#1, d5
+		move.w	d1, (a1)+
+		move.w	d1, (a1)+
+		dbf	d2, @Smegma
 
 @notendphase:
 		tst.b	($FFFFFFBE).w
@@ -2946,6 +3012,10 @@ Title_MainLoop:
 		moveq	#1,d2			; do blue rotation
 		bsr.w	ERaZorBannerPalette
 
+	if QuickLevelSelect=1 & QuickLevelSelect_ID=$000
+		bra.s	LevelSelect_Load
+	endif
+
 		move.b	($FFFFF605).w,d1	; get button presses
 		andi.b	#$B0,d1			; is A, B, C, or Start pressed?
 		beq.w	Title_MainLoop		; if not, branch
@@ -2998,6 +3068,11 @@ LevelSelect_Load:
 		clr.b	($FFFFD080).w		; delete "PRESS START BUTTON" object
 		move.w	#0,($FFFFFF82).w	; set initial cursor position to entry 1
 		bsr.w	LevSelTextLoad
+
+		addi.w	#7,($FFFFD0C0+obScreenY).w	; slightly adjust banner
+		jsr	ObjectsLoad
+		jsr	BuildSprites
+
 		bra.w	LevelSelect
 ; ===========================================================================
 
@@ -3189,12 +3264,12 @@ LevSel_End:
 LevSelTextLoad:				; XREF: TitleScreen
 		lea	(LevelMenuText).l,a1
 		lea	($C00000).l,a6
-		move.l	#$62100003,d4	; screen position (text)
+		move.l	#$62900003,d4	; screen position (text)
 		move.w	#$E680,d3	; VRAM setting
 		moveq	#$14,d1		; number of lines of text
 
 loc_34FE:
-		move.l	d4,obMap(a6)
+		move.l	d4,4(a6)
 		bsr	LevSel_ChgLine
 		addi.l	#$800000,d4
 		dbf	d1,loc_34FE
@@ -3202,7 +3277,7 @@ loc_34FE:
 		moveq	#0,d0
 		move.w	($FFFFFF82).w,d0
 		move.w	d0,d1
-		move.l	#$62100003,d4
+		move.l	#$62900003,d4
 		lsl.w	#7,d0
 		swap	d0
 		add.l	d0,d4
@@ -3213,7 +3288,7 @@ loc_34FE:
 		add.w	d0,d1
 		adda.w	d1,a1
 		move.w	#$C680,d3
-		move.l	d4,obMap(a6)
+		move.l	d4,4(a6)
 		bsr	LevSel_ChgLine
 		rts	
 ; End of function LevSelTextLoad
@@ -3596,6 +3671,12 @@ Level_NoMusic2:
 		tst.l	PLC_Pointer	; are there any items in the pattern load cue?
 		bne.s	@runplc		; if yes, branch
 
+
+		cmpi.w	#$502,($FFFFFE10).w	; is this Finalor Place?
+		bne.s	@notfinalor		; if not, branch
+		moveq	#$1F,d0
+		jsr	LoadPLC			; load FZ boss patterns
+@notfinalor:
 		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
 		bne.s	Level_CinematicHud	; if yes, branch
 		
@@ -3666,7 +3747,6 @@ loc_3946:
 		jsr 	LevelRenderer_DrawLayout_FG
 		jsr 	LevelRenderer_DrawLayout_BG
 		VBlank_UnsetMusicOnly
-		jsr	FloorLog_Unk
 		bsr	ColIndexLoad
 		bsr	LZWaterEffects
 		
@@ -4830,8 +4910,9 @@ SpecialStage:				; XREF: GameModeArray
 		bsr	Pal_MakeFlash
 @cont:
 		jsr	SRAM_SaveNow		; save our progress on entering a special stage
+; ---------------------------------------------------------------------------
 
-		ints_disable
+		VBlank_SetMusicOnly
 		lea	($C00004).l,a6
 		move.w	#$8B03,(a6)
 		move.w	#$8004,(a6)		; disable h-ints (VERY important, because otherwise we get massive slowdowns!)
@@ -4854,7 +4935,7 @@ loc_463C:
 		
 		bsr	SS_BGLoad
 		
-		ints_enable
+		VBlank_UnsetMusicOnly
 
 		moveq	#$14,d0
 		bsr	PLC_ExecuteOnce	; load special stage patterns
@@ -4950,8 +5031,9 @@ SS_MainLoop:
 		lea	($FFFFD000).w,a0	; load Sonic object
 		jsr	TouchGoalBlock		; respawn at last checkpoint
 @nota:
-		; reduce Sonic's vertical movement when holding C in Unreal Place
-		btst	#5,($FFFFF602).w	; is C held?
+		; reduce Sonic's vertical movement when holding ABC in Unreal Place
+		move.b	($FFFFF602).w,d0	; get held buttons
+		andi.w	#$70,d0			; is ABC held?
 		beq.s	@notc			; if not, branch
 		tst.b	($FFFFFFBF).w		; Unreal Place floating challenge enabled?
 		beq.s	@notc			; if not, branch
@@ -5566,6 +5648,7 @@ Obj8B:
 ; ===========================================================================
 
 @Emitter:
+	
 		move.b	#Starfield_SpawnInterval,$31(a0)	; set casual spawn interval
 		move.w 	#$125,obX(a0)				; horizontally center emitter
 		move.w 	#$80,obScreenY(a0)			; set emitter to top of screen
@@ -5592,7 +5675,12 @@ Obj8B:
 @Particle:
 		addq.b	#2,obRoutine(a0)
 		move.l	#Map_obj8B,obMap(a0)
-		move.w	#$0,obGfx(a0)
+		move.w	#($2000/$20),obGfx(a0)
+		
+	;	move.w	($FFFFFE0E).w,d0
+	;	andi.w	#$3F,d0
+	;	add.w	d0,obGfx(a0)
+		
 		move.b	#0,obRender(a0)
 		
 		jsr	RandomDirection
@@ -5651,6 +5739,7 @@ Map_obj8B:
 
 Obj8C:					; XREF: Obj_Index
 		rts
+; ===========================================================================
 
 ; ---------------------------------------------------------------------------
 ; Subroutine to	load level boundaries and start	locations
@@ -6474,7 +6563,7 @@ Resize_SLZ2main:
 		addq.b	#2,($FFFFF742).w		; go to SLZboss1 next frame
 		move.w	#$3D0,($FFFFF726).w
 		move.w	#$A10,($FFFFD008).w
-		clr.w	($FFFFF602).w
+		clr.l	($FFFFF602).w			; clear any remaining button presses
 		clr.w	($FFFFD010).w
 		clr.w	($FFFFD014).w
 		move.b	#$E0,d0				; fade out music
@@ -6508,7 +6597,7 @@ Resize_SLZ2boss1:
 Resize_SLZ2boss2:
 		cmpi.w	#$B00,($FFFFD008).w
 		bcs.s	locret_715C
-		clr.w	($FFFFF602).w
+		clr.l	($FFFFF602).w			; clear any remaining button presses
 		clr.w	($FFFFD010).w
 		clr.w	($FFFFD014).w
 
@@ -6831,8 +6920,8 @@ Resize_FZmain:
 		cmpi.w	#$2148,($FFFFF700).w
 		bcs.s	loc_72F4
 		addq.b	#2,($FFFFF742).w
-		moveq	#$1F,d0
-		bsr	LoadPLC		; load FZ boss patterns
+	;	moveq	#$1F,d0
+	;	bsr	LoadPLC		; load FZ boss patterns
 
 loc_72F4:
 		rts	; don't lock screen until you're at the boss
@@ -9835,7 +9924,7 @@ Obj3F_PlaySound:
 		move.w	($FFFFFE0E).w,d1	; get timer
 		andi.w	#$3F,d1			; only allow every once in a while
 		bne.s	@notjester		; ''
-		move.w	#$D6,d0			; play Jester explosion sound
+		move.w	#$DF,d0			; play Jester explosion sound
 @notjester:	jmp	(PlaySound_Special).l
 	else
 		move.w	#$D7,d0			; play boring ass baby explosion sound
@@ -10497,7 +10586,7 @@ Obj1F_NoCamShake:
 Obj1F_BossDefeated:
 		move.b	#1,($FFFFF7CC).w		; lock controls
 		clr.b	($FFFFFFEB).w
-		clr.b	($FFFFF602).w
+		clr.l	($FFFFF602).w			; clear any remaining button presses
 
 		move.b	#1,($FFFFFFD5).w		; set flag 3
 		clr.w	obVelX(a0)			; clear X-speed
@@ -11141,8 +11230,8 @@ Obj22_NotInhumanCrush:
 		beq.s	@0
 		move.w	#$2444,obGfx(a0)	; use second palette line
 @0:
-		frantic				; are we in Frantic mode?
-		beq.w	Obj22_MoveEnd		; if not, disable movement
+	;	frantic				; are we in Frantic mode?
+	;	beq.w	Obj22_MoveEnd		; if not, disable movement
 	
 		bra.s	Obj22_NotHigher		; skip
 ; ===========================================================================
@@ -12886,6 +12975,11 @@ Obj2E_ChkS:
 		cmpi.w	#$200,($FFFFFE10).w	; is this Ruined Place?
 		bne.s	@notruinedplace		; if not, branch
 
+		cmpi.w	#100,($FFFFFE20).w	; do you have at least 00 rings?
+		bhs.s	@notanoob		; if yes, branch
+		move.w	#100,($FFFFFE20).w	; give 100 rings (you'll probably still die, but at least it isn't instant)
+		ori.b	#1,($FFFFFE1D).w	; update rings counter
+@notanoob:
 		; block off a chunk offscreen
 		movem.l	d0-a1,-(sp)		; backup
 
@@ -14959,6 +15053,7 @@ loc_BDD6:
 		rts				; don't do anything else
 
 @notnonstopinhuman:
+
 		move.w	#-$1000,d1		; default speed
 		tst.b	($FFFFFF77).w		; is antigrav already enabled?
 		bne.w	@Explode		; if yes, branch
@@ -14966,6 +15061,11 @@ loc_BDD6:
 		move.b	#$96,d0			; play the sick music
 		jsr	PlaySound		; hell yea
 		move.w	#-$1800,d1		; set first launch speed (needs to be different cause of the alternate gravity)
+
+		movem.l	d7/a1-a3,-(sp)
+		moveq	#$10,d0
+		jsr	PalLoad2		; load Sonic's antigrav palette line
+		movem.l	(sp)+,d7/a1-a3
 
 		frantic				; is frantic mode enabled?
 		beq.s	@Explode		; if not, branch
@@ -16824,6 +16924,7 @@ ObjectFall_Sonic:
 		subi.w	#Gravity,d3		; inverse gravity
 		btst	#6,($FFFFF602).w	; is A pressed?
 		beq.s	@OFS_NoA		; if not, branch
+		move.b	#2,obAnim(a0)		; change to rolling animation
 		move.b	#1,($FFFFFFEB).w	; set jumpdash flag (to prevent it)
 		tst.w	obVelY(a0)
 		bmi.s	@OFS_Negative
@@ -22571,6 +22672,9 @@ Obj5D_Delay:				; XREF: Obj5D_Index
 		move.b	#1,$30(a0)
 		move.w	d2,($FFFFD008).w
 		
+		move.b	($FFFFFE05).w,d0
+		andi.b	#%11,d0
+		bne.s	@0
 		btst	#0,($FFFFFE0F).w
 		bne.s	@0
 		move.w	#$B8,d0
@@ -22921,6 +23025,14 @@ Obj5E_FC2:
 ; Object 5F - walking bomb boss (SLZ)
 ; ---------------------------------------------------------------------------
  
+;│WARNING!!!
+;│This code is very delicate.
+;│Edit responsibly. Or not.
+;└─ｖ─────────────────────────
+;.　∧,,∧
+; （＾o＾）
+;.（　　）
+
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 BombWalkSpeed_Boss = $140
@@ -22932,6 +23044,12 @@ BombPellets_Boss = 13
 ; ===========================================================================
 
 Obj5F:					; XREF: Obj_Index
+		cmpi.w	#$301,($FFFFFE10).w
+		beq.s	@0
+		move.b	#$3F,(a0)
+		move.b	#0,obRoutine(a0)
+		rts
+@0:
 		moveq	#0,d0
 		move.b	obRoutine(a0),d0
 		move.w	Obj5F_Index(pc,d0.w),d1
@@ -22944,6 +23062,7 @@ Obj5F_Index:	dc.w Obj5F_Main-Obj5F_Index		; [$0]
 		dc.w Obj5F_SBZ1-Obj5F_Index		; [$8]
 		dc.w Obj5F_BossDefeated-Obj5F_Index	; [$A]
 		dc.w Obj5F_Display_Spark-Obj5F_Index	; [$C]
+		dc.w Obj5F_Transition-Obj5F_Index	; [$E]
 ; ===========================================================================
 
 Obj5F_Main:				; XREF: Obj5F_Index
@@ -23106,7 +23225,8 @@ Obj5F_Explode:				; XREF: Obj5F_Index2
 		move.b	#1,($FFFFFE2D).w		; make Sonic invincible
 		clr.l	($FFFFF602).w			; clear any remaining button presses
 		clr.w	obVelX(a0)			; clear bomb's X-speed
-		move.b	#$A,obRoutine(a0)		; set frame
+	;	move.b	#$E,obRoutine(a0)		; set routine (WIP transition)
+		move.b	#$A,obRoutine(a0)		; set routine
 		rts
 
 @notdefeated:
@@ -23220,6 +23340,87 @@ loc_11B54:
 
 locret_11B5E:
 		rts	
+; ===========================================================================
+
+Obj5F_Transition:
+		move.b	($FFFFFF76).w, d0
+		move.w	@JumpTable(pc, d0.w), d0
+		jmp		@JumpTable(pc, d0.w)
+
+; ===========================================================================
+@JumpTable:
+		dc.w 	@StartSequence-@JumpTable
+		dc.w 	@CheckAirborne-@JumpTable
+		dc.w 	@Explode-@JumpTable
+		dc.w 	@CheckExplosions-@JumpTable
+		dc.w	@ContinueBoss-@JumpTable
+; ===========================================================================
+
+@StartSequence:
+		addq.b	#2, $FFFFFF76
+		
+		; fade out music
+		move.b	#$E0, d0
+		jsr		PlaySound_Special
+
+		; clear shit
+		bset	#0, $FFFFD022
+		clr.w	$FFFFFF8C
+		clr.w	$FFFFFF8E
+		clr.b	$FFFFFFEB
+		rts
+
+@CheckAirborne:
+		btst	#1, $FFFFD022		; test airborne bit
+		bne.s	@NotAirborne		; if 0, branch
+		rts
+
+@NotAirborne:
+		addq.b	#2, $FFFFFF76		; continue with sequence
+
+@Explode:
+		addq.b	#2, $FFFFFF76
+
+		; not my code, blame selbi
+		bsr	SingleObjLoad
+		move.b	#$3F,0(a1)	; load explosion object
+		move.w	obX(a0),obX(a1)
+		move.w	obY(a0),obY(a1)
+		move.b	#1,$30(a1)
+		jsr	(RandomNumber_Next).l
+
+		; move.w	d0,d1
+		; moveq	#0,d1
+		; move.b	d0,d1
+		; lsr.b	#2,d1
+		; subi.w	#$20,d1
+		; add.w	d1,obX(a1)
+		; lsr.w	#8,d0
+		; lsr.b	#3,d0
+		; add.w	d0,obY(a1)
+		; subq.w	#8,obY(a1)
+		move.b	#10,($FFFFFF64).w
+		bra.w 	@Return
+
+@CheckExplosions:
+		cmpi.w	#10,($FFFFFF7A).w
+		ble.w	@ContinueBoss
+
+		move.w	($FFFFFF7A).w,($FFFFFF78).w
+		subq.b	#4,($FFFFFF76).w
+		subi.w	#10,($FFFFFF7A).w
+		move.w	#20,($FFFFFF7C).w
+		bra.w	@Return
+
+@ContinueBoss:
+		move.b	#21,($FFFFFF75).w	; set lives
+		move.b	#$2, obRoutine(a0)
+		move.b	#0, $FFFFFF76
+		rts
+
+@Return:
+		rts
+
 ; ===========================================================================
 
 Obj5F_BossDefeated:
@@ -23552,8 +23753,10 @@ Obj5F_End:				; XREF: Obj5F_Index
 		tst.b	obRender(a0)
 		bpl.w	DeleteObject
 		bra.w	DisplaySprite
-; ===========================================================================
 
+; ===========================================================================
+; Routine for Scar Night cutscene
+; ===========================================================================
 Obj5F_SBZ1:
 		jsr	ObjectFall
 		jsr	SpeedToPos
@@ -25977,7 +26180,7 @@ Obj01_Not0B00:
 		cmpi.w	#$2224,($FFFFD008).w		; has Sonic reached position $2224 on x-axis?
 		bcs.s	Obj01_NotGHZ1_Main		; if not, branch
 	;	move.w	#$2185,($FFFFF728).w
-		clr.b	($FFFFF602).w			; cancel any presses
+		clr.l	($FFFFF602).w			; cancel any presses
 		clr.w	obVelX(a0)				; clear X-speed
 		clr.w	obInertia(a0)				; clear interia
 		move.b	#1,($FFFFFFAB).w		; set crabmeat boss flag 3
@@ -27961,12 +28164,12 @@ AM_APressed:
 		bge.s	@NormalSound
 		
 		move.w	#$C7,d0			; continously...
-		jsr	(PlaySound_Special).l	; ... play sound while holding A
+		jsr	(PlaySound_Special).l	; ... play sound while holding A (empty)
 		bra.s 	@NothingPressedSet
 
 @NormalSound:
 		move.w	#$B8,d0			; continously...
-		jsr	(PlaySound_Special).l	; ... play sound while holding A
+		jsr	(PlaySound_Special).l	; ... play sound while holding A (still got juice)
 
 @NothingPressedSet:
 		moveq	#0,d0			; set to nothing was pressed
@@ -29549,20 +29752,19 @@ Obj0A_WarnSound:			; XREF: Obj0A_Countdown
 Obj0A_ReduceAir:
 		subq.w	#1,($FFFFFE14).w ; subtract 1 from air remaining
 		bcc.w	Obj0A_GoMakeItem ; if air is above 0, branch
-	;	tst.b 	($FFFFFFFE).w	; is the =P monitor enabled?
-	;	bne.w	@NoResume		; if yes, do not resume music
-		bsr	ResumeMusic
 
-@NoResume:
+Obj0A_Drowned:
+		bsr	ResumeMusic
 		move.b	#$81,($FFFFF7C8).w ; lock controls
 		move.w	#$B2,d0
 		jsr	(PlaySound_Special).l ;	play drowning sound
+
 		move.b	#$A,$34(a0)
 		move.w	#1,$36(a0)
 		move.w	#$78,$2C(a0)
 		move.l	a0,-(sp)
 		lea	($FFFFD000).w,a0
-		bsr	Sonic_ResetOnFloor
+		bsr	Kill_DoKill
 	;	move.b	#$0,($FFFFFFFE).w ; reset =P flag
 		move.b	#$17,obAnim(a0)	; use Sonic's drowning animation
 		bset	#1,obStatus(a0)
@@ -30694,103 +30896,7 @@ loc_14C3C:
 		not.w	d1
 		rts	
 ; End of function FindWall2
-
-; ---------------------------------------------------------------------------
-; Unused floor/wall subroutine - logs something	to do with collision
-; ---------------------------------------------------------------------------
-
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
-
-FloorLog_Unk:				; XREF: Level
-		rts	
-
-		lea	(CollArray1).l,a1
-		lea	(CollArray1).l,a2
-		move.w	#$FF,d3
-
-loc_14C5E:
-		moveq	#$10,d5
-		move.w	#$F,d2
-
-loc_14C64:
-		moveq	#0,d4
-		move.w	#$F,d1
-
-loc_14C6A:
-		move.w	(a1)+,d0
-		lsr.l	d5,d0
-		addx.w	d4,d4
-		dbf	d1,loc_14C6A
-
-		move.w	d4,(a2)+
-		suba.w	#$20,a1
-		subq.w	#1,d5
-		dbf	d2,loc_14C64
-
-		adda.w	#$20,a1
-		dbf	d3,loc_14C5E
-
-		lea	(CollArray1).l,a1
-		lea	(CollArray2).l,a2
-		bsr.s	FloorLog_Unk2
-		lea	(CollArray1).l,a1
-		lea	(CollArray1).l,a2
-
-; End of function FloorLog_Unk
-
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
-
-FloorLog_Unk2:				; XREF: FloorLog_Unk
-		move.w	#$FFF,d3
-
-loc_14CA6:
-		moveq	#0,d2
-		move.w	#$F,d1
-		move.w	(a1)+,d0
-		beq.s	loc_14CD4
-		bmi.s	loc_14CBE
-
-loc_14CB2:
-		lsr.w	#1,d0
-		bcc.s	loc_14CB8
-		addq.b	#1,d2
-
-loc_14CB8:
-		dbf	d1,loc_14CB2
-
-		bra.s	loc_14CD6
 ; ===========================================================================
-
-loc_14CBE:
-		cmpi.w	#-1,d0
-		beq.s	loc_14CD0
-
-loc_14CC4:
-		lsl.w	#1,d0
-		bcc.s	loc_14CCA
-		subq.b	#1,d2
-
-loc_14CCA:
-		dbf	d1,loc_14CC4
-
-		bra.s	loc_14CD6
-; ===========================================================================
-
-loc_14CD0:
-		move.w	#$10,d0
-
-loc_14CD4:
-		move.w	d0,d2
-
-loc_14CD6:
-		move.b	d2,(a2)+
-		dbf	d3,loc_14CA6
-
-		rts	
-
-; End of function FloorLog_Unk2
 
 
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
@@ -33305,6 +33411,13 @@ Obj79_Index:	dc.w Obj79_Main-Obj79_Index
 ; ===========================================================================
 
 Obj79_Main:				; XREF: Obj79_Index
+		frantic			
+		beq.s	@notrpfrantic
+		cmpi.w	#$200,($FFFFFE10).w
+		bne.s	@notrpfrantic
+		jmp	DeleteObject
+
+@notrpfrantic:
 		addq.b	#2,obRoutine(a0)
 		move.l	#Map_obj79,obMap(a0)
 		move.w	#($D800/$20),obGfx(a0)
@@ -33906,7 +34019,7 @@ Obj3D_ShipIndex:dc.w Obj3D_ShipStart-Obj3D_ShipIndex
 
 Obj3D_ShipStart:			; XREF: Obj3D_ShipIndex
 		move.b	#1,($FFFFF7CC).w		; lock controls
-		clr.b	($FFFFF602).w
+		clr.l	($FFFFF602).w			; clear any remaining button presses
 		move.w	#-$100,obVelY(a0)	; move ship up
 		bsr	BossMove
 		cmpi.w	#$338,$38(a0)
@@ -37734,8 +37847,11 @@ loc_19EA8:				; XREF: off_19E80
 		exg	d1,d0
 
 loc_19EC6:
-		lea	word_19FD6(pc),a1
-		move.w	(a1,d0.w),d0	; the pillar Robotnik will be in
+		lea	Obj85_PillarPossibilties_Casusal(pc),a1
+		frantic
+		beq.s	@0
+		lea	Obj85_PillarPossibilties_Frantic(pc),a1
+@0:		move.w	(a1,d0.w),d0	; the pillar Robotnik will be in
 		move.w	(a1,d1.w),d1	; the other (empty) pillar
 		move.w	d0,$30(a0)
 		moveq	#-1,d2
@@ -37869,13 +37985,22 @@ pillar4 = 2
 ;		dc.w pillar1, pillar3
 ;		dc.w pillar3, pillar2
 
-word_19FD6:
+; word_19FD6:
+Obj85_PillarPossibilties_Casusal:
 		dc.w pillar1, pillar2	; 00
 		dc.w pillar1, pillar3	; 04
 		dc.w pillar1, pillar4	; 08
 		dc.w pillar2, pillar3	; 0C
 		dc.w pillar2, pillar4	; 10
 		dc.w pillar3, pillar4	; 14
+
+Obj85_PillarPossibilties_Frantic:
+		dc.w pillar2, pillar4
+		dc.w pillar4, pillar2
+		dc.w pillar4, pillar1
+		dc.w pillar1, pillar3
+		dc.w pillar3, pillar1
+		dc.w pillar3, pillar2
 
 ; ===========================================================================
 
@@ -38085,7 +38210,7 @@ loc_1A23A:
 		move.w	#$27E0,($FFFFD008).w
 
 loc_1A248:
-		cmpi.w	#$29D0,obX(a0)
+		cmpi.w	#$2900,obX(a0)
 		bcs.w	loc_1A15C
 
 		tst.b	obRender(a0)		; has Eggman object been deleted after the crash cutscene?
@@ -38168,14 +38293,14 @@ loc_1A2E4:
 
 @NoFall:
 		move.b	#1,obAnim(a0)
-		; tst.b	obColProp(a1)
-		; ble.s	loc_1A312
-		; move.b	#6,obAnim(a0)
-		; move.l	#Map_Eggman,obMap(a0)
-		; move.w	#$400,obGfx(a0)
-		; lea	Ani_Eggman(pc),a1
-		; jsr	AnimateSprite
-		; bra.w	loc_1A296
+		tst.b	obColProp(a1)
+		ble.s	loc_1A312
+		move.b	#6,obAnim(a0)
+		move.l	#Map_Eggman,obMap(a0)
+		move.w	#$400,obGfx(a0)
+		lea	Ani_Eggman(pc),a1
+		jsr	AnimateSprite
+		bra.w	loc_1A296
 ; ===========================================================================
 
 loc_1A312:
@@ -39432,6 +39557,7 @@ KillSonic:
 Kill_DoKill:
 		move.b	#1,($FFFFF5E1).w	; set death flag
 		jsr	Pal_MakeBlackWhite	; turn palette black and white
+		
 		move.w	($FFFFF700).w,($FFFFF728).w	; lock left screen position
 		move.w	($FFFFF700).w,($FFFFF72A).w	; lock right screen position		
 		move.w	($FFFFF704).w,($FFFFF72C).w	; lock top screen position
@@ -39849,7 +39975,7 @@ SS_WaRiVramSet:	dc.w $142, $6142, $142,	$142, $142, $142, $142,	$6142
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 
 
-SS_RemoveCollectedItem:			; XREF: Obj09_ChkItems
+SS_RemoveCollectedItem:			; XREF: Obj09_ChkItems_Collectible
 		lea	($FF4400).l,a2
 		move.w	#$1F,d0
 
@@ -40466,14 +40592,13 @@ Obj09_OnWall:				; XREF: Obj09_Modes
 ; ===========================================================================
 
 Obj09_InAir:				; XREF: Obj09_Modes
-	;	bsr	nullsub_2
 		jsr	obj09_JumpHeight
 		jsr	obj09_Move
 		jsr	obj09_Fall
 
 Obj09_Display:				; XREF: Obj09_OnWall
-		jsr	obj09_ChkItems
-		jsr	obj09_ChkItems2
+		jsr	Obj09_ChkItems_Collectible
+		jsr	Obj09_ChkItems_Solid
 		jsr	SpeedToPos
 		bsr	SS_FixCamera
 		move.w	($FFFFF780).w,d0
@@ -40559,7 +40684,7 @@ loc_1BAA8:
 		movem.l	d0-d1,-(sp)
 		move.l	obY(a0),d2
 		move.l	obX(a0),d3
-		bsr	Obj09_UpdCollision
+		bsr	Obj09_Collision
 		beq.s	loc_1BAF2
 		movem.l	(sp)+,d0-d1
 		sub.l	d1,obX(a0)
@@ -40678,14 +40803,6 @@ Obj09_Jump_NoDebug:
 Obj09_NoJump:
 		rts	
 ; End of function Obj09_Jump
-
-
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
-
-nullsub_2:				; XREF: Obj09_InAir
-		rts	
-; End of function nullsub_2
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -40806,14 +40923,14 @@ Obj09_EasterEggSpecial:
 		muls.w	#$160,d1
 		add.l	d4,d1
 		add.l	d0,d3
-		bsr	Obj09_UpdCollision
+		bsr	Obj09_Collision
 		beq.w	loc_1BCB0
 		sub.l	d0,d3
 		moveq	#0,d0
 		move.w	d0,obVelX(a0)
 		bclr	#1,obStatus(a0)
 		add.l	d1,d2
-		bsr	Obj09_UpdCollision
+		bsr	Obj09_Collision
 		beq.w	loc_1BCC6
 		sub.l	d1,d2
 		moveq	#0,d1
@@ -40843,14 +40960,14 @@ Obj09_Fall:				; XREF: Obj09_OnWall; Obj09_InAir
 		muls.w	#$2A,d1
 		add.l	d4,d1
 		add.l	d0,d3
-		bsr	Obj09_UpdCollision
+		bsr	Obj09_Collision
 		beq.s	loc_1BCB0
 		sub.l	d0,d3
 		moveq	#0,d0
 		move.w	d0,obVelX(a0)
 		bclr	#1,obStatus(a0)
 		add.l	d1,d2
-		bsr	Obj09_UpdCollision
+		bsr	Obj09_Collision
 		beq.s	loc_1BCC6
 		sub.l	d1,d2
 		moveq	#0,d1
@@ -40861,7 +40978,7 @@ O9F_Return:
 
 loc_1BCB0:
 		add.l	d1,d2
-		bsr	Obj09_UpdCollision
+		bsr	Obj09_Collision
 		beq.s	loc_1BCD4
 		sub.l	d1,d2
 		moveq	#0,d1
@@ -40889,7 +41006,7 @@ loc_1BCD4:
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 
 
-Obj09_UpdCollision:				; XREF: Obj09_Move; Obj09_Fall
+Obj09_Collision:				; XREF: Obj09_Move; Obj09_Fall
 		lea	($FF0000).l,a1      ; the magic buffer of doom
 		moveq	#0,d4
 		swap	d2
@@ -40906,28 +41023,48 @@ Obj09_UpdCollision:				; XREF: Obj09_Move; Obj09_Fall
 		addi.w	#$14,d4
 		divu.w	#$18,d4
 		adda.w	d4,a1
-		moveq	#0,d5
-		move.b	(a1)+,d4
-		bsr.s	CheckTheFuckingCollisionType
-		move.b	(a1)+,d4
-		bsr.s	CheckTheFuckingCollisionType
-		adda.w	#$7E,a1
-		move.b	(a1)+,d4
-		bsr.s	CheckTheFuckingCollisionType
-		move.b	(a1)+,d4
-		bsr.s	CheckTheFuckingCollisionType
-		tst.b	d5
+
+		; collision basically works by taking a 2x2 grid
+		; of the four nearest blocks to Sonic and checking them one by one
+		moveq	#0,d5		; set to no collision detected
+		move.b	(a1)+,d4	; get top left block
+		bsr.s	Obj09_ColCheck
+		move.b	(a1)+,d4	; get top right block
+		bsr.s	Obj09_ColCheck
+		adda.w	#$7E,a1		; go to next row
+		move.b	(a1)+,d4	; get bottom left block
+		bsr.s	Obj09_ColCheck
+		move.b	(a1)+,d4	; get bottom right block
+		bsr.s	Obj09_ColCheck
+		tst.b	d5		; set ccr for whether we hit anything (0 no, 1 yes)
 		rts	
-; End of function Obj09_UpdCollision
+; End of function Obj09_Collision
 
 
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 
 
-CheckTheFuckingCollisionType:				; XREF: Obj09_UpdCollision
-		beq.s	locret_1BD44    ; generally not solid, unknown range because my brain hurts already
-		cmpi.b	#$28,d4
-		beq.s	locret_1BD44    ; $28 is not solid
+Obj09_ColCheck:				; XREF: Obj09_Collision
+		beq.s	@notsolid    	; if current block is just an empty space, branch
+
+		cmpi.b	#$3A,d4		; is block in range $3A-$4B (rings, emeralds...)?
+		bcs.s	@solid		; if not, it's a solid block
+		cmpi.b	#$4B,d4		; $4B is the end of shiny collectibles
+		bcs.s	@notsolid
+
+@solid:
+		move.b	d4,$30(a0)	; copy collided ID of block to d4
+		move.l	a1,$32(a0)	; copy RAM location of collided block to a1
+		cmpi.b	#$27,d4		; is object a goal block?
+		bne.s	@setsolid    	; if not, branch
+		btst	#1,obStatus(a0)	; is Sonic airborne?
+		bne.s	@notsolid	; if yes, mark goal block as not solid (special logic is run from the block routine itself)
+@setsolid:
+		moveq	#-1,d5		; set to block
+@notsolid:
+		rts			; block is not solid
+; End of function Obj09_ColCheck
+
 		cmpi.b	#$3A,d4
 		bcs.s	loc_1BD46       ; $3A means the usual BIG HITBOX
 		cmpi.b	#$4B,d4
@@ -40942,13 +41079,11 @@ loc_1BD46:
 		move.l	a1,$32(a0)      ; WHAT
 		moveq	#-1,d5          ; ???
 		rts	
-; End of function CheckTheFuckingCollisionType
-
 
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 
 
-Obj09_ChkItems:				; XREF: Obj09_Display
+Obj09_ChkItems_Collectible:			; XREF: Obj09_Display
 		lea	($FF0000).l,a1
 		moveq	#0,d4
 		move.w	obY(a0),d4
@@ -40961,11 +41096,12 @@ Obj09_ChkItems:				; XREF: Obj09_Display
 		addi.w	#$20,d4
 		divu.w	#$18,d4
 		adda.w	d4,a1
-		move.b	(a1),d4
-		bne.s	Obj09_ChkRing		
-		tst.b	$3A(a0)
-		bne.w	Obj09_MakeGhostSolid
-		moveq	#0,d4
+		move.b	(a1),d4			; load nearest items to Sonic into d4
+		bne.s	Obj09_ChkRing		; if it's not empty, begin checking which item we hit
+
+		tst.b	$3A(a0)			; are ghost blocks set to be made solid?
+		bne.w	Obj09_MakeGhostSolid	; if yes, make them solid
+		moveq	#0,d4			; set to no collision
 		rts	
 ; ===========================================================================
 
@@ -41056,8 +41192,10 @@ Obj09_EmerPlaySound:
 
 Obj09_ChkGhost:
 		cmpi.b	#$41,d4			; is the item a	ghost block?
-		bne.w	Obj09_ChkGhostTag	; if not, branch
+		bne.w	@end			; if not, branch
 		
+		moveq	#-1,d4			; mark ghost blocks as non solid
+
 		move.w	#$B2,d0			; set drown sound
 		tst.b	($FFFFFF5F).w		; is this the blackout blackout special stage?
 		bne.s	@cont
@@ -41069,11 +41207,12 @@ Obj09_ChkGhost:
 		jsr	(PlaySound_Special).l	; play it
 
 		bsr	SS_RemoveCollectedItem	; prepare removing code
-	;	bne.w	Obj09_CG_End		; if it's impossible branch
-		
+		bne.w	@end			; if it's impossible branch	
 		move.b	#3,(a2)			; overwrite...
-		move.l	a1,obMap(a2)		; ...it
+		move.l	a1,obMap(a2)		; ...it with ring collection animation
 
+		; shitty old code that attempts to collect multiple checkpoints at once
+		; there's about a 50/50 chance it works and I never figured out why
 		moveq	#0,d4			; clear d4
 		cmpi.b	#$41,obRender(a1)
 		bne.s	@cont1
@@ -41082,7 +41221,6 @@ Obj09_ChkGhost:
 		move.l	a1,obMap(a2)
 		addq.l	#1,obMap(a2)
 		addq.w	#8,a2
-
 @cont1:
 		cmpi.b	#$41,-obRender(a1)
 		bne.s	@cont2
@@ -41091,7 +41229,6 @@ Obj09_ChkGhost:
                 move.l  a1,obMap(a2)
                 subq.l  #1,obMap(a2)
 		addq.w	#8,a2
-
 @cont2:
 		cmpi.b	#$41,obGfx(a1)
 		bne.s	@cont3
@@ -41100,33 +41237,300 @@ Obj09_ChkGhost:
                 move.l  a1,obMap(a2)
                 addq.l  #2,obMap(a2)
 		addq.w	#8,a2
-
 @cont3:
 		cmpi.b	#$41,-obGfx(a1)
-		bne.s	Obj09_CG_End
+		bne.s	@end
 		move.b	#0,-obGfx(a1)
 		move.b	#0,obGfx(a1)
                 move.b  #3,obX(a2)
                 move.l  a1,obMap(a2)
                 subq.l  #2,obMap(a2)
-
-Obj09_CG_End:
-		rts				; return
+@end:
+		rts
+; ===========================================================================
 ; ===========================================================================
 
-Obj09_CG_Original:
-		move.b	#1,$3A(a0)	; mark the ghost block as "passed"
+Obj09_ChkItems_Solid:		; I never understood why this is a subroutine
+		move.b	$30(a0),d0	; get ID of collided item
+		bne.s	Obj09_ChkGOAL	; if it isn't empty, start check
 
-Obj09_ChkGhostTag:
-		cmpi.b	#$4A,d4		; is the item a	switch for ghost blocks?
-		bne.s	Obj09_NoGhost
-		cmpi.b	#1,$3A(a0)	; have the ghost blocks	been passed?
-		bne.s	Obj09_NoGhost	; if not, branch
-		move.b	#2,$3A(a0)	; mark the ghost blocks	as "solid"
+		tst.b	$36(a0)
+		beq.s	locret_1BEAC
+		subq.b	#1,$36(a0)	; subtract 1 from disabled block timer (after touching R, up, down)
 
-Obj09_NoGhost:
-		moveq	#-1,d4
+locret_1BEAC:
 		rts	
+; ===========================================================================
+
+; Obj09_GOAL:
+Obj09_ChkGOAL:
+		cmpi.b	#$27,d0			; is the item a	"GOAL"?
+		bne.w	Obj09_ChkBumper		; if not, branch
+
+		; radial hitboxes
+		move.w	$34(a0),d2			; load layout address
+		subq.w	#$01,d2				; align to first block
+		moveq	#$7F,d1				; get only X range of the layout
+		and.w	d2,d1				; ''
+		lsr.w	#$07,d2				; get only Y range of the layout
+		moveq	#24,d0				; multiply positions by 24 pixels
+		mulu.w	d0,d1				; '' for X
+		mulu.w	d0,d2				; '' for Y
+		addi.w	#(24/2)-$20,d1			; get centre position of block (minus $10 discrepency of Sonic's X)
+		addi.w	#(24/2)-$50,d2			; '' (minus $58 discrepency of Sonic's Y)
+		sub.w	obX(a0),d1			; get relative to Sonic on X
+		bpl.s	.PosX				; keep positive
+		neg.w	d1				; ''
+	.PosX:	sub.w	obY(a0),d2			; get relative to Sonic on Y
+		bpl.s	.PosY				; keep positive
+		neg.w	d2				; ''
+	.PosY:	mulu.w	d1,d1				; setup pythagorean
+		mulu.w	d2,d2				; ''
+		add.l	d1,d2				; ''
+		cmpi.l	#24*24,d2			; is Sonic touching the goal circularly?
+		bls.s	.Touch				; if so, branch
+		rts					; no touch
+
+	.Touch:
+  		btst	#4,($FFFFFF92).w	; is nonstop inhuman enabled?
+		bne.w	Obj09_DoBumper		; if yes, convert goal block into bumber
+
+TouchGoalBlock:
+		jsr	WhiteFlash2
+
+		move.w	($FFFFFF86).w,obX(a0)	; restore saved X-pos
+		move.w	($FFFFFF88).w,obY(a0)	; restore saved Y-pos
+
+		clr.w	obVelX(a0)
+		clr.w	obVelY(a0)
+		clr.w	obInertia(a0)
+
+		move.w	#$C3,d0			; play giant ring sound by default
+
+		cmpi.w	#$401,($FFFFFE10).w	; are we in Unreal Place?
+		beq.s	TouchGoal_Unreal	; if yes, branch
+
+		; restoration for Special Place
+		clr.b	($FFFFFF9F).w		; make R block usable again
+		move.b	#$30,($FF1C28).l	; restore pink glass block
+		move.b	#$2F,($FF1DA7).l	; restore yellow glass block
+		clr.w	($FFFFF780).w		; clear rotation
+		bra.s	TouchGoal_PlaySound
+
+TouchGoal_Unreal:
+		clr.b	($FFFFFE57).w		; clear emerald counter
+		move.b	#$3F,($FF11BD).l	; restore red emerald
+		move.b	#$40,($FF11C1).l	; restore grey emerald
+		move.b	#$3A,($FF1EC7).l	; reset ring to open glass blocks door
+		
+		tst.b	($FFFFFF5F).w	; is this the blackout blackout special stage?
+		beq.s	@notblackout		; if not, branch
+		move.b	#$2F,($FF24CA).l	; reset glass blocks
+		move.b	#$2F,($FF254A).l
+		move.b	#$2F,($FF25CA).l
+		
+		move.w	#$A3,d0			; play death sound
+		frantic				; are we in Frantic mode?
+		beq.s	TouchGoal_PlaySound	; if not, branch
+		move.w	#$B9,d0			; play annoying crumbling sound instead
+		jsr	PlaySound		; play sound
+		move.w	#$DB,d0			; play annoying crumbling sound instead
+		bra.s	TouchGoal_PlaySound
+
+@notblackout:
+		move.b	#$2D,($FF244A).l	; reset glass blocks
+		move.b	#$2E,($FF24CA).l
+		move.b	#$2F,($FF254A).l
+		move.b	#$30,($FF25CA).l
+
+TouchGoal_PlaySound:
+		jmp	PlaySound_Special	; play selected sound
+; ===========================================================================
+
+Obj09_ChkBumper:
+		cmpi.b	#$25,d0		; is the item a	bumper?
+		bne.s	Obj09_ChkW
+Obj09_DoBumper:
+		move.l	$32(a0),d1
+		subi.l	#$FF0001,d1
+		move.w	d1,d2
+		andi.w	#$7F,d1
+		mulu.w	#$18,d1
+		subi.w	#$14,d1
+		lsr.w	#7,d2
+		andi.w	#$7F,d2
+		mulu.w	#$18,d2
+		subi.w	#$44,d2
+		sub.w	obX(a0),d1
+		sub.w	obY(a0),d2
+		jsr	(CalcAngle).l
+		jsr	(CalcSine).l
+		muls.w	#-$100,d1
+		asr.l	#8,d1
+		move.w	d1,obVelX(a0)
+		muls.w	#-$100,d0
+		asr.l	#8,d0
+		move.w	d0,obVelY(a0)
+		bset	#1,obStatus(a0)
+		bclr	#7,obStatus(a0)	; clear "Sonic has jumped" flag
+		bsr	SS_RemoveCollectedItem
+		bne.s	Obj09_BumpSnd
+		move.b	#2,(a2)
+		move.l	$32(a0),d0
+		subq.l	#1,d0
+		move.l	d0,obMap(a2)
+
+Obj09_BumpSnd:
+		move.w	#$B4,d0
+		jmp	(PlaySound_Special).l ;	play bumper sound
+; ===========================================================================
+
+Obj09_ChkW:
+		cmpi.b	#$26,d0 	; is the item a	W-block?
+		bne.s	Obj09_UPblock
+		bsr	SS_RemoveCollectedItem
+		cmpi.b	#2,($FFFFFFD6).w
+		beq.s	Obj09_ChkW_NoChange
+		move.b	#1,($FFFFFFD6).w	; change every goal block into a normal one
+		move.w	#$C3,d0		; play giant ring sound
+		jsr	(PlaySound_Special).l
+
+Obj09_ChkW_NoChange:
+		rts
+; ===========================================================================
+
+Obj09_UPblock:
+		cmpi.b	#$29,d0			; is the item an "UP" block?
+		bne.w	Obj09_DOWNblock		; if not, branch
+
+		tst.b	$36(a0)			; has an up block been touched recently?
+		bne.w	Obj09_ChkItemsEnd		; if yes, branch
+		move.b	#$1E,$36(a0)		; disable interaction with this block $1E frames
+		
+		tst.b	($FFFFFF5F).w		; is this the blackout blackout special stage?
+		bne.s	Obj09_UPsnd		; if yes, branch
+
+		move.w	#$D9,d0			; set sound to D9 (bleep)
+		tst.b	($FFFFFFBF).w		; is Unreal Place floating challenge already active?
+		bne.s	Obj09_UPsnd		; if yes, branch
+		move.w	#$9A,d0			; set music to 9A
+		jsr	(PlaySound).l		; play
+
+		move.b	#$27,($FF2AA6).l	; block off the entrance you came from 1
+		move.b	#$27,($FF2B26).l	; block off the entrance you came from 2
+		move.b	#$27,($FF2BA6).l	; block off the entrance you came from 3
+		
+		move.w	#$0000,($FFFFFB40).w	; make background black
+
+		move.w	#$C3,d0			; play giant ring collected sound
+
+Obj09_UPsnd:
+		tst.b	($FFFFFF5F).w		; is this the blackout blackout special stage?
+		beq.s	@conty			; if not, branch
+		addi.w	#$8000,($FFFFF780).w	; rotate screen by 180 degrees
+		move.w	#$BB,d0			; play flip sound
+		bra.s	Obj09_UPsnd2		; go to sound
+
+@conty:
+		move.w	#-Unreal_Speed,obVelY(a0) ; move Sonic upwards
+
+Obj09_UPsnd2:
+		move.b	#1,($FFFFFFBF).w	; set Unreal Place floating challenge flag
+		jmp	(PlaySound_Special).l	; play sound
+; ===========================================================================
+
+Obj09_DOWNblock:
+		cmpi.b	#$2A,d0		; is the item a	"DOWN" block?
+		bne.s	Obj09_Rblock
+		tst.b	$36(a0)
+		bne.w	Obj09_ChkItemsEnd
+		move.b	#$1E,$36(a0)
+	;	btst	#6,($FFFFF783).w
+	;	bne.s	Obj09_DOWNsnd
+		move.b	#2,($FFFFFFBF).w
+		tst.b	($FFFFFF5F).w	; is this the blackout blackout special stage?
+		beq.s	@conty
+		addi.w	#$8000,($FFFFF780).w
+		move.w	#$BB,d0
+		bra.s	Obj09_DOWNsnd
+@conty:
+
+		move.w	#Unreal_Speed,obVelY(a0) ; move Sonic downwards
+		move.w	#$DA,d0
+
+
+Obj09_DOWNsnd:
+		jmp	(PlaySound_Special).l ;	play up/down sound
+; ===========================================================================
+
+Obj09_Rblock:
+		cmpi.b	#$2B,d0		; is the item an "R" block?
+		bne.s	Obj09_ChkGlass
+		tst.b	$36(a0)
+		bne.w	Obj09_ChkItemsEnd
+		move.b	#$1E,$36(a0)
+		bsr	SS_RemoveCollectedItem
+		bne.s	Obj09_RevStage
+		move.b	#4,(a2)
+		move.l	$32(a0),d0
+		subq.l	#1,d0
+		move.l	d0,obMap(a2)
+
+Obj09_RevStage:
+		move.b	#1,($FFFFFF9F).w	; set flag
+		tst.b	($FFFFFFD6).w
+		beq.s	@cont
+		move.b	#1,($FF11AC).l		; place blocks next to R blocks
+		move.b	#1,($FF122C).l		; place blocks next to R blocks
+
+@cont:
+		move.w	#$C3,d0			; set giant ring sound
+		jmp	(PlaySound_Special).l	; play it
+; ===========================================================================
+
+Obj09_ChkGlass:
+		cmpi.b	#$2D,d0		; is the item a	glass block?
+		beq.s	Obj09_Glass	; if yes, branch
+		cmpi.b	#$2E,d0
+		beq.s	Obj09_Glass
+		cmpi.b	#$2F,d0
+		beq.s	Obj09_Glass
+		cmpi.b	#$30,d0
+		bne.s	Obj09_ChkItemsEnd	; if not, branch
+
+Obj09_Glass:
+		cmpi.w	#$401,($FFFFFE10).w	; are we in Unreal?
+		bne.s	@regular		; if not, branch
+		rts				; glass blocks are decorative walls only
+@regular:
+		bsr	SS_RemoveCollectedItem
+		bne.s	Obj09_GlassSnd
+		move.b	#6,(a2)
+		movea.l	$32(a0),a1
+		subq.l	#1,a1
+		move.l	a1,obMap(a2)
+		move.b	(a1),d0
+		addq.b	#1,d0		; change glass type when touched
+		cmpi.b	#$30,d0
+		bls.s	Obj09_GlassUpdate ; if glass is	still there, branch
+		clr.b	d0		; remove the glass block when it's destroyed
+
+Obj09_GlassUpdate:
+		move.b	d0,obMap(a2)	; update the stage layout
+
+Obj09_GlassSnd:
+		move.w	#$BA,d0
+		jmp	(PlaySound_Special).l ;	play glass block sound
+; ===========================================================================
+
+Obj09_ChkItemsEnd:
+		rts	
+; End of function Obj09_ChkItems_Solid
+
+; ===========================================================================
+; ===========================================================================
+
+
 ; ===========================================================================
 
 Obj09_Rotation:
@@ -41234,270 +41638,7 @@ Obj09_NoReplace:
 Obj09_GhostNotSolid:
 		clr.b	$3A(a0)
 		moveq	#0,d4
-		rts	
-; End of function Obj09_ChkItems
-
-
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
-
-Obj09_ChkItems2:			; XREF: Obj09_Display
-		move.b	$30(a0),d0
-		bne.s	Obj09_ChkBumper
-		subq.b	#1,$36(a0)
-		bpl.s	loc_1BEA0
-		move.b	#0,$36(a0)
-
-loc_1BEA0:
-		subq.b	#1,$37(a0)
-		bpl.s	locret_1BEAC
-		move.b	#0,$37(a0)
-
-locret_1BEAC:
-		rts	
-; ===========================================================================
-
-Obj09_ChkBumper:
-		cmpi.b	#$25,d0		; is the item a	bumper?
-		bne.s	Obj09_ChkW
-Obj09_DoBumper:
-		move.l	$32(a0),d1
-		subi.l	#$FF0001,d1
-		move.w	d1,d2
-		andi.w	#$7F,d1
-		mulu.w	#$18,d1
-		subi.w	#$14,d1
-		lsr.w	#7,d2
-		andi.w	#$7F,d2
-		mulu.w	#$18,d2
-		subi.w	#$44,d2
-		sub.w	obX(a0),d1
-		sub.w	obY(a0),d2
-		jsr	(CalcAngle).l
-		jsr	(CalcSine).l
-		muls.w	#-$100,d1
-		asr.l	#8,d1
-		move.w	d1,obVelX(a0)
-		muls.w	#-$100,d0
-		asr.l	#8,d0
-		move.w	d0,obVelY(a0)
-		bset	#1,obStatus(a0)
-		bclr	#7,obStatus(a0)	; clear "Sonic has jumped" flag
-		bsr	SS_RemoveCollectedItem
-		bne.s	Obj09_BumpSnd
-		move.b	#2,(a2)
-		move.l	$32(a0),d0
-		subq.l	#1,d0
-		move.l	d0,obMap(a2)
-
-Obj09_BumpSnd:
-		move.w	#$B4,d0
-		jmp	(PlaySound_Special).l ;	play bumper sound
-; ===========================================================================
-
-Obj09_ChkW:
-		cmpi.b	#$26,d0 	; is the item a	W-block?
-		bne.s	Obj09_GOAL
-		bsr	SS_RemoveCollectedItem
-		cmpi.b	#2,($FFFFFFD6).w
-		beq.s	Obj09_ChkW_NoChange
-		move.b	#1,($FFFFFFD6).w	; change every goal block into a normal one
-		move.w	#$C3,d0		; play giant ring sound
-		jsr	(PlaySound_Special).l
-
-Obj09_ChkW_NoChange:
 		rts
-; ===========================================================================
-
-; Obj09_ChkGOAL:
-Obj09_GOAL:
-		cmpi.b	#$27,d0			; is the item a	"GOAL"?
-		bne.w	Obj09_UPblock		; if not, branch
-
-		btst	#4,($FFFFFF92).w	; is nonstop inhuman enabled?
-		bne.w	Obj09_DoBumper		; if yes, convert goal block into bumber
-
-TouchGoalBlock:
-		jsr	WhiteFlash2
-
-		move.w	($FFFFFF86).w,obX(a0)	; restore saved X-pos
-		move.w	($FFFFFF88).w,obY(a0)	; restore saved Y-pos
-
-		clr.w	obVelX(a0)
-		clr.w	obVelY(a0)
-		clr.w	obInertia(a0)
-
-		move.w	#$C3,d0			; play giant ring sound by default
-
-		cmpi.w	#$401,($FFFFFE10).w	; are we in Unreal Place?
-		beq.s	TouchGoal_Unreal	; if yes, branch
-		
-		; restoration for Special Place
-		clr.b	($FFFFFF9F).w		; make R block usable again
-		move.b	#$30,($FF1C28).l	; restore pink glass block
-		move.b	#$2F,($FF1DA7).l	; restore yellow glass block
-		clr.w	($FFFFF780).w		; clear rotation
-		bra.s	TouchGoal_PlaySound
-
-TouchGoal_Unreal:
-		clr.b	($FFFFFE57).w		; clear emerald counter
-		move.b	#$3F,($FF11BD).l	; restore red emerald
-		move.b	#$40,($FF11C1).l	; restore grey emerald
-		move.b	#$3A,($FF1EC7).l	; reset ring to open glass blocks door
-
-		tst.b	($FFFFFF5F).w		; is this the blackout blackout special stage?
-		beq.s	@notblackout		; if not, branch
-		move.b	#$2F,($FF24CA).l	; reset glass blocks
-		move.b	#$2F,($FF254A).l
-		move.b	#$2F,($FF25CA).l
-
-		move.w	#$A3,d0			; play death sound
-		frantic				; are we in Frantic mode?
-		beq.s	TouchGoal_PlaySound	; if not, branch
-		move.w	#$B9,d0			; play annoying crumbling sound instead
-		jsr	PlaySound		; play sound
-		move.w	#$DB,d0			; play annoying crumbling sound instead
-		bra.s	TouchGoal_PlaySound
-
-@notblackout:
-		move.b	#$2D,($FF244A).l	; reset glass blocks
-		move.b	#$2E,($FF24CA).l
-		move.b	#$2F,($FF254A).l
-		move.b	#$30,($FF25CA).l
-
-TouchGoal_PlaySound:
-		jmp	PlaySound_Special	; play selected sound
-; ===========================================================================
-
-Obj09_UPblock:
-		cmpi.b	#$29,d0			; is the item an "UP" block?
-		bne.w	Obj09_DOWNblock		; if not, branch
-
-		tst.b	$36(a0)			; has an up block been touched recently?
-		bne.w	Obj09_NoGlass		; if yes, branch
-		move.b	#$1E,$36(a0)		; disable interaction with this block $1E frames
-		
-		tst.b	($FFFFFF5F).w		; is this the blackout blackout special stage?
-		bne.s	Obj09_UPsnd		; if yes, branch
-
-		move.w	#$D9,d0			; set sound to D9 (bleep)
-		tst.b	($FFFFFFBF).w		; is Unreal Place floating challenge already active?
-		bne.s	Obj09_UPsnd		; if yes, branch
-		move.w	#$9A,d0			; set music to 9A
-		jsr	(PlaySound).l		; play
-
-		move.b	#$27,($FF2AA6).l	; block off the entrance you came from 1
-		move.b	#$27,($FF2B26).l	; block off the entrance you came from 2
-		move.b	#$27,($FF2BA6).l	; block off the entrance you came from 3
-		
-		move.w	#$0000,($FFFFFB40).w	; make background black
-
-		move.w	#$C3,d0			; play giant ring collected sound
-
-Obj09_UPsnd:
-		tst.b	($FFFFFF5F).w		; is this the blackout blackout special stage?
-		beq.s	@conty			; if not, branch
-		addi.w	#$8000,($FFFFF780).w	; rotate screen by 180 degrees
-		move.w	#$BB,d0			; play flip sound
-		bra.s	Obj09_UPsnd2		; go to sound
-
-@conty:
-		move.w	#-Unreal_Speed,obVelY(a0) ; move Sonic upwards
-
-Obj09_UPsnd2:
-		move.b	#1,($FFFFFFBF).w	; set Unreal Place floating challenge flag
-		jmp	(PlaySound_Special).l	; play sound
-; ===========================================================================
-
-Obj09_DOWNblock:
-		cmpi.b	#$2A,d0		; is the item a	"DOWN" block?
-		bne.s	Obj09_Rblock
-		tst.b	$36(a0)
-		bne.w	Obj09_NoGlass
-		move.b	#$1E,$36(a0)
-	;	btst	#6,($FFFFF783).w
-	;	bne.s	Obj09_DOWNsnd
-		move.b	#2,($FFFFFFBF).w
-		tst.b	($FFFFFF5F).w	; is this the blackout blackout special stage?
-		beq.s	@conty
-		addi.w	#$8000,($FFFFF780).w
-		move.w	#$BB,d0
-		bra.s	Obj09_DOWNsnd
-@conty:
-
-		move.w	#Unreal_Speed,obVelY(a0) ; move Sonic downwards
-		move.w	#$DA,d0
-
-
-Obj09_DOWNsnd:
-		jmp	(PlaySound_Special).l ;	play up/down sound
-; ===========================================================================
-
-Obj09_Rblock:
-		cmpi.b	#$2B,d0		; is the item an "R" block?
-		bne.s	Obj09_ChkGlass
-		tst.b	$37(a0)
-		bne.w	Obj09_NoGlass
-		move.b	#$1E,$37(a0)
-		bsr	SS_RemoveCollectedItem
-		bne.s	Obj09_RevStage
-		move.b	#4,(a2)
-		move.l	$32(a0),d0
-		subq.l	#1,d0
-		move.l	d0,obMap(a2)
-
-Obj09_RevStage:
-		move.b	#1,($FFFFFF9F).w	; set flag
-		tst.b	($FFFFFFD6).w
-		beq.s	@cont
-		move.b	#1,($FF11AC).l		; place blocks next to R blocks
-		move.b	#1,($FF122C).l		; place blocks next to R blocks
-
-@cont:
-		move.w	#$C3,d0			; set giant ring sound
-		jmp	(PlaySound_Special).l	; play it
-; ===========================================================================
-
-Obj09_ChkGlass:
-		cmpi.b	#$2D,d0		; is the item a	glass block?
-		beq.s	Obj09_Glass	; if yes, branch
-		cmpi.b	#$2E,d0
-		beq.s	Obj09_Glass
-		cmpi.b	#$2F,d0
-		beq.s	Obj09_Glass
-		cmpi.b	#$30,d0
-		bne.s	Obj09_NoGlass	; if not, branch
-
-Obj09_Glass:
-		cmpi.w	#$401,($FFFFFE10).w
-		bne.s	@cont
-		rts
-
-@cont:
-		bsr	SS_RemoveCollectedItem
-		bne.s	Obj09_GlassSnd
-		move.b	#6,(a2)
-		movea.l	$32(a0),a1
-		subq.l	#1,a1
-		move.l	a1,obMap(a2)
-		move.b	(a1),d0
-		addq.b	#1,d0		; change glass type when touched
-		cmpi.b	#$30,d0
-		bls.s	Obj09_GlassUpdate ; if glass is	still there, branch
-		clr.b	d0		; remove the glass block when it's destroyed
-
-Obj09_GlassUpdate:
-		move.b	d0,obMap(a2)	; update the stage layout
-
-Obj09_GlassSnd:
-		move.w	#$BA,d0
-		jmp	(PlaySound_Special).l ;	play glass block sound
-; ===========================================================================
-
-Obj09_NoGlass:
-		rts	
-; End of function Obj09_ChkItems2
-
 ; ===========================================================================
 
 ; ===========================================================================
@@ -42338,10 +42479,10 @@ Obj21_NoUpdate:
 		tst.w	($FFFFFE20).w		; do you have any rings?
 		beq.s	Obj21_Flash2		; if not, make ring counter flash
 		move.w	($FFFFFE20).w,d1	; get current rings
-		cmp.w	$3E(a0),d1		; does it match the previous rings?
-		beq.s	@0
-		addq.w	#1,d0
-@0:
+		cmp.w	$3E(a0),d1		; compare against previous rings
+		bhs.s	@nodrainflash		; if we have the same or more rings than previously, branch
+		addq.w	#1,d0			; otherwise, ring count got reduced, make flash
+@nodrainflash:
 		bra.s	Obj21_Cont
 
 Obj21_Flash2:
@@ -43235,6 +43376,7 @@ Debug_Exit:
 		cmpi.b	#$10,($FFFFF600).w	; are you in the special stage?
 		beq.s	Debug_Exit_SS		; if yes, branch
 		jsr	Hud_Base		; restore HUD after using debug mode
+		ori.b	#1,($FFFFFE1D).w	; update rings counter
 		bra.s	Debug_DoNothing
 
 Debug_Exit_SS:

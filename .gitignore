@@ -1,6 +1,7 @@
 /__BLA
 /src/Debugger/Generated/*
 /src/SONLVL
+/src/CLOWNMAPED
 project.flex.json
 __ClownMapEd.lnk
 __SonLVL.lnk

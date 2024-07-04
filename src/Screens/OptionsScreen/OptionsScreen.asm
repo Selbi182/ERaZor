@@ -480,7 +480,7 @@ Options_HandleCinematicMode:
 		bra.w	Options_UpdateTextAfterChange_NoSound
 
 @nodebugunlock:
-		jsr	IsBaseGameBeaten	; has the player beaten the base game?
+		jsr	Check_BaseGameBeaten	; has the player beaten the base game?
 		bne.s	@cinematicmodeallowed	; if yes, branch
 		move.w	#$DA,d0			; play option disallowed sound
 		jsr	PlaySound_Special
@@ -506,7 +506,7 @@ Options_HandleNonstopInhuman:
 		bra.w	Options_UpdateTextAfterChange_NoSound
 
 @nodebugunlock:
-		jsr	IsBlackoutBeaten	; has the player specifically beaten the blackout challenge?
+		jsr	Check_BlackoutBeaten	; has the player specifically beaten the blackout challenge?
 		bne.s	@nonstopinhumanallowed	; if yes, branch
 		move.w	#$DA,d0			; play option disallowed sound
 		jsr	PlaySound_Special
@@ -823,7 +823,7 @@ GetOptionsText:
 		adda.w	#Options_LineLength,a1		; make one empty line
 
 		move.l	#OpText_CinematicMode_Locked,d6	; set locked text location	
-		jsr	IsBaseGameBeaten		; has the player beaten base game?
+		jsr	Check_BaseGameBeaten		; has the player beaten base game?
 		beq.s	@basegamenotbeaten		; if not, branch
 		move.l	#OpText_CinematicMode,d6	; set unlocked text location
 @basegamenotbeaten:
@@ -838,7 +838,7 @@ GetOptionsText:
 		adda.w	#Options_LineLength,a1		; make one empty line
 		
 		move.l	#OpText_NonstopInhuman_Locked,d6; set locked text location	
-		jsr	IsBlackoutBeaten		; has the player specifically beaten the blackout challenge?
+		jsr	Check_BlackoutBeaten		; has the player specifically beaten the blackout challenge?
 		beq.s	@blackoutchallengenotbeaten	; if not, branch
 		move.l	#OpText_NonstopInhuman,d6	; set unlocked text location
 @blackoutchallengenotbeaten:

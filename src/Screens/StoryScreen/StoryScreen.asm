@@ -60,13 +60,7 @@ StoryTextScreen:				; XREF: GameModeArray
 		move.w	#$7FF,d1
 STS_ClrObjRam:	move.l	d0,(a1)+
 		dbf	d1,STS_ClrObjRam ; fill object RAM ($D000-$EFFF) with $0
-				
-		btst	#1,($FFFFFF92).w	; are story text screens enabled?
-		bne.s	@noautoskip		; if yes, branch
-		move.b	#1,($FFFFFF7D).w	; make sure the chapters screen leads us to the correct level
-		bra.w	STS_ExitScreen		; auto-skip the cringe
 
-@noautoskip:
 		move.l	#$64000002,($C00004).l
 		lea	(ArtKospM_ERaZorNoBG).l,a0
 		jsr	KosPlusMDec_VRAM

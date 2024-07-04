@@ -1,20 +1,19 @@
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
+; Exit Logic - All the code that takes care of game progression
+; ---------------------------------------------------------------------------
 ; Overview of this mess:
-; - Exit_Level: called from Obj0D after it spins a while
-; - Exit_SpecialStage: same as Exit_Level but for special stages
-; - Exit_StoryScreen: called when story screen ends (d0 = story ID)
-; - Exit_ChapterScreen: called when chapter screen ends (d0 = chapter ID)
+; - Exit_Level: called from Obj0D after it spins a while and special stages
 ; - Exit_GiantRing: called from within Obj4B after it moved off screen
 ; ---------------------------------------------------------------------------
 ; BOOT
 ; Sega Screen > Selbi Screen > Title Screen > GameplayStyleScreen/Chapter Screen
-; ---------------------------------------------------------------------------
+; 
 ; FIRST START
 ; GameplayStyleScreen > One Hot Day... > Story Screen > Ring Load > Chapter Screen > Uberhub > Chapter Screen > Level
-; ---------------------------------------------------------------------------
-; CYCLE
-; Level > Story Screen > Chapter Screen > Level
+; 
+; MAIN LEVEL CYCLE
+; Uberhub > Chapter Screen > Level > Story Screen > Uberhub
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
 
@@ -36,6 +35,7 @@ ReturnToUberhub_Chapter:
 		move.w	#$400,($FFFFFE10).w	; set level to Uberhub
 		move.b	#$28,($FFFFF600).w	; set to chapters screen
 		rts				; return to MainGameLoop
+
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -59,6 +59,7 @@ StartLevel:
 		move.b	#$10,($FFFFF600).w	; set to special stage
 		rts
 
+
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Various screen exiting routines
@@ -69,6 +70,7 @@ Exit_SegaScreen:
 		rts
 ; ===========================================================================
 
+
 Exit_SelbiSplash:
 		move.b	#4,($FFFFF600).w	; set to title screen
 		rts
@@ -76,30 +78,22 @@ Exit_SelbiSplash:
 
 Exit_TitleScreen:
 		tst.b	d0			; d0 = 0 resume from savegame / 1 first time playing
-		bne.s	@firsttime
-		move.w	#$400,($FFFFFE10).w	; set level to Uberhub
-		move.b	#$28,($FFFFF600).w	; set to Chapters Screen
-		rts
-@firsttime:
-		move.b	#$30,($FFFFF600).w	; set to Gameplay Style Screen (which then starts the intro cutscene)
-		rts				; return
-; ===========================================================================
-
-Exit_OptionsScreen:
-		tst.b	d0			; d0 = 0 Uberhub / 1 GameplayStyleScreen
-		beq.w	ReturnToUberhub
-		move.b	#$30,($FFFFF600).w	; set to GameplayStyleScreen
+		beq.w	ReturnToUberhub_Chapter	; always show chapter screen when returning to Uberhub on launch
+		move.b	#$30,($FFFFF600).w	; for the first time, set to Gameplay Style Screen (which then starts the intro cutscene)
 		rts
 ; ===========================================================================
 
 Exit_GameplayStyleScreen:
 		tst.b	d0			; d0 = 0 options / 1 intro sequence
-		bne.s	@firsttime
+		bne.w	HubRing_IntroStart	; on first start, start intro cutscene
 		move.b	#$24,($FFFFF600).w	; we came from the options menu, return to it
 		rts
-@firsttime:
-		move.w	#$001,($FFFFFE10).w	; set level to intro cutscene
-		move.b	#$28,($FFFFF600).w	; load chapters screen for intro cutscene (One Hot Day...)
+; ===========================================================================
+
+Exit_OptionsScreen:
+		tst.b	d0			; d0 = 0 Uberhub / 1 GameplayStyleScreen
+		beq.w	ReturnToUberhub		; return to Uberhub if we exited the screen
+		move.b	#$30,($FFFFF600).w	; set to GameplayStyleScreen if we chose that option
 		rts
 ; ===========================================================================
 
@@ -111,30 +105,50 @@ Exit_ChapterScreen:
 
 Exit_StoryScreen:
 		; d0 = screen ID from StoryScreen.asm
-		cmpi.b	#1,d0			; is this the intro dialouge?
-		bne.s	@checkend		; if not, branch
-		bra.w	ReturnToUberhub_Chapter	; make sure we run the chapter screen in case this was the first start
-@checkend:
 		cmpi.b	#8,d0			; is this the ending sequence?
 		bne.s	@checkblackout		; if not, branch
 		move.b	#$18,($FFFFF600).w	; set to ending sequence ($18)
 		rts
 @checkblackout:
-		cmpi.b	#9,d0			; is this the blackout special stage?
+		cmpi.b	#9,d0			; is this the end of the blackout challenge?
 		bne.s	@exitregular		; if not, branch
 		move.b	#$00,($FFFFF600).w	; set to sega screen ($00)
 		rts
 
 @exitregular:
 		btst	#2,($FFFFFF92).w	; is Skip Uberhub Place enabled?
-		bne.w	AutoSkipUberhub		; if yes, automatically go to the next level in order
-		beq.w	ReturnToUberhub		; otherwise, return to Uberhub every time
+		bne.w	SkipUberhub		; if yes, automatically go to the next level in order
+		cmpi.b	#1,d0			; is this the intro dialouge?
+		beq.w	ReturnToUberhub_Chapter	; if yes, make sure we run the chapter screen in case this was the first start
+		bra.w	ReturnToUberhub		; otherwise, return to Uberhub instantly
 ; ===========================================================================
 
 Exit_CreditsScreen:
-		addq.w	#4,sp			; skip return address (inherited quirk from the credits screen)
-		move.b	#$00,($FFFFF600).w	; restart from Sega Screen
+		moveq	#$E,d0			; load FZ pallet (cause tutorial boxes are built into SBZ)
+		jsr	PalLoad2		; load pallet
+
+		moveq	#$F,d0			; load text after beating the game in casual mode
+		frantic				; have you beaten the game in frantic mode?
+		beq.s	@basegamehint		; if not, pussy
+		moveq	#$10,d0			; load text after beating the game in frantic mode
+@basegamehint:	jsr	Tutorial_DisplayHint	; VLADIK => Display hint
+
+		bsr	Check_BaseGameBeaten	; have you already beaten the base game?
+		bne.s	@checkblackout		; if yes, branch
+		moveq	#$11,d0			; load Cinematic Mode unlock text
+		jsr	Tutorial_DisplayHint	; VLADIK => Display hint
+
+@checkblackout:
+		bsr	Check_BlackoutBeaten	; have you already beaten the blackout challenge?
+		bne.s	@markgameasbeaten	; if yes, branch
+		moveq	#$12,d0			; load Blackout Challenge teaser text
+		jsr	Tutorial_DisplayHint	; VLADIK => Display hint
+
+@markgameasbeaten:
+		bsr	Set_BaseGameDone	; you have beaten the base game, congrats
+		move.b	#$00,($FFFFF600).w	; restart game from Sega Screen
 		rts
+
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -165,14 +179,15 @@ Exit_EndingSequence:
 		move.w	#1,($FFFFFE02).w	; restart level
 		rts
 
+
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Routine to show chapter screen or go straight to level
 ; ---------------------------------------------------------------------------
 
 MakeChapterScreen:
-		btst	#1,($FFFFFF92).w	; are story text screens enabled?
-		beq.w	StartLevel		; if not, start level straight away
+		btst	#1,($FFFFFF92).w	; is "Skip Story Screens" enabled?
+		bne.w	StartLevel		; if yes, start level straight away
 
 		jsr	FakeLevelID		; get fake level ID for current level
 		tst.b	d5			; did we get a valid ID?
@@ -184,22 +199,23 @@ MakeChapterScreen:
 		move.b	#$28,($FFFFF600).w	; run chapter screen
 		rts
 
+
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Logic run after jumping into a giant ring (Uberhub or anywhere else)
 ; ---------------------------------------------------------------------------
 
-; d0 = ID of the giant ring we jumped into
+; d0 = ID of the giant ring we jumped into (Uberhub only)
 Exit_GiantRing:
 		cmpi.w	#$400,($FFFFFE10).w	; did we jump into a ring from Uberhub?
 		beq.s	Exit_UberhubRing	; if yes, go to its logic
 
 		cmpi.w	#$001,($FFFFFE10).w	; is level intro cutscene?
-		beq.w	MiscRing_Intro		; if yes, branch
+		beq.w	MiscRing_IntroEnd	; if yes, branch
 		cmpi.w	#$302,($FFFFFE10).w	; is this the easter egg ring in Star Agony Place?
 		beq.w	MiscRing_SAP		; if yes, branch
 		cmpi.b	#$5,($FFFFFE10).w	; is this the a ring in the tutorial/finalor?
-		beq.w	MiscRing_FP		; if yes, branch
+		beq.w	MiscRing_TutorialFP	; if yes, branch
 
 		bra.w	ReturnToUberhub		; otherwise something went wrong, return to Uberhub as fallback
 ; ===========================================================================
@@ -229,8 +245,10 @@ GRing_Exits:	dc.w	HubRing_NHP-GRing_Exits
 		dc.w	HubRing_SNP-GRing_Exits
 		dc.w	HubRing_SAP-GRing_Exits
 		dc.w	HubRing_FP-GRing_Exits
+		
+		; TODO: move these to misc
 		dc.w	HubRing_Ending-GRing_Exits
-		dc.w	HubRing_Intro-GRing_Exits
+		dc.w	HubRing_IntroStart-GRing_Exits
 ; ---------------------------------------------------------------------------
 GRing_Misc:	dc.w	HubRing_Options-GRing_Misc
 		dc.w	HubRing_Tutorial-GRing_Misc
@@ -244,7 +262,7 @@ HubRing_GHP:	move.w	#$002,($FFFFFE10).w	; set level to GHZ3
 		bra.w	StartLevel
 
 HubRing_SP:	move.w	#$300,($FFFFFE10).w	; set level to Special Stage
-		clr.b	($FFFFFF5F).w		; clear blackout blackout special stage flag
+		clr.b	($FFFFFF5F).w		; clear blackout special stage flag
 		bra.w	MakeChapterScreen
 
 HubRing_RP:	move.w	#$200,($FFFFFE10).w	; set level to MZ1
@@ -254,7 +272,7 @@ HubRing_LP:	move.w	#$101,($FFFFFE10).w	; set level to LZ2
 		bra.w	MakeChapterScreen
 
 HubRing_UP:	move.w	#$401,($FFFFFE10).w	; set level to Special Stage 2
-		clr.b	($FFFFFF5F).w		; clear blackout blackout special stage flag
+		clr.b	($FFFFFF5F).w		; clear blackout special stage flag
 		bra.w	MakeChapterScreen
 
 HubRing_SNP:	move.w	#$301,($FFFFFE10).w	; set level to SLZ2
@@ -270,11 +288,13 @@ HubRing_FP:	move.w	#$502,($FFFFFE10).w	; set level to FZ
 		bra.w	MakeChapterScreen
 ; ---------------------------------------------------------------------------
 
-HubRing_Intro:	move.b	#$28,($FFFFF600).w	; load chapters screen for intro cutscene (One Hot Day...)
+HubRing_IntroStart:
 		move.w	#$001,($FFFFFE10).w	; set to intro cutscene
+		move.b	#$28,($FFFFF600).w	; load chapters screen for intro cutscene (One Hot Day...)
 		rts
 
-HubRing_Ending:	move.b	#$20,($FFFFF600).w	; load info screen
+HubRing_Ending:
+		move.b	#$20,($FFFFF600).w	; load info screen
 		move.b	#8,($FFFFFF9E).w	; set number for text to 8
 		move.b	#$9D,d0			; play ending sequence music
 		jmp	PlaySound
@@ -289,30 +309,30 @@ HubRing_Tutorial:
 
 HubRing_Blackout:
 		move.w	#$401,($FFFFFE10).w	; set level to Special Stage 2 Easter
-		move.b	#1,($FFFFFF5F).w	; set blackout blackout special stage flag
+		move.b	#1,($FFFFFF5F).w	; set blackout special stage flag
 		bra.w	StartLevel
 ; ---------------------------------------------------------------------------
 
-MiscRing_Intro:	move.b	#1,($FFFFFF9E).w	; set number for text to 1
+MiscRing_IntroEnd:
+		move.b	#1,($FFFFFF9E).w	; set number for text to 1
 		move.b	#$20,($FFFFF600).w	; set screen mode to info screen
 		rts
 
-MiscRing_SAP:	move.b	#$20,($FFFFF600).w	; load info screen
+MiscRing_SAP:
+		move.b	#$20,($FFFFF600).w	; load info screen
 		move.b	#9,($FFFFFF9E).w	; set number for text to 9
 		move.b	#$9D,d0			; play ending sequence music (cause it fits for the easter egg lol)
 		jmp	PlaySound
 
-MiscRing_FP:
+MiscRing_TutorialFP:
 		tst.b	(FZEscape).w		; is this also the Finalor escape sequence?
-		beq.w	ReturnToUberhub		; if not, return to Uberhub
-
+		beq.s	Exit_Level		; if not, just exit
 		move.l	a0,-(sp)		; backup to stack
 		move.w	#$DD,d0			; play one last big boom sound for good measure
 		jsr	PlaySound_Special
 		jsr	Pal_MakeWhite		; make white flash
 		move.l (sp)+,a0			; restore from stack
-
-		bra.w	GTA_FP			; you've escaped, hooray
+		; hooray you've escaped, go to Exit_Level
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -321,75 +341,95 @@ MiscRing_FP:
 
 ; GotThroughAct:
 Exit_Level:
+		cmpi.w	#$501,($FFFFFE10).w	; did we beat the tutorial?
+		beq.w	GTA_Tutorial		; if yes, branch
+
 		cmpi.w	#$002,($FFFFFE10).w	; did we beat NHP/GHP?
 		beq.w	GTA_NHPGHP		; if yes, branch
+
 		cmpi.w	#$300,($FFFFFE10).w	; did we beat Special Place?
-		beq.s	GTA_SP			; if yes, branch
+		beq.w	GTA_SP			; if yes, branch
+
 		cmpi.w	#$200,($FFFFFE10).w	; did we beat RP?
-		bne.s	GTA_RP			; if yes, branch
+		beq.w	GTA_RP			; if yes, branch
+
 		cmpi.w	#$101,($FFFFFE10).w	; did we beat LP?
-		bne.s	GTA_LP			; if yes, branch
-		cmpi.w	#$401,($FFFFFE10).w	; did we beat Unreal Place/Blackout Challenge?
-		beq.s	GTA_UPBlackout		; if yes, branch
+		beq.w	GTA_LP			; if yes, branch
+
+		cmpi.w	#$401,($FFFFFE10).w	; did we beat Unreal Place?
+		bne.s	@notunreal		; if not, branch
+		tst.b	($FFFFFF5F).w		; is this the blackout special stage?
+		beq.w	GTA_UP			; if not, you've beaten UP
+		bra.w	GTA_Blackout		; otherwise, you've beaten blackout
+
+@notunreal:
 		cmpi.w	#$302,($FFFFFE10).w	; did we beat SNP/SAP?
-		beq.w	GTA_SNPSAP		; if not, branch
-		; FP progression is triggered through giant rings
+		beq.w	GTA_SNPSAP		; if yes, branch
+		
+		cmpi.w	#$502,($FFFFFE10).w	; did we beat FP?
+		beq.w	GTA_FP			; if yes, branch
+
 		bra.w	ReturnToUberhub		; uhh idk how this could ever happen, but just in case
 ; ---------------------------------------------------------------------------
 
-GTA_RunStory:
-		move.b	#$20,($FFFFF600).w	; set to Story Screen
-		rts				; return
-; ---------------------------------------------------------------------------
+GTA_Tutorial:	btst	#2,($FFFFFF92).w	; is Skip Uberhub Place enabled?	
+		beq.w	ReturnToUberhub		; if not, return to Uberhub
+		bra.w	HubRing_NHP		; otherwise go straight to NHP
 
 GTA_NHPGHP:	moveq	#0,d0			; unlock first door
-		jsr	OpenDoor
+		bsr	Set_DoorOpen
 		move.b	#2,($FFFFFF9E).w	; set number for text to 2
-		bra.w	GTA_RunStory
+		bra	Exit_RunStory
 
 GTA_SP:		moveq	#1,d0			; unlock second door
-		jsr	OpenDoor
+		bsr	Set_DoorOpen
 		move.b	#3,($FFFFFF9E).w	; set number for text to 3
-		bra.w	GTA_RunStory
+		bra	Exit_RunStory
 
 GTA_RP:		moveq	#2,d0			; unlock third door
-		jsr	OpenDoor
+		bsr	Set_DoorOpen
 		move.b	#4,($FFFFFF9E).w	; set number for text to 4
-		bra.w	GTA_RunStory
+		bra	Exit_RunStory
 
 GTA_LP:		moveq	#3,d0			; unlock fourth door
-		jsr	OpenDoor
+		bsr	Set_DoorOpen
 		move.b	#5,($FFFFFF9E).w	; set number for text to 5
-		bra.w	GTA_RunStory
+		bra	Exit_RunStory
 
-GTA_UPBlackout:
-		moveq	#4,d0			; open fifth door
-		jsr	OpenDoor
+GTA_UP:		moveq	#4,d0			; open fifth door
+		bsr	Set_DoorOpen
 		move.b	#6,($FFFFFF9E).w	; set number for text to 6
-		tst.b	($FFFFFF5F).w		; is this the blackout special stage?
-		beq.s	GTA_RunStory		; if not, branch
-		clr.b	($FFFFFF5F).w		; clear blackout special stage flag
-		move.b	#9,($FFFFFF9E).w	; set number for text to 9 instead
-		bra.w	GTA_RunStory
+		bra	Exit_RunStory
 
-GTA_SNPSAP:
-		moveq	#5,d0			; unlock sixth door
-		jsr	OpenDoor
+GTA_SNPSAP:	moveq	#5,d0			; unlock sixth door
+		bsr	Set_DoorOpen
 		move.b	#7,($FFFFFF9E).w	; set number for text to 7
-		bra.w	GTA_RunStory
+		bra	Exit_RunStory
 
-GTA_FP:
-		moveq	#6,d0			; unlock seventh door (door to the credits)
-		jsr	OpenDoor
-		move.w	#$400,($FFFFFE10).w	; set level to Uberhub
-		bra.w	ReturnToUberhub
+GTA_FP:		moveq	#6,d0			; unlock seventh door (door to the credits)
+		bsr	Set_DoorOpen
+		btst	#2,($FFFFFF92).w	; is Skip Uberhub Place enabled?		
+		beq.w	ReturnToUberhub		; if not, return to Uberhub
+		bra.w	HubRing_Ending		; otherwise go straight to the ending
+
+GTA_Blackout:	clr.b	($FFFFFF5F).w		; clear blackout special stage flag
+		move.b	#9,($FFFFFF9E).w	; set number for text to 9 instead
+		bra	Exit_RunStory
+; ---------------------------------------------------------------------------
+
+Exit_RunStory:
+		move.b	($FFFFFF9E).w,d0	; move story ID to d0
+		btst	#1,($FFFFFF92).w	; is "Skip Story Screens" enabled?
+		bne.w	Exit_StoryScreen	; if yes, well, skip it
+		move.b	#$20,($FFFFF600).w	; set to Story Screen
+		rts				; return
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Subroutine to go straight to the next level if Skip Uberhub is enabled
 ; ---------------------------------------------------------------------------
 
-AutoSkipUberhub:
+SkipUberhub:
 		move.w	($FFFFFE10).w,d1	; get level number of the level we just beat
 		lea	(NextLevel_Array).l,a1	; load the next level array
 @autonextlevelloop:
@@ -404,11 +444,10 @@ AutoSkipUberhub:
 
 NextLevel_Array:
 		dc.w	$001	; Intro Cutscene
-		dc.w	$400	; Uberhub Place
 		dc.w	$501	; Tutorial Place
 		dc.w	$000	; Night Hill Place
 		dc.w	$002	; Green Hill Place
-		dc.w	$300	; Special Place (yes, it uses SLZ1's ID)
+		dc.w	$300	; Special Place
 		dc.w	$200	; Ruined Place
 		dc.w	$101	; Labyrinthy Place
 		dc.w	$401	; Unreal Place
@@ -420,5 +459,87 @@ NextLevel_Array:
 		dc.w	-1	; uhhhhhhhh
 		even
 
+
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Subtroutines to ease coordinating the game progress (casual/frantic)
+; ---------------------------------------------------------------------------
+; bit indices in the progress RAM (FF8A/FF8B)
+Casual_BaseGame  = 0
+Casual_Blackout  = 1
+Frantic_BaseGame = 2
+Frantic_Blackout = 3
+; ---------------------------------------------------------------------------
+
+Check_LevelBeaten:
+		; d0 = bit we want to test
+		frantic				; are we in frantic?
+		bne.s	@frantic		; if yes, branch
+		btst	d0,($FFFFFF8A).w	; check if door is open (casual)
+		rts
+@frantic:
+		btst	d0,($FFFFFF8B).w	; check if door is open (frantic)
+		rts
+; ===========================================================================
+
+Check_BaseGameBeaten:
+		bsr	Check_BaseGameBeaten_Frantic	; has the player beaten the base game in frantic?
+		bne.s	StateCheck_Yes			; if yes, branch
+		bra.s	Check_BaseGameBeaten_Casual	; check if at least casual was beaten
+
+Check_BlackoutBeaten:
+		bsr	Check_BlackoutBeaten_Frantic	; has the player beaten the blackout challenge in frantic?
+		bne.s	StateCheck_Yes			; if yes, branch
+		bra.s	Check_BlackoutBeaten_Casual	; check if at least casual was beaten
+; ---------------------------------------------------------------------------
+
+Check_BaseGameBeaten_Casual:
+		btst	#Casual_BaseGame,($FFFFFF93).w
+		rts
+Check_BaseGameBeaten_Frantic:
+		btst	#Frantic_BaseGame,($FFFFFF93).w
+		rts
+
+Check_BlackoutBeaten_Casual:
+		btst	#Casual_Blackout,($FFFFFF93).w
+		rts
+Check_BlackoutBeaten_Frantic:
+		btst	#Frantic_Blackout,($FFFFFF93).w
+		rts
+; ---------------------------------------------------------------------------
+
+StateCheck_Yes:	moveq #0,d0
+		rts
+StateCheck_No:	moveq #-1,d0
+		rts
+
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Subroutines to update and save game progression
+; ---------------------------------------------------------------------------
+
+Set_DoorOpen:
+		bset	d0,($FFFFFF8A).w	; unlock door (casual, but also in frantic)
+		frantic				; are we in frantic?
+		beq.s	@end			; if not, branch
+		bset	d0,($FFFFFF8B).w	; unlock door (frantic only)
+@end:		jmp	SRAM_SaveNow		; save
+; ---------------------------------------------------------------------------
+
+Set_BaseGameDone:
+		bset	#Casual_BaseGame,($FFFFFF93).w	; you have beaten the base game in casual, congrats
+		frantic					; or was it acutally in frantic?
+		beq.s	@save				; nah? that's a shame
+		bset	#Frantic_BaseGame,($FFFFFF93).w	; you have beaten the base game in frantic, mad respect
+@save:		jmp	SRAM_SaveNow			; save
+; ---------------------------------------------------------------------------
+
+Set_BlackoutDone:
+		bset	#Casual_Blackout,($FFFFFF93).w	; you have beaten the blackout challenge in casual, congrats
+		frantic					; or was it acutally in frantic?
+		beq.s	@save				; nah? that's a shame
+		bset	#Frantic_Blackout,($FFFFFF93).w	; you have beaten the base game in frantic, mad respect
+@save:		bsr	Set_BaseGameDone		; also set base game beaten state, just in case
+		jmp	SRAM_SaveNow			; save
 ; ---------------------------------------------------------------------------
 ; ===========================================================================

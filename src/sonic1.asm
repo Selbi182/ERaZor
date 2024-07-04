@@ -64,11 +64,11 @@ __DEBUG__: equ 1
 QuickLevelSelect = 0
 QuickLevelSelect_ID = $300
 ; ------------------------------------------------------
-DebugModeDefault = 1
+DebugModeDefault = 0
 DebugSurviveNoRings = 0
 ; ------------------------------------------------------
-DoorsAlwaysOpen = 1
-LowBossHP = 0
+DoorsAlwaysOpen = 0
+LowBossHP = 1
 ; ======================================================
 	else
 ; ======================================================
@@ -465,81 +465,10 @@ SRAM_SaveNow_End:
 		move.b	#0,($A130F1).l				; disable SRAM
 		rts
 	endif	; def(__MD_REPLAY__)=0
-
-
+; ---------------------------------------------------------------------------
 ; ===========================================================================
-; ---------------------------------------------------------------------------
-; Subtroutines to ease coordinating the game progress (casual/frantic)
-; ---------------------------------------------------------------------------
 
-IsDoorOpen:
-		frantic				; are we in frantic?
-		bne.s	@frantic		; if yes, branch
-		btst	d0,($FFFFFF8A).w	; check if door is open (casual)
-		rts
-@frantic:
-		btst	d0,($FFFFFF8B).w	; check if door is open (frantic)
-		rts
-; ---------------------------------------------------------------------------
 
-OpenDoor:
-		bset	d0,($FFFFFF8A).w	; unlock door (casual)
-		frantic				; are we in frantic?
-		beq.s	@end			; if not, branch
-		bset	d0,($FFFFFF8B).w	; unlock door (frantic)
-@end:		rts
-
-; ===========================================================================
-Casual_BaseGame  = 0
-Casual_Blackout  = 1
-Frantic_BaseGame = 2
-Frantic_Blackout = 3
-; ---------------------------------------------------------------------------
-
-IsBaseGameBeaten:
-		btst	#Frantic_BaseGame,($FFFFFF93).w	; has the player beaten the base game in frantic?
-		bne.s	StateCheck_Yes			; if yes, branch
-		frantic					; are we in frantic?
-		bne.s	StateCheck_No			; if yes, branch
-		btst	#Casual_BaseGame,($FFFFFF93).w	; has the player beaten the base game in casual?
-		rts					; ccr is returned
-; ---------------------------------------------------------------------------
-
-IsBlackoutBeaten:
-		btst	#Frantic_Blackout,($FFFFFF93).w	; has the player beaten the blackout challenge in frantic?
-		bne.s	StateCheck_Yes			; if yes, branch
-		frantic					; are we in frantic?
-		bne.s	StateCheck_No			; if yes, branch
-		btst	#Casual_Blackout,($FFFFFF93).w	; has the player beaten the blackout challenge in casual?
-		rts					; ccr is returned
-; ---------------------------------------------------------------------------
-
-BaseGameDone:
-		bset	#Casual_BaseGame,($FFFFFF93).w	; you have beaten the base game in casual, congrats
-		frantic					; or was it acutally in frantic?
-		beq.s	@save				; nah? that's a shame
-		bset	#Frantic_BaseGame,($FFFFFF93).w	; you have beaten the base game in frantic, mad respect
-@save:		jmp	SRAM_SaveNow			; save
-; ---------------------------------------------------------------------------
-
-BlackoutDone:
-		bset	#Casual_Blackout,($FFFFFF93).w	; you have beaten the blackout challenge in casual, congrats
-		frantic					; or was it acutally in frantic?
-		beq.s	@save				; nah? that's a shame
-		bset	#Frantic_Blackout,($FFFFFF93).w	; you have beaten the base game in frantic, mad respect
-@save:		bsr	BaseGameDone			; also set base game beaten state, just in case
-		jmp	SRAM_SaveNow			; save
-; ---------------------------------------------------------------------------
-
-StateCheck_Yes:
-		moveq #0,d0
-		rts
-
-StateCheck_No:
-		moveq #-1,d0
-		rts
-
-; ---------------------------------------------------------------------------
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; H-Blank - LZ water palette swap effect
@@ -3490,13 +3419,6 @@ Level:					; XREF: GameModeArray
 		bsr	LoadPLC		; load level patterns
 
 loc_37FC:
-		cmpi.w	#$001,($FFFFFE10).w	; is level intro cutscene?
-		beq.s	Level_NoSRAM		; if yes, don't save anything
-		cmpi.w	#$501,($FFFFFE10).w	; is this the tutorial?
-		beq.s	Level_NoSRAM		; if yes, don't save anything
-		jsr	SRAM_SaveNow		; save our progress
-
-Level_NoSRAM:
 		cmpi.w	#$500,($FFFFFE10).w	; is this the bomb machine cutscen?
 		beq.s	@skipstandard		; if yes, don't load these PLCs to avoid breaching the queue
 		moveq	#1,d0
@@ -4905,10 +4827,9 @@ SpecialStage:				; XREF: GameModeArray
 		move.w	#$CA,d0
 		bsr	PlaySound_Special ; play special stage entry sound
 		bsr	Pal_MakeFlash
-@cont:
-		jsr	SRAM_SaveNow		; save our progress on entering a special stage
 ; ---------------------------------------------------------------------------
 
+@cont:
 		VBlank_SetMusicOnly
 		lea	($C00004).l,a6
 		move.w	#$8B03,(a6)
@@ -9178,7 +9099,7 @@ Obj2A_Main:				; XREF: Obj2A_Index
 		bne.s	@nosoundstopper		; if not, branch
 		tst.b	obSubtype(a0)		; is this the door leading to the blackout challenge?
 		bpl.s	@nosoundstopper		; if not, branch
-		jsr	IsBaseGameBeaten	; has the player beaten the base game?
+		jsr	Check_BaseGameBeaten	; has the player beaten the base game?
 		beq.s	@nosoundstopper		; if not, don't load sound stopper
 
 		bsr	SingleObjLoad
@@ -9227,7 +9148,7 @@ Obj2A_OpenShut:				; XREF: Obj2A_Index
 		bra.w	Obj2A_Animate		; force door to be red
 
 @finaldoornotpassed:
-		jsr	IsBaseGameBeaten	; has the player beaten the base game?
+		jsr	Check_BaseGameBeaten	; has the player beaten the base game?
 		bne.s	@usegreendoor		; if yes, open the door
 		bra.w	Obj2A_Animate		; otherwise, keep it locked
 
@@ -12166,14 +12087,14 @@ Obj4B_Main:				; XREF: Obj4B_Index
 		cmpi.b	#GRing_GreenHill,obSubtype(a0)	; is this a ring leading to Green Hill Place (NHP act 2)?
 		bne.s	@tempringcont1			; if not, branch
 		moveq	#0,d0				; has the player beaten this level before?
-		jsr	IsDoorOpen
+		jsr	Check_LevelBeaten
 		bne.s	Obj4B_Main_Cont			; if yes, branch
 		jmp	DeleteObject			; otherwise, delete this ring
 @tempringcont1:
 		cmpi.b	#GRing_StarAgony,obSubtype(a0)	; is this a ring leading to Star Agony Place (SNP act 2)?
 		bne.s	@tempringcont2			; if not, branch
 		moveq	#5,d0				; has the player beaten this level before?
-		jsr	IsDoorOpen
+		jsr	Check_LevelBeaten
 		bne.s	Obj4B_Main_Cont			; if yes, branch
 		jmp	DeleteObject			; otherwise, delete this ring	
 @tempringcont2:
@@ -18826,25 +18747,25 @@ Obj12_CheckGameState:
 ; ---------------------------------------------------------------------------
 
 @basegame:
-		btst	#Frantic_BaseGame,($FFFFFF93).w	; has the player beaten the base game in frantic?
-		beq.s	@bgnotfrantic			; if yes, branch
+		jsr	Check_BaseGameBeaten_Frantic	; has the player beaten the base game in frantic?
+		beq.s	@bgnotfrantic			; if not, branch
 		move.b	#1,$30(a0)			; use red star frame
-		bra.s	Obj12_Init
+		bra.s	Obj12_Init			; show star
 @bgnotfrantic:
-		btst	#Casual_BaseGame,($FFFFFF93).w	; has the player beaten the base game in casual?
-		bne.s	Obj12_Init
-		jmp	DeleteObject
+		jsr	Check_BaseGameBeaten_Casual	; has the player beaten the base game in casual?
+		bne.s	Obj12_Init			; if yes, show gray star
+		jmp	DeleteObject			; otherwise, no star
 ; ---------------------------------------------------------------------------
 
 @blackout:
-		btst	#Frantic_Blackout,($FFFFFF93).w	; has the player beaten the blackout challenge in frantic?
-		beq.s	@bcnotfrantic			; if yes, branch
+		jsr	Check_BlackoutBeaten_Frantic	; has the player beaten the blackout challenge in frantic?
+		beq.s	@bcnotfrantic			; if not, branch
 		move.b	#1,$30(a0)			; use red star frame
-		bra.s	Obj12_Init
+		bra.s	Obj12_Init			; show star
 @bcnotfrantic:
-		btst	#Casual_Blackout,($FFFFFF93).w	; has the player beaten the blackout challenge in casual?
-		bne.s	Obj12_Init
-		jmp	DeleteObject
+		jsr	Check_BlackoutBeaten_Casual	; has the player beaten the blackout challenge in casual?
+		bne.s	Obj12_Init			; if yes, show gray star
+		jmp	DeleteObject			; otherwise, no star
 
 ; ---------------------------------------------------------------------------
 
@@ -41147,7 +41068,7 @@ Emershit:
 		moveq	#$FFFFFF88,d0		; play regular special stage beaten jingle
 		tst.b	($FFFFFF5F).w		; is this the blackout blackout special stage?
 		beq.s	@cont			; if not, branch
-		jsr	BlackoutDone		; you have beaten the blackout challenge, congrats
+		jsr	Set_BlackoutDone	; you have beaten the blackout challenge, congrats
 		moveq	#$FFFFFF91,d0		; play true ending music
 
 @cont:

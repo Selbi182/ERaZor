@@ -300,28 +300,7 @@ CJML_FinishUp:
 ; ---------------------------------------------------------------------------
 
 CJML_End:
-		moveq	#$E,d0			; load FZ pallet (cause tutorial boxes are built into SBZ)
-		jsr	PalLoad2		; load pallet
-
-		moveq	#$F,d0			; load text after beating the game in casual mode
-		frantic				; have you beaten the game in frantic mode?
-		beq.s	@basegamehint		; if not, pussy
-		moveq	#$10,d0			; load text after beating the game in frantic mode
-@basegamehint:	jsr	Tutorial_DisplayHint	; VLADIK => Display hint
-
-		jsr	IsBaseGameBeaten	; have you already beaten the base game?
-		bne.s	@checkblackout		; if yes, branch
-		moveq	#$11,d0			; load Cinematic Mode unlock text
-		jsr	Tutorial_DisplayHint	; VLADIK => Display hint
-
-@checkblackout:
-		jsr	IsBlackoutBeaten	; have you already beaten the blackout challenge?
-		bne.s	@markgameasbeaten	; if yes, branch
-		moveq	#$12,d0			; load Blackout Challenge teaser text
-		jsr	Tutorial_DisplayHint	; VLADIK => Display hint
-
-@markgameasbeaten:
-		jsr	BaseGameDone		; you have beaten the base game, congrats
+		addq.w	#4,sp			; skip return address (inherited quirk from the credits screen)
 		jmp	Exit_CreditsScreen
 
 ; ---------------------------------------------------------------------------

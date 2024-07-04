@@ -842,7 +842,7 @@ GameModeArray:
 		dc.l	SpecialStage		; Special Stage		($10)
 		dc.l	Deleted_Mode		; X Continue Screen	($14)
 		dc.l	EndingSequence		; Ending Sequence	($18)
-		dc.l	Deleted_Mode		; X Old Credits		($1C)
+		dc.l	SelbiSplash		; Selbi Splash Screen	($1C)
 		dc.l	StoryTextScreen		; Story Text Screen	($20)
 		dc.l	OptionsScreen		; Options Screen	($24)
 		dc.l	ChapterScreen		; Chapters Screen	($28)
@@ -1148,10 +1148,8 @@ Pause_MainLoop:
 		
 		btst	#6,($FFFFF605).w 	; is button A pressed?
 		beq.s	Pause_ChkBC		; if not, branch
-		move.b	#1,($FFFFFF94).w	; set "exited via Start+A" flag
 		bsr.s	Pause_Restore		; restore from pause (grayscale palette, etc.)
-		moveq	#0,d0			; set to exited via Pause+A
-		jmp	Exit_Level
+		jmp	ReturnToUberhub
 ; ===========================================================================
 
 Pause_ChkBC:
@@ -2871,7 +2869,7 @@ Sega_NoSound:
 
 Sega_GotoTitle:
 		clr.b	($FFFFFFBE).w
-		jmp	SelbiSplash
+		jmp	Exit_SegaScreen
 ; ===========================================================================
 
 ; ---------------------------------------------------------------------------
@@ -3414,7 +3412,7 @@ MainLevelArray:
 		dc.w	$400	; 8 - Uberhub
 		dc.w	$501	; 9 - Tutorial Place (SBZ 2)
 		dc.w	$302	; A - Star Agony Place
-		dc.w	$FFFF	; None of the above
+		dc.w	-1	; None of the above
 		even
 
 
@@ -3457,7 +3455,6 @@ MusicList:
 
 ; Level::	<-- for quick search
 Level:					; XREF: GameModeArray
-		clr.b	($FFFFFF94).w
 		bset	#7,($FFFFF600).w ; add $80 to screen mode (for pre level sequence)
 		bsr	PLC_ClearQueue
 		jsr	DrawBuffer_Clear
@@ -4975,10 +4972,10 @@ SS_ClrNemRam:	move.l	d0,(a1)+
 
 		bsr	DeformBgLayer
 
+		bsr	ClearEverySpecialFlag
 		clr.b	($FFFFF64E).w
 		clr.w	($FFFFFE02).w
 		clr.b	($FFFFFE57).w
-		clr.b	($FFFFFF94).w
 
 		moveq	#$A,d0		; load default palette
 		tst.b	($FFFFFF5F).w	; is this the blackout special stage?
@@ -5111,20 +5108,8 @@ loc_47D4:
 SS_EndClrObjRamX:
 		move.l	d0,(a1)+
 		dbf	d1,SS_EndClrObjRamX ; clear object RAM
-
-		clr.b	($FFFFFFE7).w	; make sonic mortal
-		clr.b	($FFFFFFE1).w	; make sonic not being on the foreground
-		clr.b	($FFFFFFAA).w		; clear crabmeat boss flag 1
-		clr.b	($FFFFFFAB).w		; clear crabmeat boss flag 2
-		clr.b	($FFFFFFA9).w		; clear crabmeat boss flag 3
-		clr.b	($FFFFFFB4).w
-		clr.b	($FFFFFFB8).w
-		clr.b	($FFFFFFB7).w
-		clr.b	($FFFFFFB9).w
-		clr.b	($FFFFFE30).w	; clear	lamppost counter
-		clr.b	($FFFFFFD3).w
-		clr.b	($FFFFFFBB).w
-		clr.b	($FFFFFFB6).w
+		
+		jsr	ClearEverySpecialFlag
 		
 		move.l	a0,-(sp)
 		lea	($FFFFD000).w,a0
@@ -5137,13 +5122,8 @@ SS_EndClrObjRamX:
 		jsr	BuildSprites
 		bsr	Pal_MakeFlash
 
-		moveq	#0,d0			; set to exited via Pause+A
-		tst.b	($FFFFFF94).w		; was special stage exited via Pause+A?
-		bne.s	@nopoints		; if yes, no points 4 u
 		move.l	#10000,d0		; add 100000 ...
 		jsr	AddPoints		; ... points
-		moveq	#1,d0			; set to beaten legitimately
-@nopoints:
 		jmp	Exit_Level
 ; ===========================================================================
 
@@ -12367,7 +12347,7 @@ Obj4B_MoveOffScreen:			; XREF: Obj4B_Index
 		cmpi.b	#GRing_Blackout,obSubtype(a0)	; is this the blackout challenge ring?
 		bne.s	@contnotred		; if not, branch
 		addi.w	#$20,obVelY(a0)		; move ring down
-		bra.w	Obj4B_Return
+		rts
 
 @contnotred:
 		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
@@ -12398,11 +12378,13 @@ Obj4B_MoveOffScreen:			; XREF: Obj4B_Index
 		move.w	($FFFFF704).w,d0	; get Y camera position (screen is currently locked)
 		subi.w	#$100,d0		; adjust upper offset
 		cmp.w	obY(a0),d0		; did ring move out of the top screen yet?
-		blt.w	Obj4B_Return		; if not, branch
-		jmp	Exit_GiantRing
+		bge.w	Obj4B_Exit		; if yes, branch
+		rts				; wait until ring is offscreen
 
-Obj4B_Return:
-		rts
+Obj4B_Exit:
+		moveq	#0,d0			; clear d0
+		move.b	obSubtype(a0),d0	; copy the ring we came from to d0
+		jmp	Exit_GiantRing		; run exit logic to start the level
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
 
@@ -19169,7 +19151,6 @@ Obj0D_SonicRun:				; XREF: Obj0D_Index
 
 loc_EC86:
 		addq.b	#2,obRoutine(a0)
-		moveq	#1,d0			; set to beaten legitimately
 		jmp	Exit_Level
 
 locret_ECEE:
@@ -27289,9 +27270,6 @@ Boundary_Bottom:
 		blt.s	Boundary_Bottom_locret	
 		cmpi.w	#$001,($FFFFFE10).w ; is level GHZ2 ?
 		bne.s	BB_NotGHZ2
-		clr.b	($FFFFFFB8).w
-		clr.b	($FFFFFFB7).w
-		clr.b	($FFFFFFB6).w
 
 Boundary_Bottom_locret:
 		rts
@@ -29184,9 +29162,6 @@ Obj01_ResetLevelX:			; XREF: Obj01_Index
 		subq.w	#1,$3A(a0)	; subtract 1 from time delay
 		bne.s	locret_13914
 		move.w	#1,($FFFFFE02).w ; restart the level
-		clr.b	($FFFFFFAC).w
-		clr.b	($FFFFFFBB).w
-		clr.b	($FFFFFFB8).w
 
 locret_13914:
 		rts

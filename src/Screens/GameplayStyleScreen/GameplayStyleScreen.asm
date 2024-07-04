@@ -33,7 +33,20 @@ GameplayStyleScreen:
 		move.w	#$1F,d1
 @ClrPal:	move.l	d0,(a1)+
 		dbf	d1,@ClrPal
-		
+
+		lea	($FFFFCC00).w,a1
+		moveq	#0,d0
+		move.w	#224-1,d1
+@clearscroll:	move.l	d0,(a1)+
+		dbf	d1,@clearscroll
+
+		move.l	#$40000010,(a6)
+		lea	($C00000).l,a0
+		moveq	#0,d0
+		moveq	#40-1,d1
+@clearvsram:	move.w	d0,(a0)
+		dbf	d1,@clearvsram
+
 		move.l	#$40000000,($C00004).l		; load art
 		lea	($C00000).l,a6
 		lea	(ArtKospM_Difficulty).l,a0
@@ -50,8 +63,6 @@ GameplayStyleScreen:
 		moveq	#$1B,d2
 		jsr	ShowVDPGraphics
 
-		moveq	#1,d0
-		bsr	GSS_LoadPal
 
 		move.b	#0,GSS_FirstStart
 		tst.b	($FFFFFFA7).w		; is this the first time the game is being played?
@@ -60,6 +71,8 @@ GameplayStyleScreen:
 		move.b	#1,GSS_FirstStart
 
 @endsetup:
+		moveq	#1,d0
+		bsr	GSS_LoadPal
 		VBlank_UnsetMusicOnly
 		display_enable
 		jsr	Pal_FadeTo			; fade in
@@ -91,7 +104,7 @@ GSS_LoadPal:
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
 
-; I HATE THIS CODE SO MUCH <-- I think it's already ngl
+; I HATE THIS CODE SO MUCH <-- I think it's already pretty swag ngl
 GSS_MainLoop:
 		move.w	#0,($FFFFFB00).w
 		move.b	#$12,VBlankRoutine

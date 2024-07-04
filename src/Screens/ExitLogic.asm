@@ -22,13 +22,14 @@
 ReturnToUberhub:
 		; instantly
 		move.w	#$400,($FFFFFE10).w	; set level to Uberhub
-		move.b	#$C,($FFFFF600).w	; set to level
-		move.w	#1,($FFFFFE02).w	; restart level
-		rts				; return to MainGameLoop
+		bra.s	StartLevel		; start level
 
 ReturnToUberhub_Chapter:
-		; show chapter screen first
 		move.w	#$400,($FFFFFE10).w	; set level to Uberhub
+		btst	#1,($FFFFFF92).w	; is "Skip Story Screens" enabled?
+		beq.s	StartLevel		; if yes, skip chapter screen
+
+		; show chapter screen first
 		move.b	#$28,($FFFFF600).w	; set to chapters screen
 		rts				; return to MainGameLoop
 
@@ -48,12 +49,12 @@ StartLevel:
 		; regular level
 		move.b	#$C,($FFFFF600).w	; set to level
 		move.w	#1,($FFFFFE02).w	; restart level
-		rts
+		rts				; return to MainGameLoop
 
 @startspecial:
 		; special stage
 		move.b	#$10,($FFFFF600).w	; set to special stage
-		rts
+		rts				; return to MainGameLoop
 
 
 ; ===========================================================================
@@ -73,7 +74,7 @@ Exit_SelbiSplash:
 
 Exit_TitleScreen:
 		tst.b	d0			; d0 = 0 resume from savegame / 1 first time playing
-		beq.w	ReturnToUberhub_Chapter	; always show chapter screen when returning to Uberhub on launch
+		beq.w	ReturnToUberhub_Chapter	; always show chapter screen when returning to Uberhub from the title screen
 		move.b	#$30,($FFFFF600).w	; for the first time, set to Gameplay Style Screen (which then starts the intro cutscene)
 		rts
 ; ===========================================================================
@@ -158,9 +159,8 @@ Exit_ChapterScreen_StartIntro:
 ; ===========================================================================
 
 Exit_IntroCutscene:
-		move.b	#$20,($FFFFF600).w	; set screen mode to story text screens
 		move.b	#1,($FFFFFF9E).w	; set number for text to 1 ("The spiked sucker...")
-		rts
+		bra.w	RunStory		; run story
 ; ===========================================================================
 
 Exit_BombMachineCutscene:
@@ -218,10 +218,8 @@ Exit_GiantRing:
 
 		cmpi.w	#$001,($FFFFFE10).w	; is level intro cutscene?
 		beq.w	MiscRing_IntroEnd	; if yes, branch
-		cmpi.w	#$302,($FFFFFE10).w	; is this the easter egg ring in Star Agony Place?
-		beq.w	MiscRing_SAP		; if yes, branch
 		cmpi.b	#5,($FFFFFE10).w	; is this the a ring in the tutorial/Finalor?
-		beq.w	MiscRing_TutorialFP	; if yes, branch
+		beq.w	Exit_Level		; if yes, consider this a beaten level
 
 		bra.w	ReturnToUberhub		; otherwise something went wrong, return to Uberhub as fallback
 ; ===========================================================================
@@ -297,7 +295,11 @@ HubRing_FP:	move.w	#$502,($FFFFFE10).w	; set level to FZ
 HubRing_IntroStart:
 		move.w	#$001,($FFFFFE10).w	; set to intro cutscene (this also controls the start of the intro cutscene itself)
 		move.b	#$28,($FFFFF600).w	; load chapters screen for intro cutscene ("One Hot Day...")
-		rts
+		rts				; this is the only text screen not affected by Skip Story Texts
+
+MiscRing_IntroEnd:
+		move.b	#1,($FFFFFF9E).w	; set number for text to 1
+		bra.w	RunStory
 
 HubRing_Ending:
 		move.b	#$20,($FFFFF600).w	; load info screen
@@ -317,28 +319,6 @@ HubRing_Blackout:
 		move.w	#$401,($FFFFFE10).w	; set level to Unreal
 		move.b	#1,($FFFFFF5F).w	; set Blackout Challenge flag
 		bra.w	StartLevel		; good luck
-; ---------------------------------------------------------------------------
-
-MiscRing_IntroEnd:
-		move.b	#1,($FFFFFF9E).w	; set number for text to 1
-		move.b	#$20,($FFFFF600).w	; set screen mode to info screen
-		rts
-
-MiscRing_SAP:
-		move.b	#$20,($FFFFF600).w	; load info screen
-		move.b	#9,($FFFFFF9E).w	; set number for text to 9 (easter egg text)
-		move.b	#$9D,d0			; play ending sequence music (cause it fits for the easter egg lol)
-		jmp	PlaySound
-
-MiscRing_TutorialFP:
-		tst.b	(FZEscape).w		; is this also the Finalor escape sequence?
-		beq.s	Exit_Level		; if not, just exit
-		move.l	a0,-(sp)		; backup to stack
-		move.w	#$DD,d0			; play one last big boom sound for good measure
-		jsr	PlaySound_Special
-		jsr	Pal_MakeWhite		; make white flash
-		move.l (sp)+,a0			; restore from stack
-		; hooray you've escaped, go to Exit_Level
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -443,7 +423,7 @@ SkipUberhub:
 
 NextLevel_Array:
 		dc.w	$001	; Intro Cutscene
-		dc.w	$501	; Tutorial Place
+	;	dc.w	$501	; Tutorial Place
 		dc.w	$000	; Night Hill Place
 		dc.w	$002	; Green Hill Place
 		dc.w	$300	; Special Place

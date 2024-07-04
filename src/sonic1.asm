@@ -2687,7 +2687,7 @@ SegaScreen:				; XREF: GameModeArray
 		lea	($FF0180).l,a1
 		move.l	#$40000003,d0
 		moveq	#$27,d1
-		moveq	#$1B,d2
+		moveq	#$1B-5,d2
 		bsr	ShowVDPGraphics
 
 		moveq	#0,d0
@@ -2992,8 +2992,10 @@ LevelSelect_Load:
 		addi.w	#7,($FFFFD0C0+obScreenY).w	; slightly adjust banner
 		jsr	ObjectsLoad
 		jsr	BuildSprites
+		move.b	#4,VBlankRoutine	; run v-blank one more time...
+		bsr.w	DelayProgram		; ...to clear inputs
 
-		bra.w	LevelSelect
+		bra.w	LevelSelect		; to go level select loop
 ; ===========================================================================
 
 Title_NoLevSel:
@@ -3073,9 +3075,6 @@ ERaZorBannerPalette:
 LevelSelect:
 		move.b	#4,VBlankRoutine
 		bsr.w	DelayProgram
-		bsr.w	PLC_Execute
-		tst.l	PLC_Pointer
-		bne.s	LevelSelect
 
 		bsr.w	LevSelControls		; up/down controls
 		andi.b	#$F0,($FFFFF605).w	; is A, B, C, or Start pressed?
@@ -4806,12 +4805,12 @@ Signpost_Exit:
 
 SpecialStage:				; XREF: GameModeArray
 		tst.b	($FFFFFF5F).w	; is this the blackout special stage?
-		beq.s	@notblackout		; if not, branch
+		beq.s	@notblackout	; if not, branch
 		
 		clr.b	($FFFFFFD0).w	; disable distortion effect
 		clr.b	($FFFFFF64).w	; disable screen shake effect
 		
-		move.w	#$E4,d0			; stop music
+		move.w	#$E4,d0		; stop music
 		bsr	PlaySound_Special
 		
 		; instantly turn the entire palette black
@@ -12158,7 +12157,7 @@ Obj4B_YPositive:
 		cmpi.w	#$20,d0
 		bgt.s	Obj4B_DontCollect
 
-		; new censored easter egg (overrides the old naughty one)
+		; new censored easter egg (replaced the old naughty one)
 		cmpi.w	#$302,($FFFFFE10).w	; is this Star Agony Place? (easter egg ring)
 		bne.s	@notsap			; if not, branch
 		clr.w	($FFFFD010).w
@@ -12286,17 +12285,16 @@ Obj4B_MoveOffScreen:			; XREF: Obj4B_Index
 
 @NoPaletteChange:
 		tst.b	($FFFFFF7D).w		; is ring moving up?
-		bne.s	@cont2			; if yes, branch
+		bne.s	@goinup			; if yes, branch
 		addi.w	#$10,obVelY(a0)		; move ring down
 		move.b	#2,$38(a0)		; spin slow
 		cmpi.w	#$340,obVelY(a0)	; has a certain downward velocity been reached?
-		bmi.s	@cont			; if not, branch
+		bmi.s	@updatepos		; if not, branch
 		move.b	#1,($FFFFFF7D).w	; make ring move upwards
-		bra.s	@cont
-@cont2:
+@goinup:
 		subi.w	#$50,obVelY(a0)		; move ring upwards
 		move.b	#0,$38(a0)		; spin fast
-@cont:
+@updatepos:
 		jsr	SpeedToPos		; move giant ring
 
 		move.w	($FFFFF704).w,d0	; get Y camera position (screen is currently locked)
@@ -12306,6 +12304,17 @@ Obj4B_MoveOffScreen:			; XREF: Obj4B_Index
 		rts				; wait until ring is offscreen
 
 Obj4B_Exit:
+		cmpi.w	#$502,($FFFFFE10).w	; are we in FP?
+		bne.s	@exitfromring		; if not, branch
+		tst.b	(FZEscape).w		; is this also the Finalor escape sequence?
+		beq.s	@exitfromring		; if not, branch (double check just in case)
+		move.w	#$DD,d0			; hooray you've escaped
+		jsr	PlaySound_Special	; play one last big boom sound for good measure
+		move.l	a0,-(sp)		; backup to stack
+		jsr	Pal_MakeWhite		; make white flash
+		move.l (sp)+,a0			; restore from stack
+
+@exitfromring:
 		moveq	#0,d0			; clear d0
 		move.b	obSubtype(a0),d0	; copy the ring we came from to d0
 		jmp	Exit_GiantRing		; run exit logic to start the level
@@ -40776,6 +40785,11 @@ locret_1BBDE:
 Obj09_ExitStage:			; XREF: Obj09_Index
 		addi.w	#$40,($FFFFF782).w	; increase spinniness of stage
 
+		cmpi.w	#$1800,($FFFFF782).w
+		bne.s	loc_1BBF4
+		move.b	#$C,($FFFFF600).w
+
+loc_1BBF4:
 		cmpi.w	#$3000,($FFFFF782).w
 		blt.s	loc_1BC12
 		move.w	#0,($FFFFF782).w
@@ -40794,6 +40808,11 @@ loc_1BC12:
 ; ===========================================================================
 
 Obj09_Exit2:				; XREF: Obj09_Index
+		subq.w	#1,$38(a0)
+		bne.s	loc_1BC40
+		move.b	#$C,($FFFFF600).w
+
+loc_1BC40:
 		jsr	Sonic_Animate
 		jsr	LoadSonicDynPLC
 		bsr	SS_FixCamera

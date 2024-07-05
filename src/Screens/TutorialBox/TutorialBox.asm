@@ -912,15 +912,19 @@ Hint_6:
 	boxtxt	"ASKING TOO MUCH FROM"
 	boxtxt	"YOU, SIMPLY PRESS"
 	boxtxt_line
-	boxtxt	"a + b + c"
+	boxtxt	"~ + a"
 	boxtxt_line
 	boxtxt	"IN FRONT OF THIS"
 	boxtxt	"DEVICE TO SKIP IT!"
 	boxtxt_next
 	
 	boxtxt	"THIS ALSO WORKS IN"
-	boxtxt	"SPECIAL STAGES,"
-	boxtxt	"AT ANY TIME!"
+	boxtxt	"SPECIAL STAGES"
+	boxtxt	"AT ANY TIME WITH"
+	boxtxt_line
+	boxtxt	"a + b + c"
+	boxtxt_line
+	boxtxt	"HELD AT ONCE!"
 	boxtxt_pause
 
 	dc.b	_frantic

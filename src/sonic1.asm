@@ -25626,7 +25626,7 @@ Map_Obj03:
 
 Obj06:
 		moveq	#0,d0			; clear d0
-		move.b	obRoutine(a0),d0		; move routine counter to d0
+		move.b	obRoutine(a0),d0	; move routine counter to d0
 		move.w	Obj06_Index(pc,d0.w),d1 ; move the index to d1
 		jmp	Obj06_Index(pc,d1.w)	; find out the current position in the index
 ; ===========================================================================
@@ -25678,14 +25678,10 @@ Obj06_ChkDist:
 		tst.b	($FFFFFFB1).w		; is white flash counter empty?
 		bpl.w	Obj06_Display		; if not, branch (to prevent the white getting stuck)
 	
-		move.b	($FFFFF602).w,d0	; get button presses
-		eori.b	#$70,d0			; sort out any non ABC button presses
-		tst.w	($FFFFFFFA).w		; is debug cheat enabled?
-		beq.s	@notdebug		; if not, branch
-		move.b	($FFFFF602).w,d0	; get button presses
-		eori.b	#$60,d0			; filter out B to not interfere with debug mode
-@notdebug:	tst.b	d0			; all buttons pressed?
-		bne.w	Obj06_Display		; if not, branch
+		moveq	#0,d0
+		move.b	($FFFFF602).w,d0	; get held button presses
+		eori.b	#$42,d0			; sort out anything but Down and A
+		bne.w	Obj06_Display		; all buttons pressed? if not, branch
 
 		move.w	($FFFFD008).w,d0	; get Sonic's X-pos
 		sub.w	obX(a0),d0		; substract the X-pos from the current object from it

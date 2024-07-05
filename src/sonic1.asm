@@ -1882,7 +1882,24 @@ loc_1EF4:
 
 		dbf	d5,loc_1EF4
 		rts	
+
 ; ===========================================================================
+Pal_CutToWhite:
+		move.w	#$3F,($FFFFF626).w
+		moveq	#0,d0
+		lea	($FFFFFB00).w,a0
+		move.b	($FFFFF626).w,d0
+		adda.w	d0,a0
+		move.w	#$EEE,d1
+		move.b	($FFFFF627).w,d0
+
+@Loop:
+		move.w	d1,(a0)+
+		dbf	d0,@Loop
+		rts
+
+; ===========================================================================
+
 
 ;WhiteIn_FromWhite:
 Pal_WhiteToBlack:			; XREF: Pal_MakeWhite
@@ -12315,9 +12332,16 @@ Obj4B_Exit:
 		move.w	#$DD,d0			; hooray you've escaped
 		jsr	PlaySound_Special	; play one last big boom sound for good measure
 		move.l	a0,-(sp)		; backup to stack
-		jsr	Pal_MakeWhite		; make white flash
+		jsr Pal_CutToWhite
 		move.l (sp)+,a0			; restore from stack
+		move.w 	#120, d5
 
+@WaitLoop:
+		move.b	#$12,VBlankRoutine
+		jsr 	DelayProgram
+
+		dbf 	d5, @WaitLoop
+		
 @exitfromring:
 		moveq	#0,d0			; clear d0
 		move.b	obSubtype(a0),d0	; copy the ring we came from to d0
@@ -22947,7 +22971,7 @@ Obj5E_FC2:
 ;│This code is very delicate.
 ;│Edit responsibly. Or not.
 ;└─ｖ─────────────────────────
-;.　∧,,∧
+;　∧,,∧
 ; （＾o＾）
 ;.（　　）
 

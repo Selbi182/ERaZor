@@ -98,7 +98,7 @@ Tutorial_DisplayHint:
 
 	cmpi.b	#10,($FFFFFF6E).w	; is this the introduction text?
 	bne.s	DH_MainLoop		; if not, branch
-	jsr	BGDeformation_Setup
+	jsr	BackgroundEffects_Setup
 	lea	VDP_Ctrl,a6   
 	lea	VDP_Data,a5
 
@@ -112,7 +112,7 @@ DH_MainLoop:
 
 	cmpi.b	#10,($FFFFFF6E).w	; is this the introduction text?
 	bne.s	DH_NormalDeform		; if not, branch
-	jsr	Options_BackgroundEffects
+	jsr	BackgroundEffects_Update
 	bra.w	DH_Continue
 
 DH_NormalDeform:

@@ -2749,7 +2749,7 @@ Sega_WaitPallet:
 
 		tst.b	($FFFFF635).w
 		bne.s	@0
-		jsr	Options_BGDeformation2
+		jsr	BackgroundEffects_Deformation2
 @0:
 		move.b	#2,VBlankRoutine
 		bsr	DelayProgram
@@ -2967,8 +2967,9 @@ Title_MainLoop:
 		beq.s	StartGame	; if yes, start game
 
 		lea	($FFFFFB60).w,a2
-		moveq	#1,d2			; do blue rotation
-		bsr.w	ERaZorBannerPalette
+		bsr.w	GenericPalCycle_Blue
+		lea	($FFFFFB60).w,a2
+		bsr.w	GenericPalCycle_Red		
 
 	if QuickLevelSelect=1 & QuickLevelSelect_ID=$000
 		bra.s	LevelSelect_Load
@@ -3051,46 +3052,52 @@ ERZ_FadeOut:
 		rts
 
 ; ===========================================================================
+; ---------------------------------------------------------------------------
+; Generic palette cycles used for stuff like the ERaZor banner
+; ---------------------------------------------------------------------------
 
-ERZ_BlueSpeed = $3
-ERZ_RedSpeed = 3
-
-ERaZorBannerPalette:
+; 6 colors, offset $14 of a2
+GenericPalCycle_Red:
 		move.w	($FFFFFE0E).w,d0		; load V-Blank counter into d0
-		move.w	d0,d2				; copy to d2
-		andi.w	#ERZ_BlueSpeed,d0		; mask it against 3
-		bne.s	@doredpal			; if result isn't 0, branch
-		
-		; blue/gray palette rotation
-		tst.b	d1				; is blue color rotation set to be done?
-		beq.s	@doredpal			; if not, branch
-		move.w	4(a2),d0			; load first blue colour of sonic's palette into d0
-		moveq	#7,d1				; set loop counter to 7
-		lea	6(a2),a1			; load second blue colour into a1
-@blueloop:	move.w	(a1),-2(a1)			; move colour to last spot
-		adda.l	#2,a1				; increase location pointer
-		dbf	d1,@blueloop			; loop
-		move.w	d0,$12(a2)			; move first colour to last one
-
-@doredpal:
-		move.w	d2,d0				; load remaining time into d0
-		andi.w	#ERZ_RedSpeed,d0		; mask it against 7
+		andi.w	#3,d0				; mask it
 		bne.s	@end				; if result isn't 0, branch	
 
-		; red palette rotation
 		move.w	$14(a2),d0			; load first red colour of sonic's palette into d0
-		moveq	#5,d1				; set loop counter to 5
+		moveq	#6-1,d1				; set loop count
 		lea	$16(a2),a1			; load second red colour into a1
 @redloop:	move.w	(a1),-2(a1)			; move colour to last spot
 		adda.l	#2,a1				; increase location pointer
 		dbf	d1,@redloop			; loop
 		move.w	d0,$1E(a2)			; move first colour to last one
-
 @end:	
 		rts
+; ---------------------------------------------------------------------------
 
+; 8 colors, offset $06 of a2
+GenericPalCycle_Blue:
+		move.w	($FFFFFE0E).w,d0		; load V-Blank counter into d0
+		andi.w	#3,d0				; mask it
+		bne.s	@end				; if result isn't 0, branch
+		
+		move.w	4(a2),d0			; load first blue colour of sonic's palette into d0
+		moveq	#8-1,d1				; set loop count
+		lea	6(a2),a1			; load second blue colour into a1
+@blueloop:	move.w	(a1),-2(a1)			; move colour to last spot
+		adda.l	#2,a1				; increase location pointer
+		dbf	d1,@blueloop			; loop
+		move.w	d0,$12(a2)			; move first colour to last one
+@end:	
+		rts
+; ---------------------------------------------------------------------------
+
+ERZBanner_PalCycle:
+		lea	($FFFFFB20).w,a2
+		bra.w	GenericPalCycle_Red
+; ---------------------------------------------------------------------------
 ; ===========================================================================
 
+
+; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Level	Select
 ; ---------------------------------------------------------------------------
@@ -44536,6 +44543,7 @@ ObjPos_Null:	dc.w    $FFFF,$0000,$0000
 
 ; Screens
 		include "Screens/ExitLogic.asm"
+		include "Screens/BackgroundEffects.asm"
 		include "Screens/SelbiSplash/SelbiSplash.asm"
 		include "Screens/ChapterScreens/ChapterScreen.asm"
 		include "Screens/OptionsScreen/OptionsScreen.asm"

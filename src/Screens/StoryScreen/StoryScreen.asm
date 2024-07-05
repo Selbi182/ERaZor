@@ -81,7 +81,7 @@ STS_ClrObjRam:	move.l	d0,(a1)+
 STS_LoadText:	move.w	(a5)+,(a6)
 		dbf	d1,STS_LoadText		 ; load uncompressed text patterns
 
-		jsr	BGDeformation_Setup
+		jsr	BackgroundEffects_Setup
 
 		moveq	#$14,d0
 		jsr	PalLoad1		; load level select pallet
@@ -130,8 +130,9 @@ StoryScreen_MainLoop:
 		jsr	DelayProgram
 		jsr	ObjectsLoad
 		jsr	BuildSprites
-		jsr	Options_BackgroundEffects
-		jsr	Options_ERZPalCycle
+
+		jsr	BackgroundEffects_Update
+		jsr	ERZBanner_PalCycle
 
 		VBlank_SetMusicOnly
 		bsr	StoryScreen_ContinueWriting

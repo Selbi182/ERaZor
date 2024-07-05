@@ -240,14 +240,16 @@ Exit_GiantRing:
 ; ===========================================================================
 
 Exit_UberhubRing:
-		add.b	d0,d0
-		bhs.s	@nowrap
-		addi.w	#(GRing_Misc-GRing_Exits)-2,d0
-@nowrap:	move.w	GRing_Exits(pc,d0.w),d0
-		jmp	GRing_Exits(pc,d0.w)
+		add.b	d0,d0				; double ID to word
+		beq.w	HubRing_Invalid			; if it's 0, it's an invalid ring
+		bhs.s	@nowrap				; if it's 1-7F, branch
+		addi.w	#(GRing_Misc-GRing_Exits)-2,d0	; adjust for misc rings table
+@nowrap:	move.w	GRing_Exits(pc,d0.w),d0		; load offset to d0
+		jmp	GRing_Exits(pc,d0.w)		; jumpt to respective ring exit logic
 
 ; ===========================================================================
-GRing_Exits:	dc.w	HubRing_NHP-GRing_Exits
+GRing_Exits:	dc.w	HubRing_Invalid-GRing_Exits
+		dc.w	HubRing_NHP-GRing_Exits
 		dc.w	HubRing_GHP-GRing_Exits
 		dc.w	HubRing_SP-GRing_Exits
 		dc.w	HubRing_RP-GRing_Exits
@@ -265,6 +267,9 @@ GRing_Misc:	dc.w	HubRing_Options-GRing_Exits ; <-- notice the offsets!
 		dc.w	HubRing_Tutorial-GRing_Exits
 		dc.w	HubRing_Blackout-GRing_Exits
 ; ===========================================================================
+
+HubRing_Invalid:
+		bra.w	ReturnToUberhub
 
 HubRing_NHP:
 		move.w	#$000,($FFFFFE10).w	; set level to GHZ1

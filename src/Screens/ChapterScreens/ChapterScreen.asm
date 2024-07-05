@@ -3,6 +3,7 @@
 ; Chapter Screens
 ; ---------------------------------------------------------------------------
 ; $FFFFFFA7
+; 0: first launch of the game
 ; 1: Run To The Hills
 ; 2: Special Frustration
 ; 3: Inhuman Through The Ruins

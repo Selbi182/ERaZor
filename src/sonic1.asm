@@ -586,11 +586,13 @@ BlackBars.Reset:
 BlackBars.VBlankUpdate:
 		cmpi.b	#1,($FFFFFE10).w				; are we in LZ?
 		bne.s	@notlz						; if not, branch
-		cmpi.w	#HBlank_LZWaterSurface,HBlankSubW			; already set up?
-		beq.s	@0						; if yes, branch
+		cmpi.b	#$C,($FFFFF600).w				; are we done with the pre-level sequence?
+		bne.w	@notlz						; if not, branch
+		cmpi.w	#HBlank_LZWaterSurface,HBlankSubW		; already set up?
+		beq.s	@end						; if yes, branch
 		bsr.s	BlackBars.FullReset				; reset black bars (not supported in LZ)
-		move.w	#HBlank_LZWaterSurface,HBlankSubW			; go to original HBlank subroutine for LZ
-@0		rts
+		move.w	#HBlank_LZWaterSurface,HBlankSubW		; go to original HBlank subroutine for LZ
+@end		rts
 
 @notlz:
 		bsr.s	BlackBars.SetState
@@ -12079,11 +12081,11 @@ GRing_Unreal     = 6
 GRing_ScarNight  = 7
 GRing_StarAgony  = 8
 GRing_Finalor    = 9
-GRing_Ending     = $A
-GRing_Intro      = $B
 GRing_Options    = $81
 GRing_Tutorial   = $82
 GRing_Blackout   = $83
+GRing_Intro      = $84
+GRing_Ending     = $85
 ; ---------------------------------------------------------------------------
 
 Obj4B:					; XREF: Obj_Index

@@ -257,15 +257,13 @@ GRing_Exits:	dc.w	ReturnToUberhub-GRing_Exits	; invalid ring
 		dc.w	HubRing_UP-GRing_Exits
 		dc.w	HubRing_SNP-GRing_Exits
 		dc.w	HubRing_SAP-GRing_Exits
-		dc.w	HubRing_FP-GRing_Exits
-		
-		; TODO: move these to misc
-		dc.w	HubRing_Ending-GRing_Exits
-		dc.w	HubRing_IntroStart-GRing_Exits
+		dc.w	HubRing_FP-GRing_Exits		
 ; ---------------------------------------------------------------------------
 GRing_Misc:	dc.w	HubRing_Options-GRing_Exits ; <-- notice the offsets!
 		dc.w	HubRing_Tutorial-GRing_Exits
 		dc.w	HubRing_Blackout-GRing_Exits
+		dc.w	HubRing_IntroStart-GRing_Exits
+		dc.w	HubRing_Ending-GRing_Exits
 ; ===========================================================================
 
 HubRing_NHP:	move.w	#$000,($FFFFFE10).w	; set level to GHZ1

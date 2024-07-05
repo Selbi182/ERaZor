@@ -1,8 +1,6 @@
 ; ---------------------------------------------------------------------------
 ; Gameplay Style Screen (Casual Mode / Frantic Mode)
 ; ---------------------------------------------------------------------------
-GSS_FirstStart = $FFFFFF95
-; ---------------------------------------------------------------------------
 
 GameplayStyleScreen:
 		move.b	#$E0,d0
@@ -63,14 +61,6 @@ GameplayStyleScreen:
 		moveq	#$1B,d2
 		jsr	ShowVDPGraphics
 
-
-		move.b	#0,GSS_FirstStart
-		tst.b	($FFFFFFA7).w		; is this the first time the game is being played?
-		bne.s	@endsetup		; if yes, branch
-		move.b	#%00000011,($FFFFFF92).w ; load default options (casual, extended camera, story text screens)
-		move.b	#1,GSS_FirstStart
-
-@endsetup:
 		moveq	#1,d0
 		bsr	GSS_LoadPal
 		VBlank_UnsetMusicOnly
@@ -140,12 +130,8 @@ GSS_MainLoop:
 		jsr	DelayProgram
 		tst.w 	($FFFFF614).w
 		bne.s 	@Wait
-
-		moveq	#0,d0			; return to options menu
-		tst.b	GSS_FirstStart		; first time?
-		beq.s	@exitfr			; if not, branch
-		moveq	#1,d0			; go to intro cutscene
-@exitfr:	jmp	Exit_GameplayStyleScreen
+		
+		jmp	Exit_GameplayStyleScreen
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
 

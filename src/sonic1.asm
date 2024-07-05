@@ -329,7 +329,7 @@ GameClrRAM:	move.l	d7,(a6)+
 		endif
 		endif
 	else
-		move.b	#0,($FFFFF600).w ; set Game Mode to Sega Screen
+		jsr	Start_FirstGameMode	; start default first game mode (Sega Screen)
 	endif
 
 	if def(__BENCHMARK__)
@@ -347,8 +347,8 @@ GameClrRAM:	move.l	d7,(a6)+
 ; SRAM Loading Routine
 ; ---------------------------------------------------------------------------
 ; Format (note, SRAM can only be written to odd addresses):
-; 00 op 00 ch  00 d1 00 d2  00 l1 00 l2  00 r1 00 r2  00 s1 00 s2  00 s3 00 s4  00 cm 00 mg
-;    01    03     05    07     09    0B     0D    0F     11    13     15    17     19    1A
+; 00 op 00 ch  00 d1 00 d2  00 l1 00 l2  00 r1 00 r2  00 s1 00 s2  00 s3 00 s4  00 cm 00 rs  00 mg
+;    01    03     05    07     09    0B     0D    0F     11    13     15    17     19    1A     1C
 ;
 ;  op = Options Flags ($FFFFFF92)
 ;  ch = Current Chapter ($FFFFFFA7)
@@ -357,6 +357,7 @@ GameClrRAM:	move.l	d7,(a6)+
 ;  r_ = Rings ($FFFFFE20-FFFFFE21)
 ;  s_ = Score ($FFFFFE26-FFFFFE29)
 ;  cm = Complete (Base Game / Blackout challenge) ($FFFFFF93)
+;  rs = Resume Flag (0 first launch / 1 load save game) ($FFFFF601)
 ;  mg = Magic Number (always set to 182, absence implies no SRAM)
 ; ---------------------------------------------------------------------------
 SRAM_Options	= 1
@@ -366,7 +367,8 @@ SRAM_Lives	= 4 + SRAM_Doors ; 2 bytes
 SRAM_Rings	= 4 + SRAM_Lives ; 2 bytes
 SRAM_Score	= 4 + SRAM_Rings ; 4 bytes
 SRAM_Complete	= 8 + SRAM_Score
-SRAM_Exists	= 2 + SRAM_Complete
+SRAM_Resume	= 2 + SRAM_Complete
+SRAM_Exists	= 2 + SRAM_Resume
 
 SRAM_MagicNumber = 182
 ; ---------------------------------------------------------------------------
@@ -398,6 +400,7 @@ SRAMFound:
 		movep.l	SRAM_Score(a1),d0			; load...
 		move.l	d0,($FFFFFE26).w			; ...score
 		move.b	SRAM_Complete(a1),($FFFFFF93).w		; load game beaten state
+		move.b	SRAM_Resume(a1),($FFFFF601).w		; load resume flag
 
 SRAMEnd:
 		move.b	#0,($A130F1).l				; disable SRAM
@@ -460,6 +463,8 @@ SRAM_SaveNow:
 		movep.l	d0,SRAM_Score(a1)			; backup score
 		move.b	($FFFFFF93).w,d0			; move game beaten state to d0
 		move.b	d0,SRAM_Complete(a1)			; backup option flags
+		move.b	($FFFFF601).w,d0			; move resume flag to d0
+		move.b	d0,SRAM_Resume(a1)			; backup resume flag
 
 SRAM_SaveNow_End:
 		move.b	#0,($A130F1).l				; disable SRAM
@@ -1037,13 +1042,13 @@ PlaySound_Special:
 PauseGame:				; XREF: Level_MainLoop; et al
 	;	nop				; no operation
 		tst.w	($FFFFF63A).w		; is game already paused?
-		bne.s	loc_13BE		; if yes, branch
+		bne.s	Paused			; if yes, branch
 		tst.b	($FFFFD000).w		; does Sonic exist? (e.g. has he not jumped into a ring)?
 		beq.w	Pause_DoNothing		; if not, disallow pausing
 		btst	#7,($FFFFF605).w	; is Start button pressed?
 		beq.w	Pause_DoNothing		; if not, branch
 
-loc_13BE:
+Paused:
 		; skip cutscenes
 		cmpi.w	#$500,($FFFFFE10).w	; is this the bomb machine cutscene?
 		bne.s	@notmachine		; if not, branch
@@ -1081,6 +1086,11 @@ Pause_MainLoop:
 		btst	#6,($FFFFF605).w 	; is button A pressed?
 		beq.s	Pause_ChkBC		; if not, branch
 		bsr.s	Pause_Restore		; restore from pause (grayscale palette, etc.)
+		cmpi.w	#$400,($FFFFFE10).w
+		bne.s	@returntouberhub
+		jmp	Start_FirstGameMode
+
+@returntouberhub:
 		jmp	ReturnToUberhub
 ; ===========================================================================
 
@@ -3017,11 +3027,6 @@ LevelSelect_Load:
 
 Title_NoLevSel:
 		bsr.s	ERZ_FadeOut		; ERZ fadeout hell yea
-		moveq	#0,d0			; set to resume from save game
-		tst.b	($FFFFFFA7).w		; is this the first time the game is being played?
-		bne.s	@exit			; if not, load whatever was in the SRAM at the time
-		moveq	#1,d0			; set to first start (intro cutscene)
-@exit:
 		jmp	Exit_TitleScreen
 ; ===========================================================================
 

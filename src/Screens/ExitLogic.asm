@@ -1,15 +1,20 @@
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Exit Logic
+; Screen Exit Logic and Game Progress Coordination
 ; ---------------------------------------------------------------------------
 ; BOOT
 ; Sega Screen > Selbi Screen > Title Screen > GameplayStyleScreen/Chapter Screen
 ; 
 ; FIRST START
-; GameplayStyleScreen > One Hot Day... > Story Screen > Ring Load > Chapter Screen > Uberhub > Chapter Screen > Level
+; GameplayStyleScreen > One Hot Day... > Story Screen > Uberhub > NHP Ring > Chapter Screen > NHP
 ; 
 ; MAIN LEVEL CYCLE
 ; Uberhub > Chapter Screen > Level > Story Screen > Uberhub
+; ---------------------------------------------------------------------------
+ResumeFlag	equ	$FFFFF601
+CurrentChapter	equ	$FFFFFFA7
+StoryTextID	equ	$FFFFFF9E
+OptionsBits	equ	$FFFFFF92
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
 
@@ -26,7 +31,7 @@ ReturnToUberhub:
 
 ReturnToUberhub_Chapter:
 		move.w	#$400,($FFFFFE10).w	; set level to Uberhub
-		btst	#1,($FFFFFF92).w	; is "Skip Story Screens" enabled?
+		btst	#1,(OptionsBits).w	; is "Skip Story Screens" enabled?
 		beq.s	StartLevel		; if yes, skip chapter screen
 
 		; show chapter screen first
@@ -62,6 +67,11 @@ StartLevel:
 ; Various screen exiting routines
 ; ---------------------------------------------------------------------------
 
+Start_FirstGameMode:
+		move.b	#0,($FFFFF600).w	; set first game mode to Sega Screen
+		rts
+; ===========================================================================
+
 Exit_SegaScreen:
 		move.b	#$1C,($FFFFF600).w	; set to Selbi splash screen
 		rts
@@ -73,17 +83,23 @@ Exit_SelbiSplash:
 ; ===========================================================================
 
 Exit_TitleScreen:
-		tst.b	d0			; d0 = 0 resume from savegame / 1 first time playing
-		beq.w	ReturnToUberhub_Chapter	; always show chapter screen when returning to Uberhub from the title screen
+		tst.b	(ResumeFlag).w		; is this the first time the game is being played?
+		bne.w	ReturnToUberhub_Chapter	; if not, go to Uberhub (and always show chapter screen)
+		
+		; first launch
+		move.b	#%11,(OptionsBits).w	; load default options (casual, extended camera, story text screens)
+		move.b	#0,(CurrentChapter).w	; set chapter to 0 (so screen gets displayed once NHP is entered for the first time)
 		move.b	#$30,($FFFFF600).w	; for the first time, set to Gameplay Style Screen (which then starts the intro cutscene)
 		rts
 ; ===========================================================================
 
 Exit_GameplayStyleScreen:
-		tst.b	d0			; d0 = 0 options / 1 intro sequence
-		bne.w	HubRing_IntroStart	; on first start, start intro cutscene
-		move.b	#$24,($FFFFF600).w	; we came from the options menu, return to it
-		rts
+		tst.b	(ResumeFlag).w		; is this the first time the game is being played?
+		bne.w	HubRing_Options		; if not, we came from the options menu, return to it
+		
+		; first launch
+		move.b	#1,(ResumeFlag).w	; set resume flag now
+		bra.w	HubRing_IntroStart	; start the intro cutscene
 ; ===========================================================================
 
 Exit_OptionsScreen:
@@ -94,29 +110,24 @@ Exit_OptionsScreen:
 ; ===========================================================================
 
 Exit_ChapterScreen:
-		cmpi.w	#$001,($FFFFFE10).w	; were we sent here by the end of the intro sequence?
-		beq.w	ReturnToUberhub		; if yes, return to Uberhub
 		bra.w	StartLevel		; start level set in FE10 normally
 ; ===========================================================================
 
 Exit_StoryScreen:
-		; d0 = screen ID from StoryScreen.asm
+		; d0 = screen ID from Story Screen
 		cmpi.b	#8,d0			; is this the ending sequence?
-		bne.s	@checkblackout		; if not, branch
+		beq.s	@startending		; if yes, branch
+		cmpi.b	#9,d0			; is this the end of the blackout challenge?
+		beq.w	Start_FirstGameMode	; if yes, restart game
+		
+		; regular story screen (including intro)
+		btst	#2,(OptionsBits).w	; is Skip Uberhub Place enabled?
+		bne.w	SkipUberhub		; if yes, automatically go to the next level in order
+		bra.w	ReturnToUberhub		; otherwise, always return to Uberhub
+
+@startending:
 		move.b	#$18,($FFFFF600).w	; set to ending sequence ($18)
 		rts
-@checkblackout:
-		cmpi.b	#9,d0			; is this the end of the blackout challenge?
-		bne.s	@exitregular		; if not, branch
-		move.b	#$00,($FFFFF600).w	; set to Sega screen ($00)
-		rts
-
-@exitregular:
-		btst	#2,($FFFFFF92).w	; is Skip Uberhub Place enabled?
-		bne.w	SkipUberhub		; if yes, automatically go to the next level in order
-		cmpi.b	#1,d0			; is this the intro dialouge?
-		beq.w	ReturnToUberhub_Chapter	; if yes, make sure we run the chapter screen in case this was the first start
-		bra.w	ReturnToUberhub		; otherwise, return to Uberhub instantly
 ; ===========================================================================
 
 Exit_CreditsScreen:
@@ -143,8 +154,7 @@ Exit_CreditsScreen:
 @markgameasbeaten:
 		bsr	Set_BaseGameDone	; you have beaten the base game, congrats
 		jsr	SRAM_SaveNow		; save
-		move.b	#$00,($FFFFF600).w	; restart game from Sega Screen
-		rts
+		bra.w	Start_FirstGameMode	; restart game from Sega Screen
 
 
 ; ===========================================================================
@@ -152,7 +162,7 @@ Exit_CreditsScreen:
 ; Cutscene exit routines
 ; ---------------------------------------------------------------------------
 
-Exit_ChapterScreen_StartIntro:
+Exit_OneHotDay:
 		move.b	#$95,d0			; play intro cutscene music
 		jsr	PlaySound
 		move.w	#$001,($FFFFFE10).w	; load intro cutscene
@@ -160,7 +170,7 @@ Exit_ChapterScreen_StartIntro:
 ; ===========================================================================
 
 Exit_IntroCutscene:
-		move.b	#1,($FFFFFF9E).w	; set number for text to 1 ("The spiked sucker...")
+		move.b	#1,(StoryTextID).w	; set number for text to 1 ("The spiked sucker...")
 		bra.w	RunStory		; run story
 ; ===========================================================================
 
@@ -183,27 +193,31 @@ Exit_EndingSequence:
 
 ; MakeChapterScreen:
 RunChapter:
-		btst	#1,($FFFFFF92).w	; is "Skip Story Screens" enabled?
+		jsr	SRAM_SaveNow		; save our progress now
+
+		btst	#1,(OptionsBits).w	; is "Skip Story Screens" enabled?
 		beq.w	StartLevel		; if yes, start level straight away
 
 		jsr	FakeLevelID		; get fake level ID for current level
 		tst.b	d5			; did we get a valid ID?
 		bmi.w	StartLevel		; if not, something has gone terribly wrong
+		
+		cmp.b	(CurrentChapter).w,d5	; compare currently saved chapter number to fake level ID
+		blo.w	StartLevel		; if this is a chapter from a level we already visited, skip chapter screen
 
-		cmp.b	($FFFFFFA7).w,d5	; compare currently saved chapter number to fake level ID
-		bls.w	StartLevel		; if this is a chapter from a level we already visited, skip chapter screen
-
-		move.b	d5,($FFFFFFA7).w	; we've entered a new level, update progress chapter ID
+		move.b	d5,(CurrentChapter).w	; we've entered a new level, update progress chapter ID
 		move.b	#$28,($FFFFF600).w	; run chapter screen
-		rts				; return
+		rts
 ; ===========================================================================
 
 RunStory:
-		move.b	($FFFFFF9E).w,d0	; copy story ID to d0 (needed for Exit_StoryScreen)
-		btst	#1,($FFFFFF92).w	; is "Skip Story Screens" enabled?
+		jsr	SRAM_SaveNow		; save our progress now
+
+		move.b	(StoryTextID).w,d0	; copy story ID to d0 (needed for Exit_StoryScreen)
+		btst	#1,(OptionsBits).w	; is "Skip Story Screens" enabled?
 		beq.w	Exit_StoryScreen	; if yes, well, skip it
 
-		move.b	#$20,($FFFFF600).w	; otherwise start Story Screen
+		move.b	#$20,($FFFFF600).w	; start Story Screen
 		rts				; return
 
 
@@ -260,11 +274,12 @@ GRing_Misc:	dc.w	HubRing_Options-GRing_Misc
 		dc.w	HubRing_Blackout-GRing_Misc
 ; ===========================================================================
 
-HubRing_NHP:	move.w	#$000,($FFFFFE10).w	; set level to GHZ1
-		bra.w	StartLevel
+HubRing_NHP:
+		move.w	#$000,($FFFFFE10).w	; set level to GHZ1
+		bra.w	RunChapter
 
 HubRing_GHP:	move.w	#$002,($FFFFFE10).w	; set level to GHZ3
-		bra.w	StartLevel
+		bra.w	StartLevel		; no chapter
 
 HubRing_SP:	move.w	#$300,($FFFFFE10).w	; set level to Special Stage
 		clr.b	($FFFFFF5F).w		; clear blackout special stage flag
@@ -287,7 +302,7 @@ HubRing_SNP:	move.w	#$301,($FFFFFE10).w	; set level to SLZ2
 		bra.w	RunChapter
 
 HubRing_SAP:	move.w	#$302,($FFFFFE10).w	; set level to SLZ3
-		bra.w	RunChapter
+		bra.w	StartLevel		; no chapter
 
 HubRing_FP:	move.w	#$502,($FFFFFE10).w	; set level to FZ
 		bra.w	RunChapter
@@ -299,7 +314,7 @@ HubRing_IntroStart:
 		rts				; this is the only text screen not affected by Skip Story Texts
 
 MiscRing_IntroEnd:
-		move.b	#1,($FFFFFF9E).w	; set number for text to 1
+		move.b	#1,(StoryTextID).w	; set number for text to 1
 		bra.w	RunStory
 
 HubRing_Options:
@@ -312,7 +327,7 @@ HubRing_Tutorial:
 
 HubRing_Ending:
 		move.b	#$20,($FFFFF600).w	; load info screen
-		move.b	#8,($FFFFFF9E).w	; set number for text to 8
+		move.b	#8,(StoryTextID).w	; set number for text to 8
 		move.b	#$9D,d0			; play ending sequence music
 		jmp	PlaySound
 
@@ -360,48 +375,48 @@ Exit_Level:
 		bra.w	ReturnToUberhub		; uhh idk how this could ever happen, but just in case
 ; ---------------------------------------------------------------------------
 
-GTA_Tutorial:	btst	#2,($FFFFFF92).w	; is Skip Uberhub Place enabled?	
+GTA_Tutorial:	btst	#2,(OptionsBits).w	; is Skip Uberhub Place enabled?	
 		beq.w	ReturnToUberhub		; if not, return to Uberhub
 		bra.w	HubRing_NHP		; otherwise go straight to NHP
 
 GTA_NHPGHP:	moveq	#0,d0			; unlock first door
 		bsr	Set_DoorOpen
-		move.b	#2,($FFFFFF9E).w	; set number for text to 2
+		move.b	#2,(StoryTextID).w	; set number for text to 2
 		bra.w	RunStory
 
 GTA_SP:		moveq	#1,d0			; unlock second door
 		bsr	Set_DoorOpen
-		move.b	#3,($FFFFFF9E).w	; set number for text to 3
+		move.b	#3,(StoryTextID).w	; set number for text to 3
 		bra.w	RunStory
 
 GTA_RP:		moveq	#2,d0			; unlock third door
 		bsr	Set_DoorOpen
-		move.b	#4,($FFFFFF9E).w	; set number for text to 4
+		move.b	#4,(StoryTextID).w	; set number for text to 4
 		bra.w	RunStory
 
 GTA_LP:		moveq	#3,d0			; unlock fourth door
 		bsr	Set_DoorOpen
-		move.b	#5,($FFFFFF9E).w	; set number for text to 5
+		move.b	#5,(StoryTextID).w	; set number for text to 5
 		bra.w	RunStory
 
 GTA_UP:		moveq	#4,d0			; open fifth door
 		bsr	Set_DoorOpen
-		move.b	#6,($FFFFFF9E).w	; set number for text to 6
+		move.b	#6,(StoryTextID).w	; set number for text to 6
 		bra.w	RunStory
 
 GTA_SNPSAP:	moveq	#5,d0			; unlock sixth door
 		bsr	Set_DoorOpen
-		move.b	#7,($FFFFFF9E).w	; set number for text to 7
+		move.b	#7,(StoryTextID).w	; set number for text to 7
 		bra.w	RunStory
 
 GTA_FP:		moveq	#6,d0			; unlock seventh door (door to the credits)
 		bsr	Set_DoorOpen
-		btst	#2,($FFFFFF92).w	; is Skip Uberhub Place enabled?		
+		btst	#2,(OptionsBits).w	; is Skip Uberhub Place enabled?		
 		beq.w	ReturnToUberhub		; if not, return to Uberhub
 		bra.w	HubRing_Ending		; otherwise go straight to the ending
 
 GTA_Blackout:	clr.b	($FFFFFF5F).w		; clear blackout special stage flag
-		move.b	#9,($FFFFFF9E).w	; set number for text to 9 (final congratulations)
+		move.b	#9,(StoryTextID).w	; set number for text to 9 (final congratulations)
 		bra.w	RunStory
 
 
@@ -445,7 +460,7 @@ NextLevel_Array:
 ; ---------------------------------------------------------------------------
 ; Subtroutines to ease coordinating the game progress (casual/frantic)
 ; ---------------------------------------------------------------------------
-; bit indices in the progress RAM (FF8A/FF8B)
+; Bit indices in the progress RAM (FF8A/FF8B)
 Casual_BaseGame  = 0
 Casual_Blackout  = 1
 Frantic_BaseGame = 2
@@ -506,7 +521,7 @@ Set_DoorOpen:
 		frantic				; are we in frantic?
 		beq.s	@end			; if not, branch
 		bset	d0,($FFFFFF8B).w	; unlock door (frantic only)
-	@end:	jmp	SRAM_SaveNow		; save
+@end:		rts
 ; ---------------------------------------------------------------------------
 
 Set_BaseGameDone:
@@ -514,7 +529,7 @@ Set_BaseGameDone:
 		frantic					; or was it acutally in frantic?
 		beq.s	@end				; nah? that's a shame
 		bset	#Frantic_BaseGame,($FFFFFF93).w	; you have beaten the base game in frantic, mad respect
-	@end:	rts
+@end:		rts
 ; ---------------------------------------------------------------------------
 
 Set_BlackoutDone:
@@ -523,6 +538,6 @@ Set_BlackoutDone:
 		frantic					; or was it acutally in frantic?
 		beq.s	@end				; nah? that's a shame
 		bset	#Frantic_Blackout,($FFFFFF93).w	; you have beaten the base game in frantic, mad respect
-	@end:	rts
+@end:		rts
 ; ---------------------------------------------------------------------------
 ; ===========================================================================

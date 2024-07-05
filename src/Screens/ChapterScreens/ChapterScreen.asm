@@ -36,11 +36,13 @@ ChapterScreen:
 		move.w	#$7FF,d1
 CS_ClrObjRam:	move.l	d0,(a1)+
 		dbf	d1,CS_ClrObjRam
+		VBlank_UnsetMusicOnly
 
 		cmpi.w	#$001,($FFFFFE10).w		; is this the intro cutscene?
 		beq.w	CS_OHDIGHZ			; if yes, go to alternate code
 
 		; load top half
+		VBlank_SetMusicOnly
 		move.l	#$40000000,($C00004).l		; Load art
 		lea	($C00000).l,a6
 		lea	(Art_ChapterHeader).l,a1	; load chapter header
@@ -64,10 +66,7 @@ CS_ClrObjRam:	move.l	d0,(a1)+
 		lea	(Art_Numbers).l,a1
 		move.w	#$E,d1
 		jsr	LoadTiles
-
-		move.b	#4,($FFFFD000).w		; load chapter numbers object (<-- past Selbi, why the fuck did you make this an object???)
-		jsr	ObjectsLoad
-		jsr	BuildSprites
+		VBlank_UnsetMusicOnly
 
 		; load bottom half
 		moveq	#0,d0
@@ -80,15 +79,22 @@ CS_ClrObjRam:	move.l	d0,(a1)+
 @invalid:
 		moveq	#1,d0				; ID is either corrupted or simply the first start. set number for chapter to 1
 		move.b	d0,($FFFFFFA7).w		; also update it in RAM
+
 @valid:
 		subq.b	#1,d0				; adjust for 0-based indexing
 		add.w	d0,d0				; convert to long...
 		add.w	d0,d0				; ...so that d0 now holds the index for the current chapter screen
 
+		VBlank_SetMusicOnly
 		bsr	CS_LoadChapterArt		; load art
 		bsr	CS_LoadChapterMaps		; load maps
 		bsr	CS_LoadChapterPal		; load palette
 		VBlank_UnsetMusicOnly
+
+		; load chapter number object
+		move.b	#4,($FFFFD000).w		; load chapter numbers object (<-- past Selbi, why the fuck did you make this an object???)
+		jsr	ObjectsLoad
+		jsr	BuildSprites
 
 		; double fade-in
 		move.w	#$000F,($FFFFF626).w		; start at palette line 1, 16 colours ($F + 1)
@@ -168,6 +174,7 @@ CS_ChapterPal:
 ; ---------------------------------------------------------------------------
 
 CS_OHDIGHZ:
+		VBlank_SetMusicOnly
 		move.l	#$40000000,($C00004).l		; Load art
 		lea	($C00000).l,a6
 		lea	(Art_OHDIGHZ).l,a1		; load art
@@ -179,6 +186,7 @@ CS_OHDIGHZ:
 		moveq	#$27,d1
 		moveq	#$1B,d2
 		jsr	ShowVDPGraphics
+		VBlank_UnsetMusicOnly
 
 		lea	(Pal_OHDIGHZ).l,a1		; load palette
 		lea	($FFFFFB80).w,a2
@@ -186,7 +194,6 @@ CS_OHDIGHZ:
 CS_PalLoopOHD:	move.l	(a1)+,(a2)+
 		dbf	d0,CS_PalLoopOHD
 
-		VBlank_UnsetMusicOnly
 		jsr	Pal_FadeTo
 
 ; ---------------------------------------------------------------------------
@@ -209,8 +216,6 @@ CS_Loop:
 ; ---------------------------------------------------------------------------
 
 CS_Exit:
-		moveq	#0,d0
-		move.b	($FFFFFFA7).w,d0	; remember chapter ID we came from in d0
 		jmp	Exit_ChapterScreen	; return to main source
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
@@ -230,7 +235,7 @@ CS_Loop_OHDIGHZ:
 		andi.b	#$E0,d1			; is A, B, C, or start pressed?
 		beq.s	CS_Loop_OHDIGHZ		; if not, loop
 @ohdexit:
-		jmp	Exit_ChapterScreen_StartIntro	; start intro cutscene in main source
+		jmp	Exit_OneHotDay		; start intro cutscene in main source
 
 ; ---------------------------------------------------------------------------
 ; ===========================================================================

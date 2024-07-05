@@ -3,6 +3,7 @@
 ; --------------------------------------------------------------------------------
 
 SME_L9OMt:	
+		dc.w SME_L9OMt_E-SME_L9OMt
 		dc.w SME_L9OMt_E-SME_L9OMt, SME_L9OMt_14-SME_L9OMt	
 		dc.w SME_L9OMt_1F-SME_L9OMt, SME_L9OMt_2F-SME_L9OMt	
 		dc.w SME_L9OMt_3A-SME_L9OMt, SME_L9OMt_40-SME_L9OMt	

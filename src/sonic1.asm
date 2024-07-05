@@ -4569,43 +4569,44 @@ Fuzz_Uberhub:
 ; ---------------------------------------------------------------------------
 
 ClearEverySpecialFlag:
-		clr.b	(FZEscape).w
-		clr.w	($FFFFC904).w
-		clr.b	($FFFFF5E0).w
-		clr.b	($FFFFF5E1).w
-		clr.w	($FFFFF5E2).w
-		clr.l	($FFFFFF60).w
-		clr.l	($FFFFFF64).w
-		clr.l	($FFFFFF68).w
-		clr.l	($FFFFFF6C).w
-		clr.b	($FFFFFF73).w
-		clr.w	($FFFFFF74).w
-		clr.b	($FFFFFF76).w
-		clr.b	($FFFFFF77).w
-		clr.l	($FFFFFF78).w
-		clr.l	($FFFFFF7C).w
-		clr.b	($FFFFFF7D).w
-		clr.b	($FFFFFF7F).w
-		clr.w	($FFFFFF86).w
-		clr.w	($FFFFFF88).w
-		clr.b	($FFFFFFEB).w
-		clr.b	($FFFFFF91).w
-		clr.w	($FFFFFF9C).w
-		clr.l	($FFFFFFA0).w	; clear RAM adresses $FFA0-$FFA3 (4 flags)
-		clr.w	($FFFFFFA4).w	; $FFA4-$FFA5	(2)
-		clr.l	($FFFFFFA8).w	; $FFA8-$FFAB	(4)
-		clr.l	($FFFFFFAC).w	; $FFAC-$FFAF	(4)
-		clr.l	($FFFFFFB0).w	; $FFB0-$FFB3	(4)
-		clr.l	($FFFFFFB4).w	; $FFB4-$FFB7	(4)
-		clr.l	($FFFFFFB8).w	; $FFB8-$FFBB	(4)
-		clr.b	($FFFFFFBD).w	; $FFBD		(1)
-		clr.b	($FFFFFFBF).w	; $FFBF		(1)
-		clr.b	($FFFFFFD0).w	; $FFD0		(1)
-		clr.b	($FFFFFFD1).w	; $FFD1		(1) needs to be splitted
-		clr.l	($FFFFFFD2).w	; $FFD2-$FFD5	(4)
-		clr.l	($FFFFFFD6).w	; $FFD6-$FFD9	(4)
-		clr.b	($FFFFFFE5).w
-		clr.b 	($FFFFFFF9).w
+		moveq	#0,d0
+		move.b	d0,(FZEscape).w
+		move.w	d0,($FFFFC904).w
+		move.b	d0,($FFFFF5E0).w
+		move.b	d0,($FFFFF5E1).w
+		move.w	d0,($FFFFF5E2).w
+		move.l	d0,($FFFFFF60).w
+		move.l	d0,($FFFFFF64).w
+		move.l	d0,($FFFFFF68).w
+		move.l	d0,($FFFFFF6C).w
+		move.b	d0,($FFFFFF73).w
+		move.w	d0,($FFFFFF74).w
+		move.b	d0,($FFFFFF76).w
+		move.b	d0,($FFFFFF77).w
+		move.l	d0,($FFFFFF78).w
+		move.l	d0,($FFFFFF7C).w
+		move.b	d0,($FFFFFF7D).w
+		move.b	d0,($FFFFFF7F).w
+		move.w	d0,($FFFFFF86).w
+		move.w	d0,($FFFFFF88).w
+		move.b	d0,($FFFFFFEB).w
+		move.b	d0,($FFFFFF91).w
+		move.w	d0,($FFFFFF9C).w
+		move.l	d0,($FFFFFFA0).w
+		move.w	d0,($FFFFFFA4).w
+		move.l	d0,($FFFFFFA8).w
+		move.l	d0,($FFFFFFAC).w
+		move.l	d0,($FFFFFFB0).w
+		move.l	d0,($FFFFFFB4).w
+		move.l	d0,($FFFFFFB8).w
+		move.b	d0,($FFFFFFBD).w
+		move.b	d0,($FFFFFFBF).w
+		move.w	d0,($FFFFFFD0).w
+		move.l	d0,($FFFFFFD2).w
+		move.l	d0,($FFFFFFD6).w
+		move.b	d0,($FFFFFFE5).w
+		move.b	d0,($FFFFFFE7).w
+		move.b	d0,($FFFFFFF9).w
 		rts
 ; End of function ClearEverySpecialFlag
 	

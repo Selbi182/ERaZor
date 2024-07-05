@@ -258,12 +258,13 @@ SelbiSplash_WaitEnd:
 		move.b	($FFFFF605).w,d0		; get button press
 		andi.b	#$70,d0				; filter ABC only
 		beq.s	SelbiSplash_LoopEnd		; if none were pressed, skip
-		tst.b	($FFFFFFA7).w			; is this the first time the game is being played?
-		beq.s	SelbiSplash_LoopEnd		; if yes, avoid newbies accidentally discovering debug mode immediately lol
 
 		subq.w	#1,($FFFFFFE4).w		; sub 1 from button presses remaining
 		beq.s	@firecheat			; if we reached 0, activate cheat
 		bmi.s	SelbiSplash_LoopEnd		; for any further than the set input presses, don't do anything
+
+		tst.b	($FFFFF601).w			; is this the first time the game is being played?
+		beq.s	SelbiSplash_LoopEnd		; if yes, avoid newbies accidentally discovering debug mode immediately lol
 		move.b	#$A9,d0				; set blip sound
 		jsr	PlaySound_Special		; play it
 		bra.s	SelbiSplash_LoopEnd		; skip
@@ -284,13 +285,13 @@ SelbiSplash_WaitEnd:
 		jsr	PlaySound_Special		; play it
 
 SelbiSplash_LoopEnd:
-		move.b	($FFFFF605).w,d0
-		andi.b	#$F0,d0				; is A, B, C, or Start pressed?
+		move.b	($FFFFF605).w,d0		; get button presses
+		andi.b	#$F0,d0				; filter A, B, C, or Start
 		tst.b	($FFFFFFAF).w			; are we in the final phase of the screen?
-		beq.s	@cont				; if not, branch
-		andi.b	#$80,d0
-@cont:
-		tst.b	d0
+		beq.s	@notfinal			; if not, branch
+		andi.b	#$80,d0				; filter only Start
+@notfinal:
+		tst.b	d0				; was anything pressed?
 		beq.w	SelbiSplash_Loop		; if not, loop
 		
 SelbiSplash_Next:

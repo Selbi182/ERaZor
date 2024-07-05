@@ -3,7 +3,7 @@
 ; Chapter Screens
 ; ---------------------------------------------------------------------------
 ; $FFFFFFA7
-; 0: first launch of the game
+; 0: invalid / first launch of the game
 ; 1: Run To The Hills
 ; 2: Special Frustration
 ; 3: Inhuman Through The Ruins
@@ -11,6 +11,8 @@
 ; 5: Hover Into Your Frustration
 ; 6: SLZ
 ; 7: In The End
+; ---------------------------------------------------------------------------
+Chapters_Total = 7
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
 
@@ -58,7 +60,7 @@ CS_ClrObjRam:	move.l	d0,(a1)+
 
 		lea	(Pal_ChapterHeader).l,a1	; load chapter 3 stuff instead
 		lea	($FFFFFB80).w,a2
-		move.b	#7,d0				; 16 colours
+		move.b	#8-1,d0				; 16 colours
 @palloop:	move.l	(a1)+,(a2)+
 		dbf	d0,@palloop
 
@@ -74,7 +76,7 @@ CS_ClrObjRam:	move.l	d0,(a1)+
 		move.b	($FFFFFFA7).w,d0		; get set chapter ID
 		beq.s	@invalid			; first start of the game
 		bmi.s	@invalid			; corrupted
-		cmpi.b	#7,d0				; is ID for some reason set beyond the limit?
+		cmpi.b	#Chapters_Total,d0		; is ID for some reason set beyond the limit?
 		bhi.s	@invalid			; if yes, it's corrupted
 		bra.s	@valid				; all good
 @invalid:
@@ -191,7 +193,7 @@ CS_OHDIGHZ:
 
 		lea	(Pal_OHDIGHZ).l,a1		; load palette
 		lea	($FFFFFB80).w,a2
-		move.b	#7,d0				; 16 colours
+		move.b	#8-1,d0				; 16 colours
 CS_PalLoopOHD:	move.l	(a1)+,(a2)+
 		dbf	d0,CS_PalLoopOHD
 
@@ -264,9 +266,7 @@ Obj04_Setup:
 		move.w	#$0100,2(a0)		; set art tile, use first palette line
 		move.w	#$123,8(a0)		; set X-position
 		move.w	#$C5,$A(a0)		; set Y-position
-		move.b	($FFFFFFA7).w,d0	; set chapter number to frame
-		subq	#1,d0
-		move.b	d0,$1A(a0)
+		move.b	($FFFFFFA7).w,$1A(a0)	; set chapter number to frame (first frame in maps is duplicated)
 
 Obj04_Display:
 		jmp	DisplaySprite		; jump to DisplaySprite

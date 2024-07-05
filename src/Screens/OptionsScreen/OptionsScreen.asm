@@ -3,6 +3,8 @@
 ; ---------------------------------------------------------------------------
 Options_Blank = $29 ; blank character, high priority
 OptionsBuffer equ $FFFFC900 ; $200 bytes
+DeleteCounter equ $FFFFFF9C
+DeleteCounts = 3
 ; ---------------------------------------------------------------------------
 
 OptionsScreen:				; XREF: GameModeArray
@@ -97,6 +99,13 @@ Options_ContinueSetup:
 		move.b	#Options_Blank,d2
 		bsr.s	Options_ClearBuffer
 
+		lea	($FFFFCC00).w,a1
+		moveq	#0,d0
+		move.w	#$DF,d1
+@clearscroll:	move.l	d0,(a1)+
+		dbf	d1,@clearscroll ; fill scroll data with 0
+		move.l	d0,($FFFFF616).w
+
 		jsr	BackgroundEffects_Setup
 
  		clr.b	($FFFFFF95).w
@@ -104,15 +113,9 @@ Options_ContinueSetup:
 		clr.b	($FFFFFF98).w
 		clr.w	($FFFFFFB8).w
 		move.w	#21,($FFFFFF9A).w
-		clr.w	($FFFFFF9C).w		; previously used to coordinate the intro sequence, now unused
 		move.b	#$81,($FFFFFF84).w
 
-		lea	($FFFFCC00).w,a1
-		moveq	#0,d0
-		move.w	#$DF,d1
-@clearscroll:	move.l	d0,(a1)+
-		dbf	d1,@clearscroll ; fill scroll data with 0
-		move.l	d0,($FFFFF616).w
+		move.b	#DeleteCounts,(DeleteCounter).w
 
 Options_FinishSetup:
 		move.w	#19,($FFFFFF82).w	; set default selected entry to exit
@@ -288,9 +291,16 @@ Options_HandleNonstopInhuman:
 
 Options_HandleDeleteSaveGame:
 		move.b	($FFFFF605).w,d1	; get button presses
-		andi.b	#$80,d1			; is Start pressed? (this option only works on start because of how delicate it is)
+		andi.b	#$F0,d1			; is A, B, C, or Start pressed? (not on left/right because of how delicate it is)
 		beq.w	Options_Return		; if not, return
-		
+
+		subq.b	#1,(DeleteCounter).w	; sub one from delete counter
+		beq.s	@dodelete		; if we reached zero, rip save file
+		move.w	#$DF,d0			; play Jester explosion sound
+		jsr	PlaySound_Special
+		bra.w	Options_UpdateTextAfterChange_NoSound
+
+@dodelete:
 		ints_disable
 		move.w	#90,($FFFFFF82).w	; set fade-out sequence time to 90 frames
 @delete_fadeoutloop:
@@ -392,7 +402,7 @@ Options_Exit:
 		clr.w	($FFFFFF96).w
 		clr.w	($FFFFFF98).w
 		clr.b	($FFFFFF9A).w
-		clr.w	($FFFFFF9C).w
+		clr.b	(DeleteCounter).w
 
 		moveq	#0,d0			; clear d0
 		move.b	#1,($A130F1).l		; enable SRAM
@@ -443,6 +453,13 @@ Options_Refresh:
 		bsr	OptionsTextLoad		; refresh text
 		move.b	#$D8,d0			; play move sound
 		jsr	PlaySound_Special
+		
+		moveq	#0,d0			; clear d0
+		move.b	(DeleteCounter).w,d0	; get current delete counter
+		cmpi.b	#DeleteCounts,d0	; did we move off the delete counter with at least one input done?
+		beq.s	Options_NoMove		; if not, branch
+		move.b	#DeleteCounts,(DeleteCounter).w	; reset delete counter
+		bsr	OptionsTextLoad		; refresh text
 
 Options_NoMove:
 		rts	
@@ -567,7 +584,7 @@ GetOptionsText:
 		lea	(OpText_GameplayStyle).l,a2	; set text location
 		moveq	#1,d2
 		bsr.w	Options_Write			; write text
-		moveq	#1,d2				; set d2 to 2
+		moveq	#1,d2
 		bsr.w	GOT_ChkOption			; check if option is ON or OFF
 		bsr.w	Options_Write			; write text
 
@@ -576,25 +593,25 @@ GetOptionsText:
 		lea	(OpText_Extended).l,a2		; set text location
 		moveq	#2,d2
 		bsr.w	Options_Write			; write text
-		moveq	#2,d2				; set d2 to 2
+		moveq	#2,d2
 		bsr.w	GOT_ChkOption			; check if option is ON or OFF
 		bsr.w	Options_Write			; write text
 
 		adda.w	#Options_LineLength,a1		; make one empty line
 		
 		lea	(OpText_SkipStory).l,a2		; set text location
-		moveq	#3,d2				; set d2 to 3
+		moveq	#3,d2
 		bsr.w	Options_Write			; write text
-		moveq	#3,d2				; set d2 to 3
+		moveq	#3,d2
 		bsr.w	GOT_ChkOption			; check if option is ON or OFF
 		bsr.w	Options_Write			; write text
 
 		adda.w	#Options_LineLength,a1		; make one empty line
 		
 		lea	(OpText_SkipUberhub).l,a2	; set text location
-		moveq	#4,d2				; set d2 to 3
+		moveq	#4,d2
 		bsr.w	Options_Write			; write text
-		moveq	#4,d2				; set d2 to 3
+		moveq	#4,d2
 		bsr.w	GOT_ChkOption			; check if option is ON or OFF
 		bsr.w	Options_Write			; write text
 
@@ -606,11 +623,11 @@ GetOptionsText:
 		move.l	#OpText_CinematicMode,d6	; set unlocked text location
 @basegamenotbeaten:
 		movea.l	d6,a2				; set text location
-		moveq	#5,d2				; set d2 to 3
+		moveq	#5,d2
 		bsr.w	Options_Write			; write text
-		moveq	#5,d2				; set d2 to 3
+		moveq	#5,d2
 		bsr.w	GOT_ChkOption			; check if option is ON or OFF
-		moveq	#5,d2				; set d2 to 3
+		moveq	#5,d2
 		bsr.w	Options_Write			; write text
 
 		adda.w	#Options_LineLength,a1		; make one empty line
@@ -621,37 +638,38 @@ GetOptionsText:
 		move.l	#OpText_NonstopInhuman,d6	; set unlocked text location
 @blackoutchallengenotbeaten:
 		movea.l	d6,a2				; set text location
-		moveq	#6,d2				; set d2 to 4
+		moveq	#6,d2
 		bsr.w	Options_Write			; write text
-		moveq	#6,d2				; set d2 to 4
+		moveq	#6,d2
 		bsr.w	GOT_ChkOption			; check if option is ON or OFF
-		moveq	#6,d2				; set d2 to 4
+		moveq	#6,d2
 		bsr.w	Options_Write			; write text
 
 		adda.w	#Options_LineLength,a1		; make one empty line
 
 		lea	(OpText_DeleteSRAM).l,a2	; set text location
-		moveq	#7,d2				; set d2 to 4
+		moveq	#7,d2
+		bsr.w	Options_Write			; write text
+		moveq	#7,d2
+		bsr.w	GOT_ChkOption			; get state of deletion
+		moveq	#7,d2
 		bsr.w	Options_Write			; write text
 
-		adda.w	#Options_LineLength+3,a1	; make one empty line + 3 characters (because the delete save option is a one-time action button)
+		adda.w	#Options_LineLength,a1		; make one empty line
 
-; ---------------------------------------------------------------------------	
 		lea	(OpText_SoundTest).l,a2		; set text location
-		moveq	#8,d2				; set d2 to 4
+		moveq	#8,d2
 		bsr.w	Options_Write			; write text
 		move.b	#$0D,-3(a1)			; write < before the ID
 		move.b	#$0E,2(a1)			; write > after the ID
 		bsr	Options_SoundTestID		; write the sound test ID
 		adda.w	#3,a1				; adjust for the earlier sound test offset
-; ---------------------------------------------------------------------------
 
 		adda.w	#Options_LineLength*2,a1	; make two empty lines
 
 		lea	(OpText_Exit).l,a2		; set text location
 		moveq	#9,d2
 		bsr.w	Options_Write			; write text
-
 ; ---------------------------------------------------------------------------
 
 		; make currently selected line red
@@ -780,6 +798,7 @@ GOT_Index:	dc.w	GOTCO_CasualFrantic-GOT_Index
 		dc.w	GOTCO_SkipUberhub-GOT_Index
 		dc.w	GOTCO_CinematicMode-GOT_Index
 		dc.w	GOTCO_NonstopInhuman-GOT_Index
+		dc.w	GOTCO_DeleteSaveGame-Got_Index
 		dc.w	GOTCO_SoundTest-GOT_Index
 ; ===========================================================================
 
@@ -802,7 +821,7 @@ GOTCO_ExtendedCamera:
 GOTCO_SkipStoryScreens:
 		lea	(OpText_ON).l,a2		; otherwise use "ON" text
 		btst	#1,($FFFFFF92).w		; is Skip Story Screens enabled?
-		beq.s	GOTCO_Return			; if not, branch
+		beq.w	GOTCO_Return			; if not, branch
 		lea	(OpText_OFF).l,a2		; use "OFF" text
 		rts					; return
 ; ---------------------------------------------------------------------------
@@ -810,7 +829,7 @@ GOTCO_SkipStoryScreens:
 GOTCO_SkipUberhub:
 		lea	(OpText_OFF).l,a2		; use "OFF" text
 		btst	#2,($FFFFFF92).w		; is Skip Uberhub enabled?
-		beq.s	GOTCO_Return			; if not, branch
+		beq.w	GOTCO_Return			; if not, branch
 		lea	(OpText_ON).l,a2		; otherwise use "ON" text
 		rts					; return
 ; ---------------------------------------------------------------------------
@@ -841,8 +860,28 @@ GOTCO_NonstopInhuman:
 		rts					; return
 ; ---------------------------------------------------------------------------
 
+GOTCO_DeleteSaveGame:
+		moveq	#0,d0
+		move.b	(DeleteCounter).w,d0
+		cmpi.b	#1,d0
+		beq.s	@del1
+		cmpi.b	#2,d0
+		beq.s	@del2
+
+@del3:
+		lea	(OpText_Del3).l,a2		; >>>
+		rts
+@del2:
+		lea	(OpText_Del2).l,a2		; >>
+		rts
+@del1:
+		lea	(OpText_Del1).l,a2		; >
+		rts
+; ---------------------------------------------------------------------------
+
 GOTCO_SoundTest:
 		lea	(OpText_SoundTestDefault).l,a2	; use default sound test text
+		rts
 ; ---------------------------------------------------------------------------
 
 GOTCO_Return:
@@ -897,6 +936,12 @@ OpText_NonstopInhuman_Locked:
 
 OpText_DeleteSRAM:
 		dc.b	'DELETE SAVE GAME     ', $FF
+		even
+OpText_Del3:	dc.b	'>>>', $FF
+		even
+OpText_Del2:	dc.b	' >>', $FF
+		even
+OpText_Del1:	dc.b	'  >', $FF
 		even
 ; ---------------------------------------------------------------------------
 

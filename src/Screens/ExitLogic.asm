@@ -181,8 +181,6 @@ Exit_BombMachineCutscene:
 
 Exit_EndingSequence:
 		move.b	#$2C,($FFFFF600).w	; set scene to $2C (new credits)
-		move.w	#0,($FFFFFFF4).w	; set credits index number to 0
-		move.w	#1,($FFFFFE02).w	; restart level
 		rts
 
 
@@ -241,14 +239,16 @@ Exit_GiantRing:
 
 Exit_UberhubRing:
 		add.b	d0,d0				; double ID to word
-		beq.w	HubRing_Invalid			; if it's 0, it's an invalid ring
-		bhs.s	@nowrap				; if it's 1-7F, branch
+		beq.w	ReturnToUberhub			; if it's 0, it's an invalid ring
+		bhs.s	@notmisc			; if it's 1-7F, branch
 		addi.w	#(GRing_Misc-GRing_Exits)-2,d0	; adjust for misc rings table
-@nowrap:	move.w	GRing_Exits(pc,d0.w),d0		; load offset to d0
+@notmisc:
+		move.w	GRing_Exits(pc,d0.w),d0		; load offset to d0
 		jmp	GRing_Exits(pc,d0.w)		; jumpt to respective ring exit logic
 
 ; ===========================================================================
-GRing_Exits:	dc.w	HubRing_Invalid-GRing_Exits
+GRing_Exits:	dc.w	ReturnToUberhub-GRing_Exits	; invalid ring
+
 		dc.w	HubRing_NHP-GRing_Exits
 		dc.w	HubRing_GHP-GRing_Exits
 		dc.w	HubRing_SP-GRing_Exits
@@ -268,11 +268,7 @@ GRing_Misc:	dc.w	HubRing_Options-GRing_Exits ; <-- notice the offsets!
 		dc.w	HubRing_Blackout-GRing_Exits
 ; ===========================================================================
 
-HubRing_Invalid:
-		bra.w	ReturnToUberhub
-
-HubRing_NHP:
-		move.w	#$000,($FFFFFE10).w	; set level to GHZ1
+HubRing_NHP:	move.w	#$000,($FFFFFE10).w	; set level to GHZ1
 		bra.w	RunChapter
 
 HubRing_GHP:	move.w	#$002,($FFFFFE10).w	; set level to GHZ3
@@ -323,10 +319,10 @@ HubRing_Tutorial:
 		bra.w	StartLevel
 
 HubRing_Ending:
-		move.b	#$20,($FFFFF600).w	; load info screen
-		move.b	#8,(StoryTextID).w	; set number for text to 8
 		move.b	#$9D,d0			; play ending sequence music
-		jmp	PlaySound
+		jsr	PlaySound
+		move.b	#8,(StoryTextID).w	; set number for text to 8
+		bra.w	RunStory
 
 HubRing_Blackout:
 		move.w	#$401,($FFFFFE10).w	; set level to Unreal
@@ -539,3 +535,4 @@ Set_BlackoutDone:
 @end:		rts
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
+

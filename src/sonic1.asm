@@ -42,10 +42,12 @@ __DEBUG__: equ 1
 	include	"_Constants.asm"
 	include	"_Macros.asm"
 
+	if def(__BENCHMARK__)=0
+; ======================================================
 ; ------------------------------------------------------
 ; Developer Assembly Options
 ; ------------------------------------------------------
-; $000 - title screen level select
+; $000 - boot to title screen level select
 ; $400 - Uberhub Place
 ; $000 - Night Hill Place
 ; $002 - Green Hill Place
@@ -57,12 +59,8 @@ __DEBUG__: equ 1
 ; $302 - Star Agony Place
 ; $502 - Finalor Place
 ; $501 - Tutorial Place
-	if def(__BENCHMARK__)=0
-; ======================================================
-; RELEASE and DEBUG build settings:
-; ======================================================
-QuickLevelSelect = 0
-QuickLevelSelect_ID = $300
+QuickLevelSelect = 1
+QuickLevelSelect_ID = $000
 ; ------------------------------------------------------
 DebugModeDefault = 1
 DebugSurviveNoRings = 0
@@ -71,18 +69,13 @@ DoorsAlwaysOpen = 0
 LowBossHP = 1
 ; ======================================================
 	else
-; ======================================================
 ; BENCHMARK build settings (DO NOT CHANGE!)
-; ======================================================
 QuickLevelSelect = 0
 QuickLevelSelect_ID = $400
-; ------------------------------------------------------
 DebugModeDefault = 1
 DebugSurviveNoRings = 1
-; ------------------------------------------------------
 DoorsAlwaysOpen = 1
 LowBossHP = 0
-; ------------------------------------------------------
 	endif
 
 ; ------------------------------------------------------
@@ -711,7 +704,7 @@ BlackBars_SetHeight:
 		rts					; return
 ; ===========================================================================
 
-BlackBars.GHPCasual  = 80
+BlackBars.GHPCasual  = 90
 BlackBars.GHPFrantic = 60
 ; ---------------------------------------------------------------------------
 
@@ -726,7 +719,6 @@ BlackBars.GHP:
 		frantic					; are we in Frantic mode?
 		beq.s	@notfrantic			; if not, branch
 		move.b	#BlackBars.GHPFrantic,d0	; set frantic reset time
-
 @notfrantic:
 		move.b	d0,BlackBars.GHPTimerReset	; set reset time
 
@@ -735,12 +727,9 @@ BlackBars.GHP:
 		move.b	BlackBars.GHPTimerReset,BlackBars.GHPTimer	; reset timer
 		addq.w	#BlackBars.GrowSize,BlackBars.TargetHeight	; shrink bars
 
-		cmpi.w	#$E0/2-2,BlackBars.Height		; did we reach kill height yet? (full screen covered)
+		cmpi.w	#224/2-2,BlackBars.Height	; did we reach kill height yet? (full screen covered)
 		blo.s	@noscreenkill			; if not, branch
-		lea	($FFFFD000).w,a0		; load Sonic's object to a0
-		movea.l	a0,a2				; set killer to self
-		clr.b	($FFFFFFE7).w			; disable inhuman mode (to prevent softlocks)
-		jmp	KillSonic			; hecking kill Sonic
+		jmp	KillSonic_Inhuman		; hecking kill Sonic, even in nonstop inhuman
 		
 @noscreenkill:
 		move.w	#$BB,d0				; play...
@@ -1894,23 +1883,17 @@ loc_1EF4:
 	;	bsr	PLC_Execute	; this was in the original game, now it just causes trouble
 
 		dbf	d5,loc_1EF4
-		rts	
-
-; ===========================================================================
-Pal_CutToWhite:
-		move.w	#$3F,($FFFFF626).w
-		moveq	#0,d0
-		lea	($FFFFFB00).w,a0
-		move.b	($FFFFF626).w,d0
-		adda.w	d0,a0
-		move.w	#$EEE,d1
-		move.b	($FFFFF627).w,d0
-
-@Loop:
-		move.w	d1,(a0)+
-		dbf	d0,@Loop
 		rts
+; ===========================================================================
 
+Pal_CutToWhite:
+		lea	($FFFFFB00).w,a0
+		move.w	#$EEE,d0
+		move.w	#$40-1,d1
+@fillwhite:
+		move.w	d0,(a0)+
+		dbf	d1,@fillwhite
+		rts
 ; ===========================================================================
 
 
@@ -1986,41 +1969,9 @@ loc_1F74:				; XREF: loc_1F64
 		subi.w	#2,d3		; decrease red value
 
 loc_1F78:				; XREF: Pal_DecColor2
-		move.w	d3,(a0)+		; write updated color
+		move.w	d3,(a0)+	; write updated color
 		rts	
 ; End of function Pal_MakeWhite
-
-
-
-		move.b	(a1),d5					; MJ: load blue
-		move.w	(a1)+,d1				; MJ: load green and red
-		move.b	d1,d2					; MJ: load red
-		lsr.b	#4,d1					; MJ: get only green
-		andi.b	#$00E,d2				; MJ: get only red
-
-		move.w	(a0),d3					; MJ: load current colour in buffer
-		cmp.b	d5,d4					; MJ: is it time for blue to fade?
-		bls	@NoBlue					; MJ: if not, branch
-		subi.w	#$200,d3				; MJ: increase blue
-
-@NoBlue:
-		andi.w	#$0EE,d1
-		andi.w	#$0EE,d4
-		cmp.b	d1,d4					; MJ: is it time for green to fade?
-		bls	@NoGreen				; MJ: if not, branch
-		subi.b	#$20,d3					; MJ: increase green
-
-@NoGreen:
-		cmp.b	d2,d4					; MJ: is it time for red to fade?
-		bls	@NoRed					; MJ: if not, branch
-		subq.b	#2,d3					; MJ: increase red
-
-@NoRed:
-		move.w	d3,(a0)+				; MJ: save colour
-		rts						; MJ: return
-
-
-
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -2915,8 +2866,6 @@ Title_ClrObjRam:
 		moveq	#1,d0		; load title screen palette
 		bsr	PalLoad1
 
-		move.b	#$8A,d0		; play title screen music
-		bsr	PlaySound_Special
 
 		move.w	#$618,($FFFFF614).w ; run title screen for $618 frames (this matches the music length)
 
@@ -2951,7 +2900,13 @@ Title_SonPalLoop:
 		move.w	#0,($FFFFFFE6).w
 		VBlank_UnsetMusicOnly
 		display_enable
+	if QuickLevelSelect=1 & QuickLevelSelect_ID=$000
+		bra.s	LevelSelect_Load
+	endif
+		move.b	#$8A,d0		; play title screen music
+		bsr	PlaySound_Special
 		bsr	Pal_FadeTo
+
 
 ; ===========================================================================
 Title_MainLoop:
@@ -2972,10 +2927,6 @@ Title_MainLoop:
 		bsr.w	GenericPalCycle_Blue
 		lea	($FFFFFB60).w,a2
 		bsr.w	GenericPalCycle_Red		
-
-	if QuickLevelSelect=1 & QuickLevelSelect_ID=$000
-		bra.s	LevelSelect_Load
-	endif
 
 		move.b	($FFFFF605).w,d1	; get button presses
 		andi.b	#$B0,d1			; is A, B, C, or Start pressed?

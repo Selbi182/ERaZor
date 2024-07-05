@@ -269,8 +269,11 @@ SelbiSplash_WaitEnd:
 		bra.s	SelbiSplash_LoopEnd		; skip
 
 @firecheat:
-		move.b	#%01111111,($FFFFFF8B).w	; unlock all doors
-		move.b	#%11,($FFFFFF93).w		; unlock all bonus options
+		move.b	#%01111111,d0			; unlock all doors...
+		move.b	d0,($FFFFFF8A).w		; ...in casual...
+		move.b	d0,($FFFFFF8B).w		; ...and frantic
+		move.b	#%1111,($FFFFFF93).w		; set full game beaten state
+		jsr	SRAM_SaveNow			; save
 		
 		tst.w	($FFFFFFFA).w			; was debug mode already enabled?
 		bne.s	SelbiSplash_DisableDebug	; if yes, disable it

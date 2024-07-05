@@ -3335,10 +3335,10 @@ MainLevelArray:
 		; but it must stay like this or everything breaks
 		dc.w	$000	; 0 - Night Hill Place
 		dc.w	$002	; 1 - Green Hill Place
-		dc.w	$300	; 2 - Special Place (Yes, it uses SLZ's ID)
+		dc.w	$300	; 2 - Special Place (yes, it uses an SLZ ID)
 		dc.w	$200	; 3 - Ruined Place
 		dc.w	$101	; 4 - Labyrinthy Place
-		dc.w	$401	; 5 - Unreal Place
+		dc.w	$401	; 5 - Unreal Place (yes, it uses an SYZ ID)
 		dc.w	$301	; 6 - Scar Night Place
 		dc.w	$502	; 7 - Finalor Place
 		dc.w	$400	; 8 - Uberhub
@@ -3372,7 +3372,7 @@ MusicList:
 		dc.b	$89	; Special Stage 2 (Unused)
 		dc.b	$84	; Scar Night Place
 		dc.b	$8D	; Finalor Place
-		dc.b	$85	; Spring Yard Place (Overworld)
+		dc.b	$85	; Uberhub Place (Overworld)
 		dc.b	$87	; Tutorial Place (SBZ 2)
 		dc.b	$84	; Star Agony Place
 		even
@@ -9097,7 +9097,7 @@ Obj2A_Main:				; XREF: Obj2A_Index
 		move.b	#8,obActWid(a0)
 		move.b	#4,obPriority(a0)
 
-		cmpi.w	#$400,($FFFFFE10).w	; is level SYZ1 (overworld)?
+		cmpi.w	#$400,($FFFFFE10).w	; is level Uberhub?
 		bne.s	@nosoundstopper		; if not, branch
 		tst.b	obSubtype(a0)		; is this the door leading to the blackout challenge?
 		bpl.s	@nosoundstopper		; if not, branch
@@ -9140,19 +9140,20 @@ Obj2A_OpenShut:				; XREF: Obj2A_Index
 		cmpi.w	#$400,($FFFFFE10).w	; is level SYZ1 (overworld)?
 		bne.s	Obj2A_NotSYZ1		; if not, branch
 
-	if DoorsAlwaysOpen=0
+	if DoorsAlwaysOpen=1
+		bra.w	Obj2A_Green
+	endif
+
+Obj2A_Red:
 		move.w	#$0800+($6100/$20),obGfx(a0)	; use red light art
 		tst.b	obSubtype(a0)			; is this the door leading to the blackout challenge?
-		bpl.s	@notfinaldoor		; if not, branch
-		tst.b	$30(a0)			; has sound stopper been passed?
-		beq.s	@finaldoornotpassed	; if not, branch
-		clr.b	obAnim(a0)			; use "closing"	animation
-		bra.w	Obj2A_Animate		; force door to be red
-
-@finaldoornotpassed:
-		jsr	Check_BaseGameBeaten	; has the player beaten the base game?
-		bne.s	@usegreendoor		; if yes, open the door
-		bra.w	Obj2A_Animate		; otherwise, keep it locked
+		bpl.s	@notfinaldoor			; if not, branch
+		jsr	Check_BaseGameBeaten		; has the player beaten the base game?
+		beq.w	Obj2A_Animate			; if not, keep door locked
+		tst.b	$30(a0)				; has sound stopper been passed?
+		beq.s	Obj2A_Green			; if not, keep door open
+		clr.b	obAnim(a0)			; shut door behind Sonic
+		bra.w	Obj2A_Animate			; force door to be red
 
 @notfinaldoor:
 		move.b	($FFFFFF8A).w,d0	; get beaten levels bitset (casual)
@@ -9164,9 +9165,7 @@ Obj2A_OpenShut:				; XREF: Obj2A_Index
 		and.b	obSubtype(a0),d0	; and it by subtype of door (always a single bit)
 		beq.s	Obj2A_Animate		; if the required level hasn't been beaten, keep door locked
 
-@usegreendoor:
-	endif
-
+Obj2A_Green:
 		move.w	#$4800+($6000/$20),obGfx(a0)	; use green light art
 
 		move.w	#$40,d1		; set minimum distance between door and Sonic
@@ -12119,7 +12118,6 @@ Obj4B_Okay:				; XREF: Obj4B_Main
 		cmpi.w	#$400,($FFFFFE10).w	; are we in Uberhub?
 		bne.s	Obj4B_Animate		; if not, branch
 		move.w	#0,($FFFFF7BE).w	; don't load giant ring patterns systematically, because they're preloaded from PLC
-		
 ; ---------------------------------------------------------------------------
 
 Obj4B_Animate:				; XREF: Obj4B_Index
@@ -12225,7 +12223,6 @@ Obj4B_ArtLoadLoop:
 		bne.s	@contnotred		; if not, branch
 		move.b	#60,($FFFFFF7D).w	; wait for a bit
 	@contnotred:
-		
 		cmpi.w	#$000,($FFFFFE10).w
 		bne.s	Obj4B_NotGHZ1
 		subq.b	#2,obRoutine(a0)
@@ -12260,6 +12257,7 @@ Obj4B_PlaySnd:
 		bne.s	@contnotredx		; if not, branch
 		move.w	#$B0,d0			; play SBZ sawblade sound (for extra spoop)
 		jsr	(PlaySound_Special).l
+		move.w	#$200,obVelY(a0)	; give a bit of start speed
 	@contnotredx:
 		bra.w	Obj4B_Animate
 ; ===========================================================================
@@ -12269,8 +12267,13 @@ Obj4B_MoveOffScreen:			; XREF: Obj4B_Index
 
 		cmpi.b	#GRing_Blackout,obSubtype(a0)	; is this the blackout challenge ring?
 		bne.s	@contnotred		; if not, branch
+		move.b	#0,$38(a0)		; spin fast
 		addi.w	#$20,obVelY(a0)		; move ring down
-		rts
+		jsr	SpeedToPos		; update position
+		move.w	obY(a0),d0		; get current Y pos
+		cmpi.w	#$200,d0		; did ring move below $200?
+		bhi.w	Obj4B_Exit		; if yes, start Blackout Challenge
+		rts				; wait until ring is off-screen
 
 @contnotred:
 		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
@@ -12302,6 +12305,7 @@ Obj4B_MoveOffScreen:			; XREF: Obj4B_Index
 		cmp.w	obY(a0),d0		; did ring move out of the top screen yet?
 		bge.w	Obj4B_Exit		; if yes, branch
 		rts				; wait until ring is offscreen
+; ===========================================================================
 
 Obj4B_Exit:
 		cmpi.w	#$502,($FFFFFE10).w	; are we in FP?
@@ -41091,6 +41095,7 @@ Emershit:
 		tst.b	($FFFFFF5F).w		; is this the blackout blackout special stage?
 		beq.s	@cont			; if not, branch
 		jsr	Set_BlackoutDone	; you have beaten the blackout challenge, congrats
+		jsr	SRAM_SaveNow		; save
 		moveq	#$FFFFFF91,d0		; play true ending music
 
 @cont:

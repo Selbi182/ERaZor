@@ -142,6 +142,7 @@ Exit_CreditsScreen:
 
 @markgameasbeaten:
 		bsr	Set_BaseGameDone	; you have beaten the base game, congrats
+		jsr	SRAM_SaveNow		; save
 		move.b	#$00,($FFFFF600).w	; restart game from Sega Screen
 		rts
 
@@ -281,7 +282,7 @@ HubRing_UP:	move.w	#$401,($FFFFFE10).w	; set level to Special Stage 2
 
 HubRing_SNP:	move.w	#$301,($FFFFFE10).w	; set level to SLZ2
 		frantic				; are we in frantic?
-		beq.w	RunChapter	; big boy bombs only in big boy game modes
+		beq.w	RunChapter		; big boy bombs only in big boy game modes
 		move.w	#$500,($FFFFFE10).w	; start bomb machine cutscene
 		bra.w	RunChapter
 
@@ -301,12 +302,6 @@ MiscRing_IntroEnd:
 		move.b	#1,($FFFFFF9E).w	; set number for text to 1
 		bra.w	RunStory
 
-HubRing_Ending:
-		move.b	#$20,($FFFFF600).w	; load info screen
-		move.b	#8,($FFFFFF9E).w	; set number for text to 8
-		move.b	#$9D,d0			; play ending sequence music
-		jmp	PlaySound
-
 HubRing_Options:
 		move.b	#$24,($FFFFF600).w	; load options menu
 		rts
@@ -315,10 +310,17 @@ HubRing_Tutorial:
 		move.w	#$501,($FFFFFE10).w	; set level to SBZ2
 		bra.w	StartLevel
 
+HubRing_Ending:
+		move.b	#$20,($FFFFF600).w	; load info screen
+		move.b	#8,($FFFFFF9E).w	; set number for text to 8
+		move.b	#$9D,d0			; play ending sequence music
+		jmp	PlaySound
+
 HubRing_Blackout:
 		move.w	#$401,($FFFFFE10).w	; set level to Unreal
 		move.b	#1,($FFFFFF5F).w	; set Blackout Challenge flag
 		bra.w	StartLevel		; good luck
+
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -419,7 +421,7 @@ SkipUberhub:
 		bne.s	@autonextlevelloop	; if not, loop
 
 		move.w	(a1),($FFFFFE10).w	; write next level in list to level ID RAM
-		bra.w	RunChapter	; start the level, potentially play a chapter screen
+		bra.w	RunChapter		; start the level, potentially play a chapter screen
 
 NextLevel_Array:
 		dc.w	$001	; Intro Cutscene
@@ -487,10 +489,11 @@ Check_BlackoutBeaten_Frantic:
 		rts
 ; ---------------------------------------------------------------------------
 
-StateCheck_Yes:	moveq #0,d0
+StateCheck_Yes:	moveq #-1,d0
 		rts
-StateCheck_No:	moveq #-1,d0
+StateCheck_No:	moveq #0,d0
 		rts
+
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -503,23 +506,23 @@ Set_DoorOpen:
 		frantic				; are we in frantic?
 		beq.s	@end			; if not, branch
 		bset	d0,($FFFFFF8B).w	; unlock door (frantic only)
-@end:		jmp	SRAM_SaveNow		; save
+	@end:	jmp	SRAM_SaveNow		; save
 ; ---------------------------------------------------------------------------
 
 Set_BaseGameDone:
 		bset	#Casual_BaseGame,($FFFFFF93).w	; you have beaten the base game in casual, congrats
 		frantic					; or was it acutally in frantic?
-		beq.s	@save				; nah? that's a shame
+		beq.s	@end				; nah? that's a shame
 		bset	#Frantic_BaseGame,($FFFFFF93).w	; you have beaten the base game in frantic, mad respect
-@save:		jmp	SRAM_SaveNow			; save
+	@end:	rts
 ; ---------------------------------------------------------------------------
 
 Set_BlackoutDone:
+		bsr	Set_BaseGameDone		; also set base game beaten state, just in case
 		bset	#Casual_Blackout,($FFFFFF93).w	; you have beaten the blackout challenge in casual, congrats
 		frantic					; or was it acutally in frantic?
-		beq.s	@save				; nah? that's a shame
+		beq.s	@end				; nah? that's a shame
 		bset	#Frantic_Blackout,($FFFFFF93).w	; you have beaten the base game in frantic, mad respect
-@save:		bsr	Set_BaseGameDone		; also set base game beaten state, just in case
-		jmp	SRAM_SaveNow			; save
+	@end:	rts
 ; ---------------------------------------------------------------------------
 ; ===========================================================================

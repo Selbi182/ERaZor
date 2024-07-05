@@ -1083,15 +1083,16 @@ Pause_MainLoop:
 		move.b	#$10,VBlankRoutine
 		bsr	DelayProgram
 		
+		; return to Uberhub on Pause+A
 		btst	#6,($FFFFF605).w 	; is button A pressed?
 		beq.s	Pause_ChkBC		; if not, branch
 		bsr.s	Pause_Restore		; restore from pause (grayscale palette, etc.)
-		cmpi.w	#$400,($FFFFFE10).w
-		bne.s	@returntouberhub
-		jmp	Start_FirstGameMode
+		cmpi.w	#$400,($FFFFFE10).w	; are we already in Uberhub?
+		beq.s	@uberhubception		; if yes, branch
+		jmp	ReturnToUberhub		; return to Uberhub from anywhere (needs to be a jump due to range)
 
-@returntouberhub:
-		jmp	ReturnToUberhub
+@uberhubception:
+		jmp	Start_FirstGameMode	; return to Sega Screen from within Uberhub itself
 ; ===========================================================================
 
 Pause_ChkBC:
@@ -4326,7 +4327,7 @@ byte_3FCF:	dc.b 0			; XREF: LZWaterSlides
 ; ---------------------------------------------------------------------------
 
 CinematicScreenFuzz:
-		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
+		btst	#6,($FFFFFF92).w	; is screen fuzz enabled?
 		bne.s	@fuzzallowed		; if yes, always enable fuzz
 		cmpi.w	#$400,($FFFFFE10).w	; are we in Uberhub?
 		beq.w	Fuzz_Uberhub		; if yes, go to its custom routine
@@ -4344,8 +4345,8 @@ CinematicScreenFuzz:
 	;	beq.w	CinematicScreenFuzz_End	; if yes, branch
 
 CinematicScreenFuzz_Do:
-		move.w	($FFFFFE04).w,d7 ; move timer into d7
-		and.w 	#1, d7 ; only use least significant bit
+		move.w	($FFFFFE04).w,d7	; move timer into d7
+		andi.w 	#1,d7			; only use least significant bit
 
 		lea	(LineLengths).l,a2	; load line lengths address to a2
 		lea	($FFFFCC00).w,a1	; get h-scroll data
@@ -4368,13 +4369,15 @@ CinematicScreenFuzz_Do:
 		move.l	(CurrentRandomNumber).w,d2	; get random number
 
 		moveq	#1,d6
-		move.b	($FFFFD010).w,d3	; get Sonic's X speed
+	;	move.b	($FFFFD010).w,d3	; get Sonic's X speed
+		move.b	($FFFFF73A).w,d3	; get number of pixels scrolled horizontally since the previous frame
 		bpl.s	@0
 		neg.b	d3
 		moveq	#-1,d6
 		
 @0:
-		move.b	($FFFFD012).w,d4	; get Sonic's Y speed
+	;	move.b	($FFFFD012).w,d4	; get Sonic's Y speed
+		move.b	($FFFFF73C).w,d4	; get number of pixels scrolled vertically since the previous frame
 		bpl.s	@1
 		neg.b	d4
 		
@@ -4384,8 +4387,8 @@ CinematicScreenFuzz_Do:
 
 @yfuzz:
 		moveq	#0,d6
-		moveq	#0,d3
-		move.b	($FFFFD012).w,d3	; get Sonic's Y speed
+	;	move.b	($FFFFD012).w,d3	; get Sonic's Y speed
+		move.b	d4,d3			; use vertical delta
 
 ; ---------------------------------------------------------------------------
 
@@ -27406,7 +27409,7 @@ WF_MakeWhite_Loop:
 		
 		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
 		beq.s	@wfnotcinematic		; if not, branch
-		moveq	#7,d4			; bit boost
+		moveq	#7,d4			; bit boost (<-- just a bit, sure :V)
 		bra.w	@wfintensity		; branch
 
 @wfnotcinematic:
@@ -27754,10 +27757,10 @@ DD_End:
 Sonic_SuperPeelOut:
 		cmpi.w	#$200,($FFFFFE10).w	; is level MZ1?
 		bne.s	SPO_NotMZ		; if not, branch
-		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
-		bne.s	SPO_NotMZ
+	;	btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
+	;	bne.s	SPO_NotMZ
 		tst.b	($FFFFFFE7).w		; is inhuman mode on?
-		bne.w	SPO_End			; if yes, branch
+		bne.w	SPO_End			; if yes, disallow
 
 SPO_NotMZ:
 		cmpi.w	#$501,($FFFFFE10).w

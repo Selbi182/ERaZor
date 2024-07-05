@@ -240,19 +240,11 @@ Exit_GiantRing:
 ; ===========================================================================
 
 Exit_UberhubRing:
-		tst.b	d0			; test ring ID we jumped into
-		beq.w	ReturnToUberhub		; if it's zero, something has gone wrong, return to Uberhub as fallback
-		bmi.s	@miscring		; if it's negative, it's a misc ring ($81-$83), use alternate table
-		subq.b	#1,d0			; make d0 zero-based
-		add.w	d0,d0
-		move.w	GRing_Exits(pc,d0.w),d0
+		add.b	d0,d0
+		bhs.s	@nowrap
+		addi.w	#(GRing_Misc-GRing_Exits)-2,d0
+@nowrap:	move.w	GRing_Exits(pc,d0.w),d0
 		jmp	GRing_Exits(pc,d0.w)
-
-@miscring:	andi.w	#$0F,d0			; make d0 positive
-		subi.b	#1,d0
-		add.w	d0,d0
-		move.w	GRing_Misc(pc,d0.w),d0
-		jmp	GRing_Misc(pc,d0.w)
 
 ; ===========================================================================
 GRing_Exits:	dc.w	HubRing_NHP-GRing_Exits
@@ -269,9 +261,9 @@ GRing_Exits:	dc.w	HubRing_NHP-GRing_Exits
 		dc.w	HubRing_Ending-GRing_Exits
 		dc.w	HubRing_IntroStart-GRing_Exits
 ; ---------------------------------------------------------------------------
-GRing_Misc:	dc.w	HubRing_Options-GRing_Misc
-		dc.w	HubRing_Tutorial-GRing_Misc
-		dc.w	HubRing_Blackout-GRing_Misc
+GRing_Misc:	dc.w	HubRing_Options-GRing_Exits ; <-- notice the offsets!
+		dc.w	HubRing_Tutorial-GRing_Exits
+		dc.w	HubRing_Blackout-GRing_Exits
 ; ===========================================================================
 
 HubRing_NHP:
@@ -440,7 +432,7 @@ SkipUberhub:
 
 NextLevel_Array:
 		dc.w	$001	; Intro Cutscene
-	;	dc.w	$501	; Tutorial Place
+		dc.w	$501	; Tutorial Place
 		dc.w	$000	; Night Hill Place
 		dc.w	$002	; Green Hill Place
 		dc.w	$300	; Special Place
@@ -459,6 +451,7 @@ NextLevel_Array:
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Subtroutines to ease coordinating the game progress (casual/frantic)
+; (NOTE: Frantic takes priority over Casual in all instances!)
 ; ---------------------------------------------------------------------------
 ; Bit indices in the progress RAM (FF8A/FF8B)
 Casual_BaseGame  = 0

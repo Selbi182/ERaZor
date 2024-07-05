@@ -403,7 +403,7 @@ OptionsScreen_MainLoop:
 ;  bit 3 = Cinematic Mode (unlocked after beating the base game)
 ;  bit 4 = True Inhuman Mode (unlocked after beating the blackout challenge)
 ;  bit 5 = Gamplay Style (0 - Casual Mode // 1 - Frantic Mode)
-;  bit 6 = [unused]
+;  bit 6 = Cinematic Mode Fuzz
 ;  bit 7 = [unused]
 ; ---------------------------------------------------------------------------
 
@@ -468,7 +468,7 @@ Options_HandleSkipUberhub:
 
 Options_HandleCinematicMode:
 		move.b	($FFFFF605).w,d1	; get button presses
-		andi.b	#$FC,d1			; is left, right, A, B, C, or Start pressed?
+		andi.b	#$F8,d1			; is right, A, B, C, or Start pressed? (not left cause it's awkward)
 		beq.w	Options_Return		; if not, branch
 
 		tst.w	($FFFFFFFA).w		; is debug mode enabled?
@@ -477,18 +477,39 @@ Options_HandleCinematicMode:
 		bne.s	@nodebugunlock		; if not, branch
 		bchg	#0,($FFFFFF93).w	; toggle base game as beaten to toggle the unlock for cinematic mode
 		bclr	#3,($FFFFFF92).w	; make sure option doesn't stay accidentally enabled
+		bclr	#6,($FFFFFF92).w	; ''
 		bra.w	Options_UpdateTextAfterChange_NoSound
-
 @nodebugunlock:
 		jsr	Check_BaseGameBeaten	; has the player beaten the base game?
-		bne.s	@cinematicmodeallowed	; if yes, branch
+		bne.s	@cinematidmodeallowed	; if yes, cineamtic mode is allowed
 		move.w	#$DA,d0			; play option disallowed sound
 		jsr	PlaySound_Special
 		bra.w	Options_UpdateTextAfterChange_NoSound
-		
-@cinematicmodeallowed:
-		bchg	#3,($FFFFFF92).w	; toggle cinematic mode
-		bsr	Options_LoadPal
+
+@cinematidmodeallowed:
+		btst	#3,($FFFFFF92).w	; was cinematic already enabled?
+		bne.s	@chkfuzz		; if yes, branch
+		btst	#6,($FFFFFF92).w	; was at least fuzz already enabled?
+		bne.s	@both			; if yes, enable both
+		bra.s	@normal			; otherwise, enable normal
+@chkfuzz:
+		btst	#6,($FFFFFF92).w	; was fuzz also enabled?
+		bne.s	@off			; if yes, turn both off
+		bra.s	@fuzzy			; otherwise, enable fuzzy-only
+
+@off:		bclr	#3,($FFFFFF92).w	; disable cinematic mode
+		bclr	#6,($FFFFFF92).w	; disable fuzz
+		bra.s	@end
+@normal:	bset	#3,($FFFFFF92).w	; enable cinematic mode
+		bclr	#6,($FFFFFF92).w	; disable fuzz
+		bra.s	@end
+@fuzzy:		bclr	#3,($FFFFFF92).w	; disable cinematic mode
+		bset	#6,($FFFFFF92).w	; enable fuzz
+		bra.s	@end
+@both:		bset	#3,($FFFFFF92).w	; enable cinematic mode
+		bset	#6,($FFFFFF92).w	; enable fuzz
+
+@end:		bsr	Options_LoadPal
 		bra.w	Options_UpdateTextAfterChange
 ; ---------------------------------------------------------------------------
 
@@ -1038,10 +1059,20 @@ GOTCO_SkipUberhub:
 ; ---------------------------------------------------------------------------
 
 GOTCO_CinematicMode:
-		lea	(OpText_OFF).l,a2		; use "OFF" text
-		btst	#3,($FFFFFF92).w		; is Cinematic HUD enabled?
+		lea	(OpText_CinOff).l,a2		; use cinematic mode "OFF" text
+
+		btst	#3,($FFFFFF92).w		; is Cinematic Mode enabled?
+		beq.s	@chkfuzz			; if not, branch
+		lea	(OpText_CinNorm).l,a2		; use cinematic mode "NORMAL" text
+		btst	#6,($FFFFFF92).w		; is fuzz also enabled?
 		beq.s	GOTCO_Return			; if not, branch
-		lea	(OpText_ON).l,a2		; otherwise use "ON" text
+		lea	(OpText_CinBoth).l,a2		; use cinematic mode "BOTH" text
+		rts
+
+@chkfuzz:
+		btst	#6,($FFFFFF92).w		; is fuzz enabled?
+		beq.s	GOTCO_Return			; if not, branch
+		lea	(OpText_CinFuzz).l,a2		; use cinematic mode "FUZZY" text
 		rts					; return
 ; ---------------------------------------------------------------------------
 
@@ -1094,10 +1125,10 @@ OpText_SkipUberhub:
 		even
 
 OpText_CinematicMode:
-		dc.b	'CINEMATIC MODE       ', $FF
+		dc.b	'CINEMATIC MODE    ', $FF
 		even
 OpText_CinematicMode_Locked:
-		dc.b	'????????? ????       ', $FF
+		dc.b	'????????? ????    ', $FF
 		even
 		
 OpText_NonstopInhuman:
@@ -1128,9 +1159,19 @@ OpText_ON:	dc.b	' ON', $FF
 		even
 OpText_OFF:	dc.b	'OFF', $FF
 		even
+
 OpText_Casual:	dc.b	' CASUAL', $FF
 		even
 OpText_Frantic:	dc.b	'FRANTIC', $FF
+		even
+
+OpText_CinOff:	dc.b	'   OFF', $FF
+		even
+OpText_CinNorm:	dc.b	'NORMAL', $FF
+		even
+OpText_CinFuzz:	dc.b	' FUZZY', $FF
+		even
+OpText_CinBoth:	dc.b	'  BOTH', $FF
 		even
 ; ---------------------------------------------------------------------------
 ; ===========================================================================

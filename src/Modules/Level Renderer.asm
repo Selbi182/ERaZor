@@ -1400,31 +1400,28 @@ ChunkStream_GetBlock_Horizontal:
 ChunkStream_GetBlockTile_EvenRow:
 	lsl.w   #3,d0                   ; d0 = blockId*8 with flags
 	move.w  d0,d4
-	and.w   #$1FF8,d4               ; d4 = blockId*8
-	add.w   d0,d0                   ; push out Y flag
-	bcs.s   @FlipY
-	add.w   d0,d0                   ; push out X flag
-	bcs.s   @FlipX
+	bmi.s	@FlipY			; MSB=1 means FlipY=1
+	add.w   d0,d0
+	bmi.s   @FlipX			; MSB=1 means FlipX=1
 	add.w   d1,d4
 	move.w  1(a3,d4),d0             ; d0 = tile with flags
 	rts
 
-@FlipY: add.w   d0,d0                   ; push out X flag
-	bcs.s   @FlipXY
+@FlipY: and.w   #$3FF8,d4               ; d4 = blockId*8 (clear XY bits)
+	add.w   d0,d0
+	bmi.s   @FlipXY			; MSB=1 means FlipX=1
 	add.w   d1,d4
 	move.w  5(a3,d4),d0             ; d1 = tile with flags
 	eor.w   #$1000,d0               ; apply Y-flipping
 	rts
 
-@FlipX: neg.w   d1
-	add.w   d1,d4
+@FlipX: and.w   #$3FF8,d4               ; d4 = blockId*8 (clear XY bits)
+	sub.w   d1,d4
 	move.w  1(a3,d4),d0             ; d0 = tile with flags
 	eor.w   #$800,d0                ; apply X-flipping
 	rts
 
-@FlipXY:
-	neg.w   d1
-	add.w   d1,d4
+@FlipXY:sub.w   d1,d4
 	move.w  5(a3,d4),d0             ; d0 = tile with flags
 	eor.w   #$1800,d0               ; apply XY-flipping
 	rts
@@ -1433,31 +1430,28 @@ ChunkStream_GetBlockTile_EvenRow:
 ChunkStream_GetBlockTile_OddRow:
 	lsl.w   #3,d0                   ; d0 = blockId*8 with flags
 	move.w  d0,d4
-	and.w   #$1FF8,d4               ; d4 = blockId*8
-	add.w   d0,d0                   ; push out Y flag
-	bcs.s   @FlipY
-	add.w   d0,d0                   ; push out X flag
-	bcs.s   @FlipX
+	bmi.s	@FlipY			; MSB=1 means FlipY=1
+	add.w   d0,d0
+	bmi.s   @FlipX			; MSB=1 means FlipX=1
 	add.w   d1,d4
 	move.w  1+4(a3,d4),d0           ; d0 = tile with flags
 	rts
 
-@FlipY: add.w   d0,d0                   ; push out X flag
-	bcs.s   @FlipXY
+@FlipY: and.w   #$3FF8,d4               ; d4 = blockId*8 (clear XY bits)
+	add.w   d0,d0
+	bmi.s   @FlipXY			; MSB=1 means FlipX=1
 	add.w   d1,d4
 	move.w  5-4(a3,d4),d0           ; d1 = tile with flags
 	eor.w   #$1000,d0               ; apply Y-flipping
 	rts
 
-@FlipX: neg.w   d1
-	add.w   d1,d4
+@FlipX: and.w   #$3FF8,d4               ; d4 = blockId*8 (clear XY bits)
+	sub.w   d1,d4
 	move.w  1+4(a3,d4),d0           ; d0 = tile with flags
 	eor.w   #$800,d0                ; apply X-flipping
 	rts
 
-@FlipXY:
-	neg.w   d1
-	add.w   d1,d4
+@FlipXY:sub.w   d1,d4
 	move.w  5-4(a3,d4),d0           ; d0 = tile with flags
 	eor.w   #$1800,d0               ; apply XY-flipping
 	rts
@@ -1505,31 +1499,28 @@ ChunkStream_GetBlock_Vertical:
 ChunkStream_GetBlockTile_EvenCol:
 	lsl.w   #3,d0                   ; d0 = blockId*8 with flags
 	move.w  d0,d4
-	and.w   #$1FF8,d4               ; d4 = blockId*8
-	add.w   d0,d0                   ; push out Y flag
-	bcs.s   @FlipY
-	add.w   d0,d0                   ; push out X flag
-	bcs.s   @FlipX
+	bmi.s	@FlipY			; MSB=1 means FlipY=1
+	add.w   d0,d0
+	bmi.s   @FlipX			; MSB=1 means FlipX=1
 	add.w   d1,d4
 	move.w  2(a3,d4),d0             ; d0 = tile with flags
 	rts
 
-@FlipY: add.w   d0,d0                   ; push out X flag
-	bcs.s   @FlipXY
-	neg.w   d1
-	add.w   d1,d4
+@FlipY: and.w	#$3FFF,d4		; d4 = blockId*8 (clear XY bits)
+	add.w   d0,d0
+	bmi.s   @FlipXY			; MSB=1 means FlipX=1
+	sub.w   d1,d4
 	move.w  2(a3,d4),d0             ; d1 = tile with flags
 	eor.w   #$1000,d0               ; apply Y-flipping
 	rts
 
-@FlipX: add.w   d1,d4
+@FlipX: and.w	#$3FFF,d4		; d4 = blockId*8 (clear XY bits)
+	add.w   d1,d4
 	move.w  4(a3,d4),d0             ; d0 = tile with flags
 	eor.w   #$800,d0                ; apply X-flipping
 	rts
 
-@FlipXY:
-	neg.w   d1
-	add.w   d1,d4
+@FlipXY:sub.w   d1,d4
 	move.w  4(a3,d4),d0             ; d0 = tile with flags
 	eor.w   #$1800,d0               ; apply XY-flipping
 	rts
@@ -1538,31 +1529,28 @@ ChunkStream_GetBlockTile_EvenCol:
 ChunkStream_GetBlockTile_OddCol:
 	lsl.w   #3,d0                   ; d0 = blockId*8 with flags
 	move.w  d0,d4
-	and.w   #$1FF8,d4               ; d4 = blockId*8
-	add.w   d0,d0                   ; push out Y flag
-	bcs.s   @FlipY
-	add.w   d0,d0                   ; push out X flag
-	bcs.s   @FlipX
+	bmi.s   @FlipY			; MSB=1 means FlipY=1
+	add.w   d0,d0
+	bmi.s   @FlipX			; MSB=1 means FlipX=1
 	add.w   d1,d4
 	move.w  2+2(a3,d4),d0           ; d0 = tile with flags
 	rts
 
-@FlipY: add.w   d0,d0                   ; push out X flag
-	bcs.s   @FlipXY
-	neg.w   d1
-	add.w   d1,d4
+@FlipY: and.w	#$3FFF, d4		; d4 = blockId*8 (clear XY bits)
+	add.w   d0,d0
+	bmi.s   @FlipXY			; MSB=1 means FlipX=1
+	sub.w   d1,d4
 	move.w  2+2(a3,d4),d0           ; d1 = tile with flags
 	eor.w   #$1000,d0               ; apply Y-flipping
 	rts
 
-@FlipX: add.w   d1,d4
+@FlipX:	and.w	#$3FFF, d4		; d4 = blockId*8 (clear XY bits)
+	add.w   d1,d4
 	move.w  4-2(a3,d4),d0           ; d0 = tile with flags
 	eor.w   #$800,d0                ; apply X-flipping
 	rts
 
-@FlipXY:
-	neg.w   d1
-	add.w   d1,d4
+@FlipXY:sub.w   d1,d4
 	move.w  4-2(a3,d4),d0           ; d0 = tile with flags
 	eor.w   #$1800,d0               ; apply XY-flipping
 	rts

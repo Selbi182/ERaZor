@@ -3101,6 +3101,8 @@ LevelSelect_DoSelect:
 		beq.s	LevSel_Ending	; if yes, branch
 		cmpi.w	#$666,d0	; is blackout challenge?
 		beq.s	LevSel_Blackout	; if yes, branch
+		
+		move.b	#1,($FFFFF5E1).w ; skip tutorial introduction text
 
 		jmp	StartLevel	; otherwise, start level normally
 
@@ -25628,14 +25630,7 @@ Obj06_ArtLocFound:
 		bra.w	Obj06_InfoBox
 
 Obj06_ChkDist:
-		tst.b	($FFFFFFB1).w		; is white flash counter empty?
-		bpl.w	Obj06_Display		; if not, branch (to prevent the white getting stuck)
-	
-		moveq	#0,d0
-		move.b	($FFFFF602).w,d0	; get held button presses
-		eori.b	#$42,d0			; sort out anything but Down and A
-		bne.w	Obj06_Display		; all buttons pressed? if not, branch
-
+		clr.b	($FFFFFF74).w		; clear spindash block flag
 		move.w	($FFFFD008).w,d0	; get Sonic's X-pos
 		sub.w	obX(a0),d0		; substract the X-pos from the current object from it
 		addi.w	#$10,d0			; add $10 to it
@@ -25646,6 +25641,15 @@ Obj06_ChkDist:
 		addi.w	#$10,d0			; add $10 to it
 		cmpi.w	#$20,d0			; is Sonic within $10 pixels of that object?
 		bhi.w	Obj06_Display		; if not, branch
+		move.b	#1,($FFFFFF74).w	; set spindash block flag
+
+		tst.b	($FFFFFFB1).w		; is white flash counter empty?
+		bpl.w	Obj06_Display		; if not, branch (to prevent the white getting stuck)
+
+		moveq	#0,d0
+		move.b	($FFFFF602).w,d0	; get held button presses
+		eori.b	#$42,d0			; sort out anything but Down and A
+		bne.w	Obj06_Display		; all buttons pressed? if not, branch
 		
 Obj06_DoHardPartSkip:
 		frantic				; are we in Frantic mode?
@@ -25662,7 +25666,6 @@ Obj06_DoHardPartSkip:
 		jmp	KillSonic_Inhuman
 
 @notfrantic:
-	; TODO: rework to not use FakeLevelID
 		jsr	FakeLevelID		; get level ID
 		lsl.w	#2,d5			; multiply it by 4
 		lea	(Obj06_Locations).l,a1	; get location
@@ -25726,7 +25729,6 @@ Obj06_DoHardPartSkip:
 		bne.s	@nottutorial
 		move.b	#$87,d0
 		jsr	PlaySound
-		clr.b	($FFFFFF74).w
 
 @nottutorial:
 		move.w	d7,-(sp)		; back up d7
@@ -27447,12 +27449,6 @@ Sonic_JumpDash:
 		bne.w	JD_End			; if yes, branch
 
 JD_NotMZ:
-		cmpi.w	#$501,($FFFFFE10).w
-		bne.s	@cont
-		tst.b	($FFFFFF74).w
-		bne.w	JD_End
-
-@cont:
 		tst.b	($FFFFFFE5).w		; was AirFreeze flag set?
 		bne.w	JD_End			; if yes, branch
 		move.b	($FFFFF603).w,d0	; is B or C pressed? (part 1)
@@ -27720,12 +27716,6 @@ Sonic_SuperPeelOut:
 		bne.w	SPO_End			; if yes, disallow
 
 SPO_NotMZ:
-		cmpi.w	#$501,($FFFFFE10).w
-		bne.s	@cont
-		tst.b	($FFFFFF74).w
-		bne.w	SPO_End
-
-@cont:
 		tst.b	($FFFFFF99).w
 		beq.w	SPO_End
 		tst.b	($FFFFFEBC).w		; already peelouting?
@@ -27841,6 +27831,9 @@ SPO_End:
 ; ---------------------------------------------------------------------------
 
 Sonic_Spindash:
+		tst.b	($FFFFFF74).w		; currently standing in front of a hard part skipper?
+		bne.w	locret2_1AC8C		; if yes, prevent spindashing
+
 		cmpi.w	#$200,($FFFFFE10).w	; is level MZ1?
 		bne.s	Spdsh_NotMZ		; if not, branch
 	;	btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
@@ -27851,12 +27844,7 @@ Sonic_Spindash:
 		bne.w	locret2_1AC8C		; if yes, branch
 
 Spdsh_NotMZ:
-		cmpi.w	#$501,($FFFFFE10).w
-		bne.s	@cont
-		tst.b	($FFFFFF74).w
-		bne.w	locret2_1AC8C
 
-@cont:
 		tst.b	$39(a0)			; already spindashing?
 		bne.s	loc2_1AC8E		; if set, branch
 		cmpi.b	#8,obAnim(a0)		; is anim duck
@@ -40969,24 +40957,26 @@ Obj09_Collision:				; XREF: Obj09_Move; Obj09_Fall
 
 
 Obj09_ColCheck:				; XREF: Obj09_Collision
-		beq.s	Obj09_notsolid    	; if current block is just an empty space, branch
+		beq.s	@notsolid    	; if current block is just an empty space, branch
 
 		cmpi.b	#$3A,d4		; is block in range $3A-$4B (rings, emeralds...)?
-		blo.s	@solid		; if not, it's a solid block
+		blo.s	@solid		; if not, it's a solid block0
 		cmpi.b	#$4B,d4		; $4B is the end of shiny collectibles
-		bls.s	Obj09_notsolid
+		blo.s	@notsolid
 @solid:
 		move.b	d4,$30(a0)	; copy collided ID of block to d4
 		move.l	a1,$32(a0)	; copy RAM location of collided block to a1
 		cmpi.b	#$27,d4		; is object a goal block?
-		beq.s	Obj09_checkradius   	; if yes, don't collide normally (special logic is run from the block itself)
-		moveq	#-1,d5		; set to block
-Obj09_notsolid:
+		beq.s	@goalradius   	; if yes, don't collide normally (special logic is run from the block itself)
+@setsolid:	moveq	#-1,d5		; set to block
+@notsolid:
 		rts			; block is not solid
 
-Obj09_checkradius:
-	tst.b	$31(a0)				; has goal already been touched?
-	bne.s	Obj09_notsolid			; if so, bypass another check
+@goalradius:		
+ 		btst	#4,($FFFFFF92).w	; is nonstop inhuman enabled?
+		bne.s	@setsolid		; if yes, make sure we don't suck by this alternate collision
+		tst.b	$31(a0)				; has goal already been touched?
+		bne.s	@notsolid			; if so, bypass another check
 		movem.l	d0-d2,-(sp)			; store registers
 		bsr.w	Obj09_RadiusGoal		; has Sonic touched the goal?
 		movem.l	(sp)+,d0-d2			; restore registers
@@ -40994,8 +40984,8 @@ Obj09_checkradius:
 		bls.s	@Touch				; if so, branch
 		rts					; no touch
 
-	@Touch:
-	move.b	d4,$30(a0)
+@Touch:
+		move.b	d4,$30(a0)
 		addq.w	#4,sp				; force this block to be touched only
 		tst.b	d5				; check collision for return
 		rts					; done
@@ -41006,8 +40996,8 @@ Obj09_checkradius:
 
 
 Obj09_ChkItems_Collectible:			; XREF: Obj09_Display
-	tst.b	$31(a0)				; was the goal touched during wall detection?
-	bne.w	Obj09_TouchGoal			; if so, bypass all checks and go straight to goal reaction
+		tst.b	$31(a0)				; was the goal touched during wall detection?
+		bne.w	Obj09_TouchGoal			; if so, bypass all checks and go straight to goal reaction
 		lea	($FF0000).l,a1
 		moveq	#0,d4
 		move.w	obY(a0),d4
@@ -41187,7 +41177,6 @@ locret_1BEAC:
 		rts	
 ; ===========================================================================
 
-
 Obj09_RadiusGoal:
 		move.w	$34(a0),d2			; load layout address
 		subq.w	#$01,d2				; align to first block
@@ -41210,21 +41199,20 @@ Obj09_RadiusGoal:
 		add.l	d1,d2				; ''
 		cmpi.l	#((24+24)/2)*((24+24)/2),d2	; is Sonic touching the goal circularly?
 		rts					; return touch status
+; ===========================================================================
 
 ; Obj09_GOAL:
 Obj09_ChkGOAL:
 		cmpi.b	#$27,d0			; is the item a	"GOAL"?
 		bne.w	Obj09_ChkBumper		; if not, branch
+ 		btst	#4,($FFFFFF92).w	; is nonstop inhuman enabled?
+		bne.w	Obj09_DoBumper		; if yes, convert goal block into bumber
 		bsr.s	Obj09_RadiusGoal		; has Sonic touched the goal?
-		bls.s	.Touch				; if so, branch
+		bls.s	Obj09_TouchGoal			; if so, branch
 		rts					; no touch
-
-	.Touch:
 
 Obj09_TouchGoal:
 		sf.b	$31(a0)				; clear goal touch flag
- 		btst	#4,($FFFFFF92).w	; is nonstop inhuman enabled?
-		bne.w	Obj09_DoBumper		; if yes, convert goal block into bumber
 
 TouchGoalBlock:
 		jsr	WhiteFlash2
@@ -43789,6 +43777,8 @@ PLC_SpeStage:
 		dc.w $BE00
 		dc.l ArtKospM_SSEmerald	; emeralds
 		dc.w $EE00
+		dc.l ArtKospM_Ring		; rings
+		dc.w $F640
 		dc.w -1
 
 PLC_SSBlackout:

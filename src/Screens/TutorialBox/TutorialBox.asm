@@ -790,7 +790,7 @@ Hint_2:
 	boxtxt_line
 	boxtxt	" b - DOUBLE JUMP"
 	boxtxt_pause
-	boxtxt	" a - YOU'LL SEE..."
+	boxtxt	" a - UP NEXT..."
 	boxtxt_end
 
 ;		 --------------------

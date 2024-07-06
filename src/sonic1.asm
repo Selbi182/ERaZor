@@ -917,6 +917,7 @@ VDPSetupArray:	dc.w $8004	; 8-colour mode
 
 
 ClearScreen:
+		VBlank_SetMusicOnly
 		jsr	DrawBuffer_Clear
 
 		lea	($C00004).l,a5
@@ -949,7 +950,7 @@ loc_1314:
 		move.l	#0,($FFFFF61A).w
 		lea	($FFFFF800).w,a1
 		moveq	#0,d0
-		move.w	#$A0,d1
+		move.w	#$A0-1,d1
 
 loc_133A:
 		move.l	d0,(a1)+
@@ -957,13 +958,14 @@ loc_133A:
 
 		lea	($FFFFCC00).w,a1
 		moveq	#0,d0
-		move.w	#$100,d1
+		move.w	#$100-1,d1
 
 loc_134A:
 		move.l	d0,(a1)+
 		dbf	d1,loc_134A
 
-		rts	
+		VBlank_UnsetMusicOnly
+		rts
 ; End of function ClearScreen
 
 ; ---------------------------------------------------------------------------

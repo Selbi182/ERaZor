@@ -12880,8 +12880,8 @@ Obj2E_ChkS:
 		cmpi.b	#7,d0		; does monitor contain 'S'
 		bne.w	Obj2E_ChkGoggles
 
-		tst.b	($FFFFFFE7).w		; has a S monitor already been broken?
-		bne.w	Obj2E_ChkEnd		; if yes, branch
+	;	tst.b	($FFFFFFE7).w		; has a S monitor already been broken?
+	;	bne.w	Obj2E_ChkEnd		; if yes, branch
 
 		move.b	#$38,($FFFFD280).w ; load stars	object ($3803)
 		move.b	#1,($FFFFD29C).w
@@ -12891,7 +12891,7 @@ Obj2E_ChkS:
 		cmpi.w	#$200,($FFFFFE10).w	; is this Ruined Place?
 		bne.s	@notruinedplace		; if not, branch
 
-		cmpi.w	#100,($FFFFFE20).w	; do you have at least 00 rings?
+		cmpi.w	#100,($FFFFFE20).w	; do you have at least 100 rings?
 		bhs.s	@notanoob		; if yes, branch
 		move.w	#100,($FFFFFE20).w	; give 100 rings (you'll probably still die, but at least it isn't instant)
 		ori.b	#1,($FFFFFE1D).w	; update rings counter
@@ -19083,7 +19083,14 @@ Obj0D_SonicRun:				; XREF: Obj0D_Index
 
 loc_EC86:
 		addq.b	#2,obRoutine(a0)
+
+	if def(__BENCHMARK__)
+		; Benchmark ROM exits level immediately
+		move.b	#0, $FFFFF600		
+		rts
+	else
 		jmp	Exit_Level
+	endif	; def(__BENCHMARK__)=0
 
 locret_ECEE:
 		rts				; return
@@ -27352,17 +27359,19 @@ WF_DoWhiteFlash:
 		tst.b	($FFFFFFB9).w		; is a white flash currently in progres?
 		bne.w	WF_Return		; if yes, skip this one
 		move.b	#1,($FFFFFFB9).w	; set white flash flag
+
+		btst	#7,($FFFFFF92).w	; are flashy lights even enabled?
+		beq.w	WF_SetCameraLag		; if not, well, don't do them
+
 		lea	($FFFFFA80).w,a3	; load palette location to a3
 		lea	($FFFFCA00).w,a4	; load backup location to a4
 		move.w	#$003F,d3		; set d3 to $7F (+1 for the first run)
-
 WF_BackupPal_Loop:
 		move.l	(a3)+,(a4)+		; backup palette
 		dbf	d3,WF_BackupPal_Loop	; loop
 
 		lea	($FFFFFA80).w,a1	; load palette location to a3
 		move.w	#$007F,d3		; set d3 to $7F (+1 for the first run)
-
 WF_MakeWhite_Loop:
 		move.w	(a1),d1			; get current color in palette
 		
@@ -27415,6 +27424,8 @@ WF_MakeWhite_Loop:
 @intensityend:
 		move.w	d1,(a1)+		; set new color
 		dbf	d3,WF_MakeWhite_Loop	; loop
+
+WF_SetCameraLag:
 		move.b	#12,($FFFFFFB2).w	; set ScrollHoriz delay and jumpdash flag 2
 WF_Return:
 		rts
@@ -27426,6 +27437,10 @@ WhiteFlash_Restore:
 		tst.b	($FFFFFFB1).w
 		bpl.s	WF_Restore_End
 		clr.b	($FFFFFFB9).w		; clear white flash flag
+		
+		btst	#7,($FFFFFF92).w	; are flashy lights even enabled?
+		beq.s	WF_Restore_End		; if not, branch
+
 		lea	($FFFFFA80).w,a4	; load palette location to a4
 		lea	($FFFFCA00).w,a3	; load backed up palette to a3
 		move.w	#$007F,d5		; set d3 to $7F (+1 for the first run)

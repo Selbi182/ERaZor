@@ -9,7 +9,7 @@ BackgroundEffects_Setup:
 
 		lea	($C00000).l,a6
 		move.l	#$40200000,4(a6)
-		lea	(Options_BGArt).l,a0
+		lea	(BGEffects_FuzzArt).l,a0
 		jsr	KosPlusMDec_VRAM
 
 		vram	$C000,4(a6)		; set VDP to VRAM and start at C000 (location of Plane A nametable)
@@ -237,4 +237,11 @@ BackgroundEffects_VScroll:
 		rts
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
+; ---------------------------------------------------------------------------
 
+BGEffects_FuzzArt:
+		incbin	Screens\FuzzyBG.kospm
+		even
+
+; ---------------------------------------------------------------------------
+; ===========================================================================

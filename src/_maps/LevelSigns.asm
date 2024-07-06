@@ -2,20 +2,21 @@
 ; Sprite mappings - output from ClownMapEd - Sonic 1/CD format
 ; --------------------------------------------------------------------------------
 
-CME_F70EFE57:
-	dc.w	CME_F70EFE57_0-CME_F70EFE57
-	dc.w	CME_F70EFE57_1-CME_F70EFE57
-	dc.w	CME_F70EFE57_2-CME_F70EFE57
-	dc.w	CME_F70EFE57_3-CME_F70EFE57
-	dc.w	CME_F70EFE57_4-CME_F70EFE57
-	dc.w	CME_F70EFE57_5-CME_F70EFE57
-	dc.w	CME_F70EFE57_6-CME_F70EFE57
-	dc.w	CME_F70EFE57_7-CME_F70EFE57
-	dc.w	CME_F70EFE57_8-CME_F70EFE57
-	dc.w	CME_F70EFE57_9-CME_F70EFE57
-	dc.w	CME_F70EFE57_A-CME_F70EFE57
+CME_C1D508D5:
+	dc.w	CME_C1D508D5_0-CME_C1D508D5
+	dc.w	CME_C1D508D5_1-CME_C1D508D5
+	dc.w	CME_C1D508D5_2-CME_C1D508D5
+	dc.w	CME_C1D508D5_3-CME_C1D508D5
+	dc.w	CME_C1D508D5_4-CME_C1D508D5
+	dc.w	CME_C1D508D5_5-CME_C1D508D5
+	dc.w	CME_C1D508D5_6-CME_C1D508D5
+	dc.w	CME_C1D508D5_7-CME_C1D508D5
+	dc.w	CME_C1D508D5_8-CME_C1D508D5
+	dc.w	CME_C1D508D5_9-CME_C1D508D5
+	dc.w	CME_C1D508D5_A-CME_C1D508D5
+	dc.w	CME_C1D508D5_B-CME_C1D508D5
 
-CME_F70EFE57_0:
+CME_C1D508D5_0:
 	dc.b	10
 
 	dc.b	-8
@@ -68,7 +69,7 @@ CME_F70EFE57_0:
 	dc.w	$0026
 	dc.b	60
 
-CME_F70EFE57_1:
+CME_C1D508D5_1:
 	dc.b	7
 
 	dc.b	-8
@@ -106,7 +107,7 @@ CME_F70EFE57_1:
 	dc.w	$0026
 	dc.b	37
 
-CME_F70EFE57_2:
+CME_C1D508D5_2:
 	dc.b	6
 
 	dc.b	-8
@@ -139,7 +140,7 @@ CME_F70EFE57_2:
 	dc.w	$000C
 	dc.b	28
 
-CME_F70EFE57_3:
+CME_C1D508D5_3:
 	dc.b	10
 
 	dc.b	-8
@@ -192,7 +193,7 @@ CME_F70EFE57_3:
 	dc.w	$0046
 	dc.b	60
 
-CME_F70EFE57_4:
+CME_C1D508D5_4:
 	dc.b	6
 
 	dc.b	-8
@@ -225,7 +226,7 @@ CME_F70EFE57_4:
 	dc.w	$0026
 	dc.b	32
 
-CME_F70EFE57_5:
+CME_C1D508D5_5:
 	dc.b	10
 
 	dc.b	-8
@@ -278,7 +279,7 @@ CME_F70EFE57_5:
 	dc.w	$003E
 	dc.b	60
 
-CME_F70EFE57_6:
+CME_C1D508D5_6:
 	dc.b	7
 
 	dc.b	-8
@@ -316,7 +317,7 @@ CME_F70EFE57_6:
 	dc.w	$0036
 	dc.b	36
 
-CME_F70EFE57_7:
+CME_C1D508D5_7:
 	dc.b	8
 
 	dc.b	4
@@ -359,7 +360,7 @@ CME_F70EFE57_7:
 	dc.w	$0026
 	dc.b	46
 
-CME_F70EFE57_8:
+CME_C1D508D5_8:
 	dc.b	7
 
 	dc.b	4
@@ -397,7 +398,7 @@ CME_F70EFE57_8:
 	dc.w	$0020
 	dc.b	-4
 
-CME_F70EFE57_9:
+CME_C1D508D5_9:
 	dc.b	5
 
 	dc.b	-8
@@ -425,7 +426,7 @@ CME_F70EFE57_9:
 	dc.w	$0010
 	dc.b	25
 
-CME_F70EFE57_A:
+CME_C1D508D5_A:
 	dc.b	12
 
 	dc.b	4
@@ -487,5 +488,53 @@ CME_F70EFE57_A:
 	dc.b	$05
 	dc.w	$0032
 	dc.b	14
+
+CME_C1D508D5_B:
+	dc.b	9
+
+	dc.b	4
+	dc.b	$05
+	dc.w	$003A
+	dc.b	-81
+
+	dc.b	4
+	dc.b	$05
+	dc.w	$002E
+	dc.b	-65
+
+	dc.b	4
+	dc.b	$05
+	dc.w	$0042
+	dc.b	-49
+
+	dc.b	4
+	dc.b	$05
+	dc.w	$002A
+	dc.b	-33
+
+	dc.b	4
+	dc.b	$05
+	dc.w	$000C
+	dc.b	-17
+
+	dc.b	4
+	dc.b	$05
+	dc.w	$003E
+	dc.b	15
+
+	dc.b	4
+	dc.b	$05
+	dc.w	$0010
+	dc.b	31
+
+	dc.b	4
+	dc.b	$05
+	dc.w	$003A
+	dc.b	47
+
+	dc.b	4
+	dc.b	$05
+	dc.w	$003E
+	dc.b	63
 
 	even

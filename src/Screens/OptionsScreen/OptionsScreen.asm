@@ -154,7 +154,7 @@ OptionsScreen_MainLoop:
 ;  bit 4 = True Inhuman Mode (unlocked after beating the blackout challenge)
 ;  bit 5 = Gamplay Style (0 - Casual Mode // 1 - Frantic Mode)
 ;  bit 6 = Cinematic Mode Fuzz
-;  bit 7 = [unused]
+;  bit 7 = Flashy Lights
 ; ---------------------------------------------------------------------------
 
 Options_HandleChange:
@@ -169,12 +169,12 @@ Options_HandleChange:
 ; ===========================================================================
 OpHandle_Index:	dc.w	Options_HandleGameplayStyle-OpHandle_Index
 		dc.w	Options_HandleExtendedCamera-OpHandle_Index
+		dc.w	Options_HandleFlashyLights-OpHandle_Index
 		dc.w	Options_HandleStoryTextScreens-OpHandle_Index
 		dc.w	Options_HandleSkipUberhub-OpHandle_Index
 		dc.w	Options_HandleCinematicMode-OpHandle_Index
 		dc.w	Options_HandleNonstopInhuman-OpHandle_Index
 		dc.w	Options_HandleDeleteSaveGame-OpHandle_Index
-		dc.w	Options_HandleSoundTest-OpHandle_Index
 		dc.w	Options_HandleExit-OpHandle_Index
 ; ===========================================================================
 
@@ -197,6 +197,14 @@ Options_HandleExtendedCamera:
 		andi.b	#$FC,d1			; is left, right, A, B, C, or Start pressed?
 		beq.w	Options_Return		; if not, branch
 		bchg	#0,($FFFFFF92).w	; toggle extended camera
+		bra.w	Options_UpdateTextAfterChange
+; ---------------------------------------------------------------------------
+
+Options_HandleFlashyLights:
+		move.b	($FFFFF605).w,d1	; get button presses
+		andi.b	#$FC,d1			; is left, right, A, B, C, or Start pressed?
+		beq.w	Options_Return		; if not, branch
+		bchg	#7,($FFFFFF92).w	; toggle flashy lights
 		bra.w	Options_UpdateTextAfterChange
 ; ---------------------------------------------------------------------------
 
@@ -330,63 +338,6 @@ Options_HandleDeleteSaveGame:
 		clr.b	($200000+SRAM_Exists).l	; unset the magic number (actual SRAM deletion happens during restart)
 		move.b	#0,($A130F1).l		; disable SRAM
 		jmp	Init			; restart the game
-; ---------------------------------------------------------------------------
-
-SoundTest_Min = $80
-SoundTest_Max = $DF
-SoundTest_AStep = $10
-
-Options_HandleSoundTest:
-		move.w	#$80,d0			; default sound (null)
-		move.b	($FFFFF605).w,d1	; get button presses
-		move.b	($FFFFFF84).w,d2	; move current sound test ID to d2
-
-@soundtest_checkL:
-		btst	#2,d1			; has left been pressed?
-		beq.s	@soundtest_checkR	; if not, branch
-		subq.b	#1,d2			; decrease sound test ID by 1
-		cmpi.b	#SoundTest_Min-1,d2	; is ID below the minimum now?
-		bne.w	@soundtest_end		; if not, branch
-		move.b	#SoundTest_Max,d2	; reset ID to max
-		bra.w	@soundtest_end		; branch
-
-@soundtest_checkR:
-		btst	#3,d1			; has right been pressed?
-		beq.s	@soundtest_checkA	; if not, branch
-		addq.b	#1,d2			; increase sound test ID by 1
-		cmpi.b	#SoundTest_Max+1,d2	; is ID above the maximum now?
-		bne.w	@soundtest_end		; if not, branch
-		move.b	#SoundTest_Min,d2	; reset ID to min
-		bra.w	@soundtest_end		; branch
-
-@soundtest_checkA:
-		btst	#6,d1			; has A been pressed?
-		beq.s	@soundtest_chkb		; if not, branch
-		addi.b	#SoundTest_AStep,d2	; increase sound test ID by $10
-		cmpi.b	#SoundTest_Max+1,d2	; is ID above the maximum now?
-		blt.w	@soundtest_end		; if not, branch
-		subi.b	#SoundTest_Max-SoundTest_Min+1,d2 ; restart on the other side
-		bra.w	@soundtest_end		; branch
-
-@soundtest_chkb:
-		btst	#4,d1			; is button B pressed?
-		beq.s	@soundtest_chkplay	; if not, branch
-		move.b	#$E4,d0			; set to stop all sound
-		bra.s	@soundtest_play		; branch
-
-@soundtest_chkplay:
-		andi.b	#$A0,d1			; is C or Start pressed?
-		beq.s	@soundtest_end		; if not, branch
-		move.b	d2,d0			; set to play the selected sound
-		cmpi.b	#$80,d2			; is current song selection ID $80?
-		bne.s	@soundtest_play		; if not, branch
-		move.b	#$E4,d0			; set to stop all sound (for convenience)
-@soundtest_play:
-		jsr	PlaySound_Special	; play selected sound
-
-@soundtest_end:
-		move.b	d2,($FFFFFF84).w	; update ID
-		bra.w	Options_UpdateTextAfterChange_NoSound
 ; ---------------------------------------------------------------------------
 
 Options_HandleExit:
@@ -571,104 +522,90 @@ GetOptionsText:
 		lea	($FFFFC900).w,a1		; set destination
 		moveq	#0,d1				; use $FF as ending of the list
 
+		moveq	#-1,d2				; force highlight
 		lea	(OpText_Header1).l,a2		; set text location
-		moveq	#-1,d2
 		bsr.w	Options_Write			; write text
-
 		lea	(OpText_Header2).l,a2		; set text location
-		moveq	#-1,d2
 		bsr.w	Options_Write			; write text
 
 		adda.w	#Options_LineLength*2,a1	; make two empty lines
 
+		moveq	#1,d2
 		lea	(OpText_GameplayStyle).l,a2	; set text location
-		moveq	#1,d2
 		bsr.w	Options_Write			; write text
-		moveq	#1,d2
 		bsr.w	GOT_ChkOption			; check if option is ON or OFF
 		bsr.w	Options_Write			; write text
 
 		adda.w	#Options_LineLength,a1		; make one empty line
 		
+		moveq	#2,d2
 		lea	(OpText_Extended).l,a2		; set text location
-		moveq	#2,d2
 		bsr.w	Options_Write			; write text
-		moveq	#2,d2
+		bsr.w	GOT_ChkOption			; check if option is ON or OFF
+		bsr.w	Options_Write			; write text
+
+		adda.w	#Options_LineLength,a1		; make one empty line
+
+		moveq	#3,d2
+		lea	(OpText_FlashyLights).l,a2	; set text location
+		bsr.w	Options_Write			; write text
 		bsr.w	GOT_ChkOption			; check if option is ON or OFF
 		bsr.w	Options_Write			; write text
 
 		adda.w	#Options_LineLength,a1		; make one empty line
 		
+		moveq	#4,d2
 		lea	(OpText_SkipStory).l,a2		; set text location
-		moveq	#3,d2
 		bsr.w	Options_Write			; write text
-		moveq	#3,d2
 		bsr.w	GOT_ChkOption			; check if option is ON or OFF
 		bsr.w	Options_Write			; write text
 
 		adda.w	#Options_LineLength,a1		; make one empty line
 		
+		moveq	#5,d2
 		lea	(OpText_SkipUberhub).l,a2	; set text location
-		moveq	#4,d2
 		bsr.w	Options_Write			; write text
-		moveq	#4,d2
 		bsr.w	GOT_ChkOption			; check if option is ON or OFF
 		bsr.w	Options_Write			; write text
 
 		adda.w	#Options_LineLength,a1		; make one empty line
 
+		moveq	#6,d2
 		move.l	#OpText_CinematicMode_Locked,d6	; set locked text location	
 		jsr	Check_BaseGameBeaten		; has the player beaten base game?
 		beq.s	@basegamenotbeaten		; if not, branch
 		move.l	#OpText_CinematicMode,d6	; set unlocked text location
 @basegamenotbeaten:
 		movea.l	d6,a2				; set text location
-		moveq	#5,d2
 		bsr.w	Options_Write			; write text
-		moveq	#5,d2
 		bsr.w	GOT_ChkOption			; check if option is ON or OFF
-		moveq	#5,d2
 		bsr.w	Options_Write			; write text
 
 		adda.w	#Options_LineLength,a1		; make one empty line
 		
+		moveq	#7,d2
 		move.l	#OpText_NonstopInhuman_Locked,d6; set locked text location	
 		jsr	Check_BlackoutBeaten		; has the player specifically beaten the blackout challenge?
 		beq.s	@blackoutchallengenotbeaten	; if not, branch
 		move.l	#OpText_NonstopInhuman,d6	; set unlocked text location
 @blackoutchallengenotbeaten:
 		movea.l	d6,a2				; set text location
-		moveq	#6,d2
 		bsr.w	Options_Write			; write text
-		moveq	#6,d2
 		bsr.w	GOT_ChkOption			; check if option is ON or OFF
-		moveq	#6,d2
 		bsr.w	Options_Write			; write text
 
 		adda.w	#Options_LineLength,a1		; make one empty line
 
-		lea	(OpText_DeleteSRAM).l,a2	; set text location
-		moveq	#7,d2
-		bsr.w	Options_Write			; write text
-		moveq	#7,d2
-		bsr.w	GOT_ChkOption			; get state of deletion
-		moveq	#7,d2
-		bsr.w	Options_Write			; write text
-
-		adda.w	#Options_LineLength,a1		; make one empty line
-
-		lea	(OpText_SoundTest).l,a2		; set text location
 		moveq	#8,d2
+		lea	(OpText_DeleteSRAM).l,a2	; set text location
 		bsr.w	Options_Write			; write text
-		move.b	#$0D,-3(a1)			; write < before the ID
-		move.b	#$0E,2(a1)			; write > after the ID
-		bsr	Options_SoundTestID		; write the sound test ID
-		adda.w	#3,a1				; adjust for the earlier sound test offset
+		bsr.w	GOT_ChkOption			; get state of deletion
+		bsr.w	Options_Write			; write text
 
 		adda.w	#Options_LineLength*2,a1	; make two empty lines
 
-		lea	(OpText_Exit).l,a2		; set text location
 		moveq	#9,d2
+		lea	(OpText_Exit).l,a2		; set text location
 		bsr.w	Options_Write			; write text
 ; ---------------------------------------------------------------------------
 
@@ -690,27 +627,7 @@ Options_HighlightLine:
 @redline:	ori.b	#$80,(a1)+				; mark line to use red
 		dbf	d2,@redline
 		rts
-; ===========================================================================
 
-; write the sound test ID ($FFFFFF84) at offset -1(a1)
-Options_SoundTestID:
-		moveq	#0,d0
-		move.b	($FFFFFF84).w,d0		; get sound test ID
-		lsr.b	#4,d0				; swap first and second short
-		andi.b	#$0F,d0				; clear first short
-		cmpi.b	#9,d0				; is result greater than 9?
-		ble.s	GOT_Snd_Skip1			; if not, branch
-		addi.b	#5,d0				; skip the special chars (!, ?, etc.)
-GOT_Snd_Skip1:	move.b	d0,-1(a1)			; set result to first digit ("8" 1)
-
-		move.b	($FFFFFF84).w,d0		; get sound test ID
-		andi.b	#$0F,d0				; clear first short
-		cmpi.b	#9,d0				; is result greater than 9?
-		ble.s	GOT_Snd_Skip2			; if not, branch
-		addi.b	#5,d0				; skip the special chars (!, ?, etc.)
-GOT_Snd_Skip2:	move.b	d0,0(a1)			; set result to second digit (8 "1")
-
-		rts
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -787,19 +704,20 @@ OW_NoHighlight:
 ; ---------------------------------------------------------------------------
 
 GOT_ChkOption:
-		subq.w	#1,d2
-		add.w	d2,d2
-		move.w	GOT_Index(pc,d2.w),d2
-		jmp	GOT_Index(pc,d2.w)
+		move.w	d2,d3
+		subq.w	#1,d3
+		add.w	d3,d3
+		move.w	GOT_Index(pc,d3.w),d3
+		jmp	GOT_Index(pc,d3.w)
 ; ===========================================================================
 GOT_Index:	dc.w	GOTCO_CasualFrantic-GOT_Index
 		dc.w	GOTCO_ExtendedCamera-GOT_Index
+		dc.w	GOTCO_FlashyLights-GOT_Index
 		dc.w	GOTCO_SkipStoryScreens-GOT_Index
 		dc.w	GOTCO_SkipUberhub-GOT_Index
 		dc.w	GOTCO_CinematicMode-GOT_Index
 		dc.w	GOTCO_NonstopInhuman-GOT_Index
 		dc.w	GOTCO_DeleteSaveGame-Got_Index
-		dc.w	GOTCO_SoundTest-GOT_Index
 ; ===========================================================================
 
 GOTCO_CasualFrantic:
@@ -813,6 +731,14 @@ GOTCO_CasualFrantic:
 GOTCO_ExtendedCamera:
 		lea	(OpText_OFF).l,a2		; use "OFF" text
 		btst	#0,($FFFFFF92).w		; is Extended Camera enabled?
+		beq.w	GOTCO_Return			; if not, branch
+		lea	(OpText_ON).l,a2		; otherwise use "ON" text
+		rts					; return
+; ---------------------------------------------------------------------------
+
+GOTCO_FlashyLights:
+		lea	(OpText_OFF).l,a2		; use "OFF" text
+		btst	#7,($FFFFFF92).w		; are Flashy Lights enabled?
 		beq.w	GOTCO_Return			; if not, branch
 		lea	(OpText_ON).l,a2		; otherwise use "ON" text
 		rts					; return
@@ -879,11 +805,6 @@ GOTCO_DeleteSaveGame:
 		rts
 ; ---------------------------------------------------------------------------
 
-GOTCO_SoundTest:
-		lea	(OpText_SoundTestDefault).l,a2	; use default sound test text
-		rts
-; ---------------------------------------------------------------------------
-
 GOTCO_Return:
 		rts					; return
 ; ---------------------------------------------------------------------------
@@ -907,9 +828,13 @@ OpText_Header2:
 OpText_GameplayStyle:
 		dc.b	'GAMEPLAY STYLE   ', $FF
 		even
-		
+
 OpText_Extended:
 		dc.b	'EXTENDED CAMERA      ', $FF
+		even
+
+OpText_FlashyLights:
+		dc.b	'FLASHY LIGHTS        ', $FF
 		even
 
 OpText_SkipStory:
@@ -945,14 +870,6 @@ OpText_Del1:	dc.b	'  >', $FF
 		even
 ; ---------------------------------------------------------------------------
 
-OpText_SoundTest:
-		dc.b	'SOUND TEST           ', $FF
-		even
-OpText_SoundTestDefault:
-		dc.b	'< 81 >', $FF
-		even
-; ---------------------------------------------------------------------------
-
 OpText_Exit:	dc.b	'      SAVE OPTIONS      ', $FF
 		even
 ; ---------------------------------------------------------------------------
@@ -983,9 +900,6 @@ OpText_CinBoth:	dc.b	'    BOTH', $FF
 ; ---------------------------------------------------------------------------
 Options_TextArt:
 		incbin	Screens\OptionsScreen\Options_TextArt.bin
-		even
-Options_BGArt:
-		incbin	Screens\OptionsScreen\FuzzyBG.kospm
 		even
 ; ---------------------------------------------------------------------------
 ; ===========================================================================

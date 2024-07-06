@@ -11,6 +11,10 @@
 ; MAIN LEVEL CYCLE
 ; Uberhub > Chapter Screen > Level > Story Screen > Uberhub
 ; ---------------------------------------------------------------------------
+; Default options when starting the game for the first time
+; (Casual Mode, Extended Camera, Flashy Lights, Story Text Screens)
+DefaultOptions = %10000011
+; ---------------------------------------------------------------------------
 ResumeFlag	equ	$FFFFF601
 CurrentChapter	equ	$FFFFFFA7
 StoryTextID	equ	$FFFFFF9E
@@ -87,9 +91,9 @@ Exit_TitleScreen:
 		bne.w	ReturnToUberhub_Chapter	; if not, go to Uberhub (and always show chapter screen)
 		
 		; first launch
-		move.b	#%11,(OptionsBits).w	; load default options (casual, extended camera, story text screens)
-		move.b	#0,(CurrentChapter).w	; set chapter to 0 (so screen gets displayed once NHP is entered for the first time)
-		move.b	#$30,($FFFFF600).w	; for the first time, set to Gameplay Style Screen (which then starts the intro cutscene)
+		move.b	#DefaultOptions,(OptionsBits).w	; load default options
+		move.b	#0,(CurrentChapter).w		; set chapter to 0 (so screen gets displayed once NHP is entered for the first time)
+		move.b	#$30,($FFFFF600).w		; for the first time, set to Gameplay Style Screen (which then starts the intro cutscene)
 		rts
 ; ===========================================================================
 
@@ -264,6 +268,7 @@ GRing_Misc:	dc.w	HubRing_Options-GRing_Exits ; <-- notice the offsets!
 		dc.w	HubRing_Blackout-GRing_Exits
 		dc.w	HubRing_IntroStart-GRing_Exits
 		dc.w	HubRing_Ending-GRing_Exits
+		dc.w	HubRing_SoundTest-GRing_Exits
 ; ===========================================================================
 
 HubRing_NHP:	move.w	#$000,($FFFFFE10).w	; set level to GHZ1
@@ -312,6 +317,10 @@ HubRing_Options:
 		move.b	#$24,($FFFFF600).w	; load options menu
 		rts
 
+HubRing_SoundTest:
+		; TODO: get a proper sound test working
+		bra.s	HubRing_Options
+
 HubRing_Tutorial:
 		move.w	#$501,($FFFFFE10).w	; set level to SBZ2
 		bra.w	StartLevel
@@ -335,11 +344,6 @@ HubRing_Blackout:
 
 ; GotThroughAct:
 Exit_Level:
-	if def(__BENCHMARK__)
-		; Benchmark ROM exits level immediately
-		move.b	#0, $FFFFF600		
-		rts
-	else
 		cmpi.w	#$501,($FFFFFE10).w	; did we beat the tutorial?
 		beq.w	GTA_Tutorial		; if yes, branch
 
@@ -415,7 +419,6 @@ GTA_Blackout:	clr.b	($FFFFFF5F).w		; clear blackout special stage flag
 		move.b	#9,(StoryTextID).w	; set number for text to 9 (final congratulations)
 		bra.w	RunStory
 
-	endif	; def(__BENCHMARK__)=0
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------

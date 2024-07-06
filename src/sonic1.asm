@@ -16902,42 +16902,41 @@ SpeedToScreenPos:
 
 
 DisplaySprite:
-		lea	($FFFFAC00).w,a1
-		move.w	obPriority(a0),d0
-		lsr.w	#1,d0
-		andi.w	#$380,d0
-		adda.w	d0,a1
-		cmpi.w	#$7E,(a1)
-		bcc.s	locret_D620
-		addq.w	#2,(a1)
-		adda.w	(a1),a1
-		move.w	a0,(a1)
+		moveq	#7, d0
+		and.b	obPriority(a0), d0
+		add.w	d0, d0
+		movea.w	DisplaySprite_LayersPointers(pc, d0), a1
+		cmpi.w	#$7E, (a1)
+		bcc.s	@display_done
+		addq.w	#2, (a1)
+		adda.w	(a1), a1
+		move.w	a0, (a1)
 
-locret_D620:
-		rts	
+@display_done:
+		rts
 ; End of function DisplaySprite
 
-; ---------------------------------------------------------------------------
-; Subroutine to	display	a 2nd sprite/object, when a1 is	the object RAM
-; ---------------------------------------------------------------------------
+DisplaySprite_LayersPointers:
+		dc.w	Sprites_Queue+0, Sprites_Queue+$80, Sprites_Queue+$100, Sprites_Queue+$180
+		dc.w	Sprites_Queue+$200, Sprites_Queue+$280, Sprites_Queue+$300, Sprites_Queue+$380
 
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
+; ---------------------------------------------------------------
+; Subroutine to display a 2nd sprite/object
+; ---------------------------------------------------------------
 
 DisplaySprite2:
-		lea	($FFFFAC00).w,a2
-		move.w	obPriority(a1),d0
-		lsr.w	#1,d0
-		andi.w	#$380,d0
-		adda.w	d0,a2
+		moveq	#7, d0
+		and.b	obPriority(a1), d0
+		add.w	d0, d0
+		movea.w	DisplaySprite_LayersPointers(pc, d0), a2
 		cmpi.w	#$7E,(a2)
-		bcc.s	locret_D63E
+		bcc.s	@display_done
 		addq.w	#2,(a2)
 		adda.w	(a2),a2
 		move.w	a1,(a2)
 
-locret_D63E:
-		rts	
+@display_done:
+		rts
 ; End of function DisplaySprite2
 
 ; ---------------------------------------------------------------------------
@@ -16951,12 +16950,11 @@ DeleteObject:
 		movea.l	a0,a1
 
 DeleteObject2:
-		moveq	#0,d1
-		moveq	#$F,d0
+		moveq	#0,d0
 
-loc_D646:
-		move.l	d1,(a1)+	; clear	the object RAM
-		dbf	d0,loc_D646	; repeat $F times (length of object RAM)
+		rept	$40/4
+			move.l	d0,(a1)+
+		endr
 		rts	
 ; End of function DeleteObject
 

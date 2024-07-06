@@ -10,6 +10,8 @@ LevelRend_RAM:		equ	$FFFFAB80			;	level renderer RAM (AB80-AC98)
 
 ; <<FOR SALE>>							;	<<FOR SALE / $20,000>> (AF18-ABFF)
 
+Sprites_Queue:		equ	$FFFFAC00			;	object sprites queued for display (AC00-AFFF)
+
 Art_Buffer: 		equ 	$FFFFB000			;	Art buffer, used for decompression and transfers (B000-CAFF)
 Art_Buffer_End:		equ	$FFFFC000			;	WARNING! Buffer should be at least $1000 bytes for PLC system to work
 

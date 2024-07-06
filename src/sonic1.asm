@@ -75,7 +75,7 @@ QuickLevelSelect_ID = $400
 DebugModeDefault = 1
 DebugSurviveNoRings = 1
 DoorsAlwaysOpen = 1
-LowBossHP = 0
+LowBossHP = 1
 	endif
 
 ; ------------------------------------------------------

@@ -335,6 +335,11 @@ HubRing_Blackout:
 
 ; GotThroughAct:
 Exit_Level:
+	if def(__BENCHMARK__)
+		; Benchmark ROM exits level immediately
+		move.b	#0, $FFFFF600		
+		rts
+	else
 		cmpi.w	#$501,($FFFFFE10).w	; did we beat the tutorial?
 		beq.w	GTA_Tutorial		; if yes, branch
 
@@ -410,6 +415,7 @@ GTA_Blackout:	clr.b	($FFFFFF5F).w		; clear blackout special stage flag
 		move.b	#9,(StoryTextID).w	; set number for text to 9 (final congratulations)
 		bra.w	RunStory
 
+	endif	; def(__BENCHMARK__)=0
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------

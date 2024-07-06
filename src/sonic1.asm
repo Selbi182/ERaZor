@@ -40461,14 +40461,15 @@ SS_NoTeleport:
 		jsr	obj09_Modes(pc,d1.w)
 		jsr	LoadSonicDynPLC
 
+		; slow down Sonic when collecting the last emerald
 		tst.b	($FFFFF7CC).w
 		beq.s	@notlocked
-		move.w	($FFFFD010).w,d0
+		move.w	obVelX(a0),d0
 		asr.w	#1,d0
-		move.w	d0,($FFFFD010).w
-		move.w	($FFFFD012).w,d0
+		move.w	d0,obVelX(a0)
+		move.w	obVelY(a0),d0
 		asr.w	#1,d0
-		move.w	d0,($FFFFD012).w
+		move.w	d0,obVelY(a0)
 		
 @notlocked:
 		btst	#4,($FFFFFF92).w	; is nonstop inhuman enabled?
@@ -40476,8 +40477,20 @@ SS_NoTeleport:
 		add.w	#$0100,($FFFFFB04)	; increase Sonic's palette (color 3)
 		add.w	#$0100,($FFFFFB06)	; increase Sonic's palette (color 4)
 		add.w	#$0100,($FFFFFB08)	; increase Sonic's palette (color 5)
-
 @notnonstopinhuman:
+		
+		; prevent players from going out of bounds
+		move.w	obX(a0),d0		; get Sonic's X pos
+		bmi.s	@oob			; if it's negative, we're out of bounds to the left
+		cmpi.w	#$9FF,d0		; did we go out of bounds to the right?
+		bhs.s	@oob			; if yes, branch
+		move.w	obY(a0),d0		; get Sonic's Y pos
+		bmi.s	@oob			; if it's negative, we're out of bounds to the top
+		cmpi.w	#$9FF,d0		; did we go out of bounds to the bottom?
+		blo.s	@display		; if not, we're all good
+@oob:
+		bsr	TouchGoalBlock		; reset Sonic to never go out of bounds
+@display:
 		jmp	DisplaySprite
 ; ===========================================================================
 Obj09_Modes:	dc.w Obj09_OnWall-Obj09_Modes
@@ -40956,45 +40969,45 @@ Obj09_Collision:				; XREF: Obj09_Move; Obj09_Fall
 
 
 Obj09_ColCheck:				; XREF: Obj09_Collision
-		beq.s	@notsolid    	; if current block is just an empty space, branch
+		beq.s	Obj09_notsolid    	; if current block is just an empty space, branch
 
 		cmpi.b	#$3A,d4		; is block in range $3A-$4B (rings, emeralds...)?
-		bcs.s	@solid		; if not, it's a solid block
+		blo.s	@solid		; if not, it's a solid block
 		cmpi.b	#$4B,d4		; $4B is the end of shiny collectibles
-		bcs.s	@notsolid
-
+		bls.s	Obj09_notsolid
 @solid:
 		move.b	d4,$30(a0)	; copy collided ID of block to d4
 		move.l	a1,$32(a0)	; copy RAM location of collided block to a1
 		cmpi.b	#$27,d4		; is object a goal block?
-		bne.s	@setsolid    	; if not, branch
-		btst	#1,obStatus(a0)	; is Sonic airborne?
-		bne.s	@notsolid	; if yes, mark goal block as not solid (special logic is run from the block routine itself)
-@setsolid:
+		beq.s	Obj09_checkradius   	; if yes, don't collide normally (special logic is run from the block itself)
 		moveq	#-1,d5		; set to block
-@notsolid:
+Obj09_notsolid:
 		rts			; block is not solid
+
+Obj09_checkradius:
+	tst.b	$31(a0)				; has goal already been touched?
+	bne.s	Obj09_notsolid			; if so, bypass another check
+		movem.l	d0-d2,-(sp)			; store registers
+		bsr.w	Obj09_RadiusGoal		; has Sonic touched the goal?
+		movem.l	(sp)+,d0-d2			; restore registers
+		sls.b	$31(a0)				; mark goal as touched or not
+		bls.s	@Touch				; if so, branch
+		rts					; no touch
+
+	@Touch:
+	move.b	d4,$30(a0)
+		addq.w	#4,sp				; force this block to be touched only
+		tst.b	d5				; check collision for return
+		rts					; done
 ; End of function Obj09_ColCheck
 
-		cmpi.b	#$3A,d4
-		bcs.s	loc_1BD46       ; $3A means the usual BIG HITBOX
-		cmpi.b	#$4B,d4
-		bcc.s	loc_1BD46       ; $4B means collectible mmm shiny
-
-locret_1BD44:
-		rts	
-; ===========================================================================
-
-loc_1BD46:
-		move.b	d4,$30(a0)      ; what
-		move.l	a1,$32(a0)      ; WHAT
-		moveq	#-1,d5          ; ???
-		rts	
 
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 
 
 Obj09_ChkItems_Collectible:			; XREF: Obj09_Display
+	tst.b	$31(a0)				; was the goal touched during wall detection?
+	bne.w	Obj09_TouchGoal			; if so, bypass all checks and go straight to goal reaction
 		lea	($FF0000).l,a1
 		moveq	#0,d4
 		move.w	obY(a0),d4
@@ -41174,12 +41187,8 @@ locret_1BEAC:
 		rts	
 ; ===========================================================================
 
-; Obj09_GOAL:
-Obj09_ChkGOAL:
-		cmpi.b	#$27,d0			; is the item a	"GOAL"?
-		bne.w	Obj09_ChkBumper		; if not, branch
 
-		; radial hitboxes
+Obj09_RadiusGoal:
 		move.w	$34(a0),d2			; load layout address
 		subq.w	#$01,d2				; align to first block
 		moveq	#$7F,d1				; get only X range of the layout
@@ -41199,12 +41208,22 @@ Obj09_ChkGOAL:
 	.PosY:	mulu.w	d1,d1				; setup pythagorean
 		mulu.w	d2,d2				; ''
 		add.l	d1,d2				; ''
-		cmpi.l	#24*24,d2			; is Sonic touching the goal circularly?
+		cmpi.l	#((24+24)/2)*((24+24)/2),d2	; is Sonic touching the goal circularly?
+		rts					; return touch status
+
+; Obj09_GOAL:
+Obj09_ChkGOAL:
+		cmpi.b	#$27,d0			; is the item a	"GOAL"?
+		bne.w	Obj09_ChkBumper		; if not, branch
+		bsr.s	Obj09_RadiusGoal		; has Sonic touched the goal?
 		bls.s	.Touch				; if so, branch
 		rts					; no touch
 
 	.Touch:
-  		btst	#4,($FFFFFF92).w	; is nonstop inhuman enabled?
+
+Obj09_TouchGoal:
+		sf.b	$31(a0)				; clear goal touch flag
+ 		btst	#4,($FFFFFF92).w	; is nonstop inhuman enabled?
 		bne.w	Obj09_DoBumper		; if yes, convert goal block into bumber
 
 TouchGoalBlock:
@@ -43107,19 +43126,22 @@ Debug_Index:	dc.w Debug_Main-Debug_Index
 ; ===========================================================================
 
 Debug_Main:				; XREF: Debug_Index
-		addq.b	#2,($FFFFFE08).w
-		move.w	($FFFFF72C).w,($FFFFFEF0).w ; buffer level x-boundary
-		move.w	($FFFFF726).w,($FFFFFEF2).w ; buffer level y-boundary
-		move.w	#0,($FFFFF72C).w
-		move.w	#$720,($FFFFF726).w
-		andi.w	#$7FF,($FFFFD00C).w
-		andi.w	#$7FF,($FFFFF704).w
-		andi.w	#$3FF,($FFFFF70C).w
-		move.b	#0,obFrame(a0)
-		move.b	#0,obAnim(a0)
-		clr.w	obVelX(a0)	; clear x-speed
-		clr.w	obVelY(a0)	; clear y-speed
-		clr.w	obInertia(a0)	; clear inertia
+		addq.b	#2,($FFFFFE08).w	; to to Debug_Skip next frame
+
+		move.b	#0,obFrame(a0)	; use first frame for the ring
+		move.b	#0,obAnim(a0)	; clear animation byte
+		clr.w	obVelX(a0)	; clear Sonic's x-speed
+		clr.w	obVelY(a0)	; clear Sonic's y-speed
+		clr.w	obInertia(a0)	; clear Sonic's inertia
+
+	;	move.w	($FFFFF72C).w,($FFFFFEF0).w	; buffer level x-boundary
+	;	move.w	($FFFFF726).w,($FFFFFEF2).w	; buffer level y-boundary
+	;	move.w	#0,($FFFFF72C).w		; unset upper level boundary
+	;	move.w	#$720,($FFFFF726).w		; set target lower boundary
+	;	andi.w	#$7FF,($FFFFD00C).w		; limit Sonic's Y pos
+	;	andi.w	#$7FF,($FFFFF704).w		; limit camera's Y pos (plane A)
+	;	andi.w	#$3FF,($FFFFF70C).w		; limit camera's Y pos (plane B)
+
 		cmpi.b	#$10,($FFFFF600).w ; is	game mode = $10	(special stage)?
 		bne.s	Debug_Zone	; if not, branch
 		move.w	#0,($FFFFF782).w ; stop	special	stage rotating
@@ -43173,27 +43195,33 @@ Debug_Control:
 		move.w	#1,d1
 		move.b	($FFFFF605).w,d4
 		andi.w	#$F,d4		; is up/down/left/right	pressed?
-		bne.s	loc_1D018	; if yes, branch
+		bne.s	Debug_MoveStart	; if yes, branch
 		move.b	($FFFFF604).w,d0
 		andi.w	#$F,d0
-		bne.s	loc_1D000
+		bne.s	Debug_MoveContinue
 		move.b	#$C,($FFFFFE0A).w
 		move.b	#$F,($FFFFFE0B).w
 		bra.w	Debug_Exit
 ; ===========================================================================
 
-loc_1D000:
+Debug_MoveContinue:
 		subq.b	#1,($FFFFFE0A).w
 		bne.s	loc_1D01C
 		move.b	#1,($FFFFFE0A).w
 		addq.b	#1,($FFFFFE0B).w
-		bne.s	loc_1D018
+		bne.s	Debug_MoveStart
 		move.b	#-1,($FFFFFE0B).w
 
-loc_1D018:
+Debug_MoveStart:
 		move.b	($FFFFF604).w,d4
 
 loc_1D01C:
+		moveq	#1,d6			; enable camera capping
+		cmpi.b	#$10,($FFFFF600).w	; are we in a special stage?
+		bne.s	@notspecial		; if not, branch
+		moveq	#0,d6			; disable camera capping
+
+@notspecial:
 		moveq	#0,d1
 		move.b	($FFFFFE0B).w,d1
 		addq.w	#1,d1
@@ -43204,36 +43232,79 @@ loc_1D01C:
 		move.l	d1,d2
 		asr.l	#6,d2
 		add.l	d2,d1
-		
 		move.l	obY(a0),d2
 		move.l	obX(a0),d3
+
+Debug_ChkUp:
 		btst	#0,d4		; is up	being pressed?
-		beq.s	loc_1D03C	; if not, branch
+		beq.s	Debug_ChkDown	; if not, branch
 		sub.l	d1,d2
-		bcc.s	loc_1D03C
-		moveq	#0,d2
+	;	bcc.s	@no
+	;	moveq	#0,d2
+@no:
+		; prevent debug object going off-screen to the top
+		tst.b	d6		; is capping enabled?
+		beq.s	Debug_ChkDown	; if not, branch
+		moveq	#0,d5			
+		move.w	($FFFFF72C).w,d5
+		swap	d5
+		cmp.l	d5,d2
+		bgt.s	Debug_ChkDown
+		move.l	d5,d2
 
-loc_1D03C:
+Debug_ChkDown:
 		btst	#1,d4		; is down being	pressed?
-		beq.s	loc_1D052	; if not, branch
+		beq.s	Debug_ChkLeft	; if not, branch
 		add.l	d1,d2
-		cmpi.l	#$7FF0000,d2
-		bcs.s	loc_1D052
-		move.l	#$7FF0000,d2
-
-loc_1D052:
+	;	cmpi.l	#$7FF0000,d2
+	;	bcs.s	@no
+	;	move.l	#$7FF0000,d2
+@no:		
+		; prevent debug object going off-screen to the bottom
+		tst.b	d6		; is capping enabled?
+		beq.s	Debug_ChkLeft	; if not, branch
+		moveq	#0,d5			
+		move.w	($FFFFF72E).w,d5
+		addi.w	#224,d5
+		swap	d5
+		cmp.l	d5,d2
+		bcs.s	Debug_ChkLeft
+		move.l	d5,d2
+		
+Debug_ChkLeft:
 		btst	#2,d4		; is left being pressed?
-		beq.s	loc_1D05E	; if not, branch
+		beq.s	Debug_ChkRight	; if not, branch
 		sub.l	d1,d3
-		bcc.s	loc_1D05E
-		moveq	#0,d3
+	;	bcc.s	@no
+	;	moveq	#0,d3
+@no:		
+		; prevent debug object going off-screen to the left
+		tst.b	d6		; is capping enabled?
+		beq.s	Debug_ChkRight	; if not, branch
+		moveq	#0,d5			
+		move.w	($FFFFF728).w,d5
+		swap	d5
+		cmp.l	d5,d3
+		bgt.s	Debug_ChkRight
+		move.l	d5,d3
 
-loc_1D05E:
+Debug_ChkRight:
 		btst	#3,d4		; is right being pressed?
-		beq.s	loc_1D066	; if not, branch
+		beq.s	Debug_SetPos	; if not, branch
 		add.l	d1,d3
+		
+		; prevent debug object going off-screen to the right
+		tst.b	d6		; is capping enabled?
+		beq.s	Debug_SetPos	; if not, branch
+		moveq	#0,d5			
+		move.w	($FFFFF72A).w,d5
+		addi.w	#320,d5
+		swap	d5
+		cmp.l	d5,d3
+		bcs.s	Debug_SetPos
+		move.l	d5,d3
 
-loc_1D066:
+Debug_SetPos:
 		move.l	d2,obY(a0)	; set final Y position of debug object
 		move.l	d3,obX(a0)	; set final X position of debug object
 
@@ -43283,8 +43354,8 @@ Debug_Exit:
 		move.b	d0,($FFFFD01C).w
 		move.w	d0,obScreenY(a0)
 		move.w	d0,$E(a0)
-		move.w	($FFFFFEF0).w,($FFFFF72C).w ; restore level boundaries
-		move.w	($FFFFFEF2).w,($FFFFF726).w
+	;	move.w	($FFFFFEF0).w,($FFFFF72C).w ; restore level boundaries
+	;	move.w	($FFFFFEF2).w,($FFFFF726).w
 		cmpi.b	#$10,($FFFFF600).w	; are you in the special stage?
 		beq.s	Debug_Exit_SS		; if yes, branch
 		jsr	Hud_Base		; restore HUD after using debug mode

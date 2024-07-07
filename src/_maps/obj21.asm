@@ -16,11 +16,12 @@ Obj21_Mappings:
 Obj21_Blank	dc.b 0
 		dc.b $00, $00, $00, $00, $00	; Blank
 
-Obj21_Score:	dc.b 5
+Obj21_Score:	dc.b 6
 		dc.b $F9, $0D, $80, $00, $C8	; SCOR
 		dc.b $F9, $01, $80, $16, $E8	; E
 		dc.b $F8, $0D, $80, $18, $F0	; First part of Score Counter
-		dc.b $F8, $09, $80, $20, $10	; Second part of Score Counter
+		dc.b $F8, $05, $80, $20, $10	; Second part of Score Counter
+		dc.b $F8, $01, $80, $26, $20	; faked zero
 		dc.b $F8, $01, $80, $26, $28	; faked zero
 
 Obj21_Rings:	dc.b 3

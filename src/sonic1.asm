@@ -47,7 +47,7 @@ __DEBUG__: equ 1
 ; ------------------------------------------------------
 ; Developer Assembly Options
 ; ------------------------------------------------------
-; $000 - boot to title screen level select
+;   -1 - boot to title screen level select
 ; $400 - Uberhub Place
 ; $000 - Night Hill Place
 ; $002 - Green Hill Place
@@ -59,7 +59,7 @@ __DEBUG__: equ 1
 ; $302 - Star Agony Place
 ; $502 - Finalor Place
 ; $501 - Tutorial Place
-QuickLevelSelect = 0
+QuickLevelSelect = 1
 QuickLevelSelect_ID = $000
 ; ------------------------------------------------------
 DebugModeDefault = 1
@@ -311,7 +311,7 @@ GameClrRAM:	move.l	d7,(a6)+
 	endif
 
 	if QuickLevelSelect=1
-		if (QuickLevelSelect_ID=$000)
+		if (QuickLevelSelect_ID=-1)
 			move.b	#4,($FFFFF600).w ; set Game Mode to title scren
 		else
 		move.w	#QuickLevelSelect_ID,($FFFFFE10).w	; set level to QuickLevelSelect_ID
@@ -2919,7 +2919,7 @@ Title_SonPalLoop:
 		move.w	#0,($FFFFFFE6).w
 		VBlank_UnsetMusicOnly
 		display_enable
-	if QuickLevelSelect=1 & QuickLevelSelect_ID=$000
+	if QuickLevelSelect=1 & QuickLevelSelect_ID=-1
 		bra.s	LevelSelect_Load
 	endif
 		move.b	#$8A,d0		; play title screen music
@@ -3551,14 +3551,18 @@ Level_GetBgm:
 		dbf	d2,@clearpalafter
 
 Level_NoPreTut:
-		cmpi.w	#$001,($FFFFFE10).w	; is level GHZ2?
-		beq.s	Level_NoMusic		; if yes, don't play music
-		cmpi.w	#$002,($FFFFFE10).w
-		bne.s	@0
-		cmpi.b	#4,($FFFFFE30).w
-		beq.s	Level_NoMusic
+		cmpi.w	#$001,($FFFFFE10).w	; is level intro cutscene?
+		beq.s	Level_NoMusic		; if yes, don't play music here
 
-@0:
+		cmpi.w	#$002,($FFFFFE10).w	; is level GHP?
+		bne.s	@playregularlevelmusic	; if not, branch
+		cmpi.b	#4,($FFFFFE30).w	; did we hit the fourth checkpoint yet?
+		bne.s	@playregularlevelmusic	; if not, branch
+		move.b	#$94,d0			; play regular GHZ music
+		jsr	PlaySound
+		bra.s	Level_NoMusic
+		
+@playregularlevelmusic:
 		bsr	PlayLevelMusic		; play level music
 
 Level_NoMusic:
@@ -4842,13 +4846,13 @@ SpecialStage:				; XREF: GameModeArray
 ; ---------------------------------------------------------------------------
 
 @cont:
+		display_disable
 		VBlank_SetMusicOnly
 		lea	($C00004).l,a6
 		move.w	#$8B03,(a6)
 		move.w	#$8004,(a6)		; disable h-ints (VERY important, because otherwise we get massive slowdowns!)
 		move.w	#$8AAF,($FFFFF624).w
 		move.w	#$9011,(a6)
-		display_disable
 		bsr	ClearScreen
 
 		lea	($C00004).l,a5
@@ -4865,8 +4869,6 @@ loc_463C:
 		
 		bsr	SS_BGLoad
 		
-		VBlank_UnsetMusicOnly
-
 		moveq	#$14,d0
 		bsr	PLC_ExecuteOnce	; load special stage patterns
 
@@ -4916,6 +4918,7 @@ SS_ClrNemRam:	move.l	d0,(a1)+
 		moveq	#22,d0		; load dark/red palette
 @contx:		bsr	PalLoad1	; load special stage palette
 		jsr	SS_Load
+		bsr	SS_BGAnimate
 
 		move.l	#0,($FFFFF700).w
 		move.l	#0,($FFFFF704).w
@@ -4935,13 +4938,37 @@ SS_ClrNemRam:	move.l	d0,(a1)+
 @conto:
 		bsr	PlaySound	; play special stage BG	music
 		move.w	#0,($FFFFF790).w
-	;	clr.w	($FFFFFE20).w	; clear rings
-	;	clr.b	($FFFFFE1B).w	; clear ring counter
 		move.w	#0,($FFFFFE08).w
 		move.w	#1800,($FFFFF614).w
 
 		display_enable
-		bsr	Pal_MakeWhite
+		VBlank_UnsetMusicOnly
+
+		; the following code is basically just Pal_MakeWhite but
+		; adjusted to already start displaying the level during the fade-in
+		move.w	#$3F,($FFFFF626).w
+		moveq	#0,d0
+		lea	($FFFFFB00).w,a0
+		move.b	($FFFFF626).w,d0
+		adda.w	d0,a0
+		move.w	#$EEE,d1
+		move.b	($FFFFF627).w,d0
+@PalWhiteLoop:	move.w	d1,(a0)+
+		dbf	d0,@PalWhiteLoop
+		move.w	#$15,d5
+@loc_1EF4:	move.l	d5,-(sp)
+		move.b	#$A,VBlankRoutine
+		bsr	DelayProgram
+		move.w	($FFFFF604).w,($FFFFF602).w
+		jsr	ObjectsLoad
+		jsr	BuildSprites
+		jsr	SS_ShowLayout
+		bsr	SS_BGAnimate
+		bsr	Pal_WhiteToBlack
+		move.l	(sp)+,d5
+		dbf	d5,@loc_1EF4
+
+	;	bsr	Pal_MakeWhite
 
 
 ; ---------------------------------------------------------------------------
@@ -12009,7 +12036,7 @@ Obj4B_XPositive:
 
 Obj4B_YPositive:
 		cmpi.w	#$20,d0
-		bgt.s	Obj4B_DontCollect
+		bgt.w	Obj4B_DontCollect
 
 		; new censored easter egg (replaced the old naughty one)
 		cmpi.w	#$302,($FFFFFE10).w	; is this Star Agony Place? (easter egg ring)
@@ -12025,7 +12052,13 @@ Obj4B_YPositive:
 		moveq	#$A,d0			; reload SLZ patterns overwritten by the textbox
 		jsr	(LoadPLC).l		; (this is slow and inefficient as fuck lmao -- UPDATE: not anymore thanks to vlad!)
 		moveq	#$B,d0			; reload the other SLZ patterns overwritten by the textbox
-		jsr	(LoadPLC).l
+		jsr	(LoadPLC).l		; ye
+
+		move.b	#$21,($FFFFD400).w	; reload RINGS HUD object...
+		move.b	#2,($FFFFD430).w	; ...because very coincidentally, the tutorial box also uses D400
+		move.w	#999,($FFFFFE20).w	; but at least here's a little something for you
+		ori.b	#1,($FFFFFE1D).w	; update rings counter
+		
 		move.b	#$96,d0			; restart regular music
 		btst	#4,($FFFFFF92).w	; is nonstop inhuman enabled?
 		beq.s	@play			; if not, branch
@@ -28940,16 +28973,11 @@ GameOver:				; XREF: Obj01_Death
 @cont:
 		clr.b	($FFFFFE1E).w		; stop time counter
 		ori.b	#1,($FFFFFE1C).w	; update lives counter
-		addq.w	#1,($FFFFFE12).w	; add one death
-		cmpi.w	#99,($FFFFFE12).w	; are we at 99 deaths?
+	;	addq.w	#1,($FFFFFE12).w	; add one death
+		addi.w	#47,($FFFFFE12).w	; add a ton of deaths of testing
+		cmpi.w	#999,($FFFFFE12).w	; are we at 999 deaths?
 		blo.s	loc_138D4		; if not, branch
-		move.w	#99,($FFFFFE12).w	; holy shit you suck at video games. cap the counter
-		
-		; TODO: change to this once third digit is implemented
-	;	addi.w	#47,($FFFFFE12).w	; add a ton of deaths of testing
-	;	cmpi.w	#999,($FFFFFE12).w	; are we at 999 deaths?
-	;	blo.s	loc_138D4		; if not, branch
-	;	move.w	#999,($FFFFFE12).w	; holy shit you suck at video games. cap the counter
+		move.w	#999,($FFFFFE12).w	; holy shit you suck at video games. cap the counter
 
 loc_138D4:
 		move.w	#60,$3A(a0)	; set time delay to 60 frames
@@ -34093,7 +34121,16 @@ locret_179AA:
 		jsr	LoadPLC2	; load signpost	patterns
 		move.b	#1,($FFFFFF91).w
 		clr.b	($FFFFF7AA).w
+		lea	@Spring(pc), a1	; load spring graphics
+		jsr	LoadPLC_Direct
 		jmp	DeleteObject
+
+; ===========================================================================
+@Spring:
+	dc.l	ArtKospM_HSpring
+	dc.w	$A460
+	dc.w	-1
+
 ; ===========================================================================
 
 loc_179AC:				; XREF: Obj3D_ShipIndex
@@ -39974,10 +40011,12 @@ SS_Load:				; XREF: SpecialStage
 		move.w	#$0587,($FFFFD00C).w	; start Y pos for Sonic
 		tst.b	($FFFFFF5F).w		; is this the blackout special stage?
 		beq.s	@notblackout		; if not, branch
-		lea	(SS_Blackout_Casual).l,a0 ; load casual blackout layout
-		frantic				; are we in frantic mode?
-		beq.s	SS_LoadLevel		; if not, branch
-		lea	(SS_Blackout_Frantic).l,a0 ; load casual blackout layout (you masochist)
+
+		lea	(SS_Blackout_Regular).l,a0 ; load regular blackout layout
+		move.b	($FFFFF604).w,d0	; get button presses
+		cmpi.b	#$70,d0			; is exactly ABC held?
+		bne.s	SS_LoadLevel		; if not, branch
+		lea	(SS_Blackout_EasterEgg).l,a0 ; load easter egg blackout layout (you masochist)
 		bra.s	SS_LoadLevel		; branch
 @notblackout:
 		lea	(SS_2_Casual).l,a0	; load casual Unreal Place layout
@@ -42381,6 +42420,7 @@ HudUpdate:
 		move.l	#$5C800003,d0	; set VRAM address
 		move.l	($FFFFFE26).w,d1 ; load	score
 		bsr	Hud_Score
+		ori.b	#1,($FFFFFE1C).w	; update lives counter as well to display the third digit properly
 
 Hud_ChkRings:
 		tst.b	($FFFFFE1D).w	; does the ring	counter	need updating?
@@ -42915,15 +42955,36 @@ Hud_ClrBonusLoop:
 
 
 Hud_Lives:				; XREF: Hud_ChkLives
-		move.l	#$7B800003,d0	; set VRAM address
-		moveq	#0,d1
-		move.w	($FFFFFE12).w,d1	; load number of lives
-	;	divu.w	#100,d1			; only look at the first two decimal digits
+		moveq	#0,d1			; clear d1
 		tst.b	($FFFFFF68).w		; is boss HUD currently meant to be displayed?
 		beq.s	@notboss		; if not, branch
 		move.b	($FFFFFF68).w,d1	; load boss health as lives instead
+		bra.w	@tenandone		; skip displaying the 100th digit
 
 @notboss:
+		move.w	($FFFFFE12).w,d1	; load number of lives		
+		moveq	#0,d2			; disable 100th digit
+@modulo:
+		cmpi.w	#100,d1			; do we have at least 100 deaths?
+		blo.s	@hundred		; if not, branch
+		subi.w	#100,d1			; sub 100 deaths
+		addq.w	#1,d2			; add one to modulo counter
+		bra.s	@modulo			; modulo loop
+
+@hundred:
+		tst.w	d2			; is third digit meant to be displayed?
+		beq.s	@tenandone		; if not, branch
+		
+		vram	$DDC0			; third overwrites the 10th digit from the Score HUD (replaced with a fake 0)
+		lea	(Art_Hud).l,a1		; load number font
+		lsl.w	#6,d2			; multiply counter by $40
+		adda.w	d2,a1			; add that to the address
+		rept	16
+		move.l	(a1)+,(a6)
+		endr
+
+@tenandone:
+		move.l	#$7B800003,d0	; set VRAM address
 		lea	(Hud_10).l,a2
 		moveq	#1,d6
 		moveq	#0,d4
@@ -44183,10 +44244,12 @@ SS_2_Casual:	incbin	LevelData\sslayout\2-Casual.bin
 		even
 SS_2_Frantic:	incbin	LevelData\sslayout\2-Frantic.bin
 		even
-SS_Blackout_Casual:	incbin	LevelData\sslayout\Blackout-Casual.bin
-			even
-SS_Blackout_Frantic:	incbin	LevelData\sslayout\Blackout-Frantic.bin
-			even
+SS_Blackout_Regular:
+		incbin	LevelData\sslayout\Blackout-Regular.bin
+		even
+SS_Blackout_EasterEgg:
+		incbin	LevelData\sslayout\Blackout-EasterEgg.bin
+		even
 ; ---------------------------------------------------------------------------
 ; Animated uncompressed graphics
 ; ---------------------------------------------------------------------------

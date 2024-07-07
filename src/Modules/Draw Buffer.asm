@@ -77,28 +77,40 @@ Draw_ScreenVertical:
 	lea     Draw_TransferTiles(pc),a2
 	swap    d0
 	move.w  d0,d1
-	and.w   #$E07E,d0
-	swap    d0                      ; d0 = Redraw position
 	and.w   #$F80,d1                ; d1 = YTile * $80
-	lsr.w   #6,d1                   ; d1 = YTile * 2
-	sub.w   #$40,d1                 ; d1 = YTile * 2 - $40
-	neg.w   d1                      ; d1 = ($20 - YTile) * 2 = TilesSafe*2  -- tiles before end of col
+	lsr.w   #7,d1                   ; d1 = YTile
+	sub.w   #$20,d1                 ; d1 = YTile - $20
+	neg.w   d1                      ; d1 = ($20 - YTile) = TilesSafe  -- tiles before end of col
 	moveq   #0,d2
 	move.b  (a1)+,d2                ; d2 = Tiles
-	add.w   d2,d2                   ; d2 = Tiles*2
 	cmp.w   d1,d2                   ; Tiles <= TilesSafe?
 	bls.s   @allsafe
+	sub.w   d1,d2                   ; account for transferred tiles (d2 = Tiles -= TilesSafe)
 
 	; Transfer safe tiles first
-	neg.w   d1                      ; d1 = -TilesSafe*2
-	jsr     (a2,d1)                 ; transfer tiles
-	add.w   d1,d2                   ; count transferred tiles
+*@safe:
+	asr.w	#1, d1			; d1 = -TilesSafe/2
+	bcc.s	@safe_even		; if transfer can fit in LONGWORDS, branch
+	move.w	(a1)+, (a6)		; manually transfer an extra WORD	
+@safe_even:
+	neg.w	d1			; d1 = -TilesSafe/2
+	add.w	d1, d1			; d1 = -TilesSafe/2 * 2
+	jsr	(a2,d1)			; transfer tiles
+
+	; Set redraw position
+	and.w   #$E07E,d0
+	swap    d0                      ; d0 = Redraw position
 	move.l  d0,(a5)                 ; VDP => set redraw location
 
 	; Transfer the rest of the tiles
 @allsafe:
-	neg.w   d2                      ; d2 = -(Tiles-TilesSafe)*2
-	jsr     (a2,d2)
+	asr.w	#1, d2			; d2 = (Tiles-TilesSafe)/2
+	bcc.s	@allsafe_even		; if transfer can fit in LONGWORDS, branch
+	move.w	(a1)+, (a6)		; manually transfer an extra WORD
+@allsafe_even:
+	neg.w	d2                      ; d2 = -(Tiles-TilesSafe)/2
+	add.w	d2, d2			; d2 = -(Tiles-TilesSafe)/2 * 2
+	jsr	(a2,d2)
 	move.w  #$8F02,(a5)             ; VDP => Set auto-increment to $02
 	rts
 
@@ -113,34 +125,47 @@ Draw_ScreenHoriz:
 	moveq   #-$80,d3
 	swap    d0
 	move.w  d0,d1
-	and.w   d3,d0
-	swap    d0                      ; d0 = Redraw position
 	and.w   #$7E,d1                 ; d1 = XTile * 2
 	add.w   d3,d1                   ; d1 = XTile * 2 - $80
 	neg.w   d1                      ; d1 = ($40 - XTile) * 2 = TilesSafe*2  -- tiles before end of row
+	asr.w	#1, d1			; d1 = ($40 - XTile) = TilesSafe
 	moveq   #0,d2
 	move.b  (a1)+,d2                ; d2 = Tiles
-	add.w   d2,d2                   ; d2 = Tiles*2
 	cmp.w   d1,d2                   ; Tiles <= TilesSafe?
 	bls.s   @allsafe
+	sub.w   d1,d2                   ; account for transferred tiles (d2 = Tiles -= TilesSafe)
 
 	; Transfer safe tiles first
-	neg.w   d1                      ; d1 = -TilesSafe*2
-	jsr     (a2,d1)                 ; transfer tiles
-	add.w   d1,d2                   ; count transferred tiles
+*@safe:
+	asr.w	#1, d1			; d1 = -TilesSafe/2
+	bcc.s	@safe_even		; if transfer can fit in LONGWORDS, branch
+	move.w	(a1)+, (a6)		; manually transfer an extra WORD	
+@safe_even:
+	neg.w	d1			; d1 = -TilesSafe/2
+	add.w	d1, d1			; d1 = -TilesSafe/2 * 2
+	jsr	(a2,d1)			; transfer tiles
+
+	; Set redraw position
+	and.w   d3,d0
+	swap    d0                      ; d0 = Redraw position
 	move.l  d0,(a5)                 ; VDP => set redraw location
 
 	; Transfer the rest of the tiles
 @allsafe:
-	neg.w   d2                      ; d2 = -(Tiles-TilesSafe)*2
+	asr.w	#1, d2			; d2 = (Tiles-TilesSafe)/2
+	bcc.s	@allsafe_even		; if transfer can fit in LONGWORDS, branch
+	move.w	(a1)+, (a6)		; manually transfer an extra WORD
+@allsafe_even:
+	neg.w	d2                      ; d2 = -(Tiles-TilesSafe)/2
+	add.w	d2, d2			; d2 = -(Tiles-TilesSafe)/2 * 2
 	jmp     (a2,d2)
 
 ; ---------------------------------------------------------------
 ; Transfer tiles stream
 ; ---------------------------------------------------------------
 
-	rept 64
-		move.w  (a1)+, (a6)
+	rept 64/2
+		move.l  (a1)+, (a6)
 	endr
 
 Draw_TransferTiles:

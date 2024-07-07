@@ -15,7 +15,7 @@ SelbiSplash:
 
 SelbiSplash_VDP:
 		lea	($C00004).l,a6			; Setup VDP
-		move.w	#$8004,(a6)
+		move.w	#$8014,(a6)			; enable h-ints for the black bars
 		move.w	#$8230,(a6)
 		move.w	#$8407,(a6)
 		move.w	#$9001,(a6)
@@ -73,8 +73,17 @@ SelbiSplash_Sounds:
 
 ; ---------------------------------------------------------------------------------------------------------------------
 SelbiSplash_Loop:
+		tst.b	($FFFFFFAF).w
+		beq.s	@Normal
+		move.b	#$1A,VBlankRoutine		; Function 2 in vInt
+		jsr	DelayProgram			; Run delay program
+		bra.s	@Special
+
+	@Normal:
 		move.b	#2,VBlankRoutine		; Function 2 in vInt
 		jsr	DelayProgram			; Run delay program
+
+	@Special:
 		tst.w	($FFFFF614).w			; Test wait time
 		beq.w	SelbiSplash_Next		; is it over? branch
 
@@ -117,6 +126,7 @@ SelbiSplash_Loop:
 	;	move.w	#$8B00,(a6)
 		move.l	#$40000010,(a6)
 		move.w	#$0008,(a5)
+
 @cont:
 		; palette flashing effect
 		; (this is a terrible way of doing this lol)
@@ -126,22 +136,113 @@ SelbiSplash_Loop:
 	;	sub.w	#SelbiSplash_PalChgSpeed,($FFFFFB0A)
 	;	sub.w	#SelbiSplash_PalChgSpeed,($FFFFFB0C)
 	;	sub.w	#SelbiSplash_PalChgSpeed,($FFFFFB0E)
-		
-		btst	#0,($FFFFFE0F).w
-		bne.s	@0
-		lea	($FFFFFB04),a1
-		move.w	#6-1,d4
-@boost:		jsr	SineWavePalette
-		andi.w	#$00E,d0
-		move.w	d0,(a1)
-		dbf	d4,@boost
+
+
+		btst	#1,($FFFFFE0F).w
+		bne.w	@0
+		lea	@PalFlicker(pc),a4
+		moveq	#(@PalFlicker_End-@PalFlicker)-1,d4
+	lea	(0).w,a1
+
+
+
+		tst.b	($FFFFFFAF).w
+		bne.s	@FlashList
+		moveq	#$00,d4
+		lea	($FFFFFB04).w,a1
+		move.w	$80(a1),d2
+		bra.s	@NoQuality
+
+	@FlashList:
+		addq.l	#$01,($FFFFFE0C).w
+	moveq	#$03,d0
+	and.b	($FFFFFE0F).w,d0
+	bne.s	@NoHalfSpeed
+	addq.l	#$01,($FFFFFE0C).w
+
+	@NoHalfSpeed:
+		moveq	#$00,d2
+		move.b	(a4)+,d2
+
+		lea	($FFFFFB00).w,a1
+		lea	Pal_Quality(pc),a0
+		adda.w	d2,a1
+		adda.w	d2,a0
+		move.w	(a0),d1
+
+	@NoQuality:
+		moveq	#$0E,d3
+		and.w	d2,d3
+		sub.w	d3,d2
+
+		move.w	d4,d0
+		add.b	($FFFFFE0F).w,d0
+		jsr	CalcSine
+		asr.w	#$05,d0
+		addq.b	#$01,d0
+		andi.w	#$000E,d0
+
+		add.w	d0,d3
+		cmpi.w	#$000E,d3
+		blo.s	@NoMaxRed
+		moveq	#$0E,d3
+
+	@NoMaxRed:
+		tst.w	d3
+		bpl.s	@NoMinRed
+		moveq	#$00,d3
+
+	@NoMinRed:
+		or.w	d3,d2
+
+	add.w	d0,d0
+	andi.w	#$00E0,d0
+	move.w	d2,d3
+	andi.w	#$00E0,d3
+	sub.w	d3,d2
+	add.w	d0,d3
+		cmpi.w	#$0E0,d3
+		blo.s	@NoMaxGreen
+		move.w	#$0E0,d3
+
+	@NoMaxGreen:
+		tst.w	d3
+		bpl.s	@NoMinGreen
+		moveq	#$00,d3
+
+	@NoMinGreen:
+		or.w	d3,d2
+
+	
+		move.w	d2,(a1)
+		dbf	d4,@FlashList
+
+	;	btst	#0,($FFFFFE0F).w
+	;	bne.s	@0
+	;	lea	($FFFFFB04),a1
+	;	move.w	#6-1,d4
+@boost:	;	jsr	SineWavePalette
+	;	andi.w	#$00E,d0
+	;	move.w	d0,(a1)
+	;	dbf	d4,@boost
 
 		cmpi.w	#$90,($FFFFF614).w		; is time less than $90?
 		bpl.w	@0
+	tst.b	($FFFFFFAF).w
+	bne.w	@NoFaffing
 		move.w	#$8B07,($C00004).l
+	@NoFaffing:
 		moveq	#8,d0
 
 		move.w	($FFFFFE0E).w,d6	; get timer
+
+	bra.s	@0
+
+	@PalFlicker:
+		dc.b	$08,$0A,$0C,$0E, $12,$14,$16,$18,$1A,$1C
+		dc.b	$22,$24,$26, $2C,$2E,$30, $3C,$3E
+	@PalFlicker_End:
+		even
 
 		lea	($FFFFCC00).w,a1
 		move.l	#1,d0
@@ -202,10 +303,10 @@ SelbiSplash_Loop:
 		andi.b	#3,d0
 		bne.w	SelbiSplash_WaitEnd
 
-		btst	#2,($FFFFFE0F).w
-		beq.s	@nowhite
-		jsr	Pal_ToWhite	; increase brightness
-@nowhite:
+	;	jsr	Pal_ToWhite	; increase brightness
+		bsr	Pal_ToWhiteYellow
+		move.w	#$000,($FFFFFB02).w	; force black bars to stay black
+
 		move.b	($FFFFFE0F).w,d0
 		andi.b	#5,d0
 		beq.w	SelbiSplash_WaitEnd
@@ -225,28 +326,56 @@ SelbiSplash_LoadPRESENTS:
 		jsr	DelayProgram			; VSync so gfx loading below isn't terribly out of VBlank
 
 		VBlank_SetMusicOnly
-		lea	($FF0000).l,a1			; Load screen mappings
-		lea	(Map2_SelbiSplash).l,a0
-		moveq	#0,d0
-		jsr	EniDec
+		move.w	sr,-(sp)
+		move.w	#$2700,sr
+
+		lea	($C00004).l,a6
+
+		lea	VDP_Quality(pc),a0
+		move.w	#$8000,d0
+		move.w	#$0100,d1
+		moveq	#$12-1,d2
+
+	@LoadVDP:
+		move.b	(a0)+,d0
+		move.w	d0,(a6)
+		add.w	d1,d0
+		dbf	d2,@LoadVDP
+
+		move.w	#$8100|%00010100,(a6)		; $81	; SDVM P100 - SMS mode (0N|1Y) | Display (0N|1Y) | V-Interrupt (0N|1Y) | DMA (0N|1Y) | V-resolution (0-1C|1-1E)
+		move.l	#$94809300,(a6)
+		move.l	#$96009500|(((Art_Quality/2)&$FF00)<<8)|((Art_Quality/2)&$FF),(a6)
+		move.l	#$97004000|((Art_Quality/2)&$7F0000),(a6)
+		move.w	#$0080,-(sp)
+		move.w	(sp)+,(a6)
+
+		move.w	#$8100|%01110100,(a6)		; $81	; SDVM P100 - SMS mode (0N|1Y) | Display (0N|1Y) | V-Interrupt (0N|1Y) | DMA (0N|1Y) | V-resolution (0-1C|1-1E)
+
+	;	lea	($FF0000).l,a1			; Load screen mappings
+	;	lea	(Map2_SelbiSplash).l,a0
+	;	moveq	#0,d0
+	;	jsr	EniDec
 		VBlank_UnsetMusicOnly
 
-		move.b	#2,VBlankRoutine
-		jsr	DelayProgram			; VSync so gfx loading below isn't terribly out of VBlank
-		VBlank_SetMusicOnly
-		lea	($FF0000).l,a1			; Show screen
-		move.l	#$40000003,d0
-		moveq	#$27,d1
-		moveq	#$1B,d2
-		jsr	ShowVDPGraphics
-		VBlank_UnsetMusicOnly
+	;	move.b	#2,VBlankRoutine
+	;	jsr	DelayProgram			; VSync so gfx loading below isn't terribly out of VBlank
+	;	VBlank_SetMusicOnly
+	;	lea	($FF0000).l,a1			; Show screen
+	;	move.l	#$40000003,d0
+	;	moveq	#$27,d1
+	;	moveq	#$1B,d2
+	;	jsr	ShowVDPGraphics
+	;	VBlank_UnsetMusicOnly
 
-		lea	(Pal_SelbiSplash).l,a1		; Load palette
+		lea	(Pal_Quality).l,a1		; Load palette
 		lea	($FFFFFB00).w,a2
-		rept 8
-		move.l	(a1)+,(a2)+
-		endr
+		moveq	#($80/4)-1,d0
 
+	@LoadCRAM:
+		move.l	(a1)+,(a2)+
+		dbf	d0,@LoadCRAM
+
+	move.w	(sp)+,sr
 	;	jsr	Pal_MakeWhite			; white flash
 		move.b	#1,($FFFFFFAF).w		; set flag that we are in the final phase of the screen
 
@@ -297,6 +426,29 @@ SelbiSplash_LoopEnd:
 SelbiSplash_Next:
 		clr.b	($FFFFFFAF).w
 		clr.l	($FFFFFF7A).w
+
+		move.w	#$3F,($FFFFF626).w
+		moveq	#$07,d4					; MJ: set repeat times
+		moveq	#$00,d6					; MJ: clear d6
+
+	@FadePrivate:
+		jsr	PLC_Execute
+		move.b	#$1A,VBlankRoutine
+		jsr	DelayProgram
+		bchg	#$00,d6					; MJ: change delay counter
+		beq	@FadePrivate				; MJ: if null, delay a frame
+		jsr	Pal_FadeOut
+		cmpi.w	#$03,d4					; MJ: have we reached a point where shadow/highlight can been hidden?
+		bne.s	@NoStopShadow				; MJ: if not, continue normally
+		move.w	#$8C00|%11110111,d0			; MJ: $8C	; APHE SNNB - H-resol (0N|1Y) | Pixel int (0N|1Y) | H-sync (0N|1Y) | Extern-pix (0N|1Y) | S/H (0N|1Y) | Interlace (00N|01Y|11-Split) | H-resol (0-20|1-28)
+		and.b	VDP_Quality+$0C(pc),d0			; MJ: remove shadow/highlight
+		move.w	d0,($C00004).l				; MJ: ''
+
+	@NoStopShadow:
+		dbf	d4,@FadePrivate
+
+		jsr	VDPSetupGame
+
 		jmp	Exit_SelbiSplash
 
 SelbiSplash_DisableDebug:
@@ -306,13 +458,77 @@ SelbiSplash_DisableDebug:
 		bra.s	SelbiSplash_LoopEnd
 
 ; ---------------------------------------------------------------------------------------------------------------------
+
+; the original to-white code cause it looks better with the yellow tint here
+Pal_ToWhiteYellow:				; XREF: Pal_MakeFlash
+		moveq	#0,d0
+		lea	($FFFFFB00).w,a0
+		move.b	($FFFFF626).w,d0
+		adda.w	d0,a0
+		move.b	($FFFFF627).w,d0
+
+@loc_1FAC:
+		bsr.s	Pal_AddColor2_Yellow
+		dbf	d0,@loc_1FAC
+		moveq	#0,d0
+		lea	($FFFFFA80).w,a0
+		move.b	($FFFFF626).w,d0
+		adda.w	d0,a0
+		move.b	($FFFFF627).w,d0
+
+@loc_1FC2:
+		bsr.s	Pal_AddColor2_Yellow
+		dbf	d0,@loc_1FC2
+		rts	
+
+Pal_AddColor2_Yellow:				; XREF: Pal_ToWhite
+		move.w	(a0),d2
+		cmpi.w	#$EEE,d2
+		beq.s	@loc_2006
+		move.w	d2,d1
+		andi.w	#$E,d1
+		cmpi.w	#$E,d1
+		beq.s	@loc_1FE2
+		addq.w	#2,(a0)+	; increase red value
+		rts	
+
+@loc_1FE2:				; XREF: Pal_AddColor2
+		move.w	d2,d1
+		andi.w	#$E0,d1
+		cmpi.w	#$E0,d1
+		beq.s	@loc_1FF4
+		addi.w	#$20,(a0)+	; increase green value
+		rts	
+
+@loc_1FF4:				; XREF: @loc_1FE2
+		move.w	d2,d1
+		andi.w	#$E00,d1
+		cmpi.w	#$E00,d1
+		beq.s	@loc_2006
+		addi.w	#$200,(a0)+	; increase blue	value
+		rts	
+
+@loc_2006:				; XREF: Pal_AddColor2
+		addq.w	#2,a0
+		rts	
+; End of function Pal_MakeFlash
+
+; ---------------------------------------------------------------------------------------------------------------------
 ArtKospM_SelbiSplash:	incbin	"Screens/SelbiSplash/Tiles.kospm"
 			even
 ;Map_SelbiSplash:	incbin	"Screens/SelbiSplash/Maps_NoPRESENTS.bin"
 ;			even
-Map2_SelbiSplash:	incbin	"Screens/SelbiSplash/Maps_WithPRESENTS.bin"
-			even
+;Map2_SelbiSplash:	incbin	"Screens/SelbiSplash/Maps_WithPRESENTS.bin"
+;			even
 Map3_SelbiSplash:	incbin	"Screens/SelbiSplash/Maps_SoftSelbi.bin"
 			even
 Pal_SelbiSplash:	incbin	"Screens/SelbiSplash/Palette.bin"
 			even 
+
+VDP_Quality:		incbin	"Screens\SelbiSplash\selbiv2k\VDP.bin"
+			even
+Pal_Quality:		incbin	"Screens\SelbiSplash\selbiv2k\CRAM.bin"
+			even
+	align	$10000
+Art_Quality:		incbin	"Screens\SelbiSplash\selbiv2k\VRAM.bin"
+			even

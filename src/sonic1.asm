@@ -59,7 +59,7 @@ __DEBUG__: equ 1
 ; $302 - Star Agony Place
 ; $502 - Finalor Place
 ; $501 - Tutorial Place
-QuickLevelSelect = 1
+QuickLevelSelect = 0
 QuickLevelSelect_ID = $000
 ; ------------------------------------------------------
 DebugModeDefault = 1
@@ -641,6 +641,8 @@ BlackBars.SetState:
 		move.b	($FFFFF600).w,d0		; get current game mode
 		cmpi.b	#$C,d0				; are we in a level?
 		beq.s	@validgamemode			; if yes, branch
+		cmpi.b	#$1C,d0				; are we in Selbi?
+		beq.w	BlackBars_Selbi			; if yes, :|
 	;	cmpi.b	#$10,d0				; are we in a special stage?
 	;	beq.s	@validgamemode			; if yes, branch
 		cmpi.b	#$18,d0				; are we in the ending sequence?
@@ -737,6 +739,20 @@ BlackBars.GHP:
 
 @timeleft:		
 		bra	BlackBars_ShowCustom		; force display
+; ---------------------------------------------------------------------------
+
+BlackBars_Selbi:
+		moveq	#0,d0				; disable black bars
+		tst.b	($FFFFFFAF).w			; are we in the final phase?
+		bne.w	BlackBars_SetHeight		; if yes, disable black bars immediately
+		
+		; I'm well aware of how terrible this code is
+		cmpi.l	#$4EE00001,($FFFFFF7A).w
+		bne.w	BlackBars_SetHeight
+		subi.w	#1,BlackBars.Height
+		moveq	#64,d0
+		bra.w	BlackBars_ShowCustom
+
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
 
@@ -4447,6 +4463,9 @@ LineLengths:
 ; ===========================================================================
 
 Fuzz_Uberhub:
+		tst.b	($FFFFFFA5).w	; have we entered the room to the blackout challenge?
+		beq.w	@fuzzuberhubend	; if not, don't display fuzz
+
 		move.w	($FFFFFE04).w,d7 ; move timer into d7
 		and.w 	#1, d7 ; only use least significant bit
 
@@ -44573,6 +44592,7 @@ ObjPos_Null:	dc.w    $FFFF,$0000,$0000
 		include "Screens/SelbiSplash/SelbiSplash.asm"
 		include "Screens/ChapterScreens/ChapterScreen.asm"
 		include "Screens/OptionsScreen/OptionsScreen.asm"
+	;	include "Screens/SoundTestScreen/SoundTestScreen.asm"
 		include "Screens/StoryScreen/StoryScreen.asm"
 		include	"Screens/CreditsScreen/CreditsScreen.asm"
 		include	"Screens/TutorialBox/TutorialBox.asm"

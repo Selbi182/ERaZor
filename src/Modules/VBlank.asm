@@ -68,6 +68,7 @@ VBlankTable:	dc.w VBlank_LagFrame-VBlankTable	; $00
 		dc.w loc_C36-VBlankTable	; $14
 		dc.w loc_FA6-VBlankTable	; $16
 		dc.w loc_E72-VBlankTable	; $18
+	        dc.w VSelbiScreen-VBlankTable	; $1A
 ; ===========================================================================
 
 ; loc_B88:
@@ -368,6 +369,22 @@ loc_1060:
 
 locret_106C:
 		rts	
+; ===========================================================================
+
+VSelbiScreen:
+		lea    VDP_Ctrl,a5
+		move.l    #$94009340,(a5)
+		move.l    #$96FD9580,(a5)
+		move.w    #$977F,(a5)
+		move.w    #$C000,(a5)
+		move.w    #$80,-(sp)
+		move.w    (sp)+,(a5)
+		tst.w    ($FFFFF614).w
+		beq.s    @NoTimer
+		subq.w    #1,($FFFFF614).w
+
+@NoTimer:
+		rts    
 
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 

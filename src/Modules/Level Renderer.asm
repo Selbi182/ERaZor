@@ -2,27 +2,27 @@
 ; ===============================================================
 ; ---------------------------------------------------------------
 ; Sonic Warped
-; Custom Level Renderer v.2.0
+; Custom Level Renderer v.2.5
 ; ---------------------------------------------------------------
-; (c) 2016-2017, 2020, Vladikcomper
+; (c) 2016-2017, 2020, 2024 Vladikcomper
 ; ---------------------------------------------------------------
 
 VRAM_PlaneA     = $C000
 VRAM_PlaneB     = $E000
 
 				rsset   LevelRend_RAM
-LevelRend_BaseVRAMOffset        rs.l    1                           ; Used for direct-to-VDP rendering
-LevelRend_RowRedrawPos          rs.w    1                           ; Used for direct-to-VDP rendering
-LevelRend_TransferRoutine       equ     LevelRend_BaseVRAMOffset    ; Replaces "LevelRend_BaseVRAMOffset" for buffered rendering
-LevelRend_TransferCommand       equ     LevelRend_RowRedrawPos      ; Replaces "LevelRend_RowRedrawPos" for buffered rendering
+LevelRend_BaseVRAMOffset        rs.l    1				; Used for direct-to-VDP rendering
+LevelRend_RowRedrawPos          rs.w    1				; Used for direct-to-VDP rendering
+LevelRend_TransferRoutine       equ     LevelRend_BaseVRAMOffset	; Replaces "LevelRend_BaseVRAMOffset" for buffered rendering
+LevelRend_TransferCommand       equ     LevelRend_RowRedrawPos		; Replaces "LevelRend_RowRedrawPos" for buffered rendering
 
-LevelRend_LayerRAM_FG           rs.w    1+1                         ; FG plane RAM
-LevelRend_LayerRAM_FG_End       equ     __RS                        ; ''
+LevelRend_LayerRAM_FG           rs.w    1+1				; FG plane RAM
+LevelRend_LayerRAM_FG_End       equ     __RS				; ''
 
-LevelRend_LayerRAM_BG           rs.w    1+4                         ; BG plane RAM (supports up to 4 X-layers)
-LevelRend_LayerRAM_BG_End       equ     __RS                        ; ''
+LevelRend_LayerRAM_BG           rs.w    1+4				; BG plane RAM (supports up to 4 X-layers)
+LevelRend_LayerRAM_BG_End       equ     __RS				; ''
 
-LevelRend_BG_Config		rs.l	1			; l	Points to the configuration of current level's background
+LevelRend_BG_Config		rs.l	1				; l	Points to the configuration of current level's background
 
 LevelRend_RAM_Size              equ     __RS-LevelRend_RAM
 
@@ -1175,6 +1175,9 @@ LevelRenderer_TransferTiles:
 ;       d3      .w      In-chunk offset
 ;       a3              Blocks table
 ;       a4              Block fetch stream
+;
+; USES:
+;	d4	.w
 ; ---------------------------------------------------------------
 
 ChunkStream_Init_Horizontal:
@@ -1188,23 +1191,21 @@ ChunkStream_Init_Horizontal:
 	and.w   #$1E0,d3                        ; d3 = (YBlock * $20) % $200
 	add.w   d2,d3                           ; d3 = (YBlock*$20 + XBlock*2) -- in-chunk offset
 
-	; Load stream handler at correct position
+	; Load "GetBlock" stream handler depending on XTile
 	lsl.w   #3,d2                           ; d2 = XBlock * $10
-	lea     ChunkStream_GetBlock_Horizontal(pc),a4
-	adda.w  d2,a4
+	lea     ChunkStream_GetBlock_Horizontal(pc), a4
+	moveq	#8, d4
+	and.w	d0, d4				; d4 = 0 if XTile even, 8 otherwise
+	add.w	d2, d4
+	adda.w  d4, a4				; a4 = start position inside "GetBlock" stream
 
-	; Correct stream handler on X axis
-	btst    #3,d0                           ; is Xpos / 8 == odd
-	beq.s   @xfix_done                      ; if not, branch
-	addq.w  #8,a4
-@xfix_done:
-
-	; Load block handler depending on Y axis
-	movea.l BlocksAddress,a3                ; a3 = Blocks array
-	lea     ChunkStream_GetBlockTile_EvenRow(pc),a5
-	btst    #3,d1                           ; is YPos / 8 == odd?
-	beq.s   @yfix_done                      ; if not, branch
-	lea     ChunkStream_GetBlockTile_OddRow(pc),a5
+	; Load "GetBlockTile" handler depending on YTile
+	movea.l BlocksAddress, a3                ; a3 = Blocks array
+	lea     ChunkStream_GetBlockTile_TopLeft(pc), a5
+	moveq	#8, d4
+	and.w	d1, d4                      	; d4 = 0 if YTile even, 8 otherwise
+	beq.s   @yfix_done
+	lea     ChunkStream_GetBlockTile_BottomLeft(pc), a5
 @yfix_done:
 	bra.s   ChunkStream_Load
 
@@ -1221,28 +1222,26 @@ ChunkStream_Init_Vertical:
 	move.w  d3,d4
 	add.w   d2,d3                           ; d3 = (YBlock*$20 + XBlock*2) -- in-chunk offset
 
-	; Load stream handler at correct position
+	; Load "GetBlock" stream handler depending on YTile
 	move.w  d4,d2                           ; d2 = YBlock * $20
 	lsr.w   #2,d2                           ; d2 = YBlock * 8
 	sub.w   d2,d4                           ; d4 = YBlock * $18
 	lsr.w   #2,d2                           ; d2 = YBlock * 2
 	sub.w   d2,d4                           ; d4 = YBlock * $16
-	lea     ChunkStream_GetBlock_Vertical(pc),a4
-	adda.w  d4,a4
+	lea     ChunkStream_GetBlock_Vertical(pc), a4
+	moveq	#8, d2
+	and.w	d1, d2                      	; d2 = 0 if YTile even, 8 otherwise
+	add.w	d2, d4
+	adda.w  d4, a4				; a4 = start position inside "GetBlock" stream
 
-	; Load block handler dependingon X axis
-	lea     ChunkStream_GetBlockTile_EvenCol(pc),a5
-	btst    #3,d0                           ; is Xpos / 8 == odd
-	beq.s   @xfix_done                      ; if not, branch
-	lea     ChunkStream_GetBlockTile_OddCol(pc),a5
+	; Load "GetBlockTile" handler depending on XTile
+	movea.l BlocksAddress, a3		; a3 = Blocks array
+	lea     ChunkStream_GetBlockTile_TopLeft(pc), a5
+	moveq	#8, d4
+	and.w	d0, d4				; d4 = 0 if XTile even, 8 otherwise
+	beq.s   @xfix_done
+	lea     ChunkStream_GetBlockTile_TopRight(pc), a5
 @xfix_done:
-
-	; Correct stream handler on Y axis
-	movea.l BlocksAddress,a3                   ; a3 = Blocks array
-	btst    #3,d1                           ; is YPos / 8 == odd?
-	beq.s   @yfix_done                      ; if not, branch
-	addq.w  #8,a4
-@yfix_done:
 
 ; ---------------------------------------------------------------
 ChunkStream_Load:
@@ -1359,202 +1358,191 @@ NullChunk:
 
 ; ===============================================================
 ; ---------------------------------------------------------------
-; Implements horizontal tile streaming
+; Handles horizontal tile streaming
 ; ---------------------------------------------------------------
-    
-    if def(__DEBUG__)
-	rept 16
-	    illegal
-	endr
-    endif
+; INPUT:
+;	a2		In-block pointer
+;	a4		Current position in stream code
+;	a5		Get block tile: "TopLeft" or "BottomLeft"
+; ---------------------------------------------------------------
 
-; ---------------------------------------------------------------
 ChunkStream_GetBlock_Horizontal:
 
 	rept 16
 		move.w  (a2),d0                         ; d0 = blockId with flags
-		moveq   #-1,d1                          ; d1 = block tile selector
 		addq.w  #8,a4                           ; next stream position
-		jmp     (a5)                            ; call block handler
+		jmp	@GetLeftTileOffset(a5)		; use "TopLeft" or "BottomLeft" tile handler
 
 		move.w  (a2)+,d0                        ; d0 = blockId with flags
-		moveq   #1,d1                           ; d1 = block tile selector
 		addq.w  #8,a4                           ; next stream position
-		jmp     (a5)                            ; call block handler
+		jmp	@GetRightTileOffset(a5)		; use "TopRight" or "BottomRight" tile handler
 	endr
 
 	jmp     ChunkStream_Reload_Horizontal           ; reload stream when finished
 
-; ---------------------------------------------------------------
-    if def(__DEBUG__)
-	rept 16
-	    illegal
-	endr
-    endif
+; WARNING: Don't move those above the code below.
+; If ASM68K's zero-offset optimization is on, it may optimize 0(a5) -> (a5) in size-critical jump table.
+
+@GetLeftTileOffset:	equ	0
+@GetRightTileOffset:	equ	ChunkStream_GetBlockTile_TopRight-ChunkStream_GetBlockTile_TopLeft
 
 
 ; ---------------------------------------------------------------
-; Block handlers for horizontal streaming
+; Handles vertical tile streaming
+; ---------------------------------------------------------------
+; INPUT:
+;	a2		In-block pointer
+;	a4		Current position in stream code
+;	a5		Get block tile: "TopLeft" or "TopRight"
 ; ---------------------------------------------------------------
 
-ChunkStream_GetBlockTile_EvenRow:
-	lsl.w   #3,d0                   ; d0 = blockId*8 with flags
-	move.w  d0,d4
-	bmi.s	@FlipY			; MSB=1 means FlipY=1
-	add.w   d0,d0
-	bmi.s   @FlipX			; MSB=1 means FlipX=1
-	add.w   d1,d4
-	move.w  1(a3,d4),d0             ; d0 = tile with flags
-	rts
-
-@FlipY: and.w   #$3FF8,d4               ; d4 = blockId*8 (clear XY bits)
-	add.w   d0,d0
-	bmi.s   @FlipXY			; MSB=1 means FlipX=1
-	add.w   d1,d4
-	move.w  5(a3,d4),d0             ; d1 = tile with flags
-	eor.w   #$1000,d0               ; apply Y-flipping
-	rts
-
-@FlipX: and.w   #$3FF8,d4               ; d4 = blockId*8 (clear XY bits)
-	sub.w   d1,d4
-	move.w  1(a3,d4),d0             ; d0 = tile with flags
-	eor.w   #$800,d0                ; apply X-flipping
-	rts
-
-@FlipXY:sub.w   d1,d4
-	move.w  5(a3,d4),d0             ; d0 = tile with flags
-	eor.w   #$1800,d0               ; apply XY-flipping
-	rts
-
-; ---------------------------------------------------------------
-ChunkStream_GetBlockTile_OddRow:
-	lsl.w   #3,d0                   ; d0 = blockId*8 with flags
-	move.w  d0,d4
-	bmi.s	@FlipY			; MSB=1 means FlipY=1
-	add.w   d0,d0
-	bmi.s   @FlipX			; MSB=1 means FlipX=1
-	add.w   d1,d4
-	move.w  1+4(a3,d4),d0           ; d0 = tile with flags
-	rts
-
-@FlipY: and.w   #$3FF8,d4               ; d4 = blockId*8 (clear XY bits)
-	add.w   d0,d0
-	bmi.s   @FlipXY			; MSB=1 means FlipX=1
-	add.w   d1,d4
-	move.w  5-4(a3,d4),d0           ; d1 = tile with flags
-	eor.w   #$1000,d0               ; apply Y-flipping
-	rts
-
-@FlipX: and.w   #$3FF8,d4               ; d4 = blockId*8 (clear XY bits)
-	sub.w   d1,d4
-	move.w  1+4(a3,d4),d0           ; d0 = tile with flags
-	eor.w   #$800,d0                ; apply X-flipping
-	rts
-
-@FlipXY:sub.w   d1,d4
-	move.w  5-4(a3,d4),d0           ; d0 = tile with flags
-	eor.w   #$1800,d0               ; apply XY-flipping
-	rts
-
-; ===============================================================
-; ---------------------------------------------------------------
-; Implements vertical tile streaming
-; ---------------------------------------------------------------
-
-    if def(__DEBUG__)
-	rept 16
-	    illegal
-	endr
-    endif
-    
-; ---------------------------------------------------------------
 ChunkStream_GetBlock_Vertical:
 
 	rept 16
 		move.w  (a2),d0                         ; d0 = blockId with flags
-		moveq   #-2,d1                          ; d1 = block tile selector
 		addq.w  #8,a4                           ; next stream position
-		jmp     (a5)                            ; call block handler
+		jmp	@GetTopTileOffset(a5)		; call block handler
 
 		move.w  (a2),d0                         ; d0 = blockId with flags
-		moveq   #2,d1                           ; d1 = block tile selector
 		lea     $20(a2),a2
 		lea     $E(a4),a4                       ; next stream position
-		jmp     (a5)                            ; call block handler
+		jmp     @GetBottomTileOffset(a5)	; call block handler
 	endr
 
 	jmp     ChunkStream_Reload_Vertical             ; reload stream when finished
 
 ; ---------------------------------------------------------------
-    if def(__DEBUG__)
-	rept 16
-	    illegal
-	endr
-    endif
 
+; WARNING: Don't move those above the code below.
+; If ASM68K's zero-offset optimization is on, it may optimize 0(a5) -> (a5) in size-critical jump table.
+@GetTopTileOffset:	equ	0
+@GetBottomTileOffset:	equ	ChunkStream_GetBlockTile_BottomLeft-ChunkStream_GetBlockTile_TopLeft
+
+
+; ===============================================================
 ; ---------------------------------------------------------------
-; Block handlers for vertical streaming
+; Get block tile functions
 ; ---------------------------------------------------------------
 
-ChunkStream_GetBlockTile_EvenCol:
+ChunkStream_GetBlockTile_TopLeft:
 	lsl.w   #3,d0                   ; d0 = blockId*8 with flags
 	move.w  d0,d4
 	bmi.s	@FlipY			; MSB=1 means FlipY=1
 	add.w   d0,d0
 	bmi.s   @FlipX			; MSB=1 means FlipX=1
-	add.w   d1,d4
-	move.w  2(a3,d4),d0             ; d0 = tile with flags
+	move.w  (a3,d4),d0		; d0 = tile with flags
 	rts
 
-@FlipY: and.w	#$3FFF,d4		; d4 = blockId*8 (clear XY bits)
+@FlipY: and.w   #$3FF8,d4               ; d4 = blockId*8 (clear XY bits)
 	add.w   d0,d0
 	bmi.s   @FlipXY			; MSB=1 means FlipX=1
-	sub.w   d1,d4
-	move.w  2(a3,d4),d0             ; d1 = tile with flags
+	move.w  4(a3,d4),d0		; d1 = tile with flags
 	eor.w   #$1000,d0               ; apply Y-flipping
 	rts
 
-@FlipX: and.w	#$3FFF,d4		; d4 = blockId*8 (clear XY bits)
-	add.w   d1,d4
-	move.w  4(a3,d4),d0             ; d0 = tile with flags
+@FlipX: and.w   #$3FF8,d4               ; d4 = blockId*8 (clear XY bits)
+	move.w  2(a3,d4),d0             ; d0 = tile with flags
 	eor.w   #$800,d0                ; apply X-flipping
 	rts
 
-@FlipXY:sub.w   d1,d4
-	move.w  4(a3,d4),d0             ; d0 = tile with flags
+@FlipXY:
+	move.w  6(a3,d4),d0             ; d0 = tile with flags
 	eor.w   #$1800,d0               ; apply XY-flipping
 	rts
 
 ; ---------------------------------------------------------------
-ChunkStream_GetBlockTile_OddCol:
+ChunkStream_GetBlockTile_TopRight:
 	lsl.w   #3,d0                   ; d0 = blockId*8 with flags
 	move.w  d0,d4
-	bmi.s   @FlipY			; MSB=1 means FlipY=1
+	bmi.s	@FlipY			; MSB=1 means FlipY=1
 	add.w   d0,d0
 	bmi.s   @FlipX			; MSB=1 means FlipX=1
-	add.w   d1,d4
-	move.w  2+2(a3,d4),d0           ; d0 = tile with flags
+	move.w  2(a3,d4),d0             ; d0 = tile with flags
 	rts
 
-@FlipY: and.w	#$3FFF, d4		; d4 = blockId*8 (clear XY bits)
+@FlipY: and.w   #$3FF8,d4               ; d4 = blockId*8 (clear XY bits)
 	add.w   d0,d0
 	bmi.s   @FlipXY			; MSB=1 means FlipX=1
-	sub.w   d1,d4
-	move.w  2+2(a3,d4),d0           ; d1 = tile with flags
+	move.w  6(a3,d4),d0             ; d1 = tile with flags
 	eor.w   #$1000,d0               ; apply Y-flipping
 	rts
 
-@FlipX:	and.w	#$3FFF, d4		; d4 = blockId*8 (clear XY bits)
-	add.w   d1,d4
-	move.w  4-2(a3,d4),d0           ; d0 = tile with flags
+@FlipX: and.w   #$3FF8,d4               ; d4 = blockId*8 (clear XY bits)
+	move.w  (a3,d4),d0		; d0 = tile with flags
 	eor.w   #$800,d0                ; apply X-flipping
 	rts
 
-@FlipXY:sub.w   d1,d4
-	move.w  4-2(a3,d4),d0           ; d0 = tile with flags
-	eor.w   #$1800,d0               ; apply XY-flipping
+@FlipXY:
+	move.w  4(a3,d4),d0		; d0 = tile with flags
+	eor.w   #$1800,d0		; apply XY-flipping
 	rts
 
+; ---------------------------------------------------------------
+ChunkStream_GetBlockTile_BottomLeft:
+	lsl.w   #3,d0                   ; d0 = blockId*8 with flags
+	move.w  d0,d4
+	bmi.s	@FlipY			; MSB=1 means FlipY=1
+	add.w   d0,d0
+	bmi.s   @FlipX			; MSB=1 means FlipX=1
+	move.w  4(a3,d4),d0		; d0 = tile with flags
+	rts
+
+@FlipY: and.w   #$3FF8,d4               ; d4 = blockId*8 (clear XY bits)
+	add.w   d0,d0
+	bmi.s   @FlipXY			; MSB=1 means FlipX=1
+	move.w	(a3,d4),d0		; d1 = tile with flags
+	eor.w   #$1000,d0               ; apply Y-flipping
+	rts
+
+@FlipX: and.w   #$3FF8,d4               ; d4 = blockId*8 (clear XY bits)
+	move.w  6(a3,d4),d0		; d0 = tile with flags
+	eor.w   #$800,d0                ; apply X-flipping
+	rts
+
+@FlipXY:
+	move.w	2(a3,d4),d0		; d0 = tile with flags
+	eor.w	#$1800,d0		; apply XY-flipping
+	rts
+
+; ---------------------------------------------------------------
+ChunkStream_GetBlockTile_BottomRight:
+	lsl.w   #3,d0                   ; d0 = blockId*8 with flags
+	move.w  d0,d4
+	bmi.s	@FlipY			; MSB=1 means FlipY=1
+	add.w   d0,d0
+	bmi.s   @FlipX			; MSB=1 means FlipX=1
+	move.w  6(a3,d4),d0		; d0 = tile with flags
+	rts
+
+@FlipY: and.w   #$3FF8,d4               ; d4 = blockId*8 (clear XY bits)
+	add.w   d0,d0
+	bmi.s   @FlipXY			; MSB=1 means FlipX=1
+	move.w	2(a3,d4),d0		; d1 = tile with flags
+	eor.w   #$1000,d0               ; apply Y-flipping
+	rts
+
+@FlipX: and.w   #$3FF8,d4               ; d4 = blockId*8 (clear XY bits)
+	move.w  4(a3,d4),d0		; d0 = tile with flags
+	eor.w   #$800,d0                ; apply X-flipping
+	rts
+
+@FlipXY:
+	move.w	(a3,d4),d0		; d0 = tile with flags
+	eor.w	#$1800,d0		; apply XY-flipping
+	rts
+
+; ===============================================================
+
+@TL:	equ	ChunkStream_GetBlockTile_TopLeft
+@TR:	equ	ChunkStream_GetBlockTile_TopRight
+@BL:	equ	ChunkStream_GetBlockTile_BottomLeft
+@BR:	equ	ChunkStream_GetBlockTile_BottomRight
+
+	if (@TR-@TL<>@BR-@BL)|(@BR-@TR<>@BL-@TL)
+		; This means jump table tricks for seamlessly
+		; switching between TL/TR/BL/BR functions won't work
+		inform 2, "Block tile function locations or sizes are inconsistent"
+	endif
 
 ; ===============================================================
 

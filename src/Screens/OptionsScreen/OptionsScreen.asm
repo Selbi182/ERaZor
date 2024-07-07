@@ -189,7 +189,8 @@ Options_HandleGameplayStyle:
 
 @quicktoggle:
 		bchg	#5,($FFFFFF92).w	; toggle gameplay style
-		bra.w	Options_UpdateTextAfterChange
+		beq.w	Options_UpdateTextAfterChange_On
+		bra.w	Options_UpdateTextAfterChange_Off
 ; ---------------------------------------------------------------------------
 
 Options_HandleExtendedCamera:
@@ -197,7 +198,8 @@ Options_HandleExtendedCamera:
 		andi.b	#$FC,d1			; is left, right, A, B, C, or Start pressed?
 		beq.w	Options_Return		; if not, branch
 		bchg	#0,($FFFFFF92).w	; toggle extended camera
-		bra.w	Options_UpdateTextAfterChange
+		beq.w	Options_UpdateTextAfterChange_On
+		bra.w	Options_UpdateTextAfterChange_Off
 ; ---------------------------------------------------------------------------
 
 Options_HandleFlashyLights:
@@ -205,7 +207,8 @@ Options_HandleFlashyLights:
 		andi.b	#$FC,d1			; is left, right, A, B, C, or Start pressed?
 		beq.w	Options_Return		; if not, branch
 		bchg	#7,($FFFFFF92).w	; toggle flashy lights
-		bra.w	Options_UpdateTextAfterChange
+		beq.w	Options_UpdateTextAfterChange_On
+		bra.w	Options_UpdateTextAfterChange_Off
 ; ---------------------------------------------------------------------------
 
 Options_HandleStoryTextScreens:
@@ -213,7 +216,8 @@ Options_HandleStoryTextScreens:
 		andi.b	#$FC,d1			; is left, right, A, B, C, or Start pressed?
 		beq.w	Options_Return		; if not, branch
 		bchg	#1,($FFFFFF92).w	; toggle text screens
-		bra.w	Options_UpdateTextAfterChange
+		bne.w	Options_UpdateTextAfterChange_On
+		bra.w	Options_UpdateTextAfterChange_Off
 ; ---------------------------------------------------------------------------
 
 Options_HandleSkipUberhub:
@@ -221,7 +225,8 @@ Options_HandleSkipUberhub:
 		andi.b	#$FC,d1			; is left, right, A, B, C, or Start pressed?
 		beq.w	Options_Return		; if not, branch
 		bchg	#2,($FFFFFF92).w	; toggle Uberhub autoskip
-		bra.w	Options_UpdateTextAfterChange
+		beq.w	Options_UpdateTextAfterChange_On
+		bra.w	Options_UpdateTextAfterChange_Off
 ; ---------------------------------------------------------------------------
 
 Options_HandleCinematicMode:
@@ -239,12 +244,8 @@ Options_HandleCinematicMode:
 		bra.w	Options_UpdateTextAfterChange_NoSound
 @nodebugunlock:
 		jsr	Check_BaseGameBeaten	; has the player beaten the base game?
-		bne.s	@cinematidmodeallowed	; if yes, cineamtic mode is allowed
-		move.w	#$DC,d0			; play option disallowed sound
-		jsr	PlaySound_Special
-		bra.w	Options_UpdateTextAfterChange_NoSound
+		beq.w	Options_Disallowed	; if not, cineamtic mode is disallowed
 
-@cinematidmodeallowed:
 		btst	#3,($FFFFFF92).w	; was cinematic already enabled?
 		bne.s	@chkfuzz		; if yes, branch
 		btst	#6,($FFFFFF92).w	; was at least fuzz already enabled?
@@ -257,7 +258,9 @@ Options_HandleCinematicMode:
 
 @off:		bclr	#3,($FFFFFF92).w	; disable cinematic mode
 		bclr	#6,($FFFFFF92).w	; disable fuzz
-		bra.s	@end
+		bsr	Options_LoadPal
+		bra.w	Options_UpdateTextAfterChange_Off
+
 @normal:	bset	#3,($FFFFFF92).w	; enable cinematic mode
 		bclr	#6,($FFFFFF92).w	; disable fuzz
 		bra.s	@end
@@ -268,7 +271,7 @@ Options_HandleCinematicMode:
 		bset	#6,($FFFFFF92).w	; enable fuzz
 
 @end:		bsr	Options_LoadPal
-		bra.w	Options_UpdateTextAfterChange
+		bra.w	Options_UpdateTextAfterChange_On
 ; ---------------------------------------------------------------------------
 
 Options_HandleNonstopInhuman:
@@ -286,15 +289,11 @@ Options_HandleNonstopInhuman:
 
 @nodebugunlock:
 		jsr	Check_BlackoutBeaten	; has the player specifically beaten the blackout challenge?
-		bne.s	@nonstopinhumanallowed	; if yes, branch
-		move.w	#$DC,d0			; play option disallowed sound
-		jsr	PlaySound_Special
-		bra.w	Options_UpdateTextAfterChange_NoSound
+		beq.w	Options_Disallowed	; if not, branch
 		
-@nonstopinhumanallowed:
 		bchg	#4,($FFFFFF92).w	; toggle nonstop inhuman
-		clr.b	($FFFFFFE7).w		; make sure inhuman is disabled if this option is as well
-		bra.w	Options_UpdateTextAfterChange
+		beq.w	Options_UpdateTextAfterChange_On
+		bra.w	Options_UpdateTextAfterChange_Off
 ; ---------------------------------------------------------------------------
 
 Options_HandleDeleteSaveGame:
@@ -364,8 +363,18 @@ Options_Exit:
 		jmp	Exit_OptionsScreen
 ; ---------------------------------------------------------------------------
 
-Options_UpdateTextAfterChange:
-		move.w	#$D9,d0			; play option toggled sound
+Options_Disallowed:
+		move.w	#$DC,d0			; play option disallowed sound
+		jsr	PlaySound_Special
+		bra.s	Options_Return		; no text update necessary
+
+Options_UpdateTextAfterChange_On:
+		move.w	#$D9,d0			; play option toggled on sound
+		jsr	PlaySound_Special
+		bra.s	Options_UpdateTextAfterChange_NoSound
+
+Options_UpdateTextAfterChange_Off:
+		move.w	#$DA,d0			; play option toggled off sound
 		jsr	PlaySound_Special
 
 Options_UpdateTextAfterChange_NoSound:
@@ -373,6 +382,7 @@ Options_UpdateTextAfterChange_NoSound:
 
 Options_Return:
 		bra.w	OptionsScreen_MainLoop	; return
+
 
 
 ; ===========================================================================

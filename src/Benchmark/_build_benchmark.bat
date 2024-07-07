@@ -8,3 +8,4 @@ if exist Benchmark\s1erz-benchmark.bin (
 	echo !!! BENCHMARK ROM BUILD FAILED !!!
 )
 pause
+start Benchmark\s1erz-benchmark.bin

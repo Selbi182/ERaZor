@@ -4950,7 +4950,7 @@ SS_ClrNemRam:	move.l	d0,(a1)+
 
 SS_MainLoop:
 		cmpi.b	#4,($FFFFD024).w	; is special stage exiting routine already being run?
-		bhs.s	SS_NoPauseGame		; if yes, branch
+		bhs.w	SS_WaitVBlank		; if yes, branch
 		bsr	PauseGame		; make the game pausing when pressing start
 
 		; respawn at last checkpoint when pressing A (inteded to be used when you get stuck in nonstop inhuman)
@@ -4975,26 +4975,33 @@ SS_MainLoop:
 		move.w	d0,($FFFFD012).w	; reduce Sonic's vertical speed
 @notc:
 		; SS hard part skipper
-		frantic				; is frantic mode enabled?
-		bne.s	SS_NoPauseGame		; if yes, disallow hard part skippers
-		tst.b	($FFFFFF5F).w		; is this the blackout special stage?
-		bne.s	SS_NoPauseGame		; if yes, disallow hard part skippers
+		tst.b	($FFFFF603).w		; was anything pressed this frame?
+		beq.s	SS_WaitVBlank		; if not, branch
 		move.b	($FFFFF602).w,d0	; get button presses
 		tst.w	($FFFFFFFA).w		; is debug cheat enabled?
 		beq.s	@notdebug		; if not, branch
 		cmpi.b	#$60,d0			; is A&C held? (filter out B to not interfere with debug mode)
-		bne.s	SS_NoPauseGame		; if not, branch
-		bra.s	@dosshardpartskip	; do the thing
-@notdebug:	
-		cmpi.b	#$70,d0			; is exactly ABC held?
-		bne.s	SS_NoPauseGame		; if not, branch
-@dosshardpartskip:
+		bne.s	SS_WaitVBlank		; if not, branch
+		bra.s	@abcpressed		; do the thing
+@notdebug:	cmpi.b	#$70,d0			; is exactly ABC held?
+		bne.s	SS_WaitVBlank		; if not, branch
+
+@abcpressed:
+		tst.b	($FFFFFF5F).w		; is this the blackout special stage?
+		bne.s	@disallowed		; if yes, disallow hard part skippers
+		frantic				; is frantic mode enabled?
+		beq.s	@dohardpartskip		; if not, allow hard part skippers
+@disallowed:	move.w	#$DC,d0			; play option disallowed sound
+		jsr	(PlaySound_Special).l	; play sound		
+		bra.s	SS_WaitVBlank		; skip
+
+@dohardpartskip:
 		move.b	#4,($FFFFD024).w	; make SS-Sonic object run "Obj09_Exit"
 		move.w	#$A8,d0			; play special stage exit sound
 		jsr	(PlaySound_Special).l	; play sound
 		clr.w	($FFFFFE20).w		; lose all your rings, loser
 
-SS_NoPauseGame:
+SS_WaitVBlank:
 		move.b	#$A,VBlankRoutine
 		bsr	DelayProgram
 		move.w	($FFFFF604).w,($FFFFF602).w
@@ -9035,8 +9042,8 @@ Obj1D_Action:
 		tst.b	$34(a0)			; is this the following-Sonic object?
 		bne.s	@1			; if yes, branch
 		tst.b	(FZEscape).w		; is escape sequence already set?
-		beq.s	@1			; if not, branch
-		jmp	DeleteObject		; delete the static scenery objects during the escape
+		bne.s	@1			; if yes, branch
+		jmp	DeleteObject		; delete the static scenery objects before the escape
 		
 @1:
 		subq.b	#1,$32(a0)	; substract 1 from cooldown timer
@@ -9605,18 +9612,17 @@ Obj27:					; XREF: Obj_Index
 		move.w	Obj27_Index(pc,d0.w),d1
 		jmp	Obj27_Index(pc,d1.w)
 ; ===========================================================================
-Obj27_Index:	dc.w Obj27_LoadAnimal-Obj27_Index
-		dc.w Obj27_Main-Obj27_Index
+Obj27_Index:	dc.w Obj27_Main-Obj27_Index
 		dc.w Obj27_Animate-Obj27_Index
 ; ===========================================================================
 
-Obj27_LoadAnimal:			; XREF: Obj27_Index
+Obj27_Main:				; XREF: Obj27_Index
 		cmpi.w	#$101,($FFFFFE10).w	; are we in LZ?
-		bne.s	@cont			; if not, branch
+		bne.s	@notlz			; if not, branch
 		cmpi.b	#82,$36(a0)		; did we come here because of Jaws?
-		bne.s	@cont			; if not, branch
+		bne.s	@notlz			; if not, branch
 		tst.b 	($FFFFFFF9).w		; final section flag already enabled?
-		bne.s 	@cont			; if yes, branch
+		bne.s 	@notlz			; if yes, branch
 		move.b 	#1,($FFFFFFF9).w	; set final section flag
 
 		movem.l	d0-a3,-(sp)
@@ -9633,54 +9639,31 @@ Obj27_LoadAnimal:			; XREF: Obj27_Index
 		move.w	d0,($FFFFF648).w	; average water level
 		move.w	d0,($FFFFF64A).w	; target water level
 		
-		
 		movem.l	(sp)+,d0-a3
-		bra.s	@cont2
+		bra.s	Obj27_FinishSetup
 
-@cont:
+@notlz:
 		addq.b	#2,obRoutine(a0)
-		bsr	SingleObjLoad
-		bne.w	Obj27_Main
 
 		cmpi.w	#$302,($FFFFFE10).w
-		beq.s	@cont2
+		beq.s	Obj27_FinishSetup
 		cmpi.w	#$501,($FFFFFE10).w
-		beq.s	@cont2
+		beq.s	Obj27_FinishSetup
 		cmpi.w	#$502,($FFFFFE10).w
-		beq.s	@cont2
+		beq.s	Obj27_FinishSetup
 		cmpi.w	#$001,($FFFFFE10).w
-		beq.s	@cont2
+		beq.s	Obj27_FinishSetup
 
+		bsr	SingleObjLoad
+		bne.s	Obj27_FinishSetup
 		move.b	#$37,0(a1)	; load bouncing ring object
 		move.w	obX(a0),obX(a1)	; load X position to a1
 		moveq	#0,d0		; clear d0
 		move.w	obY(a0),d0	; move Y position to d0
 		move.w	d0,obY(a1)	; load Y position to a1
-		addi.w	#20,($FFFFFE20).w ; add 10 of rings you have
-		move.b	#$80,($FFFFFE1D).w ; update ring counter
-		move.b	#1,$35(a1)
+		move.b	#1,$35(a1)	; set flag that this was spawned from a destroyed enemy
 
-		bsr	SingleObjLoad2
-		bne.w	Obj27_Main
-@cont2:
-		move.b	#$27,0(a1)	; load animal object
-		move.w	obX(a0),obX(a1)
-		move.w	obY(a0),obY(a1)
-		move.w	$3E(a0),$3E(a1)
-		move.b	#2,obRoutine(a1)
-
-		bsr	SingleObjLoad2
-		bne.s	Obj27_Main
-		move.b	#$27,0(a1)	; load animal object
-		move.w	obX(a0),obX(a1)
-		move.w	obY(a0),obY(a1)
-		move.w	$3E(a0),$3E(a1)
-		move.b	#2,obRoutine(a1)
-
-
-
-Obj27_Main:				; XREF: Obj27_Index
-		addq.b	#2,obRoutine(a0)
+Obj27_FinishSetup:				; XREF: Obj27_Index
 		move.l	#Map_obj27,obMap(a0)
 		move.w	#$5A0,obGfx(a0)
 		move.b	#4,obRender(a0)
@@ -9768,7 +9751,7 @@ Obj3F_Main:				; XREF: Obj3F_Index
 		move.w	obY(a0),obY(a1)
 		move.w	$3E(a0),$3E(a1)
 		move.b	#2,obRoutine(a1)
-		move.b	$30(a0),$30(a1)	; copy harm state
+	;	move.b	$30(a0),$30(a1)	; copy harm state
 		
 		btst	#0,($FFFFFE05).w	; are we on an odd frame?
 		bne.s	Obj3F_Main2		; if yes, don't load a third explosion
@@ -9779,7 +9762,7 @@ Obj3F_Main:				; XREF: Obj3F_Index
 		move.w	obY(a0),obY(a1)
 		move.w	$3E(a0),$3E(a1)
 		move.b	#2,obRoutine(a1)
-		move.b	$30(a0),$30(a1)	; copy harm state
+	;	move.b	$30(a0),$30(a1)	; copy harm state
 ; ---------------------------------------------------------------------------
 
 Obj3F_Main2:
@@ -9788,6 +9771,7 @@ Obj3F_Main2:
 		move.w	#$5A0,obGfx(a0)
 		move.b	#4,obRender(a0)
 		move.b	#1,obPriority(a0)
+		move.b	#0,obColType(a0)
 
 		bsr	RandomDirection
 
@@ -9798,17 +9782,17 @@ Obj3F_Main2:
 		move.b	#3,obPriority(a0)
 
 @cont2:
-		tst.b	($FFFFF7AA).w		; is boss mode on?
-		bne.s	Obj3F_NotHarmful	; if yes, branch
-		tst.b	$30(a0)			; is explosion set to be harmful?
-		bne.s	Obj3F_NotHarmful	; if not, branch
-		cmpi.w	#$001,($FFFFFE10).w
-		beq.s	@cont
-		cmpi.b	#1,($FFFFFFAA).w
-		beq.s	Obj3F_NotHarmful
+	;	tst.b	($FFFFF7AA).w		; is boss mode on?
+	;	bne.s	Obj3F_NotHarmful	; if yes, branch
+	;	tst.b	$30(a0)			; is explosion set to be harmful?
+	;	bne.s	Obj3F_NotHarmful	; if not, branch
+	;	cmpi.w	#$001,($FFFFFE10).w
+	;	beq.s	@cont
+	;	cmpi.b	#1,($FFFFFFAA).w
+	;	beq.s	Obj3F_NotHarmful
 
 @cont:
-		move.b	#$84,obColType(a0)
+	;	move.b	#$84,obColType(a0)
 	;	moveq	#10,d0		; add 100 ...
 	;	jsr	AddPoints	; ... points
 
@@ -9817,8 +9801,8 @@ Obj3F_NotHarmful:
 		move.b	#4,obTimeFrame(a0)
 		move.b	#0,obFrame(a0)
 		
-		tst.b	$30(a0)
-		bne.s	Obj3F_NoCamShake
+	;	tst.b	$30(a0)
+	;	bne.s	Obj3F_NoCamShake
 	;	bsr	SingleObjLoad		; load from SingleObjLoad
 	;	bne.s	Obj3F_NoCamShake	; if SingleObjLoad is already in use, don't load obejct
 		move.b	#10,($FFFFFF64).w
@@ -10366,6 +10350,7 @@ Obj1F_Main:				; XREF: Obj1F_Index
 		move.b	#4,obRender(a0)
 		move.b	#3,obPriority(a0)
 		
+		move.b	#6,obColType(a0)		; use normal touch response
 		cmpi.w	#$000,($FFFFFE10).w	; is level GHZ1?
 		bne.s	Obj01_NotGHZ1_Main2	; if not, branch
 		move.b	#$F,obColType(a0)		; use boss touch response
@@ -10375,12 +10360,8 @@ Obj1F_Main:				; XREF: Obj1F_Index
 		move.b	#12,obColProp(a0)		; set number of	hits to	12
 	endif
 		move.b	obColProp(a0),($FFFFFF68).w
-		bra.s	Obj1F_NotGHZ1_Cont	; skip
 
 Obj01_NotGHZ1_Main2:
-		move.b	#6,obColType(a0)		; use normal touch response
-
-Obj1F_NotGHZ1_Cont:
 		move.b	#$15,obActWid(a0)
 		bsr	ObjectFall
 		jsr	ObjHitFloor
@@ -10677,27 +10658,29 @@ Obj1F_MakeFire_2:
 		bsr	SingleObjLoad			; load from SingleObjLoad
 		bne.s	Obj1F_MakeFire2			; if it's in use, branch
 		move.b	#$1F,0(a1)			; load left fireball
-		move.b	#6,obRoutine(a1)			; set to fireball
+		move.b	#6,obRoutine(a1)		; set to fireball
 		move.w	obX(a0),obX(a1)			; set X-pos
 		subi.w	#$10,obX(a1)			; sub $10 from it
 		move.w	obY(a0),obY(a1)			; set Y-pos
-		move.w	#-$190,obVelX(a1)			; set normal X-speed
+		move.w	#-$190,obVelX(a1)		; set normal X-speed
+		move.b	#1,$31(a1)			; set split ball flag
 		cmpi.w	#$000,($FFFFFE10).w		; is current level GHZ 1?
 		bne.s	Obj1F_MakeFire2			; if not, branch
-		move.w	#-$230,obVelX(a1)			; load GHZ1 X-speed
+		move.w	#-$230,obVelX(a1)		; load GHZ1 X-speed
 
 Obj1F_MakeFire2:
-		bsr	SingleObjLoad2		; load from SingleObjLoad
+		bsr	SingleObjLoad2			; load from SingleObjLoad
 		bne.s	locret_9618			; if it's in use, branch
 		move.b	#$1F,0(a1)			; load right fireball
-		move.b	#6,obRoutine(a1)			; set to fireball
+		move.b	#6,obRoutine(a1)		; set to fireball
 		move.w	obX(a0),obX(a1)			; set X-pos
 		addi.w	#$10,obX(a1)			; add $10 to it
 		move.w	obY(a0),obY(a1)			; set Y-pos
-		move.w	#$190,obVelX(a1)			; set normal X-speed
+		move.w	#$190,obVelX(a1)		; set normal X-speed
+		move.b	#1,$31(a1)			; set split ball flag
 		cmpi.w	#$000,($FFFFFE10).w		; is current level GHZ 1?
 		bne.s	locret_9618			; if not, branch
-		move.w	#$230,obVelX(a1)			; load GHZ1 X-speed
+		move.w	#$230,obVelX(a1)		; load GHZ1 X-speed
 
 locret_9618:
 		rts					; return
@@ -10855,12 +10838,15 @@ Obj1F_BallMain:				; XREF: Obj1F_Index
 		move.b	#8,obActWid(a0)
 		move.b	#$FF,$30(a0)
 		tst.b	obSubtype(a0)
-		bne.s	Obj1F_NotGHZ1	
+		bne.s	Obj1F_NotGHZ1
+		tst.b	$31(a0)
+		beq.s	Obj1F_NotGHZ1
 		move.w	#-$550,obVelY(a0)
 		cmpi.w	#$000,($FFFFFE10).w ; is current level GHZ 1?
 		bne.s	Obj1F_NotGHZ1		; if not, branch
 		move.w	#-$700,obVelY(a0)
 		move.b	#$3E,$30(a0)
+		
 Obj1F_NotGHZ1:
 		move.b	#7,obAnim(a0)
 ; ===========================================================================
@@ -10872,8 +10858,9 @@ Obj1F_BallMove:
 		bne.w	Obj1F_Delete4
 
 Obj1F_NotGHZ1_3:
-		subq.b	#1,$30(a0)
-		bls.w	Obj1F_Delete3
+		subq.b	#1,$30(a0)		; sub 1 from ball remaining life timer
+		bls.w	Obj1F_BallExpired	; if expired, branch
+
 		lea	(Ani_obj1F).l,a1	; load the animation for the balls
 		bsr	AnimateSprite		; animate them
 		bsr	ObjectFall		; move the ball down
@@ -10894,12 +10881,6 @@ Obj1F_BallNotOnGround:
 		rts				; return
 ; ===========================================================================
 
-Obj1F_StopBallsMoving:
-		clr.w	obVelX(a0)			; clear X-velocity
-		clr.w	obVelY(a0)			; clear Y-velocity
-		bra.s	Obj1F_BallNotOnGround	; continue with the normal code
-; ===========================================================================
-
 Obj1F_Delete2:
 		bra.w	DeleteObject		; delete ball object
 ; ===========================================================================
@@ -10918,12 +10899,14 @@ Obj1F_DestroyBall:
 
 		cmpi.w	#$000,($FFFFFE10).w ; is current level GHZ 1?
 		bne.s	Obj1F_NotGHZ1_2
+		tst.b	$31(a0)			; is this the split ball?
+		beq.w	Obj1F_Delete2		; if not, delete it right away
+
 		moveq	#0,d0
 		move.w	obVelY(a0),d0
 		tst.w	d0
 		bpl.s	Obj1F_SpeedPosi
 		sub.w	#$40,d0
-
 Obj1F_SpeedPosi
 		add.w	#$20,d0
 		neg.w	d0
@@ -10941,30 +10924,51 @@ Obj1F_MoveLeft:
 		
 Obj1F_MoveUp:
 		move.w	#-$450,obVelY(a0)		; move ball upwards
-		rts				; return
+	;	rts				; return
 ; ===========================================================================
 
-Obj1F_Delete3:
-		cmpi.w	#$000,($FFFFFE10).w
-		bne.s	Obj1F_Delete4
+Obj1F_BallExpired:
+		cmpi.w	#$000,($FFFFFE10).w	; are we in GHZ1?
+		bne.s	Obj1F_Delete4		; if not, just turn into explosion
+		tst.b	$31(a0)			; is this the split ball?
+		beq.s	Obj1F_Delete4		; if not, just turn into explosion
+
+		; split ball
+		moveq	#4-1,d1			; load 4 balls
+		lea	(Obj1F_BallSpeeds).l,a2
+		frantic
+		beq.s	@loadballs
+		addq.b	#2,d1			; add more balls
+@loadballs:
 		bsr	SingleObjLoad		; load from SingleObjLoad
-		bne.s	Obj1F_Delete2		; if it's in use, branch
-		move.b	#$37,0(a1)		; explosion object
-		move.b	#1,$30(a1)		; set flag
+		bne.s	Obj1F_Delete4		; if it's in use, branch
+		move.b	#$1F,0(a1)		; load another ball
+		move.b	#6,obRoutine(a1)
 		move.w	obX(a0),obX(a1)		; set X-location
 		move.w	obY(a0),obY(a1)		; set Y-location
-		bra.w	DeleteObject		; delete ball object
+		move.w	(a2)+,obVelX(a1)	; set X speed for current ball
+		move.w	(a2)+,obVelY(a1)	; set Y speed for current ball
+		clr.b	$31(a1)
+		dbf	d1,@loadballs		; loop till all balls are done
+
+		bra.s	Obj1F_Delete4		; turn current ball into explosion
+; ===========================================================================
+Obj1F_BallSpeeds:
+		dc.w -$0200, -$0400
+		dc.w -$00C0, -$0450
+		dc.w  $00C0, -$0450
+		dc.w  $0200, -$0400
+		
+		; frantic only
+		dc.w -$0400, -$0600
+		dc.w  $0400, -$0600
+		even
 ; ===========================================================================
 
 Obj1F_Delete4:
-		bsr	SingleObjLoad		; load from SingleObjLoad
-		bne.w	Obj1F_Delete2		; if it's in use, branch
-		move.b	#$3F,0(a1)		; explosion object
-		move.w	obX(a0),obX(a1)		; set X-location
-		move.w	obY(a0),obY(a1)		; set Y-location
-		move.b	#2,obRoutine(a1)
-		clr.b	obSubtype(a0)
-		bra.w	DeleteObject		; delete ball object
+		move.b	#$3F,0(a0)		; change ball into explosion object
+		move.b	#0,obRoutine(a0)
+		rts
 ; ===========================================================================
 Ani_obj1F:
 		include	"_anim\obj1F.asm"	; animation script for the Crabmeat
@@ -11601,62 +11605,19 @@ loc_9C0E:
 ; ---------------------------------------------------------------------------
 
 Obj25_Animate:				; XREF: Obj25_Index
-		tst.b	($FFFFFFE7).w		; inhuman?
-		bne.s	Obj25_NoRingMove	; if yes, disable ring move
-
-@cont:
-		tst.b	$29(a0)			; was ring already set to follow you?
-		beq.s	Obj25_DoCheck		; if not, branch
-		tst.b	($FFFFFE2C).w		; is sonic still having a shield?
-		beq.s	Obj25_LostShield	; if not, branch
-		bsr	AttractedRing_Move	; move the ring
-		bra.s	Obj25_NoRingMove	; skip Obj25_DoCheck
-
-Obj25_LostShield:
+		tst.b	($FFFFFE2C).w		; do we have a shield?
+		beq.s	Obj25_NoRingMove	; if not, branch
+		bsr	AttractedRing_Check	; check if we're near enough for attraction
+		tst.b	$29(a0)			; test flag
+		beq.s	Obj25_NoRingMove	; if it wasn't set, we weren't near enough
 		move.b	#$37,0(a0)		; change ring object to bouncing ring object, to give this decent effect
 		move.b	#2,obRoutine(a0)	; make sure the ring just bounces, we don't want to loose 10 rings
- 		move.b	#-1,($FFFFFEC6).w	; without this line all hell breaks loose
- 		bra.s	Obj25_NoRingMove
+		move.b	#1,$29(a0)		; set attraction flag
  
-Obj25_DoCheck:
-		tst.b	($FFFFFE2C).w		; is Sonic having a shield?
-		beq.s	Obj25_NoRingMove	; if not, branch
-		bsr	AttractedRing_Check	; do the check
-
-Obj25_NoRingMove:
-		tst.b	($FFFFFFD2).w		; was rings set to fall?
-		bmi.s	Obj25_NoRingsFall	; if not, branch
-		beq.s	Obj25_NoRingsFall	; if not, brnach
-		subq.b	#1,($FFFFFFD2).w	; sub one from timer
-	;	tst.b	obRender(a0)			; is ring on screen?
-	;	bpl.s	Obj25_NoRingsFall	; if not, branch
-
-		cmpi.b 	#$5, ($FFFFFE10).w	; not FP or tutorial?
-		bne.s	@DontClearFlag		; don't even bother
-
-		frantic				; are we in Frantic mode?
-		beq.s	@DontClearFlag		; if not, branch
-
-		move.b 	#0, ($FFFFFFD2).w 	; this is a huge hack
-
-@DontClearFlag:
- 		move.w	obX(a0),d0
-		andi.w	#$FF80,d0
-		move.w	($FFFFF700).w,d1
-		subi.w	#$80,d1
-		andi.w	#$FF80,d1
-		sub.w	d1,d0
-		cmpi.w	#$280,d0		; <-- Distance out of screen
-		bhi.w	Obj25_NoRingsFall
-		move.b	#$37,(a0)		; change object into bouncing ring
-		move.b	#2,obRoutine(a0)		; make sure the ring just bounces, we don't want to loose 10 rings
- 		move.b	#-1,($FFFFFEC6).w	; without this line all hell breaks loose
-
-Obj25_NoRingsFall:
+ Obj25_NoRingMove:
 		move.b	($FFFFFEC3).w,obFrame(a0) ;	set frame
 		bsr	DisplaySprite
-		tst.b	$29(a0)
-		bne.s	Obj25_DontDoThis
+		
 		move.w	$32(a0),d0
 		andi.w	#$FF80,d0
 		move.w	($FFFFF700).w,d1
@@ -11665,7 +11626,6 @@ Obj25_NoRingsFall:
 		sub.w	d1,d0
 		cmpi.w	#$280,d0
 		bhi.w	Obj25_Delete
-Obj25_DontDoThis:
 		rts	
 ; ===========================================================================
 
@@ -11702,7 +11662,7 @@ CollectRing:				; XREF: Obj25_Collect
 ; End of function CollectRing
 
 ; ---------------------------------------------------------------------------
-; Subroutine to move a ring to Sonic's position (ported from Sonic 3)
+; Subroutine to move a ring to Sonic's position
 ; ---------------------------------------------------------------------------
 ;=============================================
 ;Speed for the rings, once they are moving
@@ -11713,8 +11673,6 @@ AttractedRing_Dist = $50
 ;=============================================
 
 AttractedRing_Check:
-		moveq	#0,d0			; clear d0
-		moveq	#0,d1			; clear d1
 		move.w	obX(a0),d0		; load object's X pos
 		sub.w	($FFFFD008).w,d0	; minus sonic's X pos from it
 		bpl.w	Ring_XChk		; if answer is possitive, branch
@@ -11728,17 +11686,14 @@ Ring_XChk:	cmpi.w	#AttractedRing_Dist,d0	; is sonic within XX pixels of the ring
 		neg.w	d1			; reverse d1
 Ring_YChk:	cmpi.w	#AttractedRing_Dist,d1	; is sonic within XX pixels of the object?
 		bge.s	NoRingMove		; if not, branch
-		move.b	#1,$29(a0)		; set to near enough, so the ring doesn't stop tracking you
+
+		move.b	#1,$29(a0)		; set attraction flag
 
 NoRingMove:
 		rts
 ; ===========================================================================
 
 AttractedRing_Move:
-		moveq	#0,d0			; clear d0
-		moveq	#0,d1			; clear d1
-		moveq	#0,d2			; clear d2
-
 		move.w	($FFFFD008).w,d1	; load Sonic's X-pos into d1
 		sub.w	obX(a0),d1		; sub ring's X-pos from it
 		move.w	($FFFFD00C).w,d2	; load Sonic's Y-pos into d2
@@ -11757,6 +11712,8 @@ AttractedRing_Move:
 ; ---------------------------------------------------------------------------
 ; Object 37 - rings flying out of Sonic	when he's hit
 ; ---------------------------------------------------------------------------
+BouncyRingValue = $288
+; ---------------------------------------------------------------------------
 
 Obj37:					; XREF: Obj_Index
 		moveq	#0,d0
@@ -11765,41 +11722,25 @@ Obj37:					; XREF: Obj_Index
 		jmp	Obj37_Index(pc,d1.w)
 ; ===========================================================================
 Obj37_Index:	dc.w Obj37_CountRings-Obj37_Index
-		dc.w Obj37_Bounce-Obj37_Index
+		dc.w Obj37_MainLoop-Obj37_Index
 		dc.w Obj37_Collect-Obj37_Index
 		dc.w Obj37_Sparkle-Obj37_Index
 		dc.w Obj37_Delete-Obj37_Index
 ; ===========================================================================
 
 Obj37_CountRings:			; XREF: Obj37_Index
-		cmpi.w	#$001,($FFFFFE10).w
-		bne.s	Obj37_NotGHZ2
-		jmp	DeleteObject
+		movea.l	a0,a1		; no need to load in one more ring when the current object already is one
+		move.w	#BouncyRingValue,d4	; used for the bouncy angle
 
-Obj37_NotGHZ2:
-		move.b	#50,$32(a0)	; set delay before rings are getting attracted
-		movea.l	a0,a1
-		moveq	#0,d5
-		move.w	($FFFFFE20).w,d5 ; check number	of rings you have
-		tst.b	$35(a0)		; was object loaded with Object 27?
-		beq.s	No2B		; if not, branch
-		move.w	#6,d5		; if yes, set d5 to 6
-		bra.s	loc_9CDE
+		moveq	#6,d5		; set ring bounce count to 6 for destroyed objects
+		tst.b	$35(a0)		; was object loaded by destroying a monitor or badnik?
+		bne.s	Obj37_Start	; if yes, branch
 
-No2B:
-		tst.b	$30(a0)		; is this supposed to be multi read balls (crabmeat)?
-		beq.s	Obj37_Normal	; if not, branch
-		move.w	#4,d5		; if yes, set d5 to 16
-		bra.s	loc_9CDE
-
-Obj37_Normal:
-		cmpi.w	#10,d5		; do you have 10 or more?
-		bcs.s	loc_9CDE	; if not, branch
-		move.w	#10,d5		; if yes, set d5 to 10
-
-loc_9CDE:
-		subq.w	#1,d5
-		move.w	#$288,d4
+		move.w	($FFFFFE20).w,d5 ; use number of rings you got as amount
+		cmpi.w	#16,d5		; do you have 16 rings or more?
+		bcs.s	Obj37_Start	; if not, branch
+		moveq	#16,d5		; if yes, set d5 to 16
+Obj37_Start:	subq.w	#1,d5		; adjusgt for loop
 		bra.s	Obj37_MakeRings
 ; ===========================================================================
 
@@ -11808,9 +11749,7 @@ Obj37_Loop:
 		bne.w	Obj37_ResetCounter
 
 Obj37_MakeRings:			; XREF: Obj37_CountRings
-		tst.b	$30(a0)		; is object set to load an explosion, rather than rings?
-		bne.s	Obj37_Normal2	; if yes, branch
-		move.b	#$37,0(a1)	; load bouncing	ring object
+		move.b	#$37,0(a1)	; load another bouncing ring object
 		addq.b	#2,obRoutine(a1)
 		move.b	#8,obHeight(a1)
 		move.b	#8,obWidth(a1)
@@ -11818,43 +11757,25 @@ Obj37_MakeRings:			; XREF: Obj37_CountRings
 		move.w	obY(a0),obY(a1)
 		move.l	#Map_obj25,obMap(a1)
 		move.w	#$27B2,obGfx(a1)
-		bra.s	Obj37_ContX
-
-Obj37_Normal2:
-		move.b	#$1F,0(a1)	; load left fireball
-		move.b	#6,obRoutine(a1)
-		move.w	obX(a0),obX(a1)
-		move.w	obY(a0),obY(a1)
-		move.l	#Map_obj1F,obMap(a1)
-		move.w	#$400,obGfx(a1)
-		move.b	#1,obSubtype(a1)
-		move.w	#$C4,d0
-		jsr	(PlaySound_Special).l ;	play exploding bomb sound
-		bra.s	Obj37_ContXX
-
-Obj37_ContX:
 		move.b	#4,obRender(a1)
 		move.b	#3,obPriority(a1)
 		move.b	#$47,obColType(a1)
 		move.b	#8,obActWid(a1)
-Obj37_ContXX:
-		move.b	#$FF,($FFFFFEC6).w	; set time before scattered rings disappear to $FF frames
+		move.b	#$FF,$30(a1)		; despawn timer
+
+		cmpi.w	#1,($FFFFFE20).w	; have you lost exactly 1 ring?
+		bne.s	@calcmultibounce	; if not, branch
+		clr.w	obVelX(a1)		; force single lost ring to fly straight up without any horizontal movement
+		move.w	#-$480,obVelY(a1)
+		bra.s	Obj37_ResetCounter
+
+@calcmultibounce:
 		tst.w	d4
 		bmi.s	loc_9D62
 		move.w	d4,d0
 		jsr	CalcSine
 		move.w	d4,d2
 		lsr.w	#8,d2
-		
-		tst.b	($FFFFF64C).w		; Does the level have water?
-		beq.s	@skiphalvingvel		; If not, branch and skip underwater checks
-		move.w	($FFFFF646).w,d6	; Move water level to d6
-		cmp.w	obY(a0),d6		; Is the ring object underneath the water level?
-		bgt.s	@skiphalvingvel		; If not, branch and skip underwater commands
-		asr.w	d0			; Half d0. Makes the ring's x_vel bounce to the left/right slower
-		asr.w	d1			; Half d1. Makes the ring's y_vel bounce up/down slower
-@skiphalvingvel:
-	
 		asl.w	d2,d0
 		asl.w	d2,d1
 		move.w	d0,d2
@@ -11863,116 +11784,68 @@ Obj37_ContXX:
 		bcc.s	loc_9D62
 		subi.w	#$80,d4
 		bcc.s	loc_9D62
-		move.w	#$288,d4
-
-loc_9D62:
-		move.w	d2,obVelX(a1)
-		cmpi.w	#1,($FFFFFE20).w	; have you lost exactly 1 ring?
-		bne.s	@cont			; if not, branch
-		clr.w	obVelX(a1)		; force single lost ring to fly straight up without any horizontal movement
-@cont:
+		move.w	#BouncyRingValue,d4
+loc_9D62:	move.w	d2,obVelX(a1)
 		move.w	d3,obVelY(a1)
 		neg.w	d2
 		neg.w	d4
-	;	tst.b	($FFFFFFF6).w	; was object loaded with Object 27?
-	;	beq.s	NoClearXSpeed	; if not, branch
-	;	clr.w	obVelX(a0)
-	;	sub.w	#10,obY(a1)
-;NoClearXSpeed:
 		dbf	d5,Obj37_Loop		; repeat for number of rings (max 10)
 
-Obj37_ResetCounter:			; XREF: Obj37_Loop
-		tst.b	$30(a0)
-		bne.s	Obj37_Bounce
-		cmpi.w	#20,($FFFFFE20).w	; do you have 20 rings?
-		blt.s	LoseRings_Under20	; if less than 20, branch
-		subi.w	#20,($FFFFFE20).w 	; substract 20 of rings you have
-		move.b	#$80,($FFFFFE1D).w 	; update ring counter	
-		cmpi.b	#100,($FFFFFE20)	; check rings you have now and compare it with 100
-		blt.s	LoseRings_PlaySound 	; if your amount is over or excactly 100, branch
-		clr.b	($FFFFFE1B).w		; if you losed rings, so you have under 100 now, clear a flag i don't really understand
-		bra.s	LoseRings_PlaySound	; skip LoseRings_Under10
+Obj37_ResetCounter:
+		move.b	#-1,($FFFFFEC6).w	; Move d0 to old timer (for animated purposes)
 
-LoseRings_Under20:
-		move.w	#0,($FFFFFE20).w 	; reset number of rings to 0
-		move.b	#$80,($FFFFFE1D).w 	; update ring counter
-
-LoseRings_PlaySound:
-		tst.b	$35(a0)	; was object loaded with Object 27?
-		beq.s	CheckA7		; if not, branch
-		bra.s	Obj37_Bounce
-		
-CheckA7:
-		tst.b	$30(a0)			; is $FFA7 set?
-		beq.s	Obj37_Play		; if not, branch
-		bra.s	Obj37_Bounce
-		
-Obj37_Play:
-		moveq	#-1,d0			; Move #-1 to d0
-		move.b	d0,obDelayAni(a0)		; Move d0 to new timer
-		move.b	d0,($FFFFFEC6).w	; Move d0 to old timer (for animated purposes)
+		tst.b	$35(a0)			; was object loaded by destroying a monitor or badnik?
+		bne.s	Obj37_MainLoop		; if yes, skip ring loss
+		moveq	#0,d0			; set new rings to 0
+		move.w	($FFFFFE20).w,d1	; move current rings to d1
+		cmpi.w	#20,d1			; do you have at least 20 rings?
+		bls.s	@setnewrings		; if less than 20, branch
+		subi.w	#20,d1		 	; substract 20 of rings you have
+		move.w	d1,d0			; move new rings to d0
+@setnewrings:	move.w	d0,($FFFFFE20).w	; update rings
+		ori.b	#1,($FFFFFE1D).w 	; update ring counter	
 		move.w	#$C6,d0			; move $C6 to d0
 		jsr	(PlaySound_Special).l 	; play ring loss sound
 ; ---------------------------------------------------------------------------
 
-Obj37_Bounce:				; XREF: Obj37_Index
-		tst.b	$30(a0)			; is this the multi read balls (crabmeat)?
-		bne.s	Obj37_NoRingsMove	; if yes, branch
+Obj37_MainLoop:				; XREF: Obj37_Index
+		move.b	($FFFFFEC7).w,obFrame(a0)	; update frame
 
 		tst.b	$29(a0)			; was ring already set to follow you?
-		beq.s	Obj37_DoCheck		; if not, branch
-		tst.b	($FFFFFE2C).w		; is sonic still having a shield?
-		beq.s	Obj37_LostShield	; if not, branch
-		bsr	AttractedRing_Move	; move the ring
-		bra.s	Obj37_NoRingsMove
-
-Obj37_LostShield:
-		move.b	#$37,0(a0)		; change ring object to bouncing ring object, to give this decent effect
-		move.b	#2,obRoutine(a0)	; make sure the ring just bounces, we don't want to loose 10 rings
- 		move.b	#-1,($FFFFFEC6).w	; without this line all hell breaks loose
- 		bra.s	Obj37_NoRingsMove
- 
-Obj37_DoCheck:
+		bne.s	@continueattract	; if yes, branch
 		tst.b	($FFFFFE2C).w		; is Sonic having a shield?
 		beq.s	Obj37_NoRingsMove	; if not, branch
-		bsr	AttractedRing_Check	; do the check
+		cmpi.b	#$FF-20,$30(a0)		; bit of delay before...
+		bhi.s	Obj37_NoRingsMove	; ...collecting rings of smashed objects
+		bsr	AttractedRing_Check
+		bra.s	Obj37_NoRingsMove
+@continueattract:
+		tst.b	($FFFFFE2C).w		; is Sonic still having a shield?
+		beq.s	Obj37_NoRingsMove	; if not, branch
+		bsr	AttractedRing_Move	; move the ring
+		bra.w	Obj37_ChkDel
 
 Obj37_NoRingsMove:
-		move.b	($FFFFFEC7).w,obFrame(a0)
-		bsr	SpeedToPos
-		
+		; ceiling limitation in mini boss arenas
 		cmpi.w	#$301,($FFFFFE10).w	; is level SLZ2?
 		bne.s	@notslz			; if not, branch
 		tst.b	($FFFFFFA9).w		; is Sonic fighting against the walking bomb?
 		beq.s	@notslz			; if not, branch	
 		move.w	#$408,d1		; set ceiling height
 		bra.s	@checkceiling
-
-@notslz:
-		cmpi.w	#$000,($FFFFFE10).w	; is level GHZ1?
+@notslz:	cmpi.w	#$000,($FFFFFE10).w	; is level GHZ1?
 		bne.s	@noceiling		; if not, branch
 		cmpi.b	#1,($FFFFFFAA).w	; is Sonic fighting against the crabmeat?
 		bne.s	@noceiling		; if not, branch
 		move.w	#$440,d1		; set ceiling height
-
-@checkceiling:
-		move.w	obY(a0),d0		; get Y position of ring
+@checkceiling:	move.w	obY(a0),d0		; get Y position of ring
 		cmp.w	d1,d0			; is it above Y pos? (ceiling position of the arena)
 		bge.s	@noceiling		; if not, branch
-		clr.w	obVelY(a0)			; if yes, make the rings fall down so they don't get stuck in the ceiling
-				
-@noceiling:
-		addi.w	#$18,obVelY(a0)
-		
-		tst.b	($FFFFF64C).w		; Does the level have water?
-		beq.s	@skipbounceslow		; If not, branch and skip underwater checks
-		move.w	($FFFFF646).w,d6	; Move water level to d6
-		cmp.w	obY(a0),d6		; Is the ring object underneath the water level?
-		bgt.s	@skipbounceslow		; If not, branch and skip underwater commands
-		subi.w	#$E,obVelY(a0)		; Reduce gravity by $E ($18-$E=$A), giving the underwater effect
-@skipbounceslow:
-	
-		bmi.s	Obj37_ChkDel
+		clr.w	obVelY(a0)		; if yes, make the rings fall down so they don't get stuck in the ceiling		
+@noceiling:	addi.w	#$18,obVelY(a0)		; regular gravity for rings
+		bsr	SpeedToPos
+
+Obj37_Bounce:
 		move.b	($FFFFFE05).w,d0
 		add.b	d7,d0
 		andi.b	#3,d0
@@ -11985,42 +11858,15 @@ Obj37_NoRingsMove:
 		asr.w	#2,d0
 		sub.w	d0,obVelY(a0)
 		neg.w	obVelY(a0)
-		tst.b	$33(a0)		; was ring set to fall (goggles)?
-		beq.s	Obj37_ChkDel	; if not, branch
-		cmpi.b	#5,$34(a0)		; has object bounced once?
-		beq.s	Obj37_ChkDelX	; if not, branch
-		clr.w	obVelY(a0)		; clear Y-speed
-		subq.w	#6,obY(a0)
-		move.b	#$25,0(a0)	; change object back into a normal ring
-		rts			; return
-; ===========================================================================
 
-Obj37_ChkDelX:				; XREF: Obj37_Bounce
-		addq.b	#1,$34(a0)
+Obj37_ChkDel:				; XREF: Obj37_MainLoop
+		subq.b	#1,$30(a0)	; sub 1 from timer
+		beq.s	Obj37_Delete	; despawn ring after timer expired
 
-Obj37_ChkDel:
-		tst.b	($FFFFFFD2).w	; was rings set to fall? (goggles)
-		bne.s	Obj37_NoCheck	; if yes, branch
-		tst.b	$33(a0)		
-		bne.s	Obj37_NoCheck2
-		subq.b	#1,obDelayAni(a0)	; Subtract 1 from timer
-		beq.w	DeleteObject	; If 0, delete
-		bra.s	Obj37_NoCheck2
-
-Obj37_NoCheck:
-		move.b	#1,$33(a0)
-
-Obj37_NoCheck2:
-		tst.b	($FFFFFE2C).w		; does sonic have a shield?
-		bne.s	Obj37_DontChkBound		; if yes, branch
-		tst.b	($FFFFFFE7).w
-		bne.s	Obj37_DontChkBound
 		move.w	($FFFFF72E).w,d0
 		addi.w	#$E0,d0
 		cmp.w	obY(a0),d0	; has object moved below level boundary?
 		bcs.s	Obj37_Delete	; if yes, branch
-		
-Obj37_DontChkBound:
 		bra.w	DisplaySprite
 ; ===========================================================================
 
@@ -12039,9 +11885,9 @@ Obj37_Sparkle:				; XREF: Obj37_Index
 ; ===========================================================================
 
 Obj37_Delete:				; XREF: Obj37_Index
-		clr.b	($FFFFFFF6).w
-		clr.b	$30(a0)
 		bra.w	DeleteObject
+
+
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Object 4B - giant rings
@@ -12707,7 +12553,7 @@ Obj2E_Main:				; XREF: Obj2E_Index
 		adda.w	(a1,d0.w),a1
 		addq.w	#1,a1
 		move.l	a1,obMap(a0)
-		move.b	#100,$30(a0)		; set maximun delay
+		move.b	#80,$30(a0)		; set maximun delay
 		cmpi.w	#$302,($FFFFFE10).w
 		bne.s	@cont
 		move.b	#1,$30(a0)
@@ -12785,7 +12631,7 @@ Obj2E_ChkRandom:
 		cmpi.b	#7,d0		; is the number "7"?
 		beq.w	Obj2E_ChkS	; if yes, branch to S
 		cmpi.b	#8,d0		; is the number "8"?
-		beq.w	Obj2E_ChkGoggles; if yes, branch to goggles
+		beq.w	Obj2E_ChkP; if yes, branch to goggles
 		rts			; if nothing of this, rts
 ; ===========================================================================		
 		
@@ -12898,7 +12744,7 @@ Obj2E_ChkRings:
 
 Obj2E_ChkS:
 		cmpi.b	#7,d0		; does monitor contain 'S'
-		bne.w	Obj2E_ChkGoggles
+		bne.w	Obj2E_ChkP
 
 	;	tst.b	($FFFFFFE7).w		; has a S monitor already been broken?
 	;	bne.w	Obj2E_ChkEnd		; if yes, branch
@@ -12943,48 +12789,63 @@ Obj2E_ChkS:
 Obj2E_RuinedPlace:
 		move.w	#$9F,d0		; set song $9F
 		jmp	PlaySound	; play inhuman mode music
-; ===========================================================================
+
 
 Obj2E_SpikesBlood:
 	dc.l	ArtKospM_SpikesBlood
 	dc.w	$A360
 	dc.w	-1
-
 ; ===========================================================================
-Obj2E_ChkGoggles: ;Power
+
+; Obj2E_ChkGoggles:
+Obj2E_ChkP:
 		cmpi.b	#8,d0		; does monitor contain goggles?
-		bne.s	Obj2E_ChkEnd	; if not, branch
+		bne.w	Obj2E_ChkEnd	; if not, branch
 
 		cmpi.w	#$200,($FFFFFE10).w	; is level MZ1?
-		bne.s	Obj2E_Goggles_NotMZ	; if not, branch
+		bne.s	@checkslz		; if not, branch
 		move.w	#$D1,d0			; set spinadsh sound
 		jmp	(PlaySound).l		; play spindash sound
 
-Obj2E_Goggles_NotMZ:
-		cmpi.b	#$3,($FFFFFE10).w
-		bne.s	Obj2E_Goggles_NotSLZ3
-		move.b	#1,($FFFFFFE1).w	; disable blockers
-		cmpi.w	#$302,($FFFFFE10).w
-		bne.s	Obj2E_Goggles_NotSLZ3
+@checkslz:
+		cmpi.b	#3,($FFFFFE10).w	; is zone SLZ?
+		bne.s	@doringfall	; if not, branch
+		move.b	#1,($FFFFFFE1).w	; disable blockers (both the fan in SNP and the barrier in SAP)
+		cmpi.w	#$302,($FFFFFE10).w	; are we specifically in SAP?
+		bne.s	@doringfall	; if not, branch
 
+		; disable blocker chunk in SAP
 		movem.l	d0-a1,-(sp)
 		move.w	#$1480,d0
 		move.w	#$0380,d1
 		move.b	#$31,d2
 		jsr	Sub_ChangeChunk
 		movem.l	(sp)+,d0-a1
-
 		move.w	#$A9,d0
 		jmp	(PlaySound).l	; play blubb sound
 
-Obj2E_Goggles_NotSLZ3:
-		move.b	#50,($FFFFFFD2).w ; make current displayed rings falling
-		move.b	#1,($FFFFFFB1).w
+@doringfall:
+		frantic
+		beq.s	@notfrantic
+		cmpi.w	#$502,($FFFFFE10).w
+		bne.s	@notfrantic
+		move.w	#$A9,d0
+		jmp	(PlaySound).l	; play blubb sound
+
+@notfrantic:
+		lea	($FFFFD800).w,a1	; set a1 to level object RAM
+		moveq	#$60-1,d2		; set d2 to $5F ($D800 to $F000 = $60 objects)
+@findrings:
+		cmpi.b	#$25,(a1)		; is object a ring?
+		bne.s	@next			; if not, branch
+		move.b	#$37,(a1)		; change object into bouncing ring
+		move.b	#2,obRoutine(a1)	; make sure the ring just bounces, we don't want to loose 10 rings
+@next:		adda.w	#$40,a1			; go to next object in RAM
+		dbf	d2,@findrings		; loop
+
+		move.b	#120,($FFFFFF64).w	; 2 seconds of camera shake
 		move.w	#$B7,d0
-		jsr	(PlaySound).l	; play rumble sound
-	;	bsr	SingleObjLoad		; load from SingleObjLoad
-	;	bne.s	Obj2E_ChkEnd		; if SingleObjLoad is already in use, don't load obejct
-		move.b	#120,($FFFFFF64).w
+		jmp	(PlaySound).l	; play rumble sound
 ; ===========================================================================
 
 Obj2E_ChkEnd:
@@ -26389,7 +26250,7 @@ Obj01_ChkS:
 Obj01_Inhuman:
 		tst.b	($FFFFFFE7).w		; is inhuman mode enabled?
 		beq.s	Obj01_ChkInvin		; if not, branch	
-		move.b	#1,($FFFFFE2C).w	; make sure sonic has a shield
+		move.b	#0,($FFFFFE2C).w	; make sure sonic has no shield
 		add.w	#$0100,($FFFFFB04)	; increase Sonic's palette (color 3)
 		add.w	#$0100,($FFFFFB06)	; increase Sonic's palette (color 4)
 		add.w	#$0100,($FFFFFB08)	; increase Sonic's palette (color 5)
@@ -27411,8 +27272,8 @@ WF_MakeWhite_Loop:
 		tst.b	($FFFFFFBF).w		; Unreal Place floating challenge enabled?
 		bne.s	@wfintensitynoboost	; if yes, branch
 		tst.b	($FFFFFF5F).w		; blackout challenge?
-		beq.s	@wfintensity		; if not, branch
-		frantic				; are we in Frantic mode?
+	;	beq.s	@wfintensity		; if not, branch
+	;	frantic				; are we in Frantic mode?
 		bne.s	@wfintensity		; if yes, branch
 @wfintensitynoboost:
 		moveq	#0,d4			; no intensity boost (used for all stages with black backgrounds)
@@ -41283,9 +41144,9 @@ TouchGoal_Unreal:
 		move.b	#$2F,($FF254A).l
 		move.b	#$2F,($FF25CA).l
 		
-		move.w	#$A3,d0			; play death sound
-		frantic				; are we in Frantic mode?
-		beq.s	TouchGoal_PlaySound	; if not, branch
+	;	move.w	#$A3,d0			; play death sound
+	;	frantic				; are we in Frantic mode?
+	;	beq.s	TouchGoal_PlaySound	; if not, branch
 		move.w	#$B9,d0			; play annoying crumbling sound instead
 		jsr	PlaySound		; play sound
 		move.w	#$DB,d0			; play annoying crumbling sound instead

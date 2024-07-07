@@ -240,7 +240,7 @@ Options_HandleCinematicMode:
 @nodebugunlock:
 		jsr	Check_BaseGameBeaten	; has the player beaten the base game?
 		bne.s	@cinematidmodeallowed	; if yes, cineamtic mode is allowed
-		move.w	#$DA,d0			; play option disallowed sound
+		move.w	#$DC,d0			; play option disallowed sound
 		jsr	PlaySound_Special
 		bra.w	Options_UpdateTextAfterChange_NoSound
 
@@ -287,7 +287,7 @@ Options_HandleNonstopInhuman:
 @nodebugunlock:
 		jsr	Check_BlackoutBeaten	; has the player specifically beaten the blackout challenge?
 		bne.s	@nonstopinhumanallowed	; if yes, branch
-		move.w	#$DA,d0			; play option disallowed sound
+		move.w	#$DC,d0			; play option disallowed sound
 		jsr	PlaySound_Special
 		bra.w	Options_UpdateTextAfterChange_NoSound
 		

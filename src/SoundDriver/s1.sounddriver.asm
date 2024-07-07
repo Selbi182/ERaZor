@@ -2811,7 +2811,7 @@ SoundDA:	incbin	sound\soundDA.bin
 		even
 SoundDB:	incbin	sound\GunstarSFX\27.sfx
 		even
-SoundDC:	incbin	sound\GunstarSFX\28.sfx
+SoundDC:	incbin	sound\soundDC.bin
 		even
 SoundDD:	incbin	sound\GunstarSFX\1E.sfx
 		even

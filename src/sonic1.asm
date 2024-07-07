@@ -789,6 +789,7 @@ GameModeArray:
 		dc.l	ChapterScreen		; Chapters Screen	($28)
 		dc.l	CreditsJest		; Markey's Credits	($2C)
 		dc.l	GameplayStyleScreen	; Gameplay Style Screen	($30)
+		dc.l	SoundTestScreen		; Sound Test Screen	($34)
 ; ---------------------------------------------------------------------------
 
 Deleted_Mode:
@@ -44592,7 +44593,7 @@ ObjPos_Null:	dc.w    $FFFF,$0000,$0000
 		include "Screens/SelbiSplash/SelbiSplash.asm"
 		include "Screens/ChapterScreens/ChapterScreen.asm"
 		include "Screens/OptionsScreen/OptionsScreen.asm"
-	;	include "Screens/SoundTestScreen/SoundTestScreen.asm"
+		include "Screens/SoundTestScreen/SoundTestScreen.asm"
 		include "Screens/StoryScreen/StoryScreen.asm"
 		include	"Screens/CreditsScreen/CreditsScreen.asm"
 		include	"Screens/TutorialBox/TutorialBox.asm"

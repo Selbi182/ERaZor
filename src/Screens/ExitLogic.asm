@@ -113,6 +113,10 @@ Exit_OptionsScreen:
 		rts
 ; ===========================================================================
 
+Exit_SoundTestScreen:
+		bra.w	ReturnToUberhub
+; ===========================================================================
+
 Exit_ChapterScreen:
 		bra.w	StartLevel		; start level set in FE10 normally
 ; ===========================================================================
@@ -318,8 +322,8 @@ HubRing_Options:
 		rts
 
 HubRing_SoundTest:
-		; TODO: get a proper sound test working
-		bra.s	HubRing_Options
+		move.b	#$34,($FFFFF600).w	; load sound test screen
+		rts
 
 HubRing_Tutorial:
 		move.w	#$501,($FFFFFE10).w	; set level to SBZ2

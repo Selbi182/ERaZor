@@ -383,6 +383,8 @@ HubRing_Blackout:
 
 ; GotThroughAct:
 Exit_Level:
+		clr.w	($FFFFFE30).w		; clear any set level checkpoints
+
 		cmpi.w	#$501,($FFFFFE10).w	; did we beat the tutorial?
 		beq.w	GTA_Tutorial		; if yes, branch
 

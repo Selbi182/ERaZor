@@ -1482,8 +1482,8 @@ PalCycle_SAP:
 		beq.w	PCSLZ_Red_End		; if not, branch
 		btst	#7,($FFFFFF92).w	; are flashy lights enabled?
 		bne.s	@dosappal		; if yes, branch
-		move.b	#5,($FFFFFFBC).w
-		bra.w	PCSLZ_Red_Cont
+		move.b	#5,($FFFFFFBC).w	; fixate color to red
+		bra.w	PCSLZ_Red_Cont		; skip all the other pal cycle stuff
 
 @dosappal:
 
@@ -3621,10 +3621,8 @@ Level_NoMusic2:
 		bne.s	@notfinalor		; if not, branch
 		moveq	#$1F,d0
 		jsr	LoadPLC			; load FZ boss patterns
+
 @notfinalor:
-		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
-		bne.s	Level_CinematicHud	; if yes, branch
-		
 		cmpi.w	#$500,($FFFFFE10).w	; is this the bomb machine cutscene?
 		bne.s	@notmachine		; if not, branch
 		move.b	#1,($FFFFF7CC).w	; lock controls 
@@ -3635,6 +3633,8 @@ Level_NoMusic2:
 		bra.s	Level_NoTitleCard
 
 @notmachine:
+		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
+		bne.s	Level_CinematicHud	; if yes, branch
 		move.b	#$34,($FFFFD080).w ; load title	card object
 		bra.s	Level_TtlCard
 ; ===========================================================================
@@ -3743,8 +3743,8 @@ Level_LoadObj:
 		move.b	d0,($FFFFFE1B).w ; clear lives counter
 
 		clr.w	($FFFFF5E2).w		; clear frantic ring drain
-	;	cmpi.w	#$400,($FFFFFE10).w	; are we in Uberhub?
-	;	beq.s	loc_39E8		; if yes, don't do ring drain
+		cmpi.w	#$400,($FFFFFE10).w	; are we in Uberhub?
+		beq.s	loc_39E8		; if yes, don't do ring drain
 		move.w	($FFFFFE20).w,d1	; get your rings from the last level
 		cmpi.w	#999,d1			; did it somehow end up above the allowed maximum?
 		bls.s	@allgood		; if not, branch
@@ -5754,12 +5754,12 @@ EndingStLocArray:
 LevSz_ChkLamp:				; XREF: LevelSizeLoad
 		tst.b	($FFFFFE30).w	; have any lampposts been hit?
 		beq.s	LevSz_StartLoc	; if not, branch
-		cmpi.w	#$400,($FFFFFE10).w	; is level SYZ?
-		bne.s 	@cont			; if not, branch
-		clr.b	($FFFFFE30).w		; make sure nothing with checkpoints ever happens in Uberhub
+		cmpi.w	#$400,($FFFFFE10).w	; is level Uberhub?
+		bne.s 	@notuberhub			; if not, branch
+		clr.w	($FFFFFE30).w		; make sure nothing with checkpoints ever happens in Uberhub
 		bra.s	LevSz_StartLoc
 
-@cont:
+@notuberhub:
 		jsr	obj79_LoadInfo
 		move.w	($FFFFD008).w,d1
 		move.w	($FFFFD00C).w,d0
@@ -26246,9 +26246,9 @@ S_D_NotGHZ2:
 		bne.s	S_D_AfterImage		; if not on allowed frame, branch
 
 		move.w	($FFFFF5E2).w,d0	; get currently remaining drain limit
-		lsr.w	#3,d0			; divide by 8
-		bne.s	@notzero		; if not zero, branch (which means we still have at least 32 rings)
-		moveq	#2,d0			; set slowest speed while under 32 rings
+		lsr.w	#4,d0			; divide by 16
+		bne.s	@notzero		; if not zero, branch (which means we still have at least 16 rings)
+		moveq	#1,d0			; set slowest speed while under 16 rings
 @notzero:	sub.w	d0,($FFFFF5E2).w	; subtract from drain limit
 		sub.w	d0,($FFFFFE20).w	; subtract from rings
 		bpl.s	@positive		; if still positive, branch

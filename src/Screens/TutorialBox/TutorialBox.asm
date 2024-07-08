@@ -779,6 +779,25 @@ Hint_1:
 	boxtxt	"HAVE TO PRESS-"
 	boxtxt_pause
 	boxtxt	"...NEVER MIND."
+	boxtxt_pause
+
+	dc.b	_frantic
+	boxtxt	"    frantic mode"
+	boxtxt_pause
+	boxtxt	"    UNRELATED TO    "
+	boxtxt	"  CONTROLS, BUT AS  "
+	boxtxt	" YOU ARE PLAYING IN "
+	boxtxt	" THIS MODE, SOME OF "
+	boxtxt	"  THE MONITORS MAY  "
+	boxtxt	"    BONUS HINTS!    "
+	boxtxt_next
+	
+	boxtxt	"   FOR EXAMPLE...   "
+	boxtxt_pause
+	boxtxt	"  ONCE YOU ENTER A  "
+	boxtxt	"   FRANTIC STAGE,   "
+	boxtxt	" YOUR RINGS WILL BE "
+	boxtxt	"   RESET TO zero!   "
 	boxtxt_end
 
 ;		 --------------------

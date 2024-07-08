@@ -49,6 +49,7 @@ __DEBUG__: equ 1
 ; ------------------------------------------------------
 ;   -1 - boot to title screen level select
 ; $400 - Uberhub Place
+; $501 - Tutorial Place
 ; $000 - Night Hill Place
 ; $002 - Green Hill Place
 ; $300 - Special Place
@@ -58,9 +59,8 @@ __DEBUG__: equ 1
 ; $301 - Scar Night Place
 ; $302 - Star Agony Place
 ; $502 - Finalor Place
-; $501 - Tutorial Place
 QuickLevelSelect = 1
-QuickLevelSelect_ID = $000
+QuickLevelSelect_ID = $502
 ; ------------------------------------------------------
 DebugModeDefault = 1
 DebugSurviveNoRings = 0
@@ -6938,45 +6938,34 @@ FZEscape equ $FFFFF734
 
 Resize_FZend2:
 		tst.b	(FZEscape).w		; has escape sequence flag been set? (Eggman object deleted after crash)
-		beq.s	@0			; if not, branch
+		beq.w	@waitforeggmantodielol	; if not, branch
 		
-		; move camera to the right
-		moveq	#1,d0
-		add.w	d0,($FFFFF700).w
-		add.w	d0,($FFFFF728).w
-		add.w	d0,($FFFFF72A).w
-		
-		cmpi.w	#$27C0,($FFFFF700).w
-		blo.s	@0
-		addq.b	#2,($FFFFF742).w	; go to escape sequence code
+		addq.b	#2,($FFFFF742).w	; go to nuke wait code
 
-		vram	$6000			; load prison capsule graphics
-		lea	(Unc_Prison).l,a0
-		move.w	#($16A0)-1, d1
-
-@PrisonLoad:
-		move.w	(a0)+, ($C00000).l
-		dbf	d1, @PrisonLoad
-
-		lea	@LzSwitch(pc), a1	; load switch graphics
+		lea	@Prison(pc),a1		; load Prison graphics
 		jsr	LoadPLC_Direct
 
-@0:		bra.w	loc_72C2
+@waitforeggmantodielol:
+		bra.w	loc_72C2
 
 ; ===========================================================================
-@LzSwitch:
-	dc.l	ArtKospM_LzSwitch
-	dc.w	$70A0
+@Prison:
+	dc.l	ArtKospM_Prison
+	dc.w	$6000
 	dc.w	-1
 
 ; ===========================================================================
 
 Resize_FZEscape_Nuke:
 		move.w	#$2840,($FFFFF72A).w		; right boundary
+		cmpi.w	#$27C0,($FFFFF700).w
+		blo.w	@waitscroll
+		addi.w	#1,($FFFFF700).w
 		move.w	($FFFFF700).w,($FFFFF728).w	; lock left boundary as you walk right
 		
+@waitscroll:	
 		tst.b	($FFFFFFA5).w		; egg prison opened?
-		beq	@prisonnotyetopen	; if not, branch
+		beq.w	@prisonnotyetopen	; if not, branch
 		
 		VBlank_SetMusicOnly 		; VBlank won't touch VDP now
 		vram	$6C00			; load HPS and info box graphics
@@ -44186,7 +44175,8 @@ ArtKospM_Eggman:	incbin	artkosp\bossmain.kospm	; boss main patterns
 		even
 ArtKospM_Weapons:	incbin	artkosp\bossxtra.kospm	; boss add-ons and weapons
 		even
-Unc_Prison:	incbin	artunc\prison.bin	; prison capsule (uncompressed)
+;Unc_Prison:	incbin	artunc\prison.bin	; prison capsule (uncompressed)
+ArtKospM_Prison:	incbin	artkosp\PrisonCapsule.kospm	; prison capsule
 		even
 ArtKospM_Sbz2Eggman:	incbin	artkosp\sbz2boss.kospm	; Eggman in SBZ2 and FZ
 		even

@@ -10,7 +10,7 @@
 ; Programming/Beta Testing:	Fuzzy
 ; Music Ports:			DalekSam
 ;				Spanner
-; Sound Driver:			EduardoKnuckles	
+;				EduardoKnuckles	
 ; Main Beta Testing:		SonicVaan
 ; Beta/Real Hardware Testing:	SonicFan1
 ; Additional Beta Testing:	ajcox
@@ -18,6 +18,7 @@
 ; Real Hardware Testing:	redhotsonic
 ; Special Thanks to:		MainMemory
 ;				Jorge
+;				ProjectFM
 ; ------------------------------------------------------
 ; =======================================================
 
@@ -59,8 +60,8 @@ __DEBUG__: equ 1
 ; $301 - Scar Night Place
 ; $302 - Star Agony Place
 ; $502 - Finalor Place
-QuickLevelSelect = 1
-QuickLevelSelect_ID = $502
+QuickLevelSelect = 0
+QuickLevelSelect_ID = -1
 ; ------------------------------------------------------
 DebugModeDefault = 1
 DebugSurviveNoRings = 0
@@ -407,7 +408,7 @@ SRAM_Delete:
 	else
 		moveq	#$00,d0					; if not, set the whole SRAM to 0 for safety
 		move.b	#2,d1
-@ClearSRAM:	movep.l	d0,obRender(a1)
+@ClearSRAM:	movep.l	d0,1(a1)
 		adda.w	#8,a1
 		dbf	d1,@ClearSRAM
 
@@ -415,7 +416,7 @@ SRAM_Delete:
 		move.b	#SRAM_MagicNumber,SRAM_Exists(a1) 	; set magic number ("SRAM exists")
 		move.b	#%00000011,d0				; set default options (extended camera and story text screens)
 		move.b	d0,($FFFFFF92).w			; ^
-		move.b	d0,obRender(a1)				; ^
+		move.b	d0,1(a1)				; ^
 	endif	; def(__MD_REPLAY__)=0
 		
 ResetGameProgress:
@@ -1476,14 +1477,26 @@ loc_1A60:
 
 PalCycle_SAP:
 		cmpi.w	#$302,($FFFFFE10).w	; are we in SAP?
-		bne.s	PCSLZ_Red_End		; if not, branch
+		bne.w	PCSLZ_Red_End		; if not, branch
 		tst.b	($FFFFFF77).w		; is antigrav enabled?
-		beq.s	PCSLZ_Red_End		; if not, branch
+		beq.w	PCSLZ_Red_End		; if not, branch
+		btst	#7,($FFFFFF92).w	; are flashy lights enabled?
+		bne.s	@dosappal		; if yes, branch
+		move.b	#5,($FFFFFFBC).w
+		bra.w	PCSLZ_Red_Cont
+
+@dosappal:
 
 		; palette rotation for Sonic
 cyoff = 4
 cylen = 8
-		lea	($FFFFFB00).w,a2
+		move.w	#$2780,($FFFFD000+obGfx).w	; force Sonic to use palette line 2
+		lea	($FFFFFB20).w,a2		; set start location
+		btst	#3,($FFFFFF92).w		; is cinematic HUD enabled?
+		beq.s	@notcinematic			; if not, branch
+		move.w	#$0780,($FFFFD000+obGfx).w	; welp
+		lea	($FFFFFB00).w,a2		; have fun with the eyesore
+@notcinematic:
 		move.w	($FFFFFE04).w,d0		; load V-Blank counter into d0
 		move.w	d0,d2				; copy to d2
 		andi.w	#3,d0				; mask it against 3
@@ -2373,30 +2386,30 @@ ContrastBoost:
 ; ---------------------------------------------------------------------------
 PalPointers:
 	;    palette		RAM   length/2-1
-	dc.l Pal_SegaBG,	$FB00 001F
-	dc.l Pal_Title,		$FB00 001F
-	dc.l Pal_LevelSel,	$FB00 001F
-	dc.l Pal_Sonic,		$FB00 0007
-	dc.l Pal_GHZ,		$FB20 0017
-	dc.l Pal_LZ2,		$FB20 0017
-	dc.l Pal_MZ,		$FB20 0017
-	dc.l Pal_SLZ,		$FB20 0017
-	dc.l Pal_SYZ,		$FB20 0017
-	dc.l Pal_SBZ2,		$FB20 0017
-	dc.l Pal_Special,	$FB00 001F
-	dc.l Pal_LZWater2,	$FB00 001F
-	dc.l Pal_GHZ3,		$FB20 0017
-	dc.l Pal_GHZ2,		$FB20 0017
-	dc.l Pal_FZ,		$FB20 0017
-	dc.l Pal_LZSonWater,	$FB00 0007
-	dc.l Pal_SonicAntigrav,	$FB00 0007
-	dc.l Pal_Null,		$FB00 001F
-	dc.l Pal_SpeContinue,	$FB00 000F
-	dc.l Pal_Ending,	$FB00 001F
-	dc.l STS_Palette,	$FB00 001F
-	dc.l Pal_BCutscene,	$FB20 001F
-	dc.l Pal_SpecialEaster,	$FB00 001F
-	dc.l Pal_LZWater2_Evil,	$FB00 001F
+	dc.l Pal_SegaBG,	$FB00 001F	; $00
+	dc.l Pal_Title,		$FB00 001F	; $01
+	dc.l Pal_LevelSel,	$FB00 001F	; $02
+	dc.l Pal_Sonic,		$FB00 0007	; $03
+	dc.l Pal_GHZ,		$FB20 0017	; $04
+	dc.l Pal_LZ2,		$FB20 0017	; $05
+	dc.l Pal_MZ,		$FB20 0017	; $06
+	dc.l Pal_SLZ,		$FB20 0017	; $07
+	dc.l Pal_SYZ,		$FB20 0017	; $08
+	dc.l Pal_SBZ2,		$FB20 0017	; $09
+	dc.l Pal_Special,	$FB00 001F	; $0A
+	dc.l Pal_LZWater2,	$FB00 001F	; $0B
+	dc.l Pal_GHZ3,		$FB20 0017	; $0C
+	dc.l Pal_GHZ2,		$FB20 0017	; $0D
+	dc.l Pal_FZ,		$FB20 0017	; $0E
+	dc.l Pal_LZSonWater,	$FB00 0007	; $0F
+	dc.l Pal_SonicAntigrav,	$FB00 0007	; $10
+	dc.l Pal_SonicAntigrav,	$FB20 0007	; $11
+	dc.l Pal_SpeContinue,	$FB00 000F	; $12
+	dc.l Pal_Ending,	$FB00 001F	; $13
+	dc.l STS_Palette,	$FB00 001F	; $14
+	dc.l Pal_BCutscene,	$FB20 001F	; $15
+	dc.l Pal_SpecialEaster,	$FB00 001F	; $16
+	dc.l Pal_LZWater2_Evil,	$FB00 001F	; $17
 	even
 
 ; ---------------------------------------------------------------------------
@@ -2919,8 +2932,10 @@ Title_SonPalLoop:
 		move.w	#0,($FFFFFFE6).w
 		VBlank_UnsetMusicOnly
 		display_enable
-	if QuickLevelSelect=1 & QuickLevelSelect_ID=-1
+	if QuickLevelSelect=1 
+		if QuickLevelSelect_ID=-1
 		bra.s	LevelSelect_Load
+		endif
 	endif
 		move.b	#$8A,d0		; play title screen music
 		bsr	PlaySound_Special
@@ -3728,8 +3743,8 @@ Level_LoadObj:
 		move.b	d0,($FFFFFE1B).w ; clear lives counter
 
 		clr.w	($FFFFF5E2).w		; clear frantic ring drain
-		cmpi.w	#$400,($FFFFFE10).w	; are we in Uberhub?
-		beq.s	loc_39E8		; if yes, don't do ring drain
+	;	cmpi.w	#$400,($FFFFFE10).w	; are we in Uberhub?
+	;	beq.s	loc_39E8		; if yes, don't do ring drain
 		move.w	($FFFFFE20).w,d1	; get your rings from the last level
 		cmpi.w	#999,d1			; did it somehow end up above the allowed maximum?
 		bls.s	@allgood		; if not, branch
@@ -8148,14 +8163,14 @@ Obj18_Action2:				; XREF: Obj18_Index
 		tst.b	obSubtype(a0)		; is this the platform to go back up?
 		bmi.s	@gobackup		; if yes, branch
 		
-		btst	#1,($FFFFF605).w	; down pressed?
+		btst	#1,($FFFFF603).w	; down pressed?
 		beq.s	Obj18_NotSYZX		; if not, branch
 		move.w	#$800,($FFFFD012).w	; shoot Sonic down
 		move.b	#2,($FFFFD01C).w	; rolling animation
 		bra.s	@platformgoboom
 
 @gobackup:
-		btst	#0,($FFFFF605).w	; up pressed?
+		btst	#0,($FFFFF603).w	; up pressed?
 		beq.s	Obj18_NotSYZX		; if not, branch
 		move.w	#-$1000,($FFFFD012).w	; shoot Sonic up
 
@@ -9139,7 +9154,7 @@ Obj2A_Main:				; XREF: Obj2A_Index
 		bne.s	@nosoundstopper		; if not, branch
 		tst.b	obSubtype(a0)		; is this the door leading to the blackout challenge?
 		bpl.s	@nosoundstopper		; if not, branch
-		jsr	Check_BaseGameBeaten	; has the player beaten the base game?
+		jsr	Check_BaseGameBeaten_Frantic	; has the player beaten the base game in frantic mode?
 		beq.s	@nosoundstopper		; if not, don't load sound stopper
 
 		bsr	SingleObjLoad
@@ -9186,7 +9201,7 @@ Obj2A_Red:
 		move.w	#$0800+($6100/$20),obGfx(a0)	; use red light art
 		tst.b	obSubtype(a0)			; is this the door leading to the blackout challenge?
 		bpl.s	@notfinaldoor			; if not, branch
-		jsr	Check_BaseGameBeaten		; has the player beaten the base game?
+		jsr	Check_BaseGameBeaten_Frantic	; has the player beaten the base game in frantic?
 		beq.w	Obj2A_Animate			; if not, keep door locked
 		tst.b	$30(a0)				; has sound stopper been passed?
 		beq.s	Obj2A_Green			; if not, keep door open
@@ -10556,16 +10571,9 @@ Obj1F_BossDelete:
 		movem.l	(sp)+,d0-d7/a1-a3
 
 		move.b	#$34,($FFFFD080).w 		; load title card object
-		move.b	#35,($FFFFD0B0).w
+		move.b	#35,($FFFFD080+$30).w		; set delay before loading title cards
+		move.b	#1,($FFFFD080+$31).w		; set title card patterns load flag
 		
-		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
-		bne.s	@crabbossdel		; if yes, branch
-
-		; TODO: Verify this
-		lea	PLC_TitleCard, a1
-		jsr	LoadPLC_Direct
-		
-@crabbossdel:
 		bra.w	Obj1F_Delete			; delete
 ; ===========================================================================
 
@@ -14886,11 +14894,19 @@ loc_BDD6:
 		jsr	PlaySound		; hell yea
 		move.w	#-$1800,d1		; set first launch speed (needs to be different cause of the alternate gravity)
 
+		; load antigrav palette for Sonic
+		btst	#7,($FFFFFF92).w	; are flashy lights enabled?
+		beq.s	@nopal			; if not, don't mess with Sonic
+		moveq	#$11,d0			; load Sonic's antigrav palette line in palette line 2
+		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
+		beq.s	@loadpal		; if not, branch
+		moveq	#$10,d0			; load it into palette line 1 instead
+	@loadpal:
 		movem.l	d7/a1-a3,-(sp)
-		moveq	#$10,d0
-		jsr	PalLoad2		; load Sonic's antigrav palette line
+		jsr	PalLoad2
 		movem.l	(sp)+,d7/a1-a3
 
+@nopal:
 		frantic				; is frantic mode enabled?
 		beq.s	@Explode		; if not, branch
 		addi.w	#100,($FFFFFE20).w	; be generous and give the brave troopers 100 extra rings
@@ -15489,20 +15505,27 @@ Obj34_Index:	dc.w Obj34_Setup-Obj34_Index
 ; ===========================================================================
 
 Obj34_Setup:				; XREF: Obj34_Index
-		cmpi.w	#$302,($FFFFFE10).w
-		beq.s	@contx
-		cmpi.w	#$002,($FFFFFE10).w
-		bne.s	@cont
+		cmpi.w	#$302,($FFFFFE10).w	; are we in SAP?
+		beq.s	@delayafterboss		; if yes, branch
+		cmpi.w	#$002,($FFFFFE10).w	; are we in GHP?
+		bne.s	@regular		; if not, branch
 
-		cmpi.b	#2,($FFFFFFAA).w
-		bne.s	@cont
-@contx:
-		tst.b	$30(a0)
-		beq.s	@cont
+@delayafterboss:
+		tst.b	$30(a0)			; any time remaining on the delay?
+		beq.s	@regular		; if not, load title cards
+		
 		subq.b	#1,$30(a0)
+		bne.s	@waitdelay
+		tst.b	$31(a0)			; are patterns set to be loaded?
+		beq.s	@regular		; if not, branch
+		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
+		bne.s	@regular		; if yes, branch
+		lea	PLC_TitleCard, a1
+		jsr	LoadPLC_Direct
+@waitdelay:
 		rts
 
-@cont:
+@regular:
 		movea.l	a0,a1
 		moveq	#0,d0
 		move.b	($FFFFFE10).w,d0
@@ -18677,13 +18700,11 @@ Obj12_CheckGameState:
 ; ---------------------------------------------------------------------------
 
 @blackout:
-		jsr	Check_BlackoutBeaten_Frantic	; has the player beaten the blackout challenge in frantic?
-		beq.s	@bcnotfrantic			; if not, branch
+		jsr	Check_BlackoutBeaten		; has the player beaten the blackout challenge?
+		beq.s	@blackoutnotbeaten		; if not, branch
 		move.b	#1,$30(a0)			; use red star frame
 		bra.s	Obj12_Init			; show star
-@bcnotfrantic:
-		jsr	Check_BlackoutBeaten_Casual	; has the player beaten the blackout challenge in casual?
-		bne.s	Obj12_Init			; if yes, show gray star
+@blackoutnotbeaten:
 		jmp	DeleteObject			; otherwise, no star
 
 ; ---------------------------------------------------------------------------
@@ -18696,6 +18717,7 @@ Obj12_Init:
 		move.b	#$10,obActWid(a0)
 		move.b	#6,obPriority(a0)
 		move.w	obY(a0),$32(a0)
+		move.b	$30(a0),obFrame(a0)
 		
 		moveq	#0,d0
 		move.b	obSubtype(a0),d0
@@ -18712,14 +18734,7 @@ Obj12_Animate:
 		add.w	$32(a0),d0
 		move.w	d0,obY(a0)
 
-		; red frame
-		tst.b	$30(a0)
-		beq.s	@0
-		move.w	($FFFFFE04).w,d0
-		andi.w	#$3,d0
-		bne.s	@0
-		bchg	#0,obFrame(a0)
-@0:		jmp	MarkObjGone
+		jmp	MarkObjGone
 
 
 ; ---------------------------------------------------------------------------
@@ -23347,13 +23362,10 @@ Obj5F_BossDelete:
 		move.l	#10000,d0	; add 100000 ...
 		jsr	AddPoints	; ... points
 
-		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
-		bne.s	@bombbossdel		; if yes, branch
 		move.b	#$34,($FFFFD080).w 		; load title card object
-		move.b	#35,($FFFFD0B0).w
-		moveq	#$10,d0				; set d0 to $10
-		jsr	(LoadPLC).l			; load title card patterns
-@bombbossdel:
+		move.b	#35,($FFFFD080+$30).w		; set delay before loading title cards
+		move.b	#1,($FFFFD080+$31).w		; set title card patterns load flag
+		
 		move.w	#$302,($FFFFFE10).w	; change level to SLZ3
 		move.w	#$1FBF,($FFFFF72A).w
 		move.w	#$620,($FFFFF726).w
@@ -25379,20 +25391,16 @@ Obj03_BackgroundColor:
 		andi.b	#$0E,d0
 		move.w	Obj03_BG(pc,d0.w),d1
 		andi.w	#$0EEE,d1
-	
-	bra @applybgcolor
-		;jsr	Pal_FadeIn
-		lea	($FFFFFB00).w,a1
-		lea	($FFFFFB80).w,a2
-		move.w	#$40-1,d2
-	@bla:	move.w	(a2)+,d0
-		bsr.w	Pal_LimitColor
-		move.w	d3,(a1)+
-		dbf	d2,@bla
-
 @applybgcolor:
 		move.w	d1,d0		; base color
-		
+
+		btst	#7,($FFFFFF92).w	; are flashy lights enabled?
+		bne.s	@doflash		; if yes, branch
+		move.w	#$888,d1		; mask
+		bsr.w	Pal_LimitColor
+		bra.s	@apply
+
+@doflash:
 		moveq	#0,d1
 		move.w	($FFFFFE0E).w,d2
 		btst	#5,d2
@@ -25403,6 +25411,8 @@ Obj03_BackgroundColor:
 @getmask:
 		move.w	Obj03_BGMask(pc,d1.w),d1	; mask
 		bsr.w	Pal_LimitColor
+
+@apply:
 		move.w	d3,($FFFFFB5E).w	; apply color (color 16 of palette row 3)
 		rts
 ; ---------------------------------------------------------------------------
@@ -26236,9 +26246,9 @@ S_D_NotGHZ2:
 		bne.s	S_D_AfterImage		; if not on allowed frame, branch
 
 		move.w	($FFFFF5E2).w,d0	; get currently remaining drain limit
-		lsr.w	#4,d0			; divide by 16
-		bne.s	@notzero		; if not zero, branch (which means we still have more than 15 rings)
-		moveq	#1,d0			; set slowest speed while under 15 rings
+		lsr.w	#3,d0			; divide by 8
+		bne.s	@notzero		; if not zero, branch (which means we still have at least 32 rings)
+		moveq	#2,d0			; set slowest speed while under 32 rings
 @notzero:	sub.w	d0,($FFFFF5E2).w	; subtract from drain limit
 		sub.w	d0,($FFFFFE20).w	; subtract from rings
 		bpl.s	@positive		; if still positive, branch

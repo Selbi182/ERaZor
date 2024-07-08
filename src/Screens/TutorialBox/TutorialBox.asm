@@ -1102,7 +1102,7 @@ Hint_End_AfterCasual:
 	boxtxt	"IF YOU DO, BE SURE"
 	boxtxt	"TO REVISIT THE"
 	boxtxt	"TUTORIAL, AS SOME"
-	boxtxt	"STUFF IS DIFFERENT."
+	boxtxt	"STUFF DIFFERS."
 	boxtxt_end
 
 ;		 --------------------
@@ -1115,8 +1115,8 @@ Hint_End_AfterFrantic:
 	boxtxt	"IF YOU MADE IT HERE,"
 	boxtxt	"YOU HAVE MY UTMOST"
 	boxtxt	"RESPECT. I'M SORRY"
-	boxtxt	"ANY BRAIN CELLS LOST"
-	boxtxt	"ALONG THE WAY."
+	boxtxt	"FOR ANY BRAIN CELLS"
+	boxtxt	"LOST ALONG THE WAY."
 	boxtxt_end
 
 ;		 --------------------
@@ -1131,20 +1131,22 @@ Hint_End_CinematicUnlock:
 
 ;		 --------------------
 Hint_End_BlackoutTeaser:
-	boxtxt	"AND ONE LAST THING."
+	boxtxt	"ONE LAST THING."
 	boxtxt_pause
 	boxtxt	"IF YOU SAW ANYTHING"
-	boxtxt	"WEIRD IN uberhub..."
+	boxtxt	"WEIRD NEAR THE END"
+	boxtxt	"OF uberhub place..."
 	boxtxt_pause
 	boxtxt	"IGNORE IT."
 	boxtxt_next
 
-	boxtxt	"OR... DON'T."
+	boxtxt	"I KNOW IT MAY BE"
+	boxtxt	"TEMPTING ONCE YOU'VE"
+	boxtxt	"PROVEN YOURSELF"
+	boxtxt	"worthy, JUST..."
 	boxtxt_pause
-	boxtxt	"HONESTLY, I DON'T"
-	boxtxt	"REALLY CARE. JUST"
-	boxtxt	"DON'T SAY THAT"
-	boxtxt	"I DIDN'T WARN YOU."
+	boxtxt	"DON'T SAY I DIDN'T"
+	boxtxt	"WARN YOU."
 	boxtxt_end
 
 ; ---------------------------------------------------------------

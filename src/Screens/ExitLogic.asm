@@ -139,29 +139,35 @@ Exit_StoryScreen:
 ; ===========================================================================
 
 Exit_CreditsScreen:
+		tst.b	($FFFFFF95).w		; were any post-credits texts set to be displayed?
+		beq.s	@restartfromcredits	; if not, branch
 		moveq	#$E,d0			; load FZ palette (cause tutorial boxes are built into SBZ)
 		jsr	PalLoad2		; load palette
 
+		btst	#0,($FFFFFF95).w
+		beq.s	@checkfrantic
 		moveq	#$F,d0			; load text after beating the game in casual mode
-		frantic				; have you beaten the game in frantic mode?
-		beq.s	@basegamehint		; if not, pussy
+		jsr	Tutorial_DisplayHint	; VLADIK => Display hint
+		bra.s	@checkcinematicunlock
+@checkfrantic:
+		btst	#1,($FFFFFF95).w
+		beq.s	@checkcinematicunlock
 		moveq	#$10,d0			; load text after beating the game in frantic mode
-@basegamehint:	jsr	Tutorial_DisplayHint	; VLADIK => Display hint
+		jsr	Tutorial_DisplayHint	; VLADIK => Display hint
 
-		bsr	Check_BaseGameBeaten	; have you already beaten the base game?
-		bne.s	@checkblackout		; if yes, branch
+@checkcinematicunlock:
+		btst	#2,($FFFFFF95).w
+		beq.s	@checkblackout
 		moveq	#$11,d0			; load Cinematic Mode unlock text
 		jsr	Tutorial_DisplayHint	; VLADIK => Display hint
 
 @checkblackout:
-		bsr	Check_BlackoutBeaten	; have you already beaten the blackout challenge?
-		bne.s	@markgameasbeaten	; if yes, branch
+		btst	#3,($FFFFFF95).w
+		beq.s	@restartfromcredits
 		moveq	#$12,d0			; load Blackout Challenge teaser text
 		jsr	Tutorial_DisplayHint	; VLADIK => Display hint
 
-@markgameasbeaten:
-		bsr	Set_BaseGameDone	; you have beaten the base game, congrats
-		jsr	SRAM_SaveNow		; save
+@restartfromcredits:
 		bra.w	Start_FirstGameMode	; restart game from Sega Screen
 
 
@@ -188,6 +194,35 @@ Exit_BombMachineCutscene:
 ; ===========================================================================
 
 Exit_EndingSequence:
+		moveq	#0,d1				; set to no texts to display
+
+		bsr	Check_BaseGameBeaten_Frantic	; has the player already beaten the game in frantic?
+		bne.s	@checkcinematicunlock		; if yes, this doesn't matter anymore
+		frantic					; did we beat the game in frantic?
+		bne.s	@showfrantictext		; if yes, branch
+		bsr	Check_BaseGameBeaten_Casual	; has the player already beaten the game in casual?
+		bne.s	@checkcinematicunlock		; if yes, branch
+		bset	#0,d1				; load text after beating the game in casual mode
+		bra.s	@checkcinematicunlock		; skip
+	@showfrantictext:
+		bset	#1,d1				; load text after beating the game in frantic mode
+		
+@checkcinematicunlock:
+		bsr	Check_BaseGameBeaten	; have you already beaten the base game?
+		bne.s	@checkblackout		; if yes, branch
+		bset	#2,d1			; load Cinematic Mode unlock text
+
+@checkblackout:
+		bsr	Check_BlackoutBeaten	; have you already beaten the blackout challenge?
+		bne.s	@markgameasbeaten	; if yes, branch
+		bset	#3,d1			; load Blackout Challenge teaser text
+
+@markgameasbeaten:
+		move.b	d1,($FFFFFF95).w	; set which texts to display after the credits
+		
+		bsr	Set_BaseGameDone	; you have beaten the base game, congrats
+		jsr	SRAM_SaveNow		; save now
+ 
 		move.b	#$2C,($FFFFF600).w	; set scene to $2C (new credits)
 		rts
 
@@ -467,9 +502,8 @@ NextLevel_Array:
 ; ---------------------------------------------------------------------------
 ; Bit indices in the progress RAM (FF8A/FF8B)
 Casual_BaseGame  = 0
-Casual_Blackout  = 1
-Frantic_BaseGame = 2
-Frantic_Blackout = 3
+Frantic_BaseGame = 1
+Bonus_Blackout   = 2
 ; ---------------------------------------------------------------------------
 
 Check_LevelBeaten:
@@ -489,9 +523,8 @@ Check_BaseGameBeaten:
 		bra.s	Check_BaseGameBeaten_Casual	; check if at least casual was beaten
 
 Check_BlackoutBeaten:
-		bsr	Check_BlackoutBeaten_Frantic	; has the player beaten the blackout challenge in frantic?
-		bne.s	StateCheck_Yes			; if yes, branch
-		bra.s	Check_BlackoutBeaten_Casual	; check if at least casual was beaten
+		btst	#Bonus_Blackout,($FFFFFF93).w
+		rts
 ; ---------------------------------------------------------------------------
 
 Check_BaseGameBeaten_Casual:
@@ -501,12 +534,6 @@ Check_BaseGameBeaten_Frantic:
 		btst	#Frantic_BaseGame,($FFFFFF93).w
 		rts
 
-Check_BlackoutBeaten_Casual:
-		btst	#Casual_Blackout,($FFFFFF93).w
-		rts
-Check_BlackoutBeaten_Frantic:
-		btst	#Frantic_Blackout,($FFFFFF93).w
-		rts
 ; ---------------------------------------------------------------------------
 
 StateCheck_Yes:	moveq #-1,d0
@@ -538,12 +565,9 @@ Set_BaseGameDone:
 ; ---------------------------------------------------------------------------
 
 Set_BlackoutDone:
+		bset	#Bonus_Blackout,($FFFFFF93).w	; you have beaten the blackout challenge whoa
 		bsr	Set_BaseGameDone		; also set base game beaten state, just in case
-		bset	#Casual_Blackout,($FFFFFF93).w	; you have beaten the blackout challenge in casual, congrats
-		frantic					; or was it acutally in frantic?
-		beq.s	@end				; nah? that's a shame
-		bset	#Frantic_Blackout,($FFFFFF93).w	; you have beaten the base game in frantic, mad respect
-@end:		rts
+		rts
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
 

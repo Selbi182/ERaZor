@@ -6942,28 +6942,27 @@ Resize_FZend2:
 		
 		addq.b	#2,($FFFFF742).w	; go to nuke wait code
 
-		lea	@Prison(pc),a1		; load Prison graphics
-		jsr	LoadPLC_Direct
+		VBlank_SetMusicOnly
+		vram	$6000
+		lea	(ArtKospM_Prison).l,a0
+		jsr	KosPlusMDec_VRAM
+		VBlank_UnsetMusicOnly
 
 @waitforeggmantodielol:
 		bra.w	loc_72C2
-
-; ===========================================================================
-@Prison:
-	dc.l	ArtKospM_Prison
-	dc.w	$6000
-	dc.w	-1
-
 ; ===========================================================================
 
 Resize_FZEscape_Nuke:
-		move.w	#$2840,($FFFFF72A).w		; right boundary
+		move.w	#$28C0,($FFFFF72A).w		; set right boundary
+
 		cmpi.w	#$27C0,($FFFFF700).w
-		blo.w	@waitscroll
+		bhi.w	@waitprison
+		tst.w	($FFFFF73A).w
+		bne.s	@waitprison
 		addi.w	#1,($FFFFF700).w
-		move.w	($FFFFF700).w,($FFFFF728).w	; lock left boundary as you walk right
 		
-@waitscroll:	
+@waitprison:
+		move.w	($FFFFF700).w,($FFFFF728).w	; lock left boundary as you walk right
 		tst.b	($FFFFFFA5).w		; egg prison opened?
 		beq.w	@prisonnotyetopen	; if not, branch
 		
@@ -7003,14 +7002,20 @@ Resize_FZEscape:
 		move.b	#$46,d2
 		jsr	Sub_ChangeChunk
 		
-		
 		; move Sonic left after explosion
 		move.b	#4,($FFFFD024).w
 		move.b	#$1A,($FFFFD01C).w
 		bset	#1,($FFFFD022).w
-		move.w	#-$800,($FFFFD010).w
-		subq.w	#1,($FFFFD008).w
 		move.w	#-$480,($FFFFD012).w
+		move.w	#-$800,($FFFFD010).w
+		
+		; double boost when you're right of the prison
+		; so you don't get catapulted into the bottomless pit lol
+		move.w	($FFFFD008).w,d0
+		cmpi.w	#$2960,d0
+		blo.s	@nodoubleboost
+		move.w	#-$1000,($FFFFD010).w
+@nodoubleboost:
 
 		move.w	#$91,d0
 		jmp	PlaySound		; play invincibility music (placeholder for now)

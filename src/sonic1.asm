@@ -10548,16 +10548,21 @@ Obj1F_BossDefeated:
 		rts					; return
 
 @ToLevelTransition:
-		move.b	#8, ob2ndRout(a0)		; => "Obj1F_LevelTransition"
-		move.b	#30, 4(a0)			; set timer
+		move.b	#8,ob2ndRout(a0)		; => "Obj1F_LevelTransition"
+		move.b	#150,4(a0)			; set timer
 		
 ; ===========================================================================
 Obj1F_LevelTransition:
-		subq.b	#1, 4(a0)
-		bmi.s	Obj1F_BossDelete
-		rts
+		subq.b	#1,4(a0)
+		beq.s	Obj1F_BossDelete
+		
+		cmpi.b	#60,4(a0)
+		bne.s	@0
+		move.b	#$A9,d0			; play blip sound
+		jsr	PlaySound
+@0:		rts
 
-Obj1F_BossDelete
+Obj1F_BossDelete:
 		clr.b	($FFFFFF68).w			; revert lives counter to normal
 		ori.b	#1,($FFFFFE1C).w		; update lives counter (to reset it from the boss)
 		clr.l	($FFFFFE22).w			; clear time
@@ -10576,10 +10581,10 @@ Obj1F_BossDelete
 
 		; part two of the transition is (cruedly) done in Obj34 itself
 		lea	($FFFFD000).w,a1
-		move.w	#$31A0,obX(a1)
-		move.w	#$0180,obY(a1)
-		move.w	#-$1A00,obVelX(a1)	; weeeeeee
-		move.w	#-$1000,obVelY(a1)
+		move.w	#$3700,obX(a1)
+		move.w	#$0060,obY(a1)
+		move.w	#-$C80,obVelX(a1)	; weeeeeee
+		move.w	#0,obVelY(a1)
 		addq.w	#8,obY(a1)
 		bclr	#0,obStatus(a1) ; face right
 		bset	#1,obStatus(a1) ; in air
@@ -10591,7 +10596,7 @@ Obj1F_BossDelete
 		move.b	#1,(RedrawEverything).w
 
 		move.b	#$34,($FFFFD080).w 		; load title card object
-		move.b	#120,($FFFFD080+$30).w		; set delay before loading title cards
+		move.b	#100,($FFFFD080+$30).w		; set delay before loading title cards
 		move.b	#1,($FFFFD080+$31).w		; set title card patterns load flag
 
 		movem.l	d0-d7/a1-a3,-(sp)
@@ -15565,7 +15570,8 @@ Obj34_Setup:				; XREF: Obj34_Index
 		bne.s	@regular		; if not, branch
 		cmpi.b	#2,($FFFFFFAA).w	; has the crabmeat boss been defeated?
 		bne.s	@regular		; if yes, do delay
-
+		clr.w	($FFFFD012).w		; kill Sonic's gravity to prolong the scene
+		jsr	FixCamera
 @delayafterboss:
 		tst.b	$30(a0)			; any time remaining on the delay?
 		beq.s	@regular		; if not, load title cards
@@ -15575,7 +15581,7 @@ Obj34_Setup:				; XREF: Obj34_Index
 		tst.b	$31(a0)			; are patterns set to be loaded?
 		beq.s	@regular		; if not, branch
 
-		; transition from NHP to GHP
+		; transition from NHP to GHP (other part in Obj1F_BossDelete)
 		cmpi.w	#$000,($FFFFFE10).w	; are we in NHP?
 		bne.s	@notnhp			; if not, branch	
 		move.w	#$002,($FFFFFE10).w		; change level ID to GHZ3
@@ -15583,8 +15589,6 @@ Obj34_Setup:				; XREF: Obj34_Index
 		jsr	LevelLayoutLoad			; load GHZ3 layout
 		movem.l	(sp)+,d7/a0
 		jsr	PlayLevelMusic
-	;	move.b	#$86,d0				; set normal GHZ music
-	;	jsr	PlaySound			; play it
 		move.b	#0,($FFFFF7CC).w		; unlock controls
 
 @notnhp:
@@ -15743,7 +15747,7 @@ Obj34_ChkPos:				; XREF: Obj34_Index
 @setnewpos:
 		move.w	d1,obX(a0)	; change item's position
 
-loc_C3C8:
+Obj34_ChkPos_End:
 		move.w	obX(a0),d0
 		bmi.s	locret_C3D8
 		cmpi.w	#$200,d0	; has item moved beyond	$200 on	x-axis?
@@ -15757,22 +15761,29 @@ Obj34_TargetOK:
 		cmpi.w	#$302,($FFFFFE10).w	; is current level SAP?
 		beq.s	@conto			; if yes, branch
 		cmpi.w	#$002,($FFFFFE10).w	; is current level GHP?
-		bne.s	loc_C3C8		; if not, branch
+		bne.s	Obj34_ChkPos_End	; if not, branch
 		cmpi.b	#2,($FFFFFFAA).w	; has flag after Crabmeat boss been set?
-		bne.s	loc_C3C8		; if yes, branch
-
+		bne.s	Obj34_ChkPos_End	; if not, branch
+		clr.w	($FFFFD012).w		; kill Sonic's gravity to prolong the scene
 @cont:
 		cmpi.b	#1,$3F(a0)		; is current element the Zone Name?
-		bne.s	loc_C3C8		; if not, branch
+		bne.s	Obj34_ChkPos_End	; if not, branch
 @conto:
 		subq.w	#1,$3C(a0)		; sub 1 from delay
-		bpl.s	loc_C3C8		; if time remains, branch
+		bpl.s	Obj34_ChkPos_End	; if time remains, branch
 
 		addq.b	#2,obRoutine(a0)
 		addq.b	#2,$24+$40(a0)
 		addq.b	#2,$24+$80(a0)
 		addq.b	#2,$24+$C0(a0)
-		bra.s	loc_C3C8
+
+		cmpi.w	#$002,($FFFFFE10).w	; is current level GHP?
+		bne.s	Obj34_ChkPos_End	; if not, branch
+		cmpi.b	#2,($FFFFFFAA).w	; has flag after Crabmeat boss been set?
+		bne.s	Obj34_ChkPos_End	; if not, branch
+		move.b	#0,($FFFFF7CC).w	; unlock controls
+
+		bra.s	Obj34_ChkPos_End
 ; ===========================================================================
 
 locret_C3D8:
@@ -27283,6 +27294,18 @@ locret_133E8:
 ; ---------------------------------------------------------------------------
 
 FixLevel:
+		bsr	FixCamera
+		VBlank_SetMusicOnly
+		movem.l	d0-a6,-(sp)		; backup all data and address registers
+		jsr	DeformBgLayer		; fix the background position
+		jsr 	LevelRenderer_DrawLayout_FG
+		jsr 	LevelRenderer_DrawLayout_BG
+		movem.l	(sp)+,d0-a6		; restore them
+		VBlank_UnsetMusicOnly
+		rts
+; ---------------------------------------------------------------------------
+
+FixCamera:
 		move.w	($FFFFD008).w,d0	; load Sonic's X-location into d0
 		subi.w	#160,d0			; substract 160 pixels from it (half of 320, horizontal screen size)
 		bpl.s	@0
@@ -27294,14 +27317,6 @@ FixLevel:
 		bpl.s	@1
 		moveq	#0,d0
 @1:		move.w	d0,($FFFFF704).w	; put result into Y-camera location
-
-		VBlank_SetMusicOnly
-		movem.l	d0-a6,-(sp)		; backup all data and address registers
-		jsr	DeformBgLayer		; fix the background position
-		jsr 	LevelRenderer_DrawLayout_FG
-		jsr 	LevelRenderer_DrawLayout_BG
-		movem.l	(sp)+,d0-a6		; restore them
-		VBlank_UnsetMusicOnly
 		rts
 
 ; ---------------------------------------------------------------------------

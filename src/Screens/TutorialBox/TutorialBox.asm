@@ -1135,6 +1135,7 @@ Hint_End_AfterFrantic:
 	boxtxt	"YOU HAVE MY UTMOST"
 	boxtxt	"RESPECT. I'M SORRY"
 	boxtxt	"FOR ANY BRAIN CELLS"
+	boxtxt	"YOU MIGHT HAVE"
 	boxtxt	"LOST ALONG THE WAY."
 	boxtxt_end
 

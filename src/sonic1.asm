@@ -1054,8 +1054,6 @@ PauseGame:				; XREF: Level_MainLoop; et al
 	;	nop				; no operation
 		tst.w	($FFFFF63A).w		; is game already paused?
 		bne.s	Paused			; if yes, branch
-		tst.b	($FFFFD000).w		; does Sonic exist? (e.g. has he not jumped into a ring)?
-		beq.w	Pause_DoNothing		; if not, disallow pausing
 		btst	#7,($FFFFF605).w	; is Start button pressed?
 		beq.w	Pause_DoNothing		; if not, branch
 
@@ -1066,23 +1064,25 @@ Paused:
 		jmp	Exit_BombMachineCutscene
 @notmachine:
 		cmpi.w	#$001,($FFFFFE10).w	; is level intro cutscene?
-		bne.s	PG_ChkHUD		; if not, branch
+		bne.s	PG_CheckAllowed		; if not, branch
 		jmp	Exit_IntroCutscene
 ; ===========================================================================
 
-PG_ChkHUD:
-		cmpi.w	#$501,($FFFFFE10).w
-		beq.s	PG_NotGHZ2
+PG_CheckAllowed:
+		tst.b	($FFFFD000).w		; does Sonic exist? (e.g. has he not jumped into a ring)?
+		beq.w	Pause_DoNothing		; if not, disallow pausing
+		cmpi.b	#$10,($FFFFF600).w	; are we in a special stage?
+		beq.s	PG_DoPause		; if yes, branch
+		cmpi.w	#$501,($FFFFFE10).w	; are we in the tutorial?
+		beq.s	PG_DoPause		; if yes, branch
 		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
-		bne.s	PG_NotGHZ2		; if yes, branch
+		bne.s	PG_DoPause		; if yes, branch
 		tst.b	($FFFFD040).w		; is HUD already loaded?
-		bne.s	PG_NotGHZ2		; if yes, allow to pause
-		cmpi.b	#$10,($FFFFF600).w
-		beq.s	PG_NotGHZ2
-		rts				; return
+		bne.s	PG_DoPause		; if yes, allow to pause
+		rts				; otherwise, disallow pausing
 ; ===========================================================================
 
-PG_NotGHZ2:
+PG_DoPause:
 		move.w	#1,($FFFFF63A).w	; freeze time
 		tst.b	($FFFFFFB5).w		; is flag set?
 		bne.s	Pause_MainLoop		; if yes, branch
@@ -3005,7 +3005,7 @@ LevelSelect_Load:
 		move.w	#0,($FFFFFF82).w	; set initial cursor position to entry 1
 		bsr.w	LevSelTextLoad
 
-		addi.w	#7,($FFFFD0C0+obScreenY).w	; slightly adjust banner
+		addi.w	#15,($FFFFD0C0+obScreenY).w	; slightly adjust banner
 		jsr	ObjectsLoad
 		jsr	BuildSprites
 		move.b	#4,VBlankRoutine	; run v-blank one more time...
@@ -3134,7 +3134,7 @@ LevelSelect_DoSelect:
 		cmpi.w	#$666,d0	; is blackout challenge?
 		beq.s	LevSel_Blackout	; if yes, branch
 		
-		move.b	#1,($FFFFF5E1).w ; skip tutorial introduction text
+		move.b	#1,($FFFFF5D1).w ; skip tutorial introduction text
 
 		jmp	StartLevel	; otherwise, start level normally
 
@@ -3174,7 +3174,7 @@ LevelSelect_Palette:
 ; ---------------------------------------------------------------------------
 ; Subroutine to	change what you're selecting in the level select
 ; ---------------------------------------------------------------------------
-LevSelEntries = 14
+LevSelEntries = 15
 ; ---------------------------------------------------------------------------
 
 LevSelControls:				; XREF: LevelSelect
@@ -3298,6 +3298,7 @@ LevelMenuText:
 		dc.b	'   9 FINALOR PLACE      '
 		dc.b	'   TUTORIAL PLACE       '
 		dc.b	'   INTRO SEQUENCE       '
+		dc.b	'   BOMB MACHINE         '
 		dc.b	'   ENDING SEQUENCE      '
 		dc.b	'   BLACKOUT CHALLENGE   '		
 		rept 21-LevSelEntries ; padding
@@ -3318,6 +3319,7 @@ LSelectPointers:
 		dc.w	$502	; Finalor Place
 		dc.w	$501	; Tutorial Place
 		dc.w	$001	; Intro Sequence
+		dc.w	$500	; Bomb Machine Cutscene
 		dc.w	$601	; Ending Sequence
 		dc.w	$666	; Blackout Challenge
 		even
@@ -3441,7 +3443,7 @@ Level:					; XREF: GameModeArray
 		bsr	LoadPLC		; load level patterns
 
 loc_37FC:
-		cmpi.w	#$500,($FFFFFE10).w	; is this the bomb machine cutscen?
+		cmpi.w	#$500,($FFFFFE10).w	; is this the bomb machine cutscene?
 		beq.s	@skipstandard		; if yes, don't load these PLCs to avoid breaching the queue
 		moveq	#1,d0
 		bsr	LoadPLC			; load standard patterns 2
@@ -3543,7 +3545,7 @@ Level_GetBgm:
 		cmpi.w	#$501,($FFFFFE10).w	; are we starting the tutorial?
 		bne.s	Level_NoPreTut		; if not, branch
 		
-		tst.b	($FFFFF5E1).w		; did the player die?
+		tst.b	($FFFFF5D1).w		; did the player die?
 		bne.s	Level_NoPreTut		; if yes, don't replay intro text
 		
 		move.b	#$99,d0			; play introduction music
@@ -3702,6 +3704,7 @@ loc_3946:
 		; bomb machine cutscene setup
 		cmpi.w	#$500,($FFFFFE10).w
 		bne.s	@SBZcont2
+
 		lea	($FFFFD440).w,a1
 		move.b	#$5F,(a1)	; load walking bomb enemy
 		move.w	#$01E4,obX(a1)
@@ -3709,6 +3712,8 @@ loc_3946:
 
 		jsr	SingleObjLoad
 		move.b	#$82,(a1)	; load SBZ2 Eggman object
+
+		move.w	#12*60,($FFFFFFD8).w	; set cutscene time (controlled in Resize_SBZ1)
 
 		bra.s	@SBZCont
 
@@ -3742,7 +3747,7 @@ Level_LoadObj:
 		move.l	d0,($FFFFFE22).w ; clear time
 		move.b	d0,($FFFFFE1B).w ; clear lives counter
 
-		clr.w	($FFFFF5E2).w		; clear frantic ring drain
+		clr.w	($FFFFF5D2).w		; clear frantic ring drain
 		cmpi.w	#$400,($FFFFFE10).w	; are we in Uberhub?
 		beq.s	loc_39E8		; if yes, don't do ring drain
 		move.w	($FFFFFE20).w,d1	; get your rings from the last level
@@ -3750,7 +3755,7 @@ Level_LoadObj:
 		bls.s	@allgood		; if not, branch
 		move.w	#999,d1			; otherwise, cap it to 999
 @allgood:
-		move.w	d1,($FFFFF5E2).w	; copy previous amount of rings to frantic ring draining
+		move.w	d1,($FFFFF5D2).w	; copy previous amount of rings to frantic ring draining
 		move.w	d1,($FFFFFE20).w	; cap rings if necessary
 
 loc_39E8:
@@ -3814,39 +3819,43 @@ Level_StartGame:
 ; ---------------------------------------------------------------------------
 
 Level_MainLoop:
+		bsr	PauseGame
+
 		bsr	RandomNumber		; constantly create a new random number every frame to make use of RandomNumber_Next
 		bsr	CinematicScreenFuzz	; do cinematic screen fuzz if applicable
 
-		bsr	PauseGame
-		addq.w	#1,($FFFFFE04).w ; add 1 to level timer
 		move.b	#8,VBlankRoutine
 		bsr	DelayProgram
+		addq.w	#1,($FFFFFE04).w ; add 1 to level timer
+
+		tst.b	(RedrawEverything).w	; was flag set to redraw screen after teleportation?
+		beq.s	@continue		; if not, branch
+		jsr	FixLevel		; fix level
+		clr.b	(RedrawEverything).w	; clear redraw flag
+
+@continue:
+
 		bsr	LZWaterEffects
 		jsr	ObjectsLoad
-
-		tst.w	($FFFFFE02).w		; is the level set to restart?
-		bne.w	Level			; if yes, branch
-
 		bsr	DeformBgLayer
 		jsr 	LevelRenderer_Update_FG
 		jsr 	LevelRenderer_Update_BG
 		jsr	BuildSprites
 		jsr	ObjPosLoad
 		tst.b	($FFFFFFAC).w
-		bne.s	L_ML_NoPalCycle
+		bne.s	@nopalcycle
 		bsr	PalCycle_Load
-
-L_ML_NoPalCycle:
-		jsr	ObjPosLoad
-		bsr	PLC_Execute
+@nopalcycle:	bsr	PLC_Execute
 		bsr	OscillateNumDo
 		bsr	ChangeRingFrame
 		bsr	SignpostArtLoad
 
-L_ML_NoSAL:
+		tst.w	($FFFFFE02).w		; is the level set to restart?
+		bne.w	Level			; if yes, branch
 		cmpi.b	#$C,($FFFFF600).w
 		beq.w	Level_MainLoop	; if screen mode is $0C	(level), branch
-		rts	
+		rts
+
 ; ===========================================================================
 
 WaterTransition_LZ:	dc.w $13    ; # of entries - 1
@@ -4568,9 +4577,10 @@ ClearEverySpecialFlag:
 		moveq	#0,d0
 		move.b	d0,(FZEscape).w
 		move.w	d0,($FFFFC904).w
-		move.b	d0,($FFFFF5E0).w
-		move.b	d0,($FFFFF5E1).w
-		move.w	d0,($FFFFF5E2).w
+		move.b	d0,($FFFFF5D0).w
+		move.b	d0,($FFFFF5D1).w
+		move.w	d0,($FFFFF5D2).w
+		move.b	d0,(RedrawEverything).w
 		move.l	d0,($FFFFFF60).w
 		move.l	d0,($FFFFFF64).w
 		move.l	d0,($FFFFFF68).w
@@ -4597,6 +4607,7 @@ ClearEverySpecialFlag:
 		move.l	d0,($FFFFFFB8).w
 		move.b	d0,($FFFFFFBD).w
 		move.b	d0,($FFFFFFBF).w
+		move.b	d0,($FFFFFFC8).w
 		move.w	d0,($FFFFFFD0).w
 		move.l	d0,($FFFFFFD2).w
 		move.l	d0,($FFFFFFD6).w
@@ -4794,7 +4805,7 @@ SignpostArtLoad:			; XREF: Level
 		subi.w	#$100,d1		; adjust
 		cmp.w	d1,d0			; has Sonic reached the	edge of	the level?
 		blt.s	Signpost_Exit		; if not, branch
-		tst.b	($FFFFF5E0).w		; sign post art already loaded?
+		tst.b	($FFFFF5D0).w		; sign post art already loaded?
 		bne.s	Signpost_Exit		; if yes, don't load again
 		cmpi.b	#6,($FFFFD024).w	; is Sonic dying?
 		bhs.s	Signpost_Exit		; if yes, don't load
@@ -4821,7 +4832,7 @@ Signpost_DoLoad:
 Signpost_DoLoad_NoLock:
 		moveq	#$12,d0
 		jsr	LoadPLC2		; load signpost	patterns
-		move.b	#1,($FFFFF5E0).w	; set "signpost patterns have been loaded" flag
+		move.b	#1,($FFFFF5D0).w	; set "signpost patterns have been loaded" flag
 
 Signpost_Exit:
 		rts	
@@ -6782,17 +6793,13 @@ Resize_SBZx:	dc.w Resize_SBZ1-Resize_SBZx
 		dc.w Resize_FZ-Resize_SBZx
 ; ===========================================================================
 
-Resize_SBZ1:
+Resize_SBZ1:	; bomb machine cutscene
 		move.w	#$810,($FFFFF726).w
-		cmpi.w	#$1880,($FFFFF700).w
-		bcs.s	locret_7242
-		move.w	#$810,($FFFFF726).w
-		cmpi.w	#$2000,($FFFFF700).w
-		bcs.s	locret_7242
-		move.w	#$2A0,($FFFFF726).w
-
-locret_7242:
-		rts	
+		subq.w	#1,($FFFFFFD8).w
+		bne.s	@timeleft
+		jmp	Exit_BombMachineCutscene
+@timeleft:
+		rts
 ; ===========================================================================
 
 Resize_SBZ2:
@@ -9160,7 +9167,7 @@ Obj2A_Main:				; XREF: Obj2A_Index
 		bsr	SingleObjLoad
 		bne.s	@nosoundstopper
 		move.b	#$7D,0(a1)		; load emblem object
-		move.b	#6,obRoutine(a1)	; set to "sound stopper" mode
+		move.b	#4,obRoutine(a1)	; set to "sound stopper" mode
 		move.w	obX(a0),d0		; copy X coordinate of door
 		subi.w	#$30,d0			; move a few pixels to the left
 		move.w	d0,obX(a1)		; write to thingy
@@ -9787,7 +9794,7 @@ Obj3F_Main:				; XREF: Obj3F_Index
 		move.w	obY(a0),obY(a1)
 		move.w	$3E(a0),$3E(a1)
 		move.b	#2,obRoutine(a1)
-	;	move.b	$30(a0),$30(a1)	; copy harm state
+		move.b	$30(a0),$30(a1)	; copy harm state
 		
 		btst	#0,($FFFFFE05).w	; are we on an odd frame?
 		bne.s	Obj3F_Main2		; if yes, don't load a third explosion
@@ -9798,7 +9805,7 @@ Obj3F_Main:				; XREF: Obj3F_Index
 		move.w	obY(a0),obY(a1)
 		move.w	$3E(a0),$3E(a1)
 		move.b	#2,obRoutine(a1)
-	;	move.b	$30(a0),$30(a1)	; copy harm state
+		move.b	$30(a0),$30(a1)	; copy harm state
 ; ---------------------------------------------------------------------------
 
 Obj3F_Main2:
@@ -9818,27 +9825,27 @@ Obj3F_Main2:
 		move.b	#3,obPriority(a0)
 
 @cont2:
-	;	tst.b	($FFFFF7AA).w		; is boss mode on?
-	;	bne.s	Obj3F_NotHarmful	; if yes, branch
-	;	tst.b	$30(a0)			; is explosion set to be harmful?
-	;	bne.s	Obj3F_NotHarmful	; if not, branch
-	;	cmpi.w	#$001,($FFFFFE10).w
-	;	beq.s	@cont
-	;	cmpi.b	#1,($FFFFFFAA).w
-	;	beq.s	Obj3F_NotHarmful
+		tst.b	($FFFFF7AA).w		; is boss mode on?
+		bne.s	Obj3F_NotHarmful	; if yes, branch
+		tst.b	$30(a0)			; is explosion set to be harmful?
+		bne.s	Obj3F_NotHarmful	; if not, branch
+		cmpi.w	#$001,($FFFFFE10).w
+		beq.s	@cont
+		cmpi.b	#1,($FFFFFFAA).w
+		beq.s	Obj3F_NotHarmful
 
 @cont:
-	;	move.b	#$84,obColType(a0)
-	;	moveq	#10,d0		; add 100 ...
-	;	jsr	AddPoints	; ... points
+		move.b	#$84,obColType(a0)
+		moveq	#10,d0		; add 100 ...
+		jsr	AddPoints	; ... points
 
 Obj3F_NotHarmful:
 		move.b	#$C,obActWid(a0)
 		move.b	#4,obTimeFrame(a0)
 		move.b	#0,obFrame(a0)
 		
-	;	tst.b	$30(a0)
-	;	bne.s	Obj3F_NoCamShake
+		tst.b	$30(a0)
+		bne.s	Obj3F_NoCamShake
 	;	bsr	SingleObjLoad		; load from SingleObjLoad
 	;	bne.s	Obj3F_NoCamShake	; if SingleObjLoad is already in use, don't load obejct
 		move.b	#10,($FFFFFF64).w
@@ -12516,19 +12523,6 @@ Obj26_Display:				; XREF: Obj26_Index
 ; ===========================================================================
 
 Obj26_BreakOpen:			; XREF: Obj26_Index
-		tst.b	($FFFFFFEB).w		; is homing flag set?
-		beq.s	Obj26_BO_NoHome		; if not, branch
-		clr.b	($FFFFFFEB).w		; clear homing flag
-		clr.w	($FFFFD010).w		; clear Sonic's X-speed
-		move.w	#-$5F0,d0		; move Sonic upwards
-		btst	#6,($FFFFD022).w	; is Sonic underwater?
-		beq.s	Obj26_BO_MoveUpwards	; if not, branch
-		move.w	#-$300,d0		; otherwise move him slower upwards
-
-Obj26_BO_MoveUpwards:
-		move.w	d0,($FFFFD012).w	; move him upwards by the set speed
-
-Obj26_BO_NoHome:
 		bclr	#3,obStatus(a0)
 		addq.b	#2,obRoutine(a0)
 		move.b	#0,obColType(a0)
@@ -16188,7 +16182,8 @@ Obj36_Hurt:				; XREF: Obj36_SideWays; Obj36_Upright
 		move.w	#$C3,d0			; set giant ring sound
 		jsr	PlaySound		; play it
 		jsr	WhiteFlash2		; make a white flash
-		jsr	FixLevel
+	;	jsr	FixLevel
+		move.b	#1,(RedrawEverything).w	; redraw screen after teleportation
 		bra.w	Obj36_NotInhuman2
 
 @nottutorial:
@@ -16239,7 +16234,8 @@ Obj36_Hurt:				; XREF: Obj36_SideWays; Obj36_Upright
 		jsr	WhiteFlash2		; make a white flash
 
 @contoo:
-		jsr	FixLevel
+	;	jsr	FixLevel
+		move.b	#1,(RedrawEverything).w	; redraw screen after teleportation
 	;	subi.w	#10,($FFFFFE20).w ; remove 10 rings
 	;	bpl.s	@contyy
 	;	move.w	#0,($FFFFFE20).w
@@ -22577,7 +22573,7 @@ Map_obj5D:
 BombFuseTime = 100
 BombFuseVelocity = $34
 BombShotgunSpeed = $400
-BombDistance = $90
+BombDistance = $A0
 BombPellets = 4
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
@@ -22655,7 +22651,7 @@ Obj5E_CreateFuse:			; XREF: Obj5E_Index
 		move.w	obStatus(a0),obStatus(a1)
 		bset	#7,obRender(a1)
 		move.b	#3,obAnim(a1)
-		move.b	#0,obPriority(a1)
+		move.b	#1,obPriority(a1)
 		move.w	#BombFuseVelocity,obVelY(a1)		; set fuse speed
 		btst	#1,obStatus(a0)
 		beq.s	@nofuse
@@ -22686,6 +22682,11 @@ Obj5E_Explode:				; XREF: Obj5E_Index
 		
 		; load shotgun shrapnels
 		moveq	#BombPellets-1,d6
+
+		move.w	#BombShotgunSpeed,d4	; load default speed
+		tst.b	obSubtype(a0)		; is this the last bomb?
+		beq.s	@shrapnelloop		; if not, branch
+		move.w	#BombShotgunSpeed-$100,d4 ; use slower speed
 @shrapnelloop:
 		jsr	SingleObjLoad2
 		bne.w	@noobjectleft
@@ -22704,13 +22705,11 @@ Obj5E_Explode:				; XREF: Obj5E_Index
 		sub.w	obY(a0),d2		; sub bomb's Y-pos from it
 		jsr	CalcAngle		; calculate the angle
 		jsr	CalcSine		; calculate the sine
-		muls.w	#BombShotgunSpeed,d0	; multiply result 1 shotgun speed
-		muls.w	#BombShotgunSpeed,d1	; multiply result 2 by shotgun speed
+		muls.w	d4,d0			; multiply result 1 shotgun speed
+		muls.w	d4,d1			; multiply result 2 by shotgun speed
 		asr.l	#8,d0			; align the results to the correct position in the bitfield ...
 		asr.l	#8,d1			; ... (e.g. 00000000xxxxxxxxxxxxxxxx00000000 to 0000000000000000xxxxxxxxxxxxxxxx)
 		
-	;	jsr	RandomNumber_Next	; get random number
-
 		move.l	($FFFFF636).w,d3	; get last random number
 		ror.l	#1,d3			; rotate to next
 		move.l	d3,($FFFFF636).w	; save new value (without rerunning RNG algorithm)
@@ -22734,37 +22733,7 @@ Obj5E_Explode:				; XREF: Obj5E_Index
 
 Obj5E_Fuse:				; XREF: Obj5E_Index
 		bsr.w	Obj5E_BonusSetup
-		
-		; create bonus sparks
-		bra.s	@nobonussparkles
 
-		cmpi.b	#3,obAnim(a0)
-		bne.s	@nobonussparkles
-		move.b	($FFFFFE05).w,d0
-		andi.b	#$0B,d0
-		bne.s	@nobonussparkles
-		jsr	SingleObjLoad
-		bne.s	@nobonussparkles
-		move.b	#$5E,0(a1)		; load fuse object (bonus sparkles)
-		move.w	obX(a0),obX(a1)
-		move.w	obY(a0),obY(a1)
-		move.b	#$C,obRoutine(a1)	; set to routine Obj5E_Spark
-		move.b	#5,obAnim(a1)
-		move.b	#1,obPriority(a1)
-		move.b	#BombFuseTime,$30(a1)	; set fuse time
-		btst	#1,obStatus(a0)
-		beq.s	@0
-		addi.w	#$60,obY(a1)
-@0:		jsr	RandomNumber_Next
-		andi.l	#$01FF01FF,d0
-		subi.w	#$FF,d0
-		asr.w	#1,d0
-		move.w	d0,obVelX(a1)
-		swap	d0
-		subi.w	#$FF,d0
-		move.w	d0,obVelY(a1)
-
-@nobonussparkles:
 		subq.b	#1,$30(a0)
 		bmi.w	Obj5E_Delete
 
@@ -22795,15 +22764,13 @@ Obj5E_Shrapnel:				; XREF: Obj5E_Index
 
 		cmpi.w	#$302,($FFFFFE10).w
 		bne.s	@1
+		cmpi.w	#$1400,obX(a0)
+		blo.s	@1
 		cmpi.w	#$1500,obX(a0)
 		bhs.s	@1
 		clr.w	obVelX(a0)
 		addi.w	#$38,obVelY(a0)
 @1:
-		frantic				; are we in Frantic mode?
-		beq.s	@2			; if not, branch
-		addi.w	#$20,obVelY(a0)		; apply gravity only in frantic
-@2:
 		bsr.w	SpeedToPos
 		lea	(Ani_obj5F).l,a1
 		jsr	AnimateSprite
@@ -22843,7 +22810,6 @@ Obj5E_BonusSetup:
 		move.l	#Map_Obj5F_Giant,obMap(a0)
 		move.w	#$42C,obGfx(a0)
 		ori.b	#4,obRender(a0)
-		move.b	#3,obPriority(a0)
 
 @setupdone:
 		rts
@@ -22887,12 +22853,6 @@ BombPellets_Boss = 13
 ; ===========================================================================
 
 Obj5F:					; XREF: Obj_Index
-		cmpi.w	#$301,($FFFFFE10).w
-		beq.s	@0
-		move.b	#$3F,(a0)
-		move.b	#0,obRoutine(a0)
-		rts
-@0:
 		moveq	#0,d0
 		move.b	obRoutine(a0),d0
 		move.w	Obj5F_Index(pc,d0.w),d1
@@ -22902,13 +22862,21 @@ Obj5F_Index:	dc.w Obj5F_Main-Obj5F_Index		; [$0]
 		dc.w Obj5F_Action-Obj5F_Index		; [$2]
 		dc.w Obj5F_Display-Obj5F_Index		; [$4]
 		dc.w Obj5F_End-Obj5F_Index		; [$6]
-		dc.w Obj5F_SBZ1-Obj5F_Index		; [$8]
+		dc.w Obj5F_BombMachine-Obj5F_Index	; [$8]
 		dc.w Obj5F_BossDefeated-Obj5F_Index	; [$A]
 		dc.w Obj5F_Display_Spark-Obj5F_Index	; [$C]
 		dc.w Obj5F_Transition-Obj5F_Index	; [$E]
 ; ===========================================================================
 
 Obj5F_Main:				; XREF: Obj5F_Index
+		cmpi.w	#$301,($FFFFFE10).w
+		beq.s	@bomballowed
+		cmpi.w	#$500,($FFFFFE10).w
+		beq.s	@bomballowed
+		move.b	#$3F,(a0)
+		move.b	#0,obRoutine(a0)
+		rts
+@bomballowed:
 		addq.b	#2,obRoutine(a0)
 		move.l	#Map_obj5F,obMap(a0)
 	;	move.l	#Map_obj5F_Giant,obMap(a0)
@@ -22936,7 +22904,7 @@ Obj5F_Main:				; XREF: Obj5F_Index
 		move.l	#Map_obj5F_Cutscene,obMap(a0)
 		move.b	#$CD,d0
 		jsr	PlaySound_Special
-		bra.w	Obj5F_SBZ1
+		bra.w	Obj5F_BombMachine
 
 @cont:
 		move.b	obSubtype(a0),d0
@@ -23595,9 +23563,9 @@ Obj5F_End:				; XREF: Obj5F_Index
 		bra.w	DisplaySprite
 
 ; ===========================================================================
-; Routine for Scar Night cutscene
+; Bomb in Bomb Machine Cutscene
 ; ===========================================================================
-Obj5F_SBZ1:
+Obj5F_BombMachine:
 		jsr	ObjectFall
 		jsr	SpeedToPos
 
@@ -25636,7 +25604,8 @@ Obj06_DoHardPartSkip:
 		jsr	DeleteObject2
 		movem.l	(sp)+,d0-a1
 
-		jsr	FixLevel		; instantly move the camera
+	;	jsr	FixLevel		; instantly move the camera
+		move.b	#1,(RedrawEverything).w	; redraw screen after teleportation
 		move.b	#1,($FFFFFF77).w	; enable antigrav
 		move.b	#$96,d0			; play music
 		jsr	PlaySound
@@ -25663,7 +25632,8 @@ Obj06_DoHardPartSkip:
 
 @notinhuman:
 		jsr	WhiteFlash2		; make a white flash
-		jsr	FixLevel		; instantly move the camera
+	;	jsr	FixLevel		; instantly move the camera
+		move.b	#1,(RedrawEverything).w	; redraw screen after teleportation
 
 Obj06_Display:
 		bsr	DisplaySprite		; display sprite
@@ -26154,13 +26124,13 @@ Sonic_Display:				; XREF: loc_12C7E
 		cmpi.w	#10,($FFFFFE20).w	; do you have at least 10 rings?
 		bhs.s	@enough			; if yes, branch
 		move.b	#1,($FFFFFF95).w	; make Sonic die
-		move.w	($FFFFFE20).w,($FFFFF5E2).w ; drain whatever rings remain
+		move.w	($FFFFFE20).w,($FFFFF5D2).w ; drain whatever rings remain
 		bra.s	S_D_NoTeleport		; skip
 
 @enough:
 		move.w	#$12A0,obX(a0)		; set new location for Sonic's X-pos
 		move.w	#$21A,obY(a0)		; set new location for Sonic's Y-pos
-		addi.w	#10,($FFFFF5E2).w	; add 10 rings to be drained
+		addi.w	#10,($FFFFF5D2).w	; add 10 rings to be drained
 		bra.s	@teleportend		; skip
 
 @notfrantic:
@@ -26170,7 +26140,8 @@ Sonic_Display:				; XREF: loc_12C7E
 		move.w	#$C3,d0			; set giant ring sound
 		jsr	PlaySound_Special	; set giant ring sound
 		bsr	WhiteFlash2		; make a white flash
-		bsr	FixLevel
+	;	bsr	FixLevel
+		move.b	#1,(RedrawEverything).w	; redraw screen after teleportation
 ; ===========================================================================
 
 S_D_NoTeleport:
@@ -26237,7 +26208,7 @@ S_D_BA_NotEmpty:
 S_D_NotGHZ2:
 		frantic				; are we in frantic mode?
 		beq.s	S_D_AfterImage	 	; if not, branch
-		tst.w	($FFFFF5E2).w		; are any rings left to be drained at level start?
+		tst.w	($FFFFF5D2).w		; are any rings left to be drained at level start?
 		bls.s	S_D_AfterImage		; if not, branch		
 		tst.b	($FFFFD400+$3A).w	; is intro animation for rings HUD finished?
 		beq.s	S_D_AfterImage		; if not, branch
@@ -26245,14 +26216,14 @@ S_D_NotGHZ2:
 		andi.w	#3,d0			; drain every 4 frames
 		bne.s	S_D_AfterImage		; if not on allowed frame, branch
 
-		move.w	($FFFFF5E2).w,d0	; get currently remaining drain limit
+		move.w	($FFFFF5D2).w,d0	; get currently remaining drain limit
 		lsr.w	#4,d0			; divide by 16
 		bne.s	@notzero		; if not zero, branch (which means we still have at least 16 rings)
 		moveq	#1,d0			; set slowest speed while under 16 rings
-@notzero:	sub.w	d0,($FFFFF5E2).w	; subtract from drain limit
+@notzero:	sub.w	d0,($FFFFF5D2).w	; subtract from drain limit
 		sub.w	d0,($FFFFFE20).w	; subtract from rings
 		bpl.s	@positive		; if still positive, branch
-		clr.w	($FFFFF5E2).w		; skip remaining ring drain, player probably got hurt before it finished
+		clr.w	($FFFFF5D2).w		; skip remaining ring drain, player probably got hurt before it finished
 		clr.w	($FFFFFE20).w		; set rings to 0
 @positive:
 		ori.b	#1,($FFFFFE1D).w	; update rings counter
@@ -27234,9 +27205,14 @@ FixLevel:
 		moveq	#0,d0
 @1:		move.w	d0,($FFFFF704).w	; put result into Y-camera location
 
-		clr.l	($FFFFF754).w		; clear redraw flags
-		clr.l	($FFFFF758).w		; clear redraw flags
-		
+		; clear every redraw flag
+		clr.l	($FFFFF73A).w
+		clr.l	($FFFFF74A).w
+		clr.w	($FFFFF74E).w
+		clr.w	($FFFFF754).w
+		clr.w	($FFFFF754).w
+		clr.w	($FFFFF758).w
+
 		VBlank_SetMusicOnly
 		movem.l	d0-a6,-(sp)		; backup all data and address registers
 		jsr	DeformBgLayer		; fix the background position
@@ -28193,9 +28169,15 @@ S_F_End:
 
 Sonic_Jump:				; XREF: Obj01_MdNormal; Obj01_MdRoll
 		move.b	($FFFFF603).w,d0
-		andi.b	#$30,d0		; is B or C pressed?
+		andi.b	#$70,d0		; is A or B or C pressed?
 		beq.w	locret_1348E	; if not, branch
+		tst.b	($FFFFFFE7).w	; is inhuman mode enabled?
+		beq.s	@dojump		; if not, branch
+		andi.b	#$40,d0		; was specifically A pressed?
+		beq.s	@dojump		; if not, branch
+		rts			; otherwise disallow jump to not interfere with inhuman
 
+@dojump:
 		moveq	#0,d0
 		move.b	obAngle(a0),d0
 		addi.b	#$80,d0
@@ -28235,6 +28217,12 @@ loc_1341C:
 		bset	#2,obStatus(a0)
 		addq.w	#5,obY(a0)
 
+		tst.b	($FFFFFF77).w		; is antigrav enabled?
+		beq.s	locret_1348E		; if not, branch
+		btst	#6,($FFFFF603).w	; was specifically A pressed to jump?
+		beq.s	locret_1348E
+		clr.w	obVelY(a0)
+
 locret_1348E:
 		rts	
 ; ===========================================================================
@@ -28263,7 +28251,7 @@ loc_134AE:
 		cmp.w	obVelY(a0),d1
 		ble.s	locret_134C2
 		move.b	($FFFFF602).w,d0
-		andi.b	#$30,d0		; is B or C pressed?
+		andi.b	#$70,d0		; is A or B or C still held?
 		bne.s	locret_134C2	; if yes, branch
 		move.w	d1,obVelY(a0)
 
@@ -28444,10 +28432,10 @@ SAP_HitWall:
 		
 		cmpi.w	#SAP_FranticRings,($FFFFFE20).w	; do you have enough rings to tank the hit?
 		bpl.s	@tankhit			; if yes, branch
-		move.w	($FFFFFE20).w,($FFFFF5E2).w	; drain whatever rings remain
+		move.w	($FFFFFE20).w,($FFFFF5D2).w	; drain whatever rings remain
 		jmp	KillSonic			; you hecking died noob
 @tankhit:
-		addq.w	#SAP_FranticRings,($FFFFF5E2).w	; add ring drain penalty
+		addq.w	#SAP_FranticRings,($FFFFF5D2).w	; add ring drain penalty
 ; ---------------------------------------------------------------------------
 
 @resetstuff:
@@ -28459,9 +28447,10 @@ SAP_HitWall:
 		move.w	($FFFFFF88).w,d1		; restore saved Y-position for Sonic
 @nocheckpoint:
 		move.w	d0,obX(a0)			; set respawn X position
-		move.w	d1,obY(a0)			; set  respawn Y position
+		move.w	d1,obY(a0)			; set respawn Y position
 
-		jsr	FixLevel			; instantly move the camera to where Sonic teleported to
+	;	jsr	FixLevel			; instantly move the camera to where Sonic teleported to
+		move.b	#1,(RedrawEverything).w		; redraw screen after teleportation
 
 		clr.b	($FFFFFFE5).w			; clear air freeze flags
 		clr.w	obVelX(a0)			; clear X speed
@@ -28477,7 +28466,7 @@ SAP_HitWall:
 		tst.b	($FFFFFFE1).w			; has the P monitor been destroyed?
 		beq.s	@notp				; if not, branch
 		clr.b	($FFFFFFE1).w			; clear P monitor flag
-		bsr	SAP_ResetP			; reset P monitor
+		jsr	SAP_ResetP			; reset P monitor
 		move.w	#$1480,d0
 		move.w	#$0380,d1
 		move.b	#$4F,d2
@@ -28491,58 +28480,16 @@ SAP_HitWall:
 		cmpi.w	#$1EE0,($FFFFFF86).w		; has the final checkpoint been touched?
 		bne.s	@resetloop			; if not, branch
 		moveq	#2,d0				; keep loop unlocked on the right
-		bsr	SAP_SetLoopState		; set loop state
+		jsr	SAP_SetLoopState		; set loop state
 		bra.s	@end				; skip
 
 @resetloop:
 		clr.b	($FFFFFFA0).w			; reset emblem counter
 		moveq	#0,d0				; reset loop challenge state
-		bsr	SAP_SetLoopState		; set loop state
-		bsr	SAP_ResetEmblems		; reset the 6th emblem
+		jsr	SAP_SetLoopState		; set loop state
+		jsr	SAP_ResetEmblems		; reset the 6th emblem
 
 @end:
-		rts
-; ===========================================================================
-
-; SetupSAPItems:
-SAP_ResetChallengeObjects:
-		bsr	SAP_ResetEmblems
-		bsr	SAP_ResetP
-		rts
-; ---------------------------------------------------------------------------
-
-SAP_ResetEmblems:
-		; place 6th emblem in the looping section
-		lea	($FFFFDFC0).w,a1
-		move.b	#$7D,(a1)
-		move.w	#$1DB8,obX(a1)
-		move.w	#$0200,obY(a1)
-		move.b	#2,obRoutine(a1)
-		move.l	#Map_obj7D,obMap(a1)
-		move.w	#$84B6,obGfx(a1)
-		ori.b	#$84,obRender(a1)
-		move.b	#3,obPriority(a1)
-		move.b	#0,obFrame(a1)
-		rts
-; ---------------------------------------------------------------------------
-
-SAP_ResetP:
-		; place P monitor required to open a door
-		lea	($FFFFDF40).w,a1
-		move.b	#$26,(a1)
-		move.w	#$17E0,obX(a1)
-		move.w	#$03F0,obY(a1)
-		move.b	#2,obRoutine(a1)
-		move.b	#$E,obHeight(a1)
-		move.b	#$E,obWidth(a1)
-		move.l	#Map_obj26,obMap(a1)
-		move.b	#8,obSubtype(a1)
-		move.w	#$680,obGfx(a1)
-		move.b	#$84,obRender(a1)
-		move.b	#3,obPriority(a1)
-		move.b	#$F,obActWid(a1)
-		move.b	#$46,obColType(a1)
-		move.b	#8,obAnim(a1)
 		rts
 ; ===========================================================================
 
@@ -33475,6 +33422,8 @@ Map_obj79:
 ; Object 7D - hidden points at the end of a level (emblems)
 ; ---------------------------------------------------------------------------
 
+Obj7D_LeftRightJump = $170
+
 Obj7D:					; XREF: Obj_Index
 		moveq	#0,d0
 		move.b	obRoutine(a0),d0
@@ -33482,8 +33431,7 @@ Obj7D:					; XREF: Obj_Index
 		jmp	Obj7D_Index(pc,d1.w)
 ; ===========================================================================
 Obj7D_Index:	dc.w Obj7D_Main-Obj7D_Index
-		dc.w Obj7D_RightEmblem-Obj7D_Index
-		dc.w Obj7D_LeftEmblem-Obj7D_Index
+		dc.w Obj7D_Emblem-Obj7D_Index
 		dc.w Obj7D_SoundStopper-Obj7D_Index
 ; ===========================================================================
 
@@ -33502,8 +33450,16 @@ Obj7D_Main_SLZ:
 		move.b	#3,obPriority(a0)
 		move.b	#3,obFrame(a0)
 		move.b  #6,obAnim(a0)
+		move.b	#0,$30(a0)		; set to right
+; ---------------------------------------------------------------------------
 
-Obj7D_RightEmblem:
+Obj7D_Emblem:
+		cmpi.b	#6,($FFFFFFA0).w	; have all six emblems been collected?
+		blo.s	@displayemblem		; if not, branch
+		rts				; otherwise, don't render (but don't delete in case the player derps up again)
+
+@displayemblem:
+		; check touch
 		moveq	#$20,d2
 		move.w	d2,d3
 		add.w	d3,d3
@@ -33519,47 +33475,84 @@ Obj7D_RightEmblem:
 		cmp.w	d3,d1
 		bcc.w	Obj7D_NoTouch
 
-		move.w	#$C9,d0
-		jsr	(PlaySound_Special).l ;	play bonus sound
-		
-		moveq	#10,d0		; add 100 points
+		; emblem touched
+		addq.b	#1,($FFFFFFA0).w		; increase emblems collected counter
+		move.b	($FFFFFFA0).w,obFrame(a0)	; set new frame
+		move.w	#$C9,d0			; play bonus sound
+		jsr	(PlaySound_Special).l
+		moveq	#10,d0			; add 100 points
 		jsr	AddPoints
 
-		cmpi.b	#6,($FFFFFFA0).w	; have all six emblems been collected?
-		bge.s	@cont			; if yes, don't spawn another emblem
+		; jump emblem left and right in the loop
+		move.w	#Obj7D_LeftRightJump,d0
+		tst.b	$30(a0)
+		bne.s	@toggle
+		neg.w	d0
+@toggle:	eori.b	#1,$30(a0)
+		add.w	d0,obX(a0)
 
-		lea	($FFFFDF80).w,a1
-		move.b	#$7D,(a1)
-		move.w	#$1C48,obX(a1)
-		move.w	#$0200,obY(a1)
-		move.b	#4,obRoutine(a1)
-		move.l	#Map_obj7D,obMap(a1)
-		move.w	#$84B6,obGfx(a1)
-		ori.b	#$84,obRender(a1)
-		move.b	#3,obPriority(a1)
-		move.b	($FFFFFFA0).w,obFrame(a1)	; set frame
-		addq.b	#1,obFrame(a1)
-
-@cont:
-		addq.b	#1,($FFFFFFA0).w	; increase emblems collected counter
+		; alter loop when collecting the first and last emblem
 		cmpi.b	#1,($FFFFFFA0).w	; is this the first collected emblem?
-		bne.w	Obj7D_Delete		; if not, branch
-
-		move.w	#$B7,d0
-		jsr	(PlaySound_Special).l	; play rumbling sound
-		
-		moveq	#1,d0			; lock loop
-		bsr	SAP_SetLoopState	; set loop state
-		bra.w	Obj7D_Delete
+		bne.s	@checklast		; if not, branch
+		moveq	#1,d0			; close loop
+		bra.s	@alterloop		; skip
+@checklast:
+		cmpi.b	#6,($FFFFFFA0).w	; is this the sixth collected emblem?
+		blt.s	Obj7D_NoTouch		; if not, branch
+		moveq	#2,d0			; open loop on the right
+@alterloop:
+		bsr	SAP_SetLoopState	; set new loop state
+		move.w	#$B7,d0			; play rumbling sound
+		jsr	(PlaySound_Special).l
 
 Obj7D_NoTouch:
-		jmp	DisplaySprite
-
-Obj7D_Explode:
-		move.b	#$3F,(a0)
-		clr.b	obRoutine(a0)
-		jmp	DisplaySprite
+		jmp	DisplaySprite		; otherwise continue displaying
 ; ===========================================================================
+; ===========================================================================
+
+Obj7D_SoundStopper:
+		moveq	#$20,d2
+		move.w	d2,d3
+		add.w	d3,d3
+		lea	($FFFFD000).w,a1
+		move.w	obX(a1),d0
+		sub.w	obX(a0),d0
+		add.w	d2,d0
+		cmp.w	d3,d0
+		bcc.w	@end
+		move.w	obY(a1),d1
+		sub.w	obY(a0),d1
+		add.w	d2,d1
+		cmp.w	d3,d1
+		bcc.w	@end
+
+		move.w	#$E0,d0			; set song $E0
+		jsr	PlaySound_Special	; fade out music		
+		movea.l	$30(a0),a1		; get saved RAM address of the door
+		move.b	#1,$30(a1)		; turn the door red
+		move.b	#1,($FFFFFFA5).w	; move HUD off screen
+		jmp	DeleteObject
+
+@end:
+		rts
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Sprite mappings - hidden points at the end of	a level
+; ---------------------------------------------------------------------------
+Map_obj7D:
+		include	"_maps\obj7D.asm"
+; ===========================================================================
+
+
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Star Agony Place challenge object control
+; ---------------------------------------------------------------------------
+SAP_EmblemLeft = $1C48
+SAP_EmblemRight = $1DB8
+SAP_EmblemDiff = $170
+SAP_EmblemY = $0200
+; ---------------------------------------------------------------------------
 
 SAP_SetLoopState:
 		move.l	a0,-(sp)		; backup a0
@@ -33614,97 +33607,51 @@ SAP_SetLoopState:
 		move.l	(sp)+,a0
 		rts
 ; ===========================================================================
-		
 
-Obj7D_LeftEmblem:
-		moveq	#$20,d2
-		move.w	d2,d3
-		add.w	d3,d3
-		lea	($FFFFD000).w,a1
-		move.w	obX(a1),d0
-		sub.w	obX(a0),d0
-		add.w	d2,d0
-		cmp.w	d3,d0
-		bcc.w	Obj7D_NoTouch2
-		move.w	obY(a1),d1
-		sub.w	obY(a0),d1
-		add.w	d2,d1
-		cmp.w	d3,d1
-		bcc.w	Obj7D_NoTouch2
-	
-		move.w	#$C9,d0
-		jsr	(PlaySound_Special).l ;	play bonus sound
+; SetupSAPItems:
+SAP_ResetChallengeObjects:
+		bsr	SAP_ResetEmblems
+		bsr	SAP_ResetP
+		rts
+; ---------------------------------------------------------------------------
 
-		moveq	#10,d0		; add 100 points
-		jsr	AddPoints
-
-		addq.b	#1,($FFFFFFA0).w	; increase emblems collected counter
-		cmpi.b	#6,($FFFFFFA0).w	; is this the sixth collected emblem?
-		blt.s	Obj7D_No6		; if not, branch
-
-		move.w	#$B7,d0
-		jsr	(PlaySound_Special).l	; play rumbling sound
-		
-		moveq	#2,d0			; open loop on the right
-		bsr	SAP_SetLoopState	; set loop state
-		bra.w	Obj7D_Delete
-
-Obj7D_No6:
+SAP_ResetEmblems:
+		; place 6th emblem in the looping section
 		lea	($FFFFDFC0).w,a1
 		move.b	#$7D,(a1)
-		move.w	#$1DB8,obX(a1)
-		move.w	#$0200,obY(a1)
+		move.w	#SAP_EmblemRight,obX(a1)
+		move.w	#SAP_EmblemY,obY(a1)
 		move.b	#2,obRoutine(a1)
 		move.l	#Map_obj7D,obMap(a1)
 		move.w	#$84B6,obGfx(a1)
 		ori.b	#$84,obRender(a1)
 		move.b	#3,obPriority(a1)
-		move.b	($FFFFFFA0).w,obFrame(a1)
-		bra.w	Obj7D_Delete
-
-Obj7D_NoTouch2:
-		jmp	DisplaySprite
-; ===========================================================================
-
-Obj7D_SoundStopper:
-		moveq	#$20,d2
-		move.w	d2,d3
-		add.w	d3,d3
-		lea	($FFFFD000).w,a1
-		move.w	obX(a1),d0
-		sub.w	obX(a0),d0
-		add.w	d2,d0
-		cmp.w	d3,d0
-		bcc.w	Obj7D_NoTouch3
-		move.w	obY(a1),d1
-		sub.w	obY(a0),d1
-		add.w	d2,d1
-		cmp.w	d3,d1
-		bcc.w	Obj7D_NoTouch3
-		move.w	#$E0,d0			; set song $E0
-		jsr	PlaySound_Special	; fade out music
-		
-		movea.l	$30(a0),a1		; get saved RAM address of the door
-		move.b	#1,$30(a1)		; turn the door red
-		
-		move.b	#1,($FFFFFFA5).w	; move HUD off screen
-		
-		jmp	DeleteObject
-
-Obj7D_NoTouch3:
+		move.b	#0,obFrame(a1)
+		move.b	#0,$30(a1)
 		rts
+; ---------------------------------------------------------------------------
+
+SAP_ResetP:
+		; place P monitor required to open a door
+		lea	($FFFFDF40).w,a1
+		move.b	#$26,(a1)
+		move.w	#$17E0,obX(a1)
+		move.w	#$03F0,obY(a1)
+		move.b	#2,obRoutine(a1)
+		move.b	#$E,obHeight(a1)
+		move.b	#$E,obWidth(a1)
+		move.l	#Map_obj26,obMap(a1)
+		move.b	#8,obSubtype(a1)
+		move.w	#$680,obGfx(a1)
+		move.b	#$84,obRender(a1)
+		move.b	#3,obPriority(a1)
+		move.b	#$F,obActWid(a1)
+		move.b	#$46,obColType(a1)
+		move.b	#8,obAnim(a1)
+		rts
+; ---------------------------------------------------------------------------
 ; ===========================================================================
 
-Obj7D_Delete:
-		jmp	DeleteObject
-
-; ---------------------------------------------------------------------------
-; ===========================================================================
-; ---------------------------------------------------------------------------
-; Sprite mappings - hidden points at the end of	a level
-; ---------------------------------------------------------------------------
-Map_obj7D:
-		include	"_maps\obj7D.asm"
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -37138,7 +37085,7 @@ loc_1982C:				; XREF: loc_19C62; loc_19C80
 		jmp	DeleteObject
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Object 82 - Eggman (SBZ2)
+; Object 82 - Eggman in Bomb Machine Cutscene
 ; ---------------------------------------------------------------------------
 
 Obj82:					; XREF: Obj_Index
@@ -37156,7 +37103,6 @@ Obj82_ObjData:	dc.b 2,	0, 3		; routine number, animation, priority
 ; ===========================================================================
 
 Obj82_Main:				; XREF: Obj82_Index
-
 		moveq	#$1E,d0
 		jsr	LoadPLC		; load SBZ2 Eggman patterns
 
@@ -37181,6 +37127,7 @@ Obj82_Main:				; XREF: Obj82_Index
 		move.b	#4,obRender(a0)
 		bset	#7,obRender(a0)
 		move.b	#$20,obActWid(a0)
+
 		jsr	SingleObjLoad2
 		bne.s	Obj82_Eggman
 		move.l	a0,$34(a1)
@@ -37226,7 +37173,6 @@ Obj82_ChkSonic:				; XREF: Obj82_EggIndex
 		blt.s	loc_19934
 		addq.b	#2,ob2ndRout(a0)
 		move.w	#1,$3C(a0)	; set delay to 3 seconds
-	;	move.w	#$00,obVelX(a0)
 
 loc_19934:				; XREF: Obj82_EggIndex
 		jmp	SpeedToPos
@@ -37272,26 +37218,8 @@ Obj82_FindBlocks:
 		move.w	obVelX(a0),d0
 		or.w	obVelY(a0),d0
 		bne.s	loc_199D0
-	;	lea	($FFFFD000).w,a1 ; start at the	first object RAM
-	;	moveq	#$3E,d0
-	;	moveq	#$40,d1
-
-; Obj82_FindLoop:	
-	;	adda.w	d1,a1		; jump to next object RAM
-	;	cmpi.b	#$83,(a1)	; is object a block? (object $83)
-	;	dbeq	d0,Obj82_FindLoop ; if not, repeat (max	$3E times)
-
-	;	bne.s	loc_199D0
-
-	;	move.w	#$474F,obSubtype(a1)	; set block to disintegrate
-
-
-	;	jsr	WhiteFlash2
 		
-	;	move.b	#$C3,d0
-	;	jsr	PlaySound
-		
-		move.b	#1,($FFFFFFC8).w
+		move.b	#1,($FFFFFFC8).w	; set flag that button was pressed
 
 		jsr	SingleObjLoad
 		move.b	#$3A,(a1)
@@ -37304,28 +37232,16 @@ Obj82_FindBlocks:
 		ori.b	#4,obRender(a1)
 		move.b	#1,obPriority(a1)
 
-	;	move.l	a0,-(sp)
-	;	move.l	#$66600002,($C00004).l
-	;	lea	(ArtKospM_Bomb).l,a0
-	;	jsr	KosPlusMDec_VRAM
-	;	move.l	(sp)+,a0
-	
 		move.b	#1,($FFFFD45A).w	; use second frame
 
 		addq.b	#2,ob2ndRout(a0)
 		move.b	#1,obAnim(a0)
-		move.w	#5*60,$30(a0)	; set time delay to 5 seconds
 
 loc_199D0:
 	;	bra.w	loc_19934
 ; ===========================================================================
 
 loc_19934_2:				; XREF: Obj82_EggIndex
-		subq.w	#1,$30(a0)
-		bpl.s	@timeleft
-		jmp	Exit_BombMachineCutscene
-
-@timeleft:
 		jmp	SpeedToPos
 ; ===========================================================================
 
@@ -39088,6 +39004,8 @@ loc_1AEB6:
 Touch_ChkValue:
 		tst.b	obColType(a1)
 		beq.s	locret_1AEF2
+		cmpi.b	#$26,(a1)
+		beq.s	Touch_Monitor
 		move.b	obColType(a1),d1	; load touch response number
 		andi.b	#$C0,d1		; is touch response $40	or higher?
 		beq.w	Touch_Enemy	; if not, branch
@@ -39104,36 +39022,24 @@ Touch_ChkValue:
 		beq.s	Touch_Monitor	; if yes, branch
 		cmpi.w	#$5A,$30(a0)
 		bcc.w	locret_1AEF2
-		addq.b	#2,obRoutine(a1)	; advance the object's routine counter
+		addq.b	#2,obRoutine(a1)
 
 locret_1AEF2:
 		rts	
 ; ===========================================================================
 
 Touch_Monitor:
-		tst.w	obVelY(a0)		; is Sonic moving upwards?
-		bpl.s	loc_1AF1E	; if not, branch
-		move.w	obY(a0),d0
-		subi.w	#$10,d0
-		cmp.w	obY(a1),d0
-		bcs.s	locret_1AF2E		
-		neg.w	obVelY(a0)		; reverse Sonic's y-motion
-		move.w	#-$180,obVelY(a1)
-		tst.b	ob2ndRout(a1)
-		bne.s	locret_1AF2E
-		addq.b	#4,ob2ndRout(a1)	; advance the monitor's routine counter
-		rts
-	
-; ===========================================================================
+		tst.b	($FFFFFF77).w		; is antigrav enabled?
+		bne.s	@nobounce		; if yes, break open with no bounce
+		cmpi.b	#2,obAnim(a0)		; is Sonic rolling/jumping?
+		beq.s	@domonitorbreak		; if yes, branch
+		cmpi.b	#$25,obAnim(a0)		; is death anim shown (inhuman mode)?
+		bne.s	locret_1AF2E		; if not, branch
 
-loc_1AF1E:
-		cmpi.b	#2,obAnim(a0)	; is Sonic rolling/jumping?
-		beq.s	Sonic_RollingYes ; if yes, branch
-		cmpi.b	#$25,obAnim(a0)	; is death anim being showed (inhuman mode)?
-		bne.s	locret_1AF2E	; if not, branch
-
-Sonic_RollingYes:
+@domonitorbreak:
 		neg.w	obVelY(a0)		; reverse Sonic's y-motion
+		bsr	DoBounceJD	; jump to BounceJD
+@nobounce:
 		addq.b	#2,obRoutine(a1)	; advance the monitor's routine counter
 
 locret_1AF2E:
@@ -39196,13 +39102,8 @@ loc_1AF9C:
 		move.b	#$27,0(a1)	; change object	to points
 		move.b	#0,obRoutine(a1)
 
-;----------------------------------------------------------------------------
-		tst.b	($FFFFFFEB).w	; was the enemy destroyed with a jumpdash?
-		beq.s	loc_1AF9C_Rest	; if not, branch
 		bsr	BounceJD	; jump to BounceJD
 
-loc_1AF9C_Rest:
-;----------------------------------------------------------------------------
 		tst.w	obVelY(a0)
 		bmi.s	loc_1AFC2
 		move.w	obY(a0),d0
@@ -39232,7 +39133,7 @@ Enemy_Points:	dc.w 100, 200, 500, 1000
 BounceJD:
 		tst.b	($FFFFFFEB).w	; was jumpdash flag set?
 		beq.s	BounceJD_End	; if not, branch
-		clr.b	($FFFFFFEB).w	; if yes, clear jumpdash flag (make sonic jumpdash again)
+DoBounceJD:	clr.b	($FFFFFFEB).w	; if yes, clear jumpdash flag (make sonic jumpdash again)
 		clr.w	obVelX(a0)		; clear X-velocity (stop sonic)
 		move.w	#-$5F0,obVelY(a0)	; use -$5F0 for Y-velocity (move sonic upwards)
 		btst	#6,obStatus(a0)	; is sonic underwater?
@@ -39381,7 +39282,7 @@ KillSonic:
 		beq.w	Kill_InhumanMode	; if not, don't stop the time counter / don't kill sonic
 
 Kill_DoKill:
-		move.b	#1,($FFFFF5E1).w	; set death flag
+		move.b	#1,($FFFFF5D1).w	; set death flag
 		jsr	Pal_MakeBlackWhite	; turn palette black and white
 		
 		move.w	($FFFFF700).w,($FFFFF728).w	; lock left screen position

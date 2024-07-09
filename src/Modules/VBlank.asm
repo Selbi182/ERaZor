@@ -372,6 +372,7 @@ locret_106C:
 ; ===========================================================================
 
 VSelbiScreen:
+		bsr	ReadJoypads
 		lea    VDP_Ctrl,a5
 		move.l    #$94009340,(a5)
 		move.l    #$96FD9580,(a5)

@@ -31,6 +31,8 @@ Objects			equ	$FFFFD000			;	Objects RAM (D000-EFFF)
 
 SoundDriverRAM:		equ	$FFFFF000			;	SMPS RAM
 
+RedrawEverything:	equ	$FFFFF5D3			;	Flag used to redraw the entire screen after teleporting
+
 VBlank_NonLagFrameCounter:	equ	$FFFFF5DC		; l	
 
 VSyncWaitTicks_64bit:	equ	$FFFFF5E0			; 2l	Full 64-bit version of: Ticks counter for VSync loop (`DelayProgram`)
@@ -39,7 +41,6 @@ VSyncWaitTicks:		equ	$FFFFF5E4			; l	Ticks counter for VSync loop (`DelayProgram
 VBlank_MusicOnly:	equ	$FFFFF5EB			; b		
 
 BlocksAddress:		equ	$FFFFF5EC			; l 	Address for level 16x16 blocks (uncompressed)
-
 BlackBars.GHPTimer:	equ	$FFFFF5F0			; b
 BlackBars.GHPTimerReset:equ	$FFFFF5F1			; b
 BlackBars.BaseHeight:	equ	$FFFFF5F2			; w	Base height of black bars in pixels

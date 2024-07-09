@@ -1,5 +1,11 @@
 ; =====================================================================================================================
-; Selbi Splash Screen - Code made by Marc - Sonic ERaZor
+; Selbi Splash Screen
+; =====================================================================================================================
+; Dear reader,
+; the code in this file is a heavily bastardized cripple of a splash screen, initially crafted in 2009 and steadily
+; grown upon as the years went by. It should've been put to rest long ago and replaced with something more properly
+; coded, but this never happened and instead this beast kept on mutating.
+; I shall not be responsible for any eyesore along the way.
 ; =====================================================================================================================
 SelbiSplash_MusicID		EQU	$B7		; Music to play
 SelbiSplash_Wait		EQU	$30		; Time to wait ($100)
@@ -137,9 +143,12 @@ SelbiSplash_Loop:
 	;	sub.w	#SelbiSplash_PalChgSpeed,($FFFFFB0C)
 	;	sub.w	#SelbiSplash_PalChgSpeed,($FFFFFB0E)
 
+		tst.w	($FFFFFFE4).w
+		beq.w	SelbiSplash_EffectsEnd
+		bmi.w	SelbiSplash_EffectsEnd
 
 		btst	#1,($FFFFFE0F).w
-		bne.w	@0
+		bne.w	SelbiSplash_EffectsEnd
 		lea	@PalFlicker(pc),a4
 		moveq	#(@PalFlicker_End-@PalFlicker)-1,d4
 	lea	(0).w,a1
@@ -218,7 +227,7 @@ SelbiSplash_Loop:
 		dbf	d4,@FlashList
 
 	;	btst	#0,($FFFFFE0F).w
-	;	bne.s	@0
+	;	bne.s	SelbiSplash_EffectsEnd
 	;	lea	($FFFFFB04),a1
 	;	move.w	#6-1,d4
 @boost:	;	jsr	SineWavePalette
@@ -227,7 +236,7 @@ SelbiSplash_Loop:
 	;	dbf	d4,@boost
 
 		cmpi.w	#$90,($FFFFF614).w		; is time less than $90?
-		bpl.w	@0
+		bpl.w	SelbiSplash_EffectsEnd
 	tst.b	($FFFFFFAF).w
 	bne.w	@NoFaffing
 		move.w	#$8B07,($C00004).l
@@ -236,7 +245,7 @@ SelbiSplash_Loop:
 
 		move.w	($FFFFFE0E).w,d6	; get timer
 
-	bra.s	@0
+	bra.s	SelbiSplash_EffectsEnd
 
 	@PalFlicker:
 		dc.b	$08,$0A,$0C,$0E, $12,$14,$16,$18,$1A,$1C
@@ -256,7 +265,7 @@ SelbiSplash_Loop:
 		neg.l	d0
 		dbf	d1,@scrollshitfuckass
 
-@0:
+SelbiSplash_EffectsEnd:
 		cmpi.w	#$90,($FFFFF614).w		; is time less than $90?
 		bmi.w	SelbiSplash_DontChangePal	; if yes, branch
 		cmpi.w	#$D0,($FFFFF614).w		; is time more than $D0?
@@ -382,21 +391,21 @@ SelbiSplash_LoadPRESENTS:
 SelbiSplash_WaitEnd:
 		; hidden debug mode cheat
 		tst.b	($FFFFFFAF).w			; are we in the final phase of the screen?
-		beq.s	SelbiSplash_LoopEnd		; if not, branch
+		beq	SelbiSplash_LoopEnd		; if not, branch
 		moveq	#0,d0				; clear d0
 		move.b	($FFFFF605).w,d0		; get button press
 		andi.b	#$70,d0				; filter ABC only
-		beq.s	SelbiSplash_LoopEnd		; if none were pressed, skip
+		beq	SelbiSplash_LoopEnd		; if none were pressed, skip
 
 		subq.w	#1,($FFFFFFE4).w		; sub 1 from button presses remaining
 		beq.s	@firecheat			; if we reached 0, activate cheat
-		bmi.s	SelbiSplash_LoopEnd		; for any further than the set input presses, don't do anything
+		bmi	SelbiSplash_LoopEnd		; for any further than the set input presses, don't do anything
 
 		tst.b	($FFFFF601).w			; is this the first time the game is being played?
-		beq.s	SelbiSplash_LoopEnd		; if yes, avoid newbies accidentally discovering debug mode immediately lol
+		beq	SelbiSplash_LoopEnd		; if yes, avoid newbies accidentally discovering debug mode immediately lol
 		move.b	#$A9,d0				; set blip sound
 		jsr	PlaySound_Special		; play it
-		bra.s	SelbiSplash_LoopEnd		; skip
+		bra	SelbiSplash_LoopEnd		; skip
 
 @firecheat:
 		move.b	#%01111111,d0			; unlock all doors...
@@ -405,11 +414,12 @@ SelbiSplash_WaitEnd:
 		move.b	#%1111,($FFFFFF93).w		; set full game beaten state
 		jsr	SRAM_SaveNow			; save
 		
+		move.w	#$90,($FFFFF614).w		; reset ending timer
+		jsr	Pal_MakeBlackWhite		; make grayscale
+
 		tst.w	($FFFFFFFA).w			; was debug mode already enabled?
 		bne.s	SelbiSplash_DisableDebug	; if yes, disable it
 		move.w	#1,($FFFFFFFA).w	 	; enable debug mode
-		move.w	#$90,($FFFFF614).w		; reset ending timer
-		jsr	Pal_MakeWhite			; white flash
 		move.b	#$A8,d0				; set enter SS sound
 		jsr	PlaySound_Special		; play it
 

@@ -476,7 +476,16 @@ SkipUberhub:
 		cmp.w	d1,d2			; does ID in list match with current level?
 		bne.s	@autonextlevelloop	; if not, loop
 
-		move.w	(a1),($FFFFFE10).w	; write next level in list to level ID RAM
+		move.w	(a1)+,d2		; get ID of next level in order
+
+		cmpi.w	#$500,d2		; is this the bomb machine cutscene?
+		bne.s	@startlevel		; if not, branch
+		frantic				; are we in frantic?
+		bne.s	@startlevel		; if yes, branch
+		move.w	(a1)+,d2		; skip cutscene in casual
+
+@startlevel:	
+		move.w	d2,($FFFFFE10).w	; write next level in list to level ID RAM
 		bra.w	RunChapter		; start the level, potentially play a chapter screen
 
 NextLevel_Array:
@@ -488,6 +497,7 @@ NextLevel_Array:
 		dc.w	$200	; Ruined Place
 		dc.w	$101	; Labyrinthy Place
 		dc.w	$401	; Unreal Place
+		dc.w	$500	; Bomb Machine Cutscene
 		dc.w	$301	; Scar Night Place
 		dc.w	$302	; Star Agony Place
 		dc.w	$502	; Finalor Place

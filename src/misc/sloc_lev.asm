@@ -5,7 +5,7 @@
 
 		dc.w	$0010, $0020	; GHZ 1
 		dc.w	$0000, $0160	; GHZ 2
-		dc.w	$2222, $04AC	; GHZ 3
+		dc.w	$2630, $03AC	; GHZ 3
 		dc.w	$0080, $00A8	; GHZ 4
 
 		dc.w	$0078, $006E	; LZ 1

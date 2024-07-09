@@ -238,6 +238,8 @@ RunChapter:
 
 		btst	#1,(OptionsBits).w	; is "Skip Story Screens" enabled?
 		beq.w	StartLevel		; if yes, start level straight away
+		bsr	Check_BaseGameBeaten	; has the player already beaten the base game?
+		bne.w	StartLevel		; if yes, no longer display chapter screens
 
 		jsr	FakeLevelID		; get fake level ID for current level
 		tst.b	d5			; did we get a valid ID?

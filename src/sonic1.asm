@@ -60,8 +60,8 @@ __DEBUG__: equ 1
 ; $301 - Scar Night Place
 ; $302 - Star Agony Place
 ; $502 - Finalor Place
-QuickLevelSelect = 1
-QuickLevelSelect_ID = $502
+QuickLevelSelect = 0
+QuickLevelSelect_ID = $400
 ; ------------------------------------------------------
 DebugModeDefault = 1
 DebugSurviveNoRings = 0
@@ -2340,6 +2340,13 @@ ColorBoostG = $4
 ContrastBoost:
 		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
 		bne.s	@docontrast		; if yes, branch
+		cmpi.w	#$000,($FFFFFE10).w	; are we in Night Hill Place?
+		bne.s	@notnhp			; if not, branch
+		cmpi.b	#2,($FFFFFFAA).w	; has the crabmeat boss been defeated?
+		beq.s	@docontrast		; if yes, start contrast already
+		bra.s	@skip
+
+@notnhp:
 		cmpi.w	#$002,($FFFFFE10).w	; are we in Green Hill Place?
 		bne.s	@skip			; if not, branch
 		cmpi.b	#4,($FFFFFE30).w	; did we hit the final checkpoint yet?
@@ -3387,7 +3394,7 @@ PLM_NoMusic:
 
 MusicList:
 		dc.b	$81	; Night Hill Place
-		dc.b	$90	; Green Hill Place
+		dc.b	$86	; Green Hill Place
 		dc.b	$89	; Special Stage (Unused)
 		dc.b	$83	; Ruined Place
 		dc.b	$82	; Labyrinthy Place
@@ -6173,11 +6180,7 @@ off_6E4A:	dc.w Resize_GHZ3main-off_6E4A
 GHZ3Add = $2700
 
 Resize_GHZ3main:
-		move.w	#$410,($FFFFF726).w	; set lower y-boundary
-
-		cmpi.w	#$2700,($FFFFF700).w	; has the camera reached $2700 on x-axis?
-		bcs.s	locret_6E96		; if not, branch
-		move.w	#$300,($FFFFF726).w	; set lower y-boundary
+		move.w	#$320,($FFFFF726).w	; set lower y-boundary
 
 		cmpi.w	#$1780+GHZ3Add,($FFFFF700).w	; has the camera reached $1780 on x-axis?
 		bcs.s	locret_6E96			; if not, branch
@@ -8220,12 +8223,12 @@ Obj18_LZ2:
 		add.w	#20,obY(a0)		; ...add 20 more pixels to it
 
 Obj18_NoMovingPlatforms:
-		cmpi.w	#$302,($FFFFFE10).w
-		bne.s	Obj18_NoCheckpoint
-		tst.b	obFrame(a0)
-		bne.s	Obj18_NoCheckpoint
-		move.b	#1,obFrame(a0)
-		move.b	#$A1,d0
+		cmpi.w	#$302,($FFFFFE10).w	; is level SAP?
+		bne.s	Obj18_NoCheckpoint	; if not, branch
+		tst.b	obFrame(a0)		; has checkpoint already been touched?
+		bne.s	Obj18_NoCheckpoint	; if yes, branch
+		move.b	#1,obFrame(a0)		; set checkpoint flag
+		move.b	#$A1,d0			; play checkpoint sound
 		jsr	PlaySound_Special
 
 @notfirstcheckpoint:
@@ -10397,6 +10400,7 @@ Obj1F_Main:				; XREF: Obj1F_Index
 		move.b	#6,obColType(a0)		; use normal touch response
 		cmpi.w	#$000,($FFFFFE10).w	; is level GHZ1?
 		bne.s	Obj01_NotGHZ1_Main2	; if not, branch
+		clr.b	($FFFFFFD5).w
 		move.b	#$F,obColType(a0)		; use boss touch response
 	if LowBossHP=1
 		move.b	#1,obColProp(a0)		; set number of	hits to	1
@@ -10525,7 +10529,12 @@ Obj1F_BossDefeated:
 		clr.b	($FFFFFFEB).w
 		clr.l	($FFFFF602).w			; clear any remaining button presses
 
+		tst.b	($FFFFFFD5).w
+		bne.s	@0
 		move.b	#1,($FFFFFFD5).w		; set flag 3
+		move.b	#$E0,d0				; fade out music
+		jsr	PlaySound			; play it
+@0:
 		clr.w	obVelX(a0)			; clear X-speed
 		cmpi.b	#8,obAnim(a0)			; is the correct animation set?
 		bge.s	@conxt				; if yes, branch
@@ -10548,9 +10557,7 @@ Obj1F_LevelTransition:
 		bmi.s	Obj1F_BossDelete
 		rts
 
-Obj1F_BossDelete:
-		move.b	#0,($FFFFF7CC).w		; unlock controls
-
+Obj1F_BossDelete
 		clr.b	($FFFFFF68).w			; revert lives counter to normal
 		ori.b	#1,($FFFFFE1C).w		; update lives counter (to reset it from the boss)
 		clr.l	($FFFFFE22).w			; clear time
@@ -10559,29 +10566,43 @@ Obj1F_BossDelete:
 		move.b	#2,($FFFFFFD4).w		; set flag 4, 2
 		move.b	#0,($FFFFF7AA).w		; unlock screen
 		move.b	#2,($FFFFFFAA).w		; set flag 1, 2
-		move.w	#$5060,($FFFFF72A).w		; unlock screen
-		move.w	#$002,($FFFFFE10).w		; change level ID to GHZ3
-		movem.l	d7/a0,-(sp)
-		jsr	LevelLayoutLoad			; load GHZ3 layout
-		movem.l	(sp)+,d7/a0
-		move.b	#$90,d0				; set normal GHZ music
-		jsr	PlaySound			; play it
+		move.w	#$25C5,($FFFFF728).w		; set new left boundary
+		move.w	#$5060,($FFFFF72A).w		; set new right boundary
+
+		move.b	#$DB,d0			; play epic explosion sound
+		jsr	PlaySound
 		move.l	#10000,d0		; add 100000 ...
 		jsr	AddPoints	; ... points
-		
+
+		; part two of the transition is (cruedly) done in Obj34 itself
+		lea	($FFFFD000).w,a1
+		move.w	#$31A0,obX(a1)
+		move.w	#$0180,obY(a1)
+		move.w	#-$1A00,obVelX(a1)	; weeeeeee
+		move.w	#-$1000,obVelY(a1)
+		addq.w	#8,obY(a1)
+		bclr	#0,obStatus(a1) ; face right
+		bset	#1,obStatus(a1) ; in air
+		bset	#2,obStatus(a1) ; rolling
+		bclr	#3,obStatus(a1) ; not standing
+		move.b	#$25,obAnim(a1)	; use inhuman rotate animation
+		move.b	#2,obRoutine(a1)
+		move.b	#1,($FFFFFFEB).w	; set jumpdash flag
+		move.b	#1,(RedrawEverything).w
+
+		move.b	#$34,($FFFFD080).w 		; load title card object
+		move.b	#120,($FFFFD080+$30).w		; set delay before loading title cards
+		move.b	#1,($FFFFD080+$31).w		; set title card patterns load flag
+
 		movem.l	d0-d7/a1-a3,-(sp)
 		moveq	#3,d0
 		jsr	PalLoad2		; load Sonic palette
 		moveq	#$C,d0
 		jsr	PalLoad2	; load GHZ palette
 		jsr	WhiteFlash3			; make white flash
-		move.w	#0,(BlackBars.Height).w
 		movem.l	(sp)+,d0-d7/a1-a3
 
-		move.b	#$34,($FFFFD080).w 		; load title card object
-		move.b	#35,($FFFFD080+$30).w		; set delay before loading title cards
-		move.b	#1,($FFFFD080+$31).w		; set title card patterns load flag
-		
+	
 		bra.w	Obj1F_Delete			; delete
 ; ===========================================================================
 
@@ -10778,6 +10799,7 @@ loc_17F7EXX:
 		move.b	#4,ob2ndRout(a0)			; set to boss defeated
 		move.w	#200,$3C(a0)			; set destroying timer
 		move.b	#8,obAnim(a0)
+
 
 Obj1F_NotGHZ1_WFX:
 		bsr	SpeedToPos			; set position
@@ -11949,6 +11971,8 @@ GRing_Unreal     = 6
 GRing_ScarNight  = 7
 GRing_StarAgony  = 8
 GRing_Finalor    = 9
+GRing_NightHill_First  = $11
+GRing_ScarNight_First  = $17
 GRing_Options    = $81
 GRing_Tutorial   = $82
 GRing_Blackout   = $83
@@ -11977,6 +12001,7 @@ Obj4B_Main:				; XREF: Obj4B_Index
 		move.b	#0,obRoutine(a0)
 		rts
 @notfzescape:
+		addq.b	#2,obRoutine(a0)
 		move.w	obY(a0),$34(a0)
 		move.b	#5,$37(a0)
 		move.b	#5,$38(a0)
@@ -11987,26 +12012,46 @@ Obj4B_Main:				; XREF: Obj4B_Index
 		bne.s	Obj4B_Main_Cont			; if not, branch
 		move.w	#$2422,obGfx(a0)		; use alternate offset
 		
-	if DoorsAlwaysOpen=0
-		cmpi.b	#GRing_GreenHill,obSubtype(a0)	; is this a ring leading to Green Hill Place (NHP act 2)?
-		bne.s	@tempringcont1			; if not, branch
-		moveq	#0,d0				; has the player beaten this level before?
-		jsr	Check_LevelBeaten
-		bne.s	Obj4B_Main_Cont			; if yes, branch
-		jmp	DeleteObject			; otherwise, delete this ring
-@tempringcont1:
-		cmpi.b	#GRing_StarAgony,obSubtype(a0)	; is this a ring leading to Star Agony Place (SNP act 2)?
-		bne.s	@tempringcont2			; if not, branch
-		moveq	#5,d0				; has the player beaten this level before?
-		jsr	Check_LevelBeaten
-		bne.s	Obj4B_Main_Cont			; if yes, branch
-		jmp	DeleteObject			; otherwise, delete this ring	
-@tempringcont2:
-	endif
+		move.b	obSubtype(a0),d1		; get ring subtype
 
-		cmpi.b	#GRing_Blackout,obSubtype(a0)	; is this the blackout challenge ring?
-		bne.s	Obj4B_Main_Cont			; if not, branch
+		cmpi.b	#GRing_Blackout,d1		; is this the blackout challenge ring?
+		bne.s	@checkbonusrings		; if not, branch
 		move.w	#$0422,obGfx(a0)		; use red palette
+
+@checkbonusrings:
+	if DoorsAlwaysOpen=0
+		cmpi.b	#GRing_NightHill,d1	; is this a ring leading to Night Hill Place (NHP act 1)?
+		beq.s	@chknhp			; if yes, branch
+		cmpi.b	#GRing_GreenHill,d1	; is this a ring leading to Green Hill Place (NHP act 2)?
+		bne.s	@firstnhpring		; if not, branch
+@chknhp:	moveq	#0,d0			; has the player beaten this level before?
+		jsr	Check_LevelBeaten
+		bne.s	Obj4B_Main_Cont		; if yes, show both rings
+		jmp	DeleteObject		; otherwise, delete this ring
+@firstnhpring:
+		cmpi.b	#GRing_NightHill_First,d1 ; is this the first ring leading to Night Hill Place?
+		bne.s	@snprings		; if not, branch
+		moveq	#0,d0			; has the player beaten this level before?
+		bra.s	@adjustfirst		; further checks down below
+@snprings:
+		cmpi.b	#GRing_ScarNight,d1	; is this a ring leading to Scar Night Place (SNP act 1)?
+		beq.s	@chksnp			; if yes, branch
+		cmpi.b	#GRing_StarAgony,d1	; is this a ring leading to Star Agony Place (SNP act 2)?
+		bne.s	@firstsnpring		; if not, branch
+@chksnp:	moveq	#5,d0			; has the player beaten this level before?
+		jsr	Check_LevelBeaten
+		bne.s	Obj4B_Main_Cont		; if yes, show both rings
+		jmp	DeleteObject		; otherwise, delete this ring
+
+@firstsnpring:
+		cmpi.b	#GRing_ScarNight_First,d1 ; is this the first ring leading to Scar Night Place?
+		bne.s	Obj4B_Main_Cont		; if not, branch
+		moveq	#5,d0			; has the player beaten this level before?
+@adjustfirst:	andi.b	#$F,obSubtype(a0)
+		jsr	Check_LevelBeaten
+		beq.s	Obj4B_Main_Cont		; if not, display this ring instead of the other two
+		jmp	DeleteObject		; otherwise, delete this ring
+	endif
 
 Obj4B_Main_Cont:
 		ori.b	#4,obRender(a0)
@@ -12015,7 +12060,6 @@ Obj4B_Main_Cont:
 		bpl.s	Obj4B_Animate
 
 Obj4B_Okay:				; XREF: Obj4B_Main
-		addq.b	#2,obRoutine(a0)
 		move.b	#2,obPriority(a0)
 		move.w	#$C40,($FFFFF7BE).w	; load giant ring patterns
 		cmpi.w	#$400,($FFFFFE10).w	; are we in Uberhub?
@@ -12100,15 +12144,7 @@ Obj4B_YPositive:
 		move.b	#1,$3C(a0)		; disable interaction with ring
 
 Obj4B_DontCollect:
-		move.w	obX(a0),d0
-		andi.w	#$FF80,d0
-		move.w	($FFFFF700).w,d1
-		subi.w	#$80,d1
-		andi.w	#$FF80,d1
-		sub.w	d1,d0
-		cmpi.w	#$280,d0
-		bhi.w	DeleteObject
-		bra.w	DisplaySprite
+		bra.w	MarkObjGone
 ; ===========================================================================
 
 Obj4B_Collect:				; XREF: Obj4B_Index
@@ -13263,8 +13299,11 @@ Obj2B_ChgAni:
 		move.w	obY(a0),obY(a1)
 
 Obj2B_NotInhumanCrush:
-		bsr	BossDefeated4
 		move.b	#1,obAnim(a0)	; use fast animation
+
+		cmpi.w	#$000,($FFFFFE10).w	; is level still NHP?
+		beq.s	locret_ABB6		; if yes, don't do explosions yet
+		bsr	BossDefeated4		; fishy go boom
 	
 locret_ABB6:
 		rts	
@@ -15522,8 +15561,10 @@ Obj34_Index:	dc.w Obj34_Setup-Obj34_Index
 Obj34_Setup:				; XREF: Obj34_Index
 		cmpi.w	#$302,($FFFFFE10).w	; are we in SAP?
 		beq.s	@delayafterboss		; if yes, branch
-		cmpi.w	#$002,($FFFFFE10).w	; are we in GHP?
+		cmpi.w	#$000,($FFFFFE10).w	; are we in NHP?
 		bne.s	@regular		; if not, branch
+		cmpi.b	#2,($FFFFFFAA).w	; has the crabmeat boss been defeated?
+		bne.s	@regular		; if yes, do delay
 
 @delayafterboss:
 		tst.b	$30(a0)			; any time remaining on the delay?
@@ -15533,6 +15574,20 @@ Obj34_Setup:				; XREF: Obj34_Index
 		bne.s	@waitdelay
 		tst.b	$31(a0)			; are patterns set to be loaded?
 		beq.s	@regular		; if not, branch
+
+		; transition from NHP to GHP
+		cmpi.w	#$000,($FFFFFE10).w	; are we in NHP?
+		bne.s	@notnhp			; if not, branch	
+		move.w	#$002,($FFFFFE10).w		; change level ID to GHZ3
+		movem.l	d7/a0,-(sp)
+		jsr	LevelLayoutLoad			; load GHZ3 layout
+		movem.l	(sp)+,d7/a0
+		jsr	PlayLevelMusic
+	;	move.b	#$86,d0				; set normal GHZ music
+	;	jsr	PlaySound			; play it
+		move.b	#0,($FFFFF7CC).w		; unlock controls
+
+@notnhp:
 		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
 		bne.s	@regular		; if yes, branch
 		lea	PLC_TitleCard, a1
@@ -15592,7 +15647,7 @@ Obj34_Loop:
 		move.w	(a3),obX(a1)	; load start x-position
 		move.w	(a3)+,$32(a1)	; load finish x-position
 		move.w	(a3)+,$30(a1)	; load main x-position
-		move.w	#100,$3C(a1)
+		move.w	#100,$3C(a1)	; set delay time for mid-level title cards (NHP->GHP, SNP->SAP)
 		addq.b	#1,$3E(a0)
 		move.b	$3E(a0),$3F(a1)	; set ID
 		move.w	(a2)+,obScreenY(a1)
@@ -15697,21 +15752,22 @@ loc_C3C8:
 ; ===========================================================================
 
 Obj34_TargetOK:
-		cmpi.w	#$302,($FFFFFE10).w
-		beq.s	@conto
-		cmpi.b	#$10,($FFFFF600).w
-		beq.s	@cont
-		cmpi.w	#$002,($FFFFFE10).w
-		bne.s	loc_C3C8
-		cmpi.b	#2,($FFFFFFAA).w
-		bne.s	loc_C3C8
+		cmpi.b	#$10,($FFFFF600).w	; are we in a Special Stage?
+		beq.s	@cont			; if yes, branch
+		cmpi.w	#$302,($FFFFFE10).w	; is current level SAP?
+		beq.s	@conto			; if yes, branch
+		cmpi.w	#$002,($FFFFFE10).w	; is current level GHP?
+		bne.s	loc_C3C8		; if not, branch
+		cmpi.b	#2,($FFFFFFAA).w	; has flag after Crabmeat boss been set?
+		bne.s	loc_C3C8		; if yes, branch
 
 @cont:
-		cmpi.b	#1,$3F(a0)
-		bne.s	loc_C3C8
+		cmpi.b	#1,$3F(a0)		; is current element the Zone Name?
+		bne.s	loc_C3C8		; if not, branch
 @conto:
-		subq.w	#1,$3C(a0)
-		bpl.s	loc_C3C8
+		subq.w	#1,$3C(a0)		; sub 1 from delay
+		bpl.s	loc_C3C8		; if time remains, branch
+
 		addq.b	#2,obRoutine(a0)
 		addq.b	#2,$24+$40(a0)
 		addq.b	#2,$24+$80(a0)
@@ -15816,6 +15872,7 @@ Obj34_Delete:
 		neg.w	d3				; negate it
 		move.w	d3,($FFFFD432).w		; set X-speed
 		move.w	#HUDSpeed,($FFFFD434).w		; set Y-speed
+		
 		move.b	#$21,($FFFFD480).w		; load HUD object
 		move.b	#4,($FFFFD4B0).w		; set to LIVES
 		move.w	#HUDSpeed,d3			; load HUD speed into d3
@@ -16450,6 +16507,12 @@ Obj49_PlaySnd:				; XREF: Obj49_Index
 		move.b	($FFFFFE05).w,d0
 		andi.b	#$3F,d0
 		bne.s	Obj49_ChkDel
+
+		cmpi.w	#$000,($FFFFFE10).w	; is level NHP?
+		bne.s	@dosfx			; if not, branch
+		cmpi.b	#2,($FFFFFFAA).w	; has the crabmeat boss been defeated?
+		beq.s	Obj49_ChkDel		; if yes, don't do waterfall sound
+@dosfx:
 		move.w	#$D0,d0
 		jsr	(PlaySound_Special).l ;	play waterfall sound
 
@@ -25592,6 +25655,7 @@ Obj06_DoHardPartSkip:
 		clr.w	($FFFFD010).w		; clear Sonic's X-speed
 		clr.w	($FFFFD012).w		; clear Sonic's Y-speed
 		clr.w	($FFFFD014).w		; clear Sonic's interia
+		clr.l	($FFFFF602).w		; clear inputs
 
 		cmpi.w	#$101,($FFFFFE10).w	; are we in LP?
 		bne.s	@notlp			; if not, branch
@@ -25740,7 +25804,7 @@ Obj06_Locations:	;XXXX   YYYY
 		dc.w	$FFFF, $FFFF	; Unreal Place		(Unused)
 		dc.w	$FFFF, $FFFF	; Scar Night Place 	(Unused)
 		dc.w	$101E, $036C	; Tutorial Place
-		dc.w	$1EE0, $0304	; Star Agony Place
+		dc.w	$1F00, $06E0	; Star Agony Place
 
 ; ===========================================================================
 
@@ -25948,7 +26012,7 @@ Obj01_EndingSpeed:
 		bsr.s	SetEndingSpeeds
 
 Obj01_Speedcont:
-		move.b	#5,($FFFFD1C0).w
+		move.b	#5,($FFFFD1C0).w	; set up spindash object
 		bra.s	Obj01_Control
 
 ; ===========================================================================
@@ -27665,6 +27729,7 @@ SPO_Simulated:
 		move.w	#0,$3C(a0)		; set charge count 1 to 0
 		move.w	#0,$3A(a0)		; set charge count 2 to 0
 		cmpi.b	#$C,obSubtype(a0)		; ??? oxygen remaining?
+		move.b	#5,($FFFFD1C0).w	; set up spindash object
 		move.b	#2,($FFFFD1DC).w	; Set the spindash dust animation to $2
 		jmp	Sonic_AnglePos		; jump to Sonic_AnglePos
 ; ===========================================================================
@@ -27786,6 +27851,7 @@ Spdsh_NotMZ:
 		move.b	#1,$39(a0)		; set spindash flag
 		move.w	#0,$3A(a0)		; set charge count to 0
 		cmpi.b	#$C,obSubtype(a0)		; ??? oxygen remaining?
+		move.b	#5,($FFFFD1C0).w	; set up spindash object
 		move.b	#2,($FFFFD1DC).w	; Set the spindash dust animation to $2
 
 loc2_1AC84:

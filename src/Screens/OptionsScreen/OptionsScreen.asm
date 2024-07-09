@@ -4,6 +4,7 @@
 Options_Blank = $29 ; blank character, high priority
 OptionsBuffer equ $FFFFC900 ; $200 bytes
 DeleteCounter equ $FFFFFF9C
+CinematicIndex equ $FFFFFF9D
 DeleteCounts = 3
 ; ---------------------------------------------------------------------------
 
@@ -115,7 +116,16 @@ Options_ContinueSetup:
 		move.w	#21,($FFFFFF9A).w
 		move.b	#$81,($FFFFFF84).w
 
-		move.b	#DeleteCounts,(DeleteCounter).w
+		move.b	#DeleteCounts,(DeleteCounter).w	; reset delete counter
+		
+		moveq	#0,d0			; set cinematic index to 0
+		btst	#3,($FFFFFF92).w	; is cinematic mode enabled?
+		beq.s	@0			; if not, branch
+		addq.b	#1,d0			; add 1 to index
+@0:		btst	#6,($FFFFFF92).w	; is fuzz enabled?
+		beq.s	@1			; if not, branch
+		addq.b	#2,d0			; if 2 to index 
+@1:		move.b	d0,CinematicIndex	; write new index
 
 Options_FinishSetup:
 		move.w	#19,($FFFFFF82).w	; set default selected entry to exit
@@ -231,47 +241,71 @@ Options_HandleSkipUberhub:
 
 Options_HandleCinematicMode:
 		move.b	($FFFFF605).w,d1	; get button presses
-		andi.b	#$F8,d1			; is right, A, B, C, or Start pressed? (not left cause it's awkward)
+		andi.b	#$FC,d1			; is left, right, A, B, C, or Start pressed?
 		beq.w	Options_Return		; if not, branch
 
 		tst.w	($FFFFFFFA).w		; is debug mode enabled?
 		beq.s	@nodebugunlock		; if not, branch
 		cmpi.b	#$70,($FFFFF604).w	; is exactly ABC held?
 		bne.s	@nodebugunlock		; if not, branch
-		bchg	#0,($FFFFFF93).w	; toggle base game as beaten to toggle the unlock for cinematic mode
 		bclr	#3,($FFFFFF92).w	; make sure option doesn't stay accidentally enabled
 		bclr	#6,($FFFFFF92).w	; ''
+		clr.b	(CinematicIndex).w
+		btst	#Casual_BaseGame,($FFFFFF93).w
+		bne.s	@unset
+		bset	#Casual_BaseGame,($FFFFFF93).w
+		bset	#Frantic_BaseGame,($FFFFFF93).w
 		bra.w	Options_UpdateTextAfterChange_NoSound
-@nodebugunlock:
+@unset:		bclr	#Casual_BaseGame,($FFFFFF93).w
+		bclr	#Frantic_BaseGame,($FFFFFF93).w
+		bra.w	Options_UpdateTextAfterChange_NoSound
+
+@nodebugunlock:		
 		jsr	Check_BaseGameBeaten	; has the player beaten the base game?
 		beq.w	Options_Disallowed	; if not, cineamtic mode is disallowed
 
-		btst	#3,($FFFFFF92).w	; was cinematic already enabled?
-		bne.s	@chkfuzz		; if yes, branch
-		btst	#6,($FFFFFF92).w	; was at least fuzz already enabled?
-		bne.s	@both			; if yes, enable both
-		bra.s	@normal			; otherwise, enable normal
-@chkfuzz:
-		btst	#6,($FFFFFF92).w	; was fuzz also enabled?
-		bne.s	@off			; if yes, turn both off
-		bra.s	@fuzzy			; otherwise, enable fuzzy-only
-
-@off:		bclr	#3,($FFFFFF92).w	; disable cinematic mode
+		bclr	#3,($FFFFFF92).w	; disable cinematic mode
 		bclr	#6,($FFFFFF92).w	; disable fuzz
-		bsr	Options_LoadPal
-		bra.w	Options_UpdateTextAfterChange_Off
 
-@normal:	bset	#3,($FFFFFF92).w	; enable cinematic mode
-		bclr	#6,($FFFFFF92).w	; disable fuzz
-		bra.s	@end
-@fuzzy:		bclr	#3,($FFFFFF92).w	; disable cinematic mode
+		moveq	#0,d2
+		move.b	(CinematicIndex).w,d2
+		andi.b	#4,d1			; was specifically left pressed?
+		beq.s	@notleft		; if not, branch
+		subq.b	#1,d2
+		bpl.s	@setnewindex
+		moveq	#3,d2
+		bra.s	@setnewindex
+@notleft:
+		addq.b	#1,d2
+		cmpi.b	#4,d2
+		blo.s	@setnewindex
+		moveq	#0,d2
+@setnewindex:
+		move.b	d2,(CinematicIndex).w
+		
+		lea	(Options_CinematicBits).l,a1
+		add.w	d2,d2
+		adda.w	d2,a1
+		moveq	#0,d1			; play off sound
+		move.b	(a1)+,d0
+		beq.s	@0
+		bset	#3,($FFFFFF92).w	; enable cinematic mode
+		moveq	#1,d1			; play on sound
+@0:		move.b	(a1)+,d0
+		beq.s	@1
 		bset	#6,($FFFFFF92).w	; enable fuzz
-		bra.s	@end
-@both:		bset	#3,($FFFFFF92).w	; enable cinematic mode
-		bset	#6,($FFFFFF92).w	; enable fuzz
-
-@end:		bsr	Options_LoadPal
+		moveq	#1,d1			; play on sound
+@1:
+		tst.b	d1
+		beq.w	Options_UpdateTextAfterChange_Off
 		bra.w	Options_UpdateTextAfterChange_On
+; ---------------------------------------------------------------------------
+Options_CinematicBits:
+		dc.b	0, 0	; off
+		dc.b	1, 0	; typical
+		dc.b	0, 1	; fuzzy
+		dc.b	1, 1	; both
+		even
 ; ---------------------------------------------------------------------------
 
 Options_HandleNonstopInhuman:
@@ -283,7 +317,7 @@ Options_HandleNonstopInhuman:
 		beq.s	@nodebugunlock		; if not, branch
 		cmpi.b	#$70,($FFFFF604).w	; is exactly ABC held?
 		bne.s	@nodebugunlock		; if not, branch
-		bchg	#1,($FFFFFF93).w	; toggle blackout challenge beaten state to toggle the unlock for nonstop inhuman
+		bchg	#Bonus_Blackout,($FFFFFF93).w	; toggle blackout challenge beaten state to toggle the unlock for nonstop inhuman
 		bclr	#4,($FFFFFF92).w	; make sure option doesn't stay accidentally enabled
 		bra.w	Options_UpdateTextAfterChange_NoSound
 
@@ -298,7 +332,7 @@ Options_HandleNonstopInhuman:
 
 Options_HandleDeleteSaveGame:
 		move.b	($FFFFF605).w,d1	; get button presses
-		andi.b	#$F0,d1			; is A, B, C, or Start pressed? (not on left/right because of how delicate it is)
+		andi.b	#$80,d1			; is Start pressed? (nothing else because of how delicate it is)
 		beq.w	Options_Return		; if not, return
 
 		subq.b	#1,(DeleteCounter).w	; sub one from delete counter
@@ -353,6 +387,7 @@ Options_Exit:
 		clr.w	($FFFFFF98).w
 		clr.b	($FFFFFF9A).w
 		clr.b	(DeleteCounter).w
+		clr.b	(CinematicIndex).w
 
 		moveq	#0,d0			; clear d0
 		move.b	#1,($A130F1).l		; enable SRAM

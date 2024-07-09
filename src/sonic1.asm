@@ -60,8 +60,8 @@ __DEBUG__: equ 1
 ; $301 - Scar Night Place
 ; $302 - Star Agony Place
 ; $502 - Finalor Place
-QuickLevelSelect = 0
-QuickLevelSelect_ID = -1
+QuickLevelSelect = 1
+QuickLevelSelect_ID = $502
 ; ------------------------------------------------------
 DebugModeDefault = 1
 DebugSurviveNoRings = 0
@@ -478,18 +478,19 @@ SRAM_SaveNow_End:
 HBlank_LZWaterSurface:
 		tst.w	($FFFFF644).w		; is flag set to transfer water palette mid-frame?
 		beq.w	locret_119C		; if not, branch
-		clr.w	($FFFFF644).w		; clear said flag
+		move.w	#0,($FFFFF644).w	; clear said flag
 		movem.l	d0-d1/a0-a2,-(sp)
 		
 		lea	($C00000).l,a1
 		move.w	#$8A00|$DF,4(a1)	; Reset HInt timing
 
-		movea.l	($FFFFF610).w,a2
 		moveq	#$F,d0			; adjust to push artifacts off screen
-@loop:		dbf	d0,@loop		; waste a few cycles here
+	;	move.w	($FFFFFE20).w,d0 ; use rings for now
+		dbf	d0,*			; waste a few cycles here
 
+		movea.l	($FFFFF610).w,a2
 		move.w	(a2)+,d1
-		move.b	($FFFFFE07).w,d0
+		move.b	($FFFFFE07).w,d0	; get water surface height for the screen transfer
 		subi.b	#200,d0			; is H-int occuring below line 200?
 		bcs.s	@transferColors		; if it is, branch
 		sub.b	d0,d1
@@ -498,7 +499,7 @@ HBlank_LZWaterSurface:
 @transferColors:
 		move.w	(a2)+,d0
 		lea	($FFFFFA80).w,a0
-		bclr	#0,d0			; force d0 to be even (WEIRD hotfix because otherwise we get an odd addressing error)
+	;	bclr	#0,d0			; force d0 to be even (WEIRD hotfix because otherwise we get an odd addressing error)
 		adda.w	d0,a0
 		addi.w	#$C000,d0
 		swap	d0
@@ -508,14 +509,14 @@ HBlank_LZWaterSurface:
 		nop
 		nop
 		moveq	#$24,d0
-		dbf    d0,*			; waste some cycles
-		dbf    d1,@transferColors	; repeat for number of colors
+		dbf	d0,*			; waste some cycles
+		dbf	d1,@transferColors	; repeat for number of colors
 
 @skipTransfer:
 		movem.l	(sp)+,d0-d1/a0-a2
 
 locret_119C:
-		rte	
+		rte
 ; End of function HBlank
 
 ; ===========================================================================
@@ -7039,8 +7040,8 @@ Resize_FZEscape:
 		move.w	#-$1000,($FFFFD010).w
 @nodoubleboost:
 
-		move.w	#$91,d0
-		jmp	PlaySound		; play invincibility music (placeholder for now)
+		move.w	#$90,d0
+		jmp	PlaySound		; play GHP music (placeholder for now, just to get the vibe across)
 
 Resize_FZEscape2:
 		cmpi.w	#$1000,($FFFFF700).w	; near the falling pit?
@@ -11695,7 +11696,17 @@ CollectRing:				; XREF: Obj25_Collect
 		ori.b	#1,($FFFFFE1D).w ; update the rings counter
 		move.w	#$B5,d0		; play ring sound
 		jmp	(PlaySound_Special).l
+
+LoseRing:
+		subq.w	#1,($FFFFFE20).w ; sub 1 from rings
+		bpl.s	@0
+		move.w	#0,($FFFFFE20).w ; prevent underflow
+@0:
+		ori.b	#1,($FFFFFE1D).w ; update the rings counter
+		move.w	#$A9,d0		; play blip sound
+		jmp	(PlaySound_Special).l
 ; End of function CollectRing
+
 
 ; ---------------------------------------------------------------------------
 ; Subroutine to move a ring to Sonic's position
@@ -12357,6 +12368,16 @@ Obj26_Index:	dc.w Obj26_Main-Obj26_Index
 ; ===========================================================================
 
 Obj26_Main:				; XREF: Obj26_Index
+		frantic
+		beq.s	@0
+		cmpi.w	#$502,($FFFFFE10).w
+		bne.s	@0
+		cmpi.b	#8,obSubtype(a0)
+		bne.s	@0
+		move.b	#$3F,(a0)
+		move.b	#1,$30(a0)
+		rts
+@0:
 		addq.b	#2,obRoutine(a0)
 		move.b	#$E,obHeight(a0)
 		move.b	#$E,obWidth(a0)
@@ -15642,15 +15663,30 @@ Obj34_NotSpecial2:
 ; ---------------------------------------------------------------------------
 
 Obj34_ChkPos:				; XREF: Obj34_Index
-		moveq	#8,d1		; set horizontal speed
-		move.w	$30(a0),d0
-		cmp.w	obX(a0),d0	; has item reached the target position?
-		beq.s	Obj34_TargetOK	; if yes, branch
-		bge.s	Obj34_Move
-		neg.w	d1
+		moveq	#8,d0		; set horizontal speed
+		moveq	#0,d1
+		move.w	obX(a0),d1	; get current X position
+		cmp.w	$30(a0),d1	; sub target X position
+		beq.s	Obj34_TargetOK	; if they're equal, move-in sequence is done
+		bcc.s	@moveleft	; 
 
-Obj34_Move:
-		add.w	d1,obX(a0)	; change item's position
+@moveright:
+		move.w	obX(a0),d1	; get current X position
+		add.w	d0,d1
+		cmp.w	$30(a0),d1
+		blo.s	@setnewpos
+		move.w	$30(a0),d1
+		bra.s	@setnewpos
+		
+@moveleft:
+		move.w	obX(a0),d1	; get current X position
+		sub.w	d0,d1
+		cmp.w	$30(a0),d1
+		bhi.s	@setnewpos
+		move.w	$30(a0),d1
+	
+@setnewpos:
+		move.w	d1,obX(a0)	; change item's position
 
 loc_C3C8:
 		move.w	obX(a0),d0
@@ -15848,24 +15884,13 @@ Obj34_ItemData:
 ; ===========================================================================
 
 ; ---------------------------------------------------------------------------
-; Title	card configuration data
-; Format:
-; 4 bytes per item (XXXX YYYY)
-; 4 items per level (GREEN HILL, ZONE, ACT X, oval)
+; Start and finish positions
 ; ---------------------------------------------------------------------------
-
 Obj34_ConData:
-		dc.w $0000
-		dc.w $0120
-		
-		dc.w $FFFC
-		dc.w $013C
-		
-		dc.w $0414
-		dc.w $0154
-
-		dc.w $0214
-		dc.w $0154
+		dc.w $0000, $0120 ; Stage Name (e.g. NIGHT HILL)
+		dc.w $0000, $0139 ; PLACE
+		dc.w $0414, $0154 ; "ACT" text and Act Number
+		dc.w $0214, $0154 ; Oval
 		even
 ; ===========================================================================
 
@@ -22155,8 +22180,7 @@ Map_obj5C:
 ; ---------------------------------------------------------------------------
 
 Obj1B:					; XREF: Obj_Index
-		jmp	DeleteObject
-		rts		; disabled, don't ask why
+		jmp	DeleteObject	; we don't need these anymore
 
 		moveq	#0,d0
 		move.b	obRoutine(a0),d0
@@ -26548,6 +26572,7 @@ loc_12F70:
 Sonic_LookUp:
 		btst	#0,($FFFFF602).w ; is up being pressed?
 		beq.s	Sonic_Duck	; if not, branch
+		
 		move.b	#7,obAnim(a0)	; use "looking up" animation
 		cmpi.w	#$101,($FFFFFE10).w	; is level LZ2?
 		beq.s	Sonic_Duck		; if yes, disable vertical camera shift
@@ -26564,6 +26589,7 @@ Sonic_LookUp:
 Sonic_Duck:
 		btst	#1,($FFFFF602).w ; is down being pressed?
 		beq.s	Obj01_ResetScr	; if not, branch
+		
 		move.b	#8,obAnim(a0)	; use "ducking"	animation
 		cmpi.w	#$101,($FFFFFE10).w	; is level LZ2?
 		beq.s	Obj01_ResetScr		; if yes, disable vertical camera shift
@@ -27204,14 +27230,6 @@ FixLevel:
 		bpl.s	@1
 		moveq	#0,d0
 @1:		move.w	d0,($FFFFF704).w	; put result into Y-camera location
-
-		; clear every redraw flag
-		clr.l	($FFFFF73A).w
-		clr.l	($FFFFF74A).w
-		clr.w	($FFFFF74E).w
-		clr.w	($FFFFF754).w
-		clr.w	($FFFFF754).w
-		clr.w	($FFFFF758).w
 
 		VBlank_SetMusicOnly
 		movem.l	d0-a6,-(sp)		; backup all data and address registers

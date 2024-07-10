@@ -5433,13 +5433,6 @@ Obj80:					; XREF: Obj_Index
 		rts
 ; ===========================================================================
 
-; ---------------------------------------------------------------------------
-; Object 81 - Sonic on the continue screen
-; ---------------------------------------------------------------------------
-
-Obj81:					; XREF: Obj_Index
-		rts
-
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Ending sequence in Green Hill	Zone
@@ -6978,6 +6971,10 @@ Resize_FZend2:
 		VBlank_SetMusicOnly
 		vram	$6000
 		lea	(ArtKospM_Prison).l,a0
+		jsr	KosPlusMDec_VRAM
+
+		vram	$8000
+		lea	(ArtKospM_Nuke).l,a0
 		jsr	KosPlusMDec_VRAM
 		VBlank_UnsetMusicOnly
 
@@ -38954,42 +38951,80 @@ Obj3E_MakeNuke:
 		move.b	#2,($FFFFF7A7).w
 		move.b	#$C,obRoutine(a0)
 		move.b	#6,obFrame(a0)
-		move.w	#$96,obTimeFrame(a0)
 		addi.w	#$20,obY(a0)
 		
 		; load nuke object
 		jsr	SingleObjLoad
 		bne.s	locret_1ACF8
-		move.b	#$28,0(a1)
+		move.b	#$81,0(a1)
 		move.w	obX(a0),obX(a1)
 		move.w	obY(a0),obY(a1)
+		move.w	#5*60,$30(a1)	; set time limit before escape sequence starts
+		
 
 locret_1ACF8:
 		rts	
 ; ===========================================================================
 
 Obj3E_Nuke:				; XREF: Obj3E_Index
-		subq.w	#1,obTimeFrame(a0)
-		bne.s	locret_1AD48
-		addq.b	#2,obRoutine(a0)
-		move.w	#180,obTimeFrame(a0)
-		move.b	#1,($FFFFFFA5).w	; move HUD off screen (and start FZEscape sequence)
-
-locret_1AD48:
-		rts	
-; ===========================================================================
-
 Obj3E_EndAct:				; XREF: Obj3E_Index
 		rts
 ; ===========================================================================
-Ani_obj3E:
-		include	"_anim\obj3E.asm"
 
+Ani_obj3E:	include	"_anim\obj3E.asm"
+Map_obj3E:	include	"_maps\obj3E.asm"
 ; ---------------------------------------------------------------------------
-; Sprite mappings - prison capsule
+; ===========================================================================
+
+
+; ===========================================================================
 ; ---------------------------------------------------------------------------
-Map_obj3E:
-		include	"_maps\obj3E.asm"
+; Object 81 - Nuke.
+; ---------------------------------------------------------------------------
+
+Obj81:					; XREF: Obj_Index
+		moveq	#0,d0
+		move.b	obRoutine(a0),d0
+		move.w	Obj81_Index(pc,d0.w),d1
+		jmp	Obj81_Index(pc,d1.w)
+; ===========================================================================
+Obj81_Index:	dc.w Obj81_Init-Obj81_Index
+		dc.w Obj81_FlyUp-Obj81_Index
+		dc.w Obj81_Boom-Obj81_Index
+; ===========================================================================
+
+Obj81_Init:				; XREF: Obj81_Index
+		addq.b	#2,obRoutine(a0)
+		move.l	#Map_Obj81,obMap(a0)
+		move.w	#$2000|($8000/$20),obGfx(a0)
+		ori.b	#$94,obRender(a0)
+		move.b	#7,obPriority(a0)
+		move.b	#0,obFrame(a0)
+		move.b  #0,obAnim(a0)
+		move.b	#$40,obHeight(a0)
+		
+		move.w	#-$A0,obVelY(a0)	; move up
+; ---------------------------------------------------------------------------
+
+Obj81_FlyUp:
+		subq.w	#1,$30(a0)		; sub 1 from sequence time limit
+		bhi.s	@move			; if time remains, branch
+		addq.b	#2,obRoutine(a0)	; boom
+@move:
+		jsr	SpeedToPos
+		jmp	DisplaySprite
+; ===========================================================================
+
+Obj81_Boom:
+		move.b	#1,($FFFFFFA5).w	; move HUD off screen (and start FZEscape sequence)
+		jmp	DeleteObject
+
+; ===========================================================================
+
+Map_obj81:	include	"_maps\Nuke.asm"
+; ---------------------------------------------------------------------------
+; ===========================================================================
+
 
 ; ---------------------------------------------------------------------------
 ; Object touch response	subroutine - obColType(a0) in	the object RAM
@@ -44201,6 +44236,8 @@ ArtKospM_Weapons:	incbin	artkosp\bossxtra.kospm	; boss add-ons and weapons
 		even
 ;Unc_Prison:	incbin	artunc\prison.bin	; prison capsule (uncompressed)
 ArtKospM_Prison:	incbin	artkosp\PrisonCapsule.kospm	; prison capsule
+		even
+ArtKospM_Nuke:	incbin	artkosp\Nuke.kospm	; nuke
 		even
 ArtKospM_Sbz2Eggman:	incbin	artkosp\sbz2boss.kospm	; Eggman in SBZ2 and FZ
 		even

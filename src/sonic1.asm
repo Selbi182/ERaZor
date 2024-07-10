@@ -5647,8 +5647,9 @@ Obj8B:
 		bne.s	@Return
 		move.b	(a0),(a1)
 		move.b	#2,obRoutine(a1)
-		move.w	obX(a0),obX(a1)
-		move.w	obScreenY(a0),obScreenY(a1)
+		move.w	#$125,obX(a1) 
+		move.w	#$EC,obScreenY(a1) 
+
 @Return:
 		rts
 ; ===========================================================================
@@ -5658,6 +5659,9 @@ Obj8B:
 		move.l	#Map_obj8B,obMap(a0)
 		move.w	#($2000/$20),obGfx(a0)
 		
+		jsr 	RandomNumber
+		and.w 	#$3, d0
+		add.w 	d0, obGfx(a0)
 	;	move.w	($FFFFFE0E).w,d0
 	;	andi.w	#$3F,d0
 	;	add.w	d0,obGfx(a0)
@@ -5666,26 +5670,10 @@ Obj8B:
 		
 		jsr	RandomDirection
 		
-		frantic						; frantic mode selected?
-		bne.s	@contx					; if not, branch
-
-		tst.w	obVelY(a0)
-		bpl.s	@ChkOffscreen
-		not.w	obVelY(a0)
-		bra.s	@ChkOffscreen
-@contx:		
-		move.w	obVelY(a0),d0
-		muls.w	#3,d0
-		move.w	d0,obVelY(a0)
-		
-		tst.w	obVelY(a0)
-		bmi.s	@ChkOffscreen
-		not.w	obVelY(a0)
 ; ---------------------------------------------------------------------------
 
 @ChkOffscreen:
 		jsr 	SpeedToScreenPos
-		addi.w	#$4,obVelY(a0)	; increase vertical speed
 		
 		; X < $40
 		cmpi.w	#$40,obX(a0)

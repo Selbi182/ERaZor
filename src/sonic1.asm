@@ -479,14 +479,10 @@ HBlank_LZWaterSurface:
 		tst.w	($FFFFF644).w		; is flag set to transfer water palette mid-frame?
 		beq.w	locret_119C		; if not, branch
 		move.w	#0,($FFFFF644).w	; clear said flag
-		movem.l	d0-d1/a0-a2,-(sp)
+		movem.l	d0-d2/a0-a2,-(sp)
 		
-		lea	($C00000).l,a1
+		lea	VDP_Data,a1
 		move.w	#$8A00|$DF,4(a1)	; Reset HInt timing
-
-		moveq	#$F,d0			; adjust to push artifacts off screen
-	;	move.w	($FFFFFE20).w,d0 ; use rings for now
-		dbf	d0,*			; waste a few cycles here
 
 		movea.l	($FFFFF610).w,a2
 		move.w	(a2)+,d1
@@ -495,25 +491,33 @@ HBlank_LZWaterSurface:
 		bcs.s	@transferColors		; if it is, branch
 		sub.b	d0,d1
 		bcs.s	@skipTransfer
-		
+
 @transferColors:
+		moveq	#0, d0
 		move.w	(a2)+,d0
 		lea	($FFFFFA80).w,a0
-	;	bclr	#0,d0			; force d0 to be even (WEIRD hotfix because otherwise we get an odd addressing error)
 		adda.w	d0,a0
 		addi.w	#$C000,d0
 		swap	d0
 		move.l	d0,4(a1)		; write to CRAM at appropriate address
-		move.l	(a0)+,(a1)		; transfer two colors
-		move.w	(a0)+,(a1)		; transfer the third color
-		nop
-		nop
-		moveq	#$24,d0
-		dbf	d0,*			; waste some cycles
+
+		swap	d1			; high word of D1 is used for buffering
+		move.l	(a0)+, d2		; buffer colors to registers for faster transfer
+		move.w	(a0)+, d1		; ''
+
+		moveq	#$FFFFFFB2-16, d0
+	@waitforit:
+		cmp.b	9(a1), d0
+		bhi.s	@waitforit
+
+		move.l	d2,(a1)			; transfer two colors
+		move.w	d1,(a1)			; transfer the third color
+
+		swap	d1			; use D1 as counter again
 		dbf	d1,@transferColors	; repeat for number of colors
 
 @skipTransfer:
-		movem.l	(sp)+,d0-d1/a0-a2
+		movem.l	(sp)+,d0-d2/a0-a2
 
 locret_119C:
 		rte

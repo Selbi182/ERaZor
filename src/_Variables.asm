@@ -32,6 +32,7 @@ Objects			equ	$FFFFD000			;	Objects RAM (D000-EFFF)
 SoundDriverRAM:		equ	$FFFFF000			;	SMPS RAM
 
 RedrawEverything:	equ	$FFFFF5D3			;	Flag used to redraw the entire screen after teleporting
+FranticDrain:		equ	$FFFFF5D4			; w	Rings to be drained in frantic mode
 
 VBlank_NonLagFrameCounter:	equ	$FFFFF5DC		; l	
 

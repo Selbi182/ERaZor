@@ -528,6 +528,7 @@ locret_119C:
 ; Vladik's cool and awesome black bars that replaced my garbage ones B)
 ; ---------------------------------------------------------------------------
 
+; BlackBars::
 BlackBars.GrowSize = 2
 BlackBars.MaxHeight = 40
 ; ---------------------------------------------------------------------------
@@ -756,7 +757,8 @@ BlackBars_Selbi:
 		cmpi.l	#$4EE00001,($FFFFFF7A).w
 		bne.w	BlackBars_SetHeight
 		subi.w	#1,BlackBars.Height
-		moveq	#64,d0
+		moveq	#60,d0
+		move.w	d0,BlackBars.TargetHeight
 		bra.w	BlackBars_ShowCustom
 
 ; ---------------------------------------------------------------------------
@@ -3759,15 +3761,16 @@ Level_LoadObj:
 		move.l	d0,($FFFFFE22).w ; clear time
 		move.b	d0,($FFFFFE1B).w ; clear lives counter
 
-		clr.w	($FFFFF5D2).w		; clear frantic ring drain
+		clr.w	(FranticDrain).w		; clear frantic ring drain
 		cmpi.w	#$400,($FFFFFE10).w	; are we in Uberhub?
 		beq.s	loc_39E8		; if yes, don't do ring drain
 		move.w	($FFFFFE20).w,d1	; get your rings from the last level
+		beq.s	loc_39E8		; if you had none, branch
 		cmpi.w	#999,d1			; did it somehow end up above the allowed maximum?
 		bls.s	@allgood		; if not, branch
 		move.w	#999,d1			; otherwise, cap it to 999
 @allgood:
-		move.w	d1,($FFFFF5D2).w	; copy previous amount of rings to frantic ring draining
+		move.w	d1,(FranticDrain).w	; copy previous amount of rings to frantic ring draining
 		move.w	d1,($FFFFFE20).w	; cap rings if necessary
 
 loc_39E8:
@@ -4591,7 +4594,7 @@ ClearEverySpecialFlag:
 		move.w	d0,($FFFFC904).w
 		move.b	d0,($FFFFF5D0).w
 		move.b	d0,($FFFFF5D1).w
-		move.w	d0,($FFFFF5D2).w
+		move.w	d0,(FranticDrain).w
 		move.b	d0,(RedrawEverything).w
 		move.l	d0,($FFFFFF60).w
 		move.l	d0,($FFFFFF64).w
@@ -15593,7 +15596,6 @@ Obj34_Setup:				; XREF: Obj34_Index
 		jsr	LevelLayoutLoad			; load GHZ3 layout
 		movem.l	(sp)+,d7/a0
 		jsr	PlayLevelMusic
-		move.b	#0,($FFFFF7CC).w		; unlock controls
 
 @notnhp:
 		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
@@ -18771,10 +18773,8 @@ Obj12_CheckGameState:
 
 		moveq	#0,d0
 		move.b	obSubtype(a0),d0	; get subtype (1-8)
-		cmpi.b	#7,d0			; is this the orb for the base game?
+		cmpi.b	#7,d0			; is this the star for the base game?
 		beq.s	@basegame		; if yes, branch
-		cmpi.b	#8,d0			; is this the orb for the blackout challenge?
-		beq.s	@blackout		; if yes, branch
 		subq.b	#1,d0			; adjust for bit test
 
 		btst	d0,($FFFFFF8B).w	; stage beaten in frantic?
@@ -18788,6 +18788,13 @@ Obj12_CheckGameState:
 ; ---------------------------------------------------------------------------
 
 @basegame:
+		jsr	Check_BlackoutBeaten		; has the player beaten the blackout challenge?
+		beq.s	@blackoutnotbeaten		; if not, branch
+		move.b	#2,$30(a0)			; use skull frame
+		bset	#1,obRender(a0)
+		bra.s	Obj12_Init
+	
+@blackoutnotbeaten:
 		jsr	Check_BaseGameBeaten_Frantic	; has the player beaten the base game in frantic?
 		beq.s	@bgnotfrantic			; if not, branch
 		move.b	#1,$30(a0)			; use red star frame
@@ -18795,17 +18802,8 @@ Obj12_CheckGameState:
 @bgnotfrantic:
 		jsr	Check_BaseGameBeaten_Casual	; has the player beaten the base game in casual?
 		bne.s	Obj12_Init			; if yes, show gray star
+		move.b	#0,$30(a0)			; use gray star frame
 		jmp	DeleteObject			; otherwise, no star
-; ---------------------------------------------------------------------------
-
-@blackout:
-		jsr	Check_BlackoutBeaten		; has the player beaten the blackout challenge?
-		beq.s	@blackoutnotbeaten		; if not, branch
-		move.b	#1,$30(a0)			; use red star frame
-		bra.s	Obj12_Init			; show star
-@blackoutnotbeaten:
-		jmp	DeleteObject			; otherwise, no star
-
 ; ---------------------------------------------------------------------------
 
 Obj12_Init:
@@ -26227,13 +26225,13 @@ Sonic_Display:				; XREF: loc_12C7E
 		cmpi.w	#10,($FFFFFE20).w	; do you have at least 10 rings?
 		bhs.s	@enough			; if yes, branch
 		move.b	#1,($FFFFFF95).w	; make Sonic die
-		move.w	($FFFFFE20).w,($FFFFF5D2).w ; drain whatever rings remain
+		move.w	($FFFFFE20).w,(FranticDrain).w ; drain whatever rings remain
 		bra.s	S_D_NoTeleport		; skip
 
 @enough:
 		move.w	#$12A0,obX(a0)		; set new location for Sonic's X-pos
 		move.w	#$21A,obY(a0)		; set new location for Sonic's Y-pos
-		addi.w	#10,($FFFFF5D2).w	; add 10 rings to be drained
+		addi.w	#10,(FranticDrain).w	; add 10 rings to be drained
 		bra.s	@teleportend		; skip
 
 @notfrantic:
@@ -26309,9 +26307,10 @@ S_D_BA_NotEmpty:
 		bset	#0,obStatus(a0)		; make sonic facing right
 
 S_D_NotGHZ2:
+		; frantic ring drain system
 		frantic				; are we in frantic mode?
 		beq.s	S_D_AfterImage	 	; if not, branch
-		tst.w	($FFFFF5D2).w		; are any rings left to be drained at level start?
+		tst.w	(FranticDrain).w	; are any rings left to be drained?
 		bls.s	S_D_AfterImage		; if not, branch		
 		tst.b	($FFFFD400+$3A).w	; is intro animation for rings HUD finished?
 		beq.s	S_D_AfterImage		; if not, branch
@@ -26319,14 +26318,14 @@ S_D_NotGHZ2:
 		andi.w	#3,d0			; drain every 4 frames
 		bne.s	S_D_AfterImage		; if not on allowed frame, branch
 
-		move.w	($FFFFF5D2).w,d0	; get currently remaining drain limit
-		lsr.w	#4,d0			; divide by 16
+		move.w	(FranticDrain).w,d0	; get currently remaining drain limit
+		lsr.w	#3,d0			; divide by 16
 		bne.s	@notzero		; if not zero, branch (which means we still have at least 16 rings)
 		moveq	#1,d0			; set slowest speed while under 16 rings
-@notzero:	sub.w	d0,($FFFFF5D2).w	; subtract from drain limit
+@notzero:	sub.w	d0,(FranticDrain).w	; subtract from drain limit
 		sub.w	d0,($FFFFFE20).w	; subtract from rings
 		bpl.s	@positive		; if still positive, branch
-		clr.w	($FFFFF5D2).w		; skip remaining ring drain, player probably got hurt before it finished
+		clr.w	(FranticDrain).w	; skip remaining ring drain, player probably got hurt before it finished
 		clr.w	($FFFFFE20).w		; set rings to 0
 @positive:
 		ori.b	#1,($FFFFFE1D).w	; update rings counter
@@ -28535,10 +28534,10 @@ SAP_HitWall:
 		
 		cmpi.w	#SAP_FranticRings,($FFFFFE20).w	; do you have enough rings to tank the hit?
 		bpl.s	@tankhit			; if yes, branch
-		move.w	($FFFFFE20).w,($FFFFF5D2).w	; drain whatever rings remain
+		move.w	($FFFFFE20).w,(FranticDrain).w	; drain whatever rings remain
 		jmp	KillSonic			; you hecking died noob
 @tankhit:
-		addq.w	#SAP_FranticRings,($FFFFF5D2).w	; add ring drain penalty
+		addq.w	#SAP_FranticRings,(FranticDrain).w	; add ring drain penalty
 ; ---------------------------------------------------------------------------
 
 @resetstuff:
@@ -28969,10 +28968,13 @@ Obj01_Death_NoMS:
 
 Obj01_NotDrownAnim:
 		tst.b	obAnim(a0)		; are we for some random reason using the walking animation?
-		bne.s	@cont			; if not, branch
-		move.b	#$18,obAnim(a0)		; force death animation
+		beq.s	@fixanime		; if yes, branch
+		cmpi.b	#2,obAnim(a0)		; are we in the rolling animation?
+		bne.s	@noanimfix		; if not, branch
+@fixanime:
+		move.b	#$25,obAnim(a0)		; force death animation
 
-@cont:
+@noanimfix:
 		clr.b	($FFFFFF68).w
 		addq.b	#1,($FFFFFE1C).w ; update lives	counter
 		bsr	GameOver
@@ -39141,7 +39143,7 @@ Touch_Monitor:
 
 @domonitorbreak:
 		neg.w	obVelY(a0)		; reverse Sonic's y-motion
-		bsr	DoBounceJD	; jump to BounceJD
+		bsr	BounceJD		; jump to BounceJD
 @nobounce:
 		addq.b	#2,obRoutine(a1)	; advance the monitor's routine counter
 
@@ -39233,21 +39235,24 @@ Enemy_Points:	dc.w 100, 200, 500, 1000
 ; Subroutine to bounce Sonic up when he has used a Jumpdash on an Enemy or
 ; a Monitor and to give him the ability to Jumpdash again
 ; -----------------------------------------------------------------------------------
-BounceJD:
-		tst.b	($FFFFFFEB).w	; was jumpdash flag set?
-		beq.s	BounceJD_End	; if not, branch
-DoBounceJD:	clr.b	($FFFFFFEB).w	; if yes, clear jumpdash flag (make sonic jumpdash again)
-		clr.w	obVelX(a0)		; clear X-velocity (stop sonic)
-		move.w	#-$5F0,obVelY(a0)	; use -$5F0 for Y-velocity (move sonic upwards)
-		btst	#6,obStatus(a0)	; is sonic underwater?
-		beq.s	BounceJD_SShoes	; if not, branch
-		move.w	#-$320,obVelY(a0)	; use only -$320 for Y-velocity (move sonic upwards)
-		bra.s	BounceJD_End	; skip
 
-BounceJD_SShoes:
-		tst.b	($FFFFFE2E).w	; does sonic has speed shoes?
-		beq.s	BounceJD_End	; if not, branch
-		move.w	#-$620,obVelY(a0)	; use -$620 for Y-velocity (move sonic upwards)
+BounceJD:
+		tst.b	($FFFFFFEB).w		; was jumpdash flag set?
+		beq.s	BounceJD_End		; if not, branch
+		clr.b	($FFFFFFEB).w		; if yes, clear jumpdash flag (make sonic jumpdash again)
+DoBounceJD:
+		clr.w	obVelX(a0)		; clear X-velocity (stop sonic horizontally)
+DoBounceJD_NoX:
+		move.w	#-$600,d0		; use -$5F0 for Y-velocity (move sonic upwards)
+		btst	#6,obStatus(a0)		; is sonic underwater?
+		beq.s	@setbounce		; if not, branch
+		move.w	obVelY(a0),d0		; get Y velocity at time of impact
+		bmi.s	@chkfastbounce		; if it's already negative, branch
+		neg.w	d0			; otherwise make it negative
+@chkfastbounce:	cmpi.w	#-$800,d0		; did we touch whatever it was at a really fast vertical speed?
+		blt.s	@setbounce		; if yes, just reverse it
+		move.w	#-$200,d0		; otherwise, use only -$200 for Y-velocity (move sonic upwards)
+@setbounce:	move.w	d0,obVelY(a0)		; set final bounce speed
 
 BounceJD_End:
 		rts			; return

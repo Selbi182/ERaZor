@@ -17,11 +17,11 @@ SelbiSplash:
 		jsr	PlaySound_Special		; Stop music
 		jsr	PLC_ClearQueue			; Clear PLCs
 		jsr	Pal_FadeFrom			; Fade out previous palette
-		move	#$2700,sr
+		VBlank_SetMusicOnly
 
 SelbiSplash_VDP:
 		lea	($C00004).l,a6			; Setup VDP
-		move.w	#$8014,(a6)			; enable h-ints for the black bars
+		move.w	#$8004,(a6)
 		move.w	#$8230,(a6)
 		move.w	#$8407,(a6)
 		move.w	#$9001,(a6)
@@ -48,7 +48,8 @@ SelbiSplash_ShowOnVDP:
 		moveq	#$27,d1
 		moveq	#$1B,d2
 		jsr	ShowVDPGraphics		
-		
+		VBlank_UnsetMusicOnly
+
 SelbiSplash_Palette:
 		lea	(Pal_SelbiSplash).l,a1		; Load palette
 		lea	($FFFFFB80).w,a2
@@ -81,7 +82,7 @@ SelbiSplash_Sounds:
 SelbiSplash_Loop:
 		tst.b	($FFFFFFAF).w
 		beq.s	@Normal
-		move.b	#$1A,VBlankRoutine		; Function 2 in vInt
+		move.b	#$1A,VBlankRoutine		; custom V-Blank subroutine specifically for this screen
 		jsr	DelayProgram			; Run delay program
 		bra.s	@Special
 
@@ -127,11 +128,14 @@ SelbiSplash_Loop:
 		bra	SelbiSplash_WaitEnd
 @cont2:
 		move.w	#$D0,($FFFFF614).w
+		VBlank_SetMusicOnly
 		lea	($C00000).l,a5
 		lea	$04(a5),a6
+		move.w	#$8014,(a6)			; enable h-ints for the black bars
 	;	move.w	#$8B00,(a6)
 		move.l	#$40000010,(a6)
 		move.w	#$0008,(a5)
+		VBlank_UnsetMusicOnly
 
 @cont:
 		; palette flashing effect
@@ -364,7 +368,6 @@ SelbiSplash_LoadPRESENTS:
 	;	lea	(Map2_SelbiSplash).l,a0
 	;	moveq	#0,d0
 	;	jsr	EniDec
-		VBlank_UnsetMusicOnly
 
 	;	move.b	#2,VBlankRoutine
 	;	jsr	DelayProgram			; VSync so gfx loading below isn't terribly out of VBlank
@@ -384,7 +387,8 @@ SelbiSplash_LoadPRESENTS:
 		move.l	(a1)+,(a2)+
 		dbf	d0,@LoadCRAM
 
-	move.w	(sp)+,sr
+		move.w	(sp)+,sr
+		VBlank_UnsetMusicOnly
 	;	jsr	Pal_MakeWhite			; white flash
 		move.b	#1,($FFFFFFAF).w		; set flag that we are in the final phase of the screen
 
@@ -418,7 +422,7 @@ SelbiSplash_WaitEnd:
 		jsr	Pal_MakeBlackWhite		; make grayscale
 
 		tst.w	($FFFFFFFA).w			; was debug mode already enabled?
-		bne.s	SelbiSplash_DisableDebug	; if yes, disable it
+		bne.w	SelbiSplash_DisableDebug	; if yes, disable it
 		move.w	#1,($FFFFFFFA).w	 	; enable debug mode
 		move.b	#$A8,d0				; set enter SS sound
 		jsr	PlaySound_Special		; play it
@@ -457,7 +461,9 @@ SelbiSplash_Next:
 	@NoStopShadow:
 		dbf	d4,@FadePrivate
 
+		VBlank_SetMusicOnly
 		jsr	VDPSetupGame
+		VBlank_UnsetMusicOnly
 
 		jmp	Exit_SelbiSplash
 
@@ -465,7 +471,7 @@ SelbiSplash_DisableDebug:
 		move.w	#0,($FFFFFFFA).w	 	; disable debug mode
 		move.b	#$A4,d0				; set skidding sound
 		jsr	PlaySound_Special		; play it
-		bra.s	SelbiSplash_LoopEnd
+		bra.w	SelbiSplash_LoopEnd
 
 ; ---------------------------------------------------------------------------------------------------------------------
 

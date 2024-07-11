@@ -713,7 +713,7 @@ BlackBars_SetHeight:
 		rts					; return
 ; ===========================================================================
 
-BlackBars.GHPCasual  = 90
+BlackBars.GHPCasual  = 120
 BlackBars.GHPFrantic = 60
 ; ---------------------------------------------------------------------------
 
@@ -11669,6 +11669,7 @@ Obj25_Animate:				; XREF: Obj25_Index
 		move.b	#$37,0(a0)		; change ring object to bouncing ring object, to give this decent effect
 		move.b	#2,obRoutine(a0)	; make sure the ring just bounces, we don't want to loose 10 rings
 		move.b	#1,$29(a0)		; set attraction flag
+		bsr.s	Obj25_MarkGone		; make sure ring doesn't respawn (if it moves offscreen, tough luck buddy)
  
  Obj25_NoRingMove:
 		move.b	($FFFFFEC3).w,obFrame(a0) ;	set frame
@@ -11692,16 +11693,21 @@ Obj25_Collect:				; XREF: Obj25_Index
 		move.b	#0,obColType(a0)
 		move.b	#1,obPriority(a0)
 		bsr	CollectRing
-		lea	($FFFFFC00).w,a2
-		moveq	#0,d0
-		move.b	obRespawnNo(a0),d0
-		move.b	$34(a0),d1
-		bset	d1,obGfx(a2,d0.w)
+		bsr.s	Obj25_MarkGone
 
 Obj25_Sparkle:				; XREF: Obj25_Index
 		lea	(Ani_obj25).l,a1
 		bsr	AnimateSprite
 		bra.w	DisplaySprite
+; ===========================================================================
+
+Obj25_MarkGone:
+		lea	($FFFFFC00).w,a2
+		moveq	#0,d0
+		move.b	obRespawnNo(a0),d0
+		move.b	$34(a0),d1
+		bset	d1,obGfx(a2,d0.w)
+		rts
 ; ===========================================================================
 
 Obj25_Delete:				; XREF: Obj25_Index

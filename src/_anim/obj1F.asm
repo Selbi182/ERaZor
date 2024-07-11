@@ -7,7 +7,7 @@
 		dc.w byte_kill2-Ani_obj1F, byte_kill3-Ani_obj1F, byte_kill4-Ani_obj1F
 		dc.w byte_kill5-Ani_obj1F, byte_kill6-Ani_obj1F, byte_kill7-Ani_obj1F
 		dc.w byte_kill8-Ani_obj1F, byte_kill9-Ani_obj1F, byte_kill10-Ani_obj1F
-		dc.w byte_kill11-Ani_obj1F
+		dc.w byte_kill11-Ani_obj1F, byte_kill12-Ani_obj1F
 byte_972A:	dc.b $A, 0, $FF, 0
 byte_972E:	dc.b $A, 2, $FF, 0
 byte_9732:	dc.b $A, $22, $FF, 0
@@ -26,5 +26,6 @@ byte_kill7:	dc.b 3, 1,$21,0,1,$21,0,1,$21,0, $FD, $F
 byte_kill8:	dc.b 2, 1,$21,0,1,$21,0,1,$21,0, $FD, $10
 byte_kill9:	dc.b 1, 1,$21,0,1,$21,0,1,$21,0, $FD, $11
 byte_kill10:	dc.b 0, 1,$21,0,1,$21,0,1,$21,0,1,$21,0, $FD, $12
-byte_kill11:	dc.b 0, 1, $FF
+byte_kill11:	dc.b 90, 0, $FD, $13
+byte_kill12:	dc.b 0, 1, $FF
 		even

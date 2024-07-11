@@ -6951,6 +6951,8 @@ locret_7322:
 FZEscape equ $FFFFF734
 
 Resize_FZend2:
+		clr.b	($FFFFFE1E).w		; stop time counter
+
 		tst.b	(FZEscape).w		; has escape sequence flag been set? (Eggman object deleted after crash)
 		beq.w	@waitforeggmantodielol	; if not, branch
 		
@@ -6981,15 +6983,10 @@ Resize_FZEscape_Nuke:
 		
 @waitprison:
 		move.w	($FFFFF700).w,($FFFFF728).w	; lock left boundary as you walk right
+
 		tst.b	($FFFFFFA5).w		; egg prison opened?
 		beq.w	@prisonnotyetopen	; if not, branch
-		
-		VBlank_SetMusicOnly 		; VBlank won't touch VDP now
-		vram	$6C00			; load HPS and info box graphics
-		lea	(ArtKospM_HardPS_Tut).l,a0
-		jsr	KosPlusMDec_VRAM
-		VBlank_UnsetMusicOnly
-		
+
 		addq.b	#2,($FFFFF742).w	; go to next routine	
 		move.w	#0,($FFFFF72C).w	; unlock controls
 
@@ -7001,24 +6998,35 @@ Resize_FZEscape_Nuke:
 ; ===========================================================================
 
 Resize_FZEscape:
+		addq.b	#2,($FFFFF742).w	; go to next routine
+		move.b	#2,(FZEscape).w		; enable exploding scenery
+		move.b	#1,($FFFFFE2D).w	; make sonic invincible to prevent some bullshit deaths
+
 		VBlank_SetMusicOnly 		; VBlank won't touch VDP now
 		vram	$A460			; load horizontal spring graphics
 		lea	(ArtKospM_HSpring).l,a0
 		jsr	KosPlusMDec_VRAM
-		VBlank_UnsetMusicOnly
-		
-		addq.b	#2,($FFFFF742).w	; go to next routine
-		move.b	#2,(FZEscape).w		; enable exploding scenery
 
-	;	move.w	#0,($FFFFF72C).w	; unlock controls
-	;	move.w	#0,($FFFFF728).w	; set left level boundary
-		move.w	#$2C1,($FFFFF728).w	; set left level boundary (hide skip tutorial)
-		move.w	#$510,($FFFFF726).w	; set bottom level boundary
-		
+		vram	$6C00			; load HPS and info box graphics
+		lea	(ArtKospM_HardPS_Tut).l,a0
+		jsr	KosPlusMDec_VRAM
+		VBlank_UnsetMusicOnly
+	
+		; escape timer
+		move.l	#(1*$10000)|(83*$100)|00,d0	; set escape time (casual - 182s)
+		frantic
+		beq.s	@notfrantic
+		move.l	#(1*$10000)|(51*$100)|00,d0	; set escape time (frantic - 150s but triple speed means 50s effective)
+@notfrantic:	move.l	d0,($FFFFFE22).w	; set escape time
+		move.b	#1,($FFFFFE1E).w	; start time counter
+
+		; update level stuff
 		move.w	#$0A00,d0		; replace laser barrier chunk
 		move.w	#$0500,d1
 		move.b	#$46,d2
 		jsr	Sub_ChangeChunk
+		move.w	#$2C1,($FFFFF728).w	; set left level boundary (hide skip tutorial)
+		move.w	#$510,($FFFFF726).w	; set bottom level boundary
 		
 		; move Sonic left after explosion
 		move.b	#4,($FFFFD024).w
@@ -7033,10 +7041,11 @@ Resize_FZEscape:
 		cmpi.w	#$2960,d0
 		blo.s	@nodoubleboost
 		move.w	#-$1000,($FFFFD010).w
-@nodoubleboost:
 
+@nodoubleboost:
 		move.w	#$90,d0
-		jmp	PlaySound		; play GHP music (placeholder for now, just to get the vibe across)
+		jmp	PlaySound		; play GHP music (originally a placeholder, now gonna stay cause it's epic)
+; ===========================================================================	
 
 Resize_FZEscape2:
 		cmpi.w	#$1000,($FFFFF700).w	; near the falling pit?
@@ -9772,6 +9781,8 @@ Obj3F:					; XREF: Obj_Index
 Obj3F_Index:	dc.w Obj3F_Main-Obj3F_Index
 		dc.w Obj3F_Main2-Obj3F_Index
 		dc.w Obj3F_Animate-Obj3F_Index
+		dc.w Obj3F_Pathetic-Obj3F_Index
+		dc.w Obj3F_Animate_NoMove-Obj3F_Index
 ; ===========================================================================
 
 Obj3F_Main:				; XREF: Obj3F_Index
@@ -9791,6 +9802,7 @@ Obj3F_Main:				; XREF: Obj3F_Index
 		move.w	$3E(a0),$3E(a1)
 		move.b	#2,obRoutine(a1)
 		move.b	$30(a0),$30(a1)	; copy harm state
+		move.b	$31(a0),$31(a1)	; copy mute flag
 		
 		btst	#0,($FFFFFE05).w	; are we on an odd frame?
 		bne.s	Obj3F_Main2		; if yes, don't load a third explosion
@@ -9802,6 +9814,7 @@ Obj3F_Main:				; XREF: Obj3F_Index
 		move.w	$3E(a0),$3E(a1)
 		move.b	#2,obRoutine(a1)
 		move.b	$30(a0),$30(a1)	; copy harm state
+		move.b	$31(a0),$31(a1)	; copy mute flag
 ; ---------------------------------------------------------------------------
 
 Obj3F_Main2:
@@ -9847,32 +9860,29 @@ Obj3F_NotHarmful:
 		move.b	#10,($FFFFFF64).w
 
 Obj3F_NoCamShake:
+		tst.b	$31(a0)		; was mute flag set?
+		bne.s	Obj3F_NoSound	; if yes, branch
 		tst.b	($FFFFFFA3).w	; was object created by a crabmeat?
 		beq.s	Obj3F_PlaySound	; if not, play sound
 		clr.b	($FFFFFFA3).w	; clear flag
+
+Obj3F_NoSound:
 		rts			; return (don't play sound)
 
 Obj3F_PlaySound:
 	if Obj3F_SoundType=1
 		move.w	#$C4,d0			; play default explosion sound (MZ block smash)
-		bra.s	@notjester ; I'm sorry but this just isn't working
-		move.w	($FFFFFE0E).w,d1	; get timer
-		andi.w	#$3F,d1			; only allow every once in a while
-		bne.s	@notjester		; ''
-		move.w	#$DF,d0			; play Jester explosion sound
-@notjester:	jmp	(PlaySound_Special).l
 	else
 		move.w	#$D7,d0			; play boring ass baby explosion sound
-		jmp	(PlaySound_Special).l
 	endif
+		jmp	(PlaySound_Special).l
 ; ===========================================================================
 
 Obj3F_Animate:				; XREF: Obj3F_Index
 		jsr	SpeedToPos
 		subi.w	#$10,obVelY(a0)
 
-	;	tst.b	obRender(a0)
-	;	bmi.w	Obj3F_Delete
+Obj3F_Animate_NoMove:
 		subq.b	#1,obTimeFrame(a0)	; subtract 1 from frame	duration
 		bpl.s	Obj3F_Display
 		move.b	#4,obTimeFrame(a0)	; set frame duration to	7 frames
@@ -9884,8 +9894,27 @@ Obj3F_Display:
 		bra.w	DisplaySprite
 
 Obj3F_Delete:
-		bra.w	DeleteObject	; if yes, branch
+		bra.w	DeleteObject
 ; ===========================================================================
+
+Obj3F_Pathetic:
+		addq.b	#2,obRoutine(a0)
+		move.l	#Map_obj27,obMap(a0)	; use gray clouds
+		move.w	#$5A0,obGfx(a0)
+		move.b	#4,obRender(a0)
+		move.b	#1,obPriority(a0)
+		move.b	#0,obColType(a0)
+		move.b	#$C,obActWid(a0)
+		move.b	#4,obTimeFrame(a0)
+		move.b	#0,obFrame(a0)
+		move.w	#$D7,d0			; play boring ass baby explosion sound
+		jmp	(PlaySound_Special).l
+
+; ===========================================================================
+
+
+
+
 Ani_obj1E:
 		include	"_anim\obj1E.asm"
 
@@ -12199,6 +12228,8 @@ Obj4B_NotGHZ2:
 		bset	#0,obRender(a1)	; reverse flash	object
 
 Obj4B_PlaySnd:
+		clr.b	($FFFFFE1E).w		; stop time counter
+
 		move.w	#$C3,d0			; play giant ring sound
 		jsr	(PlaySound).l
 		cmpi.b	#GRing_Blackout,obSubtype(a0)	; is this the blackout challenge ring?
@@ -12260,24 +12291,28 @@ Obj4B_Exit:
 		bne.s	@exitfromring		; if not, branch
 		tst.b	(FZEscape).w		; is this also the Finalor escape sequence?
 		beq.s	@exitfromring		; if not, branch (double check just in case)
-		move.w	#$DD,d0			; hooray you've escaped
-		jsr	PlaySound_Special	; play one last big boom sound for good measure
-		move.l	a0,-(sp)		; backup to stack
-		jsr Pal_CutToWhite
-		move.l (sp)+,a0			; restore from stack
-		move.w 	#120, d5
+		bsr.s	FZEscape_ScreenBoom	; hooray you've escaped
 
-@WaitLoop:
-		move.b	#$12,VBlankRoutine
-		jsr 	DelayProgram
-
-		dbf 	d5, @WaitLoop
-		
 @exitfromring:
 		moveq	#0,d0			; clear d0
 		move.b	obSubtype(a0),d0	; copy the ring we came from to d0
 		jmp	Exit_GiantRing		; run exit logic to start the level
 ; ---------------------------------------------------------------------------
+
+FZEscape_ScreenBoom:
+		move.w	#$DD,d0			; play super massive boom sound
+		jsr	PlaySound_Special	; yea
+
+		move.l	a0,-(sp)		; backup to stack
+		jsr	Pal_CutToWhite		; instantly turn screen white
+		move.l	(sp)+,a0		; restore from stack
+
+		move.w	#120,d5			; delay for two seconds
+@WaitLoop:	move.b	#$12,VBlankRoutine
+		jsr	DelayProgram
+		dbf	d5,@WaitLoop
+		rts
+
 ; ===========================================================================
 
 
@@ -14990,6 +15025,7 @@ loc_BDD6:
 		jsr	SingleObjLoad
 		bne.s	@endboom
 		move.b	#$3F,0(a1)	; load explosion object
+		move.b	#1,$31(a1)	; mute explosion sound (to not override the epic one)
 
 @endboom:
 		rts
@@ -23340,6 +23376,7 @@ off_7118x:	dc.w Obj5F_BossDefeatedmain-off_7118x
 		dc.w Obj5F_BossDefeatedboss1-off_7118x
 		dc.w Obj5F_BossDefeatedboss2-off_7118x
 		dc.w Obj5F_BossDefeatedend-off_7118x
+		dc.w Obj5F_BossDefeatedBlip-off_7118x
 ; ===========================================================================
 
 Obj5F_BossDefeatedmain:
@@ -23359,7 +23396,7 @@ Obj5F_BossDefeatedmain:
 		clr.b	($FFFFFFEB).w
 
 @cont:
-		bra.w	locret_715Cx
+		bra.w	Obj5F_ShowBomb
 ; ===========================================================================
 
 Obj5F_BossDefeatedboss1:
@@ -23369,9 +23406,9 @@ Obj5F_BossDefeatedboss1:
 
 @cont:
 		subq.w	#1,($FFFFFF78).w
-		bne.w	locret_715Cx
+		bne.w	Obj5F_ShowBomb
 		addq.b	#2,($FFFFFF76).w
-		bra.w	locret_715Cx
+		bra.w	Obj5F_ShowBomb
 ; ===========================================================================
 
 Obj5F_BossDefeatedboss2:
@@ -23396,7 +23433,7 @@ Obj5F_BossDefeatedboss2:
 		add.w	d0,obY(a1)
 		subq.w	#8,obY(a1)
 		move.b	#10,($FFFFFF64).w
-		bra.w	locret_715Cx
+		bra.w	Obj5F_ShowBomb
 ; ===========================================================================
 
 Obj5F_BossDefeatedend:
@@ -23407,14 +23444,54 @@ Obj5F_BossDefeatedend:
 		subq.b	#4,($FFFFFF76).w
 		subi.w	#10,($FFFFFF7A).w
 		move.w	#20,($FFFFFF7C).w
-		bra.w	locret_715Cx
+		bra.w	Obj5F_ShowBomb
 
 Obj5F_BossDefeatedend2:
 		subq.w	#1,($FFFFFF7C).w
-		beq.s	Obj5F_BossDelete
+		beq.s	Obj5F_Blip
 		move.w	#7,($FFFFFF78).w
 		subq.b	#4,($FFFFFF76).w
-		bra.w	locret_715Cx
+		bra.w	Obj5F_ShowBomb
+; ===========================================================================
+
+Obj5F_Blip:
+		addq.b	#2,($FFFFFF76).w
+		move.b	#1,obFrame(a0)
+		move.w	#5*60+30,($FFFFFF7C).w
+
+Obj5F_BossDefeatedBlip:
+		moveq	#0,d1
+		move.w	($FFFFFF7C).w,d1
+		subq.w	#1,d1
+		bmi.s	@gotodelete
+
+		cmpi.w	#1*60+30,d1
+		beq.s	@patheticexplosion
+		blo.s	@hidebomb
+
+		cmpi.w	#3*60+30,d1
+		bne.s	@noblip
+		move.b	#0,obFrame(a0)
+		move.w	#$A9,d0
+		jsr	PlaySound_Special
+@noblip:
+		move.w	d1,($FFFFFF7C).w
+		move.b	#0,($FFFFD000+obAniFrame).w ; reset Sonic waiting animation
+		bra.w	DisplaySprite
+
+@patheticexplosion:
+		jsr	SingleObjLoad
+		bne.s	@hidebomb
+		move.b	#$3F,(a1)		; load explosion
+		move.w	obX(a0),obX(a1)
+		move.w	obY(a0),obY(a1)
+		move.b	#6,obRoutine(a1)	; set to lame
+@hidebomb:
+		move.w	d1,($FFFFFF7C).w
+		move.b	#0,($FFFFD000+obAniFrame).w ; reset Sonic waiting animation
+		rts
+
+@gotodelete:
 ; ===========================================================================
 
 Obj5F_BossDelete:
@@ -23445,18 +23522,19 @@ Obj5F_BossDelete:
 
 		jsr	SAP_ResetChallengeObjects	; set up SAP challenge objects now
 		
-@noearlyload:
 		move.b	#$84,d0
 		jsr	PlaySound
+
+		
 		jmp	DeleteObject
 ; ===========================================================================
 
-locret_715Cx:
+Obj5F_ShowBomb:
 		lea	(Ani_obj5F).l,a1
 		jsr	AnimateSprite
-		bsr.w	MarkObjGone
-		bsr.w	DisplaySprite
-		rts	
+	;	bsr.w	MarkObjGone
+Obj5F_Display_NoAnim:
+		bra.w	DisplaySprite
 
 ; ===========================================================================
 
@@ -33998,7 +34076,7 @@ BossDefeated:
 		lsr.w	#8,d0
 		lsr.b	#3,d0
 		add.w	d0,obY(a1)
-		clr.b	($FFFFFE1E).w	; stop time counter
+	;	clr.b	($FFFFFE1E).w	; stop time counter
 
 locret_178A2:
 		rts	
@@ -42200,8 +42278,8 @@ Obj21_Flash:
 		rts				; if yes, don't display HUD
 
 @noblackbars:
-		tst.b	($FFFFFFA5).w		; has Sonic touched the sign post?
-		beq.s	Obj21_NoSignPost	; if not, branch
+		tst.b	($FFFFFFA5).w		; has flag to move off HUD been set?
+		beq.s	Obj21_NoMoveOff		; if not, branch
 
 		addq.w	#1,$3C(a0)		; make HUD move faster
 		move.w	$3C(a0),d0		; move HUD speed add to d0
@@ -42210,20 +42288,25 @@ Obj21_Flash:
 		cmpi.b	#1,$30(a0)		; is HUD ID = SCORE?
 		beq.s	Obj21_AltSpeed		; if yes, branch
 		cmpi.b	#3,$30(a0)		; is HUD ID = TIME?
-		bne.s	Obj21_ChkOffScreen	; if not, branch
-
+		beq.s	Obj21_FZEscapeTimer	; if yes, branch
+		bra.s	Obj21_ChkOffScreen	; otherwise, branch
 Obj21_AltSpeed:
 		neg.w	d0			; negate to go to the other direction
-
 Obj21_ChkOffScreen:
 		add.w	d0,obX(a0)		; move HUD
 		cmpi.w	#$20,obX(a0)		; is object before $20 on X-axis?
 		blt.s	Obj21_Delete2		; if yes, branch
 		cmpi.w	#$1F0,obX(a0)		; is object after $1F0 on X-axis?
 		blt.s	Obj21_Display2		; if not, branch
-
 Obj21_Delete2:
 		jmp	DeleteObject		; delete object
+
+Obj21_FZEscapeTimer:
+		tst.b	(FZEscape).w		; are we in the escape sequence?
+		beq.s	Obj21_AltSpeed		; if not, branch
+		cmpi.w	#$11C,obX(a0)		; is object after $11C on X-axis?
+		bhs.s	Obj21_Display2		; if not, branch
+		add.w	d0,obX(a0)		; move HUD
 
 Obj21_Display2:
 		cmpi.b	#6,($FFFFD024).w	; is Sonic dying?
@@ -42241,7 +42324,7 @@ Obj21_Display2:
 		jmp	DisplaySprite		; display sprite
 ; ---------------------------------------------------------------------------
 
-Obj21_NoSignPost:
+Obj21_NoMoveOff:
 		cmpi.b	#6,($FFFFD024).w	; is Sonic dying?
 		blo.s	Obj21_NotDying		; if not, branch
 		
@@ -42485,43 +42568,68 @@ loc_1C6E4:
 
 Hud_ChkTime:
 		tst.b	($FFFFFE1E).w	; does the time	need updating?
-		beq.s	Hud_ChkLives	; if not, branch
+		beq.w	Hud_ChkLives	; if not, branch
 		cmpi.w	#$400,($FFFFFE10).w ; is level SYZ1?
-		beq.s	Hud_ChkLives	; if yes, branch
+		beq.w	Hud_ChkLives	; if yes, branch
 		cmpi.w	#$501,($FFFFFE10).w ; is level SBZ1?
-		beq.s	Hud_ChkLives	; if yes, branch
+		beq.w	Hud_ChkLives	; if yes, branch
 		tst.w	($FFFFF63A).w	; is the game paused?
-		bne.s	Hud_ChkLives	; if yes, branch
+		bne.w	Hud_ChkLives	; if yes, branch
 
 		lea	($FFFFFE22).w,a1
-		cmpi.l	#$96300,(a1)+	; is the time 999? ($96300)
-		bhi.w	TimeOver	; if yes, time over noob
+		cmpi.l	#(9*$10000)|(99*$100),(a1)+	; is the time 999? ($96300)
+		bhi.w	TimeOver			; if yes, time over noob
 
 		moveq	#1,d0			; regular timer speed (1 tick per second; at 999 ticks, that's roughly 16 minutes)
-		frantic				; frantic mode selected?
+		frantic				; are we in frantic?
 		beq.s	@notfrantic		; if not, branch
-		moveq	#3,d0			; double timer speed (2 ticks per second; this changes the effective time limit to roughly 8 minutes)
-
+		moveq	#3,d0			; otherwise, triple regular timer speed (3 ticks per second; this changes the effective time limit to roughly 5.5 minutes)
 @notfrantic:
-		add.b	d0,-(a1)		; add to current timer
+		cmpi.w	#$502,($FFFFFE10).w	; are we in FP?
+		bne.s	@notfzescape		; if not, branch
+		cmpi.b	#2,(FZEscape).w		; are we in the escape sequence?
+		beq.s	@fzescapetimer		; if yes, branch
+		bra.s	@notfzescape		; skip
+@fzescapetimer:
+		sub.b	d0,-(a1)		; sub from current timer
+		tst.b	(a1)			; did we reach 60 frames?
+		bpl.s	Hud_ChkLives		; if not, branch
+		move.b	#60,(a1)		; reset frame counter
 
+		subq.b	#1,-(a1)		; sub 1 from seconds
+		tst.b	(a1)			; did we underflow seconds?
+		bpl.s	Hud_TimeUpdate		; if not, branch
+		move.b	#99,(a1)		; reset seconds to 99
+
+		subq.b	#1,-(a1)		; sub 1 from minutes counter
+		tst.b	(a1)			; did we underflow minutes?
+		bpl.s	Hud_TimeUpdate		; if not, branch
+
+		bsr.w	TimeOver		; rip sonic...
+		jmp	FZEscape_ScreenBoom	; ...nuke went off
+
+@notfzescape:
+		add.b	d0,-(a1)		; add to current timer
 		cmpi.b	#60,(a1)		; did we reach 60 frames?
 		blo.s	Hud_ChkLives		; if not, branch
-		move.b	#0,(a1)			; clear single digits counter
-		addq.b	#1,-(a1)		; add 1 to tenth digits counter
+		move.b	#0,(a1)			; clear frame counter
+
+		addq.b	#1,-(a1)		; add 1 to seconds
 		cmpi.b	#100,(a1)		; did we reach 100 seconds?
-		blo.s	loc_1C734		; if not, branch
-		move.b	#0,(a1)			; clear seconds
+		blo.s	Hud_TimeUpdate		; if not, branch
+		move.b	#0,(a1)			; set seconds to 0
+
 		addq.b	#1,-(a1)		; add 1 to minutes counter
 		cmpi.b	#9,(a1)			; are we at 9 minutes?
-		blo.s	loc_1C734		; if not, branch
-		move.b	#9,(a1)			; force to 9 minutes
+		blo.s	Hud_TimeUpdate		; if not, branch
+		move.b	#9,(a1)			; force to not exceed 9 minutes
 
-loc_1C734:
+Hud_TimeUpdate:
 		move.l	#$5E400003,d0
 		moveq	#0,d1
 		move.b	($FFFFFE23).w,d1 ; load	minutes
 		bsr.w	Hud_Mins
+
 		move.l	#$5EC00003,d0
 		moveq	#0,d1
 		move.b	($FFFFFE24).w,d1 ; load	seconds

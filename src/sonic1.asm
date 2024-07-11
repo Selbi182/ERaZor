@@ -12038,11 +12038,13 @@ Obj4B_Main:				; XREF: Obj4B_Index
 		move.b	#5,$37(a0)
 		move.b	#5,$38(a0)
 		move.l	#Map_obj4B,obMap(a0)
-		move.w	#$2400,obGfx(a0)
 
+		ori.w	#1,($FFFFF7BE).w		; load giant ring patterns (AniArt_GiantRing)
+
+		move.w	#$2000|($8000/$20),obGfx(a0)	; use default offset
 		cmpi.w	#$400,($FFFFFE10).w		; is level Uberhub?
 		bne.s	Obj4B_Main_Cont			; if not, branch
-		move.w	#$2422,obGfx(a0)		; use alternate offset
+		move.w	#$2000|($8440/$20),obGfx(a0)	; use uberhub specific offset
 		
 		move.b	obSubtype(a0),d1		; get ring subtype
 
@@ -12089,14 +12091,15 @@ Obj4B_Main_Cont:
 		ori.b	#4,obRender(a0)
 		move.b	#$40,obActWid(a0)
 		tst.b	obRender(a0)
-		bpl.s	Obj4B_Animate
+		bpl.w	Obj4B_Animate
 
 Obj4B_Okay:				; XREF: Obj4B_Main
 		move.b	#2,obPriority(a0)
-		move.w	#$C40,($FFFFF7BE).w	; load giant ring patterns
-		cmpi.w	#$400,($FFFFFE10).w	; are we in Uberhub?
-		bne.s	Obj4B_Animate		; if not, branch
-		move.w	#0,($FFFFF7BE).w	; don't load giant ring patterns systematically, because they're preloaded from PLC
+		
+	;	cmpi.w	#$400,($FFFFFE10).w	; are we in Uberhub?
+	;	beq.w	Obj4B_Animate		; if yes, branch
+	;	move.w	#$C40,($FFFFF7BE).w	; load giant ring patterns
+	;	move.w	#0,($FFFFF7BE).w	; don't load giant ring patterns systematically, because they're preloaded from PLC
 ; ---------------------------------------------------------------------------
 
 Obj4B_Animate:				; XREF: Obj4B_Index
@@ -28342,11 +28345,11 @@ Sonic_Jump:				; XREF: Obj01_MdNormal; Obj01_MdRoll
 		move.b	($FFFFF603).w,d0
 		andi.b	#$70,d0		; is A or B or C pressed?
 		beq.w	locret_1348E	; if not, branch
-		tst.b	($FFFFFFE7).w	; is inhuman mode enabled?
-		beq.s	@dojump		; if not, branch
 		andi.b	#$40,d0		; was specifically A pressed?
 		beq.s	@dojump		; if not, branch
-		rts			; otherwise disallow jump to not interfere with inhuman
+		tst.b	($FFFFFF77).w	; is antigrav enabled?
+		bne.s	@dojump		; if yes, then and only then, allow jump on A
+		rts			; otherwise disallow jump to not interfere with other stuff
 
 @dojump:
 		moveq	#0,d0
@@ -42095,25 +42098,21 @@ loc_1C4FA:				; XREF: AniArt_MZextra
 
 
 AniArt_GiantRing:			; XREF: AniArt_Load
-		tst.w	($FFFFF7BE).w
-		bne.s	loc_1C518
-		rts	
-; ===========================================================================
+		cmpi.w	#1,($FFFFF7BE).w	; are giant ring patterns set to be loaded for the first time?
+		beq.s	@loadgiantringart	; if yes, branch
+		rts
 
-loc_1C518:
-		subi.w	#$1C0,($FFFFF7BE).w
-		lea	(Art_BigRing).l,a1 ; load uncompressed giant ring patterns
-		moveq	#0,d0
-		move.w	($FFFFF7BE).w,d0
-		lea	(a1,d0.w),a1
-		addi.w	#$8000,d0
-		lsl.l	#2,d0
-		lsr.w	#2,d0
-		ori.w	#$4000,d0
-		swap	d0
-		move.l	d0,obMap(a6)
-		move.w	#$D,d1
-		bra.w	LoadTiles
+@loadgiantringart:
+		VBlank_SetMusicOnly
+		vram	$8000
+		cmpi.w	#$400,($FFFFFE10).w		; is level Uberhub?
+		bne.s	@doload				; if not, branch
+		vram	$8440				; uberhub specific offset
+@doload:	lea	(ArtKospM_BigRing).l,a0
+		jsr	KosPlusMDec_VRAM
+		VBlank_UnsetMusicOnly
+		move.w	#2,($FFFFF7BE).w		; make sure art doesn't get loaded again
+		rts
 ; End of function AniArt_GiantRing
 
 ; ===========================================================================
@@ -43787,8 +43786,8 @@ PLC_SYZ:
 		dc.w -1
 
 PLC_SYZ2:
-		dc.l ArtKospM_BigRing		; big rings
-		dc.w $8440
+	;	dc.l ArtKospM_BigRing		; big rings
+	;	dc.w $8440
 		dc.l ArtKospM_SYZPlat		; exploding platform
 		dc.w $A660
 		dc.w -1
@@ -44563,8 +44562,8 @@ byte_6A320:	dc.b 0,	0, 0, 0
 ; ---------------------------------------------------------------------------
 ; Animated uncompressed giant ring graphics
 ; ---------------------------------------------------------------------------
-Art_BigRing:	incbin	artunc\bigring.bin
-		even
+;Art_BigRing:	incbin	artunc\bigring.bin
+;		even
 ArtKospM_BigRing: incbin artkosp\bigring.kospm
 		  even
 ;ArtKospM_SGMC:	incbin artkosp\sgmc.kospm

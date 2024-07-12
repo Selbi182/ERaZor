@@ -61,7 +61,7 @@ __DEBUG__: equ 1
 ; $302 - Star Agony Place
 ; $502 - Finalor Place
 QuickLevelSelect = 1
-QuickLevelSelect_ID = $002
+QuickLevelSelect_ID = -1
 ; ------------------------------------------------------
 DebugModeDefault = 1
 DebugSurviveNoRings = 0
@@ -8207,6 +8207,7 @@ Obj18_Action2:				; XREF: Obj18_Index
 		move.w	obX(a0),obX(a1)
 		move.w	obY(a0),obY(a1)
 		move.b	#1,$30(a1)
+		move.b	#0,$31(a1)
 		bclr	#3,($FFFFD022).w
 		bset	#1,($FFFFD022).w
 		move.b	#1,($FFFFFFAD).w	; set jumpdash flag
@@ -9112,6 +9113,7 @@ Obj1D_Action:
 		move.w	obX(a0),obX(a1)
 		move.w	obY(a0),obY(a1)
 		move.b	#1,$30(a1)
+		move.b	#0,$31(a1)
 		
 		; random deviation
 		jsr	(RandomNumber_Next).l
@@ -9206,6 +9208,7 @@ Obj2A_OpenShut:				; XREF: Obj2A_Index
 		bne.s	@0
 		move.b	#$3F,(a0)
 		move.b	#0,obRoutine(a0)
+		move.b	#0,$31(a0)
 		rts
 @0:
 		cmpi.w	#$400,($FFFFFE10).w	; is level SYZ1 (overworld)?
@@ -9773,7 +9776,7 @@ RandomDirection:
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Object 3F - explosion	from a destroyed boss, bomb or cannonball
+; Object 3F - Explosions.
 ; ---------------------------------------------------------------------------
 
 Obj3F_SoundType = 1
@@ -9808,7 +9811,7 @@ Obj3F_Main:				; XREF: Obj3F_Index
 		move.w	$3E(a0),$3E(a1)
 		move.b	#2,obRoutine(a1)
 		move.b	$30(a0),$30(a1)	; copy harm state
-		move.b	$31(a0),$31(a1)	; copy mute flag
+		move.b	#1,$31(a1)	; set mute flag
 		
 		btst	#0,($FFFFFE05).w	; are we on an odd frame?
 		bne.s	Obj3F_Main2		; if yes, don't load a third explosion
@@ -9820,7 +9823,7 @@ Obj3F_Main:				; XREF: Obj3F_Index
 		move.w	$3E(a0),$3E(a1)
 		move.b	#2,obRoutine(a1)
 		move.b	$30(a0),$30(a1)	; copy harm state
-		move.b	$31(a0),$31(a1)	; copy mute flag
+		move.b	#1,$31(a1)	; set mute flag
 ; ---------------------------------------------------------------------------
 
 Obj3F_Main2:
@@ -9848,9 +9851,7 @@ Obj3F_Main2:
 		beq.s	@cont
 		cmpi.b	#1,($FFFFFFAA).w
 		beq.s	Obj3F_NotHarmful
-
-@cont:
-		move.b	#$84,obColType(a0)
+@cont:		move.b	#$84,obColType(a0)
 		moveq	#10,d0		; add 100 ...
 		jsr	AddPoints	; ... points
 
@@ -9860,20 +9861,11 @@ Obj3F_NotHarmful:
 		move.b	#0,obFrame(a0)
 		
 		tst.b	$30(a0)
-		bne.s	Obj3F_NoCamShake
-	;	bsr	SingleObjLoad		; load from SingleObjLoad
-	;	bne.s	Obj3F_NoCamShake	; if SingleObjLoad is already in use, don't load obejct
+		bne.s	@nocamshake
 		move.b	#10,($FFFFFF64).w
-
-Obj3F_NoCamShake:
+@nocamshake:
 		tst.b	$31(a0)		; was mute flag set?
 		bne.s	Obj3F_NoSound	; if yes, branch
-		tst.b	($FFFFFFA3).w	; was object created by a crabmeat?
-		beq.s	Obj3F_PlaySound	; if not, play sound
-		clr.b	($FFFFFFA3).w	; clear flag
-
-Obj3F_NoSound:
-		rts			; return (don't play sound)
 
 Obj3F_PlaySound:
 	if Obj3F_SoundType=1
@@ -9882,6 +9874,9 @@ Obj3F_PlaySound:
 		move.w	#$D7,d0			; play boring ass baby explosion sound
 	endif
 		jmp	(PlaySound_Special).l
+
+Obj3F_NoSound:
+		rts			; return (don't play sound)
 ; ===========================================================================
 
 Obj3F_Animate:				; XREF: Obj3F_Index
@@ -9915,11 +9910,7 @@ Obj3F_Pathetic:
 		move.b	#0,obFrame(a0)
 		move.w	#$D7,d0			; play boring ass baby explosion sound
 		jmp	(PlaySound_Special).l
-
 ; ===========================================================================
-
-
-
 
 Ani_obj1E:
 		include	"_anim\obj1E.asm"
@@ -10469,6 +10460,7 @@ Obj1F_NoHome:
 		move.b	#$3F,0(a1)		; load explosion from a destroyed enemy
 		move.w	obX(a0),obX(a1)		; set X-pos
 		move.w	obY(a0),obY(a1)		; set Y-pos
+		move.b	#0,$31(a1)
 
 Obj1F_NotInhumanCrush:
 		cmpi.b	#$1E,$3E(a0)			; set flashing timer
@@ -10930,8 +10922,8 @@ Obj1F_BallMain:				; XREF: Obj1F_Index
 		move.b	#$FF,$30(a0)
 		tst.b	obSubtype(a0)
 		bne.s	Obj1F_NotGHZ1
-		tst.b	$31(a0)
-		beq.s	Obj1F_NotGHZ1
+		tst.b	$31(a0)		; is this the split ball?
+		beq.s	Obj1F_NotGHZ1	; if ot, branch
 		move.w	#-$550,obVelY(a0)
 		cmpi.w	#$000,($FFFFFE10).w ; is current level GHZ 1?
 		bne.s	Obj1F_NotGHZ1		; if not, branch
@@ -10979,20 +10971,20 @@ Obj1F_Delete2:
 Obj1F_DestroyBall:
 		tst.b	obSubtype(a0)
 		bne.w	Obj1F_Delete4
-		move.b	#1,($FFFFFFA3).w	; set flag for Obj3F
-		move.b	#$D7,d0			; set sound $D7
-		jsr	(PlaySound_Special).l	; play exploding bomb sound
 		bsr	SingleObjLoad		; load from SingleObjLoad
 		bne.s	Obj1F_Delete2		; if it's in use, branch
 		move.b	#$3F,0(a1)		; explosion object
 		move.w	obX(a0),obX(a1)		; set X-location
 		move.w	obY(a0),obY(a1)		; set Y-location
 		move.b	#2,obRoutine(a1)	; only load one explosion per ball to avoid sprite flicker
+		move.b	#0,$31(a1)
 
 		cmpi.w	#$000,($FFFFFE10).w ; is current level GHZ 1?
 		bne.s	Obj1F_NotGHZ1_2
 		tst.b	$31(a0)			; is this the split ball?
 		beq.w	Obj1F_Delete2		; if not, delete it right away
+		tst.b	obRender(a0)
+		bpl.w	Obj1F_Delete2
 
 		moveq	#0,d0
 		move.w	obVelY(a0),d0
@@ -11060,6 +11052,7 @@ Obj1F_BallSpeeds:
 Obj1F_Delete4:
 		move.b	#$3F,0(a0)		; change ball into explosion object
 		move.b	#0,obRoutine(a0)
+		move.b	#0,$31(a0)
 		rts
 ; ===========================================================================
 Ani_obj1F:
@@ -11161,6 +11154,7 @@ Obj22_DontMoveDown:
 		move.b	#$3F,0(a1)		; load explosion object
 		move.w	obX(a0),obX(a1)		; set X-pos to the buzz bomber's one
 		move.w	obY(a0),obY(a1)		; set Y-pos to the buzz bomber's one
+		move.b	#0,$31(a1)
 		move.b	#1,($FFFFFFD8).w	; set flag for other purposes that the buzz bomber has been destroyed (like camera)
 		rts				; return
 ; ===========================================================================
@@ -11215,6 +11209,7 @@ Obj22_NotGHZ2:
 		move.b	#$3F,0(a1)		; load explosion object
 		move.w	obX(a0),obX(a1)		; set X-pos to the explosion's one
 		move.w	obY(a0),obY(a1)		; set Y-pos to the explosion's one
+		move.b	#0,$31(a1)
 
 Obj22_NotInhumanCrush:
 	
@@ -11301,12 +11296,12 @@ Obj22_YChk:
 		move.b	($FFFFFE05).w,d0
 		andi.b	#7,d0
 		bne.s	Obj22_Return2
-		move.b	#1,($FFFFFFA3).w
 		bsr	SingleObjLoad
 		bne.s	Obj22_Return2
 		move.b	#$3F,0(a1)	; load explosion object
 		move.w	obX(a0),obX(a1)
 		move.w	obY(a0),obY(a1)
+		move.b	#0,$31(a1)
 	;	move.b	#1,$30(a1)
 		jsr	(RandomNumber_Next).l
 		move.w	d0,d1
@@ -11318,11 +11313,6 @@ Obj22_YChk:
 		lsr.w	#8,d0
 		lsr.b	#3,d0
 		add.w	d0,obY(a1)
-		move.b	#$C4,d0			; load explosion sound
-		jsr	PlaySound_Special	; play explosion sound
-		move.b	#1,($FFFFFFA3).w	; shake camera without sound
-		move.w	#$D7,d0			; load exploding bomb sound
-		jsr	PlaySound_Special	; play exploding bomb sound
 
 Obj22_Return2:
 		rts				; return
@@ -11487,13 +11477,12 @@ Obj23_FromBuzz:				; XREF: Obj23_Index
 		bpl.s	Obj23_BallNotOnGround	; if yes, branch
 
 Obj23_DestroyBall:
-		move.b	#$D7,d0			; set sound $D7
-		jsr	(PlaySound_Special).l	; play exploding bomb sound
 		bsr	SingleObjLoad		; load from SingleObjLoad
 		bne.w	Obj23_Delete		; if it's in use, branch
 		move.b	#$3F,0(a1)		; explosion object
 		move.w	obX(a0),obX(a1)		; set X-location
 		move.w	obY(a0),obY(a1)		; set Y-location
+		move.b	#0,$31(a1)
 		bra.w	Obj23_Delete		; delete ball object
 ; ===========================================================================
 
@@ -11553,6 +11542,7 @@ Obj23_Explode:				; XREF: Obj23_FromBuzz
 		move.w	obX(a0),obX(a1)
 		move.w	obY(a0),obY(a1)
 		move.b	#1,$30(a1)
+		move.b	#0,$31(a1)
 		bsr	DeleteObject
 
 Obj23_NoExplode:
@@ -12032,8 +12022,10 @@ Obj4B_Index:	dc.w Obj4B_Main-Obj4B_Index
 ; ===========================================================================
 
 Obj4B_Main:				; XREF: Obj4B_Index
-		cmpi.w	#$502,($FFFFFE10).w
+		cmpi.b	#5,($FFFFFE10).w
 		bne.s	@notfzescape
+		cmpi.w	#$502,($FFFFFE10).w
+		bne.s	@delete
 		tst.b	(FZEscape).w
 		beq.s	@delete
 		tst.b	obSubtype(a0)	; is this the skip ring?
@@ -12445,6 +12437,7 @@ Obj26_Main:				; XREF: Obj26_Index
 		bne.s	@0
 		move.b	#$3F,(a0)
 		move.b	#1,$30(a0)
+		move.b	#0,$31(a0)
 		rts
 @0:
 		addq.b	#2,obRoutine(a0)
@@ -13330,6 +13323,7 @@ Obj2B_ChgAni:
 		move.b	#$3F,0(a1)
 		move.w	obX(a0),obX(a1)
 		move.w	obY(a0),obY(a1)
+		move.b	#0,$31(a1)
 
 Obj2B_NotInhumanCrush:
 		move.b	#1,obAnim(a0)	; use fast animation
@@ -13360,15 +13354,13 @@ BossDefeated2:
 		move.b	($FFFFFE05).w,d0
 		andi.b	#7,d0
 		bne.s	locret_178A22
-		move.b	#1,($FFFFFFA3).w
-		move.w	#$D7,d0
-		jsr	(PlaySound_Special).l ;	play exploding bomb sound
 		bsr	SingleObjLoad
 		bne.s	locret_178A22
 		move.b	#$3F,0(a1)	; load explosion object
 		move.w	obX(a0),obX(a1)
 		move.w	obY(a0),obY(a1)
 		move.b	#1,$30(a1)
+		move.b	#0,$31(a1)
 		jsr	(RandomNumber_Next).l
 		move.w	d0,d1
 		moveq	#0,d1
@@ -13388,12 +13380,12 @@ BossDefeated3:
 		move.b	($FFFFFE05).w,d0
 		andi.b	#7,d0
 		bne.s	locret_178A22XX
-		move.b	#1,($FFFFFFA3).w
 		bsr	SingleObjLoad
 		bne.s	locret_178A22XX
 		move.b	#$3F,0(a1)	; load explosion object
 		move.w	obX(a0),obX(a1)
 		move.w	obY(a0),obY(a1)
+		move.b	#0,$31(a1)
 	;	move.b	#1,$30(a1)
 		jsr	(RandomNumber_Next).l
 		move.w	d0,d1
@@ -13420,6 +13412,7 @@ BossDefeated4:
 		move.w	obX(a0),obX(a1)
 		move.w	obY(a0),obY(a1)
 		move.b	#2,obRoutine(a1)
+		move.b	#0,$31(a1)
 	;	jsr	(RandomNumber_Next).l
 	;	move.w	d0,d1
 	;	moveq	#0,d1
@@ -14969,6 +14962,7 @@ loc_BDD6:
 		beq.s	@notnonstopinhuman	; if not, branch	
 		move.b	#$3F,0(a0)		; change switch into explodion (no double fun allowed, sorry)
 		move.b	#0,obRoutine(a0)	; set to initial routine
+		move.b	#0,$31(a0)
 		rts				; don't do anything else
 
 @notnonstopinhuman:
@@ -16124,6 +16118,7 @@ Obj3A_Tube:
 		move.w	obX(a0),obX(a1)
 		move.w	obY(a0),obY(a1)
 		move.b	#1,$30(a1)
+		move.b	#0,$31(a1)
 		jsr	(RandomNumber_Next).l
 		move.w	d0,d1
 		moveq	#0,d1
@@ -16264,6 +16259,7 @@ Obj36_Explode:
 		jsr	SingleObjLoad
 		move.b	#$3F,0(a1)			; change spike into an explosion
 		move.b	#1,$30(a1)
+		move.b	#0,$31(a1)
 		move.w	obX(a0),obX(a1)
 		move.w	obY(a0),obY(a1)
 		jmp	DeleteObject
@@ -19751,6 +19747,7 @@ Obj40_FixToFloor:			; XREF: Obj40_Index2
 		move.b	#$3F,0(a1)
 		move.w	obX(a0),obX(a1)
 		move.w	obY(a0),obY(a1)
+		move.b	#0,$31(a1)
 
 Obj40_NotInhumanCrush:
 		tst.b	$32(a0)
@@ -19910,6 +19907,7 @@ Obj50_FixToFloor:			; XREF: Obj50_Index2
 		move.b	#$3F,0(a1)
 		move.w	obX(a0),obX(a1)
 		move.w	obY(a0),obY(a1)
+		move.b	#0,$31(a1)
 
 Obj50_NotInhumanCrush:
 		bsr	SpeedToPos
@@ -20363,6 +20361,7 @@ Obj51_SmashExplode:
 		jsr	SingleObjLoad
 		bne.s	Obj51_Smash
 		move.b	#$3F,0(a1)	; load explosion object
+		move.b	#0,$31(a1)
 
 Obj51_Smash:				; XREF: Obj51_Solid
 		move.b	#2,($FFFFFF73).w ; set second MZ spikes section checkpoint
@@ -20691,6 +20690,7 @@ Obj55_Action:				; XREF: Obj55_Index
 		move.b	#$3F,0(a1)
 		move.w	obX(a0),obX(a1)
 		move.w	obY(a0),obY(a1)
+		move.b	#0,$31(a1)
 
 Obj55_NotInhumanCrush:
 		moveq	#0,d0
@@ -22805,6 +22805,8 @@ Obj5E_Explode:				; XREF: Obj5E_Index
 		move.b	#$3F,(a1)		; load singular explosion object
 		move.w	obX(a0),obX(a1)
 		move.w	obY(a0),obY(a1)
+		move.b	#0,$31(a1)
+		move.b	#2,obRoutine(a1)
 		
 		; load shotgun shrapnels
 		moveq	#BombPellets-1,d6
@@ -23001,6 +23003,7 @@ Obj5F_Main:				; XREF: Obj5F_Index
 		beq.s	@bomballowed
 		move.b	#$3F,(a0)
 		move.b	#0,obRoutine(a0)
+		move.b	#0,$31(a0)
 		rts
 @bomballowed:
 		addq.b	#2,obRoutine(a0)
@@ -23178,6 +23181,7 @@ Obj5F_Explode:				; XREF: Obj5F_Index2
 
 		move.b	#$3F,0(a0)	; change bomb into an explosion
 		move.b	#0,obRoutine(a0)
+		move.b	#0,$31(a0)
 
 		cmpi.b	#1,($FFFFFFA9).w
 		bne.s	locret_11AD0
@@ -23324,6 +23328,7 @@ Obj5F_Transition:
 		move.w	obX(a0),obX(a1)
 		move.w	obY(a0),obY(a1)
 		move.b	#1,$30(a1)
+		move.b	#0,$31(a1)
 		jsr	(RandomNumber_Next).l
 
 		; move.w	d0,d1
@@ -23412,14 +23417,13 @@ Obj5F_BossDefeatedboss1:
 
 Obj5F_BossDefeatedboss2:
 		addq.b	#2,($FFFFFF76).w
-	;	move.w	#$D7,d0
-	;	jsr	(PlaySound_Special).l ;	play exploding bomb sound
 		bsr	SingleObjLoad
-	;	move.b	#1,($FFFFFFA3).w
 		move.b	#$3F,0(a1)	; load explosion object
 		move.w	obX(a0),obX(a1)
 		move.w	obY(a0),obY(a1)
 		move.b	#1,$30(a1)
+		move.b	#0,$31(a1)
+
 		jsr	(RandomNumber_Next).l
 		move.w	d0,d1
 		moveq	#0,d1
@@ -23485,10 +23489,11 @@ Obj5F_BossDefeatedBlip:
 		move.w	obX(a0),obX(a1)
 		move.w	obY(a0),obY(a1)
 		move.b	#6,obRoutine(a1)	; set to lame
+		bra.s	@noblip			; render one last frame
 @hidebomb:
 		move.w	d1,($FFFFFF7C).w
 		move.b	#0,($FFFFD000+obAniFrame).w ; reset Sonic waiting animation
-		rts
+		rts				; don't render bomb anymore
 
 @gotodelete:
 ; ===========================================================================
@@ -25720,6 +25725,7 @@ Obj06_DoHardPartSkip:
 		move.b	#$3F,(a1)		; load singular explosion object
 		move.w	obX(a0),obX(a1)
 		move.w	obY(a0),obY(a1)
+		move.b	#0,$31(a1)
 		move.b	#10,($FFFFFF64).w
 @noobjectleft:	jsr	DeleteObject		; delete Hard Part Skipper
 		move.w	#$8F,d0			; play game over jingle
@@ -25854,6 +25860,7 @@ Obj06_ChkA:
 		cmpi.b	#$B,d0			; is this the last text box?
 		beq.s	@lasteaster		; if yes, branch
 		move.b	#$3F,(a0)		; blow up the tutorial box
+		move.b	#0,$31(a0)
 		clr.b	obRoutine(a0)		; make sure it's set to the init routine
 		rts				; don't do anything else here
 	@first:
@@ -33997,6 +34004,7 @@ loopdashit:	cmpi.b	#$18,(a1)		; is current object a platform?
 		bne.s	@cont			; if not, branch
 		move.b	#$3F,(a1)		; turn into an explosion
 		move.b	#0,obRoutine(a1)
+		move.b	#0,$31(a1)
 @cont:		lea	$40(a1),a1
 		dbf	d0,loopdashit
 
@@ -34517,6 +34525,7 @@ loc_17C3C:
 
 		move.b	#$3F,0(a0)
 		move.b	#0,obRoutine(a0)
+		move.b	#0,$31(a0)
 
 locret_17C66:
 		rts	
@@ -34615,6 +34624,7 @@ BossDefeated:
 		move.w	obX(a0),obX(a1)
 		move.w	obY(a0),obY(a1)
 		move.b	#1,$30(a1)
+		move.b	#0,$31(a1)
 		jsr	(RandomNumber_Next).l
 		move.w	d0,d1
 		moveq	#0,d1
@@ -36436,6 +36446,7 @@ byte_19026:	dc.b 8,	$F0, 8,	$F0
 Obj7B_Explode:				; XREF: Obj7B_Index
 		move.b	#$3F,(a0)
 		clr.b	obRoutine(a0)
+		move.b	#0,$31(a0)
 		cmpi.w	#$20,obSubtype(a0)
 		beq.s	Obj7B_MakeFrag
 		rts	
@@ -38570,6 +38581,7 @@ BossDefeatedX:
 		move.w	obX(a0),obX(a1)
 		move.w	obY(a0),obY(a1)
 		move.b	#1,$30(a1)
+		move.b	#0,$31(a1)
 		move.b	#2,obRoutine(a1)
 		jsr	(RandomNumber_Next).l
 		move.w	d0,d1
@@ -38676,6 +38688,7 @@ Obj86_Generator:			; XREF: Obj86_Index
 		move.w	obX(a0),obX(a1)
 		move.w	obY(a0),obY(a1)
 		move.b	#1,$30(a1)
+		move.b	#0,$31(a0)
 
 @Continue:
 		jsr	RandomNumber_Next
@@ -38702,12 +38715,14 @@ Obj86_Generator:			; XREF: Obj86_Index
 		blt.s	loc_1A850
 		move.b	#$3F,(a0)
 		move.b	#0,obRoutine(a0)
+		move.b	#0,$31(a0)
 		jmp	DisplaySprite
 ; ===========================================================================
 
 @Explode:
 		move.b	#$3F,0(a0)	; load explosion object
 		move.b	#0,obRoutine(a0)
+		move.b	#0,$31(a0)
 		rts
 
 loc_1A850:
@@ -38869,6 +38884,7 @@ loc_1AA1E:				; XREF: Obj86_Index2
 		move.w	obX(a0),obX(a1)
 		move.w	obY(a0),obY(a1)
 		move.b	#1,$30(a1)
+		move.b	#0,$31(a1)
 
 Obj86_NoExplode:
 		movea.l	$34(a0),a1
@@ -39013,6 +39029,7 @@ Obj3E_Explosion:			; XREF: Obj3E_Index
 		move.w	obX(a0),obX(a1)
 		move.w	obY(a0),obY(a1)
 		move.b	#1,$30(a1)
+		move.b	#0,$31(a1)
 		jsr	(RandomNumber_Next).l
 		moveq	#0,d1
 		move.b	d0,d1
@@ -43445,6 +43462,7 @@ Debug_Exit:
 		bne.s	@nota
 		move.b	#$3F,(a1)		; spawn explosion object
 		clr.b	obRoutine(a1)
+		move.b	#0,$31(a1)
 		move.w	($FFFFD008).w,obX(a1)
 		move.w	($FFFFD00C).w,obY(a1)
 		bra.w	Debug_DoNothing

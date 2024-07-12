@@ -61,13 +61,13 @@ __DEBUG__: equ 1
 ; $302 - Star Agony Place
 ; $502 - Finalor Place
 QuickLevelSelect = 1
-QuickLevelSelect_ID = $302
+QuickLevelSelect_ID = $002
 ; ------------------------------------------------------
 DebugModeDefault = 1
 DebugSurviveNoRings = 0
 ; ------------------------------------------------------
 DoorsAlwaysOpen = 0
-LowBossHP = 1
+LowBossHP = 0
 ; ======================================================
 	else
 ; BENCHMARK build settings (DO NOT CHANGE!)
@@ -1364,19 +1364,19 @@ loc_196A:				; XREF: PalCycle_Title
 		move.l	4(a0,d0.w),d5
 		
 		move.w	d4,d0
-		jsr	ContrastBoost 
+		jsr	PissFilter 
 		move.w	d0,(a1)+
 		swap	d4
 		move.w	d4,d0
-		jsr	ContrastBoost
+		jsr	PissFilter
 		move.w	d0,(a1)+
 		
 		move.w	d5,d0
-		jsr	ContrastBoost
+		jsr	PissFilter
 		move.w	d0,(a1)+
 		swap	d5
 		move.w	d5,d0
-		jsr	ContrastBoost
+		jsr	PissFilter
 		move.w	d0,(a1)+
 		
 locret_1990:
@@ -2220,10 +2220,10 @@ PalLoad2:	; virtually identical to PalLoad1, except the missing +$80 on a3
 
 loc_2128:
 		move.w	(a2)+,d0
-		bsr	ContrastBoost
+		bsr	PissFilter
 		move.w	d0,(a3)+
 		move.w	(a2)+,d0
-		bsr	ContrastBoost
+		bsr	PissFilter
 		move.w	d0,(a3)+
 		dbf	d7,loc_2128
 		rts
@@ -2247,10 +2247,10 @@ PalLoad3_Water:	; this subroutine is for palette line 1
 
 loc_2144:
 		move.w	(a2)+,d0
-		bsr	ContrastBoost
+		bsr	PissFilter
 		move.w	d0,(a3)+
 		move.w	(a2)+,d0
-		bsr	ContrastBoost
+		bsr	PissFilter
 		move.w	d0,(a3)+
 		dbf	d7,loc_2144
 		rts
@@ -2271,10 +2271,10 @@ PalLoad4_Water:	; this subroutine is for palette lines 2-4
 
 loc_2160:
 		move.w	(a2)+,d0
-		bsr	ContrastBoost
+		bsr	PissFilter
 		move.w	d0,(a3)+
 		move.w	(a2)+,d0
-		bsr	ContrastBoost
+		bsr	PissFilter
 		move.w	d0,(a3)+
 		dbf	d7,loc_2160
 		rts
@@ -2343,20 +2343,26 @@ Pal_AsGrayscale:
 ColorBoostB = $C
 ColorBoostG = $4
 
-ContrastBoost:
+; ContrastBoost:
+PissFilter:
 		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
-		bne.s	@docontrast		; if yes, branch
+		bne.s	@docontrast		; if yes, enable piss filter anywhere
+
+		; GHP piss filter
+		move.b	($FFFFF600).w,d1	; get current
+		andi.b	#$0F,d1			; include the level pre-sequence ($8C)
+		cmpi.b	#$C,d1			; are we in a level?
+		bne.s	@skip			; if not, don't do filer
 		cmpi.w	#$000,($FFFFFE10).w	; are we in Night Hill Place?
 		bne.s	@notnhp			; if not, branch
 		cmpi.b	#2,($FFFFFFAA).w	; has the crabmeat boss been defeated?
 		beq.s	@docontrast		; if yes, start contrast already
-		bra.s	@skip
-
-@notnhp:
-		cmpi.w	#$002,($FFFFFE10).w	; are we in Green Hill Place?
+		bra.s	@skip			; otherwise, don't
+@notnhp:	cmpi.w	#$002,($FFFFFE10).w	; are we in Green Hill Place?
 		bne.s	@skip			; if not, branch
 		cmpi.b	#4,($FFFFFE30).w	; did we hit the final checkpoint yet?
 		beq.s	@skip			; if yes, branch
+
 @docontrast:
 		move.w	d0,d1			; copy color
 
@@ -10981,6 +10987,7 @@ Obj1F_DestroyBall:
 		move.b	#$3F,0(a1)		; explosion object
 		move.w	obX(a0),obX(a1)		; set X-location
 		move.w	obY(a0),obY(a1)		; set Y-location
+		move.b	#2,obRoutine(a1)	; only load one explosion per ball to avoid sprite flicker
 
 		cmpi.w	#$000,($FFFFFE10).w ; is current level GHZ 1?
 		bne.s	Obj1F_NotGHZ1_2
@@ -12025,13 +12032,14 @@ Obj4B_Index:	dc.w Obj4B_Main-Obj4B_Index
 ; ===========================================================================
 
 Obj4B_Main:				; XREF: Obj4B_Index
+		cmpi.w	#$502,($FFFFFE10).w
+		bne.s	@notfzescape
 		tst.b	(FZEscape).w
-		beq.s	@notfzescape
+		beq.s	@delete
 		tst.b	obSubtype(a0)	; is this the skip ring?
 		bmi.s	@notfzescape	; if not, branch
-		move.b	#$3F,(a0)	; turn into explosion
-		move.b	#0,obRoutine(a0)
-		rts
+@delete:
+		jmp	DeleteObject
 @notfzescape:
 		addq.b	#2,obRoutine(a0)
 		move.w	obY(a0),$34(a0)
@@ -12183,22 +12191,6 @@ Obj4B_DontCollect:
 ; ===========================================================================
 
 Obj4B_Collect:				; XREF: Obj4B_Index
-		move.l	a0,-(sp)
-		VBlank_SetMusicOnly
-		move.l	#$4C400002,d0
-		cmpi.w	#$400,($FFFFFE10).w
-		bne.s	@cont
-		move.l	#$50800002,d0
-@cont:		move.l	d0,($C00004).l
-
-		lea	(Art_RingFlash).l,a0
-		move.w	#2687,d1
-Obj4B_ArtLoadLoop:
-		move.w	(a0)+,($C00000).l
-		dbf	d1,Obj4B_ArtLoadLoop
-		VBlank_UnsetMusicOnly
-		move.l	(sp)+,a0
-		
 		cmpi.b	#GRing_Blackout,obSubtype(a0)	; is this the blackout challenge ring?
 		bne.s	@contnotred		; if not, branch
 		move.b	#60,($FFFFFF7D).w	; wait for a bit
@@ -25794,14 +25786,7 @@ Obj06_DoHardPartSkip:
 		jsr	PlaySound_Special	; play it
 		tst.b	($FFFFFFE7).w		; is Sonic in Inhuman Mode?
 		beq.s	@notinhuman		; if not, branch
-		clr.b	($FFFFFFE7).w		; disabled Inhuman Mode
-
-		cmpi.w	#$501,($FFFFFE10).w
-		bne.s	@nottutorial
-		move.b	#$87,d0
-		jsr	PlaySound
-
-@nottutorial:
+		clr.b	($FFFFFFE7).w		; disable Inhuman Mode
 		move.w	d7,-(sp)		; back up d7
 		moveq	#3,d0			; load Sonic's palette
 		jsr	PalLoad2		; restore sonic's palette
@@ -25809,7 +25794,7 @@ Obj06_DoHardPartSkip:
 
 @notinhuman:
 		jsr	WhiteFlash2		; make a white flash
-	;	jsr	FixLevel		; instantly move the camera
+		jsr	FixLevel		; instantly move the camera
 		move.b	#1,(RedrawEverything).w	; redraw screen after teleportation
 
 Obj06_Display:
@@ -25826,8 +25811,11 @@ Obj06_Display:
 ; ===========================================================================
 
 Obj06_InfoBox:
+		tst.b	($FFFFFF77).w		; is antigrav enabled?
+		bne.s	@allowairborne		; if yes, branch
 		btst	#1,($FFFFD022).w	; is Sonic airborne?
 		bne.w	Obj06_NoA		; if yes, disallow interaction
+@allowairborne:
 		move.b	#2,obFrame(a0)		; show A button
 		move.w	($FFFFD008).w,d0	; get Sonic's X-pos
 		sub.w	obX(a0),d0		; substract the X-pos from the current object from it
@@ -33968,17 +33956,11 @@ Obj3D_ShipStart:			; XREF: Obj3D_ShipIndex
 		move.w	#-$100,obVelY(a0)	; move ship up
 		bsr	BossMove
 		cmpi.w	#$338,$38(a0)
-		bne.s	loc_177E6
+		bne.s	Obj3D_MainStuff
 		move.w	#0,obVelY(a0)	; stop ship
 		addq.b	#2,ob2ndRout(a0)	; goto next routine
 
-loc_177E6:
-	;	tst.b	obColProp(a0)
-	;	bne.s	@cont
-	;	move.w	#$E3,d0
-	;	jsr	(PlaySound_Special).l	; speed up music
-
-@cont:
+Obj3D_MainStuff:
 		move.b	$3F(a0),d0
 		jsr	(CalcSine).l
 		asr.w	#6,d0
@@ -33991,8 +33973,8 @@ loc_177E6:
 		tst.b	obStatus(a0)
 		bmi.w	loc_1784C
 
-		tst.b	($FFFFF7CC).w
-		bne.w	locret_1784A
+		tst.b	($FFFFF7CC).w	; are controls locked?
+		bne.w	locret_1784A	; if yes, don't do any of this (boss intro cutscene)
 
 		tst.b	obColType(a0)
 		bne.w	locret_1784A
@@ -34002,45 +33984,34 @@ loc_177E6:
 		bsr	BossDamageSound ; play boss damage sound
 		moveq	#10,d0		; add 100 ...
 		jsr	AddPoints	; ... points
-		move.b	obColProp(a0),($FFFFFF68).w
+		move.b	obColProp(a0),($FFFFFF68).w	; copy lives to HUD boss health counter
 
-		tst.b	($FFFFFFD1).w
-		bne.s	Obj3D_ShipFlash
-		cmpi.b	#7,obColProp(a0)
-		bne.s	Obj3D_ShipFlash
+		tst.b	($FFFFFFD1).w		; was flag to destroy the platforms already set?
+		bne.s	Obj3D_ShipFlash		; if yes, branch
+		cmpi.b	#7,obColProp(a0)	; does boss have exactly 7 lives now?
+		bne.s	Obj3D_ShipFlash		; if not, branch
+		move.b	#1,($FFFFFFD1).w	; set flag now
 		lea	($FFFFD800).w,a1
 		move.w	#$3F,d0
-
-loopdashit:
-		cmpi.b	#$18,(a1)
-		bne.s	@cont
-		move.b	#$3F,(a1)
+loopdashit:	cmpi.b	#$18,(a1)		; is current object a platform?
+		bne.s	@cont			; if not, branch
+		move.b	#$3F,(a1)		; turn into an explosion
 		move.b	#0,obRoutine(a1)
-
-@cont:
-		lea	$40(a1),a1
+@cont:		lea	$40(a1),a1
 		dbf	d0,loopdashit
 
-		move.b	#1,($FFFFFFD1).w
-
-		bra.s	Obj3D_ShipFlash	; up-moving has been disabled due the new layout
-
-	;	cmpi.b	#7,obColProp(a0)	; is eggman having more than 7 lives left?
-		moveq	#0,d0		; make sure d0 is empty
-		move.w	#-$50,d0	; set standart upwards moving speed
-		add.w	#5,obSubtype(a0)	; add 5 to obSubtype(a0)
-		sub.w	obSubtype(a0),d0	; move eggman a bit faster upwards
-		move.w	d0,obVelY(a0)	; set final speed to upwarsd moving
-
 Obj3D_ShipFlash:
+		btst	#7,($FFFFFF92).w	; are flashy lights enabled?
+		beq.s	@noflash		; if not, branch
+
 		lea	($FFFFFB22).w,a1 ; load	2nd palette, 2nd	entry
 		moveq	#0,d0		; move 0 (black) to d0
 		tst.w	(a1)
-		bne.s	loc_1783C
+		bne.s	@flashloop
 		move.w	#$EEE,d0	; move 0EEE (white) to d0
+@flashloop:	move.w	d0,(a1)		; load colour stored in	d0
 
-loc_1783C:
-		move.w	d0,(a1)		; load colour stored in	d0
+@noflash:
 		subq.b	#1,$3E(a0)
 		bne.s	locret_1784A
 		move.b	#$F,obColType(a0)
@@ -34049,84 +34020,13 @@ locret_1784A:
 		rts	
 ; ===========================================================================
 
-loc_1784C:				; XREF: loc_177E6
+loc_1784C:				; XREF: Obj3D_MainStuff
 		move.b	#$E3,d0
 		jsr	(PlaySound_Special).l	; slow down music
 		move.b	#8,ob2ndRout(a0)
 		move.w	#$B3,$3C(a0)
 		rts	
 
-; ---------------------------------------------------------------------------
-; Defeated boss	subroutine
-; ---------------------------------------------------------------------------
-
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
-
-BossDefeated:
-		move.b	($FFFFFE05).w,d0
-		andi.b	#7,d0
-		bne.s	locret_178A2
-		jsr	SingleObjLoad
-		bne.s	locret_178A2
-		move.b	#$3F,0(a1)	; load explosion object
-		move.w	obX(a0),obX(a1)
-		move.w	obY(a0),obY(a1)
-		move.b	#1,$30(a1)
-		jsr	(RandomNumber_Next).l
-		move.w	d0,d1
-		moveq	#0,d1
-		move.b	d0,d1
-		lsr.b	#2,d1
-		subi.w	#$20,d1
-		add.w	d1,obX(a1)
-		lsr.w	#8,d0
-		lsr.b	#3,d0
-		add.w	d0,obY(a1)
-	;	clr.b	($FFFFFE1E).w	; stop time counter
-
-locret_178A2:
-		rts	
-; End of function BossDefeated
-
-; ---------------------------------------------------------------------------
-; Subroutine to	play the boss damage sound
-; ---------------------------------------------------------------------------
-
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
-
-BossDamageSound:
-	;	bsr	Touch_KillEnemy
-	;	bsr	Touch_KillEnemy
-	;	bsr	Touch_KillEnemy
-		move.w	#$AC,d0
-		jsr	(PlaySound_Special).l ;	play boss damage sound
-		rts
-; End of function BossDamageSound
-
-; ---------------------------------------------------------------------------
-; Subroutine to	move a boss
-; ---------------------------------------------------------------------------
-
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
-
-BossMove:
-		move.l	$30(a0),d2
-		move.l	$38(a0),d3
-		move.w	obVelX(a0),d0
-		ext.l	d0
-		asl.l	#8,d0
-		add.l	d0,d2
-		move.w	obVelY(a0),d0
-		ext.l	d0
-		asl.l	#8,d0
-		add.l	d0,d3
-		move.l	d2,$30(a0)
-		move.l	d3,$38(a0)
-		rts	
-; End of function BossMove
 
 ; ===========================================================================
 
@@ -34174,7 +34074,7 @@ loc_17910:
 	;	move.w	#$77,$3C(a0)
 
 loc_17916:
-		bra.w	loc_177E6
+		bra.w	Obj3D_MainStuff
 
 ; ===========================================================================
 
@@ -34204,7 +34104,7 @@ Obj3D_Reverse:
 		neg.w	obVelX(a0)		; reverse direction of the ship
 
 loc_17950:
-		bra.w	loc_177E6
+		bra.w	Obj3D_MainStuff
 ; ===========================================================================
 
 loc_17954:				; XREF: Obj3D_ShipIndex
@@ -34221,7 +34121,7 @@ loc_17960:
 		move.w	#0,obVelX(a0)
 
 loc_17976:
-		bra.w	loc_177E6
+		bra.w	Obj3D_MainStuff
 ; ===========================================================================
 
 loc_1797A:				; XREF: Obj3D_ShipIndex
@@ -34245,7 +34145,9 @@ loc_17984:
 		move.b	#1,($FFFFF7A7).w
 
 locret_179AA:
+	if LowBossHP=1
 		move.b	#1,($FFFFFE2D).w		; make Sonic invincible
+	endif
 		move.w	#$94,d0
 		jsr	(PlaySound).l	; play GHZ music
 		move.w	#$2AC0+GHZ3Add,($FFFFF72A).w
@@ -34300,7 +34202,7 @@ loc_179E0:
 
 loc_179EE:
 		bsr	BossMove
-		bra.w	loc_177E6
+		bra.w	Obj3D_MainStuff
 ; ===========================================================================
 
 loc_179F6:				; XREF: Obj3D_ShipIndex
@@ -34318,7 +34220,7 @@ loc_17A10:
 
 loc_17A16:
 		bsr	BossMove
-		bra.w	loc_177E6
+		bra.w	Obj3D_MainStuff
 ; ===========================================================================
 
 Obj3D_ShipDel:
@@ -34441,10 +34343,41 @@ Obj48_Index:	dc.w Obj48_Main-Obj48_Index
 ; ===========================================================================
 
 Obj48_Main:				; XREF: Obj48_Index
-		tst.b	ob2ndRout(a0)
-		beq.s	Obj48_Do
-		subq.b	#1,ob2ndRout(a0)
-		movea.l	$34(a0),a1
+		frantic				; are we in frantic mode?
+		bne.s	Obj48_Main_Frantic	; if yes, spawn all three balls at once like usual
+		
+		; casual GHP boss ball spawn logic
+		tst.b	ob2ndRout(a0)		; is this the first ball?
+		beq.s	Obj48_Do		; if yes, spawn it immediately
+		
+		movea.l	$34(a0),a1		; move root boss object to a1
+		cmpi.b	#$40,ob2ndRout(a0)	; is this the second ball?
+		bhi.s	@checkthirdball		; if not, branch
+		cmpi.b	#17,obColProp(a1)	; damaged Eggman to at least 17 HP?
+		bhi.s	@waitball		; if not, branch
+@delayballs:
+		move.b	ob2ndRout(a0),d0	; get current delay
+		cmpi.b	#30,d0			; is it above 30 frames?
+		bls.s	@nocap			; if not, branch
+		moveq	#30,d0			; cap delay
+@nocap:		subq.b	#1,d0			; sub 1 from delay
+		bls.s	Obj48_Do		; if delay is over, spawn ball
+		move.b	d0,ob2ndRout(a0)	; update delay
+		bra.s	@waitball		; wait until delay is over
+@checkthirdball:
+		cmpi.b	#$80,ob2ndRout(a0)	; is this the third ball?
+		bhi.s	@waitball		; if not, branch
+		cmpi.b	#13,obColProp(a1)	; damaged Eggman to at least 13 HP?
+		bls.s	@delayballs		; if yes, spawn third ball
+@waitball:
+		rts
+; ---------------------------------------------------------------------------
+
+Obj48_Main_Frantic:
+		tst.b	ob2ndRout(a0)		; is delay limit remaining?
+		beq.s	Obj48_Do		; if not, spawn ball
+		subq.b	#1,ob2ndRout(a0)	; decrease limit	
+		movea.l	$34(a0),a1		; move root boss object to a1
 	if LowBossHP=1
 		move.b	#1,obColProp(a1)	; force boss to have full health until all three balls appeared
 	else
@@ -34664,6 +34597,76 @@ Map_Eggman:
 ; ---------------------------------------------------------------------------
 Map_BossItems:
 		include	"_maps\Boss items.asm"
+
+; ---------------------------------------------------------------------------
+; Defeated boss	subroutine
+; ---------------------------------------------------------------------------
+
+; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+
+
+BossDefeated:
+		move.b	($FFFFFE05).w,d0
+		andi.b	#7,d0
+		bne.s	locret_178A2
+		jsr	SingleObjLoad
+		bne.s	locret_178A2
+		move.b	#$3F,0(a1)	; load explosion object
+		move.w	obX(a0),obX(a1)
+		move.w	obY(a0),obY(a1)
+		move.b	#1,$30(a1)
+		jsr	(RandomNumber_Next).l
+		move.w	d0,d1
+		moveq	#0,d1
+		move.b	d0,d1
+		lsr.b	#2,d1
+		subi.w	#$20,d1
+		add.w	d1,obX(a1)
+		lsr.w	#8,d0
+		lsr.b	#3,d0
+		add.w	d0,obY(a1)
+	;	clr.b	($FFFFFE1E).w	; stop time counter
+
+locret_178A2:
+		rts	
+; End of function BossDefeated
+
+; ---------------------------------------------------------------------------
+; Subroutine to	play the boss damage sound
+; ---------------------------------------------------------------------------
+
+; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+
+
+BossDamageSound:
+		move.w	#$AC,d0
+		jsr	(PlaySound_Special).l ;	play boss damage sound
+		rts
+; End of function BossDamageSound
+
+; ---------------------------------------------------------------------------
+; Subroutine to	move a boss
+; ---------------------------------------------------------------------------
+
+; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+
+
+BossMove:
+		move.l	$30(a0),d2
+		move.l	$38(a0),d3
+		move.w	obVelX(a0),d0
+		ext.l	d0
+		asl.l	#8,d0
+		add.l	d0,d2
+		move.w	obVelY(a0),d0
+		ext.l	d0
+		asl.l	#8,d0
+		add.l	d0,d3
+		move.l	d2,$30(a0)
+		move.l	d3,$38(a0)
+		rts	
+; End of function BossMove
+
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -42108,13 +42111,23 @@ AniArt_GiantRing:			; XREF: AniArt_Load
 
 @loadgiantringart:
 		VBlank_SetMusicOnly
+
 		vram	$8000
 		cmpi.w	#$400,($FFFFFE10).w		; is level Uberhub?
 		bne.s	@doload				; if not, branch
 		vram	$8440				; uberhub specific offset
 @doload:	lea	(ArtKospM_BigRing).l,a0
 		jsr	KosPlusMDec_VRAM
+
+		vram	$8C40
+		cmpi.w	#$400,($FFFFFE10).w		; is level Uberhub?
+		bne.s	@doload2			; if not, branch
+		vram	$9080				; uberhub specific offset
+@doload2:	lea	(ArtKospM_RingFlash).l,a0
+		jsr	KosPlusMDec_VRAM
+
 		VBlank_UnsetMusicOnly
+
 		move.w	#2,($FFFFF7BE).w		; make sure art doesn't get loaded again
 		rts
 ; End of function AniArt_GiantRing
@@ -44437,8 +44450,8 @@ Art_MzLava2:	incbin	artunc\mzlava2.bin	; MZ lava
 		even
 Art_MzTorch:	incbin	artunc\mztorch.bin	; MZ torch in background
 		even
-Art_RingFlash:	incbin	artunc\ringflash.bin	; ring flash that appears when you enter a giant ring
-		even
+;Art_RingFlash:	incbin	artunc\ringflash.bin	; ring flash that appears when you enter a giant ring
+;		even
 ; ---------------------------------------------------------------------------
 ; Level layout index entry macro
 ; ---------------------------------------------------------------------------
@@ -44586,6 +44599,8 @@ byte_6A320:	dc.b 0,	0, 0, 0
 ;		even
 ArtKospM_BigRing: incbin artkosp\bigring.kospm
 		  even
+ArtKospM_RingFlash:	incbin	artkosp\ringflash.kospm	; ring flash that appears when you enter a giant ring
+		even
 ;ArtKospM_SGMC:	incbin artkosp\sgmc.kospm
 ;		even
 		

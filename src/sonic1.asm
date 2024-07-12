@@ -60,8 +60,8 @@ __DEBUG__: equ 1
 ; $301 - Scar Night Place
 ; $302 - Star Agony Place
 ; $502 - Finalor Place
-QuickLevelSelect = 0
-QuickLevelSelect_ID = $400
+QuickLevelSelect = 1
+QuickLevelSelect_ID = $302
 ; ------------------------------------------------------
 DebugModeDefault = 1
 DebugSurviveNoRings = 0
@@ -14980,7 +14980,6 @@ loc_BDD6:
 		rts				; don't do anything else
 
 @notnonstopinhuman:
-
 		move.w	#-$1000,d1		; default speed
 		tst.b	($FFFFFF77).w		; is antigrav already enabled?
 		bne.w	@Explode		; if yes, branch
@@ -14988,7 +14987,7 @@ loc_BDD6:
 		move.b	#$96,d0			; play the sick music
 		jsr	PlaySound		; hell yea
 		move.w	#-$1800,d1		; set first launch speed (needs to be different cause of the alternate gravity)
-
+		
 		; load antigrav palette for Sonic
 		btst	#7,($FFFFFF92).w	; are flashy lights enabled?
 		beq.s	@nopal			; if not, don't mess with Sonic
@@ -15003,14 +15002,19 @@ loc_BDD6:
 
 @nopal:
 		frantic				; is frantic mode enabled?
-		beq.s	@Explode		; if not, branch
+		beq.s	@loadwarningsign	; if not, branch
 		addi.w	#100,($FFFFFE20).w	; be generous and give the brave troopers 100 extra rings
 		cmpi.w	#999,($FFFFFE20).w	; did we exceed the maximum?
 		bls.s	@nocap			; if not, branch
 		move.w	#999,($FFFFFE20).w	; cap rings
 @nocap:		ori.b	#1,($FFFFFE1D).w	; update rings counter
 
-
+@loadwarningsign:
+		; tried this first, looked super annoying and distracting
+		; so now it's just static level objects
+	;	jsr	SingleObjLoad
+	;	bne.s	@Explode
+	;	move.b	#$4F,(a1)	; load yellow warning sign object for bottomless pits
 @Explode:
 		lea	$FFFFD000,a1
 		move.w	d1,obVelY(a1)	; move Sonic upwards
@@ -18782,7 +18786,7 @@ Map_obj46:
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Object 12 - Progress emblems in Uberhub (SYZ)
+; Object 12 - Progress emblems/trophies in Uberhub (SYZ)
 ; ---------------------------------------------------------------------------
 
 Obj12:					; XREF: Obj_Index
@@ -29101,8 +29105,8 @@ GameOver:				; XREF: Obj01_Death
 @cont:
 		clr.b	($FFFFFE1E).w		; stop time counter
 		ori.b	#1,($FFFFFE1C).w	; update lives counter
-	;	addq.w	#1,($FFFFFE12).w	; add one death
-		addi.w	#47,($FFFFFE12).w	; add a ton of deaths of testing
+		addq.w	#1,($FFFFFE12).w	; add one death
+	;	addi.w	#47,($FFFFFE12).w	; add a ton of deaths of testing
 		cmpi.w	#999,($FFFFFE12).w	; are we at 999 deaths?
 		blo.s	loc_138D4		; if not, branch
 		move.w	#999,($FFFFFE12).w	; holy shit you suck at video games. cap the counter
@@ -42117,7 +42121,7 @@ AniArt_GiantRing:			; XREF: AniArt_Load
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Object 4F - Blinking DEMO Object [scrapped idea]
+; Object 4F - Warning signs for bottomless pits (SAP)
 ; ---------------------------------------------------------------------------
 
 Obj4F:
@@ -42131,32 +42135,44 @@ Obj4F_Index:	dc.w Obj4F_Setup-Obj4F_Index		; Set up the object (art etc.)		[$0]
 ; ===========================================================================
 
 Obj4F_Setup:
-		addq.b	#2,obRoutine(a0)		; set to Obj4F_Blink
-		move.w	#$15F,obX(a0)		; set X-position
-		move.w	#$A8,obScreenY(a0)		; set Y-position
-		move.l	#Map_Obj4F,obMap(a0)	; load mappings
-		move.w	#$6CA,obGfx(a0)		; set art tile
-		move.b	#0,obRender(a0)		; set render flag
-		move.b	#0,obPriority(a0)		; set sprite prority to foreground
-		move.b	#$20,$30(a0)		; set blinking time * 2
+		addq.b	#2,obRoutine(a0)
+		move.l	#Map_Obj4F,obMap(a0)
+		move.w	#$6400/$20,obGfx(a0)
+		move.b	#$84,obRender(a0)
+		move.b	#3,obPriority(a0)
+		move.b	#$F,obHeight(a0)
+		move.b	#$F,obWidth(a0)
+		move.b	#$F,obActWid(a0)
 
-Obj4F_ChkDisplay:
-		subq.b	#1,$30(a0)		; sub 1 from time
-		bpl.s	Obj4F_Display		; if time is left, branch
-		move.b	#$20,$30(a0)		; otherwise reset timer
-		bchg	#0,$31(a0)		; change $31(a0) to 1 or 0
-
-Obj4F_Return:
-		rts				; return
+		move.w	obY(a0),$32(a0)		; set base Y position for sway
+		jsr	RandomNumber
+		andi.w	#$7F,d0
+		move.w	d0,$34(a0)		; random offset for the sway
 ; ---------------------------------------------------------------------------
 
-Obj4F_Display:
-		tst.b	$31(a0)			; is object set to be displayed?
-		beq.s	Obj4F_Return		; if not, branch
-		jmp	DisplaySprite		; display sprite
+Obj4F_ChkDisplay:
+		move.w	($FFFFFE04).w,d0
+		add.w	$34(a0),d0
+		jsr	(CalcSine).l
+		asr.w	#5,d0
+		add.w	$32(a0),d0
+		move.w	d0,obY(a0)
+	;	bsr	Obj4F_FixPosition	; looked like ass, static objects are better
+		jmp	MarkObjGone		; display sprite
+; ---------------------------------------------------------------------------
+
+Obj4F_FixPosition:
+		move.w	($FFFFD008).w,d0
+		addi.w	#8,d0
+		move.w	d0,obX(a0)
+		
+		move.w	($FFFFF704).w,d0
+		addi.w	#224-32,d0
+		move.w	d0,obY(a0)
+		rts
 ; ===========================================================================
 
-Map_Obj4F:	include	"_maps\Maps_DEMO.asm"
+Map_Obj4F:	include	"_maps\SLZWarningSign.asm"
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
 
@@ -43757,6 +43773,8 @@ PLC_SLZ:
 		dc.w -1
 
 PLC_SLZ2:
+		dc.l ArtKospM_WarningSign	; yellow warning sign
+		dc.w $6400
 		dc.l ArtKospM_Fan		; fan
 		dc.w $7400
 		dc.l ArtKospM_Pylon		; foreground pylon
@@ -44146,7 +44164,9 @@ ArtKospM_SlzBlock:	incbin	artkosp\slzblock.kospm	; SLZ 32x32 block
 		even
 ArtKospM_SlzCannon:	incbin	artkosp\slzcanno.kospm	; SLZ fireball launcher cannon
 		even
-ArtKospM_SLZPlatform:incbin	artkosp\SLZPlatform.kospm	; SLZ platform
+ArtKospM_SLZPlatform:	incbin	artkosp\SLZPlatform.kospm	; SLZ platform
+		even
+ArtKospM_WarningSign:	incbin	artkosp\SLZWarningSign.kospm	; warning sign for bottomless pits
 		even
 ArtKospM_GiantBomb:	incbin	artkosp\GiantBomb.kospm	; Giant Bomb
 		even

@@ -60,14 +60,14 @@ __DEBUG__: equ 1
 ; $301 - Scar Night Place
 ; $302 - Star Agony Place
 ; $502 - Finalor Place
-QuickLevelSelect = 1
+QuickLevelSelect = 0
 QuickLevelSelect_ID = -1
 ; ------------------------------------------------------
 DebugModeDefault = 1
-DebugSurviveNoRings = 0
+DebugSurviveNoRings = 1
 ; ------------------------------------------------------
-DoorsAlwaysOpen = 0
-LowBossHP = 0
+DoorsAlwaysOpen = 1
+LowBossHP = 1
 ; ======================================================
 	else
 ; BENCHMARK build settings (DO NOT CHANGE!)
@@ -3850,12 +3850,10 @@ Level_MainLoop:
 		addq.w	#1,($FFFFFE04).w ; add 1 to level timer
 
 		tst.b	(RedrawEverything).w	; was flag set to redraw screen after teleportation?
-		beq.s	@continue		; if not, branch
+		beq.s	@noredraw		; if not, branch
 		jsr	FixLevel		; fix level
 		clr.b	(RedrawEverything).w	; clear redraw flag
-
-@continue:
-
+@noredraw:
 		bsr	LZWaterEffects
 		jsr	ObjectsLoad
 		bsr	DeformBgLayer
@@ -7007,16 +7005,6 @@ Resize_FZEscape:
 		addq.b	#2,($FFFFF742).w	; go to next routine
 		move.b	#2,(FZEscape).w		; enable exploding scenery
 		move.b	#1,($FFFFFE2D).w	; make sonic invincible to prevent some bullshit deaths
-
-		VBlank_SetMusicOnly 		; VBlank won't touch VDP now
-		vram	$A460			; load horizontal spring graphics
-		lea	(ArtKospM_HSpring).l,a0
-		jsr	KosPlusMDec_VRAM
-
-		vram	$6C00			; load HPS and info box graphics
-		lea	(ArtKospM_HardPS_Tut).l,a0
-		jsr	KosPlusMDec_VRAM
-		VBlank_UnsetMusicOnly
 	
 		; escape timer
 		move.l	#(1*$10000)|(83*$100)|00,d0	; set escape time (casual - 182s)
@@ -7055,12 +7043,26 @@ Resize_FZEscape:
 
 Resize_FZEscape2:
 		cmpi.w	#$1000,($FFFFF700).w	; near the falling pit?
-		bhi.s	@0			; if not yet, branch
+		bhi.w	@notnearpit		; if not yet, branch
 		addq.b	#2,($FFFFF742).w	; next routine
 		move.w	#$A10,($FFFFF726).w	; lower level boundary
 		move.w	#$1100,($FFFFF72A).w	; prevent going back right
+
+		VBlank_SetMusicOnly 		; VBlank won't touch VDP now
+		vram	$A460			; load horizontal spring graphics
+		lea	(ArtKospM_HSpring).l,a0
+		jsr	KosPlusMDec_VRAM
+
+		vram	$6C00			; load HPS and info box graphics
+		lea	(ArtKospM_HardPS_Tut).l,a0
+		jsr	KosPlusMDec_VRAM
+
+		vram	$70A0			; load switch graphics
+		lea	(ArtKospM_Switch).l,a0
+		jsr	KosPlusMDec_VRAM
+		VBlank_UnsetMusicOnly
 		rts
-@0:
+@notnearpit:
 		move.w	($FFFFF700).w,($FFFFF72A).w	; lock right boundary as you walk left
 		rts
 ; ===========================================================================	
@@ -12085,6 +12087,12 @@ Obj4B_Main:				; XREF: Obj4B_Index
 		jsr	Check_LevelBeaten
 		beq.s	Obj4B_Main_Cont		; if not, display this ring instead of the other two
 		jmp	DeleteObject		; otherwise, delete this ring
+	else
+		cmpi.b	#GRing_NightHill_First,d1 ; is this the first ring leading to Night Hill Place?
+		beq.s	@deletering		; if yes, branch
+		cmpi.b	#GRing_ScarNight_First,d1 ; is this the first ring leading to Scar Night Place?
+		bne.s	Obj4B_Main_Cont		; if not, branch
+@deletering:	jmp	DeleteObject		; otherwise, delete this ring
 	endif
 
 Obj4B_Main_Cont:
@@ -12092,10 +12100,8 @@ Obj4B_Main_Cont:
 		move.b	#$40,obActWid(a0)
 		tst.b	obRender(a0)
 		bpl.w	Obj4B_Animate
-
-Obj4B_Okay:				; XREF: Obj4B_Main
 		move.b	#2,obPriority(a0)
-		
+
 	;	cmpi.w	#$400,($FFFFFE10).w	; are we in Uberhub?
 	;	beq.w	Obj4B_Animate		; if yes, branch
 	;	move.w	#$C40,($FFFFF7BE).w	; load giant ring patterns
@@ -12152,6 +12158,8 @@ Obj4B_YPositive:
 		jsr	(LoadPLC).l		; (this is slow and inefficient as fuck lmao -- UPDATE: not anymore thanks to vlad!)
 		moveq	#$B,d0			; reload the other SLZ patterns overwritten by the textbox
 		jsr	(LoadPLC).l		; ye
+
+		jsr	SAP_LoadSonicPal	; reload Sonic's antigrav palette
 
 		move.b	#$21,($FFFFD400).w	; reload RINGS HUD object...
 		move.b	#2,($FFFFD430).w	; ...because very coincidentally, the tutorial box also uses D400
@@ -14973,18 +14981,7 @@ loc_BDD6:
 		move.b	#$96,d0			; play the sick music
 		jsr	PlaySound		; hell yea
 		move.w	#-$1800,d1		; set first launch speed (needs to be different cause of the alternate gravity)
-		
-		; load antigrav palette for Sonic
-		btst	#7,($FFFFFF92).w	; are flashy lights enabled?
-		beq.s	@nopal			; if not, don't mess with Sonic
-		moveq	#$11,d0			; load Sonic's antigrav palette line in palette line 2
-		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
-		beq.s	@loadpal		; if not, branch
-		moveq	#$10,d0			; load it into palette line 1 instead
-	@loadpal:
-		movem.l	d7/a1-a3,-(sp)
-		jsr	PalLoad2
-		movem.l	(sp)+,d7/a1-a3
+		jsr	SAP_LoadSonicPal	; load Sonic's antigrav palette
 
 @nopal:
 		frantic				; is frantic mode enabled?
@@ -15018,8 +15015,13 @@ loc_BDD6:
 		jsr	SingleObjLoad
 		bne.s	@endboom
 		move.b	#$3F,0(a1)	; load explosion object
+		move.w	obX(a0),obX(a1)
+		move.w	obY(a0),obY(a1)
 		move.b	#1,$31(a1)	; mute explosion sound (to not override the epic one)
 
+		cmpi.w	#$502,($FFFFFE10).w	; is this FP specifically?
+		bne.s	@endboom		; if not, branch
+		jmp	DeleteObject		; only boom once
 @endboom:
 		rts
 ; ---------------------------------------------------------------------------
@@ -16220,10 +16222,10 @@ Obj36_Main:				; XREF: Obj36_Index
 		move.w	obY(a0),$32(a0)
 
 Obj36_Solid:				; XREF: Obj36_Index
+	;	cmpi.w	#$502,($FFFFFE10).w	; is level FP?
+	;	beq.w	Obj36_ExplodeFP		; if yes, branch
 		tst.b	($FFFFFFE7).w		; is inhuman mode on?
 		beq.s	Obj36_NotInhuman	; if not, branch
-		cmpi.w	#$502,($FFFFFE10).w	; is level FP?
-		beq.w	Obj36_ExplodeFP		; if yes, branch
 		cmpi.w	#$200,($FFFFFE10).w	; are we in Ruined Place?
 		bne.s	Obj36_NotInhuman	; if not, branch
 		ori.w	#$6000,obGfx(a0)	; use palette line four from now now
@@ -16281,8 +16283,8 @@ Obj36_Upright:				; XREF: Obj36_Solid
 		bpl.w	Obj36_Display
 
 Obj36_Hurt:				; XREF: Obj36_SideWays; Obj36_Upright
-		cmpi.w	#$501,($FFFFFE10).w	; are we in the tutorial?
-		bne.s	@nottutorial
+		cmpi.b	#5,($FFFFFE10).w	; are we in the tutorial or FP?
+		bne.s	@nottutorial		; if not, branch
 
 		move.w	#$09E0,d1
 		move.w	#$01AC,d2
@@ -16303,7 +16305,6 @@ Obj36_Hurt:				; XREF: Obj36_SideWays; Obj36_Upright
 		move.w	#$C3,d0			; set giant ring sound
 		jsr	PlaySound		; play it
 		jsr	WhiteFlash2		; make a white flash
-	;	jsr	FixLevel
 		move.b	#1,(RedrawEverything).w	; redraw screen after teleportation
 		bra.w	Obj36_NotInhuman2
 
@@ -16314,9 +16315,19 @@ Obj36_Hurt:				; XREF: Obj36_SideWays; Obj36_Upright
 		beq.w	Obj36_NotInhuman2	; if not, branch
 		cmpi.w	#$200,($FFFFFE10).w	; is level MZ1?
 		bne.w	Obj36_NotInhuman2	; if not, branch
-		
 		btst	#4,($FFFFFF92).w	; is nonstop inhuman enabled?
 		bne.w	Obj36_NotInhuman2
+
+		frantic					; are we in frantic mode?
+		beq.s	@noringdrain			; if not, branch
+		ori.b	#1,($FFFFFE1D).w		; update ring counter
+		cmpi.w	#10,($FFFFFE20).w		; do you have enough rings to tank the hit?
+		bpl.s	@tankhit			; if yes, branch
+		move.w	($FFFFFE20).w,(FranticDrain).w	; drain whatever rings remain
+		jmp	KillSonic_Inhuman		; you hecking died noob
+@tankhit:	move.w	#10,(FranticDrain).w		; drain 10 rings
+
+@noringdrain:
 		move.w	#$12DD,($FFFFD008).w	; teleport Sonic on X-axis
 		move.w	#$008C,($FFFFD00C).w	; teleport Sonic on Y-axis
 		tst.b	($FFFFFF73).w		; has P monitor been broken in Ruined Place?
@@ -16338,7 +16349,7 @@ Obj36_Hurt:				; XREF: Obj36_SideWays; Obj36_Upright
 		beq.s	@cont2
 		btst	#3, $FFFFFF92		; is cinematic HUD enabled?
 		bne.s 	@cont2				; palette never changed, branch
-		jsr		RestorePaletteRP
+		jsr	RestorePaletteRP
 
 @cont2:
 		clr.w	($FFFFD010).w		; clear X-speed
@@ -16350,20 +16361,8 @@ Obj36_Hurt:				; XREF: Obj36_SideWays; Obj36_Upright
 
 		move.w	#$C3,d0			; set giant ring sound
 		jsr	PlaySound		; play it
-		cmpi.w	#10,($FFFFFE20).w	; got at least 10 rings?
-	;	blo.s	@contoo
 		jsr	WhiteFlash2		; make a white flash
-
-@contoo:
-	;	jsr	FixLevel
 		move.b	#1,(RedrawEverything).w	; redraw screen after teleportation
-	;	subi.w	#10,($FFFFFE20).w ; remove 10 rings
-	;	bpl.s	@contyy
-	;	move.w	#0,($FFFFFE20).w
-@contyy:
-	;	addq.b	#1,($FFFFFE1D).w ; update
-
-	;	clr.w	($FFFFFE20).w		; clear rings
 
 Obj36_NotInhuman2:
 		tst.w	($FFFFD030).w	; +++ is Sonic invulnerable? (Spike Behavior check)
@@ -16381,7 +16380,7 @@ Obj36_Hurt_Rest:
 		asl.l	#8,d0
 		sub.l	d0,d3
 		move.l	d3,obY(a0)
-		cmpi.w	#$501,($FFFFFE10).w
+		cmpi.b	#5,($FFFFFE10).w
 		bne.s	@cont
 		bset	#1,($FFFFD022).w
 		move.w	#-$400,($FFFFD012).w	; make Sonic bounce away from the object
@@ -16395,18 +16394,14 @@ loc_CF20:
 		movea.l	(sp)+,a0
 
 Obj36_Display:
-		bsr	DisplaySprite
-		move.w	$30(a0),d0
-		andi.w	#$FF80,d0
-		move.w	($FFFFF700).w,d1
-		subi.w	#$80,d1
-		andi.w	#$FF80,d1
-		sub.w	d1,d0
-		cmpi.w	#$280,d0
-		bhi.w	DeleteObject
-		rts	
+		jmp	MarkObjGone
 
 Obj36_ExplodeFP:
+		tst.b	(FZEscape).w
+		beq.w	Obj36_NotInhuman
+		cmpi.b	#$12,($FFFFF742).w
+		bhi.w	Obj36_NotInhuman
+		bra.w	Obj36_Explode
 		; make this object an explosion emitter
 		; move.b	#$67, (a0)
 		; nevermind lol
@@ -18813,19 +18808,26 @@ Obj12_CheckGameState:
 		jsr	Check_BlackoutBeaten		; has the player beaten the blackout challenge?
 		beq.s	@blackoutnotbeaten		; if not, branch
 		move.b	#2,$30(a0)			; use skull frame
+		bset	#0,obRender(a0)
 		bset	#1,obRender(a0)
 		bra.s	Obj12_Init
 	
 @blackoutnotbeaten:
-		jsr	Check_BaseGameBeaten_Frantic	; has the player beaten the base game in frantic?
-		beq.s	@bgnotfrantic			; if not, branch
-		move.b	#1,$30(a0)			; use red star frame
+		jsr	Check_BaseGameBeaten_Frantic	; was the base game beaten in frantic?
+		bne.s	@showred			; if yes, show red star
+		jsr	Check_BaseGameBeaten_Casual	; was the base game beaten in casual?
+		bne.s	@showgray			; if yes, show gray star
+
+		moveq	#6,d0
+		jsr	Check_LevelBeaten_Frantic	; has the player just beaten Finalor in frantic?
+		beq.s	@notfrantic			; if not, branch
+@showred:	move.b	#1,$30(a0)			; use red star frame
 		bra.s	Obj12_Init			; show star
-@bgnotfrantic:
-		jsr	Check_BaseGameBeaten_Casual	; has the player beaten the base game in casual?
-		bne.s	Obj12_Init			; if yes, show gray star
-		move.b	#0,$30(a0)			; use gray star frame
-		jmp	DeleteObject			; otherwise, no star
+@notfrantic:
+		moveq	#6,d0
+		jsr	Check_LevelBeaten		; has the player just beaten Finalor in casual?
+		beq.w	DeleteObject			; if not, don't show star
+@showgray:	move.b	#0,$30(a0)			; use gray star frame
 ; ---------------------------------------------------------------------------
 
 Obj12_Init:
@@ -19006,9 +19008,9 @@ Obj0D_Main:				; XREF: Obj0D_Index
 Obj0D_Touch:				; XREF: Obj0D_Index
 		move.w	($FFFFD008).w,d0
 		sub.w	obX(a0),d0
-		bcs.s	locret_EBBA
+		bcs.w	locret_EBBA
 		cmpi.w	#$20,d0		; is Sonic within $20 pixels of	the signpost?
-		bcc.s	locret_EBBA	; if not, branch
+		bcc.w	locret_EBBA	; if not, branch
 
 		move.b	#1,($FFFFF7CC).w ; lock	controls
 		move.w	#$800,($FFFFF602).w ; make Sonic run to	the right
@@ -19018,14 +19020,19 @@ Obj0D_Touch:				; XREF: Obj0D_Index
 
 		move.b	#1,($FFFFFFA5).w	; move HUD off screen
 		cmpi.w	#$101,($FFFFFE10).w	; is level LZ2?
-		bne.s	@cont			; if not, branch
-		cmpi.w	#$B,($FFFFFE14).w
-		bgt.s	@cont
+		bne.s	@notlz			; if not, branch
+		tst.b 	($FFFFFFF9).w		; final section flag enabled?
+		beq.s 	@notlz			; if not, branch
 		move.w	#$82,d0			; resume LZ music (cause we're drowning rn)
 		jsr	(PlaySound).l
-		move.w	#$1E,($FFFFFE14).w
+		move.w	#$1E,($FFFFFE14).w	; give us enough air for Sonic to move out of the screen
+		movem.l	d0-a3,-(sp)
+		moveq	#$B,d0
+		jsr	PalLoad3_Water		; restore regular water palette
+		jsr 	WhiteFlash3
+		movem.l	(sp)+,d0-a3
 
-@cont:
+@notlz:
 		move.w	#$CF,d0
 		jsr	(PlaySound_Special).l	; play signpost	sound
 
@@ -25680,9 +25687,7 @@ Obj06_Setup:
 		beq.s	Obj06_ArtLocFound		; if yes, branch
 
 		move.w	#$0360,obGfx(a0)		; set art pointer, use palette line 1
-		cmpi.w	#$501,($FFFFFE10).w		; is this the tutorial?
-		beq.s	Obj06_ArtLocFound		; if yes, branch
-		cmpi.w	#$502,($FFFFFE10).w		; is this Finalor Place?
+		cmpi.b	#5,($FFFFFE10).w		; is this the tutorial or FP?
 		beq.s	Obj06_ArtLocFound		; if yes, branch
 
 		move.w	#$0372,obGfx(a0)		; fallback pointer
@@ -25730,7 +25735,7 @@ Obj06_DoHardPartSkip:
 @noobjectleft:	jsr	DeleteObject		; delete Hard Part Skipper
 		move.w	#$8F,d0			; play game over jingle
 		jsr	PlaySound
-		jmp	KillSonic_Inhuman
+		jmp	KillSonic_Inhuman	; get trolled
 
 @notfrantic:
 		jsr	FakeLevelID		; get level ID
@@ -25751,39 +25756,11 @@ Obj06_DoHardPartSkip:
 
 @notlp:
 		cmpi.w	#$302,($FFFFFE10).w	; are we in Star Agony Place?
-		bne.w	@notsap			; if not, branch
-		
-		move.b	#6,($FFFFFFA0).w	; mark all emblems as collected
-
-		movem.l	d0-a1,-(sp)
-		move.w	#$1D80,d0
-		move.w	#$0280,d1
-		move.b	#$18,d2
-		jsr	Sub_ChangeChunk
-		move.w	#$1E80,d0
-		move.w	#$0280,d1
-		move.b	#$21,d2
-		jsr	Sub_ChangeChunk
-		move.w	#$1B80,d0
-		move.w	#$0280,d1
-		move.b	#$2A,d2
-		jsr	Sub_ChangeChunk
-		move.w	#$1C80,d0
-		move.w	#$0280,d1
-		move.b	#$47,d2
-		jsr	Sub_ChangeChunk
-		
-		lea	($FFFFDF80).w,a1
-		jsr	DeleteObject2
-		lea	($FFFFDFC0).w,a1
-		jsr	DeleteObject2
-		movem.l	(sp)+,d0-a1
-
-	;	jsr	FixLevel		; instantly move the camera
-		move.b	#1,(RedrawEverything).w	; redraw screen after teleportation
+		bne.w	@notsap			; if not, branch		
 		move.b	#1,($FFFFFF77).w	; enable antigrav
 		move.b	#$96,d0			; play music
 		jsr	PlaySound
+		jsr	SAP_LoadSonicPal	; load Sonic's antigrav palette
 
 @notsap:
 		clr.w	($FFFFFE20).w		; delete all your rings you cheating bastard
@@ -25792,6 +25769,8 @@ Obj06_DoHardPartSkip:
 		jsr	PlaySound_Special	; play it
 		tst.b	($FFFFFFE7).w		; is Sonic in Inhuman Mode?
 		beq.s	@notinhuman		; if not, branch
+		cmpi.w	#$502,($FFFFFE10).w	; is this FP?
+		beq.s	@notinhuman		; if yes, you get to keep your toy
 		clr.b	($FFFFFFE7).w		; disable Inhuman Mode
 		move.w	d7,-(sp)		; back up d7
 		moveq	#3,d0			; load Sonic's palette
@@ -25800,21 +25779,29 @@ Obj06_DoHardPartSkip:
 
 @notinhuman:
 		jsr	WhiteFlash2		; make a white flash
-		jsr	FixLevel		; instantly move the camera
 		move.b	#1,(RedrawEverything).w	; redraw screen after teleportation
 
 Obj06_Display:
-		bsr	DisplaySprite		; display sprite
-		move.w	obX(a0),d0		; get X-pos
-		andi.w	#$FF80,d0		; keep it in multiples of 80 pixels
-		move.w	($FFFFF700).w,d1	; load horizontal camera position
-		subi.w	#$80,d1			; substract $80
-		andi.w	#$FF80,d1		; keep it in multiples of 80 pixels again
-		sub.w	d1,d0			; substract result from X-pos
-		cmpi.w	#$280,d0		; has object gone out of screen?
-		bhi.w	DeleteObject		; if yes, delete object
-		rts				; return
+		jmp	MarkObjGone
+
+; ---------------------------------------------------------------------------
+
+Obj06_Locations:	;XXXX   YYYY
+		dc.w	$18EA, $036C	; Night Hill Place
+		dc.w	$FFFF, $FFFF	; Green Hill Place	(Unused)
+		dc.w	$FFFF, $FFFF	; Special Place		(Unused)
+		dc.w	$1E10, $02B0	; Ruined Place
+		dc.w	$0D2F, $05A7	; Labyrinthy Place
+		dc.w	$FFFF, $FFFF	; Unreal Place		(Unused)
+		dc.w	$FFFF, $FFFF	; Scar Night Place 	(Unused)
+		dc.w	$101E, $036C	; Finalor Place
+		dc.w	$FFFF, $FFFF	; Uberhub Place		(Unused)
+		dc.w	$101E, $036C	; Tutorial Place
+		dc.w	$1F00, $06E0	; Star Agony Place
 ; ===========================================================================
+; ---------------------------------------------------------------------------
+; Tutorial boxes
+; ---------------------------------------------------------------------------
 
 Obj06_InfoBox:
 		tst.b	($FFFFFF77).w		; is antigrav enabled?
@@ -25875,21 +25862,6 @@ Obj06_ChkA:
 Obj06_NoA:
 		move.b	#1,obFrame(a0)		; don't show A button
 		bra.w	Obj06_Display
-; ===========================================================================
-
-Obj06_Locations:	;XXXX   YYYY
-		dc.w	$18EA, $036C	; Night Hill Place
-		dc.w	$FFFF, $FFFF	; Green Hill Place	(Unused)
-		dc.w	$FFFF, $FFFF	; Special Place		(Unused)
-		dc.w	$1E10, $02B0	; Ruined Place
-		dc.w	$0D2F, $05A7	; Labyrinthy Place
-		dc.w	$FFFF, $FFFF	; Finalor Place		(Unused)
-		dc.w	$FFFF, $FFFF	; Spring Yard Place	(Unused)
-		dc.w	$FFFF, $FFFF	; Unreal Place		(Unused)
-		dc.w	$FFFF, $FFFF	; Scar Night Place 	(Unused)
-		dc.w	$101E, $036C	; Tutorial Place
-		dc.w	$1F00, $06E0	; Star Agony Place
-
 ; ===========================================================================
 
 Map_Obj06:
@@ -26312,7 +26284,6 @@ Sonic_Display:				; XREF: loc_12C7E
 		move.w	#$C3,d0			; set giant ring sound
 		jsr	PlaySound_Special	; set giant ring sound
 		bsr	WhiteFlash2		; make a white flash
-	;	bsr	FixLevel
 		move.b	#1,(RedrawEverything).w	; redraw screen after teleportation
 ; ===========================================================================
 
@@ -26535,20 +26506,23 @@ Obj01_InWater:
 		bge.s	Obj01_OutWater	; if yes, branch
 		bset	#6,obStatus(a0)
 		bne.s	locret_12D80
-		bsr	ResumeMusic
+	;	bsr	ResumeMusic
 		move.b	#$A,($FFFFD340).w ; load bubbles object	from Sonic's mouth
 		move.b	#$81,($FFFFD368).w
 
-		tst.b 	($FFFFFFF9).w
-		beq.s 	@conter
+		tst.b 	($FFFFFFF9).w		; is flooding section happening?
+		beq.s 	@noflood		; if not, branch
 		tst.b	($FFFFFFA5).w		; was sign post already touched?
-		bne.s	@conter
+		bne.s	@noflood		; if yes, branch
+
+		move.w	#$D,($FFFFFE14).w	; slightly more lenient time for casual
+		frantic				; are we in frantic?
+		beq.s	@noflood		; if not, branch
 		move.w	#$B,($FFFFFE14).w	; force instant countdown when final thingy
 		move.w	#$92,d0
-		jsr	(PlaySound).l	; play countdown music $92 (speed up music $E2)
+		jsr	(PlaySound).l		; play countdown music immediately
 		
-@conter:
-		
+@noflood:
 		move.w	#Sonic_TopSpeed_Water,($FFFFF760).w	; change Sonic's top speed
 		move.w	#Sonic_Acceleration_Water,($FFFFF762).w	; change Sonic's acceleration
 		move.w	#Sonic_Deceleration_Water,($FFFFF764).w	; change Sonic's deceleration
@@ -26564,8 +26538,11 @@ Obj01_InWater:
 
 Obj01_OutWater:
 		bclr	#6,obStatus(a0)
-		beq.s	locret_12D80
+		beq.w	locret_12D80
+		tst.b	($FFFFFFF9).w
+		bne.s	@noresumemusic
 		bsr	ResumeMusic
+@noresumemusic:
 		move.w	#Sonic_TopSpeed,($FFFFF760).w		; restore Sonic's speed
 		move.w	#Sonic_Acceleration,($FFFFF762).w	; restore Sonic's acceleration
 		move.w	#Sonic_Deceleration,($FFFFF764).w	; restore Sonic's deceleration
@@ -28622,8 +28599,7 @@ SAP_HitWall:
 		move.w	d0,obX(a0)			; set respawn X position
 		move.w	d1,obY(a0)			; set respawn Y position
 
-	;	jsr	FixLevel			; instantly move the camera to where Sonic teleported to
-		move.b	#1,(RedrawEverything).w		; redraw screen after teleportation
+		move.b	#1,(RedrawEverything).w		; instantly move the camera to where Sonic teleported to
 
 		clr.b	($FFFFFFE5).w			; clear air freeze flags
 		clr.w	obVelX(a0)			; clear X speed
@@ -28663,6 +28639,22 @@ SAP_HitWall:
 		jsr	SAP_ResetEmblems		; reset the 6th emblem
 
 @end:
+		rts
+; ===========================================================================
+
+SAP_LoadSonicPal:
+		; load antigrav palette for Sonic
+		btst	#7,($FFFFFF92).w	; are flashy lights enabled?
+		beq.s	@nopal			; if not, don't mess with Sonic
+		moveq	#$11,d0			; load Sonic's antigrav palette line in palette line 2
+		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
+		beq.s	@loadpal		; if not, branch
+		moveq	#$10,d0			; load it into palette line 1 instead
+@loadpal:
+		movem.l	d7/a1-a3,-(sp)
+		jsr	PalLoad2
+		movem.l	(sp)+,d7/a1-a3
+@nopal:
 		rts
 ; ===========================================================================
 
@@ -31733,12 +31725,27 @@ Obj6A:					; XREF: Obj_Index
 ; ===========================================================================
 Obj6A_Index:	dc.w Obj6A_Main-Obj6A_Index
 		dc.w Obj6A_Action-Obj6A_Index
+		dc.w Obj6A_PostFinalBoss-Obj6A_Index
+; ===========================================================================
+
+Obj6A_PostFinalBoss:
+		move.l	a0,-(sp)
+		VBlank_SetMusicOnly
+		vram	$7400
+		lea	(ArtKospM_FzEggman).l,a0
+		jsr	KosPlusMDec_VRAM
+		VBlank_UnsetMusicOnly
+		move.l	(sp)+,a0
+		move.b	#$3F,(a0)		; turn into an explosion
+		move.b	#0,obRoutine(a0)
+		move.b	#1,$31(a0)
+		rts
 ; ===========================================================================
 
 Obj6A_Main:				; XREF: Obj6A_Index
 		addq.b	#2,obRoutine(a0)
 		move.l	#Map_obj6A,obMap(a0)
-		move.w	#$43B5,obGfx(a0)
+		move.w	#$4000|($76A0/$20),obGfx(a0)
 		move.b	#4,obRender(a0)
 		move.b	#4,obPriority(a0)
 		move.b	#$20,obActWid(a0)
@@ -31747,6 +31754,8 @@ Obj6A_Main:				; XREF: Obj6A_Index
 		cmpi.b	#3,obSubtype(a0)
 		bcc.s	Obj6A_Action
 		move.b	#$A2,obColType(a0)
+
+		move.b	#2,obFrame(a0)
 
 Obj6A_Action:				; XREF: Obj6A_Index
 		moveq	#0,d0
@@ -31775,6 +31784,12 @@ Obj6A_TypeIndex:dc.w Obj6A_Type00-Obj6A_TypeIndex, Obj6A_Type01-Obj6A_TypeIndex
 ; ===========================================================================
 
 Obj6A_Type00:				; XREF: Obj6A_TypeIndex
+		; pizza cutter in FP boss
+		subq.b	#1,obTimeFrame(a0)
+		bpl.s	@noframechg
+		move.b	#2,obTimeFrame(a0)
+		bchg	#0,obFrame(a0)
+@noframechg:
 		rts	
 ; ===========================================================================
 
@@ -38697,33 +38712,34 @@ Obj86_Generator:			; XREF: Obj86_Index
 		move.w	d0,obVelX(a0)
 
 @Continue2:
+		; light generator fall effect after boss is defeated
 		cmpi.b 	#$0A, ($FFFFF742).w ; check resize subroutine
 		bne.s 	@NoFall
-
-		cmpi.w	#$5C0,obY(a0)
-		bge.s	@Explode
-
 		move.b	#$E,obColType(a0) ; breakable
-		
-		jsr		ObjectFall
-		sub.w 	#$10, obVelY(a0)
-		jsr		SpeedToPos
-
+		jsr	ObjectFall
+		sub.w 	#$10,obVelY(a0)
+		jsr	SpeedToPos
 @NoFall:
 		movea.l	$34(a0),a1
 		cmpi.w	#$5C0,obY(a0)
-		blt.s	loc_1A850
-		move.b	#$3F,(a0)
-		move.b	#0,obRoutine(a0)
-		move.b	#0,$31(a0)
-		jmp	DisplaySprite
-; ===========================================================================
+		blt.w	loc_1A850
 
-@Explode:
+@ExplodeGenerator:
 		move.b	#$3F,0(a0)	; load explosion object
 		move.b	#0,obRoutine(a0)
 		move.b	#0,$31(a0)
+
+		lea	($FFFFD800).w,a1
+		moveq	#$3F,d0
+@deletesaw:	cmpi.b	#$6A,(a1)		; is current object the sawblade?
+		bne.s	@cont			; if not, branch
+		move.b	#4,obRoutine(a1)	; set to post boss routine
+		bra.s	@end
+@cont:		lea	$40(a1),a1
+		dbf	d0,@deletesaw
+@end:
 		rts
+; ===========================================================================
 
 loc_1A850:
 	;	move.b	#0,obAnim(a0)
@@ -43736,7 +43752,7 @@ PLC_LZ2:
 		dc.w $8CE0
 		dc.l ArtKospM_Jaws		; jaws enemy
 		dc.w $90C0
-		dc.l ArtKospM_LzSwitch	; switch
+		dc.l ArtKospM_Switch	; switch
 		dc.w $A1E0
 		dc.l ArtKospM_Spikes		; spikes
 		dc.w $A360
@@ -43793,7 +43809,7 @@ PLC_SLZ:
 		dc.w 0
 		dc.l ArtKospM_Bomb		; bomb enemy
 		dc.w $8000
-		dc.l ArtKospM_LzSwitch		; switch
+		dc.l ArtKospM_Switch		; switch
 		dc.w $9000
 		dc.l ArtKospM_Spikes		; spikes
 		dc.w $A360
@@ -43849,7 +43865,7 @@ PLC_SBZ:
 		dc.w 0
 		dc.l ArtKospM_HardPS_Tut	; hard part skipper
 		dc.w $6C00
-		dc.l ArtKospM_LzSwitch	; switch
+		dc.l ArtKospM_Switch	; switch
 		dc.w $70A0
 		dc.l ArtKospM_LevelSigns	; level signs
 		dc.w $7300
@@ -43975,7 +43991,7 @@ PLC_Ending:
 PLC_EggmanSBZ2:
 		dc.l ArtKospM_Sbz2Eggman	; Eggman
 		dc.w $8000
-		dc.l ArtKospM_LzSwitch	; switch
+		dc.l ArtKospM_Switch	; switch
 		dc.w $9400
 		dc.l ArtKospM_BombOld	; bomb enemy
 		dc.w $A660
@@ -43989,8 +44005,10 @@ PLC_EggmanSBZ2:
 PLC_FZBoss:
 		dc.l ArtKospM_SbzDoor1	; door
 		dc.w $5500
-		dc.l ArtKospM_FzEggman	; Eggman after boss
-		dc.w $7400
+	;	dc.l ArtKospM_FzEggman	; Eggman after boss
+	;	dc.w $7400
+		dc.l ArtKospM_Cutter
+		dc.w $76A0
 		dc.l ArtKospM_FzBoss		; FZ boss
 		dc.w $6000
 		dc.l ArtKospM_Eggman		; Eggman main patterns
@@ -44206,7 +44224,7 @@ ArtKospM_GiantBomb:	incbin	artkosp\GiantBomb.kospm	; Giant Bomb
 ; ---------------------------------------------------------------------------
 ArtKospM_Bumper:	incbin	artkosp\syzbumpe.kospm	; SYZ bumper
 		even
-ArtKospM_LzSwitch:	incbin	artkosp\switch.kospm	; LZ/SYZ/SBZ switch
+ArtKospM_Switch:	incbin	artkosp\switch.kospm	; LZ/SYZ/SBZ switch (ArtKospM_LzSwitch)
 		even
 ArtKospM_SYZDoors:	incbin	artkosp\SYZDoors.kospm	; SYZ doors
 		even

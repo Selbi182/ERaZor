@@ -522,12 +522,13 @@ Bonus_Blackout   = 2
 
 Check_LevelBeaten:
 		; d0 = bit we want to test
-		frantic				; are we in frantic?
-		bne.s	@frantic		; if yes, branch
-		btst	d0,($FFFFFF8A).w	; check if door is open (casual)
+		frantic					; are we in frantic?
+		bne.s	Check_LevelBeaten_Frantic	; if yes, branch
+		btst	d0,($FFFFFF8A).w		; check if door is open (casual)
 		rts
-@frantic:
-		btst	d0,($FFFFFF8B).w	; check if door is open (frantic)
+
+Check_LevelBeaten_Frantic:
+		btst	d0,($FFFFFF8B).w		; check if door is open (frantic)
 		rts
 ; ===========================================================================
 

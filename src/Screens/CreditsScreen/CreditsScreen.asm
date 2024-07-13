@@ -2,8 +2,17 @@
 ; ---------------------------------------------------------------------------
 ; Credits Routine
 ; ---------------------------------------------------------------------------
-NumberOfCreditsPages = 12
-StartDelay = 135
+Credits_CurrentPage equ $FFFFFF91
+
+Credits_Pages = 12
+Credits_Lines = 14
+Credits_LineLength = 20
+StartDelay = 152
+
+Credits_ScrollTime = $1C0
+Credits_FastThreshold = $61
+Credits_SpeedSlow = 1
+Credits_SpeedFast = 32
 ; ---------------------------------------------------------------------------
 
 CreditsJest:
@@ -11,23 +20,32 @@ CreditsJest:
 		jsr	PlaySound_Special			; play credits music
 
 		jsr	Pal_FadeFrom				; fade palette out
+		VBlank_SetMusicOnly
+
 		moveq	#$00,d0					; clear d0
 		move.l	d0,($FFFFF616).w			; reset Y scroll positions
 		move.l	d0,($FFFFFFAC).w			; reset rumble positions
 		move.l	d0,($FFFFFFA0).w			; reset scroll positions
-		move.w	#$8004,($C00004).l			; disable h-ints
-		VBlank_SetMusicOnly
+		
+		lea	($C00004).l,a6
+		move.w	#$8004,(a6)				; disable h-ints
+		move.w	#$8230,(a6)
+		move.w	#$8720,(a6)
+		move.w	#$8407,(a6)
+		move.w	#$8B07,(a6)
+		move.w	#$9001,(a6)
 		jsr	ClearScreen				; clear the screen
+
+		move.l	#$40000010,(a6)
+		lea	($C00000).l,a0
+		moveq	#0,d0
+		moveq	#40-1,d1
+@clearvsram:	move.w	d0,(a0)
+		dbf	d1,@clearvsram
 
 		move.l	#$40000000,($C00004).l			; set VDP to V-Ram write mode with address
 		lea	(ArtKospM_Credits).l,a0			; load address of compressed art
 		jsr	KosPlusMDec_VRAM			; decompress and dump
-
-		lea	($00FF0000).l,a1			; set destination
-		lea	(Map_Credits).l,a0			; set mappings location
-		move.w	#(295*NumberOfCreditsPages)+11,d1	; set number of loops
-CJ_MapsLoop:	move.b	(a0)+,(a1)+				; load data
-		dbf	d1,CJ_MapsLoop				; loop
 
 		lea	($FFFFFB80).w,a1			; load address of storage buffer
 		lea	(Pal_Credits).l,a0			; load address of palette data
@@ -39,8 +57,22 @@ CJ_RepPal:	move.l	(a0)+,(a1)+				; dump palette
 		dbf	d1,CJ_RepPal				; repeat til palette is dumped
 		VBlank_UnsetMusicOnly
 
-		move.b	#4,VBlankRoutine
-		jsr	DelayProgram
+		lea	($FFFFCC00).w,a1
+		moveq	#0,d0
+		move.w	#$DF,d1
+@ClrScroll:	move.l	d0,(a1)+
+		dbf	d1,@ClrScroll	; fill scroll data with 0
+
+		lea	($FFFFD000).w,a1
+		moveq	#0,d0
+		move.w	#$7FF,d1
+@ClrObjRam:	move.l	d0,(a1)+
+		dbf	d1,@ClrObjRam ; fill object RAM ($D000-$EFFF) with $0
+
+		move.b	#0,(Credits_CurrentPage).w		; set current page ID to 0
+		move.w	#0,($FFFFFFA0).w
+		display_enable
+		jsr	Pal_FadeTo				; fade palette in
 
 		; opening delay to sync the screen to the music
 		move.w	#StartDelay,d0
@@ -48,23 +80,48 @@ CJ_RepPal:	move.l	(a0)+,(a1)+				; dump palette
 		jsr	DelayProgram
 		dbf	d0,@delay
 
-		clr.b	($FFFFFF91).w				; set current page ID to 0
-
-		display_enable
-		jsr	Pal_FadeTo				; fade palette in
 
 ; ---------------------------------------------------------------------------
 ; Credits Main Loop
 ; ---------------------------------------------------------------------------
 
 CreditsJest_Loop:
-		move.b	#$04,VBlankRoutine			; set V-Blank routine to run
+		move.b	#4,VBlankRoutine			; set V-Blank routine to run
 		jsr	DelayProgram				; hult main program to run V-Blank
-		bsr	CJ_ScrollMappings			; run scrolling/deformation
-		bsr	CJ_MapLetters				; run mapping
-		bra	CreditsJest_Loop			; loop screen
 
-; ---------------------------------------------------------------------------
+		moveq	#Credits_SpeedSlow,d1
+		move.w	($FFFFFFA0).w,d0
+		subi.w	#Credits_ScrollTime/2,d0
+		bpl.s	@1
+		neg.w	d0
+@1:		cmpi.w	#Credits_FastThreshold,d0
+		blo.s	@2
+		moveq	#Credits_SpeedFast,d1
+
+@2:
+		cmpi.w	#1,d1
+		bne.s	@3
+		btst	#0,($FFFFFE0F).w
+		bne.s	CreditsJest_Loop
+@3:
+		sub.w	d1,($FFFFFFA0).w			; decrease X scroll position left
+		blo.s	@nextpage
+
+		bsr	CJ_ScrollMappings			; run scrolling/deformation
+		bra.s	CreditsJest_Loop			; loop screen
+
+@nextpage:
+		; next page
+		addq.b	#1,(Credits_CurrentPage).w			; set to next screen
+		cmpi.b	#Credits_Pages,(Credits_CurrentPage).w		; final page?
+		bhi.s	@endcredits					; if yes, go to end
+		bsr	CJ_WriteCurrentPage				; run mapping
+		move.w	#Credits_ScrollTime,($FFFFFFA0).w
+		bra.s	CreditsJest_Loop			; loop screen
+
+@endcredits:
+		jmp	Exit_CreditsScreen
+
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Scrolling
@@ -73,8 +130,9 @@ CreditsJest_Loop:
 CJ_ScrollMappings:
 		lea	($FFFFCC00).w,a1			; load scroll buffer address
 		moveq	#$00,d0					; clear d0
-		move.w	($FFFFFFA0).w,d0			; load X scroll position
-		neg.w	d0					; negate direction
+		move.w	#Credits_ScrollTime/2,d0
+		sub.w	($FFFFFFA0).w,d0			; load X scroll position
+	;	neg.w	d0					; negate direction
 		swap	d0					; send left
 		move.w	#$003F,d1				; set repeat times
 
@@ -89,80 +147,36 @@ CJSM_Repeat:
 CJSM_Repeat2:
 		move.l	d0,(a1)+				; dump to scroll buffer
 		dbf	d1,CJSM_Repeat2				; repeat til all scanlines are written to
-
-		lea	(CJSM_FO_Array).l,a2	; load base address for the check array
-@FOL_FixOddLoop:
-		moveq	#0,d1			; clear d1
-		moveq	#0,d2			; clear d2
-		moveq	#0,d3			; clear d3
-
-		move.b	(a2),d1			; get current page ID
-		cmp.b	($FFFFFF91).w,d1	; does it match with the current page ID?
-		bne.s	@FOL_ReLoop		; if not branch
-		move.b	1(a2),d2		; get current Row ID
-		lsl.w	#6,d2			; multiply it by $40
-		lea	($FFFFCC00).w,a1	; load scroll buffer address
-		add.w	d2,a1			; add it to the SBA
-		move.w	#$000F,d3		; repeat 16 times
-@FOL_Loop:	addi.l	#$00080000,(a1)+	; move a tad to the right
-		dbf	d3,@FOL_Loop		; loop
-@FOL_ReLoop:
-		addq.w	#2,a2			; go to next check
-		tst.b	(a2)			; end of list reached?
-		bpl.s	@FOL_FixOddLoop		; if not, repeat
-		rts				; otherwise, return
-
-; ===========================================================================
 ; ---------------------------------------------------------------------------
-CJSM_FO_Array:
-; Used to properly horizontally center lines that have an odd number of characters
-; These rows will be shifted one tile to the right
-; Usage: Page (1-based), Row (0-based)
-		dc.b	 1, 8
-		
-		dc.b	 2, 1
-		dc.b	 2, 3
-		
-		dc.b	 3, 1
-		
-		dc.b	 4, 1
-		dc.b	 4, 3
-		dc.b	 4, 8
-		
-		dc.b	 5, 1
-		
-		dc.b	 6, 7
-		dc.b	 6, 9
-		
-		dc.b	 7, 1
-		dc.b	 7, 7
-		dc.b	 7, 9
-		
-		dc.b	 8, 3
-		dc.b	 8, 6
-		dc.b	 8, 8
-		
-		dc.b	 9, 1
-		dc.b	 9, 7
-		dc.b	 9, 9
-		
-		dc.b	10, 8
-			
-		dc.b	11, 7
-		dc.b	11, 8
-		dc.b	11, 9
-		dc.b	11, 10
-		
-		dc.b	12, 2
-		dc.b	12, 10
-		
-		dc.b	$FF, $FF
-		even
-; ---------------------------------------------------------------------------
-; ===========================================================================
 
+		; horizontal centering
+		bsr	Credits_LoadPage		; load current page into a0
+		lea	($FFFFCC00).w,a1		; set up H-scroll buffer to the point where the main text is located
 
-; ---------------------------------------------------------------------------
+		move.w	#Credits_LineLength,d0		; set line length
+		moveq	#Credits_Lines-1,d1		; set default loop count of line count
+@centertextloop:
+		moveq	#0,d2				; clear d2
+		movea.l	a0,a2				; create copy of story text address
+		adda.w	d0,a2				; add line length to the offset (so we start at the end)
+		moveq	#Credits_LineLength,d3		; make sure we don't exceed the line limit (for blank lines)
+@findlineend:	tst.b	-(a2)				; is current character a space?
+		bne.s	@writescroll			; if not, we found the end of the line, branch
+		addq.l	#1,d2				; increase 1 to center alignment counter
+		subq.b	#1,d3				; subtract one remaining line length limit to check
+		bhi.s	@findlineend			; loop until we found the end, or move on if it's a blank line
+
+@writescroll:
+		lsl.l	#3,d2				; multiply by 8px per space
+		swap	d2
+		rept	16				; 8 scanlines (one row)
+		add.l	d2,(a1)+			; write offset to scroll buffer
+		endr					; rept end
+		adda.w	d0,a0				; go to next line
+		adda.w	#2,a0				; go to next line
+		dbf	d1,@centertextloop		; loop
+		rts					; return
+
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Mapping
@@ -171,57 +185,49 @@ MoveOffSpeed = $0020
 OffScreenPos = $0040
 ; ---------------------------------------------------------------------------
 
-CJ_MapLetters:
-		sub.w	#MoveOffSpeed,($FFFFFFA0).w		; decrease X scroll position left
-		move.w	($FFFFFFA0).w,d0			; load scroll position
-		andi.w	#$01FF,d0				; keep within the X line
-		cmp.w	#OffScreenPos*4,d0			; has it reached out of screen?
-		ble	CJML_WriteMappings			; if so, load the next page
-		rts						; return
-
-CJML_WriteMappings:
-		lea	($00FF0004).l,a0			; load address of mappings
-		move.l	(a0),d0					; load that address
-		cmp.l	($00FF0008).l,d0			; is it the end address?
-		beq	CJML_End				; if so, branch
-
-		addq.b	#1,($FFFFFF91).w			; set to next screen
-
+CJ_WriteCurrentPage:
+		VBlank_SetMusicOnly
+		bsr	Credits_LoadPage			; load current page data offset into a0
 		lea	($C00000).l,a1				; load VDP data port address to a1
 		move.l	#$40000003,d3				; prepare V-Ram address
 		move.l	d3,d6					; load V-Ram address
 		move.l	#$00800000,d5				; prepare value for increase lines
 		move.l	#$007C0000,d4				; prepare value for decrease lines
-		movea.l	d0,a0					; set as new address
-		moveq	#$00,d7					; clear d7
-		move.b	(a0)+,d7				; load repeat times
+
+		; WHY THE FUCK DO I HAVE TO +6 TO MAKE THIS WORK????
+		moveq	#Credits_Lines+6,d7			; load line repeat times
+
 CJML_NextCharacter:
-		moveq	#$00,d0					; clear d0
+		moveq	#0,d0					; clear d0
 		move.b	(a0)+,d0				; load character
-		bpl	CJML_CheckCharacter			; if it's not negative, branch
+		bpl.w	CJML_WriteChar				; if it's a regular char, write it
+		cmpi.b	#-1,d0					; end of the line?
+		bne.w	CJML_WriteChar				; if not, it's a lowercase character, write it
+
+		; next line
 		add.l	d5,d3					; increase to next line
-		add.l	d5,d3					; ''
+	;	add.l	d5,d3					; '' (no idea why I don't need this anymore but it doubles the line spacing too much)
 		move.l	d3,d6					; load V-Ram address
 		dbf	d7,CJML_NextCharacter			; repeat til all lines are done
-		move.l	a0,($00FF0004).l			; update address of mappings
-		bra	CJML_ScrollIn				; continue
+		VBlank_UnsetMusicOnly
+		rts
+; ---------------------------------------------------------------------------
 
-CJML_CheckCharacter:
-		cmp.b	#$20,d0					; is it the space character?
-		bne	CJML_RunLetter				; if not, branch
-		moveq	#$40,d0					; set to use null
+CJML_WriteChar:
+		tst.b	d0		; test current char
+		smi.b	d1		; if it's negative, set lowercase char flag
+		andi.w	#$007F,d0	; make positive again
 
-CJML_RunLetter:
-		sub.b	#$40,d0					; minus 40
 		add.w	d0,d0					; multiply by...
 		add.w	d0,d0					; ...4
 		addq.w	#$01,d0					; plus 1
-		move.l	d6,$04(a1)				; set VDP
+		move.l	d6,4(a1)				; set VDP
 		
-		cmpi.b	#8,d7			; use the second palette set for lower part (where the names are)
-		bge.s	@nosecondpalset
-		addi.w	#$4000,d0		; start on palette row 3
-@nosecondpalset:
+		tst.b	d1		; lowercase character flag set?
+		beq.s	@nosecondpal	; if not, branch
+		addi.w	#$4000,d0	; use the second palette set for lower part (where the names are)
+
+@nosecondpal:
 		move.w	d0,(a1)					; save
 		addq.w	#$02,d0					; increase by 2
 		move.w	d0,(a1)					; save
@@ -233,36 +239,17 @@ CJML_RunLetter:
 		move.w	d0,(a1)					; save
 		addq.w	#$02,d0					; increase by 2
 		move.w	d0,(a1)					; save
+
 		sub.l	d4,d6					; decrease to previous line
-		bra	CJML_NextCharacter			; repeat
+		bra.w	CJML_NextCharacter
+
+; ---------------------------------------------------------------------------
+; ===========================================================================
 ; ---------------------------------------------------------------------------
 
-CJML_ScrollIn:
-		cmpi.b	#NumberOfCreditsPages,($FFFFFF91).w	; is this the final screen? (return to sega screen)
-		bne.s	CJML_NormalScreen			; if not, branch
-
-CJML_FinalLoop:
-		addq.b	#1,($FFFFFE04).w			; increase frame counter
-
-		move.w	($FFFFFFA0).w,d0			; load scroll position
-		andi.w	#$01FF,d0				; keep within the X line
-		tst.w	d0					; is it at the center of the screen?
-		bne	CJML_FinalScreenScroll			; if not, branch (keep scrolling)
-		bra	CJML_FinalLoop2				; if so, branch
-
-CJML_FinalScreenScroll:
-		move.b	#$04,VBlankRoutine			; set V-Blank routine to run
-		jsr	DelayProgram				; hult main program to run V-Blank
-		subi.w	#$10,($FFFFFFA0).w			; decrease X scroll position left
-		bsr	CJ_ScrollMappings			; run scrolling/deformation
-		bra	CJML_FinalLoop				; loop
-
-CJML_FinalLoop2:
-		move.b	#$04,VBlankRoutine
-		jsr	DelayProgram
-		tst.b	($FFFFF605).w				; test button input
-		bmi.s	CJML_End				; is start pressed? if yes, branch
-		bra	CJML_FinalLoop2
+CJ_ScrollIn:
+		cmpi.b	#Credits_Pages,(Credits_CurrentPage).w	; is this the final screen? ("thank you for playing")
+		beq.w	CJML_FinalLoop				; if yes, branch
 
 CJML_NormalScreen:
 		subi.w	#MoveOffSpeed,($FFFFFFA0).w		; decrease X scroll position left
@@ -271,10 +258,10 @@ CJML_NormalScreen:
 		andi.w	#$01FF,d0				; keep within the X line
 		cmp.w	#OffScreenPos,d0			; has it reached in screen?
 		bmi	CJML_ScrollSlow				; if so, branch
-		move.b	#$04,VBlankRoutine			; set V-Blank routine to run
-		jsr	DelayProgram				; hult main program to run V-Blank
+		move.b	#4,VBlankRoutine			; set V-Blank routine to run
+		jsr	DelayProgram				; halt main program to run V-Blank
 		bsr	CJ_ScrollMappings			; run scrolling/deformation
-		bra	CJML_ScrollIn				; loop
+		bra	CJ_ScrollIn				; loop
 
 CJML_ScrollSlow:
 		addq.b	#1,($FFFFFE04).w			; increase frame counter
@@ -299,13 +286,33 @@ CJML_FinishUp:
 
 ; ---------------------------------------------------------------------------
 
-CJML_End:
-		addq.w	#4,sp			; skip return address (inherited quirk from the credits screen)
-		jmp	Exit_CreditsScreen
+CJML_FinalLoop:
+		addq.b	#1,($FFFFFE04).w			; increase frame counter
 
+		move.w	($FFFFFFA0).w,d0			; load scroll position
+		andi.w	#$01FF,d0				; keep within the X line
+		tst.w	d0					; is it at the center of the screen?
+		bne	CJML_FinalScreenScroll			; if not, branch (keep scrolling)
+		bra	CJML_FinalLoop2				; if so, branch
+
+CJML_FinalScreenScroll:
+		move.b	#$04,VBlankRoutine			; set V-Blank routine to run
+		jsr	DelayProgram				; hult main program to run V-Blank
+		subi.w	#$10,($FFFFFFA0).w			; decrease X scroll position left
+		bsr	CJ_ScrollMappings			; run scrolling/deformation
+		bra	CJML_FinalLoop				; loop
+
+CJML_FinalLoop2:
+		move.b	#$04,VBlankRoutine
+		jsr	DelayProgram
+		tst.b	($FFFFF605).w				; test button input
+	;	bmi.s	CJML_End				; is start pressed? if yes, branch
+		bra	CJML_FinalLoop2
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
 
+
+; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Palette Data
 ; ---------------------------------------------------------------------------
@@ -330,14 +337,6 @@ Pal_Credits:
 		dc.w	0,0,0,0,0,0,0,0,0,0,0
 		even
 
-; ---------------------------------------------------------------------------
-; ===========================================================================
-; ---------------------------------------------------------------------------
-; Art Data
-; ---------------------------------------------------------------------------
-
-ArtKospM_Credits:	incbin	"Screens/CreditsScreen/Credits_FontArt.kospm"
-		even
 
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
@@ -345,7 +344,269 @@ ArtKospM_Credits:	incbin	"Screens/CreditsScreen/Credits_FontArt.kospm"
 ; Map Data
 ; ---------------------------------------------------------------------------
 
-Map_Credits:	include	"Screens/CreditsScreen/Credits_Maps.asm"
+Credits_LoadPage:
+		moveq	#0,d0				; clear d0
+		move.b	(Credits_CurrentPage).w,d0	; get ID for the current page we want to display
+		subq.b	#1,d0
+		bpl.s	@0
+		moveq	#0,d0
+@0:		add.w	d0,d0				; times four...
+		add.w	d0,d0				; ...for long alignment
+		movea.l	CreditsMaps_Index(pc,d0.w),a0	; load credits page into a0
+		rts
+; ---------------------------------------------------------------------------
+CreditsMaps_Index:
+		dc.l	Credits_Page1
+		dc.l	Credits_Page2
+		dc.l	Credits_Page3
+		dc.l	Credits_Page4
+		dc.l	Credits_Page5
+		dc.l	Credits_Page6
+		dc.l	Credits_Page7
+		dc.l	Credits_Page8
+		dc.l	Credits_Page9
+		dc.l	Credits_Page10
+		dc.l	Credits_Page11
+		dc.l	Credits_Page12
+; ---------------------------------------------------------------------------
+
+; Macro to preprocess and output a character to its correct mapping
+crdchar macro char		
+		if     \char = ' '
+			dc.b	0
+		elseif \char = '1'
+			dc.b	'Z' - 'A' + 2
+		elseif \char = '7'
+			dc.b	'Z' - 'A' + 3
+		elseif (\char >= 'a') & (\char <= 'z')
+			; lowercase letter
+			dc.b	\char - 'a' + $81
+		else
+			; uppercase letter
+			dc.b	\char - 'A' + 1
+		endif
+	endm
+ 
+crdtxt macro string
+		i:   = 1
+		len: = strlen(\string)
+		if (len<>Credits_LineLength)
+			inform 2, "line must be EXACTLY 20 characters long"
+		endif
+
+		while (i<=len)
+			char:	substr i,i,\string
+			crdchar '\char'
+			i: = i+1
+		endw
+		dc.w	$FFFF
+	endm
+; ---------------------------------------------------------------------------
+
+Credits_Page1:
+		crdtxt	"                    "
+		crdtxt	"direction and       "
+		crdtxt	"                    "
+		crdtxt	"lead development    "
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"SELBI               "
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"                    "
+
+Credits_Page2:
+		crdtxt	"                    "
+		crdtxt	"mentorship and      "
+		crdtxt	"                    "
+		crdtxt	"extra assets        "
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"MARKEYJESTER        "
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"                    "
+
+Credits_Page3:
+		crdtxt	"                    "
+		crdtxt	"blast               "
+		crdtxt	"                    "
+		crdtxt	"processing          "
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"VLADIKCOMPER        "
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"                    "
+
+Credits_Page4:
+		crdtxt	"                    "
+		crdtxt	"assistant           "
+		crdtxt	"                    "
+		crdtxt	"development         "
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"FUZZY               "
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"                    "
+
+Credits_Page5:
+		crdtxt	"                    "
+		crdtxt	"design advice and   "
+		crdtxt	"                    "
+		crdtxt	"hardware testing    "
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"SONICFAN[           "
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"                    "
+
+Credits_Page6:
+		crdtxt	"                    "
+		crdtxt	"main original       "
+		crdtxt	"                    "
+		crdtxt	"beta testing        "
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"NEONSYNTH           "
+		crdtxt	"                    "
+		crdtxt	"AKA SONICVAAN       "
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"                    "
+	
+Credits_Page7:
+		crdtxt	"                    "
+		crdtxt	"additional          "
+		crdtxt	"                    "
+		crdtxt	"beta testing        "
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"AJCOX               "
+		crdtxt	"                    "
+		crdtxt	"PEANUT NOCEDA       "
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"                    "
+
+Credits_Page8:
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"main music ports    "
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"AMPHOBIOUS          "
+		crdtxt	"                    "
+		crdtxt	"AKA DALEKSAM        "
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"                    "
+
+Credits_Page9:
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"additional music    "
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"SPANNER             "
+		crdtxt	"                    "
+		crdtxt	"EDUARDO             "
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"                    "
+
+Credits_Page10:
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"special thanks      "
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"REDHOTSONIC         "
+		crdtxt	"                    "
+		crdtxt	"MAINMEMORY          "
+		crdtxt	"                    "
+		crdtxt	"JORGE               "
+		crdtxt	"                    "
+		crdtxt	"SONIC TEAM          "
+		crdtxt	"SEGA                "
+		crdtxt	"                    "
+
+Credits_Page11:
+		crdtxt	"                    "
+		crdtxt	"a huge thanks to    "
+		crdtxt	"                    "
+		crdtxt	"the ERaZor 7 squad  "
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"VLADIKCOMPER        "
+		crdtxt	"SONICFAN1           "
+		crdtxt	"FUZZY               "
+		crdtxt	"AJCOX               "
+		crdtxt	"NEONSYNTH           "
+		crdtxt	"MARKEYJESTER        "
+		crdtxt	"                    "
+		crdtxt	"                    "
+
+Credits_Page12:
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"thank you           "
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"FOR PLAYING         "
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"                    "
+
+	even
+; ---------------------------------------------------------------------------
+; ===========================================================================
+
+
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Art Data
+; ---------------------------------------------------------------------------
+
+ArtKospM_Credits:
+		incbin	"Screens/CreditsScreen/Credits_FontArt.kospm"
 		even
 
 ; ---------------------------------------------------------------------------

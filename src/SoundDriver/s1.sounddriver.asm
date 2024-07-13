@@ -1795,8 +1795,8 @@ PSGSetFreq:
 		subi.b	#$81,d5		; Convert to 0-based index
 		bcs.s	.restpsg	; If $80, put track at rest
 		add.b	TrackTranspose(a5),d5 ; Add in channel transposition
-		andi.w	#$7F,d5		; Clear high byte and sign bit
-		lsl.w	#1,d5
+		ext.w	d5
+		add.w	d5,d5
 		lea	PSGFrequencies(pc),a0
 		move.w	(a0,d5.w),TrackFreq(a5)	; Set new frequency
 		bra.w	FinishTrackUpdate
@@ -1979,13 +1979,17 @@ PSGSilenceAll:
 ;	dc.w  $1B,  $1A,  $18,  $17,  $16,  $15,  $13,  $12,  $11,  $10,    0,    0
 ; ---------------------------------------------------------------------------
 ; word_729CE:
+
+		; Extra octave available through note disposition (Fixes Rythm port)
+		dc.w $3FF, $3FF, $3FF, $3FF, $3FF, $3FF, $3FF, $3FF, $3FF, $3F7, $3BE, $388
+
 PSGFrequencies:
 		dc.w $356, $326, $2F9, $2CE, $2A5, $280, $25C, $23A, $21A, $1FB, $1DF, $1C4
 		dc.w $1AB, $193, $17D, $167, $153, $140, $12E, $11D, $10D,  $FE,  $EF,  $E2
 		dc.w  $D6,  $C9,  $BE,  $B4,  $A9,  $A0,  $97,  $8F,  $87,  $7F,  $78,  $71
 		dc.w  $6B,  $65,  $5F,  $5A,  $55,  $50,  $4B,  $47,  $43,  $40,  $3C,  $39
 		dc.w  $36,  $33,  $30,  $2D,  $2B,  $28,  $26,  $24,  $22,  $20,  $1F,  $1D
-		dc.w  $1B,  $1A,  $18,  $17,  $16,  $15,  $13,  $12,  $11,    0
+		dc.w  $1B,  $1A,  $18,  $17,  $16,  $15,  $13,  $12,  $11,  $10,    0,    0
 
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 

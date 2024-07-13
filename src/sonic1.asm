@@ -27355,17 +27355,25 @@ FixLevel:
 ; ---------------------------------------------------------------------------
 
 FixCamera:
+		moveq	#0,d0
 		move.w	($FFFFD008).w,d0	; load Sonic's X-location into d0
-		subi.w	#160,d0			; substract 160 pixels from it (half of 320, horizontal screen size)
-		bpl.s	@0
+		subi.w	#320/2,d0		; substract 160 pixels from it (half of 320, horizontal screen size)
+		bpl.s	@fixx
 		moveq	#0,d0
-@0:		move.w	d0,($FFFFF700).w	; put result into X-camera location
+@fixx:		swap	d0
+		move.l	d0,($FFFFF700).w	; put result into X-camera location
 
-		move.w	($FFFFD00C).w,d0	; load Sonic's Y-location into d0
-		subi.w	#112,d0			; substract 112 pixels from it (half of 224, vertical screen size)
-		bpl.s	@1
 		moveq	#0,d0
-@1:		move.w	d0,($FFFFF704).w	; put result into Y-camera location
+		move.w	($FFFFD00C).w,d0	; load Sonic's Y-location into d0
+		subi.w	#224/2,d0		; substract 112 pixels from it (half of 224, vertical screen size)
+		bpl.s	@fixy
+		moveq	#0,d0
+@fixy:		swap	d0
+		move.l	d0,($FFFFF704).w	; put result into Y-camera location
+
+		clr.l	($FFFFF73A).w		; clear camera shifts
+		clr.b	($FFFFFF64).w		; clear camera shaking
+		move.w	($FFFFF704).w,($FFFFFF66).w ; update vertical screen shake position for rare visual glitches
 		rts
 
 ; ---------------------------------------------------------------------------

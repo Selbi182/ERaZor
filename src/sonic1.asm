@@ -12024,10 +12024,8 @@ Obj4B_Index:	dc.w Obj4B_Main-Obj4B_Index
 ; ===========================================================================
 
 Obj4B_Main:				; XREF: Obj4B_Index
-		cmpi.b	#5,($FFFFFE10).w
-		bne.s	@notfzescape
 		cmpi.w	#$502,($FFFFFE10).w
-		bne.s	@delete
+		bne.s	@notfzescape
 		tst.b	(FZEscape).w
 		beq.s	@delete
 		tst.b	obSubtype(a0)	; is this the skip ring?

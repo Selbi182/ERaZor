@@ -345,7 +345,7 @@ FMDoNext:
 ; sub_71D22:
 FMSetFreq:
 		subi.b	#$80,d5			; Make it a zero-based index
-		beq.s	TrackSetRest
+		beq.s	.restpsg
 
 		lea		v_smpsmisc, a0
 		move.b	d5, (a0, d7.w)
@@ -359,7 +359,7 @@ FMSetFreq:
 		move.w	d6,TrackFreq(a5)	; Store new frequency
 		rts	
 
-.rest:
+.restpsg:
 		lea	v_smpsmisc, a0
 		move.b	d5, (a0, d7.w)
 		bra	TrackSetRest
@@ -1823,7 +1823,7 @@ PSGDoNext:
 ; sub_728AC:
 PSGSetFreq:
 		subi.b	#$81,d5		; Convert to 0-based index
-		bcs.s	.restpsg	; If $80, put track at rest
+		bcs.s	.restfm	; If $80, put track at rest
 
 		lea		v_smps_fm, a0
 		move.b	d5, 1(a0, d7.w) ; move that note
@@ -1837,7 +1837,7 @@ PSGSetFreq:
 		bra.w	FinishTrackUpdate
 ; ===========================================================================
 ; loc_728CA:
-.restpsg:
+.restfm:
 		lea		v_smps_fm, a0
 		move.b	#0, 1(a0, d7.w) ; clear
 

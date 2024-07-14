@@ -462,7 +462,7 @@ Credits_Page7:
 		crdtxt	"ports               "
 		crdtxt	"                    "
 		crdtxt	"                    "
-		crdtxt	"AMPHOBIOUS          "
+		crdtxt	"AMPHOBIUS           "
 		crdtxt	"                    "
 		crdtxt	"AKA DALEKSAM        "
 		crdtxt	"                    "

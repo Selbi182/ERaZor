@@ -1,8 +1,10 @@
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Credits Routine
+; Credits Screens
+; Originally written by MarkeyJester, heavily modified by Selbi
 ; ---------------------------------------------------------------------------
-Credits_CurrentPage equ $FFFFFF91
+Credits_Page equ $FFFFFF91 ; b
+Credits_Scroll equ $FFFFFFA0 ; w
 
 Credits_Pages = 12
 Credits_Lines = 14
@@ -10,23 +12,18 @@ Credits_LineLength = 20
 StartDelay = 152
 
 Credits_ScrollTime = $1C0
-Credits_FastThreshold = $61
+Credits_FastThreshold = $60
 Credits_SpeedSlow = 1
 Credits_SpeedFast = 32
 ; ---------------------------------------------------------------------------
+; ===========================================================================
 
 CreditsJest:
 		move.b	#$97,d0
 		jsr	PlaySound_Special			; play credits music
-
 		jsr	Pal_FadeFrom				; fade palette out
-		VBlank_SetMusicOnly
 
-		moveq	#$00,d0					; clear d0
-		move.l	d0,($FFFFF616).w			; reset Y scroll positions
-		move.l	d0,($FFFFFFAC).w			; reset rumble positions
-		move.l	d0,($FFFFFFA0).w			; reset scroll positions
-		
+		VBlank_SetMusicOnly
 		lea	($C00004).l,a6
 		move.w	#$8004,(a6)				; disable h-ints
 		move.w	#$8230,(a6)
@@ -47,6 +44,11 @@ CreditsJest:
 		lea	(ArtKospM_Credits).l,a0			; load address of compressed art
 		jsr	KosPlusMDec_VRAM			; decompress and dump
 
+		vram	$2000
+		lea	($C00000).l,a6
+		lea	(ArtKospM_PixelStars).l,a0
+		jsr	KosPlusMDec_VRAM
+
 		lea	($FFFFFB80).w,a1			; load address of storage buffer
 		lea	(Pal_Credits).l,a0			; load address of palette data
 		moveq	#$07,d1					; set repeat times
@@ -60,24 +62,34 @@ CJ_RepPal:	move.l	(a0)+,(a1)+				; dump palette
 		lea	($FFFFCC00).w,a1
 		moveq	#0,d0
 		move.w	#$DF,d1
-@ClrScroll:	move.l	d0,(a1)+
-		dbf	d1,@ClrScroll	; fill scroll data with 0
+@clrscroll:	move.l	d0,(a1)+
+		dbf	d1,@clrscroll	
 
 		lea	($FFFFD000).w,a1
 		moveq	#0,d0
 		move.w	#$7FF,d1
-@ClrObjRam:	move.l	d0,(a1)+
-		dbf	d1,@ClrObjRam ; fill object RAM ($D000-$EFFF) with $0
+@clrobjram:	move.l	d0,(a1)+
+		dbf	d1,@clrobjram
 
-		move.b	#0,(Credits_CurrentPage).w		; set current page ID to 0
-		move.w	#0,($FFFFFFA0).w
+		move.b	#0,(Credits_Page).w			; set current page ID to 0
+		move.w	#0,(Credits_Scroll).w
 		display_enable
-		jsr	Pal_FadeTo				; fade palette in
+		jsr	Pal_FadeTo
 
+		jsr	SingleObjLoad
+		bne.s	@syncmusic
+		move.b	#$8B,0(a1)				; load starfield generator
+		move.b	#0,obRoutine(a1)
+
+@syncmusic:
 		; opening delay to sync the screen to the music
 		move.w	#StartDelay,d0
 	@delay:	move.b	#4,VBlankRoutine
 		jsr	DelayProgram
+		move.l	d0,-(sp)
+		jsr	ObjectsLoad
+		jsr	BuildSprites
+		move.l	(sp)+,d0
 		dbf	d0,@delay
 
 
@@ -87,40 +99,44 @@ CJ_RepPal:	move.l	(a0)+,(a1)+				; dump palette
 
 CreditsJest_Loop:
 		move.b	#4,VBlankRoutine			; set V-Blank routine to run
-		jsr	DelayProgram				; hult main program to run V-Blank
+		jsr	DelayProgram				; halt main program to run V-Blank
+		jsr	ObjectsLoad
+		jsr	BuildSprites
 
-		moveq	#Credits_SpeedSlow,d1
-		move.w	($FFFFFFA0).w,d0
-		subi.w	#Credits_ScrollTime/2,d0
-		bpl.s	@1
-		neg.w	d0
-@1:		cmpi.w	#Credits_FastThreshold,d0
-		blo.s	@2
-		moveq	#Credits_SpeedFast,d1
+		; update scroll
+		moveq	#Credits_SpeedSlow,d1			; use slowest speed by default
+		move.w	(Credits_Scroll).w,d0			; get current scroll timer
+		subi.w	#Credits_ScrollTime/2,d0		; normalize
+		bpl.s	@chkfast				; if positive, branch
+		neg.w	d0					; make positive
+@chkfast:
+		cmpi.b	#Credits_Pages,(Credits_Page).w		; final page?
+		beq.s	@fast					; if yes, scroll fast
+		cmpi.w	#Credits_FastThreshold,d0		; are we above the fast scroll threshold?
+		blo.s	@halfspeed				; if not, scroll slow
+	@fast:	moveq	#Credits_SpeedFast,d1			; use fast threshold
 
-@2:
-		cmpi.w	#1,d1
-		bne.s	@3
-		btst	#0,($FFFFFE0F).w
-		bne.s	CreditsJest_Loop
-@3:
-		sub.w	d1,($FFFFFFA0).w			; decrease X scroll position left
-		blo.s	@nextpage
-
+@halfspeed:
+		btst	#0,($FFFFFE0F).w			; are we on an odd frame?
+		bne.s	CreditsJest_Loop			; if yes, don't scroll (effectively halves speed)
+@doscroll:
+		sub.w	d1,(Credits_Scroll).w			; decrease X scroll position left
+		blo.s	@nextpage				; if scroll time is up, go to next page
 		bsr	CJ_ScrollMappings			; run scrolling/deformation
 		bra.s	CreditsJest_Loop			; loop screen
 
 @nextpage:
-		; next page
-		addq.b	#1,(Credits_CurrentPage).w			; set to next screen
-		cmpi.b	#Credits_Pages,(Credits_CurrentPage).w		; final page?
-		bhi.s	@endcredits					; if yes, go to end
-		bsr	CJ_WriteCurrentPage				; run mapping
-		move.w	#Credits_ScrollTime,($FFFFFFA0).w
+		; next page when scroll time expires
+		addq.b	#1,(Credits_Page).w			; set to next screen
+		cmpi.b	#Credits_Pages,(Credits_Page).w		; final page?
+		bhi.s	@endcredits				; if yes, go to end
+		bsr	CJ_WriteCurrentPage			; run mapping
+		move.w	#Credits_ScrollTime,(Credits_Scroll).w	; reset scroll time
 		bra.s	CreditsJest_Loop			; loop screen
 
 @endcredits:
-		jmp	Exit_CreditsScreen
+		; TODO: reimplement final screen special effects
+		jmp	Exit_CreditsScreen			; exit screen
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -128,25 +144,21 @@ CreditsJest_Loop:
 ; ---------------------------------------------------------------------------
 
 CJ_ScrollMappings:
-		lea	($FFFFCC00).w,a1			; load scroll buffer address
-		moveq	#$00,d0					; clear d0
-		move.w	#Credits_ScrollTime/2,d0
-		sub.w	($FFFFFFA0).w,d0			; load X scroll position
-	;	neg.w	d0					; negate direction
-		swap	d0					; send left
-		move.w	#$003F,d1				; set repeat times
+		lea	($FFFFCC00).w,a1		; load scroll buffer address
+		moveq	#$00,d0				; clear d0
+		move.w	#Credits_ScrollTime/2,d0	; pre-center
+		sub.w	(Credits_Scroll).w,d0	; load X scroll position
+		swap	d0				; send left
+		move.w	#$50-1,d1			; set repeat times
+@scrolltop:	move.l	d0,(a1)+			; dump to scroll buffer
+		dbf	d1,@scrolltop			; repeat til all scanlines are written to
 
-CJSM_Repeat:
-		move.l	d0,(a1)+				; dump to scroll buffer
-		dbf	d1,CJSM_Repeat				; repeat til all scanlines are written to
-		swap	d0					; send right
-		neg.w	d0					; negate direction
-		swap	d0					; send left
-		move.w	#$009F,d1				; set repeat times
-
-CJSM_Repeat2:
-		move.l	d0,(a1)+				; dump to scroll buffer
-		dbf	d1,CJSM_Repeat2				; repeat til all scanlines are written to
+		swap	d0				; send right
+		neg.w	d0				; negate direction
+		swap	d0				; send left
+		move.w	#$90-1,d1			; set repeat times
+@scrollbottom:	move.l	d0,(a1)+			; dump to scroll buffer
+		dbf	d1,@scrollbottom		; repeat til all scanlines are written to
 ; ---------------------------------------------------------------------------
 
 		; horizontal centering
@@ -179,135 +191,61 @@ CJSM_Repeat2:
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Mapping
-
-MoveOffSpeed = $0020
-OffScreenPos = $0040
+; Write mappings for current page in the credits
 ; ---------------------------------------------------------------------------
 
 CJ_WriteCurrentPage:
 		VBlank_SetMusicOnly
-		bsr	Credits_LoadPage			; load current page data offset into a0
-		lea	($C00000).l,a1				; load VDP data port address to a1
-		move.l	#$40000003,d3				; prepare V-Ram address
-		move.l	d3,d6					; load V-Ram address
-		move.l	#$00800000,d5				; prepare value for increase lines
-		move.l	#$007C0000,d4				; prepare value for decrease lines
-
-		; WHY THE FUCK DO I HAVE TO +6 TO MAKE THIS WORK????
-		moveq	#Credits_Lines+6,d7			; load line repeat times
-
+		bsr	Credits_LoadPage		; load current page data offset into a0
+		lea	($C00000).l,a1			; load VDP data port address to a1
+		move.l	#$40000003,d3			; prepare V-Ram address
+		move.l	d3,d6				; load V-Ram address
+		move.l	#$00800000,d5			; prepare value for increase lines
+		move.l	#$007C0000,d4			; prepare value for decrease lines
+		moveq	#(Credits_Lines*2)-1,d7		; load line repeat times (no idea why I gotta double it)
 CJML_NextCharacter:
-		moveq	#0,d0					; clear d0
-		move.b	(a0)+,d0				; load character
-		bpl.w	CJML_WriteChar				; if it's a regular char, write it
-		cmpi.b	#-1,d0					; end of the line?
-		bne.w	CJML_WriteChar				; if not, it's a lowercase character, write it
+		moveq	#0,d0				; clear d0
+		move.b	(a0)+,d0			; load character
+		bpl.w	CJML_WriteChar			; if it's a regular char, write it
+		cmpi.b	#-1,d0				; end of the line?
+		bne.w	CJML_WriteChar			; if not, it's a lowercase character, write it
 
 		; next line
-		add.l	d5,d3					; increase to next line
-	;	add.l	d5,d3					; '' (no idea why I don't need this anymore but it doubles the line spacing too much)
-		move.l	d3,d6					; load V-Ram address
-		dbf	d7,CJML_NextCharacter			; repeat til all lines are done
+		add.l	d5,d3				; increase to next line
+		move.l	d3,d6				; load V-Ram address
+		dbf	d7,CJML_NextCharacter		; repeat til all lines are done
 		VBlank_UnsetMusicOnly
-		rts
+		rts					; page fully written
 ; ---------------------------------------------------------------------------
 
 CJML_WriteChar:
-		tst.b	d0		; test current char
-		smi.b	d1		; if it's negative, set lowercase char flag
-		andi.w	#$007F,d0	; make positive again
+		tst.b	d0				; test current char
+		smi.b	d1				; if it's negative, set lowercase char flag
+		andi.w	#$7F,d0				; make positive again
 
-		add.w	d0,d0					; multiply by...
-		add.w	d0,d0					; ...4
-		addq.w	#$01,d0					; plus 1
-		move.l	d6,4(a1)				; set VDP
+		add.w	d0,d0				; multiply by...
+		add.w	d0,d0				; ...4
+		addi.w	#$8001,d0			; plus 1 + high priority (to not get covered by the stars)
+		move.l	d6,4(a1)			; set VDP
 		
-		tst.b	d1		; lowercase character flag set?
-		beq.s	@nosecondpal	; if not, branch
-		addi.w	#$4000,d0	; use the second palette set for lower part (where the names are)
-
+		tst.b	d1				; lowercase character flag set?
+		beq.s	@nosecondpal			; if not, branch
+		addi.w	#$4000,d0			; use the second palette set for lower part (where the names are)
 @nosecondpal:
-		move.w	d0,(a1)					; save
-		addq.w	#$02,d0					; increase by 2
-		move.w	d0,(a1)					; save
-		subq.w	#$01,d0					; decrease by 1
-		add.l	d5,d6					; increase to next line
-		move.l	d6,$04(a1)				; set VDP
+		move.w	d0,(a1)				; save
+		addq.w	#2,d0				; increase by 2
+		move.w	d0,(a1)				; save
+		subq.w	#1,d0				; decrease by 1
+		add.l	d5,d6				; increase to next line
+		move.l	d6,4(a1)			; set VDP
 		
-		addi.w	#$2000,d0		; use next palette row
-		move.w	d0,(a1)					; save
-		addq.w	#$02,d0					; increase by 2
-		move.w	d0,(a1)					; save
+		addi.w	#$2000,d0			; use next palette row for lower half of the letters to give nice effect
+		move.w	d0,(a1)				; save
+		addq.w	#2,d0				; increase by 2
+		move.w	d0,(a1)				; save
 
-		sub.l	d4,d6					; decrease to previous line
-		bra.w	CJML_NextCharacter
-
-; ---------------------------------------------------------------------------
-; ===========================================================================
-; ---------------------------------------------------------------------------
-
-CJ_ScrollIn:
-		cmpi.b	#Credits_Pages,(Credits_CurrentPage).w	; is this the final screen? ("thank you for playing")
-		beq.w	CJML_FinalLoop				; if yes, branch
-
-CJML_NormalScreen:
-		subi.w	#MoveOffSpeed,($FFFFFFA0).w		; decrease X scroll position left
-		move.b	#$60,($FFFFFF90).w			; set slow display time to $60 frames
-		move.w	($FFFFFFA0).w,d0			; load scroll position
-		andi.w	#$01FF,d0				; keep within the X line
-		cmp.w	#OffScreenPos,d0			; has it reached in screen?
-		bmi	CJML_ScrollSlow				; if so, branch
-		move.b	#4,VBlankRoutine			; set V-Blank routine to run
-		jsr	DelayProgram				; halt main program to run V-Blank
-		bsr	CJ_ScrollMappings			; run scrolling/deformation
-		bra	CJ_ScrollIn				; loop
-
-CJML_ScrollSlow:
-		addq.b	#1,($FFFFFE04).w			; increase frame counter
-		btst	#1,($FFFFFE04).w
-		beq.s	xcont
-		btst	#0,($FFFFFE04).w
-		bne.s	xcont
-		subq.w	#$0001,($FFFFFFA0).w			; decrease X scroll position left
-		subq.b	#$0001,($FFFFFF90).w			; is slow display time over?
-		beq	CJML_FinishUp				; if so, branch
-
-xcont:
-		move.b	#$04,VBlankRoutine			; set V-Blank routine to run
-		jsr	DelayProgram				; hult main program to run V-Blank
-		bsr	CJ_ScrollMappings			; run scrolling/deformation
-		bra	CJML_ScrollSlow				; loop
-
-CJML_FinishUp:
-		clr.b	($FFFFFE04).w
-		move.w	($00FF0000).l,($00FF0002).l		; reset timer
-		rts						; return
-
-; ---------------------------------------------------------------------------
-
-CJML_FinalLoop:
-		addq.b	#1,($FFFFFE04).w			; increase frame counter
-
-		move.w	($FFFFFFA0).w,d0			; load scroll position
-		andi.w	#$01FF,d0				; keep within the X line
-		tst.w	d0					; is it at the center of the screen?
-		bne	CJML_FinalScreenScroll			; if not, branch (keep scrolling)
-		bra	CJML_FinalLoop2				; if so, branch
-
-CJML_FinalScreenScroll:
-		move.b	#$04,VBlankRoutine			; set V-Blank routine to run
-		jsr	DelayProgram				; hult main program to run V-Blank
-		subi.w	#$10,($FFFFFFA0).w			; decrease X scroll position left
-		bsr	CJ_ScrollMappings			; run scrolling/deformation
-		bra	CJML_FinalLoop				; loop
-
-CJML_FinalLoop2:
-		move.b	#$04,VBlankRoutine
-		jsr	DelayProgram
-		tst.b	($FFFFF605).w				; test button input
-	;	bmi.s	CJML_End				; is start pressed? if yes, branch
-		bra	CJML_FinalLoop2
+		sub.l	d4,d6				; decrease to previous line
+		bra.w	CJML_NextCharacter		; loop
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
 
@@ -318,20 +256,27 @@ CJML_FinalLoop2:
 ; ---------------------------------------------------------------------------
 
 Pal_Credits:
-		; header - top
+		; line 1 - header top
 		dc.w	0,0
 		dc.w	$0422,$0ECC,$0A88
-		dc.w	0,0,0,0,0,0,0,0,0,0,0
-		; header - bottom
+		dc.w	0,0
+		; line 1 - stars
+		dc.w	$EEE,$CCE,$ECC
+		dc.w	0,0,0,0,0,0
+
+		; line 2 - header bottom
 		dc.w	0,0
 		dc.w	$0400,$0EAA,$0A66
 		dc.w	0,0,0,0,0,0,0,0,0,0,0
-		
-		; main content - top
-		dc.w	0,0
+
+		; line 3 - bg color
+		dc.w	$000
+		dc.w	0
+		; line 3 - main content top
 		dc.w	$0444,$0EEE,$0AAA
 		dc.w	0,0,0,0,0,0,0,0,0,0,0
-		; main content - bottom
+
+		; line 4 - main content bottom
 		dc.w	0,0
 		dc.w	$0222,$0AAA,$0888
 		dc.w	0,0,0,0,0,0,0,0,0,0,0
@@ -346,11 +291,11 @@ Pal_Credits:
 
 Credits_LoadPage:
 		moveq	#0,d0				; clear d0
-		move.b	(Credits_CurrentPage).w,d0	; get ID for the current page we want to display
-		subq.b	#1,d0
-		bpl.s	@0
-		moveq	#0,d0
-@0:		add.w	d0,d0				; times four...
+		move.b	(Credits_Page).w,d0	; get ID for the current page we want to display
+		subq.b	#1,d0				; adjust for index
+		bpl.s	@getindex			; if all good, branch
+		moveq	#0,d0				; prevent underflow
+@getindex:	add.w	d0,d0				; times four...
 		add.w	d0,d0				; ...for long alignment
 		movea.l	CreditsMaps_Index(pc,d0.w),a0	; load credits page into a0
 		rts
@@ -405,10 +350,10 @@ crdtxt macro string
 
 Credits_Page1:
 		crdtxt	"                    "
+		crdtxt	"                    "
 		crdtxt	"direction and       "
 		crdtxt	"                    "
 		crdtxt	"lead development    "
-		crdtxt	"                    "
 		crdtxt	"                    "
 		crdtxt	"                    "
 		crdtxt	"                    "
@@ -421,10 +366,10 @@ Credits_Page1:
 
 Credits_Page2:
 		crdtxt	"                    "
+		crdtxt	"                    "
 		crdtxt	"mentorship and      "
 		crdtxt	"                    "
 		crdtxt	"extra assets        "
-		crdtxt	"                    "
 		crdtxt	"                    "
 		crdtxt	"                    "
 		crdtxt	"                    "
@@ -437,10 +382,10 @@ Credits_Page2:
 
 Credits_Page3:
 		crdtxt	"                    "
+		crdtxt	"                    "
 		crdtxt	"blast               "
 		crdtxt	"                    "
 		crdtxt	"processing          "
-		crdtxt	"                    "
 		crdtxt	"                    "
 		crdtxt	"                    "
 		crdtxt	"                    "
@@ -453,10 +398,10 @@ Credits_Page3:
 
 Credits_Page4:
 		crdtxt	"                    "
+		crdtxt	"                    "
 		crdtxt	"assistant           "
 		crdtxt	"                    "
 		crdtxt	"development         "
-		crdtxt	"                    "
 		crdtxt	"                    "
 		crdtxt	"                    "
 		crdtxt	"                    "
@@ -469,10 +414,10 @@ Credits_Page4:
 
 Credits_Page5:
 		crdtxt	"                    "
+		crdtxt	"                    "
 		crdtxt	"design advice and   "
 		crdtxt	"                    "
 		crdtxt	"hardware testing    "
-		crdtxt	"                    "
 		crdtxt	"                    "
 		crdtxt	"                    "
 		crdtxt	"                    "
@@ -485,10 +430,10 @@ Credits_Page5:
 
 Credits_Page6:
 		crdtxt	"                    "
+		crdtxt	"                    "
 		crdtxt	"main original       "
 		crdtxt	"                    "
 		crdtxt	"beta testing        "
-		crdtxt	"                    "
 		crdtxt	"                    "
 		crdtxt	"                    "
 		crdtxt	"NEONSYNTH           "
@@ -501,10 +446,10 @@ Credits_Page6:
 	
 Credits_Page7:
 		crdtxt	"                    "
+		crdtxt	"                    "
 		crdtxt	"additional          "
 		crdtxt	"                    "
 		crdtxt	"beta testing        "
-		crdtxt	"                    "
 		crdtxt	"                    "
 		crdtxt	"                    "
 		crdtxt	"AJCOX               "
@@ -553,14 +498,14 @@ Credits_Page10:
 		crdtxt	"special thanks      "
 		crdtxt	"                    "
 		crdtxt	"                    "
+		crdtxt	"                    "
 		crdtxt	"REDHOTSONIC         "
 		crdtxt	"                    "
 		crdtxt	"MAINMEMORY          "
 		crdtxt	"                    "
 		crdtxt	"JORGE               "
 		crdtxt	"                    "
-		crdtxt	"SONIC TEAM          "
-		crdtxt	"SEGA                "
+		crdtxt	"                    "
 		crdtxt	"                    "
 
 Credits_Page11:
@@ -582,7 +527,7 @@ Credits_Page11:
 Credits_Page12:
 		crdtxt	"                    "
 		crdtxt	"                    "
-		crdtxt	"thank you           "
+		crdtxt	"THANK YOU           "
 		crdtxt	"                    "
 		crdtxt	"                    "
 		crdtxt	"                    "
@@ -590,7 +535,7 @@ Credits_Page12:
 		crdtxt	"                    "
 		crdtxt	"                    "
 		crdtxt	"                    "
-		crdtxt	"FOR PLAYING         "
+		crdtxt	"for playing         "
 		crdtxt	"                    "
 		crdtxt	"                    "
 		crdtxt	"                    "

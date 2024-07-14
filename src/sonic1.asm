@@ -2,26 +2,6 @@
 ; |                     Sonic ERaZor                     |
 ; \======================================================/
 
-; =======================================================
-; ------------------------------------------------------
-; Leader/Main Programming:	Selbi
-; Graphics/Help:		MarkeyJester
-; Additional Programming:	vladikcomper
-; Programming/Beta Testing:	Fuzzy
-; Music Ports:			DalekSam
-;				Spanner
-;				EduardoKnuckles	
-; Main Beta Testing:		SonicVaan
-; Beta/Real Hardware Testing:	SonicFan1
-; Additional Beta Testing:	ajcox
-;				Peanut Noceda
-; Real Hardware Testing:	redhotsonic
-; Special Thanks to:		MainMemory
-;				Jorge
-;				ProjectFM
-; ------------------------------------------------------
-; =======================================================
-
 ; ------------------------------------------------------
 	if def(__BENCHMARK__)=0
 ; Vladik's Debugger
@@ -43,7 +23,6 @@ __DEBUG__: equ 1
 	include	"_Constants.asm"
 	include	"_Macros.asm"
 
-	if def(__BENCHMARK__)=0
 ; ======================================================
 ; ------------------------------------------------------
 ; Developer Assembly Options
@@ -60,6 +39,7 @@ __DEBUG__: equ 1
 ; $301 - Scar Night Place
 ; $302 - Star Agony Place
 ; $502 - Finalor Place
+	if def(__BENCHMARK__)=0
 QuickLevelSelect = 0
 QuickLevelSelect_ID = -1
 ; ------------------------------------------------------
@@ -795,7 +775,7 @@ GameModeArray:
 		dc.l	StoryTextScreen		; Story Text Screen	($20)
 		dc.l	OptionsScreen		; Options Screen	($24)
 		dc.l	ChapterScreen		; Chapters Screen	($28)
-		dc.l	CreditsJest		; Markey's Credits	($2C)
+		dc.l	CreditsScreen		; Credits Screen	($2C)
 		dc.l	GameplayStyleScreen	; Gameplay Style Screen	($30)
 		dc.l	SoundTestScreen		; Sound Test Screen	($34)
 ; ---------------------------------------------------------------------------
@@ -3835,6 +3815,7 @@ Level_StartGame:
 		ints_enable
 		bclr	#7,($FFFFF600).w	; clear pre-level sequence flag
 
+		
 ; ---------------------------------------------------------------------------
 ; Main level loop (when	all title card and loading sequences are finished)
 ; ---------------------------------------------------------------------------
@@ -12185,7 +12166,12 @@ Obj4B_YPositive:
 		move.b	#1,$3C(a0)		; disable interaction with ring
 
 Obj4B_DontCollect:
-		bra.w	MarkObjGone
+		move.w	($FFFFF7BE).w,d0	; get giant ring patterns art loading state
+		andi.w	#%10,d0			; only look at the completion bit
+		bne.s	@display		; if it's set, display
+		rts				; otherwise, don't display yet to avoid garbled rings
+@display:
+		bra.w	MarkObjGone		; display giant ring
 ; ===========================================================================
 
 Obj4B_Collect:				; XREF: Obj4B_Index
@@ -12323,6 +12309,9 @@ Obj7C:					; XREF: Obj_Index
 Obj7C_Index:	dc.w Obj7C_Main-Obj7C_Index
 		dc.w Obj7C_ChkDel-Obj7C_Index
 		dc.w Obj7C_Delete-Obj7C_Index
+; ---------------------------------------------------------------------------
+		dc.w Obj7C_FakeFlash-Obj7C_Index
+		dc.w Obj7C_FakeFlash_Animate-Obj7C_Index
 ; ===========================================================================
 
 Obj7C_Main:				; XREF: Obj7C_Index
@@ -12340,16 +12329,8 @@ Obj7C_Main:				; XREF: Obj7C_Index
 
 Obj7C_ChkDel:				; XREF: Obj7C_Index
 		bsr.s	Obj7C_Collect
-		move.w	obX(a0),d0
-		andi.w	#$FF80,d0
-		move.w	($FFFFF700).w,d1
-		subi.w	#$80,d1
-		andi.w	#$FF80,d1
-		sub.w	d1,d0
-		cmpi.w	#$280,d0
-		bhi.w	DeleteObject
-		bra.w	DisplaySprite
-
+		jmp	MarkObjGone
+		
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 
 
@@ -12395,14 +12376,38 @@ Obj7C_End:				; XREF: Obj7C_Collect
 Obj7C_Delete:				; XREF: Obj7C_Index
 		bra.w	DeleteObject
 ; ===========================================================================
-Ani_obj25:
-		include	"_anim\obj25.asm"
+; ===========================================================================
+
+Obj7C_FakeFlash:
+		addq.b	#2,obRoutine(a0)
+		move.l	#Map_obj7C,obMap(a0)
+		move.w	#$2462,obGfx(a0)
+		cmpi.w	#$400,($FFFFFE10).w
+		bne.s	@cont
+		move.w	#$2484,obGfx(a0)
+@cont:
+		ori.b	#4,obRender(a0)
+		move.b	#0,obPriority(a0)
+		move.b	#$20,obActWid(a0)
+		move.b	#$FF,obFrame(a0)
+		move.w	#$C3,d0			; play giant ring sound
+		jsr	(PlaySound).l
+
+Obj7C_FakeFlash_Animate:				; XREF: Obj7C_Index
+		addq.b	#1,obFrame(a0)
+		cmpi.b	#8,obFrame(a0)	; has animation	finished?
+		bcc.s	Obj7C_Delete	; if yes, branch
+		jmp	DisplaySprite
+; ===========================================================================
 
 ; ---------------------------------------------------------------------------
 ; Sprite mappings - rings
 ; ---------------------------------------------------------------------------
 Map_obj25:
 		include	"_maps\obj25.asm"
+
+Ani_obj25:
+		include	"_anim\obj25.asm"
 
 ; ---------------------------------------------------------------------------
 ; Sprite mappings - giant ring

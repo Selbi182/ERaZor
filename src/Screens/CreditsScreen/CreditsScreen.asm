@@ -1,7 +1,6 @@
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Credits Screens
-; Originally written by MarkeyJester, heavily modified by Selbi
 ; ---------------------------------------------------------------------------
 Credits_Page equ $FFFFFF91 ; b
 Credits_Scroll equ $FFFFFFA0 ; w
@@ -18,7 +17,7 @@ Credits_SpeedFast = 16
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
 
-CreditsJest:
+CreditsScreen:
 		move.b	#$97,d0
 		jsr	PlaySound_Special			; play credits music
 		jsr	Pal_FadeFrom
@@ -69,7 +68,7 @@ CreditsJest:
 
 		move.b	#$8B,($FFFFD000).w			; load starfield generator
 		move.w	#Credits_ScrollTime,(Credits_Scroll).w	; pretend we're at the end of a previous page
-		bsr	CJ_ScrollMappings			; pre-center first page
+		bsr	CS_ScrollMappings			; pre-center first page
 		move.w	#0,(Credits_Scroll).w			; clear scroll again
 
 		; opening delay to sync the screen to the music and prespawn some stars
@@ -87,7 +86,7 @@ CreditsJest:
 ; Credits Main Loop
 ; ---------------------------------------------------------------------------
 
-CreditsJest_Loop:
+CreditsScreen_Loop:
 		move.b	#4,VBlankRoutine
 		jsr	DelayProgram
 		jsr	ObjectsLoad
@@ -109,20 +108,20 @@ CreditsJest_Loop:
 		cmpi.w	#Credits_FastThreshold,d0		; are we above the fast scroll threshold?
 		bhi.s	@fast					; if yes, scroll fast
 		btst	#0,($FFFFFE0F).w			; are we on an odd frame?
-		bne.s	CreditsJest_Loop			; if yes, don't scroll (effectively halves speed)
+		bne.s	CreditsScreen_Loop			; if yes, don't scroll (effectively halves speed)
 		bra.s	@doscroll				; keep using slow speed
 @fast:
 		moveq	#Credits_SpeedFast,d1			; use fast threshold
 @doscroll:
 		sub.w	d1,(Credits_Scroll).w			; decrease X scroll position left
 		blo.s	@nextpage				; if scroll time is up, go to next page
-		bsr	CJ_ScrollMappings			; run scrolling/deformation
-		bra.s	CreditsJest_Loop			; loop screen
+		bsr	CS_ScrollMappings			; run scrolling/deformation
+		bra.s	CreditsScreen_Loop			; loop screen
 
 @nextpage:
 		; next page when scroll time expires
 		addq.b	#1,(Credits_Page).w			; set to next screen
-		bsr	CJ_WriteCurrentPage			; run mapping
+		bsr	CS_WriteCurrentPage			; run mapping
 		move.w	#Credits_ScrollTime,(Credits_Scroll).w	; reset scroll time
 		bra.w	@creditsmain				; loop screen
 ; ---------------------------------------------------------------------------
@@ -131,8 +130,8 @@ CreditsJest_Loop:
 		subi.w	#Credits_SpeedFast,(Credits_Scroll).w	; decrease X scroll position left
 		cmpi.w	#Credits_ScrollTime/2,(Credits_Scroll).w; text centered?
 		blt.s	Credits_EndLoop				; if scroll time is up, go to end loop
-		bsr	CJ_ScrollMappings			; run scrolling/deformation
-		bra.w	CreditsJest_Loop			; loop screen
+		bsr	CS_ScrollMappings			; run scrolling/deformation
+		bra.w	CreditsScreen_Loop			; loop screen
 ; ---------------------------------------------------------------------------
 
 Credits_EndLoop:
@@ -150,7 +149,7 @@ Credits_EndLoop:
 ; Scrolling and text centering
 ; ---------------------------------------------------------------------------
 
-CJ_ScrollMappings:
+CS_ScrollMappings:
 		; scroll top and bottom chunks of the screen
 		lea	($FFFFCC00).w,a1		; load scroll buffer address
 		moveq	#0,d0				; clear d0
@@ -202,7 +201,7 @@ CJ_ScrollMappings:
 ; Write mappings for current page in the credits
 ; ---------------------------------------------------------------------------
 
-CJ_WriteCurrentPage:
+CS_WriteCurrentPage:
 		VBlank_SetMusicOnly
 		bsr	Credits_LoadPage		; load current page data offset into a0
 		lea	($C00000).l,a1			; load VDP data port address to a1
@@ -211,22 +210,22 @@ CJ_WriteCurrentPage:
 		move.l	#$00800000,d5			; prepare value for increase lines
 		move.l	#$007C0000,d4			; prepare value to go to next character
 		moveq	#(Credits_Lines*2)-1,d7		; load line repeat times (no idea why I gotta double it)
-CJML_NextCharacter:
+CS_NextCharacter:
 		moveq	#0,d0				; clear d0
 		move.b	(a0)+,d0			; load character
-		bpl.w	CJML_WriteChar			; if it's a regular char, write it
+		bpl.w	CS_WriteChar			; if it's a regular char, write it
 		cmpi.b	#-1,d0				; end of the line?
-		bne.w	CJML_WriteChar			; if not, it's a lowercase character, write it
+		bne.w	CS_WriteChar			; if not, it's a lowercase character, write it
 
 		; next line
 		add.l	d5,d3				; increase to next line
 		move.l	d3,d6				; load V-Ram address
-		dbf	d7,CJML_NextCharacter		; repeat til all lines are done
+		dbf	d7,CS_NextCharacter		; repeat til all lines are done
 		VBlank_UnsetMusicOnly
 		rts					; page fully written
 ; ---------------------------------------------------------------------------
 
-CJML_WriteChar:
+CS_WriteChar:
 		move.l	d6,4(a1)			; set VDP
 
 		tst.b	d0				; test current char
@@ -236,8 +235,8 @@ CJML_WriteChar:
 		add.w	d0,d0				; ...4
 		addi.w	#$8001,d0			; plus 1 + high priority (to not get covered by the stars)		
 		tst.b	d1				; lowercase character flag set?
-		beq.s	@drawchar			; if not, branch
-		addi.w	#$4000,d0			; use the second palette set for lower part (where the names are)
+		bne.s	@drawchar			; if yes, branch
+		addi.w	#$4000,d0			; use the second palette line
 
 @drawchar:
 		move.w	d0,(a1)				; save
@@ -253,7 +252,7 @@ CJML_WriteChar:
 		move.w	d0,(a1)				; save
 
 		sub.l	d4,d6				; decrease to previous line
-		bra.w	CJML_NextCharacter		; loop
+		bra.w	CS_NextCharacter		; loop
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
 
@@ -332,10 +331,10 @@ crdchar macro char
 		elseif \char = '1'
 			dc.b	'Z' - 'A' + 2
 		elseif \char = '7'
-			dc.b	'Z' - 'A' + 3
+			dc.b	'Z' - 'A' + 3 + $80
 		elseif (\char >= 'a') & (\char <= 'z')
 			; lowercase letter
-			dc.b	\char - 'a' + $81
+			dc.b	\char - 'a' + 1 + $80
 		else
 			; uppercase letter
 			dc.b	\char - 'A' + 1
@@ -378,22 +377,6 @@ Credits_Page2:
 		crdtxt	"                    "
 		crdtxt	"                    "
 		crdtxt	"                    "
-		crdtxt	"mentorship and      "
-		crdtxt	"                    "
-		crdtxt	"extra assets        "
-		crdtxt	"                    "
-		crdtxt	"                    "
-		crdtxt	"                    "
-		crdtxt	"MARKEYJESTER        "
-		crdtxt	"                    "
-		crdtxt	"                    "
-		crdtxt	"                    "
-		crdtxt	"                    "
-
-Credits_Page3:
-		crdtxt	"                    "
-		crdtxt	"                    "
-		crdtxt	"                    "
 		crdtxt	"blast               "
 		crdtxt	"                    "
 		crdtxt	"processing          "
@@ -406,7 +389,7 @@ Credits_Page3:
 		crdtxt	"                    "
 		crdtxt	"                    "
 
-Credits_Page4:
+Credits_Page3:
 		crdtxt	"                    "
 		crdtxt	"                    "
 		crdtxt	"                    "
@@ -422,7 +405,7 @@ Credits_Page4:
 		crdtxt	"                    "
 		crdtxt	"                    "
 
-Credits_Page5:
+Credits_Page4:
 		crdtxt	"                    "
 		crdtxt	"                    "
 		crdtxt	"                    "
@@ -438,7 +421,7 @@ Credits_Page5:
 		crdtxt	"                    "
 		crdtxt	"                    "
 
-Credits_Page6:
+Credits_Page5:
 		crdtxt	"                    "
 		crdtxt	"                    "
 		crdtxt	"                    "
@@ -449,12 +432,12 @@ Credits_Page6:
 		crdtxt	"                    "
 		crdtxt	"NEONSYNTH           "
 		crdtxt	"                    "
-		crdtxt	"aka sonicvaan       "
+		crdtxt	"AKA SONICVAAN       "
 		crdtxt	"                    "
 		crdtxt	"                    "
 		crdtxt	"                    "
 	
-Credits_Page7:
+Credits_Page6:
 		crdtxt	"                    "
 		crdtxt	"                    "
 		crdtxt	"                    "
@@ -470,7 +453,7 @@ Credits_Page7:
 		crdtxt	"                    "
 		crdtxt	"                    "
 
-Credits_Page8:
+Credits_Page7:
 		crdtxt	"                    "
 		crdtxt	"                    "
 		crdtxt	"                    "
@@ -481,12 +464,12 @@ Credits_Page8:
 		crdtxt	"                    "
 		crdtxt	"AMPHOBIOUS          "
 		crdtxt	"                    "
-		crdtxt	"aka daleksam        "
+		crdtxt	"AKA DALEKSAM        "
 		crdtxt	"                    "
 		crdtxt	"                    "
 		crdtxt	"                    "
 
-Credits_Page9:
+Credits_Page8:
 		crdtxt	"                    "
 		crdtxt	"                    "
 		crdtxt	"                    "
@@ -502,35 +485,51 @@ Credits_Page9:
 		crdtxt	"                    "
 		crdtxt	"                    "
 
-Credits_Page10:
+Credits_Page9:
 		crdtxt	"                    "
 		crdtxt	"                    "
 		crdtxt	"                    "
 		crdtxt	"special thanks      "
 		crdtxt	"                    "
 		crdtxt	"                    "
+		crdtxt	"MARKEYJESTER        "
+		crdtxt	"                    "
 		crdtxt	"REDHOTSONIC         "
 		crdtxt	"                    "
 		crdtxt	"MAINMEMORY          "
 		crdtxt	"                    "
-		crdtxt	"JORGE               "
 		crdtxt	"                    "
+		crdtxt	"                    "
+
+Credits_Page10:
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"a huge thanks to    "
+		crdtxt	"                    "
+		crdtxt	"the erazor 7 squad  "
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"FUZZY               "
+		crdtxt	"SONICFAN1           "
+		crdtxt	"VLADIKCOMPER        "
+		crdtxt	"NEONSYNTH           "
+		crdtxt	"AJCOX               "
 		crdtxt	"                    "
 		crdtxt	"                    "
 
 Credits_Page11:
 		crdtxt	"                    "
 		crdtxt	"                    "
-		crdtxt	"a huge thanks to    "
 		crdtxt	"                    "
-		crdtxt	"the ERaZor 7 squad  "
+		crdtxt	"original game       "
 		crdtxt	"                    "
-		crdtxt	"VLADIKCOMPER        "
-		crdtxt	"SONICFAN1           "
-		crdtxt	"FUZZY               "
-		crdtxt	"AJCOX               "
-		crdtxt	"NEONSYNTH           "
-		crdtxt	"MARKEYJESTER        "
+		crdtxt	"by                  "
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"SONIC TEAM          "
+		crdtxt	"                    "
+		crdtxt	"SEGA                "
+		crdtxt	"                    "
 		crdtxt	"                    "
 		crdtxt	"                    "
 
@@ -538,14 +537,14 @@ Credits_Page12:
 		crdtxt	"                    "
 		crdtxt	"                    "
 		crdtxt	"                    "
-		crdtxt	"THANK YOU           "
+		crdtxt	"thank you           "
 		crdtxt	"                    "
 		crdtxt	"                    "
 		crdtxt	"                    "
 		crdtxt	"                    "
 		crdtxt	"                    "
 		crdtxt	"                    "
-		crdtxt	"for playing         "
+		crdtxt	"FOR PLAYING         "
 		crdtxt	"                    "
 		crdtxt	"                    "
 		crdtxt	"                    "

@@ -8,13 +8,16 @@ LevelLayout_BG:		equ 	LevelLayout_RAM+$200		;	BG level layout (A600-A7FF)
 DrawBuffer_RAM:		equ	$FFFFA800			;	draw buffer RAM (A800-AB7F)
 LevelRend_RAM:		equ	$FFFFAB80			;	level renderer RAM (AB80-AC98)
 
+v_smpsmisc:			equ $FFFFAF20			; SMPS note status
+v_smps_fm:			equ v_smpsmisc+5		; ... for FM
+v_smps_psg:			equ v_smps_fm+3			; ... for PSG
+v_smps_dac:			equ v_smps_psg+7		; ... for DAC
 ; <<FOR SALE>>							;	<<FOR SALE / $20,000>> (AF18-ABFF)
 
 Sprites_Queue:		equ	$FFFFAC00			;	object sprites queued for display (AC00-AFFF)
 
 Art_Buffer: 		equ 	$FFFFB000			;	Art buffer, used for decompression and transfers (B000-CAFF)
 Art_Buffer_End:		equ	$FFFFC000			;	WARNING! Buffer should be at least $1000 bytes for PLC system to work
-
 
 DMAQueue:		equ	$FFFFC800			;
 DMAQueuePos:		equ	$FFFFC8FC			; .l	DMA queue position pointer

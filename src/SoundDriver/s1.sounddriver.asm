@@ -156,27 +156,42 @@ SoundDriverUpdate:
 		tst.b	TrackPlaybackControl(a5) ; Is DAC track playing?
 		bpl.s	.dacdone		; Branch if not
 		jsr	DACUpdateTrack(pc)
+
 ; loc_71BD4:
 .dacdone:
 		clr.b	f_updating_dac(a6)
 		moveq	#((v_music_fm_tracks_end-v_music_fm_tracks)/TrackSz)-1,d7	; 6 FM tracks
+
 ; loc_71BDA:
 .bgmfmloop:
 		adda.w	#TrackSz,a5
 		tst.b	TrackPlaybackControl(a5) ; Is track playing?
-		bpl.s	.bgmfmnext		; Branch if not
+		bpl.s	.nofm		; Branch if not
 		jsr	FMUpdateTrack(pc)
+		bra.s	.bgmfmnext
+
+.nofm:
+		lea	v_smpsmisc, a0
+		move.b	#0, (a0, d7.w)
+
 ; loc_71BE6:
 .bgmfmnext:
 		dbf	d7,.bgmfmloop
 
 		moveq	#((v_music_psg_tracks_end-v_music_psg_tracks)/TrackSz)-1,d7 ; 3 PSG tracks
+
 ; loc_71BEC:
 .bgmpsgloop:
 		adda.w	#TrackSz,a5
 		tst.b	TrackPlaybackControl(a5) ; Is track playing?
-		bpl.s	.bgmpsgnext		; Branch if not
+		bpl.s	.nopsg		; Branch if not
 		jsr	PSGUpdateTrack(pc)
+		bra.s	.bgmpsgnext
+
+.nopsg:
+		lea		v_smps_fm, a0
+		move.b	#0, 1(a0, d7.w)
+
 ; loc_71BF8:
 .bgmpsgnext:
 		dbf	d7,.bgmpsgloop
@@ -264,9 +279,13 @@ DACUpdateTrack:
 		beq.s	.locret			; Return if yes
 		MPCM_stopZ80
 		move.b	d0, MPCM_Z80_RAM+Z_MPCM_CommandInput	; send DAC sample to Mega PCM
+		move.b	#1, v_smps_dac	; set DAC status
 		MPCM_startZ80
+		rts
+		
 ; locret_71CAA:
 .locret:
+		move.b	#0, v_smps_dac	; clear DAC status
 		rts	
 
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
@@ -327,13 +346,23 @@ FMDoNext:
 FMSetFreq:
 		subi.b	#$80,d5			; Make it a zero-based index
 		beq.s	TrackSetRest
+
+		lea		v_smpsmisc, a0
+		move.b	d5, (a0, d7.w)
+
 		add.b	TrackTranspose(a5),d5	; Add track transposition
 		andi.w	#$7F,d5			; Clear high byte and sign bit
 		lsl.w	#1,d5
-		lea	FMFrequencies(pc),a0
+
+		lea		FMFrequencies(pc),a0
 		move.w	(a0,d5.w),d6
 		move.w	d6,TrackFreq(a5)	; Store new frequency
 		rts	
+
+.rest:
+		lea	v_smpsmisc, a0
+		move.b	d5, (a0, d7.w)
+		bra	TrackSetRest
 ; End of function FMSetFreq
 
 
@@ -779,6 +808,7 @@ Sound_PlayBGM:
 		add.l	a3,d0				; Relative pointer
 		move.l	d0,TrackDataPointer(a1)		; Store track pointer
 		move.w	(a4)+,TrackTranspose(a1)	; load FM channel modifier
+		move.b	#0, v_smps_dac				; clear DAC status
 		adda.w	d6,a1
 		dbf	d7,.bgm_fmloadloop
 
@@ -1794,6 +1824,11 @@ PSGDoNext:
 PSGSetFreq:
 		subi.b	#$81,d5		; Convert to 0-based index
 		bcs.s	.restpsg	; If $80, put track at rest
+
+		lea		v_smps_fm, a0
+		move.b	d5, 1(a0, d7.w) ; move that note
+		addq.b	#1, 1(a0, d7.w) ; inc by 1 because yeah
+
 		add.b	TrackTranspose(a5),d5 ; Add in channel transposition
 		ext.w	d5
 		add.w	d5,d5
@@ -1803,6 +1838,9 @@ PSGSetFreq:
 ; ===========================================================================
 ; loc_728CA:
 .restpsg:
+		lea		v_smps_fm, a0
+		move.b	#0, 1(a0, d7.w) ; clear
+
 		bset	#1,TrackPlaybackControl(a5)	; Set 'track at rest' bit
 		move.w	#-1,TrackFreq(a5)		; Invalidate note frequency
 		jsr	FinishTrackUpdate(pc)

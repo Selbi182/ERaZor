@@ -896,13 +896,21 @@ Deform_SYZ:
 		sub.w	#$100, d1
 		bmi.s	@0
 		sub.w	d1, d0
-@0:		move.w	d0, CamYPos2
+@0:		
+	moveq	#0,d0
+		move.w	d0, CamYPos2
+		
  
 		lea	ScrollBlocks_Buffer, a1
 
 		; Scroll clouds
 		moveq	#0, d2
 		move.w	CamXPos, d2
+		
+	move.w	($FFFFFE04).w,d3
+	add.w	d3,d3
+	add.w	d3,d2
+		
 		neg.w	d2
 		swap	d2
 		move.l	d2, d3

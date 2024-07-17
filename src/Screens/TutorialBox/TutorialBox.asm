@@ -182,6 +182,8 @@ DH_Continue:
 	; palette cycle to highlight letters
 	cmpi.b	#4,($FFFFFE10).w	; are we in uberhub?
 	beq.s	@noletterflashing	; if yes, branch
+	btst	#7,($FFFFFF92).w	; are flashy lights enabled?
+	beq.s	@noletterflashing	; if not, branch
 	move.w	($FFFFFE0E).w,d0
 	lsl.w	#4,d0
 	jsr	CalcSine
@@ -251,13 +253,13 @@ DH_ClearWindow:
 DH_CharOffset = $36
 
 DH_DrawChar:
-	lea	(Art_DH_Font).l,a2
-	cmpi.b	#_font2,d0
-	bne.s	@0
-	lea	(Art_DH_Font2).l,a2
-	move.b	(a1)+,d0		; skip char
-	addq.l	#1,char_pos(a0)		; increase it
-@0:
+	lea	(Art_DH_Font).l,a2	; load current char
+	cmpi.b	#_font2,d0		; is it a flag to make the next char have the second font?
+	bne.s	@notsecondfont		; if not, branch
+	lea	(Art_DH_Font2).l,a2	; use second font instead
+	move.b	(a1)+,d0		; skip this flag char
+	addq.l	#1,char_pos(a0)		; increase char pos
+@notsecondfont:
 	subi.b	#DH_CharOffset,d0
 	lsl.w	#5,d0			; d0 = Char*$20
 	lea	(a2,d0.w),a2		; load this char's art 
@@ -522,6 +524,9 @@ _CooldownVal	= 2
 ; ---------------------------------------------------------------
 
 @GotoDisappear:
+	moveq	#$FFFFFFD9,d0
+	jsr	PlaySound
+
 	move.l	#DH_OWindow_Disappear,obj(a0)
 	move.w	#0,xvel(a0)
 
@@ -787,8 +792,8 @@ Hint_1:
 	boxtxt	"    UNRELATED TO    "
 	boxtxt	"  CONTROLS, BUT AS  "
 	boxtxt	" YOU ARE PLAYING IN "
-	boxtxt	" THIS MODE, SOME OF "
-	boxtxt	"  THE MONITORS MAY  "
+	boxtxt	"  THIS MODE, A FEW  "
+	boxtxt	" MONITORS WILL TELL "
 	boxtxt	"    BONUS HINTS!    "
 	boxtxt_next
 	
@@ -835,9 +840,9 @@ Hint_3:
 	boxtxt_pause
 	boxtxt	" THE FLOOR IS LAVA! "
 	boxtxt_pause
-	boxtxt	"AND THE LAVA HUNGERS"
-	boxtxt	"FOR YOUR RINGS UNTIL"
-	boxtxt	"      YOU DIE.      "
+	boxtxt	"   AND IT HUNGERS   "
+	boxtxt	"   FOR YOUR RINGS   "
+	boxtxt	"   UNTIL YOU DIE.   "
 	boxtxt_end
 
 ;		 --------------------
@@ -1114,7 +1119,7 @@ Hint_End_AfterCasual:
 	boxtxt	"casual mode!"
 	boxtxt_next
 
-	boxtxt	"TRY TO GIVE THE GAME"
+	boxtxt	"TRY TO GIVE IT"
 	boxtxt	"ANOTHER SPIN IN"
 	boxtxt	"frantic mode!"
 	boxtxt_pause
@@ -1142,11 +1147,11 @@ Hint_End_AfterFrantic:
 ;		 --------------------
 Hint_End_CinematicUnlock:
 	boxtxt	"YOU HAVE UNLOCKED"
-	boxtxt	"cinematic mode!"
-	boxtxt_pause	
-	boxtxt	"IT'S COMPLETELY"
-	boxtxt	"USELESS! BUT KINDA"
-	boxtxt	"COOL, I GUESS."
+	boxtxt	"screen effects!"
+	boxtxt_pause
+	boxtxt	"THEY ARE COMPLETELY"
+	boxtxt	"USELESS BUT ALSO"
+	boxtxt	"PRETTY COOL!"
 	boxtxt_end
 
 ;		 --------------------
@@ -1160,13 +1165,22 @@ Hint_End_BlackoutTeaser:
 	boxtxt	"IGNORE IT."
 	boxtxt_next
 
-	boxtxt	"I KNOW IT MAY BE"
-	boxtxt	"TEMPTING ONCE YOU'VE"
+	boxtxt	"THAT DOOR WILL STAY"
+	boxtxt	"SHUT UNTIL YOU'VE"
 	boxtxt	"PROVEN YOURSELF"
-	boxtxt	"worthy, JUST..."
+	boxtxt	"TO BE worthy."
 	boxtxt_pause
-	boxtxt	"DON'T SAY I DIDN'T"
-	boxtxt	"WARN YOU."
+
+	dc.b	_frantic
+	boxtxt	"    frantic mode"
+	boxtxt_pause
+	boxtxt	"        I..."
+	dc.b	_pause
+	boxtxt	"  HAD REALLY HOPED"
+	boxtxt	" THAT THIS HEADLINE"
+	boxtxt	" WOULD NOT SHOW UP."
+	boxtxt_pause
+	boxtxt	"     GOOD LUCK."
 	boxtxt_end
 
 ; ---------------------------------------------------------------

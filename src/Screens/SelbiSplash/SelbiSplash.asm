@@ -147,127 +147,68 @@ SelbiSplash_Loop:
 	;	sub.w	#SelbiSplash_PalChgSpeed,($FFFFFB0C)
 	;	sub.w	#SelbiSplash_PalChgSpeed,($FFFFFB0E)
 
-		tst.w	($FFFFFFE4).w
-		beq.w	SelbiSplash_EffectsEnd
-		bmi.w	SelbiSplash_EffectsEnd
+		; new flashing effect
+		cmpi.w	#$90,($FFFFF614).w
+		bgt.w	SelbiSplash_EffectsEnd
+		moveq	#0,d0
+		move.w	($FFFFF614).w,d0
+		move.w	d0,d1
+		lsr.w	#4+1,d0
+		mulu.w	d1,d0
+		andi.w	#$1F,d0
+		move.w	d0,d1
+		andi.w	#$10,d1
+		beq.s	@notreverse
+		subq.w	#2,d1
+		andi.w	#$E,d0
+		sub.w	d0,d1
+		move.w	d1,d0
+@notreverse:
+		andi.w	#$E,d0
+		move.w	d0,d4
+@gopal:
+		lea	(Pal_Quality).l,a1		; Load palette
+		lea	($FFFFFB00).w,a2
+		moveq	#($160/4)-1,d6
+@LoadCRAM:	move.w	(a1)+,d0
+		bsr	SelbiPissFilter
+		move.w	d0,(a2)+
+		dbf	d6,@LoadCRAM
+		bra.w	SelbiSplash_EffectsEnd
 
-		btst	#1,($FFFFFE0F).w
-		bne.w	SelbiSplash_EffectsEnd
-		lea	@PalFlicker(pc),a4
-		moveq	#(@PalFlicker_End-@PalFlicker)-1,d4
-	lea	(0).w,a1
+; ---------------------------------------------------------------------------
+SelbiPissFilter:
+		move.w	d0,d1			; copy color
 
+		ror.w	#4,d1			; get green color
+		move.w	d1,d2			; copy to d2
+		andi.w	#$00E,d2		; limit to one channel
 
+		cmp.w	d4,d2			; are we at or avobe the minimum value?
+		bge.s	@decreaseG		; if yes, decrease
+		moveq	#0,d2			; otherwise, set green 0
+		bra.s	@applyG			; skip
+@decreaseG:	sub.w	d4,d2			; decrease green value
 
-		tst.b	($FFFFFFAF).w
-		bne.s	@FlashList
-		moveq	#$00,d4
-		lea	($FFFFFB04).w,a1
-		move.w	$80(a1),d2
-		bra.s	@NoQuality
+@applyG:
+		ror.w	#4,d1			; get blue color
+		move.w	d1,d3			; copy to d3
+		andi.w	#$00E,d3		; limit to one channel
+		
+		cmp.w	d4,d3			; are we at or avobe the minimum value?
+		bge.s	@decrease		; if yes, decrease
+		moveq	#0,d3			; otherwise, set blue 0
+		bra.s	@apply			; skip
+@decrease:	sub.w	d4,d3			; decrease blue value
 
-	@FlashList:
-		addq.l	#$01,($FFFFFE0C).w
-	moveq	#$03,d0
-	and.b	($FFFFFE0F).w,d0
-	bne.s	@NoHalfSpeed
-	addq.l	#$01,($FFFFFE0C).w
-
-	@NoHalfSpeed:
-		moveq	#$00,d2
-		move.b	(a4)+,d2
-
-		lea	($FFFFFB00).w,a1
-		lea	Pal_Quality(pc),a0
-		adda.w	d2,a1
-		adda.w	d2,a0
-		move.w	(a0),d1
-
-	@NoQuality:
-		moveq	#$0E,d3
-		and.w	d2,d3
-		sub.w	d3,d2
-
-		move.w	d4,d0
-		add.b	($FFFFFE0F).w,d0
-		jsr	CalcSine
-		asr.w	#$05,d0
-		addq.b	#$01,d0
-		andi.w	#$000E,d0
-
-		add.w	d0,d3
-		cmpi.w	#$000E,d3
-		blo.s	@NoMaxRed
-		moveq	#$0E,d3
-
-	@NoMaxRed:
-		tst.w	d3
-		bpl.s	@NoMinRed
-		moveq	#$00,d3
-
-	@NoMinRed:
-		or.w	d3,d2
-
-	add.w	d0,d0
-	andi.w	#$00E0,d0
-	move.w	d2,d3
-	andi.w	#$00E0,d3
-	sub.w	d3,d2
-	add.w	d0,d3
-		cmpi.w	#$0E0,d3
-		blo.s	@NoMaxGreen
-		move.w	#$0E0,d3
-
-	@NoMaxGreen:
-		tst.w	d3
-		bpl.s	@NoMinGreen
-		moveq	#$00,d3
-
-	@NoMinGreen:
-		or.w	d3,d2
-
-	
-		move.w	d2,(a1)
-		dbf	d4,@FlashList
-
-	;	btst	#0,($FFFFFE0F).w
-	;	bne.s	SelbiSplash_EffectsEnd
-	;	lea	($FFFFFB04),a1
-	;	move.w	#6-1,d4
-@boost:	;	jsr	SineWavePalette
-	;	andi.w	#$00E,d0
-	;	move.w	d0,(a1)
-	;	dbf	d4,@boost
-
-		cmpi.w	#$90,($FFFFF614).w		; is time less than $90?
-		bpl.w	SelbiSplash_EffectsEnd
-	tst.b	($FFFFFFAF).w
-	bne.w	@NoFaffing
-		move.w	#$8B07,($C00004).l
-	@NoFaffing:
-		moveq	#8,d0
-
-		move.w	($FFFFFE0E).w,d6	; get timer
-
-	bra.s	SelbiSplash_EffectsEnd
-
-	@PalFlicker:
-		dc.b	$08,$0A,$0C,$0E, $12,$14,$16,$18,$1A,$1C
-		dc.b	$22,$24,$26, $2C,$2E,$30, $3C,$3E
-	@PalFlicker_End:
-		even
-
-		lea	($FFFFCC00).w,a1
-		move.l	#1,d0
-		move.w	#223,d1
-		btst	#1,($FFFFFE0F).w
-		beq.s	@scrollshitfuckass
-		neg.l	d0
-
-@scrollshitfuckass:
-		move.l	d0,(a1)+
-		neg.l	d0
-		dbf	d1,@scrollshitfuckass
+@apply:
+		rol.w	#4,d2			; prepare for merge
+		rol.w	#8,d3			; prepare for merge
+		or.w	d2,d3			; merge green and blue channel
+		andi.w	#$000E,d0		; clear the previous upper byte of the previous color
+		or.w	d3,d0			; merge with new red value
+		rts
+; ---------------------------------------------------------------------------
 
 SelbiSplash_EffectsEnd:
 		cmpi.w	#$90,($FFFFF614).w		; is time less than $90?
@@ -364,29 +305,6 @@ SelbiSplash_LoadPRESENTS:
 
 		move.w	#$8100|%01110100,(a6)		; $81	; SDVM P100 - SMS mode (0N|1Y) | Display (0N|1Y) | V-Interrupt (0N|1Y) | DMA (0N|1Y) | V-resolution (0-1C|1-1E)
 
-	;	lea	($FF0000).l,a1			; Load screen mappings
-	;	lea	(Map2_SelbiSplash).l,a0
-	;	moveq	#0,d0
-	;	jsr	EniDec
-
-	;	move.b	#2,VBlankRoutine
-	;	jsr	DelayProgram			; VSync so gfx loading below isn't terribly out of VBlank
-	;	VBlank_SetMusicOnly
-	;	lea	($FF0000).l,a1			; Show screen
-	;	move.l	#$40000003,d0
-	;	moveq	#$27,d1
-	;	moveq	#$1B,d2
-	;	jsr	ShowVDPGraphics
-	;	VBlank_UnsetMusicOnly
-
-		lea	(Pal_Quality).l,a1		; Load palette
-		lea	($FFFFFB00).w,a2
-		moveq	#($80/4)-1,d0
-
-	@LoadCRAM:
-		move.l	(a1)+,(a2)+
-		dbf	d0,@LoadCRAM
-
 		move.w	(sp)+,sr
 		VBlank_UnsetMusicOnly
 	;	jsr	Pal_MakeWhite			; white flash
@@ -419,7 +337,7 @@ SelbiSplash_WaitEnd:
 		jsr	SRAM_SaveNow			; save
 		
 		move.w	#$90,($FFFFF614).w		; reset ending timer
-		jsr	Pal_MakeBlackWhite		; make grayscale
+	;	jsr	Pal_MakeBlackWhite		; make grayscale
 
 		tst.w	($FFFFFFFA).w			; was debug mode already enabled?
 		bne.w	SelbiSplash_DisableDebug	; if yes, disable it

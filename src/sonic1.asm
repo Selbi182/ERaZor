@@ -47,7 +47,7 @@ DebugModeDefault = 1
 DebugSurviveNoRings = 1
 ; ------------------------------------------------------
 DoorsAlwaysOpen = 1
-LowBossHP = 1
+LowBossHP = 0
 ; ======================================================
 	else
 ; BENCHMARK build settings (DO NOT CHANGE!)
@@ -630,8 +630,8 @@ BlackBars.SetState:
 		beq.s	@validgamemode			; if yes, branch
 		cmpi.b	#$1C,d0				; are we in Selbi?
 		beq.w	BlackBars_Selbi			; if yes, :|
-	;	cmpi.b	#$10,d0				; are we in a special stage?
-	;	beq.s	@validgamemode			; if yes, branch
+		cmpi.b	#$10,d0				; are we in a special stage?
+		beq.s	@validgamemode			; if yes, branch
 		cmpi.b	#$18,d0				; are we in the ending sequence?
 		beq.s	@validgamemode			; if yes, branch
 		bra.s	BlackBars_DontShow		; don't show black bars in any other game modes
@@ -1043,7 +1043,6 @@ PauseGame:				; XREF: Level_MainLoop; et al
 		bne.s	Paused			; if yes, branch
 		btst	#7,($FFFFF605).w	; is Start button pressed?
 		beq.w	Pause_DoNothing		; if not, branch
-
 Paused:
 		; skip cutscenes
 		cmpi.w	#$500,($FFFFFE10).w	; is this the bomb machine cutscene?
@@ -1059,7 +1058,7 @@ PG_CheckAllowed:
 		tst.b	($FFFFD000).w		; does Sonic exist? (e.g. has he not jumped into a ring)?
 		beq.w	Pause_DoNothing		; if not, disallow pausing
 		cmpi.b	#$10,($FFFFF600).w	; are we in a special stage?
-		beq.s	PG_DoPause		; if yes, branch
+		beq.s	PG_SSPause		; if yes, branch
 		cmpi.w	#$501,($FFFFFE10).w	; are we in the tutorial?
 		beq.s	PG_DoPause		; if yes, branch
 		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
@@ -1068,6 +1067,11 @@ PG_CheckAllowed:
 		bne.s	PG_DoPause		; if yes, allow to pause
 		rts				; otherwise, disallow pausing
 ; ===========================================================================
+
+PG_SSPause:
+		btst	#7,($FFFFF605).w	; is Start button pressed?
+		beq.s	PG_DoPause		; if not, branch
+		move.w	#$8014,($C00004).l	; enable h-ints for the black bars
 
 PG_DoPause:
 		move.w	#1,($FFFFF63A).w	; freeze time
@@ -2326,24 +2330,24 @@ ColorBoostG = $4
 ; ContrastBoost:
 PissFilter:
 		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
-		bne.s	@docontrast		; if yes, enable piss filter anywhere
+		bne.s	PissFilter_Do		; if yes, enable piss filter anywhere
 
 		; GHP piss filter
 		move.b	($FFFFF600).w,d1	; get current
 		andi.b	#$0F,d1			; include the level pre-sequence ($8C)
 		cmpi.b	#$C,d1			; are we in a level?
-		bne.s	@skip			; if not, don't do filer
+		bne.s	PissFilter_End		; if not, don't do filer
 		cmpi.w	#$000,($FFFFFE10).w	; are we in Night Hill Place?
 		bne.s	@notnhp			; if not, branch
 		cmpi.b	#2,($FFFFFFAA).w	; has the crabmeat boss been defeated?
-		beq.s	@docontrast		; if yes, start contrast already
-		bra.s	@skip			; otherwise, don't
+		beq.s	PissFilter_Do		; if yes, start contrast already
+		bra.s	PissFilter_End		; otherwise, don't
 @notnhp:	cmpi.w	#$002,($FFFFFE10).w	; are we in Green Hill Place?
-		bne.s	@skip			; if not, branch
+		bne.s	PissFilter_End		; if not, branch
 		cmpi.b	#4,($FFFFFE30).w	; did we hit the final checkpoint yet?
-		beq.s	@skip			; if yes, branch
+		beq.s	PissFilter_End		; if yes, branch
 
-@docontrast:
+PissFilter_Do:
 		move.w	d0,d1			; copy color
 
 		ror.w	#4,d1			; get green color
@@ -2373,7 +2377,7 @@ PissFilter:
 		or.w	d2,d3			; merge green and blue channel
 		andi.w	#$000E,d0		; clear the previous upper byte of the previous color
 		or.w	d3,d0			; merge with new red value
-@skip:
+PissFilter_End:
 		rts
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
@@ -2820,7 +2824,7 @@ Sega_GotoTitle:
 ; ---------------------------------------------------------------------------
 ; Title	screen
 ; ---------------------------------------------------------------------------
-
+; TitleScreen::
 TitleScreen:				; XREF: GameModeArray
 		move.b	#$E0,d0
 		bsr	PlaySound_Special ; fade out music
@@ -3688,6 +3692,7 @@ loc_3946:
 		bne.s	@notuberhub		; if not, branch
 		move.b	#0,($FFFFFF7F).w	; set intro tube flag
 		move.b	#1,($FFFFF7CC).w	; lock controls
+		ori.w	#2,($FFFFF7BE).w	; skip loading giant ring patterns (already done in PLC)
 
 @notuberhub:
 		VBlank_SetMusicOnly
@@ -3714,6 +3719,7 @@ loc_3946:
 		move.b	#$82,(a1)	; load SBZ2 Eggman object
 
 		move.w	#12*60,($FFFFFFD8).w	; set cutscene time (controlled in Resize_SBZ1)
+		ori.w	#2,($FFFFF7BE).w	; skip loading giant ring patterns (collides otherwise)
 
 		bra.s	@SBZCont
 
@@ -4577,6 +4583,7 @@ ClearEverySpecialFlag:
 		moveq	#0,d0
 		move.b	d0,(FZEscape).w
 		move.w	d0,($FFFFC904).w
+		move.w	d0,($FFFFF7BE).w
 		move.b	d0,($FFFFF5D0).w
 		move.b	d0,($FFFFF5D1).w
 		move.w	d0,(FranticDrain).w
@@ -4876,9 +4883,13 @@ SpecialStage:				; XREF: GameModeArray
 		VBlank_SetMusicOnly
 		lea	($C00004).l,a6
 		move.w	#$8B03,(a6)
-		move.w	#$8004,(a6)		; disable h-ints (VERY important, because otherwise we get massive slowdowns!)
 		move.w	#$8AAF,($FFFFF624).w
 		move.w	#$9011,(a6)
+		move.w	#$8004,(a6)		; disable h-ints (VERY important, because otherwise we get massive slowdowns!)
+		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
+		beq.s	@notcinematic		; if not, branch
+		move.w	#$8014,(a6)		; enable h-ints after all... have fun with the slowdowns
+@notcinematic:
 		bsr	ClearScreen
 
 		lea	($C00004).l,a5
@@ -9178,7 +9189,7 @@ Obj2A_Main:				; XREF: Obj2A_Index
 
 		addq.b	#2,obRoutine(a0)
 		move.b	#1,obAnim(a0)
-		move.w	#$4000+($8000/$20),obGfx(a0)
+		move.w	#$4000+($9800/$20),obGfx(a0)
 		bra.w	Obj2A_OpenShutTutorial
 
 @Delete:
@@ -10569,6 +10580,7 @@ Obj1F_BossDelete:
 		ori.b	#1,($FFFFFE1C).w		; update lives counter (to reset it from the boss)
 		clr.l	($FFFFFE22).w			; clear time
 		ori.b	#1,($FFFFFE1E).w 		; update time counter
+		clr.b	($FFFFFE2C).w			; clear shield
 
 		move.b	#2,($FFFFFFD4).w		; set flag 4, 2
 		move.b	#0,($FFFFF7AA).w		; unlock screen
@@ -10596,6 +10608,8 @@ Obj1F_BossDelete:
 		move.b	#2,obRoutine(a1)
 		move.b	#1,($FFFFFFEB).w	; set jumpdash flag
 		move.b	#1,(RedrawEverything).w
+
+		clr.w	($FFFFFE30).w		; clear any set level checkpoints
 
 		move.b	#$34,($FFFFD080).w 		; load title card object
 		move.b	#100,($FFFFD080+$30).w		; set delay before loading title cards
@@ -10658,9 +10672,11 @@ loc_17F70X:
 ; ===========================================================================
 
 Obj1F_Flashing:
+		btst	#7,($FFFFFF92).w	; are flashy lights enabled?
+		beq.s	Obj1F_NoFlash		; if not, no flash
 		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
 		bne.s	Obj1F_NoFlash		; if yes, don't do palette flashing to avoid seizues
-		
+
 		lea	($FFFFFB02).w,a1		; load second colour
 		moveq	#0,d1				; make sure d1 is empty
 		tst.w	(a1)				; is colour empty?
@@ -10788,6 +10804,11 @@ loc_17F70XX:
 ; ===========================================================================
 
 Obj1F_Flashing2:
+		btst	#7,($FFFFFF92).w	; are flashy lights enabled?
+		beq.s	Obj1F_NoFlash2		; if not, no flash
+		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
+		bne.s	Obj1F_NoFlash2		; if yes, don't do palette flashing to avoid seizues
+
 		lea	($FFFFFB02).w,a1		; load second colour
 		moveq	#0,d1				; make sure d1 is empty
 		tst.w	(a1)				; is colour empty?
@@ -10796,6 +10817,8 @@ Obj1F_Flashing2:
 
 loc_17F7EXX:
 		move.w	d1,(a1)				; set colour
+
+Obj1F_NoFlash2:
 		subq.b	#1,$3E(a0)			; sub 1 from flashing timer
 		bne.s	Obj1F_NotGHZ1_WFX		; if it isn't empty, branch
 		move.b	#$F,obColType(a0)			; set normal touch response
@@ -11842,7 +11865,8 @@ Obj37_MakeRings:			; XREF: Obj37_CountRings
 		move.b	#3,obPriority(a1)
 		move.b	#$47,obColType(a1)
 		move.b	#8,obActWid(a1)
-		move.b	#$FF,$30(a1)		; despawn timer
+		move.w	#$FF,$30(a1)		; despawn timer
+		move.b	#0,$36(a1)
 
 		cmpi.w	#1,($FFFFFE20).w	; have you lost exactly 1 ring?
 		bne.s	@calcmultibounce	; if not, branch
@@ -11891,12 +11915,13 @@ Obj37_ResetCounter:
 
 Obj37_MainLoop:				; XREF: Obj37_Index
 		move.b	($FFFFFEC7).w,obFrame(a0)	; update frame
+	;	move.b	($FFFFFEC3).w,obFrame(a0)
 
 		tst.b	$29(a0)			; was ring already set to follow you?
 		bne.s	@continueattract	; if yes, branch
 		tst.b	($FFFFFE2C).w		; is Sonic having a shield?
 		beq.s	Obj37_NoRingsMove	; if not, branch
-		cmpi.b	#$FF-20,$30(a0)		; bit of delay before...
+		cmpi.w	#$FF-20,$30(a0)		; bit of delay before...
 		bhi.s	Obj37_NoRingsMove	; ...collecting rings of smashed objects
 		bsr	AttractedRing_Check
 		bra.s	Obj37_NoRingsMove
@@ -11923,25 +11948,39 @@ Obj37_NoRingsMove:
 		cmp.w	d1,d0			; is it above Y pos? (ceiling position of the arena)
 		bge.s	@noceiling		; if not, branch
 		clr.w	obVelY(a0)		; if yes, make the rings fall down so they don't get stuck in the ceiling		
-@noceiling:	addi.w	#$18,obVelY(a0)		; regular gravity for rings
-		bsr	SpeedToPos
+@noceiling:
+		tst.b	$36(a0)
+		bne.w	Obj37_ChkDel
 
-Obj37_Bounce:
+		addi.w	#$18,obVelY(a0)		; regular gravity for rings
+
+		; ring bounce
 		move.b	($FFFFFE05).w,d0
 		add.b	d7,d0
 		andi.b	#3,d0
-		bne.s	Obj37_ChkDel
+		bne.s	@updatepos
 		jsr	ObjHitFloor
 		tst.w	d1
-		bpl.s	Obj37_ChkDel
+		bpl.s	@updatepos
+
+		cmpi.w	#$200,obVelY(a0)
+		bhi.s	@0
+		move.b	#1,$36(a0)
+		bra.s	Obj37_ChkDel
+@0:
+		add.w	d1,obY(a0)
+
 		add.w	d1,obY(a0)
 		move.w	obVelY(a0),d0
-		asr.w	#2,d0
+		asr.w	#1,d0
 		sub.w	d0,obVelY(a0)
 		neg.w	obVelY(a0)
 
+@updatepos:
+		bsr	SpeedToPos
+
 Obj37_ChkDel:				; XREF: Obj37_MainLoop
-		subq.b	#1,$30(a0)	; sub 1 from timer
+		subq.w	#1,$30(a0)	; sub 1 from timer
 		beq.s	Obj37_Delete	; despawn ring after timer expired
 
 		move.w	($FFFFF72E).w,d0
@@ -12005,6 +12044,13 @@ Obj4B_Index:	dc.w Obj4B_Main-Obj4B_Index
 ; ===========================================================================
 
 Obj4B_Main:				; XREF: Obj4B_Index
+		cmpi.b	#GRing_Intro,obSubtype(a0)	; is this the intro ring in uberhub?
+		bne.s	@notintroring			; if not, branch
+		tst.b	($FFFFFF7F).w			; intro sequence done?
+		bne.s	@notintroring			; if yes, branch
+		rts					; otherwise, hide ring to avoid visual quirks in frantic fast spawn
+
+@notintroring:
 		cmpi.w	#$502,($FFFFFE10).w
 		bne.s	@notfzescape
 		tst.b	(FZEscape).w
@@ -12021,12 +12067,15 @@ Obj4B_Main:				; XREF: Obj4B_Index
 		move.l	#Map_obj4B,obMap(a0)
 
 		ori.w	#1,($FFFFF7BE).w		; load giant ring patterns (AniArt_GiantRing)
-
+		cmpi.w	#$302,($FFFFFE10).w		; is this Star Agony Place? (easter egg ring)
+		bne.s	@notsap				; if not, branch
+		ori.w	#2,($FFFFF7BE).w		; skip loading giant ring patterns (collides otherwise)
+@notsap:
 		move.w	#$2000|($8000/$20),obGfx(a0)	; use default offset
 		cmpi.w	#$400,($FFFFFE10).w		; is level Uberhub?
 		bne.s	Obj4B_Main_Cont			; if not, branch
 		move.w	#$2000|($8440/$20),obGfx(a0)	; use uberhub specific offset
-		
+
 		move.b	obSubtype(a0),d1		; get ring subtype
 
 		cmpi.b	#GRing_Blackout,d1		; is this the blackout challenge ring?
@@ -12166,12 +12215,23 @@ Obj4B_YPositive:
 		move.b	#1,$3C(a0)		; disable interaction with ring
 
 Obj4B_DontCollect:
+		move.w	obX(a0),d0
+		andi.w	#$FF80,d0
+		move.w	($FFFFF700).w,d1
+		subi.w	#$80,d1
+		andi.w	#$FF80,d1
+		sub.w	d1,d0
+		cmpi.w	#$280,d0
+		bhi.w	DeleteObject
+
+		cmpi.w	#$302,($FFFFFE10).w	; is this Star Agony Place? (easter egg ring)
+		beq.s	@dontdisplay		; if yes, make it invisible
 		move.w	($FFFFF7BE).w,d0	; get giant ring patterns art loading state
 		andi.w	#%10,d0			; only look at the completion bit
-		bne.s	@display		; if it's set, display
-		rts				; otherwise, don't display yet to avoid garbled rings
-@display:
-		bra.w	MarkObjGone		; display giant ring
+		beq.s	@dontdisplay		; if it's not set, don't display
+		bra.w	DisplaySprite		; display ring
+@dontdisplay:	rts				; otherwise, don't display yet to avoid garbled rings
+
 ; ===========================================================================
 
 Obj4B_Collect:				; XREF: Obj4B_Index
@@ -12962,10 +13022,13 @@ Obj2E_ChkP:
 		cmpi.b	#$25,(a1)		; is object a ring?
 		bne.s	@next			; if not, branch
 		move.b	#$37,(a1)		; change object into bouncing ring
+		move.w	#10*60,$30(a1)		; set full despawn timer
+		move.b	#0,$36(a1)
 		move.b	#2,obRoutine(a1)	; make sure the ring just bounces, we don't want to loose 10 rings
 @next:		adda.w	#$40,a1			; go to next object in RAM
 		dbf	d2,@findrings		; loop
 
+		move.b	#-1,($FFFFFEC6).w	; reset bouncy ring animation timer
 		move.b	#120,($FFFFFF64).w	; 2 seconds of camera shake
 		move.w	#$B7,d0
 		jmp	(PlaySound).l	; play rumble sound
@@ -18859,8 +18922,6 @@ Obj12_Animate:
 		move.w	d0,obY(a0)
 
 		jmp	MarkObjGone
-
-
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -22984,7 +23045,6 @@ Obj5E_FC2:
 ; ---------------------------------------------------------------------------
 BombWalkSpeed_Boss = $140
 BombFuseTime_Boss = 41
-BombFuseVelocity_Boss = $70*2
 BombDistance_Boss = $50
 BombPellets_Boss = 13
 ; ---------------------------------------------------------------------------
@@ -23267,13 +23327,15 @@ Obj5F_MakeFuse:
 		bne.s	locret_11B5E
 		move.b	#$5F,0(a1)	; load fuse object
 		move.w	obX(a0),obX(a1)
-		move.w	obY(a0),obY(a1)
-		move.w	obY(a0),$34(a1)
+		move.w	obY(a0),d0
+	;	addi.w	#$10,d0
+		move.w	d0,obY(a1)
+		move.w	d0,$34(a1)
 		move.w	obStatus(a0),obStatus(a1)
 		move.b	#4,obSubtype(a1)		; set new object to routine 4
 		move.b	#3,obAnim(a1)
 		move.b	#0,obPriority(a1)
-		move.w	#-BombFuseVelocity_Boss,obVelY(a1)	; set alternate speed
+		move.w	#0,obVelY(a1)	; no speed
 
 @conty:
 		btst	#1,obStatus(a0)
@@ -23476,7 +23538,7 @@ Obj5F_BossDefeatedBlip:
 		moveq	#0,d1
 		move.w	($FFFFFF7C).w,d1
 		subq.w	#1,d1
-		bmi.s	@gotodelete
+		bmi.s	Obj5F_BossDelete
 
 		cmpi.w	#1*60+30,d1
 		beq.s	@patheticexplosion
@@ -23504,8 +23566,6 @@ Obj5F_BossDefeatedBlip:
 		move.w	d1,($FFFFFF7C).w
 		move.b	#0,($FFFFD000+obAniFrame).w ; reset Sonic waiting animation
 		rts				; don't render bomb anymore
-
-@gotodelete:
 ; ===========================================================================
 
 Obj5F_BossDelete:
@@ -23527,6 +23587,7 @@ Obj5F_BossDelete:
 		clr.b	($FFFFFF76).w
 		clr.b	($FFFFF7AA).w
 		clr.b	($FFFFFE2D).w			; disable invincibility
+		clr.b	($FFFFFE2C).w			; clear shield
 		clr.b	($FFFFFFE1).w
 
 		clr.b	($FFFFFF68).w			; revert lives counter to normal
@@ -23534,12 +23595,13 @@ Obj5F_BossDelete:
 		clr.l	($FFFFFE22).w			; clear time
 		ori.b	#1,($FFFFFE1E).w 		; update time counter
 
+		clr.w	($FFFFFE30).w			; clear any set level checkpoints
+
 		jsr	SAP_ResetChallengeObjects	; set up SAP challenge objects now
 		
 		move.b	#$84,d0
 		jsr	PlaySound
 
-		
 		jmp	DeleteObject
 ; ===========================================================================
 
@@ -25413,7 +25475,7 @@ Obj02_Setup:
 		move.w	#$140,obX(a0)			; set X-position
 		move.w	#$20A,obScreenY(a0)		; set Y-position
 		addq.b	#2,obRoutine(a0)		; set to "Obj02_Display"
-		bra.s	Obj02_Display
+		bra.s	Obj02_FinishSetup
 
 Obj02_NotEnding:
 		cmpi.b	#$20,($FFFFF600).w		; is screen mode story screen?
@@ -25422,13 +25484,24 @@ Obj02_NotEnding:
 		bne.s	Obj02_NotOptions		; if not, branch
 @nobgmaps:
 		move.w	#$2520,obGfx(a0)		; set art, use second palette line
-		bra.s	Obj02_Display			; use XY positions set while loading object
+		bra.s	Obj02_FinishSetup		; use XY positions set while loading object
 
 Obj02_NotOptions:
-		move.w	#$120,obX(a0)			; set X-position
-		move.w	#$117,obScreenY(a0)		; set Y-position
+		move.w	#$11F,obX(a0)			; set X-position
+		move.w	#$113,obScreenY(a0)		; set Y-position
+
+Obj02_FinishSetup:
+		move.w	obScreenY(a0),$32(a0)
 
 Obj02_Display:
+		; sway
+		move.w	($FFFFFE0E).w,d0
+		add.w	d0,d0
+		jsr	(CalcSine).l
+		asr.w	#6,d0
+		add.w	$32(a0),d0
+	;	move.w	d0,obScreenY(a0)
+
 		bset	#7,obGfx(a0)			; make object high priority
 		jmp	DisplaySprite			; jump to DisplaySprite
 ; ===========================================================================
@@ -31766,7 +31839,7 @@ Obj6A_Main:				; XREF: Obj6A_Index
 		bcc.s	Obj6A_Action
 		move.b	#$A2,obColType(a0)
 
-		move.b	#2,obFrame(a0)
+		move.b	#0,obFrame(a0)
 
 Obj6A_Action:				; XREF: Obj6A_Index
 		moveq	#0,d0
@@ -31795,7 +31868,6 @@ Obj6A_TypeIndex:dc.w Obj6A_Type00-Obj6A_TypeIndex, Obj6A_Type01-Obj6A_TypeIndex
 ; ===========================================================================
 
 Obj6A_Type00:				; XREF: Obj6A_TypeIndex
-		; pizza cutter in FP boss
 		subq.b	#1,obTimeFrame(a0)
 		bpl.s	@noframechg
 		move.b	#2,obTimeFrame(a0)
@@ -31836,31 +31908,17 @@ locret_15A60:
 ; ===========================================================================
 
 Obj6A_Type02:				; XREF: Obj6A_TypeIndex
-		move.w	#$30,d1
 		moveq	#0,d0
-		move.b	($FFFFFE64).w,d0
-		btst	#0,obStatus(a0)
-		beq.s	Obj6A_Animate02
-		neg.w	d0
-		addi.w	#$80,d0
-
-Obj6A_Animate02:
+		move.b	($FFFFFE68).w,d0
+		asr.w	#2,d0
 		move.w	$38(a0),d1
 		sub.w	d0,d1
 		move.w	d1,obY(a0)	; move saw vertically
+
 		subq.b	#1,obTimeFrame(a0)
-		bpl.s	loc_15A96
+		bpl.s	locret_15AB0
 		move.b	#2,obTimeFrame(a0)
 		bchg	#0,obFrame(a0)
-
-loc_15A96:
-		tst.b	obRender(a0)
-		bpl.s	locret_15AB0
-		move.b	($FFFFFE64).w,d0
-		cmpi.b	#$18,d0
-		bne.s	locret_15AB0
-		move.w	#$B0,d0
-		jsr	(PlaySound_Special).l ;	play saw sound
 
 locret_15AB0:
 		rts	
@@ -37689,7 +37747,7 @@ Obj85_Index:	dc.w Obj85_Main-Obj85_Index
 
 Obj85_ObjData:	dc.w $100, $100, $470	; X pos, Y pos,	VRAM setting
 		dc.l Map_obj82		; mappings pointer
-		dc.w $25B0, $590, $300
+		dc.w $25B0, $5A0, $300
 		dc.l Map_obj84
 		dc.w $26E0, $596, $3A0
 		dc.l Map_FZBoss
@@ -38005,9 +38063,9 @@ loc_1A02A:				; XREF: off_19E80
 		jsr	SpeedToPos
 		move.b	#6,obFrame(a0)
 		addi.w	#$10,obVelY(a0)
-		cmpi.w	#$59C,obY(a0)
+		cmpi.w	#$5AC,obY(a0)
 		bcs.s	loc_1A070
-		move.w	#$59C,obY(a0)
+		move.w	#$5AC,obY(a0)
 		addq.b	#2,$34(a0)
 		move.b	#$20,obWidth(a0)
 		move.w	#$100,obVelX(a0)
@@ -38122,7 +38180,7 @@ loc_1A192:				; XREF: off_19E80
 		jsr	SpeedToPos
 		cmpi.w	#$544,obY(a0)
 		bcc.s	loc_1A1D0
-		move.w	#$180,obVelX(a0)
+		move.w	#$200,obVelX(a0)
 		move.w	#-$18,obVelY(a0)
 		move.b	#$F,obColType(a0)
 		addq.b	#2,$34(a0)
@@ -38726,7 +38784,8 @@ Obj86_Generator:			; XREF: Obj86_Index
 		; light generator fall effect after boss is defeated
 		cmpi.b 	#$0A, ($FFFFF742).w ; check resize subroutine
 		bne.s 	@NoFall
-		move.b	#$E,obColType(a0) ; breakable
+	;	move.b	#$E,obColType(a0) ; breakable
+		move.b	#0,obColType(a0) ; not breakable (must hit the saw or post boss graphics won't load)
 		jsr	ObjectFall
 		sub.w 	#$10,obVelY(a0)
 		jsr	SpeedToPos
@@ -38815,7 +38874,19 @@ Obj86_Loop:
 		andi.w	#$1F,d0
 		subi.w	#$10,d0
 		add.w	d1,d0
-		move.w	d0,$30(a1)
+		
+		; limit energy balls to stay on screen horizontally, cause if one ever spawns offscreen the game will softlock
+		; (not my bug, blame Sega)
+		cmpi.w	#$2480,d0	; left boundary
+		bhs.s	@0
+		move.w	#$2480,d0
+@0:		cmpi.w	#$2570,d0	; right boundary
+		bls.s	@1
+		move.w	#$2570,d0
+@1:
+
+		move.w	d0,$30(a1)	; target X pos of energy ball
+		
 		addq.w	#1,$32(a0)
 		move.w	$32(a0),$38(a0)
 		dbf	d2,Obj86_Loop	; repeat sequence 3 more times
@@ -38862,6 +38933,9 @@ loc_1A9A6:				; XREF: Obj86_Index2
 		move.w	d0,obVelX(a0)
 		move.w	#$B4,obSubtype(a0)
 		addq.b	#2,ob2ndRout(a0)
+
+		move.w	d0,$38(a0)
+		move.w	obY(a0),$3A(a0)
 		rts	
 ; ===========================================================================
 
@@ -38878,6 +38952,15 @@ loc_1A9C0:				; XREF: Obj86_Index2
 		subq.w	#1,$32(a1)
 
 loc_1A9E6:
+		; sway
+		move.w	($FFFFFE04).w,d0
+		add.w	obX(a0),d0
+		add.w	d0,d0
+		jsr	(CalcSine).l
+		asr.w	#5,d0
+		add.w	$3A(a0),d0
+		move.w	d0,obY(a0)
+
 		move.b	#0,obAnim(a0)
 		subq.w	#1,obSubtype(a0)
 		bne.s	locret_1AA1C
@@ -39864,7 +39947,6 @@ loc_1B2C8:
 
 loc_1B2E4:
 		move.b	($FFFFFEC5).w,d0
-		move.b	d0,$138(a1)		; controls the animations for goal blocks
 		move.b	d0,$160(a1)
 		move.b	d0,$148(a1)
 		move.b	d0,$150(a1)
@@ -39874,6 +39956,13 @@ loc_1B2E4:
 		move.b	d0,$1F0(a1)
 		move.b	d0,$1F8(a1)
 		move.b	d0,$200(a1)
+
+		; goal block animation
+		btst	#7,($FFFFFF92).w	; are flashy lights enabled?
+		bne.s	@regular		; if yes, branch
+		moveq	#1,d0			; force to white goal block
+@regular:
+		move.b	d0,$138(a1)		; controls the animations for goal blocks
 		
 		; only animate skull blocks while rotating
 		tst.b	($FFFFFF5F).w		; is this the blackout blackout special stage?
@@ -41220,58 +41309,62 @@ Obj09_ChkGhost:
 		
 		moveq	#-1,d4			; mark ghost blocks as non solid
 
-		move.w	#$B2,d0			; set drown sound
-		tst.b	($FFFFFF5F).w		; is this the blackout blackout special stage?
-		bne.s	@cont
 		move.w	#$A1,d0			; set checkpoint sound
-@cont:
+		tst.b	($FFFFFF5F).w		; is this the blackout blackout special stage?
+		beq.s	@cont			; if not, branch
+		move.w	#$B2,d0			; set drown sound
+@cont:		jsr	(PlaySound_Special).l	; play it
+
 		move.w	obX(a0),($FFFFFF86).w	; save Sonic's X-position
 		move.w	obY(a0),($FFFFFF88).w	; save Sonic's Y-position
 
-		jsr	(PlaySound_Special).l	; play it
-
 		bsr	SS_RemoveCollectedItem	; prepare removing code
-		bne.w	@end			; if it's impossible branch	
+		bne.s	@nocollect		; if it's impossible branch	
 		move.b	#3,(a2)			; overwrite...
-		move.l	a1,obMap(a2)		; ...it with ring collection animation
+		move.l	a1,4(a2)		; ...it with ring collection animation
 
+@nocollect:
 		; shitty old code that attempts to collect multiple checkpoints at once
 		; there's about a 50/50 chance it works and I never figured out why
-		moveq	#0,d4			; clear d4
-		cmpi.b	#$41,obRender(a1)
+	;	moveq	#0,d4			; clear d4
+
+		cmpi.b	#$41,1(a1)
 		bne.s	@cont1
-		move.b	#0,obRender(a1)
-		move.b	#3,obX(a2)
-		move.l	a1,obMap(a2)
-		addq.l	#1,obMap(a2)
+		move.b	#0,1(a1)
+		move.b	#3,8(a2)
+		move.l	a1,4(a2)
+		addq.l	#1,4(a2)
 		addq.w	#8,a2
+
 @cont1:
-		cmpi.b	#$41,-obRender(a1)
+		cmpi.b	#$41,-1(a1)
 		bne.s	@cont2
-		move.b	#0,-obRender(a1)
-                move.b  #3,obX(a2)
-                move.l  a1,obMap(a2)
-                subq.l  #1,obMap(a2)
+		move.b	#0,-1(a1)
+                move.b  #3,8(a2)
+                move.l  a1,4(a2)
+                subq.l  #1,4(a2)
 		addq.w	#8,a2
+
 @cont2:
-		cmpi.b	#$41,obGfx(a1)
+		cmpi.b	#$41,2(a1)
 		bne.s	@cont3
-		move.b	#0,obGfx(a1)
-                move.b  #3,obX(a2)
-                move.l  a1,obMap(a2)
-                addq.l  #2,obMap(a2)
+		move.b	#0,2(a1)
+                move.b  #3,8(a2)
+                move.l  a1,4(a2)
+                addq.l  #2,4(a2)
 		addq.w	#8,a2
+
 @cont3:
-		cmpi.b	#$41,-obGfx(a1)
+		cmpi.b	#$41,-2(a1)
 		bne.s	@end
-		move.b	#0,-obGfx(a1)
-		move.b	#0,obGfx(a1)
-                move.b  #3,obX(a2)
-                move.l  a1,obMap(a2)
-                subq.l  #2,obMap(a2)
+		move.b	#0,-2(a1)
+		move.b	#0,2(a1)
+                move.b  #3,8(a2)
+                move.l  a1,4(a2)
+                subq.l  #2,4(a2)
+
 @end:
 		rts
-; ===========================================================================
 ; ===========================================================================
 
 Obj09_ChkItems_Solid:		; I never understood why this is a subroutine
@@ -41612,9 +41705,13 @@ Obj09_GoalNotSolid:
 		rts
 		
 @cont:
+		btst	#7,($FFFFFF92).w	; are flashy lights enabled?
+		beq.s	@noflash		; if not, no flash
 		movem.l	d0-a7,-(sp)		; backup to stack
 		jsr	Pal_MakeWhite		; make white flash
 		movem.l (sp)+,d0-a7		; restore from stack
+
+@noflash:
 		move.b	#2,($FFFFFFD6).w	; make sure it doesn't happen again
 
 		move.b	#0,($FF1C28).l		; make sure there is no pink glass block
@@ -42154,26 +42251,19 @@ AniArt_GiantRing:			; XREF: AniArt_Load
 		rts
 
 @loadgiantringart:
+		lea	(PLC_GiantRing).l,a1
 		VBlank_SetMusicOnly
-
-		vram	$8000
-		cmpi.w	#$400,($FFFFFE10).w		; is level Uberhub?
-		bne.s	@doload				; if not, branch
-		vram	$8440				; uberhub specific offset
-@doload:	lea	(ArtKospM_BigRing).l,a0
-		jsr	KosPlusMDec_VRAM
-
-		vram	$8C40
-		cmpi.w	#$400,($FFFFFE10).w		; is level Uberhub?
-		bne.s	@doload2			; if not, branch
-		vram	$9080				; uberhub specific offset
-@doload2:	lea	(ArtKospM_RingFlash).l,a0
-		jsr	KosPlusMDec_VRAM
-
+		jsr	LoadPLC_Direct
 		VBlank_UnsetMusicOnly
-
-		move.w	#2,($FFFFF7BE).w		; make sure art doesn't get loaded again
+		ori.w	#2,($FFFFF7BE).w		; make sure art doesn't get loaded again
 		rts
+; ---------------------------------------------------------------------------
+PLC_GiantRing:
+		dc.l ArtKospM_BigRing
+		dc.w $8000
+		dc.l ArtKospM_RingFlash
+		dc.w $8C40
+		dc.w -1
 ; End of function AniArt_GiantRing
 
 ; ===========================================================================
@@ -43862,8 +43952,10 @@ PLC_SYZ:
 		dc.w -1
 
 PLC_SYZ2:
-	;	dc.l ArtKospM_BigRing		; big rings
-	;	dc.w $8440
+		dc.l ArtKospM_BigRing		; big rings
+		dc.w $8440
+		dc.l ArtKospM_RingFlash		; ring flash
+		dc.w $9080
 		dc.l ArtKospM_SYZPlat		; exploding platform
 		dc.w $A660
 		dc.w -1
@@ -43881,7 +43973,9 @@ PLC_SBZ:
 		dc.l ArtKospM_LevelSigns	; level signs
 		dc.w $7300
 		dc.l ArtKospM_SbzDoor1	; door
-		dc.w $8000
+		dc.w $9800
+		dc.l ArtKospM_HSpring		; horizontal spring
+		dc.w $A460
 		dc.w -1
 
 PLC_SBZ2:

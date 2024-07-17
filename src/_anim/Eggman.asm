@@ -16,7 +16,7 @@
 byte_17CD4:	dc.b $F, 0, $FF, 0
 byte_17CD8:	dc.b 5,	1, 2, $FF
 byte_17CDC:	dc.b 3,	1, 2, $FF
-byte_17CE0:	dc.b 1,	1, 2, $FF
+byte_17CE0:	dc.b 60,	1, 2, $FF
 byte_17CE4:	dc.b 4,	3, 4, $FF
 byte_17CE8:	dc.b $1F, 5, 1,	$FF
 byte_17CEC:	dc.b 3,	6, 1, $FF

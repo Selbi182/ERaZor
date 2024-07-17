@@ -8,12 +8,12 @@ Credits_Scroll equ $FFFFFFA0 ; w
 Credits_Pages = 12
 Credits_Lines = 14
 Credits_LineLength = 20
-StartDelay = 152
+StartDelay = 150
 
 Credits_ScrollTime = $1C0
 Credits_FastThreshold = $60
 Credits_SpeedSlow = 1
-Credits_SpeedFast = 16
+Credits_SpeedFast = 32
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
 
@@ -98,7 +98,11 @@ CreditsScreen_Loop:
 
 		; update scroll
 		tst.b	($FFFFF604).w				; is any button held?
-		bne.s	@fast					; if yes, fast forward
+		beq.s	@scrollnormal				; if not, branch
+		btst	#0,($FFFFFF95).w			; has this noob even finished the game in casual before? (checked through post-credit messages)
+		bne.s	@scrollnormal				; if not, no fast scrolling
+		bra.s	@fast					; fast forward
+@scrollnormal:
 		moveq	#Credits_SpeedSlow,d1			; use slowest speed by default
 		move.w	(Credits_Scroll).w,d0			; get current scroll timer
 		subi.w	#Credits_ScrollTime/2,d0		; normalize

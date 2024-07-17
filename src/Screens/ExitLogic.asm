@@ -141,6 +141,13 @@ Exit_StoryScreen:
 Exit_CreditsScreen:
 		tst.b	($FFFFFF95).w		; were any post-credits texts set to be displayed?
 		beq.s	@restartfromcredits	; if not, branch
+
+		lea	($FFFFD000).w,a1	; clear object RAM (the stars)...
+		moveq	#0,d0			; ...cause they cause slowdowns in these screens
+		move.w	#$7FF,d1
+@clearobjram:	move.l	d0,(a1)+
+		dbf	d1,@clearobjram
+
 		moveq	#$E,d0			; load FZ palette (cause tutorial boxes are built into SBZ)
 		jsr	PalLoad2		; load palette
 

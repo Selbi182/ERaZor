@@ -27,5 +27,5 @@ byte_kill8:	dc.b 2, 1,$21,0,1,$21,0,1,$21,0, $FD, $10
 byte_kill9:	dc.b 1, 1,$21,0,1,$21,0,1,$21,0, $FD, $11
 byte_kill10:	dc.b 0, 1,$21,0,1,$21,0,1,$21,0,1,$21,0, $FD, $12
 byte_kill11:	dc.b 90, 0, $FD, $13
-byte_kill12:	dc.b 0, 1, $FF
+byte_kill12:	dc.b 0, 3, $FF
 		even

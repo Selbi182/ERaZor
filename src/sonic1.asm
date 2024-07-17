@@ -41,7 +41,7 @@ __DEBUG__: equ 1
 ; $502 - Finalor Place
 	if def(__BENCHMARK__)=0
 QuickLevelSelect = 1
-QuickLevelSelect_ID = $502
+QuickLevelSelect_ID = $400
 ; ------------------------------------------------------
 DebugModeDefault = 1
 DebugSurviveNoRings = 1
@@ -10470,9 +10470,9 @@ Obj1F_NotInhumanCrush:
 		cmpi.b	#4,ob2ndRout(a0)
 		bge.s	@cont
 		move.b	#10,($FFFFFF64).w		; camera shaking
-		move.b	#4,ob2ndRout(a0)			; set to boss defeated
+		move.b	#4,ob2ndRout(a0)		; set to boss defeated
 		move.w	#200,$3C(a0)			; set destroying timer
-		move.b	#8,obAnim(a0)
+		move.b	#8,obAnim(a0)			; start kill animation (anim ID 8-$13)
 @cont:
 		moveq	#0,d0
 		move.b	ob2ndRout(a0),d0
@@ -12078,7 +12078,7 @@ Obj4B_Main:				; XREF: Obj4B_Index
 		move.w	#$2000|($8000/$20),obGfx(a0)	; use default offset
 		cmpi.w	#$400,($FFFFFE10).w		; is level Uberhub?
 		bne.s	Obj4B_Main_Cont			; if not, branch
-		move.w	#$2000|($8440/$20),obGfx(a0)	; use uberhub specific offset
+		move.w	#$2000|($8E00/$20),obGfx(a0)	; use uberhub specific offset
 
 		move.b	obSubtype(a0),d1		; get ring subtype
 
@@ -12384,7 +12384,7 @@ Obj7C_Main:				; XREF: Obj7C_Index
 		move.w	#$2462,obGfx(a0)
 		cmpi.w	#$400,($FFFFFE10).w
 		bne.s	@cont
-		move.w	#$2484,obGfx(a0)
+		move.w	#$2000|(($8E00+$C40)/$20),obGfx(a0)
 @cont:
 		ori.b	#4,obRender(a0)
 		move.b	#0,obPriority(a0)
@@ -18871,8 +18871,6 @@ Obj12_Index:	dc.w Obj12_CheckGameState-Obj12_Index
 
 Obj12_CheckGameState:
 		addq.b	#2,obRoutine(a0)
-		move.b	#0,obFrame(a0)		; use silver star frame
-		move.b	#0,$30(a0)		; disable red frame
 
 		moveq	#0,d0
 		move.b	obSubtype(a0),d0	; get subtype (1-8)
@@ -18882,7 +18880,7 @@ Obj12_CheckGameState:
 
 		btst	d0,($FFFFFF8B).w	; stage beaten in frantic?
 		beq.s	@regularstar		; if not, branch
-		move.b	#1,$30(a0)		; use red star frame		
+	;	move.b	#1,$30(a0)		; use red star frame		 ; TODO!!!
 		bra.s	Obj12_Init		; display
 @regularstar:
 		btst	d0,($FFFFFF8A).w	; stage beaten in casual?
@@ -18893,7 +18891,7 @@ Obj12_CheckGameState:
 @basegame:
 		jsr	Check_BlackoutBeaten		; has the player beaten the blackout challenge?
 		beq.s	@blackoutnotbeaten		; if not, branch
-		move.b	#2,$30(a0)			; use skull frame
+	;	move.b	#2,$30(a0)			; use skull frame
 		bset	#0,obRender(a0)
 		bset	#1,obRender(a0)
 		bra.s	Obj12_Init
@@ -18920,12 +18918,16 @@ Obj12_Init:
 		addq.b	#2,obRoutine(a0)
 		move.l	#Map_Obj12,obMap(a0)
 		move.w	#($6C00/$20),obGfx(a0)
-		move.b	#4,obRender(a0)
+		move.b	#$94,obRender(a0)
 		move.b	#$10,obActWid(a0)
 		move.b	#6,obPriority(a0)
-		move.w	obY(a0),$32(a0)
-		move.b	$30(a0),obFrame(a0)
+
+	;	move.b	$30(a0),obFrame(a0)
+		move.b	obSubtype(a0),d0
+		subq.b	#1,d0
+		move.b	d0,obFrame(a0)
 		
+		move.w	obY(a0),$32(a0)
 		moveq	#0,d0
 		move.b	obSubtype(a0),d0
 		lsl.w	#4,d0
@@ -18935,9 +18937,10 @@ Obj12_Init:
 Obj12_Animate:
 		; sway
 		move.w	($FFFFFE04).w,d0
+		add.w	d0,d0
 		add.w	$34(a0),d0
 		jsr	(CalcSine).l
-		asr.w	#5,d0
+		asr.w	#6,d0
 		add.w	$32(a0),d0
 		move.w	d0,obY(a0)
 
@@ -44010,9 +44013,9 @@ PLC_SYZ:
 
 PLC_SYZ2:
 		dc.l ArtKospM_BigRing		; big rings
-		dc.w $8440
+		dc.w $8E00
 		dc.l ArtKospM_RingFlash		; ring flash
-		dc.w $9080
+		dc.w $8E00+$C40
 		dc.l ArtKospM_SYZPlat		; exploding platform
 		dc.w $A660
 		dc.w -1

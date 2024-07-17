@@ -9,10 +9,10 @@ DeleteCounts = 3
 
 Options_VRAM = $E570
 Options_VRAM_Red = $C570
-Options_VDP = $600A0003
+Options_VDP = $60080003
 
 Options_LineCount = 22
-Options_LineLength = 26
+Options_LineLength = 28
 Options_Padding = 2
 Options_LineLengthTotal = Options_LineLength + (Options_Padding * 2)
 ; ---------------------------------------------------------------------------
@@ -188,9 +188,9 @@ Options_HandleChange:
 ; ===========================================================================
 OpHandle_Index:	dc.w	Options_HandleGameplayStyle-OpHandle_Index
 		dc.w	Options_HandleExtendedCamera-OpHandle_Index
-		dc.w	Options_HandleFlashyLights-OpHandle_Index
-		dc.w	Options_HandleStoryTextScreens-OpHandle_Index
 		dc.w	Options_HandleSkipUberhub-OpHandle_Index
+		dc.w	Options_HandleStoryTextScreens-OpHandle_Index
+		dc.w	Options_HandleFlashyLights-OpHandle_Index
 		dc.w	Options_HandleCinematicMode-OpHandle_Index
 		dc.w	Options_HandleNonstopInhuman-OpHandle_Index
 		dc.w	Options_HandleDeleteSaveGame-OpHandle_Index
@@ -593,7 +593,7 @@ GetOptionsText:
 		adda.w	#Options_LineLength,a1		; make one empty line
 
 		moveq	#3,d2
-		lea	(OpText_FlashyLights).l,a2	; set text location
+		lea	(OpText_SkipUberhub).l,a2	; set text location
 		bsr.w	Options_Write			; write text
 		bsr.w	GOT_ChkOption			; check if option is ON or OFF
 		bsr.w	Options_Write			; write text
@@ -607,9 +607,9 @@ GetOptionsText:
 		bsr.w	Options_Write			; write text
 
 		adda.w	#Options_LineLength,a1		; make one empty line
-		
+
 		moveq	#5,d2
-		lea	(OpText_SkipUberhub).l,a2	; set text location
+		lea	(OpText_FlashyLights).l,a2	; set text location
 		bsr.w	Options_Write			; write text
 		bsr.w	GOT_ChkOption			; check if option is ON or OFF
 		bsr.w	Options_Write			; write text
@@ -758,9 +758,9 @@ GOT_ChkOption:
 ; ===========================================================================
 GOT_Index:	dc.w	GOTCO_CasualFrantic-GOT_Index
 		dc.w	GOTCO_ExtendedCamera-GOT_Index
-		dc.w	GOTCO_FlashyLights-GOT_Index
-		dc.w	GOTCO_SkipStoryScreens-GOT_Index
 		dc.w	GOTCO_SkipUberhub-GOT_Index
+		dc.w	GOTCO_SkipStoryScreens-GOT_Index
+		dc.w	GOTCO_FlashyLights-GOT_Index
 		dc.w	GOTCO_CinematicMode-GOT_Index
 		dc.w	GOTCO_NonstopInhuman-GOT_Index
 		dc.w	GOTCO_DeleteSaveGame-Got_Index
@@ -783,10 +783,10 @@ GOTCO_ExtendedCamera:
 ; ---------------------------------------------------------------------------
 
 GOTCO_FlashyLights:
-		lea	(OpText_OFF).l,a2		; use "OFF" text
+		lea	(OpText_ON).l,a2		; otherwise use "ON" text
 		btst	#7,($FFFFFF92).w		; are Flashy Lights enabled?
 		beq.w	GOTCO_Return			; if not, branch
-		lea	(OpText_ON).l,a2		; otherwise use "ON" text
+		lea	(OpText_OFF).l,a2		; use "OFF" text
 		rts					; return
 ; ---------------------------------------------------------------------------
 
@@ -863,50 +863,50 @@ GOTCO_Return:
 ; ---------------------------------------------------------------------------
 
 OpText_Header1:
-		dc.b	'<------------------------>', $FF
+		dc.b	'<-------------------------->', $FF
 		even
 
 OpText_Header2:
-		dc.b	'       OPTIONS MENU       ', $FF
+		dc.b	'  THE MENU TO CHANGE STUFF  ', $FF
 		even
 ; ---------------------------------------------------------------------------
 
 OpText_GameplayStyle:
-		dc.b	'GAMEPLAY STYLE     ', $FF
+		dc.b	'GAMEPLAY STYLE  ', $FF
 		even
 
 OpText_Extended:
-		dc.b	'EXTENDED CAMERA        ', $FF
-		even
-
-OpText_FlashyLights:
-		dc.b	'FLASHY LIGHTS          ', $FF
-		even
-
-OpText_SkipStory:
-		dc.b	'SKIP STORY SCREENS     ', $FF
+		dc.b	'EXTENDED CAMERA          ', $FF
 		even
 
 OpText_SkipUberhub:
-		dc.b	'SKIP UBERHUB PLACE     ', $FF
+		dc.b	'SKIP UBERHUB PLACE       ', $FF
+		even
+
+OpText_SkipStory:
+		dc.b	'SKIP STORY SCREENS       ', $FF
+		even
+
+OpText_FlashyLights:
+		dc.b	'PHOTOSENSITIVITY MODE    ', $FF
 		even
 
 OpText_CinematicMode:
-		dc.b	'SCREEN EFFECT ', $FF
+		dc.b	'SCREEN EFFECTS   ', $FF
 		even
 OpText_CinematicMode_Locked:
-		dc.b	'????????? ????  ', $FF
+		dc.b	'?????? ???????   ', $FF
 		even
 		
 OpText_NonstopInhuman:
-		dc.b	'TRUE INHUMAN MODE      ', $FF
+		dc.b	'TRUE INHUMAN MODE        ', $FF
 		even
 OpText_NonstopInhuman_Locked:
-		dc.b	'???? ??????? ????      ', $FF
+		dc.b	'???? ??????? ????        ', $FF
 		even
 
 OpText_DeleteSRAM:
-		dc.b	'DELETE SAVE GAME       ', $FF
+		dc.b	'DELETE SAVED GAME        ', $FF
 		even
 OpText_Del3:	dc.b	'>>>', $FF
 		even
@@ -916,7 +916,7 @@ OpText_Del1:	dc.b	'  >', $FF
 		even
 ; ---------------------------------------------------------------------------
 
-OpText_Exit:	dc.b	'       SAVE OPTIONS       ', $FF
+OpText_Exit:	dc.b	'        SAVE OPTIONS        ', $FF
 		even
 ; ---------------------------------------------------------------------------
 
@@ -925,18 +925,18 @@ OpText_ON:	dc.b	' ON', $FF
 OpText_OFF:	dc.b	'OFF', $FF
 		even
 
-OpText_Casual:	dc.b	' CASUAL', $FF
+OpText_Casual:	dc.b	'      CASUAL', $FF
 		even
-OpText_Frantic:	dc.b	'FRANTIC', $FF
+OpText_Frantic:	dc.b	'     FRANTIC', $FF
 		even
 
-OpText_CinOff:	dc.b	'         OFF', $FF
+OpText_CinOff:	dc.b	'       NONE', $FF
 		even
-OpText_CinNorm:	dc.b	'   CINEMATIC', $FF
+OpText_CinNorm:	dc.b	'  CINEMATIC', $FF
 		even
-OpText_CinFuzz:	dc.b	' MOTION BLUR', $FF
+OpText_CinFuzz:	dc.b	'MOTION BLUR', $FF
 		even
-OpText_CinBoth:	dc.b	'        BOTH', $FF
+OpText_CinBoth:	dc.b	'       BOTH', $FF
 		even
 ; ---------------------------------------------------------------------------
 ; ===========================================================================

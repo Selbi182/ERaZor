@@ -40,7 +40,7 @@ __DEBUG__: equ 1
 ; $302 - Star Agony Place
 ; $502 - Finalor Place
 	if def(__BENCHMARK__)=0
-QuickLevelSelect = 1
+QuickLevelSelect = 0
 QuickLevelSelect_ID = $400
 ; ------------------------------------------------------
 DebugModeDefault = 1
@@ -18956,6 +18956,12 @@ Obj12_Init:
 ; ---------------------------------------------------------------------------
 
 Obj12_Animate:
+		tst.b	($FFFFD000).w			; has Sonic already jumped into a giant ring?
+		bne.s	@sonicexists			; if not, branch
+		move.w	#EmblemGfx_Frantic,obGfx(a0)	; force to frantic frames cause anything else looks weird in grayscale
+		bra.s	@sway				; skip
+
+@sonicexists:
 		tst.b	$30(a0)				; frantic frame set?
 		beq.s	@sway				; if not, branch
 		btst	#7,($FFFFFF92).w		; are flashy lights enabled?
@@ -18966,7 +18972,7 @@ Obj12_Animate:
 		move.w	($FFFFFE04).w,d0		; get frame counter
 		andi.w	#3,d0				; every fourth frame
 		bne.s	@sway				; if not on fourth frame, branch
-		move.w	#EmblemGfx_Frantic,obGfx(a0)	
+		move.w	#EmblemGfx_Frantic,obGfx(a0)
 		bchg	#1,$30(a0)
 		btst	#2,($FFFFFE05).w
 		beq.s	@sway
@@ -22997,7 +23003,7 @@ Obj5E_Fuse:				; XREF: Obj5E_Index
 		bmi.w	Obj5E_Delete
 
 		jsr	SpeedToPos
-		lea	(Ani_obj5F).l,a1
+		lea	(Ani_obj5E).l,a1
 		jsr	AnimateSprite
 		bra.w	MarkObjGone
 ; ===========================================================================
@@ -23008,7 +23014,7 @@ Obj5E_Spark:				; XREF: Obj5E_Index
 		bmi.s	@timesup
 		subi.w	#1,obVelY(a0)
 		jsr	SpeedToPos
-		lea	(Ani_obj5F).l,a1
+		lea	(Ani_obj5E).l,a1
 		jsr	AnimateSprite
 		bra.w	Obj5E_Display
 
@@ -23031,7 +23037,7 @@ Obj5E_Shrapnel:				; XREF: Obj5E_Index
 		addi.w	#$38,obVelY(a0)
 @1:
 		bsr.w	SpeedToPos
-		lea	(Ani_obj5F).l,a1
+		lea	(Ani_obj5E).l,a1
 		jsr	AnimateSprite
 
 		tst.b	$30(a0)
@@ -23086,6 +23092,9 @@ Obj5E_FC2:
 		bset	#0,obStatus(a0)
 		rts
 ; ===========================================================================
+
+Ani_obj5E:
+	include "_anim\obj5E.asm"
 
 ; ===========================================================================
 ; ===========================================================================

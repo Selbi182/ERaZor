@@ -2,17 +2,17 @@
 ; Sprite mappings - output from ClownMapEd - Sonic 1/CD format
 ; --------------------------------------------------------------------------------
 
-CME_75905D61:
-	dc.w	CME_75905D61_0-CME_75905D61
-	dc.w	CME_75905D61_1-CME_75905D61
-	dc.w	CME_75905D61_2-CME_75905D61
-	dc.w	CME_75905D61_3-CME_75905D61
-	dc.w	CME_75905D61_4-CME_75905D61
-	dc.w	CME_75905D61_5-CME_75905D61
-	dc.w	CME_75905D61_6-CME_75905D61
-	dc.w	CME_75905D61_7-CME_75905D61
+CME_0B61CF37:
+	dc.w	CME_0B61CF37_0-CME_0B61CF37
+	dc.w	CME_0B61CF37_1-CME_0B61CF37
+	dc.w	CME_0B61CF37_2-CME_0B61CF37
+	dc.w	CME_0B61CF37_3-CME_0B61CF37
+	dc.w	CME_0B61CF37_4-CME_0B61CF37
+	dc.w	CME_0B61CF37_5-CME_0B61CF37
+	dc.w	CME_0B61CF37_6-CME_0B61CF37
+	dc.w	CME_0B61CF37_7-CME_0B61CF37
 
-CME_75905D61_0:
+CME_0B61CF37_0:
 	dc.b	3
 
 	dc.b	-26
@@ -30,7 +30,7 @@ CME_75905D61_0:
 	dc.w	$0018
 	dc.b	-17
 
-CME_75905D61_1:
+CME_0B61CF37_1:
 	dc.b	1
 
 	dc.b	-12
@@ -38,7 +38,7 @@ CME_75905D61_1:
 	dc.w	$001A
 	dc.b	-13
 
-CME_75905D61_2:
+CME_0B61CF37_2:
 	dc.b	1
 
 	dc.b	-24
@@ -46,7 +46,7 @@ CME_75905D61_2:
 	dc.w	$0023
 	dc.b	-5
 
-CME_75905D61_3:
+CME_0B61CF37_3:
 	dc.b	1
 
 	dc.b	-16
@@ -54,7 +54,7 @@ CME_75905D61_3:
 	dc.w	$0027
 	dc.b	-15
 
-CME_75905D61_4:
+CME_0B61CF37_4:
 	dc.b	1
 
 	dc.b	-12
@@ -62,7 +62,7 @@ CME_75905D61_4:
 	dc.w	$0033
 	dc.b	-13
 
-CME_75905D61_5:
+CME_0B61CF37_5:
 	dc.b	2
 
 	dc.b	-30
@@ -75,7 +75,7 @@ CME_75905D61_5:
 	dc.w	$003F
 	dc.b	-13
 
-CME_75905D61_6:
+CME_0B61CF37_6:
 	dc.b	1
 
 	dc.b	-24
@@ -83,12 +83,17 @@ CME_75905D61_6:
 	dc.w	$004B
 	dc.b	-16
 
-CME_75905D61_7:
-	dc.b	1
+CME_0B61CF37_7:
+	dc.b	2
 
-	dc.b	-16
+	dc.b	-20
 	dc.b	$0A
 	dc.w	$005B
-	dc.b	-9
+	dc.b	-12
+
+	dc.b	-24
+	dc.b	$0F
+	dc.w	$004B
+	dc.b	-16
 
 	even

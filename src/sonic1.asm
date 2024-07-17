@@ -18868,6 +18868,9 @@ Map_obj46:
 ; ---------------------------------------------------------------------------
 ; Object 12 - Progress emblems/trophies in Uberhub (SYZ)
 ; ---------------------------------------------------------------------------
+EmblemGfx_Casual  = $6000|($6C00/$20)
+EmblemGfx_Frantic = $6000|($7A00/$20)
+; ---------------------------------------------------------------------------
 
 Obj12:					; XREF: Obj_Index
 		moveq	#0,d0
@@ -18882,72 +18885,94 @@ Obj12_Index:	dc.w Obj12_CheckGameState-Obj12_Index
 
 Obj12_CheckGameState:
 		addq.b	#2,obRoutine(a0)
+		move.w	#EmblemGfx_Casual,obGfx(a0)
 
 		moveq	#0,d0
 		move.b	obSubtype(a0),d0	; get subtype (1-8)
-		cmpi.b	#7,d0			; is this the star for the base game?
-		beq.s	@basegame		; if yes, branch
+		cmpi.b	#7,d0			; is this the trophy after beating the game?
+		beq.s	@ggtrophy		; if yes, branch
 		subq.b	#1,d0			; adjust for bit test
 
 		btst	d0,($FFFFFF8B).w	; stage beaten in frantic?
-		beq.s	@regularstar		; if not, branch
-	;	move.b	#1,$30(a0)		; use red star frame		 ; TODO!!!
+		beq.s	@regular		; if not, branch
+		move.w	#EmblemGfx_Frantic,obGfx(a0)
+		move.b	#1,$30(a0)		; use frantic frame
 		bra.s	Obj12_Init		; display
-@regularstar:
+@regular:
 		btst	d0,($FFFFFF8A).w	; stage beaten in casual?
 		bne.s	Obj12_Init		; if yes, branch
-		jmp	DeleteObject		; not even that? you suck. no stars for you.
+		jmp	DeleteObject		; not even that? you suck. no trophies for you.
 ; ---------------------------------------------------------------------------
 
-@basegame:
+@ggtrophy:
 		jsr	Check_BlackoutBeaten		; has the player beaten the blackout challenge?
 		beq.s	@blackoutnotbeaten		; if not, branch
-	;	move.b	#2,$30(a0)			; use skull frame
-		bset	#0,obRender(a0)
-		bset	#1,obRender(a0)
+		move.b	#8,obSubtype(a0)		; use skull frame
+		move.b	#1,$30(a0)			; frantic flash
+		move.w	#EmblemGfx_Frantic,obGfx(a0)
 		bra.s	Obj12_Init
 	
 @blackoutnotbeaten:
 		jsr	Check_BaseGameBeaten_Frantic	; was the base game beaten in frantic?
-		bne.s	@showred			; if yes, show red star
+		bne.s	@showred			; if yes, show blinky
 		jsr	Check_BaseGameBeaten_Casual	; was the base game beaten in casual?
 		bne.s	@showgray			; if yes, show gray star
 
 		moveq	#6,d0
 		jsr	Check_LevelBeaten_Frantic	; has the player just beaten Finalor in frantic?
 		beq.s	@notfrantic			; if not, branch
-@showred:	move.b	#1,$30(a0)			; use red star frame
+@showred:	move.b	#1,$30(a0)			; use frantic frame
+		move.w	#EmblemGfx_Frantic,obGfx(a0)
 		bra.s	Obj12_Init			; show star
 @notfrantic:
-		moveq	#6,d0
 		jsr	Check_LevelBeaten		; has the player just beaten Finalor in casual?
 		beq.w	DeleteObject			; if not, don't show star
-@showgray:	move.b	#0,$30(a0)			; use gray star frame
+@showgray:	move.b	#0,$30(a0)			; use casual frame
+		move.w	#EmblemGfx_Casual,obGfx(a0)
 ; ---------------------------------------------------------------------------
 
 Obj12_Init:
 		addq.b	#2,obRoutine(a0)
 		move.l	#Map_Obj12,obMap(a0)
-		move.w	#$6000|($6C00/$20),obGfx(a0)
 		move.b	#$94,obRender(a0)
 		move.b	#$10,obActWid(a0)
 		move.b	#6,obPriority(a0)
 		move.b	#$40,obHeight(a0)
 
-	;	move.b	$30(a0),obFrame(a0)
-		move.b	obSubtype(a0),d0
-		subq.b	#1,d0
-		move.b	d0,obFrame(a0)
-		
+		; set frame
+		moveq	#0,d0
+		move.b	obSubtype(a0),d0	; get subtype
+		subq.b	#1,d0			; adjust for 0-based indexing
+		bpl.s	@setframe		; underflow? if not, branch
+		moveq	#0,d0			; prevent underflow
+@setframe:	move.b	d0,obFrame(a0)		; set frame to display
+
+		; used for the sway
 		move.w	obY(a0),$32(a0)
 		moveq	#0,d0
 		move.b	obSubtype(a0),d0
 		lsl.w	#4,d0
-		move.w	d0,$34(a0)
+		move.w	d0,$34(a0)		
 ; ---------------------------------------------------------------------------
 
 Obj12_Animate:
-		; sway
+		tst.b	$30(a0)				; frantic frame set?
+		beq.s	@sway				; if not, branch
+		btst	#7,($FFFFFF92).w		; are flashy lights enabled?
+		bne.s	@doflash			; if yes, branch
+		move.w	#EmblemGfx_Frantic,obGfx(a0)	; use alternate offset for frantic frames
+		bra.s	@sway				; don't flash
+@doflash:
+		move.w	($FFFFFE04).w,d0		; get frame counter
+		andi.w	#3,d0				; every fourth frame
+		bne.s	@sway				; if not on fourth frame, branch
+		move.w	#EmblemGfx_Frantic,obGfx(a0)	
+		bchg	#1,$30(a0)
+		btst	#2,($FFFFFE05).w
+		beq.s	@sway
+		move.w	#EmblemGfx_Casual,obGfx(a0)	; use alternate offset for frantic frames
+
+@sway:
 		move.w	($FFFFFE04).w,d0
 		add.w	d0,d0
 		add.w	$34(a0),d0
@@ -44019,8 +44044,10 @@ PLC_SYZ:
 		dc.w $6000
 		dc.l ArtKospM_LevelSigns	; level signs
 		dc.w $6200
-		dc.l ArtKospM_SYZEmblems	; SYZ casual/frantic progression emblems
+		dc.l ArtKospM_SYZEmblemsCasual	; SYZ casual progression emblems
 		dc.w $6C00
+		dc.l ArtKospM_SYZEmblemsFrantic	; SYZ frantic progression emblems
+		dc.w $7A00
 		dc.w -1
 
 PLC_SYZ2:
@@ -44407,9 +44434,11 @@ ArtKospM_SYZDoors:	incbin	artkosp\SYZDoors.kospm	; SYZ doors
 		even
 ArtKospM_LevelSigns:	incbin	artkosp\LevelSigns.kospm	; SYZ level signs
 		even
-ArtKospM_SYZEmblems:	incbin	artkosp\SYZEmblems.kospm	; SYZ casual/frantic emblems
-		even
 ArtKospM_SYZPlat:	incbin	artkosp\SYZPlatform.kospm	; SLZ Platform
+		even
+ArtKospM_SYZEmblemsCasual:	incbin	artkosp\SYZEmblems.kospm	; SYZ casual emblems
+		even
+ArtKospM_SYZEmblemsFrantic:	incbin	artkosp\SYZEmblems_Frantic.kospm	; SYZ frantic emblems
 		even
 ; ---------------------------------------------------------------------------
 ; Compressed graphics - SBZ stuff

@@ -20,7 +20,12 @@ Credits_SpeedFast = 32
 CreditsScreen:
 		move.b	#$97,d0
 		jsr	PlaySound_Special			; play credits music
-		jsr	Pal_FadeFrom
+	;	jsr	Pal_FadeFrom
+		
+		; for a smooth transition from the ending sequence black bars
+		jsr	Pal_CutToBlack
+		move.b	#$18,VBlankRoutine
+		jsr	DelayProgram
 
 		VBlank_SetMusicOnly
 		lea	($C00004).l,a6

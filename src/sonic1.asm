@@ -40,8 +40,8 @@ __DEBUG__: equ 1
 ; $302 - Star Agony Place
 ; $502 - Finalor Place
 	if def(__BENCHMARK__)=0
-QuickLevelSelect = 0
-QuickLevelSelect_ID = $400
+QuickLevelSelect = 1
+QuickLevelSelect_ID = $502
 ; ------------------------------------------------------
 DebugModeDefault = 1
 DebugSurviveNoRings = 1
@@ -633,8 +633,8 @@ BlackBars.SetState:
 		cmpi.b	#$10,d0				; are we in a special stage?
 		beq.s	@validgamemode			; if yes, branch
 		cmpi.b	#$18,d0				; are we in the ending sequence?
-		beq.s	@validgamemode			; if yes, branch
-		bra.s	BlackBars_DontShow		; don't show black bars in any other game modes
+		beq.w	BlackBars_Ending		; if yes, branch
+		bra.w	BlackBars_DontShow		; don't show black bars in any other game modes
 
 @validgamemode:
 		tst.b	($FFFFFF6E).w			; are tutorial boxes currently shown?
@@ -740,7 +740,16 @@ BlackBars_Selbi:
 		moveq	#60,d0
 		move.w	d0,BlackBars.TargetHeight
 		bra.w	BlackBars_ShowCustom
+; ---------------------------------------------------------------------------
 
+BlackBars_Ending:
+		tst.w	($FFFFFE02).w			; is level set to restart? (after Sonic died)
+		beq.w	BlackBars_Show			; if not, show regular bars
+		cmpi.w	#224/2-2,BlackBars.Height	; did we full up the full screen?
+		bhs.s	@show				; if not, branch
+		addq.w	#2,BlackBars.TargetHeight	; grow black bars
+@show:
+		bra.w	BlackBars_ShowCustom
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
 
@@ -1920,17 +1929,6 @@ loc_1EF4:
 		rts
 ; ===========================================================================
 
-Pal_CutToWhite:
-		lea	($FFFFFB00).w,a0
-		move.w	#$EEE,d0
-		move.w	#$40-1,d1
-@fillwhite:
-		move.w	d0,(a0)+
-		dbf	d1,@fillwhite
-		rts
-; ===========================================================================
-
-
 ;WhiteIn_FromWhite:
 Pal_WhiteToBlack:			; XREF: Pal_MakeWhite
 		moveq	#0,d0
@@ -2078,10 +2076,32 @@ loc_2006:				; XREF: Pal_AddColor2
 		addq.w	#2,a0		; go to next color
 		rts	
 ; End of function Pal_MakeFlash
+; ===========================================================================
 
+Pal_CutToBlack:
+		lea	($FFFFFB00).w,a0
+		moveq	#$000,d0
+		move.w	#$40-1,d1
+@fillblack:
+		move.w	d0,(a0)+
+		dbf	d1,@fillblack
+		rts
+; ---------------------------------------------------------------------------
+
+Pal_CutToWhite:
+		lea	($FFFFFB00).w,a0
+		move.w	#$EEE,d0
+		move.w	#$40-1,d1
+@fillwhite:
+		move.w	d0,(a0)+
+		dbf	d1,@fillwhite
+		rts
+; ===========================================================================
+
+		
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Palette cycling routine - Sega	logo
+; Palette cycling routine - Sega logo
 ; ---------------------------------------------------------------------------
 
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
@@ -4872,12 +4892,7 @@ SpecialStage:				; XREF: GameModeArray
 		bsr	PlaySound_Special
 		
 		; instantly turn the entire palette black
-		moveq	#0,d1
-		lea	($FFFFFB00).w,a1
-		move.w	#$3F,d2
-	@clearpalafter:
-		move.l	d1,(a1)+
-		dbf	d2,@clearpalafter
+		jsr	Pal_CutToBlack
 
 		move.b	#$12,VBlankRoutine	; apply palette changes before we move on
 		bsr	DelayProgram
@@ -5562,9 +5577,11 @@ End_MainLoop:
 		bsr	OscillateNumDo
 		bsr	ChangeRingFrame
 
-		tst.w	($FFFFFE02).w		; is level set to restart? (after Sonic died)
-		beq.w	End_MainLoop		; if not, loop
-		jmp	Exit_EndingSequence	; go to credits screen
+		tst.w	($FFFFFE02).w			; is level set to restart? (after Sonic died)
+		beq.w	End_MainLoop			; if not, loop
+		cmpi.w	#224/2-2,BlackBars.Height	; did black bars finish covering up the screen?
+		blo.s	End_MainLoop			; if not, loop
+		jmp	Exit_EndingSequence		; go to credits screen
 
 ; ---------------------------------------------------------------------------
 ; Subroutine controlling Sonic on the ending sequence
@@ -18679,64 +18696,6 @@ Obj14_Delete:				; XREF: Obj14_Index
 ; ===========================================================================
 Ani_obj14:
 		include	"_anim\obj14.asm"
-
-; ===========================================================================
-; ---------------------------------------------------------------------------
-; Object 6D - Flamethrower attached to the Nuke
-; ---------------------------------------------------------------------------
-
-Obj6D:					; XREF: Obj_Index
-		moveq	#0,d0
-		move.b	obRoutine(a0),d0
-		move.w	Obj6D_Index(pc,d0.w),d1
-		jmp	Obj6D_Index(pc,d1.w)
-; ===========================================================================
-Obj6D_Index:	dc.w Obj6D_Main-Obj6D_Index
-		dc.w Obj6D_Action-Obj6D_Index
-; ===========================================================================
-
-Obj6D_Main:				; XREF: Obj6D_Index
-		addq.b	#2,obRoutine(a0)
-		move.l	#Map_obj6D,obMap(a0)
-		move.w	#($5A00/$20),obGfx(a0)
-		ori.b	#$94,obRender(a0)
-		move.b	#7,obPriority(a0)	; behind the nuke
-		move.b	#$40,obHeight(a0)
-
-Obj6D_Action:				; XREF: Obj6D_Index
-		move.w	($FFFFFE04).w,d0	; get frame counter
-		andi.w	#$F,d0			; every 16 frames
-		bne.s	@updatepos		; if not, branch
-		move.w	#$C8,d0			; play...
-		jsr	PlaySound		; ...flamethrower sound
-
-@updatepos:
-		movea.l	$30(a0),a1		; get nuke parent object
-		cmpi.b	#$81,(a1)		; does it still exist?
-		bne.s	@delete			; if not, delete flamethrower too
-
-		move.w	obX(a1),obX(a0)		; update flamethrower X pos
-
-		move.w	obY(a1),d0		; get nuke Y pos
-		addi.w	#$44,d0			; adjust
-		move.w	d0,obY(a0)		; update flamethrower Y pos
-
-		lea	(Ani_obj6D).l,a1
-		bsr	AnimateSprite
-		bra.w	DisplaySprite
-
-@delete:
-		jmp	DeleteObject
-; ===========================================================================
-
-Ani_obj6D:
-		include	"_anim\obj6D.asm"
-
-; ---------------------------------------------------------------------------
-; Sprite mappings - flame thrower (SBZ)
-; ---------------------------------------------------------------------------
-Map_obj6D:
-		include	"_maps\obj6D.asm"
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -39295,7 +39254,7 @@ Obj81_Wait:
 		bne.s	@display
 		move.b	#$6D,(a1)		; load flamethrower object
 		move.l	a0,$30(a1)		; set parent
-		
+
 @display:
 		jmp	DisplaySprite
 ; ===========================================================================
@@ -39309,13 +39268,13 @@ Obj81_FlyUp:
 ; ---------------------------------------------------------------------------
 Obj81_FlyDown:
 		addi.w	#3,obVelY(a0)
-		cmpi.w	#$80,obVelY(a0)
+		cmpi.w	#$F0,obVelY(a0)
 		blt.s	Obj81_Move
 		addq.b	#2,obRoutine(a0)	; move up again
 		bra.s	Obj81_Move
 ; ---------------------------------------------------------------------------
 Obj81_FlyUp2:
-		subi.w	#4,obVelY(a0)
+		subi.w	#$30,obVelY(a0)
 		cmpi.w	#$400,obY(a0)
 		bhi.s	Obj81_Move
 		addq.b	#2,obRoutine(a0)	; boom
@@ -39334,9 +39293,77 @@ Obj81_Boom:
 		jsr	WhiteFlash2		; mini flash
 		jmp	DeleteObject
 
+; ---------------------------------------------------------------------------
+Map_obj81:	include	"_maps\Nuke.asm"
+; ---------------------------------------------------------------------------
 ; ===========================================================================
 
-Map_obj81:	include	"_maps\Nuke.asm"
+
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Object 6D - Flamethrower attached to the Nuke
+; ---------------------------------------------------------------------------
+
+Obj6D:					; XREF: Obj_Index
+		moveq	#0,d0
+		move.b	obRoutine(a0),d0
+		move.w	Obj6D_Index(pc,d0.w),d1
+		jmp	Obj6D_Index(pc,d1.w)
+; ===========================================================================
+Obj6D_Index:	dc.w Obj6D_Main-Obj6D_Index
+		dc.w Obj6D_Action-Obj6D_Index
+; ===========================================================================
+
+Obj6D_Main:				; XREF: Obj6D_Index
+		addq.b	#2,obRoutine(a0)
+		move.l	#Map_obj6D,obMap(a0)
+		move.w	#($5A00/$20),obGfx(a0)
+		ori.b	#$94,obRender(a0)
+		move.b	#7,obPriority(a0)	; behind the nuke
+		move.b	#$40,obHeight(a0)
+
+Obj6D_Action:				; XREF: Obj6D_Index
+		move.w	($FFFFFE04).w,d0	; get frame counter
+		andi.w	#$F,d0			; every 16 frames
+		bne.s	@updatepos		; if not, branch
+		move.w	#$C8,d0			; play...
+		jsr	PlaySound		; ...flamethrower sound
+
+@updatepos:
+		movea.l	$30(a0),a1		; get nuke parent object
+		cmpi.b	#$81,(a1)		; does it still exist?
+		bne.s	@delete			; if not, delete flamethrower too
+
+		move.w	obX(a1),obX(a0)		; update flamethrower X pos
+
+		move.w	obY(a1),d0		; get nuke Y pos
+		addi.w	#$44,d0			; adjust
+		move.w	d0,obY(a0)		; update flamethrower Y pos
+
+		; sprite
+		move.b	obRoutine(a1),d1
+		cmpi.b	#4,d1
+		blo.s	@display
+		cmpi.b	#8,d1
+		bhs.s	@flyup2
+
+		moveq	#3,d0
+		bra.s	@flicker
+
+@flyup2:	moveq	#9,d0
+
+@flicker:
+		btst	#1,($FFFFFE05).w
+		beq.s	@display
+		addq.b	#1,d0
+@display:	move.b	d0,obFrame(a0)
+		jmp	DisplaySprite
+
+@delete:
+		jmp	DeleteObject
+
+; ---------------------------------------------------------------------------
+Map_obj6D:	include	"_maps\obj6D.asm"
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
 

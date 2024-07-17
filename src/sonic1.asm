@@ -40,14 +40,14 @@ __DEBUG__: equ 1
 ; $302 - Star Agony Place
 ; $502 - Finalor Place
 	if def(__BENCHMARK__)=0
-QuickLevelSelect = 0
-QuickLevelSelect_ID = -1
+QuickLevelSelect = 1
+QuickLevelSelect_ID = $502
 ; ------------------------------------------------------
 DebugModeDefault = 1
 DebugSurviveNoRings = 1
 ; ------------------------------------------------------
 DoorsAlwaysOpen = 1
-LowBossHP = 0
+LowBossHP = 1
 ; ======================================================
 	else
 ; BENCHMARK build settings (DO NOT CHANGE!)
@@ -6961,6 +6961,10 @@ Resize_FZend2:
 
 		vram	$8000
 		lea	(ArtKospM_Nuke).l,a0
+		jsr	KosPlusMDec_VRAM
+		
+		vram	$5A00
+		lea	(ArtKospM_FlamePipe).l,a0
 		jsr	KosPlusMDec_VRAM
 		VBlank_UnsetMusicOnly
 
@@ -18667,7 +18671,7 @@ Ani_obj14:
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Object 6D - flame thrower (SBZ)
+; Object 6D - Flamethrower attached to the Nuke
 ; ---------------------------------------------------------------------------
 
 Obj6D:					; XREF: Obj_Index
@@ -18683,21 +18687,37 @@ Obj6D_Index:	dc.w Obj6D_Main-Obj6D_Index
 Obj6D_Main:				; XREF: Obj6D_Index
 		addq.b	#2,obRoutine(a0)
 		move.l	#Map_obj6D,obMap(a0)
-		move.w	#$83D9,obGfx(a0)
-		ori.b	#4,obRender(a0)
+		move.w	#($5A00/$20),obGfx(a0)
+		ori.b	#$94,obRender(a0)
+		move.b	#7,obPriority(a0)	; behind the nuke
+		move.b	#$40,obHeight(a0)
 
 Obj6D_Action:				; XREF: Obj6D_Index
-		movea.l	$30(a0),a2
-		cmpi.b	#6,ob2ndRout(a2)
-		beq.s	@cont
-		move.b	#$18,obFrame(a0)
-		bra.w	DisplaySprite
+		move.w	($FFFFFE04).w,d0	; get frame counter
+		andi.w	#$F,d0			; every 16 frames
+		bne.s	@updatepos		; if not, branch
+		move.w	#$C8,d0			; play...
+		jsr	PlaySound		; ...flamethrower sound
 
-@cont:
+@updatepos:
+		movea.l	$30(a0),a1		; get nuke parent object
+		cmpi.b	#$81,(a1)		; does it still exist?
+		bne.s	@delete			; if not, delete flamethrower too
+
+		move.w	obX(a1),obX(a0)		; update flamethrower X pos
+
+		move.w	obY(a1),d0		; get nuke Y pos
+		addi.w	#$44,d0			; adjust
+		move.w	d0,obY(a0)		; update flamethrower Y pos
+
 		lea	(Ani_obj6D).l,a1
 		bsr	AnimateSprite
 		bra.w	DisplaySprite
+
+@delete:
+		jmp	DeleteObject
 ; ===========================================================================
+
 Ani_obj6D:
 		include	"_anim\obj6D.asm"
 
@@ -39168,8 +39188,6 @@ Obj3E_MakeNuke:
 		move.b	#$81,0(a1)
 		move.w	obX(a0),obX(a1)
 		move.w	obY(a0),obY(a1)
-		move.w	#5*60,$30(a1)	; set time limit before escape sequence starts
-		
 
 locret_1ACF8:
 		rts	
@@ -39198,7 +39216,10 @@ Obj81:					; XREF: Obj_Index
 		jmp	Obj81_Index(pc,d1.w)
 ; ===========================================================================
 Obj81_Index:	dc.w Obj81_Init-Obj81_Index
+		dc.w Obj81_Wait-Obj81_Index
 		dc.w Obj81_FlyUp-Obj81_Index
+		dc.w Obj81_FlyDown-Obj81_Index
+		dc.w Obj81_FlyUp2-Obj81_Index
 		dc.w Obj81_Boom-Obj81_Index
 ; ===========================================================================
 
@@ -39207,25 +39228,61 @@ Obj81_Init:				; XREF: Obj81_Index
 		move.l	#Map_Obj81,obMap(a0)
 		move.w	#$2000|($8000/$20),obGfx(a0)
 		ori.b	#$94,obRender(a0)
-		move.b	#7,obPriority(a0)
+		move.b	#6,obPriority(a0)
 		move.b	#0,obFrame(a0)
 		move.b  #0,obAnim(a0)
 		move.b	#$40,obHeight(a0)
-		
-		move.w	#-$A0,obVelY(a0)	; move up
+
+		clr.w	obVelY(a0)
+		move.w	#2*60,$30(a0)	; start delay
 ; ---------------------------------------------------------------------------
 
-Obj81_FlyUp:
+Obj81_Wait:
 		subq.w	#1,$30(a0)		; sub 1 from sequence time limit
-		bhi.s	@move			; if time remains, branch
-		addq.b	#2,obRoutine(a0)	; boom
-@move:
-		jsr	SpeedToPos
+		bne.s	@display		; if time remains, branch
+
+		addq.b	#2,obRoutine(a0)	; start movement
+		jsr	SingleObjLoad
+		bne.s	@display
+		move.b	#$6D,(a1)		; load flamethrower object
+		move.l	a0,$30(a1)		; set parent
+		
+@display:
 		jmp	DisplaySprite
 ; ===========================================================================
 
+Obj81_FlyUp:
+		subi.w	#3,obVelY(a0)
+		cmpi.w	#-$E0,obVelY(a0)
+		bgt.s	Obj81_Move
+		addq.b	#2,obRoutine(a0)	; move down
+		bra.s	Obj81_Move
+; ---------------------------------------------------------------------------
+Obj81_FlyDown:
+		addi.w	#3,obVelY(a0)
+		cmpi.w	#$80,obVelY(a0)
+		blt.s	Obj81_Move
+		addq.b	#2,obRoutine(a0)	; move up again
+		bra.s	Obj81_Move
+; ---------------------------------------------------------------------------
+Obj81_FlyUp2:
+		subi.w	#4,obVelY(a0)
+		cmpi.w	#$400,obY(a0)
+		bhi.s	Obj81_Move
+		addq.b	#2,obRoutine(a0)	; boom
+; ---------------------------------------------------------------------------
+
+Obj81_Move:
+		jsr	SpeedToPos
+		jmp	DisplaySprite
+		
+; ===========================================================================
+		
 Obj81_Boom:
 		move.b	#1,($FFFFFFA5).w	; move HUD off screen (and start FZEscape sequence)
+		move.w	#$DB,d0			; play medium boom sound
+		jsr	PlaySound
+		jsr	WhiteFlash2		; mini flash
 		jmp	DeleteObject
 
 ; ===========================================================================

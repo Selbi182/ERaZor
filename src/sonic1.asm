@@ -1561,20 +1561,31 @@ PalCycle_SYZ:				; XREF: PalCycle
 		subq.w	#1,($FFFFF634).w
 		bpl.s	locret_1AC6
 		move.w	#5,($FFFFF634).w
+
+		; palcycle protection for the trophy gallery
+		move.w	($FFFFF700).w,d1	; get camera X pos
+		cmpi.w	#$00B0,d1		; trophy gallery out of sight to the left?
+		bls.s	@dopalcycle		; if yes, branch
+		cmpi.w	#$0300,d1		; trophy galelry out of sight to the right?
+		bhs.s	@dopalcycle		; if yes, branch
+		moveq	#0,d0			; force to start of palcycle
+		bra.s	@nopalcycle		; skip
+@dopalcycle:
 		move.w	($FFFFF632).w,d0
 		addq.w	#1,($FFFFF632).w
 		andi.w	#3,d0
 		lsl.w	#2,d0
+@nopalcycle:
 		move.w	d0,d1
 		add.w	d0,d0
 		lea	(Pal_SYZCyc1).l,a0
 		lea	($FFFFFB6E).w,a1
 		move.l	(a0,d0.w),(a1)+
-		move.l	obMap(a0,d0.w),(a1)
+		move.l	4(a0,d0.w),(a1)
 		lea	(Pal_SYZCyc2).l,a0
 		lea	($FFFFFB76).w,a1
 		move.w	(a0,d1.w),(a1)
-		move.w	obGfx(a0,d1.w),obMap(a1)
+		move.w	2(a0,d1.w),4(a1)
 
 locret_1AC6:
 		rts	
@@ -18917,10 +18928,11 @@ Obj12_CheckGameState:
 Obj12_Init:
 		addq.b	#2,obRoutine(a0)
 		move.l	#Map_Obj12,obMap(a0)
-		move.w	#($6C00/$20),obGfx(a0)
+		move.w	#$6000|($6C00/$20),obGfx(a0)
 		move.b	#$94,obRender(a0)
 		move.b	#$10,obActWid(a0)
 		move.b	#6,obPriority(a0)
+		move.b	#$40,obHeight(a0)
 
 	;	move.b	$30(a0),obFrame(a0)
 		move.b	obSubtype(a0),d0

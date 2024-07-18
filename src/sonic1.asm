@@ -40,7 +40,7 @@ __DEBUG__: equ 1
 ; $302 - Star Agony Place
 ; $502 - Finalor Place
 	if def(__BENCHMARK__)=0
-QuickLevelSelect = 1
+QuickLevelSelect = 0
 QuickLevelSelect_ID = $502
 ; ------------------------------------------------------
 DebugModeDefault = 1
@@ -2721,18 +2721,16 @@ SegaScreen:				; XREF: GameModeArray
 		dbf	d1,@clearvsram	; repeat until all lines are done
 
 		move.l	#$40000000,($C00004).l
-		lea	(ArtKospM_SegaLogo).l,a0 ; load Sega	logo patterns
+		lea	(ArtKospM_SegaLogo).l,a0 ; load Sega logo patterns
 		bsr	KosPlusMDec_VRAM
-		lea	($FF0000).l,a1
-		lea	(Eni_SegaLogo).l,a0 ; load Sega	logo mappings
-		move.w	#0,d0
-		bsr	EniDec
-		lea	($FF0000).l,a1
+
+		lea	(Maps_SegaLogo).l,a1 ; load Sega logo mappings
 		move.l	#$65100003,d0
 		moveq	#$17,d1
 		moveq	#7,d2
 		bsr	ShowVDPGraphics
-		lea	($FF0180).l,a1
+
+		lea	(Maps_SegaLogo+$180).l,a1 ; load Sega logo mappings
 		move.l	#$40000003,d0
 		moveq	#$27,d1
 		moveq	#$1B-5,d2
@@ -2750,7 +2748,6 @@ Sega_WaitFrames:
 		addq.b	#1,($FF2000).l		; increase wait timer
 		cmpi.b	#8,($FF2000).l		; has time been reached?
 		bne.s	Sega_WaitFrames		; if not, branch
-
 
 		move.w	#-$A,($FFFFF632).w
 		move.w	#0,($FFFFF634).w
@@ -2913,15 +2910,12 @@ Title_ClrObjRam:
 		lea	LevelRenderer_DefaultConfig_BG, a0
 		jsr 	LevelRenderer_DrawLayout_BG_2
 
-		lea	($FF0000).l,a1
-		lea	(Eni_Title).l,a0 ; load	title screen mappings
-		move.w	#0,d0
-		bsr	EniDec
-		lea	($FF0000).l,a1
+		lea	(Maps_Title).l,a1 ; load title screen mappings
 		move.l	#$42080003,d0
 		moveq	#$21,d1
 		moveq	#$15,d2
 		bsr	ShowVDPGraphics
+
 		move.l	#$40000000,($C00004).l
 		lea	(ArtKospM_TitleScreen).l,a0 ; load title screen patterns
 		bsr	KosPlusMDec_VRAM
@@ -12112,7 +12106,7 @@ Obj4B_Main:				; XREF: Obj4B_Index
 
 		cmpi.b	#GRing_Blackout,d1		; is this the blackout challenge ring?
 		bne.s	@checkbonusrings		; if not, branch
-		move.w	#$0422,obGfx(a0)		; use red palette
+		move.w	#$0000|($8E00/$20),obGfx(a0)	; use red palette
 
 @checkbonusrings:
 	if DoorsAlwaysOpen=0
@@ -41412,7 +41406,8 @@ Obj09_ChkEmer:
 
 Emershit:
 		move.b	#1,($FFFFF7CC).w	; lock controls
-		
+		move.w	#$8014,($C00004).l	; enable h-ints for the black bars
+
 		move.b	#5,(a2)			; this is important to end the stage
 		moveq	#$FFFFFF88,d0		; play regular special stage beaten jingle
 		tst.b	($FFFFFF5F).w		; is this the blackout blackout special stage?
@@ -44270,10 +44265,14 @@ Art_Text:	incbin	Screens\OptionsScreen\Options_TextArt.bin	; uncompressed text f
 
 ArtKospM_SegaLogo:	incbin	artkosp\segalogo.kospm	; large Sega logo
 		even
-Eni_SegaLogo:	incbin	misc\eni_segalogo.bin	; large Sega logo (mappings)
+Maps_SegaLogo:	incbin	misc\mapunc_segalogo.bin	; large Sega logo (uncompressed mappings)
 		even
-Eni_Title:	incbin	misc\eni_titlescr.bin	; title screen foreground (mappings)
+;Eni_SegaLogo:	incbin	misc\eni_segalogo.bin	; large Sega logo (mappings)
+;		even
+Maps_Title:	incbin	misc\mapunc_titlescr.bin	; title screen foreground (uncompressed mappings)
 		even
+;Eni_Title:	incbin	misc\eni_titlescr.bin	; title screen foreground (mappings)
+;		even
 ArtKospM_TitleFg:	incbin	artkosp\titlefor.kospm	; title screen foreground
 		even
 ArtKospM_TitleSonic:	incbin	artkosp\titleson.kospm	; Sonic on title screen

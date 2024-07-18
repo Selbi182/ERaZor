@@ -37,13 +37,7 @@ SelbiSplash_Art:
 		jsr	KosPlusMDec_VRAM
 		
 SelbiSplash_Mappings:
-		lea	($FF0000).l,a1			; Load screen mappings
-		lea	(Map3_SelbiSplash).l,a0
-		move.w	#0,d0
-		jsr	EniDec
-		
-SelbiSplash_ShowOnVDP:
-		lea	($FF0000).l,a1			; Show screen
+		lea	(MapUnc_SelbiSplash).l,a1
 		move.l	#$40000003,d0
 		moveq	#$27,d1
 		moveq	#$1B,d2
@@ -450,11 +444,7 @@ Pal_AddColor2_Yellow:				; XREF: Pal_ToWhite
 ; ---------------------------------------------------------------------------------------------------------------------
 ArtKospM_SelbiSplash:	incbin	"Screens/SelbiSplash/Tiles.kospm"
 			even
-;Map_SelbiSplash:	incbin	"Screens/SelbiSplash/Maps_NoPRESENTS.bin"
-;			even
-;Map2_SelbiSplash:	incbin	"Screens/SelbiSplash/Maps_WithPRESENTS.bin"
-;			even
-Map3_SelbiSplash:	incbin	"Screens/SelbiSplash/Maps_SoftSelbi.bin"
+MapUnc_SelbiSplash:	incbin	"Screens/SelbiSplash/MapsUnc_SoftSelbi.bin"
 			even
 Pal_SelbiSplash:	incbin	"Screens/SelbiSplash/Palette.bin"
 			even 

@@ -23,50 +23,36 @@ SoundTestScreen:
 		move.w	#$8B07,(a6)
 		move.w	#$8720,(a6)
 		clr.b	($FFFFF64E).w
-
 		jsr	ClearScreen
-		VBlank_UnsetMusicOnly
 
-		lea	($FFFFD000).w,a1
-		moveq	#0,d0
-		move.w	#$7FF,d1
-
-@clearobjram:
-		move.l	d0,(a1)+
-		dbf	d1,@clearobjram ; fill object RAM ($D000-$EFFF) with $0
-
-		jsr	Pal_FadeFrom
-
-		VBlank_SetMusicOnly
 		lea	($C00000).l,a6
 		move.l	#$6E000002,4(a6)
 		lea	(Options_TextArt).l,a5
 		move.w	#$59F,d1		; Original: $28F
-
-@loadtextart:
-		move.w	(a5)+,(a6)
+@loadtextart:	move.w	(a5)+,(a6)
 		dbf	d1,@loadtextart ; load uncompressed text patterns
 		VBlank_UnsetMusicOnly
 		
-		jsr	ObjectsLoad
-		jsr	BuildSprites
-		
-		bsr	Options_LoadPal
-		move.b	#9,($FFFFFF9E).w ; BG pal
-  
-  		move.b	#Options_Blank,d2
-		jsr	Options_ClearBuffer
+		lea	($FFFFD000).w,a1
+		moveq	#0,d0
+		move.w	#$7FF,d1
+@clearobjram:	move.l	d0,(a1)+
+		dbf	d1,@clearobjram ; fill object RAM ($D000-$EFFF) with $0
 
 		lea	($FFFFCC00).w,a1
 		moveq	#0,d0
 		move.w	#$DF,d1
-
-@clearscroll:
-		move.l	d0,(a1)+
+@clearscroll:	move.l	d0,(a1)+
 		dbf	d1,@clearscroll ; fill scroll data with 0
 		move.l	d0,($FFFFF616).w
 
+  		move.b	#Options_Blank,d2
+		jsr	Options_ClearBuffer
+
 		jsr	BackgroundEffects_Setup
+
+		bsr	Options_LoadPal
+		move.b	#9,($FFFFFF9E).w ; BG pal
 
  		clr.b	($FFFFFF95).w
 		clr.w	($FFFFFF96).w
@@ -76,15 +62,18 @@ SoundTestScreen:
 		move.b	#$81,($FFFFFF84).w
 
 SoundTest_FinishSetup:
+		jsr	ObjectsLoad
+		jsr	BuildSprites		
 		bsr	SoundTest_TextLoad
 		display_enable
 		jsr	Pal_FadeTo
 
 
 ; ---------------------------------------------------------------------------
-; Main Loop
+; Sound Test Screen - Main Loop
 ; ---------------------------------------------------------------------------
-SoundTestScreen_MainLoop:
+
+SoundTest_MainLoop:
 		move.b	#2,VBlankRoutine
 		jsr	DelayProgram
 		jsr	ObjectsLoad
@@ -92,10 +81,11 @@ SoundTestScreen_MainLoop:
 		jsr	PLC_Execute
 
 		jsr	BackgroundEffects_Update
-		jsr SoundTest_UpdatePianoRoll
+		jsr	SoundTest_UpdatePianoRoll
 
-		move.b	($FFFFF605).w,d1		; get button presses
-		beq.s	SoundTestScreen_MainLoop	; was anything at all pressed this frame? if not, loop
+		move.b	($FFFFF605).w,d1	; get button presses
+		beq.s	SoundTest_MainLoop	; was anything at all pressed this frame? if not, loop
+
 		btst	#7,d1			; is Start pressed?
 		bne.w	SoundTest_Exit		; if yes, exit sound test screen
 
@@ -136,7 +126,7 @@ SoundTestScreen_MainLoop:
 		bra.s	@soundtest_play		; branch
 
 @soundtest_chkplay:
-		andi.b	#$A0,d1			; is C or Start pressed?
+		btst	#5,d1			; is C pressed?
 		beq.s	@soundtest_end		; if not, branch
 		move.b	d2,d0			; set to play the selected sound
 		cmpi.b	#$80,d2			; is current song selection ID $80?
@@ -151,7 +141,7 @@ SoundTestScreen_MainLoop:
 		bsr	SoundTest_TextLoad
 
 SoundTest_Return:
-		bra.w	SoundTestScreen_MainLoop	; return
+		bra.w	SoundTest_MainLoop	; return
 
 ; ===========================================================================
 
@@ -170,6 +160,8 @@ SoundTest_TextLoad:
 		jsr	Options_Write			; write text
 		move.b	#$0D,-3(a1)			; write < before the ID
 		move.b	#$0E,2(a1)			; write > after the ID
+
+		move.b	#$FF,3(a1)			; write end marker
 
 		; write the sound test ID ($FFFFFF84) at offset -1(a1)
 		moveq	#0,d0
@@ -194,47 +186,72 @@ GOT_Snd_Skip2:
 
 		; send to VDP
 		VBlank_SetMusicOnly
-
-		lea		($FFFFC900).w,a1	; get preloaded text buffer	
-		lea		($C00000).l,a6
-		move.w	#Options_VRAM,d3	; VRAM setting
+		lea	($C00000).l,a6
 		move.l	#$66100003,4(a6)	; screen position (text)
-
-		bsr		Options_WriteLine
-		VBlank_UnsetMusicOnly
-		
+		lea	($FFFFC900).w,a1	; get preloaded text buffer	
+		bsr	STS_WriteLine
+		VBlank_UnsetMusicOnly		
 		rts	
 
+; ===========================================================================
+
+STS_WriteLine:
+		moveq	#0,d0
+		move.b	(a1)+,d0		; load next char
+		bmi.s	@end			; if end, exit
+
+		addi.w	#Options_VRAM,d0	; apply VRAM settings to tile mapping
+		move.w	d0,(a6)			; write mapping to VDP
+		bra.s	STS_WriteLine		; loop
+@end:
+		rts
+; End of function STS_WriteLine
+
+
+; ===========================================================================
 ; ---------------------------------------------------------------------------
-;│Screen position format: #$6YXX00003
-;│Base screen position: #$61100003
+;│Screen position format: #$6YXX 0003
+;│Base screen position:   #$6110 0003
 ;└─ｖ────────────────────────────────────────────────────────────────────────
 ;　∧,,∧
 ; （＾o＾）
 ;.（　　）
 
 SoundTest_UpdatePianoRoll:
-		lea		($C00000).l, a6
-		move.w	#Options_VRAM, d3	; VRAM setting
+		VBlank_SetMusicOnly
+		
+		
+		lea	($C00000).l,a6
+		move.l	#$63000003,4(a6)	; screen position (text)
+		lea	(OpText_Blank).l,a1
+		bsr	STS_WriteLine		; clear line
+
+
+		move.w	#Options_VRAM_Red, d3	; VRAM setting
 		
 		moveq 	#0, d0
-		move.b 	FM_Notes+3, d0
-		; asr.b	#$4, d0
-		; add.w	d3, d0
+		move.b 	FM_Notes+7, d0
+		andi.b	#$FE,d0
 
 		; shift and swap note value into x position
-		lsl.l	#4, d0
-		swap 	d1 
+		swap 	d0
 
 		add.l 	#$63000003, d0
 		move.l	d0, 4(a6)
 		move.w	d3, (a6)
+		VBlank_UnsetMusicOnly
 		rts
 
 ; ---------------------------------------------------------------------------
 
 OpText_SoundTest:
 		dc.b	'SOUND TEST           ', $FF
+		even
+OpText_Blank:
+		rept	320/8
+		dc.b	0
+		endr
+		dc.b	$FF
 		even
 ; ---------------------------------------------------------------------------
 

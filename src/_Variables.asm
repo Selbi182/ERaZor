@@ -8,10 +8,9 @@ LevelLayout_BG:		equ 	LevelLayout_RAM+$200		;	BG level layout (A600-A7FF)
 DrawBuffer_RAM:		equ	$FFFFA800			;	draw buffer RAM (A800-AB7F)
 LevelRend_RAM:		equ	$FFFFAB80			;	level renderer RAM (AB80-AC98)
 
-v_smpsmisc:			equ $FFFFAF40			; SMPS note status
-v_smps_fm:			equ v_smpsmisc+5		; ... for FM
-v_smps_psg:			equ v_smps_fm+3			; ... for PSG
-v_smps_dac:			equ v_smps_psg+7		; ... for DAC
+FM_Notes:			equ $FFFFAF40			; SMPS FM note status
+PSG_Notes:			equ FM_Notes+5			; ... for PSG
+DAC_Status:			equ PSG_Notes+3			; ... for DAC
 ; <<FOR SALE>>							;	<<FOR SALE / $20,000>> (AF50-ABFF)
 
 Sprites_Queue:		equ	$FFFFAC00			;	object sprites queued for display (AC00-AFFF)

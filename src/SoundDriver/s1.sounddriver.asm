@@ -171,7 +171,7 @@ SoundDriverUpdate:
 		bra.s	.bgmfmnext
 
 .nofm:
-		lea	v_smpsmisc, a0
+		lea	FM_Notes, a0
 		move.b	#0, (a0, d7.w)
 
 ; loc_71BE6:
@@ -189,7 +189,7 @@ SoundDriverUpdate:
 		bra.s	.bgmpsgnext
 
 .nopsg:
-		lea		v_smps_fm, a0
+		lea		PSG_Notes, a0
 		move.b	#0, 1(a0, d7.w)
 
 ; loc_71BF8:
@@ -279,13 +279,13 @@ DACUpdateTrack:
 		beq.s	.locret			; Return if yes
 		MPCM_stopZ80
 		move.b	d0, MPCM_Z80_RAM+Z_MPCM_CommandInput	; send DAC sample to Mega PCM
-		move.b	#1, v_smps_dac	; set DAC status
+		move.b	#1, DAC_Status	; set DAC status
 		MPCM_startZ80
 		rts
 		
 ; locret_71CAA:
 .locret:
-		move.b	#0, v_smps_dac	; clear DAC status
+		move.b	#0, DAC_Status	; clear DAC status
 		rts	
 
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
@@ -347,7 +347,7 @@ FMSetFreq:
 		subi.b	#$80,d5			; Make it a zero-based index
 		beq.s	.restpsg
 
-		lea		v_smpsmisc, a0
+		lea		FM_Notes, a0
 		move.b	d5, (a0, d7.w)
 
 		add.b	TrackTranspose(a5),d5	; Add track transposition
@@ -360,7 +360,7 @@ FMSetFreq:
 		rts	
 
 .restpsg:
-		lea	v_smpsmisc, a0
+		lea	FM_Notes, a0
 		move.b	d5, (a0, d7.w)
 		bra	TrackSetRest
 ; End of function FMSetFreq
@@ -808,7 +808,7 @@ Sound_PlayBGM:
 		add.l	a3,d0				; Relative pointer
 		move.l	d0,TrackDataPointer(a1)		; Store track pointer
 		move.w	(a4)+,TrackTranspose(a1)	; load FM channel modifier
-		move.b	#0, v_smps_dac				; clear DAC status
+		move.b	#0, DAC_Status				; clear DAC status
 		adda.w	d6,a1
 		dbf	d7,.bgm_fmloadloop
 
@@ -1825,7 +1825,7 @@ PSGSetFreq:
 		subi.b	#$81,d5		; Convert to 0-based index
 		bcs.s	.restfm	; If $80, put track at rest
 
-		lea		v_smps_fm, a0
+		lea		PSG_Notes, a0
 		move.b	d5, 1(a0, d7.w) ; move that note
 		addq.b	#1, 1(a0, d7.w) ; inc by 1 because yeah
 
@@ -1838,7 +1838,7 @@ PSGSetFreq:
 ; ===========================================================================
 ; loc_728CA:
 .restfm:
-		lea		v_smps_fm, a0
+		lea		PSG_Notes, a0
 		move.b	#0, 1(a0, d7.w) ; clear
 
 		bset	#1,TrackPlaybackControl(a5)	; Set 'track at rest' bit

@@ -9722,6 +9722,7 @@ Obj27_Main:				; XREF: Obj27_Index
 @notlz:
 		addq.b	#2,obRoutine(a0)
 
+		; spawn bonus rings (and check which levels do not include this)
 		cmpi.w	#$302,($FFFFFE10).w
 		beq.s	Obj27_FinishSetup
 		cmpi.w	#$501,($FFFFFE10).w
@@ -9729,6 +9730,8 @@ Obj27_Main:				; XREF: Obj27_Index
 		cmpi.w	#$502,($FFFFFE10).w
 		beq.s	Obj27_FinishSetup
 		cmpi.w	#$001,($FFFFFE10).w
+		beq.s	Obj27_FinishSetup
+		cmpi.w	#$101,($FFFFFE10).w
 		beq.s	Obj27_FinishSetup
 
 		bsr	SingleObjLoad
@@ -11893,6 +11896,7 @@ Obj37_MakeRings:			; XREF: Obj37_CountRings
 		move.b	#8,obActWid(a1)
 		move.w	#$FF,$30(a1)		; despawn timer
 		move.b	#0,$36(a1)
+		move.b	#0,$29(a1)
 
 		cmpi.w	#1,($FFFFFE20).w	; have you lost exactly 1 ring?
 		bne.s	@calcmultibounce	; if not, branch
@@ -11940,16 +11944,18 @@ Obj37_ResetCounter:
 ; ---------------------------------------------------------------------------
 
 Obj37_MainLoop:				; XREF: Obj37_Index
-		move.b	($FFFFFEC7).w,obFrame(a0)	; update frame
-	;	move.b	($FFFFFEC3).w,obFrame(a0)
+		move.b	($FFFFFEC7).w,obFrame(a0)	; update frame (custom frame timer)
+	;	move.b	($FFFFFEC3).w,obFrame(a0)	; update frame (Obj25)
 
 		tst.b	$29(a0)			; was ring already set to follow you?
 		bne.s	@continueattract	; if yes, branch
 		tst.b	($FFFFFE2C).w		; is Sonic having a shield?
 		beq.s	Obj37_NoRingsMove	; if not, branch
+		cmpi.w	#$100,$30(a0)		; is it a very high despawn timer?
+		bhs.s	@moveanyway		; if yes, move anyway
 		cmpi.w	#$FF-20,$30(a0)		; bit of delay before...
 		bhi.s	Obj37_NoRingsMove	; ...collecting rings of smashed objects
-		bsr	AttractedRing_Check
+@moveanyway:	bsr	AttractedRing_Check
 		bra.s	Obj37_NoRingsMove
 @continueattract:
 		tst.b	($FFFFFE2C).w		; is Sonic still having a shield?
@@ -11975,8 +11981,9 @@ Obj37_NoRingsMove:
 		bge.s	@noceiling		; if not, branch
 		clr.w	obVelY(a0)		; if yes, make the rings fall down so they don't get stuck in the ceiling		
 @noceiling:
-		tst.b	$36(a0)
-		bne.w	Obj37_ChkDel
+
+		tst.b	$36(a0)			; has ring already stopped bouncing?
+		bne.w	Obj37_ChkDel		; if yes, branch
 
 		addi.w	#$18,obVelY(a0)		; regular gravity for rings
 
@@ -11989,21 +11996,24 @@ Obj37_NoRingsMove:
 		tst.w	d1
 		bpl.s	@updatepos
 
-		cmpi.w	#$200,obVelY(a0)
-		bhi.s	@0
-		move.b	#1,$36(a0)
-		bra.s	Obj37_ChkDel
-@0:
-		add.w	d1,obY(a0)
+		tst.w	obVelY(a0)		; is ring falling up?
+		bmi.s	@updatepos		; if yes, no colission check
 
-		add.w	d1,obY(a0)
-		move.w	obVelY(a0),d0
-		asr.w	#1,d0
-		sub.w	d0,obVelY(a0)
-		neg.w	obVelY(a0)
+		cmpi.w	#$200,obVelY(a0)	; is ring falling slowly?
+		bhi.s	@nofloorcap		; if not, branch
+		move.b	#1,$36(a0)		; set floor cap flag
+		andi.w	#$FFF8,obY(a0)		; make sure it doesn't get stuck in the floor
+		bra.s	Obj37_ChkDel		; skip
+@nofloorcap:
+		add.w	d1,obY(a0)		; set Y pos to matcch the floor
+
+		move.w	obVelY(a0),d0		; get Y velocity at time of impact
+		neg.w	d0			; negate it
+		asr.w	#1,d0			; half the bounce speed
+		move.w	d0,obVelY(a0)		; write new Y speed
 
 @updatepos:
-		bsr	SpeedToPos
+		bsr	SpeedToPos		; update position
 
 Obj37_ChkDel:				; XREF: Obj37_MainLoop
 		subq.w	#1,$30(a0)	; sub 1 from timer
@@ -13049,6 +13059,7 @@ Obj2E_ChkP:
 		bne.s	@next			; if not, branch
 		move.b	#$37,(a1)		; change object into bouncing ring
 		move.w	#10*60,$30(a1)		; set full despawn timer
+		move.b	#0,$29(a1)
 		move.b	#0,$36(a1)
 		move.b	#2,obRoutine(a1)	; make sure the ring just bounces, we don't want to loose 10 rings
 @next:		adda.w	#$40,a1			; go to next object in RAM
@@ -22278,9 +22289,9 @@ Obj5C:					; XREF: Obj_Index
 		jmp	Obj5C_Index(pc,d1.w)
 ; ===========================================================================
 Obj5C_Index:	dc.w Obj5C_Main-Obj5C_Index
-		dc.w Obj5C_Display-Obj5C_Index
+		dc.w Obj5C_Girder1-Obj5C_Index
 		dc.w Obj5C_Main2-Obj5C_Index
-		dc.w Obj5C_Display2-Obj5C_Index
+		dc.w Obj5C_Girder2-Obj5C_Index
 ; ===========================================================================
 
 Obj5C_Main:				; XREF: Obj5C_Index
@@ -22292,7 +22303,7 @@ Obj5C_Main:				; XREF: Obj5C_Index
 		move.b	#$5C,(a1)
 		move.b	#4,obRoutine(a1)		
 
-Obj5C_Display:				; XREF: Obj5C_Index
+Obj5C_Girder1:				; XREF: Obj5C_Index
 		move.l	($FFFFF700).w,d1
 		add.l	d1,d1
 		swap	d1
@@ -22314,15 +22325,11 @@ Obj5C_Display:				; XREF: Obj5C_Index
 		neg.w	d1
 		addi.w	#$100,d1
 		move.w	d1,obScreenY(a0)
-		
-		cmpi.w	#$A00,($FFFFF700).w
-		blt.s	@cont
-		cmpi.w	#$B00,($FFFFF700).w
-		bgt.s	@cont
-		rts
 
-@cont:
-		bra.w	DisplaySprite
+Obj5C_Display:
+		cmpi.w	#$AD0,($FFFFF700).w
+		bhs.w	DisplaySprite
+		rts
 ; ===========================================================================
 
 Obj5C_Main2:				; XREF: Obj5C_Index
@@ -22332,7 +22339,7 @@ Obj5C_Main2:				; XREF: Obj5C_Index
 		move.b	#$10,obActWid(a0)
 		move.b	#1,obFrame(a0)
 
-Obj5C_Display2:				; XREF: Obj5C_Index
+Obj5C_Girder2:				; XREF: Obj5C_Index
 		move.l	($FFFFF700).w,d1
 		add.l	d1,d1
 		swap	d1
@@ -22356,7 +22363,7 @@ Obj5C_Display2:				; XREF: Obj5C_Index
 		addi.w	#$100,d1
 		move.w	d1,obScreenY(a0)
 		
-		bra.w	DisplaySprite
+		bra.w	Obj5C_Display
 ; ===========================================================================
 
 
@@ -22790,7 +22797,7 @@ BombFuseTime = 100
 BombFuseVelocity = $34
 BombShotgunSpeed = $400
 BombDistance = $A0
-BombPellets = 4
+BombPellets = 3
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
 
@@ -22827,6 +22834,8 @@ Obj5E_Main:				; XREF: Obj5E_Index
 		move.b	#3,obPriority(a0)
 		move.b	#$C,obActWid(a0)
 		move.b	#$9A,obColType(a0)	; make bomb hurtable
+		move.w	obY(a0),$34(a0)
+		
 ; ---------------------------------------------------------------------------
 
 Obj5E_ChkDistance:				; XREF: Obj5E_Index
@@ -22849,7 +22858,7 @@ Obj5E_ChkDistance:				; XREF: Obj5E_Index
 		addq.b	#2,obRoutine(a0)	; set to Obj5E_CreateFuse
 
 @outofrange:
-		bra.w	Obj5E_Display
+		bra.w	Obj5E_DisplayBomb
 ; ===========================================================================
 
 Obj5E_CreateFuse:			; XREF: Obj5E_Index
@@ -22859,23 +22868,19 @@ Obj5E_CreateFuse:			; XREF: Obj5E_Index
 
 		; create fuse object
 		bsr.w	SingleObjLoad
-		bne.s	@nofuse
+		bne.w	Obj5E_DisplayBomb
 		move.b	#$5E,0(a1)	; load fuse object
 		move.b	#$A,obRoutine(a1)		; set new object to Obj5E_Fuse
 		move.w	obX(a0),obX(a1)
-		move.w	obY(a0),obY(a1)
+		move.w	$34(a0),obY(a1)
+		move.w	$34(a0),$34(a1)
 		move.w	obStatus(a0),obStatus(a1)
 		bset	#7,obRender(a1)
 		move.b	#3,obAnim(a1)
 		move.b	#1,obPriority(a1)
-		move.w	#BombFuseVelocity,obVelY(a1)		; set fuse speed
-		btst	#1,obStatus(a0)
-		beq.s	@nofuse
-		neg.w	obVelY(a1)
-@nofuse:	move.b	#BombFuseTime,$30(a1)	; set fuse time
-		move.l	a0,$3C(a1)		; remember parent
+		move.b	#BombFuseTime,$30(a1)	; set fuse time
 
-		bra.w	Obj5E_Display
+		bra.w	Obj5E_DisplayBomb
 ; ===========================================================================
 
 Obj5E_WaitForExplosion:			; XREF: Obj5E_Index
@@ -22884,7 +22889,7 @@ Obj5E_WaitForExplosion:			; XREF: Obj5E_Index
 		addq.b	#2,obRoutine(a0)	; set to Obj5E_Explode
 
 @timeremaining:
-		bra.w	Obj5E_Display
+		bra.w	Obj5E_DisplayBomb
 ; ===========================================================================
 
 Obj5E_Explode:				; XREF: Obj5E_Index
@@ -22944,7 +22949,7 @@ Obj5E_Explode:				; XREF: Obj5E_Index
 		dbf	d6,@shrapnelloop	; repeat
 
 @noobjectleft:
-		bra.w	Obj5E_Display
+		bra.w	Obj5E_DisplayBomb
 
 ; ===========================================================================
 ; ===========================================================================
@@ -22955,10 +22960,48 @@ Obj5E_Fuse:				; XREF: Obj5E_Index
 		subq.b	#1,$30(a0)
 		bmi.w	Obj5E_Delete
 
-		jsr	SpeedToPos
+		move.w	($FFFFFE04).w,d0
+		andi.w	#7,d0
+		bne.s	@nofusemove
+		moveq	#1,d0
+		btst	#1,obStatus(a0)
+		beq.s	@adjust
+		moveq	#-1,d0
+@adjust:	add.w	d0,$34(a0)
+@nofusemove:
+
+		moveq	#0,d0
+		move.w	($FFFFFE04).w,d0
+		andi.w	#$F,d0
+		bne.s	@nobonussparkles
+
+		jsr	SingleObjLoad
+		bne.s	@nobonussparkles
+		move.b	#$5E,0(a1)	; load fuse object (bonus sparkles)
+		move.w	obX(a0),obX(a1)
+		move.w	obY(a0),obY(a1)
+		move.b	#$C,obRoutine(a1)	; set to routine $C
+		bset	#7,obRender(a1)
+		move.b	#3,obAnim(a1)
+		move.b	#2,obPriority(a1)
+		btst	#1,obStatus(a0)
+		beq.s	@0
+		addi.w	#$60,obY(a1)
+@0:
+		jsr	RandomNumber_Next
+		andi.l	#$01FF01FF,d0
+		subi.w	#$FF,d0
+		asl.w	#1,d0
+		move.w	d0,obVelX(a1)
+		swap	d0
+		subi.w	#$FF,d0
+		move.w	d0,obVelY(a1)
+		move.b	#15,$30(a1)	; set lifetime for sparkle
+
+@nobonussparkles:
 		lea	(Ani_obj5E).l,a1
 		jsr	AnimateSprite
-		bra.w	MarkObjGone
+		bra.w	Obj5E_DisplayBomb
 ; ===========================================================================
 
 Obj5E_Spark:				; XREF: Obj5E_Index
@@ -23008,6 +23051,16 @@ Obj5E_Shrapnel:				; XREF: Obj5E_Index
 ; ===========================================================================
 ; ===========================================================================
 
+Obj5E_DisplayBomb:
+		; sway
+		move.w	($FFFFFE0E).w,d0
+		add.w	obX(a0),d0
+		add.w	d0,d0
+		jsr	(CalcSine).l
+		asr.w	#6,d0
+		add.w	$34(a0),d0
+		move.w	d0,obY(a0)
+
 Obj5E_Display:
 		bsr.w	MarkObjGone
 		tst.b	obRender(a0)		; is object on screen?
@@ -23015,6 +23068,7 @@ Obj5E_Display:
 		rts
 
 Obj5E_Render:
+
 		jmp	DisplaySprite
 ; ---------------------------------------------------------------------------
 Obj5E_Delete:
@@ -23038,11 +23092,13 @@ Obj5E_FaceSonic:
 		move.w	($FFFFD008).w,d0
 		sub.w	obX(a0),d0
 		bpl.s	Obj5E_FC2
-		bclr	#0,obStatus(a0)		
+		bclr	#0,obStatus(a0)
+		bclr	#0,obRender(a0)
 		rts
 
 Obj5E_FC2:
 		bset	#0,obStatus(a0)
+		bset	#0,obRender(a0)
 		rts
 ; ===========================================================================
 
@@ -38237,6 +38293,8 @@ loc_1A216:
 		; cutscene after hitting eggman one last time
 		cmpi.w	#$27B0,($FFFFD008).w
 		blt.s	loc_1A23A
+		move.w	#$180,obVelX(a0)
+
 		move.b	#1,($FFFFF7CC).w	; lock controls
 		move.w	#0,($FFFFF602).w	; clear inputs
 		clr.w	($FFFFD014).w		; clear inertia
@@ -39505,6 +39563,22 @@ locret_1AEF2:
 ; ===========================================================================
 
 Touch_Monitor:
+		tst.w	obVelY(a0)		; is Sonic moving upwards?
+		bpl.s	loc_1AF1E		; if not, branch
+		move.w	obY(a0),d0
+		subi.w	#$10,d0
+		cmp.w	obY(a1),d0
+		bcs.s	locret_1AF2E		
+		neg.w	obVelY(a0)		; reverse Sonic's y-motion
+		move.w	#-$180,obVelY(a1)	; bounce monitor a little
+		tst.b	ob2ndRout(a1)
+		bne.s	locret_1AF2E
+		addq.b	#4,ob2ndRout(a1)	; make monitor fall down
+		rts
+	
+; ===========================================================================
+
+loc_1AF1E:
 		tst.b	($FFFFFF77).w		; is antigrav enabled?
 		bne.s	@nobounce		; if yes, break open with no bounce
 		cmpi.b	#2,obAnim(a0)		; is Sonic rolling/jumping?
@@ -39516,7 +39590,7 @@ Touch_Monitor:
 		neg.w	obVelY(a0)		; reverse Sonic's y-motion
 		bsr	BounceJD		; jump to BounceJD
 @nobounce:
-		addq.b	#2,obRoutine(a1)	; advance the monitor's routine counter
+		addq.b	#2,obRoutine(a1)	; break monitor open
 
 locret_1AF2E:
 		rts	

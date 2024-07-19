@@ -72,8 +72,7 @@ StartLevel:
 ; ---------------------------------------------------------------------------
 
 Start_FirstGameMode:
-	;	move.b	#0,($FFFFF600).w	; set first game mode to Sega Screen
-		move.b	#$34,($FFFFF600).w	; set to sound test screen
+		move.b	#0,($FFFFF600).w	; set first game mode to Sega Screen
 		rts
 ; ===========================================================================
 

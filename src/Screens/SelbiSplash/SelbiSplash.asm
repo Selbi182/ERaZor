@@ -88,6 +88,7 @@ SelbiSplash_Loop:
 		tst.w	($FFFFF614).w			; Test wait time
 		beq.w	SelbiSplash_Next		; is it over? branch
 
+
 		cmpi.l	#$4EE00001,($FFFFFF7A).w	; vram=$4EE0
 		beq.w	@cont
 		cmpi.w	#$20,($FFFFF614).w		; is time less than $20?
@@ -126,7 +127,6 @@ SelbiSplash_Loop:
 		lea	($C00000).l,a5
 		lea	$04(a5),a6
 		move.w	#$8014,(a6)			; enable h-ints for the black bars
-	;	move.w	#$8B00,(a6)
 		move.l	#$40000010,(a6)
 		move.w	#$0008,(a5)
 		VBlank_UnsetMusicOnly
@@ -143,7 +143,12 @@ SelbiSplash_Loop:
 
 		; new flashing effect
 		cmpi.w	#$90,($FFFFF614).w
-		bgt.w	SelbiSplash_EffectsEnd
+		bge.w	SelbiSplash_EffectsEnd
+		bsr	SelbiSplash_UpdateEndPal
+		bra.w	SelbiSplash_EffectsEnd
+; ---------------------------------------------------------------------------
+
+SelbiSplash_UpdateEndPal:
 		moveq	#0,d0
 		move.w	($FFFFF614).w,d0
 		move.w	d0,d1
@@ -168,8 +173,7 @@ SelbiSplash_Loop:
 		bsr	SelbiPissFilter
 		move.w	d0,(a2)+
 		dbf	d6,@LoadCRAM
-		bra.w	SelbiSplash_EffectsEnd
-
+		rts
 ; ---------------------------------------------------------------------------
 SelbiPissFilter:
 		move.w	d0,d1			; copy color
@@ -270,20 +274,21 @@ SelbiSplash_DontChangePal:
 		jsr	PlaySound		
 
 SelbiSplash_LoadPRESENTS:
+		jsr	Pal_CutToBlack
 		move.b	#2,VBlankRoutine
 		jsr	DelayProgram			; VSync so gfx loading below isn't terribly out of VBlank
-
+		jsr	BlackBars.FullReset
+		move.b	#2,VBlankRoutine
+		jsr	DelayProgram
+		
 		VBlank_SetMusicOnly
-		move.w	sr,-(sp)
-		move.w	#$2700,sr
+		bsr	SelbiSplash_UpdateEndPal
 
 		lea	($C00004).l,a6
-
 		lea	VDP_Quality(pc),a0
 		move.w	#$8000,d0
 		move.w	#$0100,d1
 		moveq	#$12-1,d2
-
 	@LoadVDP:
 		move.b	(a0)+,d0
 		move.w	d0,(a6)
@@ -298,10 +303,8 @@ SelbiSplash_LoadPRESENTS:
 		move.w	(sp)+,(a6)
 
 		move.w	#$8100|%01110100,(a6)		; $81	; SDVM P100 - SMS mode (0N|1Y) | Display (0N|1Y) | V-Interrupt (0N|1Y) | DMA (0N|1Y) | V-resolution (0-1C|1-1E)
-
-		move.w	(sp)+,sr
 		VBlank_UnsetMusicOnly
-	;	jsr	Pal_MakeWhite			; white flash
+
 		move.b	#1,($FFFFFFAF).w		; set flag that we are in the final phase of the screen
 
 SelbiSplash_WaitEnd:

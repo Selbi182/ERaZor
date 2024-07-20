@@ -27409,7 +27409,7 @@ Sonic_LevelBound:			; XREF: Obj01_MdNormal; et al
 		bne.s	@notboss	; if yes, branch
 		addi.w	#$40,d0
 @notboss:	cmp.w	d1,d0		; has Sonic touched the	right side boundary?
-		bls.w	Boundary_Sides	; if yes, branch
+		blo.w	Boundary_Sides	; if yes, branch
 
 loc_13336:
 		move.w	($FFFFF72E).w,d0

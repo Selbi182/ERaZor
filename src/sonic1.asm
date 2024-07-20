@@ -43991,7 +43991,7 @@ PLC_Main:
 		dc.w $D800
 		dc.l ArtKospM_Hud		; HUD
 		dc.w $D940
-		dc.l ArtKospM_Lives		; lives	counter
+		dc.l ArtKospM_Deaths		; HUD deaths counter
 		dc.w $FA80
 		dc.l ArtKospM_Ring		; rings
 		dc.w $F640
@@ -44052,12 +44052,12 @@ PLC_GHZ2:
 		dc.w $7000
 		dc.l ArtKospM_Bridge		; bridge
 		dc.w $71C0
-		dc.l ArtKospM_SpikePole	; spiked pole
-		dc.w $7300
+	;	dc.l ArtKospM_SpikePole	; spiked pole
+	;	dc.w $7300
 		dc.l ArtKospM_Ball		; giant	ball
 		dc.w $7540
-		dc.l ArtKospM_GhzWall1	; breakable wall
-		dc.w $A1E0
+	;	dc.l ArtKospM_GhzWall1	; breakable wall
+	;	dc.w $A1E0
 		dc.l ArtKospM_GhzWall2	; normal wall
 		dc.w $6980
 		dc.w -1
@@ -44068,22 +44068,22 @@ PLC_GHZ2:
 PLC_LZ:
 		dc.l ArtKospM_LZ		; LZ main patterns
 		dc.w 0
-		dc.l ArtKospM_LzBlock1	; block
-		dc.w $3C00
-		dc.l ArtKospM_LzBlock2	; blocks
-		dc.w $3E00
+	;	dc.l ArtKospM_LzBlock1	; block
+	;	dc.w $3C00
+	;	dc.l ArtKospM_LzBlock2	; blocks
+	;	dc.w $3E00
 		dc.l ArtKospM_Splash		; waterfalls and splash
 		dc.w $4B20
-		dc.l ArtKospM_LzSpikeBall	; spiked ball
-		dc.w $6200
+	;	dc.l ArtKospM_LzSpikeBall	; spiked ball
+	;	dc.w $6200
 		dc.l ArtKospM_FlapDoor	; flapping door
 		dc.w $6500
 		dc.l ArtKospM_Bubbles	; bubbles and numbers
 		dc.w $6900
 		dc.l ArtKospM_LzBlock3	; block
 		dc.w $7780
-		dc.l ArtKospM_LzDoor1	; vertical door
-		dc.w $7880
+	;	dc.l ArtKospM_LzDoor1	; vertical door
+	;	dc.w $7880
 		dc.l ArtKospM_Cork		; cork block
 		dc.w $7980
 		dc.l ArtKospM_HardPS		; hard part skipper
@@ -44095,14 +44095,14 @@ PLC_LZ2:
 		dc.w $7BC0
 		dc.l ArtKospM_LzDoor2	; large	horizontal door
 		dc.w $7CC0
-		dc.l ArtKospM_LzWheel	; wheel
-		dc.w $7EC0
+	;	dc.l ArtKospM_LzWheel	; wheel
+	;	dc.w $7EC0
 		dc.l ArtKospM_Gargoyle	; gargoyle head
 		dc.w $5D20
 		dc.l ArtKospM_LzPlatfm	; rising platform
 		dc.w $89E0
-		dc.l ArtKospM_Orbinaut	; orbinaut enemy
-		dc.w $8CE0
+	;	dc.l ArtKospM_Orbinaut	; orbinaut enemy
+	;	dc.w $8CE0
 		dc.l ArtKospM_Jaws		; jaws enemy
 		dc.w $90C0
 		dc.l ArtKospM_Switch	; switch
@@ -44123,8 +44123,8 @@ PLC_MZ:
 		dc.w 0
 		dc.l ArtKospM_MzMetal	; metal	blocks
 		dc.w $6000
-		dc.l ArtKospM_MzFire		; fireballs
-		dc.w $68A0
+	;	dc.l ArtKospM_MzFire		; fireballs
+	;	dc.w $68A0
 		dc.l ArtKospM_Swing		; swinging platform
 		dc.w $7000
 		dc.l ArtKospM_MzGlass	; green	glassy block
@@ -44427,8 +44427,8 @@ ArtKospM_Shield:	incbin	artkosp\shield.kospm	; shield
 		even
 ArtKospM_Stars:	incbin	artkosp\invstars.kospm	; invincibility stars
 		even
-ArtKospM_TutHUD:	incbin	artkosp\TutorialHUD.kospm	; tutorial HUD
-		even
+;ArtKospM_TutHUD:	incbin	artkosp\TutorialHUD.kospm	; tutorial HUD
+;		even
 ArtKospM_UMadBro:	incbin	artkosp\UMadBro.kospm	; U Mad Bro?!
 		even
 ; ---------------------------------------------------------------------------
@@ -44482,8 +44482,10 @@ ArtKospM_SSWBlock:	incbin	artkosp\ssw.kospm		; special stage W block
 		even
 ArtKospM_SSGlass:	incbin	artkosp\ssglass.kospm	; special stage destroyable glass block
 		even
-ArtKospM_ResultEm:	incbin	artkosp\ssresems.kospm	; chaos emeralds on special stage results screen
+ArtKospM_Bumper:	incbin	artkosp\syzbumpe.kospm	; bumper
 		even
+;ArtKospM_ResultEm:	incbin	artkosp\ssresems.kospm	; chaos emeralds on special stage results screen
+;		even
 ; ---------------------------------------------------------------------------
 ; Compressed graphics - GHZ stuff
 ; ---------------------------------------------------------------------------
@@ -44499,12 +44501,12 @@ ArtKospM_Spikes:	incbin	artkosp\spikes_bloody.kospm	; spikes
 		even
 ArtKospM_SpikesBlood: incbin	artkosp\spikes_lava.kospm	; damn those bloody spikes
 		even
-ArtKospM_SpikePole:	incbin	artkosp\ghzlog.kospm	; GHZ spiked log
-		even
+;ArtKospM_SpikePole:	incbin	artkosp\ghzlog.kospm	; GHZ spiked log
+;		even
 ArtKospM_PplRock:	incbin	artkosp\ghzrock.kospm	; GHZ purple rock
 		even
-ArtKospM_GhzWall1:	incbin	artkosp\ghzwall1.kospm	; GHZ destroyable wall
-		even
+;ArtKospM_GhzWall1:	incbin	artkosp\ghzwall1.kospm	; GHZ destroyable wall
+;		even
 ArtKospM_GhzWall2:	incbin	artkosp\ghzwall2.kospm	; GHZ normal wall
 		even
 ; ---------------------------------------------------------------------------
@@ -44514,34 +44516,34 @@ ArtKospM_Water:	incbin	artkosp\lzwater.kospm	; LZ water surface
 		even
 ArtKospM_Splash:	incbin	artkosp\lzsplash.kospm	; LZ waterfalls and splashes
 		even
-ArtKospM_LzSpikeBall:incbin	artkosp\lzspball.kospm	; LZ spiked ball on chain
-		even
+;ArtKospM_LzSpikeBall:incbin	artkosp\lzspball.kospm	; LZ spiked ball on chain
+;		even
 ArtKospM_FlapDoor:	incbin	artkosp\lzflapdo.kospm	; LZ flapping door
 		even
 ArtKospM_Bubbles:	incbin	artkosp\lzbubble.kospm	; LZ bubbles and countdown numbers
 		even
 ArtKospM_LzBlock3:	incbin	artkosp\lzblock3.kospm	; LZ 32x16 block
 		even
-ArtKospM_LzDoor1:	incbin	artkosp\lzvdoor.kospm	; LZ vertical door
-		even
-ArtKospM_Harpoon:	incbin	artkosp\lzharpoo.kospm	; LZ harpoon
-		even
+;ArtKospM_LzDoor1:	incbin	artkosp\lzvdoor.kospm	; LZ vertical door
+;		even
+;ArtKospM_Harpoon:	incbin	artkosp\lzharpoo.kospm	; LZ harpoon
+;		even
 ArtKospM_LzPole:	incbin	artkosp\lzpole.kospm	; LZ pole that breaks
 		even
 ArtKospM_LzDoor2:	incbin	artkosp\lzhdoor.kospm	; LZ large horizontal door
 		even
-ArtKospM_LzWheel:	incbin	artkosp\lzwheel.kospm	; LZ wheel from corner of conveyor belt
-		even
+;ArtKospM_LzWheel:	incbin	artkosp\lzwheel.kospm	; LZ wheel from corner of conveyor belt
+;		even
 ArtKospM_Gargoyle:	incbin	artkosp\lzgargoy.kospm	; LZ gargoyle head and spitting fire
 		even
-ArtKospM_LzBlock2:	incbin	artkosp\lzblock2.kospm	; LZ blocks
-		even
+;ArtKospM_LzBlock2:	incbin	artkosp\lzblock2.kospm	; LZ blocks
+;		even
 ArtKospM_LzPlatfm:	incbin	artkosp\lzptform.kospm	; LZ rising platforms
 		even
 ArtKospM_Cork:	incbin	artkosp\lzcork.kospm	; LZ cork block
 		even
-ArtKospM_LzBlock1:	incbin	artkosp\lzblock1.kospm	; LZ 32x32 block
-		even
+;ArtKospM_LzBlock1:	incbin	artkosp\lzblock1.kospm	; LZ 32x32 block
+;		even
 ; ---------------------------------------------------------------------------
 ; Compressed graphics - MZ stuff
 ; ---------------------------------------------------------------------------
@@ -44551,8 +44553,8 @@ ArtKospM_MzSwitch:	incbin	artkosp\mzswitch.kospm	; MZ switch
 		even
 ArtKospM_MzGlass:	incbin	artkosp\mzglassy.kospm	; MZ green glassy block
 		even
-ArtKospM_MzFire:	incbin	artkosp\mzfire.kospm	; MZ fireballs
-		even
+;ArtKospM_MzFire:	incbin	artkosp\mzfire.kospm	; MZ fireballs
+;		even
 ArtKospM_Lava:	incbin	artkosp\mzlava.kospm	; MZ lava
 		even
 ArtKospM_MzBlock:	incbin	artkosp\mzblock.kospm	; MZ green pushable block
@@ -44560,22 +44562,22 @@ ArtKospM_MzBlock:	incbin	artkosp\mzblock.kospm	; MZ green pushable block
 ; ---------------------------------------------------------------------------
 ; Compressed graphics - SLZ stuff
 ; ---------------------------------------------------------------------------
-ArtKospM_Seesaw:	incbin	artkosp\slzseesa.kospm	; SLZ seesaw
-		even
-ArtKospM_SlzSpike:	incbin	artkosp\slzspike.kospm	; SLZ spikeball that sits on a seesaw
-		even
+;ArtKospM_Seesaw:	incbin	artkosp\slzseesa.kospm	; SLZ seesaw
+;		even
+;ArtKospM_SlzSpike:	incbin	artkosp\slzspike.kospm	; SLZ spikeball that sits on a seesaw
+;		even
 ArtKospM_Fan:	incbin	artkosp\slzfan.kospm	; SLZ fan
 		even
-ArtKospM_SlzWall:	incbin	artkosp\slzwall.kospm	; SLZ smashable wall
+;ArtKospM_SlzWall:	incbin	artkosp\slzwall.kospm	; SLZ smashable wall
+;		even
+ArtKospM_Pylon:	incbin	artkosp\slzpylon.kospm	; SLZ foreground pylon / girders
 		even
-ArtKospM_Pylon:	incbin	artkosp\slzpylon.kospm	; SLZ foreground pylon
-		even
-ArtKospM_SlzSwing:	incbin	artkosp\slzswing.kospm	; SLZ swinging platform
-		even
-ArtKospM_SlzBlock:	incbin	artkosp\slzblock.kospm	; SLZ 32x32 block
-		even
-ArtKospM_SlzCannon:	incbin	artkosp\slzcanno.kospm	; SLZ fireball launcher cannon
-		even
+;ArtKospM_SlzSwing:	incbin	artkosp\slzswing.kospm	; SLZ swinging platform
+;		even
+;ArtKospM_SlzBlock:	incbin	artkosp\slzblock.kospm	; SLZ 32x32 block
+;		even
+;ArtKospM_SlzCannon:	incbin	artkosp\slzcanno.kospm	; SLZ fireball launcher cannon
+;		even
 ArtKospM_SLZPlatform:	incbin	artkosp\SLZPlatform.kospm	; SLZ platform
 		even
 ArtKospM_WarningSign:	incbin	artkosp\SLZWarningSign.kospm	; warning sign for bottomless pits
@@ -44585,8 +44587,6 @@ ArtKospM_GiantBomb:	incbin	artkosp\GiantBomb.kospm	; Giant Bomb
 ; ---------------------------------------------------------------------------
 ; Compressed graphics - SYZ stuff
 ; ---------------------------------------------------------------------------
-ArtKospM_Bumper:	incbin	artkosp\syzbumpe.kospm	; SYZ bumper
-		even
 ArtKospM_Switch:	incbin	artkosp\switch.kospm	; LZ/SYZ/SBZ switch (ArtKospM_LzSwitch)
 		even
 ArtKospM_SYZDoors:	incbin	artkosp\SYZDoors.kospm	; SYZ doors
@@ -44602,57 +44602,57 @@ ArtKospM_SYZEmblemsFrantic:	incbin	artkosp\SYZEmblems_Frantic.kospm	; SYZ franti
 ; ---------------------------------------------------------------------------
 ; Compressed graphics - SBZ stuff
 ; ---------------------------------------------------------------------------
-ArtKospM_SbzWheel1:	incbin	artkosp\sbzwhee1.kospm	; SBZ spot on rotating wheel that Sonic runs around
-		even
-ArtKospM_SbzWheel2:	incbin	artkosp\sbzwhee2.kospm	; SBZ wheel that grabs Sonic
-		even
+;ArtKospM_SbzWheel1:	incbin	artkosp\sbzwhee1.kospm	; SBZ spot on rotating wheel that Sonic runs around
+;		even
+;ArtKospM_SbzWheel2:	incbin	artkosp\sbzwhee2.kospm	; SBZ wheel that grabs Sonic
+;		even
 ArtKospM_Cutter:	incbin	artkosp\sbzcutte.kospm	; SBZ pizza cutter
 		even
-ArtKospM_Stomper:	incbin	artkosp\sbzstomp.kospm	; SBZ stomper
-		even
-ArtKospM_SpinPform:	incbin	artkosp\sbzpform.kospm	; SBZ spinning platform
-		even
-ArtKospM_TrapDoor:	incbin	artkosp\sbztrapd.kospm	; SBZ trapdoor
-		even
-ArtKospM_SbzFloor:	incbin	artkosp\sbzfloor.kospm	; SBZ collapsing floor
-		even
-ArtKospM_Electric:	incbin	artkosp\sbzshock.kospm	; SBZ electric shock orb
-		even
-ArtKospM_SbzBlock:	incbin	artkosp\sbzvanis.kospm	; SBZ vanishing block
-		even
+;ArtKospM_Stomper:	incbin	artkosp\sbzstomp.kospm	; SBZ stomper
+;		even
+;ArtKospM_SpinPform:	incbin	artkosp\sbzpform.kospm	; SBZ spinning platform
+;		even
+;ArtKospM_TrapDoor:	incbin	artkosp\sbztrapd.kospm	; SBZ trapdoor
+;		even
+;ArtKospM_SbzFloor:	incbin	artkosp\sbzfloor.kospm	; SBZ collapsing floor
+;		even
+;ArtKospM_Electric:	incbin	artkosp\sbzshock.kospm	; SBZ electric shock orb
+;		even
+;ArtKospM_SbzBlock:	incbin	artkosp\sbzvanis.kospm	; SBZ vanishing block
+;		even
 ArtKospM_FlamePipe:	incbin	artkosp\sbzflame.kospm	; SBZ flaming pipe
 		even
 ArtKospM_SbzDoor1:	incbin	artkosp\sbzvdoor.kospm	; SBZ small vertical door
 		even
-ArtKospM_SlideFloor:	incbin	artkosp\sbzslide.kospm	; SBZ floor that slides away
-		even
-ArtKospM_SbzDoor2:	incbin	artkosp\sbzhdoor.kospm	; SBZ large horizontal door
-		even
-ArtKospM_Girder:	incbin	artkosp\sbzgirde.kospm	; SBZ crushing girder
-		even
+;ArtKospM_SlideFloor:	incbin	artkosp\sbzslide.kospm	; SBZ floor that slides away
+;		even
+;ArtKospM_SbzDoor2:	incbin	artkosp\sbzhdoor.kospm	; SBZ large horizontal door
+;		even
+;ArtKospM_Girder:	incbin	artkosp\sbzgirde.kospm	; SBZ crushing girder
+;		even
 ; ---------------------------------------------------------------------------
 ; Compressed graphics - enemies
 ; ---------------------------------------------------------------------------
-ArtKospM_BallHog:	incbin	artkosp\ballhog.kospm	; ball hog
-		even
+;ArtKospM_BallHog:	incbin	artkosp\ballhog.kospm	; ball hog
+;		even
 ArtKospM_Crabmeat:	incbin	artkosp\crabmeat.kospm	; crabmeat
 		even
 ArtKospM_Buzz:	incbin	artkosp\buzzbomb.kospm	; buzz bomber
 		even
 ArtKospM_ExplBall:	incbin	artkosp\explodingballs.kospm ; exploding balls
 		even
-ArtKospM_Burrobot:	incbin	artkosp\burrobot.kospm	; burrobot
-		even
+;ArtKospM_Burrobot:	incbin	artkosp\burrobot.kospm	; burrobot
+;		even
 ArtKospM_Chopper:	incbin	artkosp\chopper.kospm	; chopper
 		even
 ArtKospM_Jaws:	incbin	artkosp\jaws.kospm		; jaws
 		even
-ArtKospM_Roller:	incbin	artkosp\roller.kospm	; roller
-		even
+;ArtKospM_Roller:	incbin	artkosp\roller.kospm	; roller
+;		even
 ArtKospM_Motobug:	incbin	artkosp\motobug.kospm	; moto bug
 		even
-ArtKospM_Newtron:	incbin	artkosp\newtron.kospm	; newtron
-		even
+;ArtKospM_Newtron:	incbin	artkosp\newtron.kospm	; newtron
+;		even
 ArtKospM_Yadrin:	incbin	artkosp\yadrin.kospm	; yadrin
 		even
 ArtKospM_Basaran:	incbin	artkosp\basaran.kospm	; basaran
@@ -44661,33 +44661,33 @@ ArtKospM_Bomb:	incbin	artkosp\bomb.kospm		; bomb
 		even
 ArtKospM_BombOld:	incbin	artkosp\bomb_old.kospm	; old bomb
 		even
-ArtKospM_Orbinaut:	incbin	artkosp\orbinaut.kospm	; orbinaut
-		even
-ArtKospM_Cater:	incbin	artkosp\caterkil.kospm	; caterkiller
-		even
+;ArtKospM_Orbinaut:	incbin	artkosp\orbinaut.kospm	; orbinaut
+;		even
+;ArtKospM_Cater:	incbin	artkosp\caterkil.kospm	; caterkiller
+;		even
 ; ---------------------------------------------------------------------------
 ; Compressed graphics - various
 ; ---------------------------------------------------------------------------
 ArtKospM_TitleCard:	incbin	artkosp\TitleCards.kospm	; title cards
 		even
-ArtKospM_TCCont:	incbin	artkosp\ttlcards_continue.kospm	; title cards used for continue screen
-		even
+;ArtKospM_TCCont:	incbin	artkosp\ttlcards_continue.kospm	; title cards used for continue screen
+;		even
 ArtKospM_Hud:	incbin	artkosp\hud.kospm		; HUD (rings, time, score)
 		even
-XArtKospM_Lives:	incbin	artkosp\lifeicon.kospm	; load normal life counter icon
+ArtKospM_Deaths:	incbin	artkosp\hud_deaths.kospm ; HUD (deaths)
 		even
-ArtKospM_Lives:	incbin	artkosp\lifeiconcrazy.kospm ; load crazy life counter icon
-		even
+;XArtKospM_Lives:	incbin	artkosp\lifeicon.kospm	; load normal life counter icon
+;		even
 ArtKospM_Ring:	incbin	artkosp\rings.kospm	; rings
 		even
 ArtKospM_Monitors:	incbin	artkosp\monitors.kospm	; monitors
 		even
 ArtKospM_Explode:	incbin	artkosp\explosio.kospm	; explosion
 		even
-ArtKospM_Points:	incbin	artkosp\points.kospm	; points from destroyed enemy or object
-		even
-ArtKospM_GameOver:	incbin	artkosp\gameover.kospm	; game over / time over
-		even
+;ArtKospM_Points:	incbin	artkosp\points.kospm	; points from destroyed enemy or object
+;		even
+;ArtKospM_GameOver:	incbin	artkosp\gameover.kospm	; game over / time over
+;		even
 ArtKospM_HSpring:	incbin	artkosp\springh.kospm	; horizontal spring
 		even
 ArtKospM_VSpring:	incbin	artkosp\springv.kospm	; vertical spring
@@ -44700,11 +44700,11 @@ ArtKospM_BigFlash:	incbin	artkosp\rngflash.kospm	; flash from giant ring
 		even
 ArtKospM_Bonus:	incbin	artkosp\bonus.kospm	; hidden bonuses at end of a level
 		even
-ArtKospM_DEMO:	incbin	artkosp\Art_DEMO.kospm	; blinking DEMO banner [scrapped idea]
-		even
+;ArtKospM_DEMO:	incbin	artkosp\Art_DEMO.kospm	; blinking DEMO banner [scrapped idea]
+;		even
 ArtKospM_HardPS:	incbin	artkosp\HardPartSkipper.kospm ; Hard Part Skipper
 		even
-ArtKospM_HardPS_Tut:	incbin	artkosp\HardPartSkipper_Tutorial.kospm ; Hard Part Skipper
+ArtKospM_HardPS_Tut:	incbin	artkosp\HardPartSkipper_Tutorial.kospm ; Hard Part Skipper in the tutorial (includes info boxes)
 		even
 ArtKospM_BombMach:	incbin	artkosp\BombMachine.kospm	; bomb machine
 		even
@@ -44713,10 +44713,10 @@ ArtKospM_OkCool:	incbin	artkosp\okcool.kospm ; ok cool
 ; ---------------------------------------------------------------------------
 ; Compressed graphics - continue screen
 ; ---------------------------------------------------------------------------
-ArtKospM_ContSonic:	incbin	artkosp\cntsonic.kospm	; Sonic on continue screen
-		even
-ArtKospM_MiniSonic:	incbin	artkosp\cntother.kospm	; mini Sonic and text on continue screen
-		even
+;ArtKospM_ContSonic:	incbin	artkosp\cntsonic.kospm	; Sonic on continue screen
+;		even
+;ArtKospM_MiniSonic:	incbin	artkosp\cntother.kospm	; mini Sonic and text on continue screen
+;		even
 ; ---------------------------------------------------------------------------
 ; Compressed graphics - primary patterns and block mappings
 ; ---------------------------------------------------------------------------
@@ -44784,20 +44784,20 @@ ArtKospM_FzEggman:	incbin	artkosp\fzboss2.kospm	; Eggman after the FZ boss
 		even
 ArtKospM_Exhaust:	incbin	artkosp\bossflam.kospm	; boss exhaust flame
 		even
-ArtKospM_EndEm:	incbin	artkosp\endemera.kospm	; ending sequence chaos emeralds
-		even
+;ArtKospM_EndEm:	incbin	artkosp\endemera.kospm	; ending sequence chaos emeralds
+;		even
 ArtKospM_EndSonic:	incbin	artkosp\endsonic.kospm	; ending sequence Sonic
 		even
-ArtKospM_TryAgain:	incbin	artkosp\tryagain.kospm	; ending "try again" screen
-		even
+;ArtKospM_TryAgain:	incbin	artkosp\tryagain.kospm	; ending "try again" screen
+;		even
 ;Kos_EndFlowers:	incbin	artkos\flowers.bin	; ending sequence animated flowers
 ;		even
 ArtKospM_EndFlower:	incbin	artkosp\endflowe.kospm	; ending sequence flowers
 		even
-ArtKospM_CreditText:	incbin	artkosp\credits.kospm	; credits alphabet
-		even
-ArtKospM_EndStH:	incbin	artkosp\endtext.kospm	; ending sequence "Sonic the Hedgehog" text
-		even
+;ArtKospM_CreditText:	incbin	artkosp\credits.kospm	; credits alphabet
+;		even
+;ArtKospM_EndStH:	incbin	artkosp\endtext.kospm	; ending sequence "Sonic the Hedgehog" text
+;		even
 	;	incbin	misc\padding2.bin
 	;	even
 ; ---------------------------------------------------------------------------

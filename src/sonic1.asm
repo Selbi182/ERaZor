@@ -11988,17 +11988,20 @@ Obj37_NoRingsMove:
 		addi.w	#$18,obVelY(a0)		; regular gravity for rings
 
 		; ring bounce
-		move.b	($FFFFFE05).w,d0
-		add.b	d7,d0
-		andi.b	#3,d0
-		bne.s	@updatepos
-		jsr	ObjHitFloor
-		tst.w	d1
-		bpl.s	@updatepos
-
 		tst.w	obVelY(a0)		; is ring falling up?
 		bmi.s	@updatepos		; if yes, no colission check
 
+		cmpi.w	#$200,obVelY(a0)	; is ring falling fast?
+		bhi.s	@fastring		; if yes, accept performance loss
+		move.b	($FFFFFE05).w,d0	; only check for colission every fourth frame
+		add.b	d7,d0
+		andi.b	#3,d0
+		bne.s	@updatepos
+@fastring:	jsr	ObjHitFloor
+		tst.w	d1
+		bpl.s	@updatepos
+
+		; floor hit
 		cmpi.w	#$200,obVelY(a0)	; is ring falling slowly?
 		bhi.s	@nofloorcap		; if not, branch
 		move.b	#1,$36(a0)		; set floor cap flag
@@ -13052,23 +13055,26 @@ Obj2E_ChkP:
 		jmp	(PlaySound).l	; play blubb sound
 
 @notfrantic:
-		lea	($FFFFD800).w,a1	; set a1 to level object RAM
+		move.l	a0,-(sp)
+		lea	($FFFFD800).w,a0	; set a1 to level object RAM
 		moveq	#$60-1,d2		; set d2 to $5F ($D800 to $F000 = $60 objects)
 @findrings:
-		cmpi.b	#$25,(a1)		; is object a ring?
+		cmpi.b	#$25,(a0)		; is object a ring?
 		bne.s	@next			; if not, branch
-		move.b	#$37,(a1)		; change object into bouncing ring
-		move.w	#10*60,$30(a1)		; set full despawn timer
-		move.b	#0,$29(a1)
-		move.b	#0,$36(a1)
-		move.b	#2,obRoutine(a1)	; make sure the ring just bounces, we don't want to loose 10 rings
-@next:		adda.w	#$40,a1			; go to next object in RAM
+		jsr	Obj25_MarkGone		; make sure ring doesn't respawn (if it moves offscreen, tough luck buddy)
+		move.b	#$37,(a0)		; change object into bouncing ring
+		move.w	#10*60,$30(a0)		; set full despawn timer
+		move.b	#0,$29(a0)
+		move.b	#0,$36(a0)
+		move.b	#2,obRoutine(a0)	; make sure the ring just bounces, we don't want to loose 10 rings
+@next:		adda.w	#$40,a0			; go to next object in RAM
 		dbf	d2,@findrings		; loop
+		move.l	(sp)+,a0
 
 		move.b	#-1,($FFFFFEC6).w	; reset bouncy ring animation timer
-		move.b	#120,($FFFFFF64).w	; 2 seconds of camera shake
-		move.w	#$B7,d0
-		jmp	(PlaySound).l	; play rumble sound
+		move.b	#180,($FFFFFF64).w	; 3 seconds of camera shake
+		move.w	#$B7,d0			; play rumble sound
+		jmp	(PlaySound).l
 ; ===========================================================================
 
 Obj2E_ChkEnd:
@@ -26061,11 +26067,53 @@ UberhubEasteregg:
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Object 07 - Unused (used to be the old cropped screen sprites)
+; Object 07 - ok cool (used to be the old cropped screen sprites)
 ; ---------------------------------------------------------------------------
 
 Obj07:
-		jmp	DeleteObject
+		moveq	#0,d0
+		move.b	obRoutine(a0),d0
+		move.w	Obj07_Index(pc,d0.w),d1
+		jmp	Obj07_Index(pc,d1.w)
+; ===========================================================================
+Obj07_Index:	dc.w Obj07_Init-Obj07_Index
+		dc.w Obj07_Animate-Obj07_Index
+; ===========================================================================
+
+Obj07_Init:
+		addq.b	#2,obRoutine(a0)
+		move.w	#$9600/$20,obGfx(a0)
+		move.l	#Map_Obj07,obMap(a0)
+		move.b	#$94,obRender(a0)
+		move.b	#$20,obActWid(a0)
+		move.b	#0,obPriority(a0)
+		move.b	#$40,obHeight(a0)
+		move.b	#$60,obWidth(a0)
+
+		; used for the sway
+		move.w	obY(a0),$32(a0)
+		moveq	#0,d0
+		move.b	obSubtype(a0),d0
+		lsl.w	#4,d0
+		move.w	d0,$34(a0)		
+; ---------------------------------------------------------------------------
+
+Obj07_Animate:
+		move.w	($FFFFFE04).w,d0
+		add.w	d0,d0
+		add.w	$34(a0),d0
+		jsr	(CalcSine).l
+		asr.w	#6,d0
+		add.w	$32(a0),d0
+		move.w	d0,obY(a0)
+
+		jmp	MarkObjGone
+; ---------------------------------------------------------------------------
+; ===========================================================================
+; ---------------------------------------------------------------------------
+Map_Obj07:
+		include	"_maps\okcool.asm"
+
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -43987,6 +44035,8 @@ PLC_GHZ:
 		dc.w $8F60
 		dc.l ArtKospM_HardPS		; hard part skipper
 		dc.w $9360
+		dc.l ArtKospM_OkCool		; ok cool
+		dc.w $9600
 		dc.l ArtKospM_Motobug	; motobug enemy
 		dc.w $9E00
 		dc.l ArtKospM_Spikes		; spikes
@@ -44657,6 +44707,8 @@ ArtKospM_HardPS:	incbin	artkosp\HardPartSkipper.kospm ; Hard Part Skipper
 ArtKospM_HardPS_Tut:	incbin	artkosp\HardPartSkipper_Tutorial.kospm ; Hard Part Skipper
 		even
 ArtKospM_BombMach:	incbin	artkosp\BombMachine.kospm	; bomb machine
+		even
+ArtKospM_OkCool:	incbin	artkosp\okcool.kospm ; ok cool
 		even
 ; ---------------------------------------------------------------------------
 ; Compressed graphics - continue screen

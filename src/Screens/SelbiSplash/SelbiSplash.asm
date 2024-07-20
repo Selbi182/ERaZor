@@ -442,11 +442,11 @@ Pal_AddColor2_Yellow:				; XREF: Pal_ToWhite
 ; End of function Pal_MakeFlash
 
 ; ---------------------------------------------------------------------------------------------------------------------
-ArtKospM_SelbiSplash:	incbin	"Screens/SelbiSplash/Tiles.kospm"
+ArtKospM_SelbiSplash:	incbin	"Screens/SelbiSplash/Art_SoftSelbi.kospm"
 			even
 MapUnc_SelbiSplash:	incbin	"Screens/SelbiSplash/MapsUnc_SoftSelbi.bin"
 			even
-Pal_SelbiSplash:	incbin	"Screens/SelbiSplash/Palette.bin"
+Pal_SelbiSplash:	incbin	"Screens/SelbiSplash/Pal_SoftSelbi.bin"
 			even 
 
 VDP_Quality:		incbin	"Screens\SelbiSplash\selbiv2k\VDP.bin"

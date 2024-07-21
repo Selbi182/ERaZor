@@ -867,7 +867,7 @@ OpText_Header1:
 		even
 
 OpText_Header2:
-		dc.b	'  THE MENU TO CHANGE STUFF  ', $FF
+		dc.b	'        CHANGE STUFF        ', $FF
 		even
 ; ---------------------------------------------------------------------------
 
@@ -888,7 +888,7 @@ OpText_SkipStory:
 		even
 
 OpText_FlashyLights:
-		dc.b	'PHOTOSENSITIVITY MODE    ', $FF
+		dc.b	'PHOTOSENSITIVE MODE      ', $FF
 		even
 
 OpText_CinematicMode:
@@ -899,14 +899,14 @@ OpText_CinematicMode_Locked:
 		even
 		
 OpText_NonstopInhuman:
-		dc.b	'TRUE INHUMAN MODE        ', $FF
+		dc.b	'NONSTOP INHUMAN MODE     ', $FF
 		even
 OpText_NonstopInhuman_Locked:
 		dc.b	'???? ??????? ????        ', $FF
 		even
 
 OpText_DeleteSRAM:
-		dc.b	'DELETE SAVED GAME        ', $FF
+		dc.b	'DELETE SAVE GAME         ', $FF
 		even
 OpText_Del3:	dc.b	'>>>', $FF
 		even

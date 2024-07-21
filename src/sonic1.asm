@@ -44,10 +44,10 @@ QuickLevelSelect = 0
 QuickLevelSelect_ID = -1
 ; ------------------------------------------------------
 DebugModeDefault = 1
-DebugSurviveNoRings = 0
+DebugSurviveNoRings = 1
 ; ------------------------------------------------------
 DoorsAlwaysOpen = 0
-LowBossHP = 0
+LowBossHP = 1
 ; ======================================================
 	else
 ; BENCHMARK build settings (DO NOT CHANGE!)
@@ -4526,6 +4526,8 @@ Fuzz_Uberhub:
 		tst.b	($FFFFFFA5).w	; have we entered the room to the blackout challenge?
 		beq.w	@fuzzuberhubend	; if not, don't display fuzz
 
+		bra.w	CinematicScreenFuzz_Do	; fuck the below stuff actually
+
 		move.w	($FFFFFE04).w,d7 ; move timer into d7
 		and.w 	#1, d7 ; only use least significant bit
 
@@ -5518,7 +5520,20 @@ End_LoadData:
 		bsr	PalLoad1	; load Sonic's palette
 
 End_LoadSonic:
+		moveq	#0,d0
+		move.l	d0,($FFFFFE22).w
+		move.b	d0,($FFFFFE1B).w
+		move.b	d0,($FFFFFE2C).w
+		move.b	d0,($FFFFFE2D).w
+		move.b	d0,($FFFFFE2E).w
+		move.b	d0,($FFFFFE2F).w
+		move.w	d0,($FFFFFE08).w
+		move.w	d0,($FFFFFE02).w
+		move.w	d0,($FFFFFE04).w
+		move.b	d0,($FFFFD034).w ; clear speed shoes timer
+
 		move.b	#1,($FFFFD000).w ; load	Sonic object
+		
 		bset	#0,($FFFFD022).w ; make	Sonic face left
 		move.b	#1,($FFFFF7CC).w ; lock	controls
 		move.w	#$400,($FFFFF602).w ; move Sonic to the	left
@@ -5528,18 +5543,7 @@ End_LoadSonic:
 		jsr	ObjPosLoad
 		jsr	ObjectsLoad
 		jsr	BuildSprites
-		moveq	#0,d0
-	;	move.w	d0,($FFFFFE20).w
-		move.l	d0,($FFFFFE22).w
-		move.b	d0,($FFFFFE1B).w
-	;	move.b	d0,($FFFFFFFC).w
-		move.b	d0,($FFFFFE2C).w
-		move.b	d0,($FFFFFE2D).w
-		move.b	d0,($FFFFFE2E).w
-		move.b	d0,($FFFFFE2F).w
-		move.w	d0,($FFFFFE08).w
-		move.w	d0,($FFFFFE02).w
-		move.w	d0,($FFFFFE04).w
+
 		bsr	OscillateNumInit
 		move.b	#1,($FFFFFE1F).w
 		move.b	#1,($FFFFFE1D).w
@@ -5570,6 +5574,15 @@ End_MainLoop:
 		bsr	PalCycle_Load
 		bsr	OscillateNumDo
 		bsr	ChangeRingFrame
+
+		btst	#4,($FFFFFF92).w	; is nonstop inhuman enabled?
+		beq.s	@notnonstopinhuman	; if not, branch	
+		move.w	($FFFFF72A).w,d0	; get right level boundary
+		addi.w	#$128,d0		; adjust a bit
+		cmp.w	($FFFFD008).w,d0	; compare to Sonic's X pos
+		bgt.s	@notnonstopinhuman	; if he's left of the boundary, all good
+		move.w	#1,($FFFFFE02).w	; start credits to not softlock in nonstop inhuman
+@notnonstopinhuman:
 
 		tst.w	($FFFFFE02).w			; is level set to restart? (after Sonic died)
 		beq.w	End_MainLoop			; if not, loop
@@ -7008,12 +7021,7 @@ Resize_FZEscape_Nuke:
 
 		tst.b	($FFFFFFA5).w		; egg prison opened?
 		beq.w	@prisonnotyetopen	; if not, branch
-
 		addq.b	#2,($FFFFF742).w	; go to next routine	
-		move.w	#0,($FFFFF72C).w	; unlock controls
-
-		move.b	#1,($FFFFFE2E).w	; speed up the BG music
-		move.w	#180*60,($FFFFD034).w	; give Sonic super speed to make the walking-left part less tedious
 
 @prisonnotyetopen:
 		rts
@@ -7021,8 +7029,13 @@ Resize_FZEscape_Nuke:
 
 Resize_FZEscape:
 		addq.b	#2,($FFFFF742).w	; go to next routine
-		move.b	#2,(FZEscape).w		; enable exploding scenery
+
+		move.b	#2,(FZEscape).w		; enable exploding scenery and the rest of the escape logic
+
+		move.w	#0,($FFFFF72C).w	; unlock controls
+		move.b	#1,($FFFFFE2E).w	; speed up the BG music
 		move.b	#1,($FFFFFE2D).w	; make sonic invincible to prevent some bullshit deaths
+		move.w	#180*60,($FFFFD034).w	; give Sonic super speed to make the walking-left part less tedious
 	
 		; escape timer
 		move.l	#(1*$10000)|(83*$100)|00,d0	; set escape time (casual - 182s)
@@ -7065,6 +7078,7 @@ Resize_FZEscape2:
 		addq.b	#2,($FFFFF742).w	; next routine
 		move.w	#$A10,($FFFFF726).w	; lower level boundary
 		move.w	#$1100,($FFFFF72A).w	; prevent going back right
+		move.w	#0,($FFFFF72C).w	; set upper level boundary
 
 		VBlank_SetMusicOnly 		; VBlank won't touch VDP now
 		vram	$A460			; load horizontal spring graphics
@@ -11270,8 +11284,10 @@ Obj22_NotInhumanCrush:
 @0:
 	;	frantic				; are we in Frantic mode?
 	;	beq.w	Obj22_MoveEnd		; if not, disable movement
-	
-		bra.s	Obj22_NotHigher		; skip
+		
+		tst.b	($FFFFFE2D).w		; is sonic invincible?
+		bne.s	Obj22_NotGHZ1		; if yes, make buzz bombers deststroyable
+		bra.s	Obj22_NotHigher		; otherwise, these bad boys are vincible (is that a word?)
 ; ===========================================================================
 
 Obj22_NotGHZ1:
@@ -14511,6 +14527,9 @@ Obj31_MakeStomper:			; XREF: Obj31_Main
 		move.b	#$38,obActWid(a1)
 		move.b	#$90,obColType(a1)
 		addq.w	#1,d1
+		tst.b	($FFFFFFE7).w
+		beq.s	loc_B76A		; if not, branch
+		ori.w	#$6000,obGfx(a1)	; use palette line four from now now
 
 loc_B76A:
 		move.l	a0,$3C(a1)
@@ -14610,6 +14629,9 @@ Obj31_Type00:				; XREF: Obj31_TypeIndex
 		move.b	$3A(a0),d0	; move number 0	or 1 to	d0
 		tst.b	(a2,d0.w)	; has switch (d0) been pressed?
 		bne.s	@cont		; if yes, branch
+		
+		tst.b	($FFFFFF73).w		; has P monitor been broken in Ruined Place?
+		bne.s	@cont			; if yes, branch
 		btst	#0,($FFFFFF6C).w	; has switch 1 been pressed?
 		beq.s	loc_B8A8		; if not, branch
 
@@ -14798,6 +14820,7 @@ Obj45_Load:				; XREF: Obj45_Main
 		cmpi.b	#1,(a2)
 		bne.s	loc_BA40
 		move.b	#$91,obColType(a1)
+		ori.w	#$6000,obGfx(a1)	; use palette line four from now now
 
 loc_BA40:
 		move.b	(a2)+,obFrame(a1)
@@ -27471,10 +27494,10 @@ BB_DoTele:
 ; ===========================================================================
 
 KillSonic_JMP:
-		cmpi.w	#$601,($FFFFFE10).w	; is this the ending sequence?
-		bne.s	NOSBBDead		; if not, branch
-		move.b	#1,($FFFFFFA1).w	; make sure Sonic dies from boundary bottom, even during inhuman mode
-NOSBBDead:
+	;	cmpi.w	#$601,($FFFFFE10).w	; is this the ending sequence?
+	;	bne.s	NOSBBDead		; if not, branch
+	;	move.b	#1,($FFFFFFA1).w	; make sure Sonic dies from boundary bottom, even during inhuman mode
+;NOSBBDead:
 		jmp	KillSonic		; friggin die noob
 ; ===========================================================================
 
@@ -41682,10 +41705,12 @@ TouchGoalBlock:
 		beq.s	TouchGoal_Unreal	; if yes, branch
 
 		; restoration for Special Place
-		clr.b	($FFFFFF9F).w		; make R block usable again
-		move.b	#$30,($FF1C28).l	; restore pink glass block
-		move.b	#$2F,($FF1DA7).l	; restore yellow glass block
 		clr.w	($FFFFF780).w		; clear rotation
+		clr.b	($FFFFFF9F).w		; make R block usable again
+		move.b	#$2F,($FF1DA7).l	; restore yellow glass block
+		frantic				; are we in frantic?
+		bne.s	TouchGoal_PlaySound	; skip the pink glass block
+		move.b	#$30,($FF1C28).l	; restore pink glass block
 		bra.s	TouchGoal_PlaySound
 
 TouchGoal_Unreal:

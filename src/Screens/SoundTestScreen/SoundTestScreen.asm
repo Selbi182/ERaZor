@@ -210,35 +210,41 @@ STS_WriteLine:
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
+
 ;│Screen position format: #$6YXX 0003
 ;│Base screen position:   #$6110 0003
-;└─ｖ────────────────────────────────────────────────────────────────────────
-;　∧,,∧
+;└───ｖ──────────────────────────────────────────────────────────────────────
+;.　∧,,∧
 ; （＾o＾）
 ;.（　　）
 
 SoundTest_UpdatePianoRoll:
 		VBlank_SetMusicOnly
 		
-		
-		lea	($C00000).l,a6
-		move.l	#$63000003,4(a6)	; screen position (text)
-		lea	(OpText_Blank).l,a1
+		lea	($C00000).l, a6
+		move.l	#$63000003, 4(a6)	; screen position
+		lea	(OpText_Blank).l, a1	; graphics
 		bsr	STS_WriteLine		; clear line
 
+		lea 	FM_Notes, a5		; load base note location
 
+		moveq 	#9, d6
+
+@LoopChannels:
 		move.w	#Options_VRAM_Red, d3	; VRAM setting
 		
 		moveq 	#0, d0
-		move.b 	FM_Notes+7, d0
-		andi.b	#$FE,d0
+		move.b 	(a5)+, d0		; load note
+		andi.b	#$FE, d0		; AND %11111110
 
-		; shift and swap note value into x position
-		swap 	d0
+		swap 	d0			; swap note value into x position
+		add.l 	#$63000003, d0		; add base
 
-		add.l 	#$63000003, d0
-		move.l	d0, 4(a6)
-		move.w	d3, (a6)
+		move.l	d0, 4(a6)		; tile -> vram
+		move.w	d3, (a6)		; settings -> vram
+
+		dbf 	d6, @LoopChannels
+
 		VBlank_UnsetMusicOnly
 		rts
 

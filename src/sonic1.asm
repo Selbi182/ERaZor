@@ -3664,21 +3664,9 @@ Level_NoMusic2:
 		bra.s	Level_NoTitleCard
 
 @notmachine:
-		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
-		bne.s	Level_CinematicHud	; if yes, branch
 		move.b	#$34,($FFFFD080).w ; load title	card object
 		bra.s	Level_TtlCard
 ; ===========================================================================
-
-Level_CinematicHud:
-		moveq	#3,d0
-		bsr	PalLoad2	; load Sonic's palette line
-	
-		moveq	#2,d0
-		jsr	LoadPLC		; load explosion patterns
-		moveq	#$13,d0
-		jsr	LoadPLC		; load star patterns
-		bra.s	Level_TtlCard
 
 Level_NoTitleCard:
 		moveq	#3,d0
@@ -7034,9 +7022,10 @@ Resize_FZEscape:
 
 		move.w	#0,($FFFFF72C).w	; unlock controls
 		move.b	#1,($FFFFFE2E).w	; speed up the BG music
-		move.b	#1,($FFFFFE2D).w	; make sonic invincible to prevent some bullshit deaths
 		move.w	#180*60,($FFFFD034).w	; give Sonic super speed to make the walking-left part less tedious
-	
+	;	move.b	#1,($FFFFFE2D).w	; make sonic invincible to prevent some bullshit deaths
+		addq.w	#1,($FFFFFE20).w	; screw that, instead add 1 insurance ring (without updating rings counter)
+
 		; escape timer
 		move.l	#(1*$10000)|(83*$100)|00,d0	; set escape time (casual - 182s)
 		frantic
@@ -12229,11 +12218,15 @@ Obj4B_YPositive:
 		; new censored easter egg (replaced the old naughty one)
 		cmpi.w	#$302,($FFFFFE10).w	; is this Star Agony Place? (easter egg ring)
 		bne.s	@notsap			; if not, branch
-		clr.w	($FFFFD010).w
-		clr.w	($FFFFD012).w
-		jsr	DeleteObject
+		jsr	DeleteObject		; delete easter egg ring
+		clr.w	($FFFFD010).w		; clear Sonic's X speed
+		clr.w	($FFFFD012).w		; clear Sonic's Y speed
+
+		jsr	SAP_LoadSonicPal	; force text color to be consistent (cause it happens to share Sonic's antigrav line)
+		move.w	#$222,($FFFFFB36).w	; keep textbox background color gray
 		move.b	#$9D,d0			; play funni music
 		jsr	PlaySound
+
 		move.b	#$C,d0			; VLADIK => Load hint number based on subtype
 		jsr	Tutorial_DisplayHint	; VLADIK => Display hint
 
@@ -12802,9 +12795,11 @@ Obj2E_Main:				; XREF: Obj2E_Index
 		move.b	#1,$3F(a0)		; set flag
 
 Obj2E_Move:				; XREF: Obj2E_Index
+		cmpi.b	#1,obAnim(a0)		; is the eggman monitor?
+		beq.s	@flag			; if yes, branch
 		cmpi.b	#8,obAnim(a0)		; is the P-monitor?
 		bne.s	@conty			; if not, branch
-		move.b	#1,($FFFFFF73).w	; re-enable spindash ability
+@flag:		move.b	#1,($FFFFFF73).w	; re-enable spindash ability
 
 @conty:
 		tst.b	$3F(a0)			; was flag set?
@@ -15143,6 +15138,7 @@ loc_BDD6:
 
 		move.b	#$DB,d0			; play epic explosion sound
 		jsr	PlaySound_Special
+		jsr	WhiteFlash2
 
 		jsr	SingleObjLoad
 		bne.s	@endboom
@@ -15150,6 +15146,7 @@ loc_BDD6:
 		move.w	obX(a0),obX(a1)
 		move.w	obY(a0),obY(a1)
 		move.b	#1,$31(a1)	; mute explosion sound (to not override the epic one)
+
 
 		cmpi.w	#$502,($FFFFFE10).w	; is this FP specifically?
 		bne.s	@endboom		; if not, branch
@@ -23052,30 +23049,37 @@ Obj5E_Spark:				; XREF: Obj5E_Index
 Obj5E_Shrapnel:				; XREF: Obj5E_Index
 		bsr.w	Obj5E_BonusSetup
 
-		cmpi.w	#$302,($FFFFFE10).w
-		bne.s	@1
+		cmpi.w	#$302,($FFFFFE10).w	; are we in SAP?
+		bne.s	@updateshrap		; if not, branch
+
+		; cut off lifetime support for the shrapnel in the zigzag section
+		cmpi.w	#$500,obY(a0)
+		blo.s	@chkp
+		move.b	#0,$30(a0)
+
+@chkp:
 		cmpi.w	#$1400,obX(a0)
-		blo.s	@1
+		blo.s	@updateshrap
 		cmpi.w	#$1500,obX(a0)
-		bhs.s	@1
-		clr.w	obVelX(a0)
+		bhs.s	@updateshrap
+		clr.w	obVelX(a0)		; stop shrapnel in the P monitor section
 		addi.w	#$38,obVelY(a0)
-@1:
+
+@updateshrap:
 		bsr.w	SpeedToPos
 		lea	(Ani_obj5E).l,a1
 		jsr	AnimateSprite
 
-		tst.b	$30(a0)
-		bmi.s	@0
-		subq.b	#1,$30(a0)
+		tst.b	$30(a0)			; is lifetime extension still on?
+		bmi.s	@chkrender		; if not, branch
+		subq.b	#1,$30(a0)		; sub 1 from lifetime extension
 
-@0
+@chkrender:
 		tst.b	obRender(a0)		; is shrapnel still on screen?
 		bmi.w	Obj5E_Display		; if yes, render
-		tst.b	$30(a0)
-		bpl.w	DisplaySprite		; allow to stay on screen for some time
-
-		bra.w	Obj5E_Delete
+		tst.b	$30(a0)			; is lifetime extension still on?
+		bpl.w	Obj5E_Render		; if yes, render anyway
+		bra.w	Obj5E_Delete		; otherwise, delete old offscreen shrapnel
 
 ; ===========================================================================
 ; ===========================================================================
@@ -23097,7 +23101,6 @@ Obj5E_Display:
 		rts
 
 Obj5E_Render:
-
 		jmp	DisplaySprite
 ; ---------------------------------------------------------------------------
 Obj5E_Delete:
@@ -26090,7 +26093,7 @@ UberhubEasteregg:
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Object 07 - ok cool (used to be the old cropped screen sprites)
+; Object 07 - ok cool. (used to be the old cropped screen sprites)
 ; ---------------------------------------------------------------------------
 
 Obj07:
@@ -26105,7 +26108,6 @@ Obj07_Index:	dc.w Obj07_Init-Obj07_Index
 
 Obj07_Init:
 		addq.b	#2,obRoutine(a0)
-		move.w	#$9600/$20,obGfx(a0)
 		move.l	#Map_Obj07,obMap(a0)
 		move.b	#$94,obRender(a0)
 		move.b	#$20,obActWid(a0)
@@ -26118,10 +26120,37 @@ Obj07_Init:
 		moveq	#0,d0
 		move.b	obSubtype(a0),d0
 		lsl.w	#4,d0
-		move.w	d0,$34(a0)		
+		move.w	d0,$34(a0)
+
+		; gfx setup (wildly different per level)
+		move.w	($FFFFFE10).w,d0
+		move.w	#$9600/$20,obGfx(a0)
+		cmpi.w	#$200,d0
+		bne.s	@notrp
+		move.w	#$6A00/$20,obGfx(a0)
+@notrp:		cmpi.w	#$101,d0
+		bne.s	@notlp
+		move.w	#$9800/$20,obGfx(a0)
+@notlp:		cmpi.w	#$302,d0
+		bne.s	Obj07_Animate
+		move.w	#$6600/$20,obGfx(a0)
 ; ---------------------------------------------------------------------------
 
 Obj07_Animate:
+		move.w	obX(a0),d0
+		andi.w	#$FF80,d0
+		move.w	($FFFFF700).w,d1
+		subi.w	#$80,d1
+		andi.w	#$FF80,d1
+		sub.w	d1,d0
+		cmpi.w	#$280,d0
+		bhi.w	DeleteObject
+
+		bsr	Obj07_CheckVisible
+		bne.s	@dodisplay
+		rts
+
+@dodisplay:
 		move.w	($FFFFFE04).w,d0
 		add.w	d0,d0
 		add.w	$34(a0),d0
@@ -26130,10 +26159,47 @@ Obj07_Animate:
 		add.w	$32(a0),d0
 		move.w	d0,obY(a0)
 
-		jmp	MarkObjGone
+		jmp	DisplaySprite
+; ===========================================================================
+
+Obj07_CheckVisible:
+		move.w	($FFFFFE10).w,d0	; get level ID
+		cmpi.w	#$000,d0		; are we in NHP?
+		beq.s	@yes			; if yes, always display
+		cmpi.w	#$002,d0		; are we in GHP?
+		bne.s	@notghp			; if not, branch
+		cmpi.b	#4,($FFFFFE30).w	; did we hit the fourth checkpoint yet?
+		beq.s	@yes			; if yes, swag
+		bra.s	@no			; not swag
+@notghp:
+		cmpi.w	#$200,d0		; are we in RP?
+		bne.s	@notrp			; if not, branch
+		tst.b	($FFFFFF73).w		; P monitor broken?
+		bne.s	@yes			; if yes, swag
+		bra.s	@no			; not swag
+@notrp:
+		cmpi.w	#$101,d0		; are we in LP?
+		bne.s	@notlp			; if not, branch
+		tst.b	($FFFFFF73).w		; eggman monitor broken?
+		bne.s	@yes			; lol
+		bra.s	@no			; not swag
+@notlp:
+		cmpi.w	#$302,d0		; are we in SAP?
+		bne.s	@notsap			; if not, branch
+		tst.b	($FFFFFFE1).w		; P monitor broken?
+		bne.s	@yes			; swag
+		bra.s	@no			; not swag
+@notsap:
+		bra.s	@no			; fallback
+		
+; ---------------------------------------------------------------------------
+@yes:		moveq	#-1,d0
+		rts
+@no:		moveq	#0,d0
+		rts
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
-; ---------------------------------------------------------------------------
+
 Map_Obj07:
 		include	"_maps\okcool.asm"
 
@@ -27802,9 +27868,7 @@ JD_Move:
 JD_NoA:
 		move.w	d0,obVelX(a0)		; move sonic forward (X-velocity)
 		clr.w	obVelY(a0)		; clear Y-velocity to move sonic directly down
-		
-		cmpi.b	#$1,($FFFFFE10).w	; is level LZ?
-		beq.s	JD_End			; if yes, branch
+
 		bsr.s	Sonic_HomingAttack	; check if homing attack is possible
 
 JD_End:
@@ -27855,7 +27919,9 @@ SH_EnemyLoop:
 SH_NoBuzz:
 		cmpi.b	#$26,(a1)		; was selected object a monitor?
 		bne.s	SH_NoMonitor		; if not, branch
-		cmpi.b	#4,obRoutine(a1)		; is monitor being broken or already broken?
+		cmpi.b	#$1,($FFFFFE10).w	; is level LZ?
+		beq.w	SH_NoEnemy		; if yes, branch
+		cmpi.b	#4,obRoutine(a1)	; is monitor being broken or already broken?
 		blt.s	SH_NoMonitor		; if not, branch
 		bra.s	SH_NoEnemy		; otherwise, skip object
 
@@ -27941,7 +28007,7 @@ SH_Return2:
 ; -------------------------------------------------------------------------------
 
 SH_Objects:
-	dc.b	$1F, $22, $26, $2B, $40, $50, $55
+	dc.b	$1F, $22, $26, $2B, $2C, $40, $50, $55
 	dc.b	$FF	; this $FF is the end of list
 	even
 ; -------------------------------------------------------------------------------
@@ -28058,7 +28124,7 @@ SPO_SlowPeelout:
 
 SPO_FastPeelout:
 		moveq	#0,d1			; clear d1
-		move.w	#$DCC,d1		; set fast peelout speed
+		move.w	#$F00,d1		; set fast peelout speed
 
 SPO_ChkUW:
 		btst	#6,obStatus(a0)		; is sonic underwater?
@@ -28141,7 +28207,7 @@ Spdsh_NotMZ:
 		cmpi.b	#8,obAnim(a0)		; is anim duck
 		bne.s	locret2_1AC8C		; if not, return
 		move.b	($FFFFF603).w,d0	; read controller
-		andi.b	#$70,d0			; pressing A/B/C ?
+		andi.w	#$70,d0			; pressing A/B/C ?
 		beq.w	locret2_1AC8C		; if not, return
 		move.b	#$1F,obAnim(a0)		; set spindash anim (9 in s2)
 		move.w	#$D1,d0			; spin sound ($E0 in s2)
@@ -28233,7 +28299,7 @@ loc2_1AD30:				; If still charging the dash...
 
 loc2_1AD48:
 		move.b	($FFFFF603).w,d0	; read controller
-		andi.b	#$30,d0			; pressing B/C?
+		andi.w	#$70,d0			; pressing A/B/C?
 		beq.w	loc2_1AD78		; if not, branch
 		move.b	#$1F,obAnim(a0)		; reset spdsh animation
 		move.w	#$D1,d0			; was $E0 in sonic 2
@@ -39635,7 +39701,10 @@ locret_1AEF2:
 
 Touch_Monitor:
 		tst.w	obVelY(a0)		; is Sonic moving upwards?
-		bpl.s	loc_1AF1E		; if not, branch
+		bpl.s	Touch_MonitorTop	; if not, branch
+		tst.b	($FFFFFFEB).w		; is homing flag set?
+		bne.s	Touch_MonitorTop	; if yes, treat as touching from top
+
 		move.w	obY(a0),d0
 		subi.w	#$10,d0
 		cmp.w	obY(a1),d0
@@ -39649,7 +39718,7 @@ Touch_Monitor:
 	
 ; ===========================================================================
 
-loc_1AF1E:
+Touch_MonitorTop:
 		tst.b	($FFFFFF77).w		; is antigrav enabled?
 		bne.s	@nobounce		; if yes, break open with no bounce
 		cmpi.b	#2,obAnim(a0)		; is Sonic rolling/jumping?
@@ -41707,6 +41776,13 @@ TouchGoalBlock:
 		; restoration for Special Place
 		clr.w	($FFFFF780).w		; clear rotation
 		clr.b	($FFFFFF9F).w		; make R block usable again
+
+		tst.b	($FFFFFFD6).w		; has W block already been touched?
+		beq.s	@notw			; if not, branch
+		move.b	#0,($FF11AC).l		; remove blocks next to first R blocks
+		move.b	#0,($FF122C).l		; remove blocks next to first R blocks
+
+@notw:
 		move.b	#$2F,($FF1DA7).l	; restore yellow glass block
 		frantic				; are we in frantic?
 		bne.s	TouchGoal_PlaySound	; skip the pink glass block
@@ -41745,7 +41821,7 @@ TouchGoal_PlaySound:
 
 Obj09_ChkBumper:
 		cmpi.b	#$25,d0		; is the item a	bumper?
-		bne.s	Obj09_ChkW
+		bne.w	Obj09_ChkW
 Obj09_DoBumper:
 		move.l	$32(a0),d1
 		subi.l	#$FF0001,d1
@@ -41769,6 +41845,15 @@ Obj09_DoBumper:
 		move.w	d0,obVelY(a0)
 		bset	#1,obStatus(a0)
 		bclr	#7,obStatus(a0)	; clear "Sonic has jumped" flag
+
+		tst.b	($FFFFFFBF).w		; Unreal Place floating challenge enabled?
+		beq.s	@notnonstopinhuman	; if not, branch
+		btst	#4,($FFFFFF92).w	; is nonstop inhuman enabled?
+		beq.s	@notnonstopinhuman	; if not, branch
+		clr.w	obVelX(a0)		; clear Sonic's X velocity
+		clr.w	obInertia(a0)		; clear Sonic's inertia
+
+@notnonstopinhuman:
 		bsr	SS_RemoveCollectedItem
 		bne.s	Obj09_BumpSnd
 		move.b	#2,(a2)
@@ -41784,11 +41869,14 @@ Obj09_BumpSnd:
 Obj09_ChkW:
 		cmpi.b	#$26,d0 	; is the item a	W-block?
 		bne.s	Obj09_UPblock
-		bsr	SS_RemoveCollectedItem
-		cmpi.b	#2,($FFFFFFD6).w
-		beq.s	Obj09_ChkW_NoChange
+		cmpi.b	#2,($FFFFFFD6).w	; has W block already been touched?
+		beq.s	Obj09_ChkW_NoChange	; if yes, branch
 		move.b	#1,($FFFFFFD6).w	; change every goal block into a normal one
-		move.w	#$C3,d0		; play giant ring sound
+		
+		move.w	obX(a0),($FFFFFF86).w	; save Sonic's X-position
+		move.w	obY(a0),($FFFFFF88).w	; save Sonic's Y-position
+		
+		move.w	#$C3,d0			; play giant ring sound
 		jsr	(PlaySound_Special).l
 
 Obj09_ChkW_NoChange:
@@ -44113,6 +44201,8 @@ PLC_LZ:
 		dc.w $7980
 		dc.l ArtKospM_HardPS		; hard part skipper
 		dc.w $94C0
+		dc.l ArtKospM_OkCool		; ok cool
+		dc.w $9800
 		dc.w -1
 
 PLC_LZ2:
@@ -44150,6 +44240,8 @@ PLC_MZ:
 		dc.w $6000
 	;	dc.l ArtKospM_MzFire		; fireballs
 	;	dc.w $68A0
+		dc.l ArtKospM_OkCool		; ok cool
+		dc.w $6A00
 		dc.l ArtKospM_Swing		; swinging platform
 		dc.w $7000
 		dc.l ArtKospM_MzGlass	; green	glassy block
@@ -44200,6 +44292,8 @@ PLC_SLZ:
 PLC_SLZ2:
 		dc.l ArtKospM_WarningSign	; yellow warning sign
 		dc.w $6400
+		dc.l ArtKospM_OkCool		; ok cool
+		dc.w $6600
 		dc.l ArtKospM_Fan		; fan
 		dc.w $7400
 		dc.l ArtKospM_Pylon		; foreground pylon

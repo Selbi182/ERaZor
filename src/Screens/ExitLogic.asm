@@ -261,12 +261,14 @@ RunChapter:
 ; ===========================================================================
 
 RunStory:
-		jsr	SRAM_SaveNow		; save our progress now
-
-		move.b	(StoryTextID).w,d0	; copy story ID to d0 (needed for Exit_StoryScreen)
 		btst	#1,(OptionsBits).w	; is "Skip Story Screens" enabled?
-		beq.w	Exit_StoryScreen	; if yes, well, skip it
+		bne.s	RunStory_Force		; if not, run story as usual
+		jsr	SRAM_SaveNow		; save our progress now
+		move.b	(StoryTextID).w,d0	; copy story ID to d0 (needed for Exit_StoryScreen)
+		bra.w	Exit_StoryScreen	; auto-skip story screen
 
+RunStory_Force:
+		jsr	SRAM_SaveNow		; save our progress now
 		move.b	#$20,($FFFFF600).w	; start Story Screen
 		rts				; return
 
@@ -293,14 +295,13 @@ Exit_UberhubRing:
 		add.b	d0,d0				; double ID to word
 		beq.w	ReturnToUberhub			; if it's 0, it's an invalid ring
 		bhs.s	@notmisc			; if it's 1-7F, branch
-		addi.w	#(GRing_Misc-GRing_Exits)-2,d0	; adjust for misc rings table
+		addi.w	#GRing_Misc-GRing_Exits,d0	; adjust for misc rings table
 @notmisc:
 		move.w	GRing_Exits(pc,d0.w),d0		; load offset to d0
 		jmp	GRing_Exits(pc,d0.w)		; jumpt to respective ring exit logic
 
 ; ===========================================================================
 GRing_Exits:	dc.w	ReturnToUberhub-GRing_Exits	; invalid ring
-
 		dc.w	HubRing_NHP-GRing_Exits
 		dc.w	HubRing_GHP-GRing_Exits
 		dc.w	HubRing_SP-GRing_Exits
@@ -311,7 +312,8 @@ GRing_Exits:	dc.w	ReturnToUberhub-GRing_Exits	; invalid ring
 		dc.w	HubRing_SAP-GRing_Exits
 		dc.w	HubRing_FP-GRing_Exits		
 ; ---------------------------------------------------------------------------
-GRing_Misc:	dc.w	HubRing_Options-GRing_Exits ; <-- notice the offsets!
+GRing_Misc:	dc.w	ReturnToUberhub-GRing_Exits	; invalid ring
+		dc.w	HubRing_Options-GRing_Exits ; <-- notice the offsets!
 		dc.w	HubRing_Tutorial-GRing_Exits
 		dc.w	HubRing_Blackout-GRing_Exits
 		dc.w	HubRing_IntroStart-GRing_Exits
@@ -467,7 +469,7 @@ GTA_FP:		moveq	#6,d0			; unlock seventh door (door to the credits)
 
 GTA_Blackout:	clr.b	($FFFFFF5F).w		; clear blackout special stage flag
 		move.b	#9,(StoryTextID).w	; set number for text to 9 (final congratulations)
-		bra.w	RunStory
+		bra.w	RunStory_Force		; show story screen even if they are disabled
 
 
 ; ===========================================================================

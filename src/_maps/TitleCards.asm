@@ -559,12 +559,12 @@ TTL_Act_1:
 		dc.b	-12
 		dc.b	$02
 		dc.w	$0057
-		dc.b	12
+		dc.b	9
 
 		dc.b	-12
 		dc.b	$06
 		dc.w	$0066
-		dc.b	20
+		dc.b	19
 
 		dc.b	-12
 		dc.b	$02

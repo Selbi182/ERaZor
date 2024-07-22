@@ -71,19 +71,25 @@ CreditsScreen:
 
 		move.b	#0,(Credits_Page).w			; set current page ID to 0
 
-		move.b	#$8B,($FFFFD000).w			; load starfield generator
 		move.w	#Credits_ScrollTime,(Credits_Scroll).w	; pretend we're at the end of a previous page
 		bsr	CS_ScrollMappings			; pre-center first page
 		move.w	#0,(Credits_Scroll).w			; clear scroll again
 
 		; opening delay to sync the screen to the music and prespawn some stars
 		move.w	#StartDelay,d0
-	@delay:	move.b	#4,VBlankRoutine
+	@delay:
+		move.b	#4,VBlankRoutine
 		jsr	DelayProgram
 		move.l	d0,-(sp)
 		jsr	ObjectsLoad
 		jsr	BuildSprites
 		move.l	(sp)+,d0
+
+		cmpi.w	#StartDelay-30,d0		; wait a bit before loading the starfield generator...
+		bne.s	@loop				; ...to make sure stars begin at the center
+		move.b	#$8B,($FFFFD000).w		; load starfield generator
+		move.b	#0,($FFFFD000+obRoutine).w	; set to emitter
+	@loop:
 		dbf	d0,@delay
 
 

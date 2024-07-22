@@ -67,10 +67,8 @@ GameplayStyleScreen:
 		display_enable
 		jsr	Pal_FadeTo			; fade in
 
-		jsr	SingleObjLoad
-		bne.s 	GSS_MainLoop			; load star object
-		move.b	#$8B,0(a1)
-		move.b	#0,obRoutine(a1)
+		move.b	#$8B,($FFFFD000).w		; load star object
+		move.b	#0,($FFFFD000+obRoutine).w
 
 		bra.s	GSS_MainLoop
 

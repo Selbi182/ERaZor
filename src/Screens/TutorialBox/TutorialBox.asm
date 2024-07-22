@@ -1172,15 +1172,14 @@ Hint_End_BlackoutTeaser:
 	boxtxt_pause
 
 	dc.b	_frantic
-	boxtxt	"    frantic mode"
+	boxtxt	"  WAIT A MINUTE..."
 	boxtxt_pause
-	boxtxt	"        I..."
-	dc.b	_pause
-	boxtxt	"  HAD REALLY HOPED"
-	boxtxt	" THAT THIS HEADLINE"
-	boxtxt	" WOULD NOT SHOW UP."
+	boxtxt	" YOU'RE IN frantic?"
 	boxtxt_pause
-	boxtxt	"     GOOD LUCK."
+	boxtxt	"  THEN FORGET WHAT"
+	boxtxt	"   I'VE JUST SAID."
+	boxtxt_pause
+	boxtxt	"   YOU ARE READY."
 	boxtxt_end
 
 ; ---------------------------------------------------------------

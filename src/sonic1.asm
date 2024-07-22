@@ -6615,7 +6615,12 @@ Resize_SLZ2end:
 Resize_SLZ3:
 		move.w	#$620,($FFFFF726).w
 		move.w	#$A60,($FFFFF728).w
+		
+		frantic				; are we in frantic?
+		beq.s	@sapending		; if not, branch
+		rts				; "training wheels don't exist."
 
+@sapending:
 		cmpi.w	#$2080,($FFFFD008).w
 		bcs.s	@cont3
 		bra.w	@contret
@@ -6664,7 +6669,7 @@ Resize_SLZ3:
 		tst.w	($FFFFFFB6).w
 		bmi.s	@cont5x
 		move.w	#-8,($FFFFFFB6).w
-
+		
 @cont5x:
 		move.w	($FFFFFFB6).w,($FFFFD012).w
 		move.b	#2,($FFFFD01C).w
@@ -8099,7 +8104,7 @@ Obj18_NotLZ:
 		bne.w	Obj18_NotSYZ
 		move.l	#Map_obj18a,obMap(a0) ; SYZ specific code
 		move.w	#$4000+($A660/$20),obGfx(a0)
-		move.b	#$B0,obActWid(a0)	; make platforms SUPER wide for easy access
+		move.b	#$90,obActWid(a0)	; make platforms SUPER wide for easy access
 		addq.w	#1,obY(a0)	; fix vertical pixel offset
 
 		; glowing yellow arrows when stepping on platform in Uberhub
@@ -8261,6 +8266,7 @@ Obj18_NoMovingPlatforms:
 		move.b	#1,obFrame(a0)		; set checkpoint flag
 		move.b	#$A1,d0			; play checkpoint sound
 		jsr	PlaySound_Special
+		move.b	#0,($FFFFF7CC).w	; unlock controls
 
 @notfirstcheckpoint:
 		move.w	obX(a0),($FFFFFF86).w	; save Sonic's X-position
@@ -9007,7 +9013,7 @@ Map_obj53:
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Object 1C - scenery (GHZ bridge stump, SLZ lava thrower)
+; Object 1C - scenery (GHZ bridge stump, SAP A and C buttons)
 ; ---------------------------------------------------------------------------
 
 Obj1C:					; XREF: Obj_Index
@@ -9034,7 +9040,22 @@ Obj1C_Main:				; XREF: Obj1C_Index
 		move.b	(a1)+,obPriority(a0)
 		move.b	(a1)+,obColType(a0)
 
+		; used for the sway
+		move.w	obY(a0),$32(a0)
+
 Obj1C_ChkDel:				; XREF: Obj1C_Index
+		; sway
+		tst.b	($FFFFFE10).w	; are we in GHZ?
+		beq.s	@chkdel		; if yes, no sway
+		move.w	($FFFFFE0E).w,d0
+		add.w	obX(a0),d0
+		add.w	d0,d0
+		jsr	(CalcSine).l
+		asr.w	#6,d0
+		add.w	$32(a0),d0
+		move.w	d0,obY(a0)
+
+@chkdel:
 		move.w	obX(a0),d0
 		andi.w	#$FF80,d0
 		move.w	($FFFFF700).w,d1
@@ -9049,10 +9070,10 @@ Obj1C_ChkDel:				; XREF: Obj1C_Index
 ; Variables for	object $1C are stored in an array
 ; ---------------------------------------------------------------------------
 Obj1C_Var:	dc.l Map_obj1C		; mappings address
-		dc.w $44D8		; VRAM setting
+		dc.w $6680/$20		; VRAM setting
 		dc.b 0,	8, 2, 0		; frame, width,	priority, collision response
 		dc.l Map_obj1C
-		dc.w $44D8
+		dc.w ($6680+$80)/$20
 		dc.b 0,	8, 2, 0
 		dc.l Map_obj1C
 		dc.w $44D8
@@ -10574,11 +10595,18 @@ Obj1F_BossDefeated:
 		clr.b	($FFFFFFEB).w
 		clr.l	($FFFFF602).w			; clear any remaining button presses
 
-		tst.b	($FFFFFFD5).w
-		bne.s	@0
+		tst.b	($FFFFFFD5).w			; first time this routine gets run?
+		bne.s	@0				; if not, branch
 		move.b	#1,($FFFFFFD5).w		; set flag 3
 		move.b	#$E0,d0				; fade out music
 		jsr	PlaySound			; play it
+
+		bset	#0,($FFFFD022).w
+		move.w	($FFFFD008).w,d0
+		cmp.w	obX(a0),d0
+		bcc.s	@0
+		bclr	#0,($FFFFD022).w
+
 @0:
 		clr.w	obVelX(a0)			; clear X-speed
 		cmpi.b	#8,obAnim(a0)			; is the correct animation set?
@@ -12841,39 +12869,13 @@ Obj2E_Start:			; XREF: Obj2E_Move
 		addq.b	#2,obRoutine(a0)
 		move.w	#29,obTimeFrame(a0)
 		move.b	obAnim(a0),d0
-; ===========================================================================		
-		
-Obj2E_ChkRandom:
-		cmpi.b	#0,d0		; is this the random monitor?
-		bne.s	Obj2E_ChkEggman	; if not, branch
-		bra.s	Obj2e_ChkEggman
-		jsr	RandomNumber_Next	; create a random number
-		andi.b	#8,d0		; change the max of the random number to 8
-		cmpi.b	#1,d0		; is the number "1"?
-		beq.w	Obj2E_ChkEggman ; if yes, branch to eggman
-		cmpi.b	#2,d0		; is the number "2"?
-		beq.w	Obj2E_ChkSonic  ; if yes, branch to extra life
-		cmpi.b	#3,d0		; is the number "3"?
-		beq.w	Obj2E_ChkShoes	; if yes, branch to speed shoes
-		cmpi.b	#4,d0		; is the number "4"?
-		beq.w	Obj2E_ChkShield ; if yes, branch to shield
-		cmpi.b	#5,d0		; is the number "5"?
-		beq.w	Obj2E_ChkInvinc ; if yes, branch to invincibility
-		cmpi.b	#6,d0		; is the number "6"?
-		beq.w	Obj2E_ChkRings  ; if yes, branch to super ring
-		cmpi.b	#7,d0		; is the number "7"?
-		beq.w	Obj2E_ChkS	; if yes, branch to S
-		cmpi.b	#8,d0		; is the number "8"?
-		beq.w	Obj2E_ChkP; if yes, branch to goggles
-		rts			; if nothing of this, rts
-; ===========================================================================		
-		
+; ---------------------------------------------------------------------------
+
 Obj2E_ChkEggman:
 		cmpi.b	#1,d0		; does monitor contain Eggman?
 		bne.s	Obj2E_ChkSonic
 		lea	($FFFFD000).w,a0
-		clr.b	($FFFFFFE7).w	; disable inhuman mode
-		jmp	KillSonic	; kill Sonic lmao
+		jmp	KillSonic	; kill Sonic lmao (except in inhuman mode)
 ; ===========================================================================
 
 Obj2E_ChkSonic: ; =P monitors
@@ -15105,6 +15107,9 @@ loc_BDD6:
 		tst.b	($FFFFFF77).w		; is antigrav already enabled?
 		bne.w	@Explode		; if yes, branch
 		move.b	#1,($FFFFFF77).w	; enable antigrav ability
+		move.b	#1,($FFFFF7CC).w	; lock controls
+		clr.w	($FFFFD010).w		; shoot sonic straight up
+		clr.l	($FFFFF602).w		; clear any remaining button presses
 		move.b	#$96,d0			; play the sick music
 		jsr	PlaySound		; hell yea
 		move.w	#-$1800,d1		; set first launch speed (needs to be different cause of the alternate gravity)
@@ -15140,6 +15145,9 @@ loc_BDD6:
 		jsr	PlaySound_Special
 		jsr	WhiteFlash2
 
+		move.w	($FFFFD108).w,d0
+		cmp.w	($FFFFD130).w,d0 ; has title card sequence finished?
+		bne.s	@skipexplosions	; if not, branch
 		jsr	SingleObjLoad
 		bne.s	@endboom
 		move.b	#$3F,0(a1)	; load explosion object
@@ -15147,7 +15155,7 @@ loc_BDD6:
 		move.w	obY(a0),obY(a1)
 		move.b	#1,$31(a1)	; mute explosion sound (to not override the epic one)
 
-
+@skipexplosions:
 		cmpi.w	#$502,($FFFFFE10).w	; is this FP specifically?
 		bne.s	@endboom		; if not, branch
 		jmp	DeleteObject		; only boom once
@@ -18905,16 +18913,17 @@ Obj12_CheckGameState:
 @blackoutnotbeaten:
 		jsr	Check_BaseGameBeaten_Frantic	; was the base game beaten in frantic?
 		bne.s	@showred			; if yes, show blinky
-		jsr	Check_BaseGameBeaten_Casual	; was the base game beaten in casual?
-		bne.s	@showgray			; if yes, show gray star
-
 		moveq	#6,d0
 		jsr	Check_LevelBeaten_Frantic	; has the player just beaten Finalor in frantic?
 		beq.s	@notfrantic			; if not, branch
 @showred:	move.b	#1,$30(a0)			; use frantic frame
 		move.w	#EmblemGfx_Frantic,obGfx(a0)
 		bra.s	Obj12_Init			; show star
+
 @notfrantic:
+		jsr	Check_BaseGameBeaten_Casual	; was the base game beaten in casual?
+		bne.s	@showgray			; if yes, show gray star
+		moveq	#6,d0
 		jsr	Check_LevelBeaten		; has the player just beaten Finalor in casual?
 		beq.w	DeleteObject			; if not, don't show star
 @showgray:	move.b	#0,$30(a0)			; use casual frame
@@ -19208,6 +19217,8 @@ Obj0D_Sparkle:
 		move.b	#4,obRender(a1)
 		move.b	#2,obPriority(a1)
 		move.b	#8,obActWid(a1)
+		move.b	#0,obAnim(a1)
+		move.b	#0,obFrame(a1)
 
 locret_EC42:
 		rts	
@@ -23572,14 +23583,15 @@ Obj5F_BossDefeatedmain:
 		move.w	#180,($FFFFFF78).w
 		move.w	#80,($FFFFFF7A).w
 
+		clr.w	($FFFFFF8C).w
+		clr.w	($FFFFFF8E).w
+		clr.b	($FFFFFFEB).w
+
 		bset	#0,($FFFFD022).w
 		move.w	($FFFFD008).w,d0
 		cmp.w	obX(a0),d0
 		bcc.s	@cont
 		bclr	#0,($FFFFD022).w
-		clr.w	($FFFFFF8C).w
-		clr.w	($FFFFFF8E).w
-		clr.b	($FFFFFFEB).w
 
 @cont:
 		bra.w	Obj5F_ShowBomb
@@ -28888,8 +28900,8 @@ SAP_HitWall:
 ; ---------------------------------------------------------------------------
 
 @resetstuff:
-		move.w	#$0C40,d0			; set default respawn X position
-		move.w	#$0470,d1			; set default respawn Y position
+		move.w	#$0CC0,d0			; set default respawn X position
+		move.w	#$0300,d1			; set default respawn Y position
 		tst.w	($FFFFFF86).w			; at least one checkpoint touched yet?
 		beq.s	@nocheckpoint			; if not, branch
 		move.w	($FFFFFF86).w,d0		; restore saved X-position for Sonic
@@ -44294,6 +44306,8 @@ PLC_SLZ2:
 		dc.w $6400
 		dc.l ArtKospM_OkCool		; ok cool
 		dc.w $6600
+		dc.l ArtKospM_ACIcons		; A and C icons
+		dc.w $6680
 		dc.l ArtKospM_Fan		; fan
 		dc.w $7400
 		dc.l ArtKospM_Pylon		; foreground pylon
@@ -44700,6 +44714,8 @@ ArtKospM_Pylon:	incbin	artkosp\slzpylon.kospm	; SLZ foreground pylon / girders
 ArtKospM_SLZPlatform:	incbin	artkosp\SLZPlatform.kospm	; SLZ platform
 		even
 ArtKospM_WarningSign:	incbin	artkosp\SLZWarningSign.kospm	; warning sign for bottomless pits
+		even
+ArtKospM_ACIcons:	incbin	artkosp\SLZACIcons.kospm	; A and C icons
 		even
 ArtKospM_GiantBomb:	incbin	artkosp\GiantBomb.kospm	; Giant Bomb
 		even

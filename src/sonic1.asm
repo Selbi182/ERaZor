@@ -5225,10 +5225,12 @@ SS_BGLoad:				; XREF: SpecialStage
 
 
 PalCycle_SS:				; XREF: loc_DA6; SpecialStage
-		tst.w	($FFFFF63A).w
-		bne.s	locret_49E6
-		subq.w	#1,($FFFFF79C).w
-		bpl.s	locret_49E6
+		tst.w	($FFFFF63A).w		; is game paused?
+		bne.w	locret_49E6		; if yes, branch
+
+		subq.w	#1,($FFFFF79C).w	; sub 1 from remaining time before changing pal
+		bpl.w	locret_49E6		; if time remains, branch
+
 		lea	($C00004).l,a6
 		move.w	($FFFFF79A).w,d0
 		addq.w	#1,($FFFFF79A).w
@@ -5239,6 +5241,9 @@ PalCycle_SS:				; XREF: loc_DA6; SpecialStage
 		move.b	(a0)+,d0
 		bpl.s	loc_4992
 		move.w	#$1FF,d0
+		frantic
+		beq.s	loc_4992
+		move.w	#$FF,d0
 
 loc_4992:
 		move.w	d0,($FFFFF79C).w
@@ -5308,7 +5313,6 @@ loc_4A2E:
 
 ; ===========================================================================
 byte_4A3C:	dc.b 3,	0, 7, $92, 3, 0, 7, $90, 3, 0, 7, $8E, 3, 0, 7,	$8C
-					; XREF: PalCycle_SS
 		dc.b 3,	0, 7, $8B, 3, 0, 7, $80, 3, 0, 7, $82, 3, 0, 7,	$84
 		dc.b 3,	0, 7, $86, 3, 0, 7, $88, 7, 8, 7, 0, 7,	$A, 7, $C
 		dc.b $FF, $C, 7, $18, $FF, $C, 7, $18, 7, $A, 7, $C, 7,	8, 7, 0
@@ -5318,7 +5322,6 @@ byte_4A3C:	dc.b 3,	0, 7, $92, 3, 0, 7, $90, 3, 0, 7, $8E, 3, 0, 7,	$8C
 		dc.b $FF, 6, 6,	$3C, $FF, 6, 6,	$3C, 7,	4, 6, $30, 7, 2, 6, $24
 		even
 byte_4ABC:	dc.b $10, 1, $18, 0, $18, 1, $20, 0, $20, 1, $28, 0, $28, 1
-					; XREF: PalCycle_SS
 		even
 
 Pal_SSCyc1:	incbin	palette\c_ss_1.bin
@@ -9070,10 +9073,10 @@ Obj1C_ChkDel:				; XREF: Obj1C_Index
 ; Variables for	object $1C are stored in an array
 ; ---------------------------------------------------------------------------
 Obj1C_Var:	dc.l Map_obj1C		; mappings address
-		dc.w $6680/$20		; VRAM setting
+		dc.w $6880/$20		; VRAM setting
 		dc.b 0,	8, 2, 0		; frame, width,	priority, collision response
 		dc.l Map_obj1C
-		dc.w ($6680+$80)/$20
+		dc.w ($6880+$80)/$20
 		dc.b 0,	8, 2, 0
 		dc.l Map_obj1C
 		dc.w $44D8
@@ -27727,9 +27730,14 @@ WF_BackupPal_Loop:
 		move.w	#$007F,d3		; set d3 to $7F (+1 for the first run)
 WF_MakeWhite_Loop:
 		move.w	(a1),d1			; get current color in palette
-		
+	
+		cmpi.b	#1,($FFFFFFD6).w	; is a W-block being touched in the special stage?
+		beq.s	@boost			; if yes, boost
+			
 		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
 		beq.s	@wfnotcinematic		; if not, branch
+
+@boost:
 		moveq	#7,d4			; bit boost (<-- just a bit, sure :V)
 		bra.w	@wfintensity		; branch
 
@@ -40317,18 +40325,20 @@ loc_1B2E4:
 @regular:
 		move.b	d0,$138(a1)		; controls the animations for goal blocks
 		
-		; only animate skull blocks while rotating
-		tst.b	($FFFFFF5F).w		; is this the blackout blackout special stage?
-		beq.s	@cont			; if not, branch
+		; skull blocks
+		tst.b	($FFFFFF5F).w		; is this the blackout special stage?
+		beq.s	@notblackout		; if not, branch
 		bclr	#0,$138(a1)		; normal skull icon
 		tst.b	($FFFFFFAE).w		; whiteflash in progress?
-		bne.s	@cont2			; if yes, branch
+		bne.s	@lightup		; if yes, branch
+		cmpi.b	#2,($FFFFFE57).w 	; are we in part 2?
+		bne.s	@notblackout		; if not, branch
 		move.b	($FFFFF602).w,d0	; get button presses
 		andi.b	#$C,d0			; is left/right	held?
-		beq.s	@cont			; if not, branch
-@cont2:
-		bset	#0,$138(a1)		; use lit-up skull icon
-@cont:
+		bne.s	@notblackout		; if not, branch
+@lightup:	bset	#0,$138(a1)		; use lit-up skull icon
+
+@notblackout:
 		subq.b	#1,($FFFFFEC6).w
 		bpl.s	loc_1B326
 		move.b	#4,($FFFFFEC6).w
@@ -40554,6 +40564,8 @@ locret_1B5CC:
 SS_AniRevData:	dc.b $2B, $31, $2B, $31, 0, 0
 ; ===========================================================================
 
+; screw animation of emerald sparks, this routine straight up controls the stage ending...
+; this was like finding a needle in a haystack
 SS_AniEmeraldSparks:			; XREF: SS_AniIndex
 		subq.b	#1,obGfx(a0)
 		bpl.s	locret_1B60C
@@ -40567,9 +40579,17 @@ SS_AniEmeraldSparks:			; XREF: SS_AniIndex
 		bne.s	locret_1B60C
 		clr.l	(a0)
 		clr.l	obMap(a0)
-		move.b	#4,($FFFFD024).w
-		move.w	#$A8,d0
-		jsr	(PlaySound_Special).l ;	play special stage GOAL	sound
+
+		move.b	#4,($FFFFD024).w	; set to Obj09_Exit
+
+		move.w	#$A8,d0			; play special stage GOAL sound
+		tst.b	($FFFFFF5F).w		; is this the blackout special stage?
+		beq.s	@playsound		; if not, branch
+		jsr	Set_BlackoutDone	; you have beaten the blackout challenge, congrats
+		jsr	SRAM_SaveNow		; save
+		move.w	#$91,d0			; play true ending music
+@playsound:
+		jsr	(PlaySound_Special).l
 
 locret_1B60C:
 		rts	
@@ -40628,11 +40648,11 @@ SS_Load:				; XREF: SpecialStage
 		tst.b	($FFFFFF5F).w		; is this the blackout special stage?
 		beq.s	@notblackout		; if not, branch
 
-		lea	(SS_Blackout_Regular).l,a0 ; load regular blackout layout
+		lea	(SS_Blackout_Part1).l,a0 ; load regular blackout layout
 		move.b	($FFFFF604).w,d0	; get button presses
 		cmpi.b	#$70,d0			; is exactly ABC held?
 		bne.s	SS_LoadLevel		; if not, branch
-		lea	(SS_Blackout_EasterEgg).l,a0 ; load easter egg blackout layout (you masochist)
+		lea	(SS_Blackout_Part2).l,a0 ; I guess this works as hard part skipper, meh
 		bra.s	SS_LoadLevel		; branch
 @notblackout:
 		lea	(SS_2_Casual).l,a0	; load casual Unreal Place layout
@@ -40975,7 +40995,7 @@ Obj09_ChkDebug:				; XREF: Obj09_Index
 
 Obj09_NoDebug:
 		cmpi.b	#1,($FFFFFFD6).w	; is a W-block being touched in the special stage?
-		bne.s	Obj09_NoW		; if yes, skip this routine
+		bne.s	Obj09_NoW		; if not, skip this routine
 		jsr	obj09_MakeGoalSolid	; go to solid making code
 
 Obj09_NoW:
@@ -41328,18 +41348,36 @@ locret_1BBDE:
 ; ===========================================================================
 
 Obj09_ExitStage:			; XREF: Obj09_Index
-		addi.w	#$40,($FFFFF782).w	; increase spinniness of stage
+		move.w	($FFFFF782).w,d0	; get current spinniness
+		addi.w	#$40,d0			; increase spinniness of stage
 
-		cmpi.w	#$1800,($FFFFF782).w
-		bne.s	loc_1BBF4
-		move.b	#$C,($FFFFF600).w
+		tst.b	($FFFFFF5F).w		; is this the blackout blackout special stage?
+		beq.s	@notblackout		; if not, branch
+		cmpi.w	#$700,d0		; reached $1800 spinniness?
+		bge.s	@notblackout		; if yes, stop slowing down
+		subi.w	#$38,d0			; make it slower to celebrate the victory
+@notblackout:
+		move.w	d0,($FFFFF782).w	; set new spinniness
+		
+		cmpi.w	#$1800,($FFFFF782).w	; reached $1800 spinniness?
+		blt.s	loc_1BBF4		; if not, branch
+		tst.b	($FFFFFF5F).w		; is this the blackout blackout special stage?
+		beq.s	@notblackout2		; if not, branch
+		move.b	($FFFFF600).w,d0
+		andi.w	#$F,d0
+		cmpi.w	#$C,d0
+		beq.s	@notblackout2
+		move.w	#$A8,d0			; play special stage GOAL sound
+		jsr	(PlaySound_Special).l
+@notblackout2:
+		move.b	#$C,($FFFFF600).w	; set game mode to level (this effectively starts the white fade-in)
 
 loc_1BBF4:
-		cmpi.w	#$3000,($FFFFF782).w
-		blt.s	loc_1BC12
+		cmpi.w	#$3000,($FFFFF782).w	; did we reach max spinniness?
+		blt.s	loc_1BC12		; if not, branch
 		move.w	#0,($FFFFF782).w
 		move.w	#$4000,($FFFFF780).w
-		addq.b	#2,obRoutine(a0)
+		addq.b	#2,obRoutine(a0)	; set to Obj09_Exit2 (this effectively ends the special stage)
 		move.w	#$3C,$38(a0)
 
 loc_1BC12:
@@ -41630,19 +41668,27 @@ Obj09_ChkEmer:
 		cmpi.b	#2,($FFFFFE57).w ; do you have all the emeralds?
 		bne.s	Obj09_EmerNotAll
 
+		; load part 2 of the blackout challenge
+		tst.b	($FFFFFF5F).w		; is this the blackout blackout special stage?
+		beq.s	Emershit		; if not, branch
+		move.w	obX(a0),($FFFFFF86).w	; save Sonic's X-position
+		move.w	obY(a0),($FFFFFF88).w	; save Sonic's Y-position
+		movem.l	a0-a2,-(sp)
+		jsr	WhiteFlash2
+		lea	(SS_Blackout_Part2).l,a0 ; load part 2 blackout layout
+		jsr	SS_LoadLevel
+		movem.l	(sp)+,a0-a2
+		move.b	#$DD,d0
+		jsr	(PlaySound).l
+		move.w	#$E2,d0
+		bra.s	Obj09_EmerPlaySound
+
 Emershit:
 		move.b	#1,($FFFFF7CC).w	; lock controls
 		move.w	#$8014,($C00004).l	; enable h-ints for the black bars
 
 		move.b	#5,(a2)			; this is important to end the stage
-		moveq	#$FFFFFF88,d0		; play regular special stage beaten jingle
-		tst.b	($FFFFFF5F).w		; is this the blackout blackout special stage?
-		beq.s	@cont			; if not, branch
-		jsr	Set_BlackoutDone	; you have beaten the blackout challenge, congrats
-		jsr	SRAM_SaveNow		; save
-		moveq	#$FFFFFF91,d0		; play true ending music
-
-@cont:
+		move.w	#$88,d0			; play special stage beaten jingle
 		bra.s	Obj09_EmerPlaySound
 
 Obj09_EmerNotAll:
@@ -41797,31 +41843,33 @@ TouchGoalBlock:
 @notw:
 		move.b	#$2F,($FF1DA7).l	; restore yellow glass block
 		frantic				; are we in frantic?
-		bne.s	TouchGoal_PlaySound	; skip the pink glass block
+		bne.w	TouchGoal_PlaySound	; skip the pink glass block
 		move.b	#$30,($FF1C28).l	; restore pink glass block
-		bra.s	TouchGoal_PlaySound
+		bra.w	TouchGoal_PlaySound
 
 TouchGoal_Unreal:
+		tst.b	($FFFFFF5F).w	; is this the blackout blackout special stage?
+		beq.s	@notblackout		; if not, branch
+		cmpi.b	#2,($FFFFFE57).w	; are we in part 2?
+		beq.s	@norestore		; if yes, branch
 		clr.b	($FFFFFE57).w		; clear emerald counter
 		move.b	#$3F,($FF11BD).l	; restore red emerald
 		move.b	#$40,($FF11C1).l	; restore grey emerald
 		move.b	#$3A,($FF1EC7).l	; reset ring to open glass blocks door
-		
-		tst.b	($FFFFFF5F).w	; is this the blackout blackout special stage?
-		beq.s	@notblackout		; if not, branch
 		move.b	#$2F,($FF24CA).l	; reset glass blocks
 		move.b	#$2F,($FF254A).l
 		move.b	#$2F,($FF25CA).l
-		
-	;	move.w	#$A3,d0			; play death sound
-	;	frantic				; are we in Frantic mode?
-	;	beq.s	TouchGoal_PlaySound	; if not, branch
+@norestore:
 		move.w	#$B9,d0			; play annoying crumbling sound instead
 		jsr	PlaySound		; play sound
 		move.w	#$DB,d0			; play annoying crumbling sound instead
 		bra.s	TouchGoal_PlaySound
 
 @notblackout:
+		clr.b	($FFFFFE57).w		; clear emerald counter
+		move.b	#$3F,($FF11BD).l	; restore red emerald
+		move.b	#$40,($FF11C1).l	; restore grey emerald
+		move.b	#$3A,($FF1EC7).l	; reset ring to open glass blocks door
 		move.b	#$2D,($FF244A).l	; reset glass blocks
 		move.b	#$2E,($FF24CA).l
 		move.b	#$2F,($FF254A).l
@@ -41884,7 +41932,7 @@ Obj09_ChkW:
 		cmpi.b	#2,($FFFFFFD6).w	; has W block already been touched?
 		beq.s	Obj09_ChkW_NoChange	; if yes, branch
 		move.b	#1,($FFFFFFD6).w	; change every goal block into a normal one
-		
+
 		move.w	obX(a0),($FFFFFF86).w	; save Sonic's X-position
 		move.w	obY(a0),($FFFFFF88).w	; save Sonic's Y-position
 		
@@ -42073,22 +42121,27 @@ Obj09_NoReplace2:
 
 Obj09_GoalNotSolid:
 		moveq	#0,d4			; clear d4
-		
-		tst.b	($FFFFFF5F).w	; is this the blackout blackout special stage?
-		beq.s	@cont
-		move.b	#2,($FFFFFFD6).w	; make sure it doesn't happen again
-		rts
-		
-@cont:
+
 		btst	#7,($FFFFFF92).w	; are flashy lights enabled?
 		beq.s	@noflash		; if not, no flash
-		movem.l	d0-a7,-(sp)		; backup to stack
-		jsr	Pal_MakeWhite		; make white flash
-		movem.l (sp)+,d0-a7		; restore from stack
-
+	;	movem.l	d0-a7,-(sp)		; backup to stack
+	;	jsr	Pal_MakeWhite		; make white flash
+	;	movem.l (sp)+,d0-a7		; restore from stack
+		jsr	WhiteFlash2
 @noflash:
 		move.b	#2,($FFFFFFD6).w	; make sure it doesn't happen again
 
+		tst.b	($FFFFFF5F).w		; is this the blackout blackout special stage?
+		beq.s	@notblackout		; if not, branch
+
+		move.b	#1,($FFFFF7CC).w	; lock controls
+		move.w	#$8014,($C00004).l	; enable h-ints for the black bars
+
+		bsr	SS_RemoveCollectedItem
+		move.b	#5,(a2)			; this is important to end the stage
+		rts
+
+@notblackout:
 		move.b	#0,($FF1C28).l		; make sure there is no pink glass block
 		move.b	#0,($FF1DA7).l		; make sure there is no yellow glass block
 
@@ -44307,7 +44360,7 @@ PLC_SLZ2:
 		dc.l ArtKospM_OkCool		; ok cool
 		dc.w $6600
 		dc.l ArtKospM_ACIcons		; A and C icons
-		dc.w $6680
+		dc.w $6880
 		dc.l ArtKospM_Fan		; fan
 		dc.w $7400
 		dc.l ArtKospM_Pylon		; foreground pylon
@@ -44967,11 +45020,11 @@ SS_2_Casual:	incbin	LevelData\sslayout\2-Casual.bin
 		even
 SS_2_Frantic:	incbin	LevelData\sslayout\2-Frantic.bin
 		even
-SS_Blackout_Regular:
-		incbin	LevelData\sslayout\Blackout-Regular.bin
+SS_Blackout_Part1:
+		incbin	LevelData\sslayout\Blackout-Part1.bin
 		even
-SS_Blackout_EasterEgg:
-		incbin	LevelData\sslayout\Blackout-EasterEgg.bin
+SS_Blackout_Part2:
+		incbin	LevelData\sslayout\Blackout-Part2.bin
 		even
 ; ---------------------------------------------------------------------------
 ; Animated uncompressed graphics

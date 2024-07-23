@@ -48,6 +48,8 @@ DebugSurviveNoRings = 1
 ; ------------------------------------------------------
 DoorsAlwaysOpen = 0
 LowBossHP = 1
+; ------------------------------------------------------
+TestDisplayDeleteBugs = 0
 ; ======================================================
 	else
 ; BENCHMARK build settings (DO NOT CHANGE!)
@@ -57,6 +59,7 @@ DebugModeDefault = 1
 DebugSurviveNoRings = 1
 DoorsAlwaysOpen = 1
 LowBossHP = 1
+TestDisplayDeleteBugs = 0
 	endif
 
 ; ------------------------------------------------------
@@ -1834,10 +1837,11 @@ FCI_NoRed:
 
 ;PaletteFadeOut:
 Pal_FadeFrom:
+		move.b	#1,($FFFFFFE9).w	; set flag that fade-out is in progress
+
 		move.w	#$3F,($FFFFF626).w
 		moveq	#$07,d4					; MJ: set repeat times
 		moveq	#$00,d6					; MJ: clear d6
-
 loc_1E5C:
 		bsr.w	PLC_Execute
 		move.b	#$12,VBlankRoutine
@@ -1846,6 +1850,8 @@ loc_1E5C:
 		beq	loc_1E5C				; MJ: if null, delay a frame
 		bsr.s	Pal_FadeOut
 		dbf	d4,loc_1E5C
+
+		move.b	#0,($FFFFFFE9).w	; unset flag that fade-out is in progress
 		rts	
 ; ===========================================================================
 
@@ -2012,6 +2018,8 @@ loc_1F78:				; XREF: Pal_DecColor2
 
 ;PaletteWhiteOut:
 Pal_MakeFlash:				; XREF: SpecialStage
+		move.b	#1,($FFFFFFE9).w	; set flag that fade-out is in progress
+
 		move.w	#$3F,($FFFFF626).w
 		move.w	#$15,d4
 
@@ -2021,6 +2029,8 @@ loc_1F86:
 		bsr.s	Pal_ToWhite
 		bsr	PLC_Execute
 		dbf	d4,loc_1F86
+
+		move.b	#0,($FFFFFFE9).w	; unset flag that fade-out is in progress
 		rts	
 ; ===========================================================================
 
@@ -3437,13 +3447,12 @@ MusicList:
 
 ; Level::	<-- for quick search
 Level:					; XREF: GameModeArray
-		bset	#7,($FFFFF600).w ; add $80 to screen mode (for pre level sequence)
 		bsr	PLC_ClearQueue
 		jsr	DrawBuffer_Clear
-		
-		move.w	#$8004,($C00004).l	; disable h-ints
 		display_enable
 		bsr	Pal_FadeFrom
+		move.w	#$8004,($C00004).l	; disable h-ints
+		bset	#7,($FFFFF600).w ; add $80 to screen mode (for pre level sequence)
 
 		; immediately clear the first tile in VRAM to avoid graphical issues
 		move	#$2700,sr
@@ -4866,6 +4875,10 @@ Signpost_Exit:
 ; ---------------------------------------------------------------------------
 
 SpecialStage:				; XREF: GameModeArray
+		bsr	PLC_ClearQueue
+		jsr	DrawBuffer_Clear
+		display_enable
+
 		tst.b	($FFFFFF5F).w	; is this the blackout special stage?
 		beq.s	@notblackout	; if not, branch
 		
@@ -4889,17 +4902,12 @@ SpecialStage:				; XREF: GameModeArray
 ; ---------------------------------------------------------------------------
 
 @cont:
-		display_disable
 		VBlank_SetMusicOnly
 		lea	($C00004).l,a6
 		move.w	#$8B03,(a6)
 		move.w	#$8AAF,($FFFFF624).w
 		move.w	#$9011,(a6)
-		move.w	#$8004,(a6)		; disable h-ints (VERY important, because otherwise we get massive slowdowns!)
-		btst	#3,($FFFFFF92).w	; is cinematic HUD enabled?
-		beq.s	@notcinematic		; if not, branch
-		move.w	#$8014,(a6)		; enable h-ints after all... have fun with the slowdowns
-@notcinematic:
+		move.w	#$8014,(a6)		; enable h-ints for the black bars
 		bsr	ClearScreen
 
 		lea	($C00004).l,a5
@@ -7207,7 +7215,7 @@ Obj11_MakeBdg:
 		move.b	d5,(a2)+
 		addq.b	#1,obSubtype(a0)
 
-loc_73B8:				; XREF: ROM:00007398j
+loc_73B8:
 		move.w	a1,d5
 		subi.w	#-$3000,d5
 		lsr.w	#6,d5
@@ -7234,7 +7242,6 @@ Obj11_Action:				; XREF: Obj11_Index
 		jsr	obj11_Bend
 
 Obj11_Display:
-		jsr	DisplaySprite
 		bra.w	Obj11_ChkDel
 
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
@@ -7395,7 +7402,6 @@ Obj15_Solid:				; XREF: Obj15_SetSolid
 
 Obj11_Action2:				; XREF: Obj11_Index
 		bsr.s	Obj11_WalkOff
-		jsr	DisplaySprite
 		bra.w	Obj11_ChkDel
 
 ; ---------------------------------------------------------------------------
@@ -7575,7 +7581,7 @@ Obj11_ChkDel:				; XREF: Obj11_Display; Obj11_Action2
 		sub.w	d1,d0
 		cmpi.w	#$280,d0
 		bhi.w	Obj11_DelAll
-		rts	
+		bra.w	DisplaySprite
 ; ===========================================================================
 
 Obj11_DelAll:				; XREF: Obj11_ChkDel
@@ -8173,7 +8179,7 @@ loc_7EE0:
 Obj18_Action:				; XREF: Obj18_Index
 		jsr	obj18_Move
 		jsr	obj18_Nudge
-		bsr	DisplaySprite
+		moveq	#1,d2
 		bra.w	Obj18_ChkDel
 ; ===========================================================================
 
@@ -8191,11 +8197,11 @@ Obj18_Arrows:
 		move.w	d0,obVelY(a0)
 		jsr     SpeedToPos
 
+		moveq	#0,d2
 		move.b	obRoutine(a1),d0
 		cmpi.b	#4,d0
 		bne.s	@cont
-		bsr	DisplaySprite
-
+		moveq	#1,d2
 @cont:
 		bra.w	Obj18_ChkDel
 
@@ -8299,7 +8305,7 @@ loc_7F06:
 		jsr	obj18_Nudge
 		move.w	(sp)+,d2
 		bsr	MvSonicOnPtfm2
-		bsr	DisplaySprite
+		moveq	#1,d2
 		bra.w	Obj18_ChkDel
 
 ; ---------------------------------------------------------------------------
@@ -8547,16 +8553,9 @@ Obj18_ChgMotion:
 ; ===========================================================================
 
 Obj18_ChkDel:				; XREF: Obj18_Action; Obj18_Action2
-	;	cmpi.w	#$101,($FFFFFE10).w
-	;	beq.s	Obj18_NoDelete
-		cmpi.w	#$201,($FFFFFE10).w
-		bne.s	Obj18_NotMZ2_2
+		cmpi.w	#$302,($FFFFFE10).w	; idk why TODO TEST LATER
+		beq.s	@nodelete
 
-Obj18_NoDelete:
-		rts
-; ===========================================================================
-
-Obj18_NotMZ2_2:
 		move.w	$32(a0),d0
 		andi.w	#$FF80,d0
 		move.w	($FFFFF700).w,d1
@@ -8565,17 +8564,18 @@ Obj18_NotMZ2_2:
 		sub.w	d1,d0
 		cmpi.w	#$280,d0
 		bhi.s	Obj18_Delete
+@nodelete:
+		tst.b	d2
+		beq.s	@nodisplay
+		bra.w	DisplaySprite
+
+@nodisplay:
 		rts	
 ; ===========================================================================
 
-;Obj18_Deletex:
-	;	bclr	#3,($FFFFD022).w	; clear Sonic's "standing on object flag"
-
 Obj18_Delete:				; XREF: Obj18_Index
-		cmpi.w	#$302,($FFFFFE10).w
-		beq.s	Obj18_NoDelete
-
 		bra.w	DeleteObject
+
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Sprite mappings - unused
@@ -8755,9 +8755,9 @@ locret_8308:
 
 Obj1A_TimeZero:				; XREF: Obj1A_Display
 		bsr	ObjectFall
-		bsr	DisplaySprite
 		tst.b	obRender(a0)
 		bpl.s	Obj1A_Delete
+		bsr	DisplaySprite
 		rts	
 ; ===========================================================================
 
@@ -10532,7 +10532,9 @@ Obj1F_NotInhumanCrush:
 		jsr	obj1F_Index2(pc,d1.w)
 		lea	(Ani_obj1F).l,a1
 		bsr	AnimateSprite
-		bra.w	MarkObjGone
+		cmpi.w	#$000,($FFFFFE10).w		; is level GHZ1?
+		bne.w	MarkObjGone			; if not, branch
+		bra.w	DisplaySprite
 ; ===========================================================================
 Obj1F_Index2:	dc.w Obj1F_WaitFire-Obj1F_Index2	; $00
 		dc.w Obj1F_WalkOnFloor-Obj1F_Index2	; $02
@@ -10685,9 +10687,9 @@ Obj1F_BossDelete:
 		jsr	PalLoad2	; load GHZ palette
 		jsr	WhiteFlash3			; make white flash
 		movem.l	(sp)+,d0-d7/a1-a3
-
-	
-		bra.w	Obj1F_Delete			; delete
+		
+		move.b	#4,obRoutine(a0)		; delete crabmeat boss
+		rts
 ; ===========================================================================
 
 Obj1F_CheckDefeated:
@@ -11013,10 +11015,7 @@ Obj1F_NotGHZ1_3:
 		subq.b	#1,$30(a0)		; sub 1 from ball remaining life timer
 		bls.w	Obj1F_BallExpired	; if expired, branch
 
-		lea	(Ani_obj1F).l,a1	; load the animation for the balls
-		bsr	AnimateSprite		; animate them
 		bsr	ObjectFall		; move the ball down
-		bsr	DisplaySprite		; show the ball (better said, don't delete it)
 
 Obj1F_CheckBallOnGround:
 		jsr	ObjHitFloor		; load from ObjHitFloor
@@ -11030,6 +11029,10 @@ Obj1F_BallNotOnGround:
 		addi.w	#$E0,d0			; add a little bit to it ($E0 = below the screen)
 		cmp.w	obY(a0),d0		; has object moved below the level boundary?
 		bcs.s	Obj1F_Delete2		; if yes, delete object
+		
+		lea	(Ani_obj1F).l,a1	; load the animation for the balls
+		bsr	AnimateSprite		; animate them
+		bsr	DisplaySprite		; show the ball (better said, don't delete it)		
 		rts				; return
 ; ===========================================================================
 
@@ -11599,9 +11602,6 @@ Obj23_FromBuzz_Normal:
 		cmp.w	obY(a0),d0	; has object moved below the level boundary?
 		bcs.s	Obj23_Delete	; if yes, branch
 		rts
-		
-MyObjectIsOffscreen:
-		bra.s	Obj23_Delete	
 ; ===========================================================================
 
 Obj23_Explode:				; XREF: Obj23_FromBuzz
@@ -11770,8 +11770,7 @@ Obj25_Animate:				; XREF: Obj25_Index
  
  Obj25_NoRingMove:
 		move.b	($FFFFFEC3).w,obFrame(a0) ;	set frame
-		bsr	DisplaySprite
-		
+
 		move.w	$32(a0),d0
 		andi.w	#$FF80,d0
 		move.w	($FFFFF700).w,d1
@@ -11780,7 +11779,7 @@ Obj25_Animate:				; XREF: Obj25_Index
 		sub.w	d1,d0
 		cmpi.w	#$280,d0
 		bhi.w	Obj25_Delete
-		rts	
+		jmp	DisplaySprite
 ; ===========================================================================
 
 Obj25_Collect:				; XREF: Obj25_Index
@@ -12258,6 +12257,8 @@ Obj4B_YPositive:
 		move.b	#$9D,d0			; play funni music
 		jsr	PlaySound
 
+		move.b	#0,($FFFFD400).w	; delete rings HUD
+
 		move.b	#$C,d0			; VLADIK => Load hint number based on subtype
 		jsr	Tutorial_DisplayHint	; VLADIK => Display hint
 
@@ -12268,9 +12269,11 @@ Obj4B_YPositive:
 
 		jsr	SAP_LoadSonicPal	; reload Sonic's antigrav palette
 
-		move.b	#$21,($FFFFD400).w	; reload RINGS HUD object...
-		move.b	#2,($FFFFD430).w	; ...because very coincidentally, the tutorial box also uses D400
-		move.w	#999,($FFFFFE20).w	; but at least here's a little something for you
+		move.b	#$21,($FFFFD400).w	; reload HUD object
+		move.b	#0,($FFFFD424).w	; set to routine 0
+		move.b	#2,($FFFFD430).w	; set to rings HUD
+
+		move.w	#999,($FFFFFE20).w	; here's a little something for you
 		ori.b	#1,($FFFFFE1D).w	; update rings counter
 		
 		move.b	#$96,d0			; restart regular music
@@ -12579,17 +12582,19 @@ Obj26_Index:	dc.w Obj26_Main-Obj26_Index
 ; ===========================================================================
 
 Obj26_Main:				; XREF: Obj26_Index
+		; blow up P monitor in frantic FP
 		frantic
-		beq.s	@0
+		beq.s	@notfrantic
 		cmpi.w	#$502,($FFFFFE10).w
-		bne.s	@0
+		bne.s	@notfrantic
 		cmpi.b	#8,obSubtype(a0)
-		bne.s	@0
+		bne.s	@notfrantic
 		move.b	#$3F,(a0)
 		move.b	#1,$30(a0)
 		move.b	#0,$31(a0)
 		rts
-@0:
+
+@notfrantic:
 		addq.b	#2,obRoutine(a0)
 		move.b	#$E,obHeight(a0)
 		move.b	#$E,obWidth(a0)
@@ -12610,28 +12615,10 @@ Obj26_Main:				; XREF: Obj26_Index
 ; ===========================================================================
 
 Obj26_NotBroken:			; XREF: Obj26_Main
-		move.b	#$46,obColType(a0)	; normal monitor type
+		move.b	#$46,obColType(a0)		; normal monitor type
 		move.b	obSubtype(a0),obAnim(a0)	; copy subtype to animation
 
 Obj26_Solid:				; XREF: Obj26_Index
-		cmpi.w	#$502,($FFFFFE10).w
-		beq.s	Obj26_SetToNormal
-		move.w	($FFFFD014).w,d2	; move Sonic's interia to d2
-		tst.w	d2			; is Sonic's speed positive?
-		bpl.s	Obj26_SonicPosi		; if yes, branch
-		neg.w	d2			; otherwie negate d2
-
-Obj26_SonicPosi:
-		cmpi.w	#$A00,d2		; is Sonic fast enough to break monitor by touching?
-		blt.s	Obj26_SetToNormal	; if not, branch
-		move.b	#$41,obColType(a0)		; make monitor breakable from touching it
-		bra.s	Obj26_Solid_Rest	; skip Obj26_ChkLeft
-; ===========================================================================
-
-Obj26_SetToNormal:
-		move.b	#$46,obColType(a0)	; normal monitor type
-
-Obj26_Solid_Rest:
 		move.b	ob2ndRout(a0),d0	; is monitor set to fall?
 		beq.s	loc_A1EC	; if not, branch
 		subq.b	#2,d0
@@ -12716,13 +12703,6 @@ loc_A246:
 ; ===========================================================================
 
 loc_A25C:
-		tst.b	($FFFFFFEB).w	; is homing flag set?
-		beq.s	Obj26_NoHome	; if not, branch
-		cmpi.w	#$502,($FFFFFE10).w
-		beq.s	Obj26_NoHome
-		move.b	#$41,obColType(a0)	; make monitor breakable from touching it
-
-Obj26_NoHome:
 		btst	#5,obStatus(a0)
 		beq.s	Obj26_Animate
 		cmp.b	#2,obAnim(a1)	; check if in jumping/rolling animation
@@ -12740,7 +12720,6 @@ Obj26_Animate:				; XREF: Obj26_Index
 		bsr	AnimateSprite
 
 Obj26_Display:				; XREF: Obj26_Index
-		bsr	DisplaySprite
 		cmpi.w	#$302,($FFFFFE10).w
 		beq.s	@cont
 		move.w	obX(a0),d0
@@ -12752,7 +12731,7 @@ Obj26_Display:				; XREF: Obj26_Index
 		cmpi.w	#$280,d0
 		bhi.w	DeleteObject
 @cont:
-		rts	
+		bra.w	DisplaySprite
 ; ===========================================================================
 
 Obj26_BreakOpen:			; XREF: Obj26_Index
@@ -14453,7 +14432,7 @@ Obj31:					; XREF: Obj_Index
 Obj31_Index:	dc.w Obj31_Main-Obj31_Index
 		dc.w loc_B798-Obj31_Index
 		dc.w loc_B7FE-Obj31_Index
-		dc.w Obj31_Display2-Obj31_Index
+		dc.w Obj31_ChkDel-Obj31_Index
 		dc.w loc_B7E2-Obj31_Index
 
 Obj31_SwchNums:	dc.b 0,	0		; switch number, obj number
@@ -14572,7 +14551,6 @@ loc_B798:				; XREF: Obj31_Index
 		movea.l	a2,a0
 
 Obj31_Display:
-		bsr	DisplaySprite
 		bra.w	Obj31_ChkDel
 ; ===========================================================================
 
@@ -14592,9 +14570,6 @@ loc_B7FE:				; XREF: Obj31_Index
 		add.w	$30(a0),d0
 		move.w	d0,obY(a0)
 
-Obj31_Display2:				; XREF: Obj31_Index
-		bsr	DisplaySprite
-
 Obj31_ChkDel:				; XREF: Obj31_Display
 		move.w	obX(a0),d0
 		andi.w	#$FF80,d0
@@ -14604,6 +14579,7 @@ Obj31_ChkDel:				; XREF: Obj31_Display
 		sub.w	d1,d0
 		cmpi.w	#$280,d0
 		bhi.w	DeleteObject
+		bsr	DisplaySprite
 		rts	
 ; ===========================================================================
 
@@ -14760,7 +14736,7 @@ loc_B996:
 		bra.w	Obj31_Restart
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Object 45 - spiked metal block from beta version (MZ)
+; Object 45 - spiked sideways metal block from beta version (MZ)
 ; ---------------------------------------------------------------------------
 
 Obj45:					; XREF: Obj_Index
@@ -14772,7 +14748,7 @@ Obj45:					; XREF: Obj_Index
 Obj45_Index:	dc.w Obj45_Main-Obj45_Index
 		dc.w Obj45_Solid-Obj45_Index
 		dc.w loc_BA8E-Obj45_Index
-		dc.w Obj45_Display-Obj45_Index
+		dc.w Obj45_ChkDel-Obj45_Index
 		dc.w loc_BA7A-Obj45_Index
 
 Obj45_Var:	dc.b	2,   4,	  0	; routine number, x-position, frame number
@@ -14841,7 +14817,6 @@ Obj45_Solid:				; XREF: Obj45_Index
 		move.w	#$20,d3
 		move.w	(sp)+,d4
 		bsr	SolidObject
-		bsr	DisplaySprite
 		bra.w	Obj45_ChkDel
 ; ===========================================================================
 
@@ -14861,9 +14836,6 @@ loc_BA8E:				; XREF: Obj45_Index
 		add.w	$30(a0),d0
 		move.w	d0,obX(a0)
 
-Obj45_Display:				; XREF: Obj45_Index
-		bsr	DisplaySprite
-
 Obj45_ChkDel:				; XREF: Obj45_Solid
 		btst	#2,($FFFFFF6C).w ; was switch in MZ pressed?
 		beq.s	@cont		; if not, branch
@@ -14878,7 +14850,7 @@ Obj45_ChkDel:				; XREF: Obj45_Solid
 		sub.w	d1,d0
 		cmpi.w	#$280,d0
 		bhi.w	DeleteObject
-		rts	
+		bra.w	DisplaySprite
 
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 
@@ -15174,7 +15146,6 @@ Obj32_ShowPressed:
 		move.b	#4,obFrame(a0)
 
 Obj32_Display:
-		bsr	DisplaySprite
 		move.w	obX(a0),d0
 		andi.w	#$FF80,d0
 		move.w	($FFFFF700).w,d1
@@ -15182,8 +15153,8 @@ Obj32_Display:
 		andi.w	#$FF80,d1
 		sub.w	d1,d0
 		cmpi.w	#$280,d0
-		bhi.w	Obj32_Delete
-		rts	
+		bhi.w	DeleteObject
+		bra.w	DisplaySprite
 ; ===========================================================================
 
 ChangePaletteRP:
@@ -15241,9 +15212,6 @@ RestorePaletteRP:
 		rts
 ; ===========================================================================
 
-Obj32_Delete:
-		bsr	DeleteObject
-		rts	
 
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 
@@ -16648,7 +16616,6 @@ Obj3B_Solid:				; XREF: Obj3B_Index
 		move.w	#$10,d3
 		move.w	obX(a0),d4
 		bsr	SolidObject
-		bsr	DisplaySprite
 		move.w	obX(a0),d0
 		andi.w	#$FF80,d0
 		move.w	($FFFFF700).w,d1
@@ -16657,7 +16624,7 @@ Obj3B_Solid:				; XREF: Obj3B_Index
 		sub.w	d1,d0
 		cmpi.w	#$280,d0
 		bhi.w	DeleteObject
-		rts	
+		jmp	DisplaySprite
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Object 49 - waterfall	sound effect (GHZ)
@@ -16716,8 +16683,7 @@ Obj3C:					; XREF: Obj_Index
 		moveq	#0,d0
 		move.b	obRoutine(a0),d0
 		move.w	Obj3C_Index(pc,d0.w),d1
-		jsr	obj3C_Index(pc,d1.w)
-		bra.w	MarkObjGone
+		jmp	obj3C_Index(pc,d1.w)
 ; ===========================================================================
 Obj3C_Index:	dc.w Obj3C_Main-Obj3C_Index
 		dc.w Obj3C_Solid-Obj3C_Index
@@ -16744,7 +16710,7 @@ Obj3C_Solid:				; XREF: Obj3C_Index
 		bne.s	Obj3C_ChkRoll
 
 locret_D180:
-		rts	
+		jmp	MarkObjGone
 ; ===========================================================================
 
 Obj3C_ChkRoll:				; XREF: Obj3C_Solid
@@ -16783,10 +16749,9 @@ Obj3C_Smash:
 Obj3C_FragMove:				; XREF: Obj3C_Index
 		bsr	SpeedToPos
 		addi.w	#$70,obVelY(a0)	; make fragment	fall faster
-		bsr	DisplaySprite
 		tst.b	obRender(a0)
 		bpl.w	DeleteObject
-		rts	
+		bra.w	DisplaySprite
 
 ; ---------------------------------------------------------------------------
 ; Subroutine to	smash a	block (GHZ walls and MZ	blocks)
@@ -16893,6 +16858,9 @@ loc_D348:
 		add.w	d0,d0
 		add.w	d0,d0
 		movea.l	Obj_Index-obMap(pc,d0.w),a1
+	if TestDisplayDeleteBugs=1
+		ext.l	d7		; clear upper word 
+	endif
 		jsr	(a1)		; run the object's code
 		moveq	#0,d0
 
@@ -17093,6 +17061,15 @@ SpeedToScreenPos:
 
 
 DisplaySprite:
+	if TestDisplayDeleteBugs=1
+		tst.l	d7		; was flag already set?
+		bpl.s	@0		; if not, branch
+		moveq	#0,d0
+		move.b	(a0),d0
+		illegal			; flag was already set
+@0:		ori.l	#$FFFF0000,d7
+	endif
+
 		moveq	#7, d0
 		and.b	obPriority(a0), d0
 		add.w	d0, d0
@@ -17116,6 +17093,15 @@ DisplaySprite_LayersPointers:
 ; ---------------------------------------------------------------
 
 DisplaySprite2:
+	if TestDisplayDeleteBugs=1
+		tst.l	d7		; was flag already set?
+		bpl.s	@0		; if not, branch
+		moveq	#0,d0
+		move.b	(a0),d0
+		illegal			; flag was already set
+@0:		ori.l	#$FFFF0000,d7
+	endif
+
 		moveq	#7, d0
 		and.b	obPriority(a1), d0
 		add.w	d0, d0
@@ -17138,11 +17124,19 @@ DisplaySprite2:
 
 
 DeleteObject:
+	if TestDisplayDeleteBugs=1
+		tst.l	d7		; was flag already set?
+		bpl.s	@0		; if not, branch
+		moveq	#0,d0
+		move.b	(a0),d0
+		illegal			; flag was already set
+@0:		ori.l	#$FFFF0000,d7
+	endif
+
 		movea.l	a0,a1
 
 DeleteObject2:
 		moveq	#0,d0
-
 		rept	$40/4
 			move.l	d0,(a1)+
 		endr
@@ -17774,16 +17768,7 @@ Obj41:					; XREF: Obj_Index
 		move.b	obRoutine(a0),d0
 		move.w	Obj41_Index(pc,d0.w),d1
 		jsr	obj41_Index(pc,d1.w)
-		bsr	DisplaySprite
-		move.w	obX(a0),d0
-		andi.w	#$FF80,d0
-		move.w	($FFFFF700).w,d1
-		subi.w	#$80,d1
-		andi.w	#$FF80,d1
-		sub.w	d1,d0
-		cmpi.w	#$280,d0
-		bhi.w	DeleteObject
-		rts	
+		jmp	MarkObjGone
 ; ===========================================================================
 Obj41_Index:	dc.w Obj41_Main-Obj41_Index
 		dc.w Obj41_Up-Obj41_Index
@@ -18508,7 +18493,6 @@ Obj44_Solid:				; XREF: Obj44_Index
 		jsr	obj44_SolidWall
 
 Obj44_Display:				; XREF: Obj44_Index
-		bsr	DisplaySprite
 		move.w	obX(a0),d0
 		andi.w	#$FF80,d0
 		move.w	($FFFFF700).w,d1
@@ -18517,7 +18501,7 @@ Obj44_Display:				; XREF: Obj44_Index
 		sub.w	d1,d0
 		cmpi.w	#$280,d0
 		bhi.w	DeleteObject
-		rts	
+		bra.w	DisplaySprite
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Sprite mappings - walls (GHZ)
@@ -18782,7 +18766,6 @@ Obj46_Action:				; XREF: Obj46_Index
 		bsr	SolidObject
 
 Obj46_ChkDel:
-		bsr	DisplaySprite
 		move.w	obX(a0),d0
 		andi.w	#$FF80,d0
 		move.w	($FFFFF700).w,d1
@@ -18791,6 +18774,7 @@ Obj46_ChkDel:
 		sub.w	d1,d0
 		cmpi.w	#$280,d0
 		bhi.w	DeleteObject
+		bsr	DisplaySprite
 		rts	
 ; ===========================================================================
 Obj46_TypeIndex:dc.w Obj46_Type00-Obj46_TypeIndex
@@ -19106,9 +19090,6 @@ Obj0D:					; XREF: Obj_Index
 		move.w	Obj0D_Index(pc,d0.w),d1
 		jsr	obj0D_Index(pc,d1.w)
 		jsr	Obj0D_Float
-		lea	(Ani_obj0D).l,a1
-		bsr	AnimateSprite
-		bsr	DisplaySprite
 		move.w	obX(a0),d0
 		andi.w	#$FF80,d0
 		move.w	($FFFFF700).w,d1
@@ -19117,7 +19098,9 @@ Obj0D:					; XREF: Obj_Index
 		sub.w	d1,d0
 		cmpi.w	#$280,d0
 		bhi.w	DeleteObject
-		rts	
+		lea	(Ani_obj0D).l,a1
+		bsr	AnimateSprite
+		bra.w	DisplaySprite
 ; ===========================================================================
 Obj0D_Index:	dc.w Obj0D_Main-Obj0D_Index
 		dc.w Obj0D_Touch-Obj0D_Index
@@ -20447,8 +20430,7 @@ Obj51:					; XREF: Obj_Index
 		moveq	#0,d0
 		move.b	obRoutine(a0),d0
 		move.w	Obj51_Index(pc,d0.w),d1
-		jsr	Obj51_Index(pc,d1.w)
-		jmp	MarkObjGone
+		jmp	Obj51_Index(pc,d1.w)
 ; ===========================================================================
 Obj51_Index:	dc.w Obj51_Main-Obj51_Index
 		dc.w Obj51_Solid-Obj51_Index
@@ -20496,7 +20478,7 @@ Obj51_Check:
 		bsr	SolidObject
 
 locret_FCFC:
-		rts	
+		jmp	MarkObjGone
 ; ===========================================================================
 Obj51_SmashExplode:
 		jsr	SingleObjLoad
@@ -20516,10 +20498,9 @@ Obj51_Smash:				; XREF: Obj51_Solid
 Obj51_Display:				; XREF: Obj51_Index
 		bsr	SpeedToPos
 		addi.w	#$38,obVelY(a0)
-		bsr	DisplaySprite
 		tst.b	obRender(a0)
 		bpl.w	DeleteObject
-		rts	
+		bra.w	DisplaySprite
 ; ===========================================================================
 Obj51_Speeds:	dc.w $FE00, $FE00	; x-speed, y-speed
 		dc.w $FF00, $FF00
@@ -22809,7 +22790,6 @@ loc_115D8:
 		move.b	d0,obFrame(a0)
 
 Obj5D_ChkDel:				; XREF: Obj5D_Animate
-		bsr	DisplaySprite
 		move.w	obX(a0),d0
 		andi.w	#$FF80,d0
 		move.w	($FFFFF700).w,d1
@@ -22818,7 +22798,7 @@ Obj5D_ChkDel:				; XREF: Obj5D_Animate
 		sub.w	d1,d0
 		cmpi.w	#$280,d0
 		bhi.w	DeleteObject
-		rts	
+		bra.w	DisplaySprite
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Sprite mappings - fans (SLZ)
@@ -25707,8 +25687,7 @@ Obj03_Display:
 		btst	#0,($FFFFFE05).w	; is this an odd frame?
 		beq.s	@notodd			; if not, branch
 		bset	#5,obGfx(a0)		; use second palette row (gives a slight flicker effect)
-@notodd:	bsr	DisplaySprite		; display sprite
-
+@notodd:
 		bsr.s	Obj03_BackgroundColor
 
 		move.w	obX(a0),d0
@@ -25719,6 +25698,7 @@ Obj03_Display:
 		sub.w	d1,d0
 		cmpi.w	#$280,d0
 		bhi.w	DeleteObject		; if object is not on screen, delete it
+		bsr	DisplaySprite		; display sprite
 		rts				; return
 ; ===========================================================================
 
@@ -27828,7 +27808,7 @@ JD_NotMZ:
 		tst.b	($FFFFFFE5).w		; was AirFreeze flag set?
 		bne.w	JD_End			; if yes, branch
 		move.b	($FFFFF603).w,d0	; is B or C pressed? (part 1)
-		andi.b	#$30,d0			; is B C pressed? (part 2)
+		andi.w	#$30,d0			; is B C pressed? (part 2)
 		beq.w	JD_End			; if not, branch
 
 		tst.b	($FFFFFFEB).w		; was jumpdash flag set?
@@ -27853,7 +27833,7 @@ JD_NoWhiteFlash:
 		btst	#1,($FFFFF602).w	; is down pressed?
 		bne.w	Sonic_DownDash		; if yes, branch to down dash code		
 		move.b	($FFFFF603).w,d0	; is B pressed? (part 1)
-		andi.b	#$10,d0			; is B pressed? (part 2)
+		andi.w	#$10,d0			; is B pressed? (part 2)
 		bne.w	Sonic_DoubleJump	; if yes, branch to double jump code
 
 JD_NotInhuman:
@@ -27865,27 +27845,17 @@ JD_SetSpeed1:
 		tst.b	($FFFFFE2E).w		; do you have speed shoes?
 		beq.s	JD_SetSpeed2		; if not, branch
 		move.w	#Sonic_TopSpeed+$600,d0	; set speed shoes jumpdash speed
-		move.b	#1,($FFFFFFE8).w	; set JD_SetSpeed2 flag
 
 JD_SetSpeed2:
 		btst	#6,obStatus(a0)		; is Sonic underwater?
 		beq.s	JD_ChkDirection		; if not, branch
 		move.w	#$600,d0		; set underwater jumpdash speed
-		tst.b	($FFFFFFE8).w		; was JD_SetSpeed1 flag set?
-		beq.s	JD_ChkDirection		; if not, branch
-		move.w	#$900,d0		; set underwater/speed shoes jumpdash speed
 
 JD_ChkDirection:
 		btst	#0,obStatus(a0)		; is sonic facing left?
 		beq.s	JD_Move			; if yes, branch
 		neg.w	d0			; if not, negate d0 (for jumping to the right)
-
 JD_Move:
-		move.b	($FFFFF603).w,d0	; is A pressed? (part 1)
-		andi.b	#$40,d0			; is A pressed? (part 2)
-		bra.s	JD_NoA			; if not, branch
-		move.b	#$14,obAnim(a0)
-JD_NoA:
 		move.w	d0,obVelX(a0)		; move sonic forward (X-velocity)
 		clr.w	obVelY(a0)		; clear Y-velocity to move sonic directly down
 
@@ -29277,7 +29247,7 @@ loc_1380C:
 		bsr	Sonic_Water
 		bsr	Sonic_Animate
 		bsr	LoadSonicDynPLC
-		jmp	DisplaySprite
+		rts
 
 ; ---------------------------------------------------------------------------
 ; Subroutine to	stop Sonic falling after he's been hurt
@@ -39721,7 +39691,7 @@ locret_1AEF2:
 
 Touch_Monitor:
 		tst.w	obVelY(a0)		; is Sonic moving upwards?
-		bpl.s	Touch_MonitorTop	; if not, branch
+		bra.s	Touch_MonitorTop	; if not, branch
 		tst.b	($FFFFFFEB).w		; is homing flag set?
 		bne.s	Touch_MonitorTop	; if yes, treat as touching from top
 
@@ -39845,22 +39815,10 @@ BounceJD:
 		tst.b	($FFFFFFEB).w		; was jumpdash flag set?
 		beq.s	BounceJD_End		; if not, branch
 		clr.b	($FFFFFFEB).w		; if yes, clear jumpdash flag (make sonic jumpdash again)
-DoBounceJD:
+		move.w	#-$600,obVelY(a0)	; bounce Sonic upwards
 		clr.w	obVelX(a0)		; clear X-velocity (stop sonic horizontally)
-DoBounceJD_NoX:
-		move.w	#-$600,d0		; use -$5F0 for Y-velocity (move sonic upwards)
-		btst	#6,obStatus(a0)		; is sonic underwater?
-		beq.s	@setbounce		; if not, branch
-		move.w	obVelY(a0),d0		; get Y velocity at time of impact
-		bmi.s	@chkfastbounce		; if it's already negative, branch
-		neg.w	d0			; otherwise make it negative
-@chkfastbounce:	cmpi.w	#-$800,d0		; did we touch whatever it was at a really fast vertical speed?
-		blt.s	@setbounce		; if yes, just reverse it
-		move.w	#-$200,d0		; otherwise, use only -$200 for Y-velocity (move sonic upwards)
-@setbounce:	move.w	d0,obVelY(a0)		; set final bounce speed
-
 BounceJD_End:
-		rts			; return
+		rts				; return
 ; End of function BounceJD
 
 ; ===========================================================================
@@ -40335,7 +40293,7 @@ loc_1B2E4:
 		bne.s	@notblackout		; if not, branch
 		move.b	($FFFFF602).w,d0	; get button presses
 		andi.b	#$C,d0			; is left/right	held?
-		bne.s	@notblackout		; if not, branch
+		bne.s	@notblackout		; if yes, branch
 @lightup:	bset	#0,$138(a1)		; use lit-up skull icon
 
 @notblackout:
@@ -42786,6 +42744,7 @@ Obj21_ShowHUD:
 ; ===========================================================================
 Obj21_Index:	dc.w Obj21_Main-Obj21_Index
 		dc.w Obj21_Flash-Obj21_Index
+		dc.w Obj21_Delete-Obj21_Index
 ; ===========================================================================
 
 Obj21_Main:
@@ -44234,8 +44193,8 @@ PLC_GHZ2:
 	;	dc.w $7300
 		dc.l ArtKospM_Ball		; giant	ball
 		dc.w $7540
-	;	dc.l ArtKospM_GhzWall1	; breakable wall
-	;	dc.w $A1E0
+		dc.l ArtKospM_GhzWall1	; breakable wall
+		dc.w $A1E0
 		dc.l ArtKospM_GhzWall2	; normal wall
 		dc.w $6980
 		dc.w -1
@@ -44691,8 +44650,8 @@ ArtKospM_SpikesBlood: incbin	artkosp\spikes_lava.kospm	; damn those bloody spike
 ;		even
 ArtKospM_PplRock:	incbin	artkosp\ghzrock.kospm	; GHZ purple rock
 		even
-;ArtKospM_GhzWall1:	incbin	artkosp\ghzwall1.kospm	; GHZ destroyable wall
-;		even
+ArtKospM_GhzWall1:	incbin	artkosp\ghzwall1.kospm	; GHZ destroyable wall
+		even
 ArtKospM_GhzWall2:	incbin	artkosp\ghzwall2.kospm	; GHZ normal wall
 		even
 ; ---------------------------------------------------------------------------

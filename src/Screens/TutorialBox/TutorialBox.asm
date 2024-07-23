@@ -1177,7 +1177,7 @@ Hint_End_BlackoutTeaser:
 	boxtxt	" YOU'RE IN frantic?"
 	boxtxt_pause
 	boxtxt	"  THEN FORGET WHAT"
-	boxtxt	"   I'VE JUST SAID."
+	boxtxt	"    I JUST SAID."
 	boxtxt_pause
 	boxtxt	"   YOU ARE READY."
 	boxtxt_end

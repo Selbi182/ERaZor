@@ -104,7 +104,7 @@ GSS_MainLoop:
 	 	andi.b	#3,d1			; is up or down pressed?
 		beq.s	@NoUpdate		; if not, branch
 		moveq	#0,d0			; set to highlight casual
-		bchg 	#5,($FFFFFF92).w 	; toggle casual/frantic flag
+		bchg 	#5,(OptionsBits).w 	; toggle casual/frantic flag
 		moveq	#0,d0
 		bsr	GSS_LoadPal
 		move.w	#$D8,d0

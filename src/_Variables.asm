@@ -92,6 +92,15 @@ CurrentLevel:		equ	$FFFFFE10			; w	Current level ID
 CurrentZone:		equ	CurrentLevel+0			; b	Current zone index
 CurrentAct:		equ	CurrentLevel+1			; b	Current zone act (0..3)
 
+CameraShake		equ	$FFFFFF60			; b	duration timer for the camera shake, 0 implies no active cam shake
+CameraShake_Intensity	equ	$FFFFFF61			; b	maximum cam shake offset distance, in pixels
+CameraShake_XOffset	equ	$FFFFFF62			; w	current camera shake X offset 
+CameraShake_YOffset	equ	$FFFFFF64			; w	current camera shake Y offset
+
+BossHealth		equ	$FFFFFF75			; b	current health of a boss (not used by all bosses!)
+HUD_BossHealth		equ	$FFFFFF68			; b	current health of a boss to be displayed instead of the HUD deaths counter
+
+OptionsBits		equ	$FFFFFF92			; b	bit field for the user options
 
 	if def(__MD_REPLAY__)
 ; __MD_REPLAY__ = 'rec'

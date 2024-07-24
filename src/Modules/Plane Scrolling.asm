@@ -101,6 +101,8 @@ BgScroll_End:				; XREF: BgScroll_Index
 		clr.l	(a2)+
 		rts   
 
+
+; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Background layer deformation subroutines
 ; ---------------------------------------------------------------------------
@@ -109,92 +111,29 @@ BgScroll_End:				; XREF: BgScroll_Index
 
 
 DeformBgLayer:				; XREF: TitleScreen; Level; EndingSequence
-		tst.b	($FFFFF744).w	; did Sonic drown?
-		bra.w	loc_628E	; if not, branch
-		beq.w	loc_628E	; if not, branch
-		rts			; don't deform layers?
-; ===========================================================================
-
-ShakePw1 = $0007
-ShakePw2 = $0001
-ShakePw3 = $0003
-
-GenerateCameraShake:
-		tst.b	($FFFFFF64).w		; is camera shake currently active?
-		beq.w	@contxx			; if not, branch
-		subq.b	#1,($FFFFFF64).w	; subtract one from timer
-
-		jsr	RandomNumber_Next	; random number
-		swap	d0
-		move.w	d0,d1
-		swap	d0
-		cmpi.w	#$502,($FFFFFE10).w
-		beq.s	@FZ
-		andi.w	#ShakePw1,d0			; limit to 15
-		andi.w	#ShakePw1,d1			; limit to 15
-		bra.s	@NoFZ
-@FZ:
-		cmpi.b	#10,($FFFFFF68).w
-		ble.s	@reFZ
-		andi.w	#ShakePw2,d0
-		andi.w	#ShakePw2,d1
-		bra.s	@NoFZ
-
-@reFZ
-		andi.w	#ShakePw3,d0
-		andi.w	#ShakePw3,d1
-
-@NoFZ:
-		btst	#0,($FFFFFE05).w
-		beq.s	@x
-		neg.w	d0
-@x:
-		btst	#0,($FFFFFE05).w
-		beq.s	@y
-		neg.w	d1
-@y:
-		move.w	d0,($FFFFFF60).w
-		move.w	d1,($FFFFFF62).w
-
-@cont:
-		tst.b	($FFFFFF64).w
-		beq.s	@contxx
-		move.w	($FFFFFF62).w,d0
-		add.w	d0,($FFFFF700).w	; backup for sprite shaking
-@contxx:
-		rts
-; ===========================================================================		
-
-loc_628E:
-		clr.w	($FFFFF754).w
-		clr.w	($FFFFF756).w
-		clr.w	($FFFFF758).w
-		clr.w	($FFFFF75A).w
+		clr.w	($FFFFF754).w		; clear redraw flags
+		clr.w	($FFFFF756).w		; ''
+		clr.w	($FFFFF758).w		; ''
+		clr.w	($FFFFF75A).w		; ''
 		bsr	ScrollHoriz
 		bsr	ScrollVertical
 		bsr	DynScrResizeLoad
-		move.w	($FFFFF700).w,($FFFFF61A).w
-		move.w	($FFFFF704).w,($FFFFF616).w
-		move.w	($FFFFF708).w,($FFFFF61C).w
-		move.w	($FFFFF70C).w,($FFFFF618).w
-		move.w	($FFFFF718).w,($FFFFF620).w
-		move.w	($FFFFF71C).w,($FFFFF61E).w
-
-		bsr	GenerateCameraShake
+ 	
+ 		jsr	GenerateCameraShake	; apply camera shake now (needs to be done after the above scroll routines)
+ 
+		move.w	($FFFFF700).w,($FFFFF61A).w	; supposedly unused
+		move.w	($FFFFF704).w,($FFFFF616).w	; set plane A vs-ram
+		move.w	($FFFFF70C).w,($FFFFF618).w	; set plane B vs-ram
+		move.w	($FFFFF708).w,($FFFFF61C).w	; supposedly unused
+		move.w	($FFFFF718).w,($FFFFF620).w	; ?
+		move.w	($FFFFF71C).w,($FFFFF61E).w	; ?
 
 		moveq	#0,d0
 		move.b	($FFFFFE10).w,d0
 		add.w	d0,d0
 		move.w	Deform_Index(pc,d0.w),d0
-		jsr	Deform_Index(pc,d0.w)
-
-		move.w	($FFFFF70C).w,($FFFFF618).w
-
-		tst.b	($FFFFFF64).w		; is cam shake enabled?
-		beq.s	@contxxx		; if not, branch
-		move.w	($FFFFFF62).w,d0	; backup for sprite shaking
-		sub.w	d0,($FFFFF700).w
-@contxxx:
+		jsr	Deform_Index(pc,d0.w)		; do background deformation now
+		move.w	($FFFFF70C).w,($FFFFF618).w	; update plane B vs-ram after bg deformation is done
 		rts
 ; End of function DeformBgLayer
 ; ===========================================================================
@@ -1187,15 +1126,15 @@ CamSpeed = 2					; set camera moving speed (standart 2 or 3)
 
 S_H_NoEnding:
 		cmpi.w	#$001,($FFFFFE10).w	; is level GHZ2?
-		bne.s	S_H_NotGHZ2		; if not, branch
+		bne.s	S_H_ExtendedCamera	; if not, branch
 		tst.b	($FFFFFFD8).w		; has Buzz Bomber been destroyed?
 		bne.s	S_H_BuzzIgnore		; if yes, branch
 		sub.w	#$35,d0			; make the middle between Sonic and the Bomber the cam-position
 		bra.w	S_H_NoExtendedCam	; skip
 ; ===========================================================================
 
-S_H_NotGHZ2:
-		btst	#0,($FFFFFF92).w	; is extended camera enabled?
+S_H_ExtendedCamera:
+		btst	#0,(OptionsBits).w	; is extended camera enabled?
 		beq.w	S_H_NoExtendedCam	; if not, branch
 		cmpi.w	#$302,($FFFFFE10).w	; is this SLZ3?
 		bne.s	S_H_BuzzIgnore		; if not, branch
@@ -1333,15 +1272,6 @@ loc_6610:
 
 
 ScrollVertical:				; XREF: DeformBgLayer
-		cmpi.w	#$301,($FFFFFE10).w	; is level SLZ2?
-		bra.s	SV_NotSLZ2		; if not, branch
-		tst.b	($FFFFFF75).w
-		beq.s	SV_NotSLZ2
-		rts
-
-; ===========================================================================
-
-SV_NotSLZ2:
 		; one part of the Labyrinthy Place camera code (the other half is in Resize_LZ2)
 		cmpi.w	#$101,($FFFFFE10).w	; is level LZ2?
 		bne.s	SV_NotLZ2		; if not, branch
@@ -1357,7 +1287,7 @@ SV_NotSLZ2:
 		btst	#1,($FFFFD022).w	; is Sonic on the ground?
 		beq.s	SV_NotLZ2		; if yes, branch
 		rts				; otherwise don't move camera
-; ===========================================================================
+; ---------------------------------------------------------------------------
 		
 SV_Lamppost:
 		move.w	#$250,($FFFFF73C).w	; move background down
@@ -1373,8 +1303,8 @@ SV_NotLZ2:
 SV_NotGHZ2:
 		moveq	#0,d1
 		moveq	#0,d0			; clear d0
+		move.w	($FFFFD00C).w,d0	; get Sonic's Y position
 
-		add.w	($FFFFD00C).w,d0	; changed from move.w
 		cmpi.w	#$101,($FFFFFE10).w	; is level LZ2?
 		bne.s	SV_NotLZ2_2		; if not, branch
 		tst.b 	($FFFFFFFE).w
@@ -1390,7 +1320,7 @@ SV_NotGHZ2:
 		addi.w	#$45,d0			; vertical camera offset when moving down in LZ
 
 SV_NotLZ2_2:
-		sub.w	($FFFFF704).w,d0
+		sub.w	($FFFFF704).w,d0	; sub current Y position from Sonic's Y position
 		btst	#2,($FFFFD022).w 	; is Sonic jumping or rolling?
 		beq.s	loc_662A
 		subq.w	#5,d0
@@ -1417,19 +1347,12 @@ loc_664A:
 loc_6656:
 		cmpi.w	#$101,($FFFFFE10).w	; is level LZ2?
 		bne.s	@cont			; if not, branch
-		tst.b 	($FFFFFFFE).w
-		bne.s	@cont2
+		tst.b 	($FFFFFFFE).w		; is =P monitor active?
+		bne.s	@cont2			; if yes, branch
 @cont:	
 		clr.w	($FFFFF73C).w 		; clear camera Y-shift
-
 @cont2:
-		tst.b	($FFFFFF64).w 		; is camera shaking counter empty?
-		beq.s	@contx			; if yes, branch
-		move.w	($FFFFFF60).w,d0	; backup for sprite shaking
-		add.w	d0,d1			; add to camera shaking
-		bra	ScrVert_ShakeCam	; ~~
-@contx
-		rts	
+		rts
 ; ===========================================================================
 
 loc_665C:
@@ -1488,19 +1411,19 @@ loc_66C0:
 
 loc_66CC:
 		cmp.w	($FFFFF72C).w,d1
-		bgt.s	loc_6724
+		bgt.s	ScrVert_SetFinal
 		cmpi.w	#-$100,d1
 		bgt.s	loc_66F0
 		andi.w	#$7FF,d1
 		andi.w	#$7FF,($FFFFD00C).w
 		andi.w	#$7FF,($FFFFF704).w
 		andi.w	#$3FF,($FFFFF70C).w
-		bra.s	loc_6724
+		bra.s	ScrVert_SetFinal
 ; ===========================================================================
 
 loc_66F0:
 		move.w	($FFFFF72C).w,d1
-		bra.s	loc_6724
+		bra.s	ScrVert_SetFinal
 ; ===========================================================================
 
 loc_66F6:
@@ -1511,69 +1434,32 @@ loc_66F6:
 
 loc_6700:
 		cmp.w	($FFFFF72E).w,d1
-		blt.s	loc_6724
+		blt.s	ScrVert_SetFinal
 		subi.w	#$800,d1
 		bcs.s	loc_6720
 		andi.w	#$7FF,($FFFFD00C).w
 		subi.w	#$800,($FFFFF704).w
 		andi.w	#$3FF,($FFFFF70C).w
-		bra.s	loc_6724
+		bra.s	ScrVert_SetFinal
 ; ===========================================================================
 
-ScrVert_ShakeCam:
-		move.w	($FFFFF704).w,d1
-		bra.s	ScrVert_ShakeCam2
-
-; ---------------------------------------------------------------------------
 loc_6720:
 		move.w	($FFFFF72E).w,d1	; set y-pos to bottom boundary
-
 ; ---------------------------------------------------------------------------
-loc_6724:
-		tst.b	($FFFFFF64).w 		; is camera shaking counter empty?
-		beq.s	contx			; if yes, branch
 
-ScrVert_ShakeCam2:
-		move.w	($FFFFFF60).w,d0	; backup for sprite shaking
-		add.w	d0,d0
-	;	add.w	d0,($FFFFF70C).w
-		move.w	($FFFFFF60).w,d0	; backup for sprite shaking
-		add.w	d0,d1	; add to camera shaking
-		move.w	($FFFFFF66).w,d5
-		addi.w	#$10,d5
-		cmp.w	d5,d1
-		bcs.s	@contx
-		move.w	d5,d1
-		bra.s	@contxx
-
-@contx:
-		subi.w	#$20,d5
-		cmp.w	d5,d1
-		bcc.s	@contxx
-		move.w	d5,d1
-
-@contxx:
-		tst.w	d1
-		bpl.s	contx
-		moveq	#0,d1
-contx:
-
-		move.w	($FFFFF704).w,d4
+ScrVert_SetFinal:
 		swap	d1
 		move.l	d1,d3
 		sub.l	($FFFFF704).w,d3
 		ror.l	#8,d3
-		
+
 		cmpi.w	#$101,($FFFFFE10).w	; is level LZ2?
-		bne.s	@cont			; if not, branch
-		tst.b 	($FFFFFFFE).w
-		bne.s	@cont2
-
-@cont:
-		move.w	d3,($FFFFF73C).w
-
-@cont2:
-		move.l	d1,($FFFFF704).w
-		move.w	($FFFFF704).w,($FFFFFF66).w
+		bne.s	@notlz			; if not, branch
+		tst.b 	($FFFFFFFE).w		; is =P monitor active?
+		bne.s	@yfinal			; if yes, branch
+@notlz:
+		move.w	d3,($FFFFF73C).w	; set number of pixels scrolled vertically this frame
+@yfinal:
+		move.l	d1,($FFFFF704).w	; set new camera Y position
 		rts	
 ; End of function ScrollVertical

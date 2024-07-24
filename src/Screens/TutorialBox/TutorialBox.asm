@@ -182,7 +182,7 @@ DH_Continue:
 	; palette cycle to highlight letters
 	cmpi.b	#4,($FFFFFE10).w	; are we in uberhub?
 	beq.s	@noletterflashing	; if yes, branch
-	btst	#7,($FFFFFF92).w	; are flashy lights enabled?
+	btst	#7,(OptionsBits).w	; are flashy lights enabled?
 	beq.s	@noletterflashing	; if not, branch
 	move.w	($FFFFFE0E).w,d0
 	lsl.w	#4,d0

@@ -128,10 +128,10 @@ Options_ContinueSetup:
 		move.b	#DeleteCounts,(DeleteCounter).w	; reset delete counter
 		
 		moveq	#0,d0			; set cinematic index to 0
-		btst	#3,($FFFFFF92).w	; is cinematic mode enabled?
+		btst	#3,(OptionsBits).w	; is cinematic mode enabled?
 		beq.s	@0			; if not, branch
 		addq.b	#1,d0			; add 1 to index
-@0:		btst	#6,($FFFFFF92).w	; is fuzz enabled?
+@0:		btst	#6,(OptionsBits).w	; is fuzz enabled?
 		beq.s	@1			; if not, branch
 		addq.b	#2,d0			; if 2 to index 
 @1:		move.b	d0,CinematicIndex	; write new index
@@ -207,7 +207,7 @@ Options_HandleGameplayStyle:
 		jmp	Exit_OptionsScreen
 
 @quicktoggle:
-		bchg	#5,($FFFFFF92).w	; toggle gameplay style
+		bchg	#5,(OptionsBits).w	; toggle gameplay style
 		beq.w	Options_UpdateTextAfterChange_On
 		bra.w	Options_UpdateTextAfterChange_Off
 ; ---------------------------------------------------------------------------
@@ -216,7 +216,7 @@ Options_HandleExtendedCamera:
 		move.b	($FFFFF605).w,d1	; get button presses
 		andi.b	#$FC,d1			; is left, right, A, B, C, or Start pressed?
 		beq.w	Options_Return		; if not, branch
-		bchg	#0,($FFFFFF92).w	; toggle extended camera
+		bchg	#0,(OptionsBits).w	; toggle extended camera
 		beq.w	Options_UpdateTextAfterChange_On
 		bra.w	Options_UpdateTextAfterChange_Off
 ; ---------------------------------------------------------------------------
@@ -225,7 +225,7 @@ Options_HandleFlashyLights:
 		move.b	($FFFFF605).w,d1	; get button presses
 		andi.b	#$FC,d1			; is left, right, A, B, C, or Start pressed?
 		beq.w	Options_Return		; if not, branch
-		bchg	#7,($FFFFFF92).w	; toggle flashy lights
+		bchg	#7,(OptionsBits).w	; toggle flashy lights
 		beq.w	Options_UpdateTextAfterChange_On
 		bra.w	Options_UpdateTextAfterChange_Off
 ; ---------------------------------------------------------------------------
@@ -234,7 +234,7 @@ Options_HandleStoryTextScreens:
 		move.b	($FFFFF605).w,d1	; get button presses
 		andi.b	#$FC,d1			; is left, right, A, B, C, or Start pressed?
 		beq.w	Options_Return		; if not, branch
-		bchg	#1,($FFFFFF92).w	; toggle text screens
+		bchg	#1,(OptionsBits).w	; toggle text screens
 		bne.w	Options_UpdateTextAfterChange_On
 		bra.w	Options_UpdateTextAfterChange_Off
 ; ---------------------------------------------------------------------------
@@ -243,7 +243,7 @@ Options_HandleSkipUberhub:
 		move.b	($FFFFF605).w,d1	; get button presses
 		andi.b	#$FC,d1			; is left, right, A, B, C, or Start pressed?
 		beq.w	Options_Return		; if not, branch
-		bchg	#2,($FFFFFF92).w	; toggle Uberhub autoskip
+		bchg	#2,(OptionsBits).w	; toggle Uberhub autoskip
 		beq.w	Options_UpdateTextAfterChange_On
 		bra.w	Options_UpdateTextAfterChange_Off
 ; ---------------------------------------------------------------------------
@@ -257,8 +257,8 @@ Options_HandleCinematicMode:
 		beq.s	@nodebugunlock		; if not, branch
 		cmpi.b	#$70,($FFFFF604).w	; is exactly ABC held?
 		bne.s	@nodebugunlock		; if not, branch
-		bclr	#3,($FFFFFF92).w	; make sure option doesn't stay accidentally enabled
-		bclr	#6,($FFFFFF92).w	; ''
+		bclr	#3,(OptionsBits).w	; make sure option doesn't stay accidentally enabled
+		bclr	#6,(OptionsBits).w	; ''
 		clr.b	(CinematicIndex).w
 		btst	#Casual_BaseGame,($FFFFFF93).w
 		bne.s	@unset
@@ -273,8 +273,8 @@ Options_HandleCinematicMode:
 		jsr	Check_BaseGameBeaten	; has the player beaten the base game?
 		beq.w	Options_Disallowed	; if not, cineamtic mode is disallowed
 
-		bclr	#3,($FFFFFF92).w	; disable cinematic mode
-		bclr	#6,($FFFFFF92).w	; disable fuzz
+		bclr	#3,(OptionsBits).w	; disable cinematic mode
+		bclr	#6,(OptionsBits).w	; disable fuzz
 
 		moveq	#0,d2
 		move.b	(CinematicIndex).w,d2
@@ -298,11 +298,11 @@ Options_HandleCinematicMode:
 		moveq	#0,d1			; play off sound
 		move.b	(a1)+,d0
 		beq.s	@0
-		bset	#3,($FFFFFF92).w	; enable cinematic mode
+		bset	#3,(OptionsBits).w	; enable cinematic mode
 		moveq	#1,d1			; play on sound
 @0:		move.b	(a1)+,d0
 		beq.s	@1
-		bset	#6,($FFFFFF92).w	; enable fuzz
+		bset	#6,(OptionsBits).w	; enable fuzz
 		moveq	#1,d1			; play on sound
 @1:
 		tst.b	d1
@@ -327,14 +327,14 @@ Options_HandleNonstopInhuman:
 		cmpi.b	#$70,($FFFFF604).w	; is exactly ABC held?
 		bne.s	@nodebugunlock		; if not, branch
 		bchg	#Bonus_Blackout,($FFFFFF93).w	; toggle blackout challenge beaten state to toggle the unlock for nonstop inhuman
-		bclr	#4,($FFFFFF92).w	; make sure option doesn't stay accidentally enabled
+		bclr	#4,(OptionsBits).w	; make sure option doesn't stay accidentally enabled
 		bra.w	Options_UpdateTextAfterChange_NoSound
 
 @nodebugunlock:
 		jsr	Check_BlackoutBeaten	; has the player specifically beaten the blackout challenge?
 		beq.w	Options_Disallowed	; if not, branch
 		
-		bchg	#4,($FFFFFF92).w	; toggle nonstop inhuman
+		bchg	#4,(OptionsBits).w	; toggle nonstop inhuman
 		beq.w	Options_UpdateTextAfterChange_On
 		bra.w	Options_UpdateTextAfterChange_Off
 ; ---------------------------------------------------------------------------
@@ -400,7 +400,7 @@ Options_Exit:
 
 		moveq	#0,d0			; clear d0
 		move.b	#1,($A130F1).l		; enable SRAM
-		move.b	($FFFFFF92).w,($200001).l	; backup options flags
+		move.b	(OptionsBits).w,($200001).l	; backup options flags
 		move.b	#0,($A130F1).l		; disable SRAM
 
 		moveq	#0,d0			; return to Uberhub
@@ -768,7 +768,7 @@ GOT_Index:	dc.w	GOTCO_CasualFrantic-GOT_Index
 
 GOTCO_CasualFrantic:
 		lea	(OpText_Casual).l,a2		; use "CASUAL" text
-		btst	#5,($FFFFFF92).w		; is Gameplay Style set to Frantic?
+		btst	#5,(OptionsBits).w		; is Gameplay Style set to Frantic?
 		beq.w	GOTCO_Return			; if not, branch
 		lea	(OpText_Frantic).l,a2		; otherwise use "FRANTIC" text
 		rts					; return
@@ -776,7 +776,7 @@ GOTCO_CasualFrantic:
 
 GOTCO_ExtendedCamera:
 		lea	(OpText_OFF).l,a2		; use "OFF" text
-		btst	#0,($FFFFFF92).w		; is Extended Camera enabled?
+		btst	#0,(OptionsBits).w		; is Extended Camera enabled?
 		beq.w	GOTCO_Return			; if not, branch
 		lea	(OpText_ON).l,a2		; otherwise use "ON" text
 		rts					; return
@@ -784,7 +784,7 @@ GOTCO_ExtendedCamera:
 
 GOTCO_FlashyLights:
 		lea	(OpText_ON).l,a2		; otherwise use "ON" text
-		btst	#7,($FFFFFF92).w		; are Flashy Lights enabled?
+		btst	#7,(OptionsBits).w		; are Flashy Lights enabled?
 		beq.w	GOTCO_Return			; if not, branch
 		lea	(OpText_OFF).l,a2		; use "OFF" text
 		rts					; return
@@ -792,7 +792,7 @@ GOTCO_FlashyLights:
 
 GOTCO_SkipStoryScreens:
 		lea	(OpText_ON).l,a2		; otherwise use "ON" text
-		btst	#1,($FFFFFF92).w		; is Skip Story Screens enabled?
+		btst	#1,(OptionsBits).w		; is Skip Story Screens enabled?
 		beq.w	GOTCO_Return			; if not, branch
 		lea	(OpText_OFF).l,a2		; use "OFF" text
 		rts					; return
@@ -800,7 +800,7 @@ GOTCO_SkipStoryScreens:
 
 GOTCO_SkipUberhub:
 		lea	(OpText_OFF).l,a2		; use "OFF" text
-		btst	#2,($FFFFFF92).w		; is Skip Uberhub enabled?
+		btst	#2,(OptionsBits).w		; is Skip Uberhub enabled?
 		beq.w	GOTCO_Return			; if not, branch
 		lea	(OpText_ON).l,a2		; otherwise use "ON" text
 		rts					; return
@@ -809,16 +809,16 @@ GOTCO_SkipUberhub:
 GOTCO_CinematicMode:
 		lea	(OpText_CinOff).l,a2		; use cinematic mode "OFF" text
 
-		btst	#3,($FFFFFF92).w		; is Cinematic Mode enabled?
+		btst	#3,(OptionsBits).w		; is Cinematic Mode enabled?
 		beq.s	@chkfuzz			; if not, branch
 		lea	(OpText_CinNorm).l,a2		; use cinematic mode "NORMAL" text
-		btst	#6,($FFFFFF92).w		; is fuzz also enabled?
+		btst	#6,(OptionsBits).w		; is fuzz also enabled?
 		beq.s	GOTCO_Return			; if not, branch
 		lea	(OpText_CinBoth).l,a2		; use cinematic mode "BOTH" text
 		rts
 
 @chkfuzz:
-		btst	#6,($FFFFFF92).w		; is fuzz enabled?
+		btst	#6,(OptionsBits).w		; is fuzz enabled?
 		beq.s	GOTCO_Return			; if not, branch
 		lea	(OpText_CinFuzz).l,a2		; use cinematic mode "FUZZY" text
 		rts					; return
@@ -826,7 +826,7 @@ GOTCO_CinematicMode:
 
 GOTCO_NonstopInhuman:
 		lea	(OpText_OFF).l,a2		; use "OFF" text
-		btst	#4,($FFFFFF92).w		; is Nonstop Inhuman enabled?
+		btst	#4,(OptionsBits).w		; is Nonstop Inhuman enabled?
 		beq.s	GOTCO_Return			; if not, branch
 		lea	(OpText_ON).l,a2		; otherwise use "ON" text
 		rts					; return

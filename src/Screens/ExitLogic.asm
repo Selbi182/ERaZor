@@ -18,7 +18,6 @@ DefaultOptions = %10000011
 ResumeFlag	equ	$FFFFF601
 CurrentChapter	equ	$FFFFFFA7
 StoryTextID	equ	$FFFFFF9E
-OptionsBits	equ	$FFFFFF92
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
 

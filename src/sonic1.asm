@@ -5,7 +5,7 @@
 ; ------------------------------------------------------
 	if def(__BENCHMARK__)=0
 ; Vladik's Debugger
-;__DEBUG__: equ 1
+__DEBUG__: equ 1
 
 	else
 		; MD Replay state. Used for playing pre-recorded gameplay in benchmarks.
@@ -6726,7 +6726,7 @@ Resize_SLZ3:
 		move.w	#$1FC0,($FFFFD008).w
 		move.w	#0,($FFFFD010).w
 
-		cmpi.w	#$6A0,($FFFFD00C).w
+		cmpi.w	#$688,($FFFFD00C).w
 		bcs.s	@cont2x
 		subq.w	#8,($FFFFFFB6).w
 		move.w	($FFFFFFB6).w,($FFFFD012).w
@@ -6753,7 +6753,7 @@ Resize_SLZ3:
 
 @cont:
 		move.b	#1,($FFFFF7CC).w
-		move.w	#$6E0,($FFFFD00C).w
+		move.w	#$6C8,($FFFFD00C).w
 		move.w	#$300,($FFFFD010).w
 		move.w	#0,($FFFFD012).w
 		move.b	#$E,($FFFFD01C).w
@@ -15124,6 +15124,7 @@ loc_BDD6:
 
 @notnonstopinhuman:
 		move.w	#-$1000,d1		; default speed
+		move.b	#0,($FFFFF7CC).w	; unlock controls
 		tst.b	($FFFFFF77).w		; is antigrav already enabled?
 		bne.w	@Explode		; if yes, branch
 		move.b	#1,($FFFFFF77).w	; enable antigrav ability
@@ -22350,9 +22351,9 @@ Obj5C:					; XREF: Obj_Index
 		jmp	Obj5C_Index(pc,d1.w)
 ; ===========================================================================
 Obj5C_Index:	dc.w Obj5C_Main-Obj5C_Index
-		dc.w Obj5C_Girder1-Obj5C_Index
+		dc.w Obj5C_GirderLarge-Obj5C_Index
 		dc.w Obj5C_Main2-Obj5C_Index
-		dc.w Obj5C_Girder2-Obj5C_Index
+		dc.w Obj5C_GirderSmall-Obj5C_Index
 ; ===========================================================================
 
 Obj5C_Main:				; XREF: Obj5C_Index
@@ -22364,7 +22365,7 @@ Obj5C_Main:				; XREF: Obj5C_Index
 		move.b	#$5C,(a1)
 		move.b	#4,obRoutine(a1)		
 
-Obj5C_Girder1:				; XREF: Obj5C_Index
+Obj5C_GirderLarge:			; XREF: Obj5C_Index
 		move.l	($FFFFF700).w,d1
 		add.l	d1,d1
 		swap	d1
@@ -22387,10 +22388,7 @@ Obj5C_Girder1:				; XREF: Obj5C_Index
 		addi.w	#$100,d1
 		move.w	d1,obScreenY(a0)
 
-Obj5C_Display:
-		cmpi.w	#$AD0,($FFFFF700).w
-		bhs.w	DisplaySprite
-		rts
+		bra.w	Obj5C_Display
 ; ===========================================================================
 
 Obj5C_Main2:				; XREF: Obj5C_Index
@@ -22400,7 +22398,7 @@ Obj5C_Main2:				; XREF: Obj5C_Index
 		move.b	#$10,obActWid(a0)
 		move.b	#1,obFrame(a0)
 
-Obj5C_Girder2:				; XREF: Obj5C_Index
+Obj5C_GirderSmall:			; XREF: Obj5C_Index
 		move.l	($FFFFF700).w,d1
 		add.l	d1,d1
 		swap	d1
@@ -22423,10 +22421,16 @@ Obj5C_Girder2:				; XREF: Obj5C_Index
 		neg.w	d1
 		addi.w	#$100,d1
 		move.w	d1,obScreenY(a0)
-		
-		bra.w	Obj5C_Display
-; ===========================================================================
+; ---------------------------------------------------------------------------
 
+Obj5C_Display:
+		cmpi.w	#$1D18,($FFFFF700).w	; maximum camera pos
+		bhs.w	@dontdisplay
+		cmpi.w	#$D18,($FFFFF700).w	; minimum left camera pos
+		bhs.w	DisplaySprite
+@dontdisplay:
+		rts
+; ===========================================================================
 
 ; ---------------------------------------------------------------------------
 ; Sprite mappings - metal girders in foreground	(SLZ)
@@ -28847,8 +28851,8 @@ SAP_HitWall:
 ; ---------------------------------------------------------------------------
 
 @resetstuff:
-		move.w	#$0CC0,d0			; set default respawn X position
-		move.w	#$0300,d1			; set default respawn Y position
+		move.w	#$0EC0,d0			; set default respawn X position
+		move.w	#$0340,d1			; set default respawn Y position
 		tst.w	($FFFFFF86).w			; at least one checkpoint touched yet?
 		beq.s	@nocheckpoint			; if not, branch
 		move.w	($FFFFFF86).w,d0		; restore saved X-position for Sonic

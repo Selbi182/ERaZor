@@ -14,6 +14,8 @@ Credits_ScrollTime = $1C0
 Credits_FastThreshold = $60
 Credits_SpeedSlow = 1
 Credits_SpeedFast = 32
+
+Credits_InvertDirection = 1
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
 
@@ -170,6 +172,9 @@ CS_ScrollMappings:
 		moveq	#0,d0				; clear d0
 		move.w	#Credits_ScrollTime/2,d0	; pre-center
 		sub.w	(Credits_Scroll).w,d0		; load X scroll position
+	if Credits_InvertDirection=1
+		neg.w	d0				; negate direction
+	endif
 		swap	d0				; send left
 		move.w	#$60-1,d1			; set repeat times
 @scrolltop:	move.l	d0,(a1)+			; dump to scroll buffer

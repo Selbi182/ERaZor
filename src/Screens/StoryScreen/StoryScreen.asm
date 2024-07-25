@@ -682,7 +682,7 @@ StoryText_6:	; text after beating Unreal Place
 		ststxt	"ANYWAY, YOU HAVE ALL THE"
 		ststxt	"EMERALDS NOW. TOO BAD THIS"
 		ststxt	"GAME ONLY HAS SIX, SO"
-		ststxt	"SUPER SONIC WON'T HAPPEN."
+		ststxt	"SUPER SONIC ISN'T HAPPENING."
 		ststxt_line
 		ststxt	"BUT TRY GOING TO SPACE!"
 		ststxt	"IT SORTA MAKES UP FOR THE"

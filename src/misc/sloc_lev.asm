@@ -34,7 +34,7 @@
 		dc.w	$0080, $00A8	; sbz 4
 
 		dc.w	$0620, $016B	; Unknown
-		dc.w	$0EE0, $026C	; Ending Sequence
+		dc.w	$0FE0, $026C	; Ending Sequence
 		dc.w	$0080, $00A8	; Null
 		dc.w	$0080, $00A8	; Null
 		even

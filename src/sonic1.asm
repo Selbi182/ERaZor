@@ -746,13 +746,21 @@ BlackBars_Selbi:
 ; ---------------------------------------------------------------------------
 
 BlackBars_Ending:
+		tst.b	($FFFFFF78).w			; is pit flag set?
+		beq.w	BlackBars_DontShow		; if not, don't show black bars yet
+
 		tst.w	($FFFFFE02).w			; is level set to restart? (after Sonic died)
-		beq.w	BlackBars_Show			; if not, show regular bars
-		cmpi.w	#224/2-2,BlackBars.Height	; did we full up the full screen?
+		beq.s	@noshrink			; if not, branch
+		cmpi.w	#224/2-2,BlackBars.Height	; did we fill up the full screen?
 		bhs.s	@show				; if not, branch
 		addq.w	#2,BlackBars.TargetHeight	; grow black bars
-@show:
-		bra.w	BlackBars_ShowCustom
+@show:		bra.w	BlackBars_ShowCustom		; show bars
+
+@noshrink:
+		cmpi.b	#6,($FFFFD024).w		; is Sonic dead yet?
+		bhs.w	BlackBars_DontShow		; if yes, stop showing bars
+		bra.w	BlackBars_Show			; otherwise, keep bars at all times
+		
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
 
@@ -2452,7 +2460,8 @@ PalPointers:
 	dc.l Pal_SonicAntigrav,	$FB00 0007	; $10
 	dc.l Pal_SonicAntigrav,	$FB20 0007	; $11
 	dc.l Pal_SpeContinue,	$FB00 000F	; $12
-	dc.l Pal_Ending,	$FB00 001F	; $13
+	;dc.l Pal_Ending,	$FB00 001F	; $13
+	dc.l Pal_GHZ2,		$FB20 001F	; $13
 	dc.l STS_Palette,	$FB00 001F	; $14
 	dc.l Pal_BCutscene,	$FB20 001F	; $15
 	dc.l Pal_SpecialEaster,	$FB00 001F	; $16
@@ -7087,7 +7096,7 @@ Resize_FZEscape:
 
 		move.w	#0,($FFFFF72C).w	; unlock controls
 		move.b	#1,($FFFFFE2E).w	; speed up the BG music
-		move.w	#180*60,($FFFFD034).w	; give Sonic super speed to make the walking-left part less tedious
+		move.w	#180*60,($FFFFD034).w	; give Sonic speed shoes to make the walking-left part less tedious
 	;	move.b	#1,($FFFFFE2D).w	; make sonic invincible to prevent some bullshit deaths
 		addq.w	#1,($FFFFFE20).w	; screw that, instead add 1 insurance ring (without updating rings counter)
 
@@ -7210,18 +7219,21 @@ PLC_FZEscape:
 Resize_Ending:				; XREF: Resize_Index
 		move.w	#$0000,($FFFFF72C).w
 		move.w	#$0320,($FFFFF726).w
-		tst.b	($FFFFFF78).w
-		bne.s	@cont
-		cmp.w	#$0929,($FFFFD008).w
-		bcc.s	@cont
-		move.b	#1,($FFFFFF78).w
-		move.b	#$D3,d0
-		jsr	PlaySound_Special
-		move.w	#-$1000,($FFFFD014).w
-		jsr	SingleObjLoad
-		move.b	#$02,(a1)
 
-@cont:
+		tst.b	($FFFFFF78).w		; pit flag already set?
+		bne.s	@end			; if yes, branch
+		cmp.w	#$0A29,($FFFFD008).w	; is Sonic near the pit?
+		bhs.s	@end			; if not, branch
+
+		move.b	#1,($FFFFFF78).w	; set pit flag
+		move.b	#$D3,d0			; play charge sound
+		jsr	PlaySound_Special
+		move.w	#-$1000,($FFFFD014).w	; speed boost over the pit
+		jsr	SingleObjLoad
+		bne.s	@end
+		move.b	#$02,(a1)		; load U Mad Bro object
+
+@end:
 		rts	
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -22767,16 +22779,26 @@ Obj5D_Index:	dc.w Obj5D_Main-Obj5D_Index
 Obj5D_Main:				; XREF: Obj5D_Index
 		addq.b	#2,obRoutine(a0)
 		move.l	#Map_obj5D,obMap(a0)
-		move.w	#$4000|($7400/$20),obGfx(a0)
 		ori.b	#4,obRender(a0)
 		move.b	#$10,obActWid(a0)
 		move.b	#4,obPriority(a0)
+		move.w	#$4000|($7400/$20),obGfx(a0)
+		cmpi.b	#$18,($FFFFF600).w		; is screen mode ending sequence?
+		bne.s	Obj5D_Action			; if not, branch
+		move.w	#$0000|($7400/$20),obGfx(a0)	; alternate palette line
 ; ---------------------------------------------------------------------------
 
 Obj5D_Action:				; XREF: Obj5D_Index
-		cmpi.w	#$302,($FFFFFE10).w	; are we in SAP?
-		beq.w	Obj5D_ChkDel		; if yes, disable fan
+		cmpi.w	#$301,($FFFFFE10).w	; are we in SNP?
+		beq.s	@snp			; if yes, branch
+		cmpi.b	#$18,($FFFFF600).w	; is screen mode ending sequence?
+		bne.w	Obj5D_ChkDel		; if not, branch
+		move.b	#1,$30(a0)		; fast animation
+		tst.b	($FFFFFF78).w		; pit flag set?
+		bne.w	Obj5D_Animate		; if yes, spinni :)
+		bra.w	Obj5D_ChkDel		; if not, no spinni :(
 
+@snp:
 		tst.b	($FFFFFFA9).w
 		beq.s	@early
 		cmpi.b	#2,($FFFFFFA9).w	; is Sonic fighting against the walking bomb?
@@ -25526,12 +25548,16 @@ word_1E0EC:	dc 1
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Object 02 - ERaZor Banner / U Mad Bro!? Sign
-; ---------------------------------------------------------------------------
+; Object 02 - ERaZor Banner / U Mad Bro? Sign
+; --------------------------------------------------------------------------
+UMadBro_X 	= $EB
+UMadBro_YStart	= $20A
+UMadBro_YEnd	= $158
+; --------------------------------------------------------------------------
 
 Obj02:
 		moveq	#0,d0			; clear d0
-		move.b	obRoutine(a0),d0		; move routine counter to d0
+		move.b	obRoutine(a0),d0	; move routine counter to d0
 		move.w	Obj02_Index(pc,d0.w),d1 ; move the index to d1
 		jmp	Obj02_Index(pc,d1.w)	; find out the current position in the index
 ; ===========================================================================
@@ -25551,8 +25577,8 @@ Obj02_Setup:
 		bne.s	Obj02_NotEnding			; if not, branch
 		move.w	#$0524,obGfx(a0)		; set art, use first palette line
 		move.l	#Map_Obj02_End,obMap(a0)	; load mappings
-		move.w	#$140,obX(a0)			; set X-position
-		move.w	#$20A,obScreenY(a0)		; set Y-position
+		move.w	#UMadBro_X,obX(a0)		; set X-position
+		move.w	#UMadBro_YStart,obScreenY(a0)	; set Y-position
 		addq.b	#2,obRoutine(a0)		; set to "Obj02_Display"
 		bra.s	Obj02_FinishSetup
 
@@ -25586,14 +25612,14 @@ Obj02_Display:
 ; ===========================================================================
 
 Obj02_DisplayE:
-		cmpi.b	#6,($FFFFD024).w	; is Sonic dying?
-		blt.s	Obj02_DE_No		; if not, branch
-		cmpi.w	#$141,obScreenY(a0)	; has target location been reached?
-		bmi.s	Obj02_DE_No		; if yes, branch
-		subq.w	#1,obScreenY(a0)	; move up
+		cmpi.b	#6,($FFFFD024).w		; is Sonic dying?
+		blt.s	Obj02_DE_No			; if not, branch
+		cmpi.w	#UMadBro_YEnd,obScreenY(a0)	; has target location been reached?
+		bmi.s	Obj02_DE_No			; if yes, branch
+		subq.w	#1,obScreenY(a0)		; move up
 
 Obj02_DE_No:		
-		jmp	DisplaySprite		; jump to DisplaySprite
+		jmp	DisplaySprite			; jump to DisplaySprite
 ; ===========================================================================
 
 ; ---------------------------------------------------------------------------
@@ -26101,8 +26127,11 @@ Obj07_Init:
 		bne.s	@notlp
 		move.w	#$9800/$20,obGfx(a0)
 @notlp:		cmpi.w	#$302,d0
-		bne.s	Obj07_Animate
+		bne.s	@notsap
 		move.w	#$6600/$20,obGfx(a0)
+@notsap:	cmpi.w	#$601,d0
+		bne.s	Obj07_Animate
+		move.w	#$BA00/$20,obGfx(a0)
 ; ---------------------------------------------------------------------------
 
 Obj07_Animate:
@@ -26133,8 +26162,9 @@ Obj07_Animate:
 
 Obj07_CheckVisible:
 		move.w	($FFFFFE10).w,d0	; get level ID
-		cmpi.w	#$000,d0		; are we in NHP?
-		beq.s	@yes			; if yes, always display
+		beq.s	@yes			; are we in NHP? if yes, always display
+		cmpi.w	#$601,d0		; are we in the ending sequence?
+		beq.s	@yes			; if yes, branch
 		cmpi.w	#$002,d0		; are we in GHP?
 		bne.s	@notghp			; if not, branch
 		cmpi.b	#4,($FFFFFE30).w	; did we hit the fourth checkpoint yet?
@@ -44458,8 +44488,10 @@ PLC_Ending:
 		dc.w 0
 		dc.l ArtKospM_Stalk		; flower stalk
 		dc.w $6B00
-		dc.l ArtKospM_EndFlower	; flowers
+		dc.l ArtKospM_EndFan		; fan
 		dc.w $7400
+		dc.l ArtKospM_OkCool		; ok cool
+		dc.w $BA00
 		dc.l ArtKospM_UMadBro	; U Mad Bro?!
 		dc.w $A480
 		dc.l ArtKospM_Rabbit		; rabbit
@@ -44702,6 +44734,8 @@ ArtKospM_MzBlock:	incbin	artkosp\mzblock.kospm	; MZ green pushable block
 ;		even
 ArtKospM_Fan:	incbin	artkosp\slzfan.kospm	; SLZ fan
 		even
+ArtKospM_EndFan:	incbin	artkosp\endfan.kospm	; ending sequence fan
+		even
 ;ArtKospM_SlzWall:	incbin	artkosp\slzwall.kospm	; SLZ smashable wall
 ;		even
 ArtKospM_Pylon:	incbin	artkosp\slzpylon.kospm	; SLZ foreground pylon / girders
@@ -44928,8 +44962,8 @@ ArtKospM_EndSonic:	incbin	artkosp\endsonic.kospm	; ending sequence Sonic
 ;		even
 ;Kos_EndFlowers:	incbin	artkos\flowers.bin	; ending sequence animated flowers
 ;		even
-ArtKospM_EndFlower:	incbin	artkosp\endflowe.kospm	; ending sequence flowers
-		even
+;ArtKospM_EndFlower:	incbin	artkosp\endflowe.kospm	; ending sequence flowers
+;		even
 ;ArtKospM_CreditText:	incbin	artkosp\credits.kospm	; credits alphabet
 ;		even
 ;ArtKospM_EndStH:	incbin	artkosp\endtext.kospm	; ending sequence "Sonic the Hedgehog" text

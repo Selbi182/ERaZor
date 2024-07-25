@@ -49,9 +49,9 @@
 	dc.w $0510, $0510, $0060
 	dc.w $0004, $0000, $3EC0	; SBZ 4
 	dc.w $0000, $0720, $0060
-	dc.w $0004, $0000, $0500	; Ending Sequence (with extra flowers)
+	dc.w $0004, $0000, $0500	; ending sequence (fake)
 	dc.w $0110, $0310, $0060
-	dc.w $0004, $0000, $0DC0	; Ending Sequence (without extra flowers)
+	dc.w $0004, $0000, $0EC0	; Ending Sequence (real)
 	dc.w $0110, $0310, $0060
 	dc.w $0004, $0000, $2FFF	;
 	dc.w $0000, $0520, $0060

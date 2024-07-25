@@ -101,9 +101,9 @@ STS_LoadText:	move.w	(a5)+,(a6)
 		move.w	#$DF,d1
 STS_ClrScroll:	move.l	d0,(a1)+
 		dbf	d1,STS_ClrScroll	; fill scroll data with 0
-
 		move.l	d0,($FFFFF616).w
-		move	#$2700,sr
+
+		ints_disable
 		lea	($C00000).l,a6
 		move.l	#$60000003,($C00004).l
 		move.w	#$3FF,d1
@@ -124,19 +124,18 @@ STS_ClrVram:	move.l	d0,(a6)
 
 ; LevelSelect:
 StoryScreen_MainLoop:
-
 		move.b	#2,VBlankRoutine
 		jsr	DelayProgram
 		jsr	ObjectsLoad
 		jsr	BuildSprites
 
+		VBlank_SetMusicOnly
 		jsr	BackgroundEffects_Update
 		jsr	ERZBanner_PalCycle
+		VBlank_UnsetMusicOnly
 
-		VBlank_SetMusicOnly
 		bsr	StoryScreen_ContinueWriting
 		bsr	StoryScreen_CenterText
-		VBlank_UnsetMusicOnly
 
 		move.b	($FFFFF605).w,d1	; get button presses
 		andi.b	#$E0,d1			; is A, B, C, or start pressed?
@@ -267,7 +266,7 @@ StoryScreen_ContinueWriting:
 		move.l	d3,4(a6)			; write final position to VDP
 		add.w	#STS_VRAMSettings,d0		; apply VRAM settings (high plane, palette line 4, VRAM address $D000)
 		move.w	d0,(a6)				; write char to screen
-
+		
 		bsr	@gotonextpos			; go to next character
 
 		move.w	($FFFFFE0E).w,d0		; get frame counter
@@ -574,7 +573,7 @@ STS_Continue:	ststxt	"~PRESS~START~TO~CONTINUE...~"
 
 StoryText_1:	; text after intro cutscene
 		ststxt	"ONE DAY, THE SPIKED SUCKER"
-		ststxt	"RETURNED TO THE HILLS,"
+		ststxt	"RETURNED TO THE HILLS"
 		ststxt	"FOR OLD TIME'S SAKE."
 		ststxt_line
 		ststxt	"WHEN SUDDENLY..."
@@ -601,13 +600,13 @@ StoryText_2:	; text after beating Night Hill Place
 		ststxt_line
 		ststxt	"EGGMAN AND HIS THREE SPIKED"
 		ststxt	"BALLS OF STEEL WEREN'T EVEN"
-		ststxt	"NECESSARY TO SEE THAT SONIC"
+		ststxt	"NECESSARY TO SHOW THAT SONIC"
 		ststxt	"ISN'T HAVING A GOOD TIME."
 		ststxt_line
 		ststxt	"BUT HEY, I HEARD THEY'VE GOT"
 		ststxt	"A BUNCH OF EMERALDS NEARBY?"
-		ststxt	"WOULD BE A REAL SHAME IF YOU"
-		ststxt	"MISSED YOUR GOAL..."
+		ststxt	"IT WOULD BE A SHAME IF YOU"
+		ststxt	"WERE TO MISS YOUR GOAL..."
 		dc.b	-1
 		even
 ; ---------------------------------------------------------------------------
@@ -621,7 +620,7 @@ StoryText_3:	; text after beating Special Place
 		ststxt	"BUT HOW ELSE SHOULD I END"
 		ststxt	"THIS STAGE? WITH A PARADE?"
 		ststxt	"HOW ABOUT A COOKIE TOO?"
-		ststxt	"CATCH ME A BREAK HERE."
+		ststxt	"GIVE ME A BREAK HERE."
 		ststxt_line
 		ststxt	"ANYWAY, LISTEN UP:"
 		ststxt	"DO NOT TOUCH ANY UNUSUAL"
@@ -680,13 +679,13 @@ StoryText_6:	; text after beating Unreal Place
 		ststxt	"UNTIL YOU CAN DO THE ENTIRE"
 		ststxt	"STAGE BLINDFOLDED!"
 		ststxt_line
-		ststxt	"BUT AT LEAST YOU GOT ALL"
-		ststxt	"EMERALDS! TOO BAD THIS GAME"
-		ststxt	"ONLY HAS SIX. SUPER SONIC"
-		ststxt	"IS OUT OF THE QUESTION."
+		ststxt	"ANYWAY, YOU HAVE ALL THE"
+		ststxt	"EMERALDS NOW. TOO BAD THIS"
+		ststxt	"GAME ONLY HAS SIX, SO"
+		ststxt	"SUPER SONIC WON'T HAPPEN."
 		ststxt_line
-		ststxt	"BUT TRY GOING TO SPACE! IT"
-		ststxt	"SORTA MAKES UP FOR THE"
+		ststxt	"BUT TRY GOING TO SPACE!"
+		ststxt	"IT SORTA MAKES UP FOR THE"
 		ststxt	"SEVENTH EMERALD. SORTA."
 		dc.b	-1
 		even

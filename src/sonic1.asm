@@ -39690,50 +39690,50 @@ locret_1AEF2:
 ; ===========================================================================
 
 Touch_Monitor:
-		cmpi.w	#$502,($FFFFFE10).w	; are we in FP?
-		beq.s	@notfasttouch		; if yes, branch
-		cmpi.w	#$001,($FFFFFE10).w	; are we in the intro cutscene?
-		beq.s	@notfasttouch		; if yes, make sure we bounce
-		move.w	obInertia(a0),d0	; move Sonic's interia to d0
-		bpl.s	@chkspeed		; if positive, branch
-		neg.w	d0			; otherwie negate d0
-@chkspeed:	cmpi.w	#$A00,d2		; is Sonic fast enough to break monitor by touching?
-		bhs.s	Touch_MonitorBreakOpen	; if yes, branch
-
-@notfasttouch:
-		tst.w	obVelY(a0)		; is Sonic moving upwards?
-		bpl.s	Touch_MonitorTop	; if not, branch
+		tst.w	obVelY(a0)		; is Sonic falling down?
+		bpl.s	Touch_Monitor_ChkBreak	; if yes, branch
 		tst.b	($FFFFFFEB).w		; is homing flag set?
-		bne.s	Touch_MonitorTop	; if yes, treat as touching from top
+		bne.s	Touch_Monitor_ChkBreak	; if yes, treat as touching from top
 
 		; bounce from below effect
 		move.w	obY(a0),d0
 		subi.w	#$10,d0
 		cmp.w	obY(a1),d0
-		bcs.s	locret_1AF2E		
+		bcs.s	Touch_Monitor_End		
 		neg.w	obVelY(a0)		; reverse Sonic's y-motion
 		move.w	#-$180,obVelY(a1)	; bounce monitor a little
 		tst.b	ob2ndRout(a1)
-		bne.s	locret_1AF2E
+		bne.s	Touch_Monitor_End
 		addq.b	#4,ob2ndRout(a1)	; make monitor fall down
 		rts
 ; ===========================================================================
 
-Touch_MonitorTop:
+Touch_Monitor_ChkBreak:
 		tst.b	($FFFFFF77).w		; is antigrav enabled?
-		bne.s	Touch_MonitorBreakOpen	; if yes, break open with no bounce
+		bne.s	@break_nobounce		; if yes, break open with no bounce
 		cmpi.b	#2,obAnim(a0)		; is Sonic rolling/jumping?
-		beq.s	@domonitorbreak		; if yes, branch
+		beq.s	@break			; if yes, break open
 		cmpi.b	#$25,obAnim(a0)		; is death anim shown (inhuman mode)?
-		bne.s	locret_1AF2E		; if not, branch
+		beq.s	@break			; if yes, break open
 
-@domonitorbreak:
+		btst	#1,obStatus(a0)		; is Sonic in air?
+		bne.s	Touch_Monitor_End	; if yes, no speed break
+		cmpi.w	#$502,($FFFFFE10).w	; are we in FP?
+		beq.s	Touch_Monitor_End	; if yes, disallow speed break
+		move.w	obInertia(a0),d0	; move Sonic's interia to d0
+		bpl.s	@chkspeed		; if positive, branch
+		neg.w	d0			; otherwie negate d0
+@chkspeed:	cmpi.w	#$A00,d0		; is Sonic fast enough to break monitor by touching?
+		blo.s	Touch_Monitor_End	; if not, branch
+		bclr	#5,obStatus(a0)		; clear pushing flag
+
+@break:
 		neg.w	obVelY(a0)		; reverse Sonic's y-motion
 		bsr	BounceJD		; jump to BounceJD
-
-Touch_MonitorBreakOpen:
+@break_nobounce:
 		addq.b	#2,obRoutine(a1)	; break monitor open
-locret_1AF2E:
+
+Touch_Monitor_End:
 		rts	
 ; ===========================================================================
 

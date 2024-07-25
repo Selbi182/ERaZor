@@ -47,7 +47,7 @@ DebugModeDefault = 1
 DebugSurviveNoRings = 1
 ; ------------------------------------------------------
 DoorsAlwaysOpen = 0
-LowBossHP = 0
+LowBossHP = 1
 ; ------------------------------------------------------
 TestDisplayDeleteBugs = 0
 ; ======================================================
@@ -39692,6 +39692,8 @@ locret_1AEF2:
 Touch_Monitor:
 		cmpi.w	#$502,($FFFFFE10).w	; are we in FP?
 		beq.s	@notfasttouch		; if yes, branch
+		cmpi.w	#$001,($FFFFFE10).w	; are we in the intro cutscene?
+		beq.s	@notfasttouch		; if yes, make sure we bounce
 		move.w	obInertia(a0),d0	; move Sonic's interia to d0
 		bpl.s	@chkspeed		; if positive, branch
 		neg.w	d0			; otherwie negate d0

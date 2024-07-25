@@ -124,7 +124,6 @@ STS_ClrVram:	move.l	d0,(a6)
 
 ; LevelSelect:
 StoryScreen_MainLoop:
-		bsr	StoryScreen_CenterText
 
 		move.b	#2,VBlankRoutine
 		jsr	DelayProgram
@@ -136,18 +135,21 @@ StoryScreen_MainLoop:
 
 		VBlank_SetMusicOnly
 		bsr	StoryScreen_ContinueWriting
+		bsr	StoryScreen_CenterText
 		VBlank_UnsetMusicOnly
 
 		move.b	($FFFFF605).w,d1	; get button presses
 		andi.b	#$E0,d1			; is A, B, C, or start pressed?
-		beq	StoryScreen_MainLoop	; if not, branch
-
+		beq.w	StoryScreen_MainLoop	; if not, branch
 		tst.b	(STS_FullyWritten).w	; is text already fully written?
-		bne	STS_FadeOutScreen		; if yes, exit screen
+		bne.w	STS_FadeOutScreen	; if yes, exit screen
+
 		VBlank_SetMusicOnly
 		bsr	StoryText_WriteFull	; write the complete text
+		bsr	StoryScreen_CenterText
 		VBlank_UnsetMusicOnly
-		bra	StoryScreen_MainLoop	; loop
+
+		bra.w	StoryScreen_MainLoop	; loop
 ; ---------------------------------------------------------------------------
 
 STS_FadeOutScreen:
@@ -232,7 +234,8 @@ StoryScreen_ContinueWriting:
 		bra.s	@skipspaces			; loop
 
 @notspace:
-		bpl.s	@dowrite			; did we reach the end of the list (-1)? if not, branch
+		bpl.s	@dowrite			; did we reach the end of the text (-1)? if not, branch? if not, branch
+
 		move.b	#1,(STS_FinalPhase).w		; set final phase flag
 		clr.w	(STS_CurrentChar).w		; reset current char counter
 		clr.b	(STS_Column).w			; reset column counter
@@ -241,6 +244,7 @@ StoryScreen_ContinueWriting:
 		move.b	#1,(STS_FullyWritten).w		; set the fully written flag now
 @noskipbottom:
 		rts					; don't continue writing
+; ---------------------------------------------------------------------------
 
 @dowrite:
 		lea	($C00000).l,a6			; load VDP data port to a6
@@ -250,7 +254,7 @@ StoryScreen_ContinueWriting:
 		moveq	#0,d2				; clear d2
 		move.w	#$80,d1				; set d1 to $80 (we actually want $800000 but mulu only supports words)
 		move.b	(STS_Row).w,d2			; get current row
-		mulu.w	d2,d1				; multiply currrent row with VRAM offset
+		mulu.w	d2,d1				; multiply current row with VRAM offset
 		swap	d1				; convert back into to the $800000-based format we want
 		add.l	d1,d3				; add to base address
 
@@ -279,11 +283,11 @@ StoryScreen_ContinueWriting:
 @gotonextpos:
 		addq.b	#1,(STS_Column).w		; go to next column
 		cmpi.b	#STS_LineLength,(STS_Column).w	; did we reach the end of the row?
-		blo.s	@nottheendoftherow		; if not, branch
+		blo.s	@thisisnottheendoftherow	; if not, branch
 		move.b	#0,(STS_Column).w		; reset column
 		addq.b	#1,(STS_Row).w			; go to next row
 
-@nottheendoftherow:
+@thisisnottheendoftherow:
 		addq.w	#1,(STS_CurrentChar).w		; go to next char for the next iteration
 		rts
 
@@ -486,13 +490,17 @@ StoryScreen_CenterText:
 ; ---------------------------------------------------------------------------
 
 ; Macro to preprocess and output a character to its correct mapping
-stschar macro char		
-	if     \char = ' '
-		dc.b	$0000
+stschar macro char	
+	if     \char = '~' ; space without delay
+		dc.b	$0000/$20
+	elseif \char = ' ' ; space with delay (basically an invisible letter)
+		dc.b	$0020/$20
 	elseif \char = "'"
 		dc.b	$0040/$20
 	elseif \char = ':'
 		dc.b	$0060/$20
+	elseif \char = "^"
+		dc.b	$0080/$20
 	elseif \char = '!'
 		dc.b	$0140/$20
 	elseif \char = '-'
@@ -511,8 +519,8 @@ stschar macro char
 ststxt macro string
 	i:   = 1
 	len: = strlen(\string)
-	if (len<>STS_LineLength)
-		inform 2, "line must be EXACTLY 28 characters long"
+	if (len>STS_LineLength)
+		inform 2, "line length must be 28 characters or less"
 	endif
 
 	while (i<=len)
@@ -520,7 +528,22 @@ ststxt macro string
 		stschar '\char'
 		i: = i+1
 	endw
+
+	; fill rest with instantly skipped spaces
+	i: = 0
+	while (i<(STS_LineLength-len))
+		stschar "~"
+		i: = i+1
+	endw	
+	;stschar " "
 	endm
+
+ststxt_line macro
+	rept STS_LineLength
+		stschar "~"
+	endr
+	;stschar " "
+	endm	
 ; ---------------------------------------------------------------------------
 
 StoryText_Load:
@@ -544,190 +567,190 @@ StoryText_Index:
 		dc.l	StoryText_9	; text after beating the blackout challenge special stage
 ; ---------------------------------------------------------------------------
 
-STS_Continue:	ststxt	" PRESS START TO CONTINUE... "
+STS_Continue:	ststxt	"~PRESS~START~TO~CONTINUE...~"
 		dc.b	-1
 		even
 ; ---------------------------------------------------------------------------
 
 StoryText_1:	; text after intro cutscene
-		ststxt	"THE SPIKED SUCKER DECIDED   "
-		ststxt	"TO GO BACK TO THE HILLS,    "
-		ststxt	"JUST TO SEE WHAT'S UP.      "
-		ststxt	"                            "
-		ststxt	"WHEN SUDDENLY... EXPLOSIONS!"
-		ststxt	"EVERYWHERE! A GRAY METALLIC "
-		ststxt	"BUZZ BOMBER SHOWERED HIM    "
-		ststxt	"WITH MISSILES! SONIC MANAGED"
-		ststxt	"TO ESCAPE IT, BUT MINDLESSLY"
-		ststxt	"FELL INTO A CONVENIENTLY    "
-		ststxt	"PLACED RING TRAP.           "
-		ststxt	"                            "
-		ststxt	"UPON WARPING, HE FINDS      "
-		ststxt	"HIMSELF IN A STRANGE        "
-		ststxt	"PARALLEL DIMENSION...       "
+		ststxt	"ONE DAY, THE SPIKED SUCKER"
+		ststxt	"RETURNED TO THE HILLS,"
+		ststxt	"FOR OLD TIME'S SAKE."
+		ststxt_line
+		ststxt	"WHEN SUDDENLY..."
+		ststxt	"EXPLOSIONS EVERYWHERE!"
+		ststxt	"A GRAY BUZZ BOMBER HAD SONIC"
+		ststxt	"RUNNING FOR HIS DEAR LIFE."
+		ststxt	"BUT HE ESCAPED!"
+		ststxt_line
+		ststxt	"...ONLY TO THEN LAUNCH"
+		ststxt	"HIMSELF STRAIGHT INTO A VERY"
+		ststxt	"CONVENIENTLY PLACED RING."
+		ststxt_line
+		ststxt	"SO MUCH FOR A QUICK REVISIT."
 		dc.b	-1
 		even
 ; ---------------------------------------------------------------------------
 
 StoryText_2:	; text after beating Night Hill Place
-		ststxt	"TELEPORTING WATERFALLS,     "
-		ststxt	"CRABMEATS WITH EXPLODING    "
-		ststxt	"BALLS, AND THE ORIGINAL     "
-		ststxt	"GREEN HILL ZONE TRANSFORMED "
-		ststxt	"INTO SOMETHING OF AN ACTION "
-		ststxt	"MOVIE. TOP IT OFF WITH      "
-		ststxt	"EGGMAN AND HIS THREE SPIKED "
-		ststxt	"BALLS OF STEEL, AND YOU CAN "
-		ststxt	"TELL SONIC ISN'T EXACTLY    "
-		ststxt	"HAVING THE TIME OF HIS LIFE."
-		ststxt	"                            "
+		ststxt	"TELEPORTING WATERFALLS,"
+		ststxt	"CRABMEATS WITH EXPLODING"
+		ststxt	"BALLS, AND THE ORIGINAL"
+		ststxt	"GREEN HILL ZONE TRANSFORMED"
+		ststxt	"INTO CINEMA HELL ITSELF."
+		ststxt_line
+		ststxt	"EGGMAN AND HIS THREE SPIKED"
+		ststxt	"BALLS OF STEEL WEREN'T EVEN"
+		ststxt	"NECESSARY TO SEE THAT SONIC"
+		ststxt	"ISN'T HAVING A GOOD TIME."
+		ststxt_line
 		ststxt	"BUT HEY, I HEARD THEY'VE GOT"
-		ststxt	"A BUNCH OF EMERALDS NEARBY? "
+		ststxt	"A BUNCH OF EMERALDS NEARBY?"
 		ststxt	"WOULD BE A REAL SHAME IF YOU"
-		ststxt	"MISSED YOUR GOAL.           "
+		ststxt	"MISSED YOUR GOAL..."
 		dc.b	-1
 		even
 ; ---------------------------------------------------------------------------
 
 StoryText_3:	; text after beating Special Place
-		ststxt	"WOW, FOUR EMERALDS ALREADY  "
+		ststxt	"WOW, FOUR EMERALDS ALREADY"
 		ststxt	"COLLECTED, AND SONIC DOESN'T"
 		ststxt	"EVEN KNOW WHY HE NEEDS THEM."
-		ststxt	"                            "
-		ststxt	"FRANKLY, I GOT NO IDEA. BUT "
-		ststxt	"HOW ELSE SHOULD I END THIS  "
-		ststxt	"STAGE? WITH A BLOODY PARADE?"
-		ststxt	"HOW ABOUT A COOKIE TOO?     "
-		ststxt	"CATCH ME A BREAK HERE.      "
-		ststxt	"                            "
-		ststxt	"ANYWAY, LISTEN. WHATEVER YOU"
-		ststxt	"DO, STAY AWAY FROM ANY      "
-		ststxt	"SUSPICIOUS MONITORS!        "
-		ststxt	"WHO KNOWS WHAT INHUMANITY   "
-		ststxt	"LIES IN THERE...            "
+		ststxt_line
+		ststxt	"I DON'T KNOW EITHER."
+		ststxt	"BUT HOW ELSE SHOULD I END"
+		ststxt	"THIS STAGE? WITH A PARADE?"
+		ststxt	"HOW ABOUT A COOKIE TOO?"
+		ststxt	"CATCH ME A BREAK HERE."
+		ststxt_line
+		ststxt	"ANYWAY, LISTEN UP:"
+		ststxt	"DO NOT TOUCH ANY UNUSUAL"
+		ststxt	"MONITORS IN THE NEXT STAGE!"
+		ststxt	"WHO KNOWS WHAT INHUMANITY"
+		ststxt	"LIES IN THERE..."
 		dc.b	-1
 		even
 ; ---------------------------------------------------------------------------
 
 StoryText_4:	; text after beating Ruined Place
-		ststxt	"YOU DIDN'T LISTEN. WHAT A   "
-		ststxt	"FOOL. WELL, AT LEAST YOUR   "
-		ststxt	"PATHETIC EFFORTS SHOOTING   "
-		ststxt	"YOURSELF THROUGH A MAZE OF  "
-		ststxt	"SPIKES MADE FOR QUITE AN    "
-		ststxt	"ENTERTAINING WATCH. REALLY, "
-		ststxt	"I THINK YOU'VE GOT A GREAT  "
-		ststxt	"CAREER AS A COMEDIAN AHEAD! "
-		ststxt	"                            "
-		ststxt	"ACTUALLY, THAT GIVES ME AN  "
-		ststxt	"IDEA. LET'S SEE WHAT HAPPENS"
-		ststxt	"WHEN THE CAMERA GUIDES THE  "
-		ststxt	"NARRATIVE. I SURE HOPE YOU  "
-		ststxt	"DON'T FEEL TOO DOWN, BECAUSE"
-		ststxt	"THINGS CAN ONLY GO UP...    "
+		ststxt	"WHY DIDN'T YOU LISTEN? FOOL."
+		ststxt_line
+		ststxt	"WELL, AT LEAST YOUR EFFORTS"
+		ststxt	"SHOOTING YOURSELF THROUGH"
+		ststxt	"A MAZE OF SPIKES WERE PRETTY"
+		ststxt	"ENTERTAINING TO WATCH."
+		ststxt	"REALLY, YOU SHOULD LOOK INTO"
+		ststxt	"BECOMING A COMEDY STAR!"
+		ststxt_line
+		ststxt	"WAIT A MINUTE, I JUST HAD"
+		ststxt	"AN ABSOLUTELY AMAZING IDEA."
+		ststxt_line
+		ststxt	"LET'S SEE HOW YOU DO"
+		ststxt	"WHEN THE CAMERA"
+		ststxt	"GUIDES THE NARRATIVE..."
 		dc.b	-1
 		even
 ; ---------------------------------------------------------------------------
 
 StoryText_5:	; text after beating Labyrinth Place
-		ststxt	"MAN, IF YOU COULD SEE YOUR  "
-		ststxt	"FACE RIGHT NOW! PRICELESS!  "
-		ststxt	"                            "
-		ststxt	"WELL, OUR CAMERA CREW WILL  "
-		ststxt	"MAKE ENOUGH CASH FROM THAT  "
-		ststxt	"AWFUL ATTEMPT OF YOURS TO   "
-		ststxt	"LAST A LIFETIME. SO, NO MORE"
-		ststxt	"FUNKY CAMERA BUSINESS.      "
-		ststxt	"PINKY PROMISE.              "
-		ststxt	"                            "
-		ststxt	"UNFORTUNATELY, YOU HAVE     "
-		ststxt	"KILLED THE JAWS OF DESTINY, "
+		ststxt	"MAN, IF YOU COULD SEE YOUR"
+		ststxt	"FACE RIGHT NOW! PRICELESS!"
+		ststxt_line
+		ststxt	"WELL, OUR CREW HAS FILMED"
+		ststxt	"ENOUGH MATERIAL FOR TWO"
+		ststxt	"FEATURE-LENGTH FILMS"
+		ststxt	"AND A SPIN-OFF. SO, NO MORE"
+		ststxt	"FUNKY CAMERA BUSINESS."
+		ststxt_line
+		ststxt	"HOWEVER, YOU'VE KILLED"
+		ststxt	"THE HOLY JAWS OF WISDOM,"
 		ststxt	"AND THEREFORE MUST BE SERVED"
-		ststxt	"THE ULTIMATE PUNISHMENT:    "
-		ststxt	"ANOTHER SPECIAL STAGE.      "
+		ststxt	"THE ULTIMATE PUNISHMENT:"
+		ststxt_line
+		ststxt	"ANOTHER SPECIAL STAGE."
 		dc.b	-1
 		even
 ; ---------------------------------------------------------------------------
 
 StoryText_6:	; text after beating Unreal Place
-		ststxt	"IF I SEE SUCH A PATHETIC    "
-		ststxt	"EXCUSE FOR WHAT YOU CALL    "
-		ststxt	"SKILL AGAIN, I WILL GO AHEAD"
-		ststxt	"AND DISABLE THE CHECKPOINTS "
-		ststxt	"UNTIL YOU CAN DO THE ENTIRE "
-		ststxt	"STAGE BLINDFOLDED!          "
-		ststxt	"                            "
-		ststxt	"BUT HEY, AT LEAST YOU       "
-		ststxt	"COLLECTED ALL SIX EMERALDS, "
-		ststxt	"WHICH MEANS YOU NEED TO GO  "
-		ststxt	"TO SPACE OR SOMETHING.      "
-		ststxt	"                            "
-		ststxt	"JUST REMEMBER THAT IN THE   "
-		ststxt	"VOID, NOBODY CAN HEAR YOUR  "
-		ststxt	"CRIES FOR HELP...           "
+		ststxt	"IF I SEE SUCH A PATHETIC"
+		ststxt	"EXCUSE FOR WHAT YOU CALL"
+		ststxt	"^SKILL^ AGAIN, I WILL"
+		ststxt	"DISABLE THE CHECKPOINTS"
+		ststxt	"UNTIL YOU CAN DO THE ENTIRE"
+		ststxt	"STAGE BLINDFOLDED!"
+		ststxt_line
+		ststxt	"BUT AT LEAST YOU GOT ALL"
+		ststxt	"EMERALDS! TOO BAD THIS GAME"
+		ststxt	"ONLY HAS SIX. SUPER SONIC"
+		ststxt	"IS OUT OF THE QUESTION."
+		ststxt_line
+		ststxt	"BUT TRY GOING TO SPACE! IT"
+		ststxt	"SORTA MAKES UP FOR THE"
+		ststxt	"SEVENTH EMERALD. SORTA."
 		dc.b	-1
 		even
 ; ---------------------------------------------------------------------------
 
 StoryText_7:	; text after beating Scar Night Place
-		ststxt	"WORD OF ADVICE:             "
-		ststxt	"TOO MUCH SCREAMING ISN'T    "
-		ststxt	"GOOD FOR YOUR VOCAL CORDS.  "
-		ststxt	"YOU CLEARLY DIDN'T PAY ANY  "
-		ststxt	"ATTENTION TO WHAT I SAID    "
-		ststxt	"EARLIER ABOUT NOBODY BEING  "
-		ststxt	"ABLE TO HEAR YOU IN SPACE.  "
-		ststxt	"MORON. BUT I GET IT, I ALSO "
-		ststxt	"SCREAM IN EXCITEMENT IF I   "
-		ststxt	"PLAY A BUZZ WIRE GAME!      "
-		ststxt	"                            "
-		ststxt	"I HOPE YOUR ANGELIC VOICE   "
-		ststxt	"CAN BE HEARD ONE MORE TIME  "
-		ststxt	"IN THE FINALE! IT IS THE    "
-		ststxt	"LAST STAGE AFTER ALL, RIGHT?"
+		ststxt	"LOOK, I GET IT."
+		ststxt	"I ALSO SCREAM IN EXCITEMENT"
+		ststxt	"WHEN I PLAY BUZZ WIRE GAMES."
+		ststxt	"BUT I'M REALLY STARTING"
+		ststxt	"TO GET CONCEREND ABOUT"
+		ststxt	"YOUR VOCAL CORDS."
+		ststxt_line
+		ststxt	"AFTER ALL, THE FINALE IS"
+		ststxt	"UP AHEAD AND I WAS REALLY"
+		ststxt	"HOPING WE WOULD BE BLESSED"
+		ststxt	"BY YOUR ANGELIC VOICE"
+		ststxt	"ONE LAST TIME!"
+		ststxt_line
+		ststxt	"IT IS THE LAST STAGE"
+		ststxt	"AFTER ALL... RIGHT?"
 		dc.b	-1
 		even
 ; ---------------------------------------------------------------------------
 
 StoryText_8:	; text after jumping in the ring for the Ending Sequence
-		ststxt	"THE WORLD IS RESCUED!       "
-		ststxt	"ANIMALS JUMP AROUND AND     "
-		ststxt	"SPREAD THEIR HAPPINESS BY   "
-		ststxt	"JUMPING OFF CLIFFS!         "
-		ststxt	"                            "
-		ststxt	"SONIC DECIDED TO TAKE ONE   "
-		ststxt	"FINAL RUN THROUGH THE GREEN "
-		ststxt	"HILLS, WHERE IT ALL STARTED,"
-		ststxt	"TO CELEBRATE HIS AND YOUR   "
-		ststxt	"HARD EFFORTS. WITHOUT YOUR  "
-		ststxt	"HELP, THIS WOULD HAVE       "
-		ststxt	"NEVER HAPPENED!             "
-		ststxt	"                            "
-		ststxt	"NOW WATCH YOURS AND SONIC'S "
-		ststxt	"WELL DESERVED END...        "
+		ststxt	"THE WORLD IS RESCUED!"
+		ststxt	"ANIMALS JUMP AROUND AND"
+		ststxt	"SPREAD THEIR HAPPINESS BY"
+		ststxt	"JUMPING OFF CLIFFS!"
+		ststxt_line
+		ststxt	"AFTER ESCAPING THE STRANGE"
+		ststxt	"PARALLEL DIMENSION, SONIC"
+		ststxt	"DECIDED TO TAKE ONE FINAL"
+		ststxt	"RUN THROUGH THE HILLS,"
+		ststxt	"WHERE IT ALL STARTED."
+		ststxt	"WITHOUT YOU, THIS WOULD"
+		ststxt	"HAVE NEVER HAPPENED!"
+		ststxt_line
+		ststxt	"NOW WATCH YOURS AND SONIC'S"
+		ststxt	"WELL-DESERVED END..."
 		dc.b	-1
 		even
 ; ---------------------------------------------------------------------------
 
 StoryText_9:	; text after beating the blackout challenge special stage
-		ststxt	"HOLY CRAP... YOU DID IT!    "
-		ststxt	"YOU'VE CONQUERED THE        "
-		ststxt	"BLACKOUT CHALLENGE.         "
-		ststxt	"                            "
-		ststxt	"WHEN I MOCKED YOU BACK IN   "
-		ststxt	"UNREAL PLACE AND SAID YOU'D "
-		ststxt	"HAVE TO DO THE STAGE        "
-		ststxt	"BLINDFOLDED, I DIDN'T THINK "
-		ststxt	"YOU'D ACTUALLY DO IT.       "
-		ststxt	"                            "
-		ststxt	"CHECK OUT THE OPTIONS MENU  "
-		ststxt	"FOR SOMETHING SPECIAL JUST  "
-		ststxt	"FOR YOU. YOU'VE EARNED IT!  "
-		ststxt	"                            "
-		ststxt	"THANK YOU FOR STICKING WITH "
-		ststxt	"MY GAME TO THE BITTER END!  "
-		ststxt	"IT MEANS THE WORLD TO ME.   "
-		ststxt	"                            "
+		ststxt	"HOLY CRAP... YOU DID IT!"
+		ststxt	"YOU'VE CONQUERED THE"
+		ststxt	"BLACKOUT CHALLENGE."
+		ststxt_line
+		ststxt	"WHEN I MOCKED YOU BACK IN"
+		ststxt	"UNREAL PLACE AND SAID YOU'D"
+		ststxt	"HAVE TO DO THE STAGE"
+		ststxt	"BLINDFOLDED, I DIDN'T THINK"
+		ststxt	"YOU'D ACTUALLY DO IT."
+		ststxt_line
+		ststxt	"CHECK OUT THE OPTIONS MENU"
+		ststxt	"FOR SOMETHING SPECIAL JUST"
+		ststxt	"FOR YOU. YOU'VE EARNED IT!"
+		ststxt_line
+		ststxt	"THANK YOU FOR STICKING WITH"
+		ststxt	"MY GAME TO THE BITTER END!"
+		ststxt	"IT MEANS THE WORLD TO ME."
+		ststxt_line
 		ststxt	"                      -SELBI"
 		dc.b	-1
 		even

@@ -15,7 +15,7 @@ RHYTHM_Header:
 	smpsHeaderFM	RHYTHM_FM5,	$e8, $17
 	smpsHeaderPSG	RHYTHM_PSG1,	$dc, $4, $0
 	smpsHeaderPSG	RHYTHM_PSG2,	$dc, $1, $0
-	smpsHeaderPSG	RHYTHM_PSG3,	$c4, $1, $0
+	smpsHeaderPSG	RHYTHM_PSG3,	-24, $1, $0
 
 RHYTHM_MODB:
 	smpsModSet  $1E, $01, $05, $05

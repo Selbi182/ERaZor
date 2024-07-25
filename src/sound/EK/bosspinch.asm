@@ -18,7 +18,7 @@ BossPinch_Header:
 	smpsHeaderFM	BossPinch_FM3,	smpsPitch01lo,	$12
 	smpsHeaderPSG	BossPinch_PSG1,	smpsPitch03lo,	$03,	$00
 	smpsHeaderPSG	BossPinch_PSG2,	smpsPitch03lo,	$03,	$00
-	smpsHeaderPSG	BossPinch_PSG3,	$5C,		$02,	$00
+	smpsHeaderPSG	BossPinch_PSG3,	smpsPitch03lo,	$02,	$00
 
 BossPinch_Call01:
 	smpsModSet	$1E,	$01,	$05,	$05

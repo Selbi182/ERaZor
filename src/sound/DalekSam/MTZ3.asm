@@ -15,7 +15,7 @@ MTZ_Header:
 	smpsHeaderFM	MTZ_FM5,	$e8, $1a
 	smpsHeaderPSG	MTZ_PSG1,	$dc, $3, $0
 	smpsHeaderPSG	MTZ_PSG2,	$dc, $1, $0
-	smpsHeaderPSG	MTZ_PSG3,	$5c, $2, $0
+	smpsHeaderPSG	MTZ_PSG3,	$dc, $2, $0
 
 MTZ_FM1:
 	smpsCall	MTZ_FM1_p0
@@ -1251,12 +1251,38 @@ MTZ_PSG2_p1c:
 ; Pattern data for PSG3 (Noise)
 MTZ_PSG3_p0:
 	smpsPSGvoice	$2
-	dc.b		nCs0,$2
+	dc.b		$82,$2
 	dc.b		$80
-	rept 15
-		dc.b		nCs0
-		dc.b		$80
-	endr
+	dc.b		$82
+	dc.b		$80
+	dc.b		$82
+	dc.b		$80
+	dc.b		$82
+	dc.b		$80
+	dc.b		$82
+	dc.b		$80
+	dc.b		$82
+	dc.b		$80
+	dc.b		$82
+	dc.b		$80
+	dc.b		$82
+	dc.b		$80
+	dc.b		$82
+	dc.b		$80
+	dc.b		$82
+	dc.b		$80
+	dc.b		$82
+	dc.b		$80
+	dc.b		$82
+	dc.b		$80
+	dc.b		$82
+	dc.b		$80
+	dc.b		$82
+	dc.b		$80
+	dc.b		$82
+	dc.b		$80
+	dc.b		$82
+	dc.b		$80
 	smpsReturn
 
 ; Pattern data for DAC

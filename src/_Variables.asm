@@ -101,6 +101,9 @@ BossHealth		equ	$FFFFFF75			; b	current health of a boss (not used by all bosses
 HUD_BossHealth		equ	$FFFFFF68			; b	current health of a boss to be displayed instead of the HUD deaths counter
 
 OptionsBits		equ	$FFFFFF92			; b	bit field for the user options
+Doors_Casual		equ	$FFFFFF8A			; b	bit field for beaten levels in casual
+Doors_Frantic		equ	$FFFFFF8B			; b	bit field for beaten levels in frantic
+Progress		equ	$FFFFFF93			; b	bit field for overall game state (bit 0 - base game // bit 1 - blackout)
 
 	if def(__MD_REPLAY__)
 ; __MD_REPLAY__ = 'rec'

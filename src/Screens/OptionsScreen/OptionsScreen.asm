@@ -257,16 +257,10 @@ Options_HandleCinematicMode:
 		beq.s	@nodebugunlock		; if not, branch
 		cmpi.b	#$70,($FFFFF604).w	; is exactly ABC held?
 		bne.s	@nodebugunlock		; if not, branch
+		jsr	Toggle_BaseGameBeaten	; toggle base game beaten state to toggle the unlock for cinematic mode
 		bclr	#3,(OptionsBits).w	; make sure option doesn't stay accidentally enabled
 		bclr	#6,(OptionsBits).w	; ''
-		clr.b	(CinematicIndex).w
-		btst	#Casual_BaseGame,($FFFFFF93).w
-		bne.s	@unset
-		bset	#Casual_BaseGame,($FFFFFF93).w
-		bset	#Frantic_BaseGame,($FFFFFF93).w
-		bra.w	Options_UpdateTextAfterChange_NoSound
-@unset:		bclr	#Casual_BaseGame,($FFFFFF93).w
-		bclr	#Frantic_BaseGame,($FFFFFF93).w
+		clr.b	(CinematicIndex).w	; set to None
 		bra.w	Options_UpdateTextAfterChange_NoSound
 
 @nodebugunlock:		
@@ -326,7 +320,7 @@ Options_HandleNonstopInhuman:
 		beq.s	@nodebugunlock		; if not, branch
 		cmpi.b	#$70,($FFFFF604).w	; is exactly ABC held?
 		bne.s	@nodebugunlock		; if not, branch
-		bchg	#Bonus_Blackout,($FFFFFF93).w	; toggle blackout challenge beaten state to toggle the unlock for nonstop inhuman
+		jsr	Toggle_BlackoutBeaten	; toggle blackout challenge beaten state to toggle the unlock for nonstop inhuman
 		bclr	#4,(OptionsBits).w	; make sure option doesn't stay accidentally enabled
 		bra.w	Options_UpdateTextAfterChange_NoSound
 

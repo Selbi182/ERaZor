@@ -200,18 +200,16 @@ Exit_BombMachineCutscene:
 ; ===========================================================================
 
 Exit_EndingSequence:
-		moveq	#0,d1				; set to no texts to display
+		moveq	#0,d1			; set to no texts to display
 
-		bsr	Check_BaseGameBeaten_Frantic	; has the player already beaten the game in frantic?
-		bne.s	@checkcinematicunlock		; if yes, this doesn't matter anymore
-		frantic					; did we beat the game in frantic?
-		bne.s	@showfrantictext		; if yes, branch
-		bsr	Check_BaseGameBeaten_Casual	; has the player already beaten the game in casual?
-		bne.s	@checkcinematicunlock		; if yes, branch
-		bset	#0,d1				; load text after beating the game in casual mode
-		bra.s	@checkcinematicunlock		; skip
+		frantic				; did we beat the game in frantic?
+		bne.s	@showfrantictext	; if yes, branch
+		bsr	Check_AllLevelsBeaten_Frantic ; is a player who already beat frantic for some reason revisitng the end in casual?
+		bne.s	@showfrantictext	; if yes, show frantic text anyway
+		bset	#0,d1			; load text after beating the game in casual mode
+		bra.s	@checkcinematicunlock	; skip
 	@showfrantictext:
-		bset	#1,d1				; load text after beating the game in frantic mode
+		bset	#1,d1			; load text after beating the game in frantic mode
 		
 @checkcinematicunlock:
 		bsr	Check_BaseGameBeaten	; have you already beaten the base game?
@@ -522,47 +520,85 @@ NextLevel_Array:
 ; Subtroutines to ease coordinating the game progress (casual/frantic)
 ; (NOTE: Frantic takes priority over Casual in all instances!)
 ; ---------------------------------------------------------------------------
-; Bit indices in the progress RAM (FF8A/FF8B)
-Casual_BaseGame  = 0
-Frantic_BaseGame = 1
-Bonus_Blackout   = 2
+Doors_All	= %01111111 ; (upper bit is unused)
+State_BaseGame	= 0
+State_Blackout  = 1
 ; ---------------------------------------------------------------------------
 
-Check_LevelBeaten:
 		; d0 = bit we want to test
+Check_LevelBeaten_Current:
 		frantic					; are we in frantic?
 		bne.s	Check_LevelBeaten_Frantic	; if yes, branch
-		btst	d0,($FFFFFF8A).w		; check if door is open (casual)
+
+Check_LevelBeaten_Casual:
+		btst	d0,(Doors_Casual).w		; check if door is open (casual)
 		rts
 
 Check_LevelBeaten_Frantic:
-		btst	d0,($FFFFFF8B).w		; check if door is open (frantic)
+		btst	d0,(Doors_Frantic).w		; check if door is open (frantic)
 		rts
-; ===========================================================================
+; ---------------------------------------------------------------------------
+
+Check_AllLevelsBeaten_Current:
+		frantic					; are we in frantic?
+		bne.s	@frantic			; if yes, branch
+	 	bsr	Check_AllLevelsBeaten_Casual	; all levels legitimately beaten in casusal?
+		rts
+@frantic:
+		bsr	Check_AllLevelsBeaten_Frantic	; all levels legitimately beaten in frantic?
+		rts
+
+Check_AllLevelsBeaten_Casual:
+		cmpi.b	#Doors_All,(Doors_Casual).w	; check if all doors have been unlocked (casual)
+		eori.b	#%00100,ccr			; invert Z flag
+		rts
+
+Check_AllLevelsBeaten_Frantic:
+		cmpi.b	#Doors_All,(Doors_Frantic).w	; check if all doors have been unlocked (frantic)
+		eori.b	#%00100,ccr			; invert Z flag
+		rts
+; ---------------------------------------------------------------------------
 
 Check_BaseGameBeaten:
-		bsr	Check_BaseGameBeaten_Frantic	; has the player beaten the base game in frantic?
-		bne.s	StateCheck_Yes			; if yes, branch
-		bra.s	Check_BaseGameBeaten_Casual	; check if at least casual was beaten
+		btst	#State_BaseGame,(Progress).w
+		rts
 
 Check_BlackoutBeaten:
-		btst	#Bonus_Blackout,($FFFFFF93).w
+		btst	#State_Blackout,(Progress).w
 		rts
 ; ---------------------------------------------------------------------------
 
-Check_BaseGameBeaten_Casual:
-		btst	#Casual_BaseGame,($FFFFFF93).w
+Check_BlackoutUnlocked:
+		bsr	Check_BaseGameBeaten
+		beq.s	@end
+		bsr	Check_AllLevelsBeaten_Frantic
+@end:		rts
+
+
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Cheats
+; ---------------------------------------------------------------------------
+
+; cheat code called from Selbi Screen
+UnlockEverything:
+		move.b	#Doors_All,d0		; unlock all doors...
+		move.b	d0,(Doors_Casual).w	; ...in casual...
+		move.b	d0,(Doors_Frantic).w	; ...and frantic
+		bsr	Set_BaseGameDone	; unlock screen effects
+		bsr	Set_BlackoutDone	; unlock nonstop inhuman
 		rts
-Check_BaseGameBeaten_Frantic:
-		btst	#Frantic_BaseGame,($FFFFFF93).w
+
+; cheats called from options screen
+Toggle_BaseGameBeaten:
+		bchg	#State_BaseGame,(Progress).w	
+		rts
+Toggle_BlackoutBeaten:
+		bchg	#State_Blackout,(Progress).w	
 		rts
 
 ; ---------------------------------------------------------------------------
-
-StateCheck_Yes:	moveq #-1,d0
-		rts
-StateCheck_No:	moveq #0,d0
-		rts
+; ===========================================================================
 
 
 ; ===========================================================================
@@ -572,23 +608,20 @@ StateCheck_No:	moveq #0,d0
 
 Set_DoorOpen:
 		; d0 = door bit index we want to open
-		bset	d0,($FFFFFF8A).w	; unlock door (casual, but also in frantic)
+		bset	d0,(Doors_Casual).w	; unlock door (casual)
 		frantic				; are we in frantic?
-		beq.s	@end			; if not, branch
-		bset	d0,($FFFFFF8B).w	; unlock door (frantic only)
-@end:		rts
+		beq.s	@notfrantic		; if not, branch
+		bset	d0,(Doors_Frantic).w	; unlock door (frantic)
+@notfrantic:	rts
 ; ---------------------------------------------------------------------------
 
 Set_BaseGameDone:
-		bset	#Casual_BaseGame,($FFFFFF93).w	; you have beaten the base game in casual, congrats
-		frantic					; or was it acutally in frantic?
-		beq.s	@end				; nah? that's a shame
-		bset	#Frantic_BaseGame,($FFFFFF93).w	; you have beaten the base game in frantic, mad respect
-@end:		rts
+		bset	#State_BaseGame,(Progress).w	; you have beaten the base game, congrats
+		rts
 ; ---------------------------------------------------------------------------
 
 Set_BlackoutDone:
-		bset	#Bonus_Blackout,($FFFFFF93).w	; you have beaten the blackout challenge whoa
+		bset	#State_Blackout,(Progress).w	; you have beaten the blackout challenge, mad respect
 		bsr	Set_BaseGameDone		; also set base game beaten state, just in case
 		rts
 ; ---------------------------------------------------------------------------

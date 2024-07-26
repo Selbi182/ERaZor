@@ -6799,7 +6799,15 @@ Resize_SYZ1:
 		cmpi.w	#$500,($FFFFF700).w	; after 500 units?
 		blo.s	@uberhubend		; if not, branch
 		move.w	#$1C0,($FFFFF726).w	; raise boundary bottom (to center the level signs vertically on screen)
-		
+
+		cmpi.w	#$1180,($FFFFF700).w	; in the finalor section?
+		blo.s	@mainpart		; if yes, do smooth camera transition
+		cmpi.w	#$1840,($FFFFF700).w	; in the finalor section?
+		bhs.s	@mainpart		; if yes, do smooth camera transition
+		move.w	#$2E8,($FFFFF726).w	; target boundary
+		rts
+
+@mainpart:
 		cmpi.w	#$260,($FFFFD00C).w	; entered a tube?
 		blo.s	@uberhubend		; if not, branch
 		cmpi.w	#$600,($FFFFD008).w	; make sure Sonic is in the right area
@@ -9294,7 +9302,7 @@ Obj2A_Main:				; XREF: Obj2A_Index
 		bne.s	@nosoundstopper		; if not, branch
 		tst.b	obSubtype(a0)		; is this the door leading to the blackout challenge?
 		bpl.s	@nosoundstopper		; if not, branch
-		jsr	Check_BaseGameBeaten_Frantic	; has the player beaten the base game in frantic mode?
+		jsr	Check_BlackoutUnlocked	; check if all levels are beaten in frantic
 		beq.s	@nosoundstopper		; if not, don't load sound stopper
 
 		bsr	SingleObjLoad
@@ -9332,7 +9340,7 @@ Obj2A_OpenShut:				; XREF: Obj2A_Index
 		rts
 @0:
 		cmpi.w	#$400,($FFFFFE10).w	; is level SYZ1 (overworld)?
-		bne.s	Obj2A_NotSYZ1		; if not, branch
+		bne.w	Obj2A_NotUberhub		; if not, branch
 
 	if DoorsAlwaysOpen=1
 		bra.w	Obj2A_Green
@@ -9341,23 +9349,26 @@ Obj2A_OpenShut:				; XREF: Obj2A_Index
 Obj2A_Red:
 		move.w	#$0800+($6100/$20),obGfx(a0)	; use red light art
 		tst.b	obSubtype(a0)			; is this the door leading to the blackout challenge?
-		bpl.s	@notfinaldoor			; if not, branch
-		jsr	Check_BaseGameBeaten_Frantic	; has the player beaten the base game in frantic?
+		bpl.s	@notblackoutdoor		; if not, branch
+		jsr	Check_BlackoutUnlocked		; check if all levels in frantic are beaten
 		beq.w	Obj2A_Animate			; if not, keep door locked
 		tst.b	$30(a0)				; has sound stopper been passed?
 		beq.s	Obj2A_Green			; if not, keep door open
 		clr.b	obAnim(a0)			; shut door behind Sonic
 		bra.w	Obj2A_Animate			; force door to be red
 
+@notblackoutdoor:
+		moveq	#0,d0
+		move.b	obSubtype(a0),d0		; and it by subtype of door (always a single bit)
+		cmpi.b	#6,d0				; is this the final door (FP|end)?
+		bne.s	@notfinaldoor			; if not, branch
+		jsr	Check_AllLevelsBeaten_Current	; only unlock final door after all levels have been legitimately beaten
+		bne.s	Obj2A_Green			; if all levels are beaten, unlock door
+		bra.w	Obj2A_Animate			; otherwise, keep door locked
+		
 @notfinaldoor:
-		move.b	($FFFFFF8A).w,d0	; get beaten levels bitset (casual)
-		frantic				; are we in frantic?
-		beq.s	@checkdoor		; if not, branch
-		move.b	($FFFFFF8B).w,d0	; use frantic door bitset instead
-
-@checkdoor:
-		and.b	obSubtype(a0),d0	; and it by subtype of door (always a single bit)
-		beq.s	Obj2A_Animate		; if the required level hasn't been beaten, keep door locked
+		jsr	Check_LevelBeaten_Casual	; check if the level is beaten (casual or frantic)
+		beq.s	Obj2A_Animate			; if the required level hasn't been beaten, keep door locked
 
 Obj2A_Green:
 		move.w	#$4800+($6000/$20),obGfx(a0)	; use green light art
@@ -9383,7 +9394,7 @@ Obj2A_SYZ1:
 		bra.s	Obj2A_Open
 ; ===========================================================================
 
-Obj2A_NotSYZ1:
+Obj2A_NotUberhub:
 		move.w	#$40,d1
 		clr.b	obAnim(a0)		; use "closing"	animation
 		move.w	($FFFFD008).w,d0
@@ -12212,7 +12223,7 @@ Obj4B_Main:				; XREF: Obj4B_Index
 @notsap:
 		move.w	#$2000|($8000/$20),obGfx(a0)	; use default offset
 		cmpi.w	#$400,($FFFFFE10).w		; is level Uberhub?
-		bne.s	Obj4B_Main_Cont			; if not, branch
+		bne.w	Obj4B_Main_Cont			; if not, branch
 		move.w	#$2000|($8E00/$20),obGfx(a0)	; use uberhub specific offset
 
 		move.b	obSubtype(a0),d1		; get ring subtype
@@ -12228,7 +12239,7 @@ Obj4B_Main:				; XREF: Obj4B_Index
 		cmpi.b	#GRing_GreenHill,d1	; is this a ring leading to Green Hill Place (NHP act 2)?
 		bne.s	@firstnhpring		; if not, branch
 @chknhp:	moveq	#0,d0			; has the player beaten this level before?
-		jsr	Check_LevelBeaten
+		jsr	Check_LevelBeaten_Current
 		bne.s	Obj4B_Main_Cont		; if yes, show both rings
 		jmp	DeleteObject		; otherwise, delete this ring
 @firstnhpring:
@@ -12242,18 +12253,34 @@ Obj4B_Main:				; XREF: Obj4B_Index
 		cmpi.b	#GRing_StarAgony,d1	; is this a ring leading to Star Agony Place (SNP act 2)?
 		bne.s	@firstsnpring		; if not, branch
 @chksnp:	moveq	#5,d0			; has the player beaten this level before?
-		jsr	Check_LevelBeaten
+		jsr	Check_LevelBeaten_Current
 		bne.s	Obj4B_Main_Cont		; if yes, show both rings
 		jmp	DeleteObject		; otherwise, delete this ring
 
 @firstsnpring:
 		cmpi.b	#GRing_ScarNight_First,d1 ; is this the first ring leading to Scar Night Place?
-		bne.s	Obj4B_Main_Cont		; if not, branch
+		bne.s	@chkend			; if not, branch
 		moveq	#5,d0			; has the player beaten this level before?
 @adjustfirst:	andi.b	#$F,obSubtype(a0)
-		jsr	Check_LevelBeaten
+		jsr	Check_LevelBeaten_Current
 		beq.s	Obj4B_Main_Cont		; if not, display this ring instead of the other two
 		jmp	DeleteObject		; otherwise, delete this ring
+
+@chkend:
+		cmpi.b	#GRing_Ending,d1	; is this the first ring leading to the ending sequence?
+		bne.s	@notend			; if not, branch
+		jsr	Check_AllLevelsBeaten_Current
+		beq.s	@okcool
+		bra.s	Obj4B_Main_Cont
+@notend:
+		cmpi.b	#GRing_Blackout,d1	; is this the first ring leading to the blackout challenge?
+		bne.s	Obj4B_Main_Cont		; if not, branch
+		jsr	Check_BlackoutUnlocked
+		bne.s	Obj4B_Main_Cont
+@okcool:
+		move.b	#7,(a0)			; idk how you made it here but gg
+		move.b	#0,obRoutine(a0)	; set to init routine
+		rts				; don't show ring
 	else
 		cmpi.b	#GRing_NightHill_First,d1 ; is this the first ring leading to Night Hill Place?
 		beq.s	@deletering		; if yes, branch
@@ -18926,48 +18953,40 @@ Obj12_CheckGameState:
 		move.w	#EmblemGfx_Casual,obGfx(a0)
 
 		moveq	#0,d0
-		move.b	obSubtype(a0),d0	; get subtype (1-8)
-		cmpi.b	#7,d0			; is this the trophy after beating the game?
-		beq.s	@ggtrophy		; if yes, branch
-		subq.b	#1,d0			; adjust for bit test
+		move.b	obSubtype(a0),d0	; get subtype
+		move.b	d0,obFrame(a0)		; set frame to display
 
-		btst	d0,($FFFFFF8B).w	; stage beaten in frantic?
+		; trophy loading logic
+		tst.b	d0			; is this the trophy after beating the blackout challenge?
+		bpl.s	@normaltrophy		; if not, branch
+		jsr	Check_BlackoutBeaten	; has the player beaten the blackout challenge?
+		beq.s	@delete			; if not, delete
+		move.b	#7,obFrame(a0)		; use skull frame
+		bra.s	@ggtrophy		; display and use frantic style
+
+@normaltrophy:
+		cmpi.b	#6,d0			; is this the regular trophy for FP?
+		bne.s	@notfp			; if not, branch
+		jsr	Check_BlackoutBeaten	; has the player beaten the blackout challenge?
+		bne.s	@delete			; if yes, delete
+		bra.s	@checkbeaten
+@notfp:
+		cmpi.b	#$66,d0			; is this the alternate trophy for FP?
+		bne.s	@checkbeaten		; if not, branch
+		move.b	#6,obFrame(a0)		; set frame to display
+		jsr	Check_BlackoutBeaten	; has the player beaten the blackout challenge?
+		beq.s	@delete			; if not, delete
+
+@checkbeaten:
+		jsr	Check_LevelBeaten_Frantic
 		beq.s	@regular		; if not, branch
-		move.w	#EmblemGfx_Frantic,obGfx(a0)
+@ggtrophy:	move.w	#EmblemGfx_Frantic,obGfx(a0)
 		move.b	#1,$30(a0)		; use frantic frame
 		bra.s	Obj12_Init		; display
 @regular:
-		btst	d0,($FFFFFF8A).w	; stage beaten in casual?
+		jsr	Check_LevelBeaten_Casual
 		bne.s	Obj12_Init		; if yes, branch
-		jmp	DeleteObject		; not even that? you suck. no trophies for you.
-; ---------------------------------------------------------------------------
-
-@ggtrophy:
-		jsr	Check_BlackoutBeaten		; has the player beaten the blackout challenge?
-		beq.s	@blackoutnotbeaten		; if not, branch
-		move.b	#8,obSubtype(a0)		; use skull frame
-		move.b	#1,$30(a0)			; frantic flash
-		move.w	#EmblemGfx_Frantic,obGfx(a0)
-		bra.s	Obj12_Init
-	
-@blackoutnotbeaten:
-		jsr	Check_BaseGameBeaten_Frantic	; was the base game beaten in frantic?
-		bne.s	@showred			; if yes, show blinky
-		moveq	#6,d0
-		jsr	Check_LevelBeaten_Frantic	; has the player just beaten Finalor in frantic?
-		beq.s	@notfrantic			; if not, branch
-@showred:	move.b	#1,$30(a0)			; use frantic frame
-		move.w	#EmblemGfx_Frantic,obGfx(a0)
-		bra.s	Obj12_Init			; show star
-
-@notfrantic:
-		jsr	Check_BaseGameBeaten_Casual	; was the base game beaten in casual?
-		bne.s	@showgray			; if yes, show gray star
-		moveq	#6,d0
-		jsr	Check_LevelBeaten		; has the player just beaten Finalor in casual?
-		beq.w	DeleteObject			; if not, don't show star
-@showgray:	move.b	#0,$30(a0)			; use casual frame
-		move.w	#EmblemGfx_Casual,obGfx(a0)
+@delete:	jmp	DeleteObject		; not even that? you suck. no trophies for you.
 ; ---------------------------------------------------------------------------
 
 Obj12_Init:
@@ -18977,21 +18996,7 @@ Obj12_Init:
 		move.b	#$10,obActWid(a0)
 		move.b	#6,obPriority(a0)
 		move.b	#$40,obHeight(a0)
-
-		; set frame
-		moveq	#0,d0
-		move.b	obSubtype(a0),d0	; get subtype
-		subq.b	#1,d0			; adjust for 0-based indexing
-		bpl.s	@setframe		; underflow? if not, branch
-		moveq	#0,d0			; prevent underflow
-@setframe:	move.b	d0,obFrame(a0)		; set frame to display
-
-		; used for the sway
-		move.w	obY(a0),$32(a0)
-		moveq	#0,d0
-		move.b	obSubtype(a0),d0
-		lsl.w	#4,d0
-		move.w	d0,$34(a0)		
+		move.w	obY(a0),$32(a0)			; used for the sway
 ; ---------------------------------------------------------------------------
 
 Obj12_Animate:
@@ -19018,13 +19023,16 @@ Obj12_Animate:
 		move.w	#EmblemGfx_Casual,obGfx(a0)	; use alternate offset for frantic frames
 
 @sway:
-		move.w	($FFFFFE04).w,d0
-		add.w	d0,d0
-		add.w	$34(a0),d0
-		jsr	(CalcSine).l
-		asr.w	#6,d0
-		add.w	$32(a0),d0
-		move.w	d0,obY(a0)
+		move.w	($FFFFFE04).w,d0		; get frame counter
+		add.w	d0,d0				; double
+		add.w	obX(a0),d0			; add X position to add some variance
+		cmpi.b	#$66,obSubtype(a0)		; is this the alternate FP trophy?
+		bne.s	@sine				; if not, branch
+		subi.w	#-$28,d0			; make it match the sway pattern of the real trophy
+	@sine:	jsr	(CalcSine).l			; calc sine
+		asr.w	#6,d0				; dramatically reduce speed
+		add.w	$32(a0),d0			; add base Y pos
+		move.w	d0,obY(a0)			; write new Y pos
 
 		jmp	MarkObjGone
 ; ---------------------------------------------------------------------------
@@ -26130,8 +26138,11 @@ Obj07_Init:
 		bne.s	@notsap
 		move.w	#$6600/$20,obGfx(a0)
 @notsap:	cmpi.w	#$601,d0
-		bne.s	Obj07_Animate
+		bne.s	@notend
 		move.w	#$BA00/$20,obGfx(a0)
+@notend:	cmpi.w	#$400,d0
+		bne.s	Obj07_Animate
+		move.w	#$8800/$20,obGfx(a0)
 ; ---------------------------------------------------------------------------
 
 Obj07_Animate:
@@ -26163,6 +26174,8 @@ Obj07_Animate:
 Obj07_CheckVisible:
 		move.w	($FFFFFE10).w,d0	; get level ID
 		beq.s	@yes			; are we in NHP? if yes, always display
+		cmpi.w	#$400,d0		; are we in Uberhub?
+		beq.s	@yes			; if yes, branch
 		cmpi.w	#$601,d0		; are we in the ending sequence?
 		beq.s	@yes			; if yes, branch
 		cmpi.w	#$002,d0		; are we in GHP?
@@ -30467,49 +30480,6 @@ locret_146E6:
 		rts	
 ; End of function Sonic_AnglePos
 
-; ===========================================================================
-		move.l	obX(a0),d2
-		move.w	obVelX(a0),d0
-		ext.l	d0
-		asl.l	#8,d0
-		sub.l	d0,d2
-		move.l	d2,obX(a0)
-		move.w	#$38,d0
-		ext.l	d0
-		asl.l	#8,d0
-		sub.l	d0,d3
-		move.l	d3,obY(a0)
-		rts	
-; ===========================================================================
-
-locret_1470A:
-		rts	
-; ===========================================================================
-		move.l	obY(a0),d3
-		move.w	obVelY(a0),d0
-		subi.w	#$38,d0
-		move.w	d0,obVelY(a0)
-		ext.l	d0
-		asl.l	#8,d0
-		sub.l	d0,d3
-		move.l	d3,obY(a0)
-		rts	
-		rts	
-; ===========================================================================
-		move.l	obX(a0),d2
-		move.l	obY(a0),d3
-		move.w	obVelX(a0),d0
-		ext.l	d0
-		asl.l	#8,d0
-		sub.l	d0,d2
-		move.w	obVelY(a0),d0
-		ext.l	d0
-		asl.l	#8,d0
-		sub.l	d0,d3
-		move.l	d2,obX(a0)
-		move.l	d3,obY(a0)
-		rts	
-
 ; ---------------------------------------------------------------------------
 ; Subroutine to	change Sonic's angle as he walks along the floor
 ; ---------------------------------------------------------------------------
@@ -30583,7 +30553,7 @@ Sonic_WalkVertR:			; XREF: Sonic_AnglePos
 		beq.s	locret_147F0
 		bpl.s	loc_147F2
 		cmpi.w	#-$E,d1
-		blt.w	locret_1470A
+		blt.w	locret_146E6
 		add.w	d1,obX(a0)
 
 locret_147F0:
@@ -30723,7 +30693,7 @@ Sonic_WalkVertL:			; XREF: Sonic_AnglePos
 		beq.s	locret_14934
 		bpl.s	loc_14936
 		cmpi.w	#-$E,d1
-		blt.w	locret_1470A
+		blt.w	locret_146E6
 		sub.w	d1,obX(a0)
 
 locret_14934:
@@ -40563,7 +40533,7 @@ locret_1B5CC:
 SS_AniRevData:	dc.b $2B, $31, $2B, $31, 0, 0
 ; ===========================================================================
 
-; screw animation of emerald sparks, this routine straight up controls the stage ending...
+; animation of emerald sparks my ass, this routine straight up controls the stage ending...
 ; this was like finding a needle in a haystack
 SS_AniEmeraldSparks:			; XREF: SS_AniIndex
 		subq.b	#1,obGfx(a0)
@@ -43036,6 +43006,8 @@ Obj21_Flash2:
 		ori.b	#1,($FFFFFE1D).w	; update ring counter
 		btst	#3,($FFFFFE05).w	; change the rings counter design every X frames
 		bne.s	Obj21_Cont		; if that time isn't over yet, branch
+		cmpi.b	#$4,($FFFFFE10).w	; are we in Uberhub?
+		beq.s	Obj21_Cont		; if yes, never flash ring HUD (annoying af over time)
 		addq.w	#1,d0			; make ring counter flash red
 
 Obj21_Cont:
@@ -44370,6 +44342,8 @@ PLC_SYZ:
 		dc.w -1
 
 PLC_SYZ2:
+		dc.l ArtKospM_OkCool		; ok cool
+		dc.w $8800
 		dc.l ArtKospM_BigRing		; big rings
 		dc.w $8E00
 		dc.l ArtKospM_RingFlash		; ring flash

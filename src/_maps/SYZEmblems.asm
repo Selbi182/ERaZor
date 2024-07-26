@@ -93,7 +93,7 @@ CME_0B61CF37_7:
 
 	dc.b	-24
 	dc.b	$0F
-	dc.w	$004B
+	dc.w	$084B
 	dc.b	-16
 
 	even

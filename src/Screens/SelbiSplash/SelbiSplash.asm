@@ -327,10 +327,7 @@ SelbiSplash_WaitEnd:
 		bra	SelbiSplash_LoopEnd		; skip
 
 @firecheat:
-		move.b	#%01111111,d0			; unlock all doors...
-		move.b	d0,($FFFFFF8A).w		; ...in casual...
-		move.b	d0,($FFFFFF8B).w		; ...and frantic
-		move.b	#%1111,($FFFFFF93).w		; set full game beaten state
+		jsr	UnlockEverything		; unlock all doors (in casual and frantic) and all bonus options
 		jsr	SRAM_SaveNow			; save
 		
 		move.w	#$90,($FFFFF614).w		; reset ending timer

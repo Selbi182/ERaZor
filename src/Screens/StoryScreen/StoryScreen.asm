@@ -129,25 +129,20 @@ StoryScreen_MainLoop:
 		jsr	ObjectsLoad
 		jsr	BuildSprites
 
-		VBlank_SetMusicOnly
 		jsr	BackgroundEffects_Update
 		jsr	ERZBanner_PalCycle
-		VBlank_UnsetMusicOnly
-
-		bsr	StoryScreen_ContinueWriting
-		bsr	StoryScreen_CenterText
 
 		move.b	($FFFFF605).w,d1	; get button presses
 		andi.b	#$E0,d1			; is A, B, C, or start pressed?
-		beq.w	StoryScreen_MainLoop	; if not, branch
+		bne.s	@writefull		; if yes, branch
+		bsr	StoryScreen_ContinueWriting
+		bra.s	@loop
+@writefull:
 		tst.b	(STS_FullyWritten).w	; is text already fully written?
-		bne.w	STS_FadeOutScreen	; if yes, exit screen
-
-		VBlank_SetMusicOnly
+		bne.s	STS_FadeOutScreen	; if yes, exit screen
 		bsr	StoryText_WriteFull	; write the complete text
+@loop:
 		bsr	StoryScreen_CenterText
-		VBlank_UnsetMusicOnly
-
 		bra.w	StoryScreen_MainLoop	; loop
 ; ---------------------------------------------------------------------------
 
@@ -202,12 +197,13 @@ STS_ExitScreen:
 ; ===========================================================================
 
 STS_ClearFlags:
-		clr.b	(STS_FullyWritten).w
-		clr.b	(STS_Row).w
-		clr.b	(STS_Column).w
-		clr.w	(STS_CurrentChar).w
-		clr.b	(STS_FinalPhase).w
-		clr.b	(STS_SkipBottomMeta).w
+		moveq	#0,d0
+		move.b	d0,(STS_FullyWritten).w
+		move.b	d0,(STS_Row).w
+		move.b	d0,(STS_Column).w
+		move.w	d0,(STS_CurrentChar).w
+		move.b	d0,(STS_FinalPhase).w
+		move.b	d0,(STS_SkipBottomMeta).w
 		rts
 
 ; ===========================================================================
@@ -229,7 +225,7 @@ StoryScreen_ContinueWriting:
 		move.b	(a1),d0				; move current char to d0
 		bne.s	@notspace			; if it isn't a space, branch
 		suba.w	(STS_CurrentChar).w,a1		; undo the offset adjustment from above
-		bsr.w	@gotonextpos			; go to next char (skip spaces)
+		bsr	STS_NextChar			; go to next char (skip spaces)
 		bra.s	@skipspaces			; loop
 
 @notspace:
@@ -263,11 +259,13 @@ StoryScreen_ContinueWriting:
 		swap	d1				; convert to the format we want
 		add.l	d1,d3				; add to base address
 
+		VBlank_SetMusicOnly
 		move.l	d3,4(a6)			; write final position to VDP
 		add.w	#STS_VRAMSettings,d0		; apply VRAM settings (high plane, palette line 4, VRAM address $D000)
 		move.w	d0,(a6)				; write char to screen
-		
-		bsr	@gotonextpos			; go to next character
+		VBlank_UnsetMusicOnly
+
+		bsr	STS_NextChar			; go to next character
 
 		move.w	($FFFFFE0E).w,d0		; get frame counter
 		andi.w	#3,d0				; only every four frames
@@ -279,7 +277,7 @@ StoryScreen_ContinueWriting:
 		rts
 ; ---------------------------------------------------------------------------
 
-@gotonextpos:
+STS_NextChar:
 		addq.b	#1,(STS_Column).w		; go to next column
 		cmpi.b	#STS_LineLength,(STS_Column).w	; did we reach the end of the row?
 		blo.s	@thisisnottheendoftherow	; if not, branch
@@ -316,9 +314,11 @@ StoryScreen_WritePressStart:
 		swap	d1				; convert to the format we want
 		add.l	d1,d3				; add to base address
 
+		VBlank_SetMusicOnly
 		move.l	d3,4(a6)			; write final position to VDP
 		add.w	#STS_PressStart_VRAMSettings,d0	; apply VRAM settings (high plane, palette line 3, VRAM address $D000)
 		move.w	d0,(a6)				; write char to screen
+		VBlank_UnsetMusicOnly
 
 		addq.b	#1,(STS_Column).w		; go to next column
 		addq.w	#1,(STS_CurrentChar).w		; go to next char for the next iteration
@@ -341,6 +341,7 @@ StoryText_WriteFull:
 		
 		bsr	StoryText_Load			; reload beginning of story text into a1
 		
+		VBlank_SetMusicOnly
 		lea	($C00000).l,a6
 		move.l	#STS_VRAMBase,d4		; base screen position
 		move.w	#STS_VRAMSettings,d3		; VRAM setting (high plane, palette line 4, VRAM address $D000)
@@ -363,8 +364,8 @@ StoryText_WriteFull:
 
 		addi.l	#$800000,d4			; go to next line
 		dbf	d1,@nextline			; loop until entire text is written
-
 @endwrite:
+
 		; "Press Start to Continue..." text
 		tst.b	(STS_SkipBottomMeta).w		; is bottom meta set to be not drawn?
 		bne.s	@finished			; if yes, skip
@@ -374,9 +375,11 @@ StoryText_WriteFull:
 		lea	(STS_Continue).l,a1		; load "Press Start..." text to a1
 		move.w	#STS_PressStart_VRAMSettings,d3	; use red palette line
 		move.l	#STS_PressStart_VRAMBase,d4	; adjust position
-		bra.s	@nextline			; write the line
+		bra.w	@nextline			; write the line
 
 @finished:
+		VBlank_UnsetMusicOnly
+
 		move.b	#1,(STS_FullyWritten).w		; set "fully-written" flag
 		rts
 
@@ -684,7 +687,7 @@ StoryText_6:	; text after beating Unreal Place
 		ststxt	"GAME ONLY HAS SIX, SO"
 		ststxt	"SUPER SONIC ISN'T HAPPENING."
 		ststxt_line
-		ststxt	"BUT TRY GOING TO SPACE!"
+		ststxt	"TRY GOING TO SPACE, THOUGH!"
 		ststxt	"IT SORTA MAKES UP FOR THE"
 		ststxt	"SEVENTH EMERALD. SORTA."
 		dc.b	-1
@@ -705,7 +708,7 @@ StoryText_7:	; text after beating Scar Night Place
 		ststxt	"BY YOUR ANGELIC VOICE"
 		ststxt	"ONE LAST TIME!"
 		ststxt_line
-		ststxt	"IT IS THE LAST STAGE"
+		ststxt	"IT IS THE FINAL STAGE"
 		ststxt	"AFTER ALL... RIGHT?"
 		dc.b	-1
 		even

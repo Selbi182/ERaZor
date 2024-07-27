@@ -588,7 +588,7 @@ StoryText_1:	; text after intro cutscene
 		ststxt	"HIMSELF STRAIGHT INTO A VERY"
 		ststxt	"CONVENIENTLY PLACED TRAP."
 		ststxt_line
-		ststxt	"AND SO, THE JOURNEY BEGINS."
+		ststxt	"SO MUCH FOR A QUICK REVISIT."
 		dc.b	-1
 		even
 ; ---------------------------------------------------------------------------
@@ -598,9 +598,9 @@ StoryText_2:	; text after beating Night Hill Place
 		ststxt	"CRABMEATS WITH EXPLODING"
 		ststxt	"PROJECTILES, AND THE"
 		ststxt	"ORIGINAL GREEN HILL ZONE"
-		ststxt	"TURNED INTO HELL ITSELF!"
+		ststxt	"TURNED INTO CINEMA HELL!"
 		ststxt	"EGGMAN AND HIS THREE SPIKED"
-		ststxt	"BALLS OF STEEL AREN'T"
+		ststxt	"BALLS OF STEEL WEREN'T"
 		ststxt	"EXACTLY NECESSARY TO SHOW"
 		ststxt	"THAT SONIC ISN'T HAVING"
 		ststxt	"THE TIME OF HIS LIFE."
@@ -654,7 +654,7 @@ StoryText_4:	; text after beating Ruined Place
 ; ---------------------------------------------------------------------------
 
 StoryText_5:	; text after beating Labyrinth Place
-		ststxt	"MAN, IF YOU COULD SEE YOUR"
+		ststxt	"IF ONLY YOU COULD SEE YOUR"
 		ststxt	"FACE RIGHT NOW! PRICELESS!"
 		ststxt_line
 		ststxt	"WELL, OUR CREW HAS FILMED"
@@ -663,8 +663,8 @@ StoryText_5:	; text after beating Labyrinth Place
 		ststxt	"AND A SPIN-OFF. SO, NO MORE"
 		ststxt	"FUNKY CAMERA BUSINESS."
 		ststxt_line
-		ststxt	"HOWEVER, YOU'VE DESTROYED"
-		ststxt	"THE HOLY JAWS OF WISDOM,"
+		ststxt	"HOWEVER, YOU'VE KILLED"
+		ststxt	"THE MIGHTY JAWS OF DESTINY,"
 		ststxt	"AND THEREFORE MUST BE SERVED"
 		ststxt	"THE ULTIMATE PUNISHMENT:"
 		ststxt_line
@@ -686,7 +686,7 @@ StoryText_6:	; text after beating Unreal Place
 		ststxt	"GAME ONLY HAS SIX, SO YOU"
 		ststxt	"AREN'T GOING TO TURN SUPER."
 		ststxt_line
-		ststxt	"WE'll GO TO SPACE, THOUGH!"
+		ststxt	"YOU'll GO TO SPACE, THOUGH!"
 		ststxt	"IT SORTA MAKES UP FOR THAT"
 		ststxt	"SEVENTH EMERALD. SORTA."
 		dc.b	-1

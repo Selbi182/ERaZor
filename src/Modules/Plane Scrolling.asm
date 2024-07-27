@@ -1135,10 +1135,13 @@ S_H_NoEnding:
 
 S_H_ExtendedCamera:
 		btst	#0,(OptionsBits).w	; is extended camera enabled?
-		beq.w	S_H_NoExtendedCam	; if not, branch
-		cmpi.w	#$302,($FFFFFE10).w	; is this SLZ3?
+		beq.w	S_H_NoExtendedCam	; if not, you're lame and old-fashioned but k
+
+		cmpi.b	#3,($FFFFFE10).w
 		bne.s	S_H_BuzzIgnore		; if not, branch
-		tst.b	($FFFFFF77).w		; is special mode enabled?
+		tst.b	($FFFFFFA9).w		; is Sonic fighting against the walking bomb?
+		bne.s	S_H_ResetCamera		; if yes, branch	
+		tst.b	($FFFFFF77).w		; is antigrav enabled?
 		bne.s	S_H_ResetCamera		; if yes, branch
 
 S_H_BuzzIgnore:

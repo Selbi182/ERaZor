@@ -47,7 +47,7 @@ DebugModeDefault = 1
 DebugSurviveNoRings = 1
 ; ------------------------------------------------------
 DoorsAlwaysOpen = 0
-LowBossHP = 1
+LowBossHP = 0
 ; ------------------------------------------------------
 TestDisplayDeleteBugs = 0
 ; ======================================================
@@ -1324,6 +1324,9 @@ PalCycle_Load:				; XREF: Demo; Level_MainLoop; End_MainLoop
 		bpl.s	@nopalcycle		; if yes, branch
 		cmpi.b	#6,($FFFFD024).w	; is Sonic dying?
 		bhs.s	@nopalcycle		; if yes, branch
+		cmpi.b	#$C,($FFFFF600).w	; is game mode still level?
+		bne.s	@nopalcycle		; if not, branch
+
 		bsr	PCL_Load		; do pal cycle
 @nopalcycle:
 		rts
@@ -2471,7 +2474,6 @@ PalPointers:
 	dc.l Pal_SonicAntigrav,	$FB00 0007	; $10
 	dc.l Pal_SonicAntigrav,	$FB20 0007	; $11
 	dc.l Pal_SpeContinue,	$FB00 000F	; $12
-	;dc.l Pal_Ending,	$FB00 001F	; $13
 	dc.l Pal_GHZ2,		$FB20 001F	; $13
 	dc.l STS_Palette,	$FB00 001F	; $14
 	dc.l Pal_BCutscene,	$FB20 001F	; $15
@@ -5659,19 +5661,20 @@ End_MainLoop:
 		jsr 	LevelRenderer_Update_BG
 		jsr	BuildSprites
 		jsr	ObjPosLoad
-		bsr	PalCycle_Load
-		bsr	OscillateNumDo
-		bsr	ChangeRingFrame
+		cmpi.b	#6,($FFFFD024).w	; is Sonic dying?
+		bhs.s	@checkeaster		; if not, branch
+		bsr	PCL_Load		; pal cycle while alive
 
+@checkeaster:
 		btst	#4,(OptionsBits).w	; is nonstop inhuman enabled?
-		beq.s	@notnonstopinhuman	; if not, branch	
+		beq.s	@checkfadeout		; if not, branch	
 		move.w	($FFFFF72A).w,d0	; get right level boundary
 		addi.w	#$128,d0		; adjust a bit
 		cmp.w	($FFFFD008).w,d0	; compare to Sonic's X pos
-		bgt.s	@notnonstopinhuman	; if he's left of the boundary, all good
+		bgt.s	@checkfadeout		; if he's left of the boundary, all good
 		move.w	#1,($FFFFFE02).w	; start credits to not softlock in nonstop inhuman
-@notnonstopinhuman:
 
+@checkfadeout:
 		tst.w	($FFFFFE02).w			; is level set to restart? (after Sonic died)
 		beq.w	End_MainLoop			; if not, loop
 		cmpi.w	#224/2-2,BlackBars.Height	; did black bars finish covering up the screen?
@@ -6653,7 +6656,7 @@ Resize_SLZ2main:
 		lea	($FFFFD800).w,a1	; set a1 to level object RAM
 		moveq	#$5F,d2			; set d2 to $5F ($D800 to $F000 = $60 objects)
 @deletebombs:
-		cmpi.b	#$5F,(a1)
+		cmpi.b	#$5E,(a1)
 		bne.s	@0
 		clr.b	(a1)			; delete all bomb objects before the boss
 @0:
@@ -6669,6 +6672,7 @@ Resize_SLZ2boss1:
 		bne.s	locret_715C
 		move.w	#$800,($FFFFF602).w ; make Sonic run to	the right
 		addq.b	#2,($FFFFF742).w
+		move.w	#$2D0,($FFFFF72C).w	; set upper level boundary
 		rts
 ; ===========================================================================
 
@@ -6711,6 +6715,7 @@ Resize_SLZ2end:
 Resize_SLZ3:
 		move.w	#$620,($FFFFF726).w
 		move.w	#$A60,($FFFFF728).w
+		move.w	#0,($FFFFF72C).w	; reset upper level boundary
 		
 		frantic				; are we in frantic?
 		beq.s	@sapending		; if not, branch
@@ -11925,7 +11930,7 @@ LoseRing:
 AttractedRing_Speed = 3
 ;=============================================
 ;Required distance for a ring to get attracted
-AttractedRing_Dist = $50
+AttractedRing_Dist = $60
 ;=============================================
 
 AttractedRing_Check:
@@ -15158,6 +15163,7 @@ loc_BDD6:
 		movem.l	d7/a1-a3,-(sp)
 		moveq	#3,d0
 		jsr	PalLoad2		; load Sonic palette
+		
 		movem.l	(sp)+,d7/a1-a3
 @notinhuman:
 		move.b	#$A8,d0			; play upgrade sound
@@ -19229,10 +19235,17 @@ Obj0D_Touch:				; XREF: Obj0D_Index
 		clr.b	($FFFFFE1E).w	; stop time counter
 		move.w	($FFFFF72A).w,($FFFFF728).w ; lock screen position
 		addq.b	#2,obRoutine(a0)
-
-		tst.b	($FFFFFFE7).w		; is Sonic in Inhuman Mode?
-		beq.s	locret_EBBA		; if not, branch
+		
+		cmpi.w	#$200,($FFFFFE10).w
+		bne.s	@notrp
 		clr.b	($FFFFFFE7).w		; disabled Inhuman Mode
+		bra.s	@restorepal
+@notrp:
+		cmpi.w	#$302,($FFFFFE10).w
+		beq.s	locret_EBBA
+		move.w	#$0780,($FFFFD000+obGfx).w	; force Sonic to use palette line 2
+		clr.b	($FFFFFF77).w		; disabled antigrav
+@restorepal:
 		move.w	d7,-(sp)		; back up d7
 		moveq	#3,d0			; load Sonic's palette
 		jsr	PalLoad2		; restore sonic's palette
@@ -19255,7 +19268,10 @@ Obj0D_Spin:				; XREF: Obj0D_Index
 Obj0D_Sparkle:
 		subq.w	#1,$32(a0)	; subtract 1 from time delay
 		bpl.s	locret_EC42	; if time remains, branch
-		move.w	#3,$32(a0)	; set time between sparkles to $B frames
+		move.w	#3,$32(a0)	; set time between sparkles to 3 frames
+		cmpi.w	#$302,($FFFFFE10).w	; are we in SAP?
+		beq.s	locret_EC42		; if yes, disable sparkles (glitchy due to the palette)
+
 		moveq	#0,d0
 		move.b	$34(a0),d0
 		addq.b	#2,$34(a0)
@@ -19263,7 +19279,7 @@ Obj0D_Sparkle:
 		lea	Obj0D_SparkPos(pc,d0.w),a2 ; load sparkle position data
 		bsr	SingleObjLoad
 		bne.s	locret_EC42
-		move.b	#$25,0(a1)	; load rings object
+		move.b	#$25,0(a1)		; load rings object
 		move.b	#6,obRoutine(a1)	; jump to ring sparkle subroutine
 		move.b	(a2)+,d0
 		ext.w	d0
@@ -22847,27 +22863,31 @@ Obj5D_Action:				; XREF: Obj5D_Index
 
 		subi.w	#$40,d1			; adjust position
 		cmp.w	d1,d0			; is Sonic near the fan?
-		bls.s	Obj5D_Animate		; if not, branch
+		bls.w	Obj5D_Animate		; if not, branch
 		move.w	d1,d2			; target Sonic X pos
 		addi.w	#$100,d1		; check behind the fan
 		cmp.w	d1,d0			; is Sonic behind the fan?
-		bhi.s	Obj5D_Animate		; if yes, branch
+		bhi.w	Obj5D_Animate		; if yes, branch
 		bra.s	@forcesonicinplace
 
 @rightfacing:
 		addi.w	#$40,d1			; adjust position
 		cmp.w	d1,d0			; is Sonic near the fan?
-		bhs.s	Obj5D_Animate		; if not, branch
+		bhi.s	Obj5D_Animate		; if not, branch
 		move.w	d1,d2			; target Sonic X pos
 		subi.w	#$100,d1		; check behind the fan
 		cmp.w	d1,d0			; is Sonic behind the fan?
 		blo.s	Obj5D_Animate		; if yes, branch
 
 @forcesonicinplace:
-		move.w	d2,($FFFFD008).w	; force Sonic in place before the fan
+		tst.b	($FFFFF7CC).w		; are controls already locked?
+		bne.w	Obj5D_Animate		; if yes, branch
 		move.b	#1,$30(a0)		; fast animation
-
-		btst	#0,obStatus(a0)		; is fan flipped?
+		btst	#1,obStatus(a0)		; is fan vertically flipped?
+		bne.w	Obj5D_Animate		; if yes, make it cosmetic only
+		move.w	d2,($FFFFD008).w	; force Sonic in place before the fan
+@vertical:
+		btst	#0,obStatus(a0)		; is fan horizontally flipped?
 		bne.s	@rightfacing2		; if yes, branch
 		btst	#3,($FFFFF602).w	; right still pressed?
 		bne.s	Obj5D_Animate		; if yes, branch
@@ -23342,12 +23362,42 @@ Obj5F_Main:				; XREF: Obj5F_Index
 loc_11A3C:
 		move.b	#$9A,obColType(a0)
 		bchg	#0,obStatus(a0)
+; ---------------------------------------------------------------------------
 
 Obj5F_Action:				; XREF: Obj5F_Index
+		jsr	ObjHitFloor		; check bomb distance to floor
+		subi.w	#15,d1			; adjust by 15 pixels
+		bgt.s	@fall			; if bomb is above the floor, make it fall
+		add.w	d1,obY(a0)		; otherwise, keep it glued to the ground
+
+		tst.w	($FFFFD030).w		; does Sonic have invincibility frames left?
+		beq.s	@doaction		; if not, branch
+		tst.w	($FFFFFE08).w		; is debug mode	on?
+		bne.s	@doaction		; if yes, ignore invicibility frames
+		cmpi.b	#20,(BossHealth).w	; is boss still at full health?
+		bhs.s	@doaction		; if yes, branch
+		
+		move.b	#0,ob2ndRout(a0)	; reset to walking state
+		move.b	#$A9,d0			; play blip sound
+		jsr	PlaySound_Special
+		move.w	#-$300,obVelY(a0)	; bounce up
+		clr.w 	obVelX(a0)		; reverse direction
+		move.b	#2,obAnim(a0)		; reset animation
+@fall:
+		bsr.w	ObjectFall
+@updatepos:
+		jsr	SpeedToPos
+		bra.s	@animate
+; ---------------------------------------------------------------------------
+
+@doaction:
+		clr.w	obVelY(a0)
 		moveq	#0,d0
 		move.b	ob2ndRout(a0),d0
 		move.w	Obj5F_Index2(pc,d0.w),d1
 		jsr	Obj5F_Index2(pc,d1.w)
+
+@animate:
 		lea	(Ani_obj5F).l,a1
 		jsr	AnimateSprite
 		bra.w	DisplaySprite
@@ -23367,14 +23417,10 @@ Obj5F_Walk:				; XREF: Obj5F_Index2
 loc_11ADE:	move.w	#BombDistance_Boss,d1
 		cmp.w	d1,d0
 		bcc.w	Obj5F_DoWalk
-
-		tst.b	($FFFFFFA9).w
-		beq.s	Obj5F_MakeFuse
-		tst.w	($FFFFFE08).w	; is debug mode	on?
-		bne.s	Obj5F_MakeFuse	; if yes, ignore invicibility frames
-		tst.w	($FFFFD030).w	; does Sonic have invincibility frames left?
-		bne.w	Obj5F_DoWalk	; if yes, don't explode
 		
+		cmpi.b	#$1A,($FFFFD000+obAnim)	; is animation $1A (hurting)?
+		beq.w	Obj5F_DoWalk
+	
 Obj5F_MakeFuse:
 		addq.b	#2,ob2ndRout(a0)	; set to wait
 		move.w	#BombFuseTime_Boss,$30(a0)	; set fuse time
@@ -23421,12 +23467,7 @@ Obj5F_Return:
 		bne.s	@0
 		neg.w	d0
 @0:		move.w	d0,obVelX(a0)	; move bomb horizontally
-		bsr.w	SpeedToPos
-
-		bsr	ObjHitFloor
-		subi.w	#15,d1
-		add.w	d1,obY(a0)	; match	object's position with the floor
-		rts
+		bra.w	SpeedToPos
 ; ===========================================================================
 
 Obj5F_Wait:
@@ -23434,7 +23475,6 @@ Obj5F_Wait:
 		bne.w	locret_11B5E
 		addq.b	#2,ob2ndRout(a0)	; set to explode
 		rts
-
 ; ===========================================================================
 
 Obj5F_FaceSonic:
@@ -23451,20 +23491,40 @@ Obj5F_FC2:
 ; ===========================================================================
 
 Obj5F_Explode:				; XREF: Obj5F_Index2
+		cmpi.b	#1,(BossHealth).w		; remove one life
+		bhi.s	@doend
+		tst.b	obRender(a0)			; is bomb on screen?
+		bpl.s	@waitforsonic			; if not, branch
+		move.w	($FFFFD008).w,d0
+		sub.w	obX(a0),d0
+		bpl.s	@pos
+		neg.w	d0
+@pos:		
+		cmpi.w	#BombDistance_Boss,d0
+		bls.w	@bombvisible	
+@waitforsonic:
+		rts
+
+@bombvisible:
+		tst.b	($FFFFF7CC).w			; are controls already locked?
+		bne.s	@doend				; if yes, branch
+		move.b	#1,($FFFFF7CC).w		; lock controls
+		move.b	#1,($FFFFFE2D).w		; make Sonic invincible
+		clr.w	($FFFFD010).w			; clear Sonic's X speed
+		clr.w	($FFFFD014).w			; clear Sonic's intertia
+		clr.l	($FFFFF602).w			; clear any remaining button presses
+; ---------------------------------------------------------------------------
+
+@doend:
 		subq.b	#1,(BossHealth).w		; remove one life
-		move.b	(BossHealth).w,(HUD_BossHealth).w	; update boss health in HUD
+		move.b	(BossHealth).w,(HUD_BossHealth).w ; update boss health in HUD
 		move.b	#1,($FFFFFE1C).w		; update lives
 
 		tst.b	(BossHealth).w			; has bomb boss been defeated?
 		bhi.s	@notdefeated			; if not, branch
-		clr.w	($FFFFD010).w			; clear Sonic's X speed
-		clr.w	($FFFFD014).w			; clear Sonic's intertia
-		move.b	#1,($FFFFF7CC).w		; lock controls
-		move.b	#1,($FFFFFE2D).w		; make Sonic invincible
-		clr.l	($FFFFF602).w			; clear any remaining button presses
-		clr.w	obVelX(a0)			; clear bomb's X-speed
 		move.b	#$A,obRoutine(a0)		; set routine to transition sequence
-		move.b	#0,obAnim(a0)
+		clr.w	obVelX(a0)			; clear bomb's X-speed
+		move.b	#0,obAnim(a0)			; set to standing animation
 		rts
 
 @notdefeated:
@@ -23472,17 +23532,16 @@ Obj5F_Explode:				; XREF: Obj5F_Index2
 		jsr	AddPoints	; ... points
 
 		jsr	SingleObjLoad
-		move.b	#$5F,0(a1)	; load a new bomb object
+		bne.s	@reset
+		move.b	#$3F,0(a1)			; load explosion object
 		move.w	obX(a0),obX(a1)
 		move.w	obY(a0),obY(a1)
-		move.w	obStatus(a0),obStatus(a1)
 
-		move.b	#$3F,0(a0)	; change bomb into an explosion
-		move.b	#0,obRoutine(a0)
-		move.b	#0,$31(a0)
+@reset:
+		move.b	#0,ob2ndRout(a0)		; reset to walking state
 
-		cmpi.b	#1,($FFFFFFA9).w
-		bne.s	locret_11B5E
+		cmpi.b	#1,($FFFFFFA9).w	; is boss intro cutscene still in progress?
+		bne.s	locret_11B5E		; if not, branch
 		
 		; stuff that gets run when the bomb boss starts for real
 		move.b	#2,($FFFFFFA9).w
@@ -23490,7 +23549,7 @@ Obj5F_Explode:				; XREF: Obj5F_Index2
 		move.b	#$1A,($FFFFD01C).w
 		bset	#1,($FFFFD022).w
 		move.w	#-$200,($FFFFD010).w
-		subq.w	#1,($FFFFD008).w
+	;	subq.w	#1,($FFFFD008).w
 		move.w	#-$400,($FFFFD012).w
 		move.b	#$9B,d0				; set boss music
 		jsr	PlaySound			; play it
@@ -23584,11 +23643,6 @@ Obj5F_Transition:
 ; ===========================================================================
 
 Obj5F_BossDefeated:
-	;	cmpi.b	#0,obAnim(a0)
-	;	beq.s	@cont
-	;	jmp	DeleteObject
-
-@cont:
 		moveq	#0,d0
 		move.b	($FFFFFF76).w,d0
 		move.w	off_7118x(pc,d0.w),d0
@@ -23869,6 +23923,9 @@ loc_11B7C:
 
 @cont
 		movea.l	a0,a1
+		tst.w	($FFFFD030).w	; does Sonic have invincibility frames left?
+		bne.w	DeleteObject	; if yes, branch
+
 		cmpi.b	#5,obAnim(a0)
 		beq.s	Obj5F_MakeShrap
 		ori.b	#10,(CameraShake).w		; camera shaking

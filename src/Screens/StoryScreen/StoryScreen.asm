@@ -579,16 +579,16 @@ StoryText_1:	; text after intro cutscene
 		ststxt	"FOR OLD TIME'S SAKE."
 		ststxt_line
 		ststxt	"WHEN SUDDENLY..."
-		ststxt	"EXPLOSIONS EVERYWHERE!"
+		ststxt	"EXPLOSIONS! EVERYWHERE!"
 		ststxt	"A GRAY BUZZ BOMBER HAD SONIC"
-		ststxt	"RUNNING FOR HIS DEAR LIFE."
-		ststxt	"BUT HE ESCAPED!"
+		ststxt	"RUNNING FOR HIS DEAR LIFE,"
+		ststxt	"BUT HE MANAGED TO ESCAPE..."
 		ststxt_line
 		ststxt	"...ONLY TO THEN LAUNCH"
 		ststxt	"HIMSELF STRAIGHT INTO A VERY"
-		ststxt	"CONVENIENTLY PLACED RING."
+		ststxt	"CONVENIENTLY PLACED TRAP."
 		ststxt_line
-		ststxt	"SO MUCH FOR A QUICK REVISIT."
+		ststxt	"AND SO, THE JOURNEY BEGINS."
 		dc.b	-1
 		even
 ; ---------------------------------------------------------------------------
@@ -596,14 +596,14 @@ StoryText_1:	; text after intro cutscene
 StoryText_2:	; text after beating Night Hill Place
 		ststxt	"TELEPORTING WATERFALLS,"
 		ststxt	"CRABMEATS WITH EXPLODING"
-		ststxt	"BALLS, AND THE ORIGINAL"
-		ststxt	"GREEN HILL ZONE TRANSFORMED"
-		ststxt	"INTO CINEMA HELL ITSELF."
-		ststxt_line
+		ststxt	"PROJECTILES, AND THE"
+		ststxt	"ORIGINAL GREEN HILL ZONE"
+		ststxt	"TURNED INTO HELL ITSELF!"
 		ststxt	"EGGMAN AND HIS THREE SPIKED"
-		ststxt	"BALLS OF STEEL WEREN'T EVEN"
-		ststxt	"NECESSARY TO SHOW THAT SONIC"
-		ststxt	"ISN'T HAVING A GOOD TIME."
+		ststxt	"BALLS OF STEEL AREN'T"
+		ststxt	"EXACTLY NECESSARY TO SHOW"
+		ststxt	"THAT SONIC ISN'T HAVING"
+		ststxt	"THE TIME OF HIS LIFE."
 		ststxt_line
 		ststxt	"BUT HEY, I HEARD THEY'VE GOT"
 		ststxt	"A BUNCH OF EMERALDS NEARBY?"
@@ -614,18 +614,18 @@ StoryText_2:	; text after beating Night Hill Place
 ; ---------------------------------------------------------------------------
 
 StoryText_3:	; text after beating Special Place
-		ststxt	"WOW, FOUR EMERALDS ALREADY"
+		ststxt	"FOUR EMERALDS ALREADY"
 		ststxt	"COLLECTED, AND SONIC DOESN'T"
 		ststxt	"EVEN KNOW WHY HE NEEDS THEM."
 		ststxt_line
-		ststxt	"I DON'T KNOW EITHER."
+		ststxt	"HONESTLY, NEITHER DO I,"
 		ststxt	"BUT HOW ELSE SHOULD I END"
 		ststxt	"THIS STAGE? WITH A PARADE?"
 		ststxt	"HOW ABOUT A COOKIE TOO?"
 		ststxt	"GIVE ME A BREAK HERE."
 		ststxt_line
-		ststxt	"ANYWAY, LISTEN UP:"
-		ststxt	"DO NOT TOUCH ANY UNUSUAL"
+		ststxt	"ANYWAYS, LISTEN UP:"
+		ststxt	"DON'T TOUCH ANY UNUSUAL"
 		ststxt	"MONITORS IN THE NEXT STAGE!"
 		ststxt	"WHO KNOWS WHAT INHUMANITY"
 		ststxt	"LIES IN THERE..."
@@ -640,8 +640,8 @@ StoryText_4:	; text after beating Ruined Place
 		ststxt	"SHOOTING YOURSELF THROUGH"
 		ststxt	"A MAZE OF SPIKES WERE PRETTY"
 		ststxt	"ENTERTAINING TO WATCH."
-		ststxt	"REALLY, YOU SHOULD LOOK INTO"
-		ststxt	"BECOMING A COMEDY STAR!"
+		ststxt	"REALLY, I THINK YOU SHOULD"
+		ststxt	"LOOK INTO BEING A COMEDIAN!"
 		ststxt_line
 		ststxt	"WAIT A MINUTE, I JUST HAD"
 		ststxt	"AN ABSOLUTELY AMAZING IDEA."
@@ -663,7 +663,7 @@ StoryText_5:	; text after beating Labyrinth Place
 		ststxt	"AND A SPIN-OFF. SO, NO MORE"
 		ststxt	"FUNKY CAMERA BUSINESS."
 		ststxt_line
-		ststxt	"HOWEVER, YOU'VE KILLED"
+		ststxt	"HOWEVER, YOU'VE DESTROYED"
 		ststxt	"THE HOLY JAWS OF WISDOM,"
 		ststxt	"AND THEREFORE MUST BE SERVED"
 		ststxt	"THE ULTIMATE PUNISHMENT:"
@@ -681,13 +681,13 @@ StoryText_6:	; text after beating Unreal Place
 		ststxt	"UNTIL YOU CAN DO THE ENTIRE"
 		ststxt	"STAGE BLINDFOLDED!"
 		ststxt_line
-		ststxt	"ANYWAY, YOU HAVE ALL THE"
+		ststxt	"ANYWAYS, YOU HAVE ALL THE"
 		ststxt	"EMERALDS NOW. TOO BAD THIS"
-		ststxt	"GAME ONLY HAS SIX, SO"
-		ststxt	"SUPER SONIC ISN'T HAPPENING."
+		ststxt	"GAME ONLY HAS SIX, SO YOU"
+		ststxt	"AREN'T GOING TO TURN SUPER."
 		ststxt_line
-		ststxt	"TRY GOING TO SPACE, THOUGH!"
-		ststxt	"IT SORTA MAKES UP FOR THE"
+		ststxt	"WE'll GO TO SPACE, THOUGH!"
+		ststxt	"IT SORTA MAKES UP FOR THAT"
 		ststxt	"SEVENTH EMERALD. SORTA."
 		dc.b	-1
 		even
@@ -728,7 +728,7 @@ StoryText_8:	; text after jumping in the ring for the Ending Sequence
 		ststxt	"HAVE NEVER HAPPENED!"
 		ststxt_line
 		ststxt	"NOW WATCH YOURS AND SONIC'S"
-		ststxt	"WELL-DESERVED END..."
+		ststxt	"WELL-DESERVED PARTY..."
 		dc.b	-1
 		even
 ; ---------------------------------------------------------------------------

@@ -115,7 +115,30 @@ STS_ClrVram:	move.l	d0,(a6)
 @bottommeta:
 		display_enable
 		VBlank_UnsetMusicOnly
+
+		; load BG color
+		moveq	#0,d0
+		move.b	(STS_ScreenID).w,d0
+		subq.b	#1,d0
+		add.w	d0,d0
+		move.w	StoryScreen_BGColors(pc,d0.w),d0
+		move.w	d0,(BGThemeColor).w	; set theme color for background effects
+
 		jsr	Pal_FadeTo
+		bra.s	StoryScreen_MainLoop
+; ---------------------------------------------------------------------------
+
+StoryScreen_BGColors:
+		dc.w	$0E0	; after intro cutscene
+		dc.w	$2E4	; after NHP/GHP
+		dc.w	$E2E	; after SP
+		dc.w	$02E	; after RP
+		dc.w	$EA2	; after LP
+		dc.w	$E2A	; after UP
+		dc.w	$E02	; after SNP/SAP
+		dc.w	$000	; before ending sequence
+		dc.w	$00E	; after blackout
+		even
 
 ; ---------------------------------------------------------------------------
 ; Info Screen - Main Loop
@@ -269,6 +292,8 @@ StoryScreen_ContinueWriting:
 		move.w	($FFFFFE0E).w,d0		; get frame counter
 		andi.w	#3,d0				; only every four frames
 		bne.s	@writeend			; if not on one, branch
+		cmpi.b	#STS_LinesMain,(STS_Row).w	; are we writing beyond the main content?
+		bhi.s	@writeend			; if yes, don't play sound
 		move.w	#STS_Sound,d0			; play...
 		jsr	PlaySound_Special		; ... text writing sound
 
@@ -331,9 +356,9 @@ StoryScreen_WritePressStart:
 ; ---------------------------------------------------------------------------
 
 StoryText_WriteFull:
-		move.b	(STS_SkipBottomMeta).w,d0	; backup skip bottom meta flag
+		move.b	(STS_SkipBottomMeta).w,d1	; backup skip bottom meta flag
 		bsr	STS_ClearFlags			; make sure any previously written text doesn't interfere	
-		move.b	d0,(STS_SkipBottomMeta).w	; restore skip bottom meta flag (it's the only one still used here)
+		move.b	d1,(STS_SkipBottomMeta).w	; restore skip bottom meta flag (it's the only one still used here)
 		
 		move.w	#STS_DrawnLine_Length*2,(STS_CurrentChar).w ; full line (times 2 because its speed is halved)
 		bsr	StoryScreen_DrawLines		; finish drawing lines
@@ -348,7 +373,7 @@ StoryText_WriteFull:
 
 		tst.b	(STS_SkipBottomMeta).w		; is bottom meta set to be skipped?
 		beq.s	@nextline			; if not, branch
-		addq.w	#3,d1				; add two extra lines
+		addq.w	#4,d1				; add four extra lines
 	
 @nextline:
 		move.l	d4,4(a6)			; write whatever line we're on right now to the VDP
@@ -449,10 +474,11 @@ StoryScreen_CenterText:
 		bsr	StoryText_Load			; load story text into a1
 		lea	($FFFFCC00+STS_BaseRow*32).w,a0	; set up H-scroll buffer to the point where the main text is located
 		move.w	#STS_LineLength,d0		; set line length
+
 		moveq	#STS_LinesMain-1,d1		; set default loop count of line count
 		tst.b	(STS_SkipBottomMeta).w		; is bottom meta set to be skipped?
 		beq.s	@notskipbottommeta		; if not, branch
-		addq.w	#2,d1				; add two extra lines
+		addq.b	#4,d1				; add two extra lines
 @notskipbottommeta:
 		tst.b	(STS_FullyWritten).w		; is text already fully written?
 		bne.s	@centertextloop			; if yes, branch
@@ -752,7 +778,7 @@ StoryText_9:	; text after beating the blackout challenge special stage
 		ststxt	"MY GAME TO THE BITTER END!"
 		ststxt	"IT MEANS THE WORLD TO ME."
 		ststxt_line
-		ststxt	"                      -SELBI"
+		ststxt	"                       SELBI"
 		dc.b	-1
 		even
 ; ---------------------------------------------------------------------------

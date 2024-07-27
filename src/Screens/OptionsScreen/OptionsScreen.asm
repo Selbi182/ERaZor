@@ -73,7 +73,7 @@ OptionsScreen:				; XREF: GameModeArray
 		move.b	#$86,d0		; play Options screen music (Spark Mandrill)
 		jsr	PlaySound_Special
 		bsr	Options_LoadPal
-		move.b	#9,($FFFFFF9E).w ; BG pal
+		move.w	#$00E,(BGThemeColor).w	; set theme color for background effects
   
 		bra.s	Options_ContinueSetup
 	

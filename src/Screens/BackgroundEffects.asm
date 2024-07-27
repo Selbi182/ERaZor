@@ -62,16 +62,7 @@ BackgroundEffects_PalCycle:
 		lea	($FFFFFB02).w,a2
 		moveq	#10-1,d6	; 10 colors
 @bgpalcycle:
-		moveq	#0,d0
-		lea	(Obj03_BG).l,a3
-		move.b	($FFFFFF9E).w,d0
-		
-		subq.b	#2,d0
-		add.w	d0,d0
-		adda.w	d0,a3
-		
-		move.w	(a3),d0		; get theme color
-
+		move.w	($FFFFF5D6).w,d0 ; get theme color
 		move.w	(a1)+,d1	; get mask color
 		bpl.s	@dolimit
 		movea.l	d2,a1		; reset cycle location

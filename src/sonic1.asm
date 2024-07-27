@@ -3605,9 +3605,9 @@ Level_GetBgm:
 		move.b	#$99,d0			; play introduction music
 		jsr	PlaySound_Special
 
-		moveq	#$E,d0		; use FZ palette
-		bsr	PalLoad2	; load palette (based on	d0)
-		move.w	#$0000,($FFFFFB40).w
+		moveq	#$E,d0			; use FZ palette
+		bsr	PalLoad2		; load palette (based on d0)
+		move.w	#$E00,(BGThemeColor).w	; set theme color for background effects
 
 		move.b	#10,d0		; VLADIK => Load hint number
 		jsr	Tutorial_DisplayHint	; VLADIK => Display hint
@@ -4700,6 +4700,7 @@ ClearEverySpecialFlag:
 		move.b	d0,($FFFFF5D1).w
 		move.w	d0,(FranticDrain).w
 		move.b	d0,(RedrawEverything).w
+		move.w	d0,(BGThemeColor).w
 		move.l	d0,($FFFFFF60).w
 		move.l	d0,($FFFFFF64).w
 		move.l	d0,($FFFFFF68).w
@@ -25834,7 +25835,6 @@ Obj03_BG:
 		dc.w	$E2A	; UP
 		dc.w	$E24	; SAP
 		dc.w	$000	; FP
-		dc.w	$0E4	; options menu
 		even
 ; ---------------------------------------------------------------------------
 Obj03_BGMask:

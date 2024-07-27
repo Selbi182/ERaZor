@@ -35,6 +35,7 @@ SoundDriverRAM:		equ	$FFFFF000			;	SMPS RAM
 
 RedrawEverything:	equ	$FFFFF5D3			;	Flag used to redraw the entire screen after teleporting
 FranticDrain:		equ	$FFFFF5D4			; w	Rings to be drained in frantic mode
+BGThemeColor:		equ	$FFFFF5D6			; w	Background color used for the BG effects for the story screens, etc.
 
 VBlank_NonLagFrameCounter:	equ	$FFFFF5DC		; l	
 

@@ -11,10 +11,6 @@
 ; MAIN LEVEL CYCLE
 ; Uberhub > Chapter Screen > Level > Story Screen > Uberhub
 ; ---------------------------------------------------------------------------
-; Default options when starting the game for the first time
-; (Casual Mode, Extended Camera, Flashy Lights, Story Text Screens)
-DefaultOptions = %10000011
-; ---------------------------------------------------------------------------
 ResumeFlag	equ	$FFFFF601
 CurrentChapter	equ	$FFFFFFA7
 StoryTextID	equ	$FFFFFF9E
@@ -90,22 +86,35 @@ Exit_TitleScreen:
 		bne.w	ReturnToUberhub_Chapter	; if not, go to Uberhub (and always show chapter screen)
 		
 		; first launch
-		move.b	#DefaultOptions,(OptionsBits).w	; load default options
+		jsr	Options_SetDefaults		; load default options
 		move.b	#0,(CurrentChapter).w		; set chapter to 0 (so screen gets displayed once NHP is entered for the first time)
 		move.b	#$30,($FFFFF600).w		; for the first time, set to Gameplay Style Screen (which then starts the intro cutscene)
 		rts
 ; ===========================================================================
 
 Exit_GameplayStyleScreen:
+		jsr	SRAM_SaveNow
+
 		tst.b	(ResumeFlag).w		; is this the first time the game is being played?
 		bne.w	HubRing_Options		; if not, we came from the options menu, return to it
-		
+
+		move.w	#$C3,d0
+		jsr	PlaySound_Special	; play giant ring sound
+		jsr 	WhiteFlash2
+		jsr 	Pal_FadeFrom
+		move.w  #$20,($FFFFF614).w
+@Wait:		move.b	#2,VBlankRoutine
+		jsr	DelayProgram
+		tst.w 	($FFFFF614).w
+		bne.s 	@Wait
+	
 		; first launch
 		move.b	#1,(ResumeFlag).w	; set resume flag now
 		bra.w	HubRing_IntroStart	; start the intro cutscene
 ; ===========================================================================
 
 Exit_OptionsScreen:
+		jsr	SRAM_SaveNow		; save our progress now
 		tst.b	d0			; d0 = 0 Uberhub / 1 GameplayStyleScreen
 		beq.w	ReturnToUberhub		; return to Uberhub if we exited the screen
 		move.b	#$30,($FFFFF600).w	; set to GameplayStyleScreen if we chose that option
@@ -580,7 +589,7 @@ Check_BlackoutUnlocked:
 ; Cheats
 ; ---------------------------------------------------------------------------
 
-; cheat code called from Selbi Screen
+; cheat called from Selbi Screen
 UnlockEverything:
 		move.b	#Doors_All,d0		; unlock all doors...
 		move.b	d0,(Doors_Casual).w	; ...in casual...

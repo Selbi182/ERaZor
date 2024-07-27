@@ -397,9 +397,8 @@ SRAM_Delete:
 
 		lea	($200000).l,a1				; base of SRAM
 		move.b	#SRAM_MagicNumber,SRAM_Exists(a1) 	; set magic number ("SRAM exists")
-		move.b	#%00000011,d0				; set default options (extended camera and story text screens)
-		move.b	d0,(OptionsBits).w			; ^
-		move.b	d0,1(a1)				; ^
+		jsr	Options_SetDefaults			; reset default options
+		move.b	(OptionsBits).w,1(a1)			; ^
 	endif	; def(__MD_REPLAY__)=0
 		
 ResetGameProgress:
@@ -424,8 +423,8 @@ SRAM_SaveNow:
 		cmpi.b	#SRAM_MagicNumber,SRAM_Exists(a1)	; does SRAM exist?
 		bne.s	SRAM_SaveNow_End			; if not, branch
 		
+		move.l	d0,-(sp)				; backup d0
 		moveq	#0,d0					; clear d0
-		
 		move.b	(OptionsBits).w,d0			; move option flags to d0
 		move.b	d0,SRAM_Options(a1)			; backup option flags
 		move.b	($FFFFFFA7).w,d0			; move current chapter to d0
@@ -442,6 +441,7 @@ SRAM_SaveNow:
 		move.b	d0,SRAM_Complete(a1)			; backup option flags
 		move.b	($FFFFF601).w,d0			; move resume flag to d0
 		move.b	d0,SRAM_Resume(a1)			; backup resume flag
+		move.l	(sp)+,d0				; restore d0
 
 SRAM_SaveNow_End:
 		move.b	#0,($A130F1).l				; disable SRAM
@@ -567,6 +567,10 @@ BlackBars.Reset:
 
 ; called from VBlank every single frame
 BlackBars.VBlankUpdate:
+		tst.w	($FFFFFE02).w					; is level set to restart?
+		bne.s	@notlz						; if yes, branch
+		tst.b	($FFFFFFE9).w					; is fade out currently in progress?
+		bne.s	@notlz						; if yes, branch
 		cmpi.b	#1,($FFFFFE10).w				; are we in LZ?
 		bne.s	@notlz						; if not, branch
 		cmpi.b	#$C,($FFFFF600).w				; are we done with the pre-level sequence?
@@ -1312,21 +1316,27 @@ ProcessDMAQueue_Done:
 
 
 PalCycle_Load:				; XREF: Demo; Level_MainLoop; End_MainLoop
+		tst.w	($FFFFFE02).w		; is level set to restart?
+		bne.s	@nopalcycle		; if yes, branch
+		tst.b	($FFFFFFE9).w		; is fade out currently in progress?
+		bne.s	@nopalcycle		; if yes, branch
+		tst.b	($FFFFFFB1).w		; is white flash in progress?
+		bpl.s	@nopalcycle		; if yes, branch
 		cmpi.b	#6,($FFFFD024).w	; is Sonic dying?
-		blt.s	PCL_Load		; if not, branch
-		tst.b	($FFFFFFB1).w		; is white flash?
-		beq.s	PCL_Load		; if not, branch
-
+		bhs.s	@nopalcycle		; if yes, branch
+		bsr	PCL_Load		; do pal cycle
 @nopalcycle:
 		rts
+; ---------------------------------------------------------------------------
 
 PCL_Load:
 		moveq	#0,d2
 		moveq	#0,d0
 		move.b	($FFFFFE10).w,d0 ; get level number
-		add.w	d0,d0		; multiply by 2
-		move.w	PalCycle(pc,d0.w),d0 ; load animated pallets offset index into d0
-		jmp	PalCycle(pc,d0.w) ; jump to PalCycle + offset index
+		add.w	d0,d0
+		move.w	PalCycle(pc,d0.w),d0
+		jsr	PalCycle(pc,d0.w)
+		rts
 ; End of function PalCycle_Load
 
 ; ===========================================================================
@@ -1854,6 +1864,7 @@ Pal_FadeFrom:
 		moveq	#$00,d6					; MJ: clear d6
 loc_1E5C:
 		bsr.w	PLC_Execute
+		
 		move.b	#$12,VBlankRoutine
 		bsr.w	DelayProgram
 		bchg	#$00,d6					; MJ: change delay counter
@@ -3004,15 +3015,14 @@ Title_MainLoop:
 		bsr.w	GenericPalCycle_Red		
 
 		move.b	($FFFFF605).w,d1	; get button presses
-		andi.b	#$B0,d1			; is A, B, C, or Start pressed?
+		andi.b	#$B0,d1			; is B, C, or Start pressed?
 		beq.w	Title_MainLoop		; if not, branch
 
 StartGame:
 		tst.w	($FFFFFFFA).w		; is debug mode enabled?
 		beq.w	Title_NoLevSel		; if not, branch. quick level select only in dev mode
-		move.b	($FFFFF604).w,d0	; get button presses
-		andi.b	#$40,d0			; check A
-		beq.w	Title_NoLevSel		; if not pressed, start game normally
+		btst	#6,($FFFFF604).w	; is A held?
+		beq.w	Title_NoLevSel		; if not, start game normally
 
 LevelSelect_Load:
 		move.w	#$E0,d0			; fade out music for level select
@@ -3449,29 +3459,30 @@ MusicList:
 
 ; Level::	<-- for quick search
 Level:					; XREF: GameModeArray
+		bset	#7,($FFFFF600).w ; add $80 to screen mode (for pre level sequence)
 		bsr	PLC_ClearQueue
 		jsr	DrawBuffer_Clear
 		display_enable
+		move.w	#$8014,($C00004).l	; enable h-ints
 		bsr	Pal_FadeFrom
 		move.w	#$8004,($C00004).l	; disable h-ints
-		bset	#7,($FFFFF600).w ; add $80 to screen mode (for pre level sequence)
 
 		; immediately clear the first tile in VRAM to avoid graphical issues
-		move	#$2700,sr
+		VBlank_SetMusicOnly
 		vram	$0000
 		rept	$20-1
 		move.w	#0,VDP_Data
 		endr
-		
+		VBlank_UnsetMusicOnly
+
 	;	jsr	ClearVRAM	; only comment this in for testing, never in prod!
 
 		cmpi.w	#$001,($FFFFFE10).w
 		beq.s	@notitlecardart
 		lea	PLC_TitleCard, a1
 		jsr	LoadPLC_Direct
-
 @notitlecardart:
-		move	#$2300,sr
+
 		moveq	#0,d0
 		move.b	($FFFFFE10).w,d0
 		lsl.w	#4,d0
@@ -3518,7 +3529,7 @@ Level_ClrVars2:	move.l	d0,(a1)+
 Level_ClrVars3:	move.l	d0,(a1)+
 		dbf	d1,Level_ClrVars3 ; clear object variables
 
-		move	#$2700,sr
+		VBlank_SetMusicOnly
 		bsr	ClearScreen
 		lea	($C00004).l,a6
 		move.w	#$8B03,(a6)
@@ -3578,8 +3589,9 @@ Level_WaterPal:
 		
 ; ---------------------------------
 Level_GetBgm:
-		move.b	#$E3,d0
+		move.b	#$E3,d0			; resume at normal speed
 		jsr	PlaySound_Special
+		VBlank_UnsetMusicOnly
 
 		; tutorial introduction text
 		cmpi.w	#$501,($FFFFFE10).w	; are we starting the tutorial?
@@ -3636,29 +3648,25 @@ Level_NoMusic2:
 		clr.w	($FFFFFFCE).w	; clear extended camera counter
 		bsr	ClearEverySpecialFlag
 		
-		cmpi.w	#$502,($FFFFFE10).w
-		bne.s	@contx
-		move.b	#0,(HUD_BossHealth).w
-@contx:
-		cmpi.w	#$001,($FFFFFE10).w
-		bne.s	@notintrocutscene
-		vram	$D700
-		lea	(ArtKospM_ExplBall).l,a0
-		jsr	KosPlusMDec_VRAM
-		moveq	#2,d0
-		jsr	LoadPLC			; load explosion patterns
-		bra.s	Level_NoTitleCard
-		
-@notintrocutscene:
-@runplc:
-		; run PLC now to avoid breaching the queue limit
+@runplc:	; run PLC now to avoid breaching the queue limit
 		move.b	#$C,VBlankRoutine
 		bsr	DelayProgram
 		bsr	PLC_Execute
 		tst.l	PLC_Pointer	; are there any items in the pattern load cue?
 		bne.s	@runplc		; if yes, branch
 
-
+		cmpi.w	#$001,($FFFFFE10).w	; are we in the intro cutscene?
+		bne.w	@notintrocutscene
+		VBlank_SetMusicOnly
+		vram	$D700
+		lea	(ArtKospM_ExplBall).l,a0
+		jsr	KosPlusMDec_VRAM
+		moveq	#2,d0
+		jsr	LoadPLC			; load explosion patterns
+		VBlank_UnsetMusicOnly
+		bra.s	Level_NoTitleCard
+		
+@notintrocutscene:
 		cmpi.w	#$502,($FFFFFE10).w	; is this Finalor Place?
 		bne.s	@notfinalor		; if not, branch
 		moveq	#$1F,d0
@@ -3876,19 +3884,17 @@ Level_MainLoop:
 		jsr	BuildSprites
 		bsr	UndoCameraShake		; undo camera shake now that the rendering is done
 		jsr	ObjPosLoad
-		tst.b	($FFFFFFAC).w
-		bne.s	@nopalcycle
 		bsr	PalCycle_Load
-@nopalcycle:	bsr	PLC_Execute
+		bsr	PLC_Execute
 		bsr	OscillateNumDo
 		bsr	ChangeRingFrame
 		bsr	SignpostArtLoad
 
 		tst.w	($FFFFFE02).w		; is the level set to restart?
-		bne.w	Level			; if yes, branch
-		cmpi.b	#$C,($FFFFF600).w
-		beq.w	Level_MainLoop	; if screen mode is $0C	(level), branch
-		rts
+		bne.w	Level			; if yes, restart level
+		cmpi.b	#$C,($FFFFF600).w	; has game mode changed?
+		beq.w	Level_MainLoop		; if not, loop
+		rts				; screen mode changed, exit level
 
 ; ===========================================================================
 
@@ -4402,9 +4408,16 @@ GenerateCameraShake:
 		sub.w	d3,d0				; make 50% of the numbers negative
 		and.w	d2,d1				; limit random number by intensity (this is now the X offset)
 		sub.w	d3,d1				; make 50% of the numbers negative
-
+		
 		add.w	d0,($FFFFF700).w		; add X shake offset to camera X position
+		bpl.s	@xgood				; if not, branch
+		add.w	($FFFFF700).w,d0
+		move.w	#0,($FFFFF700).w
+@xgood:
 		add.w	d1,($FFFFF704).w		; add Y shake offset to camera Y position
+		bpl.s	@remember			; if not, branch
+		add.w	($FFFFF704).w,d1
+		move.w	#0,($FFFFF704).w
 
 @remember:
 		move.w	d0,(CameraShake_XOffset).w	; remember X shake offset for later
@@ -4966,21 +4979,24 @@ SpecialStage:				; XREF: GameModeArray
 
 		move.b	#$12,VBlankRoutine	; apply palette changes before we move on
 		bsr	DelayProgram
-		bra.s	@cont
+		bra.s	@sssetup
 
 @notblackout:
 		move.w	#$CA,d0
 		bsr	PlaySound_Special ; play special stage entry sound
+		move.w	#$8014,($C00004).l	; enable h-ints
 		bsr	Pal_MakeFlash
 ; ---------------------------------------------------------------------------
 
-@cont:
+@sssetup:
 		VBlank_SetMusicOnly
 		lea	($C00004).l,a6
 		move.w	#$8B03,(a6)
 		move.w	#$8AAF,($FFFFF624).w
 		move.w	#$9011,(a6)
-		move.w	#$8014,(a6)		; enable h-ints for the black bars
+		move.w	#$8004,(a6)		; enable h-ints
+		move.w	#$8A00|$DF,($FFFFF624).w	; set initial H-int counter value to apply once per frame
+		move.w	($FFFFF624).w,(a6)		; apply H-int counter
 		bsr	ClearScreen
 
 		lea	($C00004).l,a5
@@ -5074,6 +5090,8 @@ SS_ClrNemRam:	move.l	d0,(a1)+
 
 		; the following code is basically just Pal_MakeWhite but
 		; adjusted to already start displaying the level during the fade-in
+		move.w	#$8014,($C00004).l	; enable h-ints for the black bars
+		move.w	#BlackBars.MaxHeight,BlackBars.Height
 		move.w	#$3F,($FFFFF626).w
 		moveq	#0,d0
 		lea	($FFFFFB00).w,a0
@@ -5095,8 +5113,6 @@ SS_ClrNemRam:	move.l	d0,(a1)+
 		bsr	Pal_WhiteToBlack
 		move.l	(sp)+,d5
 		dbf	d5,@loc_1EF4
-
-	;	bsr	Pal_MakeWhite
 
 
 ; ---------------------------------------------------------------------------
@@ -6990,6 +7006,8 @@ ResizeFZ_Index:	dc.w Resize_FZmain-ResizeFZ_Index, Resize_FZboss-ResizeFZ_Index
 Resize_FZmain:
 		move.w	#$510,($FFFFF726).w
 
+		move.b	#0,(HUD_BossHealth).w
+
 		cmpi.w	#$2148,($FFFFF700).w
 		bcs.s	loc_72F4
 		addq.b	#2,($FFFFF742).w
@@ -8173,7 +8191,7 @@ Obj18:					; XREF: Obj_Index
 ; ===========================================================================
 Obj18_Index:	dc.w Obj18_Main-Obj18_Index
 		dc.w Obj18_Solid-Obj18_Index
-		dc.w Obj18_Action2-Obj18_Index
+		dc.w Obj18_OnPlatform-Obj18_Index
 		dc.w Obj18_Delete-Obj18_Index
 		dc.w Obj18_Action-Obj18_Index
 		dc.w Obj18_Arrows-Obj18_Index
@@ -8285,12 +8303,9 @@ Obj18_Arrows:
 		moveq	#1,d2
 @cont:
 		bra.w	Obj18_ChkDel
-
 ; ===========================================================================
 
-
-
-Obj18_Action2:				; XREF: Obj18_Index
+Obj18_OnPlatform:				; XREF: Obj18_Index
 		cmpi.w	#$400,($FFFFFE10).w	; is level SYZ1?
 		bne.w	Obj18_NotSYZX
 
@@ -8396,7 +8411,7 @@ loc_7F06:
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 
 
-Obj18_Nudge:				; XREF: Obj18_Action; Obj18_Action2
+Obj18_Nudge:				; XREF: Obj18_Action; Obj18_OnPlatform
 		cmpi.w	#$400,($FFFFFE10).w	; is level SYZ1?
 		beq.s	Obj18_NoNudge		; if yes, branch
 		move.b	$38(a0),d0
@@ -8418,7 +8433,7 @@ Obj18_NoNudge:
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 
 
-Obj18_Move:				; XREF: Obj18_Action; Obj18_Action2
+Obj18_Move:				; XREF: Obj18_Action; Obj18_OnPlatform
 		moveq	#0,d0
 		move.b	obSubtype(a0),d0
 		andi.w	#$F,d0
@@ -8633,9 +8648,9 @@ Obj18_ChgMotion:
 		rts	
 ; ===========================================================================
 
-Obj18_ChkDel:				; XREF: Obj18_Action; Obj18_Action2
-		cmpi.w	#$302,($FFFFFE10).w	; idk why TODO TEST LATER
-		beq.s	@nodelete
+Obj18_ChkDel:				; XREF: Obj18_Action; Obj18_OnPlatform
+		cmpi.w	#$302,($FFFFFE10).w	; are we in SAP?
+		beq.s	@nodelete		; if yes, don't delete platforms
 
 		move.w	$32(a0),d0
 		andi.w	#$FF80,d0
@@ -8646,10 +8661,9 @@ Obj18_ChkDel:				; XREF: Obj18_Action; Obj18_Action2
 		cmpi.w	#$280,d0
 		bhi.s	Obj18_Delete
 @nodelete:
-		tst.b	d2
-		beq.s	@nodisplay
+		tst.b	d2			; is platform set to be displayed?
+		beq.s	@nodisplay		; if not, branch
 		bra.w	DisplaySprite
-
 @nodisplay:
 		rts	
 ; ===========================================================================

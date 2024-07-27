@@ -331,9 +331,11 @@ loc_F9A:				; XREF: VBlankTable
 		bsr	UpdateFrame
 		cmpi.b	#1, CurrentZone		; are we LZ?
 		bne.s	@0
+		tst.b	($FFFFFFE9).w		; is fade out currently in progress?
+		bne.s	@1			; if yes, branch
 		move.w	($FFFFF624).w,(a5)
 @0:		move.b	($FFFFF625).w,($FFFFFE07).w
-
+@1:
 		rts
 ; ===========================================================================
 

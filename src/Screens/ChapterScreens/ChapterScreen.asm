@@ -19,7 +19,9 @@ Chapters_Total = 7
 ChapterScreen:
 		move.b	#$E0,d0
 		jsr	PlaySound_Special		; fade out music
+
 		jsr	PLC_ClearQueue			; Clear PLCs
+		jsr	DrawBuffer_Clear
 		jsr	Pal_FadeFrom			; Fade out previous palette
 		VBlank_SetMusicOnly
 

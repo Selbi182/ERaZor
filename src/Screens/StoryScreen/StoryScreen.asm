@@ -103,7 +103,6 @@ STS_ClrScroll:	move.l	d0,(a1)+
 		dbf	d1,STS_ClrScroll	; fill scroll data with 0
 		move.l	d0,($FFFFF616).w
 
-		ints_disable
 		lea	($C00000).l,a6
 		move.l	#$60000003,($C00004).l
 		move.w	#$3FF,d1

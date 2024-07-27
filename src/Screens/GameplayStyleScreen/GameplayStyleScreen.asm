@@ -108,27 +108,11 @@ GSS_MainLoop:
 		moveq	#0,d0
 		bsr	GSS_LoadPal
 		move.w	#$D8,d0
-		jsr	(PlaySound_Special).l	; play "blip" sound
+		jsr	(PlaySound_Special).l	; play sound
 
 @NoUpdate:
 		andi.b	#$F0,($FFFFF605).w	; is A, B, C, or Start pressed?
 		beq.s	GSS_MainLoop		; if not, branch
-; ---------------------------------------------------------------------------
-
-@Exit:
-		move.w	#$C3,d0			; set giant ring sound
-		jsr	PlaySound_Special	; play giant ring sound
-		jsr 	WhiteFlash2
-		jsr 	Pal_FadeFrom
-		move.w  #$20,($FFFFF614).w
-		jsr	SRAM_SaveNow
-
-@Wait:
-		move.b	#2, VBlankRoutine
-		jsr	DelayProgram
-		tst.w 	($FFFFF614).w
-		bne.s 	@Wait
-		
 		jmp	Exit_GameplayStyleScreen
 ; ---------------------------------------------------------------------------
 ; ===========================================================================

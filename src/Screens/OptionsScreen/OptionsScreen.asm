@@ -15,10 +15,14 @@ Options_LineCount = 22
 Options_LineLength = 28
 Options_Padding = 2
 Options_LineLengthTotal = Options_LineLength + (Options_Padding * 2)
+
+; Default options when starting the game for the first time
+; (Casual Mode, Extended Camera, Flashy Lights, Story Text Screens)
+DefaultOptions = %10000011
 ; ---------------------------------------------------------------------------
 
 OptionsScreen:				; XREF: GameModeArray
-		move.b	#$E4,d0
+		move.b	#$E0,d0
 		jsr	PlaySound_Special ; stop music
 		jsr	PLC_ClearQueue
 		jsr	Pal_FadeFrom
@@ -141,7 +145,12 @@ Options_FinishSetup:
 		bsr	OptionsTextLoad		; load options text
 		display_enable
 		jsr	Pal_FadeTo
+		bra.s	OptionsScreen_MainLoop
+; ---------------------------------------------------------------------------
 
+Options_SetDefaults:
+		move.b	#DefaultOptions,(OptionsBits).w	; load default options
+		rts
 
 ; ---------------------------------------------------------------------------
 ; Options Screen - Main Loop

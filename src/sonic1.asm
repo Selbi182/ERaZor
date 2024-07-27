@@ -3657,6 +3657,12 @@ Level_NoMusic2:
 		tst.l	PLC_Pointer	; are there any items in the pattern load cue?
 		bne.s	@runplc		; if yes, branch
 
+		move.b	#0,(PlacePlacePlace).w
+		cmpi.b	#$70,($FFFFF604).w	; exactly ABC held?
+		bne.s	@noeasteregg		; if not, branch
+		move.b	#1,(PlacePlacePlace).w	; PLACE PLACE PLACE
+@noeasteregg:
+
 		cmpi.w	#$001,($FFFFFE10).w	; are we in the intro cutscene?
 		bne.w	@notintrocutscene
 		VBlank_SetMusicOnly
@@ -5064,13 +5070,29 @@ SS_ClrNemRam:	move.l	d0,(a1)+
 		beq.s	@contx		; if not, branch
 		moveq	#22,d0		; load dark/red palette
 @contx:		bsr	PalLoad1	; load special stage palette
-		jsr	SS_Load
-		bsr	SS_BGAnimate
 
+		jsr	SS_Load		; load special stage layout
+		bsr	SS_BGAnimate
+		
 		move.l	#0,($FFFFF700).w
 		move.l	#0,($FFFFF704).w
 		move.b	#9,($FFFFD000).w ; load	special	stage Sonic object
 		move.b	#$34,($FFFFD080).w ; load title	card object
+
+		move.b	#0,(PlacePlacePlace).w
+		cmpi.b	#$70,($FFFFF604).w	; exactly ABC held?
+		bne.s	@noeasteregg		; if not, branch
+		move.b	#1,(PlacePlacePlace).w	; PLACE PLACE PLACE
+		lea	($FF1020).l,a1		; load SS blocks into a1
+		moveq	#$3F,d1			; set normal loop
+@Loop2:		moveq	#$3F,d2			; set alternate loop
+@Loop:		cmpi.b	#$41,(a1)+		; is the item a	goal block?
+		bne.s	@NoReplace		; if not, branch
+		move.b	#0,-1(a1)		; replace goal block with a solid block
+@NoReplace:	dbf	d2,@Loop		; loop
+		lea	$40(a1),a1		; increase pointer by $40
+		dbf	d1,@Loop2		; loop
+@noeasteregg:
 
 		bsr	PalCycle_SS
 		clr.w	($FFFFF780).w	; set stage angle to "upright"
@@ -8249,10 +8271,10 @@ Obj18_NotLZ:
 Obj18_NotSYZ:
 		cmpi.b	#3,($FFFFFE10).w ; check if level is SLZ
 		bne.s	Obj18_NotSLZ
-		move.l	#Map_obj18b,obMap(a0) ; SLZ	specific code
-	;	move.b	#$20,obActWid(a0)
+		move.l	#Map_obj18b,obMap(a0) ; SLZ specific code
 		move.w	#$44E0,obGfx(a0)
-	;	move.b	#3,obSubtype(a0)
+		tst.b	(PlacePlacePlace).w	; is easter egg flag set?
+		bne.w	DeleteObject		; if yes, branch
 
 Obj18_NotSLZ:
 		move.b	#4,obRender(a0)
@@ -11786,6 +11808,9 @@ Obj25_PosData:	dc.b $10, 0		; horizontal tight
 ; ===========================================================================
 
 Obj25_Main:				; XREF: Obj25_Index
+		tst.b	(PlacePlacePlace).w	; is easter egg flag set?
+		bne.w	DeleteObject		; if yes, branch
+
 		lea	($FFFFFC00).w,a2
 		moveq	#0,d0
 		move.b	obRespawnNo(a0),d0
@@ -11991,6 +12016,9 @@ Obj37_Index:	dc.w Obj37_CountRings-Obj37_Index
 ; ===========================================================================
 
 Obj37_CountRings:			; XREF: Obj37_Index
+		tst.b	(PlacePlacePlace).w	; is easter egg flag set?
+		bne.w	DeleteObject		; if yes, branch
+
 		movea.l	a0,a1		; no need to load in one more ring when the current object already is one
 		move.w	#BouncyRingValue,d4	; used for the bouncy angle
 
@@ -15869,10 +15897,12 @@ Obj34_NotSLZ3:
 		cmpi.w	#$401,($FFFFFE10).w ; check if level is	Special Stage 2
 		bne.s	Obj34_NotSS2
 		tst.b	($FFFFFF5F).w	; is this the blackout blackout special stage?
-		beq.s	@cont
+		beq.s	@notblackout
+		tst.b	(PlacePlacePlace).w
+		bne.s	@notblackout
 		jmp	DeleteObject
 
-@cont
+@notblackout:
 		moveq	#$13,d0		; load title card number $13 (SS 2)
 		
 Obj34_NotSS2:
@@ -15928,13 +15958,9 @@ Obj34_NoMainLevel:
 
 Obj34_MakeSprite:
 		move.b	d0,obFrame(a1)		; display frame	number d0
-		
-		movem.l	d0-d2/a0-a2,-(sp)	; need to read joypads now...
-		jsr	ReadJoypads		; ...because at this point...
-		movem.l	(sp)+,d0-d2/a0-a2	; ...controls are still locked
 
-		cmpi.b	#$70,($FFFFF604).w	; exactly ABC held?
-		bne.s	@noeasteregg		; if not, branch
+		tst.b	(PlacePlacePlace).w	; is easter egg flag set?
+		beq.s	@noeasteregg		; if not, branch
 		cmpi.b	#4,$3F(a1)		; is current object the Oval?
 		beq.s	@noeasteregg		; if yes, branch
 		move.b	#6,obFrame(a1)		; PLACE PLACE PLACE
@@ -19018,6 +19044,10 @@ Obj12_Init:
 		move.b	#6,obPriority(a0)
 		move.b	#$40,obHeight(a0)
 		move.w	obY(a0),$32(a0)			; used for the sway
+		tst.b	(PlacePlacePlace).w
+		beq.s	Obj12_Animate
+		bset	#0,obRender(a0)
+		bset	#1,obRender(a0)
 ; ---------------------------------------------------------------------------
 
 Obj12_Animate:
@@ -33700,11 +33730,13 @@ Obj79_Index:	dc.w Obj79_Main-Obj79_Index
 ; ===========================================================================
 
 Obj79_Main:				; XREF: Obj79_Index
-		frantic			
+		tst.b	(PlacePlacePlace).w	; is easter egg flag set?
+		bne.s	@delete			; if yes, branch
+		frantic
 		beq.s	@notrpfrantic
 		cmpi.w	#$200,($FFFFFE10).w
 		bne.s	@notrpfrantic
-		jmp	DeleteObject
+@delete:	jmp	DeleteObject
 
 @notrpfrantic:
 		addq.b	#2,obRoutine(a0)
@@ -40689,10 +40721,10 @@ SS_Load:				; XREF: SpecialStage
 		beq.s	@notblackout		; if not, branch
 
 		lea	(SS_Blackout_Part1).l,a0 ; load regular blackout layout
-		move.b	($FFFFF604).w,d0	; get button presses
-		cmpi.b	#$70,d0			; is exactly ABC held?
-		bne.s	SS_LoadLevel		; if not, branch
-		lea	(SS_Blackout_Part2).l,a0 ; I guess this works as hard part skipper, meh
+	;	move.b	($FFFFF604).w,d0	; get button presses
+	;	cmpi.b	#$70,d0			; is exactly ABC held?
+	;	bne.s	SS_LoadLevel		; if not, branch
+	;	lea	(SS_Blackout_Part2).l,a0 ; I guess this works as hard part skipper, meh
 		bra.s	SS_LoadLevel		; branch
 @notblackout:
 		lea	(SS_2_Casual).l,a0	; load casual Unreal Place layout

@@ -327,11 +327,7 @@ SelbiSplash_WaitEnd:
 		bra	SelbiSplash_LoopEnd		; skip
 
 @firecheat:
-		jsr	UnlockEverything		; unlock all doors (in casual and frantic) and all bonus options
-		jsr	SRAM_SaveNow			; save
-		
 		move.w	#$90,($FFFFF614).w		; reset ending timer
-	;	jsr	Pal_MakeBlackWhite		; make grayscale
 
 		tst.w	($FFFFFFFA).w			; was debug mode already enabled?
 		bne.w	SelbiSplash_DisableDebug	; if yes, disable it
@@ -380,6 +376,9 @@ SelbiSplash_Next:
 		jmp	Exit_SelbiSplash
 
 SelbiSplash_DisableDebug:
+		jsr	UnlockEverything		; unlock all doors (in casual and frantic) and all bonus options
+		jsr	SRAM_SaveNow			; save
+		
 		move.w	#0,($FFFFFFFA).w	 	; disable debug mode
 		move.b	#$A4,d0				; set skidding sound
 		jsr	PlaySound_Special		; play it

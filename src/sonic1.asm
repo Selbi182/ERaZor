@@ -310,6 +310,7 @@ GameClrRAM:	move.l	d7,(a6)+
 	endif
 
 	if def(__BENCHMARK__)
+		jsr	Options_SetDefaults
 		; Benchmark build uses a custom bootstrap program
 		jmp	Benchmark
 	else
@@ -3661,6 +3662,7 @@ Level_NoMusic2:
 		cmpi.b	#$70,($FFFFF604).w	; exactly ABC held?
 		bne.s	@noeasteregg		; if not, branch
 		move.b	#1,(PlacePlacePlace).w	; PLACE PLACE PLACE
+		clr.w	($FFFFFE20).w		; clear rings
 @noeasteregg:
 
 		cmpi.w	#$001,($FFFFFE10).w	; are we in the intro cutscene?
@@ -12017,9 +12019,15 @@ Obj37_Index:	dc.w Obj37_CountRings-Obj37_Index
 
 Obj37_CountRings:			; XREF: Obj37_Index
 		tst.b	(PlacePlacePlace).w	; is easter egg flag set?
-		bne.w	DeleteObject		; if yes, branch
+		beq.s	@noteaster		; if not, branch
+		tst.b	$35(a0)			; was object loaded by destroying a monitor or badnik?
+		bne.w	Obj37_Delete		; if yes, branch
+		clr.w	($FFFFFE20).w		; clear rings
+		ori.b	#1,($FFFFFE1D).w 	; update ring counter		
+		bra.w	Obj37_Delete		; delete
 
-		movea.l	a0,a1		; no need to load in one more ring when the current object already is one
+@noteaster:
+		movea.l	a0,a1			; no need to load in one more ring when the current object already is one
 		move.w	#BouncyRingValue,d4	; used for the bouncy angle
 
 		moveq	#6,d5		; set ring bounce count to 6 for destroyed objects
@@ -24008,7 +24016,7 @@ loc_11BCE:
 		dbf	d6,Obj5F_Loop	; repeat 3 more	times
 
 Obj5F_End:				; XREF: Obj5F_Index
-		addi.w	#$20,obVelY(a0)		; apply gravity to shrapnel
+		addi.w	#$18,obVelY(a0)		; apply gravity to shrapnel
 
 		bsr.w	SpeedToPos
 
@@ -29411,7 +29419,7 @@ S_H_NoKillCheck:
 		rts
 
 S_H_NoGHZBoss:
-		move.w	#$78,$30(a0)		; otherwise set invin time to $78
+		move.w	#120,$30(a0)		; otherwise set invin time to two seconds
 
 locret_13860:
 		rts
@@ -40020,7 +40028,7 @@ Hurt_ChkSpikes:
 		move.b	#0,$39(a0)	; clear spindash flag
 		move.w	#0,obInertia(a0)
 		move.b	#$1A,obAnim(a0)
-		move.w	#$78,$30(a0)
+		move.w	#120,$30(a0)	; set invulnerable time to 2 seconds
 		move.w	#$A3,d0		; load normal damage sound
 		cmpi.b	#$36,(a2)	; was damage caused by spikes?
 		bne.s	Hurt_Sound	; if not, branch

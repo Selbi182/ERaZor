@@ -6658,11 +6658,11 @@ Resize_SLZ2main:
 @deletebombs:
 		cmpi.b	#$5E,(a1)
 		bne.s	@0
-		clr.b	(a1)			; delete all bomb objects before the boss
+		jsr	DeleteObject2		; delete all bomb objects before the boss
 @0:
 		adda.l	#$40,a1			; increase pointer by $40 (next object)
 		dbf	d2,@deletebombs		; loop
-		
+
 locret_7130:
 		rts	
 ; ===========================================================================
@@ -22965,11 +22965,13 @@ BombPellets = 3
 ; ===========================================================================
 
 Obj5E:					; XREF: Obj_Index
-		frantic
-		bne.s	@frantic
-		jmp	DeleteObject
-
+		frantic				; are we in frantic mode?
+		bne.s	@frantic		; if yes, branch
+		jmp	DeleteObject		; shotgunner bombs don't exist in casual
 @frantic:
+		tst.b	($FFFFFFA9).w		; are we fighting against the walking bomb boss?
+		bne.w	Obj5E_DisplayBomb	; if yes, make bombs ignore you
+
 		bsr.w	Obj5E_FaceSonic
 
 		moveq	#0,d0
@@ -38421,9 +38423,7 @@ loc_1A15C:
 		jsr	AnimateSprite
 
 loc_1A166:
-	;	cmpi.w	#$2700,($FFFFF72A).w
-	;	bge.s	loc_1A172
-		move.w	#$2860,($FFFFF72A).w	; set right boundary after defeating the FZ boss
+		move.w	#$2760,($FFFFF72A).w	; set right boundary after defeating the FZ boss
 
 loc_1A172:
 		cmpi.b	#$C,$34(a0)

@@ -634,9 +634,9 @@ StoryText_3:	; text after beating Special Place
 ; ---------------------------------------------------------------------------
 
 StoryText_4:	; text after beating Ruined Place
-		ststxt	"WHY DIDN'T YOU LISTEN? FOOL."
+		ststxt	"MAN, WHY DIDN'T YOU LISTEN?"
 		ststxt_line
-		ststxt	"WELL, AT LEAST YOUR EFFORTS"
+		ststxt	"AT LEAST YOUR EFFORTS OF"
 		ststxt	"SHOOTING YOURSELF THROUGH"
 		ststxt	"A MAZE OF SPIKES WERE PRETTY"
 		ststxt	"ENTERTAINING TO WATCH."

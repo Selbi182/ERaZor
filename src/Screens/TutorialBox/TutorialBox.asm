@@ -670,6 +670,8 @@ mapchar macro char
 		dc.b	_font2, \char-$20
 	elseif \char = '?'
 		dc.b	$28+DH_CharOffset
+	elseif \char = '%'
+		dc.b	_font2, $28+DH_CharOffset
 	else
 		dc.b	\char
 	endif
@@ -727,11 +729,11 @@ Hint_Pre:
 	boxtxt	"YOU WILL REVISIT"
 	boxtxt	"THE FIRST SONIC GAME"
 	boxtxt	"THROUGH THE LENS OF"
-	boxtxt	"AN ACTION MOVIE."
+	boxtxt	"AN ACTION MOVIE:"
 	boxtxt_line
 	boxtxt	"FAST MOVEMENT,"
-	boxtxt	"TOUGH CHALLENGES,"
-	boxtxt	"AND explosions."
+	boxtxt	"CRAZY CHALLENGES,"
+	boxtxt	"AND explosions!"
 	boxtxt_next
 
 	boxtxt	"BECAUSE TEARS OF"
@@ -740,7 +742,7 @@ Hint_Pre:
 	boxtxt	"AT ALL TIMES, THE"
 	boxtxt	"FOLLOWING STAGE WILL"
 	boxtxt	"TEACH YOU SOME OF"
-	boxtxt	"THIS GAME'S"
+	boxtxt	"THIS GAME'S UNIQUE"
 	boxtxt	"REQUIRED BASICS."
 	boxtxt_next
 
@@ -789,20 +791,20 @@ Hint_1:
 	dc.b	_frantic
 	boxtxt	"    frantic mode"
 	boxtxt_pause
-	boxtxt	"    UNRELATED TO    "
-	boxtxt	"  CONTROLS, BUT AS  "
-	boxtxt	" YOU ARE PLAYING IN "
-	boxtxt	"  THIS MODE, A FEW  "
-	boxtxt	" MONITORS WILL TELL "
-	boxtxt	"    BONUS HINTS!    "
+	boxtxt	"    UNRELATED TO"
+	boxtxt	"  CONTROLS, BUT AS"
+	boxtxt	" YOU ARE PLAYING IN"
+	boxtxt	"   FRANTIC, A FEW"
+	boxtxt	" MONITORS WILL TELL"
+	boxtxt	"    BONUS HINTS!"
 	boxtxt_next
 	
-	boxtxt	"   FOR EXAMPLE...   "
+	boxtxt	"   FOR EXAMPLE..."
 	boxtxt_pause
-	boxtxt	"  ONCE YOU ENTER A  "
-	boxtxt	"   FRANTIC STAGE,   "
-	boxtxt	" YOUR RINGS WILL BE "
-	boxtxt	"   RESET TO zero!   "
+	boxtxt	"  ONCE YOU ENTER A"
+	boxtxt	"   FRANTIC STAGE,"
+	boxtxt	" YOUR RINGS WILL BE"
+	boxtxt	"   RESET TO zero!"
 	boxtxt_end
 
 ;		 --------------------
@@ -838,18 +840,18 @@ Hint_3:
 	dc.b	_frantic
 	boxtxt	"    frantic mode"
 	boxtxt_pause
-	boxtxt	" THE FLOOR IS LAVA! "
+	boxtxt	" THE FLOOR IS LAVA!"
 	boxtxt_pause
-	boxtxt	"   AND IT HUNGERS   "
-	boxtxt	"   FOR YOUR RINGS   "
-	boxtxt	"   UNTIL YOU DIE.   "
+	boxtxt	"   AND IT HUNGERS"
+	boxtxt	"   FOR YOUR RINGS"
+	boxtxt	"   UNTIL YOU DIE."
 	boxtxt_end
 
 ;		 --------------------
 Hint_4:
 	boxtxt	"0Adw193q4HG5!'%q6/%4"
 	boxtxt	"8ETRqZ91/D' we03()a)"
-	boxtxt	"( B)f=)A=2h3401`?!G "
+	boxtxt	"( B)f=)A=2h3401`?!G"
 	boxtxt	"#D )26aEd0a..oh my g"
 	boxtxt	"od what have you don"
 	boxtxt	"e everything is ruin"
@@ -892,6 +894,15 @@ Hint_4:
 	boxtxt "twenty times1"
 	boxtxt_next
 
+	boxtxt "still not satisfied%"
+	boxtxt_pause
+	boxtxt "if you think frantic"
+	boxtxt "was too easy; try"
+	boxtxt "holding a b c at the"
+	boxtxt "same time when"
+	boxtxt "starting a level1"
+	boxtxt_next
+
 	boxtxt	"have fun1 and oh yea"
 	boxtxt	"the level is still a"
 	boxtxt	"complete mess:"
@@ -920,6 +931,14 @@ Hint_FZEscape:
 	boxtxt	"OF HERE BEFORE THIS"
 	boxtxt	"WHOLE PLACE BLOWS"
 	boxtxt	"THE HELL UP."
+	boxtxt_pause
+
+	dc.b	_frantic
+	boxtxt	"    frantic mode"
+	boxtxt_pause
+	boxtxt_line
+	boxtxt	"  THIS GOES DOUBLE"
+	boxtxt	"     FOR YOU..."
 	boxtxt_end	
 ;		 --------------------
 Hint_6:
@@ -1030,13 +1049,13 @@ Hint_Easter_Tutorial:
 
 ;		 --------------------
 Hint_Easter_SLZ:
-	boxtxt	"  AREN'T THE TRUE   "
+	boxtxt	"  AREN'T THE TRUE"
 	boxtxt_line
-	boxtxt	"    EASTER EGGS     "
+	boxtxt	"    EASTER EGGS"
 	boxtxt_line
-	boxtxt	"    THE FRIENDS     "
-	boxtxt	"      WE MADE       "
-	boxtxt	"   ALONG THE WAY?   "
+	boxtxt	"    THE FRIENDS"
+	boxtxt	"      WE MADE"
+	boxtxt	"   ALONG THE WAY?"
 	boxtxt_next
 
 	boxtxt	"..."
@@ -1085,7 +1104,7 @@ Hint_TutorialConclusion:
 	boxtxt	"NOW GO OUT THERE AND"
 	boxtxt	"HAVE FUN WITH"
 	boxtxt_line
-	boxtxt	"    sonic erazor"
+	boxtxt	"    SONIC erAzOR"
 	boxtxt_line
 	boxtxt	"I HOPE YOU'LL HAVE"
 	boxtxt	"AS MUCH FUN AS I HAD"

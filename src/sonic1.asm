@@ -40,14 +40,14 @@ __DEBUG__: equ 1
 ; $302 - Star Agony Place
 ; $502 - Finalor Place
 	if def(__BENCHMARK__)=0
-QuickLevelSelect = 0
+QuickLevelSelect = 1
 QuickLevelSelect_ID = -1
 ; ------------------------------------------------------
 DebugModeDefault = 1
 DebugSurviveNoRings = 1
 ; ------------------------------------------------------
 DoorsAlwaysOpen = 0
-LowBossHP = 0
+LowBossHP = 1
 ; ------------------------------------------------------
 TestDisplayDeleteBugs = 0
 ; ======================================================
@@ -6738,10 +6738,15 @@ Resize_SLZ2end:
 ; ===========================================================================
 
 Resize_SLZ3:
-		move.w	#$620,($FFFFF726).w
-		move.w	#$A60,($FFFFF728).w
 		move.w	#0,($FFFFF72C).w	; reset upper level boundary
-		
+		move.w	#$620,($FFFFF726).w	; bottom boundary
+
+		move.w	($FFFFF728).w,d0	; get left boundary
+		cmpi.w	#$E00,d0
+		bhs.s	@0
+		move.w	($FFFFF700).w,($FFFFF728).w	; lock left boundary as you walk right
+
+@0:		
 		frantic				; are we in frantic?
 		beq.s	@sapending		; if not, branch
 		rts				; "training wheels don't exist."
@@ -8396,12 +8401,13 @@ Obj18_LZ2:
 Obj18_NoMovingPlatforms:
 		cmpi.w	#$302,($FFFFFE10).w	; is level SAP?
 		bne.s	Obj18_NoCheckpoint	; if not, branch
+		move.b	#1,($FFFFFF77).w	; make sure antigrav stays enabled
+		move.b	#0,($FFFFF7CC).w	; unlock controls
 		tst.b	obFrame(a0)		; has checkpoint already been touched?
 		bne.s	Obj18_NoCheckpoint	; if yes, branch
 		move.b	#1,obFrame(a0)		; set checkpoint flag
 		move.b	#$A1,d0			; play checkpoint sound
 		jsr	PlaySound_Special
-		move.b	#0,($FFFFF7CC).w	; unlock controls
 
 @notfirstcheckpoint:
 		move.w	obX(a0),($FFFFFF86).w	; save Sonic's X-position
@@ -9221,11 +9227,6 @@ Map_obj1C:
 ; ---------------------------------------------------------------------------
 
 Obj1D:					; XREF: Obj_Index
-		cmpi.w	#$502,($FFFFFE10).w
-		beq.s	@cont
-		jmp	DeleteObject
-
-@cont:
 		moveq	#0,d0
 		move.b	obRoutine(a0),d0
 		move.w	Obj1D_Index(pc,d0.w),d1
@@ -9236,6 +9237,10 @@ Obj1D_Index:	dc.w Obj1D_Main-Obj1D_Index
 ; ===========================================================================
 
 Obj1D_Main:				; XREF: Obj1D_Index
+		cmpi.w	#$502,($FFFFFE10).w
+		beq.s	@cont
+		jmp	DeleteObject
+@cont:
 		addq.b	#2,obRoutine(a0)
 
 		clr.b	$34(a0)			; clear flag
@@ -9284,7 +9289,7 @@ Obj1D_Action:
 		move.b	#$3F,0(a1)	; load explosion object
 		move.w	obX(a0),obX(a1)
 		move.w	obY(a0),obY(a1)
-		move.b	#1,$30(a1)
+		move.b	#1,$30(a1)	; make explosion harmless
 		move.b	#0,$31(a1)
 		
 		; random deviation
@@ -9380,6 +9385,7 @@ Obj2A_OpenShut:				; XREF: Obj2A_Index
 		bne.s	@0
 		move.b	#$3F,(a0)
 		move.b	#0,obRoutine(a0)
+		move.b	#1,$30(a0)		; make explosion harmless
 		move.b	#0,$31(a0)
 		rts
 @0:
@@ -10001,6 +10007,10 @@ Obj3F_Main:				; XREF: Obj3F_Index
 ; ---------------------------------------------------------------------------
 
 Obj3F_Main2:
+		move.w	($FFFFD108).w,d0
+		cmp.w	($FFFFD130).w,d0	; has title card sequence finished?
+		bne.w	Obj3F_Delete		; if not, delete explosion (visual collision otherwise)
+
 		addq.b	#2,obRoutine(a0)
 		move.l	#Map_obj3F,obMap(a0)
 		move.w	#$5A0,obGfx(a0)
@@ -11674,6 +11684,7 @@ Obj23_DestroyBall:
 		move.w	obX(a0),obX(a1)		; set X-location
 		move.w	obY(a0),obY(a1)		; set Y-location
 		move.b	#0,$31(a1)
+		move.b	#1,$30(a1)		; make explosion harmless
 		
 		bra.w	Obj23_Delete		; delete ball object
 ; ===========================================================================
@@ -15211,6 +15222,8 @@ loc_BDD6:
 @nottutorialswitch:
 		cmpi.w	#$302,($FFFFFE10).w	; is this Star Agony Place?
 		bne.w	Obj32_ShowPressed	; if not, branch
+		move.b	#0,($FFFFF7CC).w	; unlock controls
+		clr.b	($FFFFFFE5).w		; clear air freeze flags
 		btst	#4,(OptionsBits).w	; is nonstop inhuman enabled?
 		beq.s	@notnonstopinhuman	; if not, branch	
 		move.b	#$3F,0(a0)		; change switch into explodion (no double fun allowed, sorry)
@@ -15220,7 +15233,6 @@ loc_BDD6:
 
 @notnonstopinhuman:
 		move.w	#-$1000,d1		; default speed
-		move.b	#0,($FFFFF7CC).w	; unlock controls
 		tst.b	($FFFFFF77).w		; is antigrav already enabled?
 		bne.w	@Explode		; if yes, branch
 		move.b	#1,($FFFFFF77).w	; enable antigrav ability
@@ -15261,18 +15273,16 @@ loc_BDD6:
 		move.b	#$DB,d0			; play epic explosion sound
 		jsr	PlaySound_Special
 		jsr	WhiteFlash2
+		move.b	#0,($FFFFFFB2).w	; clear camera delay
 
-		move.w	($FFFFD108).w,d0
-		cmp.w	($FFFFD130).w,d0 ; has title card sequence finished?
-		bne.s	@skipexplosions	; if not, branch
 		jsr	SingleObjLoad
 		bne.s	@endboom
 		move.b	#$3F,0(a1)	; load explosion object
 		move.w	obX(a0),obX(a1)
 		move.w	obY(a0),obY(a1)
+		move.b	#1,$30(a1)	; make explosion harmless
 		move.b	#1,$31(a1)	; mute explosion sound (to not override the epic one)
 
-@skipexplosions:
 		cmpi.w	#$502,($FFFFFE10).w	; is this FP specifically?
 		bne.s	@endboom		; if not, branch
 		jmp	DeleteObject		; only boom once
@@ -17133,7 +17143,7 @@ ObjectFall_Sonic:
 @OFS_ReverseGravity:
 		tst.b	($FFFFFF77).w		; is antigrav enabled?
 		beq.w	@OFS_FallEnd		; if not, branch
-		
+
 		subi.w	#Gravity,d3		; inverse gravity
 		btst	#6,($FFFFF602).w	; is A pressed?
 		beq.s	@OFS_NoA		; if not, branch
@@ -19281,13 +19291,15 @@ Obj0D_Touch:				; XREF: Obj0D_Index
 		bra.s	@restorepal
 @notrp:
 		cmpi.w	#$302,($FFFFFE10).w
-		beq.s	locret_EBBA
-		move.w	#$0780,($FFFFD000+obGfx).w	; force Sonic to use palette line 2
-		clr.b	($FFFFFF77).w		; disabled antigrav
+		bne.s	locret_EBBA
+		move.w	#$0780,($FFFFD000+obGfx).w	; force Sonic to use palette line 1 again
+		clr.b	($FFFFFF77).w		; disable antigrav
 @restorepal:
 		move.w	d7,-(sp)		; back up d7
 		moveq	#3,d0			; load Sonic's palette
 		jsr	PalLoad2		; restore sonic's palette
+		moveq	#7,d0			; load SLZ
+		jsr	PalLoad2		; restore SLZ palette
 		move.w	(sp)+,d7		; restore d7
 
 locret_EBBA:
@@ -19308,8 +19320,6 @@ Obj0D_Sparkle:
 		subq.w	#1,$32(a0)	; subtract 1 from time delay
 		bpl.s	locret_EC42	; if time remains, branch
 		move.w	#3,$32(a0)	; set time between sparkles to 3 frames
-		cmpi.w	#$302,($FFFFFE10).w	; are we in SAP?
-		beq.s	locret_EC42		; if yes, disable sparkles (glitchy due to the palette)
 
 		moveq	#0,d0
 		move.b	$34(a0),d0
@@ -23105,6 +23115,7 @@ Obj5E_Explode:				; XREF: Obj5E_Index
 		move.w	obX(a0),obX(a1)
 		move.w	obY(a0),obY(a1)
 		move.b	#0,$31(a1)
+		move.b	#1,$30(a1)		; make explosion harmless
 		move.b	#2,obRoutine(a1)
 		
 		; load shotgun shrapnels
@@ -23339,6 +23350,9 @@ BombPellets_Boss = 13
 ; ===========================================================================
 
 Obj5F:					; XREF: Obj_Index
+		cmpi.w	#$301,($FFFFFE10).w
+		bne.w	DeleteObject
+
 		moveq	#0,d0
 		move.b	obRoutine(a0),d0
 		move.w	Obj5F_Index(pc,d0.w),d1
@@ -23362,6 +23376,7 @@ Obj5F_Main:				; XREF: Obj5F_Index
 		move.b	#$3F,(a0)
 		move.b	#0,obRoutine(a0)
 		move.b	#0,$31(a0)
+		move.b	#1,$30(a0)		; make explosion harmless
 		rts
 @bomballowed:
 		addq.b	#2,obRoutine(a0)
@@ -23823,7 +23838,6 @@ Obj5F_BossDelete:
 		move.w	#$620,($FFFFF726).w
 		move.w	#-1,($FFFFFF7C).w
 		move.b	#0,($FFFFF7CC).w
-		move.b	#0,($FFFFFF77).w
 		clr.b	($FFFFFE30).w
 		clr.b	($FFFFFFA9).w
 		clr.b	($FFFFFF76).w
@@ -26148,6 +26162,7 @@ Obj06_ChkA:
 		beq.s	@lasteaster		; if yes, branch
 		move.b	#$3F,(a0)		; blow up the tutorial box
 		move.b	#0,$31(a0)
+		move.b	#1,$30(a0)		; make explosion harmless
 		clr.b	obRoutine(a0)		; make sure it's set to the init routine
 		rts				; don't do anything else here
 	@first:
@@ -26265,7 +26280,9 @@ Obj07_Animate:
 		sub.w	d1,d0
 		cmpi.w	#$280,d0
 		bhi.w	DeleteObject
-
+		tst.w	($FFFFFE02).w		; is level set to restart?
+		bne.w	DeleteObject		; if yes, delete
+		
 		bsr	Obj07_CheckVisible
 		bne.s	@dodisplay
 		rts
@@ -28458,6 +28475,7 @@ AF_Speed =  $500
 AF_Hold_Speed =  $250
 AF_UpBoost = $180
 
+; Sonic_Antigrav:
 Sonic_AirFreeze:
 		tst.b	($FFFFFF77).w		; is antigrav enabled?
 		beq.w	AM_End			; if not, branch
@@ -28466,13 +28484,13 @@ Sonic_AirFreeze:
 
 		move.b	($FFFFF602).w,d1	; get button pressed
 		btst	#5,d1			; is C pressed?
-		bne.s	AM_APressed		; if yes, branch
+		bne.s	AM_CPressed		; if yes, branch
 		btst	#1,($FFFFFFE5).w	; was air freeze already active?
 		beq.w	AM_End			; if not, branch
 		bclr	#1,($FFFFFFE5).w	; clear flag
 		bra.w	AM_LetGo		; move Sonic
 
-AM_APressed:
+AM_CPressed:
 		cmpi.w 	#AF_Hold_Speed, (C_HoldTimer)
 		bge.s 	@DontAddToTimer
 
@@ -28989,8 +29007,8 @@ SAP_HitWall:
 		bne.w	@end				; if not, branch
 		tst.b	($FFFFFF77).w			; is antigrav enabled?
 		beq.w	@end				; if not, branch
-		tst.b	($FFFFF7CC).w			; are controls locked?
-		bne.w	@end				; if yes, branch (this is for the ending sequence)
+		move.b	#0,($FFFFF7CC).w		; make sure controls remain unlocked
+		clr.b	($FFFFFFE5).w			; clear air freeze flags
 
 		frantic					; are we in frantic mode?
 		beq.s	@resetstuff			; if not, branch
@@ -34394,6 +34412,7 @@ loopdashit:	cmpi.b	#$18,(a1)		; is current object a platform?
 		bne.s	@cont			; if not, branch
 		move.b	#$3F,(a1)		; turn into an explosion
 		move.b	#0,obRoutine(a1)
+		move.b	#1,$30(a1)		; make explosion harmless
 		move.b	#0,$31(a1)
 @cont:		lea	$40(a1),a1
 		dbf	d0,loopdashit
@@ -44068,6 +44087,7 @@ Debug_Exit:
 		bne.s	@nota
 		move.b	#$3F,(a1)		; spawn explosion object
 		clr.b	obRoutine(a1)
+		move.b	#1,$30(a1)		; make explosion harmless
 		move.b	#0,$31(a1)
 		move.w	($FFFFD008).w,obX(a1)
 		move.w	($FFFFD00C).w,obY(a1)

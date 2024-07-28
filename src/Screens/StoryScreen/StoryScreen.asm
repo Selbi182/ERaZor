@@ -538,8 +538,10 @@ stschar macro char
 		dc.b	$04E0/$20
 	elseif \char = '?'
 		dc.b	$0500/$20
-	else 	; regular letter
+	elseif (\char>='A') & (\char<='Z') 	; regular letter
 		dc.b	($0160/$20) + \char - 'A'
+	else
+		inform 2, "illegal char \char"
 	endif
 	endm
  
@@ -712,7 +714,7 @@ StoryText_6:	; text after beating Unreal Place
 		ststxt	"GAME ONLY HAS SIX, SO YOU"
 		ststxt	"AREN'T GOING TO TURN SUPER."
 		ststxt_line
-		ststxt	"YOU'll GO TO SPACE, THOUGH!"
+		ststxt	"YOU'LL GO TO SPACE, THOUGH!"
 		ststxt	"IT SORTA MAKES UP FOR THAT"
 		ststxt	"SEVENTH EMERALD. SORTA."
 		dc.b	-1

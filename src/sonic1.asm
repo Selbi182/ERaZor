@@ -10007,9 +10007,8 @@ Obj3F_Main:				; XREF: Obj3F_Index
 ; ---------------------------------------------------------------------------
 
 Obj3F_Main2:
-		move.w	($FFFFD108).w,d0
-		cmp.w	($FFFFD130).w,d0	; has title card sequence finished?
-		bne.w	Obj3F_Delete		; if not, delete explosion (visual collision otherwise)
+		cmpi.b	#$34,($FFFFD080).w	; are title cards currently visible?
+		beq.w	Obj3F_Delete		; if yes, delete explosion (visual collision otherwise)
 
 		addq.b	#2,obRoutine(a0)
 		move.l	#Map_obj3F,obMap(a0)
@@ -10076,6 +10075,8 @@ Obj3F_Animate_NoMove:
 		beq.s	Obj3F_Delete	; if yes, branch
 
 Obj3F_Display:
+		cmpi.b	#$34,($FFFFD080).w	; are title cards currently visible?
+		beq.s	Obj3F_Delete		; if yes, delete explosion (visual collision otherwise)
 		bra.w	DisplaySprite
 
 Obj3F_Delete:
@@ -12122,9 +12123,12 @@ Obj37_ResetCounter:
 ; ---------------------------------------------------------------------------
 
 Obj37_MainLoop:				; XREF: Obj37_Index
-		move.b	($FFFFFEC7).w,obFrame(a0)	; update frame (custom frame timer)
-	;	move.b	($FFFFFEC3).w,obFrame(a0)	; update frame (Obj25)
-
+		move.b	($FFFFFEC7).w,d0	; get custom frame timer
+		tst.w	$36(a0)			; is ring already laying on the ground?
+		beq.s	@setframe		; if not, branch
+		move.b	($FFFFFEC3).w,d0	; use regular ring timer instead
+@setframe:	move.b	d0,obFrame(a0)		; set new frame
+		
 		tst.b	$29(a0)			; was ring already set to follow you?
 		bne.s	@continueattract	; if yes, branch
 		tst.b	($FFFFFE2C).w		; is Sonic having a shield?
@@ -16144,6 +16148,8 @@ HUDSpeed = 6
 Obj34_ChangeArt:			; XREF: Obj34_ChkPos2
 		cmpi.b	#4,obRoutine(a0)
 		bne.s	Obj34_Delete
+		cmpi.b	#1,$3F(a0)	; is current object Zone Name?
+		bne.s	Obj34_Delete	; if yes, branch
 		bsr	Obj34_LoadPostGraphics
 
 Obj34_Delete:

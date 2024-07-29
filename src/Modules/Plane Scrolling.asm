@@ -111,6 +111,9 @@ BgScroll_End:				; XREF: BgScroll_Index
 
 
 DeformBgLayer:				; XREF: TitleScreen; Level; EndingSequence
+		tst.b	($FFFFFFE9).w		; is level set to restart?
+		bne.w	@end			; if yes, branch
+
 		clr.w	($FFFFF754).w		; clear redraw flags
 		clr.w	($FFFFF756).w		; ''
 		clr.w	($FFFFF758).w		; ''
@@ -134,6 +137,7 @@ DeformBgLayer:				; XREF: TitleScreen; Level; EndingSequence
 		move.w	Deform_Index(pc,d0.w),d0
 		jsr	Deform_Index(pc,d0.w)		; do background deformation now
 		move.w	($FFFFF70C).w,($FFFFF618).w	; update plane B vs-ram after bg deformation is done
+@end:
 		rts
 ; End of function DeformBgLayer
 ; ===========================================================================

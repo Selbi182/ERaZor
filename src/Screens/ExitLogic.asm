@@ -44,6 +44,8 @@ ReturnToUberhub_Chapter:
 ; ---------------------------------------------------------------------------
 
 StartLevel:
+		move.b	#1,($FFFFFFE9).w	; set fade-out in progress flag
+
 		move.w	($FFFFFE10).w,d0	; get level ID
 		cmpi.w	#$300,d0		; set to Special Place?
 		beq.s	@startspecial		; if yes, branch
@@ -248,6 +250,7 @@ Exit_EndingSequence:
 ; MakeChapterScreen:
 RunChapter:
 		jsr	SRAM_SaveNow		; save our progress now
+		move.b	#1,($FFFFFFE9).w	; set fade-out in progress flag
 
 		btst	#1,(OptionsBits).w	; is "Skip Story Screens" enabled?
 		beq.w	StartLevel		; if yes, start level straight away

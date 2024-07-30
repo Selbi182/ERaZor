@@ -1189,7 +1189,7 @@ WFZNEW_PSG2_p2:
 
 WFZNEW_PSG2_p6:
 	smpsPSGvoice	$0
-	dc.b		$9c,$40
+	dc.b		$80,$40
 	smpsReturn
 
 WFZNEW_PSG2_p7:
@@ -1198,11 +1198,11 @@ WFZNEW_PSG2_p7:
 
 WFZNEW_PSG2_p9:
 	dc.b		$e7,$18
-	dc.b		$9a,$28
+	dc.b		$80,$28
 	smpsReturn
 
 WFZNEW_PSG2_pb:
-	dc.b		$9a,$40
+	dc.b		$80,$40
 	smpsReturn
 
 WFZNEW_PSG2_pd:

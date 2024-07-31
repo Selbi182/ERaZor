@@ -152,49 +152,15 @@ SoundDriverUpdate:
 		jsr	PlaySoundID(pc)
 ; loc_71BC8:
 .nonewsound:
-		lea	v_music_dac_track(a6),a5
-		tst.b	TrackPlaybackControl(a5) ; Is DAC track playing?
-		bpl.s	.dacdone		; Branch if not
-		jsr	DACUpdateTrack(pc)
 
-; loc_71BD4:
-.dacdone:
-		clr.b	f_updating_dac(a6)
-		moveq	#((v_music_fm_tracks_end-v_music_fm_tracks)/TrackSz)-1,d7	; 6 FM tracks
-
-; loc_71BDA:
-.bgmfmloop:
-		adda.w	#TrackSz,a5
-		tst.b	TrackPlaybackControl(a5) ; Is track playing?
-		bpl.s	.nofm		; Branch if not
-		jsr	FMUpdateTrack(pc)
-		bra.s	.bgmfmnext
-
-.nofm:
-		lea	FM_Notes, a0
-		move.b	#0, (a0, d7.w)
-
-; loc_71BE6:
-.bgmfmnext:
-		dbf	d7,.bgmfmloop
-
-		moveq	#((v_music_psg_tracks_end-v_music_psg_tracks)/TrackSz)-1,d7 ; 3 PSG tracks
-
-; loc_71BEC:
-.bgmpsgloop:
-		adda.w	#TrackSz,a5
-		tst.b	TrackPlaybackControl(a5) ; Is track playing?
-		bpl.s	.nopsg		; Branch if not
-		jsr	PSGUpdateTrack(pc)
-		bra.s	.bgmpsgnext
-
-.nopsg:
-		lea		PSG_Notes, a0
-		move.b	#0, 1(a0, d7.w)
-
-; loc_71BF8:
-.bgmpsgnext:
-		dbf	d7,.bgmpsgloop
+		tst.b	SMPS_PAL_Timer			; are we PAL optimized?
+		beq.s	.pal_ok				; if not, branch
+		subq.b	#1, SMPS_PAL_Timer
+		bne.s	.pal_ok
+		jsr	UpdateBGM(pc)
+		move.b	#6, SMPS_PAL_Timer
+.pal_ok:
+		jsr	UpdateBGM(pc)
 
 		move.b	#$80,f_voice_selector(a6)			; Now at SFX tracks
 		moveq	#((v_sfx_fm_tracks_end-v_sfx_fm_tracks)/TrackSz)-1,d7	; 3 FM tracks (SFX)
@@ -234,6 +200,53 @@ SoundDriverUpdate:
 .specpsgdone:
 		rts
 ; End of function SoundDriverUpdate
+
+; ===========================================================================
+UpdateBGM:
+		lea	v_music_dac_track(a6),a5
+		tst.b	TrackPlaybackControl(a5) ; Is DAC track playing?
+		bpl.s	.dacdone		; Branch if not
+		jsr	DACUpdateTrack(pc)
+
+; loc_71BD4:
+.dacdone:
+		clr.b	f_updating_dac(a6)
+		moveq	#((v_music_fm_tracks_end-v_music_fm_tracks)/TrackSz)-1,d7	; 6 FM tracks
+
+; loc_71BDA:
+.bgmfmloop:
+		adda.w	#TrackSz,a5
+		tst.b	TrackPlaybackControl(a5) ; Is track playing?
+		bpl.s	.nofm		; Branch if not
+		jsr	FMUpdateTrack(pc)
+		bra.s	.bgmfmnext
+
+.nofm:
+		lea	FM_Notes, a0
+		move.b	#0, (a0, d7.w)
+
+; loc_71BE6:
+.bgmfmnext:
+		dbf	d7,.bgmfmloop
+
+		moveq	#((v_music_psg_tracks_end-v_music_psg_tracks)/TrackSz)-1,d7 ; 3 PSG tracks
+
+; loc_71BEC:
+.bgmpsgloop:
+		adda.w	#TrackSz,a5
+		tst.b	TrackPlaybackControl(a5) ; Is track playing?
+		bpl.s	.nopsg		; Branch if not
+		jsr	PSGUpdateTrack(pc)
+		bra.s	.bgmpsgnext
+
+.nopsg:
+		lea	PSG_Notes, a0
+		move.b	#0, 1(a0, d7.w)
+
+; loc_71BF8:
+.bgmpsgnext:
+		dbf	d7,.bgmpsgloop
+		rts
 
 
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||

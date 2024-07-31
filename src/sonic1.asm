@@ -270,6 +270,16 @@ GameClrRAM:	move.l	d7,(a6)+
 			bsr.w	ResetGameProgress
 		endif
 
+		move.b	($A10001).l,d0
+		andi.b	#$C0,d0
+		move.b	d0,($FFFFFFF8).w
+
+		clr.b	SMPS_PAL_Timer
+		btst	#6, ($FFFFFFF8).w		; are we PAL?
+		beq.s	@not_PAL			; if not, branch
+		move.b	#6, SMPS_PAL_Timer		; use PAL optimizations
+	@not_PAL:
+
 		jsr     MegaPCM_LoadDriver
 		lea     SampleTable, a0
 		jsr     MegaPCM_LoadSampleTable

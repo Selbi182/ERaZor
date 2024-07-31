@@ -120,11 +120,7 @@ SoundDriverUpdate:
 		clr.b	f_voice_selector(a6)
 		tst.b	f_pausemusic(a6)		; is music paused?
 		bne.w	PauseMusic			; if yes, branch
-		subq.b	#1,v_main_tempo_timeout(a6)	; Has main tempo timer expired?
-		bne.s	.skipdelay
-		jsr	TempoWait(pc)
-; loc_71B9E:
-.skipdelay:
+
 		move.b	v_fadeout_counter(a6),d0
 		beq.s	.skipfadeout
 		jsr	DoFadeOut(pc)
@@ -158,7 +154,7 @@ SoundDriverUpdate:
 		subq.b	#1, SMPS_PAL_Timer
 		bne.s	.pal_ok
 		jsr	UpdateBGM(pc)
-		move.b	#6, SMPS_PAL_Timer
+		move.b	#5, SMPS_PAL_Timer
 .pal_ok:
 		jsr	UpdateBGM(pc)
 
@@ -203,6 +199,11 @@ SoundDriverUpdate:
 
 ; ===========================================================================
 UpdateBGM:
+		subq.b	#1,v_main_tempo_timeout(a6)	; Has main tempo timer expired?
+		bne.s	.skipdelay
+		jsr	TempoWait(pc)
+; loc_71B9E:
+.skipdelay:
 		lea	v_music_dac_track(a6),a5
 		tst.b	TrackPlaybackControl(a5) ; Is DAC track playing?
 		bpl.s	.dacdone		; Branch if not

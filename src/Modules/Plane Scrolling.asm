@@ -1171,6 +1171,7 @@ S_H_BuzzIgnore:
 		move.w	($FFFFD010).w,d2	; load sonic's general speed to d2 instead
 
 S_H_ChkDirection:
+		move.w	d2,d3			; backup speed to d3
 		tst.w	d2			; is speed positve?
 		bpl.s	S_H_SpeedPositive	; if yes, branch
 		neg.w	d2			; otherwise negate it
@@ -1178,7 +1179,7 @@ S_H_ChkDirection:
 S_H_SpeedPositive:
 		cmpi.w	#$600,d2		; is Sonic's speed more than $600 (or less than -$600)?
 		blt.s	S_H_ResetCamera		; if not, branch
-		tst.w	($FFFFD010).w		; is Speed negative?
+		tst.w	d3			; is Speed negative?
 		bpl.s	S_H_FastEnough_Right	; if yes, branch to code when Sonic's running to the right
 		bra.s	S_H_FastEnough_Left	; otherwise use the code when Sonic's running to the left
 ; ===========================================================================

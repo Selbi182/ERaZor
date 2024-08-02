@@ -204,10 +204,7 @@ CS_PalLoopOHD:	move.l	(a1)+,(a2)+
 ; ---------------------------------------------------------------------------
 
 CS_SetupEndLoop:	
-		move.w	#$C0,($FFFFF614).w	; set wait time
-
-		cmpi.w	#$001,($FFFFFE10).w	; is this the intro cutscene?
-		beq.w	CS_Loop_OHDIGHZ		; if yes, go to a different loop
+		move.w	#180,($FFFFF614).w	; set end wait time
 CS_Loop:
 		jsr	ObjectsLoad
 		jsr	BuildSprites
@@ -221,26 +218,7 @@ CS_Loop:
 ; ---------------------------------------------------------------------------
 
 CS_Exit:
-		jmp	Exit_ChapterScreen	; return to main source
-; ---------------------------------------------------------------------------
-; ===========================================================================
-; ---------------------------------------------------------------------------
-
-CS_Loop_OHDIGHZ:
-		cmpi.w	#$30,($FFFFF614).w	; wait $30 frames before starting the intro cutscene music
-		beq.s	@ohdexit		; if time has passed, start intro
-
-		jsr	ObjectsLoad
-		jsr	BuildSprites
-		move.b	#4,VBlankRoutine
-		jsr	DelayProgram
-		tst.w	($FFFFF614).w		; test wait time
-		beq.s	@ohdexit		; if it it's over, exit
-		move.b	($FFFFF605).w,d1	; get button presses
-		andi.b	#$E0,d1			; is A, B, C, or start pressed?
-		beq.s	CS_Loop_OHDIGHZ		; if not, loop
-@ohdexit:
-		jmp	Exit_OneHotDay		; start intro cutscene in main source
+		jmp	Exit_ChapterScreen	; exit chapter screen
 
 ; ---------------------------------------------------------------------------
 ; ===========================================================================

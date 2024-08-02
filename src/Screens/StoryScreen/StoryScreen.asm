@@ -146,7 +146,7 @@ StoryScreen_BGColors:
 
 ; LevelSelect:
 StoryScreen_MainLoop:
-		move.b	#2,VBlankRoutine
+		move.b	#$1C,VBlankRoutine
 		jsr	DelayProgram
 		jsr	ObjectsLoad
 		jsr	BuildSprites
@@ -156,16 +156,22 @@ StoryScreen_MainLoop:
 
 		move.b	($FFFFF605).w,d1	; get button presses
 		andi.b	#$E0,d1			; is A, B, C, or start pressed?
-		bne.s	@writefull		; if yes, branch
-		bsr	StoryScreen_ContinueWriting
-		bra.s	@loop
-@writefull:
+		beq.s	StoryScreen_MainLoop	; if not, loop
+
 		tst.b	(STS_FullyWritten).w	; is text already fully written?
 		bne.s	STS_FadeOutScreen	; if yes, exit screen
+		move.b	#1,(STS_FullyWritten).w	; set "fully-written" flag
+		bsr	StoryScreen_CenterText	; center entire text before writing it
+		move.b	#$1C,VBlankRoutine	; wait a frame for H-scroll to update
+		jsr	DelayProgram		; ''
 		bsr	StoryText_WriteFull	; write the complete text
-@loop:
-		bsr	StoryScreen_CenterText
+		move.b	#1,(STS_FullyWritten).w	; make sure "fully-written" flag remains set
 		bra.w	StoryScreen_MainLoop	; loop
+; ---------------------------------------------------------------------------
+
+StoryScreen_UpdateFromVBlank:
+		bsr	StoryScreen_ContinueWriting
+		rts
 ; ---------------------------------------------------------------------------
 
 STS_FadeOutScreen:
@@ -287,6 +293,8 @@ StoryScreen_ContinueWriting:
 		move.w	d0,(a6)				; write char to screen
 		VBlank_UnsetMusicOnly
 
+		bsr	STS_CenterCurrentLine		; center current line
+
 		bsr	STS_NextChar			; go to next character
 
 		move.w	($FFFFFE0E).w,d0		; get frame counter
@@ -311,6 +319,25 @@ STS_NextChar:
 @thisisnottheendoftherow:
 		addq.w	#1,(STS_CurrentChar).w		; go to next char for the next iteration
 		rts
+; ---------------------------------------------------------------------------
+
+STS_CenterCurrentLine:
+		lea	($FFFFCC00+STS_BaseRow*32).w,a0	; set up H-scroll buffer to the point where the main text is located
+		moveq	#0,d0				; clear d0
+		move.b	(STS_Row).w,d0			; get current row
+		lsl.w	#5,d0				; multiply by 32
+		adda.w	d0,a0				; add to H-scroll buffer offset
+
+		moveq	#STS_LineLength-1,d0		; set line length
+		sub.b	(STS_Column).w,d0		; subtract current column length
+		add.w	d0,d0				; multiply...
+		add.w	d0,d0				; ...by 4
+		
+		rept	8				; 8 scanlines (one row)
+		addq.w	#2,a0				; skip A-plane
+		move.w	d0,(a0)+			; write offset to scroll buffer
+		endr					; rept end
+		rts					; return
 
 
 ; ===========================================================================
@@ -403,8 +430,6 @@ StoryText_WriteFull:
 
 @finished:
 		VBlank_UnsetMusicOnly
-
-		move.b	#1,(STS_FullyWritten).w		; set "fully-written" flag
 		rts
 
 ; ===========================================================================
@@ -489,7 +514,7 @@ StoryScreen_CenterText:
 		tst.w	d1				; are we on the last row?
 		bne.s	@notend				; if not, branch
 		move.w	d0,d2				; copy line length to d2
-		sub.b	(STS_Column),d2			; subtract current column length
+		sub.b	(STS_Column).w,d2		; subtract current column length
 		bra.s	@writescroll			; skip normal calculation
 
 @notend:
@@ -504,8 +529,10 @@ StoryScreen_CenterText:
 
 @writescroll:
 		lsl.l	#2,d2				; multiply by 4px per space
+		
 		rept	8				; 8 scanlines (one row)
-		add.l	d2,(a0)+			; write offset to scroll buffer
+		addq.w	#2,a0				; skip A-plane
+		move.w	d2,(a0)+			; write offset to scroll buffer
 		endr					; rept end
 		adda.w	d0,a1				; go to next line
 		dbf	d1,@centertextloop		; loop

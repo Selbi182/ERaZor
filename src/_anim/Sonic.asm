@@ -72,7 +72,7 @@ SonAni_Death1:	dc.b $20, $4B, $FF, 0
 SonAni_Drown:	dc.b $2F, $4C, $FF, 0
 SonAni_Death2:	dc.b 1, $74, $73, $72, $71, $70, $6F, $6E, $FF, 0
 SonAni_Shrink:	dc.b 3,	$4E, $4F, $50, $51, $52, 0, $FE, 1, 0
-SonAni_Hurt:	dc.b 3,	$55, $FF, 0
+SonAni_Hurt:	dc.b 3,	$57, $FF, 0 ;$55
 SonAni_LZSlide:	dc.b 7, $55, $57, $FF
 SonAni_Blank:	dc.b $77, 0, $FD, 0
 SonAni_Float3:	dc.b 3,	$3C, $3D, $53, $3E, $54, $FF, 0

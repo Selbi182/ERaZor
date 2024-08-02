@@ -69,6 +69,7 @@ VBlankTable:	dc.w VBlank_LagFrame-VBlankTable	; $00
 		dc.w loc_FA6-VBlankTable	; $16
 		dc.w loc_E72-VBlankTable	; $18
 	        dc.w VSelbiScreen-VBlankTable	; $1A
+	        dc.w VStoryScreen-VBlankTable	; $1C
 ; ===========================================================================
 
 ; loc_B88:
@@ -388,6 +389,11 @@ VSelbiScreen:
 
 @NoTimer:
 		rts    
+; ===========================================================================
+
+VStoryScreen:
+		jsr	StoryScreen_UpdateFromVBlank
+		jmp	UpdateFrame
 
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 

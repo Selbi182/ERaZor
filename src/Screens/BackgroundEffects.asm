@@ -206,9 +206,11 @@ BackgroundEffects_Deformation2:
 		tst.b	d7
 		beq.s	@bla
 		asr.l	d7,d2
-		andi.l	#$FFFF0000,d2
 @bla
-		move.l	d2,(a1)+
+		andi.l	#$FFFF0000,d2
+		swap	d2
+		move.w	d2,(a1)+
+		addq.w	#2,a1
 		dbf	d3,@scroll ; fill scroll data with 0
 		move.l	(sp)+,d7
 		rts

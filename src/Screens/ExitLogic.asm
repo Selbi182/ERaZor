@@ -128,7 +128,9 @@ Exit_SoundTestScreen:
 ; ===========================================================================
 
 Exit_ChapterScreen:
-		bra.w	StartLevel		; start level set in FE10 normally
+		cmpi.w	#$001,($FFFFFE10).w	; is this the intro cutscene?
+		beq.w	Exit_OneHotDay		; if yes, start intro cutscene (and music)
+		bra.w	StartLevel		; otherwise, start level set in FE10 normally
 ; ===========================================================================
 
 Exit_StoryScreen:

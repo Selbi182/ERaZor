@@ -40,7 +40,7 @@ __DEBUG__: equ 1
 ; $302 - Star Agony Place
 ; $502 - Finalor Place
 	if def(__BENCHMARK__)=0
-QuickLevelSelect = 1
+QuickLevelSelect = 0
 QuickLevelSelect_ID = -1
 ; ------------------------------------------------------
 DebugModeDefault = 1
@@ -3897,7 +3897,8 @@ Level_MainLoop:
 		bsr	PauseGame
 
 		bsr	RandomNumber		; constantly create a new random number every frame to make use of RandomNumber
-		bsr	CinematicScreenFuzz	; do cinematic screen fuzz if applicable
+		jsr	WhiteFlash_Restore	; restore white flash, if applicable
+		bsr	CinematicScreenFuzz	; do cinematic screen fuzz, if applicable
 
 		move.b	#8,VBlankRoutine
 		bsr	DelayProgram
@@ -19494,8 +19495,8 @@ Obj0D_Touch:				; XREF: Obj0D_Index
 		move.b	#1,($FFFFFFA5).w	; move HUD off screen
 		cmpi.w	#$101,($FFFFFE10).w	; is level LZ2?
 		bne.s	@notlz			; if not, branch
-		tst.b 	($FFFFFFF9).w		; final section flag enabled?
-		beq.s 	@notlz			; if not, branch
+	;	tst.b 	($FFFFFFF9).w		; final section flag enabled?
+	;	beq.s 	@notlz			; if not, branch
 		move.w	#$82,d0			; resume LZ music (cause we're drowning rn)
 		jsr	(PlaySound).l
 		move.w	#$1E,($FFFFFE14).w	; give us enough air for Sonic to move out of the screen
@@ -26244,12 +26245,15 @@ Obj06_Setup:
 		move.w	#$0372,obGfx(a0)		; fallback pointer
 
 Obj06_ArtLocFound:
-		move.b	#0,$30(a0)
+		move.b	#0,$30(a0)			; use HPS frame
+		cmpi.w	#$101,($FFFFFE10).w		; are we in LP?
+		beq.s	Obj06_ChkDist			; if yes, branch
 		tst.b	obSubtype(a0)			; is the subtype 0?
 		beq.s	Obj06_ChkDist			; if yes, that means it's a regular hard part skipper, so branch
 		move.b	#4,obRoutine(a0)		; otherwise it's a tutorial box
-		move.b	#1,obFrame(a0)
-		bra.w	Obj06_InfoBox
+		move.b	#1,obFrame(a0)			; use tutorial box frame
+		bra.w	Obj06_InfoBox			; skip
+; ---------------------------------------------------------------------------
 
 Obj06_ChkDist:
 		clr.b	($FFFFFF74).w		; clear spindash block flag
@@ -26268,6 +26272,8 @@ Obj06_ChkDist:
 		tst.b	($FFFFFFB1).w		; is white flash counter empty?
 		bpl.w	Obj06_Display		; if not, branch (to prevent the white getting stuck)
 
+		tst.b	($FFFFF603).w		; was anything pressed this frame?
+		beq.w	Obj06_Display		; if not, branch
 		moveq	#0,d0
 		move.b	($FFFFF602).w,d0	; get held button presses
 		eori.b	#$42,d0			; sort out anything but Down and A
@@ -26275,7 +26281,7 @@ Obj06_ChkDist:
 		
 Obj06_DoHardPartSkip:
 		frantic				; are we in Frantic mode?
-		beq.s	@notfrantic		; if not, branch
+		beq.s	@dohardpartskip		; if not, branch
 		jsr	SingleObjLoad2
 		bne.w	@noobjectleft
 		move.b	#$3F,(a1)		; load singular explosion object
@@ -26287,50 +26293,63 @@ Obj06_DoHardPartSkip:
 		move.w	#$8F,d0			; play game over jingle
 		jsr	PlaySound
 		jmp	KillSonic_Inhuman	; get trolled
+; ---------------------------------------------------------------------------
 
-@notfrantic:
-		jsr	FakeLevelID		; get level ID
-		lsl.w	#2,d5			; multiply it by 4
-		lea	(Obj06_Locations).l,a1	; get location
-		adda.w	d5,a1			; add result to it
-		move.w	0(a1),($FFFFD008).w	; move X-pos to Sonic's one
-		move.w	obGfx(a1),($FFFFD00C).w	; move Y-pos to Sonic's one
-		clr.w	($FFFFD010).w		; clear Sonic's X-speed
-		clr.w	($FFFFD012).w		; clear Sonic's Y-speed
-		clr.w	($FFFFD014).w		; clear Sonic's interia
-		clr.l	($FFFFF602).w		; clear inputs
-
+@dohardpartskip:
 		cmpi.w	#$101,($FFFFFE10).w	; are we in LP?
-		bne.s	@notlp			; if not, branch
+		bne.s	@regularhps		; if not, branch
+		
+		lea	(Obj06_Locations_LP).l,a1 ; get special LP locations
+		moveq	#0,d0
+		move.b	obSubtype(a0),d0
+		lsl.w	#2,d0			; multiply it by 4
+		adda.w	d0,a1			; add result to it
+		
 		move.b	#1,($FFFFFFFE).w	; make sure =P monitor is enabled
-		move.b	#3,($FFFFFF97).w	; set to final checkpoint
+	;	move.b	#3,($FFFFFF97).w	; set to final checkpoint
+		bra.w	@hpsrest		; skip regular HPS logic
 
-@notlp:
+@checksap:
 		cmpi.w	#$302,($FFFFFE10).w	; are we in Star Agony Place?
-		bne.w	@notsap			; if not, branch		
+		bne.s	@checkfp		; if not, branch
+		tst.b	($FFFFFF77).w		; was antigrav already enabled?
+		bne.s	@checkfp		; if yes, branch
 		move.b	#1,($FFFFFF77).w	; enable antigrav
+		jsr	SAP_LoadSonicPal	; load Sonic's antigrav palette
 		move.b	#$96,d0			; play music
 		jsr	PlaySound
-		jsr	SAP_LoadSonicPal	; load Sonic's antigrav palette
 
-@notsap:
-		clr.w	($FFFFFE20).w		; delete all your rings you cheating bastard
-		ori.b	#1,($FFFFFE1D).w	; update ring counter
-		move.w	#$C3,d0			; set giant ring sound
-		jsr	PlaySound_Special	; play it
+@checkfp:
 		tst.b	($FFFFFFE7).w		; is Sonic in Inhuman Mode?
-		beq.s	@notinhuman		; if not, branch
+		beq.s	@regularhps		; if not, branch
 		cmpi.w	#$502,($FFFFFE10).w	; is this FP?
-		beq.s	@notinhuman		; if yes, you get to keep your toy
+		beq.s	@regularhps		; if yes, you get to keep your toy
 		clr.b	($FFFFFFE7).w		; disable Inhuman Mode
 		move.w	d7,-(sp)		; back up d7
 		moveq	#3,d0			; load Sonic's palette
 		jsr	PalLoad2		; restore sonic's palette
 		move.w	(sp)+,d7		; restore d7
 
-@notinhuman:
+@regularhps:
+		jsr	FakeLevelID		; get level ID
+		lsl.w	#2,d5			; multiply it by 4
+		lea	(Obj06_Locations).l,a1	; get location
+		adda.w	d5,a1			; add result to it
+
+@hpsrest:
+		move.w	0(a1),($FFFFD008).w	; move X-pos to Sonic's one
+		move.w	2(a1),($FFFFD00C).w	; move Y-pos to Sonic's one
+
+		clr.l	($FFFFF602).w		; clear any remaining inputs
+		clr.w	($FFFFD010).w		; clear Sonic's X-speed
+		clr.w	($FFFFD012).w		; clear Sonic's Y-speed
+		clr.w	($FFFFD014).w		; clear Sonic's interia
+		clr.w	($FFFFFE20).w		; delete all your rings you cheating bastard
+		ori.b	#1,($FFFFFE1D).w	; update ring counter
 		jsr	WhiteFlash2		; make a white flash
 		move.b	#1,(RedrawEverything).w	; redraw screen after teleportation
+		move.w	#$C3,d0			; set giant ring sound
+		jsr	PlaySound_Special	; play it
 
 Obj06_Display:
 		jmp	MarkObjGone
@@ -26349,6 +26368,13 @@ Obj06_Locations:	;XXXX   YYYY
 		dc.w	$FFFF, $FFFF	; Uberhub Place		(Unused)
 		dc.w	$101E, $036C	; Tutorial Place
 		dc.w	$1F00, $06E0	; Star Agony Place
+
+Obj06_Locations_LP:
+		dc.w	$01F0, $00F0	; before first checkpoint
+		dc.w	$08A0, $0190	; before third checkpoint
+		dc.w	$0D2F, $05A7	; right before the sign post
+		even
+	
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Tutorial boxes
@@ -26375,7 +26401,7 @@ Obj06_InfoBox:
 Obj06_ChkA:
 		move.b	($FFFFF603).w,d0	; is A pressed? (part 1)
 		andi.b	#$40,d0			; is A pressed? (part 2)
-		beq.s	Obj06_Display		; if not, branch
+		beq.w	Obj06_Display		; if not, branch
 		
 		clr.b	($FFFFF603).w		; clear controller 1 bitfield (to prevent rare softlocks)
 		move.b	#1,obFrame(a0)		; don't show A button while tutorial box is visible
@@ -26980,7 +27006,6 @@ S_D_GHZ2PalChg_Loop:
 		bra.s	S_D_NoInhumanCrush	; skip
 
 S_D_NotGHZ2_PalX:
-		jsr	WhiteFlash_Restore
 		clr.b	($FFFFFFAE).w		; clear WF2 flag
 
 S_D_NoInhumanCrush:
@@ -44180,7 +44205,6 @@ loc_1CFBE:
 		lea	(DebugList).l,a2
 		move.w	(a2)+,d6
 		bsr	Debug_Control
-		jsr	WhiteFlash_Restore
 		jmp	DisplaySprite
 
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||

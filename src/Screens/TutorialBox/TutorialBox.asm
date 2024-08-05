@@ -678,11 +678,11 @@ Hint_Pre:
 	boxtxt	"YOU WILL REVISIT"
 	boxtxt	"THE FIRST SONIC GAME"
 	boxtxt	"THROUGH THE LENS OF"
-	boxtxt	"AN ACTION MOVIE:"
+	boxtxt	"AN ACTION MOVIE..."
 	boxtxt_line
-	boxtxt	"FAST MOVEMENT,"
-	boxtxt	"CRAZY CHALLENGES,"
-	boxtxt	"AND explosions!"
+	boxtxt	"- FAST MOVEMENT"
+	boxtxt	"- CRAZY CHALLENGES"
+	boxtxt	"- AND explosions!"
 	boxtxt_next
 
 	boxtxt	"BECAUSE TEARS OF"
@@ -766,6 +766,17 @@ Hint_2:
 	boxtxt	" b - DOUBLE JUMP"
 	boxtxt_pause
 	boxtxt	" a - UP NEXT..."
+	boxtxt_pause
+
+	dc.b	_frantic
+	boxtxt	"    frantic mode"
+	boxtxt_pause
+	boxtxt	"  TIME TICKS THREE"
+	boxtxt	"   TIMES AS FAST!"
+	boxtxt_line
+	boxtxt	"   THAT'S ROUGHLY"
+	boxtxt	"    five minutes"
+	boxtxt	"  UNTIL TIME OVER."
 	boxtxt_end
 
 ;		 --------------------
@@ -791,9 +802,10 @@ Hint_3:
 	boxtxt_pause
 	boxtxt	" THE FLOOR IS LAVA!"
 	boxtxt_pause
-	boxtxt	"   AND IT HUNGERS"
-	boxtxt	"   FOR YOUR RINGS"
-	boxtxt	"   UNTIL YOU DIE."
+	boxtxt	"  WELL, SOMETIMES."
+	boxtxt_pause
+	boxtxt	" DON'T STAND ON THE"
+	boxtxt	"  GROUND TOO MUCH!"
 	boxtxt_end
 
 ;		 --------------------

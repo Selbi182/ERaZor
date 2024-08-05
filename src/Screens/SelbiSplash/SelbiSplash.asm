@@ -320,7 +320,7 @@ SelbiSplash_WaitEnd:
 		beq.s	@firecheat			; if we reached 0, activate cheat
 		bmi	SelbiSplash_LoopEnd		; for any further than the set input presses, don't do anything
 
-		tst.b	($FFFFF601).w			; is this the first time the game is being played?
+		tst.b	(ResumeFlag).w			; is this the first time the game is being played?
 		beq	SelbiSplash_LoopEnd		; if yes, avoid newbies accidentally discovering debug mode immediately lol
 		move.b	#$A9,d0				; set blip sound
 		jsr	PlaySound_Special		; play it

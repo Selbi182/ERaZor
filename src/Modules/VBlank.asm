@@ -74,9 +74,9 @@ VBlankTable:	dc.w VBlank_LagFrame-VBlankTable	; $00
 
 ; loc_B88:
 VBlank_LagFrame:				; XREF: VBlank; VBlankTable
-		cmpi.b	#$8C,($FFFFF600).w
+		cmpi.b	#$8C,(GameMode).w
 		beq.s	loc_B9A
-		cmpi.b	#$C,($FFFFF600).w	; are we in the level game mode?
+		cmpi.b	#$C,(GameMode).w	; are we in the level game mode?
 		bne.w	VBlank_Exit		; if not, branch
 
 loc_B9A:
@@ -166,7 +166,7 @@ loc_C5E:				; XREF: VBlankTable
 ; ===========================================================================
 
 loc_C64:				; XREF: VBlankTable
-		cmpi.b	#$10,($FFFFF600).w ; is	game mode = $10	(special stage)	?
+		cmpi.b	#$10,(GameMode).w ; is	game mode = $10	(special stage)	?
 		beq.w	loc_DA6		; if yes, branch
 
 ;loc_C6E:				; XREF: VBlankTable

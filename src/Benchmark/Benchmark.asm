@@ -78,7 +78,7 @@ Benchmark.Run:
 	move.l	VSyncWaitTicks_64bit, -(sp)
 
 	jsr	VDPSetupGame			; switch to Sonic 1 VDP settings
-	move.b	#$C, $FFFFF600			; simulate "normal level" mode (because it checks game mode)
+	move.b	#$C, GameMode			; simulate "normal level" mode (because it checks game mode)
 	move.w	#$002, $FFFFFE10		; set level to GHP
 	jsr	Level				; PLAY IT!!!11
 

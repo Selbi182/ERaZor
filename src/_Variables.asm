@@ -57,9 +57,10 @@ HBlankHndl:		equ	$FFFFF5FC			; l/w	Jump code for HInt
 HBlankSubW:		equ	$FFFFF5FE			; w	Word offset for HInt routine 
 
 GameMode:		equ	$FFFFF600			; b	Current game mode
-SMPS_PAL_Timer:		equ	$FFFFF601			; b	Timer for SMPS PAL optimization
+*ResumeFlag:		equ	$FFFFF601			; b
 SonicControl:		equ	$FFFFF602			; w
 Joypad:			equ	$FFFFF604			; w
+SMPS_PAL_Timer:		equ	$FFFFF608			; b	Timer for SMPS PAL optimization
 
 VBlankRoutine:		equ	$FFFFF62A			; b	VBlank routine id
 

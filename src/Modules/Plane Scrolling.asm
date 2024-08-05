@@ -183,7 +183,7 @@ DeformScreen_SendBlocks:
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 
 Deform_GHZ:
-		cmpi.b	#4,($FFFFF600).w ; is this the title screen?
+		cmpi.b	#4,(GameMode).w ; is this the title screen?
 		beq.w	Deform_TS ; if yes, use optimized deformation
 	;	cmpi.w	#$001,($FFFFFE10).w ; check if level is	GHZ 2
 	;	beq.w	Deform_LZ

@@ -306,13 +306,13 @@ GameClrRAM:	move.l	d7,(a6)+
 
 	if QuickLevelSelect=1
 		if (QuickLevelSelect_ID=-1)
-			move.b	#4,($FFFFF600).w ; set Game Mode to title scren
+			move.b	#4,(GameMode).w ; set Game Mode to title scren
 		else
 		move.w	#QuickLevelSelect_ID,($FFFFFE10).w	; set level to QuickLevelSelect_ID
 		if (QuickLevelSelect_ID=$300) | (QuickLevelSelect_ID=$401)
-			move.b	#$10,($FFFFF600).w		; set game mode to special stage
+			move.b	#$10,(GameMode).w		; set game mode to special stage
 		else
-			move.b	#$C,($FFFFF600).w		; set game mode to level
+			move.b	#$C,(GameMode).w		; set game mode to level
 		endif
 		endif
 	else
@@ -345,7 +345,7 @@ GameClrRAM:	move.l	d7,(a6)+
 ;  r_ = Rings ($FFFFFE20-FFFFFE21)
 ;  s_ = Score ($FFFFFE26-FFFFFE29)
 ;  cm = Complete (Base Game / Blackout challenge) ($FFFFFF93)
-;  rs = Resume Flag (0 first launch / 1 load save game) ($FFFFF601)
+;  rs = Resume Flag (0 first launch / 1 load save game) (ResumeFlag)
 ;  mg = Magic Number (always set to 182, absence implies no SRAM)
 ; ---------------------------------------------------------------------------
 SRAM_Options	= 1
@@ -388,7 +388,7 @@ SRAMFound:
 		movep.l	SRAM_Score(a1),d0			; load...
 		move.l	d0,($FFFFFE26).w			; ...score
 		move.b	SRAM_Complete(a1),($FFFFFF93).w		; load game beaten state
-		move.b	SRAM_Resume(a1),($FFFFF601).w		; load resume flag
+		move.b	SRAM_Resume(a1),(ResumeFlag).w		; load resume flag
 
 SRAMEnd:
 		move.b	#0,($A130F1).l				; disable SRAM
@@ -450,7 +450,7 @@ SRAM_SaveNow:
 		movep.l	d0,SRAM_Score(a1)			; backup score
 		move.b	($FFFFFF93).w,d0			; move game beaten state to d0
 		move.b	d0,SRAM_Complete(a1)			; backup option flags
-		move.b	($FFFFF601).w,d0			; move resume flag to d0
+		move.b	(ResumeFlag).w,d0			; move resume flag to d0
 		move.b	d0,SRAM_Resume(a1)			; backup resume flag
 		move.l	(sp)+,d0				; restore d0
 
@@ -584,7 +584,7 @@ BlackBars.VBlankUpdate:
 		bne.s	@notlz						; if yes, branch
 		cmpi.b	#1,($FFFFFE10).w				; are we in LZ?
 		bne.s	@notlz						; if not, branch
-		cmpi.b	#$C,($FFFFF600).w				; are we done with the pre-level sequence?
+		cmpi.b	#$C,(GameMode).w				; are we done with the pre-level sequence?
 		bne.w	@notlz						; if not, branch
 		cmpi.w	#HBlank_LZWaterSurface,HBlankSubW		; already set up?
 		beq.s	@end						; if yes, branch
@@ -643,7 +643,7 @@ BlackBars.VBlankUpdate:
 
 BlackBars.SetState:
 		moveq	#0,d0				; clear d0		
-		move.b	($FFFFF600).w,d0		; get current game mode
+		move.b	(GameMode).w,d0		; get current game mode
 		cmpi.b	#$C,d0				; are we in a level?
 		beq.s	@validgamemode			; if yes, branch
 		cmpi.b	#$1C,d0				; are we in Selbi?
@@ -796,7 +796,7 @@ BlackBars_Ending:
 
 MainGameLoop:
 		moveq	#0,d0				; clear d0
-		move.b	($FFFFF600).w,d0		; get current game mode
+		move.b	(GameMode).w,d0		; get current game mode
 		movea.l	GameModeArray(pc,d0.w),a1	; locate address in GameModeArray
 		KDebug.WriteLine "MainGameLoop(): Launching %<.l a1 sym>..."
 		jsr	(a1)				; enter game mode
@@ -1101,7 +1101,7 @@ Paused:
 PG_CheckAllowed:
 		tst.b	($FFFFD000).w		; does Sonic exist? (e.g. has he not jumped into a ring)?
 		beq.w	Pause_DoNothing		; if not, disallow pausing
-		cmpi.b	#$10,($FFFFF600).w	; are we in a special stage?
+		cmpi.b	#$10,(GameMode).w	; are we in a special stage?
 		beq.s	PG_SSPause		; if yes, branch
 		cmpi.w	#$501,($FFFFFE10).w	; are we in the tutorial?
 		beq.s	PG_DoPause		; if yes, branch
@@ -1346,7 +1346,7 @@ PalCycle_Load:				; XREF: Demo; Level_MainLoop; End_MainLoop
 		bne.s	@nopalcycle		; if yes, branch
 		cmpi.b	#6,($FFFFD024).w	; is Sonic dying?
 		bhs.s	@nopalcycle		; if yes, branch
-		cmpi.b	#$C,($FFFFF600).w	; is game mode still level?
+		cmpi.b	#$C,(GameMode).w	; is game mode still level?
 		bne.s	@nopalcycle		; if not, branch
 
 @dopalcycle:
@@ -1997,7 +1997,7 @@ loc_1F20:
 		bsr.s	Pal_DecColor2
 		dbf	d0,loc_1F20
 
-		cmpi.b	#$10,($FFFFF600).w	; is game mode = special stage?
+		cmpi.b	#$10,(GameMode).w	; is game mode = special stage?
 		bne.s	Pal_NoSpecial		; if not, branch
 		move.w	#$EEE,($FFFFFB58).w	; make sure a specific colour is always white
 
@@ -2422,7 +2422,7 @@ PissFilter:
 		bne.s	PissFilter_Do		; if yes, enable piss filter anywhere
 
 		; GHP piss filter
-		move.b	($FFFFF600).w,d1	; get current
+		move.b	(GameMode).w,d1	; get current
 		andi.b	#$0F,d1			; include the level pre-sequence ($8C)
 		cmpi.b	#$C,d1			; are we in a level?
 		bne.s	PissFilter_End		; if not, don't do filer
@@ -3485,7 +3485,7 @@ MusicList:
 
 ; Level::	<-- for quick search
 Level:					; XREF: GameModeArray
-		bset	#7,($FFFFF600).w ; add $80 to screen mode (for pre level sequence)
+		bset	#7,(GameMode).w ; add $80 to screen mode (for pre level sequence)
 		bsr	PLC_ClearQueue
 		jsr	DrawBuffer_Clear
 		display_enable
@@ -3885,7 +3885,7 @@ Level_DelayLoop:
 Level_StartGame:
 		move.w	#$8014,($C00004)	; enable horizontal interrupts (normally only enabled in LZ)
 		ints_enable
-		bclr	#7,($FFFFF600).w	; clear pre-level sequence flag
+		bclr	#7,(GameMode).w	; clear pre-level sequence flag
 
 		
 ; ---------------------------------------------------------------------------
@@ -3926,7 +3926,7 @@ Level_MainLoop:
 
 		tst.w	($FFFFFE02).w		; is the level set to restart?
 		bne.w	Level			; if yes, restart level
-		cmpi.b	#$C,($FFFFF600).w	; has game mode changed?
+		cmpi.b	#$C,(GameMode).w	; has game mode changed?
 		beq.w	Level_MainLoop		; if not, loop
 		rts				; screen mode changed, exit level
 
@@ -4500,7 +4500,7 @@ CinematicScreenFuzz:
 @fuzzallowed:
 		tst.b	(CameraShake).w		; camera shake currently set?
 		bne.w	CinematicScreenFuzz_End	; if yes, fuzz currently disabled cause holy shit is it slow
-		cmpi.b	#$10,($FFFFF600).w	; is game mode special stage?
+		cmpi.b	#$10,(GameMode).w	; is game mode special stage?
 		beq.w	CinematicScreenFuzz_End	; if yes, fuzz is ALSO currently disabled cause holy shit is it STILL slow
 
 	;	cmpi.w	#$002,($FFFFFE10).w	; are we in Green Hill Place?
@@ -4653,7 +4653,7 @@ Fuzz_Uberhub:
 ; ===========================================================================
 
 Fuzz_TutBox:
-		tst.b	($FFFFF600).w	; are we in the pre sequence?
+		tst.b	(GameMode).w	; are we in the pre sequence?
 		bmi.w	@end		; if yes, branch
 		
 		; background deformation during a level
@@ -5237,7 +5237,7 @@ SS_WaitVBlank:
 		bsr	SS_BGAnimate		; double background movement speed
 
 @notblackout:
-		cmpi.b	#$10,($FFFFF600).w ; is	game mode still special stage?
+		cmpi.b	#$10,(GameMode).w ; is	game mode still special stage?
 		beq.w	SS_MainLoop	; if yes, loop
 ; ---------------------------------------------------------------------------
 
@@ -16203,7 +16203,7 @@ Obj34_MakeSprite:
 	
 		move.l	#Map_obj34,obMap(a1)
 		move.w	#$855C,obGfx(a1)
-		cmpi.b	#$10,($FFFFF600).w	; is current level a special stage?
+		cmpi.b	#$10,(GameMode).w	; is current level a special stage?
 		bne.s	Obj34_NotSpecial2	; if not, branch
 		move.w	#$8051,obGfx(a1)	; if yes, use alternate tile offset
 
@@ -16255,7 +16255,7 @@ Obj34_ChkPos_End:
 ; ===========================================================================
 
 Obj34_TargetOK:
-		cmpi.b	#$10,($FFFFF600).w	; are we in a Special Stage?
+		cmpi.b	#$10,(GameMode).w	; are we in a Special Stage?
 		beq.s	@cont			; if yes, branch
 		cmpi.w	#$302,($FFFFFE10).w	; is current level SAP?
 		beq.s	@conto			; if yes, branch
@@ -16362,7 +16362,7 @@ Obj34_ChangeArt:			; XREF: Obj34_ChkPos2
 		bsr	Obj34_LoadPostGraphics
 
 Obj34_Delete:
-		cmpi.b	#$10,($FFFFF600).w		; is level SLZ1 (special stage)?
+		cmpi.b	#$10,(GameMode).w		; is level SLZ1 (special stage)?
 		beq.w	Obj34_JustDelete		; if yes, branch
 		
 		cmpi.w	#$501,($FFFFFE10).w
@@ -17218,7 +17218,7 @@ ObjectsLoad:				; XREF: TitleScreen; et al
 		moveq	#0,d0
 		
 		; disabled death check, objects now keep on running when you die (to quote Vladik: "it looks fresh")
-	;	cmpi.b	#$18,($FFFFF600).w	; is this the ending sequence?
+	;	cmpi.b	#$18,(GameMode).w	; is this the ending sequence?
 	;	beq.s	loc_D348		; if yes, branch
 	;	cmpi.b	#6,($FFFFD024).w	; is Sonic dying?
 	;	bcc.s	loc_D362		; if yes, branch
@@ -18294,7 +18294,7 @@ loc_DC56:
 		move.w	#$CC,d0
 		jsr	(PlaySound_Special).l ;	play spring sound
 
-		cmpi.b	#$18,($FFFFF600).w	; is this the ending sequence?
+		cmpi.b	#$18,(GameMode).w	; is this the ending sequence?
 		bne.s	Obj41_AniLR		; if not, branch
 		bset	#0,($FFFFD022).w	; make	Sonic face left
 
@@ -19625,7 +19625,7 @@ loc_EC86:
 
 	if def(__BENCHMARK__)
 		; Benchmark ROM exits level immediately
-		move.b	#0, $FFFFF600		
+		move.b	#0, GameMode		
 		rts
 	else
 		jmp	Exit_Level
@@ -23103,7 +23103,7 @@ Obj5D_Main:				; XREF: Obj5D_Index
 		move.b	#$10,obActWid(a0)
 		move.b	#4,obPriority(a0)
 		move.w	#$4000|($7400/$20),obGfx(a0)
-		cmpi.b	#$18,($FFFFF600).w		; is screen mode ending sequence?
+		cmpi.b	#$18,(GameMode).w		; is screen mode ending sequence?
 		bne.s	Obj5D_Action			; if not, branch
 		move.w	#$0000|($7400/$20),obGfx(a0)	; alternate palette line
 ; ---------------------------------------------------------------------------
@@ -23111,7 +23111,7 @@ Obj5D_Main:				; XREF: Obj5D_Index
 Obj5D_Action:				; XREF: Obj5D_Index
 		cmpi.w	#$301,($FFFFFE10).w	; are we in SNP?
 		beq.s	@snp			; if yes, branch
-		cmpi.b	#$18,($FFFFF600).w	; is screen mode ending sequence?
+		cmpi.b	#$18,(GameMode).w	; is screen mode ending sequence?
 		bne.w	Obj5D_ChkDel		; if not, branch
 		move.b	#1,$30(a0)		; fast animation
 		tst.b	($FFFFFF78).w		; pit flag set?
@@ -25944,7 +25944,7 @@ Obj02_Setup:
 		move.b	#0,obRender(a0)			; set render flag
 		move.w	#$6520,obGfx(a0)		; set art, use fourth palette line
 		
-		cmpi.b	#$18,($FFFFF600).w		; is screen mode ending sequence?
+		cmpi.b	#$18,(GameMode).w		; is screen mode ending sequence?
 		bne.s	Obj02_NotEnding			; if not, branch
 		move.w	#$0524,obGfx(a0)		; set art, use first palette line
 		move.l	#Map_Obj02_End,obMap(a0)	; load mappings
@@ -25954,9 +25954,9 @@ Obj02_Setup:
 		bra.s	Obj02_FinishSetup
 
 Obj02_NotEnding:
-		cmpi.b	#$20,($FFFFF600).w		; is screen mode story screen?
+		cmpi.b	#$20,(GameMode).w		; is screen mode story screen?
 		beq.s	@nobgmaps			; if yes, branch
-		cmpi.b	#$24,($FFFFF600).w		; is screen mode options menu?
+		cmpi.b	#$24,(GameMode).w		; is screen mode options menu?
 		bne.s	Obj02_NotOptions		; if not, branch
 @nobgmaps:
 		move.w	#$2520,obGfx(a0)		; set art, use second palette line
@@ -26589,7 +26589,7 @@ Map_Obj07:
 AfterImage:
 		tst.b	($FFFFFFAC).w		; is Sonic dying?
 		bne.w	After_Return		; if yes, branch
-		cmpi.b	#$18,($FFFFF600).w	; is this the ending sequence?
+		cmpi.b	#$18,(GameMode).w	; is this the ending sequence?
 		beq.s	After_DoAfter		; if yes, branch
 		tst.b	($FFFFFFE7).w		; is inhuman mode on?
 		bne.w	After_DoAfter		; if yes, branch
@@ -28120,7 +28120,7 @@ WF_MakeWhite_Loop:
 		
 		cmpi.w	#$302,($FFFFFE10).w	; is level Star Agony Place?
 		beq.s	@wfintensitynoboost	; if yes, branch
-		cmpi.b	#$10,($FFFFF600).w	; are we in a special stage?
+		cmpi.b	#$10,(GameMode).w	; are we in a special stage?
 		bne.s	@wfintensity		; if not, branch
 		tst.b	($FFFFFFBF).w		; Unreal Place floating challenge enabled?
 		bne.s	@wfintensitynoboost	; if yes, branch
@@ -28935,7 +28935,7 @@ AM_End:
 Sonic_AutomaticRoll:
 		tst.b	obAnim(a0)		; are we on the walking/running animations?
 		beq.s	AR_ChangeAnim		; if yes, force roll
-		cmpi.b	#$18,($FFFFF600).w	; are we in the ending sequence?
+		cmpi.b	#$18,(GameMode).w	; are we in the ending sequence?
 		beq.s	AR_End			; if yes, don't change animation to not mess up the gag
 		cmpi.b	#$D,obAnim(a0)		; are we on the stopping animation (sliding off a platform)?
 		bls.s	AR_ChangeAnim		; if yes, force roll
@@ -29768,7 +29768,7 @@ GameOver:				; XREF: Obj01_Death
 		jsr	PlaySound_Special
 		addi.w	#$10,($FFFFD480+obScreenY).w	; bounce death counter
 		addq.b	#2,obRoutine(a0)
-		cmpi.b	#$18,($FFFFF600).w
+		cmpi.b	#$18,(GameMode).w
 		bne.s	@cont
 		bra.s	loc_138D4
 
@@ -34515,7 +34515,7 @@ Obj8A_Main:				; XREF: Obj8A_Index
 		move.b	d0,obFrame(a0)	; display appropriate sprite
 		move.b	#0,obRender(a0)
 		move.b	#0,obPriority(a0)
-		cmpi.b	#4,($FFFFF600).w ; is the scene	number 04 (title screen)?
+		cmpi.b	#4,(GameMode).w ; is the scene	number 04 (title screen)?
 		bne.s	Obj8A_Display	; if not, branch
 		move.w	#$A6,obGfx(a0)
 		move.b	#$A,obFrame(a0)	; display "SONIC TEAM PRESENTS"
@@ -40365,7 +40365,7 @@ Kill_DoKill:
 		move.w	($FFFFF704).w,($FFFFF72C).w	; lock top screen position
 		move.w	($FFFFF704).w,($FFFFF72E).w	; lock bottom screen position
 
-		cmpi.b	#$18,($FFFFF600).w	; is this the ending sequence?
+		cmpi.b	#$18,(GameMode).w	; is this the ending sequence?
 		bne.s	SH_NotEnding		; if not, branch
 		move.w	#0,($FFFFF72A).w	; lock screen
 
@@ -41725,14 +41725,14 @@ Obj09_ExitStage:			; XREF: Obj09_Index
 		blt.s	loc_1BBF4		; if not, branch
 		tst.b	($FFFFFF5F).w		; is this the blackout blackout special stage?
 		beq.s	@notblackout2		; if not, branch
-		move.b	($FFFFF600).w,d0
+		move.b	(GameMode).w,d0
 		andi.w	#$F,d0
 		cmpi.w	#$C,d0
 		beq.s	@notblackout2
 		move.w	#$A8,d0			; play special stage GOAL sound
 		jsr	(PlaySound_Special).l
 @notblackout2:
-		move.b	#$C,($FFFFF600).w	; set game mode to level (this effectively starts the white fade-in)
+		move.b	#$C,(GameMode).w	; set game mode to level (this effectively starts the white fade-in)
 
 loc_1BBF4:
 		cmpi.w	#$3000,($FFFFF782).w	; did we reach max spinniness?
@@ -41755,7 +41755,7 @@ loc_1BC12:
 Obj09_Exit2:				; XREF: Obj09_Index
 		subq.w	#1,$38(a0)
 		bne.s	loc_1BC40
-		move.b	#$C,($FFFFF600).w
+		move.b	#$C,(GameMode).w
 
 loc_1BC40:
 		jsr	Sonic_Animate
@@ -43157,7 +43157,7 @@ Obj21_FrameSelected:
 		move.b	#0,obRender(a0)
 		move.b	#0,obPriority(a0)
 		move.w	#$6CA,obGfx(a0)
-		cmpi.b	#$10,($FFFFF600).w
+		cmpi.b	#$10,(GameMode).w
 		bne.s	Obj21_Flash
 		move.w	#$370,obGfx(a0)
 
@@ -43280,7 +43280,7 @@ Obj21_ChkRings2:
 Obj21_ChkTime2:
 		cmpi.b	#3,$30(a0)
 		bne.s	Obj21_ChkLives2
-		cmpi.b	#$10,($FFFFF600).w
+		cmpi.b	#$10,(GameMode).w
 		bne.s	@cont
 		move.w	obX(a0),d0		; move X-pos into d0
 		sub.w	#HudSpeed,d0		; substract HUDSpeed - 1 from it
@@ -44137,7 +44137,7 @@ Debug_Main:				; XREF: Debug_Index
 	;	andi.w	#$7FF,($FFFFF704).w		; limit camera's Y pos (plane A)
 	;	andi.w	#$3FF,($FFFFF70C).w		; limit camera's Y pos (plane B)
 
-		cmpi.b	#$10,($FFFFF600).w ; is	game mode = $10	(special stage)?
+		cmpi.b	#$10,(GameMode).w ; is	game mode = $10	(special stage)?
 		bne.s	Debug_Zone	; if not, branch
 		move.w	#0,($FFFFF782).w ; stop	special	stage rotating
 		
@@ -44171,7 +44171,7 @@ loc_1CF9E:
 
 Debug_Action:				; XREF: Debug_Index
 		moveq	#6,d0
-		cmpi.b	#$10,($FFFFF600).w
+		cmpi.b	#$10,(GameMode).w
 		beq.s	loc_1CFBE
 		moveq	#0,d0
 		move.b	($FFFFFE10).w,d0
@@ -44213,7 +44213,7 @@ Debug_MoveStart:
 
 loc_1D01C:
 		moveq	#1,d6			; enable camera capping
-		cmpi.b	#$10,($FFFFF600).w	; are we in a special stage?
+		cmpi.b	#$10,(GameMode).w	; are we in a special stage?
 		bne.s	@notspecial		; if not, branch
 		moveq	#0,d6			; disable camera capping
 
@@ -44309,7 +44309,7 @@ Debug_Exit:
 		move.b	($FFFFF605).w,d0	; get button presses
 		andi.b	#$70,d0			; any of ABC pressed?
 		beq.w	Debug_DoNothing		; if not, branch
-		cmpi.b	#$10,($FFFFF600).w	; are we in a special stage?
+		cmpi.b	#$10,(GameMode).w	; are we in a special stage?
 		beq.s	@notc			; if yes, branch
 
 		btst	#6,d0			; is button A pressed?
@@ -44354,7 +44354,7 @@ Debug_Exit:
 		move.w	d0,$E(a0)
 	;	move.w	($FFFFFEF0).w,($FFFFF72C).w ; restore level boundaries
 	;	move.w	($FFFFFEF2).w,($FFFFF726).w
-		cmpi.b	#$10,($FFFFF600).w	; are you in the special stage?
+		cmpi.b	#$10,(GameMode).w	; are you in the special stage?
 		beq.s	Debug_Exit_SS		; if yes, branch
 		jsr	Hud_Base		; restore HUD after using debug mode
 		ori.b	#1,($FFFFFE1D).w	; update rings counter

@@ -34,7 +34,7 @@ ReturnToUberhub_Chapter:
 		beq.s	StartLevel		; if yes, skip chapter screen
 
 		; show chapter screen first
-		move.b	#$28,($FFFFF600).w	; set to chapters screen
+		move.b	#$28,(GameMode).w	; set to chapters screen
 		rts				; return to MainGameLoop
 
 
@@ -53,13 +53,13 @@ StartLevel:
 		beq.s	@startspecial		; if yes, branch
 		
 		; regular level
-		move.b	#$C,($FFFFF600).w	; set to level
+		move.b	#$C,(GameMode).w	; set to level
 		move.w	#1,($FFFFFE02).w	; restart level
 		rts				; return to MainGameLoop
 
 @startspecial:
 		; special stage
-		move.b	#$10,($FFFFF600).w	; set to special stage
+		move.b	#$10,(GameMode).w	; set to special stage
 		rts				; return to MainGameLoop
 
 
@@ -69,17 +69,17 @@ StartLevel:
 ; ---------------------------------------------------------------------------
 
 Start_FirstGameMode:
-		move.b	#0,($FFFFF600).w	; set first game mode to Sega Screen
+		move.b	#0,(GameMode).w		; set first game mode to Sega Screen
 		rts
 ; ===========================================================================
 
 Exit_SegaScreen:
-		move.b	#$1C,($FFFFF600).w	; set to Selbi splash screen
+		move.b	#$1C,(GameMode).w	; set to Selbi splash screen
 		rts
 ; ===========================================================================
 
 Exit_SelbiSplash:
-		move.b	#4,($FFFFF600).w	; set to title screen
+		move.b	#4,(GameMode).w		; set to title screen
 		rts
 ; ===========================================================================
 
@@ -90,7 +90,7 @@ Exit_TitleScreen:
 		; first launch
 		jsr	Options_SetDefaults		; load default options
 		move.b	#0,(CurrentChapter).w		; set chapter to 0 (so screen gets displayed once NHP is entered for the first time)
-		move.b	#$30,($FFFFF600).w		; for the first time, set to Gameplay Style Screen (which then starts the intro cutscene)
+		move.b	#$30,(GameMode).w		; for the first time, set to Gameplay Style Screen (which then starts the intro cutscene)
 		rts
 ; ===========================================================================
 
@@ -119,7 +119,7 @@ Exit_OptionsScreen:
 		jsr	SRAM_SaveNow		; save our progress now
 		tst.b	d0			; d0 = 0 Uberhub / 1 GameplayStyleScreen
 		beq.w	ReturnToUberhub		; return to Uberhub if we exited the screen
-		move.b	#$30,($FFFFF600).w	; set to GameplayStyleScreen if we chose that option
+		move.b	#$30,(GameMode).w	; set to GameplayStyleScreen if we chose that option
 		rts
 ; ===========================================================================
 
@@ -146,7 +146,7 @@ Exit_StoryScreen:
 		bra.w	ReturnToUberhub		; otherwise, always return to Uberhub
 
 @startending:
-		move.b	#$18,($FFFFF600).w	; set to ending sequence ($18)
+		move.b	#$18,(GameMode).w	; set to ending sequence ($18)
 		rts
 ; ===========================================================================
 
@@ -240,7 +240,7 @@ Exit_EndingSequence:
 		bsr	Set_BaseGameDone	; you have beaten the base game, congrats
 		jsr	SRAM_SaveNow		; save now
  
-		move.b	#$2C,($FFFFF600).w	; set scene to $2C (new credits)
+		move.b	#$2C,(GameMode).w	; set scene to $2C (new credits)
 		rts
 
 
@@ -267,7 +267,7 @@ RunChapter:
 		blo.w	StartLevel		; if this is a chapter from a level we already visited, skip chapter screen
 
 		move.b	d5,(CurrentChapter).w	; we've entered a new level, update progress chapter ID
-		move.b	#$28,($FFFFF600).w	; run chapter screen
+		move.b	#$28,(GameMode).w	; run chapter screen
 		rts
 ; ===========================================================================
 
@@ -280,7 +280,7 @@ RunStory:
 
 RunStory_Force:
 		jsr	SRAM_SaveNow		; save our progress now
-		move.b	#$20,($FFFFF600).w	; start Story Screen
+		move.b	#$20,(GameMode).w	; start Story Screen
 		rts				; return
 
 
@@ -367,7 +367,7 @@ HubRing_FP:	move.w	#$502,($FFFFFE10).w	; set level to FZ
 
 HubRing_IntroStart:
 		move.w	#$001,($FFFFFE10).w	; set to intro cutscene (this also controls the start of the intro cutscene itself)
-		move.b	#$28,($FFFFF600).w	; load chapters screen for intro cutscene ("One Hot Day...")
+		move.b	#$28,(GameMode).w	; load chapters screen for intro cutscene ("One Hot Day...")
 		rts				; this is the only text screen not affected by Skip Story Texts
 
 MiscRing_IntroEnd:
@@ -375,11 +375,11 @@ MiscRing_IntroEnd:
 		bra.w	RunStory
 
 HubRing_Options:
-		move.b	#$24,($FFFFF600).w	; load options menu
+		move.b	#$24,(GameMode).w	; load options menu
 		rts
 
 HubRing_SoundTest:
-		move.b	#$34,($FFFFF600).w	; load sound test screen
+		move.b	#$34,(GameMode).w	; load sound test screen
 		rts
 
 HubRing_Tutorial:

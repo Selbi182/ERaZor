@@ -59,7 +59,16 @@ GameplayStyleScreen:
 		move.l	#$40000003,d0
 		moveq	#$27,d1
 		moveq	#$1B,d2
-		jsr	ShowVDPGraphics
+		lea	($C00004).l,a4
+		move.l	#$800000,d4
+@row:		move.l	d0,(a4)			; set VDP to VRam write mode
+		move.w	d1,d3			; reload number of columns
+@column:	move.w	(a1)+,d5		; load mapping
+		ori.w	#$8000,d5		; make high-plane
+		move.w	d5,(a6)			; dump map to VDP map slot
+		dbf	d3,@column		; repeat til columns have dumped
+		add.l	d4,d0			; increae to next row on VRam
+		dbf	d2,@row			; repeat til all rows have dumped
 
 		moveq	#1,d0
 		bsr	GSS_LoadPal
@@ -103,10 +112,9 @@ GSS_MainLoop:
 		move.b	($FFFFF605).w,d1	; get button presses
 	 	andi.b	#3,d1			; is up or down pressed?
 		beq.s	@NoUpdate		; if not, branch
-		moveq	#0,d0			; set to highlight casual
 		bchg 	#5,(OptionsBits).w 	; toggle casual/frantic flag
 		moveq	#0,d0
-		bsr	GSS_LoadPal
+		bsr	GSS_LoadPal		; refresh palette
 		move.w	#$D8,d0
 		jsr	(PlaySound_Special).l	; play sound
 
@@ -130,8 +138,8 @@ ArtKospM_PixelStars:
 
 Pal_Difficulty_Casual:
 		;	bg	casual		    frantic		stars		    unused
-		dc.w	$0000,  $0ECC,$0CAA,$0200,  $0444,$0222,$0000,  $0EEE,$0666,$0822,  0,0,0,0,0,0
+		dc.w	$0200,  $0EEE,$0CAA,$0800,  $0444,$0222,$0000,  $0EEE,$0666,$0844,  0,0,0,0,0,0
 Pal_Difficulty_Frantic:
-		dc.w	$0000,  $0444,$0222,$0000,  $0CCE,$022E,$0002,  $0EEE,$0666,$0822,  0,0,0,0,0,0
+		dc.w	$0002,  $0444,$0222,$0000,  $0EEE,$0AAC,$0008,  $0EEE,$0666,$0448,  0,0,0,0,0,0
 		even
 ; ===========================================================================

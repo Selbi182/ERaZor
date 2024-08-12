@@ -523,7 +523,6 @@ Credits_Page9:
 
 Credits_Page10:
 		crdtxt	"                    "
-		crdtxt	"                    "
 		crdtxt	"a huge thanks to    "
 		crdtxt	"                    "
 		crdtxt	"the erazor 7 squad  "
@@ -533,8 +532,9 @@ Credits_Page10:
 		crdtxt	"                    "
 		crdtxt	"CHAOTIC SOFA        "
 		crdtxt	"                    "
-		crdtxt	"AJCOX               "
+		crdtxt	"VLADIKCOMPER        "
 		crdtxt	"                    "
+		crdtxt	"AJCOX               "
 		crdtxt	"                    "
 
 Credits_Page11:

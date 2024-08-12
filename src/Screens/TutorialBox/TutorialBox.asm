@@ -107,12 +107,14 @@ Tutorial_DisplayHint:
 ; ---------------------------------------------------------------
 
 DH_MainLoop:
-	jsr	CinematicScreenFuzz	; do cinematic screen fuzz if applicable
 	move.b	#2,VBlankRoutine
 	jsr	DelayProgram
 
 	cmpi.b	#10,($FFFFFF6E).w	; is this the introduction text?
-	bne.s	DH_Continue		; if not, branch
+	beq.s	@0			; if yes, branch
+	jsr	CinematicScreenFuzz	; do cinematic screen fuzz if applicable
+	bra.s	DH_Continue
+@0:	
 	jsr	BackgroundEffects_Update
 
 DH_Continue:
@@ -934,12 +936,18 @@ Hint_6:
 	dc.b	_frantic
 	boxtxt	"    frantic mode"
 	boxtxt_pause
-	boxtxt	"  IN CASUAL MODE,"
+	boxtxt	"     IN CASUAL,"
 	boxtxt	" HARD PART SKIPPERS"
-	boxtxt	" ARE YOUR FRIENDS!"
+	boxtxt	"    ARE FRIENDS!"
 	boxtxt_pause
-	boxtxt	"  IN FRANTIC MODE,"
-	boxtxt	"   THEY HATE YOU."
+	boxtxt	"  IN FRANTIC, THEY"
+	boxtxt	"   WANT YOU DEAD."
+	boxtxt_next
+
+	boxtxt_line
+	boxtxt_line
+	boxtxt_line
+	boxtxt	"   remember this1"
 	boxtxt_end
 
 ;		 --------------------

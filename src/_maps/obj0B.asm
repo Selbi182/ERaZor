@@ -1,14 +1,45 @@
-; ---------------------------------------------------------------------------
-; Sprite mappings - pole that breaks (LZ)
-; ---------------------------------------------------------------------------
-		dc.w byte_11326-Map_obj0B
-		dc.w byte_11331-Map_obj0B
-byte_11326:	dc.b 2			; normal pole
-		dc.b $E0, 3, 0,	0, $FC
-		dc.b 0,	3, $10,	0, $FC
-byte_11331:	dc.b 4			; broken pole
-		dc.b $E0, 1, 0,	0, $FC
-		dc.b $F0, 5, 0,	4, $FC
-		dc.b 0,	5, $10,	4, $FC
-		dc.b $10, 1, $10, 0, $FC
-		even
+; --------------------------------------------------------------------------------
+; Sprite mappings - output from ClownMapEd - Sonic 1/CD format
+; --------------------------------------------------------------------------------
+
+CME_1E40BFFC:
+	dc.w	CME_1E40BFFC_0-CME_1E40BFFC
+	dc.w	CME_1E40BFFC_1-CME_1E40BFFC
+
+CME_1E40BFFC_0:
+	dc.b	2
+
+	dc.b	-32
+	dc.b	$03
+	dc.w	$0000
+	dc.b	-4
+
+	dc.b	0
+	dc.b	$03
+	dc.w	$1000
+	dc.b	-4
+
+CME_1E40BFFC_1:
+	dc.b	4
+
+	dc.b	-32
+	dc.b	$00
+	dc.w	$0000
+	dc.b	-4
+
+	dc.b	24
+	dc.b	$00
+	dc.w	$1000
+	dc.b	-4
+
+	dc.b	-28
+	dc.b	$05
+	dc.w	$0004
+	dc.b	-4
+
+	dc.b	12
+	dc.b	$05
+	dc.w	$1004
+	dc.b	-4
+
+	even

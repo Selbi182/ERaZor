@@ -340,12 +340,12 @@ GameClrRAM:	move.l	d7,(a6)+
 ;
 ;  op = Options Bitset ($FFFFFF92)
 ;  ch = Current Chapter ($FFFFFFA7)
-;  d_ = Open Doors Bitset - Casual/Frantic  ($FFFFFF8A-$FFFFFF8B)
+;  d_ = Open Doors Bitset - Casual/Frantic  ($FFFFFF8A-FFFFFF8B)
 ;  l_ = Lives (or Deaths rather, lol) ($FFFFFE12-FFFFFE13)
 ;  r_ = Rings ($FFFFFE20-FFFFFE21)
 ;  s_ = Score ($FFFFFE26-FFFFFE29)
 ;  cm = Complete (Base Game / Blackout challenge) ($FFFFFF93)
-;  rs = Resume Flag (0 first launch / 1 load save game) (ResumeFlag)
+;  rs = Resume Flag (0 first launch / 1 load save game) ($FFFFF601)
 ;  mg = Magic Number (always set to 182, absence implies no SRAM)
 ; ---------------------------------------------------------------------------
 SRAM_Options	= 1
@@ -2824,15 +2824,13 @@ Sega_WaitPallet:
 		bsr	PalCycle_Sega
 		bne.s	Sega_WaitPallet
 
-		move.b	#$B5,d0
-		move.b	#$E1,d0
-		bsr	PlaySound_Special  ; play "SEGA" sound (featuring the beautiful voice of yours truly)
-
-		move	#120, d6
-@Wait_SegaPCM:
-		move.b	#$14,VBlankRoutine
+		move.b	#$E1,d0			; play "SEGA" sound...
+		bsr	PlaySound_Special 	; ...featuring the beautiful voice of yours truly
+		
+		move.w	#120-1,d0		; delay after the angel's voice has gone silent
+@Wait_SegaPCM:	move.b	#$14,VBlankRoutine
 		bsr	DelayProgram
-		dbf	d6, @Wait_SegaPCM
+		dbf	d0,@Wait_SegaPCM
 
 		move.b	#30,($FFFFFFBD).w	; frames to wait after SEGA sound
 		move.w	#150,($FFFFF614).w	; frames to wait after crash sound
@@ -3617,8 +3615,6 @@ Level_WaterPal:
 		
 ; ---------------------------------
 Level_GetBgm:
-		move.b	#$E3,d0			; resume at normal speed
-		jsr	PlaySound_Special
 		VBlank_UnsetMusicOnly
 
 		; tutorial introduction text
@@ -3683,12 +3679,22 @@ Level_NoMusic2:
 		tst.l	PLC_Pointer	; are there any items in the pattern load cue?
 		bne.s	@runplc		; if yes, branch
 
-		move.b	#0,(PlacePlacePlace).w
+		; Place Place Place easter egg in levels
+		move.b	#0,(PlacePlacePlace).w	; clear easter egg flag
 		cmpi.b	#$70,($FFFFF604).w	; exactly ABC held?
 		bne.s	@noeasteregg		; if not, branch
 		move.b	#1,(PlacePlacePlace).w	; PLACE PLACE PLACE
 		clr.w	($FFFFFE20).w		; clear rings
+		bra.s	@fastmusic		; always use fast music
 @noeasteregg:
+		move.b	#$E3,d0			; resume at normal speed
+		bra	@setmusicspeed ; this sucked.
+		frantic				; are we in frantic?
+		beq.s	@setmusicspeed		; if not, branch
+		cmpi.w	#$400,($FFFFFE10).w	; are we in Uberhub?
+		bne.s	@setmusicspeed		; if not, branch
+@fastmusic:	move.w	#$E2,d0			; speed up music in frantic Uberhub
+@setmusicspeed:	jsr	PlaySound_Special	; set new music speed
 
 		cmpi.w	#$001,($FFFFFE10).w	; are we in the intro cutscene?
 		bne.w	@notintrocutscene
@@ -5098,10 +5104,13 @@ SS_ClrNemRam:	move.l	d0,(a1)+
 		move.b	#9,($FFFFD000).w ; load	special	stage Sonic object
 		move.b	#$34,($FFFFD080).w ; load title	card object
 
-		move.b	#0,(PlacePlacePlace).w
+		; Place Place Place easter egg in special stages
+		move.b	#0,(PlacePlacePlace).w	; clear easter egg flag
+		move.b	#$E3,d0			; resume at normal speed
 		cmpi.b	#$70,($FFFFF604).w	; exactly ABC held?
 		bne.s	@noeasteregg		; if not, branch
 		move.b	#1,(PlacePlacePlace).w	; PLACE PLACE PLACE
+		move.w	#$E2,d0			; speed up music
 		lea	($FF1020).l,a1		; load SS blocks into a1
 		moveq	#$3F,d1			; set normal loop
 @Loop2:		moveq	#$3F,d2			; set alternate loop
@@ -5112,6 +5121,7 @@ SS_ClrNemRam:	move.l	d0,(a1)+
 		lea	$40(a1),a1		; increase pointer by $40
 		dbf	d1,@Loop2		; loop
 @noeasteregg:
+		jsr	PlaySound_Special	; set new music speed
 
 		clr.w	($FFFFF780).w	; set stage angle to "upright"
 		move.w	#0,($FFFFF782).w ; no rotation speed
@@ -5233,6 +5243,7 @@ SS_WaitVBlank:
 		cmpi.b	#4,($FFFFD024).w	; is special stage exiting routine being run?
 		bhs.w	@notblackout		; if yes, branch
 		bsr	BlackoutChallenge	; run blackout challenge logic
+		bra	@notblackout ; broken
 		cmpi.b	#2,($FFFFFE57).w	; are we in part 2?
 		bne.s	@notblackout		; if yes, branch
 		bsr	SS_BGAnimate		; double background movement speed
@@ -6578,11 +6589,11 @@ Resize_LZ2:
 		frantic					; are we in frantic?
 		beq.s	@notfrantic			; if not, branch
 		move.w	($FFFFFE04).w,d2		; get frame timer
-		move.w	#$BB,d0				; play...
+		move.w	#$BB,d0				; play badum sound
 		moveq	#$1F,d1				; use slow delay
 		btst	#1,($FFFFD022).w		; is Sonic in air?
 		bne.s	@inair				; if yes, branch
-		move.w	#$A2,d0				; play...
+		move.w	#$A2,d0				; play chain sound
 		moveq	#1,d1				; use fast delay
 @inair:		and.w	d1,d2				; test set delay against frame timer
 		bne.s	@notfrantic			; if it doesn't match
@@ -6593,7 +6604,7 @@ Resize_LZ2:
 		move.w	d1,($FFFFF726).w		; set it to lower level boundary
 		move.w	d1,($FFFFF72E).w		; set it to lower level boundary
 		move.w	d1,($FFFFFF9C).w		; remember
-		jsr	PlaySound_Special		; ...badump sound
+		jsr	PlaySound_Special		; play sound
 
 @notfrantic:
 		moveq	#0,d0
@@ -6900,9 +6911,13 @@ Resize_SLZ2boss2:
 	if LowBossHP=1
 		move.b	#2,(BossHealth).w	; set lives
 	else
-		move.b	#21,(BossHealth).w	; set lives
-	endif
-		
+		moveq	#16+1,d0		; set number of	hits to	16 (casual)
+		frantic
+		beq.s	@notfrantic
+		moveq	#24+1,d0		; set number of	hits to	24 (frantic)
+@notfrantic:
+		move.b	d0,(BossHealth).w	; set lives
+	endif	
 		move.b	(BossHealth).w,(HUD_BossHealth).w
 
 		addq.b	#2,($FFFFF742).w
@@ -9454,6 +9469,7 @@ Obj1D_Main:				; XREF: Obj1D_Index
 		sub.b	d1,d0		; substract from cooldown time
 		move.b	d0,$30(a0)	; backup value
 		move.b	d0,$32(a0)	; backup value
+; ---------------------------------------------------------------------------
 
 Obj1D_Action:
 		tst.b	$34(a0)			; is this the following-Sonic object?
@@ -10246,6 +10262,8 @@ Obj3F_NotHarmful:
 @nocamshaking:
 		tst.b	$31(a0)		; was mute flag set?
 		bne.s	Obj3F_NoSound	; if yes, branch
+		tst.b	($FFFFFFE9).w	; is fade out in progress?
+		bne.s	Obj3F_NoSound	; if yes, branch
 
 Obj3F_PlaySound:
 	if Obj3F_SoundType=1
@@ -10805,7 +10823,12 @@ Obj1F_Main:				; XREF: Obj1F_Index
 	if LowBossHP=1
 		move.b	#1,obColProp(a0)		; set number of	hits to	1
 	else
-		move.b	#12,obColProp(a0)		; set number of	hits to	12
+		moveq	#12,d0				; set number of	hits to	12 (casual)
+		frantic
+		beq.s	@notfrantic
+		moveq	#16,d0				; set number of	hits to	16 (frantic)
+@notfrantic:
+		move.b	d0,obColProp(a0)
 	endif
 		move.b	obColProp(a0),(HUD_BossHealth).w
 
@@ -13352,8 +13375,13 @@ Obj2E_ChkS:
 		move.w	#100,($FFFFFE20).w	; give 100 rings (you'll probably still die, but at least it isn't instant)
 		ori.b	#1,($FFFFFE1D).w	; update rings counter
 @notanoob:
-		; block off a chunk offscreen
 		movem.l	d0-a1,-(sp)		; backup
+
+		; open up entryway and block off the way back offscreen
+		move.w	#$1100,d0
+		move.w	#$0000,d1
+		move.b	#$22,d2
+		jsr	Sub_ChangeChunk
 
 		move.w	#$1000,d0
 		move.w	#$0300,d1
@@ -22863,82 +22891,51 @@ Obj0B_Main:				; XREF: Obj0B_Index
 		move.w	#$43DE,obGfx(a0)
 		move.b	#4,obRender(a0)
 		move.b	#8,obActWid(a0)
+		move.b	#$20,obHeight(a0)
 		move.b	#4,obPriority(a0)
 		move.b	#$E1,obColType(a0)
-		moveq	#0,d0
-		move.b	obSubtype(a0),d0	; get object type
-		mulu.w	#60,d0		; multiply by 60 (1 second)
-		move.w	d0,$30(a0)	; set breakage time
+		move.b	obStatus(a0),d0
+		andi.b	#3,d0
+		or.b	d0,obRender(a0)
+		move.b	obSubtype(a0),d0	; get subtype
+		cmp.b	($FFFFFF97).w,d0	; compare it to stored LP checkpoint counter
+		bls.w	Obj0B_BreakPole_NoSound	; if we already touched this pole, keep it broken
+; ---------------------------------------------------------------------------
 
 Obj0B_Action:				; XREF: Obj0B_Index
-		move.b	#4,obRoutine(a0)	; set to display routine to make it...
-		bra.w	Obj0B_Display		; ...purely decorational
+		tst.b	obColProp(a0)		; has Sonic touched the	pole?
+		beq.s	Obj0B_Display		; if not, branch
+		tst.b	($FFFFFFEB).w		; is Sonic jumpdashing?
+		bne.s	Obj0B_BreakPole		; if yes, break pole
 
-		tst.b	$32(a0)
-		beq.s	Obj0B_Grab
-		tst.w	$30(a0)
-		beq.s	Obj0B_MoveUp
-		subq.w	#1,$30(a0)
-		bne.s	Obj0B_MoveUp
-		move.b	#1,obFrame(a0)	; break	the pole
-		bra.s	Obj0B_Release
-; ===========================================================================
-
-Obj0B_MoveUp:				; XREF: Obj0B_Action
-		lea	($FFFFD000).w,a1
-		move.w	obY(a0),d0
-		subi.w	#$18,d0
-		btst	#0,($FFFFF604).w ; check if "up" is pressed
-		beq.s	Obj0B_MoveDown
-		subq.w	#1,obY(a1)	; move Sonic up
-		cmp.w	obY(a1),d0
-		bcs.s	Obj0B_MoveDown
-		move.w	d0,obY(a1)
-
-Obj0B_MoveDown:
-		addi.w	#$24,d0
-		btst	#1,($FFFFF604).w ; check if "down" is pressed
-		beq.s	Obj0B_LetGo
-		addq.w	#1,obY(a1)	; move Sonic down
-		cmp.w	obY(a1),d0
-		bcc.s	Obj0B_LetGo
-		move.w	d0,obY(a1)
-
-Obj0B_LetGo:
-		move.b	($FFFFF603).w,d0
-		andi.w	#$70,d0
-		beq.s	Obj0B_Display
-
-Obj0B_Release:				; XREF: Obj0B_Action
-		clr.b	obColType(a0)
-		addq.b	#2,obRoutine(a0)
-		clr.b	($FFFFF7C8).w
-		clr.b	($FFFFF7C9).w
-		clr.b	$32(a0)
+		; make pole solid
+		moveq	#0,d1
+		move.b	obActWid(a0),d1
+		addi.w	#4,d1
+		moveq	#0,d2
+		move.b	obHeight(a0),d2
+		move.w	d2,d3
+		addq.w	#1,d3
+		jsr	SolidObject
 		bra.s	Obj0B_Display
 ; ===========================================================================
 
-Obj0B_Grab:				; XREF: Obj0B_Action
-		tst.b	obColProp(a0)		; has Sonic touched the	pole?
-		beq.s	Obj0B_Display	; if not, branch
-		lea	($FFFFD000).w,a1
-		move.w	obX(a0),d0
-		addi.w	#$14,d0
-		cmp.w	obX(a1),d0
-		bcc.s	Obj0B_Display
-		clr.b	obColProp(a0)
-		cmpi.b	#4,obRoutine(a1)
-		bcc.s	Obj0B_Display
-		clr.w	obVelX(a1)		; stop Sonic moving
-		clr.w	obVelY(a1)		; stop Sonic moving
-		move.w	obX(a0),d0
-		addi.w	#$14,d0
-		move.w	d0,obX(a1)
-		bclr	#0,obStatus(a1)
-		move.b	#$11,obAnim(a1)	; set Sonic's animation to "hanging" ($11)
-		move.b	#1,($FFFFF7C8).w ; lock	controls
-		move.b	#1,($FFFFF7C9).w ; disable wind	tunnel
-		move.b	#1,$32(a0)	; begin	countdown to breakage
+Obj0B_BreakPole:
+		ori.b	#10,(CameraShake).w	; camera shaking
+		move.w	#$DF,d0			; jester explosion sound
+		jsr	PlaySound_Special
+
+Obj0B_BreakPole_NoSound:
+		addq.b	#2,obRoutine(a0)	; set to display only
+		move.b	#1,obFrame(a0)		; break	the pole
+		clr.b	obColType(a0)		; clear collision type
+
+		move.b	#1,($FFFFFFFE).w	; make sure =P monitor is enabled (if the player somehow skipped it)
+		move.b	obSubtype(a0),d0	; get subtype
+		cmp.b	($FFFFFF97).w,d0	; compare it to stored LP checkpoint counter
+		blo.s	Obj0B_Display		; if it it somehow was a lower pole, branch
+		move.b	d0,($FFFFFF97).w	; copy subtype to checkpoint counter
+; ---------------------------------------------------------------------------
 
 Obj0B_Display:				; XREF: Obj0B_Index
 		bra.w	MarkObjGone
@@ -24216,8 +24213,8 @@ loc_11B7C:
 
 @cont
 		movea.l	a0,a1
-		tst.w	($FFFFD030).w	; does Sonic have invincibility frames left?
-		bne.w	DeleteObject	; if yes, branch
+	;	tst.w	($FFFFD030).w	; does Sonic have invincibility frames left?
+	;	bne.w	DeleteObject	; if yes, branch
 
 		cmpi.b	#5,obAnim(a0)
 		beq.s	Obj5F_MakeShrap
@@ -26839,7 +26836,13 @@ Obj01_NotGHZ1_Main:				; Intro Cutscene of GHZ2
 
 		tst.b	($FFFFFFB7).w			; was flag 1 set? 
 		bne.s	@noslowintro			; if yes, branch
-		move.w	#$D0,($FFFFF760).w	 	; Sonic's top speed
+		
+		move.w	#$D0,d0	 			; Sonic's top speed (NTSC)
+		btst	#6,($FFFFFFF8).w		; are we PAL?
+		beq.s	@notpal				; if not, branch
+		move.w	#$100,d0	 		; Sonic's top speed (PAL)
+@notpal:	move.w	d0,($FFFFF760).w	 	; set Sonic's top speed to sync action to the song intro
+	
 @noslowintro:
 		cmpi.w	#$B7,obX(a0)			; has Sonic passed point $B7?
 		blt.s	Obj01_NotB7 			; if not, branch
@@ -29308,6 +29311,7 @@ SAP_HitWall:
 		move.w	d1,obY(a0)			; set respawn Y position
 
 		move.b	#1,(RedrawEverything).w		; instantly move the camera to where Sonic teleported to
+		move.w	#$E00,($FFFFF728).w		; reset left boundary
 
 		clr.b	($FFFFFFE5).w			; clear air freeze flags
 		clr.w	obVelX(a0)			; clear X speed
@@ -34039,7 +34043,13 @@ Obj79_Main:				; XREF: Obj79_Index
 		frantic
 		beq.s	@notrpfrantic
 		cmpi.w	#$200,($FFFFFE10).w
+		beq.s	@delete
+		
+		cmpi.w	#$101,($FFFFFE10).w
 		bne.s	@notrpfrantic
+		cmpi.b	#1,obSubtype(a0)
+		beq.s	@delete
+		bra.s	@notrpfrantic
 @delete:	jmp	DeleteObject
 
 @notrpfrantic:
@@ -34107,10 +34117,11 @@ Obj79_HitLamp:
 		bne.w	@regular		; if not, lampposts have no vertical hitbox
 		move.w	($FFFFD00C).w,d0
 		sub.w	obY(a0),d0
-		addi.w	#$40,d0
-		cmpi.w	#$68,d0
-		bcc.w	locret_16F90
-		bra.s	@regular
+		bpl.s	@0
+		neg.w	d0
+@0:		cmpi.w	#$68,d0
+		bls.s	@regular
+		rts
 
 @endghpaction:
 		move.b	#4,($FFFFFE30).w
@@ -34133,13 +34144,13 @@ Obj79_HitLamp:
 		move.w	#$A1,d0
 		jsr	(PlaySound_Special).l ;	play lamppost sound
 		
-		cmpi.W	#$101,($FFFFFE10).w	; are we in LZ2?
-		bne.s	@hitrest		; if not, branch
-		move.b	#1,($FFFFFFFE).w	; make sure =P monitor is enabled (if the player somehow skipped it)
-		move.b	obSubtype(a0),d2
-		cmp.b	($FFFFFF97).w,d2
-		blo.s	@hitrest
-		move.b	d2,($FFFFFF97).w	; copy subtype to checkpoint counter
+	;	cmpi.W	#$101,($FFFFFE10).w	; are we in LZ2?
+	;	bne.s	@hitrest		; if not, branch
+	;	move.b	#1,($FFFFFFFE).w	; make sure =P monitor is enabled (if the player somehow skipped it)
+	;	move.b	obSubtype(a0),d2
+	;	cmp.b	($FFFFFF97).w,d2
+	;	blo.s	@hitrest
+	;	move.b	d2,($FFFFFF97).w	; copy subtype to checkpoint counter
 
 @hitrest:
 		move.w	#1000,d0		; add 10000 ...
@@ -34567,7 +34578,7 @@ Map_obj8A:
 ; Object 3D - Eggman (GHZ)
 ; ---------------------------------------------------------------------------
 Obj3D_Health_Casual  = 16
-Obj3D_Health_Frantic = 20
+Obj3D_Health_Frantic = 24
 ; ---------------------------------------------------------------------------
 
 Obj3D:					; XREF: Obj_Index
@@ -34645,7 +34656,7 @@ Obj3D_ShipIndex:dc.w Obj3D_ShipStart-Obj3D_ShipIndex
 		dc.w Obj3D_MakeBall-Obj3D_ShipIndex
 		dc.w Obj3D_ShipMove-Obj3D_ShipIndex
 		dc.w loc_17954-Obj3D_ShipIndex
-		dc.w loc_1797A-Obj3D_ShipIndex
+		dc.w Obj3D_DefeatStart-Obj3D_ShipIndex
 		dc.w loc_179AC-Obj3D_ShipIndex
 		dc.w loc_179F6-Obj3D_ShipIndex
 ; ===========================================================================
@@ -34726,11 +34737,10 @@ locret_1784A:
 
 loc_1784C:				; XREF: Obj3D_MainStuff
 		move.b	#$E3,d0
-		jsr	(PlaySound_Special).l	; slow down music
+		jsr	(PlaySound_Special).l	; slow down music again
 		move.b	#8,ob2ndRout(a0)
 		move.w	#$B3,$3C(a0)
-		rts	
-
+		rts
 
 ; ===========================================================================
 
@@ -34828,7 +34838,7 @@ loc_17976:
 		bra.w	Obj3D_MainStuff
 ; ===========================================================================
 
-loc_1797A:				; XREF: Obj3D_ShipIndex
+Obj3D_DefeatStart:				; XREF: Obj3D_ShipIndex
 		subq.w	#1,$3C(a0)
 		bmi.s	loc_17984
 		addq.w	#3,obX(a0)	; move eggman to the right
@@ -34854,6 +34864,8 @@ locret_179AA:
 	endif
 		move.w	#$94,d0
 		jsr	(PlaySound).l	; play GHZ music
+		move.b	#$E3,d0
+		jsr	(PlaySound_Special).l	; resume music at regular speed
 		move.w	#$2AC0+GHZ3Add,($FFFFF72A).w
 		moveq	#$12,d0
 		jsr	LoadPLC2	; load signpost	patterns
@@ -35057,7 +35069,7 @@ Obj48_Main:				; XREF: Obj48_Index
 		movea.l	$34(a0),a1		; move root boss object to a1
 		cmpi.b	#$40,ob2ndRout(a0)	; is this the second ball?
 		bhi.s	@checkthirdball		; if not, branch
-		cmpi.b	#18,obColProp(a1)	; damaged Eggman to at least 18 HP?
+		cmpi.b	#20,obColProp(a1)	; damaged Eggman to at least 20 HP?
 		bhi.s	@waitball		; if not, branch
 @delayballs:
 		move.b	ob2ndRout(a0),d0	; get current delay
@@ -35071,7 +35083,7 @@ Obj48_Main:				; XREF: Obj48_Index
 @checkthirdball:
 		cmpi.b	#$80,ob2ndRout(a0)	; is this the third ball?
 		bhi.s	@waitball		; if not, branch
-		cmpi.b	#15,obColProp(a1)	; damaged Eggman to at least 15 HP?
+		cmpi.b	#16,obColProp(a1)	; damaged Eggman to at least 16 HP?
 		bls.s	@delayballs		; if yes, spawn third ball
 @waitball:
 		rts
@@ -38437,7 +38449,12 @@ loc_19E5A:
 	if LowBossHP=1
 		move.b	#0,obColProp(a0)	; set number of	hits to	1
 	else
-		move.b	#30,obColProp(a0)	; set number of	hits to	30
+		moveq	#30,d0				; set number of	hits to	30 (casual)
+		frantic
+		beq.s	@notfrantic
+		moveq	#42,d0				; set number of	hits to	42 (frantic)
+@notfrantic:
+		move.b	d0,obColProp(a0)
 	endif
 		move.b	obColProp(a0),(HUD_BossHealth).w
 		move.w	#-1,$30(a0)
@@ -40261,8 +40278,11 @@ Touch_ChkHurt:				; XREF: Touch_ChkValue
 		cmpi.w	#$101,($FFFFFE10).w	; are we in LZ?
 		bne.s	Touch_Hurt		; if not, regular hurt
 		tst.b 	($FFFFFFFE).w		; is the =P monitor enabled?
-		bne.s	Touch_Hurt		; if yes, all good
-		jmp	KillSonic		; force kill on the gargoyle no matter what
+		beq.s	@kill			; if not, kill anyway
+		cmpi.b	#3,($FFFFFF97).w	; was third lamppost passed?
+		beq.s	Touch_Hurt		; if yes, all good
+@kill:
+		jmp	KillSonic		; force kill no matter what
 
 		tst.b	($FFFFFE2D).w	; is Sonic invincible?
 		beq.s	Touch_Hurt	; if not, branch

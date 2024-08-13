@@ -9,7 +9,7 @@
 ; GameplayStyleScreen > One Hot Day... > Story Screen > Uberhub > NHP Ring > Chapter Screen > NHP
 ; 
 ; MAIN LEVEL CYCLE
-; Uberhub > Chapter Screen > Level > Story Screen > Uberhub
+; Uberhub Level Ring > Chapter Screen > Level > Story Screen > Uberhub
 ; ---------------------------------------------------------------------------
 ResumeFlag	equ	$FFFFF601
 CurrentChapter	equ	$FFFFFFA7
@@ -88,35 +88,47 @@ Exit_TitleScreen:
 		bne.w	ReturnToUberhub_Chapter	; if not, go to Uberhub (and always show chapter screen)
 		
 		; first launch
-		jsr	Options_SetDefaults		; load default options
-		move.b	#0,(CurrentChapter).w		; set chapter to 0 (so screen gets displayed once NHP is entered for the first time)
-		move.b	#$30,(GameMode).w		; for the first time, set to Gameplay Style Screen (which then starts the intro cutscene)
+		jsr	Options_SetDefaults	; load default options
+		move.b	#0,(CurrentChapter).w	; set chapter to 0 (so screen gets displayed once NHP is entered for the first time)
+		move.b	#$30,(GameMode).w	; for the first time, set to Gameplay Style Screen (which then starts the intro cutscene)
 		rts
 ; ===========================================================================
 
 Exit_GameplayStyleScreen:
-		jsr	SRAM_SaveNow
+		jsr	SRAM_SaveNow		; save our progress now
 
 		tst.b	(ResumeFlag).w		; is this the first time the game is being played?
-		bne.w	HubRing_Options		; if not, we came from the options menu, return to it
+		beq.s	@firststart		; if yes, branch
+		
+		frantic				; was the screen exited with frantic enabled?
+		beq.s	@notfrantic		; if not, branch
+		tst.b	(Doors_Frantic).w	; have any frantic levels been beaten yet?
+		bne.s	@notfrantic		; if yes, branch
+		moveq	#$E,d0			; load FZ palette (cause tutorial boxes are built into SBZ)
+		jsr	PalLoad2		; load palette	
+		moveq	#$13,d0			; load warning text about revisiting the tutorial for frantic
+		jsr	Tutorial_DisplayHint	; VLADIK => Display hint
+@notfrantic:
+		bra.w	HubRing_Options		; we came from the options menu, return to it
+; ---------------------------------------------------------------------------	
 
+@firststart:
 		move.w	#$C3,d0			; play giant ring sound
 		btst	#6,($FFFFF604).w	; was A held as we exited?
-		beq.s	@firstflash		; if not, branch
+		beq.s	@flash			; if not, branch
 		bclr	#1,(OptionsBits).w	; disable story screens
 		bset	#2,(OptionsBits).w	; enable Skip Uberhub
 		move.w	#$D3,d0			; play peelout release sound instead
-@firstflash:
+@flash:
 		jsr	PlaySound_Special	
 		jsr 	WhiteFlash2
 		jsr 	Pal_FadeFrom
-		move.w  #$20,($FFFFF614).w
+		moveq	#30,d0
 @Wait:		move.b	#2,VBlankRoutine
 		jsr	DelayProgram
-		tst.w 	($FFFFF614).w
+		subq.b	#1,d0
 		bne.s 	@Wait
 	
-		; first launch
 		move.b	#1,(ResumeFlag).w	; set resume flag now
 		bra.w	HubRing_IntroStart	; start the intro cutscene
 ; ===========================================================================

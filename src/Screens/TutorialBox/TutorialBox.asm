@@ -580,6 +580,7 @@ Hints_List:
 	dc.l	Hint_End_AfterFrantic
 	dc.l	Hint_End_CinematicUnlock
 	dc.l	Hint_End_BlackoutTeaser
+	dc.l	Hint_FranticTutorial
 
 ; ---------------------------------------------------------------
 ; Hints Scripts
@@ -1181,6 +1182,17 @@ Hint_End_BlackoutTeaser:
 	boxtxt	"    I JUST SAID."
 	boxtxt_pause
 	boxtxt	"   YOU ARE READY."
+	boxtxt_end
+
+;		 --------------------
+Hint_FranticTutorial:
+	boxtxt	"RESPECT FOR GOING"
+	boxtxt	"WITH frantic mode!"
+	boxtxt_line
+	boxtxt	"BE SURE TO REVISIT"
+	boxtxt	"THE TUTORIAL, AS"
+	boxtxt	"SOME STUFF DIFFERS"
+	boxtxt	"FOR THIS MODE."
 	boxtxt_end
 
 ; ---------------------------------------------------------------

@@ -100,8 +100,14 @@ Exit_GameplayStyleScreen:
 		tst.b	(ResumeFlag).w		; is this the first time the game is being played?
 		bne.w	HubRing_Options		; if not, we came from the options menu, return to it
 
-		move.w	#$C3,d0
-		jsr	PlaySound_Special	; play giant ring sound
+		move.w	#$C3,d0			; play giant ring sound
+		btst	#6,($FFFFF604).w	; was A held as we exited?
+		beq.s	@firstflash		; if not, branch
+		bclr	#1,(OptionsBits).w	; disable story screens
+		bset	#2,(OptionsBits).w	; enable Skip Uberhub
+		move.w	#$D3,d0			; play peelout release sound instead
+@firstflash:
+		jsr	PlaySound_Special	
 		jsr 	WhiteFlash2
 		jsr 	Pal_FadeFrom
 		move.w  #$20,($FFFFF614).w
@@ -268,7 +274,8 @@ RunChapter:
 
 		move.b	d5,(CurrentChapter).w	; we've entered a new level, update progress chapter ID
 		move.b	#$28,(GameMode).w	; run chapter screen
-		rts
+		move.b	#$E0,d0			; fade out music
+		jmp	PlaySound_Special
 ; ===========================================================================
 
 RunStory:

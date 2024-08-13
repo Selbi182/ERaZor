@@ -17,8 +17,8 @@ Chapters_Total = 7
 ; ===========================================================================
 
 ChapterScreen:
-		move.b	#$E0,d0
-		jsr	PlaySound_Special		; fade out music
+	;	move.b	#$E0,d0
+	;	jsr	PlaySound_Special		; fade out music
 
 		jsr	PLC_ClearQueue			; Clear PLCs
 		jsr	DrawBuffer_Clear
@@ -98,6 +98,7 @@ CS_ClrObjRam:	move.l	d0,(a1)+
 
 		; load chapter number object
 		move.b	#4,($FFFFD000).w		; load chapter numbers object (<-- past Selbi, why the fuck did you make this an object???)
+		move.b	#0,($FFFFD000+obRoutine).w
 		jsr	ObjectsLoad
 		jsr	BuildSprites
 
@@ -208,7 +209,7 @@ CS_SetupEndLoop:
 CS_Loop:
 		jsr	ObjectsLoad
 		jsr	BuildSprites
-		move.b	#4,VBlankRoutine
+		move.b	#2,VBlankRoutine
 		jsr	DelayProgram
 		move.b	($FFFFF605).w,d1	; get button presses
 		andi.b	#$E0,d1			; is A, B, C, or start pressed?

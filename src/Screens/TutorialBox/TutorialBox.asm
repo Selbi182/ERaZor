@@ -601,6 +601,8 @@ mapchar macro char
 		dc.b	_font2, $27+DH_CharOffset
 	elseif \char = '/'
 		dc.b	$8+DH_CharOffset
+	elseif \char = '\'
+		dc.b	_font2, $8+DH_CharOffset
 	elseif \char = '!'
 		dc.b	$A+DH_CharOffset
 	elseif \char = '1'
@@ -804,10 +806,10 @@ Hint_3:
 	boxtxt_pause
 	boxtxt	" THE FLOOR IS LAVA!"
 	boxtxt_pause
-	boxtxt	"  WELL, SOMETIMES."
+	boxtxt	" AND IT HUNGERS FOR"
+	boxtxt	" YOU UNTIL YOU DIE!"
 	boxtxt_pause
-	boxtxt	" DON'T STAND ON THE"
-	boxtxt	"  GROUND TOO MUCH!"
+	boxtxt	"  WELL, SOMETIMES."
 	boxtxt_end
 
 ;		 --------------------
@@ -821,59 +823,70 @@ Hint_4:
 	boxtxt	"ed now:::"
 	boxtxt_next
 
-	boxtxt	"but hey; seeing"
-	boxtxt	"that you#ve made it"
-	boxtxt	"here; exploring"
-	boxtxt	"seems to be just"
-	boxtxt	"your thing:"
-	boxtxt_next
-
-	boxtxt	"so tell ya what;"
-	boxtxt	"if you want to"
-	boxtxt	"explore even more"
-	boxtxt	"here#s the link to"
-	boxtxt	"the source code"
-	boxtxt	"of sonic erazor1"
-	boxtxt_next
-
-	boxtxt	"HTTPS0//"
-	boxtxt	"ERAZOR.SELBI.CLUB"
-	boxtxt_line	
-	boxtxt	"i hope you can"	
-	boxtxt	"decipher that url:"	
-	boxtxt	"i was too lazy to"	
-	boxtxt	"add colons:"
+	boxtxt	"BUT HEY, SEEING"
+	boxtxt	"THAT YOU'VE MADE IT"
+	boxtxt	"HERE, EXPLORING"
+	boxtxt	"SEEMS TO BE JUST"
+	boxtxt	"YOUR THING!"
 	boxtxt_next
 	
-	boxtxt "and, as a little"
-	boxtxt "bonus on top; here#s"
-	boxtxt "how you can enable"
-	boxtxt "debug mode1"
+	boxtxt	"SO, WELCOME TO THE"
+	boxtxt	"ERAZOR EASTER EGG"
+	boxtxt	"INFO DUMP!"
+	boxtxt_pause
+	boxtxt	"BECAUSE OTHERWISE"
+	boxtxt	"THERE'S NO CHANCE"
+	boxtxt	"YOU'D EVER KNOW"
+	boxtxt	"THESE EXISTED..."
 	boxtxt_next
-	boxtxt "when you are in the"
-	boxtxt "final phase of the"
-	boxtxt "selbi screen; mash"
-	boxtxt "the a b c buttons"
-	boxtxt "twenty times1"
+	
+	boxtxt	"FIRST, HOW TO ENABLE"
+	boxtxt	"DEBUG MODE?"
+	boxtxt_pause
+	boxtxt	"WHEN YOU ARE IN THE"
+	boxtxt	"FINAL PHASE OF THE"
+	boxtxt	"SELBI SCREEN, MASH"
+	boxtxt	"THE abc BUTTONS"
+	boxtxt	"TWENTY TIMES!"
 	boxtxt_next
 
-	boxtxt "still not satisfied%"
+	boxtxt	"SECOND, THE GAME WAS"
+	boxtxt	"TOO EASY FOR YOU?"
 	boxtxt_pause
-	boxtxt "if you think frantic"
-	boxtxt "was too easy; try"
-	boxtxt "holding a b c at the"
-	boxtxt "same time when"
-	boxtxt "starting a level1"
+	boxtxt	"TRY HOLDING abc AT"
+	boxtxt	"THE SAME TIME WHEN"
+	boxtxt	"STARTING A LEVEL"
+	boxtxt	"FOR A TWIST!"
 	boxtxt_next
 
-	boxtxt	"have fun1 and oh yea"
-	boxtxt	"the level is still a"
-	boxtxt	"complete mess:"
+	boxtxt	"THIRD, ARE YOU A"
+	boxtxt	"SPEEDRUNNER?"
 	boxtxt_pause
-	boxtxt	"yes; i was too lazy"
-	boxtxt	"to fix that:"
+	boxtxt	"WHILE STARTING A NEW"
+	boxtxt	"GAME, HOLD a IN THE"
+	boxtxt	"CASUAL/FRANTIC MENU"
+	boxtxt	"TO AUTO-ENABLE BOTH"
+	boxtxt	"SKIP OPTIONS!"
+	boxtxt_next
+ 
+	boxtxt	"AND FINALLY, FOR MY"
+	boxtxt	"FELLOW NERDS..."
 	boxtxt_pause
-	boxtxt	"BITE ME."
+	boxtxt	"HERE'S A LINK TO"
+	boxtxt	"THE FULL SOURCE CODE"
+	boxtxt	"OF SONIC ERAZOR!"
+	boxtxt_line
+	boxtxt	"ERAZOR.SELBI.CLUB"
+	boxtxt_next
+
+	boxtxt	"HAVE FUN! AND OH YEA"
+	boxtxt	"THE LEVEL IS STILL A"
+	boxtxt	"COMPLETE MESS..."
+	boxtxt_pause
+	boxtxt	"YES, I WAS TOO LAZY"
+	boxtxt	"TO FIX THAT."
+	boxtxt_pause
+	boxtxt	"bite me:"
 	boxtxt_end
 
 ;		 --------------------

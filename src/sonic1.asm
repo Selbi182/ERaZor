@@ -4498,10 +4498,10 @@ UndoCameraShake:
 CinematicScreenFuzz:
 		btst	#6,(OptionsBits).w	; is screen fuzz enabled?
 		bne.s	@fuzzallowed		; if yes, always enable fuzz
-		cmpi.w	#$400,($FFFFFE10).w	; are we in Uberhub?
-		beq.w	Fuzz_Uberhub		; if yes, go to its custom routine
 		tst.b	($FFFFFF6E).w		; are tutorial boxes currently shown?
 		bne.w	Fuzz_TutBox		; if yes, go to its custom routine
+		cmpi.w	#$400,($FFFFFE10).w	; are we in Uberhub?
+		beq.w	Fuzz_Uberhub		; if yes, go to its custom routine
 		bra.w	CinematicScreenFuzz_End	; otherwise, disallow fuzz
 		
 @fuzzallowed:
@@ -26461,14 +26461,14 @@ UberhubEasteregg:
 		dbf	d2,@loopdestroypalette
 		
 		move.w	#$000,($FFFFFB24).w
-		move.w	#$020,($FFFFFB26).w
-		move.w	#$040,($FFFFFB28).w
-		move.w	#$060,($FFFFFB2A).w
-		move.w	#$080,($FFFFFB2C).w
-		move.w	#$0A0,($FFFFFB2E).w
-		move.w	#$0C0,($FFFFFB30).w
-		move.w	#$0E0,($FFFFFB32).w
-		move.w	#$0E0,($FFFFFB34).w
+		move.w	#$222,($FFFFFB26).w
+		move.w	#$444,($FFFFFB28).w
+		move.w	#$666,($FFFFFB2A).w
+		move.w	#$888,($FFFFFB2C).w
+		move.w	#$AAA,($FFFFFB2E).w
+		move.w	#$CCC,($FFFFFB30).w
+		move.w	#$EEE,($FFFFFB32).w
+		move.w	#$EEE,($FFFFFB34).w
 		
 		clr.w	($FFFFFB36).w
 		move.w	#$0EEE,($FFFFFB38).w

@@ -115,11 +115,11 @@ GSS_MainLoop:
 		bchg 	#5,(OptionsBits).w 	; toggle casual/frantic flag
 		moveq	#0,d0
 		bsr	GSS_LoadPal		; refresh palette
-		move.w	#$D8,d0
-		jsr	(PlaySound_Special).l	; play sound
+		move.w	#$D8,d0			; play option toggle sound
+		jsr	(PlaySound_Special).l
 
 @NoUpdate:
-		andi.b	#$F0,($FFFFF605).w	; is A, B, C, or Start pressed?
+		andi.b	#$B0,($FFFFF605).w	; is B, C, or Start pressed?
 		beq.s	GSS_MainLoop		; if not, branch
 		jmp	Exit_GameplayStyleScreen
 ; ---------------------------------------------------------------------------

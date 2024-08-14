@@ -53,7 +53,7 @@ DCvram	macro	offset
 
 ; Test if Frantic Mode is enabled in the gameplay style options
 frantic macro
-	btst	#5,($FFFFFF92).w	; 0 = casual // 1 = frantic
+	btst	#5,(OptionsBits).w	; 0 = casual // 1 = frantic
 	endm
 
 ; Diable VBlank, update sound driver only

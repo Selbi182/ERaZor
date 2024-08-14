@@ -3715,12 +3715,18 @@ Level_NotIntro:
 		bra.s	Level_TtlCard
 ; ===========================================================================
 
+; PLACE PLACE PLACE easter egg toggle
 CheckToggle_PlacePlacePlace:
-		; PLACE PLACE PLACE easter egg toggle
 		cmpi.b	#$F0,($FFFFF604).w	; exactly ABC+Start held?
-		bne.s	@noteaster		; if not, branch
+		bne.s	@notoggle		; if not, branch
 		eori.b	#1,(PlacePlacePlace).w	; toggle PLACE PLACE PLACE
-@noteaster:	rts
+@notoggle:
+		tst.b	(PlacePlacePlace).w	; is it enabled now?
+		beq.s	@end			; if not, branch
+		bset	#5,(OptionsBits).w	; force-enable frantic mode
+		bclr	#4,(OptionsBits).w	; force-disable nonstop inhuman
+
+@end:		rts
 ; ===========================================================================
 
 Level_NoTitleCard:
@@ -5102,6 +5108,7 @@ SS_ClrNemRam:	move.l	d0,(a1)+
 		moveq	#22,d0		; load dark/red palette
 @contx:		bsr	PalLoad1	; load special stage palette
 
+		bsr	CheckToggle_PlacePlacePlace
 		jsr	SS_Load		; load special stage layout
 		bsr	SS_BGAnimate
 		
@@ -5121,7 +5128,6 @@ SS_ClrNemRam:	move.l	d0,(a1)+
 @play:		bsr	PlaySound		; play special stage BG	music
 
 		; Place Place Place easter egg in special stages
-		bsr	CheckToggle_PlacePlacePlace
 		move.b	#$E3,d0			; resume at normal speed
 		tst.b	(PlacePlacePlace).w	; PLACE PLACE PLACE?
 		beq.s	@noeasteregg		; if not, branch
@@ -16244,7 +16250,14 @@ Obj34_MakeSprite:
 		cmpi.b	#4,$3F(a1)		; is current object the Oval?
 		beq.s	@noeasteregg		; if yes, branch
 		move.b	#6,obFrame(a1)		; PLACE PLACE PLACE
-		cmpi.b	#3,$3F(a1)		; is this the Act?
+
+		cmpi.b	#1,$3F(a1)		; is current object the Zone Name?
+		bne.s	@0			; if not, branch
+		cmpi.w	#$400,($FFFFFE10).w	; Uberhub?
+		bne.s	@noeasteregg		; if not, branch
+		addi.w	#$28,$30(a1)		; adjust finish x-position
+		
+@0:		cmpi.b	#3,$3F(a1)		; is this the Act?
 		bne.s	@noeasteregg		; if not, branch
 		addi.w	#$28,$30(a1)		; adjust target X position
 		subi.w	#$1A,obScreenY(a1)	; adjust Y positon
@@ -16844,14 +16857,16 @@ Obj36_Hurt:				; XREF: Obj36_SideWays; Obj36_Upright
 		cmpi.w	#$200,($FFFFFE10).w	; is level MZ1?
 		bne.w	Obj36_NotInhuman2	; if not, branch
 		btst	#4,(OptionsBits).w	; is nonstop inhuman enabled?
-		bne.w	Obj36_NotInhuman2
+		bne.w	Obj36_NotInhuman2	; if yes, branch
 
+		tst.b	(PlacePlacePlace).w		; PLACE PLACE PLACE?
+		bne.s	@kill				; if yes, git gud
 		frantic					; are we in frantic mode?
 		beq.s	@noringdrain			; if not, branch
 		ori.b	#1,($FFFFFE1D).w		; update ring counter
 		cmpi.w	#10,($FFFFFE20).w		; do you have enough rings to tank the hit?
 		bpl.s	@tankhit			; if yes, branch
-		move.w	($FFFFFE20).w,(FranticDrain).w	; drain whatever rings remain
+@kill:		move.w	($FFFFFE20).w,(FranticDrain).w	; drain whatever rings remain
 		jmp	KillSonic_Inhuman		; you hecking died noob
 @tankhit:	move.w	#10,(FranticDrain).w		; drain 10 rings
 
@@ -19337,11 +19352,10 @@ Obj12_Init:
 		move.b	#$10,obActWid(a0)
 		move.b	#6,obPriority(a0)
 		move.b	#$40,obHeight(a0)
-		move.w	obY(a0),$32(a0)			; used for the sway
-		tst.b	(PlacePlacePlace).w
-		beq.s	Obj12_Animate
-		bset	#0,obRender(a0)
-		bset	#1,obRender(a0)
+		move.w	obY(a0),$32(a0)		; used for the sway
+		tst.b	(PlacePlacePlace).w	; easter egg flag enabled?
+		beq.s	Obj12_Animate		; if not, branch
+		ori.b	#%11,obRender(a0)	; mirror and flip
 ; ---------------------------------------------------------------------------
 
 Obj12_Animate:
@@ -26054,7 +26068,10 @@ Obj03_Setup:
 		; "PLACE" text on level signs
 		cmpi.b	#7,obSubtype(a0)	; is this a regular level sign? (for an act)
 		bge.s	Obj03_Display		; if not, branch
-		bsr	SingleObjLoad		; load an object
+		tst.b	(PlacePlacePlace).w	; easter egg flag enabled?
+		beq.s	@0			; if not, branch
+		ori.b	#%11,obRender(a0)	; mirror and flip
+@0:		bsr	SingleObjLoad		; load an object
 		bne.s	Obj03_Display		; skip on fail
 		move.b	#$03,0(a1)		; load another level sign object
 		move.w	obX(a0),obX(a1)		; copy X pos
@@ -26064,7 +26081,7 @@ Obj03_Setup:
 		move.b	#2,obRoutine(a1)	; set to "Obj03_Display"
 		move.l	#Map_Obj03,obMap(a1)	; load mappings
 		move.b	#4,obPriority(a1)	; set priority
-		move.b	#4,obRender(a1)		; set render flag
+		move.b	obRender(a0),obRender(a1) ; copy render flags
 		move.b	#86,obActWid(a1)	; set display width
 		move.w	#($6200/$20),obGfx(a1)	; set art, use first palette line
 		move.b	#9,obFrame(a1)		; set to "PLACE" frame
@@ -38401,7 +38418,10 @@ Obj85_ObjData2:	dc.b 2,	0, 4, $20, $19	; routine num, animation, sprite priority
 
 Obj85_Main:				; XREF: Obj85_Index
 		move.b	#3,(CameraShake_Intensity).w	; start the boss with reduced camera shake intensity
-
+		tst.b	(PlacePlacePlace).w
+		beq.s	@noeasteregg
+		move.b	#7,(CameraShake_Intensity).w	; ramp up camera shake intensity during pinch mode
+@noeasteregg:
 		lea	Obj85_ObjData(pc),a2
 		lea	Obj85_ObjData2(pc),a3
 		movea.l	a0,a1
@@ -39156,19 +39176,19 @@ loc_1A578:
 ; ===========================================================================
 
 loc_1A57E:				; XREF: Obj84_Index
-		cmpi.b	#10,(HUD_BossHealth).w
-		bgt.s	@cont
 		moveq	#0,d0
 		move.b	obSubtype(a0),d0
-		move.w	off2_1A590(pc,d0.w),d0
-		jsr	off2_1A590(pc,d0.w)
-		bra.w	loc_1A4EA
-
-@cont:
-		moveq	#0,d0
-		move.b	obSubtype(a0),d0
+		movea.l	$34(a0),a1
+		cmpi.b	#10,obColProp(a1)
+		bls.s	@pinch
+		tst.b	(PlacePlacePlace).w
+		bne.s	@pinch
 		move.w	off_1A590(pc,d0.w),d0
 		jsr	off_1A590(pc,d0.w)
+		bra.w	loc_1A4EA
+@pinch:
+		move.w	off2_1A590(pc,d0.w),d0
+		jsr	off2_1A590(pc,d0.w)
 		bra.w	loc_1A4EA
 ; ===========================================================================
 off_1A590:	dc.w loc_1A598-off_1A590
@@ -40181,8 +40201,6 @@ Touch_Monitor_End:
 ; ===========================================================================
 
 Touch_Enemy:				; XREF: Touch_ChkValue
-		tst.b	(PlacePlacePlace).w	; PLACE PLACE PLACE?
-		bne.w	Touch_ChkHurt		; if yes, branch
 		tst.b	($FFFFFFE7).w	; is sonic immortal?
 		bne.s	Touch_KillOk	; if yes, branch
 		tst.b	($FFFFFE2D).w	; is Sonic invincible?
@@ -40192,14 +40210,16 @@ Touch_Enemy:				; XREF: Touch_ChkValue
 		cmpi.b	#$28,obAnim(a0)	; is Sonic homing?
 		beq.w	Touch_KillOk	; if yes, branch
 		cmpi.b	#$23,obAnim(a0)	; is Sonic double jumping?
-		beq.w	Touch_KillOk	; if yes, branchz
-		cmpi.w	#$A00,obInertia(a0)	; is sonic at figure-8 speed? (right)
-		bge.s	Touch_KillOk	; if yes, branch
-		cmpi.w	#-$A00,obInertia(a0)	; is sonic at figure-8 speed? (left)
-		ble.s	Touch_KillOk	; if yes, branch
-		
+		beq.w	Touch_KillOk	; if yes, branch
 		cmpi.b	#2,obAnim(a0)	; is Sonic rolling?
-		bne.w	Touch_ChkHurt	; if not, branch
+		beq.w	Touch_KillOk	; if yes, branch
+		tst.b	(PlacePlacePlace).w	; PLACE PLACE PLACE?
+		bne.w	Touch_ChkHurt		; if yes, branch
+		move.w	obInertia(a0),d1	; get inertia
+		bpl.s	@fig8			; if positive, branch
+		neg.w	d1			; make positive
+@fig8:		cmpi.w	#$A00,d1		; is Sonic at figure-8 speed?
+		blo.w	Touch_ChkHurt		; if not, hurt
 
 Touch_KillOk:
 		tst.b	obColProp(a1)
@@ -42356,6 +42376,9 @@ Obj09_UPblock:
 		move.b	#$27,($FF2BA6).l	; block off the entrance you came from 3
 		
 		move.w	#$0000,($FFFFFB40).w	; make background black
+
+		move.w	#$03A0,($FFFFFF86).w	; set initial checkpoint X-position
+		move.w	#$0800,($FFFFFF88).w	; set initial checkpoint Y-position
 
 		move.w	#$C3,d0			; play giant ring collected sound
 

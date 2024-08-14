@@ -871,8 +871,8 @@ Hint_4:
 	boxtxt	"JUST BEFORE LEVEL"
 	boxtxt	"TITLE CARDS APPEAR,"
 	boxtxt	"HOLD start & abc"
-	boxtxt	"AT ONCE TO TOGGLE"
-	boxtxt	"A TOUGH TWIST!"
+	boxtxt	"AT ONCE TO ENABLE"
+	boxtxt	"HAPPY FUN MODE!"
 	boxtxt_next
  
 	boxtxt	"AND LASTLY, FOR MY"
@@ -950,23 +950,27 @@ Hint_6:
 	boxtxt	"a + b + c"
 	boxtxt_line
 	boxtxt	"HELD AT ONCE!"
+	boxtxt_next
+
+	boxtxt	" but remember this1"
+	boxtxt_pause
+	boxtxt	"     IN CASUAL,"
+	boxtxt	" HARD PART SKIPPERS"
+	boxtxt	"    ARE FRIENDS."
+	boxtxt_pause
+	boxtxt	"  IN FRANTIC, THEY"
+	boxtxt	"   WANT YOU DEAD."
 	boxtxt_pause
 
 	dc.b	_frantic
 	boxtxt	"    frantic mode"
 	boxtxt_pause
-	boxtxt	"     IN CASUAL,"
-	boxtxt	" HARD PART SKIPPERS"
-	boxtxt	"    ARE FRIENDS!"
-	boxtxt_pause
-	boxtxt	"  IN FRANTIC, THEY"
-	boxtxt	"   WANT YOU DEAD."
-	boxtxt_next
-
+	boxtxt	"    PSSSST, HEY,"
+	boxtxt	"     PRO-TIP..."
 	boxtxt_line
-	boxtxt_line
-	boxtxt_line
-	boxtxt	"   remember this1"
+	boxtxt	"DID YOU KNOW YOU CAN"
+	boxtxt	" jumpdash downwards"
+	boxtxt	"  AS WELL?! CRAZY!"
 	boxtxt_end
 
 ;		 --------------------

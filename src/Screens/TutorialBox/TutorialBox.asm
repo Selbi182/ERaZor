@@ -131,8 +131,6 @@ DH_Continue:
 	jsr	PalCycle_Load
 
 	; palette cycle to highlight letters
-	;cmpi.b	#4,($FFFFFE10).w	; are we in uberhub?
-	;beq.s	@noletterflashing	; if yes, branch
 	btst	#7,(OptionsBits).w	; are flashy lights enabled?
 	beq.s	@noletterflashing	; if not, branch
 	move.w	($FFFFFE0E).w,d0
@@ -685,9 +683,9 @@ Hint_Pre:
 	boxtxt	"THROUGH THE LENS OF"
 	boxtxt	"AN ACTION MOVIE..."
 	boxtxt_line
-	boxtxt	"- FAST MOVEMENT"
-	boxtxt	"- CRAZY CHALLENGES"
-	boxtxt	"- AND explosions!"
+	boxtxt	"WICKED CHALLENGES,"
+	boxtxt	"SPEEDY MOVEMENT,"
+	boxtxt	"AND explosions!"
 	boxtxt_next
 
 	boxtxt	"BECAUSE TEARS OF"
@@ -704,7 +702,9 @@ Hint_Pre:
 	boxtxt	"IN FRONT OF THE"
 	boxtxt	"INFORMATION MONITORS"
 	boxtxt	"AND PRESS a TO BRING"
-	boxtxt	"UP USEFUL TIPS!"
+	boxtxt	"UP INFORMATION ABOUT"
+	boxtxt	"GAME MECHANICS AND"
+	boxtxt	"OTHER USEFUL TIPS!"
 	boxtxt_next
 
 	boxtxt_line
@@ -871,8 +871,8 @@ Hint_4:
 	boxtxt	"JUST BEFORE LEVEL"
 	boxtxt	"TITLE CARDS APPEAR,"
 	boxtxt	"HOLD start & abc"
-	boxtxt	"AT ONCE TO ENABLE"
-	boxtxt	"HAPPY FUN MODE!"
+	boxtxt	"AT ONCE TO TOGGLE"
+	boxtxt	"TRUE BS MODE!"
 	boxtxt_next
  
 	boxtxt	"AND LASTLY, FOR MY"
@@ -885,12 +885,12 @@ Hint_4:
 	boxtxt	"erazor:selbi:club"
 	boxtxt_next
 
-	boxtxt	"HAVE FUN! AND OH YEA"
+	boxtxt	"HAVE FUN! OH BTW,"
 	boxtxt	"THE LEVEL IS STILL A"
 	boxtxt	"COMPLETE MESS..."
 	boxtxt_pause
 	boxtxt	"YES, I WAS TOO LAZY"
-	boxtxt	"TO FIX THAT."
+	boxtxt	"TO FIX IT."
 	boxtxt_pause
 	boxtxt	"bite me:"
 	boxtxt_end

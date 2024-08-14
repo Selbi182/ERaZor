@@ -44,7 +44,7 @@ QuickLevelSelect = 0
 QuickLevelSelect_ID = -1
 ; ------------------------------------------------------
 DebugModeDefault = 1
-DebugSurviveNoRings = 0
+DebugSurviveNoRings = 1
 ; ------------------------------------------------------
 DoorsAlwaysOpen = 0
 LowBossHP = 0
@@ -524,7 +524,7 @@ locret_119C:
 
 ; BlackBars::
 BlackBars.GrowSize = 2
-BlackBars.MaxHeight = 40
+BlackBars.MaxHeight = 36
 ; ---------------------------------------------------------------------------
 
 NullInt:
@@ -720,13 +720,14 @@ BlackBars.GHPFrantic = 60
 BlackBars.GHP:
 		tst.w	($FFFFF63A).w			; is game paused?
 		bne.s	@timeleft			; if yes, don't affect height
-		
 		cmpi.b	#6,($FFFFD024).w		; is Sonic dying?
 		bhs.s	BlackBars_Show			; if yes, show regular black bars
 		
 		move.b	#BlackBars.GHPCasual,d0		; set casual reset time
 		frantic					; are we in Frantic mode?
 		beq.s	@notfrantic			; if not, branch
+		tst.b	($FFFFF7AA).w			; fighting against boss?
+		bne.s	@notfrantic			; if yes, branch
 		move.b	#BlackBars.GHPFrantic,d0	; set frantic reset time
 @notfrantic:
 		move.b	d0,BlackBars.GHPTimerReset	; set reset time
@@ -763,9 +764,27 @@ BlackBars_Selbi:
 ; ---------------------------------------------------------------------------
 
 BlackBars_Intro:
-		tst.b	($FFFFFFB7).w
-		beq.w	BlackBars_DontShow
-		move.w	#30,BlackBars.TargetHeight
+		tst.b	($FFFFFFB7).w			; has chase sequence started?
+		bne.s	@chase				; if yes, branch
+
+		tst.w	BlackBars.Height		; did the cutscene just start?
+		bne.s	@initdone			; if not, branch
+		move.w	#224/2,d0			; set initial black bars to cover the full screen
+		move.w	d0,BlackBars.Height
+		move.w	d0,BlackBars.TargetHeight
+		moveq	#$D,d0				; load real GHZ2 palette now
+		bsr	PalLoad2
+
+@initdone:
+		cmpi.w	#36,BlackBars.Height		; did we reach the target position??
+		bls.s	@show				; if not, branch
+		btst	#0,($FFFFFE05).w
+		bne.s	@show
+		subq.w	#1,BlackBars.TargetHeight	; shrink black bars
+@show:		bra.w	BlackBars_ShowCustom		; show bars
+	
+@chase:
+		move.w	#36,BlackBars.TargetHeight
 		bra.w	BlackBars_ShowCustom
 ; ---------------------------------------------------------------------------
 
@@ -2504,6 +2523,7 @@ PalPointers:
 	dc.l Pal_SpecialEaster,	$FB00 001F	; $16
 	dc.l Pal_LZWater2_Evil,	$FB00 001F	; $17
 	dc.l Pal_SBZ2,		$FB20 0005	; $18
+	dc.l Pal_Black,		$FB20 0017	; $19
 	even
 
 ; ---------------------------------------------------------------------------
@@ -2540,6 +2560,10 @@ Pal_BCutscene:		incbin	palette\bombcutscene.bin
 Pal_SpecialEaster:	incbin	palette\specialeaster.bin
 Pal_LZWater2_Evil:	incbin	palette\lz_uw2_evil.bin
 Pal_ERaZorBanner:	incbin	palette\ERaZor.bin
+Pal_Black:
+	rept $10*4
+		dc.w	$0000
+	endr
 
 ; ---------------------------------------------------------------------------
 ; Subroutine to	delay the program by ($FFFFF62A) frames
@@ -2806,6 +2830,7 @@ Sega_WaitFrames:
 		
 		display_enable
 		VBlank_UnsetMusicOnly
+; ---------------------------------------------------------------------------
 
 Sega_WaitPallet:
 		lea	($FFFFCC00).w,a1
@@ -2820,18 +2845,26 @@ Sega_WaitPallet:
 @0:
 		move.b	#2,VBlankRoutine
 		bsr	DelayProgram
-		andi.b	#$F0,($FFFFF605).w ; is	A, B, C, or Start pressed?
-		bne.w	Sega_GotoTitle	; if yes, branch
+		move.b	($FFFFF605).w,d1	; get button presses
+		andi.w	#$F0,d1			; A, B, C, or start pressed?
+		bne.w	Sega_GotoTitle		; if yes, exit early
 		bsr	PalCycle_Sega
 		bne.s	Sega_WaitPallet
+; ---------------------------------------------------------------------------
 
+Sega_SegaChant:
 		move.b	#$E1,d0			; play "SEGA" sound...
 		bsr	PlaySound_Special 	; ...featuring the beautiful voice of yours truly
-		
+
 		move.w	#120-1,d0		; delay after the angel's voice has gone silent
-@Wait_SegaPCM:	move.b	#$14,VBlankRoutine
+@Wait_SegaPCM:	move.b	#2,VBlankRoutine
 		bsr	DelayProgram
+		moveq	#0,d1
+		move.b	($FFFFF605).w,d1	; get button presses
+		andi.w	#$F0,d1			; A, B, C, or start pressed?
+		bne.w	Sega_GotoTitle		; if yes, exit early
 		dbf	d0,@Wait_SegaPCM
+; ---------------------------------------------------------------------------
 
 		move.b	#30,($FFFFFFBD).w	; frames to wait after SEGA sound
 		move.w	#150,($FFFFF614).w	; frames to wait after crash sound
@@ -2889,17 +2922,21 @@ Sega_NoSound:
 		bsr	DelayProgram
 		tst.w	($FFFFF614).w
 		beq.s	Sega_GotoTitle
-		andi.b	#$80,($FFFFF605).w ; is	Start button pressed?
-		beq.w	Sega_WaitEnd	; if not, branch
+		move.b	($FFFFF605).w,d0	; get button presses
+		andi.w	#$F0,d0			; A, B, C, or start pressed?
+		beq.w	Sega_WaitEnd		; if not, loop
+; ---------------------------------------------------------------------------
 
 Sega_GotoTitle:
 		clr.b	($FFFFFFBE).w
 		jmp	Exit_SegaScreen
-; ===========================================================================
 
+
+; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Title	screen
 ; ---------------------------------------------------------------------------
+
 ; TitleScreen::
 TitleScreen:				; XREF: GameModeArray
 		move.b	#$E0,d0
@@ -4675,7 +4712,26 @@ Fuzz_TutBox:
 		tst.b	(GameMode).w	; are we in the pre sequence?
 		bmi.w	@end		; if yes, branch
 		
-		; background deformation during a level
+		; code blatantly stolen from fuzzy :3
+		move.w	($FFFFFE0E).w,d5 	; timer
+		lea	($FFFFCC00).w,a1	; scroll location
+		move.w	#(224/2)-1,d2		; how many lines we want
+@SmegmaTheSequel:
+		move.b	d5,d0
+		jsr	CalcSine
+		asr.w	#5,d1
+		btst	#0,d5
+		beq.s 	@NoNegation
+		neg.l	d1
+@NoNegation:	addq.w 	#1,d5
+		move.w	d1,(a1)+
+		move.w	d1,(a1)+
+		addq.l	#4,a1
+		dbf	d2,@SmegmaTheSequel
+		rts
+
+; ---------------------------------------------------------------------------
+; this was the old effect, it got replaced because it was way too distracting
 		lea	($FFFFCC00).w,a1
 		move.w	#(224/1)-1,d3
 		jsr	RandomNumber
@@ -6262,7 +6318,8 @@ MainLoadBlockLoad:			; XREF: Level; EndingSequence
 MLB_NotBCut:
 		cmpi.w	#$001,($FFFFFE10).w	; is level GHZ2?
 		bne.s	MLB_NotGHZ2		; if not, branch
-		moveq	#$D,d0			; use GHZ2 palette
+	;	moveq	#$D,d0			; use GHZ2 palette
+		moveq	#$19,d0			; use blackened palette
 
 MLB_NotGHZ2:
 		cmpi.w	#$002,($FFFFFE10).w	; is level GHZ3?
@@ -6543,7 +6600,8 @@ loc_6ED0:
 		move.b	#1,($FFFFF7AA).w ; lock	screen
 		addq.b	#2,($FFFFF742).w
 		moveq	#$11,d0
-		bra.w	LoadPLC		; load boss patterns
+		bsr.w	LoadPLC		; load boss patterns
+		move.w	BlackBars.BaseHeight,BlackBars.TargetHeight
 ; ===========================================================================
 
 locret_6EE8:
@@ -6940,7 +6998,7 @@ Resize_SLZ2boss2:
 		moveq	#16+1,d0		; set number of	hits to	16 (casual)
 		frantic
 		beq.s	@notfrantic
-		moveq	#24+1,d0		; set number of	hits to	24 (frantic)
+		moveq	#20+1,d0		; set number of	hits to	20 (frantic)
 @notfrantic:
 		move.b	d0,(BossHealth).w	; set lives
 	endif	
@@ -12765,7 +12823,11 @@ Obj4B_NotGHZ1:
 		cmpi.w	#$001,($FFFFFE10).w	; is this the intro cutscene?
 		bne.s	Obj4B_NotGHZ2		; if not, branch
 		clr.w	($FFFFF73A).w		; reset BG deformation
+		movem.l	d7/a1-a3,-(sp)
+		moveq	#4,d0			; load NHP palette
+		jsr	PalLoad2
 		jsr	WhiteFlash3		; make white flash
+		movem.l	(sp)+,d7/a1-a3
 
 Obj4B_NotGHZ2:
 		clr.b	($FFFFFFE7).w
@@ -13395,12 +13457,11 @@ Obj2E_ChkS:
 
 		cmpi.w	#$200,($FFFFFE10).w	; is this Ruined Place?
 		bne.s	@notruinedplace		; if not, branch
-
-		cmpi.w	#100,($FFFFFE20).w	; do you have at least 100 rings?
-		bhs.s	@notanoob		; if yes, branch
-		move.w	#100,($FFFFFE20).w	; give 100 rings (you'll probably still die, but at least it isn't instant)
+		frantic
+		beq.s	@noob
+		addi.w	#100,($FFFFFE20).w	; give 100 rings
 		ori.b	#1,($FFFFFE1D).w	; update rings counter
-@notanoob:
+@noob:
 		movem.l	d0-a1,-(sp)		; backup
 
 		; open up entryway and block off the way back offscreen
@@ -23134,6 +23195,7 @@ Obj5D_Main:				; XREF: Obj5D_Index
 		move.b	#$10,obActWid(a0)
 		move.b	#4,obPriority(a0)
 		move.w	#$4000|($7400/$20),obGfx(a0)
+		move.w	obX(a0),$34(a0)
 		cmpi.b	#$18,(GameMode).w		; is screen mode ending sequence?
 		bne.s	Obj5D_Action			; if not, branch
 		move.w	#$0000|($7400/$20),obGfx(a0)	; alternate palette line
@@ -23150,15 +23212,27 @@ Obj5D_Action:				; XREF: Obj5D_Index
 		bra.w	Obj5D_ChkDel		; if not, no spinni :(
 
 @snp:
-		tst.b	($FFFFFFA9).w
-		beq.s	@early
+		tst.b	($FFFFFFA9).w		; are we before the fight?
+		beq.s	@early			; if yes, branch
 		cmpi.b	#2,($FFFFFFA9).w	; is Sonic fighting against the walking bomb?
-		beq.s	@fanison		; if yes, force fan on
-		bra.w	Obj5D_ChkDel
+		bne.w	Obj5D_ChkDel		; if not, branch
+		frantic
+		beq.s	@fanison
+		moveq	#20,d0
+		sub.b	(BossHealth).w,d0
+		lsl.w	#2,d0
+		btst	#0,obRender(a0)
+		bne.s	@0
+		neg.w	d0
+@0:
+		add.w	$34(a0),d0
+		move.w	d0,obX(a0)
+		
+		bra.s	@fanison		; if yes, force fan on
 @early:
 		tst.b	($FFFFFFE1).w		; has P monitor been destroyed?
 		bne.w	Obj5D_ChkDel		; if yes, disable fan
-		
+
 @fanison:
 		move.b	#0,$30(a0)		; slow animation	
 		tst.w	($FFFFD030).w		; does Sonic have invincibility frames left?
@@ -26567,8 +26641,10 @@ Obj07_Animate:
 		cmpi.w	#$280,d0
 		bhi.w	DeleteObject
 		tst.w	($FFFFFE02).w		; is level set to restart?
-		bne.w	DeleteObject		; if yes, delete
-		
+		beq.w	@0			; if not, branch
+		tst.b	($FFFFF600).w		; are we in level pre sequence?
+		bmi.w	DeleteObject		; if yes, delete
+@0:
 		bsr	Obj07_CheckVisible
 		bne.s	@dodisplay
 		rts
@@ -26876,6 +26952,7 @@ Obj01_NotGHZ1_Main:				; Intro Cutscene of GHZ2
 		tst.b	($FFFFFFB7).w			; was flag 1 set? 
 		bne.s	Obj01_NotB7			; if yes, branch
 		move.b	#1,($FFFFFFB7).w		; set flag one
+		move.b	#45,($FFFFFFB2).w	; set ScrollHoriz delay and jumpdash flag 2
 		move.w	#$900,obInertia(a0)		; set Sonic's speed
 		move.w	#$900,($FFFFF760).w 		; Sonic's top speed
 		jsr	SingleObjLoad
@@ -27021,20 +27098,6 @@ S_D_WF2:
 		beq.s	S_D_NoInhumanCrush	; if yes, branch
 		subq.b	#1,($FFFFFFB1).w	; sub 1 from counter
 		bpl.s	S_D_NoInhumanCrush	; is counter now empty? if not, branch
-		cmpi.w	#$001,($FFFFFE10).w	; is level GHZ2?
-		bne.s	S_D_NotGHZ2_PalX	; if not, branch
-		lea	(Pal_GHZ).l,a3		; load GHZ1 palette to a3
-		lea	($FFFFFB20).w,a4	; move palette row 3 to a4
-		moveq	#0,d5			; make sure d1 is empty
-		move.w	#$18,d5			; set loop time ($18 colours)
-
-S_D_GHZ2PalChg_Loop:
-		move.l	(a3)+,(a4)+		; set new colour
-		dbf	d5,S_D_GHZ2PalChg_Loop	; repeat process for number in d1
-		move.w	#$0000,($FFFFFB02).w
-		bra.s	S_D_NoInhumanCrush	; skip
-
-S_D_NotGHZ2_PalX:
 		clr.b	($FFFFFFAE).w		; clear WF2 flag
 
 S_D_NoInhumanCrush:
@@ -38519,20 +38582,24 @@ loc_19EA8:				; XREF: off_19E80
 		tst.w	$30(a0)
 		bpl.s	loc_19F10
 		clr.w	$30(a0)
+
 		jsr	(RandomNumber).l
-		andi.w	#$14,d0		; changed from $C
+		andi.w	#$F,d0		; changed from $C
+		frantic
+		bne.s	@frantic
+		andi.w	#7,d0		; don't use full list in casual
+@frantic:
+		add.w	d0,d0
+		add.w	d0,d0
 		move.w	d0,d1
 		addq.w	#2,d1
-		tst.l	d0		; adds small chance for Robotnik's position in the pillars to swap
-		bpl.s	loc_19EC6
-		exg	d1,d0
+	;	tst.l	d0		; adds small chance for Robotnik's position in the pillars to swap
+	;	bpl.s	loc_19EC6
+	;	exg	d1,d0
 
 loc_19EC6:
-		lea	Obj85_PillarPossibilties_Casusal(pc),a1
-		frantic
-		beq.s	@0
-		lea	Obj85_PillarPossibilties_Frantic(pc),a1
-@0:		move.w	(a1,d0.w),d0	; the pillar Robotnik will be in
+		lea	Obj85_PillarPossibilties(pc),a1
+		move.w	(a1,d0.w),d0	; the pillar Robotnik will be in
 		move.w	(a1,d1.w),d1	; the other (empty) pillar
 		move.w	d0,$30(a0)
 		moveq	#-1,d2
@@ -38656,6 +38723,7 @@ loc_19FBC:
 ; ===========================================================================
 ; possible pillar selections
 ; 2-based, two words each
+; first pillar is the one Eggman is hiding in
 ; in order from left to right: 4, 0, 6, 2
 pillar1 = 4
 pillar2 = 0
@@ -38668,21 +38736,25 @@ pillar4 = 2
 ;		dc.w pillar3, pillar2
 
 ; word_19FD6:
-Obj85_PillarPossibilties_Casusal:
-		dc.w pillar2, pillar4
-		dc.w pillar4, pillar2
-		dc.w pillar4, pillar1
-		dc.w pillar1, pillar3
-		dc.w pillar3, pillar1
-		dc.w pillar3, pillar2
-
-Obj85_PillarPossibilties_Frantic:
-		dc.w pillar1, pillar2	; 00
-		dc.w pillar1, pillar3	; 04
+Obj85_PillarPossibilties:
+		dc.w pillar2, pillar4	; 00
+		dc.w pillar4, pillar2	; 04
 		dc.w pillar1, pillar4	; 08
-		dc.w pillar2, pillar3	; 0C
-		dc.w pillar2, pillar4	; 10
-		dc.w pillar3, pillar4	; 14
+		dc.w pillar4, pillar1	; 0C
+		dc.w pillar1, pillar3	; 10
+		dc.w pillar3, pillar1	; 14
+		dc.w pillar2, pillar3	; 18
+		dc.w pillar3, pillar2	; 1C
+
+		; extra possibilities for frantic only
+		dc.w pillar1, pillar2
+		dc.w pillar2, pillar1
+		dc.w pillar3, pillar4
+		dc.w pillar4, pillar3
+		dc.w pillar1, pillar4
+		dc.w pillar4, pillar1
+		dc.w pillar2, pillar3
+		dc.w pillar3, pillar2
 
 ; ===========================================================================
 

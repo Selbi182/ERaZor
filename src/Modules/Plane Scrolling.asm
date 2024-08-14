@@ -1303,8 +1303,10 @@ SV_Lamppost:
 SV_NotLZ2:
 		cmpi.w	#$001,($FFFFFE10).w	; is level GHZ2 (intro level)?
 		bne.s	SV_NotGHZ2		; if not, branch
-		cmpi.b	#3,($FFFFFFB4).w	; is sonic jumped on a spring 3 times yet?
-		blt.s	SV_NotGHZ2		; if not, branch
+	;	cmpi.b	#3,($FFFFFFB4).w	; is sonic jumped on a spring 3 times yet?
+	;	blt.s	SV_NotGHZ2		; if not, branch
+		cmpi.w	#$19C0,($FFFFF700).w	; is camera at the part yet?
+		blo.s	SV_NotGHZ2		; if not, branch
 		rts				; don't move camera vertically
 ; ===========================================================================
 

@@ -17,8 +17,8 @@ Chapters_Total = 7
 ; ===========================================================================
 
 ChapterScreen:
-	;	move.b	#$E0,d0
-	;	jsr	PlaySound_Special		; fade out music
+		move.b	#$E0,d0
+		jsr	PlaySound_Special		; fade out music
 
 		jsr	PLC_ClearQueue			; Clear PLCs
 		jsr	DrawBuffer_Clear
@@ -211,8 +211,10 @@ CS_Loop:
 		jsr	BuildSprites
 		move.b	#2,VBlankRoutine
 		jsr	DelayProgram
+		tst.b	($FFFFF604).w		; is start HELD?
+		bmi.s	CS_Exit			; if yes, immediately exit
 		move.b	($FFFFF605).w,d1	; get button presses
-		andi.b	#$E0,d1			; is A, B, C, or start pressed?
+		andi.b	#$70,d1			; is A, B, or C pressed?
 		bne.s	CS_Exit			; if yes, branch
 		tst.w	($FFFFF614).w		; test wait time
 		bne.s	CS_Loop			; if it isn't over, loop

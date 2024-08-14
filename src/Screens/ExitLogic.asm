@@ -113,24 +113,29 @@ Exit_GameplayStyleScreen:
 ; ---------------------------------------------------------------------------	
 
 @firststart:
-		move.w	#$C3,d0			; play giant ring sound
+		move.b	#1,(ResumeFlag).w	; set resume flag now
+
 		btst	#6,($FFFFF604).w	; was A held as we exited?
-		beq.s	@flash			; if not, branch
-		bclr	#1,(OptionsBits).w	; disable story screens
-		bset	#2,(OptionsBits).w	; enable Skip Uberhub
-		move.w	#$D3,d0			; play peelout release sound instead
-@flash:
+		bne.s	@speedrun		; if yes, branch
+		move.w	#$C3,d0			; play giant ring sound
 		jsr	PlaySound_Special	
 		jsr 	WhiteFlash2
 		jsr 	Pal_FadeFrom
-		moveq	#30,d0
+		moveq	#60,d0
 @Wait:		move.b	#2,VBlankRoutine
 		jsr	DelayProgram
 		subq.b	#1,d0
 		bne.s 	@Wait
-	
-		move.b	#1,(ResumeFlag).w	; set resume flag now
 		bra.w	HubRing_IntroStart	; start the intro cutscene
+; ---------------------------------------------------------------------------	
+
+@speedrun:
+		jsr 	WhiteFlash2
+		bclr	#1,(OptionsBits).w	; disable story screens
+		bset	#2,(OptionsBits).w	; enable Skip Uberhub
+		move.w	#$D3,d0			; play peelout release sound
+		jsr	PlaySound_Special
+		bra.w	HubRing_NHP		; go straight to NHP
 ; ===========================================================================
 
 Exit_OptionsScreen:
@@ -286,8 +291,7 @@ RunChapter:
 
 		move.b	d5,(CurrentChapter).w	; we've entered a new level, update progress chapter ID
 		move.b	#$28,(GameMode).w	; run chapter screen
-		move.b	#$E0,d0			; fade out music
-		jmp	PlaySound_Special
+		rts
 ; ===========================================================================
 
 RunStory:

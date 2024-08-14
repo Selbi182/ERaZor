@@ -10,7 +10,7 @@
 
 		dc.w	$0078, $006E	; lz 1
 		dc.w	$0318, $02AC	; LZ 2 (Labyrinthy Place)
-		dc.w	$1C32, $05EC	; lz 3
+		dc.w	$00B4, $078C	; LZ 2 (Labyrinthy Place fast forward)
 		dc.w	$0B80, $0000	; lz 4
 
 		dc.w	$01AF, $026C	; MZ 1 (Ruined Place)

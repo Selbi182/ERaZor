@@ -131,8 +131,8 @@ DH_Continue:
 	jsr	PalCycle_Load
 
 	; palette cycle to highlight letters
-	cmpi.b	#4,($FFFFFE10).w	; are we in uberhub?
-	beq.s	@noletterflashing	; if yes, branch
+	;cmpi.b	#4,($FFFFFE10).w	; are we in uberhub?
+	;beq.s	@noletterflashing	; if yes, branch
 	btst	#7,(OptionsBits).w	; are flashy lights enabled?
 	beq.s	@noletterflashing	; if not, branch
 	move.w	($FFFFFE0E).w,d0
@@ -817,67 +817,72 @@ Hint_3:
 Hint_4:
 	boxtxt	"0Adw193q4HG5!'%q6/%4"
 	boxtxt	"8ETRqZ91/D' we03()a)"
+	boxtxt	"8%4mh/vq%cio!7e$cr/"
 	boxtxt	"( B)f=)A=2h3401`?!G"
-	boxtxt	"#D )26aEd0a..oh my g"
-	boxtxt	"od what have you don"
-	boxtxt	"e everything is ruin"
-	boxtxt	"ed now:::"
+	boxtxt	"#x )26aEd0a..oh mY g"
+	boxtxt	"Od wHat HavE yOu Don"
+	boxtxt	"e eVERythIng iS rUin"
+	boxtxt	"ED Now:::"
 	boxtxt_next
 
-	boxtxt	"BUT HEY, SEEING"
-	boxtxt	"THAT YOU'VE MADE IT"
-	boxtxt	"HERE, EXPLORING"
-	boxtxt	"SEEMS TO BE JUST"
-	boxtxt	"YOUR THING!"
+	boxtxt	"BUT HEY, YOU'VE MADE"
+	boxtxt	"IT THIS FAR, SO YOU"
+	boxtxt	"CLEARLY CAN'T GET"
+	boxtxt	"ENOUGH OF ERAZOR!"
+	boxtxt_pause
+	boxtxt	"WELL, LUCKY FOR YOU,"
+	boxtxt	"YOU'VE COME TO"
+	boxtxt	"THE RIGHT PLACE!"
 	boxtxt_next
 	
-	boxtxt	"SO, WELCOME TO THE"
-	boxtxt	"ERAZOR EASTER EGG"
-	boxtxt	"INFO DUMP!"
+	boxtxt	"   WELCOME TO THE"
+	boxtxt	"easter egg info dump"
 	boxtxt_pause
-	boxtxt	"BECAUSE OTHERWISE"
+	boxtxt	"...BECAUSE OTHERWISE"
 	boxtxt	"THERE'S NO CHANCE"
-	boxtxt	"YOU'D EVER KNOW"
-	boxtxt	"THESE EXISTED..."
+	boxtxt	"IN HELL YOU'D EVER"
+	boxtxt	"KNOW THESE WERE IN"
+	boxtxt	"THE GAME."
 	boxtxt_next
 	
-	boxtxt	"FIRST, HOW TO ENABLE"
-	boxtxt	"DEBUG MODE?"
+	boxtxt	"FIRST OFF, HOW TO"
+	boxtxt	"ENABLE debug mode?"
 	boxtxt_pause
-	boxtxt	"WHEN YOU ARE IN THE"
+	boxtxt	"WHEN YOU'RE IN THE"
 	boxtxt	"FINAL PHASE OF THE"
 	boxtxt	"SELBI SCREEN, MASH"
 	boxtxt	"THE abc BUTTONS"
 	boxtxt	"TWENTY TIMES!"
 	boxtxt_next
 
-	boxtxt	"SECOND, THE GAME WAS"
-	boxtxt	"TOO EASY FOR YOU?"
-	boxtxt_pause
-	boxtxt	"TRY HOLDING abc AT"
-	boxtxt	"THE SAME TIME WHEN"
-	boxtxt	"STARTING A LEVEL"
-	boxtxt	"FOR A TWIST!"
-	boxtxt_next
-
-	boxtxt	"THIRD, ARE YOU A"
-	boxtxt	"SPEEDRUNNER?"
+	boxtxt	"SECONDLY, ARE YOU A"
+	boxtxt	"speedrunner?"
 	boxtxt_pause
 	boxtxt	"WHILE STARTING A NEW"
 	boxtxt	"GAME, HOLD a IN THE"
 	boxtxt	"CASUAL/FRANTIC MENU"
-	boxtxt	"TO AUTO-ENABLE BOTH"
+	boxtxt	"TO AUTO-ENABLE ALL"
 	boxtxt	"SKIP OPTIONS!"
 	boxtxt_next
+
+	boxtxt	"THIRDLY, THE GAME"
+	boxtxt	"WAS STILL too easy?"
+	boxtxt_pause
+	boxtxt	"JUST BEFORE LEVEL"
+	boxtxt	"TITLE CARDS APPEAR,"
+	boxtxt	"HOLD start & abc"
+	boxtxt	"AT ONCE TO TOGGLE"
+	boxtxt	"A TOUGH TWIST!"
+	boxtxt_next
  
-	boxtxt	"AND FINALLY, FOR MY"
+	boxtxt	"AND LASTLY, FOR MY"
 	boxtxt	"FELLOW NERDS..."
 	boxtxt_pause
 	boxtxt	"HERE'S A LINK TO"
 	boxtxt	"THE FULL SOURCE CODE"
 	boxtxt	"OF SONIC ERAZOR!"
 	boxtxt_line
-	boxtxt	"ERAZOR.SELBI.CLUB"
+	boxtxt	"erazor:selbi:club"
 	boxtxt_next
 
 	boxtxt	"HAVE FUN! AND OH YEA"

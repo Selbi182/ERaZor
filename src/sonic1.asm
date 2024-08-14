@@ -1132,8 +1132,8 @@ Pause_MainLoop:
 		bsr	DelayProgram
 		
 		; return to Uberhub on Pause+A
-		btst	#6,($FFFFF605).w 	; is button A pressed?
-		beq.s	Pause_ChkBC		; if not, branch
+		cmpi.b	#$40,($FFFFF604).w 	; is exactly A pressed?
+		bne.s	Pause_ChkBC		; if not, branch
 		bsr.s	Pause_Restore		; restore from pause (grayscale palette, etc.)
 		cmpi.w	#$400,($FFFFFE10).w	; are we already in Uberhub?
 		beq.s	@uberhubception		; if yes, branch
@@ -2503,6 +2503,7 @@ PalPointers:
 	dc.l Pal_BCutscene,	$FB20 001F	; $15
 	dc.l Pal_SpecialEaster,	$FB00 001F	; $16
 	dc.l Pal_LZWater2_Evil,	$FB00 001F	; $17
+	dc.l Pal_SBZ2,		$FB20 0005	; $18
 	even
 
 ; ---------------------------------------------------------------------------
@@ -3579,11 +3580,11 @@ Level_ClrVars3:	move.l	d0,(a1)+
 		bra.s	Level_LoadPal		; branch
 
 Level_LZWaterSetup:
-		tst.b	($FFFFFF97).w		; did the player die before the first checkpoint?
-		bne.s	@cont			; if not, branch
-		clr.b	($FFFFFFFE).w		; otherwise, make sure =P state is off
+	;	tst.b	($FFFFFF97).w		; did the player die before the first checkpoint?
+	;	bne.s	@cont			; if not, branch
+	;	clr.b	($FFFFFFFE).w		; otherwise, make sure =P state is off
 
-@cont:
+;@cont:
 		move.l	#WaterTransition_LZ,($FFFFF610).w
 		move.w	#$8014,(a6)
 		moveq	#0,d0
@@ -3665,39 +3666,24 @@ Level_NoMusic:
 		jsr	PlaySound
 
 Level_NoMusic2:
-; ---------------------------------
-
 		clr.b	($FFFFFF98).w
 		clr.b	($FFFFFF99).w
 		clr.w	($FFFFFFCE).w	; clear extended camera counter
+
+		bsr	LevelSizeLoad
 		bsr	ClearEverySpecialFlag
 		
+; ---------------------------------
 @runplc:	; run PLC now to avoid breaching the queue limit
 		move.b	#$C,VBlankRoutine
 		bsr	DelayProgram
 		bsr	PLC_Execute
 		tst.l	PLC_Pointer	; are there any items in the pattern load cue?
 		bne.s	@runplc		; if yes, branch
-
-		; Place Place Place easter egg in levels
-		move.b	#0,(PlacePlacePlace).w	; clear easter egg flag
-		cmpi.b	#$70,($FFFFF604).w	; exactly ABC held?
-		bne.s	@noeasteregg		; if not, branch
-		move.b	#1,(PlacePlacePlace).w	; PLACE PLACE PLACE
-		clr.w	($FFFFFE20).w		; clear rings
-		bra.s	@fastmusic		; always use fast music
-@noeasteregg:
-		move.b	#$E3,d0			; resume at normal speed
-		bra	@setmusicspeed ; this sucked.
-		frantic				; are we in frantic?
-		beq.s	@setmusicspeed		; if not, branch
-		cmpi.w	#$400,($FFFFFE10).w	; are we in Uberhub?
-		bne.s	@setmusicspeed		; if not, branch
-@fastmusic:	move.w	#$E2,d0			; speed up music in frantic Uberhub
-@setmusicspeed:	jsr	PlaySound_Special	; set new music speed
+; ---------------------------------
 
 		cmpi.w	#$001,($FFFFFE10).w	; are we in the intro cutscene?
-		bne.w	@notintrocutscene
+		bne.w	Level_NotIntro
 		VBlank_SetMusicOnly
 		vram	$D700
 		lea	(ArtKospM_ExplBall).l,a0
@@ -3706,8 +3692,9 @@ Level_NoMusic2:
 		jsr	LoadPLC			; load explosion patterns
 		VBlank_UnsetMusicOnly
 		bra.s	Level_NoTitleCard
+; ===========================================================================
 		
-@notintrocutscene:
+Level_NotIntro:
 		cmpi.w	#$502,($FFFFFE10).w	; is this Finalor Place?
 		bne.s	@notfinalor		; if not, branch
 		moveq	#$1F,d0
@@ -3728,21 +3715,41 @@ Level_NoMusic2:
 		bra.s	Level_TtlCard
 ; ===========================================================================
 
+CheckToggle_PlacePlacePlace:
+		; PLACE PLACE PLACE easter egg toggle
+		cmpi.b	#$F0,($FFFFF604).w	; exactly ABC+Start held?
+		bne.s	@noteaster		; if not, branch
+		eori.b	#1,(PlacePlacePlace).w	; toggle PLACE PLACE PLACE
+@noteaster:	rts
+; ===========================================================================
+
 Level_NoTitleCard:
 		moveq	#3,d0
 		bsr	PalLoad2	; load Sonic's palette line
 
 Level_TtlCard:
+		; Place Place Place easter egg in levels
+		bsr	CheckToggle_PlacePlacePlace
+		tst.b	(PlacePlacePlace).w	; PLACE PLACE PLACE?
+		beq.s	@noeasteregg		; if not, branch
+		clr.w	($FFFFFE20).w		; clear rings
+		move.w	#$E2,d0			; speed up music
+		bra.s	@setmusicspeed		; always use fast music
+@noeasteregg:
+		move.b	#$E3,d0			; resume at normal speed
+@setmusicspeed:	jsr	PlaySound_Special	; set new music speed
+
+@loop:
 		move.b	#$C,VBlankRoutine
 		bsr	DelayProgram
 		jsr	ObjectsLoad
 		jsr	BuildSprites
 		bsr	PLC_Execute
 		move.w	($FFFFD108).w,d0
-		cmp.w	($FFFFD130).w,d0 ; has title card sequence finished?
-		bne.s	Level_TtlCard	; if not, branch
-		tst.l	PLC_Pointer		 	; are there any items in the pattern load cue?
-		bne.s	Level_TtlCard		; if yes, branch
+		cmp.w	($FFFFD130).w,d0	; has title card sequence finished?
+		bne.s	@loop			; if not, branch
+		tst.l	PLC_Pointer		; are there any items in the pattern load cue?
+		bne.s	@loop			; if yes, branch
 		
 		move.b	#$C,VBlankRoutine	; run for one more frame to avoid hiccups in the title card
 		bsr	DelayProgram
@@ -3751,7 +3758,6 @@ Level_TtlCard:
 loc_3946:
 		moveq	#3,d0
 		bsr	PalLoad1	; load Sonic's palette line
-		bsr	LevelSizeLoad
 		bsr	DeformBgLayer
 		bset	#2,($FFFFF754).w
 		bsr	MainLoadBlockLoad	; load block mappings and palettes
@@ -5104,12 +5110,22 @@ SS_ClrNemRam:	move.l	d0,(a1)+
 		move.b	#9,($FFFFD000).w ; load	special	stage Sonic object
 		move.b	#$34,($FFFFD080).w ; load title	card object
 
+		clr.w	($FFFFF780).w		; set stage angle to "upright"
+		move.w	#0,($FFFFF782).w 	; no rotation speed
+	;	move.w	#$40,($FFFFF782).w 	; set stage rotation speed
+		move.w	#$89,d0
+		tst.b	($FFFFFF5F).w		; is this the blackout special stage?
+		beq.s	@play			; if not, branch
+		move.w	#$9C,d0			; play creepy music
+		move.w	#-$1F00,($FFFFF780).w	; pre-rotate stage so that it's 45 degrees
+@play:		bsr	PlaySound		; play special stage BG	music
+
 		; Place Place Place easter egg in special stages
-		move.b	#0,(PlacePlacePlace).w	; clear easter egg flag
+		bsr	CheckToggle_PlacePlacePlace
 		move.b	#$E3,d0			; resume at normal speed
-		cmpi.b	#$70,($FFFFF604).w	; exactly ABC held?
-		bne.s	@noeasteregg		; if not, branch
-		move.b	#1,(PlacePlacePlace).w	; PLACE PLACE PLACE
+		tst.b	(PlacePlacePlace).w	; PLACE PLACE PLACE?
+		beq.s	@noeasteregg		; if not, branch
+	;	addi.w	#$200,($FFFFF780).w
 		move.w	#$E2,d0			; speed up music
 		lea	($FF1020).l,a1		; load SS blocks into a1
 		moveq	#$3F,d1			; set normal loop
@@ -5123,17 +5139,6 @@ SS_ClrNemRam:	move.l	d0,(a1)+
 @noeasteregg:
 		jsr	PlaySound_Special	; set new music speed
 
-		clr.w	($FFFFF780).w	; set stage angle to "upright"
-		move.w	#0,($FFFFF782).w ; no rotation speed
-	;	move.w	#$40,($FFFFF782).w ; set stage rotation	speed
-		move.w	#$89,d0
-		tst.b	($FFFFFF5F).w	; is this the blackout special stage?
-		beq.s	@conto
-		move.w	#$9C,d0		; play creepy music
-		move.w	#-$1F00,($FFFFF780).w	; pre-rotate stage so that it's 45 degrees
-
-@conto:
-		bsr	PlaySound	; play special stage BG	music
 		move.w	#0,($FFFFF790).w
 		move.w	#0,($FFFFFE08).w
 		move.w	#1800,($FFFFF614).w
@@ -5502,23 +5507,23 @@ loc_4A2E:
 ; ---------------------------------------------------------------------------
 
 SSAB_AniList:		
-		dc.b	$00,	$08,	(($E000)>>$0D)&$FF,	SSAB_Clouds01-SSAB_PaletteBG	; Clouds fade in
+		dc.b	$01,	$08,	(($E000)>>$0D)&$FF,	SSAB_Clouds01-SSAB_PaletteBG	; Clouds fade in
 		dc.b	$03,	$08,	(($E000)>>$0D)&$FF,	SSAB_Clouds01-SSAB_PaletteBG	; Clouds fade in
 		dc.b	$07,	$0A,	(($E000)>>$0D)&$FF,	SSAB_Clouds02-SSAB_PaletteBG	; ''
 		dc.b	$FF,	$0C,	(($E000)>>$0D)&$FF,	SSAB_Clouds03-SSAB_PaletteBG	; ''
 		dc.b	$FF,	$0C,	(($E000)>>$0D)&$FF,	SSAB_Clouds03-SSAB_PaletteBG	; Clouds fade out
 		dc.b	$07,	$0A,	(($E000)>>$0D)&$FF,	SSAB_Clouds02-SSAB_PaletteBG	; ''
 		dc.b	$03,	$08,	(($E000)>>$0D)&$FF,	SSAB_Clouds01-SSAB_PaletteBG	; ''
-		dc.b	$00,	$08,	(($E000)>>$0D)&$FF,	SSAB_Clouds01-SSAB_PaletteBG	; ''
+		dc.b	$01,	$08,	(($E000)>>$0D)&$FF,	SSAB_Clouds01-SSAB_PaletteBG	; ''
 
-		dc.b	$00,	$02,	(($C000)>>$0D)&$FF,	SSAB_Bubbles01-SSAB_PaletteBG	; Bubbles fade in
+		dc.b	$01,	$02,	(($C000)>>$0D)&$FF,	SSAB_Bubbles01-SSAB_PaletteBG	; Bubbles fade in
 		dc.b	$03,	$02,	(($C000)>>$0D)&$FF,	SSAB_Bubbles01-SSAB_PaletteBG	; Bubbles fade in
 		dc.b	$07,	$04,	(($C000)>>$0D)&$FF,	SSAB_Bubbles02-SSAB_PaletteBG	; ''
 		dc.b	$FF,	$06,	(($C000)>>$0D)&$FF,	SSAB_Bubbles03-SSAB_PaletteBG	; ''
 		dc.b	$FF,	$06,	(($C000)>>$0D)&$FF,	SSAB_Bubbles03-SSAB_PaletteBG	; Bubbles fade out
-		dc.b	$07,	$04,	(($C000)>>$0D)&$FF,	SSAB_Bubbles02-SSAB_PaletteBG	; ''
+		dc.b	$0F,	$04,	(($C000)>>$0D)&$FF,	SSAB_Bubbles02-SSAB_PaletteBG	; ''
+		dc.b	$07,	$02,	(($C000)>>$0D)&$FF,	SSAB_Bubbles01-SSAB_PaletteBG	; ''
 		dc.b	$03,	$02,	(($C000)>>$0D)&$FF,	SSAB_Bubbles01-SSAB_PaletteBG	; ''
-		dc.b	$00,	$02,	(($C000)>>$0D)&$FF,	SSAB_Bubbles01-SSAB_PaletteBG	; ''
 		even
 
 ; ---------------------------------------------------------------------------
@@ -6089,6 +6094,14 @@ LevSz_ChkLamp:				; XREF: LevelSizeLoad
 LevSz_StartLoc:				; XREF: LevelSizeLoad
 		move.w	($FFFFFE10).w,d0
 		
+		; LP fast forward
+		cmpi.w	#$101,($FFFFFE10).w	; is level LP?
+		bne.s	@chkuberhub		; if not, branch
+		tst.b	($FFFFFFFE).w		; did the player die after the =P monitor was already destroyed?
+		beq.s	@load			; if not, branch
+		bra.s	@altsloc		; otherwise, use fast forward spawn location
+		
+@chkuberhub:
 		; frantic Uberhub fast spawn
 		cmpi.w	#$400,($FFFFFE10).w	; is level SYZ?
 		bne.s 	@load			; if not, branch
@@ -6096,7 +6109,10 @@ LevSz_StartLoc:				; XREF: LevelSizeLoad
 		beq.s	@load			; if not, branch
 		tst.w	($FFFFFF8A).w		; have any levels been beaten yet?
 		beq.s	@load			; if not, branch
-		addq.w	#1,d0			; use SYZ2 start locations (unused anyway, has the frantic coordinates)
+
+@altsloc:
+		addq.w	#1,d0			; use next level coordinates instead (unused anyway, has the alt coordinates)
+
 @load:
 		lsl.b	#6,d0
 		lsr.w	#4,d0
@@ -6452,8 +6468,12 @@ locret_6E08X:
 ; ===========================================================================
 
 Resize_GHZ2:
-		move.w	#$100,($FFFFF726).w
+		cmpi.w	#$B7,($FFFFD008).w		; has Sonic passed point $B7?
+		bge.s	@nopan	 			; if yes, branch
+		subq.w	#2,($FFFFF728).w		; pan camera to the left during the intro
 
+@nopan:
+		move.w	#$100,($FFFFF726).w
 		cmpi.w	#$B00,($FFFFF700).w
 		blo.s	locret_6E96
 		move.w	#$210,($FFFFF726).w
@@ -11591,8 +11611,8 @@ Obj22_SpikesNotPassed:
 		sub.w	$30(a0),d0		; substract the number in $30(a0) from it (look at Obj22_ReturnXX)
 		move.w	d0,obX(a0)		; set new location for the buzz bomber
 		bset	#0,obStatus(a0)		; make buzz bomber facing right, constantly
-		tst.b	($FFFFFFB4).w		; has Sonic touched the first spring yet?
-		beq.w	Obj22_Return		; if not, branch
+	;	tst.b	($FFFFFFB4).w		; has Sonic touched the first spring yet?
+	;	beq.w	Obj22_Return		; if not, branch
 		subq.b	#1,$32(a0)		; substract 1 from shooting delay
 		bpl.s	Obj22_Return		; if time remains, branch
 		bsr.w	SingleObjLoad		; load from SingleObjLoad
@@ -11658,8 +11678,8 @@ Obj22_NotInhumanCrush:
 		beq.s	@0
 		move.w	#$2444,obGfx(a0)	; use second palette line
 @0:
-	;	frantic				; are we in Frantic mode?
-	;	beq.w	Obj22_MoveEnd		; if not, disable movement
+		frantic				; are we in Casual mode?
+		beq.w	Obj22_MoveEnd		; if yes, disable movement
 		
 		tst.b	($FFFFFE2D).w		; is sonic invincible?
 		bne.s	Obj22_NotGHZ1		; if yes, make buzz bombers deststroyable
@@ -18253,7 +18273,6 @@ Obj41_Up_Return:
 ; ===========================================================================
 
 Obj41_BounceUp:				; XREF: Obj41_Up
-		addq.b	#1,($FFFFFFB4).w
 		addq.b	#2,obRoutine(a0)
 		addq.w	#8,obY(a1)
 		move.w	$30(a0),obVelY(a1)	; move Sonic upwards
@@ -26416,16 +26435,17 @@ Obj06_ChkA:
 
 		tst.b	(FZEscape).w		; are we in the FZ escape sequence?
 		beq.s	@displayhint		; if not, branch
-		cmpi.b	#1,d0			; is this the first text box?
-		beq.s	@first			; if yes, branch
 		cmpi.b	#$B,d0			; is this the last text box?
 		beq.s	@lasteaster		; if yes, branch
+		tst.b	($FFFFFFB4).w		; is this the first text box checked during the escape?
+		beq.s	@first			; if yes, branch
 		move.b	#$3F,(a0)		; blow up the tutorial box
 		move.b	#0,$31(a0)
 		move.b	#1,$30(a0)		; make explosion harmless
 		clr.b	obRoutine(a0)		; make sure it's set to the init routine
 		rts				; don't do anything else here
 	@first:
+		move.b	#1,($FFFFFFB4).w	; set flag that first box was visited
 		move.b	#5,d0			; show alternate text for first monitor
 		bra.s	@displayhint		; display hint
 	@lasteaster:
@@ -26460,23 +26480,12 @@ UberhubEasteregg:
 		move.w	d1,(a1)+
 		dbf	d2,@loopdestroypalette
 		
-		move.w	#$000,($FFFFFB24).w
-		move.w	#$222,($FFFFFB26).w
-		move.w	#$444,($FFFFFB28).w
-		move.w	#$666,($FFFFFB2A).w
-		move.w	#$888,($FFFFFB2C).w
-		move.w	#$AAA,($FFFFFB2E).w
-		move.w	#$CCC,($FFFFFB30).w
-		move.w	#$EEE,($FFFFFB32).w
-		move.w	#$EEE,($FFFFFB34).w
-		
-		clr.w	($FFFFFB36).w
-		move.w	#$0EEE,($FFFFFB38).w
-		move.w	#$0CCC,($FFFFFB3A).w
-		move.w	#$0AAA,($FFFFFB3C).w
-		
 		lea	($FFFFFB40).w,a1
 		jsr	SineWavePalette
+
+		moveq	#$18,d0			; load FZ palette (cause tutorial boxes are built into SBZ)
+		jsr	PalLoad2		; load palette	
+		
 		moveq	#$FFFFFF88,d0		; play special stage jingle...
 		jmp	PlaySound		; ...specifically because it tends to ruin the music following it lol
 
@@ -40172,24 +40181,27 @@ Touch_Monitor_End:
 ; ===========================================================================
 
 Touch_Enemy:				; XREF: Touch_ChkValue
+		tst.b	(PlacePlacePlace).w	; PLACE PLACE PLACE?
+		bne.w	Touch_ChkHurt		; if yes, branch
 		tst.b	($FFFFFFE7).w	; is sonic immortal?
-		bne.s	loc_1AF40	; if yes, branch
+		bne.s	Touch_KillOk	; if yes, branch
 		tst.b	($FFFFFE2D).w	; is Sonic invincible?
-		bne.s	loc_1AF40	; if yes, branch
+		bne.s	Touch_KillOk	; if yes, branch
 		cmpi.b	#$1F,obAnim(a0)	; is Sonic spindashing?
-		beq.w	loc_1AF40	; if yes, branch
+		beq.w	Touch_KillOk	; if yes, branch
 		cmpi.b	#$28,obAnim(a0)	; is Sonic homing?
-		beq.w	loc_1AF40	; if yes, branch
+		beq.w	Touch_KillOk	; if yes, branch
 		cmpi.b	#$23,obAnim(a0)	; is Sonic double jumping?
-		beq.w	loc_1AF40	; if yes, branchz
+		beq.w	Touch_KillOk	; if yes, branchz
 		cmpi.w	#$A00,obInertia(a0)	; is sonic at figure-8 speed? (right)
-		bge.s	loc_1AF40	; if yes, branch
+		bge.s	Touch_KillOk	; if yes, branch
 		cmpi.w	#-$A00,obInertia(a0)	; is sonic at figure-8 speed? (left)
-		ble.s	loc_1AF40	; if yes, branch
+		ble.s	Touch_KillOk	; if yes, branch
+		
 		cmpi.b	#2,obAnim(a0)	; is Sonic rolling?
 		bne.w	Touch_ChkHurt	; if not, branch
 
-loc_1AF40:
+Touch_KillOk:
 		tst.b	obColProp(a1)
 		beq.s	Touch_KillEnemy
 		neg.w	obVelX(a0)

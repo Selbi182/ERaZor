@@ -4546,128 +4546,63 @@ UndoCameraShake:
 
 CinematicScreenFuzz:
 		btst	#6,(OptionsBits).w	; is screen fuzz enabled?
-		bne.s	@fuzzallowed		; if yes, always enable fuzz
+		bne.s	CinematicScreenFuzz_Do	; if yes, always enable fuzz
 		tst.b	($FFFFFF6E).w		; are tutorial boxes currently shown?
 		bne.w	Fuzz_TutBox		; if yes, go to its custom routine
 		cmpi.w	#$400,($FFFFFE10).w	; are we in Uberhub?
 		beq.w	Fuzz_Uberhub		; if yes, go to its custom routine
-		bra.w	CinematicScreenFuzz_End	; otherwise, disallow fuzz
+		rts				; otherwise, disallow fuzz
 		
-@fuzzallowed:
-		tst.b	(CameraShake).w		; camera shake currently set?
-		bne.w	CinematicScreenFuzz_End	; if yes, fuzz currently disabled cause holy shit is it slow
-		cmpi.b	#$10,(GameMode).w	; is game mode special stage?
-		beq.w	CinematicScreenFuzz_End	; if yes, fuzz is ALSO currently disabled cause holy shit is it STILL slow
-
-	;	cmpi.w	#$002,($FFFFFE10).w	; are we in Green Hill Place?
-	;	bne.w	CinematicScreenFuzz_End	; if not, branch
-	;	cmpi.b	#4,($FFFFFE30).w	; did we hit the final checkpoint yet?
-	;	beq.w	CinematicScreenFuzz_End	; if yes, branch
-
 CinematicScreenFuzz_Do:
-		move.w	($FFFFFE04).w,d7	; move timer into d7
-		andi.w 	#1,d7			; only use least significant bit
+		; calculate the exact amount of lines we need, minus ones occupied by black bars
+		move.w	#224-1,d1		; do it for all scanlines by default
+		moveq	#0,d0			; clear d0
+		move.w	(BlackBars.Height).w,d2	; get current black bars height
+		add.w	d2,d2			; double (there are two black bars)
+		sub.w	d2,d1			; sub that from total scanlines to fuzz
+		bmi.w	CinematicScreenFuzz_End	; if result underflowed, skip
+		lea	($FFFFCC00).w,a1	; get h-scroll buffer
+		add.w	d2,d2			; double again (4 bytes per scanline)
+		adda.w	d2,a1			; adjust offset
+
+		move.l	CurrentRandomNumber,d2	; get current random number
+
+		moveq	#0,d3			; clear d3
+		move.b	($FFFFF73A).w,d3	; get number of pixels scrolled horizontally since the previous frame
+		bpl.s	@xpos			; if positive, branch
+		neg.b	d3			; make positive
+@xpos:		move.b	($FFFFF73C).w,d4	; get number of pixels scrolled vertically since the previous frame
+		bpl.s	@ypos			; if positive, branch
+		neg.b	d4			; make positive
+@ypos:
+		or.b	d4,d3			; squash X and Y deltas into d3 (crude but it does the job)
+		beq.w	CinematicScreenFuzz_End	; if the result is zero, camera didn't move at all
 
 		lea	(LineLengths).l,a2	; load line lengths address to a2
-		lea	($FFFFCC00).w,a1	; get h-scroll data
-		moveq	#0,d0			; by default, don't change scroll
-		btst	#0,($FFFFFE05).w	; are we on an odd frame?
-		bne.s	@odd			; if yes, branch
-		moveq	#0,d0			; otherwise, set to -1
-@odd:
-		move.w	#224-1,d1		; do for all scanlines
-		
-		; calculate the exact amount of lines we need, minus ones occupied by black bars
-		move.w	(BlackBars.Height).w,d2
-		ext.w	d2
-		sub.w	d2,d1
-		sub.w	d2,d1
-		bmi.w	CinematicScreenFuzz_End
-@prefill:	adda.l	#4,a1
-		dbf	d2,@prefill
-
-		move.l	(CurrentRandomNumber).w,d2	; get random number
-
-		moveq	#1,d6
-	;	move.b	($FFFFD010).w,d3	; get Sonic's X speed
-		move.b	($FFFFF73A).w,d3	; get number of pixels scrolled horizontally since the previous frame
-		bpl.s	@0
-		neg.b	d3
-		moveq	#-1,d6
-		
-@0:
-	;	move.b	($FFFFD012).w,d4	; get Sonic's Y speed
-		move.b	($FFFFF73C).w,d4	; get number of pixels scrolled vertically since the previous frame
-		bpl.s	@1
-		neg.b	d4
-		
-@1:		
-		cmp.b	d3,d4			; compare the two
-		blo.s	@loop			; if X is stronger, branch
-
-@yfuzz:
-		moveq	#0,d6
-	;	move.b	($FFFFD012).w,d3	; get Sonic's Y speed
-		move.b	d4,d3			; use vertical delta
-
+		tst.w	($FFFFF73A).w		; is camera moving right?
+		bmi.s	@noneg			; if not, branch
+		lea	(LineLengths_Neg).l,a2	; load negated line lengths address to a2
+@noneg:
+		cmpi.b	#$F,d3			; is result super hecking fast?
+		bls.s	@loop			; if not, enter loop
+		moveq	#$F,d3			; limit random offset distance to 0-15
 ; ---------------------------------------------------------------------------
 
 @loop:
-		bchg 	#0,d7			; change the least significant bit of the AND'ed timer, for alternating lines
-
-		moveq	#0,d4			; clear d4
-		tst.b	d3			; does Sonic move at all?
-		beq.s	@apply			; if not, skip
-
 		ror.l	#1,d2			; get next random number
 		move.b	d2,d4			; store working copy of current random byte
-		andi.b	#$F,d4			; limit it to a random number between 0-15
-
-		and.b	d3,d4			; mask against current speed (effectively a cheap way of emulating Math.min(d3,d4))
-		ext.w	d4			; extend to word
+		and.w	d3,d4			; mask against current speed (effectively a cheap way of emulating Math.min(d3,d4))
+		andi.w	#$F,d4			; limit it to a random number between 0-15
 		add.w	d4,d4			; double for word addressing mode
-		
-		tst.b	d0			; are we on an even frame?
-		bne.s	@nolongline		; if not, branch
-		tst.b	d6			; are we doing a Y shift?
-		beq.s	@nolongline		; if yes, don't do long lines
-		btst	#4,d1			; are we in the allowed range?
-		bne.s	@nolongline		; if not, branch	
-		add.w	d4,d4			; increase line length
-
-@nolongline:
 		move.w	(a2,d4.w),d4		; get actual line length value from LUT
-		
-		tst.b	d6			; is Sonic faster on X than Y velocity?
-		bne.s	@xshift			; if yes, branch
-		btst	#0,d1
-		bne.s	@negate
-		bra.s	@apply
-
-@xshift:
-		bmi.s	@apply			; if he's also walking left, branch
-@negate:
-		neg.w	d4			; otherwise, invert effect
-
-@apply:
-		move.w	(a1),d5			; get foreground scroll
-		add.w	d0,d5			; add manipulation
-		add.w	d4,d5			; apply RNG lines
-		add.w 	d7,d5			; apply alternating lines
-		move.w	d5,(a1)+		; store new position
-		
-		move.w	(a1),d5			; get background position
-		add.w	d0,d5			; add manipulation
-		add.w	d4,d5			; apply RNG lines
-		add.w 	d7,d5			; apply alternating lines
-		move.w	d5,(a1)+		; store new position
-		
-		not.w	d0			; invert manipulation for next row
+		add.w	d4,(a1)+		; store new position (FG)
+		add.w	d4,(a1)+		; store new position (BG)	
 		dbf	d1,@loop		; loop
 
 CinematicScreenFuzz_End:
 		rts				; return
 
+; ===========================================================================
 ; ---------------------------------------------------------------------------
 LineLengths:
 		dc.w	0
@@ -4677,34 +4612,40 @@ LineLengths:
 		dc.w	3
 		dc.w	4
 		dc.w	4
-		dc.w	5
+		dc.w	5		
 		dc.w	5
 		dc.w	6
-		dc.w	6
-		dc.w	7
-		
 		dc.w	7
 		dc.w	8
 		dc.w	10
 		dc.w	12
 		dc.w	14
 		dc.w	16
-		dc.w	18
-		dc.w	20
-		dc.w	22
-		dc.w	24
-		dc.w	26
-		dc.w	28
-		dc.w	30
-		dc.w	32
-		dc.w	34
+; ---------------------------------------------------------------------------
+LineLengths_Neg:
+		dc.w	-0
+		dc.w	-1
+		dc.w	-1
+		dc.w	-2
+		dc.w	-3
+		dc.w	-4
+		dc.w	-4
+		dc.w	-5
+		dc.w	-5
+		dc.w	-6
+		dc.w	-7
+		dc.w	-8
+		dc.w	-10
+		dc.w	-12
+		dc.w	-14
+		dc.w	-16
 		even
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
 
 Fuzz_Uberhub:
-		tst.b	($FFFFFFA5).w	; have we entered the room to the blackout challenge?
-		bne.w	CinematicScreenFuzz_Do	; fuck the below stuff actually
+		tst.b	($FFFFFFA5).w		; have we entered the room to the blackout challenge?
+		bne.w	CinematicScreenFuzz_Do	; if yes, do fuzz for the spoop
 		rts
 ; ===========================================================================
 
@@ -4719,7 +4660,7 @@ Fuzz_TutBox:
 @SmegmaTheSequel:
 		move.b	d5,d0
 		jsr	CalcSine
-		asr.w	#5,d1
+		asr.w	#4,d1
 		btst	#0,d5
 		beq.s 	@NoNegation
 		neg.l	d1
@@ -16925,11 +16866,11 @@ Obj36_Hurt:				; XREF: Obj36_SideWays; Obj36_Upright
 		frantic					; are we in frantic mode?
 		beq.s	@noringdrain			; if not, branch
 		ori.b	#1,($FFFFFE1D).w		; update ring counter
-		cmpi.w	#10,($FFFFFE20).w		; do you have enough rings to tank the hit?
-		bpl.s	@tankhit			; if yes, branch
+		tst.w	($FFFFFE20).w			; do you have enough rings to tank the hit?
+		bne.s	@tankhit			; if yes, branch
 @kill:		move.w	($FFFFFE20).w,(FranticDrain).w	; drain whatever rings remain
 		jmp	KillSonic_Inhuman		; you hecking died noob
-@tankhit:	move.w	#10,(FranticDrain).w		; drain 10 rings
+@tankhit:	addq.w	#5,(FranticDrain).w		; drain 5 rings
 
 @noringdrain:
 		move.w	#$12DD,($FFFFD008).w	; teleport Sonic on X-axis
@@ -23216,16 +23157,19 @@ Obj5D_Action:				; XREF: Obj5D_Index
 		beq.s	@early			; if yes, branch
 		cmpi.b	#2,($FFFFFFA9).w	; is Sonic fighting against the walking bomb?
 		bne.w	Obj5D_ChkDel		; if not, branch
-		frantic
-		beq.s	@fanison
-		moveq	#20,d0
-		sub.b	(BossHealth).w,d0
-		lsl.w	#2,d0
+
+		; fans closing in in frantic
+		frantic				; are we in frantic?
+		beq.s	@fanison		; if not, branch
+		moveq	#20,d0			; get base health
+		sub.b	(BossHealth).w,d0	; subtract current health
+		move.w	d0,d1
+		lsl.w	#1,d0
+		add.w	d1,d0
 		btst	#0,obRender(a0)
 		bne.s	@0
 		neg.w	d0
-@0:
-		add.w	$34(a0),d0
+@0:		add.w	$34(a0),d0
 		move.w	d0,obX(a0)
 		
 		bra.s	@fanison		; if yes, force fan on
@@ -23687,7 +23631,7 @@ Ani_obj5E:
 BombWalkSpeed_Boss = $140
 BombFuseTime_Boss = 41
 BombDistance_Boss = $50
-BombPellets_Boss = 13
+BombPellets_Boss = 1
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
 
@@ -24306,17 +24250,15 @@ loc_11B7C:
 		clr.w	$30(a0)
 		clr.b	obRoutine(a0)
 		move.w	$34(a0),obY(a0)
-		moveq	#BombPellets,d6			; bomb pellets
-		tst.b	($FFFFFFA9).w
-		beq.s	@cont
-		moveq	#2,d6		; bomb pellets
-		moveq	#0,d0
-		moveq	#0,d1
-		move.b	(BossHealth).w,d0
-		move.b	#20,d1
-		sub.b	d0,d1
-	;	lsl.w	#1,d1
-		add.w	d1,d6
+		moveq	#BombPellets_Boss,d6	; bomb pellets
+		moveq	#0,d6		; bomb pellets
+		moveq	#20,d1
+		sub.b	(BossHealth).w,d1
+		bpl.s	@0
+		moveq	#20,d1
+@0:		lsr.w	#1,d1
+		add.w	d1,d6		; d6 is now the amount of shrapnel to spawn - 1
+		
 
 @cont
 		movea.l	a0,a1
@@ -27065,16 +27007,18 @@ Sonic_Display:				; XREF: loc_12C7E
 
 		frantic				; is frantic mode enabled?
 		beq.s	@notfrantic		; if not, don't do ring penalties
-		cmpi.w	#10,($FFFFFE20).w	; do you have at least 10 rings?
+		cmpi.w	#5,($FFFFFE20).w	; do you have at least 5 rings?
 		bhs.s	@enough			; if yes, branch
+	;	tst.w	($FFFFFE20).w		; do you have enough rings to tank the hit?
+	;	bne.s	@enough			; if yes, branch
 		move.b	#1,($FFFFFF95).w	; make Sonic die
 		move.w	($FFFFFE20).w,(FranticDrain).w ; drain whatever rings remain
 		bra.s	S_D_NoTeleport		; skip
 
 @enough:
+		addq.w	#5,(FranticDrain).w	; add 5 rings to be drained
 		move.w	#$12A0,obX(a0)		; set new location for Sonic's X-pos
 		move.w	#$21A,obY(a0)		; set new location for Sonic's Y-pos
-		addi.w	#10,(FranticDrain).w	; add 10 rings to be drained
 		bra.s	@teleportend		; skip
 
 @notfrantic:
@@ -29364,8 +29308,6 @@ locret_135A2:
 ; ---------------------------------------------------------------------------
 ; Subroutine to control what happens when the player touches the wall
 ; ---------------------------------------------------------------------------
-SAP_FranticRings = 5
-; ---------------------------------------------------------------------------
 
 ; SLZHitWall:
 SAP_HitWall:
@@ -29376,16 +29318,17 @@ SAP_HitWall:
 		move.b	#0,($FFFFF7CC).w		; make sure controls remain unlocked
 		clr.b	($FFFFFFE5).w			; clear air freeze flags
 
+		tst.b	(PlacePlacePlace).w		; PLACE PLACE PLACE?
+		bne.s	@kill				; if yes, git gud
 		frantic					; are we in frantic mode?
 		beq.s	@resetstuff			; if not, branch
 		ori.b	#1,($FFFFFE1D).w		; update ring counter
-		
-		cmpi.w	#SAP_FranticRings,($FFFFFE20).w	; do you have enough rings to tank the hit?
-		bpl.s	@tankhit			; if yes, branch
-		move.w	($FFFFFE20).w,(FranticDrain).w	; drain whatever rings remain
+		tst.w	($FFFFFE20).w			; do you have enough rings to tank the hit?
+		bne.s	@tankhit			; if yes, branch
+@kill:		move.w	($FFFFFE20).w,(FranticDrain).w	; drain whatever rings remain
 		jmp	KillSonic			; you hecking died noob
 @tankhit:
-		addq.w	#SAP_FranticRings,(FranticDrain).w	; add ring drain penalty
+		addq.w	#5,(FranticDrain).w		; drain 5 rings
 ; ---------------------------------------------------------------------------
 
 @resetstuff:

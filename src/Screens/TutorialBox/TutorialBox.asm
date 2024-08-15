@@ -996,11 +996,12 @@ Hint_7:
 	dc.b	_frantic
 	boxtxt	"    frantic mode"
 	boxtxt_pause
-	boxtxt	"  MIND YOUR RINGS!"
-	boxtxt_line
-	boxtxt	"  IN FRANTIC MODE,"
-	boxtxt	"  REPEATED FAILURE"
-	boxtxt	"  COSTS YOU RINGS."
+	boxtxt	"   WE ADDED TAXES"
+	boxtxt	"  FOR TELEPORTING!"
+	boxtxt_pause
+	boxtxt	"   GETTING WARPED"
+	boxtxt	"   WILL RESULT IN"
+	boxtxt	"  FIVE LOST RINGS."
 	boxtxt_next
 
 	boxtxt_line

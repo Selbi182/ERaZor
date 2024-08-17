@@ -97,6 +97,8 @@ CurrentLevel:		equ	$FFFFFE10			; w	Current level ID
 CurrentZone:		equ	CurrentLevel+0			; b	Current zone index
 CurrentAct:		equ	CurrentLevel+1			; b	Current zone act (0..3)
 
+Blackout		equ	$FFFFFF5F			; b	flag when Blackout Challenge is currently active
+
 CameraShake		equ	$FFFFFF60			; b	duration timer for the camera shake, 0 implies no active cam shake
 CameraShake_Intensity	equ	$FFFFFF61			; b	maximum cam shake offset distance, in pixels
 CameraShake_XOffset	equ	$FFFFFF62			; w	current camera shake X offset 

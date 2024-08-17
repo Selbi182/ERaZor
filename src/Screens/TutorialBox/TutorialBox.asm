@@ -979,9 +979,10 @@ Hint_7:
 	boxtxt_pause
 	boxtxt	"SOME TRIAL AND ERROR"
 	boxtxt	"MIGHT BE NECESSARY."
-	boxtxt	"THERE ARE ABSOLUTELY"
-	boxtxt	"no lives ANYWHERE IN"
-	boxtxt	"IN THIS GAME THOUGH!"
+	boxtxt_line
+	boxtxt	"HOWEVER, THERE ARE"
+	boxtxt	"no lives ANYWHERE"
+	boxtxt	"IN THIS GAME!"
 	boxtxt_next
 
 	boxtxt	"FURTHERMORE, TO NOT"

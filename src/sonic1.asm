@@ -4545,10 +4545,10 @@ UndoCameraShake:
 ; ---------------------------------------------------------------------------
 
 CinematicScreenFuzz:
-		btst	#6,(OptionsBits).w	; is screen fuzz enabled?
-		bne.s	CinematicScreenFuzz_Do	; if yes, always enable fuzz
 		tst.b	($FFFFFF6E).w		; are tutorial boxes currently shown?
 		bne.w	Fuzz_TutBox		; if yes, go to its custom routine
+		btst	#6,(OptionsBits).w	; is screen fuzz enabled?
+		bne.s	CinematicScreenFuzz_Do	; if yes, always enable fuzz
 		cmpi.w	#$400,($FFFFFE10).w	; are we in Uberhub?
 		beq.w	Fuzz_Uberhub		; if yes, go to its custom routine
 		rts				; otherwise, disallow fuzz
@@ -4572,6 +4572,7 @@ CinematicScreenFuzz_Do:
 		bpl.s	@xpos			; if positive, branch
 		neg.b	d3			; make positive
 @xpos:		move.b	($FFFFF73C).w,d4	; get number of pixels scrolled vertically since the previous frame
+		asr.b	#1,d4			; half intensity for vertical movement
 		bpl.s	@ypos			; if positive, branch
 		neg.b	d4			; make positive
 @ypos:
@@ -4579,8 +4580,8 @@ CinematicScreenFuzz_Do:
 		beq.w	CinematicScreenFuzz_End	; if the result is zero, camera didn't move at all
 
 		lea	(LineLengths).l,a2	; load line lengths address to a2
-		tst.w	($FFFFF73A).w		; is camera moving right?
-		bmi.s	@noneg			; if not, branch
+		cmpi.b	#-2,($FFFFF73A).w		; is camera moving right?
+		bge.s	@noneg			; if not, branch
 		lea	(LineLengths_Neg).l,a2	; load negated line lengths address to a2
 @noneg:
 		cmpi.b	#$F,d3			; is result super hecking fast?
@@ -5008,7 +5009,7 @@ SpecialStage:				; XREF: GameModeArray
 		jsr	DrawBuffer_Clear
 		display_enable
 
-		tst.b	($FFFFFF5F).w	; is this the blackout special stage?
+		tst.b	(Blackout).w	; is this the blackout special stage?
 		beq.s	@notblackout	; if not, branch
 		
 		clr.b	($FFFFFFD0).w	; disable distortion effect
@@ -5059,7 +5060,7 @@ loc_463C:
 		moveq	#$14,d0
 		bsr	PLC_ExecuteOnce	; load special stage patterns
 
-		tst.b	($FFFFFF5F).w	; is this the blackout special stage?
+		tst.b	(Blackout).w	; is this the blackout special stage?
 		beq.s	@contx		; if not, branch
 		moveq	#$1B,d0
 		bsr	PLC_ExecuteOnce	; load unique blackout challenge patterns (skull)
@@ -5100,7 +5101,7 @@ SS_ClrNemRam:	move.l	d0,(a1)+
 		clr.b	($FFFFFE57).w
 
 		moveq	#$A,d0		; load default palette
-		tst.b	($FFFFFF5F).w	; is this the blackout special stage?
+		tst.b	(Blackout).w	; is this the blackout special stage?
 		beq.s	@contx		; if not, branch
 		moveq	#22,d0		; load dark/red palette
 @contx:		bsr	PalLoad1	; load special stage palette
@@ -5118,7 +5119,7 @@ SS_ClrNemRam:	move.l	d0,(a1)+
 		move.w	#0,($FFFFF782).w 	; no rotation speed
 	;	move.w	#$40,($FFFFF782).w 	; set stage rotation speed
 		move.w	#$89,d0
-		tst.b	($FFFFFF5F).w		; is this the blackout special stage?
+		tst.b	(Blackout).w		; is this the blackout special stage?
 		beq.s	@play			; if not, branch
 		move.w	#$9C,d0			; play creepy music
 		move.w	#-$1F00,($FFFFF780).w	; pre-rotate stage so that it's 45 degrees
@@ -5128,8 +5129,13 @@ SS_ClrNemRam:	move.l	d0,(a1)+
 		move.b	#$E3,d0			; resume at normal speed
 		tst.b	(PlacePlacePlace).w	; PLACE PLACE PLACE?
 		beq.s	@noeasteregg		; if not, branch
-	;	addi.w	#$200,($FFFFF780).w
+		bsr	SS_RemoveAllCheckpoints
 		move.w	#$E2,d0			; speed up music
+@noeasteregg:	jsr	PlaySound_Special	; set new music speed
+		bra.s	SS_SetupFinish
+; ===========================================================================
+
+SS_RemoveAllCheckpoints:
 		lea	($FF1020).l,a1		; load SS blocks into a1
 		moveq	#$3F,d1			; set normal loop
 @Loop2:		moveq	#$3F,d2			; set alternate loop
@@ -5139,9 +5145,10 @@ SS_ClrNemRam:	move.l	d0,(a1)+
 @NoReplace:	dbf	d2,@Loop		; loop
 		lea	$40(a1),a1		; increase pointer by $40
 		dbf	d1,@Loop2		; loop
-@noeasteregg:
-		jsr	PlaySound_Special	; set new music speed
+		rts
+; ===========================================================================
 
+SS_SetupFinish:
 		move.w	#0,($FFFFF790).w
 		move.w	#0,($FFFFFE08).w
 		move.w	#1800,($FFFFF614).w
@@ -5165,7 +5172,7 @@ SS_ClrNemRam:	move.l	d0,(a1)+
 		move.w	#$15,d5
 @loc_1EF4:	move.l	d5,-(sp)
 
-		tst.b	($FFFFFF5F).w	; is this the blackout special stage?
+		tst.b	(Blackout).w	; is this the blackout special stage?
 		bne.s	@0		; if yes, skip fade-in
 		move.b	#$A,VBlankRoutine
 		bsr	DelayProgram
@@ -5223,7 +5230,7 @@ SS_MainLoop:
 		bne.s	SS_WaitVBlank		; if not, branch
 
 @abcpressed:
-		tst.b	($FFFFFF5F).w		; is this the blackout special stage?
+		tst.b	(Blackout).w		; is this the blackout special stage?
 		bne.s	@disallowed		; if yes, disallow hard part skippers
 		frantic				; is frantic mode enabled?
 		beq.s	@dohardpartskip		; if not, allow hard part skippers
@@ -5246,7 +5253,7 @@ SS_WaitVBlank:
 		jsr	SS_ShowLayout
 		bsr	SS_BGAnimate
 
-		tst.b	($FFFFFF5F).w		; is this the blackout blackout special stage?
+		tst.b	(Blackout).w		; is this the blackout blackout special stage?
 		beq.s	@notblackout		; if not, branch
 		cmpi.b	#4,($FFFFD024).w	; is special stage exiting routine being run?
 		bhs.w	@notblackout		; if yes, branch
@@ -16184,7 +16191,7 @@ Obj34_NotSLZ2:
 Obj34_NotSLZ3:
 		cmpi.w	#$401,($FFFFFE10).w ; check if level is	Special Stage 2
 		bne.s	Obj34_NotSS2
-		tst.b	($FFFFFF5F).w	; is this the blackout blackout special stage?
+		tst.b	(Blackout).w	; is this the blackout blackout special stage?
 		beq.s	@notblackout
 		tst.b	(PlacePlacePlace).w
 		bne.s	@notblackout
@@ -28185,7 +28192,7 @@ WF_MakeWhite_Loop:
 		bne.s	@wfintensity		; if not, branch
 		tst.b	($FFFFFFBF).w		; Unreal Place floating challenge enabled?
 		bne.s	@wfintensitynoboost	; if yes, branch
-		tst.b	($FFFFFF5F).w		; blackout challenge?
+		tst.b	(Blackout).w		; blackout challenge?
 	;	beq.s	@wfintensity		; if not, branch
 	;	frantic				; are we in Frantic mode?
 		bne.s	@wfintensity		; if yes, branch
@@ -28199,7 +28206,7 @@ WF_MakeWhite_Loop:
 		beq.s	@maxred			; if yes, branch
 		addi.w	#$002,d1		; otherwise, boost color
 @maxred:
-		tst.b	($FFFFFF5F).w		; blackout challenge?
+		tst.b	(Blackout).w		; blackout challenge?
 		bne.s	@maxblue		; if yes, only affect red channel
 
 		move.w	d1,d2			; copy color
@@ -40780,7 +40787,7 @@ loc_1B2E4:
 		move.b	d0,$138(a1)		; controls the animations for goal blocks
 		
 		; skull blocks
-		tst.b	($FFFFFF5F).w		; is this the blackout special stage?
+		tst.b	(Blackout).w		; is this the blackout special stage?
 		beq.s	@notblackout		; if not, branch
 		bclr	#0,$138(a1)		; normal skull icon
 		tst.b	($FFFFFFAE).w		; whiteflash in progress?
@@ -41037,7 +41044,7 @@ SS_AniEmeraldSparks:			; XREF: SS_AniIndex
 		move.b	#4,($FFFFD024).w	; set to Obj09_Exit
 
 		move.w	#$A8,d0			; play special stage GOAL sound
-		tst.b	($FFFFFF5F).w		; is this the blackout special stage?
+		tst.b	(Blackout).w		; is this the blackout special stage?
 		beq.s	@playsound		; if not, branch
 		jsr	Set_BlackoutDone	; you have beaten the blackout challenge, congrats
 		jsr	SRAM_SaveNow		; save
@@ -41099,7 +41106,7 @@ SS_Load:				; XREF: SpecialStage
 @unreal:
 		move.w	#$031F,($FFFFD008).w	; start X pos for Sonic
 		move.w	#$0587,($FFFFD00C).w	; start Y pos for Sonic
-		tst.b	($FFFFFF5F).w		; is this the blackout special stage?
+		tst.b	(Blackout).w		; is this the blackout special stage?
 		beq.s	@notblackout		; if not, branch
 
 		lea	(SS_Blackout_Part1).l,a0 ; load regular blackout layout
@@ -41545,7 +41552,7 @@ Obj09_Move:				; XREF: Obj09_OnWall; Obj09_InAir
 		rts				; block affecting controls
 
 @cont:
-		tst.b	($FFFFFF5F).w		; is easter egg SS enabled?
+		tst.b	(Blackout).w		; is easter egg SS enabled?
 		bne.s	loc_1BA78		; disabled movement
 
 		btst	#2,($FFFFF602).w ; is left being pressed?
@@ -41691,7 +41698,7 @@ locret_1BB54:
 
 
 Obj09_Jump:				; XREF: Obj09_OnWall
-		tst.b	($FFFFFF5F).w		; is easter egg SS enabled?
+		tst.b	(Blackout).w		; is easter egg SS enabled?
 		beq.s	@cont			; if not, branch
 		
 
@@ -41805,7 +41812,7 @@ Obj09_ExitStage:			; XREF: Obj09_Index
 		move.w	($FFFFF782).w,d0	; get current spinniness
 		addi.w	#$40,d0			; increase spinniness of stage
 
-		tst.b	($FFFFFF5F).w		; is this the blackout blackout special stage?
+		tst.b	(Blackout).w		; is this the blackout blackout special stage?
 		beq.s	@notblackout		; if not, branch
 		cmpi.w	#$700,d0		; reached $1800 spinniness?
 		bge.s	@notblackout		; if yes, stop slowing down
@@ -41815,7 +41822,7 @@ Obj09_ExitStage:			; XREF: Obj09_Index
 		
 		cmpi.w	#$1800,($FFFFF782).w	; reached $1800 spinniness?
 		blt.s	loc_1BBF4		; if not, branch
-		tst.b	($FFFFFF5F).w		; is this the blackout blackout special stage?
+		tst.b	(Blackout).w		; is this the blackout blackout special stage?
 		beq.s	@notblackout2		; if not, branch
 		move.b	(GameMode).w,d0
 		andi.w	#$F,d0
@@ -41894,7 +41901,7 @@ Obj09_EasterEggSpecial:
 ;-------------
 
 Obj09_Fall:				; XREF: Obj09_OnWall; Obj09_InAir
-		tst.b	($FFFFFF5F).w	; is this the blackout blackout special stage?
+		tst.b	(Blackout).w	; is this the blackout blackout special stage?
 		bne.w	Obj09_EasterEggSpecial
 		tst.b	($FFFFFFBF).w
 		bne.s	O9F_Return
@@ -42077,7 +42084,7 @@ Obj09_GetCont:
 		move.b	#0,($FF25CA).l
 		
 		jsr	CollectRing
-		tst.b	($FFFFFF5F).w	; is this the blackout blackout special stage?
+		tst.b	(Blackout).w	; is this the blackout blackout special stage?
 		beq.s	@cont
 		move.w	#$B7,d0
 		jsr	(PlaySound).l	; play rumbling sound
@@ -42123,7 +42130,7 @@ Obj09_ChkEmer:
 		bne.s	Obj09_EmerNotAll
 
 		; load part 2 of the blackout challenge
-		tst.b	($FFFFFF5F).w		; is this the blackout blackout special stage?
+		tst.b	(Blackout).w		; is this the blackout blackout special stage?
 		beq.s	Emershit		; if not, branch
 		move.w	obX(a0),($FFFFFF86).w	; save Sonic's X-position
 		move.w	obY(a0),($FFFFFF88).w	; save Sonic's Y-position
@@ -42131,7 +42138,10 @@ Obj09_ChkEmer:
 		jsr	WhiteFlash2
 		lea	(SS_Blackout_Part2).l,a0 ; load part 2 blackout layout
 		jsr	SS_LoadLevel
-		movem.l	(sp)+,a0-a2
+		tst.b	(PlacePlacePlace).w
+		beq.s	@0
+		jsr	SS_RemoveAllCheckpoints
+@0:		movem.l	(sp)+,a0-a2
 		move.b	#$DD,d0
 		jsr	(PlaySound).l
 		move.w	#$E2,d0
@@ -42147,7 +42157,7 @@ Emershit:
 
 Obj09_EmerNotAll:
 		move.w	#$C5,d0			; play single emerald collected sound
-		tst.b	($FFFFFF5F).w		; is this the blackout blackout special stage?
+		tst.b	(Blackout).w		; is this the blackout blackout special stage?
 		beq.s	Obj09_EmerPlaySound	; if not, branch
 		move.w	#$A6,d0			; play spike hurt sound instead
 
@@ -42164,7 +42174,7 @@ Obj09_ChkGhost:
 		moveq	#-1,d4			; mark ghost blocks as non solid
 
 		move.w	#$A1,d0			; set checkpoint sound
-		tst.b	($FFFFFF5F).w		; is this the blackout blackout special stage?
+		tst.b	(Blackout).w		; is this the blackout blackout special stage?
 		beq.s	@cont			; if not, branch
 		move.w	#$B2,d0			; set drown sound
 @cont:		jsr	(PlaySound_Special).l	; play it
@@ -42274,7 +42284,7 @@ TouchGoalBlock:
 		bra.w	TouchGoal_PlaySound
 
 TouchGoal_Unreal:
-		tst.b	($FFFFFF5F).w	; is this the blackout blackout special stage?
+		tst.b	(Blackout).w	; is this the blackout blackout special stage?
 		beq.s	@notblackout		; if not, branch
 		cmpi.b	#2,($FFFFFE57).w	; are we in part 2?
 		beq.s	@norestore		; if yes, branch
@@ -42377,7 +42387,7 @@ Obj09_UPblock:
 		bne.w	Obj09_ChkItemsEnd		; if yes, branch
 		move.b	#$1E,$36(a0)		; disable interaction with this block $1E frames
 		
-		tst.b	($FFFFFF5F).w		; is this the blackout blackout special stage?
+		tst.b	(Blackout).w		; is this the blackout blackout special stage?
 		bne.s	Obj09_UPsnd		; if yes, branch
 
 		move.w	#$D9,d0			; set sound to D9 (bleep)
@@ -42398,7 +42408,7 @@ Obj09_UPblock:
 		move.w	#$C3,d0			; play giant ring collected sound
 
 Obj09_UPsnd:
-		tst.b	($FFFFFF5F).w		; is this the blackout blackout special stage?
+		tst.b	(Blackout).w		; is this the blackout blackout special stage?
 		beq.s	@conty			; if not, branch
 		addi.w	#$8000,($FFFFF780).w	; rotate screen by 180 degrees
 		move.w	#$BB,d0			; play flip sound
@@ -42421,7 +42431,7 @@ Obj09_DOWNblock:
 	;	btst	#6,($FFFFF783).w
 	;	bne.s	Obj09_DOWNsnd
 		move.b	#2,($FFFFFFBF).w
-		tst.b	($FFFFFF5F).w	; is this the blackout blackout special stage?
+		tst.b	(Blackout).w	; is this the blackout blackout special stage?
 		beq.s	@conty
 		addi.w	#$8000,($FFFFF780).w
 		move.w	#$BB,d0
@@ -42555,7 +42565,7 @@ Obj09_GoalNotSolid:
 @noflash:
 		move.b	#2,($FFFFFFD6).w	; make sure it doesn't happen again
 
-		tst.b	($FFFFFF5F).w		; is this the blackout blackout special stage?
+		tst.b	(Blackout).w		; is this the blackout blackout special stage?
 		beq.s	@notblackout		; if not, branch
 
 		move.b	#1,($FFFFF7CC).w	; lock controls
@@ -44237,7 +44247,7 @@ Debug_Main:				; XREF: Debug_Index
 		move.w	#0,($FFFFF782).w ; stop	special	stage rotating
 		
 		moveq	#6,d0		; use 6th debug	item list
-		tst.b	($FFFFFF5F).w		; is this the blackout special stage?
+		tst.b	(Blackout).w		; is this the blackout special stage?
 		beq.s	Debug_UseList		; if not, branch
 		move.w	#0,($FFFFF780).w 	; make	special	stage "upright"
 		bra.s	Debug_UseList

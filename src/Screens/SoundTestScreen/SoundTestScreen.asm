@@ -52,14 +52,15 @@ SoundTestScreen:
 		jsr	BackgroundEffects_Setup
 
 		bsr	Options_LoadPal
-		move.b	#9,($FFFFFF9E).w ; BG pal
-
- 		clr.b	($FFFFFF95).w
+		move.b	#9, ($FFFFFF9E).w ; BG pal
+		move.w	#$A0A, (BGThemeColor).w
+ 		
+		clr.b	($FFFFFF95).w
 		clr.w	($FFFFFF96).w
 		clr.b	($FFFFFF98).w
 		clr.w	($FFFFFFB8).w
-		move.w	#21,($FFFFFF9A).w
-		move.b	#$81,($FFFFFF84).w
+		move.w	#21, ($FFFFFF9A).w
+		move.b	#$81, ($FFFFFF84).w
 
 SoundTest_FinishSetup:
 		jsr	ObjectsLoad
@@ -235,7 +236,9 @@ SoundTest_UpdatePianoRoll:
 		
 		moveq 	#0, d0
 		move.b 	(a5)+, d0		; load note
-		andi.b	#$FE, d0		; AND %11111110
+		move.b 	d0, d1			; copy to d1
+		
+		andi.b	#$FE, d0		; make d0 either 0 or 1 
 
 		swap 	d0			; swap note value into x position
 		add.l 	#$63000003, d0		; add base

@@ -40,7 +40,7 @@ __DEBUG__: equ 1
 ; $302 - Star Agony Place
 ; $502 - Finalor Place
 	if def(__BENCHMARK__)=0
-QuickLevelSelect = 0
+QuickLevelSelect = 1
 QuickLevelSelect_ID = -1
 ; ------------------------------------------------------
 DebugModeDefault = 1
@@ -2877,6 +2877,7 @@ Sega_WaitEnd:
 		lsr.w	#7,d0
 				
 		move.w	($FFFFFE0E).w, d5 	; timer
+		andi.w	#~1,d5			; clear least significant bit
 		lea	($FFFFCC00+80*4).w, a1	; scroll location
 		move.w	#64-1, d2			; how many lines we want
 
@@ -4545,8 +4546,6 @@ UndoCameraShake:
 ; ---------------------------------------------------------------------------
 
 CinematicScreenFuzz:
-		tst.b	($FFFFFF6E).w		; are tutorial boxes currently shown?
-		bne.w	Fuzz_TutBox		; if yes, go to its custom routine
 		btst	#6,(OptionsBits).w	; is screen fuzz enabled?
 		bne.s	CinematicScreenFuzz_Do	; if yes, always enable fuzz
 		cmpi.w	#$400,($FFFFFE10).w	; are we in Uberhub?
@@ -4651,80 +4650,32 @@ Fuzz_Uberhub:
 ; ===========================================================================
 
 Fuzz_TutBox:
-		tst.b	(GameMode).w	; are we in the pre sequence?
-		bmi.w	@end		; if yes, branch
-		
-		; code blatantly stolen from fuzzy :3
-		move.w	($FFFFFE0E).w,d5 	; timer
+		jsr	DeformBgLayer
+
+		move.w	#$120,d3		; $120 = target X pos when the tut box is centered
+		sub.w	($FFFFD408).w,d3 	; subtract current tut box X pos
+		asr.w	#2,d3			; reduce
+		move.w	($FFFFFE0E).w,d5 	; get V-blank frame counter (we can't use FE04 here cause we're trapped)
+		sub.w	d3,d5			; sub tut box center offset
+
 		lea	($FFFFCC00).w,a1	; scroll location
 		move.w	#(224/2)-1,d2		; how many lines we want
-@SmegmaTheSequel:
-		move.b	d5,d0
-		jsr	CalcSine
-		asr.w	#4,d1
-		btst	#0,d5
-		beq.s 	@NoNegation
-		neg.l	d1
-@NoNegation:	addq.w 	#1,d5
-		move.w	d1,(a1)+
-		move.w	d1,(a1)+
-		addq.l	#4,a1
-		dbf	d2,@SmegmaTheSequel
+@loop:
+		move.b	d5,d0			; get current seed
+		jsr	CalcSine		; calc sine
+
+		asr.w	#5,d0			; dramatically reduce cosine
+		add.w	d0,(a1)+		; write to scroll buffer (FG)
+		add.w	d0,(a1)+		; write to scroll buffer (BG)
+		
+		asr.w	#4,d1			; dramatically reduce sine
+		add.w	d1,(a1)+		; write to scroll buffer (FG)
+		add.w	d1,(a1)+		; write to scroll buffer (BG)
+
+		addq.w 	#1,d5			; increase seed
+		dbf	d2,@loop		; loop
+
 		rts
-
-; ---------------------------------------------------------------------------
-; this was the old effect, it got replaced because it was way too distracting
-		lea	($FFFFCC00).w,a1
-		move.w	#(224/1)-1,d3
-		jsr	RandomNumber
-	@scroll:
-		ror.l	#1,d1
-		move.l	d1,d2
-		andi.l	#$00070000,d2
-		
-		moveq	#0,d0
-		moveq	#0,d4
-		move.w	($FFFFFE0E).w,d0	; get timer
-		swap	d0
-		btst	#0,d3
-		beq.s	@1
-		neg.l	d0
-	@1:
-		andi.l	#$0000FFFF,d0
-		swap	d0
-		add.w	($FFFFFE0E).w,d0 ; scroll everything to the right
-		btst	#0,d5
-		beq.s	@3
-		sub.w	($FFFFFE0E).w,d0 ; scroll everything to the right
-
-	@3:
-		move.w	d0,d4		; copy scroll
-		add.w	d3,d4		; add line index
-		subi.w	#224/2,d4
-		movem.l	d0/d1,-(sp)
-		move.w	d4,d0
-		jsr	CalcSine
-		
-		move.w	d3,d5
-		add.w	($FFFFFE0E).w,d5
-		btst	#7,d5
-	;	beq.s	@2
-		neg.w	d0
-	@2:
-		move.w	d0,d4
-		
-		movem.l	(sp)+,d0/d1
-		add.w	d4,d0
-		swap	d0
-		or.l	d0,d2
-		move.l	d2,d4
-		swap	d4
-		add.l	d4,d2
-		move.l	d2,(a1)+
-		dbf	d3,@scroll ; fill scroll data with 0
-
-@end:
-		rts				; return
 
 
 ; ===========================================================================
@@ -6973,83 +6924,53 @@ Resize_SLZ3:
 		move.w	#$620,($FFFFF726).w	; bottom boundary
 
 		move.w	($FFFFF728).w,d0	; get left boundary
-		cmpi.w	#$E00,d0
-		bhs.s	@0
-		move.w	($FFFFF700).w,($FFFFF728).w	; lock left boundary as you walk right
-
-@0:		
-		frantic				; are we in frantic?
-		beq.s	@sapending		; if not, branch
-		rts				; "training wheels don't exist."
+		cmpi.w	#$E00,d0		; is it at the target value yet?
+		bhs.s	@sapending		; if yes, branch
+		move.w	($FFFFF700).w,($FFFFF728).w ; lock left boundary as you walk right
+; ---------------------------------------------------------------------------
 
 @sapending:
-		cmpi.w	#$2080,($FFFFD008).w
-		bcs.s	@cont3
-		bra.w	@contret
+		tst.b	($FFFFFF77).w		; antigrav enabled? (sign post already touched)
+		beq.w	@end			; if not, branch
+		frantic				; are we in frantic?
+		bne.w	@end			; "training wheels don't exist."
+		cmpi.w	#$2080,($FFFFD008).w	; at the end of the stage?
+		blo.w	@end			; if not, branch
 
-@cont3:		
-		cmpi.w	#$1F00,($FFFFD008).w	; is Sonic at the end of the stage?
-		bcs.w	@contret		; if not, branch
-		
+		tst.b	($FFFFF7CC).w		; were controls already locked?
+		bne.s	@goup			; if yes, branch
+		cmpi.w	#$580,($FFFFD00C).w	; is at minimum threshold?
+		bhi.w	@end			; if not, branch
+		move.b	#1,($FFFFF7CC).w	; lock controls
+		clr.l	($FFFFF602).l		; clear button inputs
 		bclr	#0,($FFFFD022).w	; make Sonic face right	
 		clr.b	($FFFFFFE5).w		; clear air freeze flag
-		
-		tst.b	($FFFFF7CC).w		; are controls already locked?
-		bne.s	@cont5			; if yes, branch
-		moveq	#$12,d0
-		jsr	LoadPLC2		; load signpost	patterns
-		clr.l	($FFFFF602).l		; clear button inputs
+		move.w	#$20C0,($FFFFD008).w
+		move.w	#0,($FFFFD010).w
 
-@cont5:
-		cmpi.w	#$1FC0,($FFFFD008).w
-		bcs.w	@cont
-		
+@goup:
 		cmpi.w	#$4C,($FFFFD00C).w
-		bcc.s	@cont2
+		blo.s	@lastright
+		cmpi.w	#$190,($FFFFD00C).w
+		blo.s	@slowdown
+		move.w	#-$C00,($FFFFD012).w
+		move.b	#$F,($FFFFD01C).w
+		rts		
+
+@slowdown:
+		move.b	#2,($FFFFD01C).w
+		tst.w	($FFFFD012).w
+		bmi.s	@end
+		move.w	#-$10,($FFFFD012).w
+		rts
+
+@lastright:
 		move.w	#$48,($FFFFD00C).w
 		move.w	#$200,($FFFFD010).w
 		move.w	#0,($FFFFD012).w
 		move.b	#$E,($FFFFD01C).w
-		bra.w	@contret
 
-@cont2:
-		move.b	#1,($FFFFF7CC).w
-		move.w	#$1FC0,($FFFFD008).w
-		move.w	#0,($FFFFD010).w
-
-		cmpi.w	#$688,($FFFFD00C).w
-		bcs.s	@cont2x
-		subq.w	#8,($FFFFFFB6).w
-		move.w	($FFFFFFB6).w,($FFFFD012).w
-		move.b	#2,($FFFFD01C).w
-		bra.s	@cont3x
-		
-@cont2x:
-		cmpi.w	#$8C,($FFFFD00C).w
-		bcc.s	@cont4x
-		addq.w	#8,($FFFFFFB6).w
-		tst.w	($FFFFFFB6).w
-		bmi.s	@cont5x
-		move.w	#-8,($FFFFFFB6).w
-		
-@cont5x:
-		move.w	($FFFFFFB6).w,($FFFFD012).w
-		move.b	#2,($FFFFD01C).w
-		bra.s	@cont3x
-@cont4x:
-		move.w	#-$C00,($FFFFD012).w
-		move.b	#$F,($FFFFD01C).w
-@cont3x:
-		bra.s	@contret
-
-@cont:
-		move.b	#1,($FFFFF7CC).w
-		move.w	#$6C8,($FFFFD00C).w
-		move.w	#$300,($FFFFD010).w
-		move.w	#0,($FFFFD012).w
-		move.b	#$E,($FFFFD01C).w
-
-@contret:
+@end:
 		rts
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -8645,6 +8566,8 @@ Obj18_NoMovingPlatforms:
 		jsr	PlaySound_Special
 		frantic				; is frantic mode enabled?
 		beq.s	@notfirstcheckpoint	; if not, branch
+		btst	#4,(OptionsBits).w	; is nonstop inhuman enabled?
+		bne.s	@notfirstcheckpoint	; if yes, branch
 		move.w	#$B5,d0			; play ring sound
 		jsr	PlaySound
 		addi.w	#25,($FFFFFE20).w	; add 25 rings

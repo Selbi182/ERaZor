@@ -210,6 +210,14 @@ Options_HandleGameplayStyle:
 		move.b	($FFFFF605).w,d1	; get button presses
 	 	andi.b	#$FC,d1			; is left, right, A, B, C, or Start pressed?
 		beq.w	Options_Return		; if not, branch
+		
+		tst.b	(PlacePlacePlace).w	; is easter egg flag set?
+		beq.s	@noteaster		; if not, branch
+		clr.b	(PlacePlacePlace).w	; clear easter egg flag
+		bclr	#5,(OptionsBits).w	; set to casual
+		bra.w	Options_UpdateTextAfterChange_Off
+
+@noteaster:
 		btst	#6,d1			; is specifically A pressed?
 		bne.s	@quicktoggle		; if yes, quick toggle
 		moveq	#1,d0			; set to GameplayStyleScreen
@@ -770,6 +778,11 @@ GOT_Index:	dc.w	GOTCO_CasualFrantic-GOT_Index
 ; ===========================================================================
 
 GOTCO_CasualFrantic:
+		tst.b	(PlacePlacePlace).w		; easter egg flag enabled?
+		beq.s	@noteaster			; if not, branch
+		lea	(OpText_Easter).l,a2		; use easter egg text
+		rts
+@noteaster:
 		lea	(OpText_Casual).l,a2		; use "CASUAL" text
 		btst	#5,(OptionsBits).w		; is Gameplay Style set to Frantic?
 		beq.w	GOTCO_Return			; if not, branch
@@ -931,6 +944,8 @@ OpText_OFF:	dc.b	'OFF', $FF
 OpText_Casual:	dc.b	'      CASUAL', $FF
 		even
 OpText_Frantic:	dc.b	'     FRANTIC', $FF
+		even
+OpText_Easter:	dc.b	'     TRUE-BS', $FF
 		even
 
 OpText_CinOff:	dc.b	'       NONE', $FF

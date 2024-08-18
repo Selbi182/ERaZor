@@ -112,7 +112,7 @@ DH_MainLoop:
 
 	cmpi.b	#10,($FFFFFF6E).w	; is this the introduction text?
 	beq.s	@0			; if yes, branch
-	jsr	CinematicScreenFuzz	; do cinematic screen fuzz if applicable
+	jsr	Fuzz_TutBox		; do cinematic screen fuzz if applicable
 	bra.s	DH_Continue
 @0:	
 	jsr	BackgroundEffects_Update
@@ -400,7 +400,7 @@ _CooldownVal	= 2
 
 @FranticTextCheck:
 	frantic				; is frantic mode enabled?
-	bne.s	@ClearWindow		; if yes, make _frantic act like _cls
+	bne.w	@ClearWindow		; if yes, make _frantic act like _cls
 	bra.w	@GotoDisappear		; in casual, make it act like _end
 
 ; ---------------------------------------------------------------
@@ -433,6 +433,9 @@ _CooldownVal	= 2
 	bsr	InitDraw
 
 @cont:
+	cmpi.b	#A+Start,Joypad|Held	; exactly A+Start held?
+	beq.w	@GotoDisappear		; if yes, quick quit
+
 	move.b	Joypad|Press,d0
 	andi.b	#A+B+C+Start,d0		; A/B/C/Start pressed?
 	beq.s	@Return			; if not, branch
@@ -864,18 +867,8 @@ Hint_4:
 	boxtxt	"TO AUTO-ENABLE ALL"
 	boxtxt	"SKIP OPTIONS!"
 	boxtxt_next
-
-	boxtxt	"THIRDLY, THE GAME"
-	boxtxt	"WAS STILL too easy?"
-	boxtxt_pause
-	boxtxt	"JUST BEFORE LEVEL"
-	boxtxt	"TITLE CARDS APPEAR,"
-	boxtxt	"HOLD start & abc"
-	boxtxt	"AT ONCE TO TOGGLE"
-	boxtxt	"TRUE BS MODE!"
-	boxtxt_next
  
-	boxtxt	"AND LASTLY, FOR MY"
+	boxtxt	"THIRDLY, FOR MY"
 	boxtxt	"FELLOW NERDS..."
 	boxtxt_pause
 	boxtxt	"HERE'S A LINK TO"
@@ -884,15 +877,47 @@ Hint_4:
 	boxtxt_line
 	boxtxt	"erazor:selbi:club"
 	boxtxt_next
+	
+	boxtxt	"AND LASTLY, FOR THE"
+	boxtxt	"TRUE MASOCHISTS..."
+	boxtxt_pause
+	boxtxt	"JUST BEFORE LEVEL"
+	boxtxt	"TITLE CARDS APPEAR,"
+	boxtxt	"HOLD start & abc"
+	boxtxt	"AT ONCE TO TOGGLE"
+	boxtxt	"A TOUGH TWIST..."
+	boxtxt_next
+	
+	boxtxt	"true_bs MODE!"
+	boxtxt_pause
+	boxtxt	"- ABSOLUTELY UNFAIR!"
+	dc.b	_pause
+	boxtxt	"- COMPLETION DOES"
+	boxtxt	"  NOTHING AT ALL!"
+	dc.b	_pause
+	boxtxt	"- PROBABLY NOT FUN!"
+	boxtxt_pause
+	boxtxt	"HAVE FUN!"
+	boxtxt_next
 
-	boxtxt	"HAVE FUN! OH BTW,"
-	boxtxt	"THE LEVEL IS STILL A"
-	boxtxt	"COMPLETE MESS..."
+	boxtxt	"AND THAT WRAPS UP"
+	boxtxt	"THE INFO DUMP."
+	boxtxt_line
+	boxtxt	"ENJOY THE RANDOM"
+	boxtxt	"BONUS FEATURES!"
 	boxtxt_pause
-	boxtxt	"YES, I WAS TOO LAZY"
-	boxtxt	"TO FIX IT."
+	boxtxt	"THERE IS JUST"
+	boxtxt	"ONE LAST THING..."
+	boxtxt_next
+
+	boxtxt	" THE LEVEL IS STILL"
+	boxtxt	"  A COMPLETE MESS."
 	boxtxt_pause
-	boxtxt	"bite me:"
+	boxtxt	"     YES, I WAS"
+	boxtxt	"      TOO LAZY"
+	boxtxt	"     TO FIX IT."
+	boxtxt_pause
+	boxtxt	"      bite me:"
 	boxtxt_end
 
 ;		 --------------------

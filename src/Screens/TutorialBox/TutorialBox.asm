@@ -269,10 +269,18 @@ DH_OWindow_Init:
 	move.w	#$80+224/2,ypos(a0)		; ypos
 	move.w	#_StartVel,xvel(a0)		; xvel
 	move.l	#DH_OWindow_Appear,obj(a0)
+	
+		lea	($FFFFFB00).w,a1
+		lea	($FFFFFB80).w,a2
+		moveq	#$20-1,d0
+@backup:	move.l	(a1)+,(a2)+
+		dbf	d0,@backup
+	
 
 ; ---------------------------------------------------------------
 
 DH_OWindow_Appear:
+	moveq	#0,d0
 	move.w	xvel(a0),d0		; load xvel
 	sub.w	#_Accel,xvel(a0)	; decrease it
 	ext.l	d0
@@ -282,7 +290,23 @@ DH_OWindow_Appear:
 	move.w	#$80+320/2,d0
 	cmp.w	xpos(a0),d0		; have we reaches screen center?
 	ble.s	@GotoProcess		; if yes, branch
-	rts
+
+		; darken palette as box fades in
+		move.w	($FFFFFE0E).w,d0
+		andi.w	#3,d0
+		bne.s	@nah
+
+		lea	($FFFFFB00).w,a1
+		moveq	#$10-1,d6
+		moveq	#$F,d0
+		jsr	Pal_FadeAlpha_Black
+
+		lea	($FFFFFB40-8).w,a1
+		moveq	#$20+4-1,d6
+		moveq	#$F,d0
+		jsr	Pal_FadeAlpha_Black
+
+	@nah:	rts
 	
 @GotoProcess:
 	move.w	d0,xpos(a0)		; fix x-pos
@@ -499,12 +523,19 @@ DH_OWindow_Disappear:
 	move.w	xpos2(a0),xpos(a0)	; update actual xpos
 	move.w	#$80+320+$50,d0
 	cmp.w	xpos(a0),d0		; have we passed screen?
-	bgt.s	@NoKill			; if not, branch
-	sf.b	(a0)			; kill windows
-
-@NoKill:
+	ble.s	@Kill			; if yes, branch
 	rts
 
+@Kill:
+	sf.b	(a0)			; kill windows
+
+		lea	($FFFFFB80).w,a1
+		lea	($FFFFFB00).w,a2
+		moveq	#$20-1,d0
+@restore:	move.l	(a1)+,(a2)+
+		dbf	d0,@restore
+
+	rts
 
 
 ; ===============================================================

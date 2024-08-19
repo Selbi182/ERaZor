@@ -2155,27 +2155,62 @@ loc_2006:				; XREF: Pal_AddColor2
 ; End of function Pal_MakeFlash
 ; ===========================================================================
 
+
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Instantly fill the whole palette to black/white
+; ---------------------------------------------------------------------------
+
 Pal_CutToBlack:
-		lea	($FFFFFB00).w,a0
 		moveq	#$000,d0
-		move.w	#$40-1,d1
-@fillblack:
-		move.w	d0,(a0)+
-		dbf	d1,@fillblack
-		rts
+		bra.s	Pal_CutFill
 ; ---------------------------------------------------------------------------
 
 Pal_CutToWhite:
-		lea	($FFFFFB00).w,a0
 		move.w	#$EEE,d0
-		move.w	#$40-1,d1
-@fillwhite:
-		move.w	d0,(a0)+
-		dbf	d1,@fillwhite
+; ---------------------------------------------------------------------------
+
+Pal_CutFill:
+		lea	($FFFFFB00).w,a0
+		moveq	#$40-1,d1
+@fill:		move.w	d0,(a0)+
+		dbf	d1,@fill
 		rts
+
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Main Routine to fade colors
+; ---------------------------------------------------------------------------
+; Input:	a0 - Palette
+;		d0 - Transparency (0-$10)
+;		d6 - Count
+; ---------------------------------------------------------------------------
+
+Pal_FadeAlpha_Black:
+
+@FadeColors	move.w	(a1),d1			; load source color
+		moveq	#0,d3
+		moveq	#0,d5
+		moveq	#2,d4
+
+@FadeChannel	move.w	d1,d2
+		lsr.w	#4,d1
+		andi.w	#%1110,d2		; d2 -> Current Channel
+		mulu.w	d0,d2			; d2 -> Mutiply by Fade Factor
+		lsr.w	#4,d2
+		andi.w	#%1110,d2		; d2 -> Channel with Fading
+		lsl.w	d3,d2			; d2 -> Align Channel
+		addq.b	#4,d3
+		or.w	d2,d5
+		dbf	d4,@FadeChannel		; do for all channels
+		
+		move.w	d5,(a1)+		; save faded color
+		dbf	d6,@FadeColors		; do for all colors
+
+		rts
+
 ; ===========================================================================
 
-		
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Palette cycling routine - Sega logo

@@ -15,10 +15,21 @@ Options_LineCount = 22
 Options_LineLength = 28
 Options_Padding = 2
 Options_LineLengthTotal = Options_LineLength + (Options_Padding * 2)
-
+; ---------------------------------------------------------------------------
+; All options are kept in a single byte to save space (it's all flags anyway)
+; RAM location: $FFFFFF92
+;  bit 0 = Extended Camera
+;  bit 1 = Skip Story Screens
+;  bit 2 = Skip Uberhub Place
+;  bit 3 = Cinematic Mode (black bars)
+;  bit 4 = Nonstop Inhuman Mode
+;  bit 5 = Gamplay Style (0 - Casual Mode // 1 - Frantic Mode)
+;  bit 6 = Cinematic Mode (piss filter)
+;  bit 7 = Photosensitive Mode
+; ---------------------------------------------------------------------------
 ; Default options when starting the game for the first time
-; (Casual Mode, Extended Camera, Flashy Lights, Story Text Screens)
-DefaultOptions = %10000011
+; (Casual Mode, Extended Camera)
+DefaultOptions = %00000001
 ; ---------------------------------------------------------------------------
 
 OptionsScreen:				; XREF: GameModeArray
@@ -135,7 +146,7 @@ Options_ContinueSetup:
 		btst	#3,(OptionsBits).w	; is cinematic mode enabled?
 		beq.s	@0			; if not, branch
 		addq.b	#1,d0			; add 1 to index
-@0:		btst	#6,(OptionsBits).w	; is fuzz enabled?
+@0:		btst	#6,(OptionsBits).w	; is piss enabled?
 		beq.s	@1			; if not, branch
 		addq.b	#2,d0			; if 2 to index 
 @1:		move.b	d0,CinematicIndex	; write new index
@@ -152,6 +163,8 @@ Options_SetDefaults:
 		move.b	#DefaultOptions,(OptionsBits).w	; load default options
 		rts
 
+
+; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Options Screen - Main Loop
 ; ---------------------------------------------------------------------------
@@ -171,18 +184,6 @@ OptionsScreen_MainLoop:
 
 		tst.l	PLC_Pointer		; are pattern load cues empty?
 		bne.s	OptionsScreen_MainLoop	; if not, branch to avoid visual corruptions
-
-; ---------------------------------------------------------------------------
-; All options are kept in a single byte to save space (it's all flags anyway)
-; RAM location: $FFFFFF92
-;  bit 0 = Extended Camera
-;  bit 1 = Skip Story Screens
-;  bit 2 = Skip Uberhub Place
-;  bit 3 = Cinematic Mode (unlocked after beating the base game)
-;  bit 4 = True Inhuman Mode (unlocked after beating the blackout challenge)
-;  bit 5 = Gamplay Style (0 - Casual Mode // 1 - Frantic Mode)
-;  bit 6 = Cinematic Mode Fuzz
-;  bit 7 = Flashy Lights
 ; ---------------------------------------------------------------------------
 
 Options_HandleChange:
@@ -199,7 +200,7 @@ OpHandle_Index:	dc.w	Options_HandleGameplayStyle-OpHandle_Index
 		dc.w	Options_HandleExtendedCamera-OpHandle_Index
 		dc.w	Options_HandleSkipUberhub-OpHandle_Index
 		dc.w	Options_HandleStoryTextScreens-OpHandle_Index
-		dc.w	Options_HandleFlashyLights-OpHandle_Index
+		dc.w	Options_HandlePhotosensitive-OpHandle_Index
 		dc.w	Options_HandleCinematicMode-OpHandle_Index
 		dc.w	Options_HandleNonstopInhuman-OpHandle_Index
 		dc.w	Options_HandleDeleteSaveGame-OpHandle_Index
@@ -238,11 +239,11 @@ Options_HandleExtendedCamera:
 		bra.w	Options_UpdateTextAfterChange_Off
 ; ---------------------------------------------------------------------------
 
-Options_HandleFlashyLights:
+Options_HandlePhotosensitive:
 		move.b	($FFFFF605).w,d1	; get button presses
 		andi.b	#$FC,d1			; is left, right, A, B, C, or Start pressed?
 		beq.w	Options_Return		; if not, branch
-		bchg	#7,(OptionsBits).w	; toggle flashy lights
+		bchg	#7,(OptionsBits).w	; toggle photosensitive mode
 		beq.w	Options_UpdateTextAfterChange_On
 		bra.w	Options_UpdateTextAfterChange_Off
 ; ---------------------------------------------------------------------------
@@ -252,7 +253,7 @@ Options_HandleStoryTextScreens:
 		andi.b	#$FC,d1			; is left, right, A, B, C, or Start pressed?
 		beq.w	Options_Return		; if not, branch
 		bchg	#1,(OptionsBits).w	; toggle text screens
-		bne.w	Options_UpdateTextAfterChange_On
+		beq.w	Options_UpdateTextAfterChange_On
 		bra.w	Options_UpdateTextAfterChange_Off
 ; ---------------------------------------------------------------------------
 
@@ -284,8 +285,8 @@ Options_HandleCinematicMode:
 		jsr	Check_BaseGameBeaten	; has the player beaten the base game?
 		beq.w	Options_Disallowed	; if not, cineamtic mode is disallowed
 
-		bclr	#3,(OptionsBits).w	; disable cinematic mode
-		bclr	#6,(OptionsBits).w	; disable fuzz
+		bclr	#3,(OptionsBits).w	; disable cinematic mode (bars)
+		bclr	#6,(OptionsBits).w	; disable cinematic mode (piss)
 
 		moveq	#0,d2
 		move.b	(CinematicIndex).w,d2
@@ -309,11 +310,11 @@ Options_HandleCinematicMode:
 		moveq	#0,d1			; play off sound
 		move.b	(a1)+,d0
 		beq.s	@0
-		bset	#3,(OptionsBits).w	; enable cinematic mode
+		bset	#3,(OptionsBits).w	; enable cinematic mode (bars)
 		moveq	#1,d1			; play on sound
 @0:		move.b	(a1)+,d0
 		beq.s	@1
-		bset	#6,(OptionsBits).w	; enable fuzz
+		bset	#6,(OptionsBits).w	; enable cinematic mode (piss)
 		moveq	#1,d1			; play on sound
 @1:
 		tst.b	d1
@@ -321,9 +322,9 @@ Options_HandleCinematicMode:
 		bra.w	Options_UpdateTextAfterChange_On
 ; ---------------------------------------------------------------------------
 Options_CinematicBits:
-		dc.b	0, 0	; off
-		dc.b	1, 0	; typical
-		dc.b	0, 1	; fuzzy
+		dc.b	0, 0	; none
+		dc.b	1, 0	; black bars
+		dc.b	0, 1	; piss filter
 		dc.b	1, 1	; both
 		even
 ; ---------------------------------------------------------------------------
@@ -620,7 +621,7 @@ GetOptionsText:
 		adda.w	#Options_LineLength,a1		; make one empty line
 
 		moveq	#5,d2
-		lea	(OpText_FlashyLights).l,a2	; set text location
+		lea	(OpText_Photosensitive).l,a2	; set text location
 		bsr.w	Options_Write			; write text
 		bsr.w	GOT_ChkOption			; check if option is ON or OFF
 		bsr.w	Options_Write			; write text
@@ -771,7 +772,7 @@ GOT_Index:	dc.w	GOTCO_CasualFrantic-GOT_Index
 		dc.w	GOTCO_ExtendedCamera-GOT_Index
 		dc.w	GOTCO_SkipUberhub-GOT_Index
 		dc.w	GOTCO_SkipStoryScreens-GOT_Index
-		dc.w	GOTCO_FlashyLights-GOT_Index
+		dc.w	GOTCO_Photosensitive-GOT_Index
 		dc.w	GOTCO_CinematicMode-GOT_Index
 		dc.w	GOTCO_NonstopInhuman-GOT_Index
 		dc.w	GOTCO_DeleteSaveGame-Got_Index
@@ -798,19 +799,19 @@ GOTCO_ExtendedCamera:
 		rts					; return
 ; ---------------------------------------------------------------------------
 
-GOTCO_FlashyLights:
-		lea	(OpText_ON).l,a2		; otherwise use "ON" text
-		btst	#7,(OptionsBits).w		; are Flashy Lights enabled?
-		beq.w	GOTCO_Return			; if not, branch
+GOTCO_Photosensitive:
 		lea	(OpText_OFF).l,a2		; use "OFF" text
+		btst	#7,(OptionsBits).w		; is Photosensitive Mode enabled?
+		beq.w	GOTCO_Return			; if not, branch
+		lea	(OpText_ON).l,a2		; otherwise use "ON" text
 		rts					; return
 ; ---------------------------------------------------------------------------
 
 GOTCO_SkipStoryScreens:
-		lea	(OpText_ON).l,a2		; otherwise use "ON" text
+		lea	(OpText_OFF).l,a2		; use "OFF" text
 		btst	#1,(OptionsBits).w		; is Skip Story Screens enabled?
 		beq.w	GOTCO_Return			; if not, branch
-		lea	(OpText_OFF).l,a2		; use "OFF" text
+		lea	(OpText_ON).l,a2		; otherwise use "ON" text
 		rts					; return
 ; ---------------------------------------------------------------------------
 
@@ -823,20 +824,20 @@ GOTCO_SkipUberhub:
 ; ---------------------------------------------------------------------------
 
 GOTCO_CinematicMode:
-		lea	(OpText_CinOff).l,a2		; use cinematic mode "OFF" text
+		lea	(OpText_CinOff).l,a2		; use cinematic mode "NONE" text
 
 		btst	#3,(OptionsBits).w		; is Cinematic Mode enabled?
-		beq.s	@chkfuzz			; if not, branch
-		lea	(OpText_CinNorm).l,a2		; use cinematic mode "NORMAL" text
-		btst	#6,(OptionsBits).w		; is fuzz also enabled?
+		beq.s	@chkpiss			; if not, branch
+		lea	(OpText_CinBars).l,a2		; use cinematic mode "BLACK BARS" text
+		btst	#6,(OptionsBits).w		; is piss also enabled?
 		beq.s	GOTCO_Return			; if not, branch
 		lea	(OpText_CinBoth).l,a2		; use cinematic mode "BOTH" text
 		rts
 
-@chkfuzz:
-		btst	#6,(OptionsBits).w		; is fuzz enabled?
+@chkpiss:
+		btst	#6,(OptionsBits).w		; is piss enabled?
 		beq.s	GOTCO_Return			; if not, branch
-		lea	(OpText_CinFuzz).l,a2		; use cinematic mode "FUZZY" text
+		lea	(OpText_CinPiss).l,a2		; use cinematic mode "PISS FILTER" text
 		rts					; return
 ; ---------------------------------------------------------------------------
 
@@ -903,15 +904,15 @@ OpText_SkipStory:
 		dc.b	'SKIP STORY SCREENS       ', $FF
 		even
 
-OpText_FlashyLights:
+OpText_Photosensitive:
 		dc.b	'PHOTOSENSITIVE MODE      ', $FF
 		even
 
 OpText_CinematicMode:
-		dc.b	'SCREEN EFFECTS   ', $FF
+		dc.b	'CINEMATIC MODE  ', $FF
 		even
 OpText_CinematicMode_Locked:
-		dc.b	'?????? ???????   ', $FF
+		dc.b	'????????? ????  ', $FF
 		even
 		
 OpText_NonstopInhuman:
@@ -948,13 +949,13 @@ OpText_Frantic:	dc.b	'     FRANTIC', $FF
 OpText_Easter:	dc.b	'     TRUE-BS', $FF
 		even
 
-OpText_CinOff:	dc.b	'       NONE', $FF
+OpText_CinOff:	dc.b	'        NONE', $FF
 		even
-OpText_CinNorm:	dc.b	'  CINEMATIC', $FF
+OpText_CinBars:	dc.b	'  BLACK BARS', $FF
 		even
-OpText_CinFuzz:	dc.b	'MOTION BLUR', $FF
+OpText_CinPiss:	dc.b	' PISS FILTER', $FF
 		even
-OpText_CinBoth:	dc.b	'       BOTH', $FF
+OpText_CinBoth:	dc.b	'        BOTH', $FF
 		even
 ; ---------------------------------------------------------------------------
 ; ===========================================================================

@@ -1547,8 +1547,8 @@ PalCycle_SAP:
 		bne.w	PCSLZ_Red_End		; if not, branch
 		tst.b	($FFFFFF77).w		; is antigrav enabled?
 		beq.w	PCSLZ_Red_End		; if not, branch
-		btst	#7,(OptionsBits).w	; are flashy lights enabled?
-		bne.s	@dosappal		; if yes, branch
+		btst	#7,(OptionsBits).w	; is photosensitive mode enabled?
+		beq.s	@dosappal		; if not, branch
 		move.b	#5,($FFFFFFBC).w	; fixate color to red
 		bra.w	PCSLZ_Red_Cont		; skip all the other pal cycle stuff
 
@@ -1559,7 +1559,7 @@ cyoff = 4
 cylen = 8
 		move.w	#$2780,($FFFFD000+obGfx).w	; force Sonic to use palette line 2
 		lea	($FFFFFB20).w,a2		; set start location
-		btst	#3,(OptionsBits).w		; is cinematic HUD enabled?
+		btst	#6,(OptionsBits).w		; is piss enabled?
 		beq.s	@notcinematic			; if not, branch
 		move.w	#$0780,($FFFFD000+obGfx).w	; welp
 		lea	($FFFFFB00).w,a2		; have fun with the eyesore
@@ -2437,8 +2437,8 @@ ColorBoostG = $4
 
 ; ContrastBoost:
 PissFilter:
-		btst	#3,(OptionsBits).w	; is cinematic HUD enabled?
-		bne.s	PissFilter_Do		; if yes, enable piss filter anywhere
+		btst	#6,(OptionsBits).w	; is cinematic piss filter enabled?
+		bne.s	PissFilter_Do		; if yes, enable piss filter everywhere hooray
 
 		; GHP piss filter
 		move.b	(GameMode).w,d1	; get current
@@ -3954,11 +3954,10 @@ Level_MainLoop:
 
 		bsr	RandomNumber		; constantly create a new random number every frame to make use of RandomNumber
 		jsr	WhiteFlash_Restore	; restore white flash, if applicable
-		bsr	CinematicScreenFuzz	; do cinematic screen fuzz, if applicable
 
 		move.b	#8,VBlankRoutine
 		bsr	DelayProgram
-		addq.w	#1,($FFFFFE04).w ; add 1 to level timer
+		addq.w	#1,($FFFFFE04).w	; add 1 to level timer
 
 		tst.b	(RedrawEverything).w	; was flag set to redraw screen after teleportation?
 		beq.s	@noredraw		; if not, branch
@@ -4479,7 +4478,7 @@ GenerateCameraShake:
 		tst.b	(CameraShake).w			; is camera shake currently active?
 		beq.s	@nocamshake			; if not, nothing to do
 		btst	#7,(OptionsBits).w		; is photosensitive mode enabled?
-		bne.s	@docamshake			; if not, do cam shake
+		beq.s	@docamshake			; if not, do cam shake
 		clr.b	(CameraShake).w			; clear camera shake counter immediately
 @nocamshake:	rts					; don't do any camera shake
 ; ---------------------------------------------------------------------------
@@ -4540,19 +4539,13 @@ UndoCameraShake:
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
 
+
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Adds a screen fuzz effect when cinematic mode is enabled
+; Screen fuzz effect that grows in intensity the faster the camera moves
 ; ---------------------------------------------------------------------------
 
 CinematicScreenFuzz:
-		btst	#6,(OptionsBits).w	; is screen fuzz enabled?
-		bne.s	CinematicScreenFuzz_Do	; if yes, always enable fuzz
-		cmpi.w	#$400,($FFFFFE10).w	; are we in Uberhub?
-		beq.w	Fuzz_Uberhub		; if yes, go to its custom routine
-		rts				; otherwise, disallow fuzz
-		
-CinematicScreenFuzz_Do:
 		; calculate the exact amount of lines we need, minus ones occupied by black bars
 		move.w	#224-1,d1		; do it for all scanlines by default
 		moveq	#0,d0			; clear d0
@@ -4643,11 +4636,6 @@ LineLengths_Neg:
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
 
-Fuzz_Uberhub:
-		tst.b	($FFFFFFA5).w		; have we entered the room to the blackout challenge?
-		bne.w	CinematicScreenFuzz_Do	; if yes, do fuzz for the spoop
-		rts
-; ===========================================================================
 
 Fuzz_TutBox:
 		jsr	DeformBgLayer
@@ -11040,8 +11028,8 @@ loc_17F70X:
 ; ===========================================================================
 
 Obj1F_Flashing:
-		btst	#7,(OptionsBits).w	; are flashy lights enabled?
-		beq.s	Obj1F_NoFlash		; if not, no flash
+		btst	#7,(OptionsBits).w	; is photosensitive mode enabled?
+		bne.s	Obj1F_NoFlash		; if yes, no flash
 		btst	#3,(OptionsBits).w	; is cinematic HUD enabled?
 		bne.s	Obj1F_NoFlash		; if yes, don't do palette flashing to avoid seizues
 		tst.b	($FFFFF5D1).w		; is Sonic dying?
@@ -11174,8 +11162,8 @@ loc_17F70XX:
 ; ===========================================================================
 
 Obj1F_Flashing2:
-		btst	#7,(OptionsBits).w	; are flashy lights enabled?
-		beq.s	Obj1F_NoFlash2		; if not, no flash
+		btst	#7,(OptionsBits).w	; is photosensitive mode enabled?
+		bne.s	Obj1F_NoFlash2		; if yes, no flash
 		btst	#3,(OptionsBits).w	; is cinematic HUD enabled?
 		bne.s	Obj1F_NoFlash2		; if yes, don't do palette flashing to avoid seizues
 		tst.b	($FFFFF5D1).w		; is Sonic dying?
@@ -12667,7 +12655,7 @@ Obj4B_DontCollect:
 ; ===========================================================================
 
 Obj4B_Collect:				; XREF: Obj4B_Index
-		btst	#3,(OptionsBits).w	; is cinematic HUD enabled?
+		btst	#6,(OptionsBits).w	; is piss enabled?
 		bne.s	@NoPaletteChange	; don't change the palette
 		cmp.b	#4,($FFFFFE10).w	; we in uberhub?
 		bne.s	@NoPaletteChange	; if not, don't change the palette
@@ -19299,8 +19287,8 @@ Obj12_Animate:
 @sonicexists:
 		tst.b	$30(a0)				; frantic frame set?
 		beq.s	@sway				; if not, branch
-		btst	#7,(OptionsBits).w		; are flashy lights enabled?
-		bne.s	@doflash			; if yes, branch
+		btst	#7,(OptionsBits).w		; is photosensitive mode enabled?
+		beq.s	@doflash			; if not, branch
 		move.w	#EmblemGfx_Frantic,obGfx(a0)	; use alternate offset for frantic frames
 		bra.s	@sway				; don't flash
 @doflash:
@@ -26074,8 +26062,8 @@ Obj03_BackgroundColor:
 @applybgcolor:
 		move.w	d1,d0		; base color
 
-		btst	#7,(OptionsBits).w	; are flashy lights enabled?
-		bne.s	@doflash		; if yes, branch
+		btst	#7,(OptionsBits).w	; is photosensitive mode enabled?
+		beq.s	@doflash		; if not, branch
 		move.w	#$888,d1		; mask
 		bsr.w	Pal_LimitColor
 		bra.s	@apply
@@ -28080,8 +28068,8 @@ WF_DoWhiteFlash:
 		bne.w	WF_Return		; if yes, skip this one
 		move.b	#1,($FFFFFFB9).w	; set white flash flag
 
-		btst	#7,(OptionsBits).w	; are flashy lights even enabled?
-		beq.w	WF_SetCameraLag		; if not, well, don't do them
+		btst	#7,(OptionsBits).w	; is photosensitive mode enabled?
+		bne.w	WF_SetCameraLag		; if yes, don't do flashy lights
 
 		lea	($FFFFFA80).w,a3	; load palette location to a3
 		lea	($FFFFCA00).w,a4	; load backup location to a4
@@ -28163,8 +28151,8 @@ WhiteFlash_Restore:
 		bpl.s	WF_Restore_End
 		clr.b	($FFFFFFB9).w		; clear white flash flag
 		
-		btst	#7,(OptionsBits).w	; are flashy lights even enabled?
-		beq.s	WF_Restore_End		; if not, branch
+		btst	#7,(OptionsBits).w	; is photosensitive mode enabled?
+		bne.s	WF_Restore_End		; if yes, branch
 
 		lea	($FFFFFA80).w,a4	; load palette location to a4
 		lea	($FFFFCA00).w,a3	; load backed up palette to a3
@@ -29318,10 +29306,10 @@ SAP_HitWall:
 
 SAP_LoadSonicPal:
 		; load antigrav palette for Sonic
-		btst	#7,(OptionsBits).w	; are flashy lights enabled?
-		beq.s	@nopal			; if not, don't mess with Sonic
+		btst	#7,(OptionsBits).w	; is photosensitive mode enabled?
+		bne.s	@nopal			; if yes, don't mess with Sonic
 		moveq	#$11,d0			; load Sonic's antigrav palette line in palette line 2
-		btst	#3,(OptionsBits).w	; is cinematic HUD enabled?
+		btst	#6,(OptionsBits).w	; is piss enabled?
 		beq.s	@loadpal		; if not, branch
 		moveq	#$10,d0			; load it into palette line 1 instead
 @loadpal:
@@ -34678,8 +34666,8 @@ loopdashit:	cmpi.b	#$18,(a1)		; is current object a platform?
 Obj3D_ShipFlash:
 		tst.b	($FFFFF5D1).w		; is Sonic dying?
 		bne.s	@noflash		; if yes, disable flash
-		btst	#7,(OptionsBits).w	; are flashy lights enabled?
-		beq.s	@noflash		; if not, branch
+		btst	#7,(OptionsBits).w	; is photosensitive mode enabled?
+		bne.s	@noflash		; if yes, branch
 		
 		lea	($FFFFFB22).w,a1 ; load	2nd palette, 2nd	entry
 		moveq	#0,d0		; move 0 (black) to d0
@@ -40703,8 +40691,8 @@ loc_1B2E4:
 		move.b	d0,$200(a1)
 
 		; goal block animation
-		btst	#7,(OptionsBits).w	; are flashy lights enabled?
-		bne.s	@regular		; if yes, branch
+		btst	#7,(OptionsBits).w	; is photosensitive mode enabled?
+		beq.s	@regular		; if not, branch
 		moveq	#1,d0			; force to white goal block
 @regular:
 		move.b	d0,$138(a1)		; controls the animations for goal blocks
@@ -42479,8 +42467,8 @@ Obj09_NoReplace2:
 Obj09_GoalNotSolid:
 		moveq	#0,d4			; clear d4
 
-		btst	#7,(OptionsBits).w	; are flashy lights enabled?
-		beq.s	@noflash		; if not, no flash
+		btst	#7,(OptionsBits).w	; is photosensitive mode enabled?
+		bne.s	@noflash		; if yes, no flash
 	;	movem.l	d0-a7,-(sp)		; backup to stack
 	;	jsr	Pal_MakeWhite		; make white flash
 	;	movem.l (sp)+,d0-a7		; restore from stack

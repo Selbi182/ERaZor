@@ -131,8 +131,8 @@ DH_Continue:
 	jsr	PalCycle_Load
 
 	; palette cycle to highlight letters
-	btst	#7,(OptionsBits).w	; are flashy lights enabled?
-	beq.s	@noletterflashing	; if not, branch
+	btst	#7,(OptionsBits).w	; photosensitive mode?
+	bne.s	@noletterflashing	; if yes, branch
 	move.w	($FFFFFE0E).w,d0
 	lsl.w	#4,d0
 	jsr	CalcSine
@@ -1185,9 +1185,9 @@ Hint_End_AfterFrantic:
 ;		 --------------------
 Hint_End_CinematicUnlock:
 	boxtxt	"YOU HAVE UNLOCKED"
-	boxtxt	"screen effects!"
+	boxtxt	"cinematic mode!"
 	boxtxt_pause
-	boxtxt	"THEY ARE COMPLETELY"
+	boxtxt	"IT'S COMPLETELY"
 	boxtxt	"USELESS BUT ALSO"
 	boxtxt	"PRETTY COOL!"
 	boxtxt_end

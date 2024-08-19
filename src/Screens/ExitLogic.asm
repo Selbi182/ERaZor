@@ -31,7 +31,7 @@ ReturnToUberhub:
 ReturnToUberhub_Chapter:
 		move.w	#$400,($FFFFFE10).w	; set level to Uberhub
 		btst	#1,(OptionsBits).w	; is "Skip Story Screens" enabled?
-		beq.s	StartLevel		; if yes, skip chapter screen
+		bne.s	StartLevel		; if yes, skip chapter screen
 
 		; show chapter screen first
 		move.b	#$28,(GameMode).w	; set to chapters screen
@@ -131,7 +131,7 @@ Exit_GameplayStyleScreen:
 
 @speedrun:
 		jsr 	WhiteFlash2
-		bclr	#1,(OptionsBits).w	; disable story screens
+		bset	#1,(OptionsBits).w	; enable Skip Story Screens
 		bset	#2,(OptionsBits).w	; enable Skip Uberhub
 		move.w	#$D3,d0			; play peelout release sound
 		jsr	PlaySound_Special
@@ -278,7 +278,7 @@ RunChapter:
 		move.b	#1,($FFFFFFE9).w	; set fade-out in progress flag
 
 		btst	#1,(OptionsBits).w	; is "Skip Story Screens" enabled?
-		beq.w	StartLevel		; if yes, start level straight away
+		bne.w	StartLevel		; if yes, start level straight away
 		bsr	Check_BaseGameBeaten	; has the player already beaten the base game?
 		bne.w	StartLevel		; if yes, no longer display chapter screens
 
@@ -296,7 +296,7 @@ RunChapter:
 
 RunStory:
 		btst	#1,(OptionsBits).w	; is "Skip Story Screens" enabled?
-		bne.s	RunStory_Force		; if not, run story as usual
+		beq.s	RunStory_Force		; if not, run story as usual
 		jsr	SRAM_SaveNow		; save our progress now
 		move.b	(StoryTextID).w,d0	; copy story ID to d0 (needed for Exit_StoryScreen)
 		bra.w	Exit_StoryScreen	; auto-skip story screen

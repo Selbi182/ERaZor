@@ -815,7 +815,6 @@ Deform_All_2:
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
  
 Deform_SYZ:
-
 		; Setup X-layers scrolling
 		move.l	CamXPos, d0
 		asr.l	#3, d0					; layer 2 - buildings
@@ -929,8 +928,15 @@ Deform_SYZ:
 		andi.w	#$1F0, d0
 		lsr.w	#3, d0
 		lea	(a2,d0), a2
-		bra	DeformScreen_ProcessBlocks
+		bsr	DeformScreen_ProcessBlocks
 
+		; screen fuzz for blackout room
+		tst.b	($FFFFFFA5).w		; have we entered the room to the blackout challenge?
+		bne.s	@fuzz			; if yes, branch
+		rts
+@fuzz:
+		jmp	CinematicScreenFuzz	; do fuzz for the spoop
+; ===========================================================================
 
  
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||

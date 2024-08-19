@@ -127,31 +127,36 @@ _eh_align_offset	equ	$80
 ; Creates assertions for debugging
 ; ---------------------------------------------------------------
 ; EXAMPLES:
-;	assert.b	d0, eq, #1		; d0 must be $01, or else crash!
-;	assert.w	d5, eq			; d5 must be $0000!
-;	assert.l	a1, hi, a0		; asert a1 > a0, or else crash!
-;	assert.b	MemFlag, ne		; MemFlag must be non-zero!
+;	assert.b	d0, eq, #1		; d0 must be $01, or else crash
+;	assert.w	d5, pl			; d5 must be positive
+;	assert.l	a1, hi, a0		; asert a1 > a0, or else crash
+;	assert.b	(MemFlag).w, ne	; MemFlag must be set (non-zero)
+;	assert.l	a0, eq, #Obj_Player, MyObjectsDebugger
 ; ---------------------------------------------------------------
 
-assert	macro	src, cond, dest
+assert	macro	src, cond, dest, console_program
 	; Assertions only work in DEBUG builds
 	if def(__DEBUG__)
-	move.w	sr,-(sp);###
-	if narg=3
+		move.w	sr, -(sp)
+	if strlen("\dest")
 		cmp.\0	\dest, \src
-	else narg=2
+	else
 		tst.\0	\src
 	endif
 	pusho
 	opt l-
-		b\cond\.s	@skip\@
+		b\cond\		@skip\@
 	popo
-		RaiseError	"Assertion failed:%<endl,pal2>> assert.\0 %<pal0>\src,%<pal2>\cond%<pal0>,\dest%<endl,pal1>Got: %<.\0 \src>"
+	if strlen("\dest")
+		RaiseError	"Assertion failed:%<endl,pal2>> assert.\0 %<pal0>\src,%<pal2>\cond%<pal0>,\dest%<endl,pal1>Got: %<.\0 \src>", \console_program
+	else
+		RaiseError	"Assertion failed:%<endl,pal2>> assert.\0 %<pal0>\src,%<pal2>\cond%<endl,pal1>Got: %<.\0 \src>", \console_program
+	endif
 	pusho
 	opt l-
 	@skip\@:
 	popo
-	move.w (sp)+, sr;###
+		move.w	(sp)+, sr
 	endif
 	endm
 
@@ -167,10 +172,12 @@ assert	macro	src, cond, dest
 RaiseError &
 	macro	string, console_program, opts
 
-	pea		*(pc)
-	move.w	sr, -(sp)
+	pea		*(pc)				; this simulates M68K exception
+	move.w	sr, -(sp)			; ...
 	__FSTRING_GenerateArgumentsCode \string
+
 	jsr		MDDBG__ErrorHandler
+
 	__FSTRING_GenerateDecodedString \string
 	if strlen("\console_program")			; if console program offset is specified ...
 		dc.b	\opts+_eh_enter_console|(((*&1)^1)*_eh_align_offset)	; add flag "_eh_align_offset" if the next byte is at odd offset ...
@@ -255,7 +262,7 @@ Console &
 
 	elseif strcmp("\0","clear")|strcmp("\0","Clear")
 		move.w	sr, -(sp)
-		jsr		MDDBG__ErrorHandler_ClearConsole
+		jsr		MDDBG__Console_Clear
 		move.w	(sp)+, sr
 
 	elseif strcmp("\0","pause")|strcmp("\0","Pause")
@@ -268,6 +275,9 @@ Console &
 		move.w	d0, -(sp)
 		move.l	a0, -(sp)
 		move.w	\1, d0
+
+		pusho
+		opt l-
 		subq.w	#1, d0
 		bcs.s	@sleep_done\@
 		@sleep_loop\@:
@@ -275,6 +285,8 @@ Console &
 			dbf		d0, @sleep_loop\@
 
 	@sleep_done\@:
+		popo
+
 		move.l	(sp)+, a0
 		move.w	(sp)+, d0
 		move.w	(sp)+, sr

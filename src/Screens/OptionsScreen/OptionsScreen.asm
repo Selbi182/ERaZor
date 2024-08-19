@@ -216,7 +216,9 @@ Options_HandleGameplayStyle:
 		beq.s	@noteaster		; if not, branch
 		clr.b	(PlacePlacePlace).w	; clear easter egg flag
 		bclr	#5,(OptionsBits).w	; set to casual
-		bra.w	Options_UpdateTextAfterChange_Off
+		move.w	#$DF,d0
+		jsr	PlaySound_Special
+		bra.w	Options_UpdateTextAfterChange_NoSound
 
 @noteaster:
 		btst	#6,d1			; is specifically A pressed?

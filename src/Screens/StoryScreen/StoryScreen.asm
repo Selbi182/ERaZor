@@ -608,7 +608,11 @@ StoryText_Load:
 		add.w	d0,d0				; times four...
 		add.w	d0,d0				; ...for long alignment
 		movea.l	StoryText_Index(pc,d0.w),a1	; load story address into a1
-		rts
+
+		tst.b	(PlacePlacePlace).w		; PLACE PLACE PLACE?
+		beq.s	@end				; if not, branch
+		lea	(StoryText_Place).l,a1		; PLACE PLACE PLACE!
+@end:		rts
 ; ---------------------------------------------------------------------------
 StoryText_Index:
 		dc.l	STS_Continue	; continue text at the bottom of the screen
@@ -810,6 +814,27 @@ StoryText_9:	; text after beating the blackout challenge special stage
 		ststxt	"                       SELBI"
 		dc.b	-1
 		even
+; ---------------------------------------------------------------------------
+
+StoryText_Place: ; text when PLACE PLACE PLACE
+		ststxt	"PLACE PLACE! PLACE,"
+		ststxt	"PLACE, PLACE PLACE PLACE?"
+		ststxt	"PLACE PLACE PLACE... PLACE."
+		ststxt_line
+		ststxt	"PLACE PLACE PLACE"
+		ststxt	"PLACE, PLACE! PLACE?"
+		ststxt	"PLACE PLACE PLACE, PLACE,"
+		ststxt	"PLACE PLACE, PLACE... PLACE."
+		ststxt	"PLACE! PLACE! PLACE! PLACE!"
+		ststxt	"PLACE, PLACE PLACE!"
+		ststxt	"PLACE PLACE."
+		ststxt_line
+		ststxt	"PLACE... PLACE PLACE."
+		ststxt	"PLACE, PLACE PLACE... PLACE?"
+		ststxt	"PLACE PLACE PLACE. PLACE."
+		dc.b	-1
+		even
+
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
 

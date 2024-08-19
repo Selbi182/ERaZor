@@ -59,6 +59,7 @@ Tutorial_DisplayHint:
 	movem.l	a0/a5-a6,-(sp)
 	move.b	d0,($FFFFFF6E).w
 	
+	
 	; Setup registers for constant use
 	lea	VDP_Ctrl,a6           
 	lea	VDP_Data,a5
@@ -74,7 +75,12 @@ Tutorial_DisplayHint:
 	add.w	d0,d0
 	add.w	d0,d0
 	move.l	-4(a1,d0.w),char_pos(a0)	; load hint text
-
+	
+	tst.b	(PlacePlacePlace).w		; PLACE PLACE PLACE?
+	beq.s	@noeaster			; if not, branch
+	move.l	#Hint_Place,char_pos(a0)	; PLACE PLACE PLACE!
+@noeaster:
+	
 	; Init hint window gfx
 	move.b	#8,VBlankRoutine
 	jsr	DelayProgram			; perform vsync before operation, fix Sonic's DPCL
@@ -869,7 +875,7 @@ Hint_4:
 	boxtxt_next
  
 	boxtxt	"THIRDLY, FOR MY"
-	boxtxt	"FELLOW NERDS..."
+	boxtxt	"FELLOW NERDS."
 	boxtxt_pause
 	boxtxt	"HERE'S A LINK TO"
 	boxtxt	"THE FULL SOURCE CODE"
@@ -879,7 +885,7 @@ Hint_4:
 	boxtxt_next
 	
 	boxtxt	"AND LASTLY, FOR THE"
-	boxtxt	"TRUE MASOCHISTS..."
+	boxtxt	"TRUE MASOCHISTS."
 	boxtxt_pause
 	boxtxt	"JUST BEFORE LEVEL"
 	boxtxt	"TITLE CARDS APPEAR,"
@@ -944,7 +950,8 @@ Hint_FZEscape:
 	boxtxt	"    frantic mode"
 	boxtxt_pause
 	boxtxt_line
-	boxtxt	"  THIS GOES DOUBLE"
+	boxtxt	"   ...THIS GOES"
+	boxtxt	"       triple"
 	boxtxt	"     FOR YOU..."
 	boxtxt_end	
 ;		 --------------------
@@ -1110,14 +1117,13 @@ Hint_TutorialConclusion:
 	boxtxt	"REST ON YOUR OWN."
 	boxtxt_next
 
-	boxtxt	"TWO MORE QUICK tips"
-	boxtxt_pause
-	boxtxt	"- EXIT A STAGE AT"
-	boxtxt	"  ANY TIME WITH"
-	boxtxt	"  pause + a"
-	boxtxt_pause
-	boxtxt	"- BE SURE TO CHECK"
-	boxtxt	"  OUT THE options!"
+	boxtxt	"ONE FINAL TIP..."
+	boxtxt_line
+	boxtxt	"YOU CAN RETURN TO"
+	boxtxt	"UBERHUB PLACE"
+	boxtxt	"AT ANY TIME BY"
+	boxtxt	"PRESSING a WHILE"
+	boxtxt	"THE GAME IS paused!"
 	boxtxt_next
 
 	boxtxt	"NOW GO OUT THERE AND"
@@ -1130,14 +1136,14 @@ Hint_TutorialConclusion:
 	boxtxt	"CREATING IT!"
 	boxtxt_next
 
-	boxtxt	"      BY selbi"
+	boxtxt	"  CREATED BY selbi"
 	boxtxt_pause
 	boxtxt	"  THEY CALL ME THE"
 	boxtxt	"    michael  bay"
 	boxtxt	"   OF SONIC GAMES."
 	boxtxt_pause
-	boxtxt	" AND VERY SOON YOU"
-	boxtxt	" WILL ALSO SEE WHY."
+	boxtxt	"    AND IN A BIT"
+	boxtxt	"  YOU'LL KNOW WHY."
 	boxtxt_end
 
 ;		 --------------------
@@ -1223,7 +1229,7 @@ Hint_End_BlackoutTeaser:
 ;		 --------------------
 Hint_FranticTutorial:
 	boxtxt	"RESPECT FOR GOING"
-	boxtxt	"WITH frantic mode!"
+	boxtxt	"WITH frantic!"
 	boxtxt_line
 	boxtxt	"BE SURE TO REVISIT"
 	boxtxt	"THE TUTORIAL, AS"
@@ -1231,5 +1237,17 @@ Hint_FranticTutorial:
 	boxtxt	"FOR THIS MODE."
 	boxtxt_end
 
+;		 --------------------
+Hint_Place:
+	boxtxt	"PLACE PLACE PLACE."
+	boxtxt_pause
+	boxtxt	"PLACE? PLACE!"
+	boxtxt	"PLACE, PLACE PLACE"
+	boxtxt	"PLACE PLACE PLACE?"
+	boxtxt	"PLACE... PLACE!"
+	boxtxt_pause
+	boxtxt	"PLACE? PLACE."
+	boxtxt_end
+	
 ; ---------------------------------------------------------------
 	even

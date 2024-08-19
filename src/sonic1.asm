@@ -47,7 +47,7 @@ DebugModeDefault = 1
 DebugSurviveNoRings = 1
 ; ------------------------------------------------------
 DoorsAlwaysOpen = 0
-LowBossHP = 0
+LowBossHP = 1
 ; ------------------------------------------------------
 TestDisplayDeleteBugs = 0
 ; ======================================================

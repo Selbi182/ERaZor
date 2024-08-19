@@ -931,10 +931,16 @@ Deform_SYZ:
 		bsr	DeformScreen_ProcessBlocks
 
 		; screen fuzz for blackout room
+		tst.b	($FFFFFFD0).w		; jumped into blackout ring?
+		bne.s	@spoop			; if yes, branch
 		tst.b	($FFFFFFA5).w		; have we entered the room to the blackout challenge?
 		bne.s	@fuzz			; if yes, branch
 		rts
 @fuzz:
+		jmp	CinematicScreenFuzz	; do fuzz for the spoop
+
+@spoop:
+		move.b	#$10,($FFFFF73A).w	; pretend 16 pixels have been scrolled for the bzzzzz
 		jmp	CinematicScreenFuzz	; do fuzz for the spoop
 ; ===========================================================================
 
@@ -1150,9 +1156,9 @@ S_H_ExtendedCamera:
 		cmpi.b	#3,($FFFFFE10).w
 		bne.s	S_H_BuzzIgnore		; if not, branch
 		tst.b	($FFFFFFA9).w		; is Sonic fighting against the walking bomb?
-		bne.s	S_H_ResetCamera		; if yes, branch	
+		bne.w	S_H_ResetCamera		; if yes, branch	
 		tst.b	($FFFFFF77).w		; is antigrav enabled?
-		bne.s	S_H_ResetCamera		; if yes, branch
+		bne.w	S_H_ResetCamera		; if yes, branch
 
 S_H_BuzzIgnore:
 		tst.b	($FFFFF7CD).w
@@ -1191,6 +1197,11 @@ S_H_SpeedPositive:
 ; ===========================================================================
 
 S_H_PeeloutSpindash:
+		btst	#1,($FFFFD022).w	; is Sonic in air?
+		beq.s	@allgood		; if not, branch
+		clr.b	($FFFFFFAF).w		; otherwise make sure camera shift doesn't get stuck
+		bra.s	S_H_ResetCamera
+@allgood:
 		btst	#0,($FFFFD022).w	; is Sonic facing right while performing a Peelout / Spindash?
 		beq.s	S_H_FastEnough_Right	; if yes, branch
 		bra.s	S_H_FastEnough_Left	; otherwise, use code for left

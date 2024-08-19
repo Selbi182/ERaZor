@@ -110,7 +110,7 @@ GSS_MainLoop:
 		jsr	BuildSprites
 
 		move.b	($FFFFF605).w,d1	; get button presses
-	 	andi.b	#3,d1			; is up or down pressed?
+	 	andi.b	#$F,d1			; is D-pad pressed?
 		beq.s	@NoUpdate		; if not, branch
 		bchg 	#5,(OptionsBits).w 	; toggle casual/frantic flag
 		moveq	#0,d0

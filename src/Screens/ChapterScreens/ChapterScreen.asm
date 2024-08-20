@@ -13,6 +13,7 @@
 ; 7: In The End
 ; ---------------------------------------------------------------------------
 Chapters_Total = 7
+Chapters_TestAll = 0
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
 
@@ -56,8 +57,8 @@ CS_ClrObjRam:	move.l	d0,(a1)+
 
 		lea	(Map_ChapterHeader).l,a1	; load chapter header
 		move.l	#$40000003,d0
-		moveq	#$27,d1
-		moveq	#$09,d2
+		moveq	#40-1,d1
+		moveq	#28-1,d2
 		jsr	ShowVDPGraphics
 
 		lea	(Pal_ChapterHeader).l,a1	; load chapter 3 stuff instead
@@ -98,14 +99,15 @@ CS_ClrObjRam:	move.l	d0,(a1)+
 
 		; load chapter number object
 		move.b	#4,($FFFFD000).w		; load chapter numbers object (<-- past Selbi, why the fuck did you make this an object???)
-		move.b	#0,($FFFFD000+obRoutine).w
+		move.b	#0,($FFFFD000+obRoutine).w	; set to init routine
+		move.b	($FFFFFFA7).w,($FFFFD000+obFrame).w ; set chapter number to frame (first frame in maps is duplicated)
 		jsr	ObjectsLoad
 		jsr	BuildSprites
 
 		; double fade-in
 		move.w	#$000F,($FFFFF626).w		; start at palette line 1, 16 colours ($F + 1)
 		jsr	Pal_FadeTo2			; fade in upper part
-
+		
 		move.w	#$200F,($FFFFF626).w		; start at palette line 2, 16 colours ($F + 1)
 		jsr	Pal_FadeTo2			; fade in lower part
 
@@ -138,9 +140,9 @@ CS_ChapterArt:
 CS_LoadChapterMaps:
 		movea.l	CS_ChapterMaps(pc,d0.w),a1
 		move.l	d0,-(sp)
-		move.l	#$44800003,d0
-		moveq	#$27,d1
-		moveq	#$12,d2
+		move.l	#$45800003,d0
+		moveq	#40-1,d1
+		moveq	#13-1,d2
 		bsr	ShowVDPGraphics2
 		move.l	(sp)+,d0
 		rts
@@ -189,8 +191,8 @@ CS_OHDIGHZ:
 
 		lea	(Map_OHDIGHZ).l,a1		; load chapter header
 		move.l	#$40000003,d0
-		moveq	#$27,d1
-		moveq	#$1B,d2
+		moveq	#40-1,d1
+		moveq	#28-1,d2
 		jsr	ShowVDPGraphics
 		VBlank_UnsetMusicOnly
 
@@ -221,6 +223,10 @@ CS_Loop:
 ; ---------------------------------------------------------------------------
 
 CS_Exit:
+	if Chapters_TestAll=1
+		addq.b	#1,($FFFFFFA7).w	; go to next chapter ID
+		jmp	ChapterScreen		; reload chapter screen
+	endif
 		jmp	Exit_ChapterScreen	; exit chapter screen
 
 ; ---------------------------------------------------------------------------
@@ -248,8 +254,7 @@ Obj04_Setup:
 		move.b	#0,1(a0)		; set render flag
 		move.w	#$0100,2(a0)		; set art tile, use first palette line
 		move.w	#$123,8(a0)		; set X-position
-		move.w	#$C5,$A(a0)		; set Y-position
-		move.b	($FFFFFFA7).w,$1A(a0)	; set chapter number to frame (first frame in maps is duplicated)
+		move.w	#$CF,$A(a0)		; set Y-position
 
 Obj04_Display:
 		jmp	DisplaySprite		; jump to DisplaySprite

@@ -40,7 +40,7 @@ __DEBUG__: equ 1
 ; $302 - Star Agony Place
 ; $502 - Finalor Place
 	if def(__BENCHMARK__)=0
-QuickLevelSelect = 1
+QuickLevelSelect = 0
 QuickLevelSelect_ID = -1
 ; ------------------------------------------------------
 DebugModeDefault = 1
@@ -3017,17 +3017,12 @@ Title_ClrObjRam:
 
 		bsr	LevelSizeLoad
 		bsr	DeformBgLayer
-		move.l	#Blk16_TitleScreen, BlocksAddress	; load 16x16 blocks
+		move.l	#Blk16_Title,BlocksAddress	; load 16x16 blocks
 
-		lea	(Blk256_TitleScreen).l,a0 ; load title screen chunk mappings
+		lea	(Blk256_Title).l,a0 ; load title screen chunk mappings
 		lea	($FF0000).l,a1
 		bsr	KosDec
 		bsr	LevelLayoutLoad
-		VBlank_UnsetMusicOnly
-
-		bsr	Pal_FadeFrom
-
-		VBlank_SetMusicOnly
 		lea	LevelRenderer_DefaultConfig_BG, a0
 		jsr 	LevelRenderer_DrawLayout_BG_2
 
@@ -3038,7 +3033,7 @@ Title_ClrObjRam:
 		bsr	ShowVDPGraphics
 
 		move.l	#$40000000,($C00004).l
-		lea	(ArtKospM_TitleScreen).l,a0 ; load title screen patterns
+		lea	(ArtKospM_Title).l,a0 ; load title screen patterns
 		bsr	KosPlusMDec_VRAM
 
 		move.l	#$64000002,($C00004).l
@@ -3048,8 +3043,11 @@ Title_ClrObjRam:
 		moveq	#1,d0		; load title screen palette
 		bsr	PalLoad1
 
-
-		move.w	#$618,($FFFFF614).w ; run title screen for $618 frames (this matches the music length)
+		move.w	#$618,d0	 		; NTSC
+		btst	#6,($FFFFFFF8).w		; are we PAL?
+		beq.s	@notpal				; if not, branch
+		move.w	#$53C,d0	 		; PAL
+@notpal:	move.w	d0,($FFFFF614).w	 	; run title screen for X frames (this matches the music length)
 
 		lea	($FFFFD000).w,a1
 		moveq	#0,d0
@@ -3067,7 +3065,7 @@ Title_ClrObjRam2:
 		movem.l	d0-a2,-(sp)		; backup d0 to a2
 		lea	(Pal_ERaZorBanner).l,a1	; set ERaZor banner's palette pointer
 		lea	($FFFFFBE0).l,a2	; set palette location
-		moveq	#7,d0			; set number of loops to 7
+		moveq	#8-1,d0			; set number of loops to 7
 Title_SonPalLoop:
 		move.l	(a1)+,(a2)+		; load 2 colours (4 bytes)
 		dbf	d0,Title_SonPalLoop	; loop
@@ -29586,13 +29584,13 @@ locret_1379E:
 
 
 Sonic_ResetOnFloor:			; XREF: PlatformObject; et al
-		cmpi.w	#$400,($FFFFFE10).w
-		bne.s	@cont
-		tst.b	($FFFFFF7F).w
-		bne.s	@cont
-		move.b	#1,($FFFFFF7F).w
-		move.b	#0,($FFFFF7CC).w
-@cont:
+		cmpi.w	#$400,($FFFFFE10).w	; are we in Uberhub?
+		bne.s	@notuberhub		; if not, branch
+		tst.b	($FFFFFF7F).w		; are we done with the intro tube sequence?
+		bne.s	@notuberhub		; if yes, branch
+		move.b	#1,($FFFFFF7F).w	; end intro tube sequence
+		move.b	#0,($FFFFF7CC).w	; unlock controls
+@notuberhub:
 
 		bclr	#1,($FFFFFFE5).w	; clear air-freeze flag
 		clr.b	($FFFFFFEB).w	; clear jumpdash flag
@@ -45293,11 +45291,11 @@ ArtKospM_OkCool:	incbin	artkosp\okcool.kospm ; ok cool
 ; ---------------------------------------------------------------------------
 ; Compressed graphics - primary patterns and block mappings
 ; ---------------------------------------------------------------------------
-ArtKospM_TitleScreen:	incbin	artkosp\8x8title.kospm	; TS primary patterns
+ArtKospM_Title:	incbin	artkosp\8x8title.kospm	; TS primary patterns
 			even
-Blk16_TitleScreen:	incbin	LevelData\map16\title.unc
+Blk16_Title:	incbin	LevelData\map16\title.unc
 			even
-Blk256_TitleScreen:	incbin	LevelData\map256\title.bin
+Blk256_Title:	incbin	LevelData\map256\title.bin
 			even
 Blk16_GHZ:	incbin	LevelData\map16\ghz.unc
 		even

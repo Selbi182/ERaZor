@@ -274,24 +274,27 @@ Exit_EndingSequence:
 
 ; MakeChapterScreen:
 RunChapter:
-		jsr	SRAM_SaveNow		; save our progress now
 		move.b	#1,($FFFFFFE9).w	; set fade-out in progress flag
-
-		btst	#1,(OptionsBits).w	; is "Skip Story Screens" enabled?
-		bne.w	StartLevel		; if yes, start level straight away
-		bsr	Check_BaseGameBeaten	; has the player already beaten the base game?
-		bne.w	StartLevel		; if yes, no longer display chapter screens
 
 		jsr	FakeLevelID		; get fake level ID for current level
 		tst.b	d5			; did we get a valid ID?
-		bmi.w	StartLevel		; if not, something has gone terribly wrong
-		
+		bmi.s	@nochapter		; if not, something has gone terribly wrong
 		cmp.b	(CurrentChapter).w,d5	; compare currently saved chapter number to fake level ID
-		blo.w	StartLevel		; if this is a chapter from a level we already visited, skip chapter screen
-
+		bls.s	@nochapter		; if this is a chapter from a level we already visited, skip chapter screen
 		move.b	d5,(CurrentChapter).w	; we've entered a new level, update progress chapter ID
-		move.b	#$28,(GameMode).w	; run chapter screen
+
+		bsr	Check_BaseGameBeaten	; has the player already beaten the base game?
+		bne.s	@nochapter		; if yes, no longer display chapter screens
+		btst	#1,(OptionsBits).w	; is "Skip Story Screens" enabled?
+		bne.s	@nochapter		; if yes, start level straight away
+
+		jsr	SRAM_SaveNow		; save our progress now
+		move.b	#$28,(GameMode).w	; new chapter discovered, run chapters screen
 		rts
+
+@nochapter:
+		jsr	SRAM_SaveNow		; save our progress now
+		bra.w	StartLevel		; start level in $FE10 directly
 ; ===========================================================================
 
 RunStory:
@@ -624,6 +627,7 @@ UnlockEverything:
 		move.b	d0,(Doors_Frantic).w	; ...and frantic
 		bsr	Set_BaseGameDone	; unlock screen effects
 		bsr	Set_BlackoutDone	; unlock nonstop inhuman
+		move.b	#7,(CurrentChapter).w	; set to final chapter
 		rts
 
 ; cheats called from options screen

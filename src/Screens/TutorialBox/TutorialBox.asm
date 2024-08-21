@@ -260,7 +260,7 @@ _Accel = $B8
 
 DH_OWindow_Init:
 	st.b	(a0)				; mark slot busy
-	move.b	#$80,render(a0)			; set on-screen coords, force disp
+	move.b	#$80,render(a0)			; set on-screen coords, force display
 	move.w	#(_DH_WindowObj_Art)+pri+tutpal1,art(a0)
 	move.l	#DH_WindowObj_Map,maps(a0)
 	moveq	#4,d0
@@ -275,7 +275,6 @@ DH_OWindow_Init:
 		moveq	#$20-1,d0
 @backup:	move.l	(a1)+,(a2)+
 		dbf	d0,@backup
-	
 
 ; ---------------------------------------------------------------
 
@@ -291,10 +290,13 @@ DH_OWindow_Appear:
 	cmp.w	xpos(a0),d0		; have we reaches screen center?
 	ble.s	@GotoProcess		; if yes, branch
 
+
 		; darken palette as box fades in
 		move.w	($FFFFFE0E).w,d0
-		andi.w	#3,d0
+		andi.w	#7,d0
 		bne.s	@nah
+		cmpi.b	#10,($FFFFFF6E).w	; is this the introduction text?
+		beq.s	@nah			; if yes, branch
 
 		lea	($FFFFFB00).w,a1
 		moveq	#$10-1,d6
@@ -515,6 +517,30 @@ _CooldownVal	= 2
 ; ---------------------------------------------------------------
 
 DH_OWindow_Disappear:
+	
+		; brighten palette as box fades out
+		moveq	#0,d0
+		move.w	($FFFFFE0E).w,d0
+		andi.w	#3,d0
+		bne.s	@nah
+		cmpi.w	#$501,($FFFFFE10).w	; are we in the tutorial?
+		bne.s	@nah			; if not, branch
+		cmpi.b	#10,($FFFFFF6E).w	; is this the introduction text?
+		beq.s	@nah			; if yes, branch
+
+		lea	($FFFFFB00).w,a1
+		moveq	#$10-1,d6
+		moveq	#$11,d0
+		jsr	Pal_FadeAlpha_Black
+
+		lea	($FFFFFB40-8).w,a1
+		moveq	#$20+4-1,d6
+		moveq	#$11,d0
+		jsr	Pal_FadeAlpha_Black
+
+	@nah:
+
+	
 	move.w	xvel(a0),d0		; load xvel
 	add.w	#_Accel,xvel(a0)	; increase it
 	ext.l	d0
@@ -523,19 +549,23 @@ DH_OWindow_Disappear:
 	move.w	xpos2(a0),xpos(a0)	; update actual xpos
 	move.w	#$80+320+$50,d0
 	cmp.w	xpos(a0),d0		; have we passed screen?
-	ble.s	@Kill			; if yes, branch
+	ble.s	DH_KillWindow			; if yes, branch
 	rts
+; ---------------------------------------------------------------
 
-@Kill:
+DH_KillWindow:
 	sf.b	(a0)			; kill windows
 
+		cmpi.b	#10,($FFFFFF6E).w	; is this the introduction text?
+		beq.s	@nah			; if yes, branch
+		; restore backed-up palette
 		lea	($FFFFFB80).w,a1
 		lea	($FFFFFB00).w,a2
 		moveq	#$20-1,d0
 @restore:	move.l	(a1)+,(a2)+
 		dbf	d0,@restore
 
-	rts
+@nah:	rts
 
 
 ; ===============================================================

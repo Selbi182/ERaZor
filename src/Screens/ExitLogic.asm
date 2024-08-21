@@ -392,6 +392,7 @@ HubRing_FP:	move.w	#$502,($FFFFFE10).w	; set level to FZ
 ; ---------------------------------------------------------------------------
 
 HubRing_IntroStart:
+		move.b	#1,($FFFFFFE9).w	; set fade-out in progress flag
 		move.w	#$001,($FFFFFE10).w	; set to intro cutscene (this also controls the start of the intro cutscene itself)
 		move.b	#$28,(GameMode).w	; load chapters screen for intro cutscene ("One Hot Day...")
 		rts				; this is the only text screen not affected by Skip Story Texts

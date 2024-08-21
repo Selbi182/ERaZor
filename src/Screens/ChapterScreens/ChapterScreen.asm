@@ -9,7 +9,7 @@
 ; 3: Inhuman Through The Ruins
 ; 4: Wet Pit Of Death
 ; 5: Hover Into Your Frustration
-; 6: SLZ
+; 6: Watch The Night Explode
 ; 7: In The End
 ; ---------------------------------------------------------------------------
 Chapters_Total = 7
@@ -254,7 +254,7 @@ Obj04_Setup:
 		move.b	#0,1(a0)		; set render flag
 		move.w	#$0100,2(a0)		; set art tile, use first palette line
 		move.w	#$123,8(a0)		; set X-position
-		move.w	#$CF,$A(a0)		; set Y-position
+		move.w	#$D3,$A(a0)		; set Y-position
 
 Obj04_Display:
 		jmp	DisplaySprite		; jump to DisplaySprite

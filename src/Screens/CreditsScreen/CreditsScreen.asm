@@ -327,7 +327,12 @@ Credits_LoadPage:
 @getindex:	add.w	d0,d0				; times four...
 		add.w	d0,d0				; ...for long alignment
 		movea.l	CreditsMaps_Index(pc,d0.w),a0	; load credits page into a0
-		rts
+
+		tst.b	(PlacePlacePlace).w		; PLACE PLACE PLACE?
+		beq.s	@end				; if not, branch
+		lea	(Credits_PlacePlacePlace).l,a0	; PLACE PLACE PLACE!
+@end:		rts
+
 ; ---------------------------------------------------------------------------
 CreditsMaps_Index:
 		dc.l	Credits_Page1
@@ -569,7 +574,25 @@ Credits_Page12:
 		crdtxt	"                    "
 		crdtxt	"                    "
 
-	even
+; ---------------------------------------------------------------------------
+
+Credits_PlacePlacePlace:
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"place place         "
+		crdtxt	"                    "
+		crdtxt	"place place place   "
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"PLACE PLACE PLACE   "
+		crdtxt	"                    "
+		crdtxt	"PLACE PLACE         "
+		crdtxt	"                    "
+		crdtxt	"PLACE               "
+		crdtxt	"                    "
+		crdtxt	"                    "
+
+		even
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
 

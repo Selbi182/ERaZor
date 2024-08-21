@@ -2186,7 +2186,7 @@ Pal_CutFill:
 ;		d6 - Count
 ; ---------------------------------------------------------------------------
 
-Pal_FadeAlpha_Black:
+Pal_FadeAlpha_Blackx:
 
 @FadeColors	move.w	(a1),d1			; load source color
 		moveq	#0,d3
@@ -2208,6 +2208,42 @@ Pal_FadeAlpha_Black:
 		dbf	d6,@FadeColors		; do for all colors
 
 		rts
+
+
+
+; =========================================================================
+; -------------------------------------------------------------------------
+; Main Routine to fade colors
+; -------------------------------------------------------------------------
+; Input:	a0 - Active palette
+;		a1 - Source palette
+;		d0 - Transparency
+;		d6 - Colors to fade
+; -------------------------------------------------------------------------
+
+Pal_FadeAlpha_Black:
+
+@FadeColors	move.w	(a1)+,d1		; load source color
+		moveq	#0,d3
+		moveq	#0,d5
+		moveq	#2,d4
+
+@FadeChannel	move.w	d1,d2
+		lsr.w	#4,d1
+		andi.w	#%1110,d2		; d2 -> Current Channel
+		mulu.w	d0,d2			; d2 -> Mutiply by Fade Factor
+		lsr.w	#4,d2
+		andi.w	#%1110,d2		; d2 -> Channel with Fading
+		lsl.w	d3,d2			; d2 -> Align Channel
+		addq.b	#4,d3
+		or.w	d2,d5
+		dbf	d4,@FadeChannel		; do for all channels
+		
+		move.w	d5,(a0)+		; save faded color
+		dbf	d6,@FadeColors		; do for all colors
+
+		rts
+
 
 ; ===========================================================================
 
@@ -4744,6 +4780,7 @@ ClearEverySpecialFlag:
 		move.w	d0,($FFFFFFD0).w
 		move.l	d0,($FFFFFFD2).w
 		move.l	d0,($FFFFFFD6).w
+		move.b	d0,($FFFFFFE1).w
 		move.b	d0,($FFFFFFE5).w
 		move.b	d0,($FFFFFFE7).w
 		move.b	d0,($FFFFFFF9).w
@@ -12618,10 +12655,18 @@ Obj4B_YPositive:
 
 		; new censored easter egg (replaced the old naughty one)
 		cmpi.w	#$302,($FFFFFE10).w	; is this Star Agony Place? (easter egg ring)
-		bne.s	@notsap			; if not, branch
+		bne.w	@notsap			; if not, branch
+
+		tst.b	(PlacePlacePlace).w
+		beq.s	@easteregg
+		jmp	TrollKill
+
+@easteregg:
 		jsr	DeleteObject		; delete easter egg ring
 		clr.w	($FFFFD010).w		; clear Sonic's X speed
 		clr.w	($FFFFD012).w		; clear Sonic's Y speed
+		clr.l	($FFFFF602).w		; clear any remaining button presses
+		
 
 		jsr	SAP_LoadSonicPal	; force text color to be consistent (cause it happens to share Sonic's antigrav line)
 		move.w	#$222,($FFFFFB36).w	; keep textbox background color gray
@@ -26282,17 +26327,7 @@ Obj06_ChkDist:
 Obj06_DoHardPartSkip:
 		frantic				; are we in Frantic mode?
 		beq.s	@dohardpartskip		; if not, branch
-		jsr	SingleObjLoad2
-		bne.w	@noobjectleft
-		move.b	#$3F,(a1)		; load singular explosion object
-		move.w	obX(a0),obX(a1)
-		move.w	obY(a0),obY(a1)
-		move.b	#0,$31(a1)
-		ori.b	#10,(CameraShake).w
-@noobjectleft:	jsr	DeleteObject		; delete Hard Part Skipper
-		move.w	#$8F,d0			; play game over jingle
-		jsr	PlaySound
-		jmp	KillSonic_Inhuman	; get trolled
+		jmp	TrollKill		; no hard part skippers for you
 ; ---------------------------------------------------------------------------
 
 @dohardpartskip:
@@ -26472,6 +26507,8 @@ UberhubEasteregg:
 		
 		moveq	#$FFFFFF88,d0		; play special stage jingle...
 		jmp	PlaySound		; ...specifically because it tends to ruin the music following it lol
+; ===========================================================================
+
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -40484,8 +40521,21 @@ KillSonic_Inhuman:
 		movea.l	a0,a2			; set killer to self
 		clr.b	($FFFFFFE7).w		; disable inhuman mode
 		bra.w	KillSonic		; get fucking trolled lmao
-; End of function KillSonic
+; ---------------------------------------------------------------------------
 
+TrollKill:
+		jsr	SingleObjLoad2
+		bne.w	@noobjectleft
+		move.b	#$3F,(a1)		; load singular explosion object
+		move.w	obX(a0),obX(a1)
+		move.w	obY(a0),obY(a1)
+		move.b	#0,$31(a1)
+		ori.b	#10,(CameraShake).w
+@noobjectleft:	jsr	DeleteObject		; delete Hard Part Skipper
+		move.w	#$8F,d0			; play game over jingle
+		jsr	PlaySound
+		bra.s	KillSonic_Inhuman	; get trolled
+; End of function KillSonic
 ; ===========================================================================
 
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||

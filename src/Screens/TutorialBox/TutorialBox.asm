@@ -18,6 +18,9 @@ _DH_VRAM_Border		= $5700			; VRAM address for window border
 _DH_WindowObj		= $FFFFD400		; address for window object        
 _DH_WindowObj_Art	= _DH_VRAM_Border/$20	; art pointer for window object
 
+TutDim_Min	= 7
+TutDim_Max	= $10
+
 ; ---------------------------------------------------------------
 ; Constants
 ; ---------------------------------------------------------------
@@ -270,16 +273,17 @@ DH_OWindow_Init:
 	move.w	#_StartVel,xvel(a0)		; xvel
 	move.l	#DH_OWindow_Appear,obj(a0)
 	
-		lea	($FFFFFB00).w,a1
-		lea	($FFFFFB80).w,a2
-		moveq	#$20-1,d0
-@backup:	move.l	(a1)+,(a2)+
-		dbf	d0,@backup
+	; backup palette, used for the fading
+	lea	($FFFFFB00).w,a1
+	lea	($FFFFFB80).w,a2
+	moveq	#$20-1,d0
+@backup:
+	move.l	(a1)+,(a2)+
+	dbf	d0,@backup
 
 ; ---------------------------------------------------------------
 
 DH_OWindow_Appear:
-	moveq	#0,d0
 	move.w	xvel(a0),d0		; load xvel
 	sub.w	#_Accel,xvel(a0)	; decrease it
 	ext.l	d0
@@ -290,25 +294,34 @@ DH_OWindow_Appear:
 	cmp.w	xpos(a0),d0		; have we reaches screen center?
 	ble.s	@GotoProcess		; if yes, branch
 
+	; darken palette as box fades in
+	cmpi.b	#10,($FFFFFF6E).w	; is this the introduction text?
+	beq.s	@nah			; if yes, branch
 
-		; darken palette as box fades in
-		move.w	($FFFFFE0E).w,d0
-		andi.w	#7,d0
-		bne.s	@nah
-		cmpi.b	#10,($FFFFFF6E).w	; is this the introduction text?
-		beq.s	@nah			; if yes, branch
+	move.w	#$120,d0		; $120 = target X pos when the tut box is centered
+	sub.w	xpos(a0),d0 		; subtract current tut box X pos
+	lsr.w	#4,d0			; reduce
 
-		lea	($FFFFFB00).w,a1
-		moveq	#$10-1,d6
-		moveq	#$F,d0
-		jsr	Pal_FadeAlpha_Black
+	cmpi.b	#TutDim_Min,d0		; is result below the min value?
+	bhs.s	@0			; if not, branch
+	moveq	#TutDim_Min,d0		; set minimum value
+@0:	cmpi.b	#TutDim_Max,d0		; is result above the max value?
+	bls.s	@fadeout		; if not, branch
+	moveq	#TutDim_Max,d0		; set maximum value
 
-		lea	($FFFFFB40-8).w,a1
-		moveq	#$20+4-1,d6
-		moveq	#$F,d0
-		jsr	Pal_FadeAlpha_Black
+@fadeout:
+	lea	($FFFFFB80).w,a1
+	lea	($FFFFFB00).w,a2
+	moveq	#$10-1,d6
+	jsr	Pal_FadeAlpha_Black	; fade out first part
+	; colors for the actual textbox are in between these two
+	lea	($FFFFFB80+$40-8).w,a1
+	lea	($FFFFFB00+$40-8).w,a2
+	moveq	#$20+4-1,d6
+	jsr	Pal_FadeAlpha_Black	; fade out second part
 
-	@nah:	rts
+@nah:
+	rts
 	
 @GotoProcess:
 	move.w	d0,xpos(a0)		; fix x-pos
@@ -517,30 +530,32 @@ _CooldownVal	= 2
 ; ---------------------------------------------------------------
 
 DH_OWindow_Disappear:
-	
-		; brighten palette as box fades out
-		moveq	#0,d0
-		move.w	($FFFFFE0E).w,d0
-		andi.w	#3,d0
-		bne.s	@nah
-		cmpi.w	#$501,($FFFFFE10).w	; are we in the tutorial?
-		bne.s	@nah			; if not, branch
-		cmpi.b	#10,($FFFFFF6E).w	; is this the introduction text?
-		beq.s	@nah			; if yes, branch
+	; brighten palette as box fades out
+	cmpi.b	#10,($FFFFFF6E).w	; is this the introduction text?
+	beq.s	@nah			; if yes, branch
 
-		lea	($FFFFFB00).w,a1
-		moveq	#$10-1,d6
-		moveq	#$11,d0
-		jsr	Pal_FadeAlpha_Black
+	move.w	xpos(a0),d0 		; get current tut box X pos (which is starting at $120 here)
+	subi.w	#$120,d0		; subtract $120
+	lsr.w	#2,d0			; reduce
+	cmpi.b	#TutDim_Min,d0		; is result below the min value?
+	bhs.s	@0			; if not, branch
+	moveq	#TutDim_Min,d0		; set minimum value
+@0:	cmpi.b	#TutDim_Max,d0		; is result above the max value?
+	bls.s	@fadein			; if not, branch
+	moveq	#TutDim_Max,d0		; set maximum value
 
-		lea	($FFFFFB40-8).w,a1
-		moveq	#$20+4-1,d6
-		moveq	#$11,d0
-		jsr	Pal_FadeAlpha_Black
+@fadein:
+	lea	($FFFFFB80).w,a1
+	lea	($FFFFFB00).w,a2
+	moveq	#$10-1,d6
+	jsr	Pal_FadeAlpha_Black	; fade out first part
+	; colors for the actual textbox are in between these two
+	lea	($FFFFFB80+$40-8).w,a1
+	lea	($FFFFFB00+$40-8).w,a2
+	moveq	#$20+4-1,d6
+	jsr	Pal_FadeAlpha_Black	; fade out second part	
 
-	@nah:
-
-	
+@nah:
 	move.w	xvel(a0),d0		; load xvel
 	add.w	#_Accel,xvel(a0)	; increase it
 	ext.l	d0
@@ -549,24 +564,24 @@ DH_OWindow_Disappear:
 	move.w	xpos2(a0),xpos(a0)	; update actual xpos
 	move.w	#$80+320+$50,d0
 	cmp.w	xpos(a0),d0		; have we passed screen?
-	ble.s	DH_KillWindow			; if yes, branch
+	ble.s	DH_KillWindow		; if yes, branch
 	rts
 ; ---------------------------------------------------------------
 
 DH_KillWindow:
 	sf.b	(a0)			; kill windows
 
-		cmpi.b	#10,($FFFFFF6E).w	; is this the introduction text?
-		beq.s	@nah			; if yes, branch
-		; restore backed-up palette
-		lea	($FFFFFB80).w,a1
-		lea	($FFFFFB00).w,a2
-		moveq	#$20-1,d0
-@restore:	move.l	(a1)+,(a2)+
-		dbf	d0,@restore
-
-@nah:	rts
-
+	; restore backed-up palette
+	cmpi.b	#10,($FFFFFF6E).w	; is this the introduction text?
+	beq.s	@nah			; if yes, branch
+	lea	($FFFFFB80).w,a1
+	lea	($FFFFFB00).w,a2
+	moveq	#$20-1,d0
+@restore:
+	move.l	(a1)+,(a2)+
+	dbf	d0,@restore
+@nah:
+	rts
 
 ; ===============================================================
 

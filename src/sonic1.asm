@@ -2176,50 +2176,19 @@ Pal_CutFill:
 @fill:		move.w	d0,(a0)+
 		dbf	d1,@fill
 		rts
+; ---------------------------------------------------------------------------
+; ===========================================================================
+
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Main Routine to fade colors
 ; ---------------------------------------------------------------------------
-; Input:	a0 - Palette
-;		d0 - Transparency (0-$10)
-;		d6 - Count
+; Input:	a1 - Source palette
+;		a2 - Destination palette
+;		d0 - Transparency (0 for black, $10 for default)
+;		d6 - Number of colors to fade
 ; ---------------------------------------------------------------------------
-
-Pal_FadeAlpha_Blackx:
-
-@FadeColors	move.w	(a1),d1			; load source color
-		moveq	#0,d3
-		moveq	#0,d5
-		moveq	#2,d4
-
-@FadeChannel	move.w	d1,d2
-		lsr.w	#4,d1
-		andi.w	#%1110,d2		; d2 -> Current Channel
-		mulu.w	d0,d2			; d2 -> Mutiply by Fade Factor
-		lsr.w	#4,d2
-		andi.w	#%1110,d2		; d2 -> Channel with Fading
-		lsl.w	d3,d2			; d2 -> Align Channel
-		addq.b	#4,d3
-		or.w	d2,d5
-		dbf	d4,@FadeChannel		; do for all channels
-		
-		move.w	d5,(a1)+		; save faded color
-		dbf	d6,@FadeColors		; do for all colors
-
-		rts
-
-
-
-; =========================================================================
-; -------------------------------------------------------------------------
-; Main Routine to fade colors
-; -------------------------------------------------------------------------
-; Input:	a0 - Active palette
-;		a1 - Source palette
-;		d0 - Transparency
-;		d6 - Colors to fade
-; -------------------------------------------------------------------------
 
 Pal_FadeAlpha_Black:
 
@@ -2239,13 +2208,13 @@ Pal_FadeAlpha_Black:
 		or.w	d2,d5
 		dbf	d4,@FadeChannel		; do for all channels
 		
-		move.w	d5,(a0)+		; save faded color
+		move.w	d5,(a2)+		; save faded color
 		dbf	d6,@FadeColors		; do for all colors
 
 		rts
-
-
+; ---------------------------------------------------------------------------
 ; ===========================================================================
+	
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -43568,12 +43537,14 @@ loc_1C6E4:
 Hud_ChkTime:
 		tst.b	($FFFFFE1E).w	; does the time	need updating?
 		beq.w	Hud_ChkLives	; if not, branch
+		tst.w	($FFFFF63A).w	; is the game paused?
+		bne.w	Hud_ChkLives	; if yes, branch
+		tst.b	($FFFFF7CC).w	; are controls locked?
+		bne.w	Hud_ChkLives	; if yes, branch
 		cmpi.w	#$400,($FFFFFE10).w ; is level SYZ1?
 		beq.w	Hud_ChkLives	; if yes, branch
 		cmpi.w	#$501,($FFFFFE10).w ; is level SBZ1?
 		beq.w	Hud_ChkLives	; if yes, branch
-		tst.w	($FFFFF63A).w	; is the game paused?
-		bne.w	Hud_ChkLives	; if yes, branch
 
 		lea	($FFFFFE22).w,a1
 		cmpi.l	#(9*$10000)|(99*$100),(a1)+	; is the time 999? ($96300)
@@ -43583,6 +43554,7 @@ Hud_ChkTime:
 		frantic				; are we in frantic?
 		beq.s	@notfrantic		; if not, branch
 		moveq	#3,d0			; otherwise, triple regular timer speed (3 ticks per second; this changes the effective time limit to roughly 5.5 minutes)
+		
 @notfrantic:
 		cmpi.w	#$502,($FFFFFE10).w	; are we in FP?
 		bne.s	@notfzescape		; if not, branch

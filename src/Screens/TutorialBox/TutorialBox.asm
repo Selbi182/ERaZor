@@ -59,148 +59,147 @@ _end	= $FF	; finish hint
 ; ===============================================================
 
 Tutorial_DisplayHint:
-	movem.l	a0/a5-a6,-(sp)
-	move.b	d0,($FFFFFF6E).w
-	
-	
-	; Setup registers for constant use
-	lea	VDP_Ctrl,a6           
-	lea	VDP_Data,a5
+		move.b	d0,($FFFFFF6E).w		; store text ID
+		movem.l	a0/a5-a6,-(sp)
 
-	; Init objects
- 	lea	_DH_WindowObj,a0
- 	move.w	d0,-(sp)
-	jsr	DeleteObject			; clear slot
-	move.w	(sp)+,d0
-	move.l	#DH_OWindow_Init,obj(a0)
-	lea	Hints_List,a1
-	andi.w	#$FF,d0
-	add.w	d0,d0
-	add.w	d0,d0
-	move.l	-4(a1,d0.w),char_pos(a0)	; load hint text
-	
-	tst.b	(PlacePlacePlace).w		; PLACE PLACE PLACE?
-	beq.s	@noeaster			; if not, branch
-	move.l	#Hint_Place,char_pos(a0)	; PLACE PLACE PLACE!
+		; Setup registers for constant use
+		lea	VDP_Ctrl,a6           
+		lea	VDP_Data,a5
+
+		; Init objects
+		lea	_DH_WindowObj,a0
+		move.w	d0,-(sp)
+		jsr	DeleteObject			; clear slot
+		move.w	(sp)+,d0
+		move.l	#DH_OWindow_Init,obj(a0)
+		lea	Hints_List,a1
+		andi.w	#$FF,d0
+		add.w	d0,d0
+		add.w	d0,d0
+		move.l	-4(a1,d0.w),char_pos(a0)	; load hint text
+		
+		tst.b	(PlacePlacePlace).w		; PLACE PLACE PLACE?
+		beq.s	@noeaster			; if not, branch
+		move.l	#Hint_Place,char_pos(a0)	; PLACE PLACE PLACE!
 @noeaster:
-	
-	; Init hint window gfx
-	move.b	#8,VBlankRoutine
-	jsr	DelayProgram			; perform vsync before operation, fix Sonic's DPCL
-	VBlank_SetMusicOnly			; disable interrupts
-	ints_push
-	bsr	DH_ClearWindow			; draw window
-	lea	Art_DH_WindowBorder,a1		; load border art
-	vram	_DH_VRAM_Border,(a6)
-	moveq	#7,d0				; transfer 8 tiles
-@0	move.l	(a1)+,(a5)
-	move.l	(a1)+,(a5)
-	move.l	(a1)+,(a5)
-	move.l	(a1)+,(a5)
-   	move.l	(a1)+,(a5)
-	move.l	(a1)+,(a5)
-	move.l	(a1)+,(a5)
-	move.l	(a1)+,(a5)
-	dbf	d0,@0
-	ints_pop
-	VBlank_UnsetMusicOnly
+		
+		; Init hint window gfx
+		move.b	#8,VBlankRoutine
+		jsr	DelayProgram			; perform vsync before operation, fix Sonic's DPCL
+		VBlank_SetMusicOnly			; disable interrupts
+		ints_push
+		bsr	DH_ClearWindow			; draw window
+		lea	Art_DH_WindowBorder,a1		; load border art
+		vram	_DH_VRAM_Border,(a6)
+		moveq	#7,d0				; transfer 8 tiles
+@0		move.l	(a1)+,(a5)
+		move.l	(a1)+,(a5)
+		move.l	(a1)+,(a5)
+		move.l	(a1)+,(a5)
+		move.l	(a1)+,(a5)
+		move.l	(a1)+,(a5)
+		move.l	(a1)+,(a5)
+		move.l	(a1)+,(a5)
+		dbf	d0,@0
+		ints_pop
+		VBlank_UnsetMusicOnly
 
-	cmpi.b	#10,($FFFFFF6E).w	; is this the introduction text?
-	bne.s	DH_MainLoop		; if not, branch
-	jsr	BackgroundEffects_Setup
-	lea	VDP_Ctrl,a6   
-	lea	VDP_Data,a5
+		cmpi.b	#10,($FFFFFF6E).w	; is this the introduction text?
+		bne.s	DH_MainLoop		; if not, branch
+		jsr	BackgroundEffects_Setup
+		lea	VDP_Ctrl,a6   
+		lea	VDP_Data,a5
 
 ; ---------------------------------------------------------------
 ; Display Hint Main Loop
 ; ---------------------------------------------------------------
 
 DH_MainLoop:
-	move.b	#2,VBlankRoutine
-	jsr	DelayProgram
+		move.b	#2,VBlankRoutine
+		jsr	DelayProgram
 
-	cmpi.b	#10,($FFFFFF6E).w	; is this the introduction text?
-	beq.s	@0			; if yes, branch
-	jsr	Fuzz_TutBox		; do cinematic screen fuzz if applicable
-	bra.s	DH_Continue
+		cmpi.b	#10,($FFFFFF6E).w	; is this the introduction text?
+		beq.s	@0			; if yes, branch
+		jsr	Fuzz_TutBox		; do cinematic screen fuzz if applicable
+		bra.s	DH_Continue
 @0:	
-	jsr	BackgroundEffects_Update
+		jsr	BackgroundEffects_Update
 
 DH_Continue:
-	; Run window object code
-	lea	_DH_WindowObj,a0
-	movea.l	obj(a0),a1
-	jsr	(a1)		; run window object
+		; Run window object code
+		lea	_DH_WindowObj,a0
+		movea.l	obj(a0),a1
+		jsr	(a1)			; run window object
 
-	; Display other objects
-	lea	Objects,a0
-	moveq	#$7F,d7
-	jsr	loc_D368
-	jsr	BuildSprites
-	jsr	PalCycle_Load
+		; Display other objects
+		lea	Objects,a0
+		moveq	#$7F,d7
+		jsr	loc_D368
+		jsr	BuildSprites
+		jsr	PalCycle_Load
 
-	; palette cycle to highlight letters
-	btst	#7,(OptionsBits).w	; photosensitive mode?
-	bne.s	@noletterflashing	; if yes, branch
-	move.w	($FFFFFE0E).w,d0
-	lsl.w	#4,d0
-	jsr	CalcSine
-	cmpi.w	#$100,d0
-	bne.s	@contff
-	subq.w	#1,d0		
+		; palette cycle to highlight letters
+		btst	#7,(OptionsBits).w	; photosensitive mode?
+		bne.s	@noletterflashing	; if yes, branch
+		move.w	($FFFFFE0E).w,d0
+		lsl.w	#4,d0
+		jsr	CalcSine
+		cmpi.w	#$100,d0
+		bne.s	@contff
+		subq.w	#1,d0
 @contff:
-	addi.w	#$100,d0
-	lsr.w	#6,d0
-	andi.w	#$00E,d0
-	move.w	d0,d1
-	rol.w	#4,d1
-	or.w	d1,d0
-	rol.w	#4,d1
-	or.w	d1,d0
-	move.w	d0,($FFFFFB34).w
-	
+		addi.w	#$100,d0
+		lsr.w	#6,d0
+		andi.w	#$00E,d0
+		move.w	d0,d1
+		rol.w	#4,d1
+		or.w	d1,d0
+		rol.w	#4,d1
+		or.w	d1,d0
+		move.w	d0,($FFFFFB34).w
+		
 @noletterflashing:
-	; Check if it's over
-	tst.b	_DH_WindowObj	; object window dead?
-	bne.w	DH_MainLoop	; if not, branch
+		; Check if it's over
+		tst.b	_DH_WindowObj	; object window dead?
+		bne.w	DH_MainLoop	; if not, branch
 
 ; ---------------------------------------------------------------
 ; Return to the game
 ; ---------------------------------------------------------------
 
 DH_Quit:
-	movem.l	(sp)+,a0/a5-a6
-	clr.b	($FFFFFF6E).w
-	
-	; Display objects one final time
-	lea	Objects,a0
-	moveq	#$7F,d7
-	jsr	loc_D368
-	moveq	#0, d7				; short circuit ObjectsLoad if we're there
-	rts
+		movem.l	(sp)+,a0/a5-a6
+		clr.b	($FFFFFF6E).w			; unset text ID
+		
+		; Display objects one final time
+		lea	Objects,a0
+		moveq	#$7F,d7
+		jsr	loc_D368
+		moveq	#0, d7				; short circuit ObjectsLoad if we're there
+		rts
 
 ; ---------------------------------------------------------------
 ; Clear/Redraw text window
 ; ---------------------------------------------------------------
 
 DH_ClearWindow:
-	VBlank_SetMusicOnly
-	vram	_DH_VRAM_Base,(a6)
-	move.l	#_DH_BG_Pattern,d0
-	move.w	#$A0-1,d1	; do $A0 tiles
+		VBlank_SetMusicOnly
+		vram	_DH_VRAM_Base,(a6)
+		move.l	#_DH_BG_Pattern,d0
+		move.w	#$A0-1,d1	; do $A0 tiles
 
 @DrawTile:
-	move.l	d0,(a5)
-	move.l	d0,(a5)
-	move.l	d0,(a5)
-	move.l	d0,(a5)
-	move.l	d0,(a5)
-	move.l	d0,(a5)
-	move.l	d0,(a5)
-	move.l	d0,(a5)
-	dbf	d1,@DrawTile
-	VBlank_UnsetMusicOnly
-	rts
+		move.l	d0,(a5)
+		move.l	d0,(a5)
+		move.l	d0,(a5)
+		move.l	d0,(a5)
+		move.l	d0,(a5)
+		move.l	d0,(a5)
+		move.l	d0,(a5)
+		move.l	d0,(a5)
+		dbf	d1,@DrawTile
+		VBlank_UnsetMusicOnly
+		rts
 
 ; ---------------------------------------------------------------
 ; Draw Character in the window
@@ -211,42 +210,42 @@ DH_ClearWindow:
 DH_CharOffset = $36
 
 DH_DrawChar:
-	lea	(Art_DH_Font).l,a2	; load current char
-	cmpi.b	#_font2,d0		; is it a flag to make the next char have the second font?
-	bne.s	@notsecondfont		; if not, branch
-	lea	(Art_DH_Font2).l,a2	; use second font instead
-	move.b	(a1)+,d0		; skip this flag char
-	addq.l	#1,char_pos(a0)		; increase char pos
+		lea	(Art_DH_Font).l,a2	; load current char
+		cmpi.b	#_font2,d0		; is it a flag to make the next char have the second font?
+		bne.s	@notsecondfont		; if not, branch
+		lea	(Art_DH_Font2).l,a2	; use second font instead
+		move.b	(a1)+,d0		; skip this flag char
+		addq.l	#1,char_pos(a0)		; increase char pos
 @notsecondfont:
-	subi.b	#DH_CharOffset,d0
-	lsl.w	#5,d0			; d0 = Char*$20
-	lea	(a2,d0.w),a2		; load this char's art 
+		subi.b	#DH_CharOffset,d0
+		lsl.w	#5,d0			; d0 = Char*$20
+		lea	(a2,d0.w),a2		; load this char's art 
 
 InitDraw:  
-	moveq	#$F,d3			; d3 = Pixel Mask
-	moveq	#_DH_BG_Pattern_2,d4	; d4 = BG color
-	moveq	#7,d5
+		moveq	#$F,d3			; d3 = Pixel Mask
+		moveq	#_DH_BG_Pattern_2,d4	; d4 = BG color
+		moveq	#7,d5
 
 @DrawLine:
-	moveq	#7,d2
-	move.l	(a2)+,d0		; load 8 px
+		moveq	#7,d2
+		move.l	(a2)+,d0		; load 8 px
 
 @CheckPixel:
-	move.b	d0,d1			; load line pattern
-	and.b	d3,d1			; check out first pixel
-	beq.s	@0			; if it's transparent, branch
-	ror.l	#4,d0			; rotate 1 px
-	dbf	d2,@CheckPixel		; repeat for 8 pixels
-	bra.s	@1
+		move.b	d0,d1			; load line pattern
+		and.b	d3,d1			; check out first pixel
+		beq.s	@0			; if it's transparent, branch
+		ror.l	#4,d0			; rotate 1 px
+		dbf	d2,@CheckPixel		; repeat for 8 pixels
+		bra.s	@1
 
-@0	or.b	d4,d0			; replace transparent pixel with BG color
-	ror.l	#4,d0			; rotate 1 px
-	dbf	d2,@CheckPixel		; repeat for 8 pixels
+@0		or.b	d4,d0			; replace transparent pixel with BG color
+		ror.l	#4,d0			; rotate 1 px
+		dbf	d2,@CheckPixel		; repeat for 8 pixels
 
-@1	move.l	d0,(a5)			; send 8 px line to VRAM
-	dbf	d5,@DrawLine		; repeat for 8 lines
-	
-	rts
+@1		move.l	d0,(a5)			; send 8 px line to VRAM
+		dbf	d5,@DrawLine		; repeat for 8 lines
+		
+		rts
 
 
 ; ===============================================================
@@ -262,70 +261,70 @@ _StartVel = $1400
 _Accel = $B8
 
 DH_OWindow_Init:
-	st.b	(a0)				; mark slot busy
-	move.b	#$80,render(a0)			; set on-screen coords, force display
-	move.w	#(_DH_WindowObj_Art)+pri+tutpal1,art(a0)
-	move.l	#DH_WindowObj_Map,maps(a0)
-	moveq	#4,d0
-	swap	d0
-	move.l	d0,xpos2(a0)			; xpos
-	move.w	#$80+224/2,ypos(a0)		; ypos
-	move.w	#_StartVel,xvel(a0)		; xvel
-	move.l	#DH_OWindow_Appear,obj(a0)
-	
-	; backup palette, used for the fading
-	lea	($FFFFFB00).w,a1
-	lea	($FFFFFB80).w,a2
-	moveq	#$20-1,d0
+		st.b	(a0)				; mark slot busy
+		move.b	#$80,render(a0)			; set on-screen coords, force display
+		move.w	#(_DH_WindowObj_Art)+pri+tutpal1,art(a0)
+		move.l	#DH_WindowObj_Map,maps(a0)
+		moveq	#4,d0
+		swap	d0
+		move.l	d0,xpos2(a0)			; xpos
+		move.w	#$80+224/2,ypos(a0)		; ypos
+		move.w	#_StartVel,xvel(a0)		; xvel
+		move.l	#DH_OWindow_Appear,obj(a0)
+		
+		; backup palette, used for the fading
+		lea	($FFFFFB00).w,a1
+		lea	($FFFFFB80).w,a2
+		moveq	#$20-1,d0
 @backup:
-	move.l	(a1)+,(a2)+
-	dbf	d0,@backup
+		move.l	(a1)+,(a2)+
+		dbf	d0,@backup
 
 ; ---------------------------------------------------------------
 
 DH_OWindow_Appear:
-	move.w	xvel(a0),d0		; load xvel
-	sub.w	#_Accel,xvel(a0)	; decrease it
-	ext.l	d0
-	asl.l	#8,d0
-	add.l	d0,xpos2(a0)		; calc new xpos
-	move.w	xpos2(a0),xpos(a0)	; update actual xpos
-	move.w	#$80+320/2,d0
-	cmp.w	xpos(a0),d0		; have we reaches screen center?
-	ble.s	@GotoProcess		; if yes, branch
+		move.w	xvel(a0),d0		; load xvel
+		sub.w	#_Accel,xvel(a0)	; decrease it
+		ext.l	d0
+		asl.l	#8,d0
+		add.l	d0,xpos2(a0)		; calc new xpos
+		move.w	xpos2(a0),xpos(a0)	; update actual xpos
+		move.w	#$80+320/2,d0
+		cmp.w	xpos(a0),d0		; have we reaches screen center?
+		ble.s	@GotoProcess		; if yes, branch
 
-	; darken palette as box fades in
-	cmpi.b	#10,($FFFFFF6E).w	; is this the introduction text?
-	beq.s	@nah			; if yes, branch
+		; darken palette as box fades in
+		cmpi.b	#10,($FFFFFF6E).w	; is this the introduction text?
+		beq.s	@nah			; if yes, branch
 
-	move.w	#$120,d0		; $120 = target X pos when the tut box is centered
-	sub.w	xpos(a0),d0 		; subtract current tut box X pos
-	lsr.w	#4,d0			; reduce
+		move.w	#$120,d0		; $120 = target X pos when the tut box is centered
+		sub.w	xpos(a0),d0 		; subtract current tut box X pos
+		lsr.w	#4,d0			; reduce
 
-	cmpi.b	#TutDim_Min,d0		; is result below the min value?
-	bhs.s	@0			; if not, branch
-	moveq	#TutDim_Min,d0		; set minimum value
-@0:	cmpi.b	#TutDim_Max,d0		; is result above the max value?
-	bls.s	@fadeout		; if not, branch
-	moveq	#TutDim_Max,d0		; set maximum value
+		cmpi.b	#TutDim_Min,d0		; is result below the min value?
+		bhs.s	@0			; if not, branch
+		moveq	#TutDim_Min,d0		; set minimum value
+@0:		cmpi.b	#TutDim_Max,d0		; is result above the max value?
+		bls.s	@fadeout		; if not, branch
+		moveq	#TutDim_Max,d0		; set maximum value
 
 @fadeout:
-	lea	($FFFFFB80).w,a1
-	lea	($FFFFFB00).w,a2
-	moveq	#$10-1,d6
-	jsr	Pal_FadeAlpha_Black	; fade out first part
-	; colors for the actual textbox are in between these two
-	lea	($FFFFFB80+$40-8).w,a1
-	lea	($FFFFFB00+$40-8).w,a2
-	moveq	#$20+4-1,d6
-	jsr	Pal_FadeAlpha_Black	; fade out second part
+		lea	($FFFFFB80).w,a1
+		lea	($FFFFFB00).w,a2
+		moveq	#$10-1,d6
+		jsr	Pal_FadeAlpha_Black	; fade out first part
+		; colors for the actual textbox are in between these two
+		lea	($FFFFFB80+$40-8).w,a1
+		lea	($FFFFFB00+$40-8).w,a2
+		moveq	#$20+4-1,d6
+		jsr	Pal_FadeAlpha_Black	; fade out second part
 
 @nah:
-	rts
-	
+		rts
+		
 @GotoProcess:
-	move.w	d0,xpos(a0)		; fix x-pos
-	move.l	#DH_OWindow_Process,obj(a0)
+		move.w	d0,xpos(a0)		; fix x-pos
+		move.l	#DH_OWindow_Process,obj(a0)
 
 ; ---------------------------------------------------------------
 ; Hint window processing code
@@ -347,246 +346,246 @@ _DelayVal	= 0
 _DelayVal_Sh	= 0
 _CooldownVal	= 2
 
-	move.l	#@ProcessChar,obj(a0)	; set main routine
-	move.w	#_DelayVal,delay(a0)	; set delay
-	move.w	#0,row(a0)		; start from the first row
-	move.w	#_CooldownVal,cooldown(a0) ; set cooldown between screens
-	bra.w	@LoadRow
+		move.l	#@ProcessChar,obj(a0)	; set main routine
+		move.w	#_DelayVal,delay(a0)	; set delay
+		move.w	#0,row(a0)		; start from the first row
+		move.w	#_CooldownVal,cooldown(a0) ; set cooldown between screens
+		bra.w	@LoadRow
 
 ; ---------------------------------------------------------------
 @InstantWrite:
-	VBlank_SetMusicOnly		; we *must* disable interrupts
-	movea.l	char_pos(a0),a1		; load last position in text
+		VBlank_SetMusicOnly		; we *must* disable interrupts
+		movea.l	char_pos(a0),a1		; load last position in text
 
 @InstantWrite_Loop:
-	moveq	#0,d0
-	move.b	(a1)+,d0		; get a char
-	beq	@Call_LoadNextRow	; --
-	bmi.s	@InstantWrite_Flags	; --
-	cmpi.b	#' ',d0			; --
-	beq.s	@FF			; --
-	move.l	vram_pos(a0),(a6)	; setup VDP access
-	bsr	DH_DrawChar		; draw da char
-@FF	addi.w	#4*$20,vram_pos(a0)	; set pointer for next char (+4 tiles)
-	bra.s	@InstantWrite_Loop
+		moveq	#0,d0
+		move.b	(a1)+,d0		; get a char
+		beq	@Call_LoadNextRow	; --
+		bmi.s	@InstantWrite_Flags	; --
+		cmpi.b	#' ',d0			; --
+		beq.s	@FF			; --
+		move.l	vram_pos(a0),(a6)	; setup VDP access
+		bsr	DH_DrawChar		; draw da char
+@FF:		addi.w	#4*$20,vram_pos(a0)	; set pointer for next char (+4 tiles)
+		bra.s	@InstantWrite_Loop
 
 @InstantWrite_Flags:
-	cmpi.b	#_delay,d0
-	beq.s	@InstantWrite_SkipDelay	; if flag = '_delay', branch
-	cmpi.b	#_pause,d0
-	bne.s	@InstantWrite_Loop	; if flag != '_pause', ignore
-	subq.w	#1,a1			; position of '_pause' flag
-	move.l	a1,char_pos(a0)		; remember position
-	VBlank_UnsetMusicOnly
-	rts				; finish loop
-	
+		cmpi.b	#_delay,d0
+		beq.s	@InstantWrite_SkipDelay	; if flag = '_delay', branch
+		cmpi.b	#_pause,d0
+		bne.s	@InstantWrite_Loop	; if flag != '_pause', ignore
+		subq.w	#1,a1			; position of '_pause' flag
+		move.l	a1,char_pos(a0)		; remember position
+		VBlank_UnsetMusicOnly
+		rts				; finish loop
+		
 @InstantWrite_SkipDelay:
-	addq.w	#1,a1			; skip delay value
-	bra	@InstantWrite_Loop
+		addq.w	#1,a1			; skip delay value
+		bra	@InstantWrite_Loop
 
 @Call_LoadNextRow:
-	pea	@InstantWrite_Loop
-	bra.w	@LoadNextRow
+		pea	@InstantWrite_Loop
+		bra.w	@LoadNextRow
 
 ; ---------------------------------------------------------------
 @ProcessChar:
-	move.b	Joypad|Press,d0
-	andi.b	#A+B+C+START,d0		; A/B/C/START pressed?
-	beq.s	@ContinueChar		; if not, branch
-	tst.w	cooldown(a0)		; is cooldown over?
-	beq	@InstantWrite		; if yes, immediately write the whole screen
+		move.b	Joypad|Press,d0
+		andi.b	#A+B+C+START,d0		; A/B/C/START pressed?
+		beq.s	@ContinueChar		; if not, branch
+		tst.w	cooldown(a0)		; is cooldown over?
+		beq	@InstantWrite		; if yes, immediately write the whole screen
 
 @ContinueChar:
-	tst.w	cooldown(a0)		; is cooldown over?
-	beq.s	@CooldownEmpty		; if yes, branch
-	subq.w	#1,cooldown(a0)		; reduce 1 from cooldown
-	
+		tst.w	cooldown(a0)		; is cooldown over?
+		beq.s	@CooldownEmpty		; if yes, branch
+		subq.w	#1,cooldown(a0)		; reduce 1 from cooldown
+		
 @CooldownEmpty:
-	subq.w	#1,delay(a0)		; decrease delay counter
-	bpl.w	@Return			; if time remains, branch
+		subq.w	#1,delay(a0)		; decrease delay counter
+		bpl.w	@Return			; if time remains, branch
 
-	move.w	#_DelayVal,delay(a0)	; restore delay
-	move.b	Joypad|Held,d0
-	andi.b	#A+B+C+Start,d0		; A/B/C/Start held?
-	beq.s	@Retry			; if not, branch
-	move.w	#_DelayVal_Sh,delay(a0)	; restore short delay
+		move.w	#_DelayVal,delay(a0)	; restore delay
+		move.b	Joypad|Held,d0
+		andi.b	#A+B+C+Start,d0		; A/B/C/Start held?
+		beq.s	@Retry			; if not, branch
+		move.w	#_DelayVal_Sh,delay(a0)	; restore short delay
 
 @Retry:
-	movea.l	char_pos(a0),a1		; load last position in text
-	addq.l	#1,char_pos(a0)		; increase it
-	moveq	#0,d0
-	move.b	(a1)+,d0		; load char
-	beq	@LoadNextRow		; -- if line break flag, branch
-	bmi	@CheckFlags		; -- if special flag, branch
-	cmpi.b	#' ',d0			; -- is it a space?
-	beq	@0			; -- if yes, don't draw, don't play sound
-	VBlank_SetMusicOnly
-	move.l	vram_pos(a0),(a6)	; setup VDP access
-	bsr	DH_DrawChar		; draw da char
-	VBlank_UnsetMusicOnly
-	moveq	#$FFFFFFD8,d0
-	jsr	PlaySound
-	addi.w	#4*$20,vram_pos(a0)	; set pointer for next char (+4 tiles)
-	rts
+		movea.l	char_pos(a0),a1		; load last position in text
+		addq.l	#1,char_pos(a0)		; increase it
+		moveq	#0,d0
+		move.b	(a1)+,d0		; load char
+		beq	@LoadNextRow		; -- if line break flag, branch
+		bmi	@CheckFlags		; -- if special flag, branch
+		cmpi.b	#' ',d0			; -- is it a space?
+		beq	@0			; -- if yes, don't draw, don't play sound
+		VBlank_SetMusicOnly
+		move.l	vram_pos(a0),(a6)	; setup VDP access
+		bsr	DH_DrawChar		; draw da char
+		VBlank_UnsetMusicOnly
+		moveq	#$FFFFFFD8,d0
+		jsr	PlaySound
+		addi.w	#4*$20,vram_pos(a0)	; set pointer for next char (+4 tiles)
+		rts
 
-@0	addi.w	#4*$20,vram_pos(a0)	; set pointer for next char (+4 tiles)
-	bra	@Retry
+@0		addi.w	#4*$20,vram_pos(a0)	; set pointer for next char (+4 tiles)
+		bra	@Retry
 
 @CheckFlags:
-	addq.b	#1,d0
-	beq.w	@GotoDisappear		; if flag = '_end', branch
-	addq.b	#1,d0
-	beq.w	@ClearWindow		; if flag = '_cls', branch
-	addq.b	#1,d0
-	beq.s	@DoPause		; if flag = '_pause', branch
-	addq.b	#1,d0
-	beq.s	@DoDelay		; if flag = '_delay', branch
-					; assume it's flag '_frantic' then
+		addq.b	#1,d0
+		beq.w	@GotoDisappear		; if flag = '_end', branch
+		addq.b	#1,d0
+		beq.w	@ClearWindow		; if flag = '_cls', branch
+		addq.b	#1,d0
+		beq.s	@DoPause		; if flag = '_pause', branch
+		addq.b	#1,d0
+		beq.s	@DoDelay		; if flag = '_delay', branch
+						; assume it's flag '_frantic' then
 
 @FranticTextCheck:
-	frantic				; is frantic mode enabled?
-	bne.w	@ClearWindow		; if yes, make _frantic act like _cls
-	bra.w	@GotoDisappear		; in casual, make it act like _end
+		frantic				; is frantic mode enabled?
+		bne.w	@ClearWindow		; if yes, make _frantic act like _cls
+		bra.w	@GotoDisappear		; in casual, make it act like _end
 
 ; ---------------------------------------------------------------
 @DoDelay:
-	move.b	(a1),d0
-	move.w	d0,delay(a0)		; setup new delay
-	addq.l	#1,char_pos(a0)		; skip a char
-	rts
+		move.b	(a1),d0
+		move.w	d0,delay(a0)		; setup new delay
+		addq.l	#1,char_pos(a0)		; skip a char
+		rts
 
 ; ---------------------------------------------------------------
 @DoPause:
-	move.l	#@PauseLoop,obj(a0)
+		move.l	#@PauseLoop,obj(a0)
 
-	; blinking cursor in bottom right while screen is waiting for input
-	lea	(Art_DH_Font+$120).l,a2
-	vram	_DH_VRAM_Base+$13E0,(a6)
-	bsr	InitDraw
-	move.b	#$20,$32(a0)
-	move.b	#0,$33(a0)
+		; blinking cursor in bottom right while screen is waiting for input
+		lea	(Art_DH_Font+$120).l,a2
+		vram	_DH_VRAM_Base+$13E0,(a6)
+		bsr	InitDraw
+		move.b	#$20,$32(a0)
+		move.b	#0,$33(a0)
 @PauseLoop:
-	subq.b	#1,$32(a0)
-	bpl.s	@cont
-	move.b	#$20,$32(a0)
-	lea	(Art_DH_Font).l,a2
-	bchg	#0,$33(a0)
-	beq.s	@cont2
-	adda.w	#$120,a2
+		subq.b	#1,$32(a0)
+		bpl.s	@cont
+		move.b	#$20,$32(a0)
+		lea	(Art_DH_Font).l,a2
+		bchg	#0,$33(a0)
+		beq.s	@cont2
+		adda.w	#$120,a2
 @cont2:
-	vram	_DH_VRAM_Base+$13E0,(a6)
-	bsr	InitDraw
+		vram	_DH_VRAM_Base+$13E0,(a6)
+		bsr	InitDraw
 
 @cont:
-	cmpi.b	#A+Start,Joypad|Held	; exactly A+Start held?
-	beq.w	@GotoDisappear		; if yes, quick quit
+		cmpi.b	#A+Start,Joypad|Held	; exactly A+Start held?
+		beq.w	@GotoDisappear		; if yes, quick quit
 
-	move.b	Joypad|Press,d0
-	andi.b	#A+B+C+Start,d0		; A/B/C/Start pressed?
-	beq.s	@Return			; if not, branch
-	move.l	#@ProcessChar,obj(a0)	; set main routine
-	move.w	#_CooldownVal,cooldown(a0) ; set cooldown between screens
-	rts
+		move.b	Joypad|Press,d0
+		andi.b	#A+B+C+Start,d0		; A/B/C/Start pressed?
+		beq.s	@Return			; if not, branch
+		move.l	#@ProcessChar,obj(a0)	; set main routine
+		move.w	#_CooldownVal,cooldown(a0) ; set cooldown between screens
+		rts
 
 ; ---------------------------------------------------------------
 @ClearWindow:
-	moveq	#$FFFFFFD9,d0
-	jsr	PlaySound
+		moveq	#$FFFFFFD9,d0
+		jsr	PlaySound
 
-	jsr	DH_ClearWindow
-	move.w	#0,row(a0)		; reset row
-	bra.s	@LoadRow		; reload row
+		jsr	DH_ClearWindow
+		move.w	#0,row(a0)		; reset row
+		bra.s	@LoadRow		; reload row
 
 @LoadNextRow:
-	addq.w	#4,row(a0)
+		addq.w	#4,row(a0)
 
 @LoadRow:
-	move.w	row(a0),d0
-	move.l	@RowPointers(pc,d0.w),vram_pos(a0)
+		move.w	row(a0),d0
+		move.l	@RowPointers(pc,d0.w),vram_pos(a0)
 
 @Return:
-	rts
+		rts
 
 ; ---------------------------------------------------------------
 @RowPointers:
-	DCvram	(_DH_VRAM_Base+$0000)	; $00
-	DCvram	(_DH_VRAM_Base+$0020)	; $04
-	DCvram	(_DH_VRAM_Base+$0040)	; $08
-	DCvram	(_DH_VRAM_Base+$0060)	; $0C
-	DCvram	(_DH_VRAM_Base+$0A00)	; $10
-	DCvram	(_DH_VRAM_Base+$0A20)	; $14
-	DCvram	(_DH_VRAM_Base+$0A40)	; $18
-	DCvram	(_DH_VRAM_Base+$0A60)	; $1C
+		DCvram	(_DH_VRAM_Base+$0000)	; $00
+		DCvram	(_DH_VRAM_Base+$0020)	; $04
+		DCvram	(_DH_VRAM_Base+$0040)	; $08
+		DCvram	(_DH_VRAM_Base+$0060)	; $0C
+		DCvram	(_DH_VRAM_Base+$0A00)	; $10
+		DCvram	(_DH_VRAM_Base+$0A20)	; $14
+		DCvram	(_DH_VRAM_Base+$0A40)	; $18
+		DCvram	(_DH_VRAM_Base+$0A60)	; $1C
 
 ; ---------------------------------------------------------------
 
 @GotoDisappear:
-	moveq	#$FFFFFFD9,d0
-	jsr	PlaySound
+		moveq	#$FFFFFFD9,d0
+		jsr	PlaySound
 
-	move.l	#DH_OWindow_Disappear,obj(a0)
-	move.w	#0,xvel(a0)
+		move.l	#DH_OWindow_Disappear,obj(a0)
+		move.w	#0,xvel(a0)
 
 ; ---------------------------------------------------------------
 
 DH_OWindow_Disappear:
-	; brighten palette as box fades out
-	cmpi.b	#10,($FFFFFF6E).w	; is this the introduction text?
-	beq.s	@nah			; if yes, branch
+		; brighten palette as box fades out
+		cmpi.b	#10,($FFFFFF6E).w	; is this the introduction text?
+		beq.s	@nah			; if yes, branch
 
-	move.w	xpos(a0),d0 		; get current tut box X pos (which is starting at $120 here)
-	subi.w	#$120,d0		; subtract $120
-	lsr.w	#2,d0			; reduce
-	cmpi.b	#TutDim_Min,d0		; is result below the min value?
-	bhs.s	@0			; if not, branch
-	moveq	#TutDim_Min,d0		; set minimum value
-@0:	cmpi.b	#TutDim_Max,d0		; is result above the max value?
-	bls.s	@fadein			; if not, branch
-	moveq	#TutDim_Max,d0		; set maximum value
+		move.w	xpos(a0),d0 		; get current tut box X pos (which is starting at $120 here)
+		subi.w	#$120,d0		; subtract $120
+		lsr.w	#2,d0			; reduce
+		cmpi.b	#TutDim_Min,d0		; is result below the min value?
+		bhs.s	@0			; if not, branch
+		moveq	#TutDim_Min,d0		; set minimum value
+@0:		cmpi.b	#TutDim_Max,d0		; is result above the max value?
+		bls.s	@fadein			; if not, branch
+		moveq	#TutDim_Max,d0		; set maximum value
 
 @fadein:
-	lea	($FFFFFB80).w,a1
-	lea	($FFFFFB00).w,a2
-	moveq	#$10-1,d6
-	jsr	Pal_FadeAlpha_Black	; fade out first part
-	; colors for the actual textbox are in between these two
-	lea	($FFFFFB80+$40-8).w,a1
-	lea	($FFFFFB00+$40-8).w,a2
-	moveq	#$20+4-1,d6
-	jsr	Pal_FadeAlpha_Black	; fade out second part	
+		lea	($FFFFFB80).w,a1
+		lea	($FFFFFB00).w,a2
+		moveq	#$10-1,d6
+		jsr	Pal_FadeAlpha_Black	; fade out first part
+		; colors for the actual textbox are in between these two
+		lea	($FFFFFB80+$40-8).w,a1
+		lea	($FFFFFB00+$40-8).w,a2
+		moveq	#$20+4-1,d6
+		jsr	Pal_FadeAlpha_Black	; fade out second part	
 
 @nah:
-	move.w	xvel(a0),d0		; load xvel
-	add.w	#_Accel,xvel(a0)	; increase it
-	ext.l	d0
-	asl.l	#8,d0
-	add.l	d0,xpos2(a0)		; calc new xpos
-	move.w	xpos2(a0),xpos(a0)	; update actual xpos
-	move.w	#$80+320+$50,d0
-	cmp.w	xpos(a0),d0		; have we passed screen?
-	ble.s	DH_KillWindow		; if yes, branch
-	rts
+		move.w	xvel(a0),d0		; load xvel
+		add.w	#_Accel,xvel(a0)	; increase it
+		ext.l	d0
+		asl.l	#8,d0
+		add.l	d0,xpos2(a0)		; calc new xpos
+		move.w	xpos2(a0),xpos(a0)	; update actual xpos
+		move.w	#$80+320+$50,d0
+		cmp.w	xpos(a0),d0		; have we passed screen?
+		ble.s	DH_KillWindow		; if yes, branch
+		rts
 ; ---------------------------------------------------------------
 
 DH_KillWindow:
-	sf.b	(a0)			; kill windows
+		sf.b	(a0)			; kill windows
 
-	; restore backed-up palette
-	cmpi.b	#10,($FFFFFF6E).w	; is this the introduction text?
-	beq.s	@nah			; if yes, branch
-	lea	($FFFFFB80).w,a1
-	lea	($FFFFFB00).w,a2
-	moveq	#$20-1,d0
+		; restore backed-up palette
+		cmpi.b	#10,($FFFFFF6E).w	; is this the introduction text?
+		beq.s	@nah			; if yes, branch
+		lea	($FFFFFB80).w,a1
+		lea	($FFFFFB00).w,a2
+		moveq	#$20-1,d0
 @restore:
-	move.l	(a1)+,(a2)+
-	dbf	d0,@restore
+		move.l	(a1)+,(a2)+
+		dbf	d0,@restore
 @nah:
-	rts
+		rts
 
 ; ===============================================================
 
 DH_WindowObj_Map:
-	dc.w	2
+		dc.w	2
 
 _TT	= $08	; window base tile index
 _Xdisp	= -$50	; x displacement
@@ -595,49 +594,49 @@ fh	= 1<<3
 fv	= 2<<3
 fhv	= 3<<3
 
-	dc.b	(@1-@0)/5
+		dc.b	(@1-@0)/5
 
-@0	;	 Y-pos	     WWHH	 Tile	  X-pos
-	dc.b	_Ydisp+$00, %1111, $00, _TT+$00, _Xdisp+$00	; r0
-	dc.b	_Ydisp+$00, %1111, $00, _TT+$10, _Xdisp+$20
-	dc.b	_Ydisp+$00, %1111, $00, _TT+$20, _Xdisp+$40
-	dc.b	_Ydisp+$00, %1111, $00, _TT+$30, _Xdisp+$60
-	dc.b	_Ydisp+$00, %1111, $00, _TT+$40, _Xdisp+$80
-	dc.b	_Ydisp+$20, %1111, $00, _TT+$50, _Xdisp+$00	; r1
-	dc.b	_Ydisp+$20, %1111, $00, _TT+$60, _Xdisp+$20
-	dc.b	_Ydisp+$20, %1111, $00, _TT+$70, _Xdisp+$40
-	dc.b	_Ydisp+$20, %1111, $00, _TT+$80, _Xdisp+$60
-	dc.b	_Ydisp+$20, %1111, $00, _TT+$90, _Xdisp+$80
-	dc.b	_Ydisp-$08, %0011, $00, $00,	 _Xdisp-$08	; b-left
-	dc.b	_Ydisp+$18, %0001, $00, $01,	 _Xdisp-$08
-	dc.b	_Ydisp+$28, %0011, fv,	$00,	 _Xdisp-$08
-	dc.b	_Ydisp-$08, %1100, $00, $04,	 _Xdisp+$00	; b-top
-	dc.b	_Ydisp-$08, %1100, $00,	$04,	 _Xdisp+$20
-	dc.b	_Ydisp-$08, %1100, $00,	$04,	 _Xdisp+$40
-	dc.b	_Ydisp-$08, %1100, $00,	$04,	 _Xdisp+$60
-	dc.b	_Ydisp-$08, %1100, $00,	$04,	 _Xdisp+$80
-	dc.b	_Ydisp-$08, %0011, fh,	$00,	 _Xdisp+$A0	; b-right
-	dc.b	_Ydisp+$18, %0001, fh,	$01,	 _Xdisp+$A0
-	dc.b	_Ydisp+$28, %0011, fhv,	$00,	 _Xdisp+$A0
-	dc.b	_Ydisp+$40, %1100, fv,	$04,	 _Xdisp+$00	; b-bot
-	dc.b	_Ydisp+$40, %1100, fv,	$04,	 _Xdisp+$20
-	dc.b	_Ydisp+$40, %1100, fv,	$04,	 _Xdisp+$40
-	dc.b	_Ydisp+$40, %1100, fv,	$04,	 _Xdisp+$60
-	dc.b	_Ydisp+$40, %1100, fv,	$04,	 _Xdisp+$80
+@0		;	 Y-pos	     WWHH	 Tile	  X-pos
+		dc.b	_Ydisp+$00, %1111, $00, _TT+$00, _Xdisp+$00	; r0
+		dc.b	_Ydisp+$00, %1111, $00, _TT+$10, _Xdisp+$20
+		dc.b	_Ydisp+$00, %1111, $00, _TT+$20, _Xdisp+$40
+		dc.b	_Ydisp+$00, %1111, $00, _TT+$30, _Xdisp+$60
+		dc.b	_Ydisp+$00, %1111, $00, _TT+$40, _Xdisp+$80
+		dc.b	_Ydisp+$20, %1111, $00, _TT+$50, _Xdisp+$00	; r1
+		dc.b	_Ydisp+$20, %1111, $00, _TT+$60, _Xdisp+$20
+		dc.b	_Ydisp+$20, %1111, $00, _TT+$70, _Xdisp+$40
+		dc.b	_Ydisp+$20, %1111, $00, _TT+$80, _Xdisp+$60
+		dc.b	_Ydisp+$20, %1111, $00, _TT+$90, _Xdisp+$80
+		dc.b	_Ydisp-$08, %0011, $00, $00,	 _Xdisp-$08	; b-left
+		dc.b	_Ydisp+$18, %0001, $00, $01,	 _Xdisp-$08
+		dc.b	_Ydisp+$28, %0011, fv,	$00,	 _Xdisp-$08
+		dc.b	_Ydisp-$08, %1100, $00, $04,	 _Xdisp+$00	; b-top
+		dc.b	_Ydisp-$08, %1100, $00,	$04,	 _Xdisp+$20
+		dc.b	_Ydisp-$08, %1100, $00,	$04,	 _Xdisp+$40
+		dc.b	_Ydisp-$08, %1100, $00,	$04,	 _Xdisp+$60
+		dc.b	_Ydisp-$08, %1100, $00,	$04,	 _Xdisp+$80
+		dc.b	_Ydisp-$08, %0011, fh,	$00,	 _Xdisp+$A0	; b-right
+		dc.b	_Ydisp+$18, %0001, fh,	$01,	 _Xdisp+$A0
+		dc.b	_Ydisp+$28, %0011, fhv,	$00,	 _Xdisp+$A0
+		dc.b	_Ydisp+$40, %1100, fv,	$04,	 _Xdisp+$00	; b-bot
+		dc.b	_Ydisp+$40, %1100, fv,	$04,	 _Xdisp+$20
+		dc.b	_Ydisp+$40, %1100, fv,	$04,	 _Xdisp+$40
+		dc.b	_Ydisp+$40, %1100, fv,	$04,	 _Xdisp+$60
+		dc.b	_Ydisp+$40, %1100, fv,	$04,	 _Xdisp+$80
 @1
 
-	even
+		even
 
 ; ===============================================================
 
 Art_DH_WindowBorder:
-	incbin	'Screens/TutorialBox/TutorialBox_Art.bin'
+		incbin	'Screens/TutorialBox/TutorialBox_Art.bin'
 
 Art_DH_Font:
-	incbin	'Screens/TutorialBox/TutorialBox_Font.bin'
+		incbin	'Screens/TutorialBox/TutorialBox_Font.bin'
 
 Art_DH_Font2:
-	incbin	'Screens/TutorialBox/TutorialBox_Font2.bin'
+		incbin	'Screens/TutorialBox/TutorialBox_Font2.bin'
 
 ; ===============================================================
 ; ---------------------------------------------------------------
@@ -645,25 +644,25 @@ Art_DH_Font2:
 ; ---------------------------------------------------------------
 
 Hints_List:
-	dc.l	Hint_1
-	dc.l	Hint_2
-	dc.l	Hint_3
-	dc.l	Hint_4
-	dc.l	Hint_FZEscape
-	dc.l	Hint_6
-	dc.l	Hint_7
-	dc.l	Hint_8
-	dc.l	Hint_9
-	dc.l	Hint_Pre
-	dc.l	Hint_Easter_Tutorial
-	dc.l	Hint_Easter_SLZ
-	dc.l	Hint_TutorialConclusion
-	dc.l	Hint_Easter_Tutorial_Escape
-	dc.l	Hint_End_AfterCasual
-	dc.l	Hint_End_AfterFrantic
-	dc.l	Hint_End_CinematicUnlock
-	dc.l	Hint_End_BlackoutTeaser
-	dc.l	Hint_FranticTutorial
+		dc.l	Hint_1
+		dc.l	Hint_2
+		dc.l	Hint_3
+		dc.l	Hint_4
+		dc.l	Hint_FZEscape
+		dc.l	Hint_6
+		dc.l	Hint_7
+		dc.l	Hint_8
+		dc.l	Hint_9
+		dc.l	Hint_Pre
+		dc.l	Hint_Easter_Tutorial
+		dc.l	Hint_Easter_SLZ
+		dc.l	Hint_TutorialConclusion
+		dc.l	Hint_Easter_Tutorial_Escape
+		dc.l	Hint_End_AfterCasual
+		dc.l	Hint_End_AfterFrantic
+		dc.l	Hint_End_CinematicUnlock
+		dc.l	Hint_End_BlackoutTeaser
+		dc.l	Hint_FranticTutorial
 
 ; ---------------------------------------------------------------
 ; Hints Scripts
@@ -671,659 +670,659 @@ Hints_List:
 
 ; Macro to preprocess and output a character to its correct mapping
 mapchar macro char
-	if     \char = "'"
-		dc.b	$2+DH_CharOffset
-	elseif \char = '#'
-		dc.b	_font2, $2+DH_CharOffset
-	elseif \char = '.'
-		dc.b	$26+DH_CharOffset
-	elseif \char = ':'
-		dc.b	_font2, $26+DH_CharOffset
-	elseif \char = ','
-		dc.b	$27+DH_CharOffset
-	elseif \char = ';'
-		dc.b	_font2, $27+DH_CharOffset
-	elseif \char = '/'
-		dc.b	$8+DH_CharOffset
-	elseif \char = '\'
-		dc.b	_font2, $8+DH_CharOffset
-	elseif \char = '!'
-		dc.b	$A+DH_CharOffset
-	elseif \char = '1'
-		dc.b	_font2, $A+DH_CharOffset
-	elseif \char = '-'
-		dc.b	$25+DH_CharOffset
-	elseif \char = '_'
-		dc.b	_font2, $25+DH_CharOffset
-	elseif \char = '&'
-		dc.b	_font2, $29+DH_CharOffset
-	elseif \char = '+'
-		dc.b	$29+DH_CharOffset
-	elseif \char = '~'
-		dc.b	_font2, $1+DH_CharOffset
-	elseif \char = '^'
-		dc.b	_font2, $5+DH_CharOffset
-	elseif (\char >= 'a') & (\char <= 'z')
-		dc.b	_font2, \char-$20
-	elseif \char = '?'
-		dc.b	$28+DH_CharOffset
-	elseif \char = '%'
-		dc.b	_font2, $28+DH_CharOffset
-	else
-		dc.b	\char
-	endif
-	endm
+		if     \char = "'"
+			dc.b	$2+DH_CharOffset
+		elseif \char = '#'
+			dc.b	_font2, $2+DH_CharOffset
+		elseif \char = '.'
+			dc.b	$26+DH_CharOffset
+		elseif \char = ':'
+			dc.b	_font2, $26+DH_CharOffset
+		elseif \char = ','
+			dc.b	$27+DH_CharOffset
+		elseif \char = ';'
+			dc.b	_font2, $27+DH_CharOffset
+		elseif \char = '/'
+			dc.b	$8+DH_CharOffset
+		elseif \char = '\'
+			dc.b	_font2, $8+DH_CharOffset
+		elseif \char = '!'
+			dc.b	$A+DH_CharOffset
+		elseif \char = '1'
+			dc.b	_font2, $A+DH_CharOffset
+		elseif \char = '-'
+			dc.b	$25+DH_CharOffset
+		elseif \char = '_'
+			dc.b	_font2, $25+DH_CharOffset
+		elseif \char = '&'
+			dc.b	_font2, $29+DH_CharOffset
+		elseif \char = '+'
+			dc.b	$29+DH_CharOffset
+		elseif \char = '~'
+			dc.b	_font2, $1+DH_CharOffset
+		elseif \char = '^'
+			dc.b	_font2, $5+DH_CharOffset
+		elseif (\char >= 'a') & (\char <= 'z')
+			dc.b	_font2, \char-$20
+		elseif \char = '?'
+			dc.b	$28+DH_CharOffset
+		elseif \char = '%'
+			dc.b	_font2, $28+DH_CharOffset
+		else
+			dc.b	\char
+		endif
+		endm
  
 boxtxt macro string
-	i:   = 1
-	len: = strlen(\string)
-	if (len>20)
-		inform 1, 'line too long'
-	endif
+		i:   = 1
+		len: = strlen(\string)
+		if (len>20)
+			inform 1, 'line too long'
+		endif
 
-	while (i<=len)
-		char:	substr i,i,\string
-		mapchar '\char'
-		i: = i+1
-	endw
-	
-	dc.b _br
-	endm
+		while (i<=len)
+			char:	substr i,i,\string
+			mapchar '\char'
+			i: = i+1
+		endw
+		
+		dc.b _br
+		endm
 
 boxtxt_line macro
-	dc.b	_br
-	endm
+		dc.b	_br
+		endm
 boxtxt_pause macro
-	dc.b	_br,_pause
-	endm
+		dc.b	_br,_pause
+		endm
 boxtxt_next macro
-	dc.b	_pause,_cls
-	endm
+		dc.b	_pause,_cls
+		endm
 boxtxt_end macro
-	dc.b	_pause,_end
-	endm
+		dc.b	_pause,_end
+		endm
 
 ; ---------------------------------------------------------------
 Hint_Null:
-	boxtxt	"you shouldn#t be"
-	boxtxt	"able to read this"
-	boxtxt	"lol"
-	boxtxt_end
+		boxtxt	"you shouldn#t be"
+		boxtxt	"able to read this"
+		boxtxt	"lol"
+		boxtxt_end
 
 ;		 --------------------
 Hint_Pre:
-	boxtxt	"HELLO AND WELCOME TO"
-	boxtxt_line
-	boxtxt	"    sonic erazor"
-	boxtxt_line
-	dc.b	_delay,10
-	boxtxt	"THE WILDEST JOURNEY"
-	boxtxt	"YOU'LL EVER TAKE"
-	boxtxt	"WITH YOUR FAVORITE"
-	boxtxt	"BLUE HEDGEHOG!"
-	boxtxt_next
-	
-	boxtxt	"YOU WILL REVISIT"
-	boxtxt	"THE FIRST SONIC GAME"
-	boxtxt	"THROUGH THE LENS OF"
-	boxtxt	"AN ACTION MOVIE..."
-	boxtxt_line
-	boxtxt	"WICKED CHALLENGES,"
-	boxtxt	"SPEEDY MOVEMENT,"
-	boxtxt	"AND explosions!"
-	boxtxt_next
+		boxtxt	"HELLO AND WELCOME TO"
+		boxtxt_line
+		boxtxt	"    sonic erazor"
+		boxtxt_line
+		dc.b	_delay,10
+		boxtxt	"THE WILDEST JOURNEY"
+		boxtxt	"YOU'LL EVER TAKE"
+		boxtxt	"WITH YOUR FAVORITE"
+		boxtxt	"BLUE HEDGEHOG!"
+		boxtxt_next
+		
+		boxtxt	"YOU WILL REVISIT"
+		boxtxt	"THE FIRST SONIC GAME"
+		boxtxt	"THROUGH THE LENS OF"
+		boxtxt	"AN ACTION MOVIE..."
+		boxtxt_line
+		boxtxt	"WICKED CHALLENGES,"
+		boxtxt	"SPEEDY MOVEMENT,"
+		boxtxt	"AND explosions!"
+		boxtxt_next
 
-	boxtxt	"BECAUSE TEARS OF"
-	boxtxt	"FRUSTRATION SHOULD"
-	boxtxt	"BE KEPT TO A MINIMUM"
-	boxtxt	"AT ALL TIMES, THE"
-	boxtxt	"FOLLOWING STAGE WILL"
-	boxtxt	"TEACH YOU SOME OF"
-	boxtxt	"THIS GAME'S UNIQUE"
-	boxtxt	"REQUIRED BASICS."
-	boxtxt_next
+		boxtxt	"BECAUSE TEARS OF"
+		boxtxt	"FRUSTRATION SHOULD"
+		boxtxt	"BE KEPT TO A MINIMUM"
+		boxtxt	"AT ALL TIMES, THE"
+		boxtxt	"FOLLOWING STAGE WILL"
+		boxtxt	"TEACH YOU SOME OF"
+		boxtxt	"THIS GAME'S UNIQUE"
+		boxtxt	"REQUIRED BASICS."
+		boxtxt_next
 
-	boxtxt	"POSITION YOURSELF"
-	boxtxt	"IN FRONT OF THE"
-	boxtxt	"INFORMATION MONITORS"
-	boxtxt	"AND PRESS a TO BRING"
-	boxtxt	"UP INFORMATION ABOUT"
-	boxtxt	"GAME MECHANICS AND"
-	boxtxt	"OTHER USEFUL TIPS!"
-	boxtxt_next
+		boxtxt	"POSITION YOURSELF"
+		boxtxt	"IN FRONT OF THE"
+		boxtxt	"INFORMATION MONITORS"
+		boxtxt	"AND PRESS a TO BRING"
+		boxtxt	"UP INFORMATION ABOUT"
+		boxtxt	"GAME MECHANICS AND"
+		boxtxt	"OTHER USEFUL TIPS!"
+		boxtxt_next
 
-	boxtxt_line
-	boxtxt_line
-	boxtxt	"   ALRIGHT THEN,"
-	dc.b	_delay,10
-	boxtxt_line
-	boxtxt_line
-	boxtxt	"     let#s go1"
-	boxtxt_end
+		boxtxt_line
+		boxtxt_line
+		boxtxt	"   ALRIGHT THEN,"
+		dc.b	_delay,10
+		boxtxt_line
+		boxtxt_line
+		boxtxt	"     let#s go1"
+		boxtxt_end
 
 ;		 --------------------
 Hint_1:
-	boxtxt	"HI, AND WELCOME TO"
-	boxtxt	"THE tutorial!"
-	boxtxt_pause
-	boxtxt	"WE'LL TAKE IT EASY,"
-	boxtxt	"SINCE THERE IS"
-	boxtxt	"ABSOLUTELY"
-	boxtxt	"NO RUSH AT ALL."
-	boxtxt_next
+		boxtxt	"HI, AND WELCOME TO"
+		boxtxt	"THE tutorial!"
+		boxtxt_pause
+		boxtxt	"WE'LL TAKE IT EASY,"
+		boxtxt	"SINCE THERE IS"
+		boxtxt	"ABSOLUTELY"
+		boxtxt	"NO RUSH AT ALL."
+		boxtxt_next
 
-	boxtxt	"CONTROLS - grounded"
-	boxtxt_pause
-	boxtxt	" SPIN DASH"
-	boxtxt	" ~ + a/b/c"
-	boxtxt_line
-	boxtxt	" SUPER PEEL OUT"
-	boxtxt	" ^ + a"
-	boxtxt_next
+		boxtxt	"CONTROLS - grounded"
+		boxtxt_pause
+		boxtxt	" SPIN DASH"
+		boxtxt	" ~ + a/b/c"
+		boxtxt_line
+		boxtxt	" SUPER PEEL OUT"
+		boxtxt	" ^ + a"
+		boxtxt_next
 
-	boxtxt	"AND TO JUMP, YOU"
-	boxtxt	"HAVE TO PRESS-"
-	boxtxt_pause
-	boxtxt	"...NEVER MIND."
-	boxtxt_pause
+		boxtxt	"AND TO JUMP, YOU"
+		boxtxt	"HAVE TO PRESS-"
+		boxtxt_pause
+		boxtxt	"...NEVER MIND."
+		boxtxt_pause
 
-	dc.b	_frantic
-	boxtxt	"    frantic mode"
-	boxtxt_pause
-	boxtxt	"    UNRELATED TO"
-	boxtxt	"  CONTROLS, BUT AS"
-	boxtxt	" YOU ARE PLAYING IN"
-	boxtxt	"   FRANTIC, A FEW"
-	boxtxt	" MONITORS WILL TELL"
-	boxtxt	"    BONUS HINTS!"
-	boxtxt_next
-	
-	boxtxt	"   FOR EXAMPLE..."
-	boxtxt_pause
-	boxtxt	"  ONCE YOU ENTER A"
-	boxtxt	"   FRANTIC STAGE,"
-	boxtxt	" YOUR RINGS WILL BE"
-	boxtxt	"   RESET TO zero!"
-	boxtxt_end
+		dc.b	_frantic
+		boxtxt	"    frantic mode"
+		boxtxt_pause
+		boxtxt	"    UNRELATED TO"
+		boxtxt	"  CONTROLS, BUT AS"
+		boxtxt	" YOU ARE PLAYING IN"
+		boxtxt	"   FRANTIC, A FEW"
+		boxtxt	" MONITORS WILL TELL"
+		boxtxt	"    BONUS HINTS!"
+		boxtxt_next
+		
+		boxtxt	"   FOR EXAMPLE..."
+		boxtxt_pause
+		boxtxt	"  ONCE YOU ENTER A"
+		boxtxt	"   FRANTIC STAGE,"
+		boxtxt	" YOUR RINGS WILL BE"
+		boxtxt	"   RESET TO zero!"
+		boxtxt_end
 
 ;		 --------------------
 Hint_2:
-	boxtxt	"CONTROLS - airborne"
-	boxtxt_pause
-	boxtxt	" c - JUMP DASH"
-	boxtxt	"     HOMING ATTACK"
-	boxtxt_line
-	boxtxt	" b - DOUBLE JUMP"
-	boxtxt_pause
-	boxtxt	" a - UP NEXT..."
-	boxtxt_pause
+		boxtxt	"CONTROLS - airborne"
+		boxtxt_pause
+		boxtxt	" c - JUMP DASH"
+		boxtxt	"     HOMING ATTACK"
+		boxtxt_line
+		boxtxt	" b - DOUBLE JUMP"
+		boxtxt_pause
+		boxtxt	" a - UP NEXT..."
+		boxtxt_pause
 
-	dc.b	_frantic
-	boxtxt	"    frantic mode"
-	boxtxt_pause
-	boxtxt	"  TIME TICKS THREE"
-	boxtxt	"   TIMES AS FAST!"
-	boxtxt_line
-	boxtxt	"   THAT'S ROUGHLY"
-	boxtxt	"    five minutes"
-	boxtxt	"  UNTIL TIME OVER."
-	boxtxt_end
+		dc.b	_frantic
+		boxtxt	"    frantic mode"
+		boxtxt_pause
+		boxtxt	"  TIME TICKS THREE"
+		boxtxt	"   TIMES AS FAST!"
+		boxtxt_line
+		boxtxt	"   THAT'S ROUGHLY"
+		boxtxt	"    five minutes"
+		boxtxt	"  UNTIL TIME OVER."
+		boxtxt_end
 
 ;		 --------------------
 Hint_3:
-	boxtxt	"inhuman mode"
-	boxtxt_pause
-	boxtxt	"PRESS a TO FIRE AN"
-	boxtxt	"EXPLODING BULLET"
-	boxtxt	"YOU CAN PROPEL"
-	boxtxt	"YOURSELF IN THE AIR"
-	boxtxt	"WITH!"
-	boxtxt_next
+		boxtxt	"inhuman mode"
+		boxtxt_pause
+		boxtxt	"PRESS a TO FIRE AN"
+		boxtxt	"EXPLODING BULLET"
+		boxtxt	"YOU CAN PROPEL"
+		boxtxt	"YOURSELF IN THE AIR"
+		boxtxt	"WITH!"
+		boxtxt_next
 
-	boxtxt	"ALSO, YOU ARE FULLY"
-	boxtxt	"INVINCIBLE TO"
-	boxtxt	"EVERYTHING!"
-	boxtxt_pause
-	boxtxt	"...EXCEPT SPIKES."
-	boxtxt_pause
+		boxtxt	"ALSO, YOU ARE FULLY"
+		boxtxt	"INVINCIBLE TO"
+		boxtxt	"EVERYTHING!"
+		boxtxt_pause
+		boxtxt	"...EXCEPT SPIKES."
+		boxtxt_pause
 
-	dc.b	_frantic
-	boxtxt	"    frantic mode"
-	boxtxt_pause
-	boxtxt	" THE FLOOR IS LAVA!"
-	boxtxt_pause
-	boxtxt	" AND IT HUNGERS FOR"
-	boxtxt	" YOU UNTIL YOU DIE!"
-	boxtxt_pause
-	boxtxt	"  WELL, SOMETIMES."
-	boxtxt_end
+		dc.b	_frantic
+		boxtxt	"    frantic mode"
+		boxtxt_pause
+		boxtxt	" THE FLOOR IS LAVA!"
+		boxtxt_pause
+		boxtxt	" AND IT HUNGERS FOR"
+		boxtxt	" YOU UNTIL YOU DIE!"
+		boxtxt_pause
+		boxtxt	"  WELL, SOMETIMES."
+		boxtxt_end
 
 ;		 --------------------
 Hint_4:
-	boxtxt	"0Adw193q4HG5!'%q6/%4"
-	boxtxt	"8ETRqZ91/D' we03()a)"
-	boxtxt	"8%4mh/vq%cio!7e$cr/"
-	boxtxt	"( B)f=)A=2h3401`?!G"
-	boxtxt	"#x )26aEd0a..oh mY g"
-	boxtxt	"Od wHat HavE yOu Don"
-	boxtxt	"e eVERythIng iS rUin"
-	boxtxt	"ED Now:::"
-	boxtxt_next
+		boxtxt	"0Adw193q4HG5!'%q6/%4"
+		boxtxt	"8ETRqZ91/D' we03()a)"
+		boxtxt	"8%4mh/vq%cio!7e$cr/"
+		boxtxt	"( B)f=)A=2h3401`?!G"
+		boxtxt	"#x )26aEd0a..oh mY g"
+		boxtxt	"Od wHat HavE yOu Don"
+		boxtxt	"e eVERythIng iS rUin"
+		boxtxt	"ED Now:::"
+		boxtxt_next
 
-	boxtxt	"BUT HEY, YOU'VE MADE"
-	boxtxt	"IT THIS FAR, SO YOU"
-	boxtxt	"CLEARLY CAN'T GET"
-	boxtxt	"ENOUGH OF ERAZOR!"
-	boxtxt_pause
-	boxtxt	"WELL, LUCKY FOR YOU,"
-	boxtxt	"YOU'VE COME TO"
-	boxtxt	"THE RIGHT PLACE!"
-	boxtxt_next
-	
-	boxtxt	"   WELCOME TO THE"
-	boxtxt	"easter egg info dump"
-	boxtxt_pause
-	boxtxt	"...BECAUSE OTHERWISE"
-	boxtxt	"THERE'S NO CHANCE"
-	boxtxt	"IN HELL YOU'D EVER"
-	boxtxt	"KNOW THESE WERE IN"
-	boxtxt	"THE GAME."
-	boxtxt_next
-	
-	boxtxt	"FIRST OFF, HOW TO"
-	boxtxt	"ENABLE debug mode?"
-	boxtxt_pause
-	boxtxt	"WHEN YOU'RE IN THE"
-	boxtxt	"FINAL PHASE OF THE"
-	boxtxt	"SELBI SCREEN, MASH"
-	boxtxt	"THE abc BUTTONS"
-	boxtxt	"TWENTY TIMES!"
-	boxtxt_next
+		boxtxt	"BUT HEY, YOU'VE MADE"
+		boxtxt	"IT THIS FAR, SO YOU"
+		boxtxt	"CLEARLY CAN'T GET"
+		boxtxt	"ENOUGH OF ERAZOR!"
+		boxtxt_pause
+		boxtxt	"WELL, LUCKY FOR YOU,"
+		boxtxt	"YOU'VE COME TO"
+		boxtxt	"THE RIGHT PLACE!"
+		boxtxt_next
+		
+		boxtxt	"   WELCOME TO THE"
+		boxtxt	"easter egg info dump"
+		boxtxt_pause
+		boxtxt	"...BECAUSE OTHERWISE"
+		boxtxt	"THERE'S NO CHANCE"
+		boxtxt	"IN HELL YOU'D EVER"
+		boxtxt	"KNOW THESE WERE IN"
+		boxtxt	"THE GAME."
+		boxtxt_next
+		
+		boxtxt	"FIRST OFF, HOW TO"
+		boxtxt	"ENABLE debug mode?"
+		boxtxt_pause
+		boxtxt	"WHEN YOU'RE IN THE"
+		boxtxt	"FINAL PHASE OF THE"
+		boxtxt	"SELBI SCREEN, MASH"
+		boxtxt	"THE abc BUTTONS"
+		boxtxt	"TWENTY TIMES!"
+		boxtxt_next
 
-	boxtxt	"SECONDLY, ARE YOU A"
-	boxtxt	"speedrunner?"
-	boxtxt_pause
-	boxtxt	"WHILE STARTING A NEW"
-	boxtxt	"GAME, HOLD a IN THE"
-	boxtxt	"CASUAL/FRANTIC MENU"
-	boxtxt	"TO AUTO-ENABLE ALL"
-	boxtxt	"SKIP OPTIONS!"
-	boxtxt_next
+		boxtxt	"SECONDLY, ARE YOU A"
+		boxtxt	"speedrunner?"
+		boxtxt_pause
+		boxtxt	"WHILE STARTING A NEW"
+		boxtxt	"GAME, HOLD a IN THE"
+		boxtxt	"CASUAL/FRANTIC MENU"
+		boxtxt	"TO AUTO-ENABLE ALL"
+		boxtxt	"SKIP OPTIONS!"
+		boxtxt_next
  
-	boxtxt	"THIRDLY, FOR MY"
-	boxtxt	"FELLOW NERDS."
-	boxtxt_pause
-	boxtxt	"HERE'S A LINK TO"
-	boxtxt	"THE FULL SOURCE CODE"
-	boxtxt	"OF SONIC ERAZOR!"
-	boxtxt_line
-	boxtxt	"erazor:selbi:club"
-	boxtxt_next
-	
-	boxtxt	"AND LASTLY, FOR THE"
-	boxtxt	"TRUE MASOCHISTS."
-	boxtxt_pause
-	boxtxt	"JUST BEFORE LEVEL"
-	boxtxt	"TITLE CARDS APPEAR,"
-	boxtxt	"HOLD start & abc"
-	boxtxt	"AT ONCE TO TOGGLE"
-	boxtxt	"A TOUGH TWIST..."
-	boxtxt_next
-	
-	boxtxt	"true_bs MODE!"
-	boxtxt_pause
-	boxtxt	"- ABSOLUTELY UNFAIR!"
-	dc.b	_pause
-	boxtxt	"- COMPLETION DOES"
-	boxtxt	"  NOTHING AT ALL!"
-	dc.b	_pause
-	boxtxt	"- PROBABLY NOT FUN!"
-	boxtxt_pause
-	boxtxt	"HAVE FUN!"
-	boxtxt_next
+		boxtxt	"THIRDLY, FOR MY"
+		boxtxt	"FELLOW NERDS."
+		boxtxt_pause
+		boxtxt	"HERE'S A LINK TO"
+		boxtxt	"THE FULL SOURCE CODE"
+		boxtxt	"OF SONIC ERAZOR!"
+		boxtxt_line
+		boxtxt	"erazor:selbi:club"
+		boxtxt_next
+		
+		boxtxt	"AND LASTLY, FOR THE"
+		boxtxt	"TRUE MASOCHISTS."
+		boxtxt_pause
+		boxtxt	"JUST BEFORE LEVEL"
+		boxtxt	"TITLE CARDS APPEAR,"
+		boxtxt	"HOLD start & abc"
+		boxtxt	"AT ONCE TO TOGGLE"
+		boxtxt	"A TOUGH TWIST..."
+		boxtxt_next
+		
+		boxtxt	"true_bs MODE!"
+		boxtxt_pause
+		boxtxt	"- ABSOLUTELY UNFAIR!"
+		dc.b	_pause
+		boxtxt	"- COMPLETION DOES"
+		boxtxt	"  NOTHING AT ALL!"
+		dc.b	_pause
+		boxtxt	"- PROBABLY NOT FUN!"
+		boxtxt_pause
+		boxtxt	"HAVE FUN!"
+		boxtxt_next
 
-	boxtxt	"AND THAT WRAPS UP"
-	boxtxt	"THE INFO DUMP."
-	boxtxt_line
-	boxtxt	"ENJOY THE RANDOM"
-	boxtxt	"BONUS FEATURES!"
-	boxtxt_pause
-	boxtxt	"THERE IS JUST"
-	boxtxt	"ONE LAST THING..."
-	boxtxt_next
+		boxtxt	"AND THAT WRAPS UP"
+		boxtxt	"THE INFO DUMP."
+		boxtxt_line
+		boxtxt	"ENJOY THE RANDOM"
+		boxtxt	"BONUS FEATURES!"
+		boxtxt_pause
+		boxtxt	"THERE IS JUST"
+		boxtxt	"ONE LAST THING..."
+		boxtxt_next
 
-	boxtxt	" THE LEVEL IS STILL"
-	boxtxt	"  A COMPLETE MESS."
-	boxtxt_pause
-	boxtxt	"     YES, I WAS"
-	boxtxt	"      TOO LAZY"
-	boxtxt	"     TO FIX IT."
-	boxtxt_pause
-	boxtxt	"      bite me:"
-	boxtxt_end
+		boxtxt	" THE LEVEL IS STILL"
+		boxtxt	"  A COMPLETE MESS."
+		boxtxt_pause
+		boxtxt	"     YES, I WAS"
+		boxtxt	"      TOO LAZY"
+		boxtxt	"     TO FIX IT."
+		boxtxt_pause
+		boxtxt	"      bite me:"
+		boxtxt_end
 
 ;		 --------------------
 Hint_FZEscape:
-	boxtxt	"HI, AND WELCOME TO"
-	boxtxt	"THE tutorial!"
-	boxtxt_pause
-	boxtxt	"WE'LL TAKE IT EASY,"
-	boxtxt	"SINCE THERE IS"
-	boxtxt	"ABSOLUTELY-"
-	boxtxt_next
+		boxtxt	"HI, AND WELCOME TO"
+		boxtxt	"THE tutorial!"
+		boxtxt_pause
+		boxtxt	"WE'LL TAKE IT EASY,"
+		boxtxt	"SINCE THERE IS"
+		boxtxt	"ABSOLUTELY-"
+		boxtxt_next
 
-	boxtxt	"..."
-	boxtxt_pause
-	boxtxt	"UHH..."
-	boxtxt_pause
-	boxtxt	"YOU BETTER GET OUT"
-	boxtxt	"OF HERE BEFORE THIS"
-	boxtxt	"WHOLE PLACE BLOWS"
-	boxtxt	"THE HELL UP."
-	boxtxt_pause
+		boxtxt	"..."
+		boxtxt_pause
+		boxtxt	"UHH..."
+		boxtxt_pause
+		boxtxt	"YOU BETTER GET OUT"
+		boxtxt	"OF HERE BEFORE THIS"
+		boxtxt	"WHOLE PLACE BLOWS"
+		boxtxt	"THE HELL UP."
+		boxtxt_pause
 
-	dc.b	_frantic
-	boxtxt	"    frantic mode"
-	boxtxt_pause
-	boxtxt_line
-	boxtxt	"   ...THIS GOES"
-	boxtxt	"       triple"
-	boxtxt	"     FOR YOU..."
-	boxtxt_end	
+		dc.b	_frantic
+		boxtxt	"    frantic mode"
+		boxtxt_pause
+		boxtxt_line
+		boxtxt	"   ...THIS GOES"
+		boxtxt	"       triple"
+		boxtxt	"     FOR YOU..."
+		boxtxt_end	
 ;		 --------------------
 Hint_6:
-	boxtxt	"hard part skipper"
-	boxtxt_pause
-	boxtxt	"THIS IS A HARD PART"
-	boxtxt	"SKIPPER."
-	boxtxt_pause
-	boxtxt	"IT SKIPS PARTS THAT"
-	boxtxt	"ARE HARD."
-	boxtxt_next
+		boxtxt	"hard part skipper"
+		boxtxt_pause
+		boxtxt	"THIS IS A HARD PART"
+		boxtxt	"SKIPPER."
+		boxtxt_pause
+		boxtxt	"IT SKIPS PARTS THAT"
+		boxtxt	"ARE HARD."
+		boxtxt_next
 
-	boxtxt	"IF A CHALLENGE IS"
-	boxtxt	"ASKING TOO MUCH FROM"
-	boxtxt	"YOU, SIMPLY PRESS"
-	boxtxt_line
-	boxtxt	"~ + a"
-	boxtxt_line
-	boxtxt	"IN FRONT OF THIS"
-	boxtxt	"DEVICE TO SKIP IT!"
-	boxtxt_next
-	
-	boxtxt	"THIS ALSO WORKS IN"
-	boxtxt	"SPECIAL STAGES"
-	boxtxt	"AT ANY TIME WITH"
-	boxtxt_line
-	boxtxt	"a + b + c"
-	boxtxt_line
-	boxtxt	"HELD AT ONCE!"
-	boxtxt_next
+		boxtxt	"IF A CHALLENGE IS"
+		boxtxt	"ASKING TOO MUCH FROM"
+		boxtxt	"YOU, SIMPLY PRESS"
+		boxtxt_line
+		boxtxt	"~ + a"
+		boxtxt_line
+		boxtxt	"IN FRONT OF THIS"
+		boxtxt	"DEVICE TO SKIP IT!"
+		boxtxt_next
+		
+		boxtxt	"THIS ALSO WORKS IN"
+		boxtxt	"SPECIAL STAGES"
+		boxtxt	"AT ANY TIME WITH"
+		boxtxt_line
+		boxtxt	"a + b + c"
+		boxtxt_line
+		boxtxt	"HELD AT ONCE!"
+		boxtxt_next
 
-	boxtxt	" but remember this1"
-	boxtxt_pause
-	boxtxt	"     IN CASUAL,"
-	boxtxt	" HARD PART SKIPPERS"
-	boxtxt	"    ARE FRIENDS."
-	boxtxt_pause
-	boxtxt	"  IN FRANTIC, THEY"
-	boxtxt	"   WANT YOU DEAD."
-	boxtxt_pause
+		boxtxt	" but remember this1"
+		boxtxt_pause
+		boxtxt	"     IN CASUAL,"
+		boxtxt	" HARD PART SKIPPERS"
+		boxtxt	"    ARE FRIENDS."
+		boxtxt_pause
+		boxtxt	"  IN FRANTIC, THEY"
+		boxtxt	"   WANT YOU DEAD."
+		boxtxt_pause
 
-	dc.b	_frantic
-	boxtxt	"    frantic mode"
-	boxtxt_pause
-	boxtxt	"    PSSSST, HEY,"
-	boxtxt	"     PRO-TIP..."
-	boxtxt_line
-	boxtxt	"DID YOU KNOW YOU CAN"
-	boxtxt	" jumpdash downwards"
-	boxtxt	"  AS WELL?! CRAZY!"
-	boxtxt_end
+		dc.b	_frantic
+		boxtxt	"    frantic mode"
+		boxtxt_pause
+		boxtxt	"    PSSSST, HEY,"
+		boxtxt	"     PRO-TIP..."
+		boxtxt_line
+		boxtxt	"DID YOU KNOW YOU CAN"
+		boxtxt	" jumpdash downwards"
+		boxtxt	"  AS WELL?! CRAZY!"
+		boxtxt_end
 
 ;		 --------------------
 Hint_7:
-	boxtxt	"dying sucks"
-	boxtxt_pause
-	boxtxt	"SOME TRIAL AND ERROR"
-	boxtxt	"MIGHT BE NECESSARY."
-	boxtxt_line
-	boxtxt	"HOWEVER, THERE ARE"
-	boxtxt	"no lives ANYWHERE"
-	boxtxt	"IN THIS GAME!"
-	boxtxt_next
+		boxtxt	"dying sucks"
+		boxtxt_pause
+		boxtxt	"SOME TRIAL AND ERROR"
+		boxtxt	"MIGHT BE NECESSARY."
+		boxtxt_line
+		boxtxt	"HOWEVER, THERE ARE"
+		boxtxt	"no lives ANYWHERE"
+		boxtxt	"IN THIS GAME!"
+		boxtxt_next
 
-	boxtxt	"FURTHERMORE, TO NOT"
-	boxtxt	"WASTE YOUR TIME,"
-	boxtxt	"MOST CHALLENGES"	
-	boxtxt	"WILL INSTANTLY"
-	boxtxt	"TELEPORT YOU BACK,"
-	boxtxt	"RATHER THAN OUTRIGHT"
-	boxtxt	"KILLING YOU!"
-	boxtxt_pause
+		boxtxt	"FURTHERMORE, TO NOT"
+		boxtxt	"WASTE YOUR TIME,"
+		boxtxt	"MOST CHALLENGES"	
+		boxtxt	"WILL INSTANTLY"
+		boxtxt	"TELEPORT YOU BACK,"
+		boxtxt	"RATHER THAN OUTRIGHT"
+		boxtxt	"KILLING YOU!"
+		boxtxt_pause
 
-	dc.b	_frantic
-	boxtxt	"    frantic mode"
-	boxtxt_pause
-	boxtxt	"   WE ADDED TAXES"
-	boxtxt	"  FOR TELEPORTING!"
-	boxtxt_pause
-	boxtxt	"   GETTING WARPED"
-	boxtxt	"   WILL RESULT IN"
-	boxtxt	"  FIVE LOST RINGS."
-	boxtxt_next
+		dc.b	_frantic
+		boxtxt	"    frantic mode"
+		boxtxt_pause
+		boxtxt	"   WE ADDED TAXES"
+		boxtxt	"  FOR TELEPORTING!"
+		boxtxt_pause
+		boxtxt	"   GETTING WARPED"
+		boxtxt	"   WILL RESULT IN"
+		boxtxt	"  FIVE LOST RINGS."
+		boxtxt_next
 
-	boxtxt_line
-	boxtxt_line
-	boxtxt	"   OUT OF RINGS?!"
-	boxtxt_pause
-	boxtxt	"      YOU DIE."
-	boxtxt_end
+		boxtxt_line
+		boxtxt_line
+		boxtxt	"   OUT OF RINGS?!"
+		boxtxt_pause
+		boxtxt	"      YOU DIE."
+		boxtxt_end
 
 ;		 --------------------
 Hint_8:
-	boxtxt	"alternative gravity"
-	boxtxt_pause
-	boxtxt	"PRESS c REPEATEDLY"
-	boxtxt	"WHILE IN AIR AND USE"
-	boxtxt	"THE d_pad TO HOP AND"
-	boxtxt	"DASH IN WHATEVER"
-	boxtxt	"DIRECTION YOU WANT!"
-	boxtxt_end
+		boxtxt	"alternative gravity"
+		boxtxt_pause
+		boxtxt	"PRESS c REPEATEDLY"
+		boxtxt	"WHILE IN AIR AND USE"
+		boxtxt	"THE d_pad TO HOP AND"
+		boxtxt	"DASH IN WHATEVER"
+		boxtxt	"DIRECTION YOU WANT!"
+		boxtxt_end
 
 ;		 --------------------
 Hint_9:
-	boxtxt	"HEDGEHOG SPACE GOLF"
-	boxtxt	"ISN'T YOUR THING?"
-	boxtxt_pause
-	boxtxt	"TRY HOLDING a TO"
-	boxtxt	"INVERT GRAVITY!"
-	boxtxt_end
+		boxtxt	"HEDGEHOG SPACE GOLF"
+		boxtxt	"ISN'T YOUR THING?"
+		boxtxt_pause
+		boxtxt	"TRY HOLDING a TO"
+		boxtxt	"INVERT GRAVITY!"
+		boxtxt_end
 
 ;		 --------------------
 Hint_Easter_Tutorial:
-	boxtxt	"YOU THINK YOU'RE"
-	boxtxt	"PRETTY CLEVER, HUH?"
-	boxtxt_pause
-	boxtxt	"GET IN THE RING,"
-	boxtxt	"LOSER!"
-	boxtxt_end
+		boxtxt	"YOU THINK YOU'RE"
+		boxtxt	"PRETTY CLEVER, HUH?"
+		boxtxt_pause
+		boxtxt	"GET IN THE RING,"
+		boxtxt	"LOSER!"
+		boxtxt_end
 
 ;		 --------------------
 Hint_Easter_SLZ:
-	boxtxt	"  AREN'T THE TRUE"
-	boxtxt_line
-	boxtxt	"    EASTER EGGS"
-	boxtxt_line
-	boxtxt	"    THE FRIENDS"
-	boxtxt	"      WE MADE"
-	boxtxt	"   ALONG THE WAY?"
-	boxtxt_next
+		boxtxt	"  AREN'T THE TRUE"
+		boxtxt_line
+		boxtxt	"    EASTER EGGS"
+		boxtxt_line
+		boxtxt	"    THE FRIENDS"
+		boxtxt	"      WE MADE"
+		boxtxt	"   ALONG THE WAY?"
+		boxtxt_next
 
-	boxtxt	"..."
-	boxtxt_pause
-	boxtxt_line
-	boxtxt	"..."
-	boxtxt_pause
-	boxtxt_line
-	boxtxt	"..."
-	boxtxt_next
+		boxtxt	"..."
+		boxtxt_pause
+		boxtxt_line
+		boxtxt	"..."
+		boxtxt_pause
+		boxtxt_line
+		boxtxt	"..."
+		boxtxt_next
 
-	boxtxt	"WHAT?"
-	boxtxt_pause
-	boxtxt	"WERE YOU EXPECTING"
-	boxtxt	"ANYTHING NAUGHTY?"
-	boxtxt_next
+		boxtxt	"WHAT?"
+		boxtxt_pause
+		boxtxt	"WERE YOU EXPECTING"
+		boxtxt	"ANYTHING NAUGHTY?"
+		boxtxt_next
 
-	boxtxt	"YOU ARE"
-	boxtxt_line
-	boxtxt_pause
-	boxtxt	"CATEGORICALLY"
-	boxtxt_pause
-	boxtxt	"DISGUSTING."
-	boxtxt_end
+		boxtxt	"YOU ARE"
+		boxtxt_line
+		boxtxt_pause
+		boxtxt	"CATEGORICALLY"
+		boxtxt_pause
+		boxtxt	"DISGUSTING."
+		boxtxt_end
 
 ;		 --------------------
 Hint_TutorialConclusion:
-	boxtxt	"AND THAT CONCLUDES"
-	boxtxt	"THE TUTORIAL!"
-	boxtxt_line
-	boxtxt	"YOU SHOULD BE ABLE"
-	boxtxt	"TO FIGURE OUT THE"
-	boxtxt	"REST ON YOUR OWN."
-	boxtxt_next
+		boxtxt	"AND THAT CONCLUDES"
+		boxtxt	"THE TUTORIAL!"
+		boxtxt_line
+		boxtxt	"YOU SHOULD BE ABLE"
+		boxtxt	"TO FIGURE OUT THE"
+		boxtxt	"REST ON YOUR OWN."
+		boxtxt_next
 
-	boxtxt	"ONE FINAL TIP..."
-	boxtxt_line
-	boxtxt	"YOU CAN RETURN TO"
-	boxtxt	"UBERHUB PLACE"
-	boxtxt	"AT ANY TIME BY"
-	boxtxt	"PRESSING a WHILE"
-	boxtxt	"THE GAME IS paused!"
-	boxtxt_next
+		boxtxt	"ONE FINAL TIP..."
+		boxtxt_line
+		boxtxt	"YOU CAN RETURN TO"
+		boxtxt	"UBERHUB PLACE"
+		boxtxt	"AT ANY TIME BY"
+		boxtxt	"PRESSING a WHILE"
+		boxtxt	"THE GAME IS paused!"
+		boxtxt_next
 
-	boxtxt	"NOW GO OUT THERE AND"
-	boxtxt	"HAVE FUN WITH"
-	boxtxt_line
-	boxtxt	"    SONIC erAzOR"
-	boxtxt_line
-	boxtxt	"I HOPE YOU'LL HAVE"
-	boxtxt	"AS MUCH FUN AS I HAD"
-	boxtxt	"CREATING IT!"
-	boxtxt_next
+		boxtxt	"NOW GO OUT THERE AND"
+		boxtxt	"HAVE FUN WITH"
+		boxtxt_line
+		boxtxt	"    SONIC erAzOR"
+		boxtxt_line
+		boxtxt	"I HOPE YOU'LL HAVE"
+		boxtxt	"AS MUCH FUN AS I HAD"
+		boxtxt	"CREATING IT!"
+		boxtxt_next
 
-	boxtxt	"  CREATED BY selbi"
-	boxtxt_pause
-	boxtxt	"  THEY CALL ME THE"
-	boxtxt	"    michael  bay"
-	boxtxt	"   OF SONIC GAMES."
-	boxtxt_pause
-	boxtxt	"    AND IN A BIT"
-	boxtxt	"  YOU'LL KNOW WHY."
-	boxtxt_end
+		boxtxt	"  CREATED BY selbi"
+		boxtxt_pause
+		boxtxt	"  THEY CALL ME THE"
+		boxtxt	"    michael  bay"
+		boxtxt	"   OF SONIC GAMES."
+		boxtxt_pause
+		boxtxt	"    AND IN A BIT"
+		boxtxt	"  YOU'LL KNOW WHY."
+		boxtxt_end
 
 ;		 --------------------
 Hint_Easter_Tutorial_Escape:
-	boxtxt	"IF IT SAVES YOU THE"
-	boxtxt	"EFFORT OF COMING"
-	boxtxt	"UP HERE AGAIN,"
-	boxtxt_pause
-	boxtxt	"YOU ARE STILL"
-	boxtxt	"A LOSER."
-	boxtxt_end
+		boxtxt	"IF IT SAVES YOU THE"
+		boxtxt	"EFFORT OF COMING"
+		boxtxt	"UP HERE AGAIN,"
+		boxtxt_pause
+		boxtxt	"YOU ARE STILL"
+		boxtxt	"A LOSER."
+		boxtxt_end
 
 ;		 --------------------
 Hint_End_AfterCasual:
-	boxtxt	"CONGRATULATIONS FOR"
-	boxtxt	"BEATING THE GAME IN"
-	boxtxt	"casual mode!"
-	boxtxt_next
+		boxtxt	"CONGRATULATIONS FOR"
+		boxtxt	"BEATING THE GAME IN"
+		boxtxt	"casual mode!"
+		boxtxt_next
 
-	boxtxt	"TRY TO GIVE IT"
-	boxtxt	"ANOTHER SPIN IN"
-	boxtxt	"frantic mode!"
-	boxtxt_pause
-	boxtxt	"IF YOU DO, BE SURE"
-	boxtxt	"TO REVISIT THE"
-	boxtxt	"TUTORIAL, AS SOME"
-	boxtxt	"STUFF DIFFERS."
-	boxtxt_end
+		boxtxt	"TRY TO GIVE IT"
+		boxtxt	"ANOTHER SPIN IN"
+		boxtxt	"frantic mode!"
+		boxtxt_pause
+		boxtxt	"IF YOU DO, BE SURE"
+		boxtxt	"TO REVISIT THE"
+		boxtxt	"TUTORIAL, AS SOME"
+		boxtxt	"STUFF DIFFERS."
+		boxtxt_end
 
 ;		 --------------------
 Hint_End_AfterFrantic:
-	boxtxt	"CONGRATULATIONS FOR"
-	boxtxt	"BEATING THE GAME IN"
-	boxtxt	"frantic mode!"
-	boxtxt_next
+		boxtxt	"CONGRATULATIONS FOR"
+		boxtxt	"BEATING THE GAME IN"
+		boxtxt	"frantic mode!"
+		boxtxt_next
 
-	boxtxt	"IF YOU MADE IT HERE,"
-	boxtxt	"YOU HAVE MY UTMOST"
-	boxtxt	"RESPECT. I'M SORRY"
-	boxtxt	"FOR ANY BRAIN CELLS"
-	boxtxt	"YOU MIGHT HAVE"
-	boxtxt	"LOST ALONG THE WAY."
-	boxtxt_end
+		boxtxt	"IF YOU MADE IT HERE,"
+		boxtxt	"YOU HAVE MY UTMOST"
+		boxtxt	"RESPECT. I'M SORRY"
+		boxtxt	"FOR ANY BRAIN CELLS"
+		boxtxt	"YOU MIGHT HAVE"
+		boxtxt	"LOST ALONG THE WAY."
+		boxtxt_end
 
 ;		 --------------------
 Hint_End_CinematicUnlock:
-	boxtxt	"YOU HAVE UNLOCKED"
-	boxtxt	"cinematic mode!"
-	boxtxt_pause
-	boxtxt	"IT'S COMPLETELY"
-	boxtxt	"USELESS BUT ALSO"
-	boxtxt	"PRETTY COOL!"
-	boxtxt_end
+		boxtxt	"YOU HAVE UNLOCKED"
+		boxtxt	"cinematic mode!"
+		boxtxt_pause
+		boxtxt	"IT'S COMPLETELY"
+		boxtxt	"USELESS BUT ALSO"
+		boxtxt	"PRETTY COOL!"
+		boxtxt_end
 
 ;		 --------------------
 Hint_End_BlackoutTeaser:
-	boxtxt	"ONE LAST THING."
-	boxtxt_pause
-	boxtxt	"IF YOU SAW ANYTHING"
-	boxtxt	"WEIRD NEAR THE END"
-	boxtxt	"OF uberhub place..."
-	boxtxt_pause
-	boxtxt	"IGNORE IT."
-	boxtxt_next
+		boxtxt	"ONE LAST THING."
+		boxtxt_pause
+		boxtxt	"IF YOU SAW ANYTHING"
+		boxtxt	"WEIRD NEAR THE END"
+		boxtxt	"OF uberhub place..."
+		boxtxt_pause
+		boxtxt	"IGNORE IT."
+		boxtxt_next
 
-	boxtxt	"THAT DOOR WILL STAY"
-	boxtxt	"SHUT UNTIL YOU'VE"
-	boxtxt	"PROVEN YOURSELF"
-	boxtxt	"TO BE worthy."
-	boxtxt_pause
+		boxtxt	"THAT DOOR WILL STAY"
+		boxtxt	"SHUT UNTIL YOU'VE"
+		boxtxt	"PROVEN YOURSELF"
+		boxtxt	"TO BE worthy."
+		boxtxt_pause
 
-	dc.b	_frantic
-	boxtxt	"  WAIT A MINUTE..."
-	boxtxt_pause
-	boxtxt	" YOU'RE IN frantic?"
-	boxtxt_pause
-	boxtxt	"  THEN FORGET WHAT"
-	boxtxt	"    I JUST SAID."
-	boxtxt_pause
-	boxtxt	"   YOU ARE READY."
-	boxtxt_end
+		dc.b	_frantic
+		boxtxt	"  WAIT A MINUTE..."
+		boxtxt_pause
+		boxtxt	" YOU'RE IN frantic?"
+		boxtxt_pause
+		boxtxt	"  THEN FORGET WHAT"
+		boxtxt	"    I JUST SAID."
+		boxtxt_pause
+		boxtxt	"   YOU ARE READY."
+		boxtxt_end
 
 ;		 --------------------
 Hint_FranticTutorial:
-	boxtxt	"RESPECT FOR GOING"
-	boxtxt	"WITH frantic!"
-	boxtxt_line
-	boxtxt	"BE SURE TO REVISIT"
-	boxtxt	"THE TUTORIAL, AS"
-	boxtxt	"SOME STUFF DIFFERS"
-	boxtxt	"FOR THIS MODE."
-	boxtxt_end
+		boxtxt	"RESPECT FOR GOING"
+		boxtxt	"WITH frantic!"
+		boxtxt_line
+		boxtxt	"BE SURE TO REVISIT"
+		boxtxt	"THE TUTORIAL, AS"
+		boxtxt	"SOME STUFF DIFFERS"
+		boxtxt	"FOR THIS MODE."
+		boxtxt_end
 
 ;		 --------------------
 Hint_Place:
-	boxtxt	"PLACE PLACE PLACE."
-	boxtxt_pause
-	boxtxt	"PLACE? PLACE!"
-	boxtxt	"PLACE, PLACE PLACE"
-	boxtxt	"PLACE PLACE PLACE?"
-	boxtxt	"PLACE... PLACE!"
-	boxtxt_pause
-	boxtxt	"PLACE? PLACE."
-	boxtxt_end
-	
+		boxtxt	"PLACE PLACE PLACE."
+		boxtxt_pause
+		boxtxt	"PLACE? PLACE!"
+		boxtxt	"PLACE, PLACE PLACE"
+		boxtxt	"PLACE PLACE PLACE?"
+		boxtxt	"PLACE... PLACE!"
+		boxtxt_pause
+		boxtxt	"PLACE? PLACE."
+		boxtxt_end
+		
 ; ---------------------------------------------------------------
-	even
+		even

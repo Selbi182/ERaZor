@@ -33,7 +33,7 @@ Objects			equ	$FFFFD000			;	Objects RAM (D000-EFFF)
 
 SoundDriverRAM:		equ	$FFFFF000			;	SMPS RAM
 
-RedrawEverything:	equ	$FFFFF5D3			;	Flag used to redraw the entire screen after teleporting
+RedrawEverything:	equ	$FFFFF5D3			; b	Flag used to redraw the entire screen after teleporting
 FranticDrain:		equ	$FFFFF5D4			; w	Rings to be drained in frantic mode
 BGThemeColor:		equ	$FFFFF5D6			; w	Background color used for the BG effects for the story screens, etc.
 PlacePlacePlace:	equ	$FFFFF5D8			; b	PLACE PLACE PLACE
@@ -83,13 +83,13 @@ CamYpos4:		equ 	$FFFFF71C			; l 	Camera Y position (BG3)
 CamXpos5:		equ	$FFFFF720			; l	Camera X position (BG4)
 Camera_RAM_Size:	equ	$FFFFF724-Camera_RAM
 
-CamXShift:		equ	$FFFFF73A			; w		Camera X shift from the previous frame (FG, 8.8 fixed)
-CamYShift:		equ	$FFFFF73C			; w		Camera Y shift from the previous frame (FG, 8.8 fixed)
+FZEscape		equ	$FFFFF734			; b	flag set during the Finalor Place escape
 
+CamXShift:		equ	$FFFFF73A			; w	Camera X shift from the previous frame (FG, 8.8 fixed)
+CamYShift:		equ	$FFFFF73C			; w	Camera Y shift from the previous frame (FG, 8.8 fixed)
 
 Pal_Active:		equ	$FFFFFB00			; ~	Active palette
 Pal_Target:		equ	$FFFFFB80			; ~	Target palette for fading
-
 
 VBlank_FrameCounter:	equ	$FFFFFE0C			; l	Global frame counter for VBlank (includes lag frames)
 
@@ -104,18 +104,19 @@ CameraShake_Intensity	equ	$FFFFFF61			; b	maximum cam shake offset distance, in 
 CameraShake_XOffset	equ	$FFFFFF62			; w	current camera shake X offset 
 CameraShake_YOffset	equ	$FFFFFF64			; w	current camera shake Y offset
 
-BossHealth		equ	$FFFFFF75			; b	current health of a boss (not used by all bosses!)
 HUD_BossHealth		equ	$FFFFFF68			; b	current health of a boss to be displayed instead of the HUD deaths counter
+BossHealth		equ	$FFFFFF75			; b	current health of a boss (not used by all bosses!)
 
-OptionsBits		equ	$FFFFFF92			; b	bit field for the user options
 Doors_Casual		equ	$FFFFFF8A			; b	bit field for beaten levels in casual
 Doors_Frantic		equ	$FFFFFF8B			; b	bit field for beaten levels in frantic
+ScreenFuzz		equ	$FFFFFF91			; b	enables cinematic screen fuzz
+OptionsBits		equ	$FFFFFF92			; b	bit field for the user options
 Progress		equ	$FFFFFF93			; b	bit field for overall game state (bit 0 - base game // bit 1 - blackout)
 
 	if def(__MD_REPLAY__)
 ; __MD_REPLAY__ = 'rec'
-MDReplay_RecPtr:	equ		$FFFFF100			; l
-MDReplay_RLECount:	equ		$FFFFF100			; b
+MDReplay_RecPtr:	equ	$FFFFF100			; l
+MDReplay_RLECount:	equ	$FFFFF100			; b
 ; __MD_REPLAY__ = 'play'
-MDReplay_PlayPtr:	equ		$FFFFF100			; l
+MDReplay_PlayPtr:	equ	$FFFFF100			; l
 	endif

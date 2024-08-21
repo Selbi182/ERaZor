@@ -380,7 +380,7 @@ SRAMFound:
 		move.b	SRAM_Options(a1),(OptionsBits).w		; load options flags
 		move.b	SRAM_Chapter(a1),($FFFFFFA7).w		; load current chapter
 		movep.w	SRAM_Doors(a1),d0			; load...
-		move.w	d0,($FFFFFF8A).w			; ...open doors bitsets
+		move.w	d0,(Doors_Casual).w			; ...open doors bitsets
 		movep.w	SRAM_Lives(a1),d0			; load...
 		move.w	d0,($FFFFFE12).w			; ...lives/deaths counter
 		movep.w	SRAM_Rings(a1),d0			; load...
@@ -415,7 +415,7 @@ SRAM_Delete:
 ResetGameProgress:
 		moveq	#0,d0
 		move.b	d0,($FFFFFFA7).w			; clear current chapter
-		move.w	d0,($FFFFFF8A).w			; clear open doors bitsets
+		move.w	d0,(Doors_Casual).w			; clear open doors bitsets
 		move.w	d0,($FFFFFE12).w			; clear lives/deaths counter
 		move.w	d0,($FFFFFE20).w			; clear rings
 		move.l	d0,($FFFFFE26).w			; clear score
@@ -440,7 +440,7 @@ SRAM_SaveNow:
 		move.b	d0,SRAM_Options(a1)			; backup option flags
 		move.b	($FFFFFFA7).w,d0			; move current chapter to d0
 		move.b	d0,SRAM_Chapter(a1)			; backup current chapter
-		move.w	($FFFFFF8A).w,d0			; move open doors bitset to d0
+		move.w	(Doors_Casual).w,d0			; move open doors bitset to d0
 		movep.w	d0,SRAM_Doors(a1)			; backup open doors bitset
 		move.w	($FFFFFE12).w,d0			; move lives/deaths to d0
 		movep.w	d0,SRAM_Lives(a1)			; backup lives/deaths
@@ -3992,6 +3992,7 @@ Level_MainLoop:
 
 		bsr	RandomNumber		; constantly create a new random number every frame to make use of RandomNumber
 		jsr	WhiteFlash_Restore	; restore white flash, if applicable
+		jsr	CinematicScreenFuzz	; do screen fuzz, if applicable
 
 		move.b	#8,VBlankRoutine
 		bsr	DelayProgram
@@ -4584,6 +4585,9 @@ UndoCameraShake:
 ; ---------------------------------------------------------------------------
 
 CinematicScreenFuzz:
+		tst.b	(ScreenFuzz).w		; is screen fuzz enabled?
+		beq.w	CinematicScreenFuzz_End	; if not, branch
+
 		; calculate the exact amount of lines we need, minus ones occupied by black bars
 		move.w	#224-1,d1		; do it for all scanlines by default
 		moveq	#0,d0			; clear d0
@@ -4708,17 +4712,21 @@ Fuzz_TutBox:
 ; ---------------------------------------------------------------------------
 ; Subroutine to clear every special flag (e.g. cutscenes, custom bosses).
 ; ---------------------------------------------------------------------------
+; This routine is a historically grown mess because I used to just pick
+; random free RAM addresses for all my features, rather than having a clear
+; idea of how to organize this stuff. Apologies to any future readers.
+; ---------------------------------------------------------------------------
 
 ClearEverySpecialFlag:
 		moveq	#0,d0
-		move.b	d0,(FZEscape).w
 		move.w	d0,($FFFFC904).w
-		move.w	d0,($FFFFF7BE).w
 		move.b	d0,($FFFFF5D0).w
 		move.b	d0,($FFFFF5D1).w
-		move.w	d0,(FranticDrain).w
-		move.b	d0,(RedrawEverything).w
-		move.w	d0,(BGThemeColor).w
+		move.b	d0,($FFFFF5D3).w
+		move.w	d0,($FFFFF5D4).w
+		move.w	d0,($FFFFF5D6).w
+		move.b	d0,($FFFFF734).w
+		move.w	d0,($FFFFF7BE).w
 		move.l	d0,($FFFFFF60).w
 		move.l	d0,($FFFFFF64).w
 		move.l	d0,($FFFFFF68).w
@@ -4733,8 +4741,6 @@ ClearEverySpecialFlag:
 		move.b	d0,($FFFFFF7F).w
 		move.w	d0,($FFFFFF86).w
 		move.w	d0,($FFFFFF88).w
-		move.b	d0,($FFFFFFEB).w
-		move.b	d0,($FFFFFF91).w
 		move.w	d0,($FFFFFF9C).w
 		move.l	d0,($FFFFFFA0).w
 		move.w	d0,($FFFFFFA4).w
@@ -4752,6 +4758,7 @@ ClearEverySpecialFlag:
 		move.b	d0,($FFFFFFE1).w
 		move.b	d0,($FFFFFFE5).w
 		move.b	d0,($FFFFFFE7).w
+		move.b	d0,($FFFFFFEB).w
 		move.b	d0,($FFFFFFF9).w
 		rts
 ; End of function ClearEverySpecialFlag
@@ -4950,19 +4957,13 @@ SignpostArtLoad:			; XREF: Level
 		bhs.s	Signpost_Exit		; if yes, don't load
 
 		move.w	($FFFFFE10).w,d0	; get current Level ID
-		cmpi.w	#$002,d0		; is level GHP?
-		bne.s	@notghp			; if not, branch		
-		tst.b	($FFFFFF91).w		; GHP boss defeated?
-		beq.s	@notghp			; if not, branch
-		bra.s	Signpost_DoLoad		; do load
-
-@notghp:
+		; GHP sign post is loaded from within boss
 		cmpi.w	#$200,d0		; is level RP?
 		beq.s	Signpost_DoLoad		; if yes, branch
 		cmpi.w	#$101,d0		; is level LP?
 		beq.s	Signpost_DoLoad_NoLock	; if yes, branch (don't lock screen)
 		cmpi.w	#$302,d0		; is level SAP?
-		beq.s	Signpost_DoLoad		; if yes, branch
+		beq.s	Signpost_DoLoad_NoLock	; if yes, branch (don't lock screen)
 		rts				; otherwise, don't load
 
 Signpost_DoLoad:
@@ -6095,7 +6096,7 @@ LevSz_StartLoc:				; XREF: LevelSizeLoad
 		bne.s 	@load			; if not, branch
 		frantic				; are we in frantic mode
 		beq.s	@load			; if not, branch
-		tst.w	($FFFFFF8A).w		; have any levels been beaten yet?
+		tst.w	(Doors_Casual).w	; have any levels been beaten yet?
 		beq.s	@load			; if not, branch
 
 @altsloc:
@@ -7022,6 +7023,8 @@ Resize_SYZ1:
 		
 		tst.b	($FFFFFFA5).w		; entered the blackout area?
 		beq.s	@noblackout		; if not, branch
+		cmpi.w	#$180,($FFFFD00C).w	; has Sonic left the tube again?
+		bhs.s	@noblackout		; if yes, branch
 		move.w	#$A8,($FFFFF726).w	; boundary bottom in blackout section
 		rts
 
@@ -7294,10 +7297,9 @@ locret_7322:
 		rts	
 ; ===========================================================================
 
-FZEscape equ $FFFFF734
-
 Resize_FZend2:
 		clr.b	($FFFFFE1E).w		; stop time counter
+		move.w	($FFFFF700).w,($FFFFF728).w	; lock left boundary as you walk right
 
 		tst.b	(FZEscape).w		; has escape sequence flag been set? (Eggman object deleted after crash)
 		beq.w	@waitforeggmantodielol	; if not, branch
@@ -7335,10 +7337,7 @@ Resize_FZEscape:
 		move.b	#2,(FZEscape).w		; enable exploding scenery and the rest of the escape logic
 
 		move.w	#0,($FFFFF72C).w	; unlock controls
-		move.b	#1,($FFFFFE2E).w	; speed up the BG music
-		move.w	#180*60,($FFFFD034).w	; give Sonic speed shoes to make the walking-left part less tedious
-	;	move.b	#1,($FFFFFE2D).w	; make sonic invincible to prevent some bullshit deaths
-		addq.w	#1,($FFFFFE20).w	; screw that, instead add 1 insurance ring (without updating rings counter)
+		addq.w	#1,($FFFFFE20).w	; give one insurance ring (without updating rings counter) to prevent some bullshit deaths
 
 		move.b	#7,(CameraShake_Intensity).w
 
@@ -9599,6 +9598,8 @@ Obj2A_Red:
 		beq.w	Obj2A_Animate			; if not, keep door locked
 		tst.b	$30(a0)				; has sound stopper been passed?
 		beq.s	Obj2A_Green			; if not, keep door open
+		jsr	Check_BlackoutBeaten		; has the blackout challenge already been beaten?
+		bne.s	Obj2A_Green			; if yes, you may keep your toy
 		clr.b	obAnim(a0)			; shut door behind Sonic
 		bra.w	Obj2A_Animate			; force door to be red
 
@@ -9634,8 +9635,8 @@ Obj2A_SYZ1:
 		add.w	d1,d0
 		cmp.w	obX(a0),d0
 		bcc.s	loc_899A
-		btst	#0,obStatus(a0)
-		bne.s	Obj2A_Animate
+	;	btst	#0,obStatus(a0)
+	;	bne.s	Obj2A_Animate
 		bra.s	Obj2A_Open
 ; ===========================================================================
 
@@ -10214,13 +10215,13 @@ Obj3F_Main2:
 
 		bsr	RandomDirection
 
-		cmpi.w	#$502,($FFFFFE10).w
-		bne.s	@cont2
-		move.b	#7,obPriority(a0)
-	;	tst.b	($FFFFF7AA).w
-	;	bne.s	@cont2
+		cmpi.w	#$502,($FFFFFE10).w	; are we in FP?
+		bne.s	@notfp			; if not, branch
+		cmpi.b	#$A,($FFFFF742).w	; has boss been defeated yet?
+		bhs.s	@notfp			; if yes, branch
+		move.b	#7,obPriority(a0)	; make explosions super low priority during the boss fight cause to avoid flicker for more important stuff
 
-@cont2:
+@notfp:
 		tst.b	($FFFFF7AA).w		; is boss mode on?
 		bne.s	Obj3F_NotHarmful	; if yes, branch
 		tst.b	$30(a0)			; is explosion set to be harmful?
@@ -12971,16 +12972,24 @@ Obj26_Index:	dc.w Obj26_Main-Obj26_Index
 ; ===========================================================================
 
 Obj26_Main:				; XREF: Obj26_Index
-		; blow up P monitor in frantic FP
-		frantic
-		beq.s	@notfrantic
-		cmpi.w	#$502,($FFFFFE10).w
-		bne.s	@notfrantic
-		cmpi.b	#8,obSubtype(a0)
-		bne.s	@notfrantic
-		bra.w	DeleteObject
+		cmpi.w	#$502,($FFFFFE10).w	; are we in FP?
+		bne.s	@notfp			; if not, branch
+		cmpi.b	#3,obSubtype(a0)	; is this the speed shoes monitor?
+		bne.s	@notshoes		; if not, branch
+		tst.b	(PlacePlacePlace).w	; easter egg?
+		bne.s	@del			; if yes, good luck lol
+		tst.b	(FZEscape).w		; has escape sequence begun yet?
+		bne.s	@notfp			; if yes, branch
+		rts				; don't show speed shoes monitor before escape started
+	
+	@notshoes:
+		frantic				; are we in frantic?
+		beq.s	@notfp			; if not, branch
+		cmpi.b	#8,obSubtype(a0)	; is this the P monitor?
+		bne.s	@notfp			; if not, branch
+	@del:	jmp	DeleteObject		; delete P monitor in frantic cause no rings for you
 
-@notfrantic:
+@notfp:
 		addq.b	#2,obRoutine(a0)
 		move.b	#$E,obHeight(a0)
 		move.b	#$E,obWidth(a0)
@@ -13283,13 +13292,18 @@ Sonic_Deceleration_Shoes	= Sonic_Deceleration * 2
 Obj2E_ChkShoes:
 		cmpi.b	#3,d0		; does monitor contain speed shoes?
 		bne.s	Obj2E_ChkShield
-		move.b	#1,($FFFFFE2E).w ; speed up the	BG music
+		move.b	#1,($FFFFFE2E).w	; set shoes flag
+
+		cmpi.w	#$502,($FFFFFE10).w	; are we in FP?
+		bne.s	@notfp			; if not, branch
+		move.w	#180*60,($FFFFD034).w	; give Sonic speed shoes for the escape (3 minutes, enough for the whole escape)
+		rts				; do nothing else
+
+@notfp:
 		move.w	#20*60,($FFFFD034).w ; time limit for the power-up (20 seconds)
-		
 		move.w	#Sonic_TopSpeed_Shoes,($FFFFF760).w ; change Sonic's top speed
 		move.w	#Sonic_Acceleration_Shoes,($FFFFF762).w
 		move.w	#Sonic_Deceleration_Shoes,($FFFFF764).w
-
 		move.w	#$E2,d0
 		jmp	(PlaySound).l	; change music
 ; ===========================================================================
@@ -34393,6 +34407,7 @@ Obj7D_SoundStopper:
 		movea.l	$30(a0),a1		; get saved RAM address of the door
 		move.b	#1,$30(a1)		; turn the door red
 		move.b	#1,($FFFFFFA5).w	; move HUD off screen
+		move.b	#1,(ScreenFuzz).w	; enable screen fuzz
 		jmp	DeleteObject
 
 @end:
@@ -34858,7 +34873,6 @@ locret_179AA:
 		move.w	#$2AC0+GHZ3Add,($FFFFF72A).w
 		moveq	#$12,d0
 		jsr	LoadPLC2	; load signpost	patterns
-		move.b	#1,($FFFFFF91).w
 		clr.b	($FFFFF7AA).w
 		lea	@Spring(pc), a1	; load spring graphics
 		jsr	LoadPLC_Direct
@@ -34979,13 +34993,9 @@ loc_17A5A:
 		bpl.s	Obj3D_FaceDel
 
 Obj3D_FaceDisp:
-		tst.b	($FFFFFF91).w
-		bne.s	absdjasd
+		cmpi.b	#$3D,(a1)		; is boss deleted?
+		bne.s	Obj3D_FaceDel		; if yes, delete face too
 		bra.s	Obj3D_Display
-; ===========================================================================
-
-absdjasd:
-		rts
 ; ===========================================================================
 
 Obj3D_FaceDel:
@@ -38360,7 +38370,7 @@ Obj85_Index:	dc.w Obj85_Main-Obj85_Index
 
 Obj85_ObjData:	dc.w $100, $100, $470	; X pos, Y pos,	VRAM setting
 		dc.l Map_obj82		; mappings pointer
-		dc.w $25B0, $5A0, $300
+		dc.w $25C0, $5A0, $300
 		dc.l Map_obj84
 		dc.w $26E0, $596, $3A0
 		dc.l Map_FZBoss
@@ -39380,7 +39390,7 @@ Obj86_Index:	dc.w Obj86_Main-Obj86_Index
 
 Obj86_Main:				; XREF: Obj86_Index
 		move.w	#$2588,obX(a0)
-		move.w	#$538,obY(a0)
+		move.w	#$53C,obY(a0)
 		move.w	#$300,obGfx(a0)
 		move.l	#Map_obj86,obMap(a0)
 		move.b	#0,obAnim(a0)
@@ -39763,8 +39773,7 @@ Obj3E_Switched:				; XREF: Obj3E_Index
 		
 		addq.w	#8,obY(a0)
 		move.b	#$A,obRoutine(a0)
-		move.w	#$3C,obTimeFrame(a0)
-	;	move.b	#1,($FFFFFFA5).w	; move HUD off screen (and start FZEscape sequence)
+		move.w	#60*2,obTimeFrame(a0)	; changed from $3C
 		clr.b	ob2ndRout(a0)
 		bclr	#3,($FFFFD022).w
 		bset	#1,($FFFFD022).w
@@ -39791,8 +39800,10 @@ Obj3E_Explosion:			; XREF: Obj3E_Index
 		subi.w	#$20,d1
 		add.w	d1,obX(a1)
 		lsr.w	#8,d0
-		lsr.b	#3,d0
+		lsr.b	#1,d0	; changed from 3
 		add.w	d0,obY(a1)
+
+		ori.b	#10,(CameraShake).w     	; normal camera shake
 
 loc_1ACA0:
 		subq.w	#1,obTimeFrame(a0)

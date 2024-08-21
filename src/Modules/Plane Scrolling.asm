@@ -932,16 +932,9 @@ Deform_SYZ:
 
 		; screen fuzz for blackout room
 		tst.b	($FFFFFFD0).w		; jumped into blackout ring?
-		bne.s	@spoop			; if yes, branch
-		tst.b	($FFFFFFA5).w		; have we entered the room to the blackout challenge?
-		bne.s	@fuzz			; if yes, branch
-		rts
-@fuzz:
-		jmp	CinematicScreenFuzz	; do fuzz for the spoop
-
-@spoop:
+		beq.s	@nospoop		; if not, branch
 		move.b	#$10,($FFFFF73A).w	; pretend 16 pixels have been scrolled for the bzzzzz
-		jmp	CinematicScreenFuzz	; do fuzz for the spoop
+@nospoop:	rts
 ; ===========================================================================
 
  

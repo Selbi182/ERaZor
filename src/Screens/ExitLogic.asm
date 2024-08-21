@@ -365,7 +365,7 @@ HubRing_GHP:	move.w	#$002,($FFFFFE10).w	; set level to GHZ3
 		bra.w	StartLevel		; no chapter
 
 HubRing_SP:	move.w	#$300,($FFFFFE10).w	; set level to Special Stage
-		clr.b	($FFFFFF5F).w		; clear blackout special stage flag
+		clr.b	(Blackout).w		; clear blackout special stage flag
 		bra.w	RunChapter
 
 HubRing_RP:	move.w	#$200,($FFFFFE10).w	; set level to MZ1
@@ -375,7 +375,7 @@ HubRing_LP:	move.w	#$101,($FFFFFE10).w	; set level to LZ2
 		bra.w	RunChapter
 
 HubRing_UP:	move.w	#$401,($FFFFFE10).w	; set level to Special Stage 2
-		clr.b	($FFFFFF5F).w		; clear blackout special stage flag
+		clr.b	(Blackout).w		; clear blackout special stage flag
 		bra.w	RunChapter
 
 HubRing_SNP:	move.w	#$301,($FFFFFE10).w	; set level to SLZ2
@@ -420,8 +420,9 @@ HubRing_Ending:
 		bra.w	RunStory
 
 HubRing_Blackout:
+		clr.b	(ScreenFuzz).w		; clear screen fuzz flag
 		move.w	#$401,($FFFFFE10).w	; set level to Unreal
-		move.b	#1,($FFFFFF5F).w	; set Blackout Challenge flag
+		move.b	#1,(Blackout).w		; set Blackout Challenge flag
 		bra.w	StartLevel		; good luck
 
 
@@ -451,7 +452,7 @@ Exit_Level:
 
 		cmpi.w	#$401,($FFFFFE10).w	; did we beat Unreal Place?
 		bne.s	@notunreal		; if not, branch
-		tst.b	($FFFFFF5F).w		; is this the blackout special stage?
+		tst.b	(Blackout).w		; is this the blackout special stage?
 		beq.w	GTA_UP			; if not, you've beaten UP
 		bra.w	GTA_Blackout		; otherwise, you've beaten blackout
 
@@ -505,7 +506,7 @@ GTA_FP:		moveq	#6,d0			; unlock seventh door (door to the credits)
 		beq.w	ReturnToUberhub		; if not, return to Uberhub
 		bra.w	HubRing_Ending		; otherwise go straight to the ending
 
-GTA_Blackout:	clr.b	($FFFFFF5F).w		; clear blackout special stage flag
+GTA_Blackout:	clr.b	(Blackout).w		; clear blackout special stage flag
 		move.b	#9,(StoryTextID).w	; set number for text to 9 (final congratulations)
 		bra.w	RunStory_Force		; show story screen even if they are disabled
 

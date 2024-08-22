@@ -114,10 +114,6 @@ DeformBgLayer:				; XREF: TitleScreen; Level; EndingSequence
 		tst.b	($FFFFFFE9).w		; is level set to restart?
 		bne.w	@end			; if yes, branch
 
-		clr.w	($FFFFF754).w		; clear redraw flags
-		clr.w	($FFFFF756).w		; ''
-		clr.w	($FFFFF758).w		; ''
-		clr.w	($FFFFF75A).w		; ''
 		bsr	ScrollHoriz
 		bsr	ScrollVertical
 		bsr	DynScrResizeLoad

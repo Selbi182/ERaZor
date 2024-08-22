@@ -34224,8 +34224,8 @@ loc_16FA0:
 ; ---------------------------------------------------------------------------
 
 Obj79_StoreInfo:			; XREF: Obj79_HitLamp
-		move.b	obSubtype(a0),($FFFFFE30).w 		; lamppost number
-		move.b	($FFFFFE30).w,($FFFFFE31).w
+		move.b	obSubtype(a0),($FFFFFE30).w 	; lamppost number
+		move.b	($FFFFFE30).w,($FFFFFE31).w	; copy of lamppost number
 		move.w	obX(a0),($FFFFFE32).w		; x-position
 		move.w	obY(a0),($FFFFFE34).w		; y-position
 		move.w	($FFFFFE20).w,($FFFFFE36).w 	; rings
@@ -34244,6 +34244,13 @@ Obj79_StoreInfo:			; XREF: Obj79_HitLamp
 		move.w	($FFFFF648).w,($FFFFFE50).w 	; water height
 		move.b	($FFFFF64D).w,($FFFFFE52).w 	; rountine counter for water
 		move.b	($FFFFF64E).w,($FFFFFE53).w 	; water direction
+	
+		cmpi.w	#$101,($FFFFFE10).w		; are we LP?
+		bne.s	@notlp				; if not, branch
+		cmpi.b	#2,obSubtype(a0)		; did we hit checkpoint 2?
+		bne.s	@notlp				; if not, branch
+		move.w	#$700,($FFFFFE3E).w	 	; set custom lower y-boundary to prevent softlocks
+@notlp:
 		rts	
 
 ; ---------------------------------------------------------------------------

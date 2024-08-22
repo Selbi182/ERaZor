@@ -600,9 +600,16 @@ BlackBars.VBlankUpdate:
 
 @notlz:
 		bsr.s	BlackBars.SetState
-	
+
 		move.w	BlackBars.Height,d0				; is height 0?
 		beq.s	@disable_bars					; if yes, branch
+
+		; Sprite masking trick for the last rendered raster line
+		move.w	#224+$80, d1
+		sub.w	d0, d1
+		move.w	d1, $FFFFF800
+		move.w	d1, $FFFFF808
+
 		cmp.w	#224/2-1,d0					; are we taking half the screen?
 		bhi.s	@make_black_screen				; if yes, branch
 		cmp.w	#224/4-1,d0					; are we quater the screen?
@@ -17582,6 +17589,14 @@ BuildSprites:				; XREF: TitleScreen; et al
 		moveq	#0,d5
 		lea	($FFFFAC00).w,a4
 		moveq	#7,d7
+
+		; Reserve 2 sprite slots for sprite masking
+		; NOTE: These slots are finalized in BlackBars handler during VBlank
+		addq.w	#2, d5			; reserve 2 slots
+		move.l	#$01700F01, (a2)+	; Y-pos, size, link
+		move.l	#$00000001, (a2)+	; pattern, X-pos
+		move.l	#$01700F02, (a2)+	; Y-pos, size, link
+		move.l	#$00000000, (a2)+	; pattern, X-pos
 
 loc_D66A:
 		tst.w	(a4)

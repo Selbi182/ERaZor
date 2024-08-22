@@ -120,6 +120,8 @@ DH_MainLoop:
 
 		cmpi.b	#10,($FFFFFF6E).w	; is this the introduction text?
 		beq.s	@0			; if yes, branch
+		cmpi.b	#$C,($FFFFF600).w	; are we in a level?
+		bne.s	DH_Continue		; if not, don't do fuzz
 		jsr	Fuzz_TutBox		; do cinematic screen fuzz if applicable
 		bra.s	DH_Continue
 @0:	
@@ -296,6 +298,8 @@ DH_OWindow_Appear:
 		; darken palette as box fades in
 		cmpi.b	#10,($FFFFFF6E).w	; is this the introduction text?
 		beq.s	@nah			; if yes, branch
+		cmpi.b	#$C,($FFFFF600).w	; are we in a level?
+		bne.s	@nah			; if not, branch
 
 		move.w	#$120,d0		; $120 = target X pos when the tut box is centered
 		sub.w	xpos(a0),d0 		; subtract current tut box X pos
@@ -532,6 +536,8 @@ DH_OWindow_Disappear:
 		; brighten palette as box fades out
 		cmpi.b	#10,($FFFFFF6E).w	; is this the introduction text?
 		beq.s	@nah			; if yes, branch
+		cmpi.b	#$C,($FFFFF600).w	; are we in a level?
+		bne.s	@nah			; if not, branch
 
 		move.w	xpos(a0),d0 		; get current tut box X pos (which is starting at $120 here)
 		subi.w	#$120,d0		; subtract $120

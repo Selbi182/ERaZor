@@ -159,6 +159,8 @@ Credits_EndLoop:
 		jsr	BuildSprites
 		andi.b	#$F0,($FFFFF605).w			; is A, B, C, or Start pressed?
 		beq.s	Credits_EndLoop				; if not, loop
+		clr.b	(Credits_Page).w
+		clr.w	(Credits_Scroll).w
 		jmp	Exit_CreditsScreen			; exit screen
 
 ; ===========================================================================

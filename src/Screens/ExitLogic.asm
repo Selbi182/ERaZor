@@ -104,6 +104,8 @@ Exit_GameplayStyleScreen:
 		beq.s	@notfrantic		; if not, branch
 		tst.b	(Doors_Frantic).w	; have any frantic levels been beaten yet?
 		bne.s	@notfrantic		; if yes, branch
+		jsr	Pal_FadeFrom		; fade out palette to avoid visual glitches
+		jsr	ClearScreen		; clear screen
 		moveq	#$E,d0			; load FZ palette (cause tutorial boxes are built into SBZ)
 		jsr	PalLoad2		; load palette	
 		moveq	#$13,d0			; load warning text about revisiting the tutorial for frantic
@@ -176,6 +178,9 @@ Exit_StoryScreen:
 Exit_CreditsScreen:
 		tst.b	($FFFFFF95).w		; were any post-credits texts set to be displayed?
 		beq.s	@restartfromcredits	; if not, branch
+
+		jsr	Pal_FadeFrom		; fade out palette
+		jsr	ClearScreen		; clear screen
 
 		lea	($FFFFD000).w,a1	; clear object RAM (the stars)...
 		moveq	#0,d0			; ...cause they cause slowdowns in these screens

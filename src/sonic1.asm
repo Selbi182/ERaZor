@@ -372,12 +372,12 @@ LoadSRAM:
 		cmpi.b	#SRAM_MagicNumber,SRAM_Exists(a1)	; does SRAM exist?
 		beq.s	SRAMFound				; if yes, branch
 		
-		bsr.s	SRAM_Delete				; clear any existing SRAM
+		bsr.s	SRAM_Reset				; reset any existing SRAM
 		bra.w	SRAMEnd
 
 SRAMFound:
 		lea	($200000).l,a1				; base of SRAM
-		move.b	SRAM_Options(a1),(OptionsBits).w		; load options flags
+		move.b	SRAM_Options(a1),(OptionsBits).w	; load options flags
 		move.b	SRAM_Chapter(a1),($FFFFFFA7).w		; load current chapter
 		movep.w	SRAM_Doors(a1),d0			; load...
 		move.w	d0,(Doors_Casual).w			; ...open doors bitsets
@@ -396,20 +396,26 @@ SRAMEnd:
 	endif	; def(__MD_REPLAY__)=0
 ; ===========================================================================
 
-SRAM_Delete:
+SRAM_Reset:
 	if def(__MD_REPLAY__)
 		rts
 	else
-		moveq	#$00,d0					; if not, set the whole SRAM to 0 for safety
-		move.b	#2,d1
-@ClearSRAM:	movep.l	d0,1(a1)
-		adda.w	#8,a1
-		dbf	d1,@ClearSRAM
-
-		lea	($200000).l,a1				; base of SRAM
-		move.b	#SRAM_MagicNumber,SRAM_Exists(a1) 	; set magic number ("SRAM exists")
+		; Fun fact: Did you know Kega initializes SRAM to $FF instead of $00?
+		; Thank me later, I just saved you hours.
+		moveq	#0,d0					; set d0 to 0
+		move.b	d0,SRAM_Options(a1)			; clear option flags
+		move.b	d0,SRAM_Chapter(a1)			; clear current chapter
+		movep.w	d0,SRAM_Doors(a1)			; clear open doors bitset
+		movep.w	d0,SRAM_Lives(a1)			; clear lives/deaths
+		movep.w	d0,SRAM_Rings(a1)			; clear rings
+		movep.l	d0,SRAM_Score(a1)			; clear score
+		move.b	d0,SRAM_Complete(a1)			; clear option flags
+		move.b	d0,SRAM_Resume(a1)			; clear resume flag
+	
 		jsr	Options_SetDefaults			; reset default options
-		move.b	(OptionsBits).w,1(a1)			; ^
+		move.b	(OptionsBits).w,SRAM_Options(a1)	; ^
+
+		move.b	#SRAM_MagicNumber,SRAM_Exists(a1) 	; set magic number ("SRAM exists")
 	endif	; def(__MD_REPLAY__)=0
 		
 ResetGameProgress:
@@ -24099,7 +24105,7 @@ Obj5F_BossDelete:
 		move.b	#1,($FFFFD080+$31).w		; set title card patterns load flag
 		
 		move.w	#$302,($FFFFFE10).w	; change level to SLZ3
-		move.w	#$1FBF,($FFFFF72A).w
+		move.w	#$20BF,($FFFFF72A).w
 		move.w	#$620,($FFFFF726).w
 		move.w	#-1,($FFFFFF7C).w
 		move.b	#0,($FFFFF7CC).w
@@ -24333,7 +24339,9 @@ Obj5F_BombMachine:
 		move.b	#0,obAniFrame(a1)
 
 @cont:
-		tst.w	($FFFFFFC4).w
+		tst.w	($FFFFFFC4).w	; 2024 change, don't show the small bombs
+		beq.s	@cont2		; cause it doesn't make sense
+		tst.b	($FFFFFFC8).w
 		beq.s	@cont2
 		bra.w	DisplaySprite
 
@@ -26315,7 +26323,7 @@ Obj06_DoHardPartSkip:
 
 @dohardpartskip:
 		cmpi.w	#$101,($FFFFFE10).w	; are we in LP?
-		bne.s	@regularhps		; if not, branch
+		bne.s	@checksap		; if not, branch
 		
 		lea	(Obj06_Locations_LP).l,a1 ; get special LP locations
 		moveq	#0,d0
@@ -26379,13 +26387,13 @@ Obj06_Locations:	;XXXX   YYYY
 		dc.w	$FFFF, $FFFF	; Green Hill Place	(Unused)
 		dc.w	$FFFF, $FFFF	; Special Place		(Unused)
 		dc.w	$1E10, $02B0	; Ruined Place
-		dc.w	$0D2F, $05A7	; Labyrinthy Place
+		dc.w	$FFFF, $FFFF	; Labyrinthy Place	(custom, see below)
 		dc.w	$FFFF, $FFFF	; Unreal Place		(Unused)
 		dc.w	$FFFF, $FFFF	; Scar Night Place 	(Unused)
 		dc.w	$101E, $036C	; Finalor Place
 		dc.w	$FFFF, $FFFF	; Uberhub Place		(Unused)
 		dc.w	$101E, $036C	; Tutorial Place
-		dc.w	$1F00, $06E0	; Star Agony Place
+		dc.w	$20C0, $0580	; Star Agony Place
 
 Obj06_Locations_LP:
 		dc.w	$01F0, $00F0	; before first checkpoint

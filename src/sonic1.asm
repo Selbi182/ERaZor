@@ -7223,24 +7223,34 @@ Resize_FZ:
 		beq.w 	@NoPaletteChange
 
 		move.b 	FZFlashColor, d1
+		move.l 	$FFFFFE22, d2
 		lea 	$FFFFFFB48, a2
 		lea	@Colors, a3
+		lea 	@WaitTimes, a4
 		adda	d1, a3
 
+@FindWaitTime:
+		move.w 	(a4)+, d3
+		cmp.l 	(a4)+, d2
+		blt.s 	@FindWaitTime
+
+		; Copy palette data
 		move.l 	(a3)+, (a2)+
 		move.l 	(a3), (a2)
 
-	        add.w 	#$1000/5, FZFlashTimer
+		; Run timer with found wait time
+	        add.w 	d3, FZFlashTimer
 	        bcc.w	@NoOverflow
 
+		; If we overflowed, reset flash color index
 		move.b	#0, FZFlashColor
 
 @NoOverflow:
 		btst	#1, FZFlashTimer
-		beq.s	@NoPaletteChange
+		beq.w	@NoPaletteChange
 
 		cmp.b 	#$58, FZFlashColor
-		bge.s 	@NoPaletteChange
+		bge.w 	@NoPaletteChange
 		
 		add.b	#8, FZFlashColor
 		bra.s 	@NoPaletteChange
@@ -7258,7 +7268,19 @@ Resize_FZ:
 		dc.l 	$00040446, $0668088A
 		dc.l 	$00020446, $04460668
 		dc.l 	$00020224, $04460668
-		
+
+; W: Overflow counter value
+; L: Min. time left
+@WaitTimes:
+		dc.w 	$2AA
+		dc.l	$10000000	; 100
+		dc.w 	$555
+		dc.l	$00003C39	; 60
+		dc.w 	$666
+		dc.l	$00001E39	; 30
+		dc.w 	$888
+		dc.l	$00000000	; 0
+
 @NoPaletteChange:
 		moveq	#0,d0
 		move.b	($FFFFF742).w,d0

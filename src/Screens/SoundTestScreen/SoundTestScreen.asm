@@ -10,7 +10,10 @@ SoundTest_Max = $DF
 SoundTest_AStep = $10
 
 SoundTest_TileOptions = $A000
-SoundTest_BaseTile = $81|SoundTest_TileOptions
+SoundTest_Tile = $81|SoundTest_TileOptions
+
+; LRLR ???? XXXX XXXX
+NotePositionBuffer = $FFFFCF80
 
 ; ---------------------------------------------------------------------------
 
@@ -235,7 +238,8 @@ SoundTest_WriteLine:
 ; ===========================================================================
 
 ;│Screen position format: #$6YXX 0003
-;│Base screen position:   #$6110 0003
+;│Base screen position:   #$6120 0003
+;│Xは2で割り切れる, モゲ!
 ;└───ｖ──────────────────────────────────────────────────────────────────────
 ;.　∧,,∧
 ; （＾o＾）
@@ -244,40 +248,50 @@ SoundTest_WriteLine:
 SoundTest_UpdatePianoRoll:
 		VBlank_SetMusicOnly
 		
+		lea 	NotePositionBuffer, a2	; note pos buffer -> a2
+
 		lea	($C00000).l, a6
-		move.l	#$61100003, 4(a6)	; screen position
+		move.l	#$61120003, 4(a6)	; screen position
 		lea	(OpText_Blank).l, a1	; graphics
 
-		move.w 	#$28, d4
+		move.w 	#$28/2, d4
 
 @ClearLine:
-		move.w	#SoundTest_BaseTile, (a6)		; write mapping to VDP
+		move.w	#SoundTest_Tile, (a6)	; write mapping to VDP
 		dbf 	d4, @ClearLine
 
 		lea 	FM_Notes, a5		; load base note location
-		moveq 	#9, d6
+		moveq 	#9, d6			; number of channels -> d6
 
 @LoopChannels:
-		move.w	#SoundTest_BaseTile+1, d3	; VRAM setting
-		
-		moveq 	#0, d0
+		move.w	#SoundTest_Tile+1, d3	; VRAM setting
+
+		moveq 	#0, d0			; clear d0
+		moveq	#0, d1			; ..d1
+
 		move.b 	(a5)+, d0		; load note
-		moveq	#1, d1
+		move.w 	d0, d1			; make copy of note into d1 for X position
+		divs.w 	#2, d1			; divide it by 2
+		bset 	#14, d1			; set right bit
 
 		; test bit 0 on note to determine left or right (odd or even) and then divide it by 2
 		; get the tile id on that coordinate and modify accordingly
 		; red = psg
 		; blue = fm
 
-		btst	#0, d0
-		beq.s 	@EvenNote
+		btst	#0, d0			; is the note even?
+		beq.s 	@EvenNote		; if so, branch
 
-		moveq 	#0, d1
+		bset 	#15, d1			; note is odd, set left bit
+		bclr 	#14, d1			; ...and clear right bit
+		; illegal
 
 @EvenNote:
-		andi.b	#$FE, d0		; make d0 either 0 or 1 
+		andi.b	#$FE, d0		; make d0 even
 		swap 	d0			; swap note value into x position
-		add.l 	#$61100003, d0		; add base
+		add.l 	#$61120003, d0		; add base
+
+		move.w 	d1, (a2)+
 
 		move.l	d0, 4(a6)		; tile -> vram
 		move.w	d3, (a6)		; settings -> vram

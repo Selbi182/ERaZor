@@ -7219,6 +7219,47 @@ loc_72C2:
 ; ===========================================================================
 
 Resize_FZ:
+		btst 	#1, FZEscape
+		beq.w 	@NoPaletteChange
+
+		move.b 	FZFlashColor, d1
+		lea 	$FFFFFFB48, a2
+		lea	@Colors, a3
+		adda	d1, a3
+
+		move.l 	(a3)+, (a2)+
+		move.l 	(a3), (a2)
+
+	        add.w 	#$1000/5, FZFlashTimer
+	        bcc.w	@NoOverflow
+
+		move.b	#0, FZFlashColor
+
+@NoOverflow:
+		btst	#1, FZFlashTimer
+		beq.s	@NoPaletteChange
+
+		cmp.b 	#$58, FZFlashColor
+		bge.s 	@NoPaletteChange
+		
+		add.b	#8, FZFlashColor
+		bra.s 	@NoPaletteChange
+
+@Colors:
+		dc.l 	$00020224, $04460668
+		dc.l 	$00020446, $04460668
+		dc.l 	$00040446, $0668088A
+		dc.l 	$00060448, $066A088C
+		dc.l 	$0008044A, $066C088C
+		dc.l 	$000A044C, $066E088C
+		dc.l 	$000A044C, $066E088C
+		dc.l 	$0008044A, $066C088E
+		dc.l 	$00060448, $066A088C
+		dc.l 	$00040446, $0668088A
+		dc.l 	$00020446, $04460668
+		dc.l 	$00020224, $04460668
+		
+@NoPaletteChange:
 		moveq	#0,d0
 		move.b	($FFFFF742).w,d0
 		move.w	ResizeFZ_Index(pc,d0.w),d0
@@ -7262,7 +7303,7 @@ Resize_FZboss:
 		move.b	#1,($FFFFF7AA).w ; lock	screen
 
 loc_7312:
-		bra.s	loc_72C2
+		bra.w	loc_72C2
 ; ===========================================================================
 
 Resize_FZAddBombs:

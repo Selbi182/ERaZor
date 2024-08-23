@@ -11,6 +11,7 @@ LevelRend_RAM:		equ	$FFFFAB80			;	level renderer RAM (AB80-AC98)
 FM_Notes:		equ 	$FFFFAF40			; 	SMPS FM note status
 PSG_Notes:		equ 	FM_Notes+5			; 	... for PSG
 DAC_Status:		equ 	PSG_Notes+3			; 	... for DAC
+
 ; <<FOR SALE>>							;	<<FOR SALE / $20,000>> (AF50-ABFF)
 
 Sprites_Queue:		equ	$FFFFAC00			;	object sprites queued for display (AC00-AFFF)
@@ -83,8 +84,6 @@ CamYpos4:		equ 	$FFFFF71C			; l 	Camera Y position (BG3)
 CamXpos5:		equ	$FFFFF720			; l	Camera X position (BG4)
 Camera_RAM_Size:	equ	$FFFFF724-Camera_RAM
 
-FZEscape		equ	$FFFFF734			; b	flag set during the Finalor Place escape
-
 CamXShift:		equ	$FFFFF73A			; w	Camera X shift from the previous frame (FG, 8.8 fixed)
 CamYShift:		equ	$FFFFF73C			; w	Camera Y shift from the previous frame (FG, 8.8 fixed)
 
@@ -96,6 +95,11 @@ VBlank_FrameCounter:	equ	$FFFFFE0C			; l	Global frame counter for VBlank (includ
 CurrentLevel:		equ	$FFFFFE10			; w	Current level ID
 CurrentZone:		equ	CurrentLevel+0			; b	Current zone index
 CurrentAct:		equ	CurrentLevel+1			; b	Current zone act (0..3)
+
+FZEscape:		equ	$FFFFFEA0			; b	flag set during the Finalor Place escape
+FZFlashTimer:		equ	$FFFFFEA2			; b	timer for updating the FP palette during escape
+FZFlashColor:		equ	$FFFFFEA4			; w	FP palette increment counter
+
 
 Blackout		equ	$FFFFFF5F			; b	flag when Blackout Challenge is currently active
 

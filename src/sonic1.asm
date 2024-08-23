@@ -7169,6 +7169,9 @@ Resize_SBZ2main:
 		cmpi.w	#$1200,($FFFFF700).w
 		bcs.s	locret_727A
 		move.w	#$420,($FFFFF726).w
+		cmpi.w	#$20C0,($FFFFF700).w
+		bcs.s	locret_727A
+		move.w	#$100,($FFFFF726).w
 
 locret_727A:
 		rts	
@@ -12248,7 +12251,8 @@ Obj37_CountRings:			; XREF: Obj37_Index
 		beq.s	@noteaster		; if not, branch
 		tst.b	$35(a0)			; was object loaded by destroying a monitor or badnik?
 		bne.w	Obj37_Delete		; if yes, branch
-		clr.w	($FFFFFE20).w		; clear rings
+	;	clr.w	($FFFFFE20).w		; clear rings	
+		move.w	($FFFFFE20).w,(FranticDrain).w	; drain whatever rings remain
 		ori.b	#1,($FFFFFE1D).w 	; update ring counter		
 		bra.w	Obj37_Delete		; delete
 
@@ -26424,6 +26428,9 @@ Obj06_Locations_LP:
 Obj06_InfoBox:
 		tst.b	($FFFFFF77).w		; is antigrav enabled?
 		bne.s	@allowairborne		; if yes, branch
+		move.b	($FFFFF602).w,d0	; get button helds
+		andi.b	#3,d0			; is up/down held?
+		bne.w	Obj06_NoA		; if yes, disallow interaction
 		btst	#1,($FFFFD022).w	; is Sonic airborne?
 		bne.w	Obj06_NoA		; if yes, disallow interaction
 @allowairborne:
@@ -26440,10 +26447,9 @@ Obj06_InfoBox:
 		bhi.w	Obj06_NoA		; if not, branch
 
 Obj06_ChkA:
-		move.b	($FFFFF603).w,d0	; is A pressed? (part 1)
-		andi.b	#$40,d0			; is A pressed? (part 2)
+		btst	#6,($FFFFF603).w	; is A pressed?
 		beq.w	Obj06_Display		; if not, branch
-		
+
 		clr.b	($FFFFF603).w		; clear controller 1 bitfield (to prevent rare softlocks)
 		move.b	#1,obFrame(a0)		; don't show A button while tutorial box is visible
 

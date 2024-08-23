@@ -844,6 +844,7 @@ Deform_SYZ:
 		; Scroll clouds
 		moveq	#0, d2
 		move.w	CamXPos, d2
+		lsr.w	#2,d2
 		
 	move.w	($FFFFFE04).w,d3
 	add.w	d3,d3

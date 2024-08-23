@@ -158,6 +158,7 @@ DH_Continue:
 		or.w	d1,d0
 		rol.w	#4,d1
 		or.w	d1,d0
+		andi.w	#$CCE,d0
 		move.w	d0,($FFFFFB34).w
 		
 @noletterflashing:
@@ -1230,8 +1231,8 @@ Hint_TutorialConclusion:
 ;		 --------------------
 Hint_Easter_Tutorial_Escape:
 		boxtxt	"IF IT SAVES YOU THE"
-		boxtxt	"EFFORT OF COMING"
-		boxtxt	"UP HERE AGAIN,"
+		boxtxt	"TROUBLE OF COMING"
+		boxtxt	"UP HERE AGAIN"
 		boxtxt_pause
 		boxtxt	"YOU ARE STILL"
 		boxtxt	"A LOSER."
@@ -1242,16 +1243,11 @@ Hint_End_AfterCasual:
 		boxtxt	"CONGRATULATIONS FOR"
 		boxtxt	"BEATING THE GAME IN"
 		boxtxt	"casual mode!"
-		boxtxt_next
-
+		boxtxt_pause
+		boxtxt	"MAYBE YOU CAN"
 		boxtxt	"TRY TO GIVE IT"
 		boxtxt	"ANOTHER SPIN IN"
-		boxtxt	"frantic mode!"
-		boxtxt_pause
-		boxtxt	"IF YOU DO, BE SURE"
-		boxtxt	"TO REVISIT THE"
-		boxtxt	"TUTORIAL, AS SOME"
-		boxtxt	"STUFF DIFFERS."
+		boxtxt	"frantic mode?"
 		boxtxt_end
 
 ;		 --------------------
@@ -1262,7 +1258,7 @@ Hint_End_AfterFrantic:
 		boxtxt_next
 
 		boxtxt	"IF YOU MADE IT HERE,"
-		boxtxt	"YOU HAVE MY UTMOST"
+		boxtxt	"YOU GOT MY UTMOST"
 		boxtxt	"RESPECT. I'M SORRY"
 		boxtxt	"FOR ANY BRAIN CELLS"
 		boxtxt	"YOU MIGHT HAVE"
@@ -1290,10 +1286,14 @@ Hint_End_BlackoutTeaser:
 		boxtxt	"IGNORE IT."
 		boxtxt_next
 
-		boxtxt	"THAT DOOR WILL STAY"
-		boxtxt	"SHUT UNTIL YOU'VE"
-		boxtxt	"PROVEN YOURSELF"
-		boxtxt	"TO BE worthy."
+		boxtxt	"THE HORRORS BEHIND"
+		boxtxt	"THAT DOOR HAVE BEEN"
+		boxtxt	"SEALED AWAY FOR"
+		boxtxt	"casual PLAYERS."
+		boxtxt_pause
+		boxtxt	"YOU MUST PROVE"
+		boxtxt	"YOURSELF worthy IF"
+		boxtxt	"YOU WISH TO ENTER."
 		boxtxt_pause
 
 		dc.b	_frantic

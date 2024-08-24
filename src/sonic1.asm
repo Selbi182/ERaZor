@@ -29383,6 +29383,11 @@ SAP_HitWall:
 		beq.w	@end				; if not, branch
 		move.b	#0,($FFFFF7CC).w		; make sure controls remain unlocked
 		clr.b	($FFFFFFE5).w			; clear air freeze flags
+		clr.w	obVelX(a0)			; clear X speed
+		clr.w	obVelY(a0)			; clear Y speed
+		clr.w	obInertia(a0)			; clear inertia
+		move.b	#2,obAnim(a0)			; use rolling animation
+		bset	#1,obStatus(a0)			; set status to be airborne
 
 		tst.b	(PlacePlacePlace).w		; PLACE PLACE PLACE?
 		bne.s	@kill				; if yes, git gud
@@ -29410,13 +29415,6 @@ SAP_HitWall:
 
 		move.b	#1,(RedrawEverything).w		; instantly move the camera to where Sonic teleported to
 		move.w	#$E00,($FFFFF728).w		; reset left boundary
-
-		clr.b	($FFFFFFE5).w			; clear air freeze flags
-		clr.w	obVelX(a0)			; clear X speed
-		clr.w	obVelY(a0)			; clear Y speed
-		clr.w	obInertia(a0)			; clear inertia
-		move.b	#2,obAnim(a0)			; use rolling animation
-		bset	#1,obStatus(a0)			; set status to be airborne
 
 		move.b	#$C3,d0				; play flash sound
 		jsr	PlaySound_Special		; really hope this won't get on your nerves

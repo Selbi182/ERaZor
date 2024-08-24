@@ -9051,6 +9051,8 @@ Obj19_DoAfter:
  		move.l	obFrame(a1),obFrame(a0)	; copy Sonic's current frame
  		move.b	obRender(a1),obRender(a0)	; copy Sonic's render flag
 		move.w	obGfx(a1),obGfx(a0)		; set starting art block to $780 (Sonic art)
+		move.b	obRoutine(a0),obPriority(a0)	; decrease priority as afterimage ages
+
 		jmp	DisplaySprite		; display our afterimaged frame
 ; ===========================================================================
 
@@ -17052,7 +17054,7 @@ Obj36_Type02:				; XREF: Obj36_TypeIndex
 
 Obj36_Wait:
 		move.w	($FFFFFE04).w,d0
-		divu.w	#45,d0
+		divu.w	#59,d0
 		andi.l	#$FFFF0000,d0
 		bne.s	locret_CFE6
 		
@@ -26174,8 +26176,10 @@ Obj03_Setup:
 		
 Obj03_Display:
 		bclr	#5,obGfx(a0)		; use first palette row
-		btst	#0,($FFFFFE05).w	; is this an odd frame?
+		btst	#1,($FFFFFE05).w	; is this an odd frame?
 		beq.s	@notodd			; if not, branch
+		btst	#7,(OptionsBits).w	; is photosensitive mode enabled?
+		bne.s	@notodd			; if yes, branch
 		bset	#5,obGfx(a0)		; use second palette row (gives a slight flicker effect)
 @notodd:
 		bsr.s	Obj03_BackgroundColor
@@ -28428,9 +28432,8 @@ SH_NoBuzz:
 		bne.s	SH_NoMonitor		; if not, branch
 		cmpi.b	#$1,($FFFFFE10).w	; is level LZ?
 		beq.w	SH_NoEnemy		; if yes, branch
-		cmpi.b	#4,obRoutine(a1)	; is monitor being broken or already broken?
-		blt.s	SH_NoMonitor		; if not, branch
-		bra.s	SH_NoEnemy		; otherwise, skip object
+		cmpi.b	#2,obRoutine(a1)	; is monitor unbroken and active?
+		bne.s	SH_NoEnemy		; if not, skip
 
 SH_NoMonitor:
 		cmpi.b	#$1F,(a1)		; was selected object a crabmeat?
@@ -38896,16 +38899,23 @@ loc_1A15C:
 		jsr	AnimateSprite
 
 loc_1A166:
-		move.w	#$2760,($FFFFF72A).w	; set right boundary after defeating the FZ boss
+		; set right boundary after defeating the FZ boss
+		move.w	($FFFFF72A).w,d0
+		addq.w	#2,d0
+		cmpi.w	#$2760,d0
+		bhs.s	loc_1A172
+		move.w	d0,($FFFFF72A).w
+	;	move.w	#$2760,($FFFFF72A).w	
 
 loc_1A172:
-		cmpi.b	#$C,$34(a0)
-		bge.s	locret_1A190
-		move.w	#$1B,d1
-		move.w	#$70,d2
-		move.w	#$71,d3
-		move.w	obX(a0),d4
-		jmp	SolidObject
+		; solidity for Eggman as he runs to his ship
+	;	cmpi.b	#$C,$34(a0)
+	;	bge.s	locret_1A190
+	;	move.w	#$1B,d1
+	;	move.w	#$70,d2
+	;	move.w	#$71,d3
+	;	move.w	obX(a0),d4
+	;	jmp	SolidObject
 ; ===========================================================================
 
 locret_1A190:
@@ -44502,6 +44512,7 @@ Debug_Exit:
 		move.b	#0,$31(a1)
 		move.w	($FFFFD008).w,obX(a1)
 		move.w	($FFFFD00C).w,obY(a1)
+		ori.b	#10,(CameraShake).w     	; normal camera shake
 		bra.w	Debug_DoNothing
 		
 @nota:

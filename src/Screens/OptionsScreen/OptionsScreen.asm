@@ -152,6 +152,8 @@ Options_ContinueSetup:
 @1:		move.b	d0,CinematicIndex	; write new index
 
 Options_FinishSetup:
+		bsr	CheckEnable_PlacePlacePlace
+
 		move.w	#19,($FFFFFF82).w	; set default selected entry to exit
 		bsr	OptionsTextLoad		; load options text
 		display_enable
@@ -162,6 +164,23 @@ Options_FinishSetup:
 Options_SetDefaults:
 		move.b	#DefaultOptions,(OptionsBits).w	; load default options
 		rts
+; ---------------------------------------------------------------------------
+
+; PLACE PLACE PLACE easter egg
+CheckEnable_PlacePlacePlace:
+		cmpi.b	#$70,($FFFFF604).w	; exactly ABC held?
+		bne.s	@noenable		; if not, branch
+		move.b	#1,(PlacePlacePlace).w	; enable PLACE PLACE PLACE
+		bset	#5,(OptionsBits).w	; force-enable frantic mode
+		bclr	#4,(OptionsBits).w	; force-disable nonstop inhuman
+		bclr	#1,(OptionsBits).w	; force-enable story screens
+@noenable:
+		move.w	#$E3,d0			; regular music speed
+		tst.b	(PlacePlacePlace).w	; is easter egg flag enabled?
+		beq.s	@play			; if not, branch
+		move.w	#$E2,d0			; speed up music
+@play:		jmp	PlaySound_Special
+; ===========================================================================
 
 
 ; ===========================================================================
@@ -216,7 +235,9 @@ Options_HandleGameplayStyle:
 		beq.s	@noteaster		; if not, branch
 		clr.b	(PlacePlacePlace).w	; clear easter egg flag
 		bclr	#5,(OptionsBits).w	; set to casual
-		move.w	#$DF,d0
+		move.w	#$DF,d0			; jester explosion sound
+		jsr	PlaySound
+		move.w	#$E3,d0			; regular speed
 		jsr	PlaySound_Special
 		bra.w	Options_UpdateTextAfterChange_NoSound
 
@@ -345,6 +366,8 @@ Options_HandleNonstopInhuman:
 		bra.w	Options_UpdateTextAfterChange_NoSound
 
 @nodebugunlock:
+		tst.b	(PlacePlacePlace).w	; easter egg enabled?
+		bne.w	Options_Disallowed	; if yes, branch
 		jsr	Check_BlackoutBeaten	; has the player specifically beaten the blackout challenge?
 		beq.w	Options_Disallowed	; if not, branch
 		

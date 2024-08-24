@@ -906,14 +906,14 @@ Hint_3:
 
 ;		 --------------------
 Hint_4:
-		boxtxt	"0Adw193q4HG5!'%q6/%4"
-		boxtxt	"8ETRqZ91/D' we03()a)"
-		boxtxt	"8%4mh/vq%cio!7e$cr/"
-		boxtxt	"( B)f=)A=2h3401`?!G"
-		boxtxt	"#x )26aEd0a..oh mY g"
+		boxtxt	"0Adw193q4HG5!'%q)/%4"
+		boxtxt	"8ETRqZ91/D')we03()a)"
+		boxtxt	"8%4mh/vq%cio!7e$cr/("
+		boxtxt	"()B)f=)A=2h3401)?!G("
+		boxtxt	"#x))2)aEd0a..oh mY g"
 		boxtxt	"Od wHat HavE yOu Don"
 		boxtxt	"e eVERythIng iS rUin"
-		boxtxt	"ED Now:::"
+		boxtxt	"ED Now::.2938)295)34"
 		boxtxt_next
 
 		boxtxt	"BUT HEY, YOU'VE MADE"
@@ -937,7 +937,7 @@ Hint_4:
 		boxtxt_next
 		
 		boxtxt	"FIRST OFF, HOW TO"
-		boxtxt	"ENABLE debug mode?"
+		boxtxt	"ENABLE debug mode."
 		boxtxt_pause
 		boxtxt	"WHEN YOU'RE IN THE"
 		boxtxt	"FINAL PHASE OF THE"
@@ -957,7 +957,7 @@ Hint_4:
 		boxtxt_next
  
 		boxtxt	"THIRDLY, FOR MY"
-		boxtxt	"FELLOW NERDS."
+		boxtxt	"fellow nerds."
 		boxtxt_pause
 		boxtxt	"HERE'S A LINK TO"
 		boxtxt	"THE FULL SOURCE CODE"
@@ -967,12 +967,12 @@ Hint_4:
 		boxtxt_next
 		
 		boxtxt	"AND LASTLY, FOR THE"
-		boxtxt	"TRUE MASOCHISTS."
+		boxtxt	"true masochists"
+		boxtxt	"OUT THERE."
 		boxtxt_pause
-		boxtxt	"JUST BEFORE LEVEL"
-		boxtxt	"TITLE CARDS APPEAR,"
-		boxtxt	"HOLD start & abc"
-		boxtxt	"AT ONCE TO TOGGLE"
+		boxtxt	"HOLD abc AT ONCE"
+		boxtxt	"WHILE ENTERING THE"
+		boxtxt	"OPTIONS MENU FOR"
 		boxtxt	"A TOUGH TWIST..."
 		boxtxt_next
 		
@@ -991,7 +991,7 @@ Hint_4:
 		boxtxt	"AND THAT WRAPS UP"
 		boxtxt	"THE INFO DUMP."
 		boxtxt_line
-		boxtxt	"ENJOY THE RANDOM"
+		boxtxt	"ENJOY THESE RANDOM"
 		boxtxt	"BONUS FEATURES!"
 		boxtxt_pause
 		boxtxt	"THERE IS JUST"
@@ -1258,7 +1258,7 @@ Hint_End_AfterFrantic:
 		boxtxt_next
 
 		boxtxt	"IF YOU MADE IT HERE,"
-		boxtxt	"YOU GOT MY UTMOST"
+		boxtxt	"YOU'VE GOT MY UTMOST"
 		boxtxt	"RESPECT. I'M SORRY"
 		boxtxt	"FOR ANY BRAIN CELLS"
 		boxtxt	"YOU MIGHT HAVE"
@@ -1304,7 +1304,7 @@ Hint_End_BlackoutTeaser:
 		boxtxt	"  THEN FORGET WHAT"
 		boxtxt	"    I JUST SAID."
 		boxtxt_pause
-		boxtxt	"   YOU ARE READY."
+		boxtxt	"   you are ready1"
 		boxtxt_end
 
 ;		 --------------------

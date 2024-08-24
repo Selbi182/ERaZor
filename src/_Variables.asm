@@ -34,6 +34,8 @@ Objects			equ	$FFFFD000			;	Objects RAM (D000-EFFF)
 
 SoundDriverRAM:		equ	$FFFFF000			;	SMPS RAM
 
+*			equ	$FFFFF5D0			; b	"Signpost patterns have been loaded" flag
+*			equ	$FFFFF5D1			; b	Death flag
 RedrawEverything:	equ	$FFFFF5D3			; b	Flag used to redraw the entire screen after teleporting
 FranticDrain:		equ	$FFFFF5D4			; w	Rings to be drained in frantic mode
 BGThemeColor:		equ	$FFFFF5D6			; w	Background color used for the BG effects for the story screens, etc.

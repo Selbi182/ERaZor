@@ -4735,9 +4735,9 @@ ClearEverySpecialFlag:
 		move.w	d0,($FFFFC904).w
 		move.b	d0,($FFFFF5D0).w
 		move.b	d0,($FFFFF5D1).w
-		move.b	d0,($FFFFF5D3).w
-		move.w	d0,($FFFFF5D4).w
-		move.w	d0,($FFFFF5D6).w
+		move.b	d0,RedrawEverything
+		move.w	d0,FranticDrain
+		move.w	d0,BGThemeColor
 		move.b	d0,($FFFFF734).w
 		move.w	d0,($FFFFF7BE).w
 		move.l	d0,($FFFFFF60).w

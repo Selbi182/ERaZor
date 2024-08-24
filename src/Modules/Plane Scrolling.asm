@@ -112,7 +112,7 @@ BgScroll_End:				; XREF: BgScroll_Index
 
 DeformBgLayer:				; XREF: TitleScreen; Level; EndingSequence
 		tst.b	($FFFFFFE9).w		; is level set to restart?
-		bne.w	@end			; if yes, branch
+		bne.w	DeformBgLayer_Done	; if yes, branch
 
 		bsr	ScrollHoriz
 		bsr	ScrollVertical
@@ -120,20 +120,16 @@ DeformBgLayer:				; XREF: TitleScreen; Level; EndingSequence
  	
  		jsr	GenerateCameraShake	; apply camera shake now (needs to be done after the above scroll routines)
  
-		move.w	($FFFFF700).w,($FFFFF61A).w	; supposedly unused
-		move.w	($FFFFF704).w,($FFFFF616).w	; set plane A vs-ram
-		move.w	($FFFFF70C).w,($FFFFF618).w	; set plane B vs-ram
-		move.w	($FFFFF708).w,($FFFFF61C).w	; supposedly unused
-		move.w	($FFFFF718).w,($FFFFF620).w	; ?
-		move.w	($FFFFF71C).w,($FFFFF61E).w	; ?
-
+ DeformBgLayer2:
 		moveq	#0,d0
 		move.b	($FFFFFE10).w,d0
 		add.w	d0,d0
 		move.w	Deform_Index(pc,d0.w),d0
 		jsr	Deform_Index(pc,d0.w)		; do background deformation now
-		move.w	($FFFFF70C).w,($FFFFF618).w	; update plane B vs-ram after bg deformation is done
-@end:
+		move.w	($FFFFF704).w,($FFFFF616).w	; set plane A vs-ram
+		move.w	($FFFFF70C).w,($FFFFF618).w	; set plane B vs-ram
+
+DeformBgLayer_Done:
 		rts
 ; End of function DeformBgLayer
 ; ===========================================================================

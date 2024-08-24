@@ -1652,6 +1652,8 @@ PalCycle_SYZ:				; XREF: PalCycle
 		move.w	#5,($FFFFF634).w
 
 		; palcycle protection for the trophy gallery
+		tst.w	(Doors_Casual).w	; have any levels been beaten yet?
+		beq.s	@dopalcycle		; if not, this isn't necessary
 		move.w	($FFFFF700).w,d1	; get camera X pos
 		cmpi.w	#$00B0,d1		; trophy gallery out of sight to the left?
 		bls.s	@dopalcycle		; if yes, branch
@@ -9051,7 +9053,7 @@ Obj19_DoAfter:
  		move.l	obFrame(a1),obFrame(a0)	; copy Sonic's current frame
  		move.b	obRender(a1),obRender(a0)	; copy Sonic's render flag
 		move.w	obGfx(a1),obGfx(a0)		; set starting art block to $780 (Sonic art)
-		move.b	obRoutine(a0),obPriority(a0)	; decrease priority as afterimage ages
+		addq.b	#1,obPriority(a0)	; decrease priority as afterimage ages
 
 		jmp	DisplaySprite		; display our afterimaged frame
 ; ===========================================================================
@@ -43363,7 +43365,7 @@ Obj21_Flash:
 
 @noblackbars:
 		tst.b	($FFFFFFA5).w		; has flag to move off HUD been set?
-		beq.s	Obj21_NoMoveOff		; if not, branch
+		beq.w	Obj21_NoMoveOff		; if not, branch
 
 		addq.w	#1,$3C(a0)		; make HUD move faster
 		move.w	$3C(a0),d0		; move HUD speed add to d0
@@ -43388,6 +43390,22 @@ Obj21_Delete2:
 Obj21_FZEscapeTimer:
 		tst.b	(FZEscape).w		; are we in the escape sequence?
 		beq.s	Obj21_AltSpeed		; if not, branch
+
+		; flash timer when less than 10 (real world) seconds remain
+		tst.b	($FFFFFE23).w		; less than 100 seconds left?
+		bne.s	@noflash		; if not, branch
+		moveq	#10,d0			; flash below 10 seconds in casual
+		frantic				; are we in frantic?
+		beq.s	@0			; if not, branch
+		moveq	#30,d0			; flash below 30 seconds in frantic (cause triple time)
+@0:		cmp.b	($FFFFFE24).w,d0	; less than X seconds left?
+		blo.s	@noflash		; if not, branch
+		move.w	#$06CA,obGfx(a0)	; use palette line 1
+		ori.b	#1,($FFFFFE1E).w 	; update time counter
+		btst	#2,($FFFFFE05).w	; change the time counter palette every X frames
+		bne.s	@noflash		; if that time isn't over yet, branch
+		move.w	#$26CA,obGfx(a0)	; use palette line 2
+@noflash:
 		cmpi.w	#$11C,obX(a0)		; is object after $11C on X-axis?
 		bhs.s	Obj21_Display2		; if not, branch
 		add.w	d0,obX(a0)		; move HUD
@@ -43514,7 +43532,7 @@ Obj21_NoUpdate:
 		cmpi.b	#3,$30(a0)		; is object set to TIMES?
 		beq.s	@timeshud		; if yes, branch
 		cmpi.b	#4,$30(a0)		; is object set to LIVES?
-		bne.s	Obj21_Display		; if not, branch
+		bne.w	Obj21_Display		; if not, branch
 
 @liveshud:
 		move.b	#5,obFrame(a0)

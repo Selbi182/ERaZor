@@ -30,24 +30,24 @@ HSRAM_Buffer_End:	equ	HSRAM_Buffer+240*4
 ScrollBlocks_Buffer:	equ	$FFFFCFC0			;	Buffer for scrolling 16x16 blocks ($20 blocks)
 ScrollBlocks_Buffer_End:	equ	$FFFFD000
 
-Objects			equ	$FFFFD000			;	Objects RAM (D000-EFFF)
+Objects:		equ	$FFFFD000			;	Objects RAM (D000-EFFF)
+Objects_End:		equ	$FFFFF000			;	End of Objects RAM
 
 SoundDriverRAM:		equ	$FFFFF000			;	SMPS RAM
 
+BlackBarsHandler:	equ	$FFFFF5CE			; w	Pointer to Black Bars handler routines
 *			equ	$FFFFF5D0			; b	"Signpost patterns have been loaded" flag
 *			equ	$FFFFF5D1			; b	Death flag
+BlackBarsHandlerId:	equ	$FFFFF5D2			; b
 RedrawEverything:	equ	$FFFFF5D3			; b	Flag used to redraw the entire screen after teleporting
 FranticDrain:		equ	$FFFFF5D4			; w	Rings to be drained in frantic mode
 BGThemeColor:		equ	$FFFFF5D6			; w	Background color used for the BG effects for the story screens, etc.
 PlacePlacePlace:	equ	$FFFFF5D8			; b	PLACE PLACE PLACE
-
+VBlank_MusicOnly:	equ	$FFFFF5D9			; b		
 VBlank_NonLagFrameCounter:	equ	$FFFFF5DC		; l	
-
 VSyncWaitTicks_64bit:	equ	$FFFFF5E0			; 2l	Full 64-bit version of: Ticks counter for VSync loop (`DelayProgram`)
 VSyncWaitTicks:		equ	$FFFFF5E4			; l	Ticks counter for VSync loop (`DelayProgram`)
-
-VBlank_MusicOnly:	equ	$FFFFF5EB			; b		
-
+VBlankCallback:		equ	$FFFFF5E8			; l	One-time callback routine pointer for VBlank
 BlocksAddress:		equ	$FFFFF5EC			; l 	Address for level 16x16 blocks (uncompressed)
 BlackBars.GHPTimer:	equ	$FFFFF5F0			; b
 BlackBars.GHPTimerReset:equ	$FFFFF5F1			; b
@@ -67,7 +67,9 @@ SMPS_PAL_Timer:		equ	$FFFFF608			; b	Timer for SMPS PAL optimization
 
 VBlankRoutine:		equ	$FFFFF62A			; b	VBlank routine id
 
-*			equ	$FFFFF640			; w	<<FREE>>
+VDPDebugPortSet:	equ	$FFFFF640			; b	Set if VDP Debug port was tampered with
+*			equ	$FFFFF641			; b
+*			equ	$FFFFF644			; w	<<FOR SALE>>
 
 PLC_RAM:		equ	$FFFFF680			;	PLC system variables (F680-F69E)
 

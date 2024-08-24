@@ -277,7 +277,7 @@ SelbiSplash_LoadPRESENTS:
 		jsr	Pal_CutToBlack
 		move.b	#2,VBlankRoutine
 		jsr	DelayProgram			; VSync so gfx loading below isn't terribly out of VBlank
-		jsr	BlackBars.FullReset
+		jsr	BlackBars.Reset
 		move.b	#2,VBlankRoutine
 		jsr	DelayProgram
 		

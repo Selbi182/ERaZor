@@ -40,7 +40,7 @@ __DEBUG__: equ 1
 ; $302 - Star Agony Place
 ; $502 - Finalor Place
 	if def(__BENCHMARK__)=0
-QuickLevelSelect = 0
+QuickLevelSelect = 1
 QuickLevelSelect_ID = -1
 ; ------------------------------------------------------
 DebugModeDefault = 1
@@ -5297,7 +5297,11 @@ SS_EndClrObjRamX:
 		jmp	Exit_Level
 ; ===========================================================================
 
+Blackout_FallSpeed = $160
 Blackout_RotationSpeed = $140
+
+Blackout_FallSpeed2 = $200
+Blackout_RotationSpeed2 = $1C0
 
 BlackoutChallenge:
 		; continously apply the red/black palette
@@ -5328,18 +5332,20 @@ BlackoutChallenge:
 		movem.l	(sp)+,d0-a1
 
 		; blackout challenge controls
-		clr.w	($FFFFF782).w		; clear rotation speed
-
-		btst	#2,($FFFFF602).w	; is left being pressed?
-		beq.s	@contnotl		; if not, branch
-		move.w	#-Blackout_RotationSpeed,($FFFFF782).w ; counterclockwise rotation
-		bra.s	@blackoutend
-@contnotl:
-		btst	#3,($FFFFF602).w	; is right being pressed?
-		beq.s	@blackoutend		; if not, branch
-		move.w	#Blackout_RotationSpeed,($FFFFF782).w ; clockwise rotation
-
-@blackoutend:
+		move.w	#Blackout_RotationSpeed,d1		; set base rotation speed
+		cmpi.b	#2,($FFFFFE57).w			; are we in part 2?
+		bne.s	@notparttwo				; if not, branch
+		move.w	#Blackout_RotationSpeed2,d1		; use alternate rotation speed
+@notparttwo:
+		moveq	#0,d0					; clear rotation speed by default
+		btst	#2,($FFFFF602).w			; is left being pressed?
+		beq.s	@0					; if not, branch
+		sub.w	d1,d0					; counterclockwise rotation
+	@0:	btst	#3,($FFFFF602).w			; is right being pressed?
+		beq.s	@setspeed				; if not, branch
+		add.w	d1,d0					; clockwise rotation
+@setspeed:
+		move.w	d0,($FFFFF782).w			; set new rotation speed
 		rts
 ; ---------------------------------------------------------------------------
 
@@ -41666,7 +41672,22 @@ Obj09_Display:				; XREF: Obj09_OnWall
 		move.w	($FFFFF780).w,d0
 		add.w	($FFFFF782).w,d0
 		move.w	d0,($FFFFF780).w
-		jsr	Sonic_Animate
+		
+		tst.b	(Blackout).w		; is easter egg SS enabled?
+		beq.s	@normalspinni		; if not, use regular animation
+		cmpi.b	#2,($FFFFFE57).w	; are we in part 2?
+		beq.s	@fastspinni		; if yes, go to alternate animation
+
+@normalspinni:
+		jmp	Sonic_Animate		; animate Sonic in special stages
+
+@fastspinni:	
+		move.w	obInertia(a0),d0	; get current real inertia
+		move.l	d0,-(sp)		; backup d0
+		move.w	#$300,obInertia(a0)	; pretend we're rolling fast...
+		jsr	Sonic_Animate		; ...to get fast animations
+		move.l	(sp)+,d0		; restore d0
+		move.w	d0,obInertia(a0)	; restore real inertia
 		rts	
 
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
@@ -41993,6 +42014,12 @@ loc_1BC40:
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 
 Obj09_EasterEggSpecial:
+		move.w	#Blackout_FallSpeed,d5
+		cmpi.b	#2,($FFFFFE57).w	; are we in part 2?
+		bne.s	@notparttwo		; if not, branch
+		move.w	#Blackout_FallSpeed2,d5
+
+@notparttwo:
 		move.l	obY(a0),d2
 		move.l	obX(a0),d3
 		move.b	($FFFFF780).w,d0
@@ -42003,14 +42030,14 @@ Obj09_EasterEggSpecial:
 		ext.l	d4
 		asl.l	#8,d4
 	;	muls.w	#$2A,d0
-		muls.w	#$160,d0
+		muls.w	d5,d0
 		add.l	d4,d0
 	;	move.w	obVelY(a0),d4
 		moveq	#0,d4
 		ext.l	d4
 		asl.l	#8,d4
 	;	muls.w	#$2A,d1
-		muls.w	#$160,d1
+		muls.w	d5,d1
 		add.l	d4,d1
 		add.l	d0,d3
 		bsr	Obj09_Collision

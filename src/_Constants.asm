@@ -60,5 +60,10 @@ Press		equ	1
 
 ; IO Ports
 
-VDP_Data	equ	$C00000
-VDP_Ctrl	equ	$C00004
+VDP_Data:	equ	$C00000
+VDP_Ctrl:	equ	$C00004
+
+VDP_HVCnt:	equ	$C00008
+VDP_HCnt:	equ	$C00009
+
+VDP_Debug:	equ	$C0001C

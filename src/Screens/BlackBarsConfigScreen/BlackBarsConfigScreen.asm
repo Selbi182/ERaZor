@@ -333,7 +333,7 @@ BlackBarsConfigScreen_InitUI:
 
 	; Init variables
 	moveq	#0, d0
-	move.w	d0, BlackBarsHandlerId
+	move.w	d0, BlackBars.HandlerId
 
 	; Initialize console subsystem (MD Debugger)
 	lea	@ConsoleConfig(pc), a1			; a1 = console config
@@ -374,7 +374,7 @@ BlackBarsConfigScreen_RedrawUI:
 
 	Console.SetXY #2, #12
 
-	tst.b	BlackBarsHandlerId
+	tst.b	BlackBars.HandlerId
 	bne.s	@1
 	Console.Write "%<pal0>> Emu Mode%<endl>"
 	Console.Write "%<pal2>  HW Mode"
@@ -398,7 +398,7 @@ BlackBarsConfigScreen_HandleUI:
 	and.b	Joypad|Press, d0
 	beq.s	@Done
 
-	bchg	#1, BlackBarsHandlerId
+	bchg	#1, BlackBars.HandlerId
 	jsr	BlackBars.SetHandler
 
 	move.l	#BlackBarsConfigScreen_RedrawUI, VBlankCallback	; defer redraw to VInt

@@ -34,11 +34,12 @@ Objects:		equ	$FFFFD000			;	Objects RAM (D000-EFFF)
 Objects_End:		equ	$FFFFF000			;	End of Objects RAM
 
 SoundDriverRAM:		equ	$FFFFF000			;	SMPS RAM
+SoundDriverRAM_End:	equ	$FFFFF5C0			;	End of SMPS RAM
 
-BlackBarsHandler:	equ	$FFFFF5CE			; w	Pointer to Black Bars handler routines
+BlackBars.Handler:	equ	$FFFFF5CE			; w	Pointer to Black Bars handler routines (depending on `BlackBars.HandlerId`)
 *			equ	$FFFFF5D0			; b	"Signpost patterns have been loaded" flag
 *			equ	$FFFFF5D1			; b	Death flag
-BlackBarsHandlerId:	equ	$FFFFF5D2			; b
+BlackBars.HandlerId:	equ	$FFFFF5D2			; b	Black Bars handler id (also sets `BlackBars.Handler`)
 RedrawEverything:	equ	$FFFFF5D3			; b	Flag used to redraw the entire screen after teleporting
 FranticDrain:		equ	$FFFFF5D4			; w	Rings to be drained in frantic mode
 BGThemeColor:		equ	$FFFFF5D6			; w	Background color used for the BG effects for the story screens, etc.
@@ -122,6 +123,7 @@ OptionsBits		equ	$FFFFFF92			; b	bit field for the user options
 Progress		equ	$FFFFFF93			; b	bit field for overall game state (bit 0 - base game // bit 1 - blackout)
 
 	if def(__MD_REPLAY__)
+; WARNING! MD Replay conflicts with SMPS RAM, but SMPS is disabled when `__MD_REPLAY__` is set
 ; __MD_REPLAY__ = 'rec'
 MDReplay_RecPtr:	equ	$FFFFF100			; l
 MDReplay_RLECount:	equ	$FFFFF100			; b

@@ -17367,14 +17367,14 @@ BuildSprites:				; XREF: TitleScreen; et al
 		moveq	#7,d7
 
 		if def(__DEBUG__)
-			moveq	#%10, d1
-			and.b	BlackBarsHandlerId, d1
+			moveq	#_BB_HandlerIdMask, d1
+			and.b	BlackBars.HandlerId, d1
 			lea	BlackBars.HandlerList, a0
 			move.w	(a0, d1), d1
-			assert.w d1, eq, BlackBarsHandler, Debugger_BlackBars
+			assert.w d1, eq, BlackBars.Handler, Debugger_BlackBars
 		endif
 
-		move.w	BlackBarsHandler, a0
+		move.w	BlackBars.Handler, a0
 		jsr	_BB_BuildSpritesCallback(a0)
 
 loc_D66A:

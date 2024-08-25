@@ -1,10 +1,11 @@
 
+_BB_BuildSpritesCallback:	equ	$04
+_BB_HandlerIdMask:		equ	%1<<1			; corresponds to number of handlers
+
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; 
+; Black bars initialization and reset functions
 ; ---------------------------------------------------------------------------
-
-_BB_BuildSpritesCallback:	equ	$04
 
 BlackBars.Init:
 	bsr.s	BlackBars.SetHandler
@@ -19,8 +20,8 @@ BlackBars.Reset:
 
 BlackBars.SetHandler:
 	moveq	#%10, d0
-	and.b	BlackBarsHandlerId, d0
-	move.w	BlackBars.HandlerList(pc, d0), BlackBarsHandler
+	and.b	BlackBars.HandlerId, d0
+	move.w	BlackBars.HandlerList(pc, d0), BlackBars.Handler
 	rts
 
 ; ---------------------------------------------------------------------------
@@ -33,15 +34,15 @@ BlackBars.HandlerList:
 ; ---------------------------------------------------------------------------
 
 BlackBars.VBlankUpdate:
-	cmp.b	#$38,(GameMode).w				; is mode Black bars test?
-	beq.s	@blackbars_raw
+	cmp.b	#$38, GameMode					; is mode Black bars config?
+	beq.s	@blackbars_raw					; if yes, don't run state routine
 	tst.w	($FFFFFE02).w					; is level set to restart?
 	bne.s	@notlz						; if yes, branch
 	tst.b	($FFFFFFE9).w					; is fade out currently in progress?
 	bne.s	@notlz						; if yes, branch
-	cmpi.b	#1,($FFFFFE10).w				; are we in LZ?
+	cmpi.b	#1, CurrentZone					; are we in LZ?
 	bne.s	@notlz						; if not, branch
-	cmpi.b	#$C,(GameMode).w				; are we done with the pre-level sequence?
+	cmpi.b	#$C, GameMode					; are we done with the pre-level sequence?
 	bne.w	@notlz						; if not, branch
 	move.w	#HBlank_WaterSurface, HBlankSubW
 @end	rts
@@ -51,13 +52,13 @@ BlackBars.VBlankUpdate:
 
 @blackbars_raw:
 	if def(__DEBUG__)
-		moveq	#%10, d1
-		and.b	BlackBarsHandlerId, d1
+		moveq	#_BB_HandlerIdMask, d1
+		and.b	BlackBars.HandlerId, d1
 		move.w	BlackBars.HandlerList(pc, d1), d1
-		assert.w d1, eq, BlackBarsHandler, Debugger_BlackBars
+		assert.w d1, eq, BlackBars.Handler, Debugger_BlackBars
 	endif
 
-	move.w	BlackBarsHandler, a0
+	move.w	BlackBars.Handler, a0
 	jmp	(a0)
 
 ; ---------------------------------------------------------------------------
@@ -95,7 +96,7 @@ BlackBars.EmulatorOptimizedHandlers:
 	move.b	d0, BlackBars.FirstHCnt+1
 	move.b	d1, BlackBars.SecondHCnt+1
 	move.w	BlackBars.FirstHCnt, VDP_Ctrl
-	move.l	#$81348701,VDP_Ctrl				; disable display, set backdrop color to black
+	move.l	#$81348701, VDP_Ctrl				; disable display, set backdrop color to black
 	rts
 ; ---------------------------------------------------------------------------
 
@@ -130,8 +131,13 @@ BlackBars.EmulatorOptimizedHandlers:
 	move.l	#$00000000, (a2)+	; pattern, X-pos
 	rts
 
+; ===========================================================================
 ; ---------------------------------------------------------------------------
-;
+; Hardware-optimized Black bars implementation
+; ---------------------------------------------------------------------------
+; NOTE:
+; As of 2024 no mainstream emulators properly support this implementation
+; yet. Blastem-nightly comes the closest.
 ; ---------------------------------------------------------------------------
 
 BlackBars.HardwareOptimizedHandlers:
@@ -158,9 +164,9 @@ BlackBars.HardwareOptimizedHandlers:
 @make_bars_cont:
 	move.b	d0, BlackBars.FirstHCnt+1
 	move.b	d1, BlackBars.SecondHCnt+1
-	lea	$C0001C, a0
-	move.l	#$81748701, 4-$1C(a0)				; enable display, set backdrop color to black
-	move.w	BlackBars.FirstHCnt, 4-$1C(a0)
+	lea	VDP_Debug, a0
+	move.l	#$81748701, VDP_Ctrl-VDP_Debug(a0)		; enable display, set backdrop color to black
+	move.w	BlackBars.FirstHCnt, VDP_Ctrl-VDP_Debug(a0)
 	move.w	#$40, (a0)					; evil disable display hack
 	ori.b	#0, d0						; what the fuck?
 	move.l	a0, usp
@@ -179,31 +185,37 @@ BlackBars.HardwareOptimizedHandlers:
 ; ---------------------------------------------------------------------------
 
 @make_black_screen:
-	move.l	#$81348701,VDP_Ctrl				; disable display, set backdrop color to black
-	move.w	#NullInt,HBlankSubW
+	move.l	#$81348701, VDP_Ctrl				; disable display, set backdrop color to black
+	move.w	#NullInt, HBlankSubW
 	rts
 
 @disable_bars:
 	tst.b	VDPDebugPortSet
 	beq.s	@debug_port_ok
-	lea	$C0001C, a0
+	lea	VDP_Debug, a0
 	move.w	#0, (a0)					; evil enable display hack
 	ori.b	#0, d0						; what the fuck?
 	sf.b	VDPDebugPortSet
 
 @debug_port_ok:
-	move.l	#$81748720,VDP_Ctrl				; enable display, restore backdrop color
-	move.w	#NullInt,HBlankSubW
+	move.l	#$81748720, VDP_Ctrl				; enable display, restore backdrop color
+	move.w	#NullInt, HBlankSubW
 	rts
 
+; ===========================================================================
 ; ---------------------------------------------------------------------------
-;
+; Black bars debugger
 ; ---------------------------------------------------------------------------
+
+	if def(__DEBUG__)
 
 Debugger_BlackBars:
-	Console.WriteLine "BlackBarsHandlerId: %<.b BlackBarsHandlerId>"
-	Console.WriteLine "BlackBarsHandler: %<.w BlackBarsHandler sym> (%<.w BlackBarsHandler>)"
-	Console.WriteLine "BlackBars.Height: %<.w BlackBars.Height>"
-	Console.WriteLine "BlackBars.FirstHCnt: %<.w BlackBars.FirstHCnt>"
-	Console.WriteLine "BlackBars.SecondHCnt: %<.w BlackBars.SecondHCnt>"
+	Console.WriteLine "%<pal1>BlackBarsRAM:%<endl>"
+	Console.WriteLine "%<pal1>HandlerId: %<pal2>%<.b BlackBars.HandlerId>"
+	Console.WriteLine "%<pal1>Handler: %<pal2>%<.w BlackBars.Handler> %<pal0>%<.w BlackBars.Handler sym>"
+	Console.WriteLine "%<pal1>Height: %<pal2>%<.w BlackBars.Height>"
+	Console.WriteLine "%<pal1>FirstHCnt: %<pal2>%<.w BlackBars.FirstHCnt>"
+	Console.WriteLine "%<pal1>SecondHCnt: %<pal2>%<.w BlackBars.SecondHCnt>"
 	rts
+
+	endif

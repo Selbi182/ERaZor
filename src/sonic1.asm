@@ -1063,10 +1063,6 @@ ProcessDMAQueue_Done:
 *KosPlusMDec_VRAM:
 	include	'modules\Kosinski+ Decompressor.asm'
 
-	; TODO: Completely replace remaining Kosinski art with Kosinski+, remove this decompressor
-*KosDec:
-	include	'modules\Kosinski Decompressor.asm'
-
 ; ---------------------------------------------------------------------------
 
 	include	'modules\Draw Buffer.asm'
@@ -2751,7 +2747,7 @@ Title_ClrObjRam:
 
 		lea	(Blk256_Title).l,a0 ; load title screen chunk mappings
 		lea	($FF0000).l,a1
-		bsr	KosDec
+		bsr	KosPlusDec
 		bsr	LevelLayoutLoad
 		lea	LevelRenderer_DefaultConfig_BG, a0
 		jsr 	LevelRenderer_DrawLayout_BG_2
@@ -5960,7 +5956,7 @@ MainLoadBlockLoad:			; XREF: Level; EndingSequence
 
 		movea.l	(a2)+,a0
 		lea	($FF0000).l,a1	; RAM address for 256x256 mappings
-		bsr	KosDec
+		bsr	KosPlusDec
 		bsr	LevelLayoutLoad
 
 		move.w	(a2)+,d0
@@ -44724,45 +44720,45 @@ ArtKospM_Title:	incbin	artkosp\8x8title.kospm	; TS primary patterns
 			even
 Blk16_Title:	incbin	LevelData\map16\title.unc
 			even
-Blk256_Title:	incbin	LevelData\map256\title.bin
+Blk256_Title:	incbin	LevelData\map256\title.kosp
 			even
 Blk16_GHZ:	incbin	LevelData\map16\ghz.unc
 		even
 ArtKospM_GHZ:	incbin	artkosp\8x8ghz.kospm	; New GHZ file.
 		even
-Blk256_GHZ:	incbin	LevelData\map256\ghz.bin
+Blk256_GHZ:	incbin	LevelData\map256\ghz.kosp
 		even
 Blk16_LZ:	incbin	LevelData\map16\lz.unc
 		even
 ArtKospM_LZ:	incbin	artkosp\8x8lz.kospm	; LZ primary patterns
 		even
-Blk256_LZ:	incbin	LevelData\map256\lz.bin
+Blk256_LZ:	incbin	LevelData\map256\lz.kosp
 		even
 Blk16_MZ:	incbin	LevelData\map16\mz.unc
 		even
 ArtKospM_MZ:	incbin	artkosp\8x8mz.kospm	; MZ primary patterns
 		even
-Blk256_MZ:	incbin	LevelData\map256\mz.bin
+Blk256_MZ:	incbin	LevelData\map256\mz.kosp
 		even
 Blk16_SLZ:	incbin	LevelData\map16\slz.unc
 		even
 ArtKospM_SLZ:	incbin	artkosp\8x8slz.kospm	; SLZ primary patterns
 		even
-Blk256_SLZ:	incbin	LevelData\map256\slz.bin
+Blk256_SLZ:	incbin	LevelData\map256\slz.kosp
 		even
 Blk16_SYZ:	incbin	LevelData\map16\syz.unc
 		even
 ArtKospM_SYZ:	incbin	artkosp\8x8syz.kospm	; SYZ primary patterns
 		even
-Blk256_SYZ:	incbin	LevelData\map256\syz.bin
+Blk256_SYZ:	incbin	LevelData\map256\syz.kosp
 		even
 Blk16_SBZ:	incbin	LevelData\map16\sbz.unc
 		even
 ArtKospM_SBZ:	incbin	artkosp\8x8sbz.kospm	; SBZ primary patterns
 		even
-Blk256_SBZ:	incbin	LevelData\map256\sbz.bin
+Blk256_SBZ:	incbin	LevelData\map256\sbz.kosp
 		even
-Blk256_END:	incbin	LevelData\map256\ghz_end.bin
+Blk256_END:	incbin	LevelData\map256\ghz_end.kosp
 		even
 ; ---------------------------------------------------------------------------
 ; Compressed graphics - bosses and ending sequence

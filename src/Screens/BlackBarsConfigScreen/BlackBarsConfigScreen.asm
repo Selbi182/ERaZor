@@ -120,7 +120,7 @@ BlackBarsConfigScreen_LoadLevel:
 	; Load level chunks
 	movea.l (a2)+, a0
 	lea 	ChunksArray, a1			; RAM address for 256x256 mappings
-	jsr 	KosDec
+	jsr 	KosPlusDec
 
 	; Load level layout
 	jsr	LevelLayoutLoad

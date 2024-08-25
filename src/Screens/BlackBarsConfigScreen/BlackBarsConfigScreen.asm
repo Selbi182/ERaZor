@@ -56,7 +56,7 @@ BlackBarsConfigScreen:
 	jsr	PalLoad1
 
 	; Init level
-	move.w	#$0000, CurrentLevel			; set level to GHZ1
+	move.w	#$0500, CurrentLevel			; set level to SBZ
 	jsr	BlackBarsConfigScreen_LoadLevel
 	jsr	BlackBarsConfigScreen_InitCamera
 	jsr	BlackBarsConfigScreen_GenerateSprites
@@ -83,7 +83,7 @@ BlackBarsConfigScreen:
 	jsr	ObjectsLoad
 	jsr	BuildSprites
 	jsr	ChangeRingFrame
-	jsr	PalCycle_Load
+	jsr	PCL_Load
 	jsr	BlackBarsConfigScreen_DeformBG
 	jsr	LevelRenderer_Update_BG
 

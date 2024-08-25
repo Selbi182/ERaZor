@@ -297,7 +297,7 @@ GameClrRAM:	move.l	d7,(a6)+
 
 		jsr	DrawBuffer_Clear		; initialize drawing buffer
 
-		jsr	BlackBars.FullReset		; setup black bars
+		jsr	BlackBars.Init			; setup black bars
 		move.l	HBlank_BaseHandler, HBlankHndl	; setup HBlank handler
 
 	if DebugModeDefault=1
@@ -319,6 +319,11 @@ GameClrRAM:	move.l	d7,(a6)+
 		jsr	Start_FirstGameMode	; start default first game mode (Sega Screen)
 	endif
 
+	move.b	GameMode, -(sp)
+	move.b	#$38, GameMode
+	jsr	BlackBarsConfigScreen
+	move.b	(sp)+, GameMode
+
 	if def(__BENCHMARK__)
 		jsr	Options_SetDefaults
 		; Benchmark build uses a custom bootstrap program
@@ -328,200 +333,17 @@ GameClrRAM:	move.l	d7,(a6)+
 	endif
 
 ; ===========================================================================
-
-
-; ===========================================================================
 ; ---------------------------------------------------------------------------
-; SRAM Loading Routine
-; ---------------------------------------------------------------------------
-; Format (note, SRAM can only be written to odd addresses):
-; 00 op 00 ch  00 d1 00 d2  00 l1 00 l2  00 r1 00 r2  00 s1 00 s2  00 s3 00 s4  00 cm 00 rs  00 mg
-;    01    03     05    07     09    0B     0D    0F     11    13     15    17     19    1A     1C
-;
-;  op = Options Bitset ($FFFFFF92)
-;  ch = Current Chapter ($FFFFFFA7)
-;  d_ = Open Doors Bitset - Casual/Frantic  ($FFFFFF8A-FFFFFF8B)
-;  l_ = Lives (or Deaths rather, lol) ($FFFFFE12-FFFFFE13)
-;  r_ = Rings ($FFFFFE20-FFFFFE21)
-;  s_ = Score ($FFFFFE26-FFFFFE29)
-;  cm = Complete (Base Game / Blackout challenge) ($FFFFFF93)
-;  rs = Resume Flag (0 first launch / 1 load save game) ($FFFFF601)
-;  mg = Magic Number (always set to 182, absence implies no SRAM)
-; ---------------------------------------------------------------------------
-SRAM_Options	= 1
-SRAM_Chapter	= 2 + SRAM_Options
-SRAM_Doors	= 2 + SRAM_Chapter ; 2 bytes
-SRAM_Lives	= 4 + SRAM_Doors ; 2 bytes
-SRAM_Rings	= 4 + SRAM_Lives ; 2 bytes
-SRAM_Score	= 4 + SRAM_Rings ; 4 bytes
-SRAM_Complete	= 8 + SRAM_Score
-SRAM_Resume	= 2 + SRAM_Complete
-SRAM_Exists	= 2 + SRAM_Resume
-
-SRAM_MagicNumber = 182
+; Dummy interrupt
 ; ---------------------------------------------------------------------------
 
-LoadSRAM:
-	; Supress SRAM if MD Replay takes over it
-	if def(__MD_REPLAY__)
-		rts
-	else
-		moveq	#0,d0					; clear d0
-		move.b	#1,($A130F1).l				; enable SRAM
-		lea	($200000).l,a1				; base of SRAM
-		cmpi.b	#SRAM_MagicNumber,SRAM_Exists(a1)	; does SRAM exist?
-		beq.s	SRAMFound				; if yes, branch
-		
-		bsr.s	SRAM_Reset				; reset any existing SRAM
-		bra.w	SRAMEnd
+NullInt:
+	rte
 
-SRAMFound:
-		lea	($200000).l,a1				; base of SRAM
-		move.b	SRAM_Options(a1),(OptionsBits).w	; load options flags
-		move.b	SRAM_Chapter(a1),($FFFFFFA7).w		; load current chapter
-		movep.w	SRAM_Doors(a1),d0			; load...
-		move.w	d0,(Doors_Casual).w			; ...open doors bitsets
-		movep.w	SRAM_Lives(a1),d0			; load...
-		move.w	d0,($FFFFFE12).w			; ...lives/deaths counter
-		movep.w	SRAM_Rings(a1),d0			; load...
-		move.w	d0,($FFFFFE20).w			; ...rings
-		movep.l	SRAM_Score(a1),d0			; load...
-		move.l	d0,($FFFFFE26).w			; ...score
-		move.b	SRAM_Complete(a1),($FFFFFF93).w		; load game beaten state
-		move.b	SRAM_Resume(a1),(ResumeFlag).w		; load resume flag
-
-SRAMEnd:
-		move.b	#0,($A130F1).l				; disable SRAM
-		rts
-	endif	; def(__MD_REPLAY__)=0
-; ===========================================================================
-
-SRAM_Reset:
-	if def(__MD_REPLAY__)
-		rts
-	else
-		; Fun fact: Did you know Kega initializes SRAM to $FF instead of $00?
-		; Thank me later, I just saved you hours.
-		moveq	#0,d0					; set d0 to 0
-		move.b	d0,SRAM_Options(a1)			; clear option flags
-		move.b	d0,SRAM_Chapter(a1)			; clear current chapter
-		movep.w	d0,SRAM_Doors(a1)			; clear open doors bitset
-		movep.w	d0,SRAM_Lives(a1)			; clear lives/deaths
-		movep.w	d0,SRAM_Rings(a1)			; clear rings
-		movep.l	d0,SRAM_Score(a1)			; clear score
-		move.b	d0,SRAM_Complete(a1)			; clear option flags
-		move.b	d0,SRAM_Resume(a1)			; clear resume flag
-	
-		jsr	Options_SetDefaults			; reset default options
-		move.b	(OptionsBits).w,SRAM_Options(a1)	; ^
-
-		move.b	#SRAM_MagicNumber,SRAM_Exists(a1) 	; set magic number ("SRAM exists")
-	endif	; def(__MD_REPLAY__)=0
-		
-ResetGameProgress:
-		moveq	#0,d0
-		move.b	d0,($FFFFFFA7).w			; clear current chapter
-		move.w	d0,(Doors_Casual).w			; clear open doors bitsets
-		move.w	d0,($FFFFFE12).w			; clear lives/deaths counter
-		move.w	d0,($FFFFFE20).w			; clear rings
-		move.l	d0,($FFFFFE26).w			; clear score
-		move.b	d0,($FFFFFF93).w			; clear game beaten state
-		rts
-
-; ===========================================================================
-
-SRAM_SaveNow:
-	; Supress SRAM if MD Replay takes over it
-	if def(__MD_REPLAY__)
-		rts
-	else
-		move.b	#1,($A130F1).l				; enable SRAM
-		lea	($200000).l,a1				; base of SRAM
-		cmpi.b	#SRAM_MagicNumber,SRAM_Exists(a1)	; does SRAM exist?
-		bne.s	SRAM_SaveNow_End			; if not, branch
-		
-		move.l	d0,-(sp)				; backup d0
-		moveq	#0,d0					; clear d0
-		move.b	(OptionsBits).w,d0			; move option flags to d0
-		move.b	d0,SRAM_Options(a1)			; backup option flags
-		move.b	($FFFFFFA7).w,d0			; move current chapter to d0
-		move.b	d0,SRAM_Chapter(a1)			; backup current chapter
-		move.w	(Doors_Casual).w,d0			; move open doors bitset to d0
-		movep.w	d0,SRAM_Doors(a1)			; backup open doors bitset
-		move.w	($FFFFFE12).w,d0			; move lives/deaths to d0
-		movep.w	d0,SRAM_Lives(a1)			; backup lives/deaths
-		move.w	($FFFFFE20).w,d0			; move rings to d0
-		movep.w	d0,SRAM_Rings(a1)			; backup rings
-		move.l	($FFFFFE26).w,d0			; move score to d0
-		movep.l	d0,SRAM_Score(a1)			; backup score
-		move.b	($FFFFFF93).w,d0			; move game beaten state to d0
-		move.b	d0,SRAM_Complete(a1)			; backup option flags
-		move.b	(ResumeFlag).w,d0			; move resume flag to d0
-		move.b	d0,SRAM_Resume(a1)			; backup resume flag
-		move.l	(sp)+,d0				; restore d0
-
-SRAM_SaveNow_End:
-		move.b	#0,($A130F1).l				; disable SRAM
-		rts
-	endif	; def(__MD_REPLAY__)=0
-; ---------------------------------------------------------------------------
-; ===========================================================================
-
-
-; ===========================================================================
-; ---------------------------------------------------------------------------
-; H-Blank - LZ water palette swap effect
-; Source: https://sonicresearch.org/community/index.php?threads/removing-the-water-surface-object-in-sonic-1.5975/
 ; ---------------------------------------------------------------------------
 
-; HBlank:
-HBlank_LZWaterSurface:
-		tst.w	($FFFFF644).w		; is flag set to transfer water palette mid-frame?
-		beq.w	locret_119C		; if not, branch
-		move.w	#0,($FFFFF644).w	; clear said flag
-		movem.l	d0-d2/a0-a2,-(sp)
-		
-		lea	VDP_Data,a1
-		move.w	#$8A00|$DF,4(a1)	; Reset HInt timing
-
-		movea.l	($FFFFF610).w,a2
-		move.w	(a2)+,d1
-		move.b	($FFFFFE07).w,d0	; get water surface height for the screen transfer
-		subi.b	#200,d0			; is H-int occuring below line 200?
-		bcs.s	@transferColors		; if it is, branch
-		sub.b	d0,d1
-		bcs.s	@skipTransfer
-
-@transferColors:
-		moveq	#0, d0
-		move.w	(a2)+,d0
-		lea	($FFFFFA80).w,a0
-		adda.w	d0,a0
-		addi.w	#$C000,d0
-		swap	d0
-		move.l	d0,4(a1)		; write to CRAM at appropriate address
-
-		swap	d1			; high word of D1 is used for buffering
-		move.l	(a0)+, d2		; buffer colors to registers for faster transfer
-		move.w	(a0)+, d1		; ''
-
-		moveq	#$FFFFFFB2-16, d0
-	@waitforit:
-		cmp.b	9(a1), d0
-		bhi.s	@waitforit
-
-		move.l	d2,(a1)			; transfer two colors
-		move.w	d1,(a1)			; transfer the third color
-
-		swap	d1			; use D1 as counter again
-		dbf	d1,@transferColors	; repeat for number of colors
-
-@skipTransfer:
-		movem.l	(sp)+,d0-d2/a0-a2
-
-locret_119C:
-		rte
-; End of function HBlank
+	include	"Modules/SRAM.asm"
+	include	"Modules/HBlank.asm"
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -531,124 +353,8 @@ locret_119C:
 ; BlackBars::
 BlackBars.GrowSize = 2
 BlackBars.MaxHeight = 36
-; ---------------------------------------------------------------------------
 
-NullInt:
-		rte
-; ---------------------------------------------------------------------------
-
-HBlank_BaseHandler:
-		jmp	NullInt.w
-; ===========================================================================
-
-HBlank_Bars:
-		move.l	#$81748720,VDP_Ctrl				; enable display, restore backdrop color
-		move.w	BlackBars.SecondHCnt,VDP_Ctrl			; send $8Axx to VDP to set HInt counter for the second invocation
-		move.w	#@ToBottom,HBlankSubW				; handle bottom next time
-		rte
-@ToBottom:
-		move.w	#HBlank_Bars_Bottom,HBlankSubW
-		rte
-; ---------------------------------------------------------------------------
-
-HBlank_Bars_PastQuarter:
-		move.w	BlackBars.SecondHCnt,VDP_Ctrl			; send $8Axx to VDP to set HInt counter for the second invocation
-		move.w	#@ToBottom,HBlankSubW				; handle bottom next time
-		rte
-
-@ToBottom:
-		move.l	#$81748720,VDP_Ctrl				; enable display, restore backdrop color
-		move.w	#HBlank_Bars_Bottom,HBlankSubW
-		rte
-; ---------------------------------------------------------------------------
-
-HBlank_Bars_Bottom:
-		move.l	#$81348701,VDP_Ctrl				; disable display + set backdrop color to black
-		move.w	#$8A00|$DF,VDP_Ctrl				; set H-int timing to not occur this frame anymore
-		move.w	#NullInt,HBlankSubW				; don't run any code during HInt
-		rte
-; ===========================================================================
-
-; called once on system start
-BlackBars.FullReset:
-		move.l	#$8ADF8ADF,BlackBars.FirstHCnt			; + BlackBars.SecondHCnt
-
-BlackBars.Reset:
-		move.w	#NullInt,HBlankSubW				; don't run any code during HInt
-		move.w	#0,BlackBars.Height				; set current height to 0
-		move.w	#BlackBars.MaxHeight,BlackBars.BaseHeight	; set base height to default
-		move.w	BlackBars.BaseHeight,BlackBars.TargetHeight	; set target height to default
-		move.l	#$81748720,VDP_Ctrl				; enable display, restore backdrop color
-		rts
-; ---------------------------------------------------------------------------
-
-; called from VBlank every single frame
-BlackBars.VBlankUpdate:
-		tst.w	($FFFFFE02).w					; is level set to restart?
-		bne.s	@notlz						; if yes, branch
-		tst.b	($FFFFFFE9).w					; is fade out currently in progress?
-		bne.s	@notlz						; if yes, branch
-		cmpi.b	#1,($FFFFFE10).w				; are we in LZ?
-		bne.s	@notlz						; if not, branch
-		cmpi.b	#$C,(GameMode).w				; are we done with the pre-level sequence?
-		bne.w	@notlz						; if not, branch
-		cmpi.w	#HBlank_LZWaterSurface,HBlankSubW		; already set up?
-		beq.s	@end						; if yes, branch
-		bsr.s	BlackBars.FullReset				; reset black bars (not supported in LZ)
-		move.w	#HBlank_LZWaterSurface,HBlankSubW		; go to original HBlank subroutine for LZ
-@end		rts
-
-@notlz:
-		bsr.s	BlackBars.SetState
-
-		move.w	BlackBars.Height,d0				; is height 0?
-		beq.s	@disable_bars					; if yes, branch
-
-		; Sprite masking trick for the last rendered raster line
-		move.w	#224+$80, d1
-		sub.w	d0, d1
-		move.w	d1, $FFFFF800
-		move.w	d1, $FFFFF808
-
-		cmp.w	#224/2-1,d0					; are we taking half the screen?
-		bhi.s	@make_black_screen				; if yes, branch
-		cmp.w	#224/4-1,d0					; are we quater the screen?
-		bhs.s	@make_bars_past_quarter				; if yes, branch
-
-		move.w	#HBlank_Bars,HBlankSubW
-		move.w	d0,d1
-		add.w	d1,d1
-		add.w	d0,d1
-		sub.w	#224-1,d1
-		neg.w	d1
-
-@make_bars_cont:
-		move.b	d0,BlackBars.FirstHCnt+1
-		move.b	d1,BlackBars.SecondHCnt+1
-		move.w	BlackBars.FirstHCnt,VDP_Ctrl
-		move.l	#$81348701,VDP_Ctrl				; disable display, set backdrop color to black
-		rts
-; ---------------------------------------------------------------------------
-
-@make_bars_past_quarter:	
-		move.w	#HBlank_Bars_PastQuarter,HBlankSubW
-		move.w	d0,d1
-		add.w	d1,d1
-		sub.w	#224-1,d1
-		neg.w	d1
-		lsr.w	#1,d0
-		bra.s	@make_bars_cont
-; ---------------------------------------------------------------------------
-
-@make_black_screen:
-		move.l	#$81348701,VDP_Ctrl				; disable display, set backdrop color to black
-
-@disable_bars:
-		move.w	#NullInt,HBlankSubW
-		bsr	BlackBars.Reset
-		rts
-; End of function HBlank_Bars
-; ===========================================================================
+	include	"Modules/BlackBars.asm"
 
 ; ---------------------------------------------------------------------------
 ; Black bars control logic
@@ -818,7 +524,6 @@ BlackBars_Ending:
 		bra.w	BlackBars_Show			; otherwise, keep bars at all times
 		
 ; ---------------------------------------------------------------------------
-; ===========================================================================
 
 
 ; ===========================================================================
@@ -854,6 +559,7 @@ GameModeArray:
 		dc.l	CreditsScreen		; Credits Screen	($2C)
 		dc.l	GameplayStyleScreen	; Gameplay Style Screen	($30)
 		dc.l	SoundTestScreen		; Sound Test Screen	($34)
+		dc.l	BlackBarsConfigScreen	; Black Bars Config	($38)
 ; ---------------------------------------------------------------------------
 
 Deleted_Mode:
@@ -1238,6 +944,12 @@ MapScreen_Column:
 ; Can be called a maximum of 18 times before the buffer needs to be cleared
 ; by issuing the commands (this subroutine DOES check for overflow)
 ; ---------------------------------------------------------------------------
+; INPUT:
+;	d1	.l	Source art (24-bit pointer)
+;	d2	.w	VRAM destination offset
+;	d3	.w	Transfer length (words)
+; ---------------------------------------------------------------------------
+
 
 ; ||||||||||||||| S U B R O U T I N E |||||||||||||||||||||||||||||||||||||||
 
@@ -1351,10 +1063,6 @@ ProcessDMAQueue_Done:
 *KosPlusMDec_VRAM:
 	include	'modules\Kosinski+ Decompressor.asm'
 
-	; TODO: Completely replace remaining Kosinski art with Kosinski+, remove this decompressor
-*KosDec:
-	include	'modules\Kosinski Decompressor.asm'
-
 ; ---------------------------------------------------------------------------
 
 	include	'modules\Draw Buffer.asm'
@@ -1382,7 +1090,7 @@ PalCycle_Load:				; XREF: Demo; Level_MainLoop; End_MainLoop
 		bne.s	@nopalcycle		; if not, branch
 
 @dopalcycle:
-		bsr	PCL_Load		; do pal cycle
+		bra	PCL_Load		; do pal cycle
 @nopalcycle:
 		rts
 ; ---------------------------------------------------------------------------
@@ -3041,7 +2749,7 @@ Title_ClrObjRam:
 
 		lea	(Blk256_Title).l,a0 ; load title screen chunk mappings
 		lea	($FF0000).l,a1
-		bsr	KosDec
+		bsr	KosPlusDec
 		bsr	LevelLayoutLoad
 		lea	LevelRenderer_DefaultConfig_BG, a0
 		jsr 	LevelRenderer_DrawLayout_BG_2
@@ -3838,6 +3546,7 @@ Level_TtlCard:
 		jsr	Hud_Base
 
 loc_3946:
+		jsr	AnimatedArt_Init
 		moveq	#3,d0
 		bsr	PalLoad1	; load Sonic's palette line
 		bsr	DeformBgLayer
@@ -4018,6 +3727,7 @@ Level_MainLoop:
 		bsr	OscillateNumDo
 		bsr	ChangeRingFrame
 		bsr	SignpostArtLoad
+		jsr	AnimatedArt_Update
 
 		tst.w	($FFFFFE02).w		; is the level set to restart?
 		bne.w	Level			; if yes, restart level
@@ -4722,9 +4432,9 @@ ClearEverySpecialFlag:
 		move.w	d0,($FFFFC904).w
 		move.b	d0,($FFFFF5D0).w
 		move.b	d0,($FFFFF5D1).w
-		move.b	d0,($FFFFF5D3).w
-		move.w	d0,($FFFFF5D4).w
-		move.w	d0,($FFFFF5D6).w
+		move.b	d0,RedrawEverything
+		move.w	d0,FranticDrain
+		move.w	d0,BGThemeColor
 		move.b	d0,($FFFFF734).w
 		move.w	d0,($FFFFF7BE).w
 		move.l	d0,($FFFFFF60).w
@@ -5797,13 +5507,14 @@ End_ClrRam3:	move.l	d0,(a1)+
 End_LoadData:
 		move.b	#4,VBlankRoutine
 		bsr	DelayProgram
+		jsr	AnimatedArt_Init
 		moveq	#$1C,d0
 		bsr	PLC_ExecuteOnce	; load ending sequence patterns
 		jsr	Hud_Base
 		bsr	LevelSizeLoad
 		bsr	DeformBgLayer
 		bset	#2,($FFFFF754).w
-		
+
 		bsr	MainLoadBlockLoad	; load block mappings and palettes
 		jsr 	LevelRenderer_DrawLayout_FG
 		jsr 	LevelRenderer_DrawLayout_BG
@@ -5867,6 +5578,7 @@ End_MainLoop:
 		jsr 	LevelRenderer_Update_BG
 		jsr	BuildSprites
 		jsr	ObjPosLoad
+		jsr	AnimatedArt_Update
 		cmpi.b	#6,($FFFFD024).w	; is Sonic dying?
 		bhs.s	@checkeaster		; if not, branch
 		bsr	PCL_Load		; pal cycle while alive
@@ -6252,7 +5964,7 @@ MainLoadBlockLoad:			; XREF: Level; EndingSequence
 
 		movea.l	(a2)+,a0
 		lea	($FF0000).l,a1	; RAM address for 256x256 mappings
-		bsr	KosDec
+		bsr	KosPlusDec
 		bsr	LevelLayoutLoad
 
 		move.w	(a2)+,d0
@@ -17463,7 +17175,13 @@ Obj_Index:
 		dc.l Obj81, Obj82, Obj83, Obj84
 		dc.l Obj85, Obj86, Obj87, Obj88
 		dc.l Obj89, Obj8A, Obj8B, Obj8C
+		dc.l Obj8D
 		even
+
+Obj8D:
+	movea.l	$3C(a0), a1
+	assert.l a1, ne, #0
+	jmp	(a1)
 
 ; ---------------------------------------------------------------------------
 ; Subroutine to	make an	object fall downwards, increasingly fast
@@ -17673,11 +17391,6 @@ DeleteObject2:
 		rts	
 ; End of function DeleteObject
 
-; ===========================================================================
-BldSpr_ScrPos:	dc.l 0			; blank
-		dc.l $FFF700		; main screen x-position
-		dc.l $FFF708		; background x-position	1
-		dc.l $FFF718		; background x-position	2
 ; ---------------------------------------------------------------------------
 ; Subroutine to	convert	mappings (etc) to proper Megadrive sprites
 ; ---------------------------------------------------------------------------
@@ -17691,13 +17404,16 @@ BuildSprites:				; XREF: TitleScreen; et al
 		lea	($FFFFAC00).w,a4
 		moveq	#7,d7
 
-		; Reserve 2 sprite slots for sprite masking
-		; NOTE: These slots are finalized in BlackBars handler during VBlank
-		addq.w	#2, d5			; reserve 2 slots
-		move.l	#$01700F01, (a2)+	; Y-pos, size, link
-		move.l	#$00000001, (a2)+	; pattern, X-pos
-		move.l	#$01700F02, (a2)+	; Y-pos, size, link
-		move.l	#$00000000, (a2)+	; pattern, X-pos
+		if def(__DEBUG__)
+			moveq	#_BB_HandlerIdMask, d1
+			and.b	BlackBars.HandlerId, d1
+			lea	BlackBars.HandlerList, a0
+			move.w	(a0, d1), d1
+			assert.w d1, eq, BlackBars.Handler, Debugger_BlackBars
+		endif
+
+		move.w	BlackBars.Handler, a0
+		jsr	_BB_BuildSpritesCallback(a0)
 
 loc_D66A:
 		tst.w	(a4)
@@ -17724,7 +17440,7 @@ loc_D672:
 		add.w	d1,d1
 		addi.w	#$140,d1
 		cmp.w	d1,d0
-		bhi.s	loc_D726
+		bhi	loc_D726
 		addi.w	#$80,d3
 		btst	#4,d4
 		beq.s	loc_D6E8
@@ -17741,7 +17457,12 @@ loc_D672:
 		addi.w	#$80,d2
 		bra.s	loc_D700
 ; ===========================================================================
+BldSpr_ScrPos:	dc.l 0			; blank
+		dc.l $FFF700		; main screen x-position
+		dc.l $FFF708		; background x-position	1
+		dc.l $FFF718		; background x-position	2
 
+; ===========================================================================
 loc_D6DE:
 		move.w	obScreenY(a0),d2
 		move.w	obX(a0),d3
@@ -42794,444 +42515,7 @@ Obj10:
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
 
-
-; ===========================================================================
-; ---------------------------------------------------------------------------
-; Subroutine to	animate	level graphics
-; ---------------------------------------------------------------------------
-
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
-
-AniArt_Load:				; XREF: ; loc_F54
-	;	tst.w	($FFFFF63A).w	; is the game paused?
-	;	bne.s	AniArt_Pause	; if yes, branch
-		lea	($C00000).l,a6
-		bsr	AniArt_GiantRing
-		moveq	#0,d0
-		move.b	($FFFFFE10).w,d0
-		add.w	d0,d0
-		move.w	AniArt_Index(pc,d0.w),d0
-		jmp	AniArt_Index(pc,d0.w)
-; ===========================================================================
-
-AniArt_Pause:
-		rts	
-; End of function AniArt_Load
-
-; ===========================================================================
-AniArt_Index:	dc.w AniArt_GHZ-AniArt_Index, AniArt_none-AniArt_Index
-		dc.w AniArt_MZ-AniArt_Index, AniArt_none-AniArt_Index
-		dc.w AniArt_none-AniArt_Index, AniArt_SBZ-AniArt_Index
-		dc.w AniArt_Ending-AniArt_Index
-; ===========================================================================
-; ---------------------------------------------------------------------------
-; Animated pattern routine - Green Hill
-; ---------------------------------------------------------------------------
-
-AniArt_GHZ:				; XREF: AniArt_Index
-		subq.b	#1,($FFFFF7B1).w
-		bpl.s	loc_1C08A
-		move.b	#5,($FFFFF7B1).w ; time	to display each	frame for
-		lea	(Art_GhzWater).l,a1 ; load waterfall patterns
-		move.b	($FFFFF7B0).w,d0
-		addq.b	#1,($FFFFF7B0).w
-		andi.w	#1,d0
-		beq.s	loc_1C078
-		lea	$100(a1),a1	; load next frame
-
-loc_1C078:
-		move.l	#$6F000001,($C00004).l ; VRAM address
-		move.w	#7,d1		; number of 8x8	tiles
-		bra.w	LoadTiles
-; ===========================================================================
-
-loc_1C08A:
-		subq.b	#1,($FFFFF7B3).w
-		bpl.s	loc_1C0C0
-		move.b	#$F,($FFFFF7B3).w
-		lea	(Art_GhzFlower1).l,a1 ;	load big flower	patterns
-		move.b	($FFFFF7B2).w,d0
-		addq.b	#1,($FFFFF7B2).w
-		andi.w	#1,d0
-		beq.s	loc_1C0AE
-		lea	$200(a1),a1
-
-loc_1C0AE:
-		move.l	#$6B800001,($C00004).l
-		move.w	#$F,d1
-		bra.w	LoadTiles
-; ===========================================================================
-
-loc_1C0C0:
-		subq.b	#1,($FFFFF7B5).w
-		bpl.s	locret_1C10C
-		move.b	#7,($FFFFF7B5).w
-		move.b	($FFFFF7B4).w,d0
-		addq.b	#1,($FFFFF7B4).w
-		andi.w	#3,d0
-		move.b	byte_1C10E(pc,d0.w),d0
-		btst	#0,d0
-		bne.s	loc_1C0E8
-		move.b	#$7F,($FFFFF7B5).w
-
-loc_1C0E8:
-		lsl.w	#7,d0
-		move.w	d0,d1
-		add.w	d0,d0
-		add.w	d1,d0
-		move.l	#$6D800001,($C00004).l
-		lea	(Art_GhzFlower2).l,a1 ;	load small flower patterns
-		lea	(a1,d0.w),a1
-		move.w	#$B,d1
-		bsr	LoadTiles
-
-locret_1C10C:
-		rts	
-; ===========================================================================
-byte_1C10E:	dc.b 0,	1, 2, 1
-; ===========================================================================
-; ---------------------------------------------------------------------------
-; Animated pattern routine - Marble
-; ---------------------------------------------------------------------------
-
-AniArt_MZ:				; XREF: AniArt_Index
-		subq.b	#1,($FFFFF7B1).w
-		bpl.s	loc_1C150
-		move.b	#$13,($FFFFF7B1).w
-		lea	(Art_MzLava1).l,a1 ; load lava surface patterns
-		moveq	#0,d0
-		move.b	($FFFFF7B0).w,d0
-		addq.b	#1,d0
-		cmpi.b	#3,d0
-		bne.s	loc_1C134
-		moveq	#0,d0
-
-loc_1C134:
-		move.b	d0,($FFFFF7B0).w
-		mulu.w	#$100,d0
-		adda.w	d0,a1
-		move.l	#$5C400001,($C00004).l
-		move.w	#7,d1
-		bsr	LoadTiles
-
-loc_1C150:
-		subq.b	#1,($FFFFF7B3).w
-		bpl.s	loc_1C1AE
-		move.b	#1,($FFFFF7B3).w
-		moveq	#0,d0
-		move.b	($FFFFF7B0).w,d0
-		lea	(Art_MzLava2).l,a4 ; load lava patterns
-		ror.w	#7,d0
-		adda.w	d0,a4
-		move.l	#$5A400001,($C00004).l
-		moveq	#0,d3
-		move.b	($FFFFF7B2).w,d3
-		addq.b	#1,($FFFFF7B2).w
-		move.b	($FFFFFE68).w,d3
-		move.w	#3,d2
-
-loc_1C188:
-		move.w	d3,d0
-		add.w	d0,d0
-		andi.w	#$1E,d0
-		lea	(AniArt_MZextra).l,a3
-		move.w	(a3,d0.w),d0
-		lea	(a3,d0.w),a3
-		movea.l	a4,a1
-		move.w	#$1F,d1
-		jsr	(a3)
-		addq.w	#4,d3
-		dbf	d2,loc_1C188
-		rts	
-; ===========================================================================
-
-loc_1C1AE:
-		subq.b	#1,($FFFFF7B5).w
-		bpl.w	locret_1C1EA
-		move.b	#7,($FFFFF7B5).w
-		lea	(Art_MzTorch).l,a1 ; load torch	patterns
-		moveq	#0,d0
-		move.b	($FFFFF7B6).w,d0
-		addq.b	#1,($FFFFF7B6).w
-		andi.b	#3,($FFFFF7B6).w
-		mulu.w	#$C0,d0
-		adda.w	d0,a1
-		move.l	#$5E400001,($C00004).l
-		move.w	#5,d1
-		bra.w	LoadTiles
-; ===========================================================================
-
-locret_1C1EA:
-		rts	
-; ===========================================================================
-; ---------------------------------------------------------------------------
-; Animated pattern routine - Scrap Brain
-; ---------------------------------------------------------------------------
-
-AniArt_SBZ:				; XREF: AniArt_Index
-		rts	
-; ===========================================================================
-; ---------------------------------------------------------------------------
-; Animated pattern routine - ending sequence
-; ---------------------------------------------------------------------------
-
-AniArt_Ending:				; XREF: AniArt_Index
-		subq.b	#1,($FFFFF7B3).w
-		bpl.s	loc_1C2F4
-		move.b	#7,($FFFFF7B3).w
-		lea	(Art_GhzFlower1).l,a1 ;	load big flower	patterns
-		lea	($FFFF9400).w,a2
-		move.b	($FFFFF7B2).w,d0
-		addq.b	#1,($FFFFF7B2).w
-		andi.w	#1,d0
-		beq.s	loc_1C2CE
-		lea	$200(a1),a1
-		lea	$200(a2),a2
-
-loc_1C2CE:
-		move.l	#$6B800001,($C00004).l
-		move.w	#$F,d1
-		bsr	LoadTiles
-		movea.l	a2,a1
-		move.l	#$72000001,($C00004).l
-		move.w	#$F,d1
-		bra.w	LoadTiles
-; ===========================================================================
-
-loc_1C2F4:
-		subq.b	#1,($FFFFF7B5).w
-		bpl.s	loc_1C33C
-		move.b	#7,($FFFFF7B5).w
-		move.b	($FFFFF7B4).w,d0
-		addq.b	#1,($FFFFF7B4).w
-		andi.w	#7,d0
-		move.b	byte_1C334(pc,d0.w),d0
-		lsl.w	#7,d0
-		move.w	d0,d1
-		add.w	d0,d0
-		add.w	d1,d0
-		move.l	#$6D800001,($C00004).l
-		lea	(Art_GhzFlower2).l,a1 ;	load small flower patterns
-		lea	(a1,d0.w),a1
-		move.w	#$B,d1
-		bra.w	LoadTiles
-; ===========================================================================
-byte_1C334:	dc.b 0,	0, 0, 1, 2, 2, 2, 1
-; ===========================================================================
-
-loc_1C33C:
-		subq.b	#1,($FFFFF7B9).w
-		bpl.s	loc_1C37A
-		move.b	#$E,($FFFFF7B9).w
-		move.b	($FFFFF7B8).w,d0
-		addq.b	#1,($FFFFF7B8).w
-		andi.w	#3,d0
-		move.b	byte_1C376(pc,d0.w),d0
-		lsl.w	#8,d0
-		add.w	d0,d0
-		move.l	#$70000001,($C00004).l
-		lea	($FFFF9800).w,a1 ; load	special	flower patterns	(from RAM)
-		lea	(a1,d0.w),a1
-		move.w	#$F,d1
-		bra.w	LoadTiles
-; ===========================================================================
-byte_1C376:	dc.b 0,	1, 2, 1
-; ===========================================================================
-
-loc_1C37A:
-		subq.b	#1,($FFFFF7BB).w
-		bpl.s	locret_1C3B4
-		move.b	#$B,($FFFFF7BB).w
-		move.b	($FFFFF7BA).w,d0
-		addq.b	#1,($FFFFF7BA).w
-		andi.w	#3,d0
-		move.b	byte_1C376(pc,d0.w),d0
-		lsl.w	#8,d0
-		add.w	d0,d0
-		move.l	#$68000001,($C00004).l
-		lea	($FFFF9E00).w,a1 ; load	special	flower patterns	(from RAM)
-		lea	(a1,d0.w),a1
-		move.w	#$F,d1
-		bra.w	LoadTiles
-; ===========================================================================
-
-locret_1C3B4:
-		rts	
-; ===========================================================================
-
-AniArt_none:				; XREF: AniArt_Index
-		rts	
-
-; ---------------------------------------------------------------------------
-; Subroutine to	load (d1 - 1) 8x8 tiles
-; ---------------------------------------------------------------------------
-
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
-
-LoadTiles:
-		move.l	(a1)+,(a6)
-		move.l	(a1)+,(a6)
-		move.l	(a1)+,(a6)
-		move.l	(a1)+,(a6)
-		move.l	(a1)+,(a6)
-		move.l	(a1)+,(a6)
-		move.l	(a1)+,(a6)
-		move.l	(a1)+,(a6)
-		dbf	d1,LoadTiles
-		rts	
-; End of function LoadTiles
-
-; ===========================================================================
-; ---------------------------------------------------------------------------
-; Animated pattern routine - more Marble Zone
-; ---------------------------------------------------------------------------
-AniArt_MZextra:	dc.w loc_1C3EE-AniArt_MZextra, loc_1C3FA-AniArt_MZextra
-		dc.w loc_1C410-AniArt_MZextra, loc_1C41E-AniArt_MZextra
-		dc.w loc_1C434-AniArt_MZextra, loc_1C442-AniArt_MZextra
-		dc.w loc_1C458-AniArt_MZextra, loc_1C466-AniArt_MZextra
-		dc.w loc_1C47C-AniArt_MZextra, loc_1C48A-AniArt_MZextra
-		dc.w loc_1C4A0-AniArt_MZextra, loc_1C4AE-AniArt_MZextra
-		dc.w loc_1C4C4-AniArt_MZextra, loc_1C4D2-AniArt_MZextra
-		dc.w loc_1C4E8-AniArt_MZextra, loc_1C4FA-AniArt_MZextra
-; ===========================================================================
-
-loc_1C3EE:				; XREF: AniArt_MZextra
-		move.l	(a1),(a6)
-		lea	obVelX(a1),a1
-		dbf	d1,loc_1C3EE
-		rts	
-; ===========================================================================
-
-loc_1C3FA:				; XREF: AniArt_MZextra
-		move.l	obGfx(a1),d0
-		move.b	obRender(a1),d0
-		ror.l	#8,d0
-		move.l	d0,(a6)
-		lea	obVelX(a1),a1
-		dbf	d1,loc_1C3FA
-		rts	
-; ===========================================================================
-
-loc_1C410:				; XREF: AniArt_MZextra
-		move.l	obGfx(a1),(a6)
-		lea	obVelX(a1),a1
-		dbf	d1,loc_1C410
-		rts	
-; ===========================================================================
-
-loc_1C41E:				; XREF: AniArt_MZextra
-		move.l	obMap(a1),d0
-		move.b	3(a1),d0
-		ror.l	#8,d0
-		move.l	d0,(a6)
-		lea	obVelX(a1),a1
-		dbf	d1,loc_1C41E
-		rts	
-; ===========================================================================
-
-loc_1C434:				; XREF: AniArt_MZextra
-		move.l	obMap(a1),(a6)
-		lea	obVelX(a1),a1
-		dbf	d1,loc_1C434
-		rts	
-; ===========================================================================
-
-loc_1C442:				; XREF: AniArt_MZextra
-		move.l	6(a1),d0
-		move.b	5(a1),d0
-		ror.l	#8,d0
-		move.l	d0,(a6)
-		lea	obVelX(a1),a1
-		dbf	d1,loc_1C442
-		rts	
-; ===========================================================================
-
-loc_1C458:				; XREF: AniArt_MZextra
-		move.l	6(a1),(a6)
-		lea	obVelX(a1),a1
-		dbf	d1,loc_1C458
-		rts	
-; ===========================================================================
-
-loc_1C466:				; XREF: AniArt_MZextra
-		move.l	obX(a1),d0
-		move.b	7(a1),d0
-		ror.l	#8,d0
-		move.l	d0,(a6)
-		lea	obVelX(a1),a1
-		dbf	d1,loc_1C466
-		rts	
-; ===========================================================================
-
-loc_1C47C:				; XREF: AniArt_MZextra
-		move.l	obX(a1),(a6)
-		lea	obVelX(a1),a1
-		dbf	d1,loc_1C47C
-		rts	
-; ===========================================================================
-
-loc_1C48A:				; XREF: AniArt_MZextra
-		move.l	obScreenY(a1),d0
-		move.b	9(a1),d0
-		ror.l	#8,d0
-		move.l	d0,(a6)
-		lea	obVelX(a1),a1
-		dbf	d1,loc_1C48A
-		rts	
-; ===========================================================================
-
-loc_1C4A0:				; XREF: AniArt_MZextra
-		move.l	obScreenY(a1),(a6)
-		lea	obVelX(a1),a1
-		dbf	d1,loc_1C4A0
-		rts	
-; ===========================================================================
-
-loc_1C4AE:				; XREF: AniArt_MZextra
-		move.l	obY(a1),d0
-		move.b	$B(a1),d0
-		ror.l	#8,d0
-		move.l	d0,(a6)
-		lea	obVelX(a1),a1
-		dbf	d1,loc_1C4AE
-		rts	
-; ===========================================================================
-
-loc_1C4C4:				; XREF: AniArt_MZextra
-		move.l	obY(a1),(a6)
-		lea	obVelX(a1),a1
-		dbf	d1,loc_1C4C4
-		rts	
-; ===========================================================================
-
-loc_1C4D2:				; XREF: AniArt_MZextra
-		move.l	obY(a1),d0
-		rol.l	#8,d0
-		move.b	0(a1),d0
-		move.l	d0,(a6)
-		lea	obVelX(a1),a1
-		dbf	d1,loc_1C4D2
-		rts	
-; ===========================================================================
-
-loc_1C4E8:				; XREF: AniArt_MZextra
-		move.w	$E(a1),(a6)
-		move.w	0(a1),(a6)
-		lea	obVelX(a1),a1
-		dbf	d1,loc_1C4E8
-		rts	
-; ===========================================================================
-
-loc_1C4FA:				; XREF: AniArt_MZextra
-		move.l	0(a1),d0
-		move.b	$F(a1),d0
-		ror.l	#8,d0
-		move.l	d0,(a6)
-		lea	obVelX(a1),a1
-		dbf	d1,loc_1C4FA
-		rts	
+		include	"Modules/Animated Art.asm"
 
 ; ---------------------------------------------------------------------------
 ; Animated pattern routine - giant ring
@@ -45527,45 +44811,45 @@ ArtKospM_Title:	incbin	artkosp\8x8title.kospm	; TS primary patterns
 			even
 Blk16_Title:	incbin	LevelData\map16\title.unc
 			even
-Blk256_Title:	incbin	LevelData\map256\title.bin
+Blk256_Title:	incbin	LevelData\map256\title.kosp
 			even
 Blk16_GHZ:	incbin	LevelData\map16\ghz.unc
 		even
 ArtKospM_GHZ:	incbin	artkosp\8x8ghz.kospm	; New GHZ file.
 		even
-Blk256_GHZ:	incbin	LevelData\map256\ghz.bin
+Blk256_GHZ:	incbin	LevelData\map256\ghz.kosp
 		even
 Blk16_LZ:	incbin	LevelData\map16\lz.unc
 		even
 ArtKospM_LZ:	incbin	artkosp\8x8lz.kospm	; LZ primary patterns
 		even
-Blk256_LZ:	incbin	LevelData\map256\lz.bin
+Blk256_LZ:	incbin	LevelData\map256\lz.kosp
 		even
 Blk16_MZ:	incbin	LevelData\map16\mz.unc
 		even
 ArtKospM_MZ:	incbin	artkosp\8x8mz.kospm	; MZ primary patterns
 		even
-Blk256_MZ:	incbin	LevelData\map256\mz.bin
+Blk256_MZ:	incbin	LevelData\map256\mz.kosp
 		even
 Blk16_SLZ:	incbin	LevelData\map16\slz.unc
 		even
 ArtKospM_SLZ:	incbin	artkosp\8x8slz.kospm	; SLZ primary patterns
 		even
-Blk256_SLZ:	incbin	LevelData\map256\slz.bin
+Blk256_SLZ:	incbin	LevelData\map256\slz.kosp
 		even
 Blk16_SYZ:	incbin	LevelData\map16\syz.unc
 		even
 ArtKospM_SYZ:	incbin	artkosp\8x8syz.kospm	; SYZ primary patterns
 		even
-Blk256_SYZ:	incbin	LevelData\map256\syz.bin
+Blk256_SYZ:	incbin	LevelData\map256\syz.kosp
 		even
 Blk16_SBZ:	incbin	LevelData\map16\sbz.unc
 		even
 ArtKospM_SBZ:	incbin	artkosp\8x8sbz.kospm	; SBZ primary patterns
 		even
-Blk256_SBZ:	incbin	LevelData\map256\sbz.bin
+Blk256_SBZ:	incbin	LevelData\map256\sbz.kosp
 		even
-Blk256_END:	incbin	LevelData\map256\ghz_end.bin
+Blk256_END:	incbin	LevelData\map256\ghz_end.kosp
 		even
 ; ---------------------------------------------------------------------------
 ; Compressed graphics - bosses and ending sequence
@@ -45915,6 +45199,7 @@ ObjPos_Null:	dc.w    $FFFF,$0000,$0000
 		include	"Screens/CreditsScreen/CreditsScreen.asm"
 		include	"Screens/TutorialBox/TutorialBox.asm"
 		include	"Screens/GameplayStyleScreen/GameplayStyleScreen.asm"
+		include "Screens/BlackBarsConfigScreen/BlackBarsConfigScreen.asm"
 ; ---------------------------------------------------------------------------
 
 ; Level Renderer

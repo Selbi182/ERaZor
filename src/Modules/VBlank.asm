@@ -12,9 +12,17 @@ VBlank:				; XREF: StartOfRom
 		bne.s	VBlank_Exit			; if yes, skip all of VBlank
 
 		bsr.w	BlackBars.VBlankUpdate
-		
+
 		tst.b	VBlankRoutine			; are we lagging (VBlank unwanted, interrupted game loop)
 		beq.w	VBlank_LagFrame			; if yes, oh shit oh fuck, go to the emergency routine immediately
+
+		move.l	VBlankCallback, d0
+		beq.s	@callback_ok
+		movea.l	d0, a0
+		moveq	#0, d0
+		move.l	d0, VBlankCallback
+		jsr	(a0)
+	@callback_ok:
 
 		addq.l	#1, VBlank_NonLagFrameCounter
 		move.w	VDP_Ctrl,d0
@@ -27,7 +35,6 @@ VBlank:				; XREF: StartOfRom
 
 loc_B42:
 		move.b	VBlankRoutine,d0
-		move.w	#1,($FFFFF644).w
 		andi.w	#$3E,d0
 		move.w	VBlankTable(pc,d0.w),d0
 		jsr	VBlankTable(pc,d0.w)
@@ -90,8 +97,6 @@ loc_B9A:
 		dbf	d0,*
 
 loc_BBA:
-		move.w	#1,($FFFFF644).w
-
 		tst.b	($FFFFF64E).w
 		bne.s	loc_BFE
 		lea	VDP_Ctrl,a5
@@ -220,7 +225,6 @@ loc_D50:
 
 ;Demo_Time:
 		jsr 	ExecuteDrawRequests
-		jsr	AniArt_Load
 		jsr	HudUpdate
 		rts
 ; End of function Demo_Time
@@ -311,7 +315,6 @@ loc_EEE:
 
 loc_F54:
 		jsr 	ExecuteDrawRequests
-		jsr	AniArt_Load
 		jsr	HudUpdate
 		rts	
 ; ===========================================================================

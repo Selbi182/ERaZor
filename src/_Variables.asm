@@ -30,22 +30,25 @@ HSRAM_Buffer_End:	equ	HSRAM_Buffer+240*4
 ScrollBlocks_Buffer:	equ	$FFFFCFC0			;	Buffer for scrolling 16x16 blocks ($20 blocks)
 ScrollBlocks_Buffer_End:	equ	$FFFFD000
 
-Objects			equ	$FFFFD000			;	Objects RAM (D000-EFFF)
+Objects:		equ	$FFFFD000			;	Objects RAM (D000-EFFF)
+Objects_End:		equ	$FFFFF000			;	End of Objects RAM
 
 SoundDriverRAM:		equ	$FFFFF000			;	SMPS RAM
+SoundDriverRAM_End:	equ	$FFFFF5C0			;	End of SMPS RAM
 
+BlackBars.Handler:	equ	$FFFFF5CE			; w	Pointer to Black Bars handler routines (depending on `BlackBars.HandlerId`)
+*			equ	$FFFFF5D0			; b	"Signpost patterns have been loaded" flag
+*			equ	$FFFFF5D1			; b	Death flag
+BlackBars.HandlerId:	equ	$FFFFF5D2			; b	Black Bars handler id (also sets `BlackBars.Handler`)
 RedrawEverything:	equ	$FFFFF5D3			; b	Flag used to redraw the entire screen after teleporting
 FranticDrain:		equ	$FFFFF5D4			; w	Rings to be drained in frantic mode
 BGThemeColor:		equ	$FFFFF5D6			; w	Background color used for the BG effects for the story screens, etc.
 PlacePlacePlace:	equ	$FFFFF5D8			; b	PLACE PLACE PLACE
-
+VBlank_MusicOnly:	equ	$FFFFF5D9			; b		
 VBlank_NonLagFrameCounter:	equ	$FFFFF5DC		; l	
-
 VSyncWaitTicks_64bit:	equ	$FFFFF5E0			; 2l	Full 64-bit version of: Ticks counter for VSync loop (`DelayProgram`)
 VSyncWaitTicks:		equ	$FFFFF5E4			; l	Ticks counter for VSync loop (`DelayProgram`)
-
-VBlank_MusicOnly:	equ	$FFFFF5EB			; b		
-
+VBlankCallback:		equ	$FFFFF5E8			; l	One-time callback routine pointer for VBlank
 BlocksAddress:		equ	$FFFFF5EC			; l 	Address for level 16x16 blocks (uncompressed)
 BlackBars.GHPTimer:	equ	$FFFFF5F0			; b
 BlackBars.GHPTimerReset:equ	$FFFFF5F1			; b
@@ -65,7 +68,9 @@ SMPS_PAL_Timer:		equ	$FFFFF608			; b	Timer for SMPS PAL optimization
 
 VBlankRoutine:		equ	$FFFFF62A			; b	VBlank routine id
 
-*			equ	$FFFFF640			; w	<<FREE>>
+VDPDebugPortSet:	equ	$FFFFF640			; b	Set if VDP Debug port was tampered with
+*			equ	$FFFFF641			; b
+*			equ	$FFFFF644			; w	<<FOR SALE>>
 
 PLC_RAM:		equ	$FFFFF680			;	PLC system variables (F680-F69E)
 
@@ -86,6 +91,18 @@ Camera_RAM_Size:	equ	$FFFFF724-Camera_RAM
 
 CamXShift:		equ	$FFFFF73A			; w	Camera X shift from the previous frame (FG, 8.8 fixed)
 CamYShift:		equ	$FFFFF73C			; w	Camera Y shift from the previous frame (FG, 8.8 fixed)
+
+AniArt_Slot_RAM:	equ	$FFFFF7B0
+AniArt_Slot0_Frame:	equ	$FFFFF7B0			; b	Slot 0 : Art frame
+AniArt_Slot0_Timer:	equ	$FFFFF7B1			; b	Slot 0 : Timer value 
+AniArt_Slot1_Frame:	equ	$FFFFF7B2			; b	Slot 1 : Art frame
+AniArt_Slot1_Timer:	equ	$FFFFF7B3			; b	Slot 1 : Timer value
+AniArt_Slot2_Frame:	equ	$FFFFF7B4			; b	Slot 2 : Art frame
+AniArt_Slot2_Timer:	equ	$FFFFF7B5			; b	Slot 2 : Timer value
+AniArt_Slot3_Frame:	equ	$FFFFF7B6			; b	Slot 3 : Art frame
+AniArt_Slot3_Timer:	equ	$FFFFF7B7			; b	Slot 3 : Timer value
+AniArt_Slot4_Frame:	equ	$FFFFF7B8			; b	Slot 4 : Art frame	-- WARNING! Occupies higher byte of "AniArt_UpdateProc"!
+AniArt_UpdateProc:	equ	$FFFFF7B8			; l	Update procedure pointer
 
 Pal_Active:		equ	$FFFFFB00			; ~	Active palette
 Pal_Target:		equ	$FFFFFB80			; ~	Target palette for fading
@@ -118,6 +135,7 @@ OptionsBits		equ	$FFFFFF92			; b	bit field for the user options
 Progress		equ	$FFFFFF93			; b	bit field for overall game state (bit 0 - base game // bit 1 - blackout)
 
 	if def(__MD_REPLAY__)
+; WARNING! MD Replay conflicts with SMPS RAM, but SMPS is disabled when `__MD_REPLAY__` is set
 ; __MD_REPLAY__ = 'rec'
 MDReplay_RecPtr:	equ	$FFFFF100			; l
 MDReplay_RLECount:	equ	$FFFFF100			; b

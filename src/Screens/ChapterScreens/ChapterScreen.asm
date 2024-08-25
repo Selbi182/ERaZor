@@ -36,6 +36,7 @@ ChapterScreen:
 		move.w	#$8720,(a6)
 		clr.b	($FFFFF64E).w
 		jsr	ClearScreen			; Clear screen
+		display_disable
 
 		lea	($FFFFD000).w,a1
 		moveq	#0,d0
@@ -49,11 +50,9 @@ CS_ClrObjRam:	move.l	d0,(a1)+
 
 		; load top half
 		VBlank_SetMusicOnly
-		move.l	#$40000000,($C00004).l		; Load art
-		lea	($C00000).l,a6
-		lea	(Art_ChapterHeader).l,a1	; load chapter header
-		move.w	#$2B,d1				; load 43 tiles
-		jsr	LoadTiles			; load tiles
+		move.l	#$40000000, VDP_Ctrl
+		lea	ArtKospM_ChapterHeader, a0
+		jsr	KosPlusMDec_VRAM
 
 		lea	(Map_ChapterHeader).l,a1	; load chapter header
 		move.l	#$40000003,d0
@@ -67,11 +66,9 @@ CS_ClrObjRam:	move.l	d0,(a1)+
 @palloop:	move.l	(a1)+,(a2)+
 		dbf	d0,@palloop
 
-		move.l	#$60000000,($C00004).l
-		lea	($C00000).l,a6
-		lea	(Art_Numbers).l,a1
-		move.w	#$E,d1
-		jsr	LoadTiles
+		move.l	#$60000000, VDP_Ctrl
+		lea	ArtKospM_Numbers, a0
+		jsr	KosPlusMDec_VRAM
 		VBlank_UnsetMusicOnly
 
 		; load bottom half
@@ -104,6 +101,8 @@ CS_ClrObjRam:	move.l	d0,(a1)+
 		jsr	ObjectsLoad
 		jsr	BuildSprites
 
+		display_enable
+
 		; double fade-in
 		move.w	#$000F,($FFFFF626).w		; start at palette line 1, 16 colours ($F + 1)
 		jsr	Pal_FadeTo2			; fade in upper part
@@ -118,33 +117,31 @@ CS_ClrObjRam:	move.l	d0,(a1)+
 ; ---------------------------------------------------------------------------
 
 CS_LoadChapterArt:
-		movea.l	CS_ChapterArt(pc,d0.w),a1
-		move.l	#$45A00000,($C00004).l		; Load art
-		lea	($C00000).l,a6
-		move.w	#$7C,d1				; load $7C tiles
-		move.l	d0,-(sp)
-		jsr	LoadTiles			; load tiles
-		move.l	(sp)+,d0
+		move.l	#$45A00000, VDP_Ctrl
+		movea.l	CS_ChapterArt(pc,d0.w), a0
+		move.l	d0, -(sp)
+		jsr	KosPlusMDec_VRAM
+		move.l	(sp)+, d0
 		rts
 
 CS_ChapterArt:
-		dc.l	Art_Chapter1
-		dc.l	Art_Chapter2
-		dc.l	Art_Chapter3
-		dc.l	Art_Chapter4
-		dc.l	Art_Chapter5
-		dc.l	Art_Chapter6
-		dc.l	Art_Chapter7
+		dc.l	ArtKospM_Chapter1
+		dc.l	ArtKospM_Chapter2
+		dc.l	ArtKospM_Chapter3
+		dc.l	ArtKospM_Chapter4
+		dc.l	ArtKospM_Chapter5
+		dc.l	ArtKospM_Chapter6
+		dc.l	ArtKospM_Chapter7
 ; ===========================================================================
 
 CS_LoadChapterMaps:
-		movea.l	CS_ChapterMaps(pc,d0.w),a1
+		movea.l	CS_ChapterMaps(pc,d0.w), a1
 		move.l	d0,-(sp)
-		move.l	#$45800003,d0
-		moveq	#40-1,d1
-		moveq	#13-1,d2
+		move.l	#$45800003, d0
+		moveq	#40-1, d1
+		moveq	#13-1, d2
 		bsr	ShowVDPGraphics2
-		move.l	(sp)+,d0
+		move.l	(sp)+, d0
 		rts
 
 CS_ChapterMaps:
@@ -161,7 +158,7 @@ CS_LoadChapterPal:
 		movea.l	CS_ChapterPal(pc,d0.w),a1
 		lea	($FFFFFBA0).w,a2
 		rept	8
-		move.l	(a1)+,(a2)+
+			move.l	(a1)+, (a2)+
 		endr
 		rts
 
@@ -183,11 +180,9 @@ CS_ChapterPal:
 
 CS_OHDIGHZ:
 		VBlank_SetMusicOnly
-		move.l	#$40000000,($C00004).l		; Load art
-		lea	($C00000).l,a6
-		lea	(Art_OHDIGHZ).l,a1		; load art
-		move.w	#$8A,d1				; load $8A tiles
-		jsr	LoadTiles			; load tiles
+		move.l	#$40000000, VDP_Ctrl
+		lea	ArtKospM_OHDIGHZ, a0
+		jsr	KosPlusMDec_VRAM
 
 		lea	(Map_OHDIGHZ).l,a1		; load chapter header
 		move.l	#$40000003,d0
@@ -198,10 +193,11 @@ CS_OHDIGHZ:
 
 		lea	(Pal_OHDIGHZ).l,a1		; load palette
 		lea	($FFFFFB80).w,a2
-		move.b	#8-1,d0				; 16 colours
+		moveq	#8-1,d0				; 16 colours
 CS_PalLoopOHD:	move.l	(a1)+,(a2)+
 		dbf	d0,CS_PalLoopOHD
 
+		display_enable
 		jsr	Pal_FadeTo
 
 ; ---------------------------------------------------------------------------
@@ -299,26 +295,26 @@ MapScreen2_Column:
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-Art_ChapterHeader:	incbin	"Screens/ChapterScreens/Tiles_ChapterHeader.bin"
+ArtKospM_ChapterHeader:	incbin	"Screens/ChapterScreens/Tiles_ChapterHeader.kospm"
 			even
 Map_ChapterHeader:	incbin	"Screens/ChapterScreens/Maps_ChapterHeader.bin"
 			even
 Pal_ChapterHeader:	incbin	"Screens/ChapterScreens/Palette_ChapterHeader.bin"
 			even
 ; ---------------------------------------------------------------------------
-Art_Chapter1:	incbin	"Screens/ChapterScreens/ChapterFiles/Tiles_Chapter1.bin"
+ArtKospM_Chapter1:	incbin	"Screens/ChapterScreens/ChapterFiles/Tiles_Chapter1.kospm"
 		even
-Art_Chapter2:	incbin	"Screens/ChapterScreens/ChapterFiles/Tiles_Chapter2.bin"
+ArtKospM_Chapter2:	incbin	"Screens/ChapterScreens/ChapterFiles/Tiles_Chapter2.kospm"
 		even
-Art_Chapter3:	incbin	"Screens/ChapterScreens/ChapterFiles/Tiles_Chapter3.bin"
+ArtKospM_Chapter3:	incbin	"Screens/ChapterScreens/ChapterFiles/Tiles_Chapter3.kospm"
 		even
-Art_Chapter4:	incbin	"Screens/ChapterScreens/ChapterFiles/Tiles_Chapter4.bin"
+ArtKospM_Chapter4:	incbin	"Screens/ChapterScreens/ChapterFiles/Tiles_Chapter4.kospm"
 		even
-Art_Chapter5:	incbin	"Screens/ChapterScreens/ChapterFiles/Tiles_Chapter5.bin"
+ArtKospM_Chapter5:	incbin	"Screens/ChapterScreens/ChapterFiles/Tiles_Chapter5.kospm"
 		even
-Art_Chapter6:	incbin	"Screens/ChapterScreens/ChapterFiles/Tiles_Chapter6.bin"
+ArtKospM_Chapter6:	incbin	"Screens/ChapterScreens/ChapterFiles/Tiles_Chapter6.kospm"
 		even
-Art_Chapter7:	incbin	"Screens/ChapterScreens/ChapterFiles/Tiles_Chapter7.bin"
+ArtKospM_Chapter7:	incbin	"Screens/ChapterScreens/ChapterFiles/Tiles_Chapter7.kospm"
 		even
 ; ---------------------------------------------------------------------------
 Map_Chapter1:	incbin	"Screens/ChapterScreens/ChapterFiles/Maps_Chapter1.bin"
@@ -351,14 +347,14 @@ Pal_Chapter6:	incbin	"Screens/ChapterScreens/ChapterFiles/Palette_Chapter6.bin"
 Pal_Chapter7:	incbin	"Screens/ChapterScreens/ChapterFiles/Palette_Chapter7.bin"
 		even
 ; ---------------------------------------------------------------------------
-Art_OHDIGHZ:	incbin	"Screens/ChapterScreens/ChapterFiles/Tiles_OHDIGHZ.bin"
+ArtKospM_OHDIGHZ:	incbin	"Screens/ChapterScreens/ChapterFiles/Tiles_OHDIGHZ.kospm"
 		even
 Map_OHDIGHZ:	incbin	"Screens/ChapterScreens/ChapterFiles/Maps_OHDIGHZ.bin"
 		even
 Pal_OHDIGHZ:	incbin	"Screens/ChapterScreens/ChapterFiles/Palette_OHDIGHZ.bin"
 		even
 ; ---------------------------------------------------------------------------
-Art_Numbers:	incbin	"Screens/ChapterScreens/Art_Numbers.bin"
+ArtKospM_Numbers:	incbin	"Screens/ChapterScreens/Art_Numbers.kospm"
 		even
 ; ---------------------------------------------------------------------------
 ; ===========================================================================

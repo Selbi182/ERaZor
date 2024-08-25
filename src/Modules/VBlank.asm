@@ -225,7 +225,6 @@ loc_D50:
 
 ;Demo_Time:
 		jsr 	ExecuteDrawRequests
-		jsr	AniArt_Load
 		jsr	HudUpdate
 		rts
 ; End of function Demo_Time
@@ -316,7 +315,6 @@ loc_EEE:
 
 loc_F54:
 		jsr 	ExecuteDrawRequests
-		jsr	AniArt_Load
 		jsr	HudUpdate
 		rts	
 ; ===========================================================================

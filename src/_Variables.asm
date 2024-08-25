@@ -92,6 +92,18 @@ Camera_RAM_Size:	equ	$FFFFF724-Camera_RAM
 CamXShift:		equ	$FFFFF73A			; w	Camera X shift from the previous frame (FG, 8.8 fixed)
 CamYShift:		equ	$FFFFF73C			; w	Camera Y shift from the previous frame (FG, 8.8 fixed)
 
+AniArt_Slot_RAM:	equ	$FFFFF7B0
+AniArt_Slot0_Frame:	equ	$FFFFF7B0			; b	Slot 0 : Art frame
+AniArt_Slot0_Timer:	equ	$FFFFF7B1			; b	Slot 0 : Timer value 
+AniArt_Slot1_Frame:	equ	$FFFFF7B2			; b	Slot 1 : Art frame
+AniArt_Slot1_Timer:	equ	$FFFFF7B3			; b	Slot 1 : Timer value
+AniArt_Slot2_Frame:	equ	$FFFFF7B4			; b	Slot 2 : Art frame
+AniArt_Slot2_Timer:	equ	$FFFFF7B5			; b	Slot 2 : Timer value
+AniArt_Slot3_Frame:	equ	$FFFFF7B6			; b	Slot 3 : Art frame
+AniArt_Slot3_Timer:	equ	$FFFFF7B7			; b	Slot 3 : Timer value
+AniArt_Slot4_Frame:	equ	$FFFFF7B8			; b	Slot 4 : Art frame	-- WARNING! Occupies higher byte of "AniArt_UpdateProc"!
+AniArt_UpdateProc:	equ	$FFFFF7B8			; l	Update procedure pointer
+
 Pal_Active:		equ	$FFFFFB00			; ~	Active palette
 Pal_Target:		equ	$FFFFFB80			; ~	Target palette for fading
 

@@ -151,6 +151,11 @@ Deform_Index:	dc.w Deform_GHZ-Deform_Index, Deform_LZ-Deform_Index
 DeformScreen_Generic:
 		lea	HSRAM_Buffer, a1
 
+		move.w	CamYShift, d0
+		ext.l	d0
+		lsl.l	#8-3, d0
+		add.l	d0, CamYPos2
+
 		move.w	CamXPos, d0		; apply horizontal scrolling
 		neg.w	d0			; ''
 		swap	d0
@@ -805,7 +810,8 @@ Deform_All_2:
 		rts	
 
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
- 
+
+; Deform_Uberhub: 
 Deform_SYZ:
 		; Setup X-layers scrolling
 		move.l	CamXPos, d0
@@ -831,7 +837,7 @@ Deform_SYZ:
 		bmi.s	@0
 		sub.w	d1, d0
 @0:		
-	moveq	#0,d0
+;	moveq	#0,d0
 		move.w	d0, CamYPos2
 		
  
@@ -1034,7 +1040,10 @@ Deform_FZ:
 
 		move.w	($FFFFFE04).w,d2	; get current level timer
 		lsl.w	#2,d2			; speed it up
-
+		btst	#1,(FZEscape).w		; escape active?
+		beq.s	@notescape		; if not, branch
+		add.w	d2,d2			; double background speed
+@notescape:
 		neg.w	d2
 		move.w	d2,d0
 		asr.w	#3,d0

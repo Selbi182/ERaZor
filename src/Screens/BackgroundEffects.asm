@@ -162,7 +162,7 @@ BackgroundEffects_Deformation2:
 		move.w	d0,d7
 @noadjust:
 		lea	($FFFFCC00).w,a1
-		move.w	#(224/1)-1,d3
+		move.w	#224-1,d3
 		jsr	RandomNumber
 @scroll:
 		ror.l	#1,d1
@@ -211,7 +211,13 @@ BackgroundEffects_Deformation2:
 		swap	d2
 		move.w	d2,(a1)+
 		addq.w	#2,a1
-		dbf	d3,@scroll ; fill scroll data with 0
+		dbf	d3,@scroll
+
+		; todo fix two lines not moving properly
+	;	move.w	($FFFFFE0E).w,d0
+	;	move.w	d0,($FFFFCC00+(48*4)).w
+	;	move.w	d0,($FFFFCC00+(48*4*4)-(16*4)).w
+
 		move.l	(sp)+,d7
 		rts
 ; ---------------------------------------------------------------------------

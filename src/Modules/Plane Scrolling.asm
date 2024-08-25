@@ -122,12 +122,12 @@ DeformBgLayer:				; XREF: TitleScreen; Level; EndingSequence
  
  DeformBgLayer2:
 		moveq	#0,d0
-		move.b	($FFFFFE10).w,d0
+		move.b	CurrentZone, d0
 		add.w	d0,d0
 		move.w	Deform_Index(pc,d0.w),d0
 		jsr	Deform_Index(pc,d0.w)		; do background deformation now
-		move.w	($FFFFF704).w,($FFFFF616).w	; set plane A vs-ram
-		move.w	($FFFFF70C).w,($FFFFF618).w	; set plane B vs-ram
+		move.w	CamYpos, ($FFFFF616).w	; set plane A vs-ram
+		move.w	CamYpos2, ($FFFFF618).w	; set plane B vs-ram
 
 DeformBgLayer_Done:
 		rts

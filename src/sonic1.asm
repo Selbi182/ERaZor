@@ -1090,7 +1090,7 @@ PalCycle_Load:				; XREF: Demo; Level_MainLoop; End_MainLoop
 		bne.s	@nopalcycle		; if not, branch
 
 @dopalcycle:
-		bsr	PCL_Load		; do pal cycle
+		bra	PCL_Load		; do pal cycle
 @nopalcycle:
 		rts
 ; ---------------------------------------------------------------------------

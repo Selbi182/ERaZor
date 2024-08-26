@@ -352,11 +352,12 @@ BlackBarsConfigScreen_InitUI:
 	; Initial UI header
 	BBCS_EnterConsole a0
 	Console.SetXY #4, #7
-	Console.Write "Select the BLACK BARS mode that%<endl>"
-	Console.Write "looks best on your system!"
+	Console.Write "Select the BLACK BARS mode%<endl>"
+	Console.Write "that works best on your system!"
 
-	Console.SetXY #4, #20
-	Console.Write "%<pal2>Make sure both bars are visible.%<endl>"
+	Console.SetXY #4, #19
+	Console.Write "%<pal2>Make sure both bars are visible%<endl>"
+	Console.Write "%<pal2>and that there are no audio quirks.%<endl>"
 	Console.Write "%<pal2>When in doubt, pick option one."
 
 	BBCS_LeaveConsole a0

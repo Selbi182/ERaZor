@@ -70,24 +70,50 @@ StartLevel:
 
 Start_FirstGameMode:
 		move.b	#0,(GameMode).w		; set first game mode to Sega Screen
-		rts
-; ===========================================================================
 
-Exit_SegaScreen:
 		tst.b	(ResumeFlag).w		; is this the first time the game is being played?
-		beq.s	@first			; if yes, automatically show black bars screen
-		btst	#4,($FFFFF604).w	; was B held as we exited?
-		bne.s	@first			; if yes, show black bars screen again
-		move.b	#$1C,(GameMode).w	; set to Selbi splash screen
-		rts
-@first:
+		bne.s	@skip			; if not, skip black bars screen
+
+		; Emulator detection to autoskip the screen for known faulty behavior (primarily in Kega)
+		; Source: https://github.com/DevsArchive/genesis-emulator-detector
+		move.w	#1,VDP_Debug		; Write to the VDP debug register (for BlastEm detection)
+		move.w	VDP_Debug,d0		; Read VDP debug register
+		move.w	#0,VDP_Debug		; Reset VDP debug register
+		cmpi.w	#-1,d0			; Did it return -1?
+		beq.w	@skip			; If so, then Kega Fusion has been detected
+		cmpi.w	#$4E71,d0		; Did it return the NOP opcode?
+		beq.w	@skip			; If so, then Steam has been detected
+		cmpi.w	#1,d0			; Did it return what it was last written?
+		beq.w	@skip			; If so, then an old version of BlastEm has been detected
+
 		move.b	#$38,(GameMode).w	; set to Black Bars configuration screen
+@skip:
 		rts
 ; ===========================================================================
 
 Exit_BlackBarsScreen:
 		jsr	SRAM_SaveNow		; save selection
+
+@loop:
+		move.b	#4,VBlankRoutine
+		jsr	DelayProgram
+		addq.w	#2,BlackBars.Height	; grow black bars
+		cmpi.w	#224/2,BlackBars.Height	; did we fill up the full screen?
+		blo.s	@loop				; if not, branch
+		move.w	#224/2,BlackBars.Height	; did we fill up the full screen?
+		jsr	Pal_CutToBlack
+
+		move.b	#0,(GameMode).w		; set first game mode to Sega Screen
+		rts
+; ===========================================================================
+
+Exit_SegaScreen:
+		btst	#4,($FFFFF604).w	; was B held as we exited?
+		bne.s	@blackbarsscreen	; if yes, show black bars screen again
 		move.b	#$1C,(GameMode).w	; set to Selbi splash screen
+		rts
+@blackbarsscreen:
+		move.b	#$38,(GameMode).w	; set to Black Bars configuration screen
 		rts
 ; ===========================================================================
 
@@ -112,7 +138,7 @@ Exit_GameplayStyleScreen:
 
 		tst.b	(ResumeFlag).w		; is this the first time the game is being played?
 		beq.s	@firststart		; if yes, branch
-		
+
 		frantic				; was the screen exited with frantic enabled?
 		beq.s	@notfrantic		; if not, branch
 		tst.b	(Doors_Frantic).w	; have any frantic levels been beaten yet?

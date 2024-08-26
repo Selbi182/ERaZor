@@ -3722,6 +3722,7 @@ Level_MainLoop:
 		bsr	OscillateNumDo
 		bsr	ChangeRingFrame
 		bsr	SignpostArtLoad
+		jsr	GiantRingArtLoad
 		jsr	AnimatedArt_Update
 
 		tst.w	($FFFFFE02).w		; is the level set to restart?
@@ -42520,22 +42521,17 @@ Obj10:
 		include	"Modules/Animated Art.asm"
 
 ; ---------------------------------------------------------------------------
-; Animated pattern routine - giant ring
+; Subroutine to load giant ring art
 ; ---------------------------------------------------------------------------
 
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
-
-AniArt_GiantRing:			; XREF: AniArt_Load
+GiantRingArtLoad:
 		cmpi.w	#1,($FFFFF7BE).w	; are giant ring patterns set to be loaded for the first time?
 		beq.s	@loadgiantringart	; if yes, branch
 		rts
 
 @loadgiantringart:
-		VBlank_SetMusicOnly
-		lea	(PLC_GiantRing).l,a1
+		lea	PLC_GiantRing(pc), a1
 		jsr	LoadPLC_Direct
-		VBlank_UnsetMusicOnly
 		ori.w	#2,($FFFFF7BE).w		; make sure art doesn't get loaded again
 		rts
 ; ---------------------------------------------------------------------------
@@ -42545,7 +42541,7 @@ PLC_GiantRing:
 		dc.l ArtKospM_RingFlash
 		dc.w $8C40
 		dc.w -1
-; End of function AniArt_GiantRing
+; End of function GiantRingArtLoad
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------

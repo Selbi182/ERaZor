@@ -320,6 +320,19 @@ BlackBarsConfigScreen_GenerateSprites:
 ; Otherwise it will overwrite this screen's memory
 ; ---------------------------------------------------------------
 
+BBCS_EnterConsole:	macro scratchReg
+	move.l	usp, \scratchReg
+	move.l	\scratchReg, -(sp)
+	lea	BlackBarsConfig_ConsoleRAM, \scratchReg
+	move.l	\scratchReg, usp
+	endm
+
+BBCS_LeaveConsole:	macro scratchReg
+	move.l	(sp)+, \scratchReg
+	move.l	\scratchReg, usp
+	endm
+
+; ---------------------------------------------------------------
 BlackBarsConfigScreen_InitUI:
 	lea	VDP_Ctrl, a5
 	lea	-4(a5), a6
@@ -340,6 +353,15 @@ BlackBarsConfigScreen_InitUI:
 	lea	BlackBarsConfig_ConsoleRAM, a3		; a3 = console RAM
 	jsr	MDDBG__Console_InitShared
 
+	; Initial UI header
+	BBCS_EnterConsole a0
+	Console.SetXY #2, #8
+	Console.Write "Select Black bars mode that looks%<endl>the best on your system:"
+
+	Console.SetXY #2, #20
+	Console.Write "%<pal2>Make sure both top and bottom%<endl>bars are rendered and stable."
+	BBCS_LeaveConsole a0
+
 	bra	BlackBarsConfigScreen_RedrawUI
 
 ; ---------------------------------------------------------------
@@ -357,7 +379,7 @@ BlackBarsConfigScreen_InitUI:
 
 	dc.w	40				; number of characters per line
 	dc.w	40				; number of characters on the first line (meant to be the same as the above)
-	dc.w	(BlackBarsConfig_VRAM_Font/$20)-('!'-1)	; base font pattern (tile id for ASCII $00 + palette flags)
+	dc.w	$8000|(BlackBarsConfig_VRAM_Font/$20)-('!'-1)	; base font pattern (tile id for ASCII $00 + palette flags)
 	dc.w	$80				; size of screen row (in bytes)
 
 	dc.w	$2000/$20-1			; size of screen (in tiles - 1)
@@ -367,25 +389,22 @@ BlackBarsConfigScreen_InitUI:
 ; ---------------------------------------------------------------
 
 BlackBarsConfigScreen_RedrawUI:
-	move.l	usp, a0
-	move.l	a0, -(sp)
-	lea	BlackBarsConfig_ConsoleRAM, a0
-	move.l	a0, usp
+	BBCS_EnterConsole a0
 
 	Console.SetXY #2, #12
 
 	tst.b	BlackBars.HandlerId
 	bne.s	@1
-	Console.Write "%<pal0>> Emu Mode%<endl>"
-	Console.Write "%<pal2>  HW Mode"
+	Console.Write "%<pal0>> Emulator-Optimized%<endl>"
+	Console.Write "%<pal2>  Hardware-Optimized"
 	move.l	(sp)+, a0
 	move.l	a0, usp
 	rts
 
-@1:	Console.Write "%<pal2>  Emu Mode%<endl>"
-	Console.Write "%<pal0>> HW Mode"
-	move.l	(sp)+, a0
-	move.l	a0, usp
+@1:	Console.Write "%<pal2>  Emulator-Optimized%<endl>"
+	Console.Write "%<pal0>> Hardware-Optimized"
+
+	BBCS_LeaveConsole a0
 	rts
 
 ; ===============================================================

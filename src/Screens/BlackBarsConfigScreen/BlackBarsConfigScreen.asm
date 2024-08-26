@@ -87,9 +87,9 @@ BlackBarsConfigScreen:
 	jsr	BlackBarsConfigScreen_DeformBG
 	jsr	LevelRenderer_Update_BG
 
-	tst.b	Joypad|Press
-	bpl.s	@MainLoop
-	rts
+	andi.b	#A|B|C|Start,Joypad|Press
+	beq.s	@MainLoop
+	jmp	Exit_BlackBarsScreen
 
 ; ===============================================================
 ; ---------------------------------------------------------------
@@ -332,8 +332,8 @@ BlackBarsConfigScreen_InitUI:
 	jsr	MDDBG__Decomp1bpp		; decompress font (input: a0-a1/a6, uses: a0/d0-d4)
 
 	; Init variables
-	moveq	#0, d0
-	move.w	d0, BlackBars.HandlerId
+	;moveq	#0, d0
+	;move.w	d0, BlackBars.HandlerId
 
 	; Initialize console subsystem (MD Debugger)
 	lea	@ConsoleConfig(pc), a1			; a1 = console config

@@ -40,14 +40,14 @@ __DEBUG__: equ 1
 ; $302 - Star Agony Place
 ; $502 - Finalor Place
 	if def(__BENCHMARK__)=0
-QuickLevelSelect = 1
+QuickLevelSelect = 0
 QuickLevelSelect_ID = -1
 ; ------------------------------------------------------
-DebugModeDefault = 1
+DebugModeDefault = 0
 DebugSurviveNoRings = 1
 ; ------------------------------------------------------
-DoorsAlwaysOpen = 1
-LowBossHP = 1
+DoorsAlwaysOpen = 0
+LowBossHP = 0
 ; ------------------------------------------------------
 TestDisplayDeleteBugs = 0
 ; ======================================================
@@ -318,11 +318,6 @@ GameClrRAM:	move.l	d7,(a6)+
 	else
 		jsr	Start_FirstGameMode	; start default first game mode (Sega Screen)
 	endif
-
-	move.b	GameMode, -(sp)
-	move.b	#$38, GameMode
-	jsr	BlackBarsConfigScreen
-	move.b	(sp)+, GameMode
 
 	if def(__BENCHMARK__)
 		jsr	Options_SetDefaults
@@ -10715,7 +10710,7 @@ Obj1F_Timesup:
 		bset	#1,($FFFFD022).w
 		move.w	#-$200,($FFFFD010).w
 		move.w	#-$400,($FFFFD012).w
-		move.b	#1,($FFFFFF72).w
+		move.b	#1,($FFFFFF72).w		; prevent invulnerability frames
 
 		move.b	#$98,d0				; set boss music
 		jsr	PlaySound			; play it
@@ -22957,8 +22952,10 @@ Obj5D_Main:				; XREF: Obj5D_Index
 		ori.b	#4,obRender(a0)
 		move.b	#$10,obActWid(a0)
 		move.b	#4,obPriority(a0)
+
+		move.w	obX(a0),$34(a0)			; remember base X position for frantic boss
+
 		move.w	#$4000|($7400/$20),obGfx(a0)
-		move.w	obX(a0),$34(a0)
 		cmpi.b	#$18,(GameMode).w		; is screen mode ending sequence?
 		bne.s	Obj5D_Action			; if not, branch
 		move.w	#$0000|($7400/$20),obGfx(a0)	; alternate palette line
@@ -23713,8 +23710,9 @@ Obj5F_Explode:				; XREF: Obj5F_Index2
 		move.b	#$1A,($FFFFD01C).w
 		bset	#1,($FFFFD022).w
 		move.w	#-$200,($FFFFD010).w
-	;	subq.w	#1,($FFFFD008).w
 		move.w	#-$400,($FFFFD012).w
+		move.b	#1,($FFFFFF72).w		; prevent invulnerability frames
+
 		move.b	#$9B,d0				; set boss music
 		jsr	PlaySound			; play it
 		ori.b	#10,(CameraShake).w		; camera shaking
@@ -28403,6 +28401,9 @@ SPO_SlowPeelout:
 SPO_FastPeelout:
 		moveq	#0,d1			; clear d1
 		move.w	#$F00,d1		; set fast peelout speed
+		tst.b	($FFFFFE2E).w		; does Sonic have shoes?
+		beq.s	SPO_ChkUW		; if not, branch
+		move.w	#Sonic_TopSpeed_Shoes,d1 ; use even faster speed
 
 SPO_ChkUW:
 		btst	#6,obStatus(a0)		; is sonic underwater?
@@ -28518,13 +28519,14 @@ loc2_1AC8E:
 		moveq	#0,d0
 		move.b	$3A(a0),d0		; copy charge count
 		add.w	d0,d0			; double it
-		move.w	spdsh_norm(pc,d0.w),obInertia(a0) ; get normal speed
-		tst.b	($FFFFFE19).w		; is sonic super?
+		move.w	spdsh_norm(pc,d0.w),d1	; get normal speed
+		tst.b	($FFFFFE2E).w		; does Sonic have shoes?
 		beq.s	loc2_1ACD0		; if no, branch
-		move.w	spdsh_super(pc,d0.w),obInertia(a0) ; get super speed
+		move.w	spdsh_shoes(pc,d0.w),d1	; get shoes speed
 
 loc2_1ACD0:
-		move.w	obInertia(a0),d0		; get inertia
+		move.w	d1,obInertia(a0) 	; set new inertia
+		move.w	d1,d0			; get inertia
 		subi.w	#$800,d0		; subtract $800
 		add.w	d0,d0			; double it
 		andi.w	#$1F00,d0		; mask it against $1F00
@@ -28554,16 +28556,16 @@ spdsh_norm:
 		dc.w  $B80		; 7
 		dc.w  $C00		; 8
 
-spdsh_super:
-		dc.w  $B00		; 0
-		dc.w  $B80		; 1
-		dc.w  $C00		; 2
-		dc.w  $C80		; 3
-		dc.w  $D00		; 4
-		dc.w  $D80		; 5
+spdsh_shoes:
+		dc.w  $800		; 0
+		dc.w  $900		; 1
+		dc.w  $A00		; 2
+		dc.w  $B00		; 3
+		dc.w  $C00		; 4
+		dc.w  $D00		; 5
 		dc.w  $E00		; 6
-		dc.w  $E80		; 7
-		dc.w  $F00		; 8
+		dc.w  $F00		; 7
+		dc.w  $1000		; 8
 ; ===========================================================================
 
 loc2_1AD30:				; If still charging the dash...
@@ -29572,14 +29574,14 @@ S_H_NoKillCheck:
 		move.w	d0,obInertia(a0)
 		move.b	#0,obAnim(a0)
 		subq.b	#2,obRoutine(a0)
-		move.w	#0,$30(a0)		; set invin time to 0
-		tst.b	($FFFFFF72).w
-		beq.s	S_H_NoGHZBoss
-		clr.b	($FFFFFF72).w
-		rts
 
-S_H_NoGHZBoss:
-		move.w	#120,$30(a0)		; otherwise set invin time to two seconds
+		moveq	#2*60,d0		; set default invulnerable frames to two seconds
+		tst.b	($FFFFFF72).w		; is flag set to skip invulnerable frames? (Creabmeat boss intro)
+		beq.s	@regular		; if not, branch
+		moveq	#0,d0			; otherwise set invin time to zero seconds
+		clr.b	($FFFFFF72).w		; clear flag
+@regular:
+		move.w	d0,$30(a0)		; set new invuln time
 
 locret_13860:
 		rts

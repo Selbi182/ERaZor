@@ -74,6 +74,19 @@ Start_FirstGameMode:
 ; ===========================================================================
 
 Exit_SegaScreen:
+		tst.b	(ResumeFlag).w		; is this the first time the game is being played?
+		beq.s	@first			; if yes, automatically show black bars screen
+		btst	#4,($FFFFF604).w	; was B held as we exited?
+		bne.s	@first			; if yes, show black bars screen again
+		move.b	#$1C,(GameMode).w	; set to Selbi splash screen
+		rts
+@first:
+		move.b	#$38,(GameMode).w	; set to Black Bars configuration screen
+		rts
+; ===========================================================================
+
+Exit_BlackBarsScreen:
+		jsr	SRAM_SaveNow		; save selection
 		move.b	#$1C,(GameMode).w	; set to Selbi splash screen
 		rts
 ; ===========================================================================

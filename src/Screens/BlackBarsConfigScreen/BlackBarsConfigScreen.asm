@@ -344,10 +344,6 @@ BlackBarsConfigScreen_InitUI:
 	move.w	(a0)+, d4			; d4 = font size - 1
 	jsr	MDDBG__Decomp1bpp		; decompress font (input: a0-a1/a6, uses: a0/d0-d4)
 
-	; Init variables
-	;moveq	#0, d0
-	;move.w	d0, BlackBars.HandlerId
-
 	; Initialize console subsystem (MD Debugger)
 	lea	@ConsoleConfig(pc), a1			; a1 = console config
 	lea	BlackBarsConfig_ConsoleRAM, a3		; a3 = console RAM
@@ -355,11 +351,14 @@ BlackBarsConfigScreen_InitUI:
 
 	; Initial UI header
 	BBCS_EnterConsole a0
-	Console.SetXY #2, #8
-	Console.Write "Select Black bars mode that looks%<endl>the best on your system:"
+	Console.SetXY #4, #7
+	Console.Write "Select the BLACK BARS mode that%<endl>"
+	Console.Write "looks best on your system!"
 
-	Console.SetXY #2, #20
-	Console.Write "%<pal2>Make sure both top and bottom%<endl>bars are rendered and stable."
+	Console.SetXY #4, #20
+	Console.Write "%<pal2>Make sure both bars are visible.%<endl>"
+	Console.Write "%<pal2>When in doubt, pick option one."
+
 	BBCS_LeaveConsole a0
 
 	bra	BlackBarsConfigScreen_RedrawUI
@@ -391,18 +390,18 @@ BlackBarsConfigScreen_InitUI:
 BlackBarsConfigScreen_RedrawUI:
 	BBCS_EnterConsole a0
 
-	Console.SetXY #2, #12
+	Console.SetXY #6, #13
 
 	tst.b	BlackBars.HandlerId
 	bne.s	@1
-	Console.Write "%<pal0>> Emulator-Optimized%<endl>"
-	Console.Write "%<pal2>  Hardware-Optimized"
+	Console.Write "%<pal0>> Optimized for Emulators%<endl>%<endl>"
+	Console.Write "%<pal2>  Optimized for Real Hardware"
 	move.l	(sp)+, a0
 	move.l	a0, usp
 	rts
 
-@1:	Console.Write "%<pal2>  Emulator-Optimized%<endl>"
-	Console.Write "%<pal0>> Hardware-Optimized"
+@1:	Console.Write "%<pal2>  Optimized for Emulators%<endl>%<endl>"
+	Console.Write "%<pal0>> Optimized for Real Hardware"
 
 	BBCS_LeaveConsole a0
 	rts

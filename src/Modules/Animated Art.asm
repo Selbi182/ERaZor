@@ -12,9 +12,9 @@ AnimatedArt_Init:
 	move.l	d0, (a1)+
 	move.l	d0, (a1)+
 
-	; Setup animated art process pointers
+	; Setup animated art update pointer
 	move.b	CurrentZone, d0				; d0 = zone
-	lsl.w	#3, d0					; d9 = zone * 8
+	lsl.w	#3, d0					; d0 = zone * 8
 	lea	AniArt_RoutineTable(pc,d0), a0
 	movea.l	(a0)+, a1				; a1 = "initial draw" routine
 	move.l	(a0)+, AniArt_UpdateProc		; set "update" routine

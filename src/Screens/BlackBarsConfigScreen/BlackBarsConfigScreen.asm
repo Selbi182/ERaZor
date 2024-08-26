@@ -396,8 +396,8 @@ BlackBarsConfigScreen_RedrawUI:
 	bne.s	@1
 	Console.Write "%<pal0>> Optimized for Emulators%<endl>%<endl>"
 	Console.Write "%<pal2>  Optimized for Real Hardware"
-	move.l	(sp)+, a0
-	move.l	a0, usp
+
+	BBCS_LeaveConsole a0
 	rts
 
 @1:	Console.Write "%<pal2>  Optimized for Emulators%<endl>%<endl>"

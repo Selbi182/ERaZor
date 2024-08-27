@@ -36,6 +36,7 @@ Objects_End:		equ	$FFFFF000			;	End of Objects RAM
 SoundDriverRAM:		equ	$FFFFF000			;	SMPS RAM
 SoundDriverRAM_End:	equ	$FFFFF5C0			;	End of SMPS RAM
 
+VDPDebugPortSet:	equ	$FFFFF5CD			; b	Set if VDP Debug port was tampered with
 BlackBars.Handler:	equ	$FFFFF5CE			; w	Pointer to Black Bars handler routines (depending on `BlackBars.HandlerId`)
 *			equ	$FFFFF5D0			; b	"Signpost patterns have been loaded" flag
 *			equ	$FFFFF5D1			; b	Death flag
@@ -68,8 +69,7 @@ SMPS_PAL_Timer:		equ	$FFFFF608			; b	Timer for SMPS PAL optimization
 
 VBlankRoutine:		equ	$FFFFF62A			; b	VBlank routine id
 
-VDPDebugPortSet:	equ	$FFFFF640			; b	Set if VDP Debug port was tampered with
-*			equ	$FFFFF641			; b
+*			equ	$FFFFF640			; w	<<FREE>>
 *			equ	$FFFFF644			; w	<<FOR SALE>>
 
 PLC_RAM:		equ	$FFFFF680			;	PLC system variables (F680-F69E)

@@ -80,15 +80,16 @@ Start_FirstGameMode:
 		bne.s	@skip			; if not, go straight to Sega screen
 
 		; Emulator detection to autoskip the screen for known faulty behavior (primarily in Kega)
-		; Source: https://github.com/DevsArchive/genesis-emulator-detector
-		move.w	#1,VDP_Debug		; Write to the VDP debug register (for BlastEm detection)
-		move.w	VDP_Debug,d0		; Read VDP debug register
-		move.w	#0,VDP_Debug		; Reset VDP debug register
-		cmpi.w	#-1,d0			; Did it return -1?
+		; Inspired by: https://github.com/DevsArchive/genesis-emulator-detector
+		lea	VDP_Debug, a0
+		move.w	#1, (a0)		; Write to the VDP debug register (for BlastEm detection)
+		ori.b	#0, d0
+		move.w	(a0), d0		; Read VDP debug register
+		move.w	#0, (a0)		; Reset VDP debug register
+		ori.b	#0, d0
+		cmpi.w	#-1, d0			; Did it return -1?
 		beq.w	@skip			; If so, then Kega Fusion has been detected
-		cmpi.w	#$4E71,d0		; Did it return the NOP opcode?
-		beq.w	@skip			; If so, then Steam has been detected
-		cmpi.w	#1,d0			; Did it return what it was last written?
+		cmpi.w	#1, d0			; Did it return what it was last written?
 		beq.w	@skip			; If so, then an old version of BlastEm has been detected
 
 @blackbarsscreen:

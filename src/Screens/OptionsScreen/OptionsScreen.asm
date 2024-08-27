@@ -75,8 +75,8 @@ OptionsScreen:				; XREF: GameModeArray
 		lea	($FFFFD100).w,a0
 		move.b	#2,(a0)			; load ERaZor banner object
 		move.w	#$11E,obX(a0)		; set X-position
-		move.w	#$87,obScreenY(a0)	; set Y-position
-		bset	#7,obGfx(a0)		; otherwise make object high plane
+		move.w	#$83,obScreenY(a0)	; set Y-position
+		bset	#7,obGfx(a0)		; make object high plane
 		
 		jsr	ObjectsLoad
 		jsr	BuildSprites
@@ -154,7 +154,7 @@ Options_ContinueSetup:
 Options_FinishSetup:
 		bsr	CheckEnable_PlacePlacePlace
 
-		move.w	#19,($FFFFFF82).w	; set default selected entry to exit
+	;	move.w	#19,($FFFFFF82).w	; set default selected entry to exit
 		bsr	OptionsTextLoad		; load options text
 		display_enable
 		jsr	Pal_FadeTo
@@ -211,7 +211,7 @@ Options_HandleChange:
 
 		moveq	#0,d0			; make sure d0 is empty
 		move.w	($FFFFFF82).w,d0	; get current selection
-		subq.w	#3,d0			; first option starts at line 3
+		subq.w	#1,d0			; first option starts at line 1
 		move.w	OpHandle_Index(pc,d0.w),d0
 		jmp	OpHandle_Index(pc,d0.w)
 ; ===========================================================================
@@ -222,6 +222,7 @@ OpHandle_Index:	dc.w	Options_HandleGameplayStyle-OpHandle_Index
 		dc.w	Options_HandlePhotosensitive-OpHandle_Index
 		dc.w	Options_HandleCinematicMode-OpHandle_Index
 		dc.w	Options_HandleNonstopInhuman-OpHandle_Index
+		dc.w	Options_HandleBlackBarsConfig-OpHandle_Index
 		dc.w	Options_HandleDeleteSaveGame-OpHandle_Index
 		dc.w	Options_HandleExit-OpHandle_Index
 ; ===========================================================================
@@ -376,6 +377,23 @@ Options_HandleNonstopInhuman:
 		bra.w	Options_UpdateTextAfterChange_Off
 ; ---------------------------------------------------------------------------
 
+Options_HandleBlackBarsConfig:
+		move.b	($FFFFF605).w,d1	; get button presses
+	 	andi.b	#$FC,d1			; is left, right, A, B, C, or Start pressed?
+		beq.w	Options_Return		; if not, branch
+
+		btst	#6,d1			; is specifically A pressed?
+		bne.s	@quicktoggle		; if yes, quick toggle
+		moveq	#2,d0			; set to BlackBarsConfigScreen
+		jmp	Exit_OptionsScreen
+
+@quicktoggle:
+		bchg	#1,BlackBars.HandlerId	; toggle black bars mode
+		jsr	BlackBars.SetHandler
+		beq.w	Options_UpdateTextAfterChange_On
+		bra.w	Options_UpdateTextAfterChange_Off
+; ---------------------------------------------------------------------------
+
 Options_HandleDeleteSaveGame:
 		move.b	($FFFFF605).w,d1	; get button presses
 		andi.b	#$80,d1			; is Start pressed? (nothing else because of how delicate it is)
@@ -464,8 +482,6 @@ Options_UpdateTextAfterChange_NoSound:
 Options_Return:
 		bra.w	OptionsScreen_MainLoop	; return
 
-
-
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Subroutine to	change the selected option when pressing up or down
@@ -477,7 +493,7 @@ Options_UpDown:				; XREF: OptionsScreen_MainLoop
 		btst	#0,d1			; is up	pressed?
 		beq.s	Options_Down		; if not, check down
 		subq.w	#2,d0			; move up 1 selection
-		cmpi.w	#3,d0			; did we move to before the first option?
+		cmpi.w	#1,d0			; did we move to before the first option?
 		bge.s	Options_Refresh		; if not, branch
 		moveq	#19,d0			; if selection moves below 4, jump to selection 19 (exit)
 		bra.s	Options_Refresh		; branch
@@ -488,7 +504,7 @@ Options_Down:
 		addq.w	#2,d0			; move down 1 selection
 		cmpi.w	#19,d0			; did we move past the last option?
 		ble.s	Options_Refresh		; if not, branch
-		moveq	#3,d0			; if selection moves above 19, jump to selection 4 (first option)
+		moveq	#1,d0			; if selection moves above 19, jump to selection 1 (first option)
 
 Options_Refresh:
 		move.w	d0,($FFFFFF82).w	; set new selection
@@ -608,10 +624,10 @@ GetOptionsText:
 		moveq	#-1,d2				; force highlight
 		lea	(OpText_Header1).l,a2		; set text location
 		bsr.w	Options_Write			; write text
-		lea	(OpText_Header2).l,a2		; set text location
-		bsr.w	Options_Write			; write text
+	;	lea	(OpText_Header2).l,a2		; set text location
+	;	bsr.w	Options_Write			; write text
 
-		adda.w	#Options_LineLength*2,a1	; make two empty lines
+		adda.w	#Options_LineLength,a1		; make one empty line
 
 		moveq	#1,d2
 		lea	(OpText_GameplayStyle).l,a2	; set text location
@@ -620,7 +636,7 @@ GetOptionsText:
 		bsr.w	Options_Write			; write text
 
 		adda.w	#Options_LineLength,a1		; make one empty line
-		
+
 		moveq	#2,d2
 		lea	(OpText_Extended).l,a2		; set text location
 		bsr.w	Options_Write			; write text
@@ -680,6 +696,14 @@ GetOptionsText:
 		adda.w	#Options_LineLength,a1		; make one empty line
 
 		moveq	#8,d2
+		lea	(OpText_BlackBarsMode).l,a2	; set text location
+		bsr.w	Options_Write			; write text
+		bsr.w	GOT_ChkOption			; get black bars mode
+		bsr.w	Options_Write			; write text
+		
+		adda.w	#Options_LineLength,a1		; make one empty line
+
+		moveq	#9,d2
 		lea	(OpText_DeleteSRAM).l,a2	; set text location
 		bsr.w	Options_Write			; write text
 		bsr.w	GOT_ChkOption			; get state of deletion
@@ -687,7 +711,7 @@ GetOptionsText:
 
 		adda.w	#Options_LineLength*2,a1	; make two empty lines
 
-		moveq	#9,d2
+		moveq	#10,d2
 		lea	(OpText_Exit).l,a2		; set text location
 		bsr.w	Options_Write			; write text
 ; ---------------------------------------------------------------------------
@@ -800,6 +824,7 @@ GOT_Index:	dc.w	GOTCO_CasualFrantic-GOT_Index
 		dc.w	GOTCO_Photosensitive-GOT_Index
 		dc.w	GOTCO_CinematicMode-GOT_Index
 		dc.w	GOTCO_NonstopInhuman-GOT_Index
+		dc.w	GOTCO_BlackBarsConfig-Got_Index
 		dc.w	GOTCO_DeleteSaveGame-Got_Index
 ; ===========================================================================
 
@@ -872,6 +897,14 @@ GOTCO_NonstopInhuman:
 		beq.s	GOTCO_Return			; if not, branch
 		lea	(OpText_ON).l,a2		; otherwise use "ON" text
 		rts					; return
+; ---------------------------------------------------------------------------
+
+GOTCO_BlackBarsConfig:
+		lea	(OpText_Emu).l,a2		; use "EMULATOR" text
+		tst.b	BlackBars.HandlerId		; is real hardware selected?
+		beq.w	GOTCO_Return			; if not, branch
+		lea	(OpText_RealHW).l,a2		; otherwise use "HARDWARE" text
+		rts
 ; ---------------------------------------------------------------------------
 
 GOTCO_DeleteSaveGame:
@@ -947,6 +980,10 @@ OpText_NonstopInhuman_Locked:
 		dc.b	'??????? ??????? ????     ', $FF
 		even
 
+OpText_BlackBarsMode:
+		dc.b	'BLACK BARS MODE     ', $FF
+		even
+
 OpText_DeleteSRAM:
 		dc.b	'DELETE SAVE GAME         ', $FF
 		even
@@ -972,6 +1009,11 @@ OpText_Casual:	dc.b	'      CASUAL', $FF
 OpText_Frantic:	dc.b	'     FRANTIC', $FF
 		even
 OpText_Easter:	dc.b	'     TRUE-BS', $FF
+		even
+
+OpText_Emu:	dc.b	'EMULATOR', $FF
+		even
+OpText_RealHW:	dc.b	'HARDWARE', $FF
 		even
 
 OpText_CinOff:	dc.b	'        NONE', $FF

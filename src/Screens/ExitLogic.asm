@@ -71,7 +71,8 @@ StartLevel:
 Start_FirstGameMode:
 		move.b	#0,(GameMode).w		; set first game mode to Sega Screen
 
-		jsr	ReadJoypads		; read joypads
+		move.b	#2,VBlankRoutine	; set to function 2 in V-blank
+		jsr	DelayProgram		; do V-blank to read joypads
 		btst	#4,($FFFFF604).w	; was B held as we exited?
 		bne.s	@blackbarsscreen	; if yes, show black bars screen again
 
@@ -98,7 +99,12 @@ Start_FirstGameMode:
 ; ===========================================================================
 
 Exit_BlackBarsScreen:
-		jsr	SRAM_SaveNow		; save selection
+		tst.b	(ResumeFlag).w		; is this the first time the game is being played?
+		beq.s	@firststart		; if yes, branch
+		move.b	#$24,(GameMode).w	; we came from the options menu, return to it
+		rts
+
+@firststart:
 		move.b	#0,(GameMode).w		; set game mode to Sega Screen
 		rts
 ; ===========================================================================
@@ -108,6 +114,7 @@ Exit_SegaScreen:
 		bne.s	@blackbarsscreen	; if yes, show black bars screen again
 		move.b	#$1C,(GameMode).w	; set to Selbi splash screen
 		rts
+
 @blackbarsscreen:
 		move.b	#$38,(GameMode).w	; set to Black Bars configuration screen
 		rts
@@ -146,7 +153,8 @@ Exit_GameplayStyleScreen:
 		moveq	#$13,d0			; load warning text about revisiting the tutorial for frantic
 		jsr	Tutorial_DisplayHint	; VLADIK => Display hint
 @notfrantic:
-		bra.w	HubRing_Options		; we came from the options menu, return to it
+		move.b	#$24,(GameMode).w	; we came from the options menu, return to it
+		rts
 ; ---------------------------------------------------------------------------	
 
 @firststart:
@@ -176,15 +184,24 @@ Exit_GameplayStyleScreen:
 ; ===========================================================================
 
 Exit_OptionsScreen:
-		jsr	SRAM_SaveNow		; save our progress now
-		tst.b	d0			; d0 = 0 Uberhub / 1 GameplayStyleScreen
-		beq.w	ReturnToUberhub		; return to Uberhub if we exited the screen
+		; d0 = destination ID
+		cmpi.b	#1,d0			; is destination set to 1?
+		bne.s	@chkbars		; if not, branch
 		move.b	#$30,(GameMode).w	; set to GameplayStyleScreen if we chose that option
 		rts
+@chkbars:
+		cmpi.b	#2,d0			; is destination set to 2?
+		bne.s	@default		; if not, branch
+		move.b	#$38,(GameMode).w	; set to BlackBarsConfigScreen if we chose that option
+		rts
+
+@default:
+		jsr	SRAM_SaveNow		; save our progress now
+		bra.w	ReturnToUberhub		; return to Uberhub in all other cases
 ; ===========================================================================
 
 Exit_SoundTestScreen:
-		bra.w	ReturnToUberhub
+		bra.w	ReturnToUberhub		; return to Uberhub
 ; ===========================================================================
 
 Exit_ChapterScreen:
@@ -442,6 +459,7 @@ MiscRing_IntroEnd:
 		bra.w	RunStory
 
 HubRing_Options:
+		move.w	#19,($FFFFFF82).w	; set default selected entry to exit
 		move.b	#$24,(GameMode).w	; load options menu
 		rts
 

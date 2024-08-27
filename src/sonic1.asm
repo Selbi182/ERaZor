@@ -43,11 +43,11 @@ __DEBUG__: equ 1
 QuickLevelSelect = 0
 QuickLevelSelect_ID = -1
 ; ------------------------------------------------------
-DebugModeDefault = 0
+DebugModeDefault = 1
 DebugSurviveNoRings = 1
 ; ------------------------------------------------------
 DoorsAlwaysOpen = 0
-LowBossHP = 0
+LowBossHP = 1
 ; ------------------------------------------------------
 TestDisplayDeleteBugs = 0
 ; ======================================================
@@ -13114,7 +13114,9 @@ Obj2E_ChkShoes:
 		cmpi.w	#$502,($FFFFFE10).w	; are we in FP?
 		bne.s	@notfp			; if not, branch
 		move.w	#180*60,($FFFFD034).w	; give Sonic speed shoes for the escape (3 minutes, enough for the whole escape)
-		rts				; do nothing else
+		move.b	#1,(ScreenFuzz).w	; enable fuzz for the final moments
+		move.w	#$D3,d0			; play some sound
+		jmp	(PlaySound).l		; do nothing else
 
 @notfp:
 		move.w	#20*60,($FFFFD034).w ; time limit for the power-up (20 seconds)
@@ -42754,7 +42756,7 @@ Obj21_FZEscapeTimer:
 		moveq	#30,d0			; flash below 30 seconds in frantic (cause triple time)
 @0:		cmp.b	($FFFFFE24).w,d0	; less than X seconds left?
 		blo.s	@noflash		; if not, branch
-		move.b	#1,(ScreenFuzz).w	; enable fuzz for the final moments
+	;	move.b	#1,(ScreenFuzz).w	; enable fuzz for the final moments
 		move.w	#$06CA,obGfx(a0)	; use palette line 1
 		ori.b	#1,($FFFFFE1E).w 	; update time counter
 		btst	#2,($FFFFFE05).w	; change the time counter palette every X frames

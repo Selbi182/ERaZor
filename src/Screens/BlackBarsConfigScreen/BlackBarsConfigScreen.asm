@@ -57,7 +57,7 @@ BlackBarsConfigScreen:
 	jsr	PalLoad1
 
 	; Init level
-	move.w	#$0500, CurrentLevel			; set level to SBZ
+	move.w	#$0501, CurrentLevel			; set level to SBZ
 	jsr	BlackBarsConfigScreen_LoadLevel
 	jsr	BlackBarsConfigScreen_InitCamera
 	jsr	BlackBarsConfigScreen_GenerateSprites
@@ -158,8 +158,8 @@ BlackBarsConfigScreen_LoadLevel:
 	lea 	ChunksArray, a1			; RAM address for 256x256 mappings
 	jsr 	KosPlusDec
 
-	; Load level layout
-	jsr	LevelLayoutLoad
+	; Load level layout (BG only)
+	jsr	LevelLayoutLoad_BG
 
 	; Load level palette
 	addq.w	#2, a2

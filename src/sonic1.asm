@@ -3294,7 +3294,7 @@ Level:					; XREF: GameModeArray
 		endr
 		VBlank_UnsetMusicOnly
 
-	;	jsr	ClearVRAM	; only comment this in for testing, never in prod!
+		jsr	ClearVRAM	; only comment this in for testing, never in prod!
 
 		cmpi.w	#$001,($FFFFFE10).w
 		beq.s	@notitlecardart
@@ -4320,8 +4320,8 @@ CinematicScreenFuzz:
 		beq.w	CinematicScreenFuzz_End	; if the result is zero, camera didn't move at all
 
 		lea	(LineLengths).l,a2	; load line lengths address to a2
-		cmpi.b	#-2,($FFFFF73A).w		; is camera moving right?
-		bge.s	@noneg			; if not, branch
+		tst.b	($FFFFF73A).w		; is camera moving right?
+		bmi.s	@noneg			; if not, branch
 		lea	(LineLengths_Neg).l,a2	; load negated line lengths address to a2
 @noneg:
 		cmpi.b	#$F,d3			; is result super hecking fast?
@@ -4337,6 +4337,7 @@ CinematicScreenFuzz:
 		add.w	d4,d4			; double for word addressing mode
 		move.w	(a2,d4.w),d4		; get actual line length value from LUT
 		add.w	d4,(a1)+		; store new position (FG)
+		asr.w	#1,d4			; half intensity for background
 		add.w	d4,(a1)+		; store new position (BG)	
 		dbf	d1,@loop		; loop
 
@@ -4347,13 +4348,13 @@ CinematicScreenFuzz_End:
 ; ---------------------------------------------------------------------------
 LineLengths:
 		dc.w	0
+		dc.w	0
+		dc.w	1
 		dc.w	1
 		dc.w	1
 		dc.w	2
 		dc.w	3
-		dc.w	4
-		dc.w	4
-		dc.w	5		
+		dc.w	4		
 		dc.w	5
 		dc.w	6
 		dc.w	7
@@ -4365,13 +4366,13 @@ LineLengths:
 ; ---------------------------------------------------------------------------
 LineLengths_Neg:
 		dc.w	-0
+		dc.w	-0
+		dc.w	-1
 		dc.w	-1
 		dc.w	-1
 		dc.w	-2
 		dc.w	-3
-		dc.w	-4
-		dc.w	-4
-		dc.w	-5
+		dc.w	-4		
 		dc.w	-5
 		dc.w	-6
 		dc.w	-7
@@ -6749,7 +6750,17 @@ Resize_SYZx:	dc.w Resize_SYZ1-Resize_SYZx
 ; Resize_Uberhub:
 Resize_SYZ1:
 		move.w	#$21C,($FFFFF726).w	; default boundary bottom
-		
+	
+		cmpi.w	#$E0,($FFFFD00C).w	; are we at the end ring?
+		bhs.s	@noend			; if not, branch
+		cmpi.w	#$1700,($FFFFD008).w	; are we at the end ring?
+		blo.s	@noend			; if not, branch
+		cmpi.w	#$19F0,($FFFFD008).w	; are we at the end ring?
+		bhs.s	@noend			; if not, branch
+		move.w	#0,($FFFFF726).w	; boundary bottom in end section
+		rts
+
+@noend:
 		tst.b	($FFFFFFA5).w		; entered the blackout area?
 		beq.s	@noblackout		; if not, branch
 		cmpi.w	#$180,($FFFFD00C).w	; has Sonic left the tube again?
@@ -19105,7 +19116,7 @@ Map_obj46:
 ; Object 12 - Progress emblems/trophies in Uberhub (SYZ)
 ; ---------------------------------------------------------------------------
 EmblemGfx_Casual  = $6000|($6C00/$20)
-EmblemGfx_Frantic = $6000|($7A00/$20)
+EmblemGfx_Frantic = $6000|($7880/$20)
 ; ---------------------------------------------------------------------------
 
 Obj12:					; XREF: Obj_Index
@@ -19240,7 +19251,7 @@ Obj47_Index:	dc.w Obj47_Main-Obj47_Index
 Obj47_Main:				; XREF: Obj47_Index
 		addq.b	#2,obRoutine(a0)
 		move.l	#Map_obj47,obMap(a0)
-		move.w	#$380,obGfx(a0)
+		move.w	#$8800/$20,obGfx(a0)
 		move.b	#4,obRender(a0)
 		move.b	#$10,obActWid(a0)
 		move.b	#1,obPriority(a0)
@@ -26398,7 +26409,7 @@ Obj07_Init:
 		move.w	#$BA00/$20,obGfx(a0)
 @notend:	cmpi.w	#$400,d0
 		bne.s	Obj07_Animate
-		move.w	#$8800/$20,obGfx(a0)
+		move.w	#$8500/$20,obGfx(a0)
 ; ---------------------------------------------------------------------------
 
 Obj07_Animate:
@@ -44281,12 +44292,14 @@ PLC_SYZ:
 		dc.l ArtKospM_SYZEmblemsCasual	; SYZ casual progression emblems
 		dc.w $6C00
 		dc.l ArtKospM_SYZEmblemsFrantic	; SYZ frantic progression emblems
-		dc.w $7A00
+		dc.w $7880
+		dc.l ArtKospM_Bumper		; bumper
+		dc.w $8800
 		dc.w -1
 
 PLC_SYZ2:
 		dc.l ArtKospM_OkCool		; ok cool
-		dc.w $8800
+		dc.w $8500
 		dc.l ArtKospM_BigRing		; big rings
 		dc.w $8E00
 		dc.l ArtKospM_RingFlash		; ring flash

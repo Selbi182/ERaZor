@@ -71,8 +71,12 @@ StartLevel:
 Start_FirstGameMode:
 		move.b	#0,(GameMode).w		; set first game mode to Sega Screen
 
+		jsr	ReadJoypads		; read joypads
+		btst	#4,($FFFFF604).w	; was B held as we exited?
+		bne.s	@blackbarsscreen	; if yes, show black bars screen again
+
 		tst.b	(ResumeFlag).w		; is this the first time the game is being played?
-		bne.s	@skip			; if not, skip black bars screen
+		bne.s	@skip			; if not, go straight to Sega screen
 
 		; Emulator detection to autoskip the screen for known faulty behavior (primarily in Kega)
 		; Source: https://github.com/DevsArchive/genesis-emulator-detector
@@ -86,24 +90,16 @@ Start_FirstGameMode:
 		cmpi.w	#1,d0			; Did it return what it was last written?
 		beq.w	@skip			; If so, then an old version of BlastEm has been detected
 
+@blackbarsscreen:
 		move.b	#$38,(GameMode).w	; set to Black Bars configuration screen
+
 @skip:
 		rts
 ; ===========================================================================
 
 Exit_BlackBarsScreen:
 		jsr	SRAM_SaveNow		; save selection
-
-@loop:
-		move.b	#4,VBlankRoutine
-		jsr	DelayProgram
-		addq.w	#2,BlackBars.Height	; grow black bars
-		cmpi.w	#224/2,BlackBars.Height	; did we fill up the full screen?
-		blo.s	@loop				; if not, branch
-		move.w	#224/2,BlackBars.Height	; did we fill up the full screen?
-		jsr	Pal_CutToBlack
-
-		move.b	#0,(GameMode).w		; set first game mode to Sega Screen
+		move.b	#0,(GameMode).w		; set game mode to Sega Screen
 		rts
 ; ===========================================================================
 

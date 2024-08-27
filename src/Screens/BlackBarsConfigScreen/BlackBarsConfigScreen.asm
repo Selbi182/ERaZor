@@ -12,6 +12,7 @@ BlackBarsConfig_ConsoleRAM:		equ	LevelLayout_FG		; borrow FG layout RAM
 BlackBarsConfig_SelectedItemId:		equ	LevelLayout_FG+$40	; .b
 BlackBarsConfig_RedrawUI:		equ	LevelLayout_FG+$41	; .b
 BlackBarsConfig_JoypadHeldTimers:	equ	LevelLayout_FG+$42
+BlackBarsConfig_Exiting:		equ	LevelLayout_FG+$43
 
 ; -----------------------------------------------------------------------------
 BlackBarsConfigScreen:
@@ -65,6 +66,7 @@ BlackBarsConfigScreen:
 	; Init screen
 	move.w	#32, BlackBars.Height
 	jsr	BlackBarsConfigScreen_InitUI
+	move.b	#0,BlackBarsConfig_Exiting
 
 	VBlank_UnsetMusicOnly
 	display_enable
@@ -78,7 +80,6 @@ BlackBarsConfigScreen:
 	jsr	DelayProgram
 
 	jsr	RandomNumber			; better RNG please
-	jsr	BlackBarsConfigScreen_HandleUI
 	jsr	BlackBarsConfigScreen_MoveCamera
 	jsr	ObjectsLoad
 	jsr	BuildSprites
@@ -87,9 +88,44 @@ BlackBarsConfigScreen:
 	jsr	BlackBarsConfigScreen_DeformBG
 	jsr	LevelRenderer_Update_BG
 
-	andi.b	#A|B|C|Start,Joypad|Press
+	tst.b	BlackBarsConfig_Exiting		; is exiting flag set?
+	bne.s	@exiting			; if yes, ignore button presses
+
+	; toggle selection on up/down
+	moveq	#0,d0
+	move.b	Joypad|Press,d0
+	andi.b	#Up|Down, d0
+	bne.s	@toggle
+
+	; quit screen on other button press
+	move.b	Joypad|Press,d0
+	andi.b	#A|B|C|Start,d0
 	beq.s	@MainLoop
-	jmp	Exit_BlackBarsScreen
+	move.b	#1,BlackBarsConfig_Exiting
+; ---------------------------------------------------------------
+
+@exiting:
+	cmpi.w	#224/2,BlackBars.Height		; did we fill up the full screen?
+	bhs.s	@exit				; if yes, branch
+	addq.w	#4,BlackBars.Height		; grow black bars
+	bra.s	@MainLoop			; loop
+; ===============================================================
+
+@exit:
+	jsr	Pal_CutToBlack			; fill remaining palette to black for a smooth transition
+	move.w	#0,BlackBars.Height		; reset black bars
+	jmp	Exit_BlackBarsScreen		; exit to Sega screen
+; ===============================================================
+
+@toggle:
+	bchg	#1, BlackBars.HandlerId		; toggle selected option
+	jsr	BlackBars.SetHandler
+	move.l	#BlackBarsConfigScreen_RedrawUI, VBlankCallback	; defer redraw to VInt
+	bra.w	@MainLoop
+
+ ; ---------------------------------------------------------------
+; ===============================================================
+
 
 ; ===============================================================
 ; ---------------------------------------------------------------
@@ -144,7 +180,7 @@ BlackBarsConfigScreen_InitCamera:
 	jsr	BgScrollSpeed		; IN: d0, d1
 	moveq	#0, d2
 	move.l	d2, CamXpos3
-	move.l	#$4C000, CamYpos3
+	move.l	#$40000/4, CamYpos3
 	; fallthrough
 
 ; ---------------------------------------------------------------
@@ -174,12 +210,12 @@ BlackBarsConfigScreen_MoveCamera:
 	move.l	CamXpos3, d0
 	add.l	d0, CamXpos2
 	move.l	CamYpos3, d1
-;	add.l	d1, CamYpos2
+	add.l	d1, CamYpos2
 
 	add.l	d0, d0
 	add.l	d1, d1
 	add.l	d0, CamXpos
-;	add.l	d1, CamYpos
+	add.l	d1, CamYpos
 
 	cmpi.w	#$400+$100, CamXpos2
 	blt.s	@j0
@@ -350,19 +386,7 @@ BlackBarsConfigScreen_InitUI:
 	jsr	MDDBG__Console_InitShared
 
 	; Initial UI header
-	BBCS_EnterConsole a0
-	Console.SetXY #4, #7
-	Console.Write "Select the BLACK BARS mode%<endl>"
-	Console.Write "that works best on your system!"
-
-	Console.SetXY #4, #19
-	Console.Write "%<pal2>Make sure both bars are visible%<endl>"
-	Console.Write "%<pal2>and that there are no audio quirks.%<endl>"
-	Console.Write "%<pal2>When in doubt, pick option one."
-
-	BBCS_LeaveConsole a0
-
-	bra	BlackBarsConfigScreen_RedrawUI
+	bra	BlackBarsConfigScreen_WriteText
 
 ; ---------------------------------------------------------------
 @ArtDecodeTable:
@@ -388,37 +412,38 @@ BlackBarsConfigScreen_InitUI:
 ; Redraws screen UI
 ; ---------------------------------------------------------------
 
+BlackBarsConfigScreen_WriteText:
+	BBCS_EnterConsole a0
+
+	Console.SetXY #4, #6
+	Console.Write "   Select the BLACK BARS mode%<endl>%<endl>"
+	Console.Write "that works best for your system!"
+
+	Console.SetXY #4, #19
+	Console.Write "%<pal1> Make sure both bars are there.%<endl>%<endl>"
+	Console.Write "%<pal1>When in doubt, go with Emulators."
+
+	BBCS_LeaveConsole a0
+	; fallthrough
+; ---------------------------------------------------------------
+
 BlackBarsConfigScreen_RedrawUI:
 	BBCS_EnterConsole a0
 
 	Console.SetXY #6, #13
 
-	tst.b	BlackBars.HandlerId
-	bne.s	@1
+	tst.b	BlackBars.HandlerId	; is real hardware selected?
+	bne.s	@realhardware
 	Console.Write "%<pal0>> Optimized for Emulators%<endl>%<endl>"
 	Console.Write "%<pal2>  Optimized for Real Hardware"
-
-	BBCS_LeaveConsole a0
-	rts
-
-@1:	Console.Write "%<pal2>  Optimized for Emulators%<endl>%<endl>"
+	bra.s	@leave
+@realhardware:
+	Console.Write "%<pal2>  Optimized for Emulators%<endl>%<endl>"
 	Console.Write "%<pal0>> Optimized for Real Hardware"
 
+@leave:
 	BBCS_LeaveConsole a0
 	rts
 
+; ---------------------------------------------------------------
 ; ===============================================================
-; ---------------------------------------------------------------
-; Handle screen UI
-; ---------------------------------------------------------------
-
-BlackBarsConfigScreen_HandleUI:
-	moveq	#Up|Down, d0
-	and.b	Joypad|Press, d0
-	beq.s	@Done
-
-	bchg	#1, BlackBars.HandlerId
-	jsr	BlackBars.SetHandler
-
-	move.l	#BlackBarsConfigScreen_RedrawUI, VBlankCallback	; defer redraw to VInt
-@Done:	rts

@@ -57,7 +57,7 @@ BlackBarsConfigScreen:
 	jsr	PalLoad1
 
 	; Init level
-	move.w	#$0501, CurrentLevel			; set level to SBZ
+	move.w	#$200, CurrentLevel			; set level to MZ
 	jsr	BlackBarsConfigScreen_LoadLevel
 	jsr	BlackBarsConfigScreen_InitCamera
 	jsr	BlackBarsConfigScreen_GenerateSprites
@@ -174,7 +174,7 @@ BlackBarsConfigScreen_LoadLevel:
 
 BlackBarsConfigScreen_InitCamera:
 	move.w	#$0000, d1		; X
-	move.w	#$0300, d0		; Y
+	move.w	#$0340, d0		; Y
 	move.w	d1, CamXpos
 	move.w	d0, CamYpos
 	jsr	BgScrollSpeed		; IN: d0, d1
@@ -217,7 +217,7 @@ BlackBarsConfigScreen_MoveCamera:
 	add.l	d0, CamXpos
 	add.l	d1, CamYpos
 
-	cmpi.w	#$400+$100, CamXpos2
+	cmpi.w	#$400+$200, CamXpos2
 	blt.s	@j0
 	cmpi.l	#-$4C000/@speed_divider, CamXpos3
 	ble.s	@y
@@ -225,21 +225,21 @@ BlackBarsConfigScreen_MoveCamera:
 	bra.s	@y
 	rts
 
-@j0:	cmpi.w	#$100, CamXpos2
+@j0:	cmpi.w	#$300, CamXpos2
 	bgt.s	@j1
 	cmpi.l	#$4C000/@speed_divider, CamXpos3
 	bge.s	@y
 	add.l	#$C00/@speed_divider, CamXpos3
 @j1:
 
-@y:	cmpi.w	#$200+$100, CamYpos2
+@y:	cmpi.w	#$200+$200, CamYpos2
 	blt.s	@j2
 	cmpi.l	#-$4C000/@speed_divider, CamYpos3
 	ble.s	@ret
 	sub.l	#$1C00/@speed_divider, CamYpos3
 @ret:	rts
 
-@j2:	cmpi.w	#$100, CamYpos2
+@j2:	cmpi.w	#$300, CamYpos2
 	bgt.s	@j3
 	cmpi.l	#$4C000/@speed_divider, CamYpos3
 	bge.s	@ret
@@ -283,7 +283,7 @@ BlackBarsConfigScreen_GenerateSprites:
 ; ---------------------------------------------------------------
 @Obj_Ring:
 	move.l	#Map_obj4B,obMap(a0)
-	move.w	#$2000|($5600/$20),obGfx(a0)
+	move.w	#$2000|($A200/$20),obGfx(a0)
 	ori.b	#4,obRender(a0)
 	move.b	#$60,obActWid(a0)
 	move.b	#4,obPriority(a0)

@@ -30,15 +30,11 @@ BackgroundEffects_Setup:
 
 ; must called every frame from the respective game mode's main loop
 BackgroundEffects_Update:
-		VBlank_SetMusicOnly
-
 		move.l	a2,-(sp)
 		bsr	BackgroundEffects_PalCycle
 		bsr	BackgroundEffects_Deformation
 		bsr	BackgroundEffects_VScroll
 		move.l	(sp)+,a2
-
-		VBlank_UnsetMusicOnly
 		rts
 ; ===========================================================================
 
@@ -224,15 +220,9 @@ BackgroundEffects_Deformation2:
 
 ; V-Scroll
 BackgroundEffects_VScroll:
-		lea	($C00000).l,a0			; init VDP data port in a0
-		move.l	#$40000010,4(a0)		; set VDP control port to VSRAM mode and start at 00
-		move.w	#(320/8)-1,d0			; do it for all 40 double-tiles (320 width = 80 tiles at 8 pixels)
-@vScroll_loop:	moveq	#0,d1
-		move.w	($FFFFFE0E).w,d1
-		lsl.w	#1,d1
-		swap	d1
-		move.l	d1,(a0)				; dump art to VSRAM
-		dbf	d0,@vScroll_loop		; repeat until all lines are done
+		move.w	($FFFFFE0E).w, d1
+		add.w	d1, d1
+		move.w	d1, $FFFFF618			; set VScroll on Plane B
 		rts
 ; ---------------------------------------------------------------------------
 ; ===========================================================================

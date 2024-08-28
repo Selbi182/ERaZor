@@ -5,16 +5,18 @@ Options_Blank = $29 ; blank character, high priority
 OptionsBuffer equ $FFFFC900 ; $300 bytes
 DeleteCounter equ $FFFFFF9C
 CinematicIndex equ $FFFFFF9D
-DeleteCounts = 3
+DeleteCounts = 5
 
 Options_VRAM = $E570
 Options_VRAM_Red = $C570
-Options_VDP = $60080003
+Options_VDP = $5F840003
 
-Options_LineCount = 22
-Options_LineLength = 28
+Options_LineCount = 24
+Options_LineLength = 32
 Options_Padding = 2
 Options_LineLengthTotal = Options_LineLength + (Options_Padding * 2)
+
+Options_DefaultSelect = 1
 ; ---------------------------------------------------------------------------
 ; All options are kept in a single byte to save space (it's all flags anyway)
 ; RAM location: $FFFFFF92
@@ -75,7 +77,7 @@ OptionsScreen:				; XREF: GameModeArray
 		lea	($FFFFD100).w,a0
 		move.b	#2,(a0)			; load ERaZor banner object
 		move.w	#$11E,obX(a0)		; set X-position
-		move.w	#$83,obScreenY(a0)	; set Y-position
+		move.w	#$7F,obScreenY(a0)	; set Y-position
 		bset	#7,obGfx(a0)		; make object high plane
 		
 		jsr	ObjectsLoad
@@ -151,10 +153,13 @@ Options_ContinueSetup:
 		addq.b	#2,d0			; if 2 to index 
 @1:		move.b	d0,CinematicIndex	; write new index
 
+		tst.w	($FFFFFF82).w		; was an entry previously selected?
+		bne.s	Options_FinishSetup	; if yes, branch
+		move.w	#Options_DefaultSelect,($FFFFFF82).w ; otherwise, reset default selected entry
+
 Options_FinishSetup:
 		bsr	CheckEnable_PlacePlacePlace
 
-	;	move.w	#19,($FFFFFF82).w	; set default selected entry to exit
 		bsr	OptionsTextLoad		; load options text
 		display_enable
 		jsr	Pal_FadeTo
@@ -208,6 +213,7 @@ OptionsScreen_MainLoop:
 Options_HandleChange:
 		tst.b	($FFFFF605).w		; was anything at all pressed this frame?
 		beq.s	OptionsScreen_MainLoop	; if not, branch
+		bmi.w	Options_Exit		; if start was pressed, exit options menu
 
 		moveq	#0,d0			; make sure d0 is empty
 		move.w	($FFFFFF82).w,d0	; get current selection
@@ -221,9 +227,10 @@ OpHandle_Index:	dc.w	Options_HandleGameplayStyle-OpHandle_Index
 		dc.w	Options_HandleStoryTextScreens-OpHandle_Index
 		dc.w	Options_HandlePhotosensitive-OpHandle_Index
 		dc.w	Options_HandleCinematicMode-OpHandle_Index
+		dc.w	Options_HandleMotionBlur-OpHandle_Index
 		dc.w	Options_HandleNonstopInhuman-OpHandle_Index
-		dc.w	Options_HandleBlackBarsConfig-OpHandle_Index
 		dc.w	Options_HandleDeleteSaveGame-OpHandle_Index
+		dc.w	Options_HandleBlackBarsConfig-OpHandle_Index
 		dc.w	Options_HandleExit-OpHandle_Index
 ; ===========================================================================
 
@@ -353,6 +360,28 @@ Options_CinematicBits:
 		even
 ; ---------------------------------------------------------------------------
 
+Options_HandleMotionBlur:
+		move.b	($FFFFF605).w,d1	; get button presses
+		andi.b	#$FC,d1			; is left, right, A, B, C, or Start pressed?
+		beq.w	Options_Return		; if not, branch
+
+		tst.w	($FFFFFFFA).w		; is debug mode enabled?
+		beq.s	@nodebugunlock		; if not, branch
+		cmpi.b	#$70,($FFFFF604).w	; is exactly ABC held?
+		bne.s	@nodebugunlock		; if not, branch
+		jsr	Toggle_FranticBeaten	; toggle frantic beaten state to toggle the unlock for motion blur
+		clr.b	(ScreenFuzz).w		; make sure option doesn't stay accidentally enabled
+		bra.w	Options_UpdateTextAfterChange_NoSound
+
+@nodebugunlock:
+		jsr	Check_AllLevelsBeaten_Frantic	; has the player beaten all levels in frantic?
+		beq.w	Options_Disallowed	; if not, branch
+		
+		bchg	#4,(ScreenFuzz).w	; toggle motion blur (not saved to SRAM!)
+		beq.w	Options_UpdateTextAfterChange_On
+		bra.w	Options_UpdateTextAfterChange_Off
+; ---------------------------------------------------------------------------
+
 Options_HandleNonstopInhuman:
 		move.b	($FFFFF605).w,d1	; get button presses
 		andi.b	#$FC,d1			; is left, right, A, B, C, or Start pressed?
@@ -396,7 +425,7 @@ Options_HandleBlackBarsConfig:
 
 Options_HandleDeleteSaveGame:
 		move.b	($FFFFF605).w,d1	; get button presses
-		andi.b	#$80,d1			; is Start pressed? (nothing else because of how delicate it is)
+		andi.b	#$FC,d1			; is left, right, A, B, C, or Start pressed?
 		beq.w	Options_Return		; if not, return
 
 		subq.b	#1,(DeleteCounter).w	; sub one from delete counter
@@ -550,7 +579,7 @@ blankline macro lines
 OptionsTextLoad:				; XREF: TitleScreen
 		bsr	GetOptionsText
 
-		lea	($FFFFC900).w,a1	; get preloaded text buffer	
+		lea	(OptionsBuffer).w,a1	; get preloaded text buffer	
 		lea	($C00000).l,a6
 		move.l	#Options_VDP,d4		; screen position (text)
 
@@ -618,7 +647,7 @@ OWL_WriteNoHighlight:				; XREF: Options_WriteLine
 ; ---------------------------------------------------------------------------
 
 GetOptionsText:
-		lea	($FFFFC900).w,a1		; set destination
+		lea	(OptionsBuffer).w,a1		; set destination
 		moveq	#0,d1				; use $FF as ending of the list
 
 		moveq	#-1,d2				; force highlight
@@ -677,12 +706,25 @@ GetOptionsText:
 @basegamenotbeaten:
 		movea.l	d6,a2				; set text location
 		bsr.w	Options_Write			; write text
+		bsr.w	GOT_ChkOption			; write current selection
+		bsr.w	Options_Write			; write text
+
+		adda.w	#Options_LineLength,a1		; make one empty line
+
+		moveq	#7,d2
+		move.l	#OpText_MotionBlur_Locked,d6	; set motion blur location	
+		jsr	Check_AllLevelsBeaten_Frantic	; has the player beaten base game in frantic?
+		beq.s	@franticnotbeaten		; if not, branch
+		move.l	#OpText_MotionBlur,d6		; set unlocked text location
+@franticnotbeaten:
+		movea.l	d6,a2				; set text location
+		bsr.w	Options_Write			; write text
 		bsr.w	GOT_ChkOption			; check if option is ON or OFF
 		bsr.w	Options_Write			; write text
 
 		adda.w	#Options_LineLength,a1		; make one empty line
-		
-		moveq	#7,d2
+
+		moveq	#8,d2
 		move.l	#OpText_NonstopInhuman_Locked,d6; set locked text location	
 		jsr	Check_BlackoutBeaten		; has the player specifically beaten the blackout challenge?
 		beq.s	@blackoutchallengenotbeaten	; if not, branch
@@ -695,34 +737,33 @@ GetOptionsText:
 
 		adda.w	#Options_LineLength,a1		; make one empty line
 
-		moveq	#8,d2
+		moveq	#9,d2
+		lea	(OpText_DeleteSRAM).l,a2	; set text location
+		bsr.w	Options_Write			; write text
+		bsr.w	GOT_ChkOption			; get and write state of deletion
+
+		adda.w	#Options_LineLength,a1		; make one empty line
+
+		moveq	#10,d2
 		lea	(OpText_BlackBarsMode).l,a2	; set text location
 		bsr.w	Options_Write			; write text
 		bsr.w	GOT_ChkOption			; get black bars mode
 		bsr.w	Options_Write			; write text
-		
-		adda.w	#Options_LineLength,a1		; make one empty line
 
-		moveq	#9,d2
-		lea	(OpText_DeleteSRAM).l,a2	; set text location
-		bsr.w	Options_Write			; write text
-		bsr.w	GOT_ChkOption			; get state of deletion
+		; bottom stuff
+		adda.w	#Options_LineLength,a1		; make two empty lines
+		moveq	#-1,d2				; force highlight
+		lea	(OpText_Header1).l,a2		; set text location
 		bsr.w	Options_Write			; write text
 
-		adda.w	#Options_LineLength*2,a1	; make two empty lines
-
-		moveq	#10,d2
+		moveq	#11,d2
 		lea	(OpText_Exit).l,a2		; set text location
 		bsr.w	Options_Write			; write text
 ; ---------------------------------------------------------------------------
 
 		; make currently selected line red
-		lea	($FFFFC900+Options_LineLength).w,a1	; set location
+		lea	(OptionsBuffer+Options_LineLength).w,a1	; set location
 		move.w	($FFFFFF82).w,d5			; get current selection
-		cmpi.w	#19,d5					; are we on the exit line?
-		bne.s	@0					; if not, branch
-		addq.w	#1,d5					; adjust for exit line
-@0:
 		bsr.s	Options_HighlightLine			; apply highlight
 		rts						; return
 ; ===========================================================================
@@ -767,6 +808,15 @@ OW_NotFF:
 		bra.s	OW_DoWrite		; skip
 
 OW_NotSpace:
+		cmpi.b	#'1',d0			; is current character part of the Start button?
+		blo.s	OW_NotStart		; if not, branch
+		cmpi.b	#'5',d0			; is current character part of the Start button?
+		bhi.s	OW_NotStart		; if not, branch
+		addi.b	#$2D-'1',d0
+	;	move.b	#Options_Blank,d0	; write a space char to a1
+		bra.s	OW_DoWrite		; skip
+
+OW_NotStart:
 		cmpi.b	#'<',d0			; is current character a "<"?
 		bne.s	OW_NotLeftArrow		; if not, branch
 		move.b	#$0D,d0			; set correct value for "<"
@@ -791,6 +841,12 @@ OW_NotHyphen:
 		bra.s	OW_DoWrite		; skip
 
 OW_NotQuestion:
+		cmpi.b	#'.',d0			; is current character a "."?
+		bne.s	OW_NotDot		; if not, branch
+		move.b	#$2B,d0			; set correct value for "."
+		bra.s	OW_DoWrite		; skip
+
+OW_NotDot:
 		subi.b	#50,d0			; otherwise it's a letter and has to be set to the correct value
 		cmpi.b	#9,d0			; is result a number?
 		bgt.s	OW_DoWrite		; if not, branch
@@ -823,9 +879,10 @@ GOT_Index:	dc.w	GOTCO_CasualFrantic-GOT_Index
 		dc.w	GOTCO_SkipStoryScreens-GOT_Index
 		dc.w	GOTCO_Photosensitive-GOT_Index
 		dc.w	GOTCO_CinematicMode-GOT_Index
+		dc.w	GOTCO_MotionBlur-GOT_Index
 		dc.w	GOTCO_NonstopInhuman-GOT_Index
-		dc.w	GOTCO_BlackBarsConfig-Got_Index
 		dc.w	GOTCO_DeleteSaveGame-Got_Index
+		dc.w	GOTCO_BlackBarsConfig-Got_Index
 ; ===========================================================================
 
 GOTCO_CasualFrantic:
@@ -880,14 +937,22 @@ GOTCO_CinematicMode:
 		beq.s	@chkpiss			; if not, branch
 		lea	(OpText_CinBars).l,a2		; use cinematic mode "BLACK BARS" text
 		btst	#6,(OptionsBits).w		; is piss also enabled?
-		beq.s	GOTCO_Return			; if not, branch
+		beq.w	GOTCO_Return			; if not, branch
 		lea	(OpText_CinBoth).l,a2		; use cinematic mode "BOTH" text
 		rts
 
 @chkpiss:
 		btst	#6,(OptionsBits).w		; is piss enabled?
-		beq.s	GOTCO_Return			; if not, branch
+		beq.w	GOTCO_Return			; if not, branch
 		lea	(OpText_CinPiss).l,a2		; use cinematic mode "PISS FILTER" text
+		rts					; return
+; ---------------------------------------------------------------------------
+
+GOTCO_MotionBlur:
+		lea	(OpText_OFF).l,a2		; use "OFF" text
+		tst.b	(ScreenFuzz).w			; is screen fuzz enabled?
+		beq.w	GOTCO_Return			; if not, branch
+		lea	(OpText_ON).l,a2		; otherwise use "ON" text
 		rts					; return
 ; ---------------------------------------------------------------------------
 
@@ -908,21 +973,20 @@ GOTCO_BlackBarsConfig:
 ; ---------------------------------------------------------------------------
 
 GOTCO_DeleteSaveGame:
-		moveq	#0,d0
-		move.b	(DeleteCounter).w,d0
-		cmpi.b	#1,d0
-		beq.s	@del1
-		cmpi.b	#2,d0
-		beq.s	@del2
+		moveq	#DeleteCounts,d5
+		sub.b	(DeleteCounter).w,d5
+		beq.s	@nospaces
+		move.l	d5,d6
+		subq.b	#1,d6
+@loop:
+		lea	(OpText_Space).l,a2
+		bsr.w	Options_Write			; write text
+		dbf	d6,@loop
 
-@del3:
-		lea	(OpText_Del3).l,a2		; >>>
-		rts
-@del2:
-		lea	(OpText_Del2).l,a2		; >>
-		rts
-@del1:
-		lea	(OpText_Del1).l,a2		; >
+@nospaces:
+		lea	(OpText_Del).l,a2		; >>>>>>>>	
+		adda.w	d5,a2
+		bsr.w	Options_Write			; write text
 		rts
 ; ---------------------------------------------------------------------------
 
@@ -938,7 +1002,7 @@ GOTCO_Return:
 ; ---------------------------------------------------------------------------
 
 OpText_Header1:
-		dc.b	'<-------------------------->', $FF
+		dc.b	'<------------------------------>', $FF
 		even
 
 OpText_Header2:
@@ -947,82 +1011,89 @@ OpText_Header2:
 ; ---------------------------------------------------------------------------
 
 OpText_GameplayStyle:
-		dc.b	'GAMEPLAY STYLE  ', $FF
+		dc.b	'  GAMEPLAY STYLE  ', $FF
 		even
 
 OpText_Extended:
-		dc.b	'EXTENDED CAMERA          ', $FF
+		dc.b	'  EXTENDED CAMERA          ', $FF
 		even
 
 OpText_SkipUberhub:
-		dc.b	'SKIP UBERHUB PLACE       ', $FF
+		dc.b	'  SKIP UBERHUB PLACE       ', $FF
 		even
 
 OpText_SkipStory:
-		dc.b	'SKIP STORY SCREENS       ', $FF
+		dc.b	'  SKIP STORY SCREENS       ', $FF
 		even
 
 OpText_Photosensitive:
-		dc.b	'PHOTOSENSITIVE MODE      ', $FF
+		dc.b	'  PHOTOSENSITIVE MODE      ', $FF
 		even
 
 OpText_CinematicMode:
-		dc.b	'CINEMATIC MODE  ', $FF
+		dc.b	'  CINEMATIC MODE  ', $FF
 		even
 OpText_CinematicMode_Locked:
-		dc.b	'????????? ????  ', $FF
+		dc.b	'  ????????? ????  ', $FF
 		even
-		
+
+OpText_MotionBlur:
+		dc.b	'  MOTION BLUR              ', $FF
+		even
+OpText_MotionBlur_Locked:
+		dc.b	'  ?????? ????              ', $FF
+		even
+
 OpText_NonstopInhuman:
-		dc.b	'NONSTOP INHUMAN MODE     ', $FF
+		dc.b	'  NONSTOP INHUMAN          ', $FF
 		even
 OpText_NonstopInhuman_Locked:
-		dc.b	'??????? ??????? ????     ', $FF
+		dc.b	'  ??????? ???????          ', $FF
 		even
 
 OpText_BlackBarsMode:
-		dc.b	'BLACK BARS MODE     ', $FF
+		dc.b	'  BLACK BARS MODE     ', $FF
 		even
 
 OpText_DeleteSRAM:
-		dc.b	'DELETE SAVE GAME         ', $FF
-		even
-OpText_Del3:	dc.b	'>>>', $FF
-		even
-OpText_Del2:	dc.b	' >>', $FF
-		even
-OpText_Del1:	dc.b	'  >', $FF
+		dc.b	'  DELETE SAVE GAME       ', $FF
 		even
 ; ---------------------------------------------------------------------------
 
-OpText_Exit:	dc.b	'        SAVE OPTIONS        ', $FF
+OpText_Exit:	dc.b	'      PRESS  12345 TO EXIT      ', $FF
+;OpText_Exit:	dc.b	'          EXIT OPTIONS          ', $FF
 		even
 ; ---------------------------------------------------------------------------
 
-OpText_ON:	dc.b	' ON', $FF
+OpText_ON:	dc.b	' ON  ', $FF
 		even
-OpText_OFF:	dc.b	'OFF', $FF
-		even
-
-OpText_Casual:	dc.b	'      CASUAL', $FF
-		even
-OpText_Frantic:	dc.b	'     FRANTIC', $FF
-		even
-OpText_Easter:	dc.b	'     TRUE-BS', $FF
+OpText_OFF:	dc.b	'OFF  ', $FF
 		even
 
-OpText_Emu:	dc.b	'EMULATOR', $FF
+OpText_Casual:	dc.b	'      CASUAL  ', $FF
 		even
-OpText_RealHW:	dc.b	'HARDWARE', $FF
+OpText_Frantic:	dc.b	'     FRANTIC  ', $FF
+		even
+OpText_Easter:	dc.b	'     TRUE-BS  ', $FF
 		even
 
-OpText_CinOff:	dc.b	'        NONE', $FF
+OpText_Emu:	dc.b	'EMULATOR  ', $FF
 		even
-OpText_CinBars:	dc.b	'  BLACK BARS', $FF
+OpText_RealHW:	dc.b	'HARDWARE  ', $FF
 		even
-OpText_CinPiss:	dc.b	' PISS FILTER', $FF
+
+OpText_CinOff:	dc.b	'         OFF  ', $FF
 		even
-OpText_CinBoth:	dc.b	'        BOTH', $FF
+OpText_CinBars:	dc.b	'  BLACK BARS  ', $FF
+		even
+OpText_CinPiss:	dc.b	' PISS FILTER  ', $FF
+		even
+OpText_CinBoth:	dc.b	'        BOTH  ', $FF
+		even
+
+OpText_Del:	dc.b	'>>>>>  ', $FF
+		even
+OpText_Space:	dc.b	' ', $FF
 		even
 ; ---------------------------------------------------------------------------
 ; ===========================================================================

@@ -48,8 +48,8 @@ BlackBarsConfigScreen:
 
 	assert.w a1, eq, #Objects_End
 
-	; Load main patterns
-	moveq	#0, d0
+	; Load giant ring patterns
+	moveq	#$1D, d0
 	jsr 	PLC_ExecuteOnce
 
 	; Load Sonic's palette
@@ -64,7 +64,7 @@ BlackBarsConfigScreen:
 	jsr	LevelRenderer_DrawLayout_BG
 
 	; Init screen
-	move.w	#32, BlackBars.Height
+	move.w	#BlackBars.MaxHeight, BlackBars.Height
 	jsr	BlackBarsConfigScreen_InitUI
 	move.b	#0,BlackBarsConfig_Exiting
 
@@ -274,47 +274,18 @@ BlackBarsConfigScreen_GenerateSprites:
 
 ; ---------------------------------------------------------------
 @RingData:
-	dc.w	$20, $10
-	dc.w	$40, $10
-	dc.w	$60, $10
-	dc.w	$80, $10
-
-	dc.w	$50, $28
-	dc.w	$50, $28+$18
-	dc.w	$50, $28+$18*2
-	dc.w	$50, $28+$18*3
-
-	dc.w	$80+$20, $40
-	dc.w	$80+$40, $40
-	dc.w	$80+$60, $40
-	dc.w	$80+$80, $40
-	dc.w	$80+$A0, $40
-
-	dc.w	$70+$50, $78+$18*0
-	dc.w	$70+$50, $78+$18*1
-	dc.w	$70+$50, $78+$18*2
-	dc.w	$70+$50, $78+$18*3
-	dc.w	$70+$50, $78+$18*4
-
-	dc.w	$120-$18*0, $A0
-	dc.w	$120-$18*1, $A0
-	dc.w	$120-$18*2, $A0
-	dc.w	$120-$18*3, $A0
-
-	dc.w	$00+$20, $C0
-	dc.w	$00+$40, $C0
-	dc.w	$00+$60, $C0
-	dc.w	$00+$80, $C0
-	dc.w	$00+$A0, $C0
-
+	dc.w	$0, $0
+	dc.w	$54, $80
+	dc.w	$54*2, $0
+	dc.w	$54*3, $80
 	dc.w	-1
 
 ; ---------------------------------------------------------------
 @Obj_Ring:
-	move.l	#Map_obj25,obMap(a0)
-	move.w	#$27B2,obGfx(a0)
+	move.l	#Map_obj4B,obMap(a0)
+	move.w	#$2000|($5600/$20),obGfx(a0)
 	ori.b	#4,obRender(a0)
-	move.b	#8,obActWid(a0)
+	move.b	#$60,obActWid(a0)
 	move.b	#4,obPriority(a0)
 	move.l	#@Main, $3C(a0)
 
@@ -415,13 +386,13 @@ BlackBarsConfigScreen_InitUI:
 BlackBarsConfigScreen_WriteText:
 	BBCS_EnterConsole a0
 
-	Console.SetXY #4, #6
-	Console.Write "   Select the BLACK BARS mode%<endl>%<endl>"
-	Console.Write "that works best for your system!"
+	Console.SetXY #12, #6
+	Console.Write "  Sonic ERaZor"
+	Console.Write "%<endl>%<endl>"
+	Console.Write "BLACK BARS Setup"
 
-	Console.SetXY #4, #19
-	Console.Write "%<pal1> Make sure both bars are there.%<endl>%<endl>"
-	Console.Write "%<pal1>When in doubt, go with Emulators."
+	Console.SetXY #5, #21
+	Console.Write "Pick the first if you're unsure!"
 
 	BBCS_LeaveConsole a0
 	; fallthrough
@@ -433,13 +404,16 @@ BlackBarsConfigScreen_RedrawUI:
 	Console.SetXY #6, #13
 
 	tst.b	BlackBars.HandlerId	; is real hardware selected?
-	bne.s	@realhardware
-	Console.Write "%<pal0>> Optimized for Emulators%<endl>%<endl>"
-	Console.Write "%<pal2>  Optimized for Real Hardware"
-	bra.s	@leave
+	bne.w	@realhardware		; if yes, render alternate text
+
+	Console.Write "%<pal0>> Optimized for EMULATORS"
+	Console.Write "%<endl>%<endl>"
+	Console.Write "%<pal2>  Optimized for REAL HARDWARE"
+	bra.w	@leave
 @realhardware:
-	Console.Write "%<pal2>  Optimized for Emulators%<endl>%<endl>"
-	Console.Write "%<pal0>> Optimized for Real Hardware"
+	Console.Write "%<pal2>  Optimized for EMULATORS"
+	Console.Write "%<endl>%<endl>"
+	Console.Write "%<pal0>> Optimized for REAL HARDWARE"
 
 @leave:
 	BBCS_LeaveConsole a0

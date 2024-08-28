@@ -44042,7 +44042,7 @@ ArtLoadCues:
 	dc.w PLC_Null-ArtLoadCues	; $1A
 	dc.w PLC_SSBlackout-ArtLoadCues ; $1B
 	dc.w PLC_Ending-ArtLoadCues	; $1C
-	dc.w PLC_Null-ArtLoadCues	; $1D
+	dc.w PLC_BigRing-ArtLoadCues	; $1D
 	dc.w PLC_EggmanSBZ2-ArtLoadCues	; $1E
 	dc.w PLC_FZBoss-ArtLoadCues	; $1F
 
@@ -44455,6 +44455,14 @@ PLC_EggmanSBZ2:
 		dc.w -1
 
 ; ---------------------------------------------------------------------------
+; Pattern load cues - Big Rings in black bars config screen
+; ---------------------------------------------------------------------------
+PLC_BigRing:
+		dc.l ArtKospM_BigRing		; big rings
+		dc.w $5600
+		dc.w -1
+
+; ---------------------------------------------------------------------------
 ; Pattern load cues - final boss
 ; ---------------------------------------------------------------------------
 PLC_FZBoss:
@@ -44480,7 +44488,7 @@ PLC_FZBoss:
 ; The massive list of resource includes
 ; ---------------------------------------------------------------------------
 
-Art_Text:	incbin	Screens\OptionsScreen\Options_TextArt.bin	; uncompressed text for various text screens (not just options)
+Art_Text:	incbin	misc\menutext.bin	; uncompressed text for various text screens
 		even
 
 ArtKospM_SegaLogo:	incbin	artkosp\segalogo.kospm	; large Sega logo

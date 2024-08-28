@@ -138,8 +138,6 @@ Exit_TitleScreen:
 ; ===========================================================================
 
 Exit_GameplayStyleScreen:
-		jsr	SRAM_SaveNow		; save our progress now
-
 		tst.b	(ResumeFlag).w		; is this the first time the game is being played?
 		beq.s	@firststart		; if yes, branch
 
@@ -147,6 +145,8 @@ Exit_GameplayStyleScreen:
 		beq.s	@notfrantic		; if not, branch
 		tst.b	(Doors_Frantic).w	; have any frantic levels been beaten yet?
 		bne.s	@notfrantic		; if yes, branch
+		tst.b	(Doors_Casual).w	; have any casual levels been beaten yet?
+		beq.s	@notfrantic		; if not, this tip isn't necessary yet
 		jsr	Pal_FadeFrom		; fade out palette to avoid visual glitches
 		jsr	ClearScreen		; clear screen
 		moveq	#$E,d0			; load FZ palette (cause tutorial boxes are built into SBZ)
@@ -154,6 +154,7 @@ Exit_GameplayStyleScreen:
 		moveq	#$13,d0			; load warning text about revisiting the tutorial for frantic
 		jsr	Tutorial_DisplayHint	; VLADIK => Display hint
 @notfrantic:
+		jsr	SRAM_SaveNow		; save our progress now
 		move.b	#$24,(GameMode).w	; we came from the options menu, return to it
 		rts
 ; ---------------------------------------------------------------------------	
@@ -163,6 +164,7 @@ Exit_GameplayStyleScreen:
 
 		btst	#6,($FFFFF604).w	; was A held as we exited?
 		bne.s	@speedrun		; if yes, branch
+
 		move.w	#$C3,d0			; play giant ring sound
 		jsr	PlaySound_Special	
 		jsr 	WhiteFlash2
@@ -172,6 +174,8 @@ Exit_GameplayStyleScreen:
 		jsr	DelayProgram
 		subq.b	#1,d0
 		bne.s 	@Wait
+
+		jsr	SRAM_SaveNow		; save our progress now
 		bra.w	HubRing_IntroStart	; start the intro cutscene
 ; ---------------------------------------------------------------------------	
 
@@ -181,10 +185,14 @@ Exit_GameplayStyleScreen:
 		bset	#2,(OptionsBits).w	; enable Skip Uberhub
 		move.w	#$D3,d0			; play peelout release sound
 		jsr	PlaySound_Special
+
+		jsr	SRAM_SaveNow		; save our progress now
 		bra.w	HubRing_NHP		; go straight to NHP
 ; ===========================================================================
 
 Exit_OptionsScreen:
+		jsr	SRAM_SaveNow		; save options to SRAM
+
 		; d0 = destination ID
 		cmpi.b	#1,d0			; is destination set to 1?
 		bne.s	@chkbars		; if not, branch
@@ -197,7 +205,6 @@ Exit_OptionsScreen:
 		rts
 
 @default:
-		jsr	SRAM_SaveNow		; save our progress now
 		bra.w	ReturnToUberhub		; return to Uberhub in all other cases
 ; ===========================================================================
 
@@ -321,6 +328,8 @@ Exit_EndingSequence:
 		bsr	Set_BaseGameDone	; you have beaten the base game, congrats
 		jsr	SRAM_SaveNow		; save now
  
+		jsr	Pal_CutToBlack		; fill remaining palette to black for a smooth transition
+		move.w	#0,BlackBars.Height	; reset black bars
 		move.b	#$2C,(GameMode).w	; set scene to $2C (new credits)
 		rts
 
@@ -460,7 +469,7 @@ MiscRing_IntroEnd:
 		bra.w	RunStory
 
 HubRing_Options:
-		move.w	#19,($FFFFFF82).w	; set default selected entry to exit
+		clr.w	($FFFFFF82).w		; set default selected entry
 		move.b	#$24,(GameMode).w	; load options menu
 		rts
 
@@ -693,10 +702,20 @@ UnlockEverything:
 
 ; cheats called from options screen
 Toggle_BaseGameBeaten:
-		bchg	#State_BaseGame,(Progress).w	
+		bchg	#State_BaseGame,(Progress).w	; to unlock cinematic mode
 		rts
+
+Toggle_FranticBeaten:
+		moveq	#0,d0				; set to lock all frantic levels
+		bsr	Check_AllLevelsBeaten_Frantic	; have all levels been beaten?
+		bne.s	@update				; if yes, relock option
+		moveq	#Doors_All,d0			; unlock option
+@update:	move.b	d0,(Doors_Casual).w		; update casual doors
+		move.b	d0,(Doors_Frantic).w		; update frantic doors
+		rts
+
 Toggle_BlackoutBeaten:
-		bchg	#State_Blackout,(Progress).w	
+		bchg	#State_Blackout,(Progress).w	; to unlock nonstop inhuman
 		rts
 
 ; ---------------------------------------------------------------------------

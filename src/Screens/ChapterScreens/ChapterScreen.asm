@@ -50,11 +50,15 @@ CS_ClrObjRam:	move.l	d0,(a1)+
 
 		; load top half
 		VBlank_SetMusicOnly
-		move.l	#$40000000, VDP_Ctrl
+		move.l	#$40200000, VDP_Ctrl
 		lea	ArtKospM_ChapterHeader, a0
 		jsr	KosPlusMDec_VRAM
 
-		lea	(Map_ChapterHeader).l,a1	; load chapter header
+		lea	MapEni_ChapterHeader(pc), a0	; load chapter header
+		lea	$FF0000, a1
+		moveq	#1, d0
+		jsr	EniDec
+		lea	$FF0000,a1
 		move.l	#$40000003,d0
 		moveq	#40-1,d1
 		moveq	#28-1,d2
@@ -117,7 +121,7 @@ CS_ClrObjRam:	move.l	d0,(a1)+
 ; ---------------------------------------------------------------------------
 
 CS_LoadChapterArt:
-		move.l	#$45A00000, VDP_Ctrl
+		move.l	#$45C00000, VDP_Ctrl
 		movea.l	CS_ChapterArt(pc,d0.w), a0
 		move.l	d0, -(sp)
 		jsr	KosPlusMDec_VRAM
@@ -135,8 +139,12 @@ CS_ChapterArt:
 ; ===========================================================================
 
 CS_LoadChapterMaps:
-		movea.l	CS_ChapterMaps(pc,d0.w), a1
 		move.l	d0,-(sp)
+		movea.l	CS_ChapterMaps(pc,d0.w), a0
+		lea	$FF0000, a1
+		moveq	#1, d0
+		jsr	EniDec
+		lea	$FF0000, a1
 		move.l	#$45800003, d0
 		moveq	#40-1, d1
 		moveq	#13-1, d2
@@ -145,13 +153,13 @@ CS_LoadChapterMaps:
 		rts
 
 CS_ChapterMaps:
-		dc.l	Map_Chapter1
-		dc.l	Map_Chapter2
-		dc.l	Map_Chapter3
-		dc.l	Map_Chapter4
-		dc.l	Map_Chapter5
-		dc.l	Map_Chapter6
-		dc.l	Map_Chapter7
+		dc.l	MapEni_Chapter1
+		dc.l	MapEni_Chapter2
+		dc.l	MapEni_Chapter3
+		dc.l	MapEni_Chapter4
+		dc.l	MapEni_Chapter5
+		dc.l	MapEni_Chapter6
+		dc.l	MapEni_Chapter7
 ; ===========================================================================
 		
 CS_LoadChapterPal:
@@ -180,18 +188,22 @@ CS_ChapterPal:
 
 CS_OHDIGHZ:
 		VBlank_SetMusicOnly
-		move.l	#$40000000, VDP_Ctrl
+		move.l	#$40200000, VDP_Ctrl
 		lea	ArtKospM_OHDIGHZ, a0
 		jsr	KosPlusMDec_VRAM
 
-		lea	(Map_OHDIGHZ).l,a1		; load chapter header
+		lea	MapEni_OHDIGHZ(pc), a0		; load chapter header
+		lea	$FF0000, a1
+		moveq	#1, d0
+		jsr	EniDec
+		lea	$FF0000, a1
 		move.l	#$40000003,d0
 		moveq	#40-1,d1
 		moveq	#28-1,d2
 		jsr	ShowVDPGraphics
 		VBlank_UnsetMusicOnly
 
-		lea	(Pal_OHDIGHZ).l,a1		; load palette
+		lea	Pal_OHDIGHZ(pc), a1		; load palette
 		lea	($FFFFFB80).w,a2
 		moveq	#8-1,d0				; 16 colours
 CS_PalLoopOHD:	move.l	(a1)+,(a2)+
@@ -297,7 +309,7 @@ MapScreen2_Column:
 ; ---------------------------------------------------------------------------
 ArtKospM_ChapterHeader:	incbin	"Screens/ChapterScreens/Tiles_ChapterHeader.kospm"
 			even
-Map_ChapterHeader:	incbin	"Screens/ChapterScreens/Maps_ChapterHeader.bin"
+MapEni_ChapterHeader:	incbin	"Screens/ChapterScreens/Maps_ChapterHeader.eni"
 			even
 Pal_ChapterHeader:	incbin	"Screens/ChapterScreens/Palette_ChapterHeader.bin"
 			even
@@ -317,19 +329,19 @@ ArtKospM_Chapter6:	incbin	"Screens/ChapterScreens/ChapterFiles/Tiles_Chapter6.ko
 ArtKospM_Chapter7:	incbin	"Screens/ChapterScreens/ChapterFiles/Tiles_Chapter7.kospm"
 		even
 ; ---------------------------------------------------------------------------
-Map_Chapter1:	incbin	"Screens/ChapterScreens/ChapterFiles/Maps_Chapter1.bin"
+MapEni_Chapter1:	incbin	"Screens/ChapterScreens/ChapterFiles/Maps_Chapter1.eni"
 		even
-Map_Chapter2:	incbin	"Screens/ChapterScreens/ChapterFiles/Maps_Chapter2.bin"
+MapEni_Chapter2:	incbin	"Screens/ChapterScreens/ChapterFiles/Maps_Chapter2.eni"
 		even
-Map_Chapter3:	incbin	"Screens/ChapterScreens/ChapterFiles/Maps_Chapter3.bin"
+MapEni_Chapter3:	incbin	"Screens/ChapterScreens/ChapterFiles/Maps_Chapter3.eni"
 		even
-Map_Chapter4:	incbin	"Screens/ChapterScreens/ChapterFiles/Maps_Chapter4.bin"
+MapEni_Chapter4:	incbin	"Screens/ChapterScreens/ChapterFiles/Maps_Chapter4.eni"
 		even
-Map_Chapter5:	incbin	"Screens/ChapterScreens/ChapterFiles/Maps_Chapter5.bin"
+MapEni_Chapter5:	incbin	"Screens/ChapterScreens/ChapterFiles/Maps_Chapter5.eni"
 		even
-Map_Chapter6:	incbin	"Screens/ChapterScreens/ChapterFiles/Maps_Chapter6.bin"
+MapEni_Chapter6:	incbin	"Screens/ChapterScreens/ChapterFiles/Maps_Chapter6.eni"
 		even
-Map_Chapter7:	incbin	"Screens/ChapterScreens/ChapterFiles/Maps_Chapter7.bin"
+MapEni_Chapter7:	incbin	"Screens/ChapterScreens/ChapterFiles/Maps_Chapter7.eni"
 		even
 ; ---------------------------------------------------------------------------
 Pal_Chapter1:	incbin	"Screens/ChapterScreens/ChapterFiles/Palette_Chapter1.bin"
@@ -349,7 +361,7 @@ Pal_Chapter7:	incbin	"Screens/ChapterScreens/ChapterFiles/Palette_Chapter7.bin"
 ; ---------------------------------------------------------------------------
 ArtKospM_OHDIGHZ:	incbin	"Screens/ChapterScreens/ChapterFiles/Tiles_OHDIGHZ.kospm"
 		even
-Map_OHDIGHZ:	incbin	"Screens/ChapterScreens/ChapterFiles/Maps_OHDIGHZ.bin"
+MapEni_OHDIGHZ:	incbin	"Screens/ChapterScreens/ChapterFiles/Maps_OHDIGHZ.eni"
 		even
 Pal_OHDIGHZ:	incbin	"Screens/ChapterScreens/ChapterFiles/Palette_OHDIGHZ.bin"
 		even

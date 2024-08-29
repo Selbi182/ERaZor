@@ -11,6 +11,7 @@ BlackBars.Init:
 	bsr.s	BlackBars.SetHandler
 
 BlackBars.Reset:
+	KDebug.WriteLine "BlackBars.Reset()..."
 	move.w	#NullInt,HBlankSubW				; don't run any code during HInt
 	move.w	#0,BlackBars.Height				; set current height to 0
 	move.w	#BlackBars.MaxHeight,BlackBars.BaseHeight	; set base height to default
@@ -19,7 +20,8 @@ BlackBars.Reset:
 	rts
 
 BlackBars.SetHandler:
-	moveq	#%10, d0
+	KDebug.WriteLine "BlackBars.SetHandler(): id=%<.b BlackBars.HandlerId>"
+	moveq	#_BB_HandlerIdMask, d0
 	and.b	BlackBars.HandlerId, d0
 	move.w	BlackBars.HandlerList(pc, d0), BlackBars.Handler
 	rts
@@ -100,7 +102,7 @@ BlackBars.EmulatorOptimizedHandlers:
 	rts
 ; ---------------------------------------------------------------------------
 
-@make_bars_past_quarter:	
+@make_bars_past_quarter:
 	move.w	#HBlank_Bars_PastQuarter_EmulatorOptimized, HBlankSubW
 	move.w	d0,d1
 	add.w	d1,d1

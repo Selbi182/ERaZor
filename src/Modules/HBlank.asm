@@ -91,7 +91,7 @@ HBlank_Bars_Bottom:
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Emulator-optimized Black Bars(tm) horizontal interrupt handlers
+; Hardware-optimized Black Bars(tm) horizontal interrupt handlers
 ; ---------------------------------------------------------------------------
 
 HBlank_Bars_HardwareOptimized:

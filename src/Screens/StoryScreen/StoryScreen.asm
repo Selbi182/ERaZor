@@ -162,11 +162,12 @@ StoryScreen_MainLoop:
 		bne.s	STS_FadeOutScreen	; if yes, exit screen
 		move.b	#1,(STS_FullyWritten).w	; set "fully-written" flag
 		bsr	StoryScreen_CenterText	; center entire text before writing it
-		move.b	#$1C,VBlankRoutine	; wait a frame for H-scroll to update
-		jsr	DelayProgram		; ''
-		bsr	StoryText_WriteFull	; write the complete text
-		move.b	#1,(STS_FullyWritten).w	; make sure "fully-written" flag remains set
-		bra.w	StoryScreen_MainLoop	; loop
+
+		move.l	#StoryText_WriteFull, VBlankCallback	; defer execution to VInt
+		move.b	#$1C,VBlankRoutine			; wait a frame for H-scroll to update
+		jsr	DelayProgram				; ''
+		move.b	#1,(STS_FullyWritten).w			; make sure "fully-written" flag remains set
+		bra.w	StoryScreen_MainLoop			; loop
 ; ---------------------------------------------------------------------------
 
 StoryScreen_UpdateFromVBlank:
@@ -215,8 +216,6 @@ STS_FadeOutScreen:
 ; ---------------------------------------------------------------------------
 
 STS_ExitScreen:
-		moveq	#0,d2
-		jsr	Options_ClearBuffer
 		bsr	STS_ClearFlags
 
 		moveq	#0,d0

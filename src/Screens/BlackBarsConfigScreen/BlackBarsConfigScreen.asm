@@ -34,6 +34,7 @@ BlackBarsConfigScreen:
 	move.w	#$9200, (a6)
 	move.w	#$8B03, (a6)
 	move.w	#$8720, (a6)
+	jsr	ClearScreen
 
 	; Clear object RAM
 	lea	Objects, a1

@@ -47,9 +47,13 @@ vram	macro	offset,operand
 	endm
 	
 ; VRAM write access constant
-DCvram	macro	offset
+dcVram	macro	offset
 	dc.l	($40000000+(((\offset)&$3FFF)<<16)+(((\offset)&$C000)>>14))
 	endm
+
+; VRAM screen position (raw)
+dcScreenPos: macros	baseVRAMAddress, row, column
+	dc.w	(\baseVRAMAddress)+(\row)*$80+(\column)*2
 
 ; Test if Frantic Mode is enabled in the gameplay style options
 frantic macro

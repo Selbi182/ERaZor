@@ -68,9 +68,6 @@ SoundTestScreen:
 		dbf	d1, @ClearScroll ; fill scroll data with 0
 		move.l	d0, ($FFFFF616).w
 
-  		move.b	#Options_Blank, d2
-		jsr	Options_ClearBuffer
-
 		jsr	BackgroundEffects_Setup
 
 		bsr	Options_LoadPal
@@ -183,7 +180,7 @@ SoundTest_TextLoad:
 		lea	(OpText_SoundTest).l, a2	; set text location
 		moveq	#0, d2
 
-		jsr	Options_Write			; write text
+		;jsr	Options_Write			; write text
 		move.b	#$0D, -3(a1)			; write < before the ID
 		move.b	#$0E, 2(a1)			; write > after the ID
 

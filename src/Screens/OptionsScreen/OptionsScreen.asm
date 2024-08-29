@@ -12,7 +12,6 @@ Options_DeleteSRAMInitialCount = 5
 
 Options_VRAM = $8570
 Options_StringBufferSize = 40+1
-Options_DefaultSelect = 1
 
 	if def(__DEBUG__)
 Options_CanaryValue = $BEEF

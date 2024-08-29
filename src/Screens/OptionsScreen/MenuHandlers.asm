@@ -336,7 +336,7 @@ Options_CinematicMode_IdToBits:
 	rol.w	d0			; d0 = %0000 P00B
 	lsl.b	#3, d0			; d0 = %0P00 B000
 	or.b	d0, OptionsBits
-	KDebug.WriteLine "Options_CinematicMode_IdToBits(): bit=%<.b d0 bin>"
+	KDebug.WriteLine "Options_CinematicMode_IdToBits(): bits=%<.b d0 bin>"
 	rts
 
 ; ===========================================================================

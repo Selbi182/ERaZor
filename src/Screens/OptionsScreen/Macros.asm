@@ -17,11 +17,11 @@ Options_PipeString:	macro	flushFunctionOperand, string, bufferSize
 		__FSTRING_GenerateArgumentsCode \string
 		lea	Options_StringBuffer, a0	; a0 = buffer
 		lea	@str\@(pc), a1			; a1 = string
-		lea	(sp), a2			; a2 = arugments
+		lea	(sp), a2			; a2 = arguments
 		if strlen('\bufferSize')
 			moveq	#\bufferSize-1, d7		; d7 = buffer size - 1
 		else
-			moveq	#Options_StringBufferSize-1, d7; d7 = buffer size - 1
+			moveq	#Options_StringBufferSize-1, d7	; d7 = buffer size - 1
 		endif
 		jsr	MDDBG__FormatString
 		if (__sp>8)

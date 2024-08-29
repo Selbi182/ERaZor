@@ -389,6 +389,8 @@ BlackBars.SetState:
 		bne.s	BlackBars.GHP			; if not, go to custom GHP black bars logic
 
 @notghp:
+		tst.b	($FFFFFFE9).w			; is fade out in progress?
+		bne.s	BlackBars_Show			; if yes, always enable
 		tst.b	($FFFFF7CC).w			; are controls locked?
 		bne.s	BlackBars_Show			; if yes, always enable
 		tst.w	($FFFFF63A).w			; is game paused?
@@ -3278,13 +3280,13 @@ MusicList:
 
 ; Level::	<-- for quick search
 Level:					; XREF: GameModeArray
-		bset	#7,(GameMode).w ; add $80 to screen mode (for pre level sequence)
 		bsr	PLC_ClearQueue
 		jsr	DrawBuffer_Clear
 		display_enable
 		move.w	#$8014,($C00004).l	; enable h-ints
 		bsr	Pal_FadeFrom
 		move.w	#$8004,($C00004).l	; disable h-ints
+		bset	#7,(GameMode).w ; add $80 to screen mode (for pre level sequence)
 
 		; immediately clear the first tile in VRAM to avoid graphical issues
 		VBlank_SetMusicOnly
@@ -3292,9 +3294,8 @@ Level:					; XREF: GameModeArray
 		rept	$20-1
 		move.w	#0,VDP_Data
 		endr
-		VBlank_UnsetMusicOnly
 
-		jsr	ClearVRAM	; only comment this in for testing, never in prod!
+	;	jsr	ClearVRAM	; only comment this in for testing, never in prod!
 
 		cmpi.w	#$001,($FFFFFE10).w
 		beq.s	@notitlecardart
@@ -3350,7 +3351,6 @@ Level_ClrVars2:	move.l	d0,(a1)+
 Level_ClrVars3:	move.l	d0,(a1)+
 		dbf	d1,Level_ClrVars3 ; clear object variables
 
-		VBlank_SetMusicOnly
 		bsr	ClearScreen
 		lea	($C00004).l,a6
 		move.w	#$8B03,(a6)
@@ -3467,7 +3467,7 @@ Level_NoMusic2:
 
 		bsr	LevelSizeLoad
 		bsr	ClearEverySpecialFlag
-		
+
 ; ---------------------------------
 @runplc:	; run PLC now to avoid breaching the queue limit
 		move.b	#$C,VBlankRoutine
@@ -3525,27 +3525,9 @@ Level_TtlCard:
 		move.b	#$E3,d0			; resume at normal speed
 @setmusicspeed:	jsr	PlaySound_Special	; set new music speed
 
-@loop:
-		move.b	#$C,VBlankRoutine
-		bsr	DelayProgram
-		jsr	ObjectsLoad
-		jsr	BuildSprites
-		bsr	PLC_Execute
-		move.w	($FFFFD108).w,d0
-		cmp.w	($FFFFD130).w,d0	; has title card sequence finished?
-		bne.s	@loop			; if not, branch
-		tst.l	PLC_Pointer		; are there any items in the pattern load cue?
-		bne.s	@loop			; if yes, branch
-		
-		move.b	#$C,VBlankRoutine	; run for one more frame to avoid hiccups in the title card
-		bsr	DelayProgram
-		jsr	Hud_Base
-
 loc_3946:
-		jsr	AnimatedArt_Init
 		moveq	#3,d0
 		bsr	PalLoad1	; load Sonic's palette line
-		bsr	DeformBgLayer
 		bset	#2,($FFFFF754).w
 		bsr	MainLoadBlockLoad	; load block mappings and palettes
 
@@ -3559,12 +3541,6 @@ loc_3946:
 		ori.w	#2,($FFFFF7BE).w	; skip loading giant ring patterns (already done in PLC)
 
 @notuberhub:
-		VBlank_SetMusicOnly
-		jsr 	LevelRenderer_DrawLayout_FG
-		jsr 	LevelRenderer_DrawLayout_BG
-		VBlank_UnsetMusicOnly
-		bsr	ColIndexLoad
-		bsr	LZWaterEffects
 		
 		cmpi.w	#$302,($FFFFFE10).w		; is current level SAP?
 		bne.s	@notsap				; if not, branch
@@ -3572,7 +3548,7 @@ loc_3946:
 @notsap:
 		; bomb machine cutscene setup
 		cmpi.w	#$500,($FFFFFE10).w
-		bne.s	@SBZcont2
+		bne.s	@SBZcont
 
 		lea	($FFFFD440).w,a1
 		move.b	#$5F,(a1)	; load walking bomb enemy
@@ -3584,11 +3560,6 @@ loc_3946:
 
 		move.w	#12*60,($FFFFFFD8).w	; set cutscene time (controlled in Resize_SBZ1)
 		ori.w	#2,($FFFFF7BE).w	; skip loading giant ring patterns (collides otherwise)
-
-		bra.s	@SBZCont
-
-@SBZcont2:
-		move.b	#1,($FFFFD000).w ; load	Sonic object (load Sonic object)
 
 @SBZcont:
 		cmpi.w	#$400,($FFFFFE10).w
@@ -3608,9 +3579,6 @@ Level_ChkWater:
 		move.w	#$120,($FFFFD7C8).w
 
 Level_LoadObj:
-		jsr	ObjPosLoad
-		jsr	ObjectsLoad
-		jsr	BuildSprites
 		moveq	#0,d0
 		tst.b	($FFFFFE30).w	; are you starting from	a lamppost?
 		bne.s	loc_39E8	; if yes, branch
@@ -3668,17 +3636,47 @@ Level_Delay:
 @notslz:
 
 ; ---------------------------------
-@runplc:	; run PLC now to avoid stutter during fade in
+
+		jsr	Hud_Base
+
+		; loop until title cards have finished displaying during the dark part
+		; and until PLC has finished loading
+@titlecardloop:
 		move.b	#$C,VBlankRoutine
 		bsr	DelayProgram
+		jsr	ObjectsLoad
+		jsr	BuildSprites
 		bsr	PLC_Execute
-		tst.l	PLC_Pointer	; are there any items in the pattern load cue?
-		bne.s	@runplc		; if yes, branch
+		move.w	($FFFFD108).w,d0
+		cmp.w	($FFFFD130).w,d0	; has title card sequence finished?
+		bne.s	@titlecardloop		; if not, loop
+		tst.l	PLC_Pointer		; are there any items in the pattern load cue?
+		bne.s	@titlecardloop		; if yes, loop
+		move.b	#$C,VBlankRoutine	; run for one more frame to avoid hiccups in the title card
+		bsr	DelayProgram
 
-		move.w	#$8014,($C00004).l	; enable h-ints for the black bars
+		; load remaining stuff now
+		VBlank_SetMusicOnly
+		jsr	AnimatedArt_Init
+		jsr 	LevelRenderer_DrawLayout_FG
+		jsr 	LevelRenderer_DrawLayout_BG
+		bsr	ColIndexLoad
+		bsr	LZWaterEffects
+		jsr	ObjectsLoad
+		jsr	BuildSprites
+		VBlank_UnsetMusicOnly
+		move.b	#$C,VBlankRoutine
+		bsr	DelayProgram
+
+		; load Sonic object
+		cmpi.w	#$500,($FFFFFE10).w	; is this the bomb machine cutscene?
+		beq.s	@nosonicload		; if yes, don't load Sonic
+		move.b	#1,($FFFFD000).w	; load Sonic object
+@nosonicload:
 
 		; the following code is basically just Pal_FadeTo2 but
 		; adjusted to already start displaying the level during the fade-in
+		move.w	#$8014,($C00004).l	; enable h-ints for the black bars
 		move.w	#$202F,($FFFFF626).w
 		moveq	#0,d0
 		lea	($FFFFFB00).w,a0
@@ -3713,7 +3711,6 @@ Level_Delay:
 
 Level_StartGame:
 	;	move.w	#$8014,($C00004)	; enable horizontal interrupts (normally only enabled in LZ)
-		ints_enable
 		bclr	#7,(GameMode).w	; clear pre-level sequence flag
 
 		
@@ -4743,13 +4740,13 @@ SpecialStage:				; XREF: GameModeArray
 		move.b	#$12,VBlankRoutine	; apply palette changes before we move on
 		bsr	DelayProgram
 		bra.s	@sssetup
+; ---------------------------------------------------------------------------
 
 @notblackout:
 		move.w	#$CA,d0
 		bsr	PlaySound_Special ; play special stage entry sound
 		move.w	#$8014,($C00004).l	; enable h-ints
 		bsr	Pal_MakeFlash
-; ---------------------------------------------------------------------------
 
 @sssetup:
 		VBlank_SetMusicOnly
@@ -4757,7 +4754,7 @@ SpecialStage:				; XREF: GameModeArray
 		move.w	#$8B03,(a6)
 		move.w	#$8AAF,($FFFFF624).w
 		move.w	#$9011,(a6)
-		move.w	#$8004,(a6)		; enable h-ints
+		move.w	#$8004,(a6)		; disable h-ints
 		move.w	#$8A00|$DF,($FFFFF624).w	; set initial H-int counter value to apply once per frame
 		move.w	($FFFFF624).w,(a6)		; apply H-int counter
 		bsr	ClearScreen
@@ -7224,7 +7221,7 @@ Resize_FZEscape3:
 		move.w	#$A25,($FFFFF726).w	; lower level boundary
 		cmpi.w	#$500,($FFFFD00C).w	; is Sonic above the FZ section?
 		blo.s	@0			; if not, branch
-		move.w	#$2460,($FFFFF72A).w	; right boundary
+		move.w	#$25C0,($FFFFF72A).w	; right boundary
 		addq.b	#2,($FFFFF742).w	; next routine
 
 @0:
@@ -11327,6 +11324,9 @@ BBSpeed = $400
 BBMissileSpeedX = $370
 BBMissileSpeedY = $600
 ;===================================
+;Explosion interval
+BBExplosionInterval = 10
+;-----------------------------------
 ;Exploding sound
 ; 0 - Disbled
 ; 1 - Enabled
@@ -11359,7 +11359,8 @@ Obj22_Main:				; XREF: Obj22_Index
 		beq.s	Obj22_Action
 		move.w	obX(a0),$36(a0)	; remember original X position
 		move.w	obY(a0),$38(a0)	; remember original Y position
-
+		move.b	#BBExplosionInterval,$30(a0)
+		
 Obj22_Action:				; XREF: Obj22_Index
 		moveq	#0,d0
 		move.b	ob2ndRout(a0),d0
@@ -11541,9 +11542,10 @@ Obj22_YChk:
 		bge.w	Obj22_End		; if not, branch
 	;	bsr	BossDefeated3		; load random explosion (harmful)
 
-		move.b	($FFFFFE05).w,d0
-		andi.b	#7,d0
-		bne.s	Obj22_Return2
+		subq.b	#1,$30(a0)
+		bpl.s	Obj22_Return2
+		move.b	#BBExplosionInterval,$30(a0)
+
 		bsr	SingleObjLoad
 		bne.s	Obj22_Return2
 		move.b	#$3F,0(a1)	; load explosion object
@@ -12659,10 +12661,11 @@ FZEscape_ScreenBoom:
 
 		move.l	a0,-(sp)		; backup to stack
 		jsr	Pal_CutToWhite		; instantly turn screen white
-		move.w	#0,($FFFFFB00)
-		move.w	#0,($FFFFFB20)
-		move.w	#0,($FFFFFB40)
-		move.w	#0,($FFFFFB60)
+		; todo make sure black bars stay black
+	;	move.w	#0,($FFFFFB00)
+	;	move.w	#0,($FFFFFB20)
+	;	move.w	#0,($FFFFFB40)
+	;	move.w	#0,($FFFFFB60)
 		move.l	(sp)+,a0		; restore from stack
 
 		move.w	#BlackBars.MaxHeight,BlackBars.Height ; force bars to max
@@ -16341,9 +16344,9 @@ Obj34_DoDisplayX:
 
 Obj34_LoadPostGraphics:
 		moveq	#2,d0
-		jsr	(LoadPLC).l	; load explosion patterns
-		moveq	#$13,d0
-		jmp	(LoadPLC).l	; load star patterns
+		jmp	(LoadPLC).l	; load explosion patterns
+	;	moveq	#$13,d0
+	;	jmp	(LoadPLC).l	; load star patterns
 
 ; ===========================================================================
 Obj34_ItemData:
@@ -19346,6 +19349,13 @@ Obj47_Display:
 		sub.w	d1,d0
 		cmpi.w	#$280,d0
 		bhi.s	Obj47_ChkHit
+
+		cmpi.w	#$400,($FFFFFE10).w	; are we in Uberhub?
+		bne.s	@display		; if not, branch
+		tst.b	($FFFFFF7F).w		; are we done with the intro tube sequence?
+		bne.s	@display		; if yes, branch
+		rts
+@display:
 		bra.w	DisplaySprite
 ; ===========================================================================
 
@@ -30487,7 +30497,9 @@ Obj38_Main:				; XREF: Obj38_Index
 Obj38_DoStars:
 		addq.b	#2,obRoutine(a0)	; stars	specific code
 		move.w	#$55C,obGfx(a0)
-		rts	
+
+		moveq	#$13,d0
+		jmp	(LoadPLC).l	; load star patterns
 ; ===========================================================================
 
 Obj38_Shield:				; XREF: Obj38_Index
@@ -38814,6 +38826,7 @@ loc_1A216:
 @atcliff:
 		move.w	#$27E0,($FFFFD008).w	; force Sonic to cliff
 		clr.w	($FFFFD014).w		; clear inertia
+		move.b	#0,($FFFFD000+obAniFrame).w ; reset Sonic waiting animation
 		move.w	($FFFFD00C).w,d0	; get Sonic's Y pos
 		cmp.w	obY(a0),d0		; compare against Eggman's Y pos
 		blo.s	@nolookup		; if not, branch

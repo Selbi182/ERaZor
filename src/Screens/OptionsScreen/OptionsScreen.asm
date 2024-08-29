@@ -328,12 +328,10 @@ Options_HandleUpDown:
 		move.w	(sp)+, d0
 		jsr	Options_RedrawMenuItem		; redraw previously selected item
 
-		move.b	#$D8,d0			; play move sound
-		jsr	PlaySound_Special
+		move.b	#$D8,d0				; play move sound
+		jmp	PlaySound_Special
 
-
-	@Done:
-		rts
+	@Done:	rts
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------

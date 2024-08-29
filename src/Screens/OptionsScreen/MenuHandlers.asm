@@ -224,6 +224,9 @@ Options_PhotosensitiveMode_Redraw:
 	rts
 
 ; ---------------------------------------------------------------------------
+; "PHOTOSENSITIVE MODE" handle function
+; ---------------------------------------------------------------------------
+
 Options_PhotosensitiveMode_Handle:
 	move.b	Joypad|Press, d1		; get button presses
 	andi.b	#$FC, d1			; is left, right, A, B, C, or Start pressed?
@@ -292,48 +295,48 @@ Options_CinematicMode_Handle:
 
 @nodebugunlock:		
 	jsr	Check_BaseGameBeaten		; has the player beaten the base game?
-	beq.w	Options_PlayDisallowedSound		; if not, cineamtic mode is disallowed
+	beq.w	Options_PlayDisallowedSound	; if not, cineamtic mode is disallowed
 
 	bsr.s	Options_CinematicMode_BitsToId	; d0 = %PB (B = bars, P = piss)
 	btst	#iLeft, Joypad|Press		; is left pressed?
 	bne.s	@selectPrevious			; if yes, branch
-	addq.w	#1, d0
+	addq.w	#1, d0				; use next mode
 	bra.s	@finalize
 
 @selectPrevious:
-	subq.w	#1, d0
+	subq.w	#1, d0				; use previous mode
 
 @finalize:
-	andi.w	#%11, d0
-	bsr	Options_CinematicMode_IdToBits
+	andi.w	#%11, d0			; wrap modes
+	bsr	Options_CinematicMode_IdToBits	; save to `OptionsBits`
 	st.b	Options_RedrawCurrentItem
-	move.b	#$D8,d0			; play move sound
+	move.b	#$D8,d0				; play move sound
 	jmp	PlaySound_Special
 
 @ret:	rts
 
 ; ---------------------------------------------------------------------------
 Options_CinematicMode_BitsToId:
-	KDebug.WriteLine "IN: bits: %<.b d0 bin>"
+	KDebug.WriteLine "Options_CinematicMode_BitsToId(): bits=%<.b d0 bin>"
 	moveq	#(1<<6)|(1<<3), d0
 	and.b	OptionsBits, d0		; d0 = %0P00 B000, B = bars, P = piss
 	lsr.b	#3, d0			; d0 = %0000 P00B, B = bars, P = piss
 	ror.w	d0			; d0 = %Bxxx xxxx 0000 0P00
 	lsr.b	#3-1, d0		; d0 = %Bxxx xxxx 0000 000P
 	rol.w	d0			; d0 = %0000 00PB
-	KDebug.WriteLine "OUT: id: %<.b d0 bin>"
+	KDebug.WriteLine "Options_CinematicMode_BitsToId(): id=%<.b d0 bin>"
 	rts
 
 ; ---------------------------------------------------------------------------
 Options_CinematicMode_IdToBits:
-	KDebug.WriteLine "IN: id: %<.b d0 bin>"
+	KDebug.WriteLine "Options_CinematicMode_IdToBits(): id=%<.b d0 bin>"
 	andi.b	#~((1<<6)|(1<<3)), OptionsBits
 	ror.w	d0			; d0 = %Bxxx xxxx 0000 000P
 	lsl.b	#(6-3)-1, d0		; d0 = %Bxxx xxxx 0000 0P00
 	rol.w	d0			; d0 = %0000 P00B
 	lsl.b	#3, d0			; d0 = %0P00 B000
 	or.b	d0, OptionsBits
-	KDebug.WriteLine "OUT: id: %<.b d0 bin>"
+	KDebug.WriteLine "Options_CinematicMode_IdToBits(): bit=%<.b d0 bin>"
 	rts
 
 ; ===========================================================================

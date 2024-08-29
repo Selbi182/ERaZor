@@ -9,7 +9,7 @@
 		dc.w	$0080, $00A8	; ghz 4
 
 		dc.w	$0078, $006E	; lz 1
-		dc.w	$0318, $02AC	; LZ 2 (Labyrinthy Place)
+		dc.w	$02B0, $0160	; LZ 2 (Labyrinthy Place)
 		dc.w	$00B4, $078C	; LZ 2 (Labyrinthy Place fast forward)
 		dc.w	$0B80, $0000	; lz 4
 
@@ -23,8 +23,8 @@
 		dc.w	$0B00, $036C	; SLZ 3 (Star Agony Place)
 		dc.w	$0080, $00A8	; slz 4
 
-		dc.w	$0280, $0060	; SYZ 1 (Uberhub casual)
-		dc.w	$008E, $0010	; SYZ 1 (Uberhub frantic)
+		dc.w	$0380, $0060	; SYZ 1 (Uberhub casual)
+		dc.w	$008E, $0030	; SYZ 1 (Uberhub frantic)
 		dc.w	$0038, $00EE	; syz 3
 		dc.w	$0080, $00A8	; syz 4
 
@@ -34,7 +34,7 @@
 		dc.w	$0080, $00A8	; sbz 4
 
 		dc.w	$0620, $016B	; Unknown
-		dc.w	$0FE0, $026C	; Ending Sequence
+		dc.w	$1040, $026C	; Ending Sequence
 		dc.w	$0080, $00A8	; Null
 		dc.w	$0080, $00A8	; Null
 		even

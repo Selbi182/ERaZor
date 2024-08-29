@@ -357,7 +357,7 @@ BlackBars.MaxHeight = 36
 
 BlackBars.SetState:
 		moveq	#0,d0				; clear d0		
-		move.b	(GameMode).w,d0		; get current game mode
+		move.b	(GameMode).w,d0			; get current game mode
 		cmpi.b	#$C,d0				; are we in a level?
 		beq.s	@validgamemode			; if yes, branch
 		cmpi.b	#$1C,d0				; are we in Selbi?
@@ -1358,9 +1358,9 @@ PalCycle_SYZ:				; XREF: PalCycle
 		tst.w	(Doors_Casual).w	; have any levels been beaten yet?
 		beq.s	@dopalcycle		; if not, this isn't necessary
 		move.w	($FFFFF700).w,d1	; get camera X pos
-		cmpi.w	#$00B0,d1		; trophy gallery out of sight to the left?
+		cmpi.w	#$01B0,d1		; trophy gallery out of sight to the left?
 		bls.s	@dopalcycle		; if yes, branch
-		cmpi.w	#$0300,d1		; trophy galelry out of sight to the right?
+		cmpi.w	#$0400,d1		; trophy galelry out of sight to the right?
 		bhs.s	@dopalcycle		; if yes, branch
 		cmpi.w	#$150,($FFFFF704).w
 		blo.s	@dopalcycle
@@ -3374,11 +3374,12 @@ Level_ClrVars3:	move.l	d0,(a1)+
 		bra.s	Level_LoadPal		; branch
 
 Level_LZWaterSetup:
-	;	tst.b	($FFFFFF97).w		; did the player die before the first checkpoint?
-	;	bne.s	@cont			; if not, branch
-	;	clr.b	($FFFFFFFE).w		; otherwise, make sure =P state is off
-
-;@cont:
+		tst.b	($FFFFFFFE).w		; did the player die before destroying the =P monitor?
+		bne.s	@nointronyoom		; if not, branch
+		bset	#1,($FFFFD022).w
+		move.b	#2,($FFFFD01C).w
+		move.w	#$800,($FFFFD012).w
+@nointronyoom:
 		move.l	#WaterTransition_LZ,($FFFFF610).w
 		move.w	#$8014,(a6)
 		moveq	#0,d0
@@ -3594,7 +3595,7 @@ loc_3946:
 		bne.s	Level_ChkWater
 		bset	#1,($FFFFD022).w
 		move.b	#2,($FFFFD01C).w
-		move.w	#$800,($FFFFD012).w
+		move.w	#$800,($FFFFD012).w	; shoot Sonic down in Uberhub's intro
 
 Level_ChkWater:
 		move.w	#0,($FFFFF602).w
@@ -3666,22 +3667,52 @@ Level_Delay:
 		move.b	#$5C,(a1)		; load metal girder overlay object
 @notslz:
 
-	;	move.w	#3,d1
-Level_DelayLoop:
-	;	move.b	#8,VBlankRoutine
-	;	bsr	DelayProgram
-	;	dbf	d1,Level_DelayLoop
+; ---------------------------------
+@runplc:	; run PLC now to avoid stutter during fade in
+		move.b	#$C,VBlankRoutine
+		bsr	DelayProgram
+		bsr	PLC_Execute
+		tst.l	PLC_Pointer	; are there any items in the pattern load cue?
+		bne.s	@runplc		; if yes, branch
 
-		bsr	DeformBgLayer
+		move.w	#$8014,($C00004).l	; enable h-ints for the black bars
+
+		; the following code is basically just Pal_FadeTo2 but
+		; adjusted to already start displaying the level during the fade-in
 		move.w	#$202F,($FFFFF626).w
-		bsr	Pal_FadeTo2
+		moveq	#0,d0
+		lea	($FFFFFB00).w,a0
+		move.b	($FFFFF626).w,d0
+		adda.w	d0,a0
+		moveq	#0,d1
+		move.b	($FFFFF627).w,d0
+@Pal_ToBlack:	move.w	d1,(a0)+
+		dbf	d0,@Pal_ToBlack		; fill palette with $000 (black)
+
+		moveq	#$E,d4
+		moveq	#0,d6
+@fadefromblack:
+		tst.b	($FFFFF7CC).w	; are controls locked?
+		beq.s	@nobars		; if not, branch
+		move.w	#BlackBars.MaxHeight,BlackBars.Height ; force bars to max during locked controls fade in (like NHP)
+@nobars:
+		movem.l	d4-d6, -(sp)
+		bsr	Level_MainLoop_Main
+		movem.l	(sp)+, d4-d6
+		bchg	#0,d6
+		beq	@fadefromblack
+		bsr	Pal_FadeIn
+		subq.b	#2,d4
+		bne	@fadefromblack
+; ---------------------------------
+
 		addq.b	#2,($FFFFD0A4).w ; make	title card move
 		addq.b	#4,($FFFFD0E4).w ; make	title card move
 		addq.b	#4,($FFFFD124).w ; make	title card move
 		addq.b	#4,($FFFFD164).w ; make	title card move
 
 Level_StartGame:
-		move.w	#$8014,($C00004)	; enable horizontal interrupts (normally only enabled in LZ)
+	;	move.w	#$8014,($C00004)	; enable horizontal interrupts (normally only enabled in LZ)
 		ints_enable
 		bclr	#7,(GameMode).w	; clear pre-level sequence flag
 
@@ -3692,8 +3723,17 @@ Level_StartGame:
 
 ; LVML::
 Level_MainLoop:
-		bsr	PauseGame
+		bsr	Level_MainLoop_Main	; simulate fun
 
+		tst.w	($FFFFFE02).w		; is the level set to restart?
+		bne.w	Level			; if yes, restart level
+		cmpi.b	#$C,(GameMode).w	; has game mode changed?
+		beq.w	Level_MainLoop		; if not, loop
+		rts				; screen mode changed, exit level
+; ===========================================================================
+
+Level_MainLoop_Main:
+		bsr	PauseGame
 		bsr	RandomNumber		; constantly create a new random number every frame to make use of RandomNumber
 		jsr	WhiteFlash_Restore	; restore white flash, if applicable
 		jsr	CinematicScreenFuzz	; do screen fuzz, if applicable
@@ -3707,7 +3747,6 @@ Level_MainLoop:
 		jsr	FixLevel		; fix level
 		clr.b	(RedrawEverything).w	; clear redraw flag
 @noredraw:
-
 		; main level rendering
 		bsr	LZWaterEffects
 		jsr	ObjectsLoad
@@ -3724,13 +3763,7 @@ Level_MainLoop:
 		bsr	SignpostArtLoad
 		jsr	GiantRingArtLoad
 		jsr	AnimatedArt_Update
-
-		tst.w	($FFFFFE02).w		; is the level set to restart?
-		bne.w	Level			; if yes, restart level
-		cmpi.b	#$C,(GameMode).w	; has game mode changed?
-		beq.w	Level_MainLoop		; if not, loop
-		rts				; screen mode changed, exit level
-
+		rts
 ; ===========================================================================
 
 WaterTransition_LZ:	dc.w $13    ; # of entries - 1
@@ -4850,13 +4883,14 @@ SS_SetupFinish:
 		lea	($FFFFFB00).w,a0
 		move.b	($FFFFF626).w,d0
 		adda.w	d0,a0
+
 		move.w	#$EEE,d1
 		move.b	($FFFFF627).w,d0
 @PalWhiteLoop:	move.w	d1,(a0)+
 		dbf	d0,@PalWhiteLoop
-		move.w	#$15,d5
-@loc_1EF4:	move.l	d5,-(sp)
 
+		move.w	#$15,d5
+@fadefromwhite:	move.l	d5,-(sp)
 		tst.b	(Blackout).w	; is this the blackout special stage?
 		bne.s	@0		; if yes, skip fade-in
 		move.b	#$A,VBlankRoutine
@@ -4869,7 +4903,7 @@ SS_SetupFinish:
 		bsr	PalCycle_SS
 @0:		bsr	Pal_WhiteToBlack
 		move.l	(sp)+,d5
-		dbf	d5,@loc_1EF4
+		dbf	d5,@fadefromwhite
 
 
 ; ---------------------------------------------------------------------------
@@ -5583,10 +5617,10 @@ End_MainLoop:
 @checkeaster:
 		btst	#4,(OptionsBits).w	; is nonstop inhuman enabled?
 		beq.s	@checkfadeout		; if not, branch	
-		move.w	($FFFFF72A).w,d0	; get right level boundary
-		addi.w	#$128,d0		; adjust a bit
-		cmp.w	($FFFFD008).w,d0	; compare to Sonic's X pos
-		bgt.s	@checkfadeout		; if he's left of the boundary, all good
+		cmpi.w	#$300,($FFFFD00C).w	; compare to Sonic's Y pos
+		bls.s	@checkfadeout		; if he's above, all good
+		cmpi.w	#$1020,($FFFFD008).w	; compare to Sonic's X pos
+		bls.s	@checkfadeout		; if he's left of the boundary, all good
 		move.w	#1,($FFFFFE02).w	; start credits to not softlock in nonstop inhuman
 
 @checkfadeout:
@@ -5846,18 +5880,6 @@ StartLocArray:	include "misc\sloc_lev.asm"
 
 
 LevSz_SonicPos:
-		cmpi.w	#$400,($FFFFFE10).w	; is level SYZ?
-		bra.s 	@cont			; if not, branch
-	;	move.w	#$04A0,($FFFFD008).w ; set Sonic's position on x-axis
-	;	move.w	#$00A0,($FFFFD00C).w ; set Sonic's position on y-axis
-		
-		move.w	#$04A0,($FFFFF700).w ; set Sonic's position on x-axis
-		move.w	#$00A0,($FFFFF704).w ; set Sonic's position on y-axis
-		
-		move.w	#-$800,($FFFFD012).w
-		bra.s	loc_60D0
-
-@cont:
 		moveq	#0,d1
 		move.w	(a1)+,d1
 		move.w	d1,($FFFFD008).w ; set Sonic's position on x-axis
@@ -6753,9 +6775,9 @@ Resize_SYZ1:
 	
 		cmpi.w	#$E0,($FFFFD00C).w	; are we at the end ring?
 		bhs.s	@noend			; if not, branch
-		cmpi.w	#$1700,($FFFFD008).w	; are we at the end ring?
+		cmpi.w	#$1800,($FFFFD008).w	; are we at the end ring?
 		blo.s	@noend			; if not, branch
-		cmpi.w	#$19F0,($FFFFD008).w	; are we at the end ring?
+		cmpi.w	#$1A10,($FFFFD008).w	; are we at the end ring?
 		bhs.s	@noend			; if not, branch
 		move.w	#0,($FFFFF726).w	; boundary bottom in end section
 		rts
@@ -6769,13 +6791,13 @@ Resize_SYZ1:
 		rts
 
 @noblackout:
-		cmpi.w	#$500,($FFFFF700).w	; after 500 units?
+		cmpi.w	#$600,($FFFFF700).w	; after 600 units?
 		blo.s	@uberhubend		; if not, branch
 		move.w	#$1C0,($FFFFF726).w	; raise boundary bottom (to center the level signs vertically on screen)
 
-		cmpi.w	#$1180,($FFFFF700).w	; in the finalor section?
+		cmpi.w	#$1280,($FFFFF700).w	; in the finalor section?
 		blo.s	@mainpart		; if yes, do smooth camera transition
-		cmpi.w	#$1840,($FFFFF700).w	; in the finalor section?
+		cmpi.w	#$1940,($FFFFF700).w	; in the finalor section?
 		bhs.s	@mainpart		; if yes, do smooth camera transition
 		move.w	#$2E8,($FFFFF726).w	; target boundary
 		rts
@@ -6783,9 +6805,9 @@ Resize_SYZ1:
 @mainpart:
 		cmpi.w	#$260,($FFFFD00C).w	; entered a tube?
 		blo.s	@uberhubend		; if not, branch
-		cmpi.w	#$600,($FFFFD008).w	; make sure Sonic is in the right area
+		cmpi.w	#$700,($FFFFD008).w	; make sure Sonic is in the right area
 		blo.s	@uberhubend		; if before that, branch
-		move.w	#$440,d0		; set boundary bottom for tubes
+		move.w	#$580,d0		; set boundary bottom for tubes
 		move.w	d0,($FFFFF726).w	; target boundary
 		move.w	d0,($FFFFF72E).w	; current boundary
 
@@ -7088,7 +7110,7 @@ Resize_FZAddBombs:
 
 @Continue:
 		bra.w	loc_72C2
- 
+; ===========================================================================
 
 Resize_FZend:
 		cmpi.w	#$2450,($FFFFF700).w
@@ -7102,6 +7124,7 @@ loc_7320:
 locret_7322:
 		rts	
 ; ===========================================================================
+; ===========================================================================
 
 Resize_FZend2:
 		clr.b	($FFFFFE1E).w		; stop time counter
@@ -7110,8 +7133,12 @@ Resize_FZend2:
 		tst.b	(FZEscape).w		; has escape sequence flag been set? (Eggman object deleted after crash)
 		beq.w	@waitforeggmantodielol	; if not, branch
 		addq.b	#2,($FFFFF742).w	; go to nuke wait code
+		move.b	#0,($FFFFD000+obAniFrame).w ; reset Sonic waiting animation
+		move.b	#0,($FFFFF7CC).w	; unlock controls
 		lea	(PLC_FZNuke).l,a1	; load nuke patterns
 		jsr	LoadPLC_Direct
+		move.w	#$E0,d0
+		jsr	PlaySound		; fade out music
 
 @waitforeggmantodielol:
 		bra.w	loc_72C2
@@ -12213,6 +12240,7 @@ Obj37_NoRingsMove:
 		tst.b	($FFFFFFA9).w		; is Sonic fighting against the walking bomb?
 		bne.s	@nofloorcap		; if yes, branch
 		move.b	#1,$36(a0)		; set floor cap flag
+		clr.w	obVelX(a0)		; prevent drifting
 		clr.w	obVelY(a0)		; clear remaining bounce
 		andi.w	#$FFF8,obY(a0)		; make sure it doesn't get stuck in the floor
 		bra.s	@updatepos		; skip
@@ -12515,10 +12543,13 @@ Obj4B_DontCollect:
 ; ===========================================================================
 
 Obj4B_Collect:				; XREF: Obj4B_Index
-		btst	#6,(OptionsBits).w	; is piss enabled?
-		bne.s	@NoPaletteChange	; don't change the palette
 		cmp.b	#4,($FFFFFE10).w	; we in uberhub?
 		bne.s	@NoPaletteChange	; if not, don't change the palette
+		
+		cmpi.b	#GRing_Labyrinthy,obSubtype(a0)
+		beq.w	Obj4B_Exit
+		btst	#6,(OptionsBits).w	; is piss enabled?
+		bne.s	@NoPaletteChange	; don't change the palette
 		lea	(Pal_SYZGray).l,a3
 		lea 	($FFFFFB20).w,a4
 		moveq	#$30-1,d0
@@ -12628,8 +12659,13 @@ FZEscape_ScreenBoom:
 
 		move.l	a0,-(sp)		; backup to stack
 		jsr	Pal_CutToWhite		; instantly turn screen white
+		move.w	#0,($FFFFFB00)
+		move.w	#0,($FFFFFB20)
+		move.w	#0,($FFFFFB40)
+		move.w	#0,($FFFFFB60)
 		move.l	(sp)+,a0		; restore from stack
 
+		move.w	#BlackBars.MaxHeight,BlackBars.Height ; force bars to max
 		move.w	#120,d5			; delay for two seconds
 @WaitLoop:	move.b	#$12,VBlankRoutine
 		jsr	DelayProgram
@@ -22983,6 +23019,7 @@ Obj5D_Action:				; XREF: Obj5D_Index
 		move.b	#1,$30(a0)		; fast animation
 		tst.b	($FFFFFF78).w		; pit flag set?
 		bne.w	Obj5D_Animate		; if yes, spinni :)
+		move.b	#0,$30(a0)
 		bra.w	Obj5D_ChkDel		; if not, no spinni :(
 
 @snp:
@@ -25954,6 +25991,7 @@ Obj03_Display:
 @notodd:
 		bsr.s	Obj03_BackgroundColor
 
+@waitintro:
 		move.w	obX(a0),d0
 		andi.w	#$FF80,d0
 		move.w	($FFFFF700).w,d1
@@ -25971,7 +26009,7 @@ Obj03_BackgroundColor:
 	
 		moveq	#0,d0			; clear d0
 		move.b	($FFFFF700).w,d0	; get upper X camera position (1 unit = $100 pixels)
-		subi.b	#2,d0
+		subi.b	#3,d0			; start at X pos $300
 		bpl.s	@chktutsign
 		move.w	#$444,d1		; set color for options sign
 		bra.s	@applybgcolor
@@ -38718,7 +38756,7 @@ loc_1A192:				; XREF: off_19E80
 		jsr	SpeedToPos
 		cmpi.w	#$544,obY(a0)
 		bcc.s	loc_1A1D0
-		move.w	#$200,obVelX(a0)
+		move.w	#$140,obVelX(a0)
 		move.w	#-$18,obVelY(a0)
 		move.b	#$F,obColType(a0)
 		addq.b	#2,$34(a0)
@@ -38736,7 +38774,9 @@ loc_1A1D4:				; XREF: off_19E80
 		bne.s	loc_1A216
 		move.w	#$1E,$30(a0)
 		bsr	BossDamageSound
-
+		move.w	#$200,obVelX(a0)
+		move.b	#1,($FFFFF7CC).w		; are controls locked
+		
 loc_1A1FC:
 		subq.w	#1,$30(a0)
 		bne.s	loc_1A216
@@ -38750,37 +38790,42 @@ loc_1A210:
 		move.b	#$F,obColType(a0)
 
 loc_1A216:
-		; cutscene after hitting eggman one last time
-		cmpi.w	#$27B0,($FFFFD008).w
-		blt.s	loc_1A23A
-		move.w	#$180,obVelX(a0)
 
-		move.b	#1,($FFFFF7CC).w	; lock controls
-		move.w	#0,($FFFFF602).w	; clear inputs
+		cmpi.w	#$27E0,($FFFFD008).w	; is Sonic at cliff?
+		blo.s	@0
+		move.b	#1,($FFFFF7CC).w		; are controls locked
+
+@0
+		cmpi.w	#$2780,obX(a0)	; is Sonic at cliff?
+		blo.s	@wait
+		move.b	#1,($FFFFF7CC).w		; are controls locked
+
+@wait:
+		tst.b	($FFFFF7CC).w		; are controls locked
+		beq.s	@nolookup		; if not, branch
+		clr.w	($FFFFF602).w		; clear inputs
+		bclr	#5,($FFFFD022).w	; clear pushing flag
+
+		cmpi.w	#$27E0,($FFFFD008).w	; is Sonic at cliff?
+		bhs.s	@atcliff		; if yes, branch
+		move.w	#$800,($FFFFF602).w	; force D-pad right press
+		bra.s	@nolookup
+
+@atcliff:
+		move.w	#$27E0,($FFFFD008).w	; force Sonic to cliff
 		clr.w	($FFFFD014).w		; clear inertia
-		bclr	#5,($FFFFD022).w
-		
-		move.w	($FFFFD00C).w,d0
-		cmp.w	obY(a0),d0
-		blo.s	loc_1A248
-		move.w	#$100,($FFFFF602).w
+		move.w	($FFFFD00C).w,d0	; get Sonic's Y pos
+		cmp.w	obY(a0),d0		; compare against Eggman's Y pos
+		blo.s	@nolookup		; if not, branch
+		move.w	#$100,($FFFFF602).w	; force D-pad up press
 
-loc_1A23A:
-		cmpi.w	#$27E0,($FFFFD008).w
-		blt.s	loc_1A248
-		move.w	#$27E0,($FFFFD008).w
-
-loc_1A248:
-		cmpi.w	#$2900,obX(a0)
-		bcs.w	loc_1A15C
-
-		tst.b	obRender(a0)		; has Eggman object been deleted after the crash cutscene?
-		bmi.w	loc_1A15C		; if not, branch
-		move.b	#0,($FFFFD000+obAniFrame).w ; reset Sonic waiting animation
+@nolookup:
+		; cutscene after hitting eggman one last time
+	;	tst.b	obRender(a0)		; has Eggman object been deleted after the crash cutscene?
+	;	bmi.w	loc_1A15C		; if not, branch
+		cmpi.w	#$2A00,obX(a0)		; has Eggman's ship gone offscreen?
+		blo.w	loc_1A15C		; if not, branch
 		move.b	#1,(FZEscape).w		; set final sequence flag
-		move.b	#0,($FFFFF7CC).w	; unlock controls
-		move.w	#$E0,d0
-		jsr	PlaySound		; fade out music
 		bra.w	Obj85_Delete
 ; ===========================================================================
 
@@ -38834,7 +38879,7 @@ loc_1A2E4:
 		cmpi.w 	#$27A0, obX(a0)
 		blt.s	@NoFall
 
-		cmpi.w 	#$0600, obY(a0)
+		cmpi.w 	#$0620, obY(a0)
 		bge.s	@Crash
 
 		jsr	ObjectFall

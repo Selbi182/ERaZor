@@ -33,6 +33,7 @@ SRAM_MagicNumber = 182
 ; ---------------------------------------------------------------------------
 
 LoadSRAM:
+	KDebug.WriteLine "LoadSRAM()..."
 	; Supress SRAM if MD Replay takes over it
 	if def(__MD_REPLAY__)
 		rts
@@ -69,6 +70,7 @@ SRAMEnd:
 ; ===========================================================================
 
 SRAM_Reset:
+	KDebug.WriteLine "SRAM_Reset()..."
 	if def(__MD_REPLAY__)
 		rts
 	else
@@ -92,18 +94,20 @@ SRAM_Reset:
 	endif	; def(__MD_REPLAY__)=0
 		
 ResetGameProgress:
-		moveq	#0,d0
-		move.b	d0,($FFFFFFA7).w			; clear current chapter
-		move.w	d0,(Doors_Casual).w			; clear open doors bitsets
-		move.w	d0,($FFFFFE12).w			; clear lives/deaths counter
-		move.w	d0,($FFFFFE20).w			; clear rings
-		move.l	d0,($FFFFFE26).w			; clear score
-		move.b	d0,($FFFFFF93).w			; clear game beaten state
-		rts
+	KDebug.WriteLine "ResetGameProgress()..."
+	moveq	#0,d0
+	move.b	d0,($FFFFFFA7).w			; clear current chapter
+	move.w	d0,(Doors_Casual).w			; clear open doors bitsets
+	move.w	d0,($FFFFFE12).w			; clear lives/deaths counter
+	move.w	d0,($FFFFFE20).w			; clear rings
+	move.l	d0,($FFFFFE26).w			; clear score
+	move.b	d0,($FFFFFF93).w			; clear game beaten state
+	rts
 
 ; ===========================================================================
 
 SRAM_SaveNow:
+	KDebug.WriteLine "SRAM_SaveNow()..."
 	; Supress SRAM if MD Replay takes over it
 	if def(__MD_REPLAY__)
 		rts

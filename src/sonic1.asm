@@ -533,11 +533,10 @@ BlackBars_Ending:
 
 MainGameLoop:
 		moveq	#0,d0				; clear d0
-		move.b	(GameMode).w,d0		; get current game mode
+		move.b	(GameMode).w,d0			; get current game mode
 		movea.l	GameModeArray(pc,d0.w),a1	; locate address in GameModeArray
 		KDebug.WriteLine "MainGameLoop(): Launching %<.l a1 sym>..."
 		jsr	(a1)				; enter game mode
-	;	jsr	BlackBars.FullReset		; reset black bars between game mode transitions
 		bra.s	MainGameLoop			; if we're here, we exited the game mode; load new one
 
 ; ===========================================================================
@@ -563,7 +562,11 @@ GameModeArray:
 ; ---------------------------------------------------------------------------
 
 Deleted_Mode:
-		jmp	ReturnToUberhub		; we somehow ended up in a deleted game mode, immediately go back to Uberhub
+		if def(__DEBUG__)
+			RaiseError "Invalid game mode (%<.b GameMode>)"
+		else
+			jmp	ReturnToUberhub		; we somehow ended up in a deleted game mode, immediately go back to Uberhub
+		endif
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
 

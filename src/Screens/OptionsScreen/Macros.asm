@@ -1,6 +1,6 @@
 
 ; ---------------------------------------------------------------------------
-; Macro to pipe formatted string through a give function
+; Macro to pipe formatted string through a given function
 ; ---------------------------------------------------------------------------
 ; ARGUMENTS:
 ;	flushFunctionOperand - function used to flush string (always `a4`)

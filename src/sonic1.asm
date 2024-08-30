@@ -47,7 +47,7 @@ DebugModeDefault = 1
 DebugSurviveNoRings = 1
 ; ------------------------------------------------------
 DoorsAlwaysOpen = 0
-LowBossHP = 0
+LowBossHP = 1
 ; ------------------------------------------------------
 TestDisplayDeleteBugs = 0
 ; ======================================================
@@ -429,7 +429,7 @@ BlackBars_SetHeight:
 		rts					; return
 ; ===========================================================================
 
-BlackBars.GHPCasual  = 120
+BlackBars.GHPCasual  = 60*3
 BlackBars.GHPFrantic = 60
 ; ---------------------------------------------------------------------------
 
@@ -438,25 +438,28 @@ BlackBars.GHP:
 		bne.s	@timeleft			; if yes, don't affect height
 		cmpi.b	#6,($FFFFD024).w		; is Sonic dying?
 		bhs.s	BlackBars_Show			; if yes, show regular black bars
-		
+
+		tst.b	($FFFFF7AA).w			; fighting against boss? (for 3P easter egg)
+		bne.s	@baseheightokay			; if yes, branch
+		cmpi.w	#BlackBars.MaxHeight,BlackBars.Height	; are bars smaller than the base height?
+		bhs.s	@baseheightokay				; if not, branch
+		addq.w	#BlackBars.GrowSize,BlackBars.TargetHeight ; grow bars until we reach the minimum height
+@baseheightokay:
+
 		move.b	#BlackBars.GHPCasual,d0		; set casual reset time
 		frantic					; are we in Frantic mode?
 		beq.s	@notfrantic			; if not, branch
-		tst.b	($FFFFF7AA).w			; fighting against boss?
-		bne.s	@notfrantic			; if yes, branch
 		move.b	#BlackBars.GHPFrantic,d0	; set frantic reset time
-@notfrantic:
-		move.b	d0,BlackBars.GHPTimerReset	; set reset time
+@notfrantic:	move.b	d0,BlackBars.GHPTimerReset	; set reset time
+		subq.b	#1,BlackBars.GHPTimer		; sub 1 from grow interval timer
+		bhi.s	@timeleft			; if time is left, branch
+		move.b	BlackBars.GHPTimerReset,BlackBars.GHPTimer ; reset grow interval timer
 
-		subq.b	#1,BlackBars.GHPTimer		; sub 1 from shrink timer
-		bpl.s	@timeleft			; if time is left, branch
-		move.b	BlackBars.GHPTimerReset,BlackBars.GHPTimer	; reset timer
-		addq.w	#BlackBars.GrowSize,BlackBars.TargetHeight	; shrink bars
-
+		addq.w	#BlackBars.GrowSize,BlackBars.TargetHeight ; grow bars by one tick
 		cmpi.w	#224/2-2,BlackBars.Height	; did we reach kill height yet? (full screen covered)
 		blo.s	@noscreenkill			; if not, branch
 		jmp	KillSonic_Inhuman		; hecking kill Sonic, even in nonstop inhuman
-		
+
 @noscreenkill:
 		move.w	#$BB,d0				; play...
 		jsr	PlaySound_Special		; ...badump sound		
@@ -9433,8 +9436,8 @@ Obj2A_Red:
 		beq.w	Obj2A_Animate			; if not, keep door locked
 		tst.b	$30(a0)				; has sound stopper been passed?
 		beq.s	Obj2A_Green			; if not, keep door open
-		jsr	Check_BlackoutBeaten		; has the blackout challenge already been beaten?
-		bne.s	Obj2A_Green			; if yes, you may keep your toy
+	;	jsr	Check_BlackoutBeaten		; has the blackout challenge already been beaten?
+	;	bne.s	Obj2A_Green			; if yes, you may keep your toy
 		clr.b	obAnim(a0)			; shut door behind Sonic
 		bra.w	Obj2A_Animate			; force door to be red
 
@@ -19428,6 +19431,9 @@ Obj0D_Main:				; XREF: Obj0D_Index
 		move.b	#4,obPriority(a0)
 
 Obj0D_Touch:				; XREF: Obj0D_Index
+		cmpi.b	#6,($FFFFD024).w	; is Sonic dying?
+		bhs.w	locret_EBBA		; if yes, branch
+
 		move.w	($FFFFD008).w,d0
 		sub.w	obX(a0),d0
 		bcs.w	locret_EBBA
@@ -34545,6 +34551,13 @@ Obj3D_MainStuff:
 		moveq	#10,d0		; add 100 ...
 		jsr	AddPoints	; ... points
 		move.b	obColProp(a0),(HUD_BossHealth).w	; copy lives to HUD boss health counter
+
+		tst.b	(PlacePlacePlace).w
+		beq.s	@noeasteregg
+		cmpi.w	#6,BlackBars.Height
+		bls.s	@noeasteregg
+		subq.w	#6,BlackBars.TargetHeight
+@noeasteregg:
 
 		tst.b	($FFFFFFD1).w		; was flag to destroy the platforms already set?
 		bne.s	Obj3D_ShipFlash		; if yes, branch

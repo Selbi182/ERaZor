@@ -389,8 +389,8 @@ BlackBars.SetState:
 		bne.s	BlackBars.GHP			; if not, go to custom GHP black bars logic
 
 @notghp:
-		tst.b	($FFFFFFE9).w			; is fade out in progress?
-		bne.s	BlackBars_Show			; if yes, always enable
+	;	tst.b	($FFFFFFE9).w			; is fade out in progress?
+	;	bne.s	BlackBars_Show			; if yes, always enable
 		tst.b	($FFFFF7CC).w			; are controls locked?
 		bne.s	BlackBars_Show			; if yes, always enable
 		tst.w	($FFFFF63A).w			; is game paused?
@@ -3280,13 +3280,13 @@ MusicList:
 
 ; Level::	<-- for quick search
 Level:					; XREF: GameModeArray
+		bset	#7,(GameMode).w ; add $80 to screen mode (for pre level sequence)
 		bsr	PLC_ClearQueue
 		jsr	DrawBuffer_Clear
 		display_enable
 		move.w	#$8014,($C00004).l	; enable h-ints
 		bsr	Pal_FadeFrom
 		move.w	#$8004,($C00004).l	; disable h-ints
-		bset	#7,(GameMode).w ; add $80 to screen mode (for pre level sequence)
 
 		; immediately clear the first tile in VRAM to avoid graphical issues
 		VBlank_SetMusicOnly
@@ -13136,6 +13136,8 @@ Obj2E_ChkSonic: ; =P monitors
 		jmp	(PlaySound).l		; play the old ending sequence music for maximum troll
 
 @notlp:
+		moveq	#10,d0			; give a whooping 100 points
+		jsr	AddPoints
 		move.w	#$A9,d0			; play blip sound
 		jmp	(PlaySound_Special).l	; and yeah, that's about it
 ; ===========================================================================
@@ -23531,7 +23533,7 @@ Obj5F_Index:	dc.w Obj5F_Main-Obj5F_Index		; [$0]
 		dc.w Obj5F_BombMachine-Obj5F_Index	; [$8]
 		dc.w Obj5F_BossDefeated-Obj5F_Index	; [$A]
 		dc.w Obj5F_Display_Spark-Obj5F_Index	; [$C]
-		dc.w Obj5F_Transition-Obj5F_Index	; [$E]
+		dc.w Obj5F_BossDefeated-Obj5F_Index	; [$E]
 ; ===========================================================================
 
 Obj5F_Main:				; XREF: Obj5F_Index
@@ -23554,17 +23556,6 @@ Obj5F_Main:				; XREF: Obj5F_Index
 		move.b	#3,obPriority(a0)
 		move.b	#$C,obActWid(a0)
 
-		cmpi.w	#$301,($FFFFFE10).w
-		bne.s	@conty
-		tst.b	($FFFFFFA9).w
-		beq.s	@conty
-		tst.b	(BossHealth).w
-		bne.s	@conty
-		move.b	#$A,obRoutine(a0)
-		bra.w	Obj5F_BossDefeated 
-
-@conty:
-		
 		cmpi.w	#$500,($FFFFFE10).w
 		bne.s	@cont
 		move.b	#8,obRoutine(a0)
@@ -23782,87 +23773,6 @@ Obj5F_Explode:				; XREF: Obj5F_Index2
 locret_11B5E:
 		rts	
 ; ===========================================================================
-
-Obj5F_Transition:
-		move.b	($FFFFFF76).w, d0
-		move.w	@JumpTable(pc, d0.w), d0
-		jmp		@JumpTable(pc, d0.w)
-
-; ===========================================================================
-@JumpTable:
-		dc.w 	@StartSequence-@JumpTable
-		dc.w 	@CheckAirborne-@JumpTable
-		dc.w 	@Explode-@JumpTable
-		dc.w 	@CheckExplosions-@JumpTable
-		dc.w	@ContinueBoss-@JumpTable
-; ===========================================================================
-
-@StartSequence:
-		addq.b	#2, $FFFFFF76
-		
-		; fade out music
-		move.b	#$E0, d0
-		jsr		PlaySound_Special
-
-		; clear shit
-		bset	#0, $FFFFD022
-		clr.w	$FFFFFF8C
-		clr.w	$FFFFFF8E
-		clr.b	$FFFFFFEB
-		rts
-
-@CheckAirborne:
-		btst	#1, $FFFFD022		; test airborne bit
-		bne.s	@NotAirborne		; if 0, branch
-		rts
-
-@NotAirborne:
-		addq.b	#2, $FFFFFF76		; continue with sequence
-
-@Explode:
-		addq.b	#2, $FFFFFF76
-
-		; not my code, blame selbi
-		bsr	SingleObjLoad
-		move.b	#$3F,0(a1)	; load explosion object
-		move.w	obX(a0),obX(a1)
-		move.w	obY(a0),obY(a1)
-		move.b	#1,$30(a1)
-		move.b	#0,$31(a1)
-		jsr	(RandomNumber).l
-
-		; move.w	d0,d1
-		; moveq	#0,d1
-		; move.b	d0,d1
-		; lsr.b	#2,d1
-		; subi.w	#$20,d1
-		; add.w	d1,obX(a1)
-		; lsr.w	#8,d0
-		; lsr.b	#3,d0
-		; add.w	d0,obY(a1)
-		; subq.w	#8,obY(a1)
-		ori.b	#10,(CameraShake).w
-		bra.w 	@Return
-
-@CheckExplosions:
-		cmpi.w	#10,($FFFFFF7A).w
-		ble.w	@ContinueBoss
-
-		move.w	($FFFFFF7A).w,($FFFFFF78).w
-		subq.b	#4,($FFFFFF76).w
-		subi.w	#10,($FFFFFF7A).w
-		move.w	#20,($FFFFFF7C).w
-		bra.w	@Return
-
-@ContinueBoss:
-		move.b	#21,(BossHealth).w	; set lives
-		move.b	#$2, obRoutine(a0)
-		move.b	#0, $FFFFFF76
-		rts
-
-@Return:
-		rts
-
 ; ===========================================================================
 
 Obj5F_BossDefeated:
@@ -26557,9 +26467,9 @@ AfterImage:
 		bne.w	After_DoAfter		; if yes, branch
 		tst.b	($FFFFFFAD).w		; is Sonic performing a jumpdash or is on a spring?
 		bne.w	After_DoAfter		; if yes, branch
-		tst.b	($FFFFFF77).w
+		tst.b	($FFFFFF77).w		; antigrav enabled?
 		beq.s	@cont
-		btst	#1,obStatus(a0)
+		btst	#1,obStatus(a0)		; airborne?
 		bne.s	After_DoAfter
 
 @cont:
@@ -26567,20 +26477,15 @@ AfterImage:
 		move.w	obVelX(a0),d0		; move X-speed to d0
 		bpl.s	After_X_Positive	; if speed is positive, branch
 		neg.w	d0			; otherwise, negate it
-
 After_X_Positive:
-		cmpi.w	#$600,d0		; is X-speed at least $600?
-		bge.s	After_DoAfter		; if yes, branch
-		
-		move.w	obVelY(a0),d0		; move Y-speed to d0
+		move.w	obVelY(a0),d1		; move Y-speed to d1
 		bpl.s	After_Y_Positive	; if speed is positive, branch
-		neg.w	d0			; otherwise, negate it
-
+		neg.w	d1			; otherwise, negate it
 After_Y_Positive:
-		cmpi.w	#$600,d0		; is Y-speed at least $600?
-		bge.s	After_DoAfter		; if yes, branch
-		bra.s	After_Return		; if the X and Y are too little, don't do afterimage
-		nop				; in case you are enabling it constantly, we need this
+		or.w	d1,d0			; mash it together
+		cmpi.w	#$600,d0		; is X-speed at least $580?
+		bhs.s	After_DoAfter		; if yes, branch
+		rts				; if the X and Y are too little, don't do afterimage
 ; ===========================================================================
 
 After_DoAfter:
@@ -26590,7 +26495,7 @@ After_DoAfter:
 		move.w	obX(a0),obX(a1)		; set X-position to Sonic's
 		move.w	obY(a0),obY(a1)		; set Y-position to Sonic's
 		move.b	#1,$30(a1)		; make the fading out "better"
-		move.b	#3,obPriority(a1)		; set sprite priority to low plane
+		move.b	#3,obPriority(a1)	; set sprite priority to low plane
 
 After_Return:
 		rts				; return
@@ -37939,9 +37844,6 @@ Obj82_ObjData:	dc.b 2,	0, 3		; routine number, animation, priority
 ; ===========================================================================
 
 Obj82_Main:				; XREF: Obj82_Index
-		moveq	#$1E,d0
-		jsr	LoadPLC		; load SBZ2 Eggman patterns
-
 		jsr	SingleObjLoad
 		move.b	#$3A,(a1)
 		move.w	#$01B4,obX(a1)
@@ -40975,8 +40877,6 @@ SS_AniEmeraldSparks:			; XREF: SS_AniIndex
 		move.w	#$A8,d0			; play special stage GOAL sound
 		tst.b	(Blackout).w		; is this the blackout special stage?
 		beq.s	@playsound		; if not, branch
-		jsr	Set_BlackoutDone	; you have beaten the blackout challenge, congrats
-		jsr	SRAM_SaveNow		; save
 		move.w	#$91,d0			; play true ending music
 @playsound:
 		jsr	(PlaySound_Special).l

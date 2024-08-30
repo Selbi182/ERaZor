@@ -72,6 +72,11 @@ Options_MenuData_NumItems:	equ	(Options_MenuData_End-Options_MenuData)/10
 ; ---------------------------------------------------------------------------
 
 Options_GameplayStyle_Redraw:
+	tst.b	(PlacePlacePlace).w	; is easter egg flag set?
+	beq.s	@noteaster		; if not, branch
+	lea	@Str_Option3(pc), a1
+	bra.s	@0
+@noteaster:
 	lea	@Str_Option1(pc), a1
 	moveq	#1<<5, d0
 	and.b	OptionsBits, d0
@@ -83,6 +88,7 @@ Options_GameplayStyle_Redraw:
 ; ---------------------------------------------------------------------------
 @Str_Option1:	dc.b	' CASUAL', 0
 @Str_Option2:	dc.b	'FRANTIC', 0
+@Str_Option3:	dc.b	'TRUE-BS', 0
 	even
 
 ; ---------------------------------------------------------------------------
@@ -201,7 +207,7 @@ Options_SkipStoryScreens_Handle:
 	move.b	Joypad|Press, d1		; get button presses
 	andi.b	#$FC, d1			; is left, right, A, B, C, or Start pressed?
 	beq.w	@done				; if not, branch
-	bchg	#1, OptionsBits			; toggle Uberhub autoskip
+	bchg	#1, OptionsBits			; toggle Story screens autoskip
 	bsr	Options_PlayRespectiveToggleSound
 	st.b	Options_RedrawCurrentItem
 @done:	rts
@@ -231,7 +237,7 @@ Options_PhotosensitiveMode_Handle:
 	move.b	Joypad|Press, d1		; get button presses
 	andi.b	#$FC, d1			; is left, right, A, B, C, or Start pressed?
 	beq.w	@done				; if not, branch
-	bchg	#7, OptionsBits			; toggle Uberhub autoskip
+	bchg	#7, OptionsBits			; toggle photosensitive mode
 	bsr	Options_PlayRespectiveToggleSound
 	st.b	Options_RedrawCurrentItem
 @done:	rts
@@ -251,19 +257,19 @@ Options_CinematicMode_Redraw:
 	movea.l	@CinematicModeTextList(pc,d0), a1
 
 	lea	@Str_Cinematic_Locked(pc), a0
-	jsr	Check_BaseGameBeaten		; has the player beaten base game?
+	jsr	Check_BaseGameBeaten_Casual	; has the player beaten base game in casual?
 	beq.s	@0				; if not, branch
 	lea	@Str_Cinematic_Normal(pc), a0
 
-@0:	Options_PipeString a4, "%<.l a0 str>   %<.l a1 str>", 28
+@0:	Options_PipeString a4, "%<.l a0 str> %<.l a1 str>", 28
 	rts
 
 ; ---------------------------------------------------------------------------
 @Str_Cinematic_Normal:
-	dc.b	'CINEMATIC MODE', 0
+	dc.b	'E CINEMATIC MODE', 0
 
 @Str_Cinematic_Locked:
-	dc.b	'????????? ????', 0
+	dc.b	'E ????????? ????', 0
 	even
 
 @CinematicModeTextList:
@@ -288,13 +294,13 @@ Options_CinematicMode_Handle:
 	beq.s	@nodebugunlock			; if not, branch
 	cmpi.b	#$70,($FFFFF604).w		; is exactly ABC held?
 	bne.s	@nodebugunlock			; if not, branch
-	jsr	Toggle_BaseGameBeaten		; toggle base game beaten state to toggle the unlock for cinematic mode
+	jsr	Toggle_BaseGameBeaten_Casual	; toggle base game beaten in casual state to toggle the unlock for cinematic mode
 	andi.b	#~((1<<6)|(1<<3)), OptionsBits	; make sure option doesn't stay accidentally enabled
 	st.b	Options_RedrawCurrentItem
 	rts
 
 @nodebugunlock:		
-	jsr	Check_BaseGameBeaten		; has the player beaten the base game?
+	jsr	Check_BaseGameBeaten_Casual	; has the player beaten the base game in casual?
 	beq.w	Options_PlayDisallowedSound	; if not, cineamtic mode is disallowed
 
 	bsr.s	Options_CinematicMode_BitsToId	; d0 = %PB (B = bars, P = piss)
@@ -354,18 +360,18 @@ Options_MotionBlur_Redraw:
 	lea	Options_Str_On(pc), a1
 
 @0:	lea	@Str_MotionBlur_Locked(pc), a0
-	jsr	Check_AllLevelsBeaten_Frantic	; has the player beaten all levels in frantic?
+	jsr	Check_BaseGameBeaten_Frantic	; has the player beaten the base game in frantic?
 	beq.s	@1				; if not, branch
 	lea	@Str_MotionBlur_Normal(pc), a0
 
-@1:	Options_PipeString a4, "%<.l a0 str>              %<.l a1 str>", 28
+@1:	Options_PipeString a4, "%<.l a0 str>            %<.l a1 str>", 28
 	rts
 
 @Str_MotionBlur_Normal:
-	dc.b	'MOTION BLUR', 0
+	dc.b	'R MOTION BLUR', 0
 
 @Str_MotionBlur_Locked:
-	dc.b	'?????? ????', 0
+	dc.b	'R ?????? ????', 0
 	even
 
 ; ---------------------------------------------------------------------------
@@ -381,13 +387,13 @@ Options_MotionBlur_Handle:
 	beq.s	@nodebugunlock		; if not, branch
 	cmpi.b	#$70,($FFFFF604).w	; is exactly ABC held?
 	bne.s	@nodebugunlock		; if not, branch
-	jsr	Toggle_FranticBeaten	; toggle frantic beaten state to toggle the unlock for motion blur
+	jsr	Toggle_BaseGameBeaten_Frantic	; toggle frantic beaten state to toggle the unlock for motion blur
 	clr.b	(ScreenFuzz).w		; make sure option doesn't stay accidentally enabled
 	st.b	Options_RedrawCurrentItem
 	rts
 
 @nodebugunlock:
-	jsr	Check_AllLevelsBeaten_Frantic	; has the player beaten all levels in frantic?
+	jsr	Check_BaseGameBeaten_Frantic	; has the player beaten the base game in frantic?
 	beq.w	Options_PlayDisallowedSound	; if not, branch
 	bchg	#4, ScreenFuzz			; toggle motion blur (not saved to SRAM!)
 	bsr	Options_PlayRespectiveToggleSound
@@ -410,14 +416,14 @@ Options_NonstopInhuman_Redraw:
 	beq.s	@1				; if not, branch
 	lea	@Str_NonstopInhuman_Normal(pc), a0
 
-@1:	Options_PipeString a4, "%<.l a0 str>          %<.l a1 str>", 28
+@1:	Options_PipeString a4, "%<.l a0 str>      %<.l a1 str>", 28
 	rts
 
 @Str_NonstopInhuman_Normal:
-	dc.b	'NONSTOP INHUMAN', 0
+	dc.b	'Z TRUE INHUMAN MODE', 0
 
 @Str_NonstopInhuman_Locked:
-	dc.b	'??????? ???????', 0
+	dc.b	'Z ???? ??????? ????', 0
 	even
 
 ; ---------------------------------------------------------------------------

@@ -223,16 +223,33 @@ Exit_StoryScreen:
 		cmpi.b	#8,d0			; is this the ending sequence?
 		beq.s	@startending		; if yes, branch
 		cmpi.b	#9,d0			; is this the end of the blackout challenge?
-		beq.w	Start_FirstGameMode	; if yes, restart game
+		beq.s	@postblackout	; if yes, branch
 		
 		; regular story screen (including intro)
 		btst	#2,(OptionsBits).w	; is Skip Uberhub Place enabled?
 		bne.w	SkipUberhub		; if yes, automatically go to the next level in order
 		bra.w	ReturnToUberhub		; otherwise, always return to Uberhub
+; ---------------------------------------------------------------------------
 
 @startending:
 		move.b	#$18,(GameMode).w	; set to ending sequence ($18)
 		rts
+; ---------------------------------------------------------------------------
+
+@postblackout:
+		btst	#0,($FFFFFFA0).w	; was nonstop inhuman unlock text set to be displayed?
+		beq.s	@restartgame		; if not, branch
+
+		jsr	Pal_FadeFrom		; fade out palette
+		jsr	ClearScreen		; clear screen
+		moveq	#$E,d0			; load FZ palette (cause tutorial boxes are built into SBZ)
+		jsr	PalLoad2		; load palette
+
+		moveq	#$16,d0			; load text after beating the blackout challenge for the first time
+		jsr	Tutorial_DisplayHint	; VLADIK => Display hint
+
+@restartgame:
+		bra.w	Start_FirstGameMode	; restart game
 ; ===========================================================================
 
 Exit_CreditsScreen:
@@ -264,12 +281,18 @@ Exit_CreditsScreen:
 
 @checkcinematicunlock:
 		btst	#2,($FFFFFF95).w
+		beq.s	@checkmotionblur
+		moveq	#$14,d0			; load Cinematic Mode unlock text
+		jsr	Tutorial_DisplayHint	; VLADIK => Display hint
+
+@checkmotionblur:
+		btst	#3,($FFFFFF95).w
 		beq.s	@checkblackout
-		moveq	#$11,d0			; load Cinematic Mode unlock text
+		moveq	#$15,d0			; load motion blur unlock text
 		jsr	Tutorial_DisplayHint	; VLADIK => Display hint
 
 @checkblackout:
-		btst	#3,($FFFFFF95).w
+		btst	#4,($FFFFFF95).w
 		beq.s	@restartfromcredits
 		moveq	#$12,d0			; load Blackout Challenge teaser text
 		jsr	Tutorial_DisplayHint	; VLADIK => Display hint
@@ -305,29 +328,40 @@ Exit_EndingSequence:
 
 		frantic				; did we beat the game in frantic?
 		bne.s	@showfrantictext	; if yes, branch
-		bsr	Check_AllLevelsBeaten_Frantic ; is a player who already beat frantic for some reason revisitng the end in casual?
+		bsr	Check_BaseGameBeaten_Frantic ; is a player who already beat frantic for some reason revisitng the end in casual?
 		bne.s	@showfrantictext	; if yes, show frantic text anyway
 		bset	#0,d1			; load text after beating the game in casual mode
 		bra.s	@checkcinematicunlock	; skip
+
 	@showfrantictext:
 		bset	#1,d1			; load text after beating the game in frantic mode
-		
-@checkcinematicunlock:
-		bsr	Check_BaseGameBeaten	; have you already beaten the base game?
-		bne.s	@checkblackout		; if yes, branch
+
+	@checkcinematicunlock:
+		bsr	Check_BaseGameBeaten_Casual ; have you already beaten the base game in casual?
+		bne.s	@checkmotionblur	; if yes, branch
 		bset	#2,d1			; load Cinematic Mode unlock text
-
-@checkblackout:
-		bsr	Check_BlackoutBeaten	; have you already beaten the blackout challenge?
-		bne.s	@markgameasbeaten	; if yes, branch
-		bset	#3,d1			; load Blackout Challenge teaser text
-
-@markgameasbeaten:
-		move.b	d1,($FFFFFF95).w	; set which texts to display after the credits
 		
-		bsr	Set_BaseGameDone	; you have beaten the base game, congrats
-		jsr	SRAM_SaveNow		; save now
+	@checkmotionblur:
+		frantic				; was the game beaten in frantic?
+		beq.s	@markgameasbeaten	; if not, branch
+		bsr	Check_BaseGameBeaten_Frantic ; have you already beaten the base game in frantic?
+		bne.s	@markgameasbeaten	; if yes, branch
+		bset	#3,d1			; load Motion Blur unlock text
+		
+@markgameasbeaten:
+		bsr	Set_BaseGameDone	; you have beaten the base game, congrats (casual only or frantic with casual)
+
+	@checkblackoutteaser:
+		bsr	Check_BlackoutUnlocked	; is the blackout challenge even unlocked?
+		beq.s	@finish			; if not, branch
+		bsr	Check_BlackoutBeaten	; have you already beaten the blackout challenge?
+		bne.s	@finish			; if yes, branch
+		bset	#4,d1			; load Blackout Challenge teaser text
+
+@finish:
+		move.b	d1,($FFFFFF95).w	; set which texts to display after the credits
  
+		jsr	SRAM_SaveNow		; save now
 		jsr	Pal_CutToBlack		; fill remaining palette to black for a smooth transition
 		move.w	#0,BlackBars.Height	; reset black bars
 		move.b	#$2C,(GameMode).w	; set scene to $2C (new credits)
@@ -350,7 +384,7 @@ RunChapter:
 		bls.s	@nochapter		; if this is a chapter from a level we already visited, skip chapter screen
 		move.b	d5,(CurrentChapter).w	; we've entered a new level, update progress chapter ID
 
-		bsr	Check_BaseGameBeaten	; has the player already beaten the base game?
+		bsr	Check_BaseGameBeaten_Any ; has the player already beaten the base game (of either mode)?
 		bne.s	@nochapter		; if yes, no longer display chapter screens
 		btst	#1,(OptionsBits).w	; is "Skip Story Screens" enabled?
 		bne.s	@nochapter		; if yes, start level straight away
@@ -573,8 +607,17 @@ GTA_FP:		moveq	#6,d0			; unlock seventh door (door to the credits)
 		btst	#2,(OptionsBits).w	; is Skip Uberhub Place enabled?		
 		beq.w	ReturnToUberhub		; if not, return to Uberhub
 		bra.w	HubRing_Ending		; otherwise go straight to the ending
+; ---------------------------------------------------------------------------
 
-GTA_Blackout:	clr.b	(Blackout).w		; clear blackout special stage flag
+GTA_Blackout:	
+		clr.b	($FFFFFFA0).w		; set to no post-text to display
+		jsr	Check_BlackoutBeaten	; has the player already beaten the blackout challenge?
+		bne.s	@alreadybeaten		; if yes, branch
+		bset	#0,($FFFFFFA0).w	; display nonstop inhuman unlock after story text screen
+@alreadybeaten:
+		jsr	Set_BlackoutDone	; you have beaten the blackout challenge, mad respect
+		jsr	SRAM_SaveNow		; save
+		clr.b	(Blackout).w		; clear blackout special stage flag
 		move.b	#9,(StoryTextID).w	; set number for text to 9 (final congratulations)
 		bra.w	RunStory_Force		; show story screen even if they are disabled
 
@@ -631,8 +674,9 @@ NextLevel_Array:
 ; (NOTE: Frantic takes priority over Casual in all instances!)
 ; ---------------------------------------------------------------------------
 Doors_All	= %01111111 ; (upper bit is unused)
-State_BaseGame	= 0
-State_Blackout  = 1
+State_BaseGame_Casual	= 0
+State_BaseGame_Frantic	= 1
+State_Blackout          = 2
 ; ---------------------------------------------------------------------------
 
 		; d0 = bit we want to test
@@ -669,20 +713,32 @@ Check_AllLevelsBeaten_Frantic:
 		rts
 ; ---------------------------------------------------------------------------
 
-Check_BaseGameBeaten:
-		btst	#State_BaseGame,(Progress).w
+Check_BaseGameBeaten_Any:
+		bsr	Check_BaseGameBeaten_Casual
+		bne.s	@end
+		bsr	Check_BaseGameBeaten_Frantic
+@end:		rts
+
+Check_BaseGameBeaten_Both:
+		bsr	Check_BaseGameBeaten_Casual
+		beq.s	@end
+		bsr	Check_BaseGameBeaten_Frantic
+@end:		rts
+
+Check_BaseGameBeaten_Casual:
+		btst	#State_BaseGame_Casual,(Progress).w
 		rts
+Check_BaseGameBeaten_Frantic:
+		btst	#State_BaseGame_Frantic,(Progress).w
+		rts
+; ---------------------------------------------------------------------------
 
 Check_BlackoutBeaten:
 		btst	#State_Blackout,(Progress).w
 		rts
-; ---------------------------------------------------------------------------
 
 Check_BlackoutUnlocked:
-		bsr	Check_BaseGameBeaten
-		beq.s	@end
-		bsr	Check_AllLevelsBeaten_Frantic
-@end:		rts
+		bra.s	Check_BaseGameBeaten_Both
 
 
 ; ===========================================================================
@@ -692,26 +748,22 @@ Check_BlackoutUnlocked:
 
 ; cheat called from Selbi Screen
 UnlockEverything:
-		move.b	#Doors_All,d0		; unlock all doors...
-		move.b	d0,(Doors_Casual).w	; ...in casual...
-		move.b	d0,(Doors_Frantic).w	; ...and frantic
-		bsr	Set_BaseGameDone	; unlock screen effects
-		bsr	Set_BlackoutDone	; unlock nonstop inhuman
-		move.b	#7,(CurrentChapter).w	; set to final chapter
+		move.b	#Doors_All,d0			; unlock all doors...
+		move.b	d0,(Doors_Casual).w		; ...in casual...
+		move.b	d0,(Doors_Frantic).w		; ...and frantic
+		bsr	Set_BaseGameDone_Casual		; unlock cinematic mode
+		bsr	Set_BaseGameDone_Frantic	; unlock motion blur
+		bsr	Set_BlackoutDone		; unlock nonstop inhuman
+		move.b	#7,(CurrentChapter).w		; set to final chapter
 		rts
 
 ; cheats called from options screen
-Toggle_BaseGameBeaten:
-		bchg	#State_BaseGame,(Progress).w	; to unlock cinematic mode
+Toggle_BaseGameBeaten_Casual:
+		bchg	#State_BaseGame_Casual,(Progress).w	; to unlock cinematic mode
 		rts
 
-Toggle_FranticBeaten:
-		moveq	#0,d0				; set to lock all frantic levels
-		bsr	Check_AllLevelsBeaten_Frantic	; have all levels been beaten?
-		bne.s	@update				; if yes, relock option
-		moveq	#Doors_All,d0			; unlock option
-@update:	move.b	d0,(Doors_Casual).w		; update casual doors
-		move.b	d0,(Doors_Frantic).w		; update frantic doors
+Toggle_BaseGameBeaten_Frantic:
+		bchg	#State_BaseGame_Frantic,(Progress).w	; to unlock motion blur
 		rts
 
 Toggle_BlackoutBeaten:
@@ -737,13 +789,23 @@ Set_DoorOpen:
 ; ---------------------------------------------------------------------------
 
 Set_BaseGameDone:
-		bset	#State_BaseGame,(Progress).w	; you have beaten the base game, congrats
+		bsr	Set_BaseGameDone_Casual
+		frantic
+		bne.s	Set_BaseGameDone_Frantic
 		rts
+
+Set_BaseGameDone_Frantic:
+		bset	#State_BaseGame_Frantic,(Progress).w	; you have beaten the base game in frantic, congrats
+		; also set in casual
+
+Set_BaseGameDone_Casual:
+		bset	#State_BaseGame_Casual,(Progress).w	; you have beaten the base game in casual, congrats
+		rts
+
 ; ---------------------------------------------------------------------------
 
 Set_BlackoutDone:
 		bset	#State_Blackout,(Progress).w	; you have beaten the blackout challenge, mad respect
-		bsr	Set_BaseGameDone		; also set base game beaten state, just in case
 		rts
 ; ---------------------------------------------------------------------------
 ; ===========================================================================

@@ -139,7 +139,11 @@ DH_Continue:
 		jsr	loc_D368
 		jsr	BuildSprites
 		jsr	PalCycle_Load
-
+		
+		move.l	a0,-(sp)
+		lea	($FFFFD000).w,a0
+		jsr	LoadSonicDynPLC
+		move.l	(sp)+,a0
 		; palette cycle to highlight letters
 		btst	#7,(OptionsBits).w	; photosensitive mode?
 		bne.s	@noletterflashing	; if yes, branch
@@ -651,25 +655,28 @@ Art_DH_Font2:
 ; ---------------------------------------------------------------
 
 Hints_List:
-		dc.l	Hint_1
-		dc.l	Hint_2
-		dc.l	Hint_3
-		dc.l	Hint_4
-		dc.l	Hint_FZEscape
-		dc.l	Hint_6
-		dc.l	Hint_7
-		dc.l	Hint_8
-		dc.l	Hint_9
-		dc.l	Hint_Pre
-		dc.l	Hint_Easter_Tutorial
-		dc.l	Hint_Easter_SLZ
-		dc.l	Hint_TutorialConclusion
-		dc.l	Hint_Easter_Tutorial_Escape
-		dc.l	Hint_End_AfterCasual
-		dc.l	Hint_End_AfterFrantic
-		dc.l	Hint_End_CinematicUnlock
-		dc.l	Hint_End_BlackoutTeaser
-		dc.l	Hint_FranticTutorial
+		dc.l	Hint_1				; $01
+		dc.l	Hint_2				; $02
+		dc.l	Hint_3				; $03
+		dc.l	Hint_4				; $04
+		dc.l	Hint_FZEscape			; $05
+		dc.l	Hint_6				; $06
+		dc.l	Hint_7				; $07
+		dc.l	Hint_8				; $08
+		dc.l	Hint_9				; $09
+		dc.l	Hint_Pre			; $0A
+		dc.l	Hint_Easter_Tutorial		; $0B
+		dc.l	Hint_Easter_SLZ			; $0C
+		dc.l	Hint_TutorialConclusion		; $0D
+		dc.l	Hint_Easter_Tutorial_Escape	; $0E
+		dc.l	Hint_End_AfterCasual		; $0F
+		dc.l	Hint_End_AfterFrantic		; $10
+		dc.l	Hint_Null			; $11
+		dc.l	Hint_End_BlackoutTeaser		; $12
+		dc.l	Hint_FranticTutorial		; $13
+		dc.l	Hint_End_CinematicUnlock	; $14
+		dc.l	Hint_End_MotionBlurUnlock	; $15
+		dc.l	Hint_End_NonstopInhumanUnlock	; $16
 
 ; ---------------------------------------------------------------
 ; Hints Scripts
@@ -1114,14 +1121,14 @@ Hint_7:
 		boxtxt	"   WE ADDED TAXES"
 		boxtxt	"  FOR TELEPORTING!"
 		boxtxt_pause
-		boxtxt	"   GETTING WARPED"
-		boxtxt	"   WILL RESULT IN"
-		boxtxt	"  FIVE LOST RINGS."
+		boxtxt	" GETTING TELEPORTED"
+		boxtxt	" WILL MAKE YOU LOSE"
+		boxtxt	"    A FEW RINGS."
 		boxtxt_next
 
 		boxtxt_line
 		boxtxt_line
-		boxtxt	"   OUT OF RINGS?!"
+		boxtxt	"     CAN'T PAY?"
 		boxtxt_pause
 		boxtxt	"      YOU DIE."
 		boxtxt_end
@@ -1178,7 +1185,8 @@ Hint_Easter_SLZ:
 		boxtxt	"WHAT?"
 		boxtxt_pause
 		boxtxt	"WERE YOU EXPECTING"
-		boxtxt	"ANYTHING NAUGHTY?"
+		boxtxt	"ANYTHING NAUGHTY"
+		boxtxt	"UP HERE?"
 		boxtxt_next
 
 		boxtxt	"YOU ARE"
@@ -1244,41 +1252,9 @@ Hint_End_AfterCasual:
 		boxtxt	"BEATING THE GAME IN"
 		boxtxt	"casual mode!"
 		boxtxt_pause
-		boxtxt	"MAYBE YOU CAN"
-		boxtxt	"TRY TO GIVE IT"
-		boxtxt	"ANOTHER SPIN IN"
-		boxtxt	"frantic mode?"
-		boxtxt_end
+		boxtxt	"BUT BEFORE YOU GO..."
+		boxtxt_NEXT
 
-;		 --------------------
-Hint_End_AfterFrantic:
-		boxtxt	"CONGRATULATIONS FOR"
-		boxtxt	"BEATING THE GAME IN"
-		boxtxt	"frantic mode!"
-		boxtxt_next
-
-		boxtxt	"IF YOU MADE IT HERE,"
-		boxtxt	"YOU'VE GOT MY UTMOST"
-		boxtxt	"RESPECT. I'M SORRY"
-		boxtxt	"FOR ANY BRAIN CELLS"
-		boxtxt	"YOU MIGHT HAVE"
-		boxtxt	"LOST ALONG THE WAY."
-		boxtxt_end
-
-;		 --------------------
-Hint_End_CinematicUnlock:
-		boxtxt	"YOU HAVE UNLOCKED"
-		boxtxt	"cinematic mode!"
-		boxtxt_pause
-		boxtxt	"IT'S COMPLETELY"
-		boxtxt	"USELESS BUT ALSO"
-		boxtxt	"PRETTY COOL!"
-		boxtxt_end
-
-;		 --------------------
-Hint_End_BlackoutTeaser:
-		boxtxt	"ONE LAST THING."
-		boxtxt_pause
 		boxtxt	"IF YOU SAW ANYTHING"
 		boxtxt	"WEIRD NEAR THE END"
 		boxtxt	"OF uberhub place..."
@@ -1294,28 +1270,43 @@ Hint_End_BlackoutTeaser:
 		boxtxt	"YOU MUST PROVE"
 		boxtxt	"YOURSELF worthy IF"
 		boxtxt	"YOU WISH TO ENTER."
-		boxtxt_pause
+		boxtxt_end
 
-		dc.b	_frantic
-		boxtxt	"  WAIT A MINUTE..."
+;		 --------------------
+Hint_End_AfterFrantic:
+		boxtxt	"CONGRATULATIONS FOR"
+		boxtxt	"BEATING THE GAME IN"
+		boxtxt	"frantic mode!"
+		boxtxt_next
+
+		boxtxt	"IF YOU MADE IT HERE,"
+		boxtxt	"YOU'VE GOT MY"
+		boxtxt	"UTMOST RESPECT."
+		boxtxt_line
+		boxtxt	"I'M SORRY FOR ANY"
+		boxtxt	"BRAIN CELLS YOU"
+		boxtxt	"MIGHT HAVE LOST"
+		boxtxt	"ALONG THE WAY."
+		boxtxt_end
+
+;		 --------------------
+Hint_End_BlackoutTeaser:
+		boxtxt	"THE HORRORS OF"
+		boxtxt	"uberhub place"
+		boxtxt	"HAVE BEEN UNSEALED!"
 		boxtxt_pause
-		boxtxt	" YOU'RE IN frantic?"
-		boxtxt_pause
-		boxtxt	"  THEN FORGET WHAT"
-		boxtxt	"    I JUST SAID."
-		boxtxt_pause
-		boxtxt	"   you are ready1"
+		boxtxt	"GOOD LUCK."
 		boxtxt_end
 
 ;		 --------------------
 Hint_FranticTutorial:
 		boxtxt	"RESPECT FOR GOING"
-		boxtxt	"WITH frantic!"
+		boxtxt	"WITH frantic mode!"
 		boxtxt_line
-		boxtxt	"BE SURE TO REVISIT"
-		boxtxt	"THE TUTORIAL, AS"
 		boxtxt	"SOME STUFF DIFFERS"
-		boxtxt	"FOR THIS MODE."
+		boxtxt	"IN HERE, SO YOU MAY"
+		boxtxt	"WANT TO REVISIT"
+		boxtxt	"THE TUTORIAL."
 		boxtxt_end
 
 ;		 --------------------
@@ -1329,6 +1320,43 @@ Hint_Place:
 		boxtxt_pause
 		boxtxt	"PLACE? PLACE."
 		boxtxt_end
-		
+
+;		 --------------------
+Hint_End_CinematicUnlock:
+		boxtxt	"e FOR EPIC"
+		boxtxt_line
+		boxtxt	"YOU HAVE UNLOCKED"
+		boxtxt	"cinematic mode!"
+		boxtxt_pause
+		boxtxt	"IT'S COMPLETELY"
+		boxtxt	"USELESS BUT ALSO"
+		boxtxt	"PRETTY COOL!"
+		boxtxt_end
+
+;		 --------------------
+Hint_End_MotionBlurUnlock:
+		boxtxt	"r FOR RESTLESS"
+		boxtxt_line
+		boxtxt	"YOU HAVE UNLOCKED"
+		boxtxt	"motion blur!"
+		boxtxt_pause
+		boxtxt	"NYOOOOOOOOOOOOOOM!!!"
+		dc.b	_pause
+		boxtxt	"YEAH, I GOT NOTHING"
+		boxtxt	"BETTER. SORRY."
+		boxtxt_end
+
+;		 --------------------
+Hint_End_NonstopInhumanUnlock:
+		boxtxt	"z FOR ZENITH"
+		boxtxt_line
+		boxtxt	"YOU HAVE UNLOCKED"
+		boxtxt	"true inhuman mode!"
+		boxtxt_pause
+		boxtxt	"ALL HAIL OUR NEW"
+		boxtxt	"OVERLORD. MAY THE"
+		boxtxt	"GODS HAVE MERCY."
+		boxtxt_end
+
 ; ---------------------------------------------------------------
 		even

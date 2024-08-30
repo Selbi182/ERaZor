@@ -12,7 +12,6 @@ STS_Row:		rs.b 1
 STS_Column:		rs.b 1
 STS_CurrentChar:	rs.w 1
 STS_FinalPhase:		rs.b 1
-STS_SkipBottomMeta:	rs.b 1
 STS_ScreenID	equ	$FFFFFF9E ; hardcoded because it's fragile
 
 ; general values
@@ -109,10 +108,6 @@ STS_ClrScroll:	move.l	d0,(a1)+
 STS_ClrVram:	move.l	d0,(a6)
 		dbf	d1,STS_ClrVram		; fill VRAM with 0
 		
-		cmpi.b	#9,(STS_ScreenID).w	; is this the blackout special stage?
-		bne.s	@bottommeta		; if not, branch
-		move.b	#1,(STS_SkipBottomMeta)	; if yes, don't draw bottom line and "Press Start..." stuff because the text is too long
-@bottommeta:
 		display_enable
 		VBlank_UnsetMusicOnly
 
@@ -192,9 +187,6 @@ STS_FadeOutScreen:
 
 		lea	($FFFFCC00+STS_BaseRow*32).w,a0	; set up H-scroll buffer to the point where the main text is located
 		moveq	#(STS_LinesMain)-1,d2		; set loop count of line count
-		tst.b	(STS_SkipBottomMeta).w		; is bottom meta set to be skipped?
-		beq.s	@loopout			; if not, branch
-		addq.w	#2,d2				; add two extra lines to fade out
 @loopout:
 		moveq	#0,d0				; clear d0
 		move.b	(STS_FinalPhase).w,d0		; get current
@@ -230,7 +222,6 @@ STS_ClearFlags:
 		move.b	d0,(STS_Column).w
 		move.w	d0,(STS_CurrentChar).w
 		move.b	d0,(STS_FinalPhase).w
-		move.b	d0,(STS_SkipBottomMeta).w
 		rts
 
 ; ===========================================================================
@@ -261,10 +252,6 @@ StoryScreen_ContinueWriting:
 		move.b	#1,(STS_FinalPhase).w		; set final phase flag
 		clr.w	(STS_CurrentChar).w		; reset current char counter
 		clr.b	(STS_Column).w			; reset column counter
-		tst.b	(STS_SkipBottomMeta).w		; is bottom meta set to be not drawn?
-		beq.s	@noskipbottom			; if not, branch
-		move.b	#1,(STS_FullyWritten).w		; set the fully written flag now
-@noskipbottom:
 		rts					; don't continue writing
 ; ---------------------------------------------------------------------------
 
@@ -382,9 +369,7 @@ StoryScreen_WritePressStart:
 ; ---------------------------------------------------------------------------
 
 StoryText_WriteFull:
-		move.b	(STS_SkipBottomMeta).w,d1	; backup skip bottom meta flag
 		bsr	STS_ClearFlags			; make sure any previously written text doesn't interfere	
-		move.b	d1,(STS_SkipBottomMeta).w	; restore skip bottom meta flag (it's the only one still used here)
 		
 		move.w	#STS_DrawnLine_Length*2,(STS_CurrentChar).w ; full line (times 2 because its speed is halved)
 		bsr	StoryScreen_DrawLines		; finish drawing lines
@@ -397,10 +382,6 @@ StoryText_WriteFull:
 		move.w	#STS_VRAMSettings,d3		; VRAM setting (high plane, palette line 4, VRAM address $D000)
 		moveq	#STS_LinesMain-1,d1		; number of lines of text
 
-		tst.b	(STS_SkipBottomMeta).w		; is bottom meta set to be skipped?
-		beq.s	@nextline			; if not, branch
-		addq.w	#4,d1				; add four extra lines
-	
 @nextline:
 		move.l	d4,4(a6)			; write whatever line we're on right now to the VDP
 		moveq	#STS_LineLength-1,d2		; number of characters per line
@@ -417,8 +398,6 @@ StoryText_WriteFull:
 @endwrite:
 
 		; "Press Start to Continue..." text
-		tst.b	(STS_SkipBottomMeta).w		; is bottom meta set to be not drawn?
-		bne.s	@finished			; if yes, skip
 		tst.b	(STS_FinalPhase).w		; did we already write the final text?
 		bne.s	@finished			; if yes, branch
 		move.b	#1,(STS_FinalPhase).w		; set "final phase" flag
@@ -441,8 +420,6 @@ StoryScreen_DrawLines:
 		moveq	#0,d2			; draw from left to right
 		bsr.s	STS_DrawLine		; draw top line
 
-		tst.b	(STS_SkipBottomMeta).w	; is bottom meta set to be not drawn?
-		bne.s	@nobottomline		; if yes, skip
 		move.l	#STS_VRAMBase_Line|($800000*STS_BottomLine_Offset),d0
 		moveq	#1,d2			; draw from right to left
 		bsr.s	STS_DrawLine		; draw bottom line
@@ -500,10 +477,6 @@ StoryScreen_CenterText:
 		move.w	#STS_LineLength,d0		; set line length
 
 		moveq	#STS_LinesMain-1,d1		; set default loop count of line count
-		tst.b	(STS_SkipBottomMeta).w		; is bottom meta set to be skipped?
-		beq.s	@notskipbottommeta		; if not, branch
-		addq.b	#4,d1				; add two extra lines
-@notskipbottommeta:
 		tst.b	(STS_FullyWritten).w		; is text already fully written?
 		bne.s	@centertextloop			; if yes, branch
 		move.b	(STS_Row).w,d1			; set number of repetitions to current row count
@@ -802,15 +775,11 @@ StoryText_9:	; text after beating the blackout challenge special stage
 		ststxt	"BLINDFOLDED, I DIDN'T THINK"
 		ststxt	"YOU'D ACTUALLY DO IT."
 		ststxt_line
-		ststxt	"CHECK OUT THE OPTIONS MENU"
-		ststxt	"FOR SOMETHING SPECIAL JUST"
-		ststxt	"FOR YOU. YOU'VE EARNED IT!"
-		ststxt_line
 		ststxt	"THANK YOU FOR STICKING WITH"
 		ststxt	"MY GAME TO THE BITTER END!"
 		ststxt	"IT MEANS THE WORLD TO ME."
 		ststxt_line
-		ststxt	"                       SELBI"
+		ststxt	"- SELBI -"
 		dc.b	-1
 		even
 ; ---------------------------------------------------------------------------

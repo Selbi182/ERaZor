@@ -405,6 +405,7 @@ AniArt_Ending_Flower1_Draw:
 	move.w	#$200/2, d3					; d3 = transfer size (words)
 	jsr	QueueDMATransfer
 
+	rts ; disabled caused it causes glitches with the fans
 	move.l	#$FF9400+$200, d1				; d1 = transfer source
 	move.w	#$7200, d2					; d2 = VRAM address
 	move.w	#$200, d3					; d3 = transfer size (words)

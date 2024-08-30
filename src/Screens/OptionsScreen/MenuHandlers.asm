@@ -16,15 +16,15 @@ Options_MenuData:
 	dc.l	Options_ExtendedCamera_Redraw		; redraw handler
 	dc.l	Options_ExtendedCamera_Handle		; update handler
 
-	; Skip uberhub place
-	dcScreenPos	$E000, 9, 6			; start on-screen position
-	dc.l	Options_SkipUberhubPlace_Redraw		; redraw handler
-	dc.l	Options_SkipUberHubPlace_Handle		; update handler
-
 	; Skip story screens
-	dcScreenPos	$E000, 11, 6			; start on-screen position
+	dcScreenPos	$E000, 9, 6			; start on-screen position
 	dc.l	Options_SkipStoryScreens_Redraw		; redraw handler
 	dc.l	Options_SkipStoryScreens_Handle		; update handler
+
+	; Skip uberhub place
+	dcScreenPos	$E000, 11, 6			; start on-screen position
+	dc.l	Options_SkipUberhubPlace_Redraw		; redraw handler
+	dc.l	Options_SkipUberHubPlace_Handle		; update handler
 
 	; Photosensitive mode
 	dcScreenPos	$E000, 13, 6			; start on-screen position
@@ -261,7 +261,7 @@ Options_CinematicMode_Redraw:
 	beq.s	@0				; if not, branch
 	lea	@Str_Cinematic_Normal(pc), a0
 
-@0:	Options_PipeString a4, "%<.l a0 str> %<.l a1 str>", 28
+@0:	Options_PipeString a4, "%<.l a0 str>   %<.l a1 str>", 28
 	rts
 
 ; ---------------------------------------------------------------------------

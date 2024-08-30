@@ -47,7 +47,7 @@ DebugModeDefault = 1
 DebugSurviveNoRings = 1
 ; ------------------------------------------------------
 DoorsAlwaysOpen = 0
-LowBossHP = 1
+LowBossHP = 0
 ; ------------------------------------------------------
 TestDisplayDeleteBugs = 0
 ; ======================================================
@@ -13187,7 +13187,7 @@ Obj2E_ChkShield:
 		move.w	#$AF,d0			; play shield sound
 		tst.b	($FFFFFE2C).w		; is sonic already having a shield?
 		beq.s	Obj2E_Shield_NoBonus	; if not, branch
-		addi.w	#30,($FFFFFE20).w	; give 30 bonus rings
+		addi.w	#25,($FFFFFE20).w	; give 25 bonus rings
 		ori.b	#1,($FFFFFE1D).w	; update the ring counter
 		move.w	#$C5,d0			; play ka-ching sound
 
@@ -15113,12 +15113,12 @@ loc_BA8E:				; XREF: Obj45_Index
 		move.w	d0,obX(a0)
 
 Obj45_ChkDel:				; XREF: Obj45_Solid
-		btst	#2,($FFFFFF6C).w ; was switch in MZ pressed?
-		beq.s	@cont		; if not, branch
-		bra.w	DeleteObject	; delete object
-		
-@cont:
-		move.w	$3A(a0),d0
+		btst	#3,($FFFFFF6C).w ; was switch in MZ pressed?
+		beq.s	@0	; if not, display
+		rts			; otherwise hide
+@0:
+	;	move.w	$3A(a0),d0
+		move.w	obX(a0),d0
 		andi.w	#$FF80,d0
 		move.w	($FFFFF700).w,d1
 		subi.w	#$80,d1
@@ -15127,6 +15127,7 @@ Obj45_ChkDel:				; XREF: Obj45_Solid
 		cmpi.w	#$280,d0
 		bhi.w	DeleteObject
 		bra.w	DisplaySprite
+
 
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 
@@ -15307,12 +15308,16 @@ loc_BDD6:
 @cont2:
 		cmpi.b	#$83,obSubtype(a0)		; was third switch pressed? (for horizontal stomper)
 		bne.s	@notmzswitch
-		btst	#2,($FFFFFF6C).w	; is flag already set?
-		bne.s	@PlaySound2
-
+		btst	#3,($FFFFFF6C).w
+		bne.s	@notmzswitch
+		bset	#3,($FFFFFF6C).w	; hide spiked thingy
+		btst	#2,($FFFFFF6C).w	; was button already pressed?
+		bne.s	@justflash		; if yes, don't change palette again
 		bset	#2,($FFFFFF6C).w	; set the "switch in MZ was pressed flag" 3
 		jsr 	ChangePaletteRP
-
+		bra.s	@PlaySound2
+@justflash:
+		jsr	WhiteFlash2
 @PlaySound2:
 		; move.w	#$B7,d0			; play LZ rumbling sound
 		move.w	#$C3,d0			; play giant ring sound
@@ -16741,6 +16746,7 @@ Obj36_Hurt:				; XREF: Obj36_SideWays; Obj36_Upright
 		move.w	#$0590,($FFFFD00C).w	; teleport Sonic on Y-axis
 
 @cont:
+		bclr	#3,($FFFFFF6C).w	; reset spiked thingy
 		cmpi.b	#2,($FFFFFF73).w	; has second checkpoint been reached?
 		bhs.s	@cont2
 		move.b	($FFFFFF6C).w,d0
@@ -19411,7 +19417,7 @@ Obj0D_Index:	dc.w Obj0D_Main-Obj0D_Index
 ; ===========================================================================
 
 Obj0D_Main:				; XREF: Obj0D_Index
-		bclr	#2,($FFFFFF6C).w	; restore the wall blocking you off in MZ
+		bclr	#3,($FFFFFF6C).w	; restore the wall blocking you off in MZ
 		move.w	obY(a0),$38(a0)
 		
 		addq.b	#2,obRoutine(a0)
@@ -38287,6 +38293,11 @@ loc_19E5A:
 	if LowBossHP=1
 		move.b	#0,obColProp(a0)	; set number of	hits to	1
 	else
+		tst.b	(PlacePlacePlace).w
+		beq.s	@noeasteregg
+		move.w	#100,d0				; set number of	hits to	100 (ur mom)
+		bra.s	@notfrantic
+@noeasteregg:
 		moveq	#30,d0				; set number of	hits to	30 (casual)
 		frantic
 		beq.s	@notfrantic

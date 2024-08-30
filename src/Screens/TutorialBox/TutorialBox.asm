@@ -654,7 +654,7 @@ Art_DH_Font2:
 ; Hints Pointer List
 ; ---------------------------------------------------------------
 
-Hints_List:
+Hints_List:	; note: these IDs are 1-based
 		dc.l	Hint_1				; $01
 		dc.l	Hint_2				; $02
 		dc.l	Hint_3				; $03

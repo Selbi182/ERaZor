@@ -109,7 +109,7 @@ CreditsScreen_Loop:
 		; update scroll
 		tst.b	($FFFFF604).w				; is any button held?
 		beq.s	@scrollnormal				; if not, branch
-		btst	#0,($FFFFFF95).w			; has this noob even finished the game in casual before? (checked through post-credit messages)
+		btst	#2,($FFFFFF95).w			; is this the first time the player has finished the game? (checked through post-credit cinematic mode unlock)
 		bne.s	@scrollnormal				; if not, no fast scrolling
 		bra.s	@fast					; fast forward
 @scrollnormal:

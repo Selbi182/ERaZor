@@ -381,7 +381,7 @@ RunChapter:
 		tst.b	d5			; did we get a valid ID?
 		bmi.s	@nochapter		; if not, something has gone terribly wrong
 		cmp.b	(CurrentChapter).w,d5	; compare currently saved chapter number to fake level ID
-		bls.s	@nochapter		; if this is a chapter from a level we already visited, skip chapter screen
+		blt.s	@nochapter		; if this is a chapter from a level we already visited, skip chapter screen
 		move.b	d5,(CurrentChapter).w	; we've entered a new level, update progress chapter ID
 
 		bsr	Check_BaseGameBeaten_Any ; has the player already beaten the base game (of either mode)?

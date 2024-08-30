@@ -261,7 +261,7 @@ Options_CinematicMode_Redraw:
 	beq.s	@0				; if not, branch
 	lea	@Str_Cinematic_Normal(pc), a0
 
-@0:	Options_PipeString a4, "%<.l a0 str>   %<.l a1 str>", 28
+@0:	Options_PipeString a4, "%<.l a0 str> %<.l a1 str>", 28
 	rts
 
 ; ---------------------------------------------------------------------------

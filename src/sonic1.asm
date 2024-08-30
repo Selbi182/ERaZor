@@ -3383,6 +3383,12 @@ Level_LZWaterSetup:
 		move.b	#2,($FFFFD01C).w
 		move.w	#$800,($FFFFD012).w
 @nointronyoom:
+		frantic
+		beq.s	@0
+		cmpi.b	#1,($FFFFFF97).w
+		bne.s	@0
+		move.b	#0,($FFFFFF97).w	; reset first checkpoint in frantic
+@0:
 		move.l	#WaterTransition_LZ,($FFFFF610).w
 		move.w	#$8014,(a6)
 		moveq	#0,d0

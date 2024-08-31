@@ -242,6 +242,13 @@ Exit_StoryScreen:
 
 		jsr	Pal_FadeFrom		; fade out palette
 		jsr	ClearScreen		; clear screen
+
+		lea	($FFFFD000).w,a1	; clear object RAM...
+		moveq	#0,d0			; ...cause the ERaZor logo doesn't play nicely here
+		move.w	#$7FF,d1
+@clearobjram:	move.l	d0,(a1)+
+		dbf	d1,@clearobjram
+
 		moveq	#$E,d0			; load FZ palette (cause tutorial boxes are built into SBZ)
 		jsr	PalLoad2		; load palette
 
@@ -472,7 +479,17 @@ HubRing_SP:	move.w	#$300,($FFFFFE10).w	; set level to Special Stage
 HubRing_RP:	move.w	#$200,($FFFFFE10).w	; set level to MZ1
 		bra.w	RunChapter
 
-HubRing_LP:	move.w	#$101,($FFFFFE10).w	; set level to LZ2
+HubRing_LP:
+		btst	#3,(OptionsBits).w	; are black bars (cinematic mode) enabled?
+		beq.s	@nobars			; if not, branch
+		jsr	Pal_FadeFrom		; fade out palette to avoid visual glitches
+		jsr	ClearScreen		; clear screen
+		moveq	#$E,d0			; load FZ palette (cause tutorial boxes are built into SBZ)
+		jsr	PalLoad2		; load palette	
+		moveq	#$11,d0			; load warning text that black bars don't work in LP
+		jsr	Tutorial_DisplayHint	; VLADIK => Display hint
+@nobars:
+		move.w	#$101,($FFFFFE10).w	; set level to LZ2
 		bra.w	RunChapter
 
 HubRing_UP:	move.w	#$401,($FFFFFE10).w	; set level to Special Stage 2
@@ -522,7 +539,7 @@ HubRing_Ending:
 		bra.w	RunStory
 
 HubRing_Blackout:
-		clr.b	(ScreenFuzz).w		; clear screen fuzz flag
+		bclr	#1,(ScreenFuzz).w	; clear temporary screen fuzz flag
 		move.w	#$401,($FFFFFE10).w	; set level to Unreal
 		move.b	#1,(Blackout).w		; set Blackout Challenge flag
 		bra.w	StartLevel		; good luck

@@ -929,7 +929,7 @@ Deform_SYZ:
 		lea	(a2,d0), a2
 		bsr	DeformScreen_ProcessBlocks
 
-		; screen fuzz for blackout room
+		; insane screen fuzz when jumping into blackout challenge ring
 		tst.b	($FFFFFFD0).w		; jumped into blackout ring?
 		beq.s	@nospoop		; if not, branch
 		move.b	#$10,($FFFFF73A).w	; pretend 16 pixels have been scrolled for the bzzzzz

@@ -671,7 +671,7 @@ Hints_List:	; note: these IDs are 1-based
 		dc.l	Hint_Easter_Tutorial_Escape	; $0E
 		dc.l	Hint_End_AfterCasual		; $0F
 		dc.l	Hint_End_AfterFrantic		; $10
-		dc.l	Hint_Null			; $11
+		dc.l	Hint_LP_BlackBars		; $11
 		dc.l	Hint_End_BlackoutTeaser		; $12
 		dc.l	Hint_FranticTutorial		; $13
 		dc.l	Hint_End_CinematicUnlock	; $14
@@ -1184,8 +1184,11 @@ Hint_Easter_SLZ:
 
 		boxtxt	"WHAT?"
 		boxtxt_pause
+		boxtxt_line
 		boxtxt	"WERE YOU EXPECTING"
+		boxtxt_line
 		boxtxt	"ANYTHING NAUGHTY"
+		boxtxt_line
 		boxtxt	"UP HERE?"
 		boxtxt_next
 
@@ -1193,6 +1196,7 @@ Hint_Easter_SLZ:
 		boxtxt_line
 		boxtxt_pause
 		boxtxt	"CATEGORICALLY"
+		boxtxt_line
 		boxtxt_pause
 		boxtxt	"DISGUSTING."
 		boxtxt_end
@@ -1307,6 +1311,18 @@ Hint_FranticTutorial:
 		boxtxt	"IN HERE, SO YOU MAY"
 		boxtxt	"WANT TO REVISIT"
 		boxtxt	"THE TUTORIAL."
+		boxtxt_end
+
+;		 --------------------
+Hint_LP_BlackBars:
+		boxtxt	"HI. SO, UH..."
+		boxtxt_line
+		boxtxt	"THE BLACK BARS"
+		boxtxt	"DO not WORK IN"
+		boxtxt	"LABYRINTHY PLACE"
+		boxtxt	"FOR WATER REASONS."
+		boxtxt_line
+		boxtxt	"SORRY 'BOUT THAT."
 		boxtxt_end
 
 ;		 --------------------

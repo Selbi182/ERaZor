@@ -237,11 +237,11 @@ Options_IntialDraw:
 		dc.l	@DrawHeader2			; redraw handler
 
 @ItemData_Header_Bottom:
-		dcScreenPos $E000, 24, 4		; start on-screen position
+		dcScreenPos $E000, 23, 4		; start on-screen position
 		dc.l	@DrawHeader			; redraw handler
 
 @ItemData_Tooltip:
-		dcScreenPos $E000, 26, 10		; start on-screen position
+		dcScreenPos $E000, 25, 10		; start on-screen position
 		dc.l	@DrawTooltip			; redraw handler
 
 ; ---------------------------------------------------------------------------

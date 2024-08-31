@@ -66,8 +66,8 @@ BlackBarsConfigScreen:
 
 	; Init screen
 	move.w	#BlackBars.MaxHeight, BlackBars.Height
-	jsr	BlackBarsConfigScreen_InitUI
 	move.b	#0,BlackBarsConfig_Exiting
+	jsr	BlackBarsConfigScreen_InitUI
 
 	VBlank_UnsetMusicOnly
 	display_enable
@@ -102,7 +102,8 @@ BlackBarsConfigScreen:
 	move.b	Joypad|Press,d0
 	andi.b	#A|B|C|Start,d0
 	beq.s	@MainLoop
-	move.b	#1,BlackBarsConfig_Exiting
+	move.b	#1,BlackBarsConfig_Exiting	; set exiting flag
+	bsr	BlackBarsConfigScreen_RedrawUI	; redraw one last time
 ; ---------------------------------------------------------------
 
 @exiting:
@@ -240,7 +241,7 @@ BlackBarsConfigScreen_MoveCamera:
 	sub.l	#$1C00/@speed_divider, CamYpos3
 @ret:	rts
 
-@j2:	cmpi.w	#$300, CamYpos2
+@j2:	cmpi.w	#$320, CamYpos2
 	bgt.s	@j3
 	cmpi.l	#$4C000/@speed_divider, CamYpos3
 	bge.s	@ret
@@ -279,6 +280,11 @@ BlackBarsConfigScreen_GenerateSprites:
 	dc.w	$54, $80
 	dc.w	$54*2, $0
 	dc.w	$54*3, $80
+	; todo proper screen wrapping
+	dc.w	$0+320, $0+224
+	dc.w	$54+320, $80+224
+	dc.w	$54*2+320, $0+224
+	dc.w	$54*3+320, $80+224
 	dc.w	-1
 
 ; ---------------------------------------------------------------
@@ -401,24 +407,32 @@ BlackBarsConfigScreen_WriteText:
 
 BlackBarsConfigScreen_RedrawUI:
 	BBCS_EnterConsole a0
-
 	Console.SetXY #6, #13
-
-	tst.b	BlackBars.HandlerId	; is real hardware selected?
-	bne.w	@realhardware		; if yes, render alternate text
-
-	Console.Write "%<pal0>> Optimized for EMULATORS"
-	Console.Write "%<endl>%<endl>"
-	Console.Write "%<pal2>  Optimized for REAL HARDWARE"
-	bra.w	@leave
-@realhardware:
-	Console.Write "%<pal2>  Optimized for EMULATORS"
-	Console.Write "%<endl>%<endl>"
-	Console.Write "%<pal0>> Optimized for REAL HARDWARE"
-
-@leave:
+	bsr	@write
 	BBCS_LeaveConsole a0
 	rts
 
+; ---------------------------------------------------------------
+@write:
+	tst.b	BlackBars.HandlerId	; is real hardware selected?
+	bne.w	@realhardware		; if yes, render alternate text
+	; fallthrough on emulators
+
+@emulators:
+	Console.Write "%<pal0>> Optimized for EMULATORS"
+	Console.Write "%<endl>%<endl>"
+	Console.Write "%<pal2>  Optimized for REAL HARDWARE"
+	rts
+
+@realhardware:
+	Console.Write "%<pal2>  Optimized for EMULATORS"
+	Console.Write "%<endl>%<endl>"	
+	tst.b	BlackBarsConfig_Exiting
+	bne.s	@hweaster
+	Console.Write "%<pal0>> Optimized for REAL HARDWARE"
+	rts
+@hweaster:
+	Console.Write '%<pal0>> "Winners don''t use Gens"   '
+	rts
 ; ---------------------------------------------------------------
 ; ===============================================================

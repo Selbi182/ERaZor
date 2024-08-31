@@ -21,35 +21,35 @@ Options_MenuData:
 	dc.l	Options_SkipStoryScreens_Redraw		; redraw handler
 	dc.l	Options_SkipStoryScreens_Handle		; update handler
 	; Skip Uberhub place
-	dcScreenPos	$E000, 12, 6			; start on-screen position
+	dcScreenPos	$E000, 11, 6			; start on-screen position
 	dc.l	Options_SkipUberhubPlace_Redraw		; redraw handler
 	dc.l	Options_SkipUberHubPlace_Handle		; update handler
 
 	; Photosensitive mode
-	dcScreenPos	$E000, 14, 6			; start on-screen position
+	dcScreenPos	$E000, 13, 6			; start on-screen position
 	dc.l	Options_PhotosensitiveMode_Redraw	; redraw handler
 	dc.l	Options_PhotosensitiveMode_Handle	; update handler
 
 	; Black bars setup
-	dcScreenPos	$E000, 16, 6			; start on-screen position
+	dcScreenPos	$E000, 15, 6			; start on-screen position
 	dc.l	Options_BlackBarsMode_Redraw		; redraw handler
 	dc.l	Options_BlackBarsMode_Handle		; update handler
 
 	; E - Cinematic mode
-	dcScreenPos	$E000, 18, 6			; start on-screen position
+	dcScreenPos	$E000, 17, 6			; start on-screen position
 	dc.l	Options_CinematicMode_Redraw		; redraw handler
 	dc.l	Options_CinematicMode_Handle		; update handler
 	; R - Motion blur
-	dcScreenPos	$E000, 19, 6			; start on-screen position
+	dcScreenPos	$E000, 18, 6			; start on-screen position
 	dc.l	Options_MotionBlur_Redraw		; redraw handler
 	dc.l	Options_MotionBlur_Handle		; update handler
 	; Z - True Inhuman
-	dcScreenPos	$E000, 20, 6			; start on-screen position
+	dcScreenPos	$E000, 19, 6			; start on-screen position
 	dc.l	Options_NonstopInhuman_Redraw		; redraw handler
 	dc.l	Options_NonstopInhuman_Handle		; update handler
 
 	; Delete save game
-	dcScreenPos	$E000, 22, 6			; start on-screen position
+	dcScreenPos	$E000, 21, 6			; start on-screen position
 	dc.l	Options_DeleteSaveGame_Redraw		; redraw handler
 	dc.l	Options_DeleteSaveGame_Handle		; update handler
 
@@ -354,7 +354,7 @@ Options_CinematicMode_IdToBits:
 
 Options_MotionBlur_Redraw:
 	lea	Options_Str_Off(pc), a1
-	btst	#4, ScreenFuzz
+	btst	#0, ScreenFuzz
 	beq.s	@0
 	lea	Options_Str_On(pc), a1
 
@@ -387,14 +387,14 @@ Options_MotionBlur_Handle:
 	cmpi.b	#$70,($FFFFF604).w	; is exactly ABC held?
 	bne.s	@nodebugunlock		; if not, branch
 	jsr	Toggle_BaseGameBeaten_Frantic	; toggle frantic beaten state to toggle the unlock for motion blur
-	clr.b	(ScreenFuzz).w		; make sure option doesn't stay accidentally enabled
+	bclr	#0,(ScreenFuzz).w		; make sure option doesn't stay accidentally enabled
 	st.b	Options_RedrawCurrentItem
 	rts
 
 @nodebugunlock:
 	jsr	Check_BaseGameBeaten_Frantic	; has the player beaten the base game in frantic?
 	beq.w	Options_PlayDisallowedSound	; if not, branch
-	bchg	#4, ScreenFuzz			; toggle motion blur (not saved to SRAM!)
+	bchg	#0, ScreenFuzz			; toggle permanent motion blur
 	bsr	Options_PlayRespectiveToggleSound
 	st.b	Options_RedrawCurrentItem
 @ret:	rts

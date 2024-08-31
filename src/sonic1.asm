@@ -4509,6 +4509,7 @@ ClearEverySpecialFlag:
 		move.b	d0,($FFFFFFE7).w
 		move.b	d0,($FFFFFFEB).w
 		move.b	d0,($FFFFFFF9).w
+		bclr	#1,(ScreenFuzz).w
 		rts
 ; End of function ClearEverySpecialFlag
 	
@@ -12686,7 +12687,7 @@ FZEscape_ScreenBoom:
 		jsr	DelayProgram
 		dbf	d5,@WaitLoop
 
-		clr.b	(ScreenFuzz).w		; clear fuzz flag
+		bclr	#1,(ScreenFuzz).w	; clear temporary screen fuzz flag
 		rts
 
 ; ===========================================================================
@@ -13178,7 +13179,7 @@ Obj2E_ChkShoes:
 		cmpi.w	#$502,($FFFFFE10).w	; are we in FP?
 		bne.s	@notfp			; if not, branch
 		move.w	#180*60,($FFFFD034).w	; give Sonic speed shoes for the escape (3 minutes, enough for the whole escape)
-		move.b	#1,(ScreenFuzz).w	; enable fuzz for the final moments
+		bset	#1,(ScreenFuzz).w	; enable temporary screen fuzz for the final moments
 		move.w	#$D3,d0			; play some sound
 		jmp	(PlaySound).l		; do nothing else
 
@@ -20317,11 +20318,11 @@ Obj50_Main:				; XREF: Obj50_Index
 		move.b	#$11,obHeight(a0)
 		move.b	#8,obWidth(a0)
 		move.b	#$CC,obColType(a0)
-		bsr	ObjectFall
-		jsr	ObjHitFloor
-		tst.w	d1
-		bpl.s	locret_F89E
-		add.w	d1,obY(a0)	; match	object's position with the floor
+	;	bsr	ObjectFall
+	;	jsr	ObjHitFloor
+	;	tst.w	d1
+	;	bpl.s	locret_F89E
+	;	add.w	d1,obY(a0)	; match	object's position with the floor
 		move.w	#0,obVelY(a0)
 		addq.b	#2,obRoutine(a0)
 		bchg	#0,obStatus(a0)
@@ -20344,8 +20345,8 @@ Obj50_Index2:	dc.w Obj50_Move-Obj50_Index2
 ; ===========================================================================
 
 Obj50_Move:				; XREF: Obj50_Index2
-		subq.w	#1,$30(a0)	; subtract 1 from pause	time
-		bpl.s	locret_F8E2	; if time remains, branch
+	;	subq.w	#1,$30(a0)	; subtract 1 from pause	time
+	;	bpl.s	locret_F8E2	; if time remains, branch
 		addq.b	#2,ob2ndRout(a0)
 		move.w	#-$100,obVelX(a0)	; move object
 		move.b	#1,obAnim(a0)
@@ -20377,7 +20378,7 @@ Obj50_NotInhumanCrush:
 		blt.s	Obj50_Pause
 		cmpi.w	#$C,d1
 		bge.s	Obj50_Pause
-		add.w	d1,obY(a0)	; match	object's position to the floor
+	;	add.w	d1,obY(a0)	; match	object's position to the floor
 		jsr	obj50_ChkWall
 		bne.s	Obj50_Pause
 		rts	
@@ -20385,7 +20386,7 @@ Obj50_NotInhumanCrush:
 
 Obj50_Pause:				; XREF: Obj50_FixToFloor
 		subq.b	#2,ob2ndRout(a0)
-		move.w	#59,$30(a0)	; set pause time to 1 second
+	;	move.w	#59,$30(a0)	; set pause time to 1 second
 		move.w	#0,obVelX(a0)
 		move.b	#0,obAnim(a0)
 		rts	
@@ -34267,7 +34268,7 @@ Obj7D_SoundStopper:
 		movea.l	$30(a0),a1		; get saved RAM address of the door
 		move.b	#1,$30(a1)		; turn the door red
 		move.b	#1,($FFFFFFA5).w	; move HUD off screen
-		move.b	#1,(ScreenFuzz).w	; enable screen fuzz
+		bset	#1,(ScreenFuzz).w	; enable temporary screen fuzz
 		jmp	DeleteObject
 
 @end:
@@ -42758,7 +42759,6 @@ Obj21_FZEscapeTimer:
 		moveq	#30,d0			; flash below 30 seconds in frantic (cause triple time)
 @0:		cmp.b	($FFFFFE24).w,d0	; less than X seconds left?
 		blo.s	@noflash		; if not, branch
-	;	move.b	#1,(ScreenFuzz).w	; enable fuzz for the final moments
 		move.w	#$06CA,obGfx(a0)	; use palette line 1
 		ori.b	#1,($FFFFFE1E).w 	; update time counter
 		btst	#2,($FFFFFE05).w	; change the time counter palette every X frames

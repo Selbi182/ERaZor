@@ -50,10 +50,15 @@ BackgroundEffects_PalCycle:
 		moveq	#0,d0
 		move.l	#Options_BGCycleColors_BW,d2
 		movea.l	d2,a1
-		move.b	($FFFFFF85).w,d0	; get timer
-		andi.w	#$F,d0
-		add.w	d0,d0
-		adda.w	d0,a1
+
+	;	move.b	($FFFFFF85).w,d0	; get timer
+	;	andi.w	#$F,d0
+	;	add.w	d0,d0
+	;	adda.w	d0,a1
+
+		; screw it, the palette cycle was too busy on the eye
+		; keep it static
+		adda.w	#2,a1
 
 		lea	($FFFFFB02).w,a2
 		moveq	#10-1,d6	; 10 colors

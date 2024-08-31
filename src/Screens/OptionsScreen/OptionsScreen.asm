@@ -101,7 +101,7 @@ OptionsScreen:				; XREF: GameModeArray
 		lea	($FFFFD100).w,a0
 		move.b	#2,(a0)			; load ERaZor banner object
 		move.w	#$11E,obX(a0)		; set X-position
-		move.w	#$7F,obScreenY(a0)	; set Y-position
+		move.w	#$82,obScreenY(a0)	; set Y-position
 		bset	#7,obGfx(a0)		; make object high plane
 		jsr	ObjectsLoad
 		jsr	BuildSprites
@@ -210,11 +210,17 @@ CheckEnable_PlacePlacePlace:
 
 Options_IntialDraw:
 		; Render header and tool tip
-		lea	Options_DrawText_Normal(pc), a4
+		lea	Options_DrawText_Highlighted(pc), a4
 		lea	@ItemData_Header_Top(pc), a0
 		bsr	Options_RedrawMenuItem_Direct
+
+	;	lea	@ItemData_Header_Top2(pc), a0
+	;	bsr	Options_RedrawMenuItem_Direct
+
 		lea	@ItemData_Header_Bottom(pc), a0
 		bsr	Options_RedrawMenuItem_Direct
+		
+		lea	Options_DrawText_Normal(pc), a4
 		lea	@ItemData_Tooltip(pc), a0
 		bsr	Options_RedrawMenuItem_Direct
 
@@ -223,11 +229,15 @@ Options_IntialDraw:
 
 ; ---------------------------------------------------------------------------
 @ItemData_Header_Top:
-		dcScreenPos $E000, 3, 4			; start on-screen position
+		dcScreenPos $E000, 4, 4			; start on-screen position
 		dc.l	@DrawHeader			; redraw handler
+		
+@ItemData_Header_Top2:
+		dcScreenPos $E000, 4, 4			; start on-screen position
+		dc.l	@DrawHeader2			; redraw handler
 
 @ItemData_Header_Bottom:
-		dcScreenPos $E000, 25, 4		; start on-screen position
+		dcScreenPos $E000, 24, 4		; start on-screen position
 		dc.l	@DrawHeader			; redraw handler
 
 @ItemData_Tooltip:
@@ -238,7 +248,9 @@ Options_IntialDraw:
 @DrawHeader:
 		Options_PipeString a4, '<------------------------------>'
 		rts
-
+@DrawHeader2:
+		Options_PipeString a4, '          CHANGE STUFF          '
+		rts
 @DrawTooltip:
 		Options_PipeString a4, 'PRESS  _`abc TO EXIT'
 		rts

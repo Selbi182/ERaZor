@@ -7,54 +7,53 @@
 Options_MenuData:
 
 	; Gameplay style
-	dcScreenPos	$E000, 5, 6			; start on-screen position
+	dcScreenPos	$E000, 6, 6			; start on-screen position
 	dc.l	Options_GameplayStyle_Redraw		; redraw handler
 	dc.l	Options_GameplayStyle_Handle		; update handler
 
 	; Extended camera
-	dcScreenPos	$E000, 7, 6			; start on-screen position
+	dcScreenPos	$E000, 8, 6			; start on-screen position
 	dc.l	Options_ExtendedCamera_Redraw		; redraw handler
 	dc.l	Options_ExtendedCamera_Handle		; update handler
 
 	; Skip story screens
-	dcScreenPos	$E000, 9, 6			; start on-screen position
+	dcScreenPos	$E000, 10, 6			; start on-screen position
 	dc.l	Options_SkipStoryScreens_Redraw		; redraw handler
 	dc.l	Options_SkipStoryScreens_Handle		; update handler
-
-	; Skip uberhub place
-	dcScreenPos	$E000, 11, 6			; start on-screen position
+	; Skip Uberhub place
+	dcScreenPos	$E000, 12, 6			; start on-screen position
 	dc.l	Options_SkipUberhubPlace_Redraw		; redraw handler
 	dc.l	Options_SkipUberHubPlace_Handle		; update handler
 
 	; Photosensitive mode
-	dcScreenPos	$E000, 13, 6			; start on-screen position
+	dcScreenPos	$E000, 14, 6			; start on-screen position
 	dc.l	Options_PhotosensitiveMode_Redraw	; redraw handler
 	dc.l	Options_PhotosensitiveMode_Handle	; update handler
 
-	; Cinematic mode
-	dcScreenPos	$E000, 15, 6			; start on-screen position
+	; Black bars setup
+	dcScreenPos	$E000, 16, 6			; start on-screen position
+	dc.l	Options_BlackBarsMode_Redraw		; redraw handler
+	dc.l	Options_BlackBarsMode_Handle		; update handler
+
+	; E - Cinematic mode
+	dcScreenPos	$E000, 18, 6			; start on-screen position
 	dc.l	Options_CinematicMode_Redraw		; redraw handler
 	dc.l	Options_CinematicMode_Handle		; update handler
-
-	; Motion blur
-	dcScreenPos	$E000, 17, 6			; start on-screen position
+	; R - Motion blur
+	dcScreenPos	$E000, 19, 6			; start on-screen position
 	dc.l	Options_MotionBlur_Redraw		; redraw handler
 	dc.l	Options_MotionBlur_Handle		; update handler
-
-	; Non-stop inhuman
-	dcScreenPos	$E000, 19, 6			; start on-screen position
+	; Z - True Inhuman
+	dcScreenPos	$E000, 20, 6			; start on-screen position
 	dc.l	Options_NonstopInhuman_Redraw		; redraw handler
 	dc.l	Options_NonstopInhuman_Handle		; update handler
 
 	; Delete save game
-	dcScreenPos	$E000, 21, 6			; start on-screen position
+	dcScreenPos	$E000, 22, 6			; start on-screen position
 	dc.l	Options_DeleteSaveGame_Redraw		; redraw handler
 	dc.l	Options_DeleteSaveGame_Handle		; update handler
 
-	; Black bars mode
-	dcScreenPos	$E000, 23, 6			; start on-screen position
-	dc.l	Options_BlackBarsMode_Redraw		; redraw handler
-	dc.l	Options_BlackBarsMode_Handle		; update handler
+
 
 Options_MenuData_End:
 
@@ -534,7 +533,7 @@ Options_BlackBarsMode_Redraw:
 	btst	#1, BlackBars.HandlerId
 	beq.s	@0
 	lea	@Str_BlackBars_Hardware(pc), a1
-@0:	Options_PipeString a4, "BLACK BARS MODE     %<.l a1 str>", 28
+@0:	Options_PipeString a4, "BLACK BARS SETUP    %<.l a1 str>", 28
 	rts
 
 @Str_BlackBars_Emulator:

@@ -1,319 +1,501 @@
 ; ---------------------------------------------------------------------------
 ; Sound Test Screen
-;
-; THIS FILE IS PROPERTY OF FUZZY
-; (you can touch it though)
 ; ---------------------------------------------------------------------------
 
-SoundTest_Min = $80
-SoundTest_Max = $DF
-SoundTest_AStep = $10
-
-SoundTest_TileOptions = $A000
-SoundTest_Tile = $81|SoundTest_TileOptions
-
-; LRLR ???? XXXX XXXX
-NotePositionBuffer = $FFFFCF80
+	include	"Screens/SoundTestScreen/Macros.asm"
 
 ; ---------------------------------------------------------------------------
 
+SoundTest_Visualizer_VRAM:	equ	$2000
+SoundTest_Visualizer_ScreenPos:	equ	$C000
+SoundTest_Visualizer_Width:	equ	36	; tiles
+SoundTest_Visualizer_Height:	equ	18	; tiles
+
+SoundTest_RAM:	equ	$FFFF8000
+
+		rsset	SoundTest_RAM
+SoundTest_VRAMBufferPoolPtr:		rs.w	1
+SoundTest_VisualizerPos_TilePtr:	rs.w	1
+SoundTest_VisualizerPos_TileOffset:	rs.w	1
+SoundTest_Visualizer_PixelBuffer:	rs.b	SoundTest_Visualizer_Width*4
+SoundTest_VisualizerBufferPtr:		rs.w	1
+SoundTest_VisualizerBufferDest:		rs.l	1	; VDP command
+SoundTest_DummyXPos:			rs.w	1
+
+; ---------------------------------------------------------------------------
 SoundTestScreen:
-		move.b	#$E4, d0
-		jsr	PlaySound_Special ; stop music
-		jsr	PLC_ClearQueue
-		jsr	Pal_FadeFrom
-		VBlank_SetMusicOnly
+	moveq	#$FFFFFFE4, d0
+	jsr	PlaySound_Special ; stop music
+	jsr	PLC_ClearQueue
+	jsr	Pal_FadeFrom
+	jsr	DrawBuffer_Clear
 
-		; VDP setup
-		lea	($C00004).l, a6
-		move.w	#$8004, (a6)
-		move.w	#$8230, (a6)
-		move.w	#$8407, (a6)
-		move.w	#$9001, (a6)
-		move.w	#$9200, (a6)
-		move.w	#$8B07, (a6)
-		move.w	#$8720, (a6)
-		clr.b	($FFFFF64E).w
+	display_disable
+	VBlank_SetMusicOnly
 
-		jsr	ClearScreen
+	; VDP setup
+	lea	($C00004).l, a6
+	move.w	#$8004, (a6)
+	move.w	#$8230, (a6)
+	move.w	#$8407, (a6)
+	move.w	#$9001, (a6)
+	move.w	#$9200, (a6)
+	move.w	#$8B07, (a6)
+	move.w	#$8720, (a6)
+	clr.b	($FFFFF64E).w
+	jsr	ClearScreen
 
-		lea	($C00000).l, a6
-		vram	$80*$20
-		lea	(ArtKospM_Keyboard).l, a0
-		jsr	KosPlusMDec_VRAM
+	; Clear object RAM
+	lea	Objects, a1
+	moveq	#0, d0
+	move.w	#(Objects_End-Objects)/$40-1, d1
 
-		move.l	#$6E000002, 4(a6)
-		lea	(Options_TextArt).l, a5
-		move.w	#$59F, d1		; Original: $28F
+	@clear_obj_ram_loop:
+		rept $40/4
+			move.l	d0, (a1)+
+		endr
+		dbf	d1, @clear_obj_ram_loop
 
-@LoadTextArt:
-		move.w	(a5)+, (a6)
-		dbf	d1, @LoadTextArt ; load uncompressed text patterns
-		VBlank_UnsetMusicOnly
+	assert.w a1, eq, #Objects_End
+
+	SoundTest_ResetVRAMBufferPool
+
+	; 
+	lea	($C00000).l, a6
+	move.l	#$6E000002, 4(a6)
+	lea	(Options_TextArt).l, a5
+	move.w	#$59F, d1		; Original: $28F
+@LoadTextArt:	move.w	(a5)+, (a6)
+	dbf	d1, @LoadTextArt ; load uncompressed text patterns
+
+	vram	$E000, 4(a6)
+	jsr	BackgroundEffects_Setup2
+
+	jsr	SoundTest_Visualizer_Init
+
+	bsr	Options_LoadPal
+	move.b	#9, ($FFFFFF9E).w ; BG pal
+	move.w	#$A0A, (BGThemeColor).w
 		
-		lea	($FFFFD000).w, a1
-		moveq	#0, d0
-		move.w	#$7FF, d1
+	clr.b	($FFFFFF95).w
+	clr.w	($FFFFFF96).w
+	clr.b	($FFFFFF98).w
+	clr.w	($FFFFFFB8).w
+	move.w	#21, ($FFFFFF9A).w
+	move.b	#$81, ($FFFFFF84).w
 
-@ClearObjects:
-		move.l	d0, (a1)+
-		dbf	d1, @ClearObjects ; fill object RAM ($D000-$EFFF) with $0
+	jsr	ObjectsLoad
+	jsr	BuildSprites
 
-		lea	($FFFFCC00).w, a1
-		moveq	#0, d0
-		move.w	#$DF, d1
+	display_enable
+	VBlank_UnsetMusicOnly
+	jsr	Pal_FadeTo
 
-@ClearScroll:
-		move.l	d0, (a1)+
-		dbf	d1, @ClearScroll ; fill scroll data with 0
-		move.l	d0, ($FFFFF616).w
+	assert.b VBlank_MusicOnly, eq
 
-		jsr	BackgroundEffects_Setup
-
-		bsr	Options_LoadPal
-		move.b	#9, ($FFFFFF9E).w ; BG pal
-		move.w	#$A0A, (BGThemeColor).w
- 		
-		clr.b	($FFFFFF95).w
-		clr.w	($FFFFFF96).w
-		clr.b	($FFFFFF98).w
-		clr.w	($FFFFFFB8).w
-		move.w	#21, ($FFFFFF9A).w
-		move.b	#$81, ($FFFFFF84).w
-
-SoundTest_FinishSetup:
-		jsr	ObjectsLoad
-		jsr	BuildSprites		
-		bsr	SoundTest_TextLoad
-
-		display_enable
-		jsr	Pal_FadeTo
-
-
-; ---------------------------------------------------------------------------
-; Sound Test Screen - Main Loop
 ; ---------------------------------------------------------------------------
 SoundTest_MainLoop:
-		move.b	#2, VBlankRoutine
-		
-		jsr	DelayProgram
-		jsr	ObjectsLoad
-		jsr	BuildSprites
-		jsr	PLC_Execute
+	move.l	#@FlushVRAMBuffer, VBlankCallback
+	move.b	#2, VBlankRoutine	
+	jsr	DelayProgram
 
-		jsr	BackgroundEffects_Update
-		jsr	SoundTest_UpdatePianoRoll
+	assert.w SoundTest_VRAMBufferPoolPtr, eq, #Art_Buffer		; VRAM buffer pool should be reset by the beginning of the frame
 
-		moveq	#0, d1
-		move.b	($FFFFF605).w, d1	; get button presses
-		beq.s	SoundTest_MainLoop	; was anything at all pressed this frame? if not, loop
+	jsr	ObjectsLoad
+	jsr	BuildSprites
+	jsr	PLC_Execute
 
-		btst	#7, d1			; is Start pressed?
-		bne.w	SoundTest_Exit		; if yes, exit sound test screen
+	jsr	SoundTest_Visualizer_Update
 
-		move.w	#$80, d0		; default sound (null)
-		move.b	($FFFFFF84).w, d2	; move current sound test ID to d2
+	jsr	BackgroundEffects_PalCycle
+	bra	SoundTest_MainLoop
 
-@CheckLeft:
-		btst	#2, d1			; has left been pressed?
-		beq.s	@CheckRight		; if not, branch
-		
-		subq.b	#1, d2			; decrease sound test ID by 1
-		cmpi.b	#SoundTest_Min-1, d2	; is ID below the minimum now?
-		bne.w	@UpdateText		; if not, branch
-		
-		move.b	#SoundTest_Max, d2	; reset ID to max
-		bra.w	@UpdateText		; branch
+; ---------------------------------------------------------------------------
+@FlushVRAMBuffer:
+	move.w	SoundTest_VisualizerBufferPtr, d0	; do we have a pixel buffer to flush?
+	beq.s	@0
+	movea.w	d0, a0
+	move.l	SoundTest_VisualizerBufferDest, d0
+	moveq	#0, d1
+	move.w	d1, SoundTest_VisualizerBufferPtr
+	move.l	d1, SoundTest_VisualizerBufferDest
+	jsr	SoundTest_Visualizer_TransferPixelBufferToVRAM
 
-@CheckRight:
-		btst	#3, d1			; has right been pressed?
-		beq.s	@CheckC			; if not, branch
-		
-		addq.b	#1, d2			; increase sound test ID by 1
-		cmpi.b	#SoundTest_Max+1, d2	; is ID above the maximum now?
-		bne.w	@UpdateText		; if not, branch
-
-		move.b	#SoundTest_Min, d2	; reset ID to min
-		bra.w	@UpdateText		; branch
-
-@CheckC:
-		btst	#5, d1			; is C pressed?
-		beq.s	@CheckAB		; if not, branch
-
-		move.b	d2, d0			; set to play the selected sound
-		cmpi.b	#$80, d2		; is current song selection ID $80?
-		bne.s	@PlaySound		; if not, branch
-
-		move.b	#$E4, d0		; set to stop all sound (for convenience)
-
-@PlaySound:
-		jsr	PlaySound_Special	; play selected sound
-
-@CheckAB:
-		and.w 	#%01010000, d1		; filter 1 to A and B bits
-		beq.s	@UpdateText		; if not, branch
-		
-		addi.b	#SoundTest_AStep, d2	; increase sound test ID by $10
-		cmpi.b	#SoundTest_Max+1, d2	; is ID above the maximum now?
-		blt.w	@UpdateText		; if not, branch
-
-		subi.b	#SoundTest_Max-SoundTest_Min+1, d2 ; restart on the other side
-
-@UpdateText:
-		move.b	d2, ($FFFFFF84).w	; update ID
-		bsr	SoundTest_TextLoad
-
-SoundTest_Return:
-		bra.w	SoundTest_MainLoop	; return
+@0:	SoundTest_ResetVRAMBufferPool
+	rts
 
 ; ===========================================================================
 
 SoundTest_Exit:
-		jmp	Exit_SoundTestScreen
+	jmp	Exit_SoundTestScreen
+
+
 
 ; ===========================================================================
-
-SoundTest_TextLoad:
-		lea	($FFFFC900).w, a1		; set destination
-		moveq	#0, d1				; use $FF as ending of the list
-
-		lea	(OpText_SoundTest).l, a2	; set text location
-		moveq	#0, d2
-
-		;jsr	Options_Write			; write text
-		move.b	#$0D, -3(a1)			; write < before the ID
-		move.b	#$0E, 2(a1)			; write > after the ID
-
-		move.b	#$FF, 3(a1)			; write end marker
-
-		; write the sound test ID ($FFFFFF84) at offset -1(a1)
-		moveq	#0, d0
-		move.b	($FFFFFF84).w, d0		; get sound test ID
-		lsr.b	#4, d0				; swap first and second short
-		andi.b	#$0F, d0			; clear first short
-		cmpi.b	#9, d0				; is result greater than 9?
-		ble.s	@SkipSpecialCharacters1		; if not, branch
-		addi.b	#5, d0				; skip the special chars (!, ?, etc.)
-
-@SkipSpecialCharacters1:
-		move.b	d0, -1(a1)			; set result to first digit ("8" 1)
-
-		move.b	($FFFFFF84).w, d0		; get sound test ID
-		andi.b	#$0F, d0			; clear first short
-		cmpi.b	#9, d0				; is result greater than 9?
-		ble.s	@SkipSpecialCharacters2		; if not, branch
-		addi.b	#5, d0				; skip the special chars (!, ?, etc.)
-
-@SkipSpecialCharacters2:
-		move.b	d0, 0(a1)			; set result to second digit (8 "1")
-
-		VBlank_SetMusicOnly
-		
-		; send to VDP
-		lea	($C00000).l, a6
-		move.l	#$66100003, 4(a6)	; screen position (text)
-		lea	($FFFFC900).w, a1	; get preloaded text buffer	
-		bsr	SoundTest_WriteLine
-
-		VBlank_UnsetMusicOnly		
-		rts	
-
-; ===========================================================================
-
-SoundTest_WriteLine:
-		moveq	#0, d0
-		move.b	(a1)+, d0		; load next char
-		bmi.s	@End			; if end, exit
-
-		addi.w	#Options_VRAM, d0	; apply VRAM settings to tile mapping
-		move.w	d0, (a6)		; write mapping to VDP
-		bra.s	SoundTest_WriteLine	; loop
-
-@End:
-		rts
-
-; ===========================================================================
-
-;│Screen position format: #$6YXX 0003
-;│Base screen position:   #$6120 0003
-;│Xは2で割り切れる, モゲ!
-;└───ｖ──────────────────────────────────────────────────────────────────────
-;.　∧,,∧
-; （＾o＾）
-;.（　　）
-
-SoundTest_UpdatePianoRoll:
-		VBlank_SetMusicOnly
-		
-		lea 	NotePositionBuffer, a2	; note pos buffer -> a2
-
-		lea	($C00000).l, a6
-		move.l	#$61120003, 4(a6)	; screen position
-		lea	(OpText_Blank).l, a1	; graphics
-
-		move.w 	#$28/2, d4
-
-@ClearLine:
-		move.w	#SoundTest_Tile, (a6)	; write mapping to VDP
-		dbf 	d4, @ClearLine
-
-		lea 	FM_Notes, a5		; load base note location
-		moveq 	#9, d6			; number of channels -> d6
-
-@LoopChannels:
-		move.w	#SoundTest_Tile+1, d3	; VRAM setting
-
-		moveq 	#0, d0			; clear d0
-		moveq	#0, d1			; ..d1
-
-		move.b 	(a5)+, d0		; load note
-		move.w 	d0, d1			; make copy of note into d1 for X position
-		divs.w 	#2, d1			; divide it by 2
-		bset 	#14, d1			; set right bit
-
-		; test bit 0 on note to determine left or right (odd or even) and then divide it by 2
-		; get the tile id on that coordinate and modify accordingly
-		; red = psg
-		; blue = fm
-
-		btst	#0, d0			; is the note even?
-		beq.s 	@EvenNote		; if so, branch
-
-		bset 	#15, d1			; note is odd, set left bit
-		bclr 	#14, d1			; ...and clear right bit
-		; illegal
-
-@EvenNote:
-		andi.b	#$FE, d0		; make d0 even
-		swap 	d0			; swap note value into x position
-		add.l 	#$61120003, d0		; add base
-
-		move.w 	d1, (a2)+
-
-		move.l	d0, 4(a6)		; tile -> vram
-		move.w	d3, (a6)		; settings -> vram
-
-		dbf 	d6, @LoopChannels
-
-		VBlank_UnsetMusicOnly
-		rts
-
-; ===========================================================================
-
-OpText_SoundTest:
-		dc.b	'SOUND TEST           ', $FF
-		even
-
-OpText_Blank:
-		rept	320/8
-		dc.b	0
-		endr
-		dc.b	$FF
-		even
-
+; ---------------------------------------------------------------------------
+; Initializes the visualizer
 ; ---------------------------------------------------------------------------
 
-ArtKospM_Keyboard:
-		incbin	"Screens/SoundTestScreen/KeyboardTiles.kospm"
-		even
+SoundTest_Visualizer_Init:
 
+	; Init variables
+	moveq	#0, d0
+	move.w	d0, SoundTest_VisualizerPos_TilePtr
+	move.w	d0, SoundTest_VisualizerPos_TileOffset
+	move.w	d0, SoundTest_VisualizerBufferPtr
+	move.l	d0, SoundTest_VisualizerBufferDest
+	move.w	d0, SoundTest_DummyXPos ; ###
+
+	@vdp_ctrl:	equr	a5
+	@vdp_data:	equr	a6
+
+	assert.b VBlank_MusicOnly, ne
+
+	lea	VDP_Data, @vdp_data
+	lea	VDP_Ctrl-VDP_Data(@vdp_data), @vdp_ctrl
+
+	; ---------------------------
+	; Generate tiles (DMA fill)
+	; ---------------------------
+
+	@dma_len: = SoundTest_Visualizer_Width*SoundTest_Visualizer_Height*$20 ; bytes
+	@dma_dest: = SoundTest_Visualizer_VRAM
+
+	vram	SoundTest_Visualizer_VRAM, (@vdp_ctrl)
+	move.l	#(($9400+((@dma_len-1)>>8))<<16)|($9300+((@dma_len-1)&$FF)), (@vdp_ctrl)
+	move.l	#(($9700+$80)<<16)|$8F01, (@vdp_ctrl)
+	move.l	#($40000000+(((@dma_dest)&$3FFF)<<16)+(((@dma_dest)&$C000)>>14))|$80, (@vdp_ctrl)
+	move.w	#$1111, (@vdp_data)
+
+	; -------------------
+	; Generate mappings
+	; -------------------
+
+	@base_pat: = SoundTest_Visualizer_VRAM/$20
+	@map_buffer_size: = SoundTest_Visualizer_Width*SoundTest_Visualizer_Height*2
+
+	@map_data:		equr	d0
+	@map_inc:		equr	d1
+	@loop_cnt:		equr	d6
+	@map_buffer:		equr	a0
+	@map_buffer_start: 	equr	a1
+
+	move.l	#(@base_pat<<16)|(@base_pat+1), @map_data
+	move.l	#$00020002, @map_inc
+
+	SoundTest_AllocateInVRAMBufferPool @map_buffer_start, #@map_buffer_size
+	lea	(@map_buffer_start), @map_buffer
+
+	@loop_unroll: = 2
+	@loop_bytes_per_iteration: = @loop_unroll*4
+
+	if (@map_buffer_size % @loop_bytes_per_iteration)
+		inform 2, "@map_buffer_size isn't divisible by @loop_bytes_per_iteration"
+	endif
+
+	move.w	#@map_buffer_size/@loop_bytes_per_iteration-1, @loop_cnt
+
+	@generate_map_loop:
+		rept @loop_unroll
+			move.l	@map_data, (@map_buffer)+
+			add.l	@map_inc, @map_data
+		endr
+		dbf	@loop_cnt, @generate_map_loop
+
+	if def(__DEBUG__)
+		sub.w	@map_buffer_start, @map_buffer
+		assert.w @map_buffer, eq, #@map_buffer_size ; check for buffer overflows/underflows
+	endif
+
+	; -----------------------------------------------------------------
+	; Make sure DMA fill for tiles ends (it was running in parallel!)
+	; -----------------------------------------------------------------
+
+	@wait_dma:
+		move.w	(@vdp_ctrl), ccr
+		bvs.s	@wait_dma
+
+	move.w	#$8F02, (@vdp_ctrl)
+
+	; ----------------
+	; DMA mappings
+	; ----------------
+
+	@num_rows: = SoundTest_Visualizer_Height
+	@map_row_size: = SoundTest_Visualizer_Width*2/2 ; words
+	@map_vram_start: = SoundTest_Visualizer_ScreenPos
+
+	@dma_size_regs:	equr	d2	; DMA row size (constant)
+	@dma_src:	equr	d3	; DMA source address / 2
+	@dma_dest_high:	equr	d4	; DMA destination command (high word)
+	@dma_dest_inc:	equr	d5	; DMA destination stap (constant)
+
+	assert.l @map_buffer_start, hi, #$FF0000 ; buffer should be in RAM (so DMA's high byte is $FF/2 = $7F)
+
+	move.l	#(($9400+(@map_row_size>>8))<<16)|($9300+(@map_row_size&$FF)), @dma_size_regs
+	move.w	@map_buffer_start, @dma_src
+	lsr.w	@dma_src
+	move.w	#$4000|(@map_vram_start&$3FFF), @dma_dest_high
+	move.w	#$40*2, @dma_dest_inc				; set DMA destination address increment to 1 on-screen row
+	move.w	#((@map_vram_start&$C000)>>14)|$80, -(sp)	; Stack => DMA destination command (low word)
+	move.l	#$96009500, -(sp)				; Stack => DMA source address registers (mid and low bytes)
+	moveq	#SoundTest_Visualizer_Height-1, @loop_cnt
+
+	@dma_send_row_loop:
+		move.l	@dma_size_regs, (@vdp_ctrl)	; VDP => DMA size regs
+		movep.w	@dma_src, 1(sp)
+		move.w	#$977F, (@vdp_ctrl)		; VDP => DMA's source high byte
+		move.l	(sp), (@vdp_ctrl)		; VDP => DMA's source mid and low byte
+		move.w	@dma_dest_high, (@vdp_ctrl)	; VDP => DMA destination command (high word)
+		move.w	4(sp), (@vdp_ctrl)		; VPD => DMA destination command (low word)
+
+		add.w	@dma_dest_inc, @dma_dest_high	; advance DMA destination address
+		add.w	#@map_row_size, @dma_src	; advance DMA source address
+
+		dbf	@loop_cnt, @dma_send_row_loop
+
+	addq.w	#6, sp
+	rts
+
+
+
+; ---------------------------------------------------------------------------
+; Updates the visualizer
+; ---------------------------------------------------------------------------
+
+SoundTest_Visualizer_Update:
+
+	@pixel_buffer_size: = SoundTest_Visualizer_Width*4
+	@pixel_buffer_half_size: = SoundTest_Visualizer_Width*4/2
+
+	; USES:
+	@var0:			equr	d0
+	@pixel_buffer:		equr	a0
+	@pixel_buffer_half1:	equr	a1
+	@pixel_buffer_half2:	equr	a2
+	@pixel_data_half1:	equr	d2
+	@pixel_data_half2:	equr	d3
+
+	; ----------------------------------------------
+	; Initially draw an empty line in pixel buffer
+	; ----------------------------------------------
+
+	lea	SoundTest_Visualizer_PixelBuffer, @pixel_buffer
+	lea	(@pixel_buffer), @pixel_buffer_half1
+	lea	@pixel_buffer_half_size(@pixel_buffer), @pixel_buffer_half2
+
+	moveq	#0, @pixel_data_half1
+	moveq	#0, @pixel_data_half2
+
+	rept @pixel_buffer_size/8
+		move.l	@pixel_data_half1, (@pixel_buffer_half1)+
+		move.l	@pixel_data_half2, (@pixel_buffer_half2)+
+	endr
+
+	; -----------------------------
+	; Render shapes on the buffer
+	; -----------------------------
+
+	@write_request:	equr	a0
+
+	move.l	#@Dummy_PixelData, -(sp)
+	move.w	SoundTest_DummyXPos, -(sp)	; x-pos
+
+	lea	(sp), @write_request
+	jsr	SoundTest_Visualizer_WritePixelsToPixelBuffer
+
+	moveq	#0, d0
+	move.w	SoundTest_DummyXPos, d0
+	addq.w	#1, d0
+	divu.w	#SoundTest_Visualizer_Width*8, d0
+	swap	d0
+	move.w	d0, SoundTest_DummyXPos
+
+	addq.w	#6, sp
+
+	; -------------
+	; Send buffer
+	; -------------
+
+	move.w	#SoundTest_Visualizer_PixelBuffer, SoundTest_VisualizerBufferPtr
+
+	; Calculate start position
+	moveq	#0, @var0
+	move.w	#SoundTest_Visualizer_VRAM, @var0
+	add.w	SoundTest_VisualizerPos_TilePtr, @var0
+	add.w	SoundTest_VisualizerPos_TileOffset, @var0
+
+	lsl.l	#2, @var0
+	lsr.w	#2, @var0
+	swap	@var0
+	ori.l	#$40000080, @var0
+ 	move.l	@var0, SoundTest_VisualizerBufferDest
+
+	; Advance visualizer position for the next call
+	addq.w	#4, SoundTest_VisualizerPos_TileOffset
+	cmp.w	#$20, SoundTest_VisualizerPos_TileOffset
+	blo.s	@pos_ok
+	move.w	#0, SoundTest_VisualizerPos_TileOffset
+	add.w	#SoundTest_Visualizer_Width*$20, SoundTest_VisualizerPos_TilePtr
+	cmp.w	#SoundTest_Visualizer_Height*SoundTest_Visualizer_Width*$20, SoundTest_VisualizerPos_TilePtr
+	blo.s	@pos_ok
+	move.w	#0, SoundTest_VisualizerPos_TilePtr
+@pos_ok:
+	rts
+
+
+@Dummy_PixelData:
+	dc.w	1 ; pixels
+
+@even:	dc.b	$40
+@odd:	dc.b	$04
+	even
+
+; ---------------------------------------------------------------------------
+; Writes given pixel data to the pixel data
+; ---------------------------------------------------------------------------
+; WRITE REQUEST FORMAT:
+;	$00	.w	Start X-pixel
+;	$04	.l	Pixel data pointer
+;
+; PIXEL DATA FORMAT:
+;	$00	.w	NN: Number of pixels
+;	$02	...	Raw pixel data, even positioning
+;	$02+NN/2...	Raw pixel data, odd positioning (shifted by 4 bits)
+; ---------------------------------------------------------------------------
+
+SoundTest_Visualizer_WritePixelsToPixelBuffer:
+
+	; INPUT:
+	@write_request:		equr	a0
+
+	; USES:
+	@xpos:			equr	d0
+	@var0:			equr	d1
+	@var1:			equr	d2
+	@pixel_cnt:		equr	d5
+	@pixel_data:		equr	a1
+	@buffer_offset_stream:	equr	a2
+	@pixel_buffer_ptr:	equr	a3
+
+	move.w	(@write_request)+, @xpos
+	movea.l	(@write_request)+, @pixel_data
+	move.w	(@pixel_data)+, @pixel_cnt
+	bclr	#0, @xpos
+	lea	@XOffsetToBufferOffset(pc, @xpos), @buffer_offset_stream	; initialize buffer offset stream
+	beq.s	@xpos_even			; if we're on even pixel, branch
+
+	move.w	@pixel_cnt, @var0
+	addq.w	#1, @var0
+	lsr.w	@var0				; @var0 = Number of pixels / 2
+	adda.w	@var0, @pixel_data		; use "odd start" pixel data
+
+	; If X-pos was odd, write the first pixel to the first nibble
+	movea.w	(@buffer_offset_stream)+, @pixel_buffer_ptr
+	moveq	#$FFFFFFF0, @var0
+	and.b	(@pixel_buffer_ptr), @var0
+	or.b	(@pixel_data)+, @var0
+	move.b	@var0, (@pixel_buffer_ptr)
+
+	subq.w	#1, @pixel_cnt			; mark pixel as written
+	beq.s	@done				; if no pixels remain, branch
+
+@xpos_even:
+	lsr.w	@pixel_cnt
+	beq.s	@push_to_last_nibble
+	bcc.s	@pixel_counter_even
+	pea	@push_to_last_nibble(pc)	; also push to the last nibble once we're done
+
+@pixel_counter_even:
+	subq.w	#1, @pixel_cnt
+
+	@stream_pixels:
+		movea.w	(@buffer_offset_stream)+, @pixel_buffer_ptr
+		move.b	(@pixel_data)+, (@pixel_buffer_ptr)
+		dbf	@pixel_cnt, @stream_pixels
+
+@done:	rts
+
+; ---------------------------------------------------------------------------
+@push_to_last_nibble:
+	; If number of pixels was odd, push the last pixel
+	move.w	(@buffer_offset_stream)+, @pixel_buffer_ptr
+	moveq	#$F, @var0
+	and.b	(@pixel_buffer_ptr), @var0
+	or.b	(@pixel_data)+, @var0
+	move.b	@var0, (@pixel_buffer_ptr)
+	rts
+
+; ---------------------------------------------------------------------------
+@XOffsetToBufferOffset:
+
+	@x_offset: = 0
+	@half1_offset: = SoundTest_Visualizer_PixelBuffer
+	@half2_offset: = SoundTest_Visualizer_PixelBuffer + SoundTest_Visualizer_Width*4/2
+
+	rept SoundTest_Visualizer_Width*4
+		if @x_offset & 2
+			dc.w @half2_offset
+			@half2_offset: = @half2_offset + 1
+		else
+			dc.w  @half1_offset
+			@half1_offset: = @half1_offset + 1
+		endif
+
+		@x_offset: = @x_offset + 1
+	endr
+
+
+; ---------------------------------------------------------------------------
+; Transfers pixel buffer to VRAM during VBlank
+; ---------------------------------------------------------------------------
+
+SoundTest_Visualizer_TransferPixelBufferToVRAM:
+	
+	; INPUT REGISTERS:
+	@pixel_buffer:	equr	a0
+	@write_dest:	equr	d0
+
+	; USES:
+	@dma_src:	equr	d2
+	@dma_size_regs:	equr	d3
+	@vdp_ctrl:	equr	a5
+
+
+	assert.l @write_dest, ne
+	assert.l @pixel_buffer, hi, #$FF0000 ; buffer should be in RAM (so DMA's high byte is $FF/2 = $7F)
+
+	lea	VDP_Ctrl, @vdp_ctrl
+
+	@pixel_buffer_size: = SoundTest_Visualizer_Width*4/2 ; words
+
+	move.w	@pixel_buffer, @dma_src
+	lsr.w	#1, @dma_src
+
+	move.l	#(($9400+((@pixel_buffer_size/2)>>8))<<16)|($9300+((@pixel_buffer_size/2)&$FF)), @dma_size_regs
+	move.w	@write_dest, -(sp)		; Stack => DMA destination command (low word)
+	move.l	#$96009500, -(sp)		; Stack => DMA source address registers (mid and low bytes)
+	swap	@write_dest
+
+	move.w	#$8F20, (@vdp_ctrl)		; DMA advances every tile ($20 bytes)
+
+	move.l	@dma_size_regs, (@vdp_ctrl)	; VDP => DMA size regs
+	movep.w	@dma_src, 1(sp)
+	move.w	#$977F, (@vdp_ctrl)		; VDP => DMA's source high byte
+	move.l	(sp), (@vdp_ctrl)		; VDP => DMA's source mid and low byte
+	move.w	@write_dest, (@vdp_ctrl)	; VDP => DMA destination command (high word)
+	move.w	4(sp), (@vdp_ctrl)		; VPD => DMA destination command (low word)
+
+	addq.w	#2, @write_dest
+	add.w	#@pixel_buffer_size/2, @dma_src
+
+	move.l	@dma_size_regs, (@vdp_ctrl)	; VDP => DMA size regs
+	movep.w	@dma_src, 1(sp)
+	move.w	#$977F, (@vdp_ctrl)		; VDP => DMA's source high byte
+	move.l	(sp), (@vdp_ctrl)		; VDP => DMA's source mid and low byte
+	move.w	@write_dest, (@vdp_ctrl)	; VDP => DMA destination command (high word)
+	move.w	4(sp), (@vdp_ctrl)		; VPD => DMA destination command (low word)
+
+	move.w	#$8F02, (@vdp_ctrl)
+	addq.w	#6, sp
+	rts

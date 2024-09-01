@@ -173,8 +173,8 @@ BackgroundEffects_Deformation2:
 		beq.s	@1
 		neg.l	d0
 @1:
-		andi.l	#$0000FFFF,d0
 		swap	d0
+		clr.w	d0
 		add.w	d6,d0 ; scroll everything to the right
 		btst	#0,d5
 		beq.s	@3
@@ -203,7 +203,7 @@ BackgroundEffects_Deformation2:
 		beq.s	@bla
 		asr.l	d7,d2
 @bla
-		andi.l	#$FFFF0000,d2
+		clr.w	d2
 		swap	d2
 		move.w	d2,(a1)+
 		addq.w	#2,a1

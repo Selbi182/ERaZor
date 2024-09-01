@@ -1,68 +1,76 @@
-[CENTER][SIZE=6][B]Sonic ERaZor - Seventh Public Release[/B]
-(or just [I]ERaZor 7[/I])[/SIZE]
+[CENTER][B][SIZE=7]Sonic ERaZor 7[/SIZE][/B]
+or, [I]Sonic ERaZor – Seventh Public Release[/I], if you prefer it old-school
 
-[IMG]https://i.imgur.com/QZNgYUA.png[/IMG]
-(MORE SCREENSHOTS HERE)
-
-The first update of this game in eight years! A complete overhaul of the entire game! Many, many design improvements – both visually and gameplay-wise – as well as ton of quality-of-life improvements and bugfixes. The original goal was to keep the identity as faithful to the OG version as possible while acknowledging its shortcomings, but it has far exceeded that initial scope. Instead, it's more like finishing a beta after almost a decade.
-
-[URL='http://[/CENTER]'][B][SIZE=6]DOWNLOAD[/SIZE][/B][/URL][/CENTER]
+[IMG]https://i.imgur.com/QZNgYUA.png[/IMG] [IMG]https://i.imgur.com/QZNgYUA.png[/IMG] [IMG]https://i.imgur.com/QZNgYUA.png[/IMG]
+[IMG]https://i.imgur.com/QZNgYUA.png[/IMG] [IMG]https://i.imgur.com/QZNgYUA.png[/IMG] [IMG]https://i.imgur.com/QZNgYUA.png[/IMG]
+[IMG]https://i.imgur.com/QZNgYUA.png[/IMG] [IMG]https://i.imgur.com/QZNgYUA.png[/IMG] [IMG]https://i.imgur.com/QZNgYUA.png[/IMG]
 
 
-[B]Backstory[/B]
+[URL='http://selbi.hapisan.com/erazor'][B][SIZE=6]DOWNLOAD HERE![/SIZE][/B][/URL][/CENTER]
 
-Stop me if you've heard this one before: "Final version of Sonic ERaZor." Yeah, we're beating that dead horse once again, though this time it's at least been a while – 8 years since the last release, to be precise. Don't get me wrong, I really do mean I originally had no plans to work on it again. Hell, [URL='https://forums.sonicretro.org/index.php?threads/sonic-erazor-source-code-and-everything-else.41682/']I even made the source code public[/URL]. But then something happened – that's right, [URL='https://www.youtube.com/watch?v=MaIDlHM3qC4']redhotsonic happened[/URL]. While I did spot the odd bug or design quirk here and there over the past few years already, it was his video – specifically the showcase of a massive, unavoidable hard crash if the game ran without SRAM – that finally made me break my oath. So, uh, thanks? :v:
+
+[CENTER]This is a complete overhaul of the classic, chaotic, explosion-filled [I]Sonic the Hedgehog (16-bit) [/I]ROM hack, and it marks the first new release since 2016! Work on this update began in October 2023, and it took a full ten months to see its completion. Besides adding new stuff and fixing bugs, improving a ton about the poorly aged game design was just as important: if something wasn't fun, it got mercilessly rethought and reworked, or just straight up rewritten from scratch – with a few deliberate exceptions for nostalgia's sake. In a way, this update was like finishing an early-access game after almost a decade.
+
+[I]If you aren't familiar with ERaZor yet, I suggest you take a brief look at [URL='https://info.sonicretro.org/Sonic_ERaZor']the wiki page[/URL] first.[/I]
+
+[SPOILER='Backstory (aka. blame RHS)']Stop me if you've heard this one before: "Final version of Sonic ERaZor." Yeah, we're beating that dead horse once again, though this time it's at least been a while – 8 years since the last release, to be precise. Don't get me wrong, I really do mean I originally had no plans to work on it again. Hell, [URL='https://forums.sonicretro.org/index.php?threads/sonic-erazor-source-code-and-everything-else.41682/']I even made the source code public[/URL]. But then something happened – that's right, [URL='https://www.youtube.com/watch?v=MaIDlHM3qC4']redhotsonic happened[/URL]. While I did spot the odd bug or design quirk here and there over the past few years already, it was his video – specifically the showcase of a massive, unavoidable hard crash if the game ran without SRAM – that finally made me break my oath. So, uh, thanks? :v:
 
 But after almost a decade of silence, I didn't want to release a new version only containing a single bugfix. One thing led to another, and suddenly this revival grew into its own beast. A lovely beast, though; I haven't been this excited about anything tech-related in actual ages. It is genuinely a great feeling to look at the clock and see it's already 3 a.m. because I got so lost in the zone while working on something I'm passionate about. I missed that feeling. If there's anything you might want to take away from this sappy ramble, it's this: don't worry about dusting off the ol' reliable. If working on it makes you happy, that's all that matters.
 
-[I]Ahem.[/I] Now that we're done with the lore recap, I'm delighted to talk about the update itself.
+[I]Ahem.[/I] Now that we're done with the lore recap, I'm delighted to talk about the update itself.[/SPOILER][/CENTER]
 
 
-[B]Casual/Frantic Mode[/B]
-
-The most significant change to the game that basically doubled it in size: A new difficulty selection screen, but not just in the traditional sense of "easy/hard". This one is more about how you prefer to play the game.
-
-There's quite a bit of reasoning behind this feature. I've watched a lot of playthroughs of Sonic ERaZor over the years, and one of the bigger problems I've had no idea how to fix was on a more fundamental level: there's a big gap between players good at Sonic games, and players that just... aren't. Of course not everyone has to be a prodigy at 2D platformers, but it never stopped being frustrating to witness someone failing and giving up because the game simply demanded too much from them at the wrong time, whereas someone just a tiny bit more experienced would've breezed through the same section without even thinking about it.
-
-To fix this without compromising on difficulty altogether by making the game either too easy or too hard (alienating either player group in the process), you are now asked at the start of the game what camp you fall into (can later be changed at any time):
-
-CASUAL MODE:
-This is the new baseline difficulty and is recommended for new players. The main focus is the absence of pressure, such as the ring drain in Ruined Place. This allows for a much more relaxed experience and won't force you to restart if you fail too many times. Plus, some of the tougher challenges are toned down a little.
-
-FRANTIC MODE:
-This is more or less on par with the difficulty of the 2016 release, but it still saw a lot of adjustments. If Casual was the mode that reduced pressure, Frantic is the exact opposite. Your biggest new challenge won't be something generic like making enemies take more hits, it's more along the lines of "removing the idea of taking-it-easy itself". In other words, this is not a regular hard mode, it's specifically about keeping you going at all times. Awareness and quick reflexes are a must if you want to survive. I've played this game more times than anyone, so I know what's possible and what isn't. If I can do it, so can you. But it won't be easy.
-
-So, do you want to take your time or do you want to be constantly pushed forward through time pressure? The choice is yours! But either way, both modes offer a pretty unique experience, so I highly encourage you to try to beat the game in both!
-
-
-[B]Changes[/B]
-
-Originally, I wanted to post the full changelog, but uh... it's easier to list the things that [I]haven't[/I] been changed. So, here is just the basic overview of the update:
+[B][SIZE=6]Highlights[/SIZE][/B]
+Originally, I wanted to post the full changelog here. But, uh... it's easier to list the things that [I]haven't[/I] been changed. So, for the sake of brevity, here is just the basic overview of some of the highlights in ERaZor 7:
 [LIST]
-[*][B]Full compatibility with real hardware[/B]! Yes, even without SRAM.
-[*]Some ideas of the old version just didn't work out like I had hoped they would, so [B]a ton of challenges have been dramatically altered to feel more fun[/B].
-[*]In general, every level received some form of major overhaul to [B]tackle long-standing gameplay issues and visual quirks[/B].
-[*]While not exactly new levels, a lot of cool content has been added to the existing ones. I won't spoil anything though~
-[*]Fancy new and improved [B]black bars[/B] to be more cinematic (shout-out to vladikcomper for saving my butt on this one).
-[*]Completely overhauled the hub world to hopefully feel more engaging. But if it still isn't your thing...
-[*]Added [B]"Skip Uberhub Place"[/B] and [B]"Skip Story Screens"[/B] options, for that authentic playthrough-in-one-sitting-without-interruptions experience.
-[*]Everything text-related received a total rewrite. English is hard.
-[*]Added [B]"Photosensitive Mode"[/B] to turn off all flashy lights. Furthermore, the intensity of flashy lights has been reduced a lot in general – no more epilepsy warning necessary, dear YouTubers.
-[*]Rewrote every single custom screen mode from scratch (most notably the story text screens, boy that code was a mess).
-[*][B]A new unlockable option[/B].
-[*][B]Tons of easter eggs[/B].
-[*]And a plethora of bug fixes and general quality-of-life improvements...
+[*]Introduced Casual/Frantic Mode [I](see below for more info, it's a big one)[/I]
+[*]Reworked. Every. Single. Level. Some more and some less, but all in some significant way. For the most part it was to reduce awkwardness, but there's also a ton of new cool content. I won't spoil anything though~
+[*]Added fancy new and improved cinematic Black Bars! In fact, they are so fancy they behave differently between emulators and real hardware, so it also comes with a custom configuration screen.
+[*]Speaking of real hardware... full compatibility with real hardware! [URL='https://www.youtube.com/watch?v=nGBZvsZhtfA']Yes, even without SRAM[/URL] :V
+[*]Massive engine overhauls courtesy of vladikcomper, including the implementation of his amazing MegaPCM 2 sound driver!
+[*]Rewrote every single custom screen mode from scratch (most notably, the story text screen – boy, that code was a mess).
+[*]Oh yeah, regarding stories: everything text-related received a total rewrite. English hard.
+[*]Completely overhauled Uberhub Place to hopefully feel more engaging now. But if it still isn't your thing...
+[*]Added "Skip Uberhub Place" and "Skip Story Screens" options, for that authentic playthrough-in-one-sitting-without-interruptions experience (inspired by "Straight Version", for those who remember).
+[*]Added "Photosensitive Mode" option to turn off all flashy lights and camera shakes. Furthermore, the intensity of flashy lights has been reduced a lot in general – no more epilepsy warning necessary, dear YouTubers.
+[*]Added a new unlockable option at the end of the base game and heavily polished up the other one as well.
+[*]Added/reworked tons of easter eggs! Which means I can't tell you anything about them...
+[*]And in general, just a plethora of bug fixes and general quality-of-life improvements!
 [/LIST]
 
-I want to give my most sincere appreciation to everyone in the ERaZor 7 squad and everyone else who helped along the way! Without you guys, this update would've been impossible:
+[B][SIZE=6]Casual/Frantic Mode[/SIZE][/B]
+In a nutshell, this is a difficulty selection screen, though quite a bit more involved than just the traditional "easy/hard". In fact, it might just be the single largest feature addition to ERaZor since... ever. It made the game much more accessible while also kinda giving it New Game+ on top. To understand what it's for, you need to understand why it was introduced in the first place.
+
+See, my attempts at balancing ERaZor have always been a never-ending tug-of-war – too hard scared off the casual players, too easy bored the seasoned ones. But one day I realized something: the main culprit for many people seems to be [I]pressure[/I]. A challenge doesn't even need to be hard, something like the ring counter starting to tick down on its own was already enough for many players to feel overwhelmed.
+
+The solution came in the form of what started as a simple experiment: I did some research by watching a ton of YouTube playthroughs, identified the pain points causing the players the most trouble due to pressure, and made those optional. Originally, I had low expectations for this to make any difference at all, but it didn't take long before it became apparent that this fixed everything and then some! No longer did I have to worry about a one-size-fits-all approach to game balance, I could simply make both modes equally fun in their own right. Let's take a closer look:
 [LIST]
-[*][B]vladikcomper[/B]: The master of blast processing! He helped me out when I hit a severe technical roadblock that almost put the whole project into jeopardy (the black bars... long story). He also optimized a ton about the engine and implemented MegaPCM 2!
-[*][B]Fuzzy[/B]: A long-time fan-turned-friend who joined with the unique skillset of a programmer while also being very familiar with the base game. An invaluable resource for making ERaZor even more ERaZor-y!
-[*][B]SonicFan1[/B]: Doing a tooon of hardware testing and provided great feedback for almost any wild idea I had. In fact, he was my sanity check for when I went a bit too crazy.
-[*][B]ajcox[/B]: He did a ton of playtesting in video format, which helped uncover some of the most bizarre bugs by doing stuff I would've never thought of. Also super helpful with ideas and feedback!
-[*][B]neonsynth[/B] aka. SonicVaan: The guy who made the original six versions playable returned to beta test this update as well for old time's sake!
-[*][B]MarkeyJester[/B]: He's been helping with ERaZor for as long as it has existed, and he continued to be an amazing teacher for this update as well!
-[*][B]Peanut Noceda[/B]: He helped me a lot in the early stages of the update project.
-[*][B]Give[/B] and [B]Craze[/B]: Additional one-time playtesting mid-development, to get input from fresh perspectives.
-[*][B]ProjectFM[/B]: Some additional code taken from guides, such as the LZ water surface effect.
+[*][B]Casual:[/B]
+The main focus is the absence of pressure, allowing you to get comfortable with the game at your own pace.
+As a result, playing ERaZor becomes a much more relaxed experience and won't patronize you if you fail too many times (well, within reason).
+Plus, some of the tougher challenges are toned down a little.
+
+
+[*][B]Frantic:[/B]
+If Casual is the mode that reduces pressure, Frantic is its antithesis. It can be summarized as "removing the concept of taking-it-easy itself".
+For example, rings barely matter in Casual – in Frantic they often are uniquely tied to challenges as your literal life insurance.
+Furthermore, Frantic is ruthless, as it's specifically designed to be like a very strict but fair teacher to make you truly master the game.
+And while death might feel like an ever-present threat, there are some interesting twists exclusive to this mode to keep you going~
 [/LIST]
+Casual is the new baseline difficulty and is recommended for new players, but this is explicitely not a requirement: do you want to take your time or do you want to be constantly pushed forward? The choice is no longer mine, it's yours!
+
+
+[SIZE=6][B]Credits[/B][/SIZE]
+I want to give my most sincere appreciation to everyone in the ERaZor 7 squad and everyone else who helped along the way! Without you guys, this update would've been impossible to complete:
+[LIST]
+[*][B]vladikcomper[/B]: The master of blast processing! He helped me out when I hit a severe technical roadblock that almost put the whole project into jeopardy (the black bars... long story). Furhermore, he optimized a tooon about the engine and implemented MegaPCM 2!
+
+[*][B]fuzzy[/B]: A long-time fan-turned-friend who joined with the unique skillset of a programmer while also being very familiar with the base game. She made ERaZor even more ERaZor-y!
+[*][B]Chaotic SoFa[/B]: Doing a tooon of hardware testing and providing great feedback for almost any wild idea I had. In fact, he was my sanity check for whenever I went a bit too crazy.
+[*][B]ajcox[/B]: Doing extensive video playtesting, uncovering the most bizarre bugs by doing stuff I would've never thought of. Also super helpful with ideas and feedback!
+[*][B]MarkeyJester[/B]: He's been helping with ERaZor for as long as it has existed, and he continued to be an amazing support for this update as well.
+[*][B]neonsynth[/B] aka. [I]SonicVaan[/I]: The guy who made the original six versions playable returned to beta test this update as well.
+[*][B]Peanut Noceda[/B]: Helped during the early stages of the update project.
+[*][B]Give[/B], [B]Craze[/B], and [B]DeltaW[/B]: Additional one-time playtesting to get input from fresh perspectives.
+[/LIST]
+And a special bonus shout-out to [B]amphobius[/B] aka. [I]DalekSam[/I]! While we lost contact years ago, his amazing music ports are the DNA of ERaZor to this day. It wouldn't be the same game without him!

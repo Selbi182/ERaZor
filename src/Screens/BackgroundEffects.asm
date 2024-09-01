@@ -41,24 +41,12 @@ BackgroundEffects_Update:
 ; Background palette rotation
 BackgroundEffects_PalCycle:
 		move.w	($FFFFFE0E).w,d0	; get V-blank timer
-		andi.w	#$F,d0
-		divu.w	#8,d0
-		andi.l	#$FFFF0000,d0
+		andi.w	#3,d0
 		bne.w	@bgpalend
-		addq.b	#1,($FFFFFF85).w	; increase timer
 
 		moveq	#0,d0
-		move.l	#Options_BGCycleColors_BW,d2
+		move.l	#BG_Mask_Colors,d2
 		movea.l	d2,a1
-
-	;	move.b	($FFFFFF85).w,d0	; get timer
-	;	andi.w	#$F,d0
-	;	add.w	d0,d0
-	;	adda.w	d0,a1
-
-		; screw it, the palette cycle was too busy on the eye
-		; keep it static
-		adda.w	#2,a1
 
 		lea	($FFFFFB02).w,a2
 		moveq	#10-1,d6	; 10 colors
@@ -103,49 +91,19 @@ BackgroundEffects_PalCycle:
 @bgpalend:
 		rts
 ; ---------------------------------------------------------------------------
-Options_BGCycleColors_BW:
+BG_Mask_Colors:
 		dc.w	$000
 		dc.w	$000
 		dc.w	$222
-		dc.w	$444
-		dc.w	$666
-		dc.w	$666
-		dc.w	$888
-		
-		dc.w	$AAA
-		dc.w	$AAA
-		
-		dc.w	$888
-		dc.w	$666
-		dc.w	$666
-		dc.w	$444
 		dc.w	$222
-		dc.w	$000
-		dc.w	$000
-
-		dc.w	  -1
-		even
-
-Options_BGCycleColors:
-		dc.w	$000
-		dc.w	$000
-		dc.w	$200
-		dc.w	$420
-		dc.w	$640
-		dc.w	$860
-		dc.w	$880
-		
-		dc.w	$680
-		dc.w	$680
-		
-		dc.w	$880
-		dc.w	$880
-		dc.w	$680
-		dc.w	$460
-		dc.w	$240
-		dc.w	$020
-		dc.w	$220
-
+		dc.w	$444
+		dc.w	$666
+		dc.w	$888
+		dc.w	$AAA
+		dc.w	$CCC
+		dc.w	$CCC
+		dc.w	$EEE
+		dc.w	$EEE
 		dc.w	  -1
 		even
 ; ---------------------------------------------------------------------------
@@ -214,10 +172,9 @@ BackgroundEffects_Deformation2:
 		addq.w	#2,a1
 		dbf	d3,@scroll
 
-		; todo fix two lines not moving properly
-	;	move.w	($FFFFFE0E).w,d0
-	;	move.w	d0,($FFFFCC00+(48*4)).w
-	;	move.w	d0,($FFFFCC00+(48*4*4)-(16*4)).w
+		; dirty fix for two lines that are not moving properly otherwise
+		move.w	($FFFFCC00+(45*4)).w,($FFFFCC00+(47*4)).w
+		move.w	($FFFFCC00+(173*4)).w,($FFFFCC00+(175*4)).w
 
 		move.l	(sp)+,d7
 		rts

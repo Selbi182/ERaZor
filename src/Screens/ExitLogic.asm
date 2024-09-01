@@ -387,6 +387,14 @@ RunChapter:
 		jsr	FakeLevelID		; get fake level ID for current level
 		tst.b	d5			; did we get a valid ID?
 		bmi.s	@nochapter		; if not, something has gone terribly wrong
+
+		cmpi.w	#$301,($FFFFFE10).w	; set to Scar Night Place?
+		bne.s	@checkid		; if not, branch
+		frantic				; are we in frantic?
+		beq.s	@checkid		; if not, branch. big boy bombs only in big boy game modes
+		move.w	#$500,($FFFFFE10).w	; start bomb machine cutscene
+
+@checkid:
 		cmp.b	(CurrentChapter).w,d5	; compare currently saved chapter number to fake level ID
 		blt.s	@nochapter		; if this is a chapter from a level we already visited, skip chapter screen
 		move.b	d5,(CurrentChapter).w	; we've entered a new level, update progress chapter ID
@@ -497,9 +505,6 @@ HubRing_UP:	move.w	#$401,($FFFFFE10).w	; set level to Special Stage 2
 		bra.w	RunChapter
 
 HubRing_SNP:	move.w	#$301,($FFFFFE10).w	; set level to SLZ2
-		frantic				; are we in frantic?
-		beq.w	RunChapter		; big boy bombs only in big boy game modes
-		move.w	#$500,($FFFFFE10).w	; start bomb machine cutscene
 		bra.w	RunChapter
 
 HubRing_SAP:	move.w	#$302,($FFFFFE10).w	; set level to SLZ3

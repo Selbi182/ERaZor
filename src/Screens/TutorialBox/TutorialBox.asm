@@ -140,10 +140,12 @@ DH_Continue:
 		jsr	BuildSprites
 		jsr	PalCycle_Load
 		
+		; continue to render Sonic's DPLC to avoid visual quirks
 		move.l	a0,-(sp)
 		lea	($FFFFD000).w,a0
 		jsr	LoadSonicDynPLC
 		move.l	(sp)+,a0
+
 		; palette cycle to highlight letters
 		btst	#7,(OptionsBits).w	; photosensitive mode?
 		bne.s	@noletterflashing	; if yes, branch
@@ -876,7 +878,7 @@ Hint_2:
 		boxtxt_pause
 		boxtxt	"  TIME TICKS THREE"
 		boxtxt	"   TIMES AS FAST!"
-		boxtxt_line
+		boxtxt_pause
 		boxtxt	"   THAT'S ROUGHLY"
 		boxtxt	"    five minutes"
 		boxtxt	"  UNTIL TIME OVER."
@@ -1130,6 +1132,7 @@ Hint_7:
 		boxtxt_line
 		boxtxt	"     CAN'T PAY?"
 		boxtxt_pause
+		boxtxt_line
 		boxtxt	"      YOU DIE."
 		boxtxt_end
 
@@ -1351,7 +1354,7 @@ Hint_End_CinematicUnlock:
 
 ;		 --------------------
 Hint_End_MotionBlurUnlock:
-		boxtxt	"r FOR RESTLESS"
+		boxtxt	"r FOR RAPID"
 		boxtxt_line
 		boxtxt	"YOU HAVE UNLOCKED"
 		boxtxt	"motion blur!"

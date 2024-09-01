@@ -47,7 +47,7 @@ DebugModeDefault = 1
 DebugSurviveNoRings = 1
 ; ------------------------------------------------------
 DoorsAlwaysOpen = 0
-LowBossHP = 1
+LowBossHP = 0
 ; ------------------------------------------------------
 TestDisplayDeleteBugs = 0
 ; ======================================================
@@ -4789,11 +4789,13 @@ loc_463C:
 		moveq	#$14,d0
 		bsr	PLC_ExecuteOnce	; load special stage patterns
 
-		tst.b	(Blackout).w	; is this the blackout special stage?
-		beq.s	@contx		; if not, branch
+		tst.b	(Blackout).w		; is this the blackout special stage?
+		beq.s	@notskull		; if not, branch
+		tst.b	(PlacePlacePlace).w	; easter egg flag set?
+		bne.s	@notskull		; if yes, keep it old-school
 		moveq	#$1B,d0
-		bsr	PLC_ExecuteOnce	; load unique blackout challenge patterns (skull)
-@contx:
+		bsr	PLC_ExecuteOnce		; load unique blackout challenge patterns (skull)
+@notskull
 
 		lea	($FFFFD000).w,a1
 		moveq	#0,d0
@@ -4925,14 +4927,6 @@ SS_MainLoop:
 		bhs.w	SS_WaitVBlank		; if yes, branch
 		bsr	PauseGame		; make the game pausing when pressing start
 
-		; respawn at last checkpoint when pressing A (inteded to be used when you get stuck in nonstop inhuman)
-		btst	#6,($FFFFF603).w	; was A pressed this frame?
-		beq.s	@nota			; if not, branch
-		btst	#4,(OptionsBits).w	; is nonstop inhuman enabled?
-		beq.s	@nota			; if not, branch
-		lea	($FFFFD000).w,a0	; load Sonic object
-		jsr	TouchGoalBlock		; respawn at last checkpoint
-@nota:
 		; reduce Sonic's vertical movement when holding ABC in Unreal Place
 		move.b	($FFFFF602).w,d0	; get held buttons
 		andi.w	#$70,d0			; is ABC held?
@@ -4946,25 +4940,29 @@ SS_MainLoop:
 		asr.w	#1,d0
 		move.w	d0,($FFFFD012).w	; reduce Sonic's vertical speed
 @notc:
+
 		; SS hard part skipper
 		tst.b	($FFFFF603).w		; was anything pressed this frame?
-		beq.s	SS_WaitVBlank		; if not, branch
+		beq.s	@nothps			; if not, branch
 		move.b	($FFFFF602).w,d0	; get button presses
 		tst.w	($FFFFFFFA).w		; is debug cheat enabled?
 		beq.s	@notdebug		; if not, branch
 		cmpi.b	#$60,d0			; is A&C held? (filter out B to not interfere with debug mode)
-		bne.s	SS_WaitVBlank		; if not, branch
+		bne.s	@nothps			; if not, branch
 		bra.s	@abcpressed		; do the thing
 @notdebug:	cmpi.b	#$70,d0			; is exactly ABC held?
-		bne.s	SS_WaitVBlank		; if not, branch
+		bne.s	@nothps			; if not, branch
 
 @abcpressed:
 		tst.b	(Blackout).w		; is this the blackout special stage?
 		bne.s	@disallowed		; if yes, disallow hard part skippers
 		frantic				; is frantic mode enabled?
 		beq.s	@dohardpartskip		; if not, allow hard part skippers
-@disallowed:	move.w	#$DC,d0			; play option disallowed sound
-		jsr	(PlaySound_Special).l	; play sound		
+@disallowed:
+		lea	($FFFFD000).w,a0	; load Sonic object
+		jsr	TouchGoalBlock		; respawn at last checkpoint
+		move.w	#$DC,d0			; play option disallowed sound
+		jsr	(PlaySound_Special).l	; play sound	
 		bra.s	SS_WaitVBlank		; skip
 
 @dohardpartskip:
@@ -4972,6 +4970,16 @@ SS_MainLoop:
 		move.w	#$A8,d0			; play special stage exit sound
 		jsr	(PlaySound_Special).l	; play sound
 		clr.w	($FFFFFE20).w		; lose all your rings, loser
+		bra.s	SS_WaitVBlank		; skip
+@nothps:
+
+		; respawn at last checkpoint when pressing A (inteded to be used when you get stuck in nonstop inhuman)
+		btst	#6,($FFFFF603).w	; was A pressed this frame?
+		beq.s	SS_WaitVBlank		; if not, branch
+		btst	#4,(OptionsBits).w	; is nonstop inhuman enabled?
+		beq.s	SS_WaitVBlank		; if not, branch
+@touchgoal:	lea	($FFFFD000).w,a0	; load Sonic object
+		jsr	TouchGoalBlock		; respawn at last checkpoint
 
 SS_WaitVBlank:
 		move.b	#$A,VBlankRoutine
@@ -6994,8 +7002,13 @@ Resize_FZ:
 		blt.s 	@FindWaitTime
 
 		; Copy palette data
-		move.l 	(a3)+, (a2)+
-		move.l 	(a3), (a2)
+	rept 3
+		move.l 	(a3)+, d0
+		move.l	d3,-(sp)
+		jsr	PissFilter
+		move.l	(sp)+,d3
+		move.l	d0,(a2)+
+	endr
 
 		; Run timer with found wait time
 	        add.w 	d3, FZFlashTimer
@@ -7013,6 +7026,7 @@ Resize_FZ:
 		
 		add.b	#8, FZFlashColor
 		bra.s 	@NoPaletteChange
+; ===========================================================================
 
 @Colors:
 		dc.l 	$00020224, $04460668
@@ -7039,6 +7053,7 @@ Resize_FZ:
 		dc.l	$00001E39	; 30
 		dc.w 	$888
 		dc.l	$00000000	; 0
+; ===========================================================================
 
 @NoPaletteChange:
 		moveq	#0,d0
@@ -9438,6 +9453,8 @@ Obj2A_OpenShut:				; XREF: Obj2A_Index
 		bra.w	Obj2A_Green
 	endif
 
+	;	jsr	Check_BlackoutBeaten		; has the player beaten the blackout challenge?
+	;	bne.w	Obj2A_Green			; if yes, we can assume they beat the rest of the game too
 Obj2A_Red:
 		move.w	#$0800+($6100/$20),obGfx(a0)	; use red light art
 		tst.b	obSubtype(a0)			; is this the door leading to the blackout challenge?
@@ -12419,6 +12436,8 @@ Obj4B_Main:				; XREF: Obj4B_Index
 		jsr	Check_BlackoutUnlocked
 		bne.s	Obj4B_Main_Cont
 @okcool:
+	;	jsr	Check_BlackoutBeaten	; has the player beaten the blackout challenge?
+	;	bne.s	Obj4B_Main_Cont		; if yes, we can assume they beat the rest of the game too
 		move.b	#7,(a0)			; idk how you made it here but gg
 		move.b	#0,obRoutine(a0)	; set to init routine
 		rts				; don't show ring
@@ -16151,6 +16170,8 @@ Obj34_NotSpecial2:
 		move.w	#0,obTimeFrame(a1)	; set time delay to 1 second (60)
 		lea	$40(a1),a1	; next object
 		dbf	d1,Obj34_Loop	; repeat sequence another 3 times
+		tst.b	(Blackout).w	; are we in the blackout challenge?
+		bne.s	Obj34_ChkPos	; if yes, don't ruin everything again lol
 		movem.l	d0-a7,-(sp)
 		moveq	#3,d0
 		jsr	PalLoad2	; load Sonic's palette line
@@ -21175,7 +21196,7 @@ Obj55_ChkDrop:				; XREF: Obj55_Index2
 		move.w	d0,$36(a0)
 		sub.w	obY(a0),d0
 		bcs.s	Obj55_NoDrop
-		cmpi.w	#$80,d0		; is Sonic within $80 pixels of	basaran?
+		cmpi.w	#$A0,d0		; is Sonic within $A0 pixels of	basaran?
 		bcc.s	Obj55_NoDrop	; if not, branch
 		tst.w	($FFFFFE08).w	; is debug mode	on?
 		bne.s	Obj55_NoDrop	; if yes, branch
@@ -21192,10 +21213,11 @@ Obj55_NoDrop:
 
 Obj55_DropFly:				; XREF: Obj55_Index2
 		bsr	SpeedToPos
-		addi.w	#$18,obVelY(a0)	; make basaran fall
+		addi.w	#$28,obVelY(a0)	; make basaran fall
 		move.w	#$80,d2
 		jsr	obj55_ChkSonic
 		move.w	$36(a0),d0
+		addi.w	#$20,d0		; pretend Sonic's a bit lower than he actually is
 		sub.w	obY(a0),d0
 		bcs.s	Obj55_ChkDel
 		cmpi.w	#$10,d0
@@ -21244,7 +21266,7 @@ locret_101C6:
 
 Obj55_FlyUp:				; XREF: Obj55_Index2
 		bsr	SpeedToPos
-		subi.w	#$18,obVelY(a0)	; make basaran fly upwards
+		subi.w	#$30,obVelY(a0)	; make basaran fly upwards
 		bsr	ObjHitCeiling
 		tst.w	d1		; has basaran hit the ceiling?
 		bpl.s	locret_101F4	; if not, branch
@@ -21260,7 +21282,7 @@ locret_101F4:
 ; ===========================================================================
 
 Obj55_ChkSonic:				; XREF: Obj55_ChkDrop
-		move.w	#$100,d1
+		move.w	#$180,d1	; X speed (used to be $100)
 		bset	#0,obStatus(a0)
 		move.w	($FFFFD008).w,d0
 		sub.w	obX(a0),d0
@@ -23726,21 +23748,21 @@ Obj5F_FC2:
 ; ===========================================================================
 
 Obj5F_Explode:				; XREF: Obj5F_Index2
-		cmpi.b	#1,(BossHealth).w		; remove one life
-		bhi.s	@doend
-		tst.b	obRender(a0)			; is bomb on screen?
-		bpl.s	@waitforsonic			; if not, branch
-		move.w	($FFFFD008).w,d0
-		sub.w	obX(a0),d0
-		bpl.s	@pos
-		neg.w	d0
-@pos:		
-		cmpi.w	#BombDistance_Boss,d0
-		bls.w	@bombvisible	
-@waitforsonic:
-		rts
+	;	cmpi.b	#1,(BossHealth).w		; remove one life
+	;	bhi.s	@doend
+	;	tst.b	obRender(a0)			; is bomb on screen?
+	;	bpl.s	@waitforsonic			; if not, branch
+	;	move.w	($FFFFD008).w,d0
+	;	sub.w	obX(a0),d0
+	;	bpl.s	@pos
+	;	neg.w	d0
+;@pos:		
+	;	cmpi.w	#BombDistance_Boss,d0
+	;	bls.w	@bombvisible	
+;@waitforsonic:
+	;	rts
 
-@bombvisible:
+;@bombvisible:
 		tst.b	($FFFFF7CC).w			; are controls already locked?
 		bne.s	@doend				; if yes, branch
 		move.b	#1,($FFFFF7CC).w		; lock controls
@@ -23797,7 +23819,28 @@ locret_11B5E:
 ; ===========================================================================
 ; ===========================================================================
 
+Obj5F_FinalSonicDistance = $40
+
 Obj5F_BossDefeated:
+		move.w	($FFFFD008).w,d0		; get Sonic's X pos
+		sub.w	obX(a0),d0			; sub bomb's pos from it
+		cmpi.w	#-Obj5F_FinalSonicDistance,d0	; is Sonic to the left of the max distance?
+		bge.s	@leftok				; if not, branch
+		bset	#3,($FFFFF602).w		; force right press
+		bra.s	@walksonicend			; skip
+@leftok:
+		cmpi.w	#Obj5F_FinalSonicDistance,d0	; is Sonic to the right of the max distance?
+		ble.s	@rightok			; if not, branch
+		bset	#2,($FFFFF602).w		; force left press
+		bra.s	@walksonicend			; skip
+
+@rightok:
+		move.b	#0,($FFFFD000+obAniFrame).w	; reset Sonic waiting animation
+		clr.w	($FFFFD010).w			; clear Sonic's X speed
+		clr.w	($FFFFD014).w			; clear Sonic's inertia
+		clr.l	($FFFFF602).w			; clear any remaining button presses
+
+@walksonicend:
 		moveq	#0,d0
 		move.b	($FFFFFF76).w,d0
 		move.w	off_7118x(pc,d0.w),d0
@@ -23832,11 +23875,6 @@ Obj5F_BossDefeatedmain:
 ; ===========================================================================
 
 Obj5F_BossDefeatedboss1:
-		btst	#1,($FFFFD022).w
-		bne.s	@cont
-		move.b	#0,($FFFFD01B).w
-
-@cont:
 		subq.w	#1,($FFFFFF78).w
 		bne.w	Obj5F_ShowBomb
 		addq.b	#2,($FFFFFF76).w
@@ -23907,7 +23945,6 @@ Obj5F_BossDefeatedBlip:
 		jsr	PlaySound_Special
 @noblip:
 		move.w	d1,($FFFFFF7C).w
-		move.b	#0,($FFFFD000+obAniFrame).w ; reset Sonic waiting animation
 		bra.w	DisplaySprite
 
 @patheticexplosion:
@@ -23920,7 +23957,6 @@ Obj5F_BossDefeatedBlip:
 		bra.s	@noblip			; render one last frame
 @hidebomb:
 		move.w	d1,($FFFFFF7C).w
-		move.b	#0,($FFFFD000+obAniFrame).w ; reset Sonic waiting animation
 		rts				; don't render bomb anymore
 ; ===========================================================================
 
@@ -27159,6 +27195,7 @@ loc_12E5C:
 ; ===========================================================================
 
 Obj01_MdRoll:				; XREF: Obj01_Modes
+		bsr	Sonic_Unroll
 		bsr	Sonic_Jump
 		bsr	Sonic_RollRepel
 		bsr	Sonic_RollSpeed
@@ -27493,6 +27530,29 @@ locret_1314E:
 		rts	
 ; End of function Sonic_MoveRight
 
+
+; ---------------------------------------------------------------------------
+; Subroutine to	unroll Sonic when pressing up
+; ---------------------------------------------------------------------------
+
+; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+
+
+Sonic_Unroll:
+		btst	#2,obStatus(a0)	; is Sonic already rolling?
+		beq.s	@end		; if not, branch
+		btst	#0,($FFFFF602)	; is up being pressed?
+		beq.s	@end		; if not, branch
+		bclr	#2,obStatus(a0)	; clear rolling flag
+		move.b	#$13,obHeight(a0) ; restore Y-hitbox-radius
+		move.b	#9,obWidth(a0)	; restore X-hitbox-radius
+		move.b	#0,obAnim(a0)	; use running anim
+		subq.w	#5,obY(a0)	; sub 5 from Sonic's Y-position
+@end:
+		rts			; return
+; End of function Sonic_RollSpeed
+
+
 ; ---------------------------------------------------------------------------
 ; Subroutine to	change Sonic's speed as he rolls
 ; ---------------------------------------------------------------------------
@@ -27501,19 +27561,6 @@ locret_1314E:
 
 
 Sonic_RollSpeed:			; XREF: Obj01_MdRoll
-		btst	#2,obStatus(a0)	; is Sonic already rolling?
-		beq.s	S_R_NoRoll	; if not, branch
-		btst	#0,($FFFFF602)	; is up being pressed?
-		beq.s	S_R_NoRoll	; if not, branch
-		bclr	#2,obStatus(a0)	; clear rolling flag
-		move.b	#$13,obHeight(a0)	; restore Y-hitbox-radius
-		move.b	#9,obWidth(a0)	; restore X-hitbox-radius
-		move.b	#0,obAnim(a0)	; use running anim
-		subq.w	#5,obY(a0)	; sub 5 from Sonic's Y-position
-		rts			; return
-; ===========================================================================
-
-S_R_NoRoll:
 		move.w	($FFFFF760).w,d6
 		asl.w	#1,d6
 		move.w	($FFFFF762).w,d5
@@ -28151,6 +28198,8 @@ JD_End:
 ; of other things spread around the disassembly, stopping and moving Sonic
 ; upwards after hitting something and making monitors destroyable from any angle.
 ; -------------------------------------------------------------------------------
+Homing_Distance = $A0
+; -------------------------------------------------------------------------------
 
 Sonic_HomingAttack:
 		clr.w	($FFFFFF8C).w		; clear X-distance storer
@@ -28211,7 +28260,7 @@ SH_XPositive:
 		bne.s	SH_NoEnemy		; if not, branch
 
 SH_DirectionOK:
-		cmpi.w	#$90,d3			; is Sonic within $90 pixels of that object?
+		cmpi.w	#Homing_Distance,d3	; is Sonic within X distance of that object?
 		bgt.s	SH_NoEnemy		; if not, branch
 
 		move.w	obY(a1),d4		; load current Y-pos into d3
@@ -28220,7 +28269,7 @@ SH_DirectionOK:
 		neg.w	d4			; negate it
 
 SH_YPositive:
-		cmpi.w	#$90,d4			; is Sonic within $90 pixels of that object?
+		cmpi.w	#Homing_Distance,d4	; is Sonic within Y distance of that object?
 		bgt.s	SH_NoEnemy		; if not, branch
 
 		cmp.w	($FFFFFF8C).w,d3	; is stored X-distance smaller than distance of current enemy?
@@ -28272,9 +28321,17 @@ SH_Return2:
 ; -------------------------------------------------------------------------------
 
 SH_Objects:
-	dc.b	$1F, $22, $26, $2B, $2C, $40, $50, $55
-	dc.b	$FF	; this $FF is the end of list
-	even
+		dc.b	$1F	; Crabmeat (including the boss)
+		dc.b	$22	; Buzz Bomber
+		dc.b	$26	; all monitors except Eggman
+		dc.b	$2B	; Chopper
+		dc.b	$2C	; Jaws
+	;	dc.b	$3D	; GHP boss
+		dc.b	$40	; Motobug
+	;	dc.b	$50	; Yadrin
+		dc.b	$55	; Basaran
+		dc.b	-1	; this marks the end of the list
+		even
 ; -------------------------------------------------------------------------------
 ; ===============================================================================
 
@@ -38772,7 +38829,7 @@ loc_1A216:
 		; cutscene after hitting eggman one last time
 	;	tst.b	obRender(a0)		; has Eggman object been deleted after the crash cutscene?
 	;	bmi.w	loc_1A15C		; if not, branch
-		cmpi.w	#$2A00,obX(a0)		; has Eggman's ship gone offscreen?
+		cmpi.w	#$2980,obX(a0)		; has Eggman's ship gone offscreen?
 		blo.w	loc_1A15C		; if not, branch
 		move.b	#1,(FZEscape).w		; set final sequence flag
 		bra.w	Obj85_Delete

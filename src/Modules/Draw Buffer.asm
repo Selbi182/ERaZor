@@ -7,7 +7,7 @@ DrawBuffer_End:		= __rs-4		; last 4 bytes should always be zeroed
 ; Check declared RAM size against limits
 DrawBuffer_RAM_Size     equ     __rs-DrawBuffer_RAM
 	if (DrawBuffer_RAM_Size > $380)
-		inform 3, 'Draw buffer RAM structure takes too much memory (>$200 bytes)'
+		inform 3, 'Draw buffer RAM structure takes too much memory (>$380 bytes)'
 	endif
 
 ; ===============================================================

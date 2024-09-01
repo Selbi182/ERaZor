@@ -40,8 +40,8 @@ BackgroundEffects_Update:
 
 ; Background palette rotation
 BackgroundEffects_PalCycle:
-		move.w	($FFFFFE0E).w,d0	; get V-blank timer
-		andi.w	#$F,d0
+		moveq	#$F, d0
+		and.w	($FFFFFE0E).w,d0	; get V-blank timer
 		divu.w	#8,d0
 		andi.l	#$FFFF0000,d0
 		bne.w	@bgpalend

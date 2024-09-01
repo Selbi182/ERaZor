@@ -5067,7 +5067,10 @@ Blackout_FallSpeed2 = $200
 Blackout_RotationSpeed2 = $1C0
 
 BlackoutChallenge:
-		; continously apply the red/black palette
+	;	cmpi.b	#2,($FFFFFE57).w	; are we in part 2?
+	;	beq.w	@blackoutcontrols	; if yes, no longer apply palette
+
+		; continously apply the red/black palette		
 		movem.l	d0-a1,-(sp)
 		lea	($FFFFFB4E).w,a1 	; get palette
 		moveq	#0,d3			; clear d3
@@ -5094,6 +5097,7 @@ BlackoutChallenge:
 		dbf	d3,@blackoutpalette	; loop for each colour
 		movem.l	(sp)+,d0-a1
 
+@blackoutcontrols:
 		; blackout challenge controls
 		move.w	#Blackout_RotationSpeed,d1		; set base rotation speed
 		cmpi.b	#2,($FFFFFE57).w			; are we in part 2?
@@ -6829,7 +6833,7 @@ Resize_SYZ1:
 		blo.s	@uberhubend		; if not, branch
 		cmpi.w	#$700,($FFFFD008).w	; make sure Sonic is in the right area
 		blo.s	@uberhubend		; if before that, branch
-		move.w	#$580,d0		; set boundary bottom for tubes
+		move.w	#$450,d0		; set boundary bottom for tubes
 		move.w	d0,($FFFFF726).w	; target boundary
 		move.w	d0,($FFFFF72E).w	; current boundary
 
@@ -28077,8 +28081,11 @@ WF_MakeWhite_Loop:
 		addi.w	#$002,d1		; otherwise, boost color
 @maxred:
 		tst.b	(Blackout).w		; blackout challenge?
-		bne.s	@maxblue		; if yes, only affect red channel
+	;	beq.s	@notblackout		; if not, branch
+	;	cmpi.b	#2,($FFFFFE57).w 	; are we in part 2?
+		bne.s	@maxblue		; if not, only affect red channel
 
+@notblackout:
 		move.w	d1,d2			; copy color
 		andi.w	#$0E0,d2		; filter for green
 		cmpi.w	#$0E0,d2		; are we at max?
@@ -40724,10 +40731,12 @@ loc_1B2E4:
 		bne.s	@lightup		; if yes, branch
 		cmpi.b	#2,($FFFFFE57).w 	; are we in part 2?
 		bne.s	@notblackout		; if not, branch
-		move.b	($FFFFF602).w,d0	; get button presses
-		andi.b	#$C,d0			; is left/right	held?
-		bne.s	@notblackout		; if yes, branch
-@lightup:	bset	#0,$138(a1)		; use lit-up skull icon
+		btst	#7,(OptionsBits).w	; is photosensitive mode enabled?
+		bne.s	@lightup		; if yes, no flash
+		btst	#3,($FFFFFE0F).w	; blink skull frame
+		beq.s	@notblackout		; if not in time, branch
+@lightup:
+		bset	#0,$138(a1)		; use lit-up skull icon
 
 @notblackout:
 		subq.b	#1,($FFFFFEC6).w
@@ -42083,14 +42092,24 @@ Obj09_ChkEmer:
 		beq.s	Emershit		; if not, branch
 		move.w	obX(a0),($FFFFFF86).w	; save Sonic's X-position
 		move.w	obY(a0),($FFFFFF88).w	; save Sonic's Y-position
+
 		movem.l	a0-a2,-(sp)
-		jsr	WhiteFlash2
 		lea	(SS_Blackout_Part2).l,a0 ; load part 2 blackout layout
 		jsr	SS_LoadLevel
 		tst.b	(PlacePlacePlace).w
 		beq.s	@0
 		jsr	SS_RemoveAllCheckpoints
 @0:		movem.l	(sp)+,a0-a2
+
+		movem.l	d7/a1-a3,-(sp)
+		tst.b	(PlacePlacePlace).w
+		bne.s	@1
+		moveq	#3,d0			; brighten up this place by...
+		jsr	PalLoad2		; ...loading Sonic's palette		
+@1:
+		jsr	WhiteFlash2
+		movem.l	(sp)+,d7/a1-a3
+
 		move.b	#$DD,d0
 		jsr	(PlaySound).l
 		move.w	#$E2,d0

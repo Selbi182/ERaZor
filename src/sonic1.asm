@@ -829,6 +829,9 @@ PauseGame:				; XREF: Level_MainLoop; et al
 		btst	#7,($FFFFF605).w	; is Start button pressed?
 		beq.w	Pause_DoNothing		; if not, branch
 Paused:
+		tst.w	($FFFFFE10).w		; are we in NHP?
+		beq.w	PG_DoPause		; if yes, allow pausing (for the intro scene)
+
 		; skip cutscenes
 		cmpi.w	#$500,($FFFFFE10).w	; is this the bomb machine cutscene?
 		bne.s	@notmachine		; if not, branch
@@ -3286,13 +3289,13 @@ MusicList:
 
 ; Level::	<-- for quick search
 Level:					; XREF: GameModeArray
+		move.w	#$8014,($C00004).l	; enable h-ints
+		bsr	Pal_FadeFrom
+		move.w	#$8004,($C00004).l	; disable h-ints
 		bset	#7,(GameMode).w ; add $80 to screen mode (for pre level sequence)
 		bsr	PLC_ClearQueue
 		jsr	DrawBuffer_Clear
 		display_enable
-		move.w	#$8014,($C00004).l	; enable h-ints
-		bsr	Pal_FadeFrom
-		move.w	#$8004,($C00004).l	; disable h-ints
 
 		; immediately clear the first tile in VRAM to avoid graphical issues
 		VBlank_SetMusicOnly
@@ -5050,6 +5053,7 @@ SS_EndClrObjRamX:
 		jsr	ObjectsLoad
 		jsr	BuildSprites
 		bsr	Pal_MakeFlash
+		bsr	Pal_FadeFrom
 
 		move.l	#10000,d0		; add 100000 ...
 		jsr	AddPoints		; ... points
@@ -25926,12 +25930,16 @@ Obj03_Setup:
 		move.b	obSubtype(a0),obFrame(a0) ; set frame to subtype ID
 		subi.w	#$C,obY(a0)		; adjust Y pos
 		move.w	#($6200/$20),obGfx(a0)	; set art, use first palette line
+
 		cmpi.w	#$501,($FFFFFE10).w	; is this the tutorial?
-		bne.s	@cont			; if not, branch
+		bne.s	@nottut			; if not, branch
 		move.w	#($7300/$20),obGfx(a0)	; use alternate mappings
 		bset	#7,obGfx(a0)		; make it high plane
-	
-@cont:		
+		btst	#2,(OptionsBits).w	; is Skip Uberhub Place enabled?
+		beq.s	@nottut			; if not, branch
+		move.b	#$E,obFrame(a0)		; show "SKIP TUTORIAL" text instead of "EXIT TUTORIAL"
+@nottut:
+
 		; "PLACE" text on level signs
 		tst.b	(PlacePlacePlace).w	; easter egg flag enabled?
 		beq.s	@noeaster		; if not, branch

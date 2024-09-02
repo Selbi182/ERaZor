@@ -69,12 +69,31 @@ BlackBarsConfigScreen:
 	move.b	#0,BlackBarsConfig_Exiting
 	jsr	BlackBarsConfigScreen_InitUI
 
+	; Overwrite default console font 
+	vram	$8000
+	lea	($C00000).l,a6
+	lea	(ArtKospM_FontOverrideArt).l,a0
+	jsr	KosPlusMDec_VRAM
+	
+	; Brighten up white palette for better legibility
+	move.w	#$EEE,d0
+	move.w	d0,($FFFFFB84).w
+	move.w	d0,($FFFFFB86).w
+	move.w	d0,($FFFFFB88).w
+	move.w	d0,($FFFFFB8A).w
+	move.w	d0,($FFFFFB8C).w
+	move.w	#$CCC,($FFFFFB8E).w
+
 	VBlank_UnsetMusicOnly
 	display_enable
 
 	move.w	#$8014, VDP_Ctrl		; enable HInt-s
 
 	jsr	Pal_FadeTo
+
+; ---------------------------------------------------------------
+; Main Loop
+; ---------------------------------------------------------------
 
 @MainLoop:
 	move.b	#4, VBlankRoutine
@@ -280,7 +299,8 @@ BlackBarsConfigScreen_GenerateSprites:
 	dc.w	$54, $80
 	dc.w	$54*2, $0
 	dc.w	$54*3, $80
-	; todo proper screen wrapping
+
+	dc.w	-1	; TODO proper screen wrapping
 	dc.w	$0+320, $0+224
 	dc.w	$54+320, $80+224
 	dc.w	$54*2+320, $0+224
@@ -394,12 +414,12 @@ BlackBarsConfigScreen_WriteText:
 	BBCS_EnterConsole a0
 
 	Console.SetXY #12, #6
-	Console.Write "  Sonic ERaZor"
+	Console.Write "  SONIC ERAZOR"
 	Console.Write "%<endl>%<endl>"
-	Console.Write "BLACK BARS Setup"
+	Console.Write "BLACK BARS SETUP"
 
-	Console.SetXY #5, #21
-	Console.Write "Pick the first if you're unsure!"
+	Console.SetXY #4, #21
+	Console.Write "PICK THE FIRST IF YOU ARE UNSURE!"
 
 	BBCS_LeaveConsole a0
 	; fallthrough
@@ -419,20 +439,27 @@ BlackBarsConfigScreen_RedrawUI:
 	; fallthrough on emulators
 
 @emulators:
-	Console.Write "%<pal0>> Optimized for EMULATORS"
+	Console.Write "%<pal0>> OPTIMIZED FOR EMULATORS"
 	Console.Write "%<endl>%<endl>"
-	Console.Write "%<pal2>  Optimized for REAL HARDWARE"
+	Console.Write "%<pal2>  OPTIMIZED FOR REAL HARDWARE"
 	rts
 
 @realhardware:
-	Console.Write "%<pal2>  Optimized for EMULATORS"
+	Console.Write "%<pal2>  OPTIMIZED FOR EMULATORS"
 	Console.Write "%<endl>%<endl>"	
 	tst.b	BlackBarsConfig_Exiting
 	bne.s	@hweaster
-	Console.Write "%<pal0>> Optimized for REAL HARDWARE"
+	Console.Write "%<pal0>> OPTIMIZED FOR REAL HARDWARE"
 	rts
 @hweaster:
-	Console.Write '%<pal0>> "Winners don''t use Gens"   '
+	Console.Write '%<pal0>> "WINNERS DON''T USE GENS"   '
 	rts
 ; ---------------------------------------------------------------
+; ===============================================================
+
+
+; ===============================================================
+ArtKospM_FontOverrideArt:
+	incbin	Screens\BlackBarsConfigScreen\Font_Override.kospm
+	even
 ; ===============================================================

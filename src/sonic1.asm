@@ -13603,7 +13603,7 @@ Obj0F_Main:				; XREF: Obj0F_Index
 		move.w	#$D8,obX(a0)
 		move.w	#$138,obScreenY(a0)
 		move.l	#Map_obj0F,obMap(a0)
-		move.w	#$200+3,obGfx(a0)
+		move.w	#$200+1,obGfx(a0)
 		move.b	#$3E,$30(a0)
 
 locret_A6F8:				; XREF: Obj0F_Index

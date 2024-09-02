@@ -92,9 +92,9 @@ StartOfRom:
 
 		dc.b 'SEGA MEGA DRIVE ' ; Hardware system ID
 
-Date:		dc.b '(C)SELBI 2024   ' ; Release date
-Title_Local:	dc.b 'Sonic ERaZor                                    ' ; Domestic name
-Title_Int:	dc.b 'Sonic ERaZor                                    ' ; International name
+Date:		dc.b '(C) SELBI 2024  ' ; Release date
+Title_Local:	dc.b 'Sonic ERaZor 7                                  ' ; Domestic name
+Title_Int:	dc.b 'Sonic ERaZor 7                                  ' ; International name
 Serial:		dc.b 'SP 18201337-07' 	; Serial/version number
 
 Checksum:	dc.w 0
@@ -13603,7 +13603,7 @@ Obj0F_Main:				; XREF: Obj0F_Index
 		move.w	#$D8,obX(a0)
 		move.w	#$138,obScreenY(a0)
 		move.l	#Map_obj0F,obMap(a0)
-		move.w	#$200,obGfx(a0)
+		move.w	#$200+3,obGfx(a0)
 		move.b	#$3E,$30(a0)
 
 locret_A6F8:				; XREF: Obj0F_Index
@@ -25887,14 +25887,14 @@ Obj02_NotEnding:
 		cmpi.b	#$20,(GameMode).w		; is screen mode story screen?
 		beq.s	@nobgmaps			; if yes, branch
 		cmpi.b	#$24,(GameMode).w		; is screen mode options menu?
-		bne.s	Obj02_NotOptions		; if not, branch
+		bne.s	Obj02_TitleScreen		; if not, branch
 @nobgmaps:
 		move.w	#$2520,obGfx(a0)		; set art, use second palette line
 		bra.s	Obj02_FinishSetup		; use XY positions set while loading object
 
-Obj02_NotOptions:
+Obj02_TitleScreen:
 		move.w	#$11F,obX(a0)			; set X-position
-		move.w	#$113,obScreenY(a0)		; set Y-position
+		move.w	#$115,obScreenY(a0)		; set Y-position
 
 Obj02_FinishSetup:
 		move.w	obScreenY(a0),$32(a0)

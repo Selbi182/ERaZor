@@ -134,6 +134,8 @@ ScreenFuzz		equ	$FFFFFF91			; b	enables cinematic screen fuzz
 OptionsBits		equ	$FFFFFF92			; b	bit field for the user options
 Progress		equ	$FFFFFF93			; b	bit field for overall game state (bit 0 - base game // bit 1 - blackout)
 
+ExtCamShift		equ	$FFFFFFCE			; w	current signed pixel offset for the extended camera
+
 	if def(__MD_REPLAY__)
 ; WARNING! MD Replay conflicts with SMPS RAM, but SMPS is disabled when `__MD_REPLAY__` is set
 ; __MD_REPLAY__ = 'rec'

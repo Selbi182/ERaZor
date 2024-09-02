@@ -1204,32 +1204,32 @@ S_H_PeeloutSpindash:
 ; ===========================================================================
 
 S_H_FastEnough_Right:
-		cmpi.w	#$40,($FFFFFFCE).w	; is camera moving counter at or over $40?
+		cmpi.w	#$40,(ExtCamShift).w	; is camera moving counter at or over $40?
 		bge.s	S_H_CameraMove_End	; if yes, don't change camera moving
-		add.w	#CamSpeed,($FFFFFFCE).w	; otherwise, make camera move to the left
+		add.w	#CamSpeed,(ExtCamShift).w	; otherwise, make camera move to the left
 		bra.s	S_H_CameraMove_End	; skip to processing code
 ; ===========================================================================
 
 S_H_FastEnough_Left:
-		cmpi.w	#-$40,($FFFFFFCE).w	; is camera moving counter at or below -$40?
+		cmpi.w	#-$40,(ExtCamShift).w	; is camera moving counter at or below -$40?
 		ble.s	S_H_CameraMove_End	; if yes, don't change camera moving
-		sub.w	#CamSpeed,($FFFFFFCE).w	; otherwise, make camera move to the right
+		sub.w	#CamSpeed,(ExtCamShift).w	; otherwise, make camera move to the right
 		bra.s	S_H_CameraMove_End	; skip to processing code
 ; ===========================================================================
 
 S_H_ResetCamera:
-		tst.w	($FFFFFFCE).w		; is camera moving counter empty?
+		tst.w	(ExtCamShift).w		; is camera moving counter empty?
 		beq.s	S_H_NoExtendedCam	; if yes, branch to end
 		bpl.s	S_H_ResetCamera_Left	; is it positive? if yes, branch to code for left moving
-		add.w	#CamSpeed,($FFFFFFCE).w	; otherwise make it move to the right again
+		add.w	#CamSpeed,(ExtCamShift).w	; otherwise make it move to the right again
 		bra.s	S_H_CameraMove_End	; skip to end
 ; ===========================================================================
 
 S_H_ResetCamera_Left:
-		sub.w	#CamSpeed,($FFFFFFCE).w	; make camera move to the left again
+		sub.w	#CamSpeed,(ExtCamShift).w	; make camera move to the left again
 
 S_H_CameraMove_End:
-		add.w	($FFFFFFCE).w,d0	; add counter to normal camera location
+		add.w	(ExtCamShift).w,d0	; add counter to normal camera location
 
 S_H_NoExtendedCam:
 		sub.w	($FFFFF700).w,d0

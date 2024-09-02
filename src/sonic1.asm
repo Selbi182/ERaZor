@@ -5,7 +5,7 @@
 ; ------------------------------------------------------
 	if def(__BENCHMARK__)=0
 ; Vladik's Debugger
-__DEBUG__: equ 1
+;__DEBUG__: equ 1
 
 	else
 		; MD Replay state. Used for playing pre-recorded gameplay in benchmarks.
@@ -850,6 +850,8 @@ PG_CheckAllowed:
 		beq.w	Pause_DoNothing		; if not, disallow pausing
 		cmpi.b	#$10,(GameMode).w	; are we in a special stage?
 		beq.s	PG_SSPause		; if yes, branch
+		cmpi.b	#$18,(GameMode).w	; is this the ending sequence?
+		beq.s	PG_DoPause		; if yes, branch
 		cmpi.w	#$501,($FFFFFE10).w	; are we in the tutorial?
 		beq.s	PG_DoPause		; if yes, branch
 		btst	#3,(OptionsBits).w	; is cinematic HUD enabled?
@@ -3481,7 +3483,7 @@ Level_NoMusic:
 Level_NoMusic2:
 		clr.b	($FFFFFF98).w
 		clr.b	($FFFFFF99).w
-		clr.w	($FFFFFFCE).w	; clear extended camera counter
+		clr.w	ExtCamShift	; clear extended camera counter
 
 		bsr	LevelSizeLoad
 		bsr	ClearEverySpecialFlag
@@ -4509,6 +4511,7 @@ ClearEverySpecialFlag:
 		move.b	d0,($FFFFFFBD).w
 		move.b	d0,($FFFFFFBF).w
 		move.b	d0,($FFFFFFC8).w
+		move.w	d0,ExtCamShift
 		move.w	d0,($FFFFFFD0).w
 		move.l	d0,($FFFFFFD2).w
 		move.l	d0,($FFFFFFD6).w
@@ -5631,6 +5634,7 @@ End_MainLoop:
 		move.b	#$18,VBlankRoutine
 		bsr	DelayProgram
 		addq.w	#1,($FFFFFE04).w
+		bsr	PauseGame
 		bsr	End_MoveSonic
 		jsr	ObjectsLoad
 		bsr	DeformBgLayer
@@ -5655,10 +5659,15 @@ End_MainLoop:
 		move.w	#1,($FFFFFE02).w	; start credits to not softlock in nonstop inhuman
 
 @checkfadeout:
+		cmpi.w	#$400,($FFFFFE10).w		; has the player forcibly exited the cutscene?
+		bne.s	@checkend			; if not, branch
+		rts					; exit this game mode normally
+
+@checkend:
 		tst.w	($FFFFFE02).w			; is level set to restart? (after Sonic died)
 		beq.w	End_MainLoop			; if not, loop
 		cmpi.w	#224/2-2,BlackBars.Height	; did black bars finish covering up the screen?
-		blo.s	End_MainLoop			; if not, loop
+		blo.w	End_MainLoop			; if not, loop
 		jmp	Exit_EndingSequence		; go to credits screen
 
 ; ---------------------------------------------------------------------------
@@ -15463,6 +15472,7 @@ loc_BDD6:
 		move.b	#$25,obAnim(a1)	; use inhuman rotate animation
 		move.b	#2,obRoutine(a1)
 		move.b	#1,($FFFFFFEB).w	; set jumpdash flag
+		clr.w	ExtCamShift	; clear extended camera counter
 
 		move.b	#$DB,d0			; play epic explosion sound
 		jsr	PlaySound_Special
@@ -16830,6 +16840,8 @@ Obj36_Hurt:				; XREF: Obj36_SideWays; Obj36_Upright
 		clr.w	($FFFFF708).w
 		clr.w	($FFFFF714).w
 		clr.w	($FFFFF71C).w
+
+		clr.w	ExtCamShift	; clear extended camera counter
 
 		move.w	#$C3,d0			; set giant ring sound
 		jsr	PlaySound		; play it
@@ -26891,7 +26903,7 @@ loc_12CB6:
 ; ---------------------------------------------------------------------------
 
 Sonic_Display:				; XREF: loc_12C7E
-		cmpi.w	#$000,($FFFFFE10).w	; is level GHZ1?
+		tst.w	($FFFFFE10).w		; is level GHZ1?
 		bne.w	S_D_NoTeleport		; if not, branch
 
 		tst.b	($FFFFFFE7).w		; is inhuman mode on?
@@ -26919,13 +26931,23 @@ Sonic_Display:				; XREF: loc_12C7E
 
 @enough:
 		addq.w	#5,(FranticDrain).w	; add 5 rings to be drained
-		move.w	#$12A0,obX(a0)		; set new location for Sonic's X-pos
-		move.w	#$21A,obY(a0)		; set new location for Sonic's Y-pos
-		bra.s	@teleportend		; skip
 
 @notfrantic:
-		move.w	#$12A0,obX(a0)		; set new location for Sonic's X-pos
-		move.w	#$21A,obY(a0)		; set new location for Sonic's Y-pos
+		move.w	#$1300,obX(a0)		; set new location for Sonic's X-pos
+		move.w	#$2F0,obY(a0)		; set new location for Sonic's Y-pos
+		
+		move.w	#-$400,obVelY(a0)	; move Sonic upwards
+		clr.w	obVelX(a0)		; clear any remaining X speed
+
+		addq.w	#8,obY(a0)
+		bset	#1,obStatus(a0) ; in air
+		bset	#2,obStatus(a0) ; rolling
+		bclr	#3,obStatus(a0) ; not standing
+		move.b	#$25,obAnim(a0)	; use inhuman rotate animation
+		move.b	#2,obRoutine(a0)
+		move.b	#1,($FFFFFFEB).w	; set jumpdash flag
+		clr.w	ExtCamShift	; clear extended camera counter
+
 @teleportend:
 		move.w	#$C3,d0			; set giant ring sound
 		jsr	PlaySound_Special	; set giant ring sound

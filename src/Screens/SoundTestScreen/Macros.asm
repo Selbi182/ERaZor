@@ -1,5 +1,33 @@
 
 ; ---------------------------------------------------------------------------
+; Creates a dynamic object
+; ---------------------------------------------------------------------------
+
+SoundTest_CreateObject: macro objPointerOp
+	jsr	SingleObjLoad
+	if def(__DEBUG__)
+		beq.s	@ok\@
+		RaiseError "Out of object slots"
+	@ok\@:
+	endif
+	move.b	#$8D, (a1)
+	move.l	\objPointerOp, $3C(a1)
+	endm
+
+; ---------------------------------------------------------------------------
+SoundTest_CreateChildObject: macro objPointerOp
+	jsr	SingleObjLoad2
+	if def(__DEBUG__)
+		beq.s	@ok\@
+		RaiseError "Out of object slots"
+	@ok\@:
+	endif
+	move.b	#$8D, (a1)
+	move.l	\objPointerOp, $3C(a1)
+	endm
+
+
+; ---------------------------------------------------------------------------
 ; Resets (flushes) VRAM buffer pool pointer
 ; ---------------------------------------------------------------------------
 

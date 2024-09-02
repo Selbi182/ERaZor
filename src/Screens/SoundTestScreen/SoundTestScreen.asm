@@ -14,7 +14,11 @@ SoundTest_Piano_VRAM:		equ	$9800
 SoundTest_Visualizer_VRAM:	equ	$2000
 SoundTest_Visualizer_ScreenPos:	equ	$C286
 SoundTest_Visualizer_Width:	equ	35	; tiles
-SoundTest_Visualizer_Height:	equ	15+1	; tiles
+SoundTest_Visualizer_Height:	equ	16	; tiles
+
+	if SoundTest_Visualizer_Height % 4
+		inform 2, "SoundTest_Visualizer_Height must be multiple of 4" ; because we use 4x4 sprites for rendering
+	endif
 
 SoundTest_RAM:	equ	$FFFF8000
 
@@ -80,16 +84,15 @@ SoundTestScreen:
 		move.l	d0, VDP_Data
 		dbf	d1, @loop
 
-	jsr	SingleObjLoad
-	move.b	#$8D, (a1)
-	move.l	#SoundTest_DummyHL, $3C(a1)
+	;SoundTest_CreateObject #SoundTest_Obj_DummyHL
+	SoundTest_CreateObject #SoundTest_Obj_PianoSheet
 
 	; Load BG-1
 	vram	SoundTest_BG_VRAM, VDP_Ctrl
-	lea	SoundTest_BG1_TilesKospM, a0
+	lea	SoundTest_BG2_TilesKospM, a0
 	jsr	KosPlusMDec_VRAM
 
-	lea	SoundTest_BG1_MapEni(pc), a0
+	lea	SoundTest_BG2_MapEni(pc), a0
 	lea	$FF0000, a1
 	move.w	#$2000|(SoundTest_BG_VRAM/$20), d0
 	jsr	EniDec
@@ -161,7 +164,7 @@ SoundTest_MainLoop:
 	move.w	CamYpos2, ($FFFFF618).w	; update plane B vs-ram
 	
 	addq.w	#1, CamYpos2
-	addq.w	#1, CamXPos2
+	;addq.w	#1, CamXPos2
 
 	lea	HSRAM_Buffer, a1
 
@@ -179,59 +182,10 @@ SoundTest_Exit:
 	jmp	Exit_SoundTestScreen
 
 ; ---------------------------------------------------------------------------
-SoundTest_DummyHL:
-	move.b	#0, 1(a0)
-	move.w	#(SoundTest_DummyHL_VRAM/$20)|$8000|$6000, 2(a0)
-	move.l	#@Map, 4(a0)
-	move.w	#$80+3*8+$80, 8(a0)
-	move.w	#$80+5*8, $A(a0)
-	move.l	#@Main, $3C(a0)
 
-@Main:	
-	jmp	DisplaySprite
+	include	"Screens/SoundTestScreen/Objects/DummyHL.asm"
 
-@Map:	dc.w	2
-	dc.b	32+4
-	dc.b	$0, $F, 0, 0, -$80
-	dc.b	$0, $F, 0, 0, -$60
-	dc.b	$0, $F, 0, 0, -$40
-	dc.b	$0, $F, 0, 0, -$20
-	dc.b	$0, $F, 0, 0, 0
-	dc.b	$0, $F, 0, 0, $20
-	dc.b	$0, $F, 0, 0, $40
-	dc.b	$0, $F, 0, 0, $60
-	dc.b	$0, $F, 0, 0, $78
-
-	dc.b	$20, $F, 0, 0, -$80
-	dc.b	$20, $F, 0, 0, -$60
-	dc.b	$20, $F, 0, 0, -$40
-	dc.b	$20, $F, 0, 0, -$20
-	dc.b	$20, $F, 0, 0, 0
-	dc.b	$20, $F, 0, 0, $20
-	dc.b	$20, $F, 0, 0, $40
-	dc.b	$20, $F, 0, 0, $60
-	dc.b	$20, $F, 0, 0, $78
-
-	dc.b	$40, $F, 0, 0, -$80
-	dc.b	$40, $F, 0, 0, -$60
-	dc.b	$40, $F, 0, 0, -$40
-	dc.b	$40, $F, 0, 0, -$20
-	dc.b	$40, $F, 0, 0, 0
-	dc.b	$40, $F, 0, 0, $20
-	dc.b	$40, $F, 0, 0, $40
-	dc.b	$40, $F, 0, 0, $60
-	dc.b	$40, $F, 0, 0, $78
-
-	dc.b	$60, $F, 0, 0, -$80
-	dc.b	$60, $F, 0, 0, -$60
-	dc.b	$60, $F, 0, 0, -$40
-	dc.b	$60, $F, 0, 0, -$20
-	dc.b	$60, $F, 0, 0, 0
-	dc.b	$60, $F, 0, 0, $20
-	dc.b	$60, $F, 0, 0, $40
-	dc.b	$60, $F, 0, 0, $60
-	dc.b	$60, $F, 0, 0, $78
-	even
+	include	"Screens/SoundTestScreen/Objects/PianoSheet.asm"
 
 
 ; ===========================================================================
@@ -257,10 +211,7 @@ SoundTest_Visualizer_Init:
 	lea	VDP_Data, @vdp_data
 	lea	VDP_Ctrl-VDP_Data(@vdp_data), @vdp_ctrl
 
-	; ---------------------------
 	; Generate tiles (DMA fill)
-	; ---------------------------
-
 	@dma_len: = SoundTest_Visualizer_Width*SoundTest_Visualizer_Height*$20 ; bytes
 	@dma_dest: = SoundTest_Visualizer_VRAM
 
@@ -270,99 +221,11 @@ SoundTest_Visualizer_Init:
 	move.l	#($40000000+(((@dma_dest)&$3FFF)<<16)+(((@dma_dest)&$C000)>>14))|$80, (@vdp_ctrl)
 	move.w	#$1111, (@vdp_data)
 
-	; -------------------
-	; Generate mappings
-	; -------------------
-
-	@base_pat: = (SoundTest_Visualizer_VRAM/$20)|$8000|$6000
-	@map_buffer_size: = SoundTest_Visualizer_Width*SoundTest_Visualizer_Height*2
-
-	@map_data:		equr	d0
-	@map_inc:		equr	d1
-	@loop_cnt:		equr	d6
-	@map_buffer:		equr	a0
-	@map_buffer_start: 	equr	a1
-
-	move.l	#(@base_pat<<16)|(@base_pat+1), @map_data
-	move.l	#$00020002, @map_inc
-
-	SoundTest_AllocateInVRAMBufferPool @map_buffer_start, #@map_buffer_size
-	lea	(@map_buffer_start), @map_buffer
-
-	@loop_unroll: = 1
-	@loop_bytes_per_iteration: = @loop_unroll*4
-
-	if (@map_buffer_size % 2)
-		inform 2, "@map_buffer_size isn't divisible by 2"
-	endif
-
-	move.w	#@map_buffer_size/@loop_bytes_per_iteration-1, @loop_cnt
-
-	@generate_map_loop:
-		rept @loop_unroll
-			move.l	@map_data, (@map_buffer)+
-			add.l	@map_inc, @map_data
-		endr
-		dbf	@loop_cnt, @generate_map_loop
-
-		if ((@map_buffer_size % @loop_bytes_per_iteration) = 2)
-			swap	@map_data
-			move.w	@map_data, (@map_buffer)+
-		endif
-
-	if def(__DEBUG__)
-		sub.w	@map_buffer_start, @map_buffer
-		assert.w @map_buffer, eq, #@map_buffer_size ; check for buffer overflows/underflows
-	endif
-
-	; -----------------------------------------------------------------
-	; Make sure DMA fill for tiles ends (it was running in parallel!)
-	; -----------------------------------------------------------------
-
 	@wait_dma:
 		move.w	(@vdp_ctrl), ccr
 		bvs.s	@wait_dma
 
 	move.w	#$8F02, (@vdp_ctrl)
-
-	; ----------------
-	; DMA mappings
-	; ----------------
-
-	@num_rows: = SoundTest_Visualizer_Height
-	@map_row_size: = SoundTest_Visualizer_Width*2/2 ; words
-	@map_vram_start: = SoundTest_Visualizer_ScreenPos
-
-	@dma_size_regs:	equr	d2	; DMA row size (constant)
-	@dma_src:	equr	d3	; DMA source address / 2
-	@dma_dest_high:	equr	d4	; DMA destination command (high word)
-	@dma_dest_inc:	equr	d5	; DMA destination stap (constant)
-
-	assert.l @map_buffer_start, hi, #$FF0000 ; buffer should be in RAM (so DMA's high byte is $FF/2 = $7F)
-
-	move.l	#(($9400+(@map_row_size>>8))<<16)|($9300+(@map_row_size&$FF)), @dma_size_regs
-	move.w	@map_buffer_start, @dma_src
-	lsr.w	@dma_src
-	move.w	#$4000|(@map_vram_start&$3FFF), @dma_dest_high
-	move.w	#$40*2, @dma_dest_inc				; set DMA destination address increment to 1 on-screen row
-	move.w	#((@map_vram_start&$C000)>>14)|$80, -(sp)	; Stack => DMA destination command (low word)
-	move.l	#$96009500, -(sp)				; Stack => DMA source address registers (mid and low bytes)
-	moveq	#SoundTest_Visualizer_Height-1, @loop_cnt
-
-	@dma_send_row_loop:
-		move.l	@dma_size_regs, (@vdp_ctrl)	; VDP => DMA size regs
-		movep.w	@dma_src, 1(sp)
-		move.w	#$977F, (@vdp_ctrl)		; VDP => DMA's source high byte
-		move.l	(sp), (@vdp_ctrl)		; VDP => DMA's source mid and low byte
-		move.w	@dma_dest_high, (@vdp_ctrl)	; VDP => DMA destination command (high word)
-		move.w	4(sp), (@vdp_ctrl)		; VPD => DMA destination command (low word)
-
-		add.w	@dma_dest_inc, @dma_dest_high	; advance DMA destination address
-		add.w	#@map_row_size, @dma_src	; advance DMA source address
-
-		dbf	@loop_cnt, @dma_send_row_loop
-
-	addq.w	#6, sp
 	rts
 
 ; ---------------------------------------------------------------------------
@@ -390,8 +253,8 @@ SoundTest_Visualizer_Update:
 	lea	(@pixel_buffer), @pixel_buffer_half1
 	lea	@pixel_buffer_half_size(@pixel_buffer), @pixel_buffer_half2
 
-	moveq	#0, @pixel_data_half1
-	moveq	#0, @pixel_data_half2
+	move.l	#$22222222, @pixel_data_half1
+	move.l	#$33333333, @pixel_data_half2
 
 	rept @pixel_buffer_size/8
 		move.l	@pixel_data_half1, (@pixel_buffer_half1)+
@@ -411,7 +274,7 @@ SoundTest_Visualizer_Update:
 	@write_request:	equr	a0
 
 	move.l	#@Dummy_PixelData, -(sp)
-	move.w	#1, -(sp)	; x-pos
+	move.w	SoundTest_DummyXPos, -(sp)	; x-pos
 
 	lea	(sp), @write_request
 	jsr	SoundTest_Visualizer_WritePixelsToPixelBuffer
@@ -445,10 +308,10 @@ SoundTest_Visualizer_Update:
 
 	; Advance visualizer position for the next call
 	addq.w	#4, SoundTest_VisualizerPos_TileOffset
-	cmp.w	#$20, SoundTest_VisualizerPos_TileOffset
+	cmp.w	#$20*4, SoundTest_VisualizerPos_TileOffset
 	blo.s	@pos_ok
 	move.w	#0, SoundTest_VisualizerPos_TileOffset
-	add.w	#SoundTest_Visualizer_Width*$20, SoundTest_VisualizerPos_TilePtr
+	add.w	#SoundTest_Visualizer_Width*$20*4, SoundTest_VisualizerPos_TilePtr
 	cmp.w	#SoundTest_Visualizer_Height*SoundTest_Visualizer_Width*$20, SoundTest_VisualizerPos_TilePtr
 	blo.s	@pos_ok
 	move.w	#0, SoundTest_VisualizerPos_TilePtr
@@ -457,10 +320,10 @@ SoundTest_Visualizer_Update:
 
 
 @Dummy_PixelData:
-	dc.w	4 ; pixels
+	dc.w	1 ; pixels
 
-@even:	dc.b	$56, $65
-@odd:	dc.b	$05, $66, $50
+@even:	dc.b	$60
+@odd:	dc.b	$06
 	even
 
 ; ---------------------------------------------------------------------------
@@ -590,7 +453,7 @@ SoundTest_Visualizer_TransferPixelBufferToVRAM:
 	move.l	#$96009500, -(sp)		; Stack => DMA source address registers (mid and low bytes)
 	swap	@write_dest
 
-	move.w	#$8F20, (@vdp_ctrl)		; DMA advances every tile ($20 bytes)
+	move.w	#$8F80, (@vdp_ctrl)		; DMA advances every other tile ($80 bytes)
 
 	move.l	@dma_size_regs, (@vdp_ctrl)	; VDP => DMA size regs
 	movep.w	@dma_src, 1(sp)
@@ -626,6 +489,16 @@ SoundTest_BG1_MapEni:
 ; ---------------------------------------------------------------------------
 SoundTest_BG1_TilesKospM:
 	incbin	"Screens/SoundTestScreen/Data/BG1_Tiles.kospm"
+	even
+
+; ---------------------------------------------------------------------------
+SoundTest_BG2_MapEni:
+	incbin	"Screens/SoundTestScreen/Data/BG2_Map.eni"
+	even
+
+; ---------------------------------------------------------------------------
+SoundTest_BG2_TilesKospM:
+	incbin	"Screens/SoundTestScreen/Data/BG2_Tiles.kospm"
 	even
 
 ; ---------------------------------------------------------------------------

@@ -6,6 +6,7 @@
 ; must be called once during game mode init
 BackgroundEffects_Setup:
 		VBlank_SetMusicOnly
+		move.w	#$8B03,($C00004).l	; set scrolling mode to H: per-scanline // V: whole screen
 
 		lea	($C00000).l,a6
 		move.l	#$40200000,4(a6)
@@ -182,10 +183,12 @@ BackgroundEffects_Deformation2:
 
 ; V-Scroll
 BackgroundEffects_VScroll:
-		move.w	($FFFFFE0E).w, d1
-		add.w	d1, d1
-		move.w	d1, $FFFFF618			; set VScroll on Plane B
+		move.w	($FFFFFE0E).w,d1
+		add.w	d1,d1
+		neg.w	d1
+		move.w	d1,($FFFFF616).w	; set plane-A VSRAM (yes, not plane B)
 		rts
+	
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
 ; ---------------------------------------------------------------------------

@@ -37,6 +37,17 @@ ints_pop	macro
 	move.w	(sp)+,sr
 	endm
 
+; DMA copy data from 68K (ROM/RAM) to the VRAM
+vramWrite:	macro source, len, dest
+	lea	VDP_Ctrl, a5
+	move.l	#$94000000+((((\len)>>1)&$FF00)<<8)+$9300+(((\len)>>1)&$FF),(a5)
+	move.l	#$96000000+((((\source)>>1)&$FF00)<<8)+$9500+(((\source)>>1)&$FF),(a5)
+	move.w	#$9700+(((((\source)>>1)&$FF0000)>>16)&$7F),(a5)
+	move.w	#$4000+((\dest)&$3FFF),(a5)
+	move.w	#$80+(((\dest)&$C000)>>14), -(sp)
+	move.w	(sp)+, (a5)
+	endm
+
 ; Set VDP to VRAM write
 vram	macro	offset,operand
 	if (narg=1)

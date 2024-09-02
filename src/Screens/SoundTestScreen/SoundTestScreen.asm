@@ -6,10 +6,15 @@
 
 ; ---------------------------------------------------------------------------
 
+SoundTest_BG_VRAM:		equ	$20
+
+SoundTest_DummyHL_VRAM:		equ	$A000
+SoundTest_Piano_VRAM:		equ	$9800
+
 SoundTest_Visualizer_VRAM:	equ	$2000
-SoundTest_Visualizer_ScreenPos:	equ	$C000
+SoundTest_Visualizer_ScreenPos:	equ	$C286
 SoundTest_Visualizer_Width:	equ	35	; tiles
-SoundTest_Visualizer_Height:	equ	15	; tiles
+SoundTest_Visualizer_Height:	equ	15+1	; tiles
 
 SoundTest_RAM:	equ	$FFFF8000
 
@@ -38,9 +43,10 @@ SoundTestScreen:
 	move.w	#$8004, (a6)
 	move.w	#$8230, (a6)
 	move.w	#$8407, (a6)
+	move.w	#$8C81+8, (a6)		; enable S&H
 	move.w	#$9001, (a6)
 	move.w	#$9200, (a6)
-	move.w	#$8B07, (a6)
+	move.w	#$8B03, (a6)
 	move.w	#$8720, (a6)
 	clr.b	($FFFFF64E).w
 	jsr	ClearScreen
@@ -58,17 +64,57 @@ SoundTestScreen:
 
 	assert.w a1, eq, #Objects_End
 
+	; Load screen palette
+	lea	Pal_Target, a0
+	lea 	SoundTest_Palette(pc), a1
+	rept 128/4
+		move.l	(a1)+, (a0)+
+	endr
+
+	; ### Dummy Highlight ####
+	vram	SoundTest_DummyHL_VRAM, VDP_Ctrl
+	move.l	#$EEEEEEEE, d0
+	moveq	#4*4*$20/4-1, d1
+
+	@loop:
+		move.l	d0, VDP_Data
+		dbf	d1, @loop
+
+	jsr	SingleObjLoad
+	move.b	#$8D, (a1)
+	move.l	#SoundTest_DummyHL, $3C(a1)
+
+	; Load BG-1
+	vram	SoundTest_BG_VRAM, VDP_Ctrl
+	lea	SoundTest_BG1_TilesKospM, a0
+	jsr	KosPlusMDec_VRAM
+
+	lea	SoundTest_BG1_MapEni(pc), a0
+	lea	$FF0000, a1
+	move.w	#$2000|(SoundTest_BG_VRAM/$20), d0
+	jsr	EniDec
+
+	vramWrite $FF0000, $2000, $E000
+
+	; Load piano keys
+	vram	SoundTest_Piano_VRAM, VDP_Ctrl
+	lea	SoundTest_Piano_TilesKospM, a0
+	jsr	KosPlusMDec_VRAM
+
+	lea	SoundTest_Piano_MapEni(pc), a0
+	lea	$FF0000, a1
+	move.w	#$8000|$6000|(SoundTest_Piano_VRAM/$20), d0
+	jsr	EniDec
+
+	vram	$CA86, d0
+	lea	$FF0000, a1
+	moveq	#36-1, d1
+	moveq	#3-1, d2
+	jsr	ShowVDPGraphics
+
 	SoundTest_ResetVRAMBufferPool
 
-	; 
-	lea	VDP_Data, a6
-	move.l	#$6E000002, 4(a6)
-	lea	(Options_TextArt).l, a5
-	move.w	#$59F, d1		; Original: $28F
-@LoadTextArt:	move.w	(a5)+, (a6)
-	dbf	d1, @LoadTextArt ; load uncompressed text patterns
-
-	; Palette init
+	; Screen init
 	jsr	SoundTest_Visualizer_Init
 	jsr	ObjectsLoad
 	jsr	BuildSprites
@@ -92,6 +138,7 @@ SoundTest_MainLoop:
 	jsr	PLC_Execute
 
 	jsr	SoundTest_Visualizer_Update
+	jsr	@Deform
 
 	bra	SoundTest_MainLoop
 
@@ -109,11 +156,82 @@ SoundTest_MainLoop:
 @0:	SoundTest_ResetVRAMBufferPool
 	rts
 
+; ---------------------------------------------------------------------------
+@Deform:
+	move.w	CamYpos2, ($FFFFF618).w	; update plane B vs-ram
+	
+	addq.w	#1, CamYpos2
+	addq.w	#1, CamXPos2
+
+	lea	HSRAM_Buffer, a1
+
+	moveq	#0, d0
+	move.w	CamXPos2, d0
+	neg.w	d0
+
+	moveq	#240/16-1, d1		; repeat to cover the entire 240-pixel screen
+	jmp	DeformScreen_SendBlocks
+	rts
+
 ; ===========================================================================
 
 SoundTest_Exit:
 	jmp	Exit_SoundTestScreen
 
+; ---------------------------------------------------------------------------
+SoundTest_DummyHL:
+	move.b	#0, 1(a0)
+	move.w	#(SoundTest_DummyHL_VRAM/$20)|$8000|$6000, 2(a0)
+	move.l	#@Map, 4(a0)
+	move.w	#$80+3*8+$80, 8(a0)
+	move.w	#$80+5*8, $A(a0)
+	move.l	#@Main, $3C(a0)
+
+@Main:	
+	jmp	DisplaySprite
+
+@Map:	dc.w	2
+	dc.b	32+4
+	dc.b	$0, $F, 0, 0, -$80
+	dc.b	$0, $F, 0, 0, -$60
+	dc.b	$0, $F, 0, 0, -$40
+	dc.b	$0, $F, 0, 0, -$20
+	dc.b	$0, $F, 0, 0, 0
+	dc.b	$0, $F, 0, 0, $20
+	dc.b	$0, $F, 0, 0, $40
+	dc.b	$0, $F, 0, 0, $60
+	dc.b	$0, $F, 0, 0, $78
+
+	dc.b	$20, $F, 0, 0, -$80
+	dc.b	$20, $F, 0, 0, -$60
+	dc.b	$20, $F, 0, 0, -$40
+	dc.b	$20, $F, 0, 0, -$20
+	dc.b	$20, $F, 0, 0, 0
+	dc.b	$20, $F, 0, 0, $20
+	dc.b	$20, $F, 0, 0, $40
+	dc.b	$20, $F, 0, 0, $60
+	dc.b	$20, $F, 0, 0, $78
+
+	dc.b	$40, $F, 0, 0, -$80
+	dc.b	$40, $F, 0, 0, -$60
+	dc.b	$40, $F, 0, 0, -$40
+	dc.b	$40, $F, 0, 0, -$20
+	dc.b	$40, $F, 0, 0, 0
+	dc.b	$40, $F, 0, 0, $20
+	dc.b	$40, $F, 0, 0, $40
+	dc.b	$40, $F, 0, 0, $60
+	dc.b	$40, $F, 0, 0, $78
+
+	dc.b	$60, $F, 0, 0, -$80
+	dc.b	$60, $F, 0, 0, -$60
+	dc.b	$60, $F, 0, 0, -$40
+	dc.b	$60, $F, 0, 0, -$20
+	dc.b	$60, $F, 0, 0, 0
+	dc.b	$60, $F, 0, 0, $20
+	dc.b	$60, $F, 0, 0, $40
+	dc.b	$60, $F, 0, 0, $60
+	dc.b	$60, $F, 0, 0, $78
+	even
 
 
 ; ===========================================================================
@@ -122,14 +240,6 @@ SoundTest_Exit:
 ; ---------------------------------------------------------------------------
 
 SoundTest_Visualizer_Init:
-
-	; Palette
-	lea	Pal_Target, a0
-	lea 	@Palette(pc), a1
-	
-	rept 16/2
-		move.l	(a1)+, (a0)+
-	endr
 
 	; Init variables
 	moveq	#0, d0
@@ -164,7 +274,7 @@ SoundTest_Visualizer_Init:
 	; Generate mappings
 	; -------------------
 
-	@base_pat: = SoundTest_Visualizer_VRAM/$20
+	@base_pat: = (SoundTest_Visualizer_VRAM/$20)|$8000|$6000
 	@map_buffer_size: = SoundTest_Visualizer_Width*SoundTest_Visualizer_Height*2
 
 	@map_data:		equr	d0
@@ -255,10 +365,6 @@ SoundTest_Visualizer_Init:
 	addq.w	#6, sp
 	rts
 
-@Palette:
-	dc.w	$0000, $0222, $0444, $0666, $0888, $0AAA, $0CCC, $0EEE
-	dc.w	$0042, $0262, $0284, $04A6, $06A6, $06C8, $08C8, $08EA
-
 ; ---------------------------------------------------------------------------
 ; Updates the visualizer
 ; ---------------------------------------------------------------------------
@@ -284,8 +390,8 @@ SoundTest_Visualizer_Update:
 	lea	(@pixel_buffer), @pixel_buffer_half1
 	lea	@pixel_buffer_half_size(@pixel_buffer), @pixel_buffer_half2
 
-	move.l	#$11111111, @pixel_data_half1
-	move.l	#$22222222, @pixel_data_half2
+	moveq	#0, @pixel_data_half1
+	moveq	#0, @pixel_data_half2
 
 	rept @pixel_buffer_size/8
 		move.l	@pixel_data_half1, (@pixel_buffer_half1)+
@@ -305,7 +411,7 @@ SoundTest_Visualizer_Update:
 	@write_request:	equr	a0
 
 	move.l	#@Dummy_PixelData, -(sp)
-	move.w	SoundTest_DummyXPos, -(sp)	; x-pos
+	move.w	#1, -(sp)	; x-pos
 
 	lea	(sp), @write_request
 	jsr	SoundTest_Visualizer_WritePixelsToPixelBuffer
@@ -351,10 +457,10 @@ SoundTest_Visualizer_Update:
 
 
 @Dummy_PixelData:
-	dc.w	1 ; pixels
+	dc.w	4 ; pixels
 
-@even:	dc.b	$40
-@odd:	dc.b	$04
+@even:	dc.b	$56, $65
+@odd:	dc.b	$05, $66, $50
 	even
 
 ; ---------------------------------------------------------------------------
@@ -506,3 +612,46 @@ SoundTest_Visualizer_TransferPixelBufferToVRAM:
 	move.w	#$8F02, (@vdp_ctrl)
 	addq.w	#6, sp
 	rts
+
+
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Screen Data
+; ---------------------------------------------------------------------------
+
+SoundTest_BG1_MapEni:
+	incbin	"Screens/SoundTestScreen/Data/BG1_Map.eni"
+	even
+
+; ---------------------------------------------------------------------------
+SoundTest_BG1_TilesKospM:
+	incbin	"Screens/SoundTestScreen/Data/BG1_Tiles.kospm"
+	even
+
+; ---------------------------------------------------------------------------
+SoundTest_Piano_MapEni:
+	incbin	"Screens/SoundTestScreen/Data/BasePiano_Map.eni"
+	even
+
+; ---------------------------------------------------------------------------
+SoundTest_Piano_TilesKospM:
+	incbin	"Screens/SoundTestScreen/Data/BasePiano_Tiles.kospm"
+	even
+
+; ---------------------------------------------------------------------------
+SoundTest_Palette:
+	; Line 0
+	dc.w	$0000, $0222, $0444, $0666, $0888, $0AAA, $0CCC, $0EEE
+	dc.w	$0042, $0262, $0284, $04A6, $06A6, $06C8, $08C8, $08EA
+
+	; Line 1: Background
+	dc.w	$0E0E, $0220, $0440, $0660, $0880, $0AA0, $0CC0, $0EE0
+	dc.w	$0CC0, $0AA0, $0880, $0660, $0440, $0220, $0000, $0E0E
+
+	; Line 2: Background (unused)
+	dc.w	$0000, $0020, $0220, $0240, $0242, $0462, $0464, $0684
+	dc.w	$0686, $08A6, $08A8, $0AC8, $0ACA, $0CEA, $0CEC, $0EEE
+
+	; Line 3: Piano
+	dc.w	$0E0E, $0000, $0888, $0CCC, $0EEE, $0240, $0480, $0E0E
+	dc.w	$0E0E, $0E0E, $0E0E, $0E0E, $0E0E, $0E0E, $0E0E, $0E0E

@@ -15,8 +15,8 @@
 ;  s_ = Score ($FFFFFE26-FFFFFE29)
 ;  cm = Complete (Base Game / Blackout challenge) ($FFFFFF93)
 ;  rs = Resume Flag (0 first launch / 1 load save game) ($FFFFF601)
-;  bb = Black Bars Config (0 emu mode / 1 hardware mode) ($FFFFF5D2)
 ;  mb = Motion Blur (bit 0 of $FFFFFF91)
+;  bb = Black Bars Config (0 emu mode / 2 hardware mode) ($FFFFF5D2)
 ;  mg = Magic Number (always set to 182, absence implies no SRAM)
 ; ---------------------------------------------------------------------------
 SRAM_Options	= 1
@@ -27,15 +27,15 @@ SRAM_Rings	= 4 + SRAM_Lives ; 2 bytes
 SRAM_Score	= 4 + SRAM_Rings ; 4 bytes
 SRAM_Complete	= 8 + SRAM_Score
 SRAM_Resume	= 2 + SRAM_Complete
-SRAM_BlackBars	= 2 + SRAM_Resume
-SRAM_MotionBlur	= 2 + SRAM_BlackBars
+SRAM_MotionBlur	= 2 + SRAM_Resume
+SRAM_BlackBars	= 2 + SRAM_MotionBlur
 
-SRAM_Exists	= 2 + SRAM_MotionBlur
+SRAM_Exists	= 2 + SRAM_BlackBars
 SRAM_MagicNumber = 182
 ; ---------------------------------------------------------------------------
 
-LoadSRAM:
-	KDebug.WriteLine "LoadSRAM()..."
+SRAM_Load:
+	KDebug.WriteLine "SRAM_Load()..."
 	; Supress SRAM if MD Replay takes over it
 	if def(__MD_REPLAY__)
 		rts
@@ -51,22 +51,34 @@ LoadSRAM:
 
 SRAMFound:
 		lea	($200000).l,a1				; base of SRAM
+
 		move.b	SRAM_Options(a1),(OptionsBits).w	; load options flags
+
 		move.b	SRAM_Chapter(a1),($FFFFFFA7).w		; load current chapter
+
 		movep.w	SRAM_Doors(a1),d0			; load...
-		move.w	d0,(Doors_Casual).w			; ...open doors bitsets
+		move.w	d0,(Doors_Casual).w			; ...open doors bitsets (casual and frantic)
+
 		movep.w	SRAM_Lives(a1),d0			; load...
 		move.w	d0,($FFFFFE12).w			; ...lives/deaths counter
+
 		movep.w	SRAM_Rings(a1),d0			; load...
 		move.w	d0,($FFFFFE20).w			; ...rings
+
 		movep.l	SRAM_Score(a1),d0			; load...
 		move.l	d0,($FFFFFE26).w			; ...score
+
 		move.b	SRAM_Complete(a1),($FFFFFF93).w		; load game beaten state
+
 		move.b	SRAM_Resume(a1),(ResumeFlag).w		; load resume flag
-		move.b	SRAM_BlackBars(a1),BlackBars.HandlerId	; load black bars handler ID
+
 		move.b	SRAM_MotionBlur(a1),d0			; load motion blur flag
 		andi.b	#1,d0					; mask it against the only bit we need
 		move.b	d0,(ScreenFuzz).w			; set motion blur flag
+
+		move.b	SRAM_BlackBars(a1),d0			; load black bars handler ID
+		andi.b	#2,d0					; mask it against the only bit we need
+		move.b	d0,(BlackBars.HandlerId).w		; set handler ID
 
 SRAMEnd:
 		move.b	#0,($A130F1).l				; disable SRAM
@@ -90,8 +102,8 @@ SRAM_Reset:
 		movep.l	d0,SRAM_Score(a1)			; clear score
 		move.b	d0,SRAM_Complete(a1)			; clear option flags
 		move.b	d0,SRAM_Resume(a1)			; clear resume flag
-		move.b	d0,SRAM_BlackBars(a1)			; clear black bars flag
 		move.b	d0,SRAM_MotionBlur(a1)			; clear motion blur flag
+		move.b	d0,SRAM_BlackBars(a1)			; clear black bars flag
 	
 		jsr	Options_SetDefaults			; reset default options
 		move.b	(OptionsBits).w,SRAM_Options(a1)	; ^
@@ -141,11 +153,12 @@ SRAM_SaveNow:
 		move.b	d0,SRAM_Complete(a1)			; backup option flags
 		move.b	(ResumeFlag).w,d0			; move resume flag to d0
 		move.b	d0,SRAM_Resume(a1)			; backup resume flag
-		move.b	BlackBars.HandlerId,d0			; move black bars flag to d0
-		move.b	d0,SRAM_BlackBars(a1)			; backup black bars flag
 		move.b	(ScreenFuzz).w,d0			; move screen fuzz to d0
 		andi.b	#1,d0					; mask it against the only bit we need
 		move.b	d0,SRAM_MotionBlur(a1)			; backup motion blur flag
+		move.b	BlackBars.HandlerId,d0			; move black bars flag to d0
+		andi.b	#2,d0					; mask it against the only bit we need
+		move.b	d0,SRAM_BlackBars(a1)			; backup black bars flag
 		move.l	(sp)+,d0				; restore d0
 
 SRAM_SaveNow_End:

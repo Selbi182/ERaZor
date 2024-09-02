@@ -47,7 +47,7 @@ DebugModeDefault = 1
 DebugSurviveNoRings = 1
 ; ------------------------------------------------------
 DoorsAlwaysOpen = 0
-LowBossHP = 0
+LowBossHP = 1
 ; ------------------------------------------------------
 TestDisplayDeleteBugs = 0
 ; ======================================================
@@ -265,7 +265,7 @@ GameClrRAM:	move.l	d7,(a6)+
 		bsr	VDPSetupGame
 		bsr	JoypadInit
 		if def(__MD_REPLAY__)=0
-			bsr.w	LoadSRAM
+			bsr.w	SRAM_Load
 		else
 			bsr.w	ResetGameProgress
 		endif
@@ -5868,6 +5868,14 @@ LevSz_ChkLamp:				; XREF: LevelSizeLoad
 		bra.w	loc_60D0
 ; ===========================================================================
 
+Check_JustFinishedFP:
+		btst	#6,(Doors_Casual).w		; has the player finished FP in casual?
+		beq.s	@end				; if not, branch
+		jsr	Check_BaseGameBeaten_Casual	; has the player beaten the base game in casual yet?
+		eori.b	#%00100,ccr			; invert Z flag for return value
+@end:		rts
+; ===========================================================================
+
 LevSz_StartLoc:				; XREF: LevelSizeLoad
 		move.w	($FFFFFE10).w,d0
 		
@@ -5882,14 +5890,20 @@ LevSz_StartLoc:				; XREF: LevelSizeLoad
 		; frantic Uberhub fast spawn
 		cmpi.w	#$400,($FFFFFE10).w	; is level SYZ?
 		bne.s 	@load			; if not, branch
-		frantic				; are we in frantic mode
-		beq.s	@load			; if not, branch
+
+		frantic				; are we in frantic mode?
+		bne.s	@frantic		; if yes, branch
+		bsr	Check_JustFinishedFP	; has the player just escaped FP for the first time?
+		bne.s	@altsloc		; if yes, give the casual players a taste of the nyoom
+		bra.s	@load			; if not, branch
+
+	@frantic:
 		tst.w	(Doors_Casual).w	; have any levels been beaten yet?
 		beq.s	@load			; if not, branch
 		tst.b	(PlacePlacePlace).w	; easter egg?
 		bne.s	@load			; look at the funny trophies
 
-@altsloc:
+	@altsloc:
 		addq.w	#1,d0			; use next level coordinates instead (unused anyway, has the alt coordinates)
 
 @load:
@@ -6806,11 +6820,14 @@ Resize_SYZ1:
 		cmpi.w	#$1A10,($FFFFD008).w	; are we at the end ring?
 		bhs.s	@noend			; if not, branch
 		move.w	#0,($FFFFF726).w	; boundary bottom in end section
+		andi.w	#$00FF,($FFFFF704).w	; dirty fix for a rare glitch :V
 		rts
 
 @noend:
 		tst.b	($FFFFFFA5).w		; entered the blackout area?
 		beq.s	@noblackout		; if not, branch
+		cmpi.w	#$1100,($FFFFD008).w	; in the Real Place trap?
+		blo.s	@noblackout		; if yes, branch
 		cmpi.w	#$180,($FFFFD00C).w	; has Sonic left the tube again?
 		bhs.s	@noblackout		; if yes, branch
 		move.w	#$A8,($FFFFF726).w	; boundary bottom in blackout section
@@ -6833,7 +6850,7 @@ Resize_SYZ1:
 		blo.s	@uberhubend		; if not, branch
 		cmpi.w	#$700,($FFFFD008).w	; make sure Sonic is in the right area
 		blo.s	@uberhubend		; if before that, branch
-		move.w	#$450,d0		; set boundary bottom for tubes
+		move.w	#$418,d0		; set boundary bottom for tubes
 		move.w	d0,($FFFFF726).w	; target boundary
 		move.w	d0,($FFFFF72E).w	; current boundary
 
@@ -12657,7 +12674,7 @@ Obj4B_MoveOffScreen:			; XREF: Obj4B_Index
 		addi.w	#$20,obVelY(a0)		; move ring down
 		jsr	SpeedToPos		; update position
 		move.w	obY(a0),d0		; get current Y pos
-		cmpi.w	#$200,d0		; did ring move below $200?
+		cmpi.w	#$300,d0		; did ring move below $300?
 		bhi.w	Obj4B_Exit		; if yes, start Blackout Challenge
 		rts				; wait until ring is off-screen
 
@@ -27060,6 +27077,12 @@ Obj01_ChkGoggles:
 		bset	#7,obGfx(a0)	; make sonic being on the foreground
 		
 Obj01_ChkShoes:
+;		btst	#0,(ScreenFuzz).w	; is screen fuzz option set?
+;		beq.s	@nofuzz			; if not, branch
+;		move.b	#1,($FFFFFE2E).w	; permanently enable speed shoes
+;		move.w	#$FF,$34(a0)		; ''
+;@nofuzz:
+
 		tst.b	($FFFFFE2E).w	; does Sonic have speed	shoes?
 		beq.s	Obj01_ExitChk	; if not, branch
 		move.w	#Sonic_TopSpeed_Shoes,($FFFFF760).w ; change Sonic's top speed
@@ -28973,8 +28996,8 @@ Sonic_Jump:				; XREF: Obj01_MdNormal; Obj01_MdRoll
 		move.b	obAngle(a0),d0
 		addi.b	#$80,d0
 		bsr	sub_14D48
-		cmpi.w	#6,d1
-		blt.w	locret_1348E
+	;	cmpi.w	#6,d1		; disabled to allow jumping in narrow spaces
+	;	blt.w	locret_1348E
 		move.w	#$680,d2
 		btst	#6,obStatus(a0)
 		beq.s	loc_1341C

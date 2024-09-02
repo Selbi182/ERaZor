@@ -725,11 +725,13 @@ Check_AllLevelsBeaten_Current:
 		rts
 
 Check_AllLevelsBeaten_Casual:
+		andi.b	#Doors_All,(Doors_Casual).w	; mask against valid door bitsets
 		cmpi.b	#Doors_All,(Doors_Casual).w	; check if all doors have been unlocked (casual)
 		eori.b	#%00100,ccr			; invert Z flag
 		rts
 
 Check_AllLevelsBeaten_Frantic:
+		andi.b	#Doors_All,(Doors_Frantic).w	; mask against valid door bitsets
 		cmpi.b	#Doors_All,(Doors_Frantic).w	; check if all doors have been unlocked (frantic)
 		eori.b	#%00100,ccr			; invert Z flag
 		rts

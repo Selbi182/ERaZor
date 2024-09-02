@@ -483,6 +483,9 @@ BlackBars_Selbi:
 ; ---------------------------------------------------------------------------
 
 BlackBars_Intro:
+		tst.b	($FFFFFFE9).w			; is fade out in progress?
+		bne.w	BlackBars_DontShow		; if yes, disable to avoid visual quirks
+
 		tst.b	($FFFFFFB7).w			; has chase sequence started?
 		bne.s	@chase				; if yes, branch
 
@@ -4262,28 +4265,30 @@ byte_3FCF:	dc.b 0			; XREF: LZWaterSlides
 ; (This routine is called from within DeformBgLayer)
 ; ---------------------------------------------------------------------------
 CamShake_DefaultIntensity = 7	; should be 2^n - 1
+CamShake_PhotosensitiveIntensity = 1
 ; ---------------------------------------------------------------------------
 
 GenerateCameraShake:
 		tst.b	(CameraShake).w			; is camera shake currently active?
-		beq.s	@nocamshake			; if not, nothing to do
-		btst	#7,(OptionsBits).w		; is photosensitive mode enabled?
-		beq.s	@docamshake			; if not, do cam shake
-		clr.b	(CameraShake).w			; clear camera shake counter immediately
-@nocamshake:	rts					; don't do any camera shake
-; ---------------------------------------------------------------------------
+		beq.w	@end				; if not, nothing to do
 
-@docamshake:
 		moveq	#0,d0				; clear d0
 		moveq	#0,d1				; clear d1
 		move.b	(CurrentRandomNumber).w,d0	; get a random number (will be used for X shake)
 		move.b	(CurrentRandomNumber+1).w,d1	; get a different random number (will be used for Y shake)
 
+		btst	#7,(OptionsBits).w		; is photosensitive mode enabled?
+		bne.s	@photosensitive			; if not, branch
 		moveq	#0,d2				; clear d2
 		move.b	(CameraShake_Intensity).w,d2	; get currently set camera shake intensity
 		bhi.s	@intensityset			; if it's already set, branch
 		moveq	#CamShake_DefaultIntensity,d2	; if it's 0, set it to the default
+		bra.s	@updateram
+	@photosensitive:
+		moveq	#CamShake_PhotosensitiveIntensity,d2 ; use reduced intensity
+	@updateram:
 		move.b	d2,(CameraShake_Intensity).w	; update intensity in RAM
+
 @intensityset:
 		moveq	#0,d3				; clear d3
 		move.b	d2,d3				; copy intensity
@@ -4307,7 +4312,7 @@ GenerateCameraShake:
 @remember:
 		move.w	d0,(CameraShake_XOffset).w	; remember X shake offset for later
 		move.w	d1,(CameraShake_YOffset).w	; remember Y shake offset for later
-		rts
+@end:		rts
 ; ===========================================================================
 
 ; called after level and sprites rendering is done
@@ -6826,11 +6831,12 @@ Resize_SYZ1:
 @noend:
 		tst.b	($FFFFFFA5).w		; entered the blackout area?
 		beq.s	@noblackout		; if not, branch
-		cmpi.w	#$1100,($FFFFD008).w	; in the Real Place trap?
+		cmpi.w	#$1050,($FFFFD008).w	; in the Real Place trap?
 		blo.s	@noblackout		; if yes, branch
 		cmpi.w	#$180,($FFFFD00C).w	; has Sonic left the tube again?
 		bhs.s	@noblackout		; if yes, branch
 		move.w	#$A8,($FFFFF726).w	; boundary bottom in blackout section
+		move.w	#$F9A,($FFFFF728).w	; left boundary in blackout section
 		rts
 
 @noblackout:
@@ -13824,6 +13830,7 @@ BossDefeated2:
 		lsr.w	#8,d0
 		lsr.b	#3,d0
 		add.w	d0,obY(a1)
+		ori.b	#10,(CameraShake).w		; camera shaking
 
 locret_178A22:
 		rts	
@@ -25952,6 +25959,14 @@ Obj03_Setup:
 		subi.w	#$C,obY(a0)		; adjust Y pos
 		move.w	#($6200/$20),obGfx(a0)	; set art, use first palette line
 
+		tst.b	($FFFFFFA5).w		; entered the blackout area?
+		beq.s	@0			; if not, branch
+		cmpi.b	#4,obSubtype(a0)	; is this the sign for Unreal?
+		bne.s	@0
+		moveq	#$F,d0			; use REAL text instead
+		move.b	d0,obFrame(a0)
+		move.b	d0,obSubtype(a0)
+@0:
 		cmpi.w	#$501,($FFFFFE10).w	; is this the tutorial?
 		bne.s	@nottut			; if not, branch
 		move.w	#($7300/$20),obGfx(a0)	; use alternate mappings
@@ -26007,8 +26022,7 @@ Obj03_Display:
 		sub.w	d1,d0
 		cmpi.w	#$280,d0
 		bhi.w	DeleteObject		; if object is not on screen, delete it
-		bsr	DisplaySprite		; display sprite
-		rts				; return
+		bra.w	DisplaySprite		; display sprite
 ; ===========================================================================
 
 Obj03_BackgroundColor:
@@ -26733,8 +26747,9 @@ Obj01_Cutscenes:				; Intro of GHZ1
 		tst.b	($FFFFFFBB).w			; has flag "camera reached $0B00" been set?
 		bne.s	Obj01_Not0B00			; if yes, branch
 		bclr	#0,obStatus(a0)
-		move.b	#1,($FFFFF7CC).w		; lock controls
-		bset	#1,($FFFFF602).w		; force down press
+		move.b	#1,($FFFFF7CC).w		; lock controls	
+	;	bset	#1,($FFFFF602).w		; force down press
+		move.w	#$200,($FFFFF602).w		; force down press and nothing else
 		cmpi.w	#$0B00,($FFFFF700).w		; has the camera reached $0B00 on x-axis?
 		bcs.s	Obj01_Not0B00			; if not, branch
 		move.b	#1,($FFFFFFBB).w		; set this flag
@@ -42106,9 +42121,9 @@ Obj09_ChkEmer:
 		cmpi.b	#4,($FFFFFE57).w ; do you have all the emeralds?
 		beq.s	Emershit
 		cmpi.w	#$401,($FFFFFE10).w	; is this Unreal Place?
-		bne.s	Obj09_EmerNotAll
+		bne.w	Obj09_EmerNotAll
 		cmpi.b	#2,($FFFFFE57).w ; do you have all the emeralds?
-		bne.s	Obj09_EmerNotAll
+		bne.w	Obj09_EmerNotAll
 
 		; load part 2 of the blackout challenge
 		tst.b	(Blackout).w		; is this the blackout blackout special stage?
@@ -42124,14 +42139,18 @@ Obj09_ChkEmer:
 		jsr	SS_RemoveAllCheckpoints
 @0:		movem.l	(sp)+,a0-a2
 
-		movem.l	d7/a1-a3,-(sp)
+		movem.l	d7/a0-a3,-(sp)
 		tst.b	(PlacePlacePlace).w
 		bne.s	@1
 		moveq	#3,d0			; brighten up this place by...
-		jsr	PalLoad2		; ...loading Sonic's palette		
+		jsr	PalLoad2		; ...loading Sonic's palette
+		jsr	Pal_MakeBlackWhite	; turn palette black and white
+		jsr 	Pal_FadeOut 	; i guess this works????
+		jsr 	Pal_FadeOut 	; i guess this works????
+
 @1:
 		jsr	WhiteFlash2
-		movem.l	(sp)+,d7/a1-a3
+		movem.l	(sp)+,d7/a0-a3
 
 		move.b	#$DD,d0
 		jsr	(PlaySound).l
@@ -42549,10 +42568,15 @@ Obj09_GoalNotSolid:
 
 		btst	#7,(OptionsBits).w	; is photosensitive mode enabled?
 		bne.s	@noflash		; if yes, no flash
-	;	movem.l	d0-a7,-(sp)		; backup to stack
-	;	jsr	Pal_MakeWhite		; make white flash
-	;	movem.l (sp)+,d0-a7		; restore from stack
+		movem.l	d7/a1-a3,-(sp)
+		tst.b	(Blackout).w		; is this the blackout blackout special stage?
+		beq.s	@0			; if not, branch
+		moveq	#3,d0			; brighten up this place by...
+		jsr	PalLoad2		; ...loading Sonic's palette
+@0:
 		jsr	WhiteFlash2
+		movem.l	(sp)+,d7/a1-a3
+		
 @noflash:
 		move.b	#2,($FFFFFFD6).w	; make sure it doesn't happen again
 

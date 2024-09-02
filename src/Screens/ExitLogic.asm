@@ -215,6 +215,7 @@ Exit_SoundTestScreen:
 Exit_ChapterScreen:
 		cmpi.w	#$001,($FFFFFE10).w	; is this the intro cutscene?
 		beq.w	Exit_OneHotDay		; if yes, start intro cutscene (and music)
+		move.w	#$000,($FFFFFB02).w	; keep a specific color black to avoid flicker
 		bra.w	StartLevel		; otherwise, start level set in FE10 normally
 ; ===========================================================================
 
@@ -223,8 +224,8 @@ Exit_StoryScreen:
 		cmpi.b	#8,d0			; is this the ending sequence?
 		beq.s	@startending		; if yes, branch
 		cmpi.b	#9,d0			; is this the end of the blackout challenge?
-		beq.s	@postblackout	; if yes, branch
-		
+		beq.s	@postblackout		; if yes, branch
+
 		; regular story screen (including intro)
 		btst	#2,(OptionsBits).w	; is Skip Uberhub Place enabled?
 		bne.w	SkipUberhub		; if yes, automatically go to the next level in order

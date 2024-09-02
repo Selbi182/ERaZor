@@ -18,6 +18,7 @@ CME_56D96750:
 	dc.w	CME_56D96750_C-CME_56D96750
 	dc.w	CME_56D96750_D-CME_56D96750
 	dc.w	CME_56D96750_E-CME_56D96750
+	dc.w	CME_56D96750_F-CME_56D96750
 
 CME_56D96750_0:
 	dc.b	10
@@ -212,17 +213,17 @@ CME_56D96750_4:
 	dc.b	-8
 	dc.b	$05
 	dc.w	$0036
-	dc.b	-16
+	dc.b	-15
 
 	dc.b	-8
 	dc.b	$05
 	dc.w	$0010
-	dc.b	0
+	dc.b	2
 
 	dc.b	-8
 	dc.b	$05
 	dc.w	$0000
-	dc.b	16
+	dc.b	18
 
 	dc.b	-8
 	dc.b	$05
@@ -688,5 +689,28 @@ CME_56D96750_E:
 	dc.b	$05
 	dc.w	$0032
 	dc.b	14
+
+CME_56D96750_F:
+	dc.b	4
+
+	dc.b	-4
+	dc.b	$05
+	dc.w	$0036
+	dc.b	4
+
+	dc.b	-4
+	dc.b	$05
+	dc.w	$0010
+	dc.b	21
+
+	dc.b	-4
+	dc.b	$05
+	dc.w	$0000
+	dc.b	38
+
+	dc.b	-4
+	dc.b	$05
+	dc.w	$0026
+	dc.b	52
 
 	even

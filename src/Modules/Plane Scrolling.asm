@@ -1148,7 +1148,7 @@ S_H_ExtendedCamera:
 		btst	#0,(OptionsBits).w	; is extended camera enabled?
 		beq.w	S_H_NoExtendedCam	; if not, you're lame and old-fashioned but k
 
-		cmpi.b	#3,($FFFFFE10).w
+		cmpi.b	#3,($FFFFFE10).w	; are we in SLZ?
 		bne.s	S_H_BuzzIgnore		; if not, branch
 		tst.b	($FFFFFFA9).w		; is Sonic fighting against the walking bomb?
 		bne.w	S_H_ResetCamera		; if yes, branch	
@@ -1156,8 +1156,8 @@ S_H_ExtendedCamera:
 		bne.w	S_H_ResetCamera		; if yes, branch
 
 S_H_BuzzIgnore:
-		tst.b	($FFFFF7CD).w
-		bne.s	S_H_ResetCamera
+		tst.b	($FFFFF7CD).w		; has Sonic jumped into a giant ring?
+		bne.s	S_H_ResetCamera		; if yes, branch
 
 		cmpi.w	#$501,($FFFFFE10).w
 		bne.s	@cont
@@ -1170,8 +1170,9 @@ S_H_BuzzIgnore:
 		bra.s	S_H_ResetCamera
 
 @cont:
-		tst.b	($FFFFFFAF).w		; has a flag been set to do this? (Peelout / Spindash)
+		tst.b	($FFFFFFAF).w		; is Spindash or Peelout being charged up?
 		bne.s	S_H_PeeloutSpindash	; if yes, branch
+
 		move.w	($FFFFD014).w,d2	; load sonic's ground speed to d2
 		btst	#1,($FFFFD022).w	; is sonic in the air?
 		beq.s	S_H_ChkDirection	; if not, branch
@@ -1218,14 +1219,14 @@ S_H_FastEnough_Left:
 
 S_H_ResetCamera:
 		tst.w	($FFFFFFCE).w		; is camera moving counter empty?
-		beq.s	S_H_CameraMove_End	; if yes, branch to end
+		beq.s	S_H_NoExtendedCam	; if yes, branch to end
 		bpl.s	S_H_ResetCamera_Left	; is it positive? if yes, branch to code for left moving
 		add.w	#CamSpeed,($FFFFFFCE).w	; otherwise make it move to the right again
 		bra.s	S_H_CameraMove_End	; skip to end
 ; ===========================================================================
 
 S_H_ResetCamera_Left:
-		sub.w	#CamSpeed,($FFFFFFCE).w	; make camera move to the elft again
+		sub.w	#CamSpeed,($FFFFFFCE).w	; make camera move to the left again
 
 S_H_CameraMove_End:
 		add.w	($FFFFFFCE).w,d0	; add counter to normal camera location

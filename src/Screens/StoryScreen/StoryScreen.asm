@@ -41,7 +41,6 @@ StoryTextScreen:				; XREF: GameModeArray
 		jsr	PLC_ClearQueue
 		jsr	Pal_FadeFrom
 		VBlank_SetMusicOnly
-		display_disable
 		
 		lea	($C00004).l,a6
 		move.w	#$8004,(a6)
@@ -107,6 +106,8 @@ STS_ClrScroll:	move.l	d0,(a1)+
 		move.w	#$3FF,d1
 STS_ClrVram:	move.l	d0,(a6)
 		dbf	d1,STS_ClrVram		; fill VRAM with 0
+
+		move.w	#0,BlackBars.Height	; make sure black bars are fully gone
 		
 		display_enable
 		VBlank_UnsetMusicOnly

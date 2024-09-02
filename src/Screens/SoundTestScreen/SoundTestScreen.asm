@@ -8,8 +8,8 @@
 
 SoundTest_Visualizer_VRAM:	equ	$2000
 SoundTest_Visualizer_ScreenPos:	equ	$C000
-SoundTest_Visualizer_Width:	equ	36	; tiles
-SoundTest_Visualizer_Height:	equ	18	; tiles
+SoundTest_Visualizer_Width:	equ	35	; tiles
+SoundTest_Visualizer_Height:	equ	15	; tiles
 
 SoundTest_RAM:	equ	$FFFF8000
 
@@ -61,29 +61,15 @@ SoundTestScreen:
 	SoundTest_ResetVRAMBufferPool
 
 	; 
-	lea	($C00000).l, a6
+	lea	VDP_Data, a6
 	move.l	#$6E000002, 4(a6)
 	lea	(Options_TextArt).l, a5
 	move.w	#$59F, d1		; Original: $28F
 @LoadTextArt:	move.w	(a5)+, (a6)
 	dbf	d1, @LoadTextArt ; load uncompressed text patterns
 
-	vram	$E000, 4(a6)
-	jsr	BackgroundEffects_Setup2
-
+	; Palette init
 	jsr	SoundTest_Visualizer_Init
-
-	bsr	Options_LoadPal
-	move.b	#9, ($FFFFFF9E).w ; BG pal
-	move.w	#$A0A, (BGThemeColor).w
-		
-	clr.b	($FFFFFF95).w
-	clr.w	($FFFFFF96).w
-	clr.b	($FFFFFF98).w
-	clr.w	($FFFFFFB8).w
-	move.w	#21, ($FFFFFF9A).w
-	move.b	#$81, ($FFFFFF84).w
-
 	jsr	ObjectsLoad
 	jsr	BuildSprites
 
@@ -107,7 +93,6 @@ SoundTest_MainLoop:
 
 	jsr	SoundTest_Visualizer_Update
 
-	jsr	BackgroundEffects_PalCycle
 	bra	SoundTest_MainLoop
 
 ; ---------------------------------------------------------------------------
@@ -137,6 +122,14 @@ SoundTest_Exit:
 ; ---------------------------------------------------------------------------
 
 SoundTest_Visualizer_Init:
+
+	; Palette
+	lea	Pal_Target, a0
+	lea 	@Palette(pc), a1
+	
+	rept 16/2
+		move.l	(a1)+, (a0)+
+	endr
 
 	; Init variables
 	moveq	#0, d0
@@ -186,11 +179,11 @@ SoundTest_Visualizer_Init:
 	SoundTest_AllocateInVRAMBufferPool @map_buffer_start, #@map_buffer_size
 	lea	(@map_buffer_start), @map_buffer
 
-	@loop_unroll: = 2
+	@loop_unroll: = 1
 	@loop_bytes_per_iteration: = @loop_unroll*4
 
-	if (@map_buffer_size % @loop_bytes_per_iteration)
-		inform 2, "@map_buffer_size isn't divisible by @loop_bytes_per_iteration"
+	if (@map_buffer_size % 2)
+		inform 2, "@map_buffer_size isn't divisible by 2"
 	endif
 
 	move.w	#@map_buffer_size/@loop_bytes_per_iteration-1, @loop_cnt
@@ -201,6 +194,11 @@ SoundTest_Visualizer_Init:
 			add.l	@map_inc, @map_data
 		endr
 		dbf	@loop_cnt, @generate_map_loop
+
+		if ((@map_buffer_size % @loop_bytes_per_iteration) = 2)
+			swap	@map_data
+			move.w	@map_data, (@map_buffer)+
+		endif
 
 	if def(__DEBUG__)
 		sub.w	@map_buffer_start, @map_buffer
@@ -257,7 +255,9 @@ SoundTest_Visualizer_Init:
 	addq.w	#6, sp
 	rts
 
-
+@Palette:
+	dc.w	$0000, $0222, $0444, $0666, $0888, $0AAA, $0CCC, $0EEE
+	dc.w	$0042, $0262, $0284, $04A6, $06A6, $06C8, $08C8, $08EA
 
 ; ---------------------------------------------------------------------------
 ; Updates the visualizer
@@ -284,13 +284,19 @@ SoundTest_Visualizer_Update:
 	lea	(@pixel_buffer), @pixel_buffer_half1
 	lea	@pixel_buffer_half_size(@pixel_buffer), @pixel_buffer_half2
 
-	moveq	#0, @pixel_data_half1
-	moveq	#0, @pixel_data_half2
+	move.l	#$11111111, @pixel_data_half1
+	move.l	#$22222222, @pixel_data_half2
 
 	rept @pixel_buffer_size/8
 		move.l	@pixel_data_half1, (@pixel_buffer_half1)+
 		move.l	@pixel_data_half2, (@pixel_buffer_half2)+
 	endr
+	if (@pixel_buffer_size % 8) = 4
+		swap	@pixel_data_half1
+		move.w	@pixel_data_half1, (@pixel_buffer_half1)+
+		swap	@pixel_data_half2
+		move.w	@pixel_data_half2, (@pixel_buffer_half2)+
+	endif
 
 	; -----------------------------
 	; Render shapes on the buffer
@@ -359,9 +365,9 @@ SoundTest_Visualizer_Update:
 ;	$04	.l	Pixel data pointer
 ;
 ; PIXEL DATA FORMAT:
-;	$00	.w	NN: Number of pixels
+;	$00	.w	(NN) Number of pixels
 ;	$02	...	Raw pixel data, even positioning
-;	$02+NN/2...	Raw pixel data, odd positioning (shifted by 4 bits)
+;	$02+(NN+1)/2...	Raw pixel data, odd positioning (shifted by 4 bits)
 ; ---------------------------------------------------------------------------
 
 SoundTest_Visualizer_WritePixelsToPixelBuffer:
@@ -377,6 +383,7 @@ SoundTest_Visualizer_WritePixelsToPixelBuffer:
 	@pixel_data:		equr	a1
 	@buffer_offset_stream:	equr	a2
 	@pixel_buffer_ptr:	equr	a3
+
 
 	move.w	(@write_request)+, @xpos
 	movea.l	(@write_request)+, @pixel_data

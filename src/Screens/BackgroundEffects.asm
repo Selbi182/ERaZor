@@ -7,25 +7,27 @@
 BackgroundEffects_Setup:
 		VBlank_SetMusicOnly
 
-		lea	($C00000).l,a6
-		move.l	#$40200000,4(a6)
-		lea	(BGEffects_FuzzArt).l,a0
-		jsr	KosPlusMDec_VRAM
+		lea	VDP_Data, a6
+		vram	$C000, 4(a6)		; set VDP to VRAM and start at C000 (location of Plane A nametable)
 
-		vram	$C000,4(a6)		; set VDP to VRAM and start at C000 (location of Plane A nametable)
-		moveq	#0,d5			; clear d5
-		move.w	#(512*256/64)-1,d1	; do for all tiles in the 512x256 plane
-@column:
-		addi.w	#1,d5			; go to next tile
-		move.w	d5,(a6)			; dump map to VDP map slot
-		tst.b	d5			; did we reach tile $80?
-		bpl.s	@noreset		; if not, branch
-		moveq	#0,d5			; reset index
-@noreset:
-		dbf	d1,@column		; repeat til columns have dumped
+		move.l	#$00020002, d6
+		moveq	#$40*$20/$80-1, d1	; cover the entire 512x256 pixel plane (64x32 tiles, 128 tile steps)
+
+		@send128Tiles:
+			move.l	#$00010002, d5
+			rept	$80/2
+				move.l	d5, (a6)
+				add.l	d6, d5
+			endr
+			dbf	d1, @send128Tiles		; repeat til columns have dumped
+
+		vram	$20, 4(a6)
+		lea	BGEffects_FuzzArt, a0
+		jsr	KosPlusMDec_VRAM
 
 		VBlank_UnsetMusicOnly
 		rts
+
 ; ---------------------------------------------------------------------------
 
 ; must called every frame from the respective game mode's main loop

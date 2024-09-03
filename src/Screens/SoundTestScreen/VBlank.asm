@@ -36,6 +36,10 @@ SoundTest_VBlank:
 	move.w	#$8014, (a5)				; enable HInts
 	move.w	#$8A00, (a5)
 
+	vram	$FC00, (a5)
+	move.w	#(320-SoundTest_Visualizer_Width*8)/2, -4(a5)	; HScroll
+	move.w	#(320-SoundTest_Visualizer_Width*8)/2, -4(a5)	; HScroll
+
 	; Transfer pixel buffer if requested
 	move.w	SoundTest_VisualizerBufferPtr, d0	; do we have a pixel buffer to flush?
 	beq.s	@0					; if not, branch
@@ -50,9 +54,12 @@ SoundTest_VBlank:
 
 	; Note that music is only updated during non-lag frames to keep piano consistent
 	jsr	UpdateSoundDriver
+
+@Quit:
+	; TODO: Action
 	movem.l	(sp)+, d0-a6
 	rte
 
 @LagFrame:
-	; TODO: Reg backup
-	illegal
+	KDebug.WriteLine "LAG!"
+	bra	@Quit

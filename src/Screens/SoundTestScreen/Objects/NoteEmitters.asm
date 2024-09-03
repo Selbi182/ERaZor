@@ -7,6 +7,16 @@ SoundTest_Obj_NoteEmitter:
 
 @noteIndexPrepared:	equ	$34
 
+	@index: = 6
+	rept 6+3-1
+		SoundTest_CreateChildObject #@Wait
+		move.w	#@index, @noteIndexPrepared(a1)
+
+		@index: = @index + 6*3
+	endr
+
+	move.l	#@Wait, $3C(a0)
+
 @Wait:
 ;	add.b	#$100/16, $30(a0)
 ;	bcc	@ret

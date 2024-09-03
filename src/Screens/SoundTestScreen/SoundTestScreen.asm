@@ -21,7 +21,7 @@ SoundTestScreen:
 	move.w	#$9011, (a6)		; set plane size to 64x64
 	move.w	#$9200, (a6)
 	move.w	#$8B00, (a6)		; VScroll: full, HScroll: full
-	move.w	#$8720, (a6)
+	move.w	#$8710, (a6)		; WARNING! Not appplied! ####
 	clr.b	($FFFFF64E).w
 	jsr	ClearScreen
 
@@ -117,7 +117,9 @@ SoundTestScreen:
 	moveq	#$FFFFFF81, d0
 	jsr	PlaySound_Special
 
+
 	move.w	#SoundTest_VBlank, VBlankSubW
+	move.w	#$8710, VDP_Ctrl	; ### TODO: Move this palette line!
 
 ; ---------------------------------------------------------------------------
 SoundTest_MainLoop:
@@ -162,35 +164,112 @@ SoundTest_VDeform_Init:
 	move.w	#SoundTest_VScrollBuffer_A, SoundTest_ActiveVScrollBuffer
 
 SoundTest_VDeform_Update:
+
+	@vscroll_buffer:	equr	a0
+	@distort_stream:	equr	a1
+	@var0:			equr	d0
+	@var1:			equr	d1
+	@var2:			equr	d2
+	@vscroll_with_plane_a:	equr	d3
+	@vscroll_with_plane_c:	equr	d4
+
 	; ### buffer swap
-	lea	SoundTest_VScrollBuffer_A, a0 ; ###
+	lea	SoundTest_VScrollBuffer_A,  @vscroll_buffer ; ###
+	lea	@WobbleData, @distort_stream ; ###
 
-	addq.w	#1, CamYPos2
-	move.w	CamYPos2, d1
-	andi.w	#$FF, d1
+	moveq	#0, @vscroll_with_plane_a
+	swap	@vscroll_with_plane_a
 
-	move.w	SoundTest_VisualizerPos, d2
-	and.w	#$7F, d2
-	add.w	#$100-40, d2
+	moveq	#$7F, @vscroll_with_plane_c
+	and.w	SoundTest_VisualizerPos, @vscroll_with_plane_c
+	add.w	#$100-40, @vscroll_with_plane_c
+	swap	@vscroll_with_plane_c
+
+	addi.l	#$8000, CamYPos2
+	move.w	CamYPos2, @var0
+	andi.w	#$FF, @var0
+
+	addq.w	#1, CamYPos3
+	move.w	#$FF, @var1
+	and.w	CamYPos3, @var1
+	add.w	@var1, @var1
+	adda.w	@var1, @distort_stream
 
 	@scanline: = 0
-	rept 224/2
-		if (@scanline > 40) & (@scanline < (40 + 16*8))
-			move.w	d2, (a0)+		; Plane A
-			move.w	d1, (a0)+		; Plane B
-			move.w	d2, (a0)+		; Plane A
-			move.w	#$100, (a0)+		; Plane B
+	rept 224
+		if @scanline < 128
+			moveq	#@scanline, @var1
 		else
-			move.w	#0, (a0)+		; Plane A
-			move.w	d1, (a0)+		; Plane B
-			move.w	#0, (a0)+		; Plane A
-			move.w	#0, (a0)+		; Plane B
+			moveq	#$FFFFFF00|@scanline, @var1
 		endif
 
-		@scanline: = @scanline + 2
+		if (@scanline > 40) & (@scanline < (40 + 16*8))
+			move.w	@var0, @vscroll_with_plane_c
+			move.w	(@distort_stream)+, @var2
+			lsl.w	#1, @var2
+			add.w	@var2, @vscroll_with_plane_c
+			bpl.s	@scanline_\#@scanline\_0
+			add.w	#$100, @vscroll_with_plane_c
+		@scanline_\#@scanline\_0:
+			add.b	@vscroll_with_plane_c, @var1
+			bcs.s	@scanline_\#@scanline\_ok
+			add.w	#$100, @vscroll_with_plane_c
+		@scanline_\#@scanline\_ok:
+			move.l	@vscroll_with_plane_c, (@vscroll_buffer)+
+		else
+			move.w	@var0, @vscroll_with_plane_a
+			move.w	(@distort_stream)+, @var2
+			lsl.w	#1, @var2
+			add.w	@var2, @vscroll_with_plane_a
+			bpl.s	@scanline_\#@scanline\_0
+			add.w	#$100, @vscroll_with_plane_a
+		@scanline_\#@scanline\_0:
+			add.b	@vscroll_with_plane_a, @var1
+			bcc.s	@scanline_\#@scanline\_ok
+			sub.w	#$100, @vscroll_with_plane_a
+		@scanline_\#@scanline\_ok:
+			move.l	@vscroll_with_plane_a, (@vscroll_buffer)+
+		endif
+
+		@scanline: = @scanline + 1
 	endr
 	rts
-	
+
+@WobbleData:
+        dc.w	0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2
+	dc.w	2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3
+	dc.w	3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2
+	dc.w	2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0
+	dc.w	0, -1, -1, -1, -1, -1, -2, -2, -2, -2, -2, -3, -3, -3, -3, -3
+	dc.w	-3, -3, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4
+	dc.w	-4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -3
+	dc.w	-3, -3, -3, -3, -3, -3, -2, -2, -2, -2, -2, -1, -1, -1, -1, -1
+	dc.w	0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2
+	dc.w	2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3
+	dc.w	3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2
+	dc.w	2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0
+	dc.w	0, -1, -1, -1, -1, -1, -2, -2, -2, -2, -2, -3, -3, -3, -3, -3
+	dc.w	-3, -3, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4
+	dc.w	-4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -3
+	dc.w	-3, -3, -3, -3, -3, -3, -2, -2, -2, -2, -2, -1, -1, -1, -1, -1
+
+	dc.w	0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2
+	dc.w	2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3
+	dc.w	3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2
+	dc.w	2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0
+	dc.w	0, -1, -1, -1, -1, -1, -2, -2, -2, -2, -2, -3, -3, -3, -3, -3
+	dc.w	-3, -3, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4
+	dc.w	-4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -3
+	dc.w	-3, -3, -3, -3, -3, -3, -2, -2, -2, -2, -2, -1, -1, -1, -1, -1
+	dc.w	0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2
+	dc.w	2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3
+	dc.w	3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2
+	dc.w	2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0
+	dc.w	0, -1, -1, -1, -1, -1, -2, -2, -2, -2, -2, -3, -3, -3, -3, -3
+	dc.w	-3, -3, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4
+	dc.w	-4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -3
+	dc.w	-3, -3, -3, -3, -3, -3, -2, -2, -2, -2, -2, -1, -1, -1, -1, -1
+
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Initializes the visualizer

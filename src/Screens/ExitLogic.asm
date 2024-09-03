@@ -360,10 +360,8 @@ Exit_EndingSequence:
 		bsr	Set_BaseGameDone	; you have beaten the base game, congrats (casual only or frantic with casual)
 
 	@checkblackoutteaser:
-		bsr	Check_BlackoutUnlocked	; is the blackout challenge even unlocked?
+		bsr	Check_BlackoutFirst	; has the player unlocked but not beaten the blackout challenge?
 		beq.s	@finish			; if not, branch
-		bsr	Check_BlackoutBeaten	; have you already beaten the blackout challenge?
-		bne.s	@finish			; if yes, branch
 		bset	#4,d1			; load Blackout Challenge teaser text
 
 @finish:
@@ -765,6 +763,12 @@ Check_BlackoutBeaten:
 Check_BlackoutUnlocked:
 		bra.s	Check_BaseGameBeaten_Both
 
+Check_BlackoutFirst:
+		bsr	Check_BlackoutUnlocked	; is the blackout challenge unlocked?
+		beq.s	@end			; if not, branch
+		bsr	Check_BlackoutBeaten	; have you already beaten the blackout challenge?		
+		eori.b	#%00100,ccr		; invert Z flag
+@end:		rts
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------

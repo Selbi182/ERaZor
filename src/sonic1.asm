@@ -4877,12 +4877,15 @@ SS_ClrNemRam:	move.l	d0,(a1)+
 ; ===========================================================================
 
 SS_RemoveAllCheckpoints:
+		moveq	#$41,d3			; set comparison item to goal blocks
+
+SS_RemoveAllCustom:
 		lea	($FF1020).l,a1		; load SS blocks into a1
 		moveq	#$3F,d1			; set normal loop
 @Loop2:		moveq	#$3F,d2			; set alternate loop
-@Loop:		cmpi.b	#$41,(a1)+		; is the item a	goal block?
+@Loop:		cmp.b	(a1)+,d3		; is the item a	matching block?
 		bne.s	@NoReplace		; if not, branch
-		move.b	#0,-1(a1)		; replace goal block with a solid block
+		move.b	#0,-1(a1)		; delete block
 @NoReplace:	dbf	d2,@Loop		; loop
 		lea	$40(a1),a1		; increase pointer by $40
 		dbf	d1,@Loop2		; loop
@@ -4938,20 +4941,6 @@ SS_MainLoop:
 		bhs.w	SS_WaitVBlank		; if yes, branch
 		bsr	PauseGame		; make the game pausing when pressing start
 
-		; reduce Sonic's vertical movement when holding ABC in Unreal Place
-		move.b	($FFFFF602).w,d0	; get held buttons
-		andi.w	#$70,d0			; is ABC held?
-		beq.s	@notc			; if not, branch
-		tst.b	($FFFFFFBF).w		; Unreal Place floating challenge enabled?
-		beq.s	@notc			; if not, branch
-		move.w	($FFFFFE0E).w,d0
-		andi.w	#7,d0
-		bne.s	@notc			; only every 8th frame
-		move.w	($FFFFD012).w,d0
-		asr.w	#1,d0
-		move.w	d0,($FFFFD012).w	; reduce Sonic's vertical speed
-@notc:
-
 		; SS hard part skipper
 		tst.b	($FFFFF603).w		; was anything pressed this frame?
 		beq.s	@nothps			; if not, branch
@@ -4989,6 +4978,9 @@ SS_MainLoop:
 		beq.s	SS_WaitVBlank		; if not, branch
 		btst	#4,(OptionsBits).w	; is nonstop inhuman enabled?
 		beq.s	SS_WaitVBlank		; if not, branch
+		moveq	#$25,d3			; set target to bumpers
+		jsr	SS_RemoveAllCustom	; remove all touched bumpers
+
 @touchgoal:	lea	($FFFFD000).w,a0	; load Sonic object
 		jsr	TouchGoalBlock		; respawn at last checkpoint
 
@@ -4997,10 +4989,42 @@ SS_WaitVBlank:
 		bsr	DelayProgram
 		move.w	($FFFFF604).w,($FFFFF602).w
 		jsr	ObjectsLoad
+
+		; motion blur for special stages
+		tst.b	(ScreenFuzz).w		; is screen fuzz enabled?
+		beq.s	@nomotionblur		; if not, branch
+	;	tst.b	(Blackout).w		; is this the blackout blackout special stage?
+	;	bne.s	@nomotionblur		; if yes, no motion blur
+
+		moveq	#0,d0
+		moveq	#0,d1
+		btst	#0,($FFFFFE0F).w
+		beq.s	@notodd
+		move.w	($FFFFD000+obInertia).w,d0
+		asr.w	#7,d0
+		move.w	($FFFFD000+obVelY).w,d1
+		asr.w	#7,d1
+
+@notodd
+		add.w	d0,($FFFFF700).w
+		add.w	d1,($FFFFF704).w
+		movem.l	d0-d1,-(sp)
+		bsr	@render
+		movem.l	(sp)+,d0-d1
+		sub.w	d0,($FFFFF700).w
+		sub.w	d1,($FFFFF704).w
+		bra.s	@checkblackout
+
+@render:
 		jsr	BuildSprites
 		jsr	SS_ShowLayout
-		bsr	SS_BGAnimate
+		jsr	SS_BGAnimate
+		rts
 
+@nomotionblur:
+		bsr	@render
+
+@checkblackout:
 		tst.b	(Blackout).w		; is this the blackout blackout special stage?
 		beq.s	@notblackout		; if not, branch
 		cmpi.b	#4,($FFFFD024).w	; is special stage exiting routine being run?
@@ -34401,6 +34425,14 @@ Obj7D_SoundStopper:
 		move.b	#1,$30(a1)		; turn the door red
 		move.b	#1,($FFFFFFA5).w	; move HUD off screen
 		bset	#1,(ScreenFuzz).w	; enable temporary screen fuzz
+
+		jsr	Check_BlackoutFirst	; is this the first attempt at the blackout challenge?
+		beq.s	@del			; if not, branch
+		bclr	#0,(ScreenFuzz).w	; disable permanent screen fuzz
+		bclr	#3,(OptionsBits).w	; disable cinematic HUD
+		bclr	#6,(OptionsBits).w	; disable piss filter
+
+@del:
 		jmp	DeleteObject
 
 @end:
@@ -40608,8 +40640,8 @@ SS_ShowLayout:				; XREF: SpecialStage
 		bsr	SS_AniItems
 		move.w	d5,-(sp)
 		lea	($FFFF8000).w,a1
-		move.b	($FFFFF780).w,d0
-	;	andi.b	#$FC,d0
+		move.b	($FFFFF780).w,d0	; get current rotation
+	;	andi.b	#$FC,d0			; original smoothing used in S1
 		jsr	(CalcSine).l
 		move.w	d0,d4
 		move.w	d1,d5
@@ -41577,22 +41609,7 @@ Obj09_ChkRight:
 		jsr	obj09_MoveRight
 
 loc_1BA78:
-		; Unreal Place Sonic movement logic
-		tst.b	($FFFFFFBF).w			; is unreal challenge enabled?
-		beq.s	@unrealend			; if not, branch
-		cmpi.b	#1,($FFFFFFBF).w		; are we going up?
-		bne.s	@checkdown			; if not, branch
-		cmpi.w	#-Unreal_Speed,obVelY(a0)	; did we reach the max up speed?
-		bmi.s	@unrealend			; if yes, branch
-		subq.w	#Unreal_Accel,obVelY(a0)	; increase up speed
-		bra.s	@unrealend			; branch
-@checkdown:
-		cmpi.b	#2,($FFFFFFBF).w		; are we going down?
-		bne.s	@unrealend			; if not, branch
-		cmpi.w	#Unreal_Speed,obVelY(a0)	; did we reach the max down speed?
-		bhi.s	@unrealend			; if yes, branch
-		addq.w	#Unreal_Accel,obVelY(a0)	; increase down speed
-@unrealend:
+		bsr	UnrealPlace
 
 		move.b	($FFFFF602).w,d0
 		andi.b	#$C,d0
@@ -41981,6 +41998,46 @@ loc_1BCD4:
 		bset	#1,obStatus(a0)
 		rts	
 ; End of function Obj09_Fall
+; ===========================================================================
+
+UnrealPlace:	; Unreal Place Sonic movement logic
+		tst.b	($FFFFFFBF).w			; is unreal challenge enabled?
+		beq.s	@end				; if not, branch
+
+		move.w	#Unreal_Speed,d1		; get default target max speed
+
+		btst	#4,($FFFFF602).w		; is B held?
+		beq.s	@notb				; if not, branch
+		asr.w	#1,d1				; halve max target speed
+		bra.s	@notc				; ignore C press
+@notb:
+		btst	#5,($FFFFF602).w		; is C held?
+		beq.s	@notc				; if not, branch
+		add.w	d1,d1				; double max target speed
+@notc:
+
+		move.w	obVelY(a0),d0			; get Sonic's current Y velocity
+		cmpi.b	#2,($FFFFFFBF).w		; are we going down?
+		beq.s	@down				; if yes, branch
+		neg.w	d1				; negate target speed
+		cmp.w	d1,d0				; did we reach the max up speed?
+		bmi.s	@accdown			; if yes, branch
+@accup:
+		subq.w	#Unreal_Accel,d0		; increase up speed
+		bra.s	@unrealend			; branch
+
+@down:
+		cmp.w	d1,d0				; did we reach the max down speed?
+		bhi.s	@accup				; if yes, branch
+@accdown:
+		addq.w	#Unreal_Accel,d0		; increase down speed
+
+@unrealend:
+		move.w	d0,obVelY(a0)			; set final Y velocity
+
+@end:
+		rts
+; ===========================================================================
 
 
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||

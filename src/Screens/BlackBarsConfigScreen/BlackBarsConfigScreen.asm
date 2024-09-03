@@ -122,7 +122,7 @@ BlackBarsConfigScreen:
 	andi.b	#A|B|C|Start,d0
 	beq.s	@MainLoop
 	move.b	#1,BlackBarsConfig_Exiting	; set exiting flag
-	bsr	BlackBarsConfigScreen_RedrawUI	; redraw one last time
+	move.l	#BlackBarsConfigScreen_RedrawUI, VBlankCallback	; redraw one last time
 ; ---------------------------------------------------------------
 
 @exiting:

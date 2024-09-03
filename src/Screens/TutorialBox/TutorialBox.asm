@@ -1354,15 +1354,14 @@ Hint_End_CinematicUnlock:
 
 ;		 --------------------
 Hint_End_MotionBlurUnlock:
-		boxtxt	"r FOR RAPID"
+		boxtxt	"r FOR RADICAL"
 		boxtxt_line
 		boxtxt	"YOU HAVE UNLOCKED"
-		boxtxt	"motion blur!"
+		boxtxt	"screen flak!"
 		boxtxt_pause
-		boxtxt	"NYOOOOOOOOOOOOOOM!!!"
-		dc.b	_pause
-		boxtxt	"YEAH, I GOT NOTHING"
-		boxtxt	"BETTER. SORRY."
+		boxtxt	"OR, AS THE MOVIE"
+		boxtxt	"INDUSTRY WOULD SAY,"
+		boxtxt	"DEFINITELY HD!"
 		boxtxt_end
 
 ;		 --------------------

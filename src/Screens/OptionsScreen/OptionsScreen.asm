@@ -38,8 +38,12 @@ Options_RedrawCurrentItem:	rs.b	1
 ;  bit 3 = Cinematic Mode (black bars)
 ;  bit 4 = Nonstop Inhuman Mode
 ;  bit 5 = Gamplay Style (0 - Casual Mode // 1 - Frantic Mode)
-;  bit 6 = Cinematic Mode (piss filter)
+;  bit 6 = [unused]
 ;  bit 7 = Photosensitive Mode
+; ---------------------------------------------------------------------------
+; Screen Effects are kept in a separate address: $FFFFFF91
+; bit 0 = piss filter
+; bit 1 = motion blur
 ; ---------------------------------------------------------------------------
 ; Default options when starting the game for the first time
 ; (Casual Mode, Extended Camera)
@@ -181,6 +185,7 @@ Options_InitState:
 
 Options_SetDefaults:
 		move.b	#DefaultOptions,(OptionsBits).w	; load default options
+		clr.b	(ScreenFuzz).w
 		rts
 
 ; ---------------------------------------------------------------------------

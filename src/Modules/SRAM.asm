@@ -27,8 +27,8 @@ SRAM_Rings	= 4 + SRAM_Lives ; 2 bytes
 SRAM_Score	= 4 + SRAM_Rings ; 4 bytes
 SRAM_Complete	= 8 + SRAM_Score
 SRAM_Resume	= 2 + SRAM_Complete
-SRAM_MotionBlur	= 2 + SRAM_Resume
-SRAM_BlackBars	= 2 + SRAM_MotionBlur
+SRAM_ScreenFuzz	= 2 + SRAM_Resume
+SRAM_BlackBars	= 2 + SRAM_ScreenFuzz
 
 SRAM_Exists	= 2 + SRAM_BlackBars
 SRAM_MagicNumber = 182
@@ -72,12 +72,12 @@ SRAMFound:
 
 		move.b	SRAM_Resume(a1),(ResumeFlag).w		; load resume flag
 
-		move.b	SRAM_MotionBlur(a1),d0			; load motion blur flag
-		andi.b	#1,d0					; mask it against the only bit we need
+		move.b	SRAM_ScreenFuzz(a1),d0			; load motion blur flag
+		andi.b	#%11,d0					; mask it against the only bits we need
 		move.b	d0,(ScreenFuzz).w			; set motion blur flag
 
 		move.b	SRAM_BlackBars(a1),d0			; load black bars handler ID
-		andi.b	#2,d0					; mask it against the only bit we need
+		andi.b	#%10,d0					; mask it against the only bit we need
 		move.b	d0,(BlackBars.HandlerId).w		; set handler ID
 
 SRAMEnd:
@@ -102,7 +102,7 @@ SRAM_Reset:
 		movep.l	d0,SRAM_Score(a1)			; clear score
 		move.b	d0,SRAM_Complete(a1)			; clear option flags
 		move.b	d0,SRAM_Resume(a1)			; clear resume flag
-		move.b	d0,SRAM_MotionBlur(a1)			; clear motion blur flag
+		move.b	d0,SRAM_ScreenFuzz(a1)			; clear motion blur flag
 		move.b	d0,SRAM_BlackBars(a1)			; clear black bars flag
 	
 		jsr	Options_SetDefaults			; reset default options
@@ -154,10 +154,10 @@ SRAM_SaveNow:
 		move.b	(ResumeFlag).w,d0			; move resume flag to d0
 		move.b	d0,SRAM_Resume(a1)			; backup resume flag
 		move.b	(ScreenFuzz).w,d0			; move screen fuzz to d0
-		andi.b	#1,d0					; mask it against the only bit we need
-		move.b	d0,SRAM_MotionBlur(a1)			; backup motion blur flag
+		andi.b	#%11,d0					; mask it against the only bits we need
+		move.b	d0,SRAM_ScreenFuzz(a1)			; backup motion blur flag
 		move.b	BlackBars.HandlerId,d0			; move black bars flag to d0
-		andi.b	#2,d0					; mask it against the only bit we need
+		andi.b	#%10,d0					; mask it against the only bit we need
 		move.b	d0,SRAM_BlackBars(a1)			; backup black bars flag
 		move.l	(sp)+,d0				; restore d0
 

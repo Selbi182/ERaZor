@@ -5,7 +5,7 @@
 ; ------------------------------------------------------
 	if def(__BENCHMARK__)=0
 ; Vladik's Debugger
-;__DEBUG__: equ 1
+__DEBUG__: equ 1
 
 	else
 		; MD Replay state. Used for playing pre-recorded gameplay in benchmarks.
@@ -1291,7 +1291,7 @@ cyoff = 4
 cylen = 8
 		move.w	#$2780,($FFFFD000+obGfx).w	; force Sonic to use palette line 2
 		lea	($FFFFFB20).w,a2		; set start location
-		btst	#6,(OptionsBits).w		; is piss enabled?
+		btst	#1,(ScreenFuzz).w		; is piss enabled?
 		beq.s	@notcinematic			; if not, branch
 		move.w	#$0780,($FFFFD000+obGfx).w	; welp
 		lea	($FFFFFB00).w,a2		; have fun with the eyesore
@@ -2211,11 +2211,11 @@ ColorBoostG = $4
 
 ; ContrastBoost:
 PissFilter:
-		btst	#6,(OptionsBits).w	; is cinematic piss filter enabled?
+		btst	#1,(ScreenFuzz).w	; is piss filter enabled?
 		bne.s	PissFilter_Do		; if yes, enable piss filter everywhere hooray
 
 		; GHP piss filter
-		move.b	(GameMode).w,d1	; get current
+		move.b	(GameMode).w,d1		; get current game mode
 		andi.b	#$0F,d1			; include the level pre-sequence ($8C)
 		cmpi.b	#$C,d1			; are we in a level?
 		bne.s	PissFilter_End		; if not, don't do filer
@@ -4343,7 +4343,8 @@ UndoCameraShake:
 ; ---------------------------------------------------------------------------
 
 CinematicScreenFuzz:
-		tst.b	(ScreenFuzz).w		; is screen fuzz enabled?
+		moveq	#%101,d0		; ignore piss filter
+		and.b	(ScreenFuzz).w,d0	; is permanent or temporary screen fuzz enabled?
 		beq.w	CinematicScreenFuzz_End	; if not, branch
 
 		; calculate the exact amount of lines we need, minus ones occupied by black bars
@@ -4520,7 +4521,7 @@ ClearEverySpecialFlag:
 		move.b	d0,($FFFFFFE7).w
 		move.b	d0,($FFFFFFEB).w
 		move.b	d0,($FFFFFFF9).w
-		bclr	#1,(ScreenFuzz).w
+		bclr	#2,(ScreenFuzz).w
 		rts
 ; End of function ClearEverySpecialFlag
 	
@@ -4990,29 +4991,29 @@ SS_WaitVBlank:
 		move.w	($FFFFF604).w,($FFFFF602).w
 		jsr	ObjectsLoad
 
-		; motion blur for special stages
-		tst.b	(ScreenFuzz).w		; is screen fuzz enabled?
-		beq.s	@nomotionblur		; if not, branch
-	;	tst.b	(Blackout).w		; is this the blackout blackout special stage?
-	;	bne.s	@nomotionblur		; if yes, no motion blur
+		; stage rotation for motion blur
+		btst	#0,(ScreenFuzz).w	; is permanent motion blur enabled?
+		beq.s	@norotate		; if not, branch
+		
+		move.b	($FFFFF602).w,d1	; get held buttons
+		btst	#6,d1			; is A held?
+		beq.s	@rotatedrender		; if not, branch
+		
+		move.w	#$100,d0		; set rotation speed
+		btst	#0,d1			; is up held?
+		beq.s	@chkdown		; if not, branch
+		add.w	d0,(ExtCamShift).w	; rotate clockwise
+@chkdown:	btst	#1,d1			; is down held?
+		beq.s	@rotatedrender		; if not, branch
+		sub.w	d0,(ExtCamShift).w	; rotate counterclockwise
 
-		moveq	#0,d0
-		moveq	#0,d1
-		btst	#0,($FFFFFE0F).w
-		beq.s	@notodd
-		move.w	($FFFFD000+obInertia).w,d0
-		asr.w	#7,d0
-		move.w	($FFFFD000+obVelY).w,d1
-		asr.w	#7,d1
-
-@notodd
-		add.w	d0,($FFFFF700).w
-		add.w	d1,($FFFFF704).w
-		movem.l	d0-d1,-(sp)
-		bsr	@render
-		movem.l	(sp)+,d0-d1
-		sub.w	d0,($FFFFF700).w
-		sub.w	d1,($FFFFF704).w
+@rotatedrender:
+		move.w	(ExtCamShift).w,d0	; get current shifted rotation
+		add.w	d0,($FFFFF780).w	; apply to real rotation
+		move.l	d0,-(sp)		; backup
+		bsr	@render			; render stage
+		move.l	(sp)+,d0		; restore
+		sub.w	d0,($FFFFF780).w	; restore real rotation
 		bra.s	@checkblackout
 
 @render:
@@ -5021,23 +5022,19 @@ SS_WaitVBlank:
 		jsr	SS_BGAnimate
 		rts
 
-@nomotionblur:
+@norotate:
 		bsr	@render
 
 @checkblackout:
 		tst.b	(Blackout).w		; is this the blackout blackout special stage?
-		beq.s	@notblackout		; if not, branch
+		beq.s	@checkend		; if not, branch
 		cmpi.b	#4,($FFFFD024).w	; is special stage exiting routine being run?
-		bhs.w	@notblackout		; if yes, branch
+		bhs.w	@checkend		; if yes, branch
 		bsr	BlackoutChallenge	; run blackout challenge logic
-		bra	@notblackout ; broken
-		cmpi.b	#2,($FFFFFE57).w	; are we in part 2?
-		bne.s	@notblackout		; if yes, branch
-		bsr	SS_BGAnimate		; double background movement speed
 
-@notblackout:
-		cmpi.b	#$10,(GameMode).w ; is	game mode still special stage?
-		beq.w	SS_MainLoop	; if yes, loop
+@checkend:
+		cmpi.b	#$10,(GameMode).w	; has game mode changed from special stage?
+		beq.w	SS_MainLoop		; if not, loop
 ; ---------------------------------------------------------------------------
 
 		; exit special stage
@@ -6748,18 +6745,18 @@ Resize_SLZ2boss2:
 		move.b	#$5F,0(a1)		; load bomb boss
 		move.w	#$BD0,obX(a1)
 		move.w	#$038C,obY(a1)
-		
+
+		moveq	#16,d0			; set number of	hits to 16 (casual)
+		frantic				; are we in frantic?
+		beq.s	@notfrantic		; if not, branch
+		moveq	#20,d0			; set number of	hits to 20 (frantic)
+	@notfrantic:		
 	if LowBossHP=1
-		move.b	#2,(BossHealth).w	; set lives
-	else
-		moveq	#16+1,d0		; set number of	hits to	16 (casual)
-		frantic
-		beq.s	@notfrantic
-		moveq	#20+1,d0		; set number of	hits to	20 (frantic)
-@notfrantic:
+		moveq	#1,d0
+	endif
+		addq.b	#1,d0			; add one more hit for the intro cutscene
 		move.b	d0,(BossHealth).w	; set lives
-	endif	
-		move.b	(BossHealth).w,(HUD_BossHealth).w
+		move.b	d0,(HUD_BossHealth).w	; set lives in HUD
 
 		addq.b	#2,($FFFFF742).w
 		rts
@@ -12644,9 +12641,10 @@ Obj4B_Collect:				; XREF: Obj4B_Index
 		cmp.b	#4,($FFFFFE10).w	; we in uberhub?
 		bne.s	@NoPaletteChange	; if not, don't change the palette
 		
-		cmpi.b	#GRing_Labyrinthy,obSubtype(a0)
-		beq.w	Obj4B_Exit
-		btst	#6,(OptionsBits).w	; is piss enabled?
+		cmpi.b	#GRing_Labyrinthy,obSubtype(a0)	; is this the ring to Labyrinthy Place?
+		beq.w	Obj4B_Exit			; if yes, skip all the ring stuff and go straight to the stage
+
+		btst	#1,(ScreenFuzz).w	; is piss enabled?
 		bne.s	@NoPaletteChange	; don't change the palette
 		lea	(Pal_SYZGray).l,a3
 		lea 	($FFFFFB20).w,a4
@@ -12770,7 +12768,7 @@ FZEscape_ScreenBoom:
 		jsr	DelayProgram
 		dbf	d5,@WaitLoop
 
-		bclr	#1,(ScreenFuzz).w	; clear temporary screen fuzz flag
+		bclr	#2,(ScreenFuzz).w	; clear temporary screen fuzz flag
 		rts
 
 ; ===========================================================================
@@ -13262,7 +13260,7 @@ Obj2E_ChkShoes:
 		cmpi.w	#$502,($FFFFFE10).w	; are we in FP?
 		bne.s	@notfp			; if not, branch
 		move.w	#180*60,($FFFFD034).w	; give Sonic speed shoes for the escape (3 minutes, enough for the whole escape)
-		bset	#1,(ScreenFuzz).w	; enable temporary screen fuzz for the final moments
+		bset	#2,(ScreenFuzz).w	; enable temporary screen fuzz for the final moments
 		move.w	#$D3,d0			; play some sound
 		jmp	(PlaySound).l		; do nothing else
 
@@ -15538,7 +15536,7 @@ Obj32_Display:
 ; ===========================================================================
 
 ChangePaletteRP:
-		btst	#3, OptionsBits		; is cinematic HUD enabled?
+		btst	#1,(ScreenFuzz).w		; is piss filter enabled?
 		bne.s 	@FuckNo				; accomodate for piss filter
 
 		lea 	($FFFFFB48).w, a2
@@ -23627,6 +23625,8 @@ BombFuseTime_Boss = 41
 BombDistance_Boss = $50
 BombPellets_Boss = 1
 ; ---------------------------------------------------------------------------
+; lives are set in Resize_SLZ2boss2 due to the unique way this boss works
+; ---------------------------------------------------------------------------
 ; ===========================================================================
 
 Obj5F:					; XREF: Obj_Index
@@ -23669,7 +23669,7 @@ Obj5F_Main:				; XREF: Obj5F_Index
 		move.b	#$C,obActWid(a0)
 
 		cmpi.w	#$500,($FFFFFE10).w
-		bne.s	@cont
+		bne.s	@bombboss
 		move.b	#8,obRoutine(a0)
 		move.w	#$533,obGfx(a0)
 		move.l	#Map_obj5F_Cutscene,obMap(a0)
@@ -23677,7 +23677,7 @@ Obj5F_Main:				; XREF: Obj5F_Index
 		jsr	PlaySound_Special
 		bra.w	Obj5F_BombMachine
 
-@cont:
+@bombboss:
 		move.b	obSubtype(a0),d0
 		beq.s	loc_11A3C
 		move.b	d0,obRoutine(a0)
@@ -23816,21 +23816,8 @@ Obj5F_FC2:
 ; ===========================================================================
 
 Obj5F_Explode:				; XREF: Obj5F_Index2
-	;	cmpi.b	#1,(BossHealth).w		; remove one life
-	;	bhi.s	@doend
-	;	tst.b	obRender(a0)			; is bomb on screen?
-	;	bpl.s	@waitforsonic			; if not, branch
-	;	move.w	($FFFFD008).w,d0
-	;	sub.w	obX(a0),d0
-	;	bpl.s	@pos
-	;	neg.w	d0
-;@pos:		
-	;	cmpi.w	#BombDistance_Boss,d0
-	;	bls.w	@bombvisible	
-;@waitforsonic:
-	;	rts
-
-;@bombvisible:
+		cmpi.b	#1,(BossHealth).w		; remove one life
+		bgt.s	@doend
 		tst.b	($FFFFF7CC).w			; are controls already locked?
 		bne.s	@doend				; if yes, branch
 		move.b	#1,($FFFFF7CC).w		; lock controls
@@ -26778,7 +26765,7 @@ loc_12C7E:
 
 ; =========== The big routine of Cutscenes =============
 Obj01_Cutscenes:				; Intro of GHZ1
-		cmpi.w	#$000,($FFFFFE10).w		; is level GHZ1?
+		tst.w	($FFFFFE10).w			; is level GHZ1?
 		bne.s	Obj01_NotGHZ1_Main		; if not, branch
 		tst.b	($FFFFFFBB).w			; has flag "camera reached $0B00" been set?
 		bne.s	Obj01_Not0B00			; if yes, branch
@@ -27138,12 +27125,6 @@ Obj01_ChkGoggles:
 		bset	#7,obGfx(a0)	; make sonic being on the foreground
 		
 Obj01_ChkShoes:
-;		btst	#0,(ScreenFuzz).w	; is screen fuzz option set?
-;		beq.s	@nofuzz			; if not, branch
-;		move.b	#1,($FFFFFE2E).w	; permanently enable speed shoes
-;		move.w	#$FF,$34(a0)		; ''
-;@nofuzz:
-
 		tst.b	($FFFFFE2E).w	; does Sonic have speed	shoes?
 		beq.s	Obj01_ExitChk	; if not, branch
 		move.w	#Sonic_TopSpeed_Shoes,($FFFFF760).w ; change Sonic's top speed
@@ -29370,7 +29351,7 @@ SAP_LoadSonicPal:
 		btst	#7,(OptionsBits).w	; is photosensitive mode enabled?
 		bne.s	@nopal			; if yes, don't mess with Sonic
 		moveq	#$11,d0			; load Sonic's antigrav palette line in palette line 2
-		btst	#6,(OptionsBits).w	; is piss enabled?
+		btst	#1,(ScreenFuzz).w	; is piss enabled?
 		beq.s	@loadpal		; if not, branch
 		moveq	#$10,d0			; load it into palette line 1 instead
 @loadpal:
@@ -34424,13 +34405,13 @@ Obj7D_SoundStopper:
 		movea.l	$30(a0),a1		; get saved RAM address of the door
 		move.b	#1,$30(a1)		; turn the door red
 		move.b	#1,($FFFFFFA5).w	; move HUD off screen
-		bset	#1,(ScreenFuzz).w	; enable temporary screen fuzz
+		bset	#2,(ScreenFuzz).w	; enable temporary screen fuzz
 
 		jsr	Check_BlackoutFirst	; is this the first attempt at the blackout challenge?
 		beq.s	@del			; if not, branch
-		bclr	#0,(ScreenFuzz).w	; disable permanent screen fuzz
+		bclr	#0,(ScreenFuzz).w	; disable permanent motion blur
+		bclr	#1,(ScreenFuzz).w	; disable piss filter
 		bclr	#3,(OptionsBits).w	; disable cinematic HUD
-		bclr	#6,(OptionsBits).w	; disable piss filter
 
 @del:
 		jmp	DeleteObject

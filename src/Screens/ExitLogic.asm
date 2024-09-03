@@ -627,6 +627,8 @@ GTA_FP:		moveq	#6,d0			; unlock seventh door (door to the credits)
 		bsr	Set_DoorOpen
 		btst	#2,(OptionsBits).w	; is Skip Uberhub Place enabled?		
 		beq.w	ReturnToUberhub		; if not, return to Uberhub
+		jsr	Check_AllLevelsBeaten_Current ; has the player beaten all levels?
+		beq.w	ReturnToUberhub		; if not, return to Uberhub as well
 		bra.w	HubRing_Ending		; otherwise go straight to the ending
 ; ---------------------------------------------------------------------------
 

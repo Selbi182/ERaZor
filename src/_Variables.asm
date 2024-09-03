@@ -36,6 +36,9 @@ Objects_End:		equ	$FFFFF000			;	End of Objects RAM
 SoundDriverRAM:		equ	$FFFFF000			;	SMPS RAM
 SoundDriverRAM_End:	equ	$FFFFF5C0			;	End of SMPS RAM
 
+VBlankHndl:		equ	$FFFFF5C8			; l/w	Jump code for VInt
+VBlankSubW:		equ	$FFFFF5CA			; w	Word offset for VInt routine 
+*			equ	$FFFFF5CC			; b	<<FREE>>
 VDPDebugPortSet:	equ	$FFFFF5CD			; b	Set if VDP Debug port was tampered with
 BlackBars.Handler:	equ	$FFFFF5CE			; w	Pointer to Black Bars handler routines (depending on `BlackBars.HandlerId`)
 *			equ	$FFFFF5D0			; b	"Signpost patterns have been loaded" flag

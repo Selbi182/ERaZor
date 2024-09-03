@@ -2,49 +2,6 @@
 ; Sound Test Screen
 ; ---------------------------------------------------------------------------
 
-	include	"Screens/SoundTestScreen/Macros.asm"
-
-; ---------------------------------------------------------------------------
-SoundTest_PlaneA_VRAM:		equ	$A000	; FG
-SoundTest_PlaneB_VRAM:		equ	$C000	; BG
-SoundTest_PlaneC_VRAM:		equ	$B000	; reserved for Piano Sheet / Visualizer
-
-SoundTest_Visualizer_Width:		equ	35	; tiles
-SoundTest_Visualizer_Height:		equ	16	; tiles
-SoundTest_Visualizer_MaxWriteRequests:	equ	7*12+2
-
-	if SoundTest_Visualizer_Height % 16
-		inform 2, "SoundTest_Visualizer_Height must be multiple of 16" ; because it wraps around a 32x64 plane
-	endif
-
-; ---------------------------------------------------------------------------
-
-				rsset	$20
-SoundTest_Visualizer_VRAM:	rs.b	SoundTest_Visualizer_Width*SoundTest_Visualizer_Height*$20
-SoundTest_Piano_VRAM:		rs.b	filesize("Screens/SoundTestScreen/Data/BasePiano_Tiles.bin")
-SoundTest_BG_VRAM:		rs.b	filesize("Screens/SoundTestScreen/Data/BG2_Tiles.bin")
-	
-	if __rs > $A000
-		infrom 2, "Out of VRAM for graphics!"
-	endif
-
-; ---------------------------------------------------------------------------
-
-SoundTest_RAM:	equ	$FFFF8000
-
-					rsset	SoundTest_RAM
-SoundTest_VRAMBufferPoolPtr:		rs.w	1
-SoundTest_VisualizerPos_TilePtr:	rs.w	1
-SoundTest_VisualizerPos_TileOffset:	rs.w	1
-SoundTest_Visualizer_PixelBuffer:	rs.b	SoundTest_Visualizer_Width*4
-SoundTest_VisualizerBufferPtr:		rs.w	1
-SoundTest_VisualizerBufferDest:		rs.l	1	; VDP command
-SoundTest_VisualizerWriteRequests:	rs.b	6*SoundTest_Visualizer_MaxWriteRequests
-SoundTest_VisualizerWriteRequests_End:	equ	__rs
-SoundTest_VisualizerWriteRequestsPos:	rs.w	1
-SoundTest_DummyXPos:			rs.w	1
-
-; ---------------------------------------------------------------------------
 SoundTestScreen:
 	moveq	#$FFFFFFE4, d0
 	jsr	PlaySound_Special ; stop music
@@ -63,7 +20,7 @@ SoundTestScreen:
 	move.w	#$8C81+8, (a6)		; enable S&H
 	move.w	#$9011, (a6)		; set plane size to 64x64
 	move.w	#$9200, (a6)
-	move.w	#$8B03, (a6)
+	move.w	#$8B00, (a6)		; VScroll: full, HScroll: full
 	move.w	#$8720, (a6)
 	clr.b	($FFFFF64E).w
 	jsr	ClearScreen
@@ -144,21 +101,30 @@ SoundTestScreen:
 	SoundTest_ResetVRAMBufferPool
 
 	; Screen init
+	jsr	SoundTest_VDeform_Init
 	jsr	SoundTest_Visualizer_Init
 	jsr	ObjectsLoad
 	jsr	BuildSprites
 
 	display_enable
 	VBlank_UnsetMusicOnly
-	jsr	Pal_FadeTo
 
 	assert.b VBlank_MusicOnly, eq
 
+	jsr	Pal_FadeTo ; ###
+
+	; ###
+	moveq	#$FFFFFF81, d0
+	jsr	PlaySound_Special
+
+	move.w	#SoundTest_VBlank, VBlankSubW
+
 ; ---------------------------------------------------------------------------
 SoundTest_MainLoop:
-	move.l	#@FlushVRAMBuffer, VBlankCallback
-	move.b	#2, VBlankRoutine	
+	st.b	VBlankRoutine
 	jsr	DelayProgram
+
+	jsr	SoundTest_VDeform_Update
 
 	assert.w SoundTest_VRAMBufferPoolPtr, eq, #Art_Buffer		; VRAM buffer pool should be reset by the beginning of the frame
 	SoundTest_InitWriteRequests
@@ -170,40 +136,8 @@ SoundTest_MainLoop:
 	SoundTest_FinalizeWriteRequests a0
 
 	jsr	SoundTest_Visualizer_Update
-	jsr	@Deform
 
 	bra	SoundTest_MainLoop
-
-; ---------------------------------------------------------------------------
-@FlushVRAMBuffer:
-	move.w	SoundTest_VisualizerBufferPtr, d0	; do we have a pixel buffer to flush?
-	beq.s	@0
-	movea.w	d0, a0
-	move.l	SoundTest_VisualizerBufferDest, d0
-	moveq	#0, d1
-	move.w	d1, SoundTest_VisualizerBufferPtr
-	move.l	d1, SoundTest_VisualizerBufferDest
-	jsr	SoundTest_Visualizer_TransferPixelBufferToVRAM
-
-@0:	SoundTest_ResetVRAMBufferPool
-	rts
-
-; ---------------------------------------------------------------------------
-@Deform:
-	move.w	CamYpos2, ($FFFFF618).w	; update plane B vs-ram
-	
-	addq.w	#1, CamYpos2
-	;addq.w	#1, CamXPos2
-
-	lea	HSRAM_Buffer, a1
-
-	moveq	#0, d0
-	move.w	CamXPos2, d0
-	neg.w	d0
-
-	moveq	#240/16-1, d1		; repeat to cover the entire 240-pixel screen
-	jmp	DeformScreen_SendBlocks
-	rts
 
 ; ===========================================================================
 
@@ -218,7 +152,45 @@ SoundTest_Exit:
 
 	include	"Screens/SoundTestScreen/Objects/PianoSheet.asm"
 
+; ===========================================================================
+; ---------------------------------------------------------------------------
+;
+; ---------------------------------------------------------------------------
 
+SoundTest_VDeform_Init:
+	move.w	#SoundTest_VScrollBuffer_B, SoundTest_NextVScrollBuffer
+	move.w	#SoundTest_VScrollBuffer_A, SoundTest_ActiveVScrollBuffer
+
+SoundTest_VDeform_Update:
+	; ### buffer swap
+	lea	SoundTest_VScrollBuffer_A, a0 ; ###
+
+	addq.w	#1, CamYPos2
+	move.w	CamYPos2, d1
+	andi.w	#$FF, d1
+
+	move.w	SoundTest_VisualizerPos, d2
+	and.w	#$7F, d2
+	add.w	#$100-40, d2
+
+	@scanline: = 0
+	rept 224/2
+		if (@scanline > 40) & (@scanline < (40 + 16*8))
+			move.w	d2, (a0)+		; Plane A
+			move.w	d1, (a0)+		; Plane B
+			move.w	d2, (a0)+		; Plane A
+			move.w	#$100, (a0)+		; Plane B
+		else
+			move.w	#0, (a0)+		; Plane A
+			move.w	d1, (a0)+		; Plane B
+			move.w	#0, (a0)+		; Plane A
+			move.w	#0, (a0)+		; Plane B
+		endif
+
+		@scanline: = @scanline + 2
+	endr
+	rts
+	
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Initializes the visualizer
@@ -228,11 +200,11 @@ SoundTest_Visualizer_Init:
 
 	; Init variables
 	moveq	#0, d0
+	move.w	d0, SoundTest_VisualizerPos
 	move.w	d0, SoundTest_VisualizerPos_TilePtr
 	move.w	d0, SoundTest_VisualizerPos_TileOffset
 	move.w	d0, SoundTest_VisualizerBufferPtr
 	move.l	d0, SoundTest_VisualizerBufferDest
-	move.w	d0, SoundTest_DummyXPos ; ###
 
 	@vdp_ctrl:	equr	a5
 	@vdp_data:	equr	a6
@@ -298,8 +270,8 @@ SoundTest_Visualizer_Update:
 	lea	(@pixel_buffer), @pixel_buffer_half1
 	lea	@pixel_buffer_half_size(@pixel_buffer), @pixel_buffer_half2
 
-	move.l	#$EEEEEEEE, @pixel_data_half1
-	move.l	#$EEEEEEEE, @pixel_data_half2
+	moveq	#0, @pixel_data_half1
+	moveq	#0, @pixel_data_half2
 
 	rept @pixel_buffer_size/8
 		move.l	@pixel_data_half1, (@pixel_buffer_half1)+
@@ -348,6 +320,7 @@ SoundTest_Visualizer_Update:
  	move.l	@var0, SoundTest_VisualizerBufferDest
 
 	; Advance visualizer position for the next call
+	addq.w	#1, SoundTest_VisualizerPos
 	addq.w	#4, SoundTest_VisualizerPos_TileOffset
 	cmp.w	#$20*4, SoundTest_VisualizerPos_TileOffset
 	blo.s	@pos_ok
@@ -565,8 +538,9 @@ SoundTest_Palette:
 	dc.w	$0042, $0262, $0284, $04A6, $06A6, $06C8, $08C8, $08EA
 
 	; Line 1: Background
-	dc.w	$0E0E, $0220, $0440, $0660, $0880, $0AA0, $0CC0, $0EE0
-	dc.w	$0CC0, $0AA0, $0880, $0660, $0440, $0220, $0000, $0E0E
+	incbin	"Screens/SoundTestScreen/Data/BG2_Pal.bin"
+	;dc.w	$0E0E, $0220, $0440, $0660, $0880, $0AA0, $0CC0, $0EE0
+	;dc.w	$0CC0, $0AA0, $0880, $0660, $0440, $0220, $0000, $0E0E
 
 	; Line 2: Background (unused)
 	dc.w	$0000, $0020, $0220, $0240, $0242, $0462, $0464, $0684

@@ -18,7 +18,7 @@ SoundTest_Visualizer_MaxWriteRequests:	equ	7*12+2
 SoundTest_Visualizer_VRAM:	rs.b	SoundTest_Visualizer_Width*SoundTest_Visualizer_Height*$20
 SoundTest_Piano_VRAM:		rs.b	filesize("Screens/SoundTestScreen/Data/BasePiano_Tiles.bin")
 SoundTest_BG_VRAM:		rs.b	filesize("Screens/SoundTestScreen/Data/BG2_Tiles.bin")
-	
+SoundTest_DummyHL_VRAM:		rs.b	4*4*$20
 	if __rs > $A000
 		infrom 2, "Out of VRAM for graphics!"
 	endif

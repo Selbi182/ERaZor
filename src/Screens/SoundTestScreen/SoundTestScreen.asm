@@ -46,13 +46,13 @@ SoundTestScreen:
 	endr
 
 	; ### Dummy Highlight ####
-	;vram	SoundTest_DummyHL_VRAM, VDP_Ctrl
-	;move.l	#$EEEEEEEE, d0
-	;moveq	#4*4*$20/4-1, d1
-;
-	;@loop:
-	;	move.l	d0, VDP_Data
-	;	dbf	d1, @loop
+	vram	SoundTest_DummyHL_VRAM, VDP_Ctrl
+	move.l	#$EEEEEEEE, d0
+	moveq	#4*4*$20/4-1, d1
+
+	@loop:
+		move.l	d0, VDP_Data
+		dbf	d1, @loop
 
 	; ### Dummy Plane A highlight ###
 	vram	SoundTest_PlaneA_VRAM+$280, d3
@@ -148,7 +148,7 @@ SoundTest_Exit:
 
 ; ---------------------------------------------------------------------------
 
-	;include	"Screens/SoundTestScreen/Objects/DummyHL.asm"
+	include	"Screens/SoundTestScreen/Objects/DummyHL.asm"
 
 	include	"Screens/SoundTestScreen/Objects/NoteEmitters.asm"
 
@@ -175,7 +175,7 @@ SoundTest_VDeform_Update:
 
 	; ### buffer swap
 	lea	SoundTest_VScrollBuffer_A,  @vscroll_buffer ; ###
-	lea	@WobbleData, @distort_stream ; ###
+	lea	Sine_Data, @distort_stream ; ###
 
 	moveq	#0, @vscroll_with_plane_a
 	swap	@vscroll_with_plane_a
@@ -185,11 +185,11 @@ SoundTest_VDeform_Update:
 	add.w	#$100-40, @vscroll_with_plane_c
 	swap	@vscroll_with_plane_c
 
-	addi.l	#$8000, CamYPos2
+	;addi.l	#$6000, CamYPos2
 	move.w	CamYPos2, @var0
 	andi.w	#$FF, @var0
 
-	addq.w	#1, CamYPos3
+	addi.l	#$C000, CamYPos3
 	move.w	#$FF, @var1
 	and.w	CamYPos3, @var1
 	add.w	@var1, @var1
@@ -206,24 +206,30 @@ SoundTest_VDeform_Update:
 		if (@scanline > 40) & (@scanline < (40 + 16*8))
 			move.w	@var0, @vscroll_with_plane_c
 			move.w	(@distort_stream)+, @var2
-			lsl.w	#1, @var2
-			add.w	@var2, @vscroll_with_plane_c
-			bpl.s	@scanline_\#@scanline\_0
-			add.w	#$100, @vscroll_with_plane_c
-		@scanline_\#@scanline\_0:
+			addq.w	#2, @distort_stream
+			asr.w	#2, @var2
+		if @scanline % 2
+			add.b	@var2, @vscroll_with_plane_c
+		else
+			sub.b	@var2, @vscroll_with_plane_c
+		endif
 			add.b	@vscroll_with_plane_c, @var1
 			bcs.s	@scanline_\#@scanline\_ok
 			add.w	#$100, @vscroll_with_plane_c
 		@scanline_\#@scanline\_ok:
 			move.l	@vscroll_with_plane_c, (@vscroll_buffer)+
+
 		else
+
 			move.w	@var0, @vscroll_with_plane_a
 			move.w	(@distort_stream)+, @var2
-			lsl.w	#1, @var2
-			add.w	@var2, @vscroll_with_plane_a
-			bpl.s	@scanline_\#@scanline\_0
-			add.w	#$100, @vscroll_with_plane_a
-		@scanline_\#@scanline\_0:
+			addq.w	#2, @distort_stream
+			asr.w	#2, @var2
+		if @scanline % 2
+			add.b	@var2, @vscroll_with_plane_a
+		else
+			sub.b	@var2, @vscroll_with_plane_a
+		endif
 			add.b	@vscroll_with_plane_a, @var1
 			bcc.s	@scanline_\#@scanline\_ok
 			sub.w	#$100, @vscroll_with_plane_a

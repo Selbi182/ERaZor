@@ -5,30 +5,43 @@
 	include	"Screens/SoundTestScreen/Macros.asm"
 
 ; ---------------------------------------------------------------------------
+SoundTest_PlaneA_VRAM:		equ	$A000	; FG
+SoundTest_PlaneB_VRAM:		equ	$C000	; BG
+SoundTest_PlaneC_VRAM:		equ	$B000	; reserved for Piano Sheet / Visualizer
 
-SoundTest_BG_VRAM:		equ	$20
+SoundTest_Visualizer_Width:		equ	35	; tiles
+SoundTest_Visualizer_Height:		equ	16	; tiles
+SoundTest_Visualizer_MaxWriteRequests:	equ	7*12+2
 
-SoundTest_DummyHL_VRAM:		equ	$A000
-SoundTest_Piano_VRAM:		equ	$9800
-
-SoundTest_Visualizer_VRAM:	equ	$2000
-SoundTest_Visualizer_ScreenPos:	equ	$C286
-SoundTest_Visualizer_Width:	equ	35	; tiles
-SoundTest_Visualizer_Height:	equ	16	; tiles
-
-	if SoundTest_Visualizer_Height % 4
-		inform 2, "SoundTest_Visualizer_Height must be multiple of 4" ; because we use 4x4 sprites for rendering
+	if SoundTest_Visualizer_Height % 16
+		inform 2, "SoundTest_Visualizer_Height must be multiple of 16" ; because it wraps around a 32x64 plane
 	endif
+
+; ---------------------------------------------------------------------------
+
+				rsset	$20
+SoundTest_Visualizer_VRAM:	rs.b	SoundTest_Visualizer_Width*SoundTest_Visualizer_Height*$20
+SoundTest_Piano_VRAM:		rs.b	filesize("Screens/SoundTestScreen/Data/BasePiano_Tiles.bin")
+SoundTest_BG_VRAM:		rs.b	filesize("Screens/SoundTestScreen/Data/BG2_Tiles.bin")
+	
+	if __rs > $A000
+		infrom 2, "Out of VRAM for graphics!"
+	endif
+
+; ---------------------------------------------------------------------------
 
 SoundTest_RAM:	equ	$FFFF8000
 
-		rsset	SoundTest_RAM
+					rsset	SoundTest_RAM
 SoundTest_VRAMBufferPoolPtr:		rs.w	1
 SoundTest_VisualizerPos_TilePtr:	rs.w	1
 SoundTest_VisualizerPos_TileOffset:	rs.w	1
 SoundTest_Visualizer_PixelBuffer:	rs.b	SoundTest_Visualizer_Width*4
 SoundTest_VisualizerBufferPtr:		rs.w	1
 SoundTest_VisualizerBufferDest:		rs.l	1	; VDP command
+SoundTest_VisualizerWriteRequests:	rs.b	6*SoundTest_Visualizer_MaxWriteRequests
+SoundTest_VisualizerWriteRequests_End:	equ	__rs
+SoundTest_VisualizerWriteRequestsPos:	rs.w	1
 SoundTest_DummyXPos:			rs.w	1
 
 ; ---------------------------------------------------------------------------
@@ -45,10 +58,10 @@ SoundTestScreen:
 	; VDP setup
 	lea	($C00004).l, a6
 	move.w	#$8004, (a6)
-	move.w	#$8230, (a6)
-	move.w	#$8407, (a6)
+	move.w	#$8200|(SoundTest_PlaneA_VRAM/$400), (a6)
+	move.w	#$8400|(SoundTest_PlaneB_VRAM/$2000), (a6)
 	move.w	#$8C81+8, (a6)		; enable S&H
-	move.w	#$9001, (a6)
+	move.w	#$9011, (a6)		; set plane size to 64x64
 	move.w	#$9200, (a6)
 	move.w	#$8B03, (a6)
 	move.w	#$8720, (a6)
@@ -76,18 +89,31 @@ SoundTestScreen:
 	endr
 
 	; ### Dummy Highlight ####
-	vram	SoundTest_DummyHL_VRAM, VDP_Ctrl
-	move.l	#$EEEEEEEE, d0
-	moveq	#4*4*$20/4-1, d1
+	;vram	SoundTest_DummyHL_VRAM, VDP_Ctrl
+	;move.l	#$EEEEEEEE, d0
+	;moveq	#4*4*$20/4-1, d1
+;
+	;@loop:
+	;	move.l	d0, VDP_Data
+	;	dbf	d1, @loop
 
-	@loop:
-		move.l	d0, VDP_Data
-		dbf	d1, @loop
+	; ### Dummy Plane A highlight ###
+	vram	SoundTest_PlaneA_VRAM+$280, d3
+	move.l	#$80<<16, d2
+	moveq	#SoundTest_Visualizer_Height-1, d0
+	@row:
+		move.l	d3, VDP_Ctrl
+		moveq	#SoundTest_Visualizer_Width-1, d1
+		@col:	move.w	#$8000, VDP_Data
+			dbf	d1, @col
+		add.l	d2, d3
+		dbf	d0, @row
 
 	;SoundTest_CreateObject #SoundTest_Obj_DummyHL
 	SoundTest_CreateObject #SoundTest_Obj_PianoSheet
+	SoundTest_CreateObject #SoundTest_Obj_NoteEmitter
 
-	; Load BG-1
+	; Load BG
 	vram	SoundTest_BG_VRAM, VDP_Ctrl
 	lea	SoundTest_BG2_TilesKospM, a0
 	jsr	KosPlusMDec_VRAM
@@ -97,7 +123,7 @@ SoundTestScreen:
 	move.w	#$2000|(SoundTest_BG_VRAM/$20), d0
 	jsr	EniDec
 
-	vramWrite $FF0000, $2000, $E000
+	vramWrite $FF0000, $2000, SoundTest_PlaneB_VRAM
 
 	; Load piano keys
 	vram	SoundTest_Piano_VRAM, VDP_Ctrl
@@ -109,7 +135,7 @@ SoundTestScreen:
 	move.w	#$8000|$6000|(SoundTest_Piano_VRAM/$20), d0
 	jsr	EniDec
 
-	vram	$CA86, d0
+	vram	SoundTest_PlaneA_VRAM+$A80, d0
 	lea	$FF0000, a1
 	moveq	#36-1, d1
 	moveq	#3-1, d2
@@ -135,10 +161,13 @@ SoundTest_MainLoop:
 	jsr	DelayProgram
 
 	assert.w SoundTest_VRAMBufferPoolPtr, eq, #Art_Buffer		; VRAM buffer pool should be reset by the beginning of the frame
+	SoundTest_InitWriteRequests
 
 	jsr	ObjectsLoad
 	jsr	BuildSprites
 	jsr	PLC_Execute
+
+	SoundTest_FinalizeWriteRequests a0
 
 	jsr	SoundTest_Visualizer_Update
 	jsr	@Deform
@@ -183,7 +212,9 @@ SoundTest_Exit:
 
 ; ---------------------------------------------------------------------------
 
-	include	"Screens/SoundTestScreen/Objects/DummyHL.asm"
+	;include	"Screens/SoundTestScreen/Objects/DummyHL.asm"
+
+	include	"Screens/SoundTestScreen/Objects/NoteEmitters.asm"
 
 	include	"Screens/SoundTestScreen/Objects/PianoSheet.asm"
 
@@ -221,11 +252,25 @@ SoundTest_Visualizer_Init:
 	move.l	#($40000000+(((@dma_dest)&$3FFF)<<16)+(((@dma_dest)&$C000)>>14))|$80, (@vdp_ctrl)
 	move.w	#$1111, (@vdp_data)
 
+	; Decompress plane mappings
+	move.l	@vdp_ctrl, -(sp)
+	lea	SoundTest_PianoSheet_MapKosp(pc), a0
+	lea	$FF0000, a1
+	jsr	KosPlusDec
+	move.l	(sp)+, @vdp_ctrl
+
+	assert.l a1, eq, #$FF0000+$1000
+
+	; Wait for generate tiles DMA to finish (it was running in parallel!)
 	@wait_dma:
 		move.w	(@vdp_ctrl), ccr
 		bvs.s	@wait_dma
 
 	move.w	#$8F02, (@vdp_ctrl)
+
+	; Send plane mappings
+	vramWrite $FF0000, $1000, SoundTest_PlaneC_VRAM
+
 	rts
 
 ; ---------------------------------------------------------------------------
@@ -253,8 +298,8 @@ SoundTest_Visualizer_Update:
 	lea	(@pixel_buffer), @pixel_buffer_half1
 	lea	@pixel_buffer_half_size(@pixel_buffer), @pixel_buffer_half2
 
-	move.l	#$22222222, @pixel_data_half1
-	move.l	#$33333333, @pixel_data_half2
+	move.l	#$EEEEEEEE, @pixel_data_half1
+	move.l	#$EEEEEEEE, @pixel_data_half2
 
 	rept @pixel_buffer_size/8
 		move.l	@pixel_data_half1, (@pixel_buffer_half1)+
@@ -273,20 +318,16 @@ SoundTest_Visualizer_Update:
 
 	@write_request:	equr	a0
 
-	move.l	#@Dummy_PixelData, -(sp)
-	move.w	SoundTest_DummyXPos, -(sp)	; x-pos
+	lea	SoundTest_VisualizerWriteRequests, @write_request
+	tst.w	(@write_request)
+	bmi.s	@write_requests_done
 
-	lea	(sp), @write_request
-	jsr	SoundTest_Visualizer_WritePixelsToPixelBuffer
+	@write_request_loop:
+		bsr	SoundTest_Visualizer_WritePixelsToPixelBuffer
+		tst.w	(@write_request)
+		bpl.s	@write_request_loop
 
-	moveq	#0, d0
-	move.w	SoundTest_DummyXPos, d0
-	addq.w	#1, d0
-	divu.w	#SoundTest_Visualizer_Width*8, d0
-	swap	d0
-	move.w	d0, SoundTest_DummyXPos
-
-	addq.w	#6, sp
+@write_requests_done:
 
 	; -------------
 	; Send buffer
@@ -482,6 +523,12 @@ SoundTest_Visualizer_TransferPixelBufferToVRAM:
 ; Screen Data
 ; ---------------------------------------------------------------------------
 
+; WARNING! This was pre-compiled for `SoundTest_Visualizer_VRAM = $20`
+SoundTest_PianoSheet_MapKosp:
+	incbin	"Screens/SoundTestScreen/Data/PianoSheet_Map.kosp"
+	even
+
+; ---------------------------------------------------------------------------
 SoundTest_BG1_MapEni:
 	incbin	"Screens/SoundTestScreen/Data/BG1_Map.eni"
 	even

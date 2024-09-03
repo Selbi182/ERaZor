@@ -5,8 +5,8 @@
 
 SoundTest_Obj_PianoSheet:
 
-	@base_x: = (320 - SoundTest_Visualizer_Width*8) / 2
-	@base_y: = 32
+	@base_x: = 0;(320 - SoundTest_Visualizer_Width*8) / 2
+	@base_y: = 40
 
 	@frame_1_width:	= SoundTest_Visualizer_Width*8
 	@frame_2_width:	= 0

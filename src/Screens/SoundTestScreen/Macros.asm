@@ -47,3 +47,38 @@ SoundTest_AllocateInVRAMBufferPool:	macro	ptrOperand, allocSizeOperand
 	add.w	\allocSizeOperand, SoundTest_VRAMBufferPoolPtr
 	assert.w SoundTest_VRAMBufferPoolPtr, ls, #Art_Buffer_End
 	endm
+
+; ---------------------------------------------------------------------------
+; Resets (flushes) VRAM buffer pool pointer
+; ---------------------------------------------------------------------------
+
+SoundTest_InitWriteRequests:	macros
+	move.w	#SoundTest_VisualizerWriteRequests, SoundTest_VisualizerWriteRequestsPos
+
+; ---------------------------------------------------------------------------
+; Allocates given number of bytes on VRAM buffer pool (poor man's `malloc`)
+; ---------------------------------------------------------------------------
+; ARGUMENTS:
+;	ptrOperand - operand to load allocated memory to
+;	allocSizeOperand - number of bytes to allocate
+; ---------------------------------------------------------------------------
+
+SoundTest_AddWriteRequest:	macro	xposOperand, pixelDataOperand, scratchAReg
+	movea.w	SoundTest_VisualizerWriteRequestsPos, \scratchAReg
+	if def(__DEBUG__)
+		assert.w \scratchAReg, lo, #SoundTest_VisualizerWriteRequests_End
+	else
+		cmpa.w	#SoundTest_VisualizerWriteRequests_End, \scratchAReg
+		bhs.s	@skip\@
+	endif
+	move.w	\xposOperand, (\scratchAReg)+
+	move.l	\pixelDataOperand, (\scratchAReg)+
+	move.w	\scratchAReg, SoundTest_VisualizerWriteRequestsPos
+@skip\@:
+	endm
+
+; ---------------------------------------------------------------------------
+SoundTest_FinalizeWriteRequests:	macro	scratchAReg
+	movea.w	SoundTest_VisualizerWriteRequestsPos, \scratchAReg
+	move.w	#-2, (\scratchAReg)
+	endm

@@ -4,7 +4,8 @@ SoundTest_Obj_DummyHL:
 	move.w	#(SoundTest_DummyHL_VRAM/$20)|$8000|$6000, 2(a0)
 	move.l	#@Map, 4(a0)
 	move.w	#$80+3*8+$80, 8(a0)
-	move.w	#$80+5*8, $A(a0)
+	move.b	#1, obPriority(a0)
+	move.w	#$80+128+5*8, $A(a0)
 	move.l	#@Main, $3C(a0)
 
 @Main:	

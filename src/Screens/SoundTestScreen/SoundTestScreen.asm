@@ -82,9 +82,13 @@ SoundTestScreen:
 
 	vramWrite $FF0000, $2000, SoundTest_PlaneB_VRAM
 
-	; Load piano keys
+	; Load piano
 	vram	SoundTest_Piano_VRAM, VDP_Ctrl
 	lea	SoundTest_Piano_TilesKospM, a0
+	jsr	KosPlusMDec_VRAM
+
+	vram	SoundTest_PianoOverlays_VRAM, VDP_Ctrl
+	lea	SoundTest_PianoOverlays_TilesKospM, a0
 	jsr	KosPlusMDec_VRAM
 
 	lea	SoundTest_Piano_MapEni(pc), a0
@@ -114,7 +118,7 @@ SoundTestScreen:
 	jsr	Pal_FadeTo ; ###
 
 	; ###
-	moveq	#$FFFFFF81, d0
+	moveq	#$FFFFFF9F, d0
 	jsr	PlaySound_Special
 
 
@@ -617,6 +621,11 @@ SoundTest_Piano_TilesKospM:
 	even
 
 ; ---------------------------------------------------------------------------
+SoundTest_PianoOverlays_TilesKospM:
+	incbin	"Screens/SoundTestScreen/Data/BasePiano_KeyOverlays_Tiles.kospm"
+	even
+
+; ---------------------------------------------------------------------------
 SoundTest_Palette:
 	; Line 0
 	dc.w	$0000, $0222, $0444, $0666, $0888, $0AAA, $0CCC, $0EEE
@@ -632,5 +641,5 @@ SoundTest_Palette:
 	dc.w	$0686, $08A6, $08A8, $0AC8, $0ACA, $0CEA, $0CEC, $0EEE
 
 	; Line 3: Piano
-	dc.w	$0E0E, $0000, $0888, $0CCC, $0EEE, $0240, $0480, $0E0E
-	dc.w	$0E0E, $0E0E, $0E0E, $0E0E, $0E0E, $0E0E, $0E0E, $0E0E
+	dc.w	$0E0E, $0000, $0888, $0CCC, $0EEE, $0240, $0480, $0604
+	dc.w	$0C06, $00EE, $08EE, $0E0E, $0E0E, $0E0E, $0E0E, $0E0E

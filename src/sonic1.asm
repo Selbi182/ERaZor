@@ -3551,14 +3551,6 @@ loc_3946:
 		bset	#2,($FFFFF754).w
 		bsr	MainLoadBlockLoad	; load block mappings and palettes
 
-		cmpi.w	#$500,($FFFFFE10).w	; is this the bomb machine cutscene?
-		bne.s	@notmachine		; if not, branch
-		lea	($FFFFFBA0).w,a0
-		moveq	#$18-1,d1
-		moveq	#0,d0
-@black:		move.l	d0,(a0)+
-		dbf	d1,@black
-
 @notmachine:
 		moveq	#0,d0
 		bsr	LoadPLC			; (re-)load standard patterns 1
@@ -5664,7 +5656,12 @@ End_MainLoop:
 		move.b	#$18,VBlankRoutine
 		bsr	DelayProgram
 		addq.w	#1,($FFFFFE04).w
+
+		cmpi.b	#6,($FFFFD024).w	; is Sonic dying?
+		bhs.s	@nopause		; if yes, branch
 		bsr	PauseGame
+@nopause:
+
 		bsr	End_MoveSonic
 		jsr	ObjectsLoad
 		bsr	DeformBgLayer
@@ -26088,6 +26085,8 @@ Obj03_BackgroundColor:
 		move.w	($FFFFFE0E).w,d2
 		btst	#5,d2
 		beq.s	@getmask
+		btst	#6,d2
+		bne.s	@getmask
 		lsr.w	#1,d2
 		andi.w	#$1E,d2
 		move.w	d2,d1
@@ -38143,12 +38142,6 @@ Obj82_FindBlocks:
 		bne.s	loc_199D0
 
 		move.b	#1,($FFFFFFC8).w	; set flag that button was pressed
-
-		movem.l	d7/a1-a3,-(sp)
-		moveq	#$E,d0			; load SBZ palette
-		jsr	PalLoad2
-	;	jsr	WhiteFlash2
-		movem.l	(sp)+,d7/a1-a3
 
 		jsr	SingleObjLoad
 		move.b	#$3A,(a1)

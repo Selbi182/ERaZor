@@ -324,10 +324,10 @@ Options_ScreenEffects_Redraw:
 
 ; ---------------------------------------------------------------------------
 @Str_ScreenEffects_Normal:
-	dc.b	'R SCREEN FLAK   ', 0
+	dc.b	'R VISUAL FX     ', 0
 
 @Str_ScreenEffects_Locked:
-	dc.b	'R ?????? ????   ', 0
+	dc.b	'R ?????? ??     ', 0
 	even
 
 @ScreenEffectsTextList:
@@ -375,8 +375,10 @@ Options_ScreenEffects_Handle:
 	andi.w	#%11, d0			; wrap modes
 	move.b	d0,(ScreenFuzz).w
 	st.b	Options_RedrawCurrentItem
-	move.b	#$D8,d0				; play move sound
-	jmp	PlaySound_Special
+
+	tst.b	d0				; check if current selection is OFF
+	eori.b	#%00100,ccr			; invert Z flag (play off sound for off, on for anything else)
+	bsr	Options_PlayRespectiveToggleSound
 
 @ret:	rts
 

@@ -1299,8 +1299,11 @@ Hint_End_AfterFrantic:
 ;		 --------------------
 Hint_End_BlackoutTeaser:
 		boxtxt	"THE HORRORS OF"
-		boxtxt	"uberhub place"
-		boxtxt	"HAVE BEEN UNSEALED!"
+		boxtxt	"uberhub#s end"
+		boxtxt	"HAVE BEEN UNSEALED."
+		boxtxt_pause
+		boxtxt	"THERE IS NO ONE TO"
+		boxtxt	"HELP YOU ANYMORE."
 		boxtxt_pause
 		boxtxt	"GOOD LUCK."
 		boxtxt_end
@@ -1347,9 +1350,9 @@ Hint_End_CinematicUnlock:
 		boxtxt	"YOU HAVE UNLOCKED"
 		boxtxt	"cinematic mode!"
 		boxtxt_pause
-		boxtxt	"IT'S COMPLETELY"
-		boxtxt	"USELESS BUT ALSO"
-		boxtxt	"PRETTY COOL!"
+		boxtxt	"THE ULTIMATE FUN"
+		boxtxt	"WITH A THIRD OF THE"
+		boxtxt	"SCREEN IN BLACK!"
 		boxtxt_end
 
 ;		 --------------------
@@ -1357,7 +1360,7 @@ Hint_End_MotionBlurUnlock:
 		boxtxt	"r FOR RADICAL"
 		boxtxt_line
 		boxtxt	"YOU HAVE UNLOCKED"
-		boxtxt	"screen flak!"
+		boxtxt	"visual fx!"
 		boxtxt_pause
 		boxtxt	"OR, AS THE MOVIE"
 		boxtxt	"INDUSTRY WOULD SAY,"
@@ -1372,7 +1375,7 @@ Hint_End_NonstopInhumanUnlock:
 		boxtxt	"true inhuman mode!"
 		boxtxt_pause
 		boxtxt	"ALL HAIL OUR NEW"
-		boxtxt	"OVERLORD. MAY THE"
+		boxtxt	"OVERLORD! MAY THE"
 		boxtxt	"GODS HAVE MERCY."
 		boxtxt_end
 

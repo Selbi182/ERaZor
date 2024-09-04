@@ -302,6 +302,8 @@ Exit_CreditsScreen:
 @checkblackout:
 		btst	#4,($FFFFFF95).w
 		beq.s	@restartfromcredits
+		move.b	#$E0,d0
+		jsr	PlaySound_Special	; fade out music to set the atmosphere
 		moveq	#$12,d0			; load Blackout Challenge teaser text
 		jsr	Tutorial_DisplayHint	; VLADIK => Display hint
 

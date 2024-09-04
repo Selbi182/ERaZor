@@ -6,7 +6,8 @@ SoundTest_PlaneC_VRAM:		equ	$B000	; reserved for Piano Sheet / Visualizer
 
 SoundTest_Visualizer_Width:		equ	35	; tiles
 SoundTest_Visualizer_Height:		equ	16	; tiles
-SoundTest_Visualizer_MaxWriteRequests:	equ	7*12+2
+SoundTest_Visualizer_NumOctaves:	equ	7
+SoundTest_Visualizer_MaxWriteRequests:	equ	SoundTest_Visualizer_NumOctaves*12+2
 
 	if SoundTest_Visualizer_Height % 16
 		inform 2, "SoundTest_Visualizer_Height must be multiple of 16" ; because it wraps around a 32x64 plane

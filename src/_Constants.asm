@@ -30,6 +30,7 @@ ob2ndRout:	equ $25	; secondary routine number
 obAngle:	equ $26	; angle
 obSubtype:	equ $28	; object subtype
 obSolid:	equ $25 ; solid status flag
+obCodePtr:	equ $3C ; object code pointer (object $8D only)
 
 ; Joypad Buttons
 

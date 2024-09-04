@@ -1,155 +1,289 @@
 
+_ST_TYPE_FM:	equ 0
+_ST_TYPE_PSG:	equ 4
+
+obSTNoteAddr:		equ $20	; .w
+obSTNoteType:		equ $22	; .w
+obSTNoteValue:		equ $24 ; .b
+obSTPixelDataFrame: 	equ $25	; .b
+obSTPixelDataX:		equ $26 ; .w
+
 ; ---------------------------------------------------------------------------
-; Note emitter
+; Subroutine to create note emitter objects
+; ---------------------------------------------------------------------------
+
+SoundTest_CreateNoteEmitters:
+
+	@note_type:	equr	d5
+	@loop_cnt:	equr	d6
+	@note_addr:	equr	a3	
+
+	; FM emitters
+	lea	(SoundDriverRAM+v_music_fm_tracks+TrackNote).w, @note_addr
+	moveq	#_ST_TYPE_FM, @note_type
+	moveq	#6-1, @loop_cnt
+
+	@create_fm_emitters_loop:
+		SoundTest_CreateObject #SoundTest_Obj_NoteEmitter
+		move.w	@note_type, obSTNoteType(a1)
+		move.w	@note_addr, obSTNoteAddr(a1)
+		lea	TrackSz(@note_addr), @note_addr
+
+		dbf	@loop_cnt, @create_fm_emitters_loop
+
+	; PSG emitters
+	lea	(SoundDriverRAM+v_music_psg_tracks+TrackNote).w, @note_addr
+	moveq	#_ST_TYPE_PSG, @note_type
+	moveq	#3-1, @loop_cnt
+
+	@create_psg_emitters_loop:
+		SoundTest_CreateObject #SoundTest_Obj_NoteEmitter
+		move.w	@note_type, obSTNoteType(a1)
+		move.w	@note_addr, obSTNoteAddr(a1)
+		lea	TrackSz(@note_addr), @note_addr
+
+		dbf	@loop_cnt, @create_psg_emitters_loop
+
+	rts
+
+; ---------------------------------------------------------------------------
+;
 ; ---------------------------------------------------------------------------
 
 SoundTest_Obj_NoteEmitter:
 
-@noteIndexPrepared:	equ	$34
+	@base_y_pos: = $80+40+SoundTest_Visualizer_Height*8
 
-	@index: = 12
-	rept 6+3-1
-		SoundTest_CreateChildObject #@Wait
-		move.w	#@index, @noteIndexPrepared(a1)
+	@source_note:	equr	a3
 
-		@index: = @index + 12*3
-	endr
+	; Initialize properties
+	move.l	#SoundTest_ObjMap_NoteEmitter, obMap(a0)
+	move.w	#@base_y_pos, obScreenY(a0)
 
-	move.l	#@Wait, $3C(a0)
+	move.l	#@ObjRoutine_WaitNextNote, obCodePtr(a0)
 
-@Wait:
-;	add.b	#$100/16, $30(a0)
-;	bcc	@ret
-	move.w	#12*2, $32(a0)
-	move.l	#@Emit, $3C(a0)
-	move.b	#0, $1A(a0)
-
-@Emit:
-	move.w	@noteIndexPrepared(a0), d0
-	lea	@NoteIndexToWriteRequest(pc), a1
-	adda.w	d0, a1
-	move.w	(a1)+, d0
-	SoundTest_AddWriteRequest d0, (a1)+, a2
-	move.l	(a1)+, 4(a0)
-	move.w	(a1)+, 2(a0)
-	add.w	#$80+(320-SoundTest_Visualizer_Width*8)/2, d0
-	move.w	d0, 8(a0)
-	move.w	#$80+40+SoundTest_Visualizer_Height*8, $A(a0)
-	jsr	DisplaySprite
-
-	cmp.w	#12*2-1, $32(a0)
-	bne.s	@0
-	move.b	#1, $1A(a0)
-@0
-	subq.w	#1, $32(a0)
-	bne.s	@ret
-	move.l	#@Wait, $3C(a0)
-
-	add.w	#12, @noteIndexPrepared(a0)
-	cmp.w	#7*12*12, @noteIndexPrepared(a0)
-	blo.s	@ret
-	move.w	#0, @noteIndexPrepared(a0)
-
-@ret:	rts
+	movea.w	obSTNoteAddr(a0), @source_note
+	move.b	(@source_note), d0
+	bra.s	@SetupNoteValue
 
 ; ---------------------------------------------------------------------------
-@NoteIndexToWriteRequest:
+@ObjRoutine_WaitNextNote:
+	movea.w	obSTNoteAddr(a0), @source_note
+	move.b	(@source_note), d0
+	cmp.b	obSTNoteValue(a0), d0			; has note value changed?
+	bne.s	@SetupNoteValue				; if yes, branch
+@ret:	rts
 
-	@base_pat: = (SoundTest_PianoOverlays_VRAM/$20)|$6000|$8000
+@SetupNoteValue:
+	move.b	d0, obSTNoteValue(a0)			; set new note value
+	bmi.s	@ret					; if note is empty, branch
 
-	@start_x: = 1
+	sub.b	#12+1, d0				; octave 1 is not displayed
+	bmi.s	@ret					; ''
+	cmp.b	#SoundTest_Visualizer_NumOctaves*12, d0
+	bhs.s	@ret
 
-	rept 7 ; octaves
-		dc.w	@start_x
-		dc.l	@Note_Wide
-		dc.l	@SpriteTable_Note_Wide
-		dc.w	@base_pat+0
+	@setup_data:	equr	a4
 
-		dc.w	@start_x+3
-		dc.l	@Note_Narrow
-		dc.l	@SpriteTable_Note_Narrow
-		dc.w	@base_pat+216/8
+	lea	SoundTest_NoteEmitter_NoteIndexToSetupData(pc), @setup_data
+	andi.w	#$7F, d0
+	move.w	d0, d1
+	add.w	d0, d0					; d0 = 2X
+	add.w	d1, d0					; d0 = 3X
+	add.w	d0, d0					; d0 = 6X
+	adda.w	d0, @setup_data
 
-		dc.w	@start_x+6
-		dc.l	@Note_Wide
-		dc.l	@SpriteTable_Note_Wide
-		dc.w	@base_pat+72/8
+	; Setup note for rendering
+	move.w	(@setup_data)+, d0
+	move.w	d0, obSTPixelDataX(a0)
+	add.w	#$80+(320-SoundTest_Visualizer_Width*8)/2, d0
+	move.w	d0, obX(a0)
 
-		dc.w	@start_x+9
-		dc.l	@Note_Narrow
-		dc.l	@SpriteTable_Note_Narrow
-		dc.w	@base_pat+216/8
+	move.w	(@setup_data)+, obGfx(a0)
+	move.b	(@setup_data)+, obFrame(a0)
+	move.b	(@setup_data)+, d0
+	add.w	obSTNoteType(a0), d0
+	move.b	d0, obSTPixelDataFrame(a0)
+	
+	move.l	#@ObjRoutine_RenderNote, obCodePtr(a0)
+	bra.s	@RenderNote
 
-		dc.w	@start_x+12
-		dc.l	@Note_Wide
-		dc.l	@SpriteTable_Note_Wide
-		dc.w	@base_pat+144/8
+; ---------------------------------------------------------------------------
+@ObjRoutine_RenderNote:
+	movea.w	obSTNoteAddr(a0), @source_note
+	move.b	(@source_note), d0
+	cmp.b	obSTNoteValue(a0), d0			; has note value changed?
+	bne @SetupNoteValue				; if yes, branch	
 
-	@start_x: = @start_x + 17
+@RenderNote:
+	@pixel_data:	equr	a2
 
-		dc.w	@start_x
-		dc.l	@Note_Wide
-		dc.l	@SpriteTable_Note_Wide
-		dc.w	@base_pat+0
+	moveq	#0, d0
+	move.b	obSTPixelDataFrame(a0), d0
+	lea	SoundTest_NoteEmitter_PixelDataFrames(pc), @pixel_data
+	adda.w	(@pixel_data, d0), @pixel_data
 
-		dc.w	@start_x+3
-		dc.l	@Note_Narrow
-		dc.l	@SpriteTable_Note_Narrow
-		dc.w	@base_pat+216/8
+	SoundTest_AddWriteRequest obSTPixelDataX(a0), @pixel_data, a4
 
-		dc.w	@start_x+6
-		dc.l	@Note_Wide
-		dc.l	@SpriteTable_Note_Wide
-		dc.w	@base_pat+72/8
+	jmp	DisplaySprite
 
-		dc.w	@start_x+9
-		dc.l	@Note_Narrow
-		dc.l	@SpriteTable_Note_Narrow
-		dc.w	@base_pat+216/8
-
-		dc.w	@start_x+12
-		dc.l	@Note_Wide
-		dc.l	@SpriteTable_Note_Wide
-		dc.w	@base_pat+72/8
-
-		dc.w	@start_x+15
-		dc.l	@Note_Narrow
-		dc.l	@SpriteTable_Note_Narrow
-		dc.w	@base_pat+216/8
-
-		dc.w	@start_x+18
-		dc.l	@Note_Wide
-		dc.l	@SpriteTable_Note_Wide
-		dc.w	@base_pat+144/8
-
-	@start_x: = @start_x + 23
-	endr
+	rts
 
 ; ---------------------------------------------------------------------------
 ; Pixel data for piano sheet
 ; ---------------------------------------------------------------------------
 
-@Note_Wide:
+SoundTest_NoteEmitter_PixelDataFrames:
+@Index:
+	dc.w	@PixelData_Note_FM_Wide-@Index		; $00
+	dc.w	@PixelData_Note_FM_Narrow-@Index	; $02
+
+	dc.w	@PixelData_Note_PSG_Wide-@Index		; $04
+	dc.w	@PixelData_Note_PSG_Narrow-@Index	; $06
+
+@PixelData_Note_FM_Wide:
 	dc.w	4		; number of pixels (nibbles)
 	dc.b	$56, $65	; normal pixel data (even nibble start)
 	dc.b	$05, $66, $50	; shifted pixel data (odd nibble start)
 	even
 
-@Note_Narrow:
+@PixelData_Note_FM_Narrow:
 	dc.w	3		; number of pixels (nibbles)
 	dc.b	$56, $50	; normal pixel data (even nibble start)
 	dc.b	$05, $65	; shifted pixel data (odd nibble start)
 	even
 
+@PixelData_Note_PSG_Wide:
+	dc.w	4		; number of pixels (nibbles)
+	dc.b	$78, $87	; normal pixel data (even nibble start)
+	dc.b	$07, $88, $70	; shifted pixel data (odd nibble start)
+	even
+
+@PixelData_Note_PSG_Narrow:
+	dc.w	3		; number of pixels (nibbles)
+	dc.b	$78, $70	; normal pixel data (even nibble start)
+	dc.b	$07, $87	; shifted pixel data (odd nibble start)
+	even
+
 ; ---------------------------------------------------------------------------
-; Sprite mappings
+;
 ; ---------------------------------------------------------------------------
 
-@SpriteTable_Note_Wide:
-	dc.w	@Note_Wide_Highlight-@SpriteTable_Note_Wide
-	dc.w	@Note_Wide_FM-@SpriteTable_Note_Wide
-	dc.w	@Note_Wide_PSG-@SpriteTable_Note_Wide
+SoundTest_NoteEmitter_NoteIndexToSetupData:
 
+	@pat_base: = (SoundTest_PianoOverlays_VRAM/$20)|$6000|$8000
+	@pat_wideL: = @pat_base+0
+	@pat_wideC: = @pat_base+72/8
+	@pat_wideR: = @pat_base+144/8
+	@pat_narrow: = @pat_base+216/8
+
+	@frame_wide: = $00
+	@frame_narrow: = $02
+
+	@pixel_frame_wide: = 0
+	@pixel_frame_narrow: = 2
+
+	@start_x: = 1
+
+	rept SoundTest_Visualizer_NumOctaves
+		dc.w	@start_x			; start X-position
+		dc.w	@pat_wideL			; art pointer
+		dc.b	@frame_wide			; base frame
+		dc.b	@pixel_frame_wide		; pixel data frame
+
+		dc.w	@start_x+3			; start X-position
+		dc.w	@pat_narrow			; art pointer
+		dc.b	@frame_narrow			; base frame
+		dc.b	@pixel_frame_narrow		; pixel data frame
+
+		dc.w	@start_x+6			; start X-position
+		dc.w	@pat_wideC			; art pointer
+		dc.b	@frame_wide			; base frame
+		dc.b	@pixel_frame_wide		; pixel data frame
+
+		dc.w	@start_x+9			; start X-position
+		dc.w	@pat_narrow			; art pointer
+		dc.b	@frame_narrow			; base frame
+		dc.b	@pixel_frame_narrow		; pixel data frame
+
+		dc.w	@start_x+12			; start X-position
+		dc.w	@pat_wideR			; art pointer
+		dc.b	@frame_wide			; base frame
+		dc.b	@pixel_frame_wide		; pixel data frame
+
+	@start_x: = @start_x + 17
+
+		dc.w	@start_x			; start X-position
+		dc.w	@pat_wideL			; art pointer
+		dc.b	@frame_wide			; base frame
+		dc.b	@pixel_frame_wide		; pixel data frame
+
+		dc.w	@start_x+3			; start X-position
+		dc.w	@pat_narrow			; art pointer
+		dc.b	@frame_narrow			; base frame
+		dc.b	@pixel_frame_narrow		; pixel data frame
+
+		dc.w	@start_x+6			; start X-position
+		dc.w	@pat_wideC			; art pointer
+		dc.b	@frame_wide			; base frame
+		dc.b	@pixel_frame_wide		; pixel data frame
+
+		dc.w	@start_x+9			; start X-position
+		dc.w	@pat_narrow			; art pointer
+		dc.b	@frame_narrow			; base frame
+		dc.b	@pixel_frame_narrow		; pixel data frame
+
+		dc.w	@start_x+12			; start X-position
+		dc.w	@pat_wideC			; art pointer
+		dc.b	@frame_wide			; base frame
+		dc.b	@pixel_frame_wide		; pixel data frame
+
+		dc.w	@start_x+15			; start X-position
+		dc.w	@pat_narrow			; art pointer
+		dc.b	@frame_narrow			; base frame
+		dc.b	@pixel_frame_narrow		; pixel data frame
+
+		dc.w	@start_x+18			; start X-position
+		dc.w	@pat_wideR			; art pointer
+		dc.b	@frame_wide			; base frame
+		dc.b	@pixel_frame_wide		; pixel data frame
+
+	@start_x: = @start_x + 23
+	endr
+
+	if * <> SoundTest_NoteEmitter_NoteIndexToSetupData + SoundTest_Visualizer_NumOctaves*12*6
+		inform 2, "Data generation error"
+	endif
+
+; ---------------------------------------------------------------------------
+;
+; ---------------------------------------------------------------------------
+
+SoundTest_NoteEmitter_BaseFrameToPixelData:
+
+
+; ---------------------------------------------------------------------------
+;
+; ---------------------------------------------------------------------------
+
+SoundTest_ObjMap_NoteEmitter:
+
+@Index:
+	; "_ST_TYPE_FM" frames
+	dc.w	@Note_Wide_Highlight-@Index	; $00
+	dc.w	@Note_Wide_FM-@Index		; $01
+
+	dc.w	@Note_Narrow_Highlight-@Index	; $02
+	dc.w	@Note_Narrow_FM-@Index		; $03
+
+	; "_ST_TYPE_PSG" frames
+	dc.w	@Note_Wide_Highlight-@Index	; $04
+	dc.w	@Note_Wide_PSG-@Index		; $05
+
+	dc.w	@Note_Narrow_Highlight-@Index	; $06
+	dc.w	@Note_Narrow_PSG-@Index		; $07
+
+; ---------------------------------------------------------------------------
 @Note_Wide_Highlight:
 	dc.b	1
 	dc.b	1, %0010, 0, 0, -1
@@ -161,13 +295,6 @@ SoundTest_Obj_NoteEmitter:
 @Note_Wide_PSG:
 	dc.b	1
 	dc.b	1, %0010, 0, 6, -1
-	even
-
-; ---------------------------------------------------------------------------
-@SpriteTable_Note_Narrow:
-	dc.w	@Note_Narrow_Highlight-@SpriteTable_Note_Narrow
-	dc.w	@Note_Narrow_FM-@SpriteTable_Note_Narrow
-	dc.w	@Note_Narrow_PSG-@SpriteTable_Note_Narrow
 
 @Note_Narrow_Highlight:
 	dc.b	1
@@ -180,4 +307,3 @@ SoundTest_Obj_NoteEmitter:
 @Note_Narrow_PSG:
 	dc.b	1
 	dc.b	1, %0001, 0, 4, 0
-	even

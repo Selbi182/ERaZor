@@ -68,7 +68,8 @@ SoundTestScreen:
 
 	;SoundTest_CreateObject #SoundTest_Obj_DummyHL
 	SoundTest_CreateObject #SoundTest_Obj_PianoSheet
-	SoundTest_CreateObject #SoundTest_Obj_NoteEmitter
+	
+	jsr	SoundTest_CreateNoteEmitters
 
 	; Load BG
 	vram	SoundTest_BG_VRAM, VDP_Ctrl
@@ -118,7 +119,7 @@ SoundTestScreen:
 	jsr	Pal_FadeTo ; ###
 
 	; ###
-	moveq	#$FFFFFF9F, d0
+	moveq	#$FFFFFF82, d0
 	jsr	PlaySound_Special
 
 
@@ -641,5 +642,5 @@ SoundTest_Palette:
 	dc.w	$0686, $08A6, $08A8, $0AC8, $0ACA, $0CEA, $0CEC, $0EEE
 
 	; Line 3: Piano
-	dc.w	$0E0E, $0000, $0888, $0CCC, $0EEE, $0240, $0480, $0604
-	dc.w	$0C06, $00EE, $08EE, $0E0E, $0E0E, $0E0E, $0E0E, $0E0E
+	dc.w	$0E0E, $0000, $0888, $0CCC, $0EEE, $0240, $0480, $0406
+	dc.w	$060C, $00EE, $08EE, $0E0E, $0E0E, $0E0E, $0E0E, $0E0E

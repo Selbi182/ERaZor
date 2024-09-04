@@ -47,7 +47,7 @@ DebugModeDefault = 1
 DebugSurviveNoRings = 1
 ; ------------------------------------------------------
 DoorsAlwaysOpen = 0
-LowBossHP = 1
+LowBossHP = 0
 ; ------------------------------------------------------
 TestDisplayDeleteBugs = 0
 ; ======================================================
@@ -3551,6 +3551,15 @@ loc_3946:
 		bset	#2,($FFFFF754).w
 		bsr	MainLoadBlockLoad	; load block mappings and palettes
 
+		cmpi.w	#$500,($FFFFFE10).w	; is this the bomb machine cutscene?
+		bne.s	@notmachine		; if not, branch
+		lea	($FFFFFBA0).w,a0
+		moveq	#$18-1,d1
+		moveq	#0,d0
+@black:		move.l	d0,(a0)+
+		dbf	d1,@black
+
+@notmachine:
 		moveq	#0,d0
 		bsr	LoadPLC			; (re-)load standard patterns 1
 
@@ -6804,9 +6813,9 @@ Resize_SLZ3:
 		move.w	#0,($FFFFD010).w
 
 @goup:
-		cmpi.w	#$4C,($FFFFD00C).w
+		cmpi.w	#$5C,($FFFFD00C).w
 		blo.s	@lastright
-		cmpi.w	#$190,($FFFFD00C).w
+		cmpi.w	#$1A0,($FFFFD00C).w
 		blo.s	@slowdown
 		move.w	#-$C00,($FFFFD012).w
 		move.b	#$F,($FFFFD01C).w
@@ -6820,7 +6829,7 @@ Resize_SLZ3:
 		rts
 
 @lastright:
-		move.w	#$48,($FFFFD00C).w
+		move.w	#$58,($FFFFD00C).w
 		move.w	#$200,($FFFFD010).w
 		move.w	#0,($FFFFD012).w
 		move.b	#$E,($FFFFD01C).w
@@ -23208,7 +23217,7 @@ Obj5D_Action:				; XREF: Obj5D_Index
 
 @forcesonicinplace:
 		tst.b	($FFFFF7CC).w		; are controls already locked?
-		bne.w	Obj5D_Animate		; if yes, branch
+		bne.w	@fansound		; if yes, branch
 		move.b	#1,$30(a0)		; fast animation
 		btst	#1,obStatus(a0)		; is fan vertically flipped?
 		bne.w	Obj5D_Animate		; if yes, make it cosmetic only
@@ -23217,26 +23226,25 @@ Obj5D_Action:				; XREF: Obj5D_Index
 		btst	#0,obStatus(a0)		; is fan horizontally flipped?
 		bne.s	@rightfacing2		; if yes, branch
 		btst	#3,($FFFFF602).w	; right still pressed?
-		bne.s	Obj5D_Animate		; if yes, branch
+		bne.s	@fansound		; if yes, branch
 		move.w	#-$800,d0
 		move.w	d0,($FFFFD010).w
 		move.w	d0,($FFFFD014).w
-		bra.s	@fansound
+		bra.s	@dosound
 
 @rightfacing2:
 		btst	#2,($FFFFF602).w	; left still pressed?
-		bne.s	Obj5D_Animate
+		bne.s	@fansound
 		move.w	#$800,d0
 		move.w	d0,($FFFFD010).w
 		move.w	d0,($FFFFD014).w
+		bra.s	@dosound
 
 @fansound:
-		move.b	($FFFFFE05).w,d0	; play fan sound every couple frames
-		andi.b	#%11,d0
+		moveq	#%11,d0
+		and.w	($FFFFFE04).w,d0	; play fan sound every couple frames
 		bne.s	Obj5D_Animate
-		btst	#0,($FFFFFE0F).w
-		bne.s	Obj5D_Animate
-		move.w	#$B8,d0
+@dosound:	move.w	#$B8,d0
 		jsr	PlaySound_Special
 
 Obj5D_Animate:				; XREF: Obj5D_ChkSonic
@@ -38130,8 +38138,17 @@ Obj82_FindBlocks:
 		move.w	obVelX(a0),d0
 		or.w	obVelY(a0),d0
 		bne.s	loc_199D0
-		
+
+		tst.b	($FFFFFFC8).w
+		bne.s	loc_199D0
+
 		move.b	#1,($FFFFFFC8).w	; set flag that button was pressed
+
+		movem.l	d7/a1-a3,-(sp)
+		moveq	#$E,d0			; load SBZ palette
+		jsr	PalLoad2
+	;	jsr	WhiteFlash2
+		movem.l	(sp)+,d7/a1-a3
 
 		jsr	SingleObjLoad
 		move.b	#$3A,(a1)

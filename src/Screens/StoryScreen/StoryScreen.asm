@@ -730,7 +730,7 @@ StoryText_7:	; text after beating Scar Night Place
 		ststxt	"WHEN I PLAY BUZZ WIRE GAMES,"
 		ststxt	"I ALSO SCREAM IN EXCITEMENT!"
 		ststxt	"BUT I'M REALLY STARTING"
-		ststxt	"TO GET CONCEREND ABOUT"
+		ststxt	"TO GET CONCERNEND ABOUT"
 		ststxt	"YOUR VOCAL CORDS."
 		ststxt_line
 		ststxt	"AFTER ALL, THE FINALE IS"

@@ -5,7 +5,7 @@
 ; ------------------------------------------------------
 	if def(__BENCHMARK__)=0
 ; Vladik's Debugger
-__DEBUG__: equ 1
+;__DEBUG__: equ 1
 
 	else
 		; MD Replay state. Used for playing pre-recorded gameplay in benchmarks.
@@ -4988,8 +4988,22 @@ SS_MainLoop:
 		beq.s	SS_WaitVBlank		; if not, branch
 		btst	#4,(OptionsBits).w	; is nonstop inhuman enabled?
 		beq.s	SS_WaitVBlank		; if not, branch
+
+		jsr	WhiteFlash2
+
 		moveq	#$25,d3			; set target to bumpers
 		jsr	SS_RemoveAllCustom	; remove all touched bumpers
+		moveq	#$32,d3			; set target to bumpers
+		jsr	SS_RemoveAllCustom	; remove all touched bumpers
+		moveq	#$33,d3			; set target to bumpers
+		jsr	SS_RemoveAllCustom	; remove all touched bumpers
+
+		move.w	#$B9,d0			; play annoying crumbling sound instead
+		jsr	PlaySound		; play sound
+		move.w	#$DB,d0			; play annoying crumbling sound instead
+		jsr	PlaySound_Special	; play selected sound
+
+		bra.s	SS_WaitVBlank
 
 @touchgoal:	lea	($FFFFD000).w,a0	; load Sonic object
 		jsr	TouchGoalBlock		; respawn at last checkpoint
@@ -6763,7 +6777,7 @@ Resize_SLZ2boss2:
 		moveq	#16,d0			; set number of	hits to 16 (casual)
 		frantic				; are we in frantic?
 		beq.s	@notfrantic		; if not, branch
-		moveq	#20,d0			; set number of	hits to 20 (frantic)
+		moveq	#18,d0			; set number of	hits to 20 (frantic)
 	@notfrantic:		
 	if LowBossHP=1
 		moveq	#1,d0
@@ -34603,7 +34617,7 @@ Map_obj8A:
 ; Object 3D - Eggman (GHZ)
 ; ---------------------------------------------------------------------------
 Obj3D_Health_Casual  = 16
-Obj3D_Health_Frantic = 24
+Obj3D_Health_Frantic = 20
 ; ---------------------------------------------------------------------------
 
 Obj3D:					; XREF: Obj_Index
@@ -35096,7 +35110,7 @@ Obj48_Main:				; XREF: Obj48_Index
 		movea.l	$34(a0),a1		; move root boss object to a1
 		cmpi.b	#$40,ob2ndRout(a0)	; is this the second ball?
 		bhi.s	@checkthirdball		; if not, branch
-		cmpi.b	#20,obColProp(a1)	; damaged Eggman to at least 20 HP?
+		cmpi.b	#18,obColProp(a1)	; damaged Eggman to at least 18 HP?
 		bhi.s	@waitball		; if not, branch
 @delayballs:
 		move.b	ob2ndRout(a0),d0	; get current delay
@@ -38479,16 +38493,16 @@ loc_19E5A:
 	if LowBossHP=1
 		move.b	#0,obColProp(a0)	; set number of	hits to	1
 	else
-		tst.b	(PlacePlacePlace).w
-		beq.s	@noeasteregg
-		move.w	#100,d0				; set number of	hits to	100 (ur mom)
-		bra.s	@notfrantic
-@noeasteregg:
+	;	tst.b	(PlacePlacePlace).w
+	;	beq.s	@noeasteregg
+	;	move.w	#100,d0				; set number of	hits to	100 (ur mom)
+	;	bra.s	@notfrantic
+;@noeasteregg:
 		moveq	#30,d0				; set number of	hits to	30 (casual)
-		frantic
-		beq.s	@notfrantic
-		moveq	#42,d0				; set number of	hits to	42 (frantic)
-@notfrantic:
+	;	frantic
+	;	beq.s	@notfrantic
+	;	moveq	#42,d0				; set number of	hits to	42 (frantic)
+;@notfrantic:
 		move.b	d0,obColProp(a0)
 	endif
 		move.b	obColProp(a0),(HUD_BossHealth).w
@@ -40988,7 +41002,7 @@ SS_AniRingData:	dc.b $42, $43, $44, $45, 0, 0
 SS_AniBumper:				; XREF: SS_AniIndex
 		subq.b	#1,obGfx(a0)
 		bpl.s	locret_1B566
-		move.b	#7,obGfx(a0)
+		move.b	#1,obGfx(a0)
 		moveq	#0,d0
 		move.b	3(a0),d0
 		addq.b	#1,3(a0)
@@ -41738,14 +41752,10 @@ locret_1BB54:
 
 Obj09_Jump:				; XREF: Obj09_OnWall
 		tst.b	(Blackout).w		; is easter egg SS enabled?
-		beq.s	@cont			; if not, branch
-		
+		bne.s	Obj09_NoJump		; if yes, disable jumping
 
-		bra.s	Obj09_NoJump		; disabled movement
-
-@cont:
 		move.b	($FFFFF603).w,d0	; get button press
-		andi.b	#$70,d0			; is A,	B or C pressed?
+		andi.b	#$30,d0			; is B or C pressed?
 		beq.s	Obj09_NoJump		; if not, branch
 		tst.b	($FFFFFFBF).w
 		bne.s	Obj09_NoJump

@@ -621,6 +621,8 @@ SoundTest_CharToTile:
 	while (@char < $80)
 		if @char = ' '
 			@return $8000
+		elseif @char = '.'
+			@return (@base_pat + 10+5+26+2) | $8000
 		elseif @char = '-'
 			@return (@base_pat + $B) | $8000
 		elseif @char = '<'

@@ -86,14 +86,12 @@ OptionsScreen:				; XREF: GameModeArray
 		assert.w a1, eq, #Objects_End
 
 		; Load options text art
-		lea	($C00000).l,a6
-		move.l	#$6E000002,4(a6)
-		lea	(Options_TextArt).l,a5
-		move.w	#$59F,d1		; Original: $28F
-@loadtextart:	move.w	(a5)+,(a6)
-		dbf	d1,@loadtextart ; load uncompressed text patterns
+		@vram_dest: = $AE00
+
+		vramWrite Options_TextArt, filesize("Screens/OptionsScreen/Options_TextArt.bin"), @vram_dest
 
 		; Load ERZ banner art
+		lea	VDP_Data, a6
 		move.l	#$64000002,4(a6)
 		lea	ArtKospM_ERaZorNoBG, a0
 		jsr	KosPlusMDec_VRAM
@@ -426,7 +424,7 @@ Options_DrawText2:
 
 		@loop:
 			add.w	d7, d7
-			move.w	Options_CharToTile(pc, d7), d7
+			move.w	Options_CharToTile-$20*2(pc, d7), d7
 			or.w	d6, d7
 			move.w	d7, (a1)+
 			moveq	#0, d7
@@ -457,7 +455,7 @@ Options_CharToTile:
 @return: macros value
 	dc.w \value
 
-	@char:	= 0
+	@char:	= $20	; ignore ASCII codes $00..$1F, those are control character we'll never use
 	while (@char < $80)
 		if @char = ' '
 			@return 0

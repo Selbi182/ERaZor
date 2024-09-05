@@ -7,6 +7,13 @@ align	macro
 	cnop 0,\1
 	endm
 
+; even variant for RS-based allocators
+rseven	macro
+	if __rs & 1
+		rs.b	1
+	endif
+	endm
+
 ; Enable/display display
 display_enable	macro
 	move.w	($FFFFF60C).w,d0	; enable screen output

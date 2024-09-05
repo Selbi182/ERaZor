@@ -2411,11 +2411,10 @@ CalcSine:				; XREF: SS_BGAnimate; et al
 
 ; ===========================================================================
 
-Sine_Data:	incbin	misc\sinewave.bin, 0, $200	; values for a 360? sine wave
-
-	incbin	misc\sinewave.bin, 0, $200	; values for a 360? sine wave
-	incbin	misc\sinewave.bin, 0, $200	; values for a 360? sine wave
-	incbin	misc\sinewave.bin, 0, $200	; values for a 360? sine wave
+Sine_Data:
+	incbin	misc\sinewave.bin, 0, $200
+	incbin	misc\sinewave.bin, 0, $200	; wrap-around for Sound Test deformation effect
+	incbin	misc\sinewave.bin, 0, $200	; ''
 
 ; ===========================================================================
 		movem.l	d1-d2,-(sp)

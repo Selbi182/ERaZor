@@ -5,7 +5,7 @@
 ; ------------------------------------------------------
 	if def(__BENCHMARK__)=0
 ; Vladik's Debugger
-;__DEBUG__: equ 1
+__DEBUG__: equ 1
 
 	else
 		; MD Replay state. Used for playing pre-recorded gameplay in benchmarks.
@@ -40,14 +40,14 @@
 ; $302 - Star Agony Place
 ; $502 - Finalor Place
 	if def(__BENCHMARK__)=0
-QuickLevelSelect = 0
+QuickLevelSelect = 1
 QuickLevelSelect_ID = -1
 ; ------------------------------------------------------
 DebugModeDefault = 1
 DebugSurviveNoRings = 1
 ; ------------------------------------------------------
 DoorsAlwaysOpen = 0
-LowBossHP = 1
+LowBossHP = 0
 ; ------------------------------------------------------
 TestDisplayDeleteBugs = 0
 ; ======================================================
@@ -376,9 +376,6 @@ BlackBars.SetState:
 		move.w	($FFFFFE10).w,d0		; get current level ID
 		cmpi.w	#$500,d0			; is this the bomb machine cutscene?
 		bne.s	@notmachine			; if not, branch
-		move.w	#8,BlackBars.TargetHeight	; set custom target height for the first part of the cutscene
-		tst.b	($FFFFFFC8).w			; did Eggman press the switch?
-		beq.s	BlackBars_ShowCustom		; if not yet, show small black bars
 		move.w	#28,BlackBars.TargetHeight	; set full bars once the machine is destroyed
 		bra.s	BlackBars_ShowCustom		; force display
 
@@ -1418,7 +1415,9 @@ PalCycle_SBZ:
 		cmpi.w	#$500,($FFFFFE10).w
 		bne.s	loc_1AE0
 		tst.b	($FFFFFFC8).w
-		beq.s	loc_1AE0
+		beq.w	locret_1B64
+		tst.b	($FFFFFFB9).w		; is white flash in progress?
+		bne.w	locret_1B64
 		move.w	#7,d1
 
 loc_1AE0:
@@ -3577,6 +3576,10 @@ loc_3946:
 		; bomb machine cutscene setup
 		cmpi.w	#$500,($FFFFFE10).w
 		bne.s	@SBZcont
+
+		jsr	Pal_CutToBlack
+		moveq	#3,d0
+		jsr	PalLoad2		; load Sonic palette
 
 		lea	($FFFFD440).w,a1
 		move.b	#$5F,(a1)	; load walking bomb enemy
@@ -6094,7 +6097,8 @@ MainLoadBlockLoad:			; XREF: Level; EndingSequence
 
 		cmpi.w	#$500,($FFFFFE10).w
 		bne.s	MLB_NotBCut
-		moveq	#$15,d0
+	;	moveq	#$15,d0
+		moveq	#$19,d0
 
 MLB_NotBCut:
 		cmpi.w	#$001,($FFFFFE10).w	; is level GHZ2?
@@ -6773,11 +6777,13 @@ Resize_SLZ2boss2:
 		move.w	#$BD0,obX(a1)
 		move.w	#$038C,obY(a1)
 
-		moveq	#16,d0			; set number of	hits to 16 (casual)
-		frantic				; are we in frantic?
-		beq.s	@notfrantic		; if not, branch
-		moveq	#18,d0			; set number of	hits to 18 (frantic)
-	@notfrantic:		
+	;	moveq	#16,d0			; set number of	hits to 16 (casual)
+	;	frantic				; are we in frantic?
+	;	beq.s	@notfrantic		; if not, branch
+	;	moveq	#18,d0			; set number of	hits to 18 (frantic)
+	;@notfrantic:
+
+		moveq	#20,d0			; set number of	hits to 20
 	if LowBossHP=1
 		moveq	#1,d0
 	endif
@@ -10760,9 +10766,9 @@ Obj1F_Main:				; XREF: Obj1F_Index
 		move.b	#1,obColProp(a0)		; set number of	hits to	1
 	else
 		moveq	#12,d0				; set number of	hits to	12 (casual)
-		frantic
-		beq.s	@notfrantic
-		moveq	#16,d0				; set number of	hits to	16 (frantic)
+	;	frantic
+	;	beq.s	@notfrantic
+	;	moveq	#16,d0				; set number of	hits to	16 (frantic)
 @notfrantic:
 		move.b	d0,obColProp(a0)
 	endif
@@ -16540,44 +16546,48 @@ Obj3A_Index:	dc.w Obj3A_Main-Obj3A_Index
 ; ===========================================================================
 
 Obj3A_Main:				; XREF: Obj6D_Index
+		; main machine
 		addq.b	#2,obRoutine(a0)
 		move.l	#Map_BombMachine,obMap(a0)
-		move.w	#$22B0,obGfx(a0)
+		move.w	#$42B0,obGfx(a0)
 		ori.b	#4,obRender(a0)
 		move.b	#2,obPriority(a0)
 		move.b	#$14,obFrame(a0)
 
+		; needle
 		jsr	SingleObjLoad
 		move.b	#$3A,(a1)
 		move.b	#4,obRoutine(a1)
 		move.b	#4,obFrame(a1)
 		move.b	#0,obPriority(a1)
 		move.l	#Map_BombMachine,obMap(a1)
-		move.w	#$22B0,obGfx(a1)
+		move.w	#$42B0,obGfx(a1)
 		ori.b	#4,obRender(a1)
 		move.w	obX(a0),obX(a1)
 		move.w	obY(a0),obY(a1)
 		move.b	#1,obAnim(a1)
 
+		; wheel
 		jsr	SingleObjLoad
 		move.b	#$3A,(a1)
 		move.b	#6,obRoutine(a1)
 		move.b	#8,obFrame(a1)
 		move.b	#0,obPriority(a1)
 		move.l	#Map_BombMachine,obMap(a1)
-		move.w	#$22B0,obGfx(a1)
+		move.w	#$42B0,obGfx(a1)
 		ori.b	#4,obRender(a1)
 		move.w	obX(a0),obX(a1)
 		move.w	obY(a0),obY(a1)
 		move.b	#2,obAnim(a1)
 
+		; scale
 		jsr	SingleObjLoad
 		move.b	#$3A,(a1)
 		move.b	#8,obRoutine(a1)
 		move.b	#$B,obFrame(a1)
 		move.b	#0,obPriority(a1)
 		move.l	#Map_BombMachine,obMap(a1)
-		move.w	#$22B0,obGfx(a1)
+		move.w	#$02B0,obGfx(a1)
 		ori.b	#4,obRender(a1)
 		move.w	obX(a0),obX(a1)
 		move.w	obY(a0),obY(a1)
@@ -24194,6 +24204,9 @@ loc_11B7C:
 		movea.l	a0,a1
 	;	tst.w	($FFFFD030).w	; does Sonic have invincibility frames left?
 	;	bne.w	DeleteObject	; if yes, branch
+
+		cmpi.b	#$1A,($FFFFD000+obAnim).w	; is Sonic's animation $1A (hurting)?
+		beq.w	DeleteObject			; if yes, cancel fuse
 
 		cmpi.b	#5,obAnim(a0)
 		beq.s	Obj5F_MakeShrap
@@ -38045,15 +38058,17 @@ Obj82_ObjData:	dc.b 2,	0, 3		; routine number, animation, priority
 ; ===========================================================================
 
 Obj82_Main:				; XREF: Obj82_Index
+		; bomb machine
 		jsr	SingleObjLoad
 		move.b	#$3A,(a1)
 		move.w	#$01B4,obX(a1)
-		move.w	#$0128,obY(a1)
+		move.w	#$0130,obY(a1)
 		move.l	a0,$30(a1)
 
+		; eggman
 		lea	Obj82_ObjData(pc),a2
 		move.w	#$50,obX(a0)
-		move.w	#$1A5,obY(a0)
+		move.w	#$185,obY(a0)
 		move.b	#$F,obColType(a0)
 		move.b	#$10,obColProp(a0)
 		bset	#0,obStatus(a0)
@@ -38067,12 +38082,13 @@ Obj82_Main:				; XREF: Obj82_Index
 		bset	#7,obRender(a0)
 		move.b	#$20,obActWid(a0)
 
+		; switch
 		jsr	SingleObjLoad2
 		bne.s	Obj82_Eggman
 		move.l	a0,$34(a1)
-		move.b	#$82,(a1)	; load switch object
+		move.b	#$82,(a1)
 		move.w	#$170,obX(a1)
-		move.w	#$1BB,obY(a1)
+		move.w	#$19B,obY(a1)
 		clr.b	ob2ndRout(a0)
 		move.b	(a2)+,obRoutine(a1)
 		move.b	(a2)+,obAnim(a1)
@@ -38085,6 +38101,10 @@ Obj82_Main:				; XREF: Obj82_Index
 		move.b	#0,obFrame(a1)
 
 Obj82_Eggman:				; XREF: Obj82_Index
+		tst.b	($FFFFFFB1).w
+		bmi.s	@noflash
+		subq.b	#1,($FFFFFFB1).w
+@noflash
 		moveq	#0,d0
 		move.b	ob2ndRout(a0),d0
 		move.w	Obj82_EggIndex(pc,d0.w),d1
@@ -38145,12 +38165,12 @@ loc_19976:
 		addi.w	#$24,obVelY(a0)
 		tst.w	obVelY(a0)
 		bmi.s	Obj82_FindBlocks
-		cmpi.w	#$194,obY(a0)
+		cmpi.w	#$174,obY(a0)
 		bcs.s	Obj82_FindBlocks
 		move.w	#$5357,obSubtype(a0)
-		cmpi.w	#$19A,obY(a0)
+		cmpi.w	#$17A,obY(a0)
 		bcs.s	Obj82_FindBlocks
-		move.w	#$19A,obY(a0)
+		move.w	#$17A,obY(a0)
 		clr.w	obVelY(a0)
 
 Obj82_FindBlocks:
@@ -38161,6 +38181,12 @@ Obj82_FindBlocks:
 		tst.b	($FFFFFFC8).w
 		bne.s	loc_199D0
 
+		movem.l	d7/a1-a3,-(sp)
+		moveq	#9,d0
+		jsr	PalLoad2
+		jsr	WhiteFlash2
+		movem.l	(sp)+,d7/a1-a3
+
 		move.b	#1,($FFFFFFC8).w	; set flag that button was pressed
 
 		jsr	SingleObjLoad
@@ -38170,7 +38196,7 @@ Obj82_FindBlocks:
 		move.w	#$0128,obY(a1)
 
 		move.l	#Map_BombMachine,obMap(a1)
-		move.w	#$22B0,obGfx(a1)
+		move.w	#$42B0,obGfx(a1)
 		ori.b	#4,obRender(a1)
 		move.b	#1,obPriority(a1)
 
@@ -38497,10 +38523,10 @@ loc_19E5A:
 	;	bra.s	@notfrantic
 ;@noeasteregg:
 		moveq	#30,d0				; set number of	hits (casual)
-		frantic
-		beq.s	@notfrantic
-		moveq	#36,d0				; set number of	hits (frantic)
-@notfrantic:
+	;	frantic
+	;	beq.s	@notfrantic
+	;	moveq	#36,d0				; set number of	hits (frantic)
+;@notfrantic:
 		move.b	d0,obColProp(a0)
 	endif
 		move.b	obColProp(a0),(HUD_BossHealth).w

@@ -1,12 +1,14 @@
 
 obSTSelectedTrack:	equ	$20	; .b
 
+obST_MinTrack	= $81
+obST_MaxTrack	= $DF
+
 ; ---------------------------------------------------------------------------
 ; Track selector controller for the sound test
 ; ---------------------------------------------------------------------------
 
 SoundTest_Obj_TrackSelector:
-
 	move.b	#$81, obSTSelectedTrack(a0)	; set initial track
 	bsr	@RedrawTrackInfo		; display this track
 	move.l	#@Main, obCodePtr(a0)
@@ -17,20 +19,37 @@ SoundTest_Obj_TrackSelector:
 
 	btst	#iRight, d0			; is Right pressed?
 	beq.s	@chkLeft			; if not, branch
-	cmp.b	#$9F, obSTSelectedTrack(a0)
-	beq.s	@ret
 	addq.b	#1, obSTSelectedTrack(a0)
+	cmpi.b	#obST_MaxTrack, obSTSelectedTrack(a0)
+	bls.s	@RedrawTrackInfo
+	move.b	#obST_MinTrack, obSTSelectedTrack(a0)
 	bra	@RedrawTrackInfo
 
 @chkLeft:
 	btst	#iLeft, d0			; is Left pressed?
-	beq.s	@chkAction			; if not, branch
-	cmp.b	#$81, obSTSelectedTrack(a0)
-	beq.s	@ret
+	beq.s	@chkBigSkip			; if not, branch
 	subq.b	#1, obSTSelectedTrack(a0)
+	cmpi.b	#obST_MinTrack, obSTSelectedTrack(a0)
+	bhs.s	@RedrawTrackInfo
+	move.b	#obST_MaxTrack, obSTSelectedTrack(a0)
 	bra	@RedrawTrackInfo
 
-@chkAction:
+@chkBigSkip:
+	btst	#iA, d0				; is A pressed?
+	beq.s	@chkStop			; if not, branch
+	addi.b	#$10, obSTSelectedTrack(a0)
+	cmpi.b	#obST_MaxTrack, obSTSelectedTrack(a0)
+	bls.s	@RedrawTrackInfo
+	subi.b	#obST_MaxTrack+1, obSTSelectedTrack(a0)
+	bra	@RedrawTrackInfo
+
+@chkStop:
+	btst	#iB, d0				; is B pressed?
+	beq.s	@chkPlay			; if not, branch
+	move.b	#$E4, d0
+	jmp	PlaySound_Special
+
+@chkPlay:
 	btst	#iC, d0				; is action pressed?
 	beq.s	@ret				; if not, branch
 	move.b	obSTSelectedTrack(a0), d0
@@ -154,9 +173,82 @@ SoundTest_Obj_TrackSelector:
 	dc.l	@Music9F_Name		; $9F
 	dc.l	@Music9F_Source
 
+; ---------------------------------------------------------------------------
+
+	dc.l	@SoundA0_Name, @Sound_NoSource	; $A0
+	dc.l	@SoundA1_Name, @Sound_NoSource	; $A1
+	dc.l	@SoundA2_Name, @Sound_NoSource	; $A2
+	dc.l	@SoundA3_Name, @Sound_NoSource	; $A3
+	dc.l	@SoundA4_Name, @Sound_NoSource	; $A4
+	dc.l	@SoundA5_Name, @Sound_NoSource	; $A5
+	dc.l	@SoundA6_Name, @Sound_NoSource	; $A6
+	dc.l	@SoundA7_Name, @Sound_NoSource	; $A7
+	dc.l	@SoundA8_Name, @Sound_NoSource	; $A8
+	dc.l	@SoundA9_Name, @Sound_NoSource	; $A9
+	dc.l	@SoundAA_Name, @Sound_NoSource	; $AA
+	dc.l	@SoundAB_Name, @Sound_NoSource	; $AB
+	dc.l	@SoundAC_Name, @Sound_NoSource	; $AC
+	dc.l	@SoundAD_Name, @Sound_NoSource	; $AD
+	dc.l	@SoundAE_Name, @Sound_NoSource	; $AE
+	dc.l	@SoundAF_Name, @Sound_NoSource	; $AF
+	dc.l	@SoundB0_Name, @Sound_NoSource	; $B0
+	dc.l	@SoundB1_Name, @Sound_NoSource	; $B1
+	dc.l	@SoundB2_Name, @Sound_NoSource	; $B2
+	dc.l	@SoundB3_Name, @SoundB3_Source	; $B3
+	dc.l	@SoundB4_Name, @Sound_NoSource	; $B4
+	dc.l	@SoundB5_Name, @Sound_NoSource	; $B5
+	dc.l	@SoundB6_Name, @Sound_NoSource	; $B6
+	dc.l	@SoundB7_Name, @Sound_NoSource	; $B7
+	dc.l	@SoundB8_Name, @Sound_NoSource	; $B8
+	dc.l	@SoundB9_Name, @Sound_NoSource	; $B9
+	dc.l	@SoundBA_Name, @Sound_NoSource	; $BA
+	dc.l	@SoundBB_Name, @Sound_NoSource	; $BB
+	dc.l	@SoundBC_Name, @Sound_NoSource	; $BC
+	dc.l	@SoundBD_Name, @Sound_NoSource	; $BD
+	dc.l	@SoundBE_Name, @Sound_NoSource	; $BE
+	dc.l	@SoundBF_Name, @SoundBF_Source	; $BF
+	dc.l	@SoundC0_Name, @Sound_NoSource	; $C0
+	dc.l	@SoundC1_Name, @Sound_NoSource	; $C1
+	dc.l	@SoundC2_Name, @Sound_NoSource	; $C2
+	dc.l	@SoundC3_Name, @Sound_NoSource	; $C3
+	dc.l	@SoundC4_Name, @Sound_NoSource	; $C4
+	dc.l	@SoundC5_Name, @Sound_NoSource	; $C5
+	dc.l	@SoundC6_Name, @Sound_NoSource	; $C6
+	dc.l	@SoundC7_Name, @Sound_NoSource	; $C7
+	dc.l	@SoundC8_Name, @Sound_NoSource	; $C8
+	dc.l	@SoundC9_Name, @Sound_NoSource	; $C9
+	dc.l	@SoundCA_Name, @Sound_NoSource	; $CA
+	dc.l	@SoundCB_Name, @Sound_NoSource	; $CB
+	dc.l	@SoundCC_Name, @Sound_NoSource	; $CC
+	dc.l	@SoundCD_Name, @Sound_NoSource	; $CD
+	dc.l	@SoundCE_Name, @Sound_NoSource	; $CE
+	dc.l	@SoundCF_Name, @Sound_NoSource	; $CF
+	dc.l	@SoundD0_Name, @Sound_NoSource	; $D0
+	dc.l	@SoundD1_Name, @Sound_NoSource	; $D1
+	dc.l	@SoundD2_Name, @Sound_NoSource	; $D2
+	dc.l	@SoundD3_Name, @Sound_NoSource	; $D3
+	dc.l	@SoundD4_Name, @Sound_NoSource	; $D4
+	dc.l	@SoundD5_Name, @Sound_NoSource	; $D5
+	dc.l	@SoundD6_Name, @Sound_NoSource	; $D6
+	dc.l	@SoundD7_Name, @Sound_NoSource	; $D7
+	dc.l	@SoundD8_Name, @Sound_NoSource	; $D8
+	dc.l	@SoundD9_Name, @Sound_NoSource	; $D9
+	dc.l	@SoundDA_Name, @Sound_NoSource	; $DA
+	dc.l	@SoundDB_Name, @Sound_NoSource	; $DB
+	dc.l	@SoundDC_Name, @Sound_NoSource	; $DC
+	dc.l	@SoundDD_Name, @Sound_NoSource	; $DD
+	dc.l	@SoundDE_Name, @Sound_NoSource	; $DE
+	dc.l	@SoundDF_Name, @Sound_NoSource	; $DF
+
+; ---------------------------------------------------------------------------
 
 @padLen: = 32
 @padString: macro string
+	len: = strlen(\string)
+	if (len>@padLen)
+		inform 2, "line length must be 32 characters or less"
+	endif
+
 	dc.b	\string
 	dcb.b	@padLen-strlen('\strlen')-1, ' '
 	dc.b	0
@@ -347,5 +439,78 @@ SoundTest_Obj_TrackSelector:
 @Music9F_Source:
 	@padString 'MEGA MAN ZERO 4'
 	;@padString 'STRAIGHT AHEAD'
+
+; ---------------------------------------------------------------------------
+
+@Sound_NoSource:
+	@padString ''
+
+@SoundA0_Name:	@padString 'YOU JUMPED'
+@SoundA1_Name:	@padString 'YOU TOUCHED A CHECKPOINT'
+@SoundA2_Name:	@padString 'WHAT IS THIS?'
+@SoundA3_Name:	@padString 'YOU DIED'
+@SoundA4_Name:	@padString 'YOU STOPPED'
+@SoundA5_Name:	@padString 'A FIREBALL WAS SPAT, I GUESS?'
+@SoundA6_Name:	@padString 'IMPALED WITH EXTREME PREJUDICE'
+@SoundA7_Name:	@padString 'YOU ARE PUSHING A ROCK'
+@SoundA8_Name:	@padString 'YOU ARE GETTING WARPED'
+@SoundA9_Name:	@padString 'THE BEST SOUND IN THE GAME'
+@SoundAA_Name:	@padString 'YOU ARE ENTERING WATER'
+@SoundAB_Name:	@padString 'NO IDEA WHAT THIS IS EITHER'
+@SoundAC_Name:	@padString 'EXPLOSIONS.'
+@SoundAD_Name:	@padString 'YOU GOT AIR'
+@SoundAE_Name:	@padString 'A FIREBALL WAS SPAT... AGAIN'
+@SoundAF_Name:	@padString 'YOU GOT A SHIELD'
+@SoundB0_Name:	@padString 'YOU ENTERED HELL'
+@SoundB1_Name:	@padString "SOME ZAP SOUND WHICH IS UNUSED"
+@SoundB2_Name:	@padString 'YOU DROWNED'
+@SoundB3_Name:	@padString "HOW MANY FIREBALL SOUNDS"
+@SoundB3_Source:@padString "ARE IN THIS GAME?!"
+@SoundB4_Name:	@padString 'YOU HIT A BUMPER'
+@SoundB5_Name:	@padString 'YOU GOT A RING'
+@SoundB6_Name:	@padString 'SPIKES HAVE MOVED'
+@SoundB7_Name:	@padString 'I WISH TERRAFORMING WAS REAL'
+@SoundB8_Name:	@padString 'SPIKES HAVE MOVED... AGAIN'
+@SoundB9_Name:	@padString 'YOU BROKE SOMETHING BIG TIME'
+@SoundBA_Name:	@padString 'YOU TOUCHED GRA-- I MEAN GLASS'
+@SoundBB_Name:	@padString 'A FLAPPY DOOR HAS OPENED'
+@SoundBC_Name:	@padString 'YOU DASHED'
+@SoundBD_Name:	@padString 'A STOMPER HAS STOMPED'
+@SoundBE_Name:	@padString 'YOU ARE SPINNING'
+@SoundBF_Name:	@padString 'YOU WISH THIS SOUND WAS'
+@SoundBF_Source:@padString 'ACTUALLY IN THE GAME'
+@SoundC0_Name:	@padString 'A BAT IS TAKING TO THE SKIES'
+@SoundC1_Name:	@padString 'EXPLOSIONS.'
+@SoundC2_Name:	@padString 'YOU SHOULD GO OUTSIDE'
+@SoundC3_Name:	@padString 'I WISH TELEPORTATION WAS REAL'
+@SoundC4_Name:	@padString 'EXPLOSIONS.'
+@SoundC5_Name:	@padString 'OOOOO SHINY'
+@SoundC6_Name:	@padString 'YOU SUCK'
+@SoundC7_Name:	@padString "CHAINY THING GOIN' UP"
+@SoundC8_Name:	@padString "ROCKET THING GOIN' UP"
+@SoundC9_Name:	@padString 'YOU TOUCHED AN EMBLEM'
+@SoundCA_Name:	@padString 'YOU ENTERED A SPECIAL STAGE'
+@SoundCB_Name:	@padString 'EXPLOSIONS.'
+@SoundCC_Name:	@padString 'YOU TOUCHED A SPRING'
+@SoundCD_Name:	@padString 'YOU PRESSED A BUTTON'
+@SoundCE_Name:	@padString 'YOU GOT ANOTHER RING'
+@SoundCF_Name:	@padString 'YOU BEAT A LEVEL HOORAY'
+@SoundD0_Name:	@padString 'YOU DREAM OF THE BEACH'
+@SoundD1_Name:	@padString 'YOU ARE ABOUT TO GO NYOOM'
+@SoundD2_Name:	@padString 'YOU ARE ABOUT TO GO REALLY NYOOM'
+@SoundD3_Name:	@padString 'YOU WENT REALLY NYOOM'
+@SoundD4_Name:	@padString 'LITERALLY NOTHING'
+@SoundD5_Name:	@padString 'LITERALLY NOTHING... AGAIN'
+@SoundD6_Name:	@padString 'STILL LITERALLY NOTHING'
+@SoundD7_Name:	@padString 'PATHETIC EXPLOSION'
+@SoundD8_Name:	@padString 'MENU SELECTION'
+@SoundD9_Name:	@padString 'OPTION CONFIRMED'
+@SoundDA_Name:	@padString 'OPTION DENIED'
+@SoundDB_Name:	@padString 'REALLY HECKING BIG EXPLOSION'
+@SoundDC_Name:	@padString 'NUH UH'
+@SoundDD_Name:	@padString 'PROBABLY A NUKE GOING OFF'
+@SoundDE_Name:	@padString 'HOW HIGH IN THE SKY CAN YOU FLY?'
+@SoundDF_Name:	@padString 'AW MAN YOU BROKE IT'
+
 
 	even

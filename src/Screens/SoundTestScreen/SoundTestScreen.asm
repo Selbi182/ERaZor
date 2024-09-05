@@ -25,7 +25,7 @@ SoundTestScreen:
 	move.w	#$8400|(SoundTest_PlaneB_VRAM/$2000), (@vdp_ctrl)	; Plane B address
 	move.w	#$8C81+8, (@vdp_ctrl)		; enable S&H
 	move.w	#$9011, (@vdp_ctrl)		; set plane size to 64x64
-	move.l	#$91009205, (@vdp_ctrl)		; enable window plane to mask Plane C
+	move.l	#$91009204, (@vdp_ctrl)		; enable window plane to mask Plane C
 	move.w	#$8B00, (@vdp_ctrl)		; VScroll: full, HScroll: full
 	move.w	#$8710, (@vdp_ctrl)
 
@@ -200,8 +200,8 @@ SoundTest_VDeform_Update:
 			moveq	#$FFFFFF00|@current_scanline, @scanline
 		endif
 
-		; Render highlighted BG between scanlines 40 .. 40+SoundTest_Visualizer_Height*8
-		if (@current_scanline >= 40) & (@current_scanline < (40 + SoundTest_Visualizer_Height*8))
+		; Render highlighted BG between scanlines 32 .. 32+SoundTest_Visualizer_Height*8
+		if (@current_scanline >= 32) & (@current_scanline < (32 + SoundTest_Visualizer_Height*8))
 			moveq	#0, @vscroll_value
 			move.l	(@distort_stream)+, @var0
 			asr.w	#2, @var0
@@ -239,7 +239,7 @@ SoundTest_VDeform_Update:
 	; VScroll buffer special entry #224: Plane C position
 	moveq	#$7F, @vscroll_value
 	and.w	SoundTest_VisualizerPos, @vscroll_value
-	add.w	#$100-32, @vscroll_value
+	add.w	#$100-32+1, @vscroll_value
 	move.w	@vscroll_value, (@vscroll_buffer)+
 
 	; VScroll buffer special entry #225: Plane A position

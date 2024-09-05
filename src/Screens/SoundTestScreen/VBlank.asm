@@ -13,6 +13,8 @@ SoundTest_VBlank:
 
 	jsr	ReadJoypads
 
+	lea	VDP_Ctrl, a5
+
 	; Transfer palette
 	move.l	#$94009340, (a5)
 	move.l	#$96FD9580, (a5)
@@ -41,6 +43,9 @@ SoundTest_VBlank:
 	vram	$FC00, (a5)
 	move.w	#(320-SoundTest_Visualizer_Width*8)/2, -4(a5)	; HScroll
 	move.w	#(320-SoundTest_Visualizer_Width*8)/2, -4(a5)	; HScroll
+
+	; Transfer standard DMA queue
+	jsr	ProcessDMAQueue
 
 	; Transfer pixel buffer if requested
 	move.w	SoundTest_VisualizerBufferPtr, d0	; do we have a pixel buffer to flush?

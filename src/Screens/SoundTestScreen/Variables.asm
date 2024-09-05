@@ -9,6 +9,8 @@ SoundTest_Visualizer_Height:		equ	16	; tiles
 SoundTest_Visualizer_NumOctaves:	equ	7
 SoundTest_Visualizer_MaxWriteRequests:	equ	SoundTest_Visualizer_NumOctaves*12+2
 
+SoundTest_StringBufferSize:	equ	40+1
+
 	if SoundTest_Visualizer_Height % 16
 		inform 2, "SoundTest_Visualizer_Height must be multiple of 16" ; because it wraps around a 32x64 plane
 	endif
@@ -20,6 +22,7 @@ SoundTest_Visualizer_VRAM:	rs.b	SoundTest_Visualizer_Width*SoundTest_Visualizer_
 SoundTest_Piano_VRAM:		rs.b	filesize("Screens/SoundTestScreen/Data/BasePiano_Tiles.bin")
 SoundTest_PianoOverlays_VRAM:	rs.b	filesize("Screens/SoundTestScreen/Data/BasePiano_KeyOverlays_Tiles.bin")
 SoundTest_BG_VRAM:		rs.b	filesize("Screens/SoundTestScreen/Data/BG2_Tiles.bin")
+SoundTest_Font_VRAM:		rs.b	filesize("Screens/OptionsScreen/Options_TextArt.bin")
 SoundTest_DummyHL_VRAM:		rs.b	4*4*$20
 	if __rs > $A000
 		infrom 2, "Out of VRAM for graphics!"
@@ -46,3 +49,7 @@ SoundTest_VisualizerBufferDest:		rs.l	1	; VDP command
 SoundTest_VisualizerWriteRequests:	rs.b	6*SoundTest_Visualizer_MaxWriteRequests
 SoundTest_VisualizerWriteRequests_End:	equ	__rs
 SoundTest_VisualizerWriteRequestsPos:	rs.w	1
+SoundTest_CurrentTextStartScreenPos:	rs.w	1
+SoundTest_StringBuffer:			rs.b	SoundTest_StringBufferSize
+					rseven
+

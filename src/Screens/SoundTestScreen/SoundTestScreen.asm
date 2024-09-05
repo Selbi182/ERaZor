@@ -59,7 +59,7 @@ SoundTestScreen:
 
 	;SoundTest_CreateObject #SoundTest_Obj_DummyHL
 	SoundTest_CreateObject #SoundTest_Obj_PianoSheet
-	SoundTest_CreateObject #SoundTest_Obj_ScreenController
+	SoundTest_CreateObject #SoundTest_Obj_TrackSelector
 	
 	jsr	SoundTest_CreateNoteEmitters
 
@@ -103,6 +103,7 @@ SoundTestScreen:
 
 	vramWrite $FF0000, $2000, SoundTest_PlaneB_VRAM
 
+
 	; Load piano
 	vram	SoundTest_Piano_VRAM, VDP_Ctrl
 	lea	SoundTest_Piano_TilesKospM, a0
@@ -123,9 +124,11 @@ SoundTestScreen:
 	moveq	#3-1, d2
 	jsr	ShowVDPGraphics
 
-	SoundTest_ResetVRAMBufferPool
+	; Load font
+	vramWrite Options_TextArt, filesize("Screens/OptionsScreen/Options_TextArt.bin"), SoundTest_Font_VRAM
 
 	; Screen init
+	SoundTest_ResetVRAMBufferPool
 	jsr	SoundTest_VDeform_Init
 	jsr	SoundTest_Visualizer_Init
 	jsr	ObjectsLoad
@@ -169,7 +172,7 @@ SoundTest_Exit:
 
 	include	"Screens/SoundTestScreen/Objects/PianoSheet.asm"
 
-	include	"Screens/SoundTestScreen/Objects/ScreenController.asm"
+	include	"Screens/SoundTestScreen/Objects/TrackSelector.asm"
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -275,7 +278,6 @@ SoundTest_Visualizer_Init:
 
 	@vdp_ctrl:	equr	a5
 	@vdp_data:	equr	a6
-
 
 	lea	VDP_Data, @vdp_data
 	lea	VDP_Ctrl-VDP_Data(@vdp_data), @vdp_ctrl
@@ -554,6 +556,86 @@ SoundTest_Visualizer_TransferPixelBufferToVRAM:
 	move.w	#$8F02, (@vdp_ctrl)
 	addq.w	#6, sp
 	rts
+
+
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; String flush functions for MDDBG__FormatString; pipe string to VRAM buffer
+; ---------------------------------------------------------------------------
+; INPUT:
+;	a0		Last buffer position
+;	d7	.w	Number of characters remaining in buffer - 1
+;
+; WARNING: Must return Carry=1 to terminate buffer! Otherwise it will crash
+; further flushes because some registers are trashed.
+; ---------------------------------------------------------------------------
+
+SoundTest_DrawText:
+	clr.b	(a0)+					; finalize buffer
+
+	lea	SoundTest_StringBuffer, a0
+	SoundTest_AllocateInVRAMBufferPool a1, #SoundTest_StringBufferSize*2
+	move.l	a1, -(sp)
+
+	KDebug.WriteLine "SoundTest_DrawText(): str='%<.l a0 str>'"
+
+	moveq	#0, d7
+	move.b	(a0)+, d7				; d7 = char
+	beq.s	@done
+
+	@loop:
+		add.w	d7, d7
+		move.w	SoundTest_CharToTile-$20*2(pc, d7), (a1)+
+		moveq	#0, d7
+		move.b	(a0)+, d7				; d7 = char
+		bne.s	@loop
+
+	move.l	(sp)+, d1				; d1 = source pointer
+	andi.l	#$FFFFFF, d1
+	move.w	SoundTest_CurrentTextStartScreenPos, d2	; d2 = destination VRAM
+	move.l	d1, d3
+	sub.l	a1, d3
+	neg.w	d3					; d3 = transfer size
+	lsr.w	d3					; d3 = transfer size (words)
+	jsr	QueueDMATransfer
+
+@done:
+	moveq	#0, d7
+	subq.w	#1, d7					; return C=1
+	rts
+
+
+; ---------------------------------------------------------------------------
+; High-level char to tile converter (100% high-level programming)
+; ---------------------------------------------------------------------------
+
+SoundTest_CharToTile:
+
+@base_pat: = SoundTest_Font_VRAM/$20
+
+; Defines function return type
+@return: macros value
+	dc.w \value
+
+	@char:	= $20	; ignore ASCII codes $00..$1F, those are control character we'll never use
+	while (@char < $80)
+		if @char = ' '
+			@return $8000
+		elseif @char = '-'
+			@return (@base_pat + $B) | $8000
+		elseif @char = '<'
+			@return (@base_pat + $D) | $8000
+		elseif @char = '>'
+			@return (@base_pat + $E) | $8000
+		elseif @char = '?'
+			@return (@base_pat + $2A) | $8000
+		elseif (@char >= '0') & (@char <= '9')
+			@return (@base_pat + (@char-$30)) | $8000
+		else
+			@return	(@base_pat + (@char-$41) + 10+5) | $8000
+		endif
+		@char: = @char + 1
+	endw
 
 
 ; ===========================================================================

@@ -320,6 +320,8 @@ GameClrRAM:	move.l	d7,(a6)+
 		jsr	Start_FirstGameMode	; start default first game mode (Sega Screen)
 	endif
 
+	jsr	 SoundTestScreen
+
 	if def(__BENCHMARK__)
 		jsr	Options_SetDefaults
 		; Benchmark build uses a custom bootstrap program

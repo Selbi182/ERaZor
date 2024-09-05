@@ -33,13 +33,15 @@ SoundTest_DummyHL_VRAM:		rs.b	4*4*$20
 SoundTest_RAM:	equ	$FFFF8000
 
 					rsset	SoundTest_RAM
-SoundTest_VScrollBuffer_A:		rs.l	224
-SoundTest_VScrollBuffer_B:		rs.l	224
-SoundTest_VScrollBufferSwapper:		rs.w	2
-SoundTest_NextVScrollBuffer:		equ	SoundTest_VScrollBufferSwapper+0
-SoundTest_ActiveVScrollBuffer:		equ	SoundTest_VScrollBufferSwapper+2
-SoundTest_ActiveVScrollBufferPos:	rs.w	1
+
+SoundTest_VScrollBuffer1:		rs.w	224+2	; entries 0..223 = Plane B, 224 = Plane C position, 225 = Plane A position
+SoundTest_VScrollBuffer2:		rs.w	224+2	; entries 0..223 = Plane B, 224 = Plane C position, 225 = Plane A position
+SoundTest_VScrollBufferPtrSwapper:	rs.w	2
+SoundTest_NextVScrollBufferPtr:		equ	SoundTest_VScrollBufferPtrSwapper+0
+SoundTest_ActiveVScrollBufferPtr:	equ	SoundTest_VScrollBufferPtrSwapper+2
+
 SoundTest_VRAMBufferPoolPtr:		rs.w	1
+
 SoundTest_VisualizerPos:		rs.w	1
 SoundTest_VisualizerPos_TilePtr:	rs.w	1
 SoundTest_VisualizerPos_TileOffset:	rs.w	1
@@ -49,6 +51,7 @@ SoundTest_VisualizerBufferDest:		rs.l	1	; VDP command
 SoundTest_VisualizerWriteRequests:	rs.b	6*SoundTest_Visualizer_MaxWriteRequests
 SoundTest_VisualizerWriteRequests_End:	equ	__rs
 SoundTest_VisualizerWriteRequestsPos:	rs.w	1
+
 SoundTest_CurrentTextStartScreenPos:	rs.w	1
 SoundTest_StringBuffer:			rs.b	SoundTest_StringBufferSize
 					rseven

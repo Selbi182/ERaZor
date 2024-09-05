@@ -9,7 +9,9 @@ obST_MaxTrack	= $DF
 ; ---------------------------------------------------------------------------
 
 SoundTest_Obj_TrackSelector:
-	move.b	#$81, obSTSelectedTrack(a0)	; set initial track
+	moveq	#$FFFFFF81, d0			; play initial music
+	jsr	PlaySound_Special
+	move.b	d0, obSTSelectedTrack(a0)	; set initial track
 	bsr	@RedrawTrackInfo		; display this track
 	move.l	#@Main, obCodePtr(a0)
 
@@ -65,7 +67,6 @@ SoundTest_Obj_TrackSelector:
 	lsl.w	#3, d0
 	lea	@TrackLineData(pc), a5
 	adda.w	d0, a5
-	KDebug.WriteLine "%<.l (a5) sym> %<.w d0>"
 
 	move.l	a0, -(sp)
 	move.w	d7, -(sp)

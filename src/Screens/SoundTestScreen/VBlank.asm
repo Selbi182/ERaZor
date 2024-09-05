@@ -2,7 +2,7 @@
 	include	"Screens/SoundTestScreen/Macros.asm"
 
 ; ---------------------------------------------------------------------------
-;
+; Sound Test screen VBlank handler
 ; ---------------------------------------------------------------------------
 
 SoundTest_VBlank:
@@ -14,6 +14,13 @@ SoundTest_VBlank:
 	jsr	ReadJoypads
 
 	lea	VDP_Ctrl, a5
+	move.w	#$8F02, (a5)				; restore auto-increment
+
+	btst	#6,($FFFFFFF8).w			; are we PAL?
+	beq.s	@not_PAL				; if not, branch
+	move.w	#$700,d0
+	dbf	d0, *					; waste ~$700 * 10 cycles on PAL consoles
+@not_PAL:
 
 	; Transfer palette
 	move.l	#$94009340, (a5)
@@ -30,15 +37,6 @@ SoundTest_VBlank:
 	move.w	#$7800, (a5)
 	move.w	#$83, -(sp)
 	move.w	(sp)+, (a5)
-
-	; Transfer Vscroll/HScroll
-	movea.w	SoundTest_ActiveVScrollBuffer, a0
-	move.l	#$40000010, (a5)
-	move.l	(a0)+, -4(a5)
-	move.w	a0, SoundTest_ActiveVScrollBufferPos
-	move.w	#SoundTest_HBlank, HBlankSubW
-	move.w	#$8014, (a5)				; enable HInts
-	move.w	#$8A00, (a5)
 
 	vram	$FC00, (a5)
 	move.w	#(320-SoundTest_Visualizer_Width*8)/2, -4(a5)	; HScroll
@@ -59,6 +57,13 @@ SoundTest_VBlank:
 
 @0:	SoundTest_ResetVRAMBufferPool
 
+	; Transfer Vscroll/HScroll
+	move.l	SoundTest_VScrollBufferPtrSwapper, d0	; perform a buffer swap
+	swap	d0					; ''
+	move.l	d0, SoundTest_VScrollBufferPtrSwapper	; ''
+
+	bsr	SoundTest_VBlank_SetupHBlank
+
 	; Note that music is only updated during non-lag frames to keep piano consistent
 	jsr	UpdateSoundDriver
 
@@ -68,5 +73,32 @@ SoundTest_VBlank:
 	rte
 
 @LagFrame:
-	KDebug.WriteLine "LAG!"
+	; WARNING! DO NOT run Sound driver in lag frames, otherwise piano roll notes may desync
+	bsr	SoundTest_VBlank_SetupHBlank
 	bra	@Quit
+
+; ---------------------------------------------------------------------------
+; This should be called at the end of VBlank, but before Sound driver update
+; ---------------------------------------------------------------------------
+
+SoundTest_VBlank_SetupHBlank:
+	lea	VDP_Ctrl, a5
+
+	move.w	#$8F02, (a5)				; restore auto-increment
+	movea.w	SoundTest_ActiveVScrollBufferPtr, a0
+	move.l	224*2(a0), d0				; d0 => HIGH: Plane C position, LOW: ignored
+	move.w	(a0), d0				; d0 => LOW: Plane B position
+	move.l	#$40000010, (a5)
+	move.l	d0, -4(a5)				; send initial scroll values for both planes
+
+	move.w	#SoundTest_HBlank_Buffer1, HBlankSubW	; use HBlank for buffer 1
+	cmpa.w	#SoundTest_VScrollBuffer1, a0		; are we using buffer 1?
+	beq.s	@hblank_sub_ok				; if yes, branch
+	move.w	#SoundTest_HBlank_Buffer2, HBlankSubW	; use HBlank for buffer 2
+@hblank_sub_ok:
+
+	move.l	#$80148A00, (a5)			; enable HInts, per-line horizontal interrupts
+	move.w	#$8F00, (a5)				; disable auto-increment
+	move.l	#$40020010, (a5)			; setup VSRAM write position for HInt
+
+	rts

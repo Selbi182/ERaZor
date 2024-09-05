@@ -20,11 +20,12 @@ SoundTestScreen:
 	; VDP setup
 	lea	VDP_Ctrl, @vdp_ctrl
 	move.w	#$8004, (@vdp_ctrl)
-	move.w	#$8200|(SoundTest_PlaneA_VRAM/$400), (@vdp_ctrl)
-	move.w	#$8400|(SoundTest_PlaneB_VRAM/$2000), (@vdp_ctrl)
+	move.w	#$8200|(SoundTest_PlaneA_VRAM/$400), (@vdp_ctrl)	; Plane A address
+	move.w	#$8300|(SoundTest_PlaneA_VRAM/$400), (@vdp_ctrl)	; Window plane address
+	move.w	#$8400|(SoundTest_PlaneB_VRAM/$2000), (@vdp_ctrl)	; Plane B address
 	move.w	#$8C81+8, (@vdp_ctrl)		; enable S&H
 	move.w	#$9011, (@vdp_ctrl)		; set plane size to 64x64
-	move.w	#$9200, (@vdp_ctrl)
+	move.l	#$91009205, (@vdp_ctrl)		; enable window plane to mask Plane C
 	move.w	#$8B00, (@vdp_ctrl)		; VScroll: full, HScroll: full
 	move.w	#$8710, (@vdp_ctrl)
 
@@ -79,18 +80,6 @@ SoundTestScreen:
 
 	move.w	#$8F02, (@vdp_ctrl)
 
-	; ### Dummy Plane A highlight ###
-	vram	SoundTest_PlaneA_VRAM+$280, d3
-	move.l	#$80<<16, d2
-	moveq	#SoundTest_Visualizer_Height-1, d0
-	@row:
-		move.l	d3, VDP_Ctrl
-		moveq	#SoundTest_Visualizer_Width-1, d1
-		@col:	move.w	#$8000, VDP_Data
-			dbf	d1, @col
-		add.l	d2, d3
-		dbf	d0, @row
-
 	; Load/render Plane B
 	vram	SoundTest_BG_VRAM, VDP_Ctrl
 	lea	SoundTest_BG2_TilesKospM, a0
@@ -136,10 +125,6 @@ SoundTestScreen:
 
 	display_enable
 
-	; ###
-	moveq	#$FFFFFF81, d0
-	jsr	PlaySound_Special
-
 	move.w	#SoundTest_VBlank, VBlankSubW
 
 ; ---------------------------------------------------------------------------
@@ -153,13 +138,15 @@ SoundTest_MainLoop:
 	jsr	BuildSprites
 	SoundTest_FinalizeWriteRequests a0
 	jsr	SoundTest_Visualizer_Update
-	; TODO: Game mode or exit flag check
+
+	; TODO: Exit flag check
 	tst.b	Joypad|Press			; Start pressed?
-	bpl	SoundTest_MainLoop
+	bpl	SoundTest_MainLoop		; if not, branch
 
 ; ===========================================================================
 
 SoundTest_Exit:
+	move.l	#$91009200, VDP_Ctrl		; disable Window plane
 	move.w	#$8C81, VDP_Ctrl		; disable S&H
 	move.w	#VBlank, VBlankSubW		; restore Sonic 1's VBlank
 	jmp	Exit_SoundTestScreen
@@ -176,90 +163,89 @@ SoundTest_Exit:
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-;
+; Subroutine for Vertical deformation effects
 ; ---------------------------------------------------------------------------
 
 SoundTest_VDeform_Init:
-	move.w	#SoundTest_VScrollBuffer_B, SoundTest_NextVScrollBuffer
-	move.w	#SoundTest_VScrollBuffer_A, SoundTest_ActiveVScrollBuffer
+	move.l	#(SoundTest_VScrollBuffer1<<16)|(SoundTest_VScrollBuffer2&$FFFF), SoundTest_VScrollBufferPtrSwapper
+	; fallthrough
 
+; ---------------------------------------------------------------------------
 SoundTest_VDeform_Update:
+
+	@var0:			equr	d0
+	@vscroll_value:		equr	d3
+	@plane_height:		equr	d4
+	@scanline:		equr	d5
 
 	@vscroll_buffer:	equr	a0
 	@distort_stream:	equr	a1
-	@var0:			equr	d0
-	@var1:			equr	d1
-	@var2:			equr	d2
-	@vscroll_with_plane_a:	equr	d3
-	@vscroll_with_plane_c:	equr	d4
 
-	; ### buffer swap
-	lea	SoundTest_VScrollBuffer_A,  @vscroll_buffer ; ###
-	lea	Sine_Data, @distort_stream ; ###
+	movea.w	SoundTest_NextVScrollBufferPtr,  @vscroll_buffer	; load buffer for the next frame
 
-	moveq	#0, @vscroll_with_plane_a
-	swap	@vscroll_with_plane_a
-
-	moveq	#$7F, @vscroll_with_plane_c
-	and.w	SoundTest_VisualizerPos, @vscroll_with_plane_c
-	add.w	#$100-40, @vscroll_with_plane_c
-	swap	@vscroll_with_plane_c
-
-	;addi.l	#$6000, CamYPos2
-	move.w	CamYPos2, @var0
-	andi.w	#$FF, @var0
-
+	lea	Sine_Data-2, @distort_stream
 	addi.l	#$C000, CamYPos3
-	move.w	#$FF, @var1
-	and.w	CamYPos3, @var1
-	add.w	@var1, @var1
-	adda.w	@var1, @distort_stream
+	move.w	#$FF, @var0
+	and.w	CamYPos3, @var0
+	add.w	@var0, @var0
+	adda.w	@var0, @distort_stream
 
-	@scanline: = 0
+	move.w	#$100, @plane_height
+
+	@current_scanline: = 0
 	rept 224
-		if @scanline < 128
-			moveq	#@scanline, @var1
+		if @current_scanline < 128
+			moveq	#@current_scanline, @scanline
 		else
-			moveq	#$FFFFFF00|@scanline, @var1
+			moveq	#$FFFFFF00|@current_scanline, @scanline
 		endif
 
-		if (@scanline > 40) & (@scanline < (40 + 16*8))
-			move.w	@var0, @vscroll_with_plane_c
-			move.w	(@distort_stream)+, @var2
-			addq.w	#2, @distort_stream
-			asr.w	#2, @var2
-		if @scanline % 2
-			add.b	@var2, @vscroll_with_plane_c
-		else
-			sub.b	@var2, @vscroll_with_plane_c
-		endif
-			add.b	@vscroll_with_plane_c, @var1
-			bcs.s	@scanline_\#@scanline\_ok
-			add.w	#$100, @vscroll_with_plane_c
-		@scanline_\#@scanline\_ok:
-			move.l	@vscroll_with_plane_c, (@vscroll_buffer)+
+		; Render highlighted BG between scanlines 40 .. 40+SoundTest_Visualizer_Height*8
+		if (@current_scanline >= 40) & (@current_scanline < (40 + SoundTest_Visualizer_Height*8))
+			moveq	#0, @vscroll_value
+			move.l	(@distort_stream)+, @var0
+			asr.w	#2, @var0
+			if @current_scanline % 2
+				add.b	@var0, @vscroll_value
+			else
+				sub.b	@var0, @vscroll_value
+			endif
+			add.b	@vscroll_value, @scanline
+			bcs.s	@scanline_\#@current_scanline\_ok
+			add.w	@plane_height, @vscroll_value
+		@scanline_\#@current_scanline\_ok:
+			move.w	@vscroll_value, (@vscroll_buffer)+
 
+		; Render normal BG otherwise
 		else
-
-			move.w	@var0, @vscroll_with_plane_a
-			move.w	(@distort_stream)+, @var2
-			addq.w	#2, @distort_stream
-			asr.w	#2, @var2
-		if @scanline % 2
-			add.b	@var2, @vscroll_with_plane_a
-		else
-			sub.b	@var2, @vscroll_with_plane_a
-		endif
-			add.b	@vscroll_with_plane_a, @var1
-			bcc.s	@scanline_\#@scanline\_ok
-			sub.w	#$100, @vscroll_with_plane_a
-		@scanline_\#@scanline\_ok:
-			move.l	@vscroll_with_plane_a, (@vscroll_buffer)+
+			moveq	#0, @vscroll_value
+			move.l	(@distort_stream)+, @var0
+			asr.w	#2, @var0
+			if @current_scanline % 2
+				add.b	@var0, @vscroll_value
+			else
+				sub.b	@var0, @vscroll_value
+			endif
+			add.b	@vscroll_value, @scanline
+			bcc.s	@scanline_\#@current_scanline\_ok
+			sub.w	@plane_height, @vscroll_value
+		@scanline_\#@current_scanline\_ok:
+			move.w	@vscroll_value, (@vscroll_buffer)+
 		endif
 
-		@scanline: = @scanline + 1
+		@current_scanline: = @current_scanline + 1
 	endr
+
+	; VScroll buffer special entry #224: Plane C position
+	moveq	#$7F, @vscroll_value
+	and.w	SoundTest_VisualizerPos, @vscroll_value
+	add.w	#$100-40+1, @vscroll_value
+	move.w	@vscroll_value, (@vscroll_buffer)+
+
+	; VScroll buffer special entry #225: Plane A position
+	move.w	#0, (@vscroll_buffer)+
 	rts
+
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -576,8 +562,6 @@ SoundTest_DrawText:
 	lea	SoundTest_StringBuffer, a0
 	SoundTest_AllocateInVRAMBufferPool a1, #SoundTest_StringBufferSize*2
 	move.l	a1, -(sp)
-
-	KDebug.WriteLine "SoundTest_DrawText(): str='%<.l a0 str>'"
 
 	moveq	#0, d7
 	move.b	(a0)+, d7				; d7 = char

@@ -47,7 +47,7 @@ DebugModeDefault = 1
 DebugSurviveNoRings = 1
 ; ------------------------------------------------------
 DoorsAlwaysOpen = 0
-LowBossHP = 0
+LowBossHP = 1
 ; ------------------------------------------------------
 TestDisplayDeleteBugs = 0
 ; ======================================================
@@ -6776,7 +6776,7 @@ Resize_SLZ2boss2:
 		moveq	#16,d0			; set number of	hits to 16 (casual)
 		frantic				; are we in frantic?
 		beq.s	@notfrantic		; if not, branch
-		moveq	#18,d0			; set number of	hits to 20 (frantic)
+		moveq	#18,d0			; set number of	hits to 18 (frantic)
 	@notfrantic:		
 	if LowBossHP=1
 		moveq	#1,d0
@@ -32426,7 +32426,6 @@ Obj6A_Index:	dc.w Obj6A_Main-Obj6A_Index
 
 Obj6A_PostFinalBoss:
 		addq.b	#2,obRoutine(a0)
-		move.b	#3,(CameraShake_Intensity).w
 
 		jsr	SingleObjLoad
 		bne.s	@0
@@ -38494,14 +38493,14 @@ loc_19E5A:
 	else
 	;	tst.b	(PlacePlacePlace).w
 	;	beq.s	@noeasteregg
-	;	move.w	#100,d0				; set number of	hits to	100 (ur mom)
+	;	move.w	#100,d0				; set number of	hits (ur mom)
 	;	bra.s	@notfrantic
 ;@noeasteregg:
-		moveq	#30,d0				; set number of	hits to	30 (casual)
-	;	frantic
-	;	beq.s	@notfrantic
-	;	moveq	#42,d0				; set number of	hits to	42 (frantic)
-;@notfrantic:
+		moveq	#30,d0				; set number of	hits (casual)
+		frantic
+		beq.s	@notfrantic
+		moveq	#36,d0				; set number of	hits (frantic)
+@notfrantic:
 		move.b	d0,obColProp(a0)
 	endif
 		move.b	obColProp(a0),(HUD_BossHealth).w
@@ -39039,6 +39038,8 @@ loc_1A312:
 	;	bpl.w	Obj85_Delete
 		bsr	BossDefeated
 		ori.b	#10,(CameraShake).w		; camera shaking
+		move.b	#3,(CameraShake_Intensity).w	; reset camera intensity
+
 		move.b	#2,obPriority(a0)
 		move.b	#0,obAnim(a0)
 		move.l	#Map_Eggman2,obMap(a0)
@@ -39503,13 +39504,35 @@ Obj86_Generator:			; XREF: Obj86_Index
 		move.b	#0,obRoutine(a0)
 		move.b	#0,$31(a0)
 
+		movem.l	d7/a1-a3,-(sp)
+		jsr	WhiteFlash2
+		movem.l	(sp)+,d7/a1-a3
+		
+		move.w	#$B9,d0
+		jsr	PlaySound
+
+		move.b	#$F,(CameraShake_Intensity).w	; one last big shake
+		ori.b	#10,(CameraShake).w     	; normal camera shake
+
 		lea	($FFFFD800).w,a1
 		moveq	#$3F,d0
-@deletesaw:	cmpi.b	#$6A,(a1)		; is current object the sawblade?
-		bne.s	@cont			; if not, branch
+@deletesaw:	
+		cmpi.b	#$6A,(a1)		; is current object the sawblade?
+		beq.s	@saw			; if not, branch
+		cmpi.b	#$84,(a1)		; is current object a cylinder?
+		bne.s	@next			; if not, branch
+
+	@cylinder:
+		move.b	#$3F,(a1)
+		move.b	#0,obRoutine(a1)
+		move.b	#0,$31(a1)
+		bra.s	@next
+
+	@saw:
 		move.b	#4,obRoutine(a1)	; set to post boss routine
-		bra.s	@end
-@cont:		lea	$40(a1),a1
+
+	@next:
+		lea	$40(a1),a1
 		dbf	d0,@deletesaw
 @end:
 		rts
@@ -39869,8 +39892,9 @@ Obj3E_Explosion:			; XREF: Obj3E_Index
 		lsr.w	#8,d0
 		lsr.b	#1,d0	; changed from 3
 		add.w	d0,obY(a1)
-
+	
 		ori.b	#10,(CameraShake).w     	; normal camera shake
+		move.b	#3,(CameraShake_Intensity).w	; reset camera intensity
 
 loc_1ACA0:
 		subq.w	#1,obTimeFrame(a0)

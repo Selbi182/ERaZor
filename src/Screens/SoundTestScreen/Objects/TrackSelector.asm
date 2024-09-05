@@ -39,10 +39,14 @@ SoundTest_Obj_TrackSelector:
 @chkBigSkip:
 	btst	#iA, d0				; is A pressed?
 	beq.s	@chkStop			; if not, branch
-	addi.b	#$10, obSTSelectedTrack(a0)
-	cmpi.b	#obST_MaxTrack, obSTSelectedTrack(a0)
-	bls.s	@RedrawTrackInfo
-	subi.b	#obST_MaxTrack+1, obSTSelectedTrack(a0)
+	moveq	#0,d0
+	move.b	obSTSelectedTrack(a0),d0
+	addi.b	#$10,d0				; skip 16 entries ahead
+	cmpi.w	#obST_MaxTrack,d0		; did we surpass the max?
+	bls.s	@skipdone			; if not, branch
+	subi.b	#obST_MaxTrack-obST_MinTrack+2,d0 ; restart on the other side
+@skipdone:
+	move.b	d0,obSTSelectedTrack(a0)	; update ID
 	bra	@RedrawTrackInfo
 
 @chkStop:
@@ -463,7 +467,7 @@ SoundTest_Obj_TrackSelector:
 @SoundAE_Name:	@padString 'A FIREBALL WAS SPAT... AGAIN'
 @SoundAF_Name:	@padString 'YOU GOT A SHIELD'
 @SoundB0_Name:	@padString 'YOU ENTERED HELL'
-@SoundB1_Name:	@padString "SOME ZAP SOUND WHICH IS UNUSED"
+@SoundB1_Name:	@padString "BZZZZZ"
 @SoundB2_Name:	@padString 'YOU DROWNED'
 @SoundB3_Name:	@padString "HOW MANY FIREBALL SOUNDS"
 @SoundB3_Source:@padString "ARE IN THIS GAME?!"
@@ -501,8 +505,8 @@ SoundTest_Obj_TrackSelector:
 @SoundD2_Name:	@padString 'YOU ARE ABOUT TO GO REALLY NYOOM'
 @SoundD3_Name:	@padString 'YOU WENT REALLY NYOOM'
 @SoundD4_Name:	@padString 'LITERALLY NOTHING'
-@SoundD5_Name:	@padString 'LITERALLY NOTHING... AGAIN'
-@SoundD6_Name:	@padString 'STILL LITERALLY NOTHING'
+@SoundD5_Name:	@padString 'STILL LITERALLY NOTHING'
+@SoundD6_Name:	@padString 'THE SOUND OF SILENCE'
 @SoundD7_Name:	@padString 'PATHETIC EXPLOSION'
 @SoundD8_Name:	@padString 'MENU SELECTION'
 @SoundD9_Name:	@padString 'OPTION CONFIRMED'

@@ -215,6 +215,7 @@ Exit_SoundTestScreen:
 Exit_ChapterScreen:
 		cmpi.w	#$001,($FFFFFE10).w	; is this the intro cutscene?
 		beq.w	Exit_OneHotDay		; if yes, start intro cutscene (and music)
+		move.w	#$000,($FFFFFB02).w	; keep a specific color black to avoid flicker
 		bra.w	StartLevel		; otherwise, start level set in FE10 normally
 ; ===========================================================================
 
@@ -223,8 +224,8 @@ Exit_StoryScreen:
 		cmpi.b	#8,d0			; is this the ending sequence?
 		beq.s	@startending		; if yes, branch
 		cmpi.b	#9,d0			; is this the end of the blackout challenge?
-		beq.s	@postblackout	; if yes, branch
-		
+		beq.s	@postblackout		; if yes, branch
+
 		; regular story screen (including intro)
 		btst	#2,(OptionsBits).w	; is Skip Uberhub Place enabled?
 		bne.w	SkipUberhub		; if yes, automatically go to the next level in order
@@ -242,6 +243,13 @@ Exit_StoryScreen:
 
 		jsr	Pal_FadeFrom		; fade out palette
 		jsr	ClearScreen		; clear screen
+
+		lea	($FFFFD000).w,a1	; clear object RAM...
+		moveq	#0,d0			; ...cause the ERaZor logo doesn't play nicely here
+		move.w	#$7FF,d1
+@clearobjram:	move.l	d0,(a1)+
+		dbf	d1,@clearobjram
+
 		moveq	#$E,d0			; load FZ palette (cause tutorial boxes are built into SBZ)
 		jsr	PalLoad2		; load palette
 
@@ -294,6 +302,8 @@ Exit_CreditsScreen:
 @checkblackout:
 		btst	#4,($FFFFFF95).w
 		beq.s	@restartfromcredits
+		move.b	#$E0,d0
+		jsr	PlaySound_Special	; fade out music to set the atmosphere
 		moveq	#$12,d0			; load Blackout Challenge teaser text
 		jsr	Tutorial_DisplayHint	; VLADIK => Display hint
 
@@ -352,10 +362,8 @@ Exit_EndingSequence:
 		bsr	Set_BaseGameDone	; you have beaten the base game, congrats (casual only or frantic with casual)
 
 	@checkblackoutteaser:
-		bsr	Check_BlackoutUnlocked	; is the blackout challenge even unlocked?
+		bsr	Check_BlackoutFirst	; has the player unlocked but not beaten the blackout challenge?
 		beq.s	@finish			; if not, branch
-		bsr	Check_BlackoutBeaten	; have you already beaten the blackout challenge?
-		bne.s	@finish			; if yes, branch
 		bset	#4,d1			; load Blackout Challenge teaser text
 
 @finish:
@@ -380,6 +388,14 @@ RunChapter:
 		jsr	FakeLevelID		; get fake level ID for current level
 		tst.b	d5			; did we get a valid ID?
 		bmi.s	@nochapter		; if not, something has gone terribly wrong
+
+		cmpi.w	#$301,($FFFFFE10).w	; set to Scar Night Place?
+		bne.s	@checkid		; if not, branch
+		frantic				; are we in frantic?
+		beq.s	@checkid		; if not, branch. big boy bombs only in big boy game modes
+		move.w	#$500,($FFFFFE10).w	; start bomb machine cutscene
+
+@checkid:
 		cmp.b	(CurrentChapter).w,d5	; compare currently saved chapter number to fake level ID
 		blt.s	@nochapter		; if this is a chapter from a level we already visited, skip chapter screen
 		move.b	d5,(CurrentChapter).w	; we've entered a new level, update progress chapter ID
@@ -472,7 +488,17 @@ HubRing_SP:	move.w	#$300,($FFFFFE10).w	; set level to Special Stage
 HubRing_RP:	move.w	#$200,($FFFFFE10).w	; set level to MZ1
 		bra.w	RunChapter
 
-HubRing_LP:	move.w	#$101,($FFFFFE10).w	; set level to LZ2
+HubRing_LP:
+		btst	#3,(OptionsBits).w	; are black bars (cinematic mode) enabled?
+		beq.s	@nobars			; if not, branch
+		jsr	Pal_FadeFrom		; fade out palette to avoid visual glitches
+		jsr	ClearScreen		; clear screen
+		moveq	#$E,d0			; load FZ palette (cause tutorial boxes are built into SBZ)
+		jsr	PalLoad2		; load palette	
+		moveq	#$11,d0			; load warning text that black bars don't work in LP
+		jsr	Tutorial_DisplayHint	; VLADIK => Display hint
+@nobars:
+		move.w	#$101,($FFFFFE10).w	; set level to LZ2
 		bra.w	RunChapter
 
 HubRing_UP:	move.w	#$401,($FFFFFE10).w	; set level to Special Stage 2
@@ -480,9 +506,6 @@ HubRing_UP:	move.w	#$401,($FFFFFE10).w	; set level to Special Stage 2
 		bra.w	RunChapter
 
 HubRing_SNP:	move.w	#$301,($FFFFFE10).w	; set level to SLZ2
-		frantic				; are we in frantic?
-		beq.w	RunChapter		; big boy bombs only in big boy game modes
-		move.w	#$500,($FFFFFE10).w	; start bomb machine cutscene
 		bra.w	RunChapter
 
 HubRing_SAP:	move.w	#$302,($FFFFFE10).w	; set level to SLZ3
@@ -522,7 +545,7 @@ HubRing_Ending:
 		bra.w	RunStory
 
 HubRing_Blackout:
-		clr.b	(ScreenFuzz).w		; clear screen fuzz flag
+		bclr	#1,(ScreenFuzz).w	; clear temporary screen fuzz flag
 		move.w	#$401,($FFFFFE10).w	; set level to Unreal
 		move.b	#1,(Blackout).w		; set Blackout Challenge flag
 		bra.w	StartLevel		; good luck
@@ -606,6 +629,8 @@ GTA_FP:		moveq	#6,d0			; unlock seventh door (door to the credits)
 		bsr	Set_DoorOpen
 		btst	#2,(OptionsBits).w	; is Skip Uberhub Place enabled?		
 		beq.w	ReturnToUberhub		; if not, return to Uberhub
+		jsr	Check_AllLevelsBeaten_Current ; has the player beaten all levels?
+		beq.w	ReturnToUberhub		; if not, return to Uberhub as well
 		bra.w	HubRing_Ending		; otherwise go straight to the ending
 ; ---------------------------------------------------------------------------
 
@@ -703,11 +728,13 @@ Check_AllLevelsBeaten_Current:
 		rts
 
 Check_AllLevelsBeaten_Casual:
+		andi.b	#Doors_All,(Doors_Casual).w	; mask against valid door bitsets
 		cmpi.b	#Doors_All,(Doors_Casual).w	; check if all doors have been unlocked (casual)
 		eori.b	#%00100,ccr			; invert Z flag
 		rts
 
 Check_AllLevelsBeaten_Frantic:
+		andi.b	#Doors_All,(Doors_Frantic).w	; mask against valid door bitsets
 		cmpi.b	#Doors_All,(Doors_Frantic).w	; check if all doors have been unlocked (frantic)
 		eori.b	#%00100,ccr			; invert Z flag
 		rts
@@ -740,6 +767,12 @@ Check_BlackoutBeaten:
 Check_BlackoutUnlocked:
 		bra.s	Check_BaseGameBeaten_Both
 
+Check_BlackoutFirst:
+		bsr	Check_BlackoutUnlocked	; is the blackout challenge unlocked?
+		beq.s	@end			; if not, branch
+		bsr	Check_BlackoutBeaten	; have you already beaten the blackout challenge?		
+		eori.b	#%00100,ccr		; invert Z flag
+@end:		rts
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------

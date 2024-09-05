@@ -929,7 +929,7 @@ Deform_SYZ:
 		lea	(a2,d0), a2
 		bsr	DeformScreen_ProcessBlocks
 
-		; screen fuzz for blackout room
+		; insane screen fuzz when jumping into blackout challenge ring
 		tst.b	($FFFFFFD0).w		; jumped into blackout ring?
 		beq.s	@nospoop		; if not, branch
 		move.b	#$10,($FFFFF73A).w	; pretend 16 pixels have been scrolled for the bzzzzz
@@ -1148,7 +1148,7 @@ S_H_ExtendedCamera:
 		btst	#0,(OptionsBits).w	; is extended camera enabled?
 		beq.w	S_H_NoExtendedCam	; if not, you're lame and old-fashioned but k
 
-		cmpi.b	#3,($FFFFFE10).w
+		cmpi.b	#3,($FFFFFE10).w	; are we in SLZ?
 		bne.s	S_H_BuzzIgnore		; if not, branch
 		tst.b	($FFFFFFA9).w		; is Sonic fighting against the walking bomb?
 		bne.w	S_H_ResetCamera		; if yes, branch	
@@ -1156,8 +1156,8 @@ S_H_ExtendedCamera:
 		bne.w	S_H_ResetCamera		; if yes, branch
 
 S_H_BuzzIgnore:
-		tst.b	($FFFFF7CD).w
-		bne.s	S_H_ResetCamera
+		tst.b	($FFFFF7CD).w		; has Sonic jumped into a giant ring?
+		bne.s	S_H_ResetCamera		; if yes, branch
 
 		cmpi.w	#$501,($FFFFFE10).w
 		bne.s	@cont
@@ -1170,8 +1170,9 @@ S_H_BuzzIgnore:
 		bra.s	S_H_ResetCamera
 
 @cont:
-		tst.b	($FFFFFFAF).w		; has a flag been set to do this? (Peelout / Spindash)
+		tst.b	($FFFFFFAF).w		; is Spindash or Peelout being charged up?
 		bne.s	S_H_PeeloutSpindash	; if yes, branch
+
 		move.w	($FFFFD014).w,d2	; load sonic's ground speed to d2
 		btst	#1,($FFFFD022).w	; is sonic in the air?
 		beq.s	S_H_ChkDirection	; if not, branch
@@ -1203,32 +1204,32 @@ S_H_PeeloutSpindash:
 ; ===========================================================================
 
 S_H_FastEnough_Right:
-		cmpi.w	#$40,($FFFFFFCE).w	; is camera moving counter at or over $40?
+		cmpi.w	#$40,(ExtCamShift).w	; is camera moving counter at or over $40?
 		bge.s	S_H_CameraMove_End	; if yes, don't change camera moving
-		add.w	#CamSpeed,($FFFFFFCE).w	; otherwise, make camera move to the left
+		add.w	#CamSpeed,(ExtCamShift).w	; otherwise, make camera move to the left
 		bra.s	S_H_CameraMove_End	; skip to processing code
 ; ===========================================================================
 
 S_H_FastEnough_Left:
-		cmpi.w	#-$40,($FFFFFFCE).w	; is camera moving counter at or below -$40?
+		cmpi.w	#-$40,(ExtCamShift).w	; is camera moving counter at or below -$40?
 		ble.s	S_H_CameraMove_End	; if yes, don't change camera moving
-		sub.w	#CamSpeed,($FFFFFFCE).w	; otherwise, make camera move to the right
+		sub.w	#CamSpeed,(ExtCamShift).w	; otherwise, make camera move to the right
 		bra.s	S_H_CameraMove_End	; skip to processing code
 ; ===========================================================================
 
 S_H_ResetCamera:
-		tst.w	($FFFFFFCE).w		; is camera moving counter empty?
-		beq.s	S_H_CameraMove_End	; if yes, branch to end
+		tst.w	(ExtCamShift).w		; is camera moving counter empty?
+		beq.s	S_H_NoExtendedCam	; if yes, branch to end
 		bpl.s	S_H_ResetCamera_Left	; is it positive? if yes, branch to code for left moving
-		add.w	#CamSpeed,($FFFFFFCE).w	; otherwise make it move to the right again
+		add.w	#CamSpeed,(ExtCamShift).w	; otherwise make it move to the right again
 		bra.s	S_H_CameraMove_End	; skip to end
 ; ===========================================================================
 
 S_H_ResetCamera_Left:
-		sub.w	#CamSpeed,($FFFFFFCE).w	; make camera move to the elft again
+		sub.w	#CamSpeed,(ExtCamShift).w	; make camera move to the left again
 
 S_H_CameraMove_End:
-		add.w	($FFFFFFCE).w,d0	; add counter to normal camera location
+		add.w	(ExtCamShift).w,d0	; add counter to normal camera location
 
 S_H_NoExtendedCam:
 		sub.w	($FFFFF700).w,d0

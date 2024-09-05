@@ -140,10 +140,12 @@ DH_Continue:
 		jsr	BuildSprites
 		jsr	PalCycle_Load
 		
+		; continue to render Sonic's DPLC to avoid visual quirks
 		move.l	a0,-(sp)
 		lea	($FFFFD000).w,a0
 		jsr	LoadSonicDynPLC
 		move.l	(sp)+,a0
+
 		; palette cycle to highlight letters
 		btst	#7,(OptionsBits).w	; photosensitive mode?
 		bne.s	@noletterflashing	; if yes, branch
@@ -671,7 +673,7 @@ Hints_List:	; note: these IDs are 1-based
 		dc.l	Hint_Easter_Tutorial_Escape	; $0E
 		dc.l	Hint_End_AfterCasual		; $0F
 		dc.l	Hint_End_AfterFrantic		; $10
-		dc.l	Hint_Null			; $11
+		dc.l	Hint_LP_BlackBars		; $11
 		dc.l	Hint_End_BlackoutTeaser		; $12
 		dc.l	Hint_FranticTutorial		; $13
 		dc.l	Hint_End_CinematicUnlock	; $14
@@ -876,7 +878,7 @@ Hint_2:
 		boxtxt_pause
 		boxtxt	"  TIME TICKS THREE"
 		boxtxt	"   TIMES AS FAST!"
-		boxtxt_line
+		boxtxt_pause
 		boxtxt	"   THAT'S ROUGHLY"
 		boxtxt	"    five minutes"
 		boxtxt	"  UNTIL TIME OVER."
@@ -1130,6 +1132,7 @@ Hint_7:
 		boxtxt_line
 		boxtxt	"     CAN'T PAY?"
 		boxtxt_pause
+		boxtxt_line
 		boxtxt	"      YOU DIE."
 		boxtxt_end
 
@@ -1184,8 +1187,11 @@ Hint_Easter_SLZ:
 
 		boxtxt	"WHAT?"
 		boxtxt_pause
+		boxtxt_line
 		boxtxt	"WERE YOU EXPECTING"
+		boxtxt_line
 		boxtxt	"ANYTHING NAUGHTY"
+		boxtxt_line
 		boxtxt	"UP HERE?"
 		boxtxt_next
 
@@ -1193,6 +1199,7 @@ Hint_Easter_SLZ:
 		boxtxt_line
 		boxtxt_pause
 		boxtxt	"CATEGORICALLY"
+		boxtxt_line
 		boxtxt_pause
 		boxtxt	"DISGUSTING."
 		boxtxt_end
@@ -1292,8 +1299,11 @@ Hint_End_AfterFrantic:
 ;		 --------------------
 Hint_End_BlackoutTeaser:
 		boxtxt	"THE HORRORS OF"
-		boxtxt	"uberhub place"
-		boxtxt	"HAVE BEEN UNSEALED!"
+		boxtxt	"uberhub#s end"
+		boxtxt	"HAVE BEEN UNSEALED."
+		boxtxt_pause
+		boxtxt	"THERE IS NO ONE TO"
+		boxtxt	"HELP YOU ANYMORE."
 		boxtxt_pause
 		boxtxt	"GOOD LUCK."
 		boxtxt_end
@@ -1307,6 +1317,18 @@ Hint_FranticTutorial:
 		boxtxt	"IN HERE, SO YOU MAY"
 		boxtxt	"WANT TO REVISIT"
 		boxtxt	"THE TUTORIAL."
+		boxtxt_end
+
+;		 --------------------
+Hint_LP_BlackBars:
+		boxtxt	"HI. SO, UH..."
+		boxtxt_line
+		boxtxt	"THE BLACK BARS"
+		boxtxt	"DO not WORK IN"
+		boxtxt	"LABYRINTHY PLACE"
+		boxtxt	"FOR WATER REASONS."
+		boxtxt_line
+		boxtxt	"SORRY 'BOUT THAT."
 		boxtxt_end
 
 ;		 --------------------
@@ -1328,22 +1350,21 @@ Hint_End_CinematicUnlock:
 		boxtxt	"YOU HAVE UNLOCKED"
 		boxtxt	"cinematic mode!"
 		boxtxt_pause
-		boxtxt	"IT'S COMPLETELY"
-		boxtxt	"USELESS BUT ALSO"
-		boxtxt	"PRETTY COOL!"
+		boxtxt	"THE ULTIMATE FUN"
+		boxtxt	"WITH A THIRD OF THE"
+		boxtxt	"SCREEN IN BLACK!"
 		boxtxt_end
 
 ;		 --------------------
 Hint_End_MotionBlurUnlock:
-		boxtxt	"r FOR RESTLESS"
+		boxtxt	"r FOR RADICAL"
 		boxtxt_line
 		boxtxt	"YOU HAVE UNLOCKED"
-		boxtxt	"motion blur!"
+		boxtxt	"visual fx!"
 		boxtxt_pause
-		boxtxt	"NYOOOOOOOOOOOOOOM!!!"
-		dc.b	_pause
-		boxtxt	"YEAH, I GOT NOTHING"
-		boxtxt	"BETTER. SORRY."
+		boxtxt	"OR, AS THE MOVIE"
+		boxtxt	"INDUSTRY WOULD SAY,"
+		boxtxt	"DEFINITELY HD!"
 		boxtxt_end
 
 ;		 --------------------
@@ -1354,7 +1375,7 @@ Hint_End_NonstopInhumanUnlock:
 		boxtxt	"true inhuman mode!"
 		boxtxt_pause
 		boxtxt	"ALL HAIL OUR NEW"
-		boxtxt	"OVERLORD. MAY THE"
+		boxtxt	"OVERLORD! MAY THE"
 		boxtxt	"GODS HAVE MERCY."
 		boxtxt_end
 

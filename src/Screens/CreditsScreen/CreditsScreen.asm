@@ -109,6 +109,8 @@ CreditsScreen_Loop:
 		; update scroll
 		tst.b	($FFFFF604).w				; is any button held?
 		beq.s	@scrollnormal				; if not, branch
+		tst.w	($FFFFFFFA).w				; is debug mode enabled?
+		bra.s	@fast					; if yes, always allow fast forward
 		btst	#2,($FFFFFF95).w			; is this the first time the player has finished the game? (checked through post-credit cinematic mode unlock)
 		bne.s	@scrollnormal				; if not, no fast scrolling
 		bra.s	@fast					; fast forward

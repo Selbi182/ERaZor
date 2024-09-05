@@ -38,8 +38,12 @@ Options_RedrawCurrentItem:	rs.b	1
 ;  bit 3 = Cinematic Mode (black bars)
 ;  bit 4 = Nonstop Inhuman Mode
 ;  bit 5 = Gamplay Style (0 - Casual Mode // 1 - Frantic Mode)
-;  bit 6 = Cinematic Mode (piss filter)
+;  bit 6 = [unused]
 ;  bit 7 = Photosensitive Mode
+; ---------------------------------------------------------------------------
+; Screen Effects are kept in a separate address: $FFFFFF91
+; bit 0 = piss filter
+; bit 1 = motion blur
 ; ---------------------------------------------------------------------------
 ; Default options when starting the game for the first time
 ; (Casual Mode, Extended Camera)
@@ -98,7 +102,7 @@ OptionsScreen:				; XREF: GameModeArray
 		lea	($FFFFD100).w,a0
 		move.b	#2,(a0)			; load ERaZor banner object
 		move.w	#$11E,obX(a0)		; set X-position
-		move.w	#$7F,obScreenY(a0)	; set Y-position
+		move.w	#$82,obScreenY(a0)	; set Y-position
 		bset	#7,obGfx(a0)		; make object high plane
 		jsr	ObjectsLoad
 		jsr	BuildSprites
@@ -180,6 +184,7 @@ Options_InitState:
 
 Options_SetDefaults:
 		move.b	#DefaultOptions,(OptionsBits).w	; load default options
+		clr.b	(ScreenFuzz).w
 		rts
 
 ; ---------------------------------------------------------------------------
@@ -209,11 +214,17 @@ CheckEnable_PlacePlacePlace:
 
 Options_IntialDraw:
 		; Render header and tool tip
-		lea	Options_DrawText_Normal(pc), a4
+		lea	Options_DrawText_Highlighted(pc), a4
 		lea	@ItemData_Header_Top(pc), a0
 		bsr	Options_RedrawMenuItem_Direct
+
+	;	lea	@ItemData_Header_Top2(pc), a0
+	;	bsr	Options_RedrawMenuItem_Direct
+
 		lea	@ItemData_Header_Bottom(pc), a0
 		bsr	Options_RedrawMenuItem_Direct
+		
+		lea	Options_DrawText_Normal(pc), a4
 		lea	@ItemData_Tooltip(pc), a0
 		bsr	Options_RedrawMenuItem_Direct
 
@@ -222,22 +233,28 @@ Options_IntialDraw:
 
 ; ---------------------------------------------------------------------------
 @ItemData_Header_Top:
-		dcScreenPos $E000, 3, 4			; start on-screen position
+		dcScreenPos $E000, 4, 4			; start on-screen position
 		dc.l	@DrawHeader			; redraw handler
+		
+@ItemData_Header_Top2:
+		dcScreenPos $E000, 4, 4			; start on-screen position
+		dc.l	@DrawHeader2			; redraw handler
 
 @ItemData_Header_Bottom:
-		dcScreenPos $E000, 25, 4		; start on-screen position
+		dcScreenPos $E000, 23, 4		; start on-screen position
 		dc.l	@DrawHeader			; redraw handler
 
 @ItemData_Tooltip:
-		dcScreenPos $E000, 26, 10		; start on-screen position
+		dcScreenPos $E000, 25, 10		; start on-screen position
 		dc.l	@DrawTooltip			; redraw handler
 
 ; ---------------------------------------------------------------------------
 @DrawHeader:
 		Options_PipeString a4, '<------------------------------>'
 		rts
-
+@DrawHeader2:
+		Options_PipeString a4, '          CHANGE STUFF          '
+		rts
 @DrawTooltip:
 		Options_PipeString a4, 'PRESS  _`abc TO EXIT'
 		rts

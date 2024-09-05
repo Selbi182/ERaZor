@@ -47,7 +47,7 @@ DebugModeDefault = 1
 DebugSurviveNoRings = 1
 ; ------------------------------------------------------
 DoorsAlwaysOpen = 0
-LowBossHP = 1
+LowBossHP = 0
 ; ------------------------------------------------------
 TestDisplayDeleteBugs = 0
 ; ======================================================
@@ -92,9 +92,9 @@ StartOfRom:
 
 		dc.b 'SEGA MEGA DRIVE ' ; Hardware system ID
 
-Date:		dc.b '(C)SELBI 2024   ' ; Release date
-Title_Local:	dc.b 'Sonic ERaZor                                    ' ; Domestic name
-Title_Int:	dc.b 'Sonic ERaZor                                    ' ; International name
+Date:		dc.b '(C) SELBI 2024  ' ; Release date
+Title_Local:	dc.b 'Sonic ERaZor 7                                  ' ; Domestic name
+Title_Int:	dc.b 'Sonic ERaZor 7                                  ' ; International name
 Serial:		dc.b 'SP 18201337-07' 	; Serial/version number
 
 Checksum:	dc.w 0
@@ -265,7 +265,7 @@ GameClrRAM:	move.l	d7,(a6)+
 		bsr	VDPSetupGame
 		bsr	JoypadInit
 		if def(__MD_REPLAY__)=0
-			bsr.w	LoadSRAM
+			bsr.w	SRAM_Load
 		else
 			bsr.w	ResetGameProgress
 		endif
@@ -485,6 +485,9 @@ BlackBars_Selbi:
 ; ---------------------------------------------------------------------------
 
 BlackBars_Intro:
+		tst.b	($FFFFFFE9).w			; is fade out in progress?
+		bne.w	BlackBars_DontShow		; if yes, disable to avoid visual quirks
+
 		tst.b	($FFFFFFB7).w			; has chase sequence started?
 		bne.s	@chase				; if yes, branch
 
@@ -833,6 +836,9 @@ PauseGame:				; XREF: Level_MainLoop; et al
 		btst	#7,($FFFFF605).w	; is Start button pressed?
 		beq.w	Pause_DoNothing		; if not, branch
 Paused:
+		tst.w	($FFFFFE10).w		; are we in NHP?
+		beq.w	PG_DoPause		; if yes, allow pausing (for the intro scene)
+
 		; skip cutscenes
 		cmpi.w	#$500,($FFFFFE10).w	; is this the bomb machine cutscene?
 		bne.s	@notmachine		; if not, branch
@@ -848,6 +854,8 @@ PG_CheckAllowed:
 		beq.w	Pause_DoNothing		; if not, disallow pausing
 		cmpi.b	#$10,(GameMode).w	; are we in a special stage?
 		beq.s	PG_SSPause		; if yes, branch
+		cmpi.b	#$18,(GameMode).w	; is this the ending sequence?
+		beq.s	PG_DoPause		; if yes, branch
 		cmpi.w	#$501,($FFFFFE10).w	; are we in the tutorial?
 		beq.s	PG_DoPause		; if yes, branch
 		btst	#3,(OptionsBits).w	; is cinematic HUD enabled?
@@ -1287,7 +1295,7 @@ cyoff = 4
 cylen = 8
 		move.w	#$2780,($FFFFD000+obGfx).w	; force Sonic to use palette line 2
 		lea	($FFFFFB20).w,a2		; set start location
-		btst	#6,(OptionsBits).w		; is piss enabled?
+		btst	#1,(ScreenFuzz).w		; is piss enabled?
 		beq.s	@notcinematic			; if not, branch
 		move.w	#$0780,($FFFFD000+obGfx).w	; welp
 		lea	($FFFFFB00).w,a2		; have fun with the eyesore
@@ -2207,11 +2215,11 @@ ColorBoostG = $4
 
 ; ContrastBoost:
 PissFilter:
-		btst	#6,(OptionsBits).w	; is cinematic piss filter enabled?
+		btst	#1,(ScreenFuzz).w	; is piss filter enabled?
 		bne.s	PissFilter_Do		; if yes, enable piss filter everywhere hooray
 
 		; GHP piss filter
-		move.b	(GameMode).w,d1	; get current
+		move.b	(GameMode).w,d1		; get current game mode
 		andi.b	#$0F,d1			; include the level pre-sequence ($8C)
 		cmpi.b	#$C,d1			; are we in a level?
 		bne.s	PissFilter_End		; if not, don't do filer
@@ -3294,13 +3302,13 @@ MusicList:
 
 ; Level::	<-- for quick search
 Level:					; XREF: GameModeArray
+		move.w	#$8014,($C00004).l	; enable h-ints
+		bsr	Pal_FadeFrom
+		move.w	#$8004,($C00004).l	; disable h-ints
 		bset	#7,(GameMode).w ; add $80 to screen mode (for pre level sequence)
 		bsr	PLC_ClearQueue
 		jsr	DrawBuffer_Clear
 		display_enable
-		move.w	#$8014,($C00004).l	; enable h-ints
-		bsr	Pal_FadeFrom
-		move.w	#$8004,($C00004).l	; disable h-ints
 
 		; immediately clear the first tile in VRAM to avoid graphical issues
 		VBlank_SetMusicOnly
@@ -3483,7 +3491,7 @@ Level_NoMusic:
 Level_NoMusic2:
 		clr.b	($FFFFFF98).w
 		clr.b	($FFFFFF99).w
-		clr.w	($FFFFFFCE).w	; clear extended camera counter
+		clr.w	ExtCamShift	; clear extended camera counter
 
 		bsr	LevelSizeLoad
 		bsr	ClearEverySpecialFlag
@@ -3551,6 +3559,7 @@ loc_3946:
 		bset	#2,($FFFFF754).w
 		bsr	MainLoadBlockLoad	; load block mappings and palettes
 
+@notmachine:
 		moveq	#0,d0
 		bsr	LoadPLC			; (re-)load standard patterns 1
 
@@ -4267,28 +4276,30 @@ byte_3FCF:	dc.b 0			; XREF: LZWaterSlides
 ; (This routine is called from within DeformBgLayer)
 ; ---------------------------------------------------------------------------
 CamShake_DefaultIntensity = 7	; should be 2^n - 1
+CamShake_PhotosensitiveIntensity = 1
 ; ---------------------------------------------------------------------------
 
 GenerateCameraShake:
 		tst.b	(CameraShake).w			; is camera shake currently active?
-		beq.s	@nocamshake			; if not, nothing to do
-		btst	#7,(OptionsBits).w		; is photosensitive mode enabled?
-		beq.s	@docamshake			; if not, do cam shake
-		clr.b	(CameraShake).w			; clear camera shake counter immediately
-@nocamshake:	rts					; don't do any camera shake
-; ---------------------------------------------------------------------------
+		beq.w	@end				; if not, nothing to do
 
-@docamshake:
 		moveq	#0,d0				; clear d0
 		moveq	#0,d1				; clear d1
 		move.b	(CurrentRandomNumber).w,d0	; get a random number (will be used for X shake)
 		move.b	(CurrentRandomNumber+1).w,d1	; get a different random number (will be used for Y shake)
 
+		btst	#7,(OptionsBits).w		; is photosensitive mode enabled?
+		bne.s	@photosensitive			; if not, branch
 		moveq	#0,d2				; clear d2
 		move.b	(CameraShake_Intensity).w,d2	; get currently set camera shake intensity
 		bhi.s	@intensityset			; if it's already set, branch
 		moveq	#CamShake_DefaultIntensity,d2	; if it's 0, set it to the default
+		bra.s	@updateram
+	@photosensitive:
+		moveq	#CamShake_PhotosensitiveIntensity,d2 ; use reduced intensity
+	@updateram:
 		move.b	d2,(CameraShake_Intensity).w	; update intensity in RAM
+
 @intensityset:
 		moveq	#0,d3				; clear d3
 		move.b	d2,d3				; copy intensity
@@ -4312,7 +4323,7 @@ GenerateCameraShake:
 @remember:
 		move.w	d0,(CameraShake_XOffset).w	; remember X shake offset for later
 		move.w	d1,(CameraShake_YOffset).w	; remember Y shake offset for later
-		rts
+@end:		rts
 ; ===========================================================================
 
 ; called after level and sprites rendering is done
@@ -4341,7 +4352,8 @@ UndoCameraShake:
 ; ---------------------------------------------------------------------------
 
 CinematicScreenFuzz:
-		tst.b	(ScreenFuzz).w		; is screen fuzz enabled?
+		moveq	#%101,d0		; ignore piss filter
+		and.b	(ScreenFuzz).w,d0	; is permanent or temporary screen fuzz enabled?
 		beq.w	CinematicScreenFuzz_End	; if not, branch
 
 		; calculate the exact amount of lines we need, minus ones occupied by black bars
@@ -4509,6 +4521,7 @@ ClearEverySpecialFlag:
 		move.b	d0,($FFFFFFBD).w
 		move.b	d0,($FFFFFFBF).w
 		move.b	d0,($FFFFFFC8).w
+		move.w	d0,ExtCamShift
 		move.w	d0,($FFFFFFD0).w
 		move.l	d0,($FFFFFFD2).w
 		move.l	d0,($FFFFFFD6).w
@@ -4517,6 +4530,7 @@ ClearEverySpecialFlag:
 		move.b	d0,($FFFFFFE7).w
 		move.b	d0,($FFFFFFEB).w
 		move.b	d0,($FFFFFFF9).w
+		bclr	#2,(ScreenFuzz).w
 		rts
 ; End of function ClearEverySpecialFlag
 	
@@ -4796,11 +4810,13 @@ loc_463C:
 		moveq	#$14,d0
 		bsr	PLC_ExecuteOnce	; load special stage patterns
 
-		tst.b	(Blackout).w	; is this the blackout special stage?
-		beq.s	@contx		; if not, branch
+		tst.b	(Blackout).w		; is this the blackout special stage?
+		beq.s	@notskull		; if not, branch
+		tst.b	(PlacePlacePlace).w	; easter egg flag set?
+		bne.s	@notskull		; if yes, keep it old-school
 		moveq	#$1B,d0
-		bsr	PLC_ExecuteOnce	; load unique blackout challenge patterns (skull)
-@contx:
+		bsr	PLC_ExecuteOnce		; load unique blackout challenge patterns (skull)
+@notskull
 
 		lea	($FFFFD000).w,a1
 		moveq	#0,d0
@@ -4871,12 +4887,15 @@ SS_ClrNemRam:	move.l	d0,(a1)+
 ; ===========================================================================
 
 SS_RemoveAllCheckpoints:
+		moveq	#$41,d3			; set comparison item to goal blocks
+
+SS_RemoveAllCustom:
 		lea	($FF1020).l,a1		; load SS blocks into a1
 		moveq	#$3F,d1			; set normal loop
 @Loop2:		moveq	#$3F,d2			; set alternate loop
-@Loop:		cmpi.b	#$41,(a1)+		; is the item a	goal block?
+@Loop:		cmp.b	(a1)+,d3		; is the item a	matching block?
 		bne.s	@NoReplace		; if not, branch
-		move.b	#0,-1(a1)		; replace goal block with a solid block
+		move.b	#0,-1(a1)		; delete block
 @NoReplace:	dbf	d2,@Loop		; loop
 		lea	$40(a1),a1		; increase pointer by $40
 		dbf	d1,@Loop2		; loop
@@ -4932,46 +4951,28 @@ SS_MainLoop:
 		bhs.w	SS_WaitVBlank		; if yes, branch
 		bsr	PauseGame		; make the game pausing when pressing start
 
-		; respawn at last checkpoint when pressing A (inteded to be used when you get stuck in nonstop inhuman)
-		btst	#6,($FFFFF603).w	; was A pressed this frame?
-		beq.s	@nota			; if not, branch
-		btst	#4,(OptionsBits).w	; is nonstop inhuman enabled?
-		beq.s	@nota			; if not, branch
-		lea	($FFFFD000).w,a0	; load Sonic object
-		jsr	TouchGoalBlock		; respawn at last checkpoint
-@nota:
-		; reduce Sonic's vertical movement when holding ABC in Unreal Place
-		move.b	($FFFFF602).w,d0	; get held buttons
-		andi.w	#$70,d0			; is ABC held?
-		beq.s	@notc			; if not, branch
-		tst.b	($FFFFFFBF).w		; Unreal Place floating challenge enabled?
-		beq.s	@notc			; if not, branch
-		move.w	($FFFFFE0E).w,d0
-		andi.w	#7,d0
-		bne.s	@notc			; only every 8th frame
-		move.w	($FFFFD012).w,d0
-		asr.w	#1,d0
-		move.w	d0,($FFFFD012).w	; reduce Sonic's vertical speed
-@notc:
 		; SS hard part skipper
 		tst.b	($FFFFF603).w		; was anything pressed this frame?
-		beq.s	SS_WaitVBlank		; if not, branch
+		beq.s	@nothps			; if not, branch
 		move.b	($FFFFF602).w,d0	; get button presses
 		tst.w	($FFFFFFFA).w		; is debug cheat enabled?
 		beq.s	@notdebug		; if not, branch
 		cmpi.b	#$60,d0			; is A&C held? (filter out B to not interfere with debug mode)
-		bne.s	SS_WaitVBlank		; if not, branch
+		bne.s	@nothps			; if not, branch
 		bra.s	@abcpressed		; do the thing
 @notdebug:	cmpi.b	#$70,d0			; is exactly ABC held?
-		bne.s	SS_WaitVBlank		; if not, branch
+		bne.s	@nothps			; if not, branch
 
 @abcpressed:
 		tst.b	(Blackout).w		; is this the blackout special stage?
 		bne.s	@disallowed		; if yes, disallow hard part skippers
 		frantic				; is frantic mode enabled?
 		beq.s	@dohardpartskip		; if not, allow hard part skippers
-@disallowed:	move.w	#$DC,d0			; play option disallowed sound
-		jsr	(PlaySound_Special).l	; play sound		
+@disallowed:
+		lea	($FFFFD000).w,a0	; load Sonic object
+		jsr	TouchGoalBlock		; respawn at last checkpoint
+		move.w	#$DC,d0			; play option disallowed sound
+		jsr	(PlaySound_Special).l	; play sound	
 		bra.s	SS_WaitVBlank		; skip
 
 @dohardpartskip:
@@ -4979,29 +4980,70 @@ SS_MainLoop:
 		move.w	#$A8,d0			; play special stage exit sound
 		jsr	(PlaySound_Special).l	; play sound
 		clr.w	($FFFFFE20).w		; lose all your rings, loser
+		bra.s	SS_WaitVBlank		; skip
+@nothps:
+
+		; respawn at last checkpoint when pressing A (inteded to be used when you get stuck in nonstop inhuman)
+		btst	#6,($FFFFF603).w	; was A pressed this frame?
+		beq.s	SS_WaitVBlank		; if not, branch
+		btst	#4,(OptionsBits).w	; is nonstop inhuman enabled?
+		beq.s	SS_WaitVBlank		; if not, branch
+		moveq	#$25,d3			; set target to bumpers
+		jsr	SS_RemoveAllCustom	; remove all touched bumpers
+
+@touchgoal:	lea	($FFFFD000).w,a0	; load Sonic object
+		jsr	TouchGoalBlock		; respawn at last checkpoint
 
 SS_WaitVBlank:
 		move.b	#$A,VBlankRoutine
 		bsr	DelayProgram
 		move.w	($FFFFF604).w,($FFFFF602).w
 		jsr	ObjectsLoad
+
+		; stage rotation for motion blur
+		btst	#0,(ScreenFuzz).w	; is permanent motion blur enabled?
+		beq.s	@norotate		; if not, branch
+		
+		move.b	($FFFFF602).w,d1	; get held buttons
+		btst	#6,d1			; is A held?
+		beq.s	@rotatedrender		; if not, branch
+		
+		move.w	#$100,d0		; set rotation speed
+		btst	#0,d1			; is up held?
+		beq.s	@chkdown		; if not, branch
+		add.w	d0,(ExtCamShift).w	; rotate clockwise
+@chkdown:	btst	#1,d1			; is down held?
+		beq.s	@rotatedrender		; if not, branch
+		sub.w	d0,(ExtCamShift).w	; rotate counterclockwise
+
+@rotatedrender:
+		move.w	(ExtCamShift).w,d0	; get current shifted rotation
+		add.w	d0,($FFFFF780).w	; apply to real rotation
+		move.l	d0,-(sp)		; backup
+		bsr	@render			; render stage
+		move.l	(sp)+,d0		; restore
+		sub.w	d0,($FFFFF780).w	; restore real rotation
+		bra.s	@checkblackout
+
+@render:
 		jsr	BuildSprites
 		jsr	SS_ShowLayout
-		bsr	SS_BGAnimate
+		jsr	SS_BGAnimate
+		rts
 
+@norotate:
+		bsr	@render
+
+@checkblackout:
 		tst.b	(Blackout).w		; is this the blackout blackout special stage?
-		beq.s	@notblackout		; if not, branch
+		beq.s	@checkend		; if not, branch
 		cmpi.b	#4,($FFFFD024).w	; is special stage exiting routine being run?
-		bhs.w	@notblackout		; if yes, branch
+		bhs.w	@checkend		; if yes, branch
 		bsr	BlackoutChallenge	; run blackout challenge logic
-		bra	@notblackout ; broken
-		cmpi.b	#2,($FFFFFE57).w	; are we in part 2?
-		bne.s	@notblackout		; if yes, branch
-		bsr	SS_BGAnimate		; double background movement speed
 
-@notblackout:
-		cmpi.b	#$10,(GameMode).w ; is	game mode still special stage?
-		beq.w	SS_MainLoop	; if yes, loop
+@checkend:
+		cmpi.b	#$10,(GameMode).w	; has game mode changed from special stage?
+		beq.w	SS_MainLoop		; if not, loop
 ; ---------------------------------------------------------------------------
 
 		; exit special stage
@@ -5049,6 +5091,7 @@ SS_EndClrObjRamX:
 		jsr	ObjectsLoad
 		jsr	BuildSprites
 		bsr	Pal_MakeFlash
+		bsr	Pal_FadeFrom
 
 		move.l	#10000,d0		; add 100000 ...
 		jsr	AddPoints		; ... points
@@ -5062,7 +5105,10 @@ Blackout_FallSpeed2 = $200
 Blackout_RotationSpeed2 = $1C0
 
 BlackoutChallenge:
-		; continously apply the red/black palette
+	;	cmpi.b	#2,($FFFFFE57).w	; are we in part 2?
+	;	beq.w	@blackoutcontrols	; if yes, no longer apply palette
+
+		; continously apply the red/black palette		
 		movem.l	d0-a1,-(sp)
 		lea	($FFFFFB4E).w,a1 	; get palette
 		moveq	#0,d3			; clear d3
@@ -5089,6 +5135,7 @@ BlackoutChallenge:
 		dbf	d3,@blackoutpalette	; loop for each colour
 		movem.l	(sp)+,d0-a1
 
+@blackoutcontrols:
 		; blackout challenge controls
 		move.w	#Blackout_RotationSpeed,d1		; set base rotation speed
 		cmpi.b	#2,($FFFFFE57).w			; are we in part 2?
@@ -5617,6 +5664,12 @@ End_MainLoop:
 		move.b	#$18,VBlankRoutine
 		bsr	DelayProgram
 		addq.w	#1,($FFFFFE04).w
+
+		cmpi.b	#6,($FFFFD024).w	; is Sonic dying?
+		bhs.s	@nopause		; if yes, branch
+		bsr	PauseGame
+@nopause:
+
 		bsr	End_MoveSonic
 		jsr	ObjectsLoad
 		bsr	DeformBgLayer
@@ -5641,10 +5694,15 @@ End_MainLoop:
 		move.w	#1,($FFFFFE02).w	; start credits to not softlock in nonstop inhuman
 
 @checkfadeout:
+		cmpi.w	#$400,($FFFFFE10).w		; has the player forcibly exited the cutscene?
+		bne.s	@checkend			; if not, branch
+		rts					; exit this game mode normally
+
+@checkend:
 		tst.w	($FFFFFE02).w			; is level set to restart? (after Sonic died)
 		beq.w	End_MainLoop			; if not, loop
 		cmpi.w	#224/2-2,BlackBars.Height	; did black bars finish covering up the screen?
-		blo.s	End_MainLoop			; if not, loop
+		blo.w	End_MainLoop			; if not, loop
 		jmp	Exit_EndingSequence		; go to credits screen
 
 ; ---------------------------------------------------------------------------
@@ -5859,6 +5917,14 @@ LevSz_ChkLamp:				; XREF: LevelSizeLoad
 		bra.w	loc_60D0
 ; ===========================================================================
 
+Check_JustFinishedFP:
+		btst	#6,(Doors_Casual).w		; has the player finished FP in casual?
+		beq.s	@end				; if not, branch
+		jsr	Check_BaseGameBeaten_Casual	; has the player beaten the base game in casual yet?
+		eori.b	#%00100,ccr			; invert Z flag for return value
+@end:		rts
+; ===========================================================================
+
 LevSz_StartLoc:				; XREF: LevelSizeLoad
 		move.w	($FFFFFE10).w,d0
 		
@@ -5873,14 +5939,20 @@ LevSz_StartLoc:				; XREF: LevelSizeLoad
 		; frantic Uberhub fast spawn
 		cmpi.w	#$400,($FFFFFE10).w	; is level SYZ?
 		bne.s 	@load			; if not, branch
-		frantic				; are we in frantic mode
-		beq.s	@load			; if not, branch
+
+		frantic				; are we in frantic mode?
+		bne.s	@frantic		; if yes, branch
+		bsr	Check_JustFinishedFP	; has the player just escaped FP for the first time?
+		bne.s	@altsloc		; if yes, give the casual players a taste of the nyoom
+		bra.s	@load			; if not, branch
+
+	@frantic:
 		tst.w	(Doors_Casual).w	; have any levels been beaten yet?
 		beq.s	@load			; if not, branch
 		tst.b	(PlacePlacePlace).w	; easter egg?
 		bne.s	@load			; look at the funny trophies
 
-@altsloc:
+	@altsloc:
 		addq.w	#1,d0			; use next level coordinates instead (unused anyway, has the alt coordinates)
 
 @load:
@@ -6687,18 +6759,18 @@ Resize_SLZ2boss2:
 		move.b	#$5F,0(a1)		; load bomb boss
 		move.w	#$BD0,obX(a1)
 		move.w	#$038C,obY(a1)
-		
+
+		moveq	#16,d0			; set number of	hits to 16 (casual)
+		frantic				; are we in frantic?
+		beq.s	@notfrantic		; if not, branch
+		moveq	#20,d0			; set number of	hits to 20 (frantic)
+	@notfrantic:		
 	if LowBossHP=1
-		move.b	#2,(BossHealth).w	; set lives
-	else
-		moveq	#16+1,d0		; set number of	hits to	16 (casual)
-		frantic
-		beq.s	@notfrantic
-		moveq	#20+1,d0		; set number of	hits to	20 (frantic)
-@notfrantic:
+		moveq	#1,d0
+	endif
+		addq.b	#1,d0			; add one more hit for the intro cutscene
 		move.b	d0,(BossHealth).w	; set lives
-	endif	
-		move.b	(BossHealth).w,(HUD_BossHealth).w
+		move.b	d0,(HUD_BossHealth).w	; set lives in HUD
 
 		addq.b	#2,($FFFFF742).w
 		rts
@@ -6746,9 +6818,9 @@ Resize_SLZ3:
 		move.w	#0,($FFFFD010).w
 
 @goup:
-		cmpi.w	#$4C,($FFFFD00C).w
+		cmpi.w	#$5C,($FFFFD00C).w
 		blo.s	@lastright
-		cmpi.w	#$190,($FFFFD00C).w
+		cmpi.w	#$1A0,($FFFFD00C).w
 		blo.s	@slowdown
 		move.w	#-$C00,($FFFFD012).w
 		move.b	#$F,($FFFFD01C).w
@@ -6762,7 +6834,7 @@ Resize_SLZ3:
 		rts
 
 @lastright:
-		move.w	#$48,($FFFFD00C).w
+		move.w	#$58,($FFFFD00C).w
 		move.w	#$200,($FFFFD010).w
 		move.w	#0,($FFFFD012).w
 		move.b	#$E,($FFFFD01C).w
@@ -6797,14 +6869,18 @@ Resize_SYZ1:
 		cmpi.w	#$1A10,($FFFFD008).w	; are we at the end ring?
 		bhs.s	@noend			; if not, branch
 		move.w	#0,($FFFFF726).w	; boundary bottom in end section
+		andi.w	#$00FF,($FFFFF704).w	; dirty fix for a rare glitch :V
 		rts
 
 @noend:
 		tst.b	($FFFFFFA5).w		; entered the blackout area?
 		beq.s	@noblackout		; if not, branch
+		cmpi.w	#$1050,($FFFFD008).w	; in the Real Place trap?
+		blo.s	@noblackout		; if yes, branch
 		cmpi.w	#$180,($FFFFD00C).w	; has Sonic left the tube again?
 		bhs.s	@noblackout		; if yes, branch
 		move.w	#$A8,($FFFFF726).w	; boundary bottom in blackout section
+		move.w	#$F9A,($FFFFF728).w	; left boundary in blackout section
 		rts
 
 @noblackout:
@@ -6824,7 +6900,7 @@ Resize_SYZ1:
 		blo.s	@uberhubend		; if not, branch
 		cmpi.w	#$700,($FFFFD008).w	; make sure Sonic is in the right area
 		blo.s	@uberhubend		; if before that, branch
-		move.w	#$580,d0		; set boundary bottom for tubes
+		move.w	#$418,d0		; set boundary bottom for tubes
 		move.w	d0,($FFFFF726).w	; target boundary
 		move.w	d0,($FFFFF72E).w	; current boundary
 
@@ -7001,8 +7077,13 @@ Resize_FZ:
 		blt.s 	@FindWaitTime
 
 		; Copy palette data
-		move.l 	(a3)+, (a2)+
-		move.l 	(a3), (a2)
+	rept 3
+		move.l 	(a3)+, d0
+		move.l	d3,-(sp)
+		jsr	PissFilter
+		move.l	(sp)+,d3
+		move.l	d0,(a2)+
+	endr
 
 		; Run timer with found wait time
 	        add.w 	d3, FZFlashTimer
@@ -7020,6 +7101,7 @@ Resize_FZ:
 		
 		add.b	#8, FZFlashColor
 		bra.s 	@NoPaletteChange
+; ===========================================================================
 
 @Colors:
 		dc.l 	$00020224, $04460668
@@ -7046,6 +7128,7 @@ Resize_FZ:
 		dc.l	$00001E39	; 30
 		dc.w 	$888
 		dc.l	$00000000	; 0
+; ===========================================================================
 
 @NoPaletteChange:
 		moveq	#0,d0
@@ -9445,6 +9528,8 @@ Obj2A_OpenShut:				; XREF: Obj2A_Index
 		bra.w	Obj2A_Green
 	endif
 
+	;	jsr	Check_BlackoutBeaten		; has the player beaten the blackout challenge?
+	;	bne.w	Obj2A_Green			; if yes, we can assume they beat the rest of the game too
 Obj2A_Red:
 		move.w	#$0800+($6100/$20),obGfx(a0)	; use red light art
 		tst.b	obSubtype(a0)			; is this the door leading to the blackout challenge?
@@ -12426,6 +12511,8 @@ Obj4B_Main:				; XREF: Obj4B_Index
 		jsr	Check_BlackoutUnlocked
 		bne.s	Obj4B_Main_Cont
 @okcool:
+	;	jsr	Check_BlackoutBeaten	; has the player beaten the blackout challenge?
+	;	bne.s	Obj4B_Main_Cont		; if yes, we can assume they beat the rest of the game too
 		move.b	#7,(a0)			; idk how you made it here but gg
 		move.b	#0,obRoutine(a0)	; set to init routine
 		rts				; don't show ring
@@ -12568,9 +12655,10 @@ Obj4B_Collect:				; XREF: Obj4B_Index
 		cmp.b	#4,($FFFFFE10).w	; we in uberhub?
 		bne.s	@NoPaletteChange	; if not, don't change the palette
 		
-		cmpi.b	#GRing_Labyrinthy,obSubtype(a0)
-		beq.w	Obj4B_Exit
-		btst	#6,(OptionsBits).w	; is piss enabled?
+		cmpi.b	#GRing_Labyrinthy,obSubtype(a0)	; is this the ring to Labyrinthy Place?
+		beq.w	Obj4B_Exit			; if yes, skip all the ring stuff and go straight to the stage
+
+		btst	#1,(ScreenFuzz).w	; is piss enabled?
 		bne.s	@NoPaletteChange	; don't change the palette
 		lea	(Pal_SYZGray).l,a3
 		lea 	($FFFFFB20).w,a4
@@ -12637,7 +12725,7 @@ Obj4B_MoveOffScreen:			; XREF: Obj4B_Index
 		addi.w	#$20,obVelY(a0)		; move ring down
 		jsr	SpeedToPos		; update position
 		move.w	obY(a0),d0		; get current Y pos
-		cmpi.w	#$200,d0		; did ring move below $200?
+		cmpi.w	#$300,d0		; did ring move below $300?
 		bhi.w	Obj4B_Exit		; if yes, start Blackout Challenge
 		rts				; wait until ring is off-screen
 
@@ -12694,7 +12782,7 @@ FZEscape_ScreenBoom:
 		jsr	DelayProgram
 		dbf	d5,@WaitLoop
 
-		clr.b	(ScreenFuzz).w		; clear fuzz flag
+		bclr	#2,(ScreenFuzz).w	; clear temporary screen fuzz flag
 		rts
 
 ; ===========================================================================
@@ -13186,7 +13274,7 @@ Obj2E_ChkShoes:
 		cmpi.w	#$502,($FFFFFE10).w	; are we in FP?
 		bne.s	@notfp			; if not, branch
 		move.w	#180*60,($FFFFD034).w	; give Sonic speed shoes for the escape (3 minutes, enough for the whole escape)
-		move.b	#1,(ScreenFuzz).w	; enable fuzz for the final moments
+		bset	#2,(ScreenFuzz).w	; enable temporary screen fuzz for the final moments
 		move.w	#$D3,d0			; play some sound
 		jmp	(PlaySound).l		; do nothing else
 
@@ -13560,7 +13648,7 @@ Obj0F_Main:				; XREF: Obj0F_Index
 		move.w	#$D8,obX(a0)
 		move.w	#$138,obScreenY(a0)
 		move.l	#Map_obj0F,obMap(a0)
-		move.w	#$200,obGfx(a0)
+		move.w	#$200+1,obGfx(a0)
 		move.b	#$3E,$30(a0)
 
 locret_A6F8:				; XREF: Obj0F_Index
@@ -13787,6 +13875,7 @@ BossDefeated2:
 		lsr.w	#8,d0
 		lsr.b	#3,d0
 		add.w	d0,obY(a1)
+		ori.b	#10,(CameraShake).w		; camera shaking
 
 locret_178A22:
 		rts	
@@ -15419,6 +15508,7 @@ loc_BDD6:
 		move.b	#$25,obAnim(a1)	; use inhuman rotate animation
 		move.b	#2,obRoutine(a1)
 		move.b	#1,($FFFFFFEB).w	; set jumpdash flag
+		clr.w	ExtCamShift	; clear extended camera counter
 
 		move.b	#$DB,d0			; play epic explosion sound
 		jsr	PlaySound_Special
@@ -15460,7 +15550,7 @@ Obj32_Display:
 ; ===========================================================================
 
 ChangePaletteRP:
-		btst	#3, OptionsBits		; is cinematic HUD enabled?
+		btst	#1,(ScreenFuzz).w		; is piss filter enabled?
 		bne.s 	@FuckNo				; accomodate for piss filter
 
 		lea 	($FFFFFB48).w, a2
@@ -16158,6 +16248,8 @@ Obj34_NotSpecial2:
 		move.w	#0,obTimeFrame(a1)	; set time delay to 1 second (60)
 		lea	$40(a1),a1	; next object
 		dbf	d1,Obj34_Loop	; repeat sequence another 3 times
+		tst.b	(Blackout).w	; are we in the blackout challenge?
+		bne.s	Obj34_ChkPos	; if yes, don't ruin everything again lol
 		movem.l	d0-a7,-(sp)
 		moveq	#3,d0
 		jsr	PalLoad2	; load Sonic's palette line
@@ -16784,6 +16876,8 @@ Obj36_Hurt:				; XREF: Obj36_SideWays; Obj36_Upright
 		clr.w	($FFFFF708).w
 		clr.w	($FFFFF714).w
 		clr.w	($FFFFF71C).w
+
+		clr.w	ExtCamShift	; clear extended camera counter
 
 		move.w	#$C3,d0			; set giant ring sound
 		jsr	PlaySound		; play it
@@ -20325,11 +20419,11 @@ Obj50_Main:				; XREF: Obj50_Index
 		move.b	#$11,obHeight(a0)
 		move.b	#8,obWidth(a0)
 		move.b	#$CC,obColType(a0)
-		bsr	ObjectFall
-		jsr	ObjHitFloor
-		tst.w	d1
-		bpl.s	locret_F89E
-		add.w	d1,obY(a0)	; match	object's position with the floor
+	;	bsr	ObjectFall
+	;	jsr	ObjHitFloor
+	;	tst.w	d1
+	;	bpl.s	locret_F89E
+	;	add.w	d1,obY(a0)	; match	object's position with the floor
 		move.w	#0,obVelY(a0)
 		addq.b	#2,obRoutine(a0)
 		bchg	#0,obStatus(a0)
@@ -20352,8 +20446,8 @@ Obj50_Index2:	dc.w Obj50_Move-Obj50_Index2
 ; ===========================================================================
 
 Obj50_Move:				; XREF: Obj50_Index2
-		subq.w	#1,$30(a0)	; subtract 1 from pause	time
-		bpl.s	locret_F8E2	; if time remains, branch
+	;	subq.w	#1,$30(a0)	; subtract 1 from pause	time
+	;	bpl.s	locret_F8E2	; if time remains, branch
 		addq.b	#2,ob2ndRout(a0)
 		move.w	#-$100,obVelX(a0)	; move object
 		move.b	#1,obAnim(a0)
@@ -20385,7 +20479,7 @@ Obj50_NotInhumanCrush:
 		blt.s	Obj50_Pause
 		cmpi.w	#$C,d1
 		bge.s	Obj50_Pause
-		add.w	d1,obY(a0)	; match	object's position to the floor
+	;	add.w	d1,obY(a0)	; match	object's position to the floor
 		jsr	obj50_ChkWall
 		bne.s	Obj50_Pause
 		rts	
@@ -20393,7 +20487,7 @@ Obj50_NotInhumanCrush:
 
 Obj50_Pause:				; XREF: Obj50_FixToFloor
 		subq.b	#2,ob2ndRout(a0)
-		move.w	#59,$30(a0)	; set pause time to 1 second
+	;	move.w	#59,$30(a0)	; set pause time to 1 second
 		move.w	#0,obVelX(a0)
 		move.b	#0,obAnim(a0)
 		rts	
@@ -21182,7 +21276,7 @@ Obj55_ChkDrop:				; XREF: Obj55_Index2
 		move.w	d0,$36(a0)
 		sub.w	obY(a0),d0
 		bcs.s	Obj55_NoDrop
-		cmpi.w	#$80,d0		; is Sonic within $80 pixels of	basaran?
+		cmpi.w	#$A0,d0		; is Sonic within $A0 pixels of	basaran?
 		bcc.s	Obj55_NoDrop	; if not, branch
 		tst.w	($FFFFFE08).w	; is debug mode	on?
 		bne.s	Obj55_NoDrop	; if yes, branch
@@ -21199,10 +21293,11 @@ Obj55_NoDrop:
 
 Obj55_DropFly:				; XREF: Obj55_Index2
 		bsr	SpeedToPos
-		addi.w	#$18,obVelY(a0)	; make basaran fall
+		addi.w	#$28,obVelY(a0)	; make basaran fall
 		move.w	#$80,d2
 		jsr	obj55_ChkSonic
 		move.w	$36(a0),d0
+		addi.w	#$20,d0		; pretend Sonic's a bit lower than he actually is
 		sub.w	obY(a0),d0
 		bcs.s	Obj55_ChkDel
 		cmpi.w	#$10,d0
@@ -21251,7 +21346,7 @@ locret_101C6:
 
 Obj55_FlyUp:				; XREF: Obj55_Index2
 		bsr	SpeedToPos
-		subi.w	#$18,obVelY(a0)	; make basaran fly upwards
+		subi.w	#$30,obVelY(a0)	; make basaran fly upwards
 		bsr	ObjHitCeiling
 		tst.w	d1		; has basaran hit the ceiling?
 		bpl.s	locret_101F4	; if not, branch
@@ -21267,7 +21362,7 @@ locret_101F4:
 ; ===========================================================================
 
 Obj55_ChkSonic:				; XREF: Obj55_ChkDrop
-		move.w	#$100,d1
+		move.w	#$180,d1	; X speed (used to be $100)
 		bset	#0,obStatus(a0)
 		move.w	($FFFFD008).w,d0
 		sub.w	obX(a0),d0
@@ -23127,7 +23222,7 @@ Obj5D_Action:				; XREF: Obj5D_Index
 
 @forcesonicinplace:
 		tst.b	($FFFFF7CC).w		; are controls already locked?
-		bne.w	Obj5D_Animate		; if yes, branch
+		bne.w	@fansound		; if yes, branch
 		move.b	#1,$30(a0)		; fast animation
 		btst	#1,obStatus(a0)		; is fan vertically flipped?
 		bne.w	Obj5D_Animate		; if yes, make it cosmetic only
@@ -23136,26 +23231,25 @@ Obj5D_Action:				; XREF: Obj5D_Index
 		btst	#0,obStatus(a0)		; is fan horizontally flipped?
 		bne.s	@rightfacing2		; if yes, branch
 		btst	#3,($FFFFF602).w	; right still pressed?
-		bne.s	Obj5D_Animate		; if yes, branch
+		bne.s	@fansound		; if yes, branch
 		move.w	#-$800,d0
 		move.w	d0,($FFFFD010).w
 		move.w	d0,($FFFFD014).w
-		bra.s	@fansound
+		bra.s	@dosound
 
 @rightfacing2:
 		btst	#2,($FFFFF602).w	; left still pressed?
-		bne.s	Obj5D_Animate
+		bne.s	@fansound
 		move.w	#$800,d0
 		move.w	d0,($FFFFD010).w
 		move.w	d0,($FFFFD014).w
+		bra.s	@dosound
 
 @fansound:
-		move.b	($FFFFFE05).w,d0	; play fan sound every couple frames
-		andi.b	#%11,d0
+		moveq	#%11,d0
+		and.w	($FFFFFE04).w,d0	; play fan sound every couple frames
 		bne.s	Obj5D_Animate
-		btst	#0,($FFFFFE0F).w
-		bne.s	Obj5D_Animate
-		move.w	#$B8,d0
+@dosound:	move.w	#$B8,d0
 		jsr	PlaySound_Special
 
 Obj5D_Animate:				; XREF: Obj5D_ChkSonic
@@ -23544,6 +23638,8 @@ BombFuseTime_Boss = 41
 BombDistance_Boss = $50
 BombPellets_Boss = 1
 ; ---------------------------------------------------------------------------
+; lives are set in Resize_SLZ2boss2 due to the unique way this boss works
+; ---------------------------------------------------------------------------
 ; ===========================================================================
 
 Obj5F:					; XREF: Obj_Index
@@ -23586,7 +23682,7 @@ Obj5F_Main:				; XREF: Obj5F_Index
 		move.b	#$C,obActWid(a0)
 
 		cmpi.w	#$500,($FFFFFE10).w
-		bne.s	@cont
+		bne.s	@bombboss
 		move.b	#8,obRoutine(a0)
 		move.w	#$533,obGfx(a0)
 		move.l	#Map_obj5F_Cutscene,obMap(a0)
@@ -23594,7 +23690,7 @@ Obj5F_Main:				; XREF: Obj5F_Index
 		jsr	PlaySound_Special
 		bra.w	Obj5F_BombMachine
 
-@cont:
+@bombboss:
 		move.b	obSubtype(a0),d0
 		beq.s	loc_11A3C
 		move.b	d0,obRoutine(a0)
@@ -23734,20 +23830,7 @@ Obj5F_FC2:
 
 Obj5F_Explode:				; XREF: Obj5F_Index2
 		cmpi.b	#1,(BossHealth).w		; remove one life
-		bhi.s	@doend
-		tst.b	obRender(a0)			; is bomb on screen?
-		bpl.s	@waitforsonic			; if not, branch
-		move.w	($FFFFD008).w,d0
-		sub.w	obX(a0),d0
-		bpl.s	@pos
-		neg.w	d0
-@pos:		
-		cmpi.w	#BombDistance_Boss,d0
-		bls.w	@bombvisible	
-@waitforsonic:
-		rts
-
-@bombvisible:
+		bgt.s	@doend
 		tst.b	($FFFFF7CC).w			; are controls already locked?
 		bne.s	@doend				; if yes, branch
 		move.b	#1,($FFFFF7CC).w		; lock controls
@@ -23804,7 +23887,28 @@ locret_11B5E:
 ; ===========================================================================
 ; ===========================================================================
 
+Obj5F_FinalSonicDistance = $40
+
 Obj5F_BossDefeated:
+		move.w	($FFFFD008).w,d0		; get Sonic's X pos
+		sub.w	obX(a0),d0			; sub bomb's pos from it
+		cmpi.w	#-Obj5F_FinalSonicDistance,d0	; is Sonic to the left of the max distance?
+		bge.s	@leftok				; if not, branch
+		bset	#3,($FFFFF602).w		; force right press
+		bra.s	@walksonicend			; skip
+@leftok:
+		cmpi.w	#Obj5F_FinalSonicDistance,d0	; is Sonic to the right of the max distance?
+		ble.s	@rightok			; if not, branch
+		bset	#2,($FFFFF602).w		; force left press
+		bra.s	@walksonicend			; skip
+
+@rightok:
+		move.b	#0,($FFFFD000+obAniFrame).w	; reset Sonic waiting animation
+		clr.w	($FFFFD010).w			; clear Sonic's X speed
+		clr.w	($FFFFD014).w			; clear Sonic's inertia
+		clr.l	($FFFFF602).w			; clear any remaining button presses
+
+@walksonicend:
 		moveq	#0,d0
 		move.b	($FFFFFF76).w,d0
 		move.w	off_7118x(pc,d0.w),d0
@@ -23839,11 +23943,6 @@ Obj5F_BossDefeatedmain:
 ; ===========================================================================
 
 Obj5F_BossDefeatedboss1:
-		btst	#1,($FFFFD022).w
-		bne.s	@cont
-		move.b	#0,($FFFFD01B).w
-
-@cont:
 		subq.w	#1,($FFFFFF78).w
 		bne.w	Obj5F_ShowBomb
 		addq.b	#2,($FFFFFF76).w
@@ -23914,7 +24013,6 @@ Obj5F_BossDefeatedBlip:
 		jsr	PlaySound_Special
 @noblip:
 		move.w	d1,($FFFFFF7C).w
-		move.b	#0,($FFFFD000+obAniFrame).w ; reset Sonic waiting animation
 		bra.w	DisplaySprite
 
 @patheticexplosion:
@@ -23927,7 +24025,6 @@ Obj5F_BossDefeatedBlip:
 		bra.s	@noblip			; render one last frame
 @hidebomb:
 		move.w	d1,($FFFFFF7C).w
-		move.b	#0,($FFFFD000+obAniFrame).w ; reset Sonic waiting animation
 		rts				; don't render bomb anymore
 ; ===========================================================================
 
@@ -25826,14 +25923,14 @@ Obj02_NotEnding:
 		cmpi.b	#$20,(GameMode).w		; is screen mode story screen?
 		beq.s	@nobgmaps			; if yes, branch
 		cmpi.b	#$24,(GameMode).w		; is screen mode options menu?
-		bne.s	Obj02_NotOptions		; if not, branch
+		bne.s	Obj02_TitleScreen		; if not, branch
 @nobgmaps:
 		move.w	#$2520,obGfx(a0)		; set art, use second palette line
 		bra.s	Obj02_FinishSetup		; use XY positions set while loading object
 
-Obj02_NotOptions:
+Obj02_TitleScreen:
 		move.w	#$11F,obX(a0)			; set X-position
-		move.w	#$113,obScreenY(a0)		; set Y-position
+		move.w	#$115,obScreenY(a0)		; set Y-position
 
 Obj02_FinishSetup:
 		move.w	obScreenY(a0),$32(a0)
@@ -25897,12 +25994,24 @@ Obj03_Setup:
 		move.b	obSubtype(a0),obFrame(a0) ; set frame to subtype ID
 		subi.w	#$C,obY(a0)		; adjust Y pos
 		move.w	#($6200/$20),obGfx(a0)	; set art, use first palette line
+
+		tst.b	($FFFFFFA5).w		; entered the blackout area?
+		beq.s	@0			; if not, branch
+		cmpi.b	#4,obSubtype(a0)	; is this the sign for Unreal?
+		bne.s	@0
+		moveq	#$F,d0			; use REAL text instead
+		move.b	d0,obFrame(a0)
+		move.b	d0,obSubtype(a0)
+@0:
 		cmpi.w	#$501,($FFFFFE10).w	; is this the tutorial?
-		bne.s	@cont			; if not, branch
+		bne.s	@nottut			; if not, branch
 		move.w	#($7300/$20),obGfx(a0)	; use alternate mappings
 		bset	#7,obGfx(a0)		; make it high plane
-	
-@cont:		
+		btst	#2,(OptionsBits).w	; is Skip Uberhub Place enabled?
+		beq.s	@nottut			; if not, branch
+		move.b	#$E,obFrame(a0)		; show "SKIP TUTORIAL" text instead of "EXIT TUTORIAL"
+@nottut:
+
 		; "PLACE" text on level signs
 		tst.b	(PlacePlacePlace).w	; easter egg flag enabled?
 		beq.s	@noeaster		; if not, branch
@@ -25949,8 +26058,7 @@ Obj03_Display:
 		sub.w	d1,d0
 		cmpi.w	#$280,d0
 		bhi.w	DeleteObject		; if object is not on screen, delete it
-		bsr	DisplaySprite		; display sprite
-		rts				; return
+		bra.w	DisplaySprite		; display sprite
 ; ===========================================================================
 
 Obj03_BackgroundColor:
@@ -25985,6 +26093,8 @@ Obj03_BackgroundColor:
 		move.w	($FFFFFE0E).w,d2
 		btst	#5,d2
 		beq.s	@getmask
+		btst	#6,d2
+		bne.s	@getmask
 		lsr.w	#1,d2
 		andi.w	#$1E,d2
 		move.w	d2,d1
@@ -26670,13 +26780,14 @@ loc_12C7E:
 
 ; =========== The big routine of Cutscenes =============
 Obj01_Cutscenes:				; Intro of GHZ1
-		cmpi.w	#$000,($FFFFFE10).w		; is level GHZ1?
+		tst.w	($FFFFFE10).w			; is level GHZ1?
 		bne.s	Obj01_NotGHZ1_Main		; if not, branch
 		tst.b	($FFFFFFBB).w			; has flag "camera reached $0B00" been set?
 		bne.s	Obj01_Not0B00			; if yes, branch
 		bclr	#0,obStatus(a0)
-		move.b	#1,($FFFFF7CC).w		; lock controls
-		bset	#1,($FFFFF602).w		; force down press
+		move.b	#1,($FFFFF7CC).w		; lock controls	
+	;	bset	#1,($FFFFF602).w		; force down press
+		move.w	#$200,($FFFFF602).w		; force down press and nothing else
 		cmpi.w	#$0B00,($FFFFF700).w		; has the camera reached $0B00 on x-axis?
 		bcs.s	Obj01_Not0B00			; if not, branch
 		move.b	#1,($FFFFFFBB).w		; set this flag
@@ -26818,7 +26929,7 @@ loc_12CB6:
 ; ---------------------------------------------------------------------------
 
 Sonic_Display:				; XREF: loc_12C7E
-		cmpi.w	#$000,($FFFFFE10).w	; is level GHZ1?
+		tst.w	($FFFFFE10).w		; is level GHZ1?
 		bne.w	S_D_NoTeleport		; if not, branch
 
 		tst.b	($FFFFFFE7).w		; is inhuman mode on?
@@ -26846,13 +26957,23 @@ Sonic_Display:				; XREF: loc_12C7E
 
 @enough:
 		addq.w	#5,(FranticDrain).w	; add 5 rings to be drained
-		move.w	#$12A0,obX(a0)		; set new location for Sonic's X-pos
-		move.w	#$21A,obY(a0)		; set new location for Sonic's Y-pos
-		bra.s	@teleportend		; skip
 
 @notfrantic:
-		move.w	#$12A0,obX(a0)		; set new location for Sonic's X-pos
-		move.w	#$21A,obY(a0)		; set new location for Sonic's Y-pos
+		move.w	#$1300,obX(a0)		; set new location for Sonic's X-pos
+		move.w	#$2F0,obY(a0)		; set new location for Sonic's Y-pos
+		
+		move.w	#-$400,obVelY(a0)	; move Sonic upwards
+		clr.w	obVelX(a0)		; clear any remaining X speed
+
+		addq.w	#8,obY(a0)
+		bset	#1,obStatus(a0) ; in air
+		bset	#2,obStatus(a0) ; rolling
+		bclr	#3,obStatus(a0) ; not standing
+		move.b	#$25,obAnim(a0)	; use inhuman rotate animation
+		move.b	#2,obRoutine(a0)
+		move.b	#1,($FFFFFFEB).w	; set jumpdash flag
+		clr.w	ExtCamShift	; clear extended camera counter
+
 @teleportend:
 		move.w	#$C3,d0			; set giant ring sound
 		jsr	PlaySound_Special	; set giant ring sound
@@ -27166,6 +27287,7 @@ loc_12E5C:
 ; ===========================================================================
 
 Obj01_MdRoll:				; XREF: Obj01_Modes
+		bsr	Sonic_Unroll
 		bsr	Sonic_Jump
 		bsr	Sonic_RollRepel
 		bsr	Sonic_RollSpeed
@@ -27500,6 +27622,29 @@ locret_1314E:
 		rts	
 ; End of function Sonic_MoveRight
 
+
+; ---------------------------------------------------------------------------
+; Subroutine to	unroll Sonic when pressing up
+; ---------------------------------------------------------------------------
+
+; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+
+
+Sonic_Unroll:
+		btst	#2,obStatus(a0)	; is Sonic already rolling?
+		beq.s	@end		; if not, branch
+		btst	#0,($FFFFF602)	; is up being pressed?
+		beq.s	@end		; if not, branch
+		bclr	#2,obStatus(a0)	; clear rolling flag
+		move.b	#$13,obHeight(a0) ; restore Y-hitbox-radius
+		move.b	#9,obWidth(a0)	; restore X-hitbox-radius
+		move.b	#0,obAnim(a0)	; use running anim
+		subq.w	#5,obY(a0)	; sub 5 from Sonic's Y-position
+@end:
+		rts			; return
+; End of function Sonic_RollSpeed
+
+
 ; ---------------------------------------------------------------------------
 ; Subroutine to	change Sonic's speed as he rolls
 ; ---------------------------------------------------------------------------
@@ -27508,19 +27653,6 @@ locret_1314E:
 
 
 Sonic_RollSpeed:			; XREF: Obj01_MdRoll
-		btst	#2,obStatus(a0)	; is Sonic already rolling?
-		beq.s	S_R_NoRoll	; if not, branch
-		btst	#0,($FFFFF602)	; is up being pressed?
-		beq.s	S_R_NoRoll	; if not, branch
-		bclr	#2,obStatus(a0)	; clear rolling flag
-		move.b	#$13,obHeight(a0)	; restore Y-hitbox-radius
-		move.b	#9,obWidth(a0)	; restore X-hitbox-radius
-		move.b	#0,obAnim(a0)	; use running anim
-		subq.w	#5,obY(a0)	; sub 5 from Sonic's Y-position
-		rts			; return
-; ===========================================================================
-
-S_R_NoRoll:
 		move.w	($FFFFF760).w,d6
 		asl.w	#1,d6
 		move.w	($FFFFF762).w,d5
@@ -28029,8 +28161,11 @@ WF_MakeWhite_Loop:
 		addi.w	#$002,d1		; otherwise, boost color
 @maxred:
 		tst.b	(Blackout).w		; blackout challenge?
-		bne.s	@maxblue		; if yes, only affect red channel
+	;	beq.s	@notblackout		; if not, branch
+	;	cmpi.b	#2,($FFFFFE57).w 	; are we in part 2?
+		bne.s	@maxblue		; if not, only affect red channel
 
+@notblackout:
 		move.w	d1,d2			; copy color
 		andi.w	#$0E0,d2		; filter for green
 		cmpi.w	#$0E0,d2		; are we at max?
@@ -28158,6 +28293,8 @@ JD_End:
 ; of other things spread around the disassembly, stopping and moving Sonic
 ; upwards after hitting something and making monitors destroyable from any angle.
 ; -------------------------------------------------------------------------------
+Homing_Distance = $A0
+; -------------------------------------------------------------------------------
 
 Sonic_HomingAttack:
 		clr.w	($FFFFFF8C).w		; clear X-distance storer
@@ -28218,7 +28355,7 @@ SH_XPositive:
 		bne.s	SH_NoEnemy		; if not, branch
 
 SH_DirectionOK:
-		cmpi.w	#$90,d3			; is Sonic within $90 pixels of that object?
+		cmpi.w	#Homing_Distance,d3	; is Sonic within X distance of that object?
 		bgt.s	SH_NoEnemy		; if not, branch
 
 		move.w	obY(a1),d4		; load current Y-pos into d3
@@ -28227,7 +28364,7 @@ SH_DirectionOK:
 		neg.w	d4			; negate it
 
 SH_YPositive:
-		cmpi.w	#$90,d4			; is Sonic within $90 pixels of that object?
+		cmpi.w	#Homing_Distance,d4	; is Sonic within Y distance of that object?
 		bgt.s	SH_NoEnemy		; if not, branch
 
 		cmp.w	($FFFFFF8C).w,d3	; is stored X-distance smaller than distance of current enemy?
@@ -28279,9 +28416,17 @@ SH_Return2:
 ; -------------------------------------------------------------------------------
 
 SH_Objects:
-	dc.b	$1F, $22, $26, $2B, $2C, $40, $50, $55
-	dc.b	$FF	; this $FF is the end of list
-	even
+		dc.b	$1F	; Crabmeat (including the boss)
+		dc.b	$22	; Buzz Bomber
+		dc.b	$26	; all monitors except Eggman
+		dc.b	$2B	; Chopper
+		dc.b	$2C	; Jaws
+	;	dc.b	$3D	; GHP boss
+		dc.b	$40	; Motobug
+	;	dc.b	$50	; Yadrin
+		dc.b	$55	; Basaran
+		dc.b	-1	; this marks the end of the list
+		even
 ; -------------------------------------------------------------------------------
 ; ===============================================================================
 
@@ -28908,8 +29053,8 @@ Sonic_Jump:				; XREF: Obj01_MdNormal; Obj01_MdRoll
 		move.b	obAngle(a0),d0
 		addi.b	#$80,d0
 		bsr	sub_14D48
-		cmpi.w	#6,d1
-		blt.w	locret_1348E
+	;	cmpi.w	#6,d1		; disabled to allow jumping in narrow spaces
+	;	blt.w	locret_1348E
 		move.w	#$680,d2
 		btst	#6,obStatus(a0)
 		beq.s	loc_1341C
@@ -29221,7 +29366,7 @@ SAP_LoadSonicPal:
 		btst	#7,(OptionsBits).w	; is photosensitive mode enabled?
 		bne.s	@nopal			; if yes, don't mess with Sonic
 		moveq	#$11,d0			; load Sonic's antigrav palette line in palette line 2
-		btst	#6,(OptionsBits).w	; is piss enabled?
+		btst	#1,(ScreenFuzz).w	; is piss enabled?
 		beq.s	@loadpal		; if not, branch
 		moveq	#$10,d0			; load it into palette line 1 instead
 @loadpal:
@@ -34275,7 +34420,15 @@ Obj7D_SoundStopper:
 		movea.l	$30(a0),a1		; get saved RAM address of the door
 		move.b	#1,$30(a1)		; turn the door red
 		move.b	#1,($FFFFFFA5).w	; move HUD off screen
-		move.b	#1,(ScreenFuzz).w	; enable screen fuzz
+		bset	#2,(ScreenFuzz).w	; enable temporary screen fuzz
+
+		jsr	Check_BlackoutFirst	; is this the first attempt at the blackout challenge?
+		beq.s	@del			; if not, branch
+		bclr	#0,(ScreenFuzz).w	; disable permanent motion blur
+		bclr	#1,(ScreenFuzz).w	; disable piss filter
+		bclr	#3,(OptionsBits).w	; disable cinematic HUD
+
+@del:
 		jmp	DeleteObject
 
 @end:
@@ -37992,7 +38145,10 @@ Obj82_FindBlocks:
 		move.w	obVelX(a0),d0
 		or.w	obVelY(a0),d0
 		bne.s	loc_199D0
-		
+
+		tst.b	($FFFFFFC8).w
+		bne.s	loc_199D0
+
 		move.b	#1,($FFFFFFC8).w	; set flag that button was pressed
 
 		jsr	SingleObjLoad
@@ -38779,7 +38935,7 @@ loc_1A216:
 		; cutscene after hitting eggman one last time
 	;	tst.b	obRender(a0)		; has Eggman object been deleted after the crash cutscene?
 	;	bmi.w	loc_1A15C		; if not, branch
-		cmpi.w	#$2A00,obX(a0)		; has Eggman's ship gone offscreen?
+		cmpi.w	#$2980,obX(a0)		; has Eggman's ship gone offscreen?
 		blo.w	loc_1A15C		; if not, branch
 		move.b	#1,(FZEscape).w		; set final sequence flag
 		bra.w	Obj85_Delete
@@ -40483,8 +40639,8 @@ SS_ShowLayout:				; XREF: SpecialStage
 		bsr	SS_AniItems
 		move.w	d5,-(sp)
 		lea	($FFFF8000).w,a1
-		move.b	($FFFFF780).w,d0
-	;	andi.b	#$FC,d0
+		move.b	($FFFFF780).w,d0	; get current rotation
+	;	andi.b	#$FC,d0			; original smoothing used in S1
 		jsr	(CalcSine).l
 		move.w	d0,d4
 		move.w	d1,d5
@@ -40666,10 +40822,12 @@ loc_1B2E4:
 		bne.s	@lightup		; if yes, branch
 		cmpi.b	#2,($FFFFFE57).w 	; are we in part 2?
 		bne.s	@notblackout		; if not, branch
-		move.b	($FFFFF602).w,d0	; get button presses
-		andi.b	#$C,d0			; is left/right	held?
-		bne.s	@notblackout		; if yes, branch
-@lightup:	bset	#0,$138(a1)		; use lit-up skull icon
+		btst	#7,(OptionsBits).w	; is photosensitive mode enabled?
+		bne.s	@lightup		; if yes, no flash
+		btst	#3,($FFFFFE0F).w	; blink skull frame
+		beq.s	@notblackout		; if not in time, branch
+@lightup:
+		bset	#0,$138(a1)		; use lit-up skull icon
 
 @notblackout:
 		subq.b	#1,($FFFFFEC6).w
@@ -41450,22 +41608,7 @@ Obj09_ChkRight:
 		jsr	obj09_MoveRight
 
 loc_1BA78:
-		; Unreal Place Sonic movement logic
-		tst.b	($FFFFFFBF).w			; is unreal challenge enabled?
-		beq.s	@unrealend			; if not, branch
-		cmpi.b	#1,($FFFFFFBF).w		; are we going up?
-		bne.s	@checkdown			; if not, branch
-		cmpi.w	#-Unreal_Speed,obVelY(a0)	; did we reach the max up speed?
-		bmi.s	@unrealend			; if yes, branch
-		subq.w	#Unreal_Accel,obVelY(a0)	; increase up speed
-		bra.s	@unrealend			; branch
-@checkdown:
-		cmpi.b	#2,($FFFFFFBF).w		; are we going down?
-		bne.s	@unrealend			; if not, branch
-		cmpi.w	#Unreal_Speed,obVelY(a0)	; did we reach the max down speed?
-		bhi.s	@unrealend			; if yes, branch
-		addq.w	#Unreal_Accel,obVelY(a0)	; increase down speed
-@unrealend:
+		bsr	UnrealPlace
 
 		move.b	($FFFFF602).w,d0
 		andi.b	#$C,d0
@@ -41854,6 +41997,46 @@ loc_1BCD4:
 		bset	#1,obStatus(a0)
 		rts	
 ; End of function Obj09_Fall
+; ===========================================================================
+
+UnrealPlace:	; Unreal Place Sonic movement logic
+		tst.b	($FFFFFFBF).w			; is unreal challenge enabled?
+		beq.s	@end				; if not, branch
+
+		move.w	#Unreal_Speed,d1		; get default target max speed
+
+		btst	#4,($FFFFF602).w		; is B held?
+		beq.s	@notb				; if not, branch
+		asr.w	#1,d1				; halve max target speed
+		bra.s	@notc				; ignore C press
+@notb:
+		btst	#5,($FFFFF602).w		; is C held?
+		beq.s	@notc				; if not, branch
+		add.w	d1,d1				; double max target speed
+@notc:
+
+		move.w	obVelY(a0),d0			; get Sonic's current Y velocity
+		cmpi.b	#2,($FFFFFFBF).w		; are we going down?
+		beq.s	@down				; if yes, branch
+		neg.w	d1				; negate target speed
+		cmp.w	d1,d0				; did we reach the max up speed?
+		bmi.s	@accdown			; if yes, branch
+@accup:
+		subq.w	#Unreal_Accel,d0		; increase up speed
+		bra.s	@unrealend			; branch
+
+@down:
+		cmp.w	d1,d0				; did we reach the max down speed?
+		bhi.s	@accup				; if yes, branch
+@accdown:
+		addq.w	#Unreal_Accel,d0		; increase down speed
+
+@unrealend:
+		move.w	d0,obVelY(a0)			; set final Y velocity
+
+@end:
+		rts
+; ===========================================================================
 
 
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
@@ -42016,23 +42199,37 @@ Obj09_ChkEmer:
 		cmpi.b	#4,($FFFFFE57).w ; do you have all the emeralds?
 		beq.s	Emershit
 		cmpi.w	#$401,($FFFFFE10).w	; is this Unreal Place?
-		bne.s	Obj09_EmerNotAll
+		bne.w	Obj09_EmerNotAll
 		cmpi.b	#2,($FFFFFE57).w ; do you have all the emeralds?
-		bne.s	Obj09_EmerNotAll
+		bne.w	Obj09_EmerNotAll
 
 		; load part 2 of the blackout challenge
 		tst.b	(Blackout).w		; is this the blackout blackout special stage?
 		beq.s	Emershit		; if not, branch
 		move.w	obX(a0),($FFFFFF86).w	; save Sonic's X-position
 		move.w	obY(a0),($FFFFFF88).w	; save Sonic's Y-position
+
 		movem.l	a0-a2,-(sp)
-		jsr	WhiteFlash2
 		lea	(SS_Blackout_Part2).l,a0 ; load part 2 blackout layout
 		jsr	SS_LoadLevel
 		tst.b	(PlacePlacePlace).w
 		beq.s	@0
 		jsr	SS_RemoveAllCheckpoints
 @0:		movem.l	(sp)+,a0-a2
+
+		movem.l	d7/a0-a3,-(sp)
+		tst.b	(PlacePlacePlace).w
+		bne.s	@1
+		moveq	#3,d0			; brighten up this place by...
+		jsr	PalLoad2		; ...loading Sonic's palette
+		jsr	Pal_MakeBlackWhite	; turn palette black and white
+		jsr 	Pal_FadeOut 	; i guess this works????
+		jsr 	Pal_FadeOut 	; i guess this works????
+
+@1:
+		jsr	WhiteFlash2
+		movem.l	(sp)+,d7/a0-a3
+
 		move.b	#$DD,d0
 		jsr	(PlaySound).l
 		move.w	#$E2,d0
@@ -42449,10 +42646,15 @@ Obj09_GoalNotSolid:
 
 		btst	#7,(OptionsBits).w	; is photosensitive mode enabled?
 		bne.s	@noflash		; if yes, no flash
-	;	movem.l	d0-a7,-(sp)		; backup to stack
-	;	jsr	Pal_MakeWhite		; make white flash
-	;	movem.l (sp)+,d0-a7		; restore from stack
+		movem.l	d7/a1-a3,-(sp)
+		tst.b	(Blackout).w		; is this the blackout blackout special stage?
+		beq.s	@0			; if not, branch
+		moveq	#3,d0			; brighten up this place by...
+		jsr	PalLoad2		; ...loading Sonic's palette
+@0:
 		jsr	WhiteFlash2
+		movem.l	(sp)+,d7/a1-a3
+		
 @noflash:
 		move.b	#2,($FFFFFFD6).w	; make sure it doesn't happen again
 
@@ -42766,7 +42968,6 @@ Obj21_FZEscapeTimer:
 		moveq	#30,d0			; flash below 30 seconds in frantic (cause triple time)
 @0:		cmp.b	($FFFFFE24).w,d0	; less than X seconds left?
 		blo.s	@noflash		; if not, branch
-	;	move.b	#1,(ScreenFuzz).w	; enable fuzz for the final moments
 		move.w	#$06CA,obGfx(a0)	; use palette line 1
 		ori.b	#1,($FFFFFE1E).w 	; update time counter
 		btst	#2,($FFFFFE05).w	; change the time counter palette every X frames

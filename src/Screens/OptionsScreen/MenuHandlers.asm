@@ -7,21 +7,20 @@
 Options_MenuData:
 
 	; Gameplay style
-	dcScreenPos	$E000, 5, 6			; start on-screen position
+	dcScreenPos	$E000, 6, 6			; start on-screen position
 	dc.l	Options_GameplayStyle_Redraw		; redraw handler
 	dc.l	Options_GameplayStyle_Handle		; update handler
 
 	; Extended camera
-	dcScreenPos	$E000, 7, 6			; start on-screen position
+	dcScreenPos	$E000, 8, 6			; start on-screen position
 	dc.l	Options_ExtendedCamera_Redraw		; redraw handler
 	dc.l	Options_ExtendedCamera_Handle		; update handler
 
 	; Skip story screens
-	dcScreenPos	$E000, 9, 6			; start on-screen position
+	dcScreenPos	$E000, 10, 6			; start on-screen position
 	dc.l	Options_SkipStoryScreens_Redraw		; redraw handler
 	dc.l	Options_SkipStoryScreens_Handle		; update handler
-
-	; Skip uberhub place
+	; Skip Uberhub place
 	dcScreenPos	$E000, 11, 6			; start on-screen position
 	dc.l	Options_SkipUberhubPlace_Redraw		; redraw handler
 	dc.l	Options_SkipUberHubPlace_Handle		; update handler
@@ -31,17 +30,20 @@ Options_MenuData:
 	dc.l	Options_PhotosensitiveMode_Redraw	; redraw handler
 	dc.l	Options_PhotosensitiveMode_Handle	; update handler
 
-	; Cinematic mode
+	; Black bars setup
 	dcScreenPos	$E000, 15, 6			; start on-screen position
+	dc.l	Options_BlackBarsMode_Redraw		; redraw handler
+	dc.l	Options_BlackBarsMode_Handle		; update handler
+
+	; E - Cinematic mode
+	dcScreenPos	$E000, 17, 6			; start on-screen position
 	dc.l	Options_CinematicMode_Redraw		; redraw handler
 	dc.l	Options_CinematicMode_Handle		; update handler
-
-	; Motion blur
-	dcScreenPos	$E000, 17, 6			; start on-screen position
-	dc.l	Options_MotionBlur_Redraw		; redraw handler
-	dc.l	Options_MotionBlur_Handle		; update handler
-
-	; Non-stop inhuman
+	; R - Screen Effects
+	dcScreenPos	$E000, 18, 6			; start on-screen position
+	dc.l	Options_ScreenEffects_Redraw		; redraw handler
+	dc.l	Options_ScreenEffects_Handle		; update handler
+	; Z - True Inhuman
 	dcScreenPos	$E000, 19, 6			; start on-screen position
 	dc.l	Options_NonstopInhuman_Redraw		; redraw handler
 	dc.l	Options_NonstopInhuman_Handle		; update handler
@@ -51,10 +53,7 @@ Options_MenuData:
 	dc.l	Options_DeleteSaveGame_Redraw		; redraw handler
 	dc.l	Options_DeleteSaveGame_Handle		; update handler
 
-	; Black bars mode
-	dcScreenPos	$E000, 23, 6			; start on-screen position
-	dc.l	Options_BlackBarsMode_Redraw		; redraw handler
-	dc.l	Options_BlackBarsMode_Handle		; update handler
+
 
 Options_MenuData_End:
 
@@ -242,6 +241,7 @@ Options_PhotosensitiveMode_Handle:
 	st.b	Options_RedrawCurrentItem
 @done:	rts
 
+
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; "CINEMATIC MODE" redraw function
@@ -250,18 +250,18 @@ Options_PhotosensitiveMode_Handle:
 ;	a4	= `Options_DrawText_Normal` or `Options_DrawText_Highlighted`
 ; ---------------------------------------------------------------------------
 
-Options_CinematicMode_Redraw:
-	bsr	Options_CinematicMode_BitsToId	; d0 = ModeId (%00..%11)
-	add.w	d0, d0
-	add.w	d0, d0				; d0 = ModeId * 4
-	movea.l	@CinematicModeTextList(pc,d0), a1
+Options_CinematicMode_Redraw:	
+	lea	Options_Str_Off(pc), a1
+	btst	#3, OptionsBits
+	beq.s	@0
+	lea	Options_Str_On(pc), a1
 
-	lea	@Str_Cinematic_Locked(pc), a0
+@0:	lea	@Str_Cinematic_Locked(pc), a0
 	jsr	Check_BaseGameBeaten_Casual	; has the player beaten base game in casual?
-	beq.s	@0				; if not, branch
+	beq.s	@1				; if not, branch
 	lea	@Str_Cinematic_Normal(pc), a0
 
-@0:	Options_PipeString a4, "%<.l a0 str> %<.l a1 str>", 28
+@1:	Options_PipeString a4, "%<.l a0 str>         %<.l a1 str>", 28
 	rts
 
 ; ---------------------------------------------------------------------------
@@ -272,20 +272,78 @@ Options_CinematicMode_Redraw:
 	dc.b	'E ????????? ????', 0
 	even
 
-@CinematicModeTextList:
-	dc.l	@Str_Mode00,@Str_Mode01,@Str_Mode10,@Str_Mode11
-
-@Str_Mode00:	dc.b	'        OFF',0
-@Str_Mode01:	dc.b	' BLACK BARS',0
-@Str_Mode10:	dc.b	'PISS FILTER',0
-@Str_Mode11:	dc.b	'       BOTH',0
-		even
-
 ; ---------------------------------------------------------------------------
 ; "CINEMATIC MODE" handle function
 ; ---------------------------------------------------------------------------
 
 Options_CinematicMode_Handle:
+	move.b	Joypad|Press,d1		; get button presses
+	andi.b	#$FC,d1			; is left, right, A, B, C, or Start pressed?
+	beq.w	@ret			; if not, branch
+
+	tst.w	($FFFFFFFA).w		; is debug mode enabled?
+	beq.s	@nodebugunlock		; if not, branch
+	cmpi.b	#$70,($FFFFF604).w	; is exactly ABC held?
+	bne.s	@nodebugunlock		; if not, branch
+	jsr	Toggle_BaseGameBeaten_Casual	; toggle base game beaten in casual state to toggle the unlock for cinematic mode
+	bclr	#3,(OptionsBits).w	; make sure option doesn't stay accidentally enabled
+	st.b	Options_RedrawCurrentItem
+	rts
+
+@nodebugunlock:
+	jsr	Check_BaseGameBeaten_Casual	; has the player beaten the base game in casual?
+	beq.w	Options_PlayDisallowedSound	; if not, branch
+	bchg	#3, OptionsBits			; toggle cinematic mode
+	bsr	Options_PlayRespectiveToggleSound
+	st.b	Options_RedrawCurrentItem
+@ret:	rts
+
+
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; "SCREEN EFFECTS" redraw function
+; ---------------------------------------------------------------------------
+; INPUT:
+;	a4	= `Options_DrawText_Normal` or `Options_DrawText_Highlighted`
+; ---------------------------------------------------------------------------
+
+Options_ScreenEffects_Redraw:
+	moveq	#0,d0
+	move.b	(ScreenFuzz).w,d0
+	add.w	d0, d0
+	add.w	d0, d0				; d0 = ModeId * 4
+	movea.l	@ScreenEffectsTextList(pc,d0), a1
+
+	lea	@Str_ScreenEffects_Locked(pc), a0
+	jsr	Check_BaseGameBeaten_Frantic	; has the player beaten base game in frantic?
+	beq.s	@0				; if not, branch
+	lea	@Str_ScreenEffects_Normal(pc), a0
+
+@0:	Options_PipeString a4, "%<.l a0 str> %<.l a1 str>", 28
+	rts
+
+; ---------------------------------------------------------------------------
+@Str_ScreenEffects_Normal:
+	dc.b	'R VISUAL FX     ', 0
+
+@Str_ScreenEffects_Locked:
+	dc.b	'R ?????? ??     ', 0
+	even
+
+@ScreenEffectsTextList:
+	dc.l	@Str_Mode00,@Str_Mode01,@Str_Mode10,@Str_Mode11
+
+@Str_Mode00:	dc.b	'        OFF',0
+@Str_Mode01:	dc.b	'MOTION BLUR',0
+@Str_Mode10:	dc.b	'PISS FILTER',0
+@Str_Mode11:	dc.b	'       BOTH',0
+		even
+
+; ---------------------------------------------------------------------------
+; "MOTION BLUR" handle function
+; ---------------------------------------------------------------------------
+
+Options_ScreenEffects_Handle:
 	move.b	Joypad|Press,d1			; get button presses
 	andi.b	#$FC,d1				; is left, right, A, B, C, or Start pressed?
 	beq.w	@ret				; if not, branch
@@ -294,16 +352,17 @@ Options_CinematicMode_Handle:
 	beq.s	@nodebugunlock			; if not, branch
 	cmpi.b	#$70,($FFFFF604).w		; is exactly ABC held?
 	bne.s	@nodebugunlock			; if not, branch
-	jsr	Toggle_BaseGameBeaten_Casual	; toggle base game beaten in casual state to toggle the unlock for cinematic mode
-	andi.b	#~((1<<6)|(1<<3)), OptionsBits	; make sure option doesn't stay accidentally enabled
+	jsr	Toggle_BaseGameBeaten_Frantic	; toggle frantic beaten state to toggle the unlock for motion blur
+	clr.b	(ScreenFuzz).w			; make sure option doesn't stay accidentally enabled
 	st.b	Options_RedrawCurrentItem
 	rts
 
 @nodebugunlock:		
-	jsr	Check_BaseGameBeaten_Casual	; has the player beaten the base game in casual?
+	jsr	Check_BaseGameBeaten_Frantic	; has the player beaten the base game in frantic?
 	beq.w	Options_PlayDisallowedSound	; if not, cineamtic mode is disallowed
 
-	bsr.s	Options_CinematicMode_BitsToId	; d0 = %PB (B = bars, P = piss)
+	moveq	#0,d0
+	move.b	(ScreenFuzz).w,d0
 	btst	#iLeft, Joypad|Press		; is left pressed?
 	bne.s	@selectPrevious			; if yes, branch
 	addq.w	#1, d0				; use next mode
@@ -314,90 +373,13 @@ Options_CinematicMode_Handle:
 
 @finalize:
 	andi.w	#%11, d0			; wrap modes
-	bsr	Options_CinematicMode_IdToBits	; save to `OptionsBits`
+	move.b	d0,(ScreenFuzz).w
 	st.b	Options_RedrawCurrentItem
-	move.b	#$D8,d0				; play move sound
-	jmp	PlaySound_Special
 
-@ret:	rts
-
-; ---------------------------------------------------------------------------
-Options_CinematicMode_BitsToId:
-	KDebug.WriteLine "Options_CinematicMode_BitsToId(): bits=%<.b d0 bin>"
-	moveq	#(1<<6)|(1<<3), d0
-	and.b	OptionsBits, d0		; d0 = %0P00 B000, B = bars, P = piss
-	lsr.b	#3, d0			; d0 = %0000 P00B, B = bars, P = piss
-	ror.w	d0			; d0 = %Bxxx xxxx 0000 0P00
-	lsr.b	#3-1, d0		; d0 = %Bxxx xxxx 0000 000P
-	rol.w	d0			; d0 = %0000 00PB
-	KDebug.WriteLine "Options_CinematicMode_BitsToId(): id=%<.b d0 bin>"
-	rts
-
-; ---------------------------------------------------------------------------
-Options_CinematicMode_IdToBits:
-	KDebug.WriteLine "Options_CinematicMode_IdToBits(): id=%<.b d0 bin>"
-	andi.b	#~((1<<6)|(1<<3)), OptionsBits
-	ror.w	d0			; d0 = %Bxxx xxxx 0000 000P
-	lsl.b	#(6-3)-1, d0		; d0 = %Bxxx xxxx 0000 0P00
-	rol.w	d0			; d0 = %0000 P00B
-	lsl.b	#3, d0			; d0 = %0P00 B000
-	or.b	d0, OptionsBits
-	KDebug.WriteLine "Options_CinematicMode_IdToBits(): bits=%<.b d0 bin>"
-	rts
-
-; ===========================================================================
-; ---------------------------------------------------------------------------
-; "MOTION BLUR" redraw function
-; ---------------------------------------------------------------------------
-; INPUT:
-;	a4	= `Options_DrawText_Normal` or `Options_DrawText_Highlighted`
-; ---------------------------------------------------------------------------
-
-Options_MotionBlur_Redraw:
-	lea	Options_Str_Off(pc), a1
-	btst	#4, ScreenFuzz
-	beq.s	@0
-	lea	Options_Str_On(pc), a1
-
-@0:	lea	@Str_MotionBlur_Locked(pc), a0
-	jsr	Check_BaseGameBeaten_Frantic	; has the player beaten the base game in frantic?
-	beq.s	@1				; if not, branch
-	lea	@Str_MotionBlur_Normal(pc), a0
-
-@1:	Options_PipeString a4, "%<.l a0 str>            %<.l a1 str>", 28
-	rts
-
-@Str_MotionBlur_Normal:
-	dc.b	'R MOTION BLUR', 0
-
-@Str_MotionBlur_Locked:
-	dc.b	'R ?????? ????', 0
-	even
-
-; ---------------------------------------------------------------------------
-; "MOTION BLUR" handle function
-; ---------------------------------------------------------------------------
-
-Options_MotionBlur_Handle:
-	move.b	Joypad|Press, d1	; get button presses
-	andi.b	#$FC,d1			; is left, right, A, B, C, or Start pressed?
-	beq.w	@ret			; if not, branch
-
-	tst.w	($FFFFFFFA).w		; is debug mode enabled?
-	beq.s	@nodebugunlock		; if not, branch
-	cmpi.b	#$70,($FFFFF604).w	; is exactly ABC held?
-	bne.s	@nodebugunlock		; if not, branch
-	jsr	Toggle_BaseGameBeaten_Frantic	; toggle frantic beaten state to toggle the unlock for motion blur
-	clr.b	(ScreenFuzz).w		; make sure option doesn't stay accidentally enabled
-	st.b	Options_RedrawCurrentItem
-	rts
-
-@nodebugunlock:
-	jsr	Check_BaseGameBeaten_Frantic	; has the player beaten the base game in frantic?
-	beq.w	Options_PlayDisallowedSound	; if not, branch
-	bchg	#4, ScreenFuzz			; toggle motion blur (not saved to SRAM!)
+	tst.b	d0				; check if current selection is OFF
+	eori.b	#%00100,ccr			; invert Z flag (play off sound for off, on for anything else)
 	bsr	Options_PlayRespectiveToggleSound
-	st.b	Options_RedrawCurrentItem
+
 @ret:	rts
 
 ; ===========================================================================
@@ -420,10 +402,10 @@ Options_NonstopInhuman_Redraw:
 	rts
 
 @Str_NonstopInhuman_Normal:
-	dc.b	'Z TRUE INHUMAN MODE', 0
+	dc.b	'Z TRUE INHUMAN     ', 0
 
 @Str_NonstopInhuman_Locked:
-	dc.b	'Z ???? ??????? ????', 0
+	dc.b	'Z ???? ???????     ', 0
 	even
 
 ; ---------------------------------------------------------------------------
@@ -534,7 +516,7 @@ Options_BlackBarsMode_Redraw:
 	btst	#1, BlackBars.HandlerId
 	beq.s	@0
 	lea	@Str_BlackBars_Hardware(pc), a1
-@0:	Options_PipeString a4, "BLACK BARS MODE     %<.l a1 str>", 28
+@0:	Options_PipeString a4, "BLACK BARS SETUP    %<.l a1 str>", 28
 	rts
 
 @Str_BlackBars_Emulator:

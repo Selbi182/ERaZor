@@ -380,7 +380,7 @@ SoundTest_Obj_TrackSelector:
 @Music90_Source:	@padString 'MEGA MAN X3'
 @Music90_Source2:	@padString 'OPENING STAGE'
 
-@Music91_Name:		@padStringR 'TRUE ENDING'
+@Music91_Name:		@padStringR 'INVINCIBILITY'
 @Music91_Source:	@padString 'DANGEROUS SEED'
 @Music91_Source2:	@padString 'ENDING THEME'
 
@@ -406,7 +406,7 @@ SoundTest_Obj_TrackSelector:
 
 @Music97_Name:		@padStringR 'CREDITS'
 @Music97_Source:	@padString 'GUNDAM WING: ENDLESS DUEL'
-@Music97_Source2:	@padString 'OPENING'
+@Music97_Source2:	@padString 'OPENING / RHYTHM EMOTION'
 
 @Music98_Name:		@padStringR 'CRABMEAT BOSS'
 @Music98_Source:	@padString 'SONIC ADVANCE 3'
@@ -490,7 +490,7 @@ SoundTest_Obj_TrackSelector:
 @SoundC7_Name:		@padString "CHAINY THING GOIN' UP"
 @SoundC8_Name:		@padString "ROCKET THING GOIN' UP"
  @SoundC8_Source:	@padString "ALSO IT'S ANOTHER FIREBALL SOUND"
-@SoundC9_Name:		@padString 'YOU TOUCHED AN EMBLEM'
+@SoundC9_Name:		@padString 'JUST ONE MORE, COME ON...'
 @SoundCA_Name:		@padString 'YOU ENTERED A SPECIAL STAGE'
 @SoundCB_Name:		@padString 'EXPLOSIONS.'
 @SoundCC_Name:		@padString 'YOU TOUCHED A SPRING'

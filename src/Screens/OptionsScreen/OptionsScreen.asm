@@ -85,8 +85,6 @@ OptionsScreen:				; XREF: GameModeArray
 
 		assert.w a1, eq, #Objects_End
 
-		VBlank_SetMusicOnly
-
 		; Load options text art
 		lea	($C00000).l,a6
 		move.l	#$6E000002,4(a6)
@@ -99,7 +97,6 @@ OptionsScreen:				; XREF: GameModeArray
 		move.l	#$64000002,4(a6)
 		lea	ArtKospM_ERaZorNoBG, a0
 		jsr	KosPlusMDec_VRAM
-		VBlank_UnsetMusicOnly
 
 		; Load objects
 		lea	($FFFFD100).w,a0
@@ -124,6 +121,8 @@ OptionsScreen:				; XREF: GameModeArray
 		VBlank_UnsetMusicOnly
 		display_enable
 		jsr	Pal_FadeTo
+
+		assert.b VBlank_MusicOnly, eq
 		; fallthrough
 
 ; ---------------------------------------------------------------------------

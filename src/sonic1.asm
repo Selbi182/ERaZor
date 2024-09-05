@@ -80,7 +80,7 @@ StartOfRom:
 		dc.l ErrorExcept, ErrorExcept, ErrorExcept, ErrorExcept
 		dc.l ErrorExcept, ErrorExcept, ErrorExcept, ErrorExcept
 		dc.l ErrorExcept, ErrorTrap, ErrorTrap,	ErrorTrap
-		dc.l HBlankHndl, ErrorTrap, VBlank, ErrorTrap
+		dc.l HBlankHndl, ErrorTrap, VBlankHndl, ErrorTrap
 		dc.l ErrorTrap,	ErrorTrap, ErrorTrap, ErrorTrap
 		dc.l ErrorTrap,	ErrorTrap, ErrorTrap, ErrorTrap
 		dc.l ErrorTrap,	ErrorTrap, ErrorTrap, ErrorTrap
@@ -298,6 +298,7 @@ GameClrRAM:	move.l	d7,(a6)+
 		jsr	DrawBuffer_Clear		; initialize drawing buffer
 
 		jsr	BlackBars.Init			; setup black bars
+		move.l	VBlank_BaseHandler, VBlankHndl	; setup VBlank handler
 		move.l	HBlank_BaseHandler, HBlankHndl	; setup HBlank handler
 
 	if DebugModeDefault=1
@@ -339,6 +340,7 @@ NullInt:
 
 	include	"Modules/SRAM.asm"
 	include	"Modules/HBlank.asm"
+	include "Screens/SoundTestScreen/HBlank.asm"
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -535,12 +537,13 @@ BlackBars_Ending:
 ; ---------------------------------------------------------------------------
 
 MainGameLoop:
+		assert.w VBlankSubW, eq, #VBlank	; always default to standard VBlank
 		moveq	#0,d0				; clear d0
 		move.b	(GameMode).w,d0			; get current game mode
 		movea.l	GameModeArray(pc,d0.w),a1	; locate address in GameModeArray
 		KDebug.WriteLine "MainGameLoop(): Launching %<.l a1 sym>..."
 		jsr	(a1)				; enter game mode
-		bra.s	MainGameLoop			; if we're here, we exited the game mode; load new one
+		bra	MainGameLoop			; if we're here, we exited the game mode; load new one
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -575,6 +578,7 @@ Deleted_Mode:
 
 *VBlank:
 		include	"modules/VBlank.asm"
+		include	"Screens/SoundTestScreen/VBlank.asm"
 
 ; ---------------------------------------------------------------------------
 ; Subroutine to	initialise joypads
@@ -2407,7 +2411,11 @@ CalcSine:				; XREF: SS_BGAnimate; et al
 
 ; ===========================================================================
 
-Sine_Data:	incbin	misc\sinewave.bin	; values for a 360? sine wave
+Sine_Data:	incbin	misc\sinewave.bin, 0, $200	; values for a 360? sine wave
+
+	incbin	misc\sinewave.bin, 0, $200	; values for a 360? sine wave
+	incbin	misc\sinewave.bin, 0, $200	; values for a 360? sine wave
+	incbin	misc\sinewave.bin, 0, $200	; values for a 360? sine wave
 
 ; ===========================================================================
 		movem.l	d1-d2,-(sp)

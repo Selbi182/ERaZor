@@ -8,25 +8,27 @@ BackgroundEffects_Setup:
 		VBlank_SetMusicOnly
 		move.w	#$8B03,($C00004).l	; set scrolling mode to H: per-scanline // V: whole screen
 
-		lea	($C00000).l,a6
-		move.l	#$40200000,4(a6)
-		lea	(BGEffects_FuzzArt).l,a0
-		jsr	KosPlusMDec_VRAM
+		lea	VDP_Data, a6
+		vram	$C000, 4(a6)		; set VDP to VRAM and start at C000 (location of Plane A nametable)
 
-		vram	$C000,4(a6)		; set VDP to VRAM and start at C000 (location of Plane A nametable)
-		moveq	#0,d5			; clear d5
-		move.w	#(512*256/64)-1,d1	; do for all tiles in the 512x256 plane
-@column:
-		addi.w	#1,d5			; go to next tile
-		move.w	d5,(a6)			; dump map to VDP map slot
-		tst.b	d5			; did we reach tile $80?
-		bpl.s	@noreset		; if not, branch
-		moveq	#0,d5			; reset index
-@noreset:
-		dbf	d1,@column		; repeat til columns have dumped
+		move.l	#$00020002, d6
+		moveq	#$40*$20/$80-1, d1	; cover the entire 512x256 pixel plane (64x32 tiles, 128 tile steps)
+
+		@send128Tiles:
+			move.l	#$00010002, d5
+			rept	$80/2
+				move.l	d5, (a6)
+				add.l	d6, d5
+			endr
+			dbf	d1, @send128Tiles		; repeat til columns have dumped
+
+		vram	$20, 4(a6)
+		lea	BGEffects_FuzzArt, a0
+		jsr	KosPlusMDec_VRAM
 
 		VBlank_UnsetMusicOnly
 		rts
+
 ; ---------------------------------------------------------------------------
 
 ; must called every frame from the respective game mode's main loop
@@ -41,8 +43,8 @@ BackgroundEffects_Update:
 
 ; Background palette rotation
 BackgroundEffects_PalCycle:
-		move.w	($FFFFFE0E).w,d0	; get V-blank timer
-		andi.w	#3,d0
+		moveq	#3, d0
+		and.w	($FFFFFE0E).w,d0	; get V-blank timer (AND $3)
 		bne.w	@bgpalend
 
 		moveq	#0,d0
@@ -137,8 +139,8 @@ BackgroundEffects_Deformation2:
 		beq.s	@1
 		neg.l	d0
 @1:
-		andi.l	#$0000FFFF,d0
 		swap	d0
+		clr.w	d0
 		add.w	d6,d0 ; scroll everything to the right
 		btst	#0,d5
 		beq.s	@3
@@ -167,7 +169,7 @@ BackgroundEffects_Deformation2:
 		beq.s	@bla
 		asr.l	d7,d2
 @bla
-		andi.l	#$FFFF0000,d2
+		clr.w	d2
 		swap	d2
 		move.w	d2,(a1)+
 		addq.w	#2,a1

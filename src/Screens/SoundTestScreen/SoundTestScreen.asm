@@ -107,7 +107,7 @@ SoundTestScreen:
 	move.w	#$8000|$6000|(SoundTest_Piano_VRAM/$20), d0
 	jsr	EniDec
 
-	vram	SoundTest_PlaneA_VRAM+$A80, d0
+	vram	SoundTest_PlaneA_VRAM+$A00, d0
 	lea	$FF0000, a1
 	moveq	#36-1, d1
 	moveq	#3-1, d2
@@ -239,7 +239,7 @@ SoundTest_VDeform_Update:
 	; VScroll buffer special entry #224: Plane C position
 	moveq	#$7F, @vscroll_value
 	and.w	SoundTest_VisualizerPos, @vscroll_value
-	add.w	#$100-40+1, @vscroll_value
+	add.w	#$100-32, @vscroll_value
 	move.w	@vscroll_value, (@vscroll_buffer)+
 
 	; VScroll buffer special entry #225: Plane A position

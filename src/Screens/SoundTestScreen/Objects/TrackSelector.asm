@@ -280,7 +280,7 @@ SoundTest_Obj_TrackSelector:
 @Music84_Name:
 	@padString 'SCAR NIGHT PLACE'
 @Music84_Source:
-	@padString 'MEGA MAN IV (GB)'
+	@padString 'MEGA MAN IV - GB'
 	;@padString 'TITLE SCREEN'
 
 @Music85_Name:
@@ -338,13 +338,13 @@ SoundTest_Obj_TrackSelector:
 	;@padString 'SHUTDOWN'
 
 @Music8E_Name:
-	@padString '(UNUSED)'
+	@padString '-UNUSED-'
 @Music8E_Source:
 	@padString 'SONIC THE HEDGEHOG'
 	;@padString 'ACT CLEAR'
 
 @Music8F_Name:
-	@padString '(UNUSED)'
+	@padString '-ALSO UNUSED-'
 @Music8F_Source:
 	@padString 'SONIC THE HEDGEHOG'
 	;@padString 'GAME OVER'
@@ -368,7 +368,7 @@ SoundTest_Obj_TrackSelector:
 	;@padString 'DROWNING'
 
 @Music93_Name:
-	@padString '(UNUSED)'
+	@padString "-OH BOY IT'S UNUSED-"
 @Music93_Source:
 	@padString 'SONIC THE HEDGEHOG'
 	;@padString '1-UP JINGLE'
@@ -407,7 +407,7 @@ SoundTest_Obj_TrackSelector:
 	@padString 'TUTORIAL INTRODUCTION'
 @Music99_Source:
 	@padString 'MEGA MAN 5'
-	;@padString 'DARK MAN (PROTO MAN) STAGES'
+	;@padString 'DARK MAN/PROTO MAN STAGES'
 
 @Music9A_Name:
 	@padString 'UNREAL PLACE'
@@ -419,13 +419,13 @@ SoundTest_Obj_TrackSelector:
 	@padString 'WALKING BOMB BOSS'
 @Music9B_Source:
 	@padString 'SONIC ADVANCE 3'
-	;@padString 'BOSS (PINCH)'
+	;@padString 'BOSS - PINCH'
 
 @Music9C_Name:
 	@padString 'UNUSED???' ; Blackout Challenge
 @Music9C_Source:
 	@padString 'PULSEMAN'
-	;@padString 'SHUTDOWN (REMIX)'
+	;@padString 'SHUTDOWN - REMIX'
 
 @Music9D_Name:
 	@padString 'ENDING SEQUENCE'
@@ -477,7 +477,7 @@ SoundTest_Obj_TrackSelector:
 @SoundB7_Name:	@padString 'I WISH TERRAFORMING WAS REAL'
 @SoundB8_Name:	@padString 'SPIKES HAVE MOVED... AGAIN'
 @SoundB9_Name:	@padString 'YOU BROKE SOMETHING BIG TIME'
-@SoundBA_Name:	@padString 'YOU TOUCHED GRA-- I MEAN GLASS'
+@SoundBA_Name:	@padString 'YOU TOUCHED GRA- I MEAN GLASS'
 @SoundBB_Name:	@padString 'A FLAPPY DOOR HAS OPENED'
 @SoundBC_Name:	@padString 'YOU DASHED'
 @SoundBD_Name:	@padString 'A STOMPER HAS STOMPED'

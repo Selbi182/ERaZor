@@ -114,7 +114,7 @@ SoundTestScreen:
 	jsr	ShowVDPGraphics
 
 	; Load font
-	vramWrite Options_TextArt, filesize("Screens/OptionsScreen/Options_TextArt.bin"), SoundTest_Font_VRAM
+	vramWrite SoundTest_Font_Unc, filesize("Screens/SoundTestScreen/Data/Font.bin"), SoundTest_Font_VRAM
 
 	; Screen init
 	SoundTest_ResetVRAMBufferPool
@@ -605,16 +605,35 @@ SoundTest_CharToTile:
 	while (@char < $80)
 		if @char = ' '
 			@return $8000
-		elseif @char = '.'
-			@return (@base_pat + 10+5+26+2) | $8000
-		elseif @char = '-'
+
+		elseif @char = '!'
+			@return (@base_pat + $A) | $8000
+		elseif @char = '='
 			@return (@base_pat + $B) | $8000
+		elseif @char = '&'
+			@return (@base_pat + $C) | $8000
 		elseif @char = '<'
 			@return (@base_pat + $D) | $8000
 		elseif @char = '>'
 			@return (@base_pat + $E) | $8000
-		elseif @char = '?'
+
+		elseif @char = '-'
+			@return (@base_pat + $29) | $8000
+		elseif @char = '.'
 			@return (@base_pat + $2A) | $8000
+		elseif @char = ','
+			@return (@base_pat + $2B) | $8000
+		elseif @char = '?'
+			@return (@base_pat + $2C) | $8000
+		elseif @char = ':'
+			@return (@base_pat + $2D) | $8000
+		elseif @char = "'"
+			@return (@base_pat + $2E) | $8000
+		elseif @char = '"'
+			@return (@base_pat + $2F) | $8000	
+		elseif @char = '/'
+			@return (@base_pat + $30) | $8000	
+	
 		elseif (@char >= '0') & (@char <= '9')
 			@return (@base_pat + (@char-$30)) | $8000
 		else
@@ -670,9 +689,13 @@ SoundTest_PianoOverlays_TilesKospM:
 	even
 
 ; ---------------------------------------------------------------------------
+SoundTest_Font_Unc:
+	incbin	"Screens/SoundTestScreen/Data/Font.bin"
+	even
+; ---------------------------------------------------------------------------
 SoundTest_Palette:
 	; Line 0
-	dc.w	$0000, $0222, $0444, $0666, $0888, $0AAA, $0CCC, $0EEE
+	dc.w	$0000, $0222, $0444, $0666, $0EEE, $0EEE, $0CCC, $0EEE
 	dc.w	$0042, $0262, $0284, $04A6, $06A6, $06C8, $08C8, $08EA
 
 	; Line 1: Background

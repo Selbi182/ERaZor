@@ -3,27 +3,30 @@
 ; ---------------------------------------------------------------------------
 
 SoundTestScreen:
+	; Obligatory part to clean up after previous game mode
 	moveq	#$FFFFFFE4, d0
 	jsr	PlaySound_Special ; stop music
 	jsr	PLC_ClearQueue
 	jsr	Pal_FadeFrom
 	jsr	DrawBuffer_Clear
 
+	; TODO: Disable original VBlank and interrupts completely, music is stopped anyways
+	move.w	#NullInt, VBlankSubW
+	ints_disable			; we can do it since music is stopped
 	display_disable
-	VBlank_SetMusicOnly
+
+	@vdp_ctrl:	equr	a6
 
 	; VDP setup
-	lea	($C00004).l, a6
-	move.w	#$8004, (a6)
-	move.w	#$8200|(SoundTest_PlaneA_VRAM/$400), (a6)
-	move.w	#$8400|(SoundTest_PlaneB_VRAM/$2000), (a6)
-	move.w	#$8C81+8, (a6)		; enable S&H
-	move.w	#$9011, (a6)		; set plane size to 64x64
-	move.w	#$9200, (a6)
-	move.w	#$8B00, (a6)		; VScroll: full, HScroll: full
-	move.w	#$8710, (a6)		; WARNING! Not appplied! ####
-	clr.b	($FFFFF64E).w
-	jsr	ClearScreen
+	lea	VDP_Ctrl, @vdp_ctrl
+	move.w	#$8004, (@vdp_ctrl)
+	move.w	#$8200|(SoundTest_PlaneA_VRAM/$400), (@vdp_ctrl)
+	move.w	#$8400|(SoundTest_PlaneB_VRAM/$2000), (@vdp_ctrl)
+	move.w	#$8C81+8, (@vdp_ctrl)		; enable S&H
+	move.w	#$9011, (@vdp_ctrl)		; set plane size to 64x64
+	move.w	#$9200, (@vdp_ctrl)
+	move.w	#$8B00, (@vdp_ctrl)		; VScroll: full, HScroll: full
+	move.w	#$8710, (@vdp_ctrl)
 
 	; Clear object RAM
 	lea	Objects, a1
@@ -39,7 +42,7 @@ SoundTestScreen:
 	assert.w a1, eq, #Objects_End
 
 	; Load screen palette
-	lea	Pal_Target, a0
+	lea	Pal_Active, a0	; TODO: use `Pal_Target`, implement fade in
 	lea 	SoundTest_Palette(pc), a1
 	rept 128/4
 		move.l	(a1)+, (a0)+
@@ -54,6 +57,28 @@ SoundTestScreen:
 		move.l	d0, VDP_Data
 		dbf	d1, @loop
 
+	;SoundTest_CreateObject #SoundTest_Obj_DummyHL
+	SoundTest_CreateObject #SoundTest_Obj_PianoSheet
+	SoundTest_CreateObject #SoundTest_Obj_ScreenController
+	
+	jsr	SoundTest_CreateNoteEmitters
+
+	; Clear Plane A
+	@dma_len: = $1000 ; bytes
+	@dma_dest: = SoundTest_PlaneA_VRAM
+
+	lea	VDP_Ctrl, @vdp_ctrl
+	move.l	#(($9400+((@dma_len-1)>>8))<<16)|($9300+((@dma_len-1)&$FF)), (@vdp_ctrl)
+	move.l	#(($9700+$80)<<16)|$8F01, (@vdp_ctrl)
+	move.l	#($40000000+(((@dma_dest)&$3FFF)<<16)+(((@dma_dest)&$C000)>>14))|$80, (@vdp_ctrl)
+	move.w	#$0000, -4(@vdp_ctrl)
+
+	@wait_dma:
+		move.w	(@vdp_ctrl), ccr
+		bvs.s	@wait_dma
+
+	move.w	#$8F02, (@vdp_ctrl)
+
 	; ### Dummy Plane A highlight ###
 	vram	SoundTest_PlaneA_VRAM+$280, d3
 	move.l	#$80<<16, d2
@@ -66,12 +91,7 @@ SoundTestScreen:
 		add.l	d2, d3
 		dbf	d0, @row
 
-	;SoundTest_CreateObject #SoundTest_Obj_DummyHL
-	SoundTest_CreateObject #SoundTest_Obj_PianoSheet
-	
-	jsr	SoundTest_CreateNoteEmitters
-
-	; Load BG
+	; Load/render Plane B
 	vram	SoundTest_BG_VRAM, VDP_Ctrl
 	lea	SoundTest_BG2_TilesKospM, a0
 	jsr	KosPlusMDec_VRAM
@@ -112,43 +132,33 @@ SoundTestScreen:
 	jsr	BuildSprites
 
 	display_enable
-	VBlank_UnsetMusicOnly
-
-	assert.b VBlank_MusicOnly, eq
-
-	jsr	Pal_FadeTo ; ###
 
 	; ###
-	moveq	#$FFFFFF82, d0
+	moveq	#$FFFFFF81, d0
 	jsr	PlaySound_Special
 
-
 	move.w	#SoundTest_VBlank, VBlankSubW
-	move.w	#$8710, VDP_Ctrl	; ### TODO: Move this palette line!
 
 ; ---------------------------------------------------------------------------
 SoundTest_MainLoop:
 	st.b	VBlankRoutine
 	jsr	DelayProgram
-
 	jsr	SoundTest_VDeform_Update
-
 	assert.w SoundTest_VRAMBufferPoolPtr, eq, #Art_Buffer		; VRAM buffer pool should be reset by the beginning of the frame
 	SoundTest_InitWriteRequests
-
 	jsr	ObjectsLoad
 	jsr	BuildSprites
-	jsr	PLC_Execute
-
 	SoundTest_FinalizeWriteRequests a0
-
 	jsr	SoundTest_Visualizer_Update
-
-	bra	SoundTest_MainLoop
+	; TODO: Game mode or exit flag check
+	tst.b	Joypad|Press			; Start pressed?
+	bpl	SoundTest_MainLoop
 
 ; ===========================================================================
 
 SoundTest_Exit:
+	move.w	#$8C81, VDP_Ctrl		; disable S&H
+	move.w	#VBlank, VBlankSubW		; restore Sonic 1's VBlank
 	jmp	Exit_SoundTestScreen
 
 ; ---------------------------------------------------------------------------
@@ -158,6 +168,8 @@ SoundTest_Exit:
 	include	"Screens/SoundTestScreen/Objects/NoteEmitters.asm"
 
 	include	"Screens/SoundTestScreen/Objects/PianoSheet.asm"
+
+	include	"Screens/SoundTestScreen/Objects/ScreenController.asm"
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -246,41 +258,6 @@ SoundTest_VDeform_Update:
 	endr
 	rts
 
-@WobbleData:
-        dc.w	0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2
-	dc.w	2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3
-	dc.w	3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2
-	dc.w	2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0
-	dc.w	0, -1, -1, -1, -1, -1, -2, -2, -2, -2, -2, -3, -3, -3, -3, -3
-	dc.w	-3, -3, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4
-	dc.w	-4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -3
-	dc.w	-3, -3, -3, -3, -3, -3, -2, -2, -2, -2, -2, -1, -1, -1, -1, -1
-	dc.w	0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2
-	dc.w	2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3
-	dc.w	3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2
-	dc.w	2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0
-	dc.w	0, -1, -1, -1, -1, -1, -2, -2, -2, -2, -2, -3, -3, -3, -3, -3
-	dc.w	-3, -3, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4
-	dc.w	-4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -3
-	dc.w	-3, -3, -3, -3, -3, -3, -2, -2, -2, -2, -2, -1, -1, -1, -1, -1
-
-	dc.w	0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2
-	dc.w	2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3
-	dc.w	3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2
-	dc.w	2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0
-	dc.w	0, -1, -1, -1, -1, -1, -2, -2, -2, -2, -2, -3, -3, -3, -3, -3
-	dc.w	-3, -3, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4
-	dc.w	-4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -3
-	dc.w	-3, -3, -3, -3, -3, -3, -2, -2, -2, -2, -2, -1, -1, -1, -1, -1
-	dc.w	0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2
-	dc.w	2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3
-	dc.w	3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2
-	dc.w	2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0
-	dc.w	0, -1, -1, -1, -1, -1, -2, -2, -2, -2, -2, -3, -3, -3, -3, -3
-	dc.w	-3, -3, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4
-	dc.w	-4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -3
-	dc.w	-3, -3, -3, -3, -3, -3, -2, -2, -2, -2, -2, -1, -1, -1, -1, -1
-
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Initializes the visualizer
@@ -299,7 +276,6 @@ SoundTest_Visualizer_Init:
 	@vdp_ctrl:	equr	a5
 	@vdp_data:	equr	a6
 
-	assert.b VBlank_MusicOnly, ne
 
 	lea	VDP_Data, @vdp_data
 	lea	VDP_Ctrl-VDP_Data(@vdp_data), @vdp_ctrl
@@ -308,11 +284,10 @@ SoundTest_Visualizer_Init:
 	@dma_len: = SoundTest_Visualizer_Width*SoundTest_Visualizer_Height*$20 ; bytes
 	@dma_dest: = SoundTest_Visualizer_VRAM
 
-	vram	SoundTest_Visualizer_VRAM, (@vdp_ctrl)
 	move.l	#(($9400+((@dma_len-1)>>8))<<16)|($9300+((@dma_len-1)&$FF)), (@vdp_ctrl)
 	move.l	#(($9700+$80)<<16)|$8F01, (@vdp_ctrl)
 	move.l	#($40000000+(((@dma_dest)&$3FFF)<<16)+(((@dma_dest)&$C000)>>14))|$80, (@vdp_ctrl)
-	move.w	#$1111, (@vdp_data)
+	move.w	#$0000, (@vdp_data)
 
 	; Decompress plane mappings
 	move.l	@vdp_ctrl, -(sp)

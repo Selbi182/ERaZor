@@ -11,6 +11,8 @@ SoundTest_VBlank:
 	beq	@LagFrame
 	sf.b	VBlankRoutine
 
+	jsr	ReadJoypads
+
 	; Transfer palette
 	move.l	#$94009340, (a5)
 	move.l	#$96FD9580, (a5)

@@ -418,8 +418,10 @@ BlackBarsConfigScreen_WriteText:
 	Console.Write "%<endl>%<endl>"
 	Console.Write "BLACK BARS SETUP"
 
-	Console.SetXY #4, #21
-	Console.Write "PICK THE FIRST IF YOU ARE UNSURE!"
+	Console.SetXY #4, #20
+	Console.Write "PICK THE FIRST IF YOU'RE UNSURE."
+	Console.Write "%<endl>%<endl>"
+	Console.Write "   BOTH BARS MUST BE VISIBLE!"
 
 	BBCS_LeaveConsole a0
 	; fallthrough

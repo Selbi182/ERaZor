@@ -427,8 +427,8 @@ Options_NonstopInhuman_Handle:
 	rts
 
 @nodebugunlock:
-	tst.b	(PlacePlacePlace).w		; easter egg enabled?
-	bne.w	Options_PlayDisallowedSound	; if yes, branch
+	;tst.b	(PlacePlacePlace).w		; easter egg enabled?
+	;bne.w	Options_PlayDisallowedSound	; if yes, branch
 	jsr	Check_BlackoutBeaten		; has the player specifically beaten the blackout challenge?
 	beq.w	Options_PlayDisallowedSound	; if not, branch
 	bchg	#4, OptionsBits			; toggle nonstop inhuman

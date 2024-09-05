@@ -626,16 +626,16 @@ StoryText_1:	; text after intro cutscene
 ; ---------------------------------------------------------------------------
 
 StoryText_2:	; text after beating Night Hill Place
+		ststxt	"SONIC'S NOT HAVING THE"
+		ststxt	"TIME OF HIS LIFE."
+		ststxt_line
 		ststxt	"TELEPORTING WATERFALLS,"
 		ststxt	"CRABMEATS WITH EXPLODING"
 		ststxt	"PROJECTILES, AND THE"
 		ststxt	"ORIGINAL GREEN HILL ZONE"
 		ststxt	"TURNED INTO CINEMA HELL!"
-		ststxt	"EGGMAN AND HIS THREE SPIKED"
-		ststxt	"BALLS OF STEEL WEREN'T"
-		ststxt	"EXACTLY NECESSARY TO SHOW"
-		ststxt	"THAT SONIC ISN'T HAVING"
-		ststxt	"THE TIME OF HIS LIFE."
+		ststxt	"EGGMAN'S BALLS OF STEEL"
+		ststxt	"DIDN'T HELP MUCH EITHER."
 		ststxt_line
 		ststxt	"BUT HEY, I HEARD THEY'VE GOT"
 		ststxt	"A BUNCH OF EMERALDS NEARBY?"
@@ -689,18 +689,18 @@ StoryText_5:	; text after beating Labyrinth Place
 		ststxt	"IF ONLY YOU COULD SEE YOUR"
 		ststxt	"FACE RIGHT NOW! PRICELESS!"
 		ststxt_line
-		ststxt	"WELL, OUR CREW HAS FILMED"
-		ststxt	"ENOUGH MATERIAL FOR TWO"
-		ststxt	"FEATURE-LENGTH FILMS"
-		ststxt	"AND A SPIN-OFF. SO, NO MORE"
-		ststxt	"FUNKY CAMERA BUSINESS."
+		ststxt	"WELL, OUR CAMERA CREW HAS"
+		ststxt	"FILMED ENOUGH MATERIAL FOR"
+		ststxt	"TWO FEATURE-LENGTH FILMS"
+		ststxt	"AND A SPIN-OFF SERIES."
+		ststxt	"SO, NO MORE FUNKY CAMERA"
+		ststxt	"BUSINESS FROM NOW ON,"
+		ststxt	"PINKY PROMISE!"
 		ststxt_line
 		ststxt	"HOWEVER, YOU'VE KILLED"
 		ststxt	"THE MIGHTY JAWS OF DESTINY,"
 		ststxt	"AND THEREFORE MUST BE SERVED"
-		ststxt	"THE ULTIMATE PUNISHMENT:"
-		ststxt_line
-		ststxt	"ANOTHER SPECIAL STAGE."
+		ststxt	"THE ULTIMATE PUNISHMENT."
 		dc.b	-1
 		even
 ; ---------------------------------------------------------------------------
@@ -713,10 +713,10 @@ StoryText_6:	; text after beating Unreal Place
 		ststxt	"UNTIL YOU CAN DO THE ENTIRE"
 		ststxt	"STAGE BLINDFOLDED!"
 		ststxt_line
-		ststxt	"ANYWAYS, YOU HAVE ALL THE"
-		ststxt	"EMERALDS NOW. TOO BAD THIS"
-		ststxt	"GAME ONLY HAS SIX, SO YOU"
-		ststxt	"AREN'T GOING TO TURN SUPER."
+		ststxt	"ANYWAYS, YOU'VE GOT ALL THE"
+		ststxt	"EMERALDS NOW. SUPER SONIC"
+		ststxt	"AIN'T GONNA HAPPEN, THOUGH,"
+		ststxt	"AS THIS GAME ONLY HAS SIX."
 		ststxt_line
 		ststxt	"YOU'LL GO TO SPACE, THOUGH!"
 		ststxt	"IT SORTA MAKES UP FOR THAT"
@@ -726,9 +726,9 @@ StoryText_6:	; text after beating Unreal Place
 ; ---------------------------------------------------------------------------
 
 StoryText_7:	; text after beating Scar Night Place
-		ststxt	"LOOK, I GET IT."
-		ststxt	"I ALSO SCREAM IN EXCITEMENT"
-		ststxt	"WHEN I PLAY BUZZ WIRE GAMES."
+		ststxt	"LOOK, I GET IT. I REALLY DO."
+		ststxt	"WHEN I PLAY BUZZ WIRE GAMES,"
+		ststxt	"I ALSO SCREAM IN EXCITEMENT!"
 		ststxt	"BUT I'M REALLY STARTING"
 		ststxt	"TO GET CONCEREND ABOUT"
 		ststxt	"YOUR VOCAL CORDS."
@@ -772,7 +772,7 @@ StoryText_9:	; text after beating the blackout challenge special stage
 		ststxt_line
 		ststxt	"WHEN I MOCKED YOU BACK IN"
 		ststxt	"UNREAL PLACE AND SAID YOU'D"
-		ststxt	"HAVE TO DO THE STAGE"
+		ststxt	"HAVE TO DO THE ENTIRE STAGE"
 		ststxt	"BLINDFOLDED, I DIDN'T THINK"
 		ststxt	"YOU'D ACTUALLY DO IT."
 		ststxt_line

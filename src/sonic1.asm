@@ -41567,20 +41567,31 @@ Obj09_Display:				; XREF: Obj09_OnWall
 		move.w	($FFFFF780).w,d0
 		add.w	($FFFFF782).w,d0
 		move.w	d0,($FFFFF780).w
-		
+
 		tst.b	(Blackout).w		; is easter egg SS enabled?
 		beq.s	@normalspinni		; if not, use regular animation
+		move.w	#$300,d1
 		cmpi.b	#2,($FFFFFE57).w	; are we in part 2?
-		beq.s	@fastspinni		; if yes, go to alternate animation
+		beq.s	@customspinni		; if yes, go to alternate animation
 
 @normalspinni:
-		jmp	Sonic_Animate		; animate Sonic in special stages
+		tst.b	($FFFFFFBF).w		; is unreal challenge enabled?
+		beq.s	@anim			; if not, branch
+		moveq	#0,d1
+		btst	#4,($FFFFF602).w	; is B held?
+		bne.s	@customspinni		; if yes, branch
+		move.w	#$600,d1
+		btst	#5,($FFFFF602).w	; is C held?
+		bne.s	@customspinni		; if yes, branch
+@anim:
+		jmp	Sonic_Animate		; animate Sonic normally in special stages
+; ---------------------------------------------------------------------------
 
-@fastspinni:	
+@customspinni:
 		move.w	obInertia(a0),d0	; get current real inertia
 		move.l	d0,-(sp)		; backup d0
-		move.w	#$300,obInertia(a0)	; pretend we're rolling fast...
-		jsr	Sonic_Animate		; ...to get fast animations
+		move.w	d1,obInertia(a0)	; pretend we're at a specific speed...
+		jsr	Sonic_Animate		; ...to get a specific animation speed
 		move.l	(sp)+,d0		; restore d0
 		move.w	d0,obInertia(a0)	; restore real inertia
 		rts	
@@ -42009,7 +42020,7 @@ UnrealPlace:	; Unreal Place Sonic movement logic
 		btst	#4,($FFFFF602).w		; is B held?
 		beq.s	@notb				; if not, branch
 		asr.w	#1,d1				; halve max target speed
-		bra.s	@notc				; ignore C press
+		bra.s	@notc				; ignore B press
 @notb:
 		btst	#5,($FFFFF602).w		; is C held?
 		beq.s	@notc				; if not, branch
@@ -42504,7 +42515,10 @@ Obj09_UPsnd:
 		bra.s	Obj09_UPsnd2		; go to sound
 
 @conty:
+		neg.w	obVelY(a0)
+		bmi.s	@ok
 		move.w	#-Unreal_Speed,obVelY(a0) ; move Sonic upwards
+@ok:
 
 Obj09_UPsnd2:
 		move.b	#1,($FFFFFFBF).w	; set Unreal Place floating challenge flag
@@ -42526,10 +42540,11 @@ Obj09_DOWNblock:
 		move.w	#$BB,d0
 		bra.s	Obj09_DOWNsnd
 @conty:
-
+		neg.w	obVelY(a0)
+		bpl.s	@ok
 		move.w	#Unreal_Speed,obVelY(a0) ; move Sonic downwards
+@ok
 		move.w	#$DA,d0
-
 
 Obj09_DOWNsnd:
 		jmp	(PlaySound_Special).l ;	play up/down sound

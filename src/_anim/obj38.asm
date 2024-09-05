@@ -6,7 +6,7 @@
 		dc.w byte_14364-Ani_obj38
 		dc.w byte_1437E-Ani_obj38
 		dc.w byte_14398-Ani_obj38
-byte_14356:	dc.b 0,	1, 0, 2, 0, 3, 0, $FF
+byte_14356:	dc.b 0,	1, 0, 0, 2, 0, 0, 3, 0, 0, $FF
 byte_1435E:	dc.b 0,	4, 5, 6, 7, $FF
 byte_14364:	dc.b 0,	4, 4, 0, 4, 4, 0, 5, 5,	0, 5, 5, 0, 6, 6, 0, 6
 		dc.b 0,	0, 7, 7, 0, 7, 7, 0, $FF

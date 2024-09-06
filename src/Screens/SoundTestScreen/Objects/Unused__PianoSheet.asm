@@ -3,7 +3,7 @@
 ; Scrolling piano sheet object
 ; ---------------------------------------------------------------------------
 
-SoundTest_Obj_PianoSheet: rts
+SoundTest_Obj_PianoSheet:
 
 	@base_x: = 0;(320 - SoundTest_Visualizer_Width*8) / 2
 	@base_y: = 40

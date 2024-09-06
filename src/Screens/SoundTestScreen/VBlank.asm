@@ -86,8 +86,8 @@ SoundTest_VBlank_SetupHBlank:
 
 	move.w	#$8F02, (a5)				; restore auto-increment
 	movea.w	SoundTest_ActiveVScrollBufferPtr, a0
-	move.l	224*2(a0), d0				; d0 => HIGH: Plane C position, LOW: ignored
-	move.w	(a0), d0				; d0 => LOW: Plane B position
+	move.l	(a0), d0				; d0 => HIGH: Plane B position, LOW: ignored
+	move.w	225*2(a0), d0				; d0 => LOW: Plane A position
 	move.l	#$40000010, (a5)
 	move.l	d0, -4(a5)				; send initial scroll values for both planes
 
@@ -99,6 +99,6 @@ SoundTest_VBlank_SetupHBlank:
 
 	move.l	#$80148A00, (a5)			; enable HInts, per-line horizontal interrupts
 	move.w	#$8F00, (a5)				; disable auto-increment
-	move.l	#$40020010, (a5)			; setup VSRAM write position for HInt
+	move.l	#$40000010, (a5)			; setup VSRAM write position for HInt
 
 	rts

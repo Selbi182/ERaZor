@@ -16,7 +16,7 @@ SoundTest_CreateNoteEmitters:
 
 	@note_type:	equr	d5
 	@loop_cnt:	equr	d6
-	@note_addr:	equr	a3	
+	@note_addr:	equr	a3
 
 	; FM emitters
 	lea	(SoundDriverRAM+v_music_fm_tracks+TrackNote).w, @note_addr
@@ -47,7 +47,7 @@ SoundTest_CreateNoteEmitters:
 	rts
 
 ; ---------------------------------------------------------------------------
-;
+; Note emitter instance
 ; ---------------------------------------------------------------------------
 
 SoundTest_Obj_NoteEmitter:
@@ -104,7 +104,7 @@ SoundTest_Obj_NoteEmitter:
 	move.b	(@setup_data)+, d0
 	add.w	obSTNoteType(a0), d0
 	move.b	d0, obSTPixelDataFrame(a0)
-	
+
 	move.l	#@ObjRoutine_RenderNote, obCodePtr(a0)
 	bra.s	@RenderNote
 
@@ -113,7 +113,7 @@ SoundTest_Obj_NoteEmitter:
 	movea.w	obSTNoteAddr(a0), @source_note
 	move.b	(@source_note), d0
 	cmp.b	obSTNoteValue(a0), d0			; has note value changed?
-	bne @SetupNoteValue				; if yes, branch	
+	bne	@SetupNoteValue				; if yes, branch
 
 @RenderNote:
 	@pixel_data:	equr	a2
@@ -127,7 +127,6 @@ SoundTest_Obj_NoteEmitter:
 
 	jmp	DisplaySprite
 
-	rts
 
 ; ---------------------------------------------------------------------------
 ; Pixel data for piano sheet
@@ -166,7 +165,7 @@ SoundTest_NoteEmitter_PixelDataFrames:
 	even
 
 ; ---------------------------------------------------------------------------
-;
+; Setup data (X-pos, pattern, frame etc) for each note
 ; ---------------------------------------------------------------------------
 
 SoundTest_NoteEmitter_NoteIndexToSetupData:
@@ -255,15 +254,9 @@ SoundTest_NoteEmitter_NoteIndexToSetupData:
 		inform 2, "Data generation error"
 	endif
 
-; ---------------------------------------------------------------------------
-;
-; ---------------------------------------------------------------------------
-
-SoundTest_NoteEmitter_BaseFrameToPixelData:
-
 
 ; ---------------------------------------------------------------------------
-;
+; Sprite mappings for key overlays
 ; ---------------------------------------------------------------------------
 
 SoundTest_ObjMap_NoteEmitter:

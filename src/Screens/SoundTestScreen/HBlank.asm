@@ -13,10 +13,14 @@ SoundTest_GenerateHBlankCode: macro start_buffer_pos
 	rept 224
 	@HInt_Scanline_\#@scanline:
 		move.w	@buffer_pos.w, VDP_Data
-		if @scanline = 32 + SoundTest_Visualizer_Height*8
-			move.l	#$40000010, VDP_Ctrl			; apply Plane A <-> Plane C switch
+		if @scanline = 32
+			move.l	#$40020010, VDP_Ctrl			; apply Plane A <-> Plane C switch
+			move.w	(start_buffer_pos+224*2).w, VDP_Data	; ''
+			move.l	#$40000010, VDP_Ctrl			; back to Plane B updates
+		elseif @scanline = 32 + SoundTest_Visualizer_Height*8
+			move.l	#$40020010, VDP_Ctrl			; apply Plane A <-> Plane C switch
 			move.w	(start_buffer_pos+225*2).w, VDP_Data	; ''
-			move.l	#$40020010, VDP_Ctrl			; back to Plane B updates
+			move.l	#$40000010, VDP_Ctrl			; back to Plane B updates
 		endif
 		if @scanline < 223
 			move.w	#@HInt_Scanline_\#@next_scanline, HBlankSubW

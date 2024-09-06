@@ -10,7 +10,6 @@ SoundTestScreen:
 	jsr	Pal_FadeFrom
 	jsr	DrawBuffer_Clear
 
-	; TODO: Disable original VBlank and interrupts completely, music is stopped anyways
 	move.w	#NullInt, VBlankSubW
 	ints_disable			; we can do it since music is stopped
 	display_disable
@@ -20,12 +19,10 @@ SoundTestScreen:
 	; VDP setup
 	lea	VDP_Ctrl, @vdp_ctrl
 	move.w	#$8004, (@vdp_ctrl)
-	move.w	#$8200|(SoundTest_PlaneA_VRAM/$400), (@vdp_ctrl)	; Plane A address
-	move.w	#$8300|(SoundTest_PlaneA_VRAM/$400), (@vdp_ctrl)	; Window plane address
-	move.w	#$8400|(SoundTest_PlaneB_VRAM/$2000), (@vdp_ctrl)	; Plane B address
+	move.w	#$8200|(SoundTest_PlaneB_VRAM/$400), (@vdp_ctrl)	; Plane A address
+	move.w	#$8400|(SoundTest_PlaneA_VRAM/$2000), (@vdp_ctrl)	; Plane B address
 	move.w	#$8C81+8, (@vdp_ctrl)		; enable S&H
 	move.w	#$9011, (@vdp_ctrl)		; set plane size to 64x64
-	move.l	#$91009204, (@vdp_ctrl)		; enable window plane to mask Plane C
 	move.w	#$8B00, (@vdp_ctrl)		; VScroll: full, HScroll: full
 	move.w	#$8710, (@vdp_ctrl)
 
@@ -49,6 +46,11 @@ SoundTestScreen:
 		move.l	(a1)+, (a0)+
 	endr
 
+	; Load all compressed graphics
+	lea	SoundTest_PLC_List(pc), a1
+	jsr	LoadPLC_Direct
+	jsr	PLC_ExecuteOnce_Direct
+
 	; ### Dummy Highlight ####
 	vram	SoundTest_DummyHL_VRAM, VDP_Ctrl
 	move.l	#$EEEEEEEE, d0
@@ -58,10 +60,7 @@ SoundTestScreen:
 		move.l	d0, VDP_Data
 		dbf	d1, @loop
 
-	;SoundTest_CreateObject #SoundTest_Obj_DummyHL
-	SoundTest_CreateObject #SoundTest_Obj_PianoSheet
 	SoundTest_CreateObject #SoundTest_Obj_TrackSelector
-	
 	jsr	SoundTest_CreateNoteEmitters
 
 	; Clear Plane A
@@ -81,10 +80,6 @@ SoundTestScreen:
 	move.w	#$8F02, (@vdp_ctrl)
 
 	; Load/render Plane B
-	vram	SoundTest_BG_VRAM, VDP_Ctrl
-	lea	SoundTest_BG2_TilesKospM, a0
-	jsr	KosPlusMDec_VRAM
-
 	lea	SoundTest_BG2_MapEni(pc), a0
 	lea	$FF0000, a1
 	move.w	#$2000|(SoundTest_BG_VRAM/$20), d0
@@ -92,16 +87,7 @@ SoundTestScreen:
 
 	vramWrite $FF0000, $2000, SoundTest_PlaneB_VRAM
 
-
-	; Load piano
-	vram	SoundTest_Piano_VRAM, VDP_Ctrl
-	lea	SoundTest_Piano_TilesKospM, a0
-	jsr	KosPlusMDec_VRAM
-
-	vram	SoundTest_PianoOverlays_VRAM, VDP_Ctrl
-	lea	SoundTest_PianoOverlays_TilesKospM, a0
-	jsr	KosPlusMDec_VRAM
-
+	; Load piano mappings
 	lea	SoundTest_Piano_MapEni(pc), a0
 	lea	$FF0000, a1
 	move.w	#$8000|$6000|(SoundTest_Piano_VRAM/$20), d0
@@ -112,9 +98,6 @@ SoundTestScreen:
 	moveq	#36-1, d1
 	moveq	#3-1, d2
 	jsr	ShowVDPGraphics
-
-	; Load font
-	vramWrite SoundTest_Font_Unc, filesize("Screens/SoundTestScreen/Data/Font.bin"), SoundTest_Font_VRAM
 
 	; Screen init
 	SoundTest_ResetVRAMBufferPool
@@ -146,20 +129,35 @@ SoundTest_MainLoop:
 ; ===========================================================================
 
 SoundTest_Exit:
-	move.l	#$91009200, VDP_Ctrl		; disable Window plane
 	move.w	#$8C81, VDP_Ctrl		; disable S&H
 	move.w	#VBlank, VBlankSubW		; restore Sonic 1's VBlank
 	jmp	Exit_SoundTestScreen
 
 ; ---------------------------------------------------------------------------
 
-	include	"Screens/SoundTestScreen/Objects/DummyHL.asm"
-
 	include	"Screens/SoundTestScreen/Objects/NoteEmitters.asm"
 
-	include	"Screens/SoundTestScreen/Objects/PianoSheet.asm"
-
 	include	"Screens/SoundTestScreen/Objects/TrackSelector.asm"
+
+; ---------------------------------------------------------------------------
+; Pattern load cues list for all Sonud test screen graphics
+; ---------------------------------------------------------------------------
+
+SoundTest_PLC_List:
+	dc.l	SoundTest_BG2_TilesKospM
+	dc.w	SoundTest_BG_VRAM
+
+	dc.l	SoundTest_Piano_TilesKospM
+	dc.w	SoundTest_Piano_VRAM
+
+	dc.l	SoundTest_PianoOverlays_TilesKospM
+	dc.w	SoundTest_PianoOverlays_VRAM
+
+	dc.l	SoundTest_Font_KospM
+	dc.w	SoundTest_Font_VRAM
+
+	dc.w	-1
+
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -192,6 +190,7 @@ SoundTest_VDeform_Update:
 
 	move.w	#$100, @plane_height
 
+	; TODO: Optimize out "rept", use DBF, 2 scanlines in a loop (for easy interlaced BG effect)
 	@current_scanline: = 0
 	rept 224
 		if @current_scanline < 128
@@ -506,7 +505,7 @@ SoundTest_Visualizer_TransferPixelBufferToVRAM:
 
 
 	assert.l @write_dest, ne
-	assert.l @pixel_buffer, hi, #$FF0000 ; buffer should be in RAM (so DMA's high byte is $FF/2 = $7F)
+	assert.l @pixel_buffer, hs, #$FF0000 ; buffer should be in RAM (so DMA's high byte is $FF/2 = $7F)
 
 	lea	VDP_Ctrl, @vdp_ctrl
 
@@ -689,9 +688,10 @@ SoundTest_PianoOverlays_TilesKospM:
 	even
 
 ; ---------------------------------------------------------------------------
-SoundTest_Font_Unc:
-	incbin	"Screens/SoundTestScreen/Data/Font.bin"
+SoundTest_Font_KospM:
+	incbin	"Screens/SoundTestScreen/Data/Font.kospm"
 	even
+
 ; ---------------------------------------------------------------------------
 SoundTest_Palette:
 	; Line 0

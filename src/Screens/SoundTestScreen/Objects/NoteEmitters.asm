@@ -1,6 +1,6 @@
 
 _ST_TYPE_FM:	equ 0
-_ST_TYPE_PSG:	equ 4
+_ST_TYPE_PSG:	equ 8
 
 obSTNoteAddr:		equ $20	; .w
 obSTNoteType:		equ $22	; .w
@@ -19,7 +19,7 @@ SoundTest_CreateNoteEmitters:
 	@note_addr:	equr	a3
 
 	; FM emitters
-	lea	(SoundDriverRAM+v_music_fm_tracks+TrackNote).w, @note_addr
+	lea	(SoundDriverRAM+v_music_fm_tracks+TrackNoteOutput).w, @note_addr
 	moveq	#_ST_TYPE_FM, @note_type
 	moveq	#6-1, @loop_cnt
 
@@ -32,7 +32,7 @@ SoundTest_CreateNoteEmitters:
 		dbf	@loop_cnt, @create_fm_emitters_loop
 
 	; PSG emitters
-	lea	(SoundDriverRAM+v_music_psg_tracks+TrackNote).w, @note_addr
+	lea	(SoundDriverRAM+v_music_psg_tracks+TrackNoteOutput).w, @note_addr
 	moveq	#_ST_TYPE_PSG, @note_type
 	moveq	#3-1, @loop_cnt
 
@@ -64,34 +64,52 @@ SoundTest_Obj_NoteEmitter:
 
 	movea.w	obSTNoteAddr(a0), @source_note
 	move.b	(@source_note), d0
-	bra.s	@SetupNoteValue
+
+	if def(__DEBUG__)
+		bsr	@SetupNewNoteValue
+		assert.l obCodePtr(a0), ne, #SoundTest_Obj_NoteEmitter ; `@SetupNoteValue` should update object pointer
+		rts
+	else
+		bra.s	@SetupNewNoteValue
+	endif
 
 ; ---------------------------------------------------------------------------
 @ObjRoutine_WaitNextNote:
 	movea.w	obSTNoteAddr(a0), @source_note
-	move.b	(@source_note), d0
+	move.b	(@source_note), d0			; d0 = $00 - rest, $01..$5F - pressed, $81..$DF - held
 	cmp.b	obSTNoteValue(a0), d0			; has note value changed?
-	bne.s	@SetupNoteValue				; if yes, branch
+	bne.s	@SetupNewNoteValue			; if yes, branch
 @ret:	rts
 
-@SetupNoteValue:
-	move.b	d0, obSTNoteValue(a0)			; set new note value
-	bmi.s	@ret					; if note is empty, branch
+; ---------------------------------------------------------------------------
+@ToWaitNextNote:
+	move.b	d0, obSTNoteValue(a0)
+	move.l	#@ObjRoutine_WaitNextNote, obCodePtr(a0)
+	rts
 
-	sub.b	#12+1, d0				; octave 1 is not displayed
-	bmi.s	@ret					; ''
-	cmp.b	#SoundTest_Visualizer_NumOctaves*12, d0
-	bhs.s	@ret
+; ---------------------------------------------------------------------------
+@SetupNewNoteValue:
+	move.b	d0, d1					; is note at rest?
+	beq.s	@ToWaitNextNote				; if yes, branch
+	ori.b	#$80, d0				; mark note as held
+	move.b	d0, (@source_note)			; ''
+	move.b	d0, obSTNoteValue(a0)			; set new note value
+
+	;sub.b	#12+1, d1				; octave 1 is not displayed
+	subq.b	#1, d1					; skip rest note
+	bmi.s	@ToWaitNextNote				; ''
+	cmp.b	#SoundTest_Visualizer_NumOctaves*12, d1
+	bhs.s	@ToWaitNextNote
 
 	@setup_data:	equr	a4
 
 	lea	SoundTest_NoteEmitter_NoteIndexToSetupData(pc), @setup_data
-	andi.w	#$7F, d0
-	move.w	d0, d1
-	add.w	d0, d0					; d0 = 2X
-	add.w	d1, d0					; d0 = 3X
-	add.w	d0, d0					; d0 = 6X
-	adda.w	d0, @setup_data
+	andi.w	#$7F, d1
+	move.w	d1, d0
+	add.w	d1, d1					; d1 = 2X
+	add.w	d0, d1					; d1 = 3X
+	add.w	d1, d1					; d1 = 6X
+	adda.w	d1, @setup_data
 
 	; Setup note for rendering
 	move.w	(@setup_data)+, d0
@@ -105,21 +123,24 @@ SoundTest_Obj_NoteEmitter:
 	add.w	obSTNoteType(a0), d0
 	move.b	d0, obSTPixelDataFrame(a0)
 
+*@ToRenderNote:
 	move.l	#@ObjRoutine_RenderNote, obCodePtr(a0)
-	bra.s	@RenderNote
+	bra	@RenderNoteEdge
 
 ; ---------------------------------------------------------------------------
 @ObjRoutine_RenderNote:
 	movea.w	obSTNoteAddr(a0), @source_note
 	move.b	(@source_note), d0
 	cmp.b	obSTNoteValue(a0), d0			; has note value changed?
-	bne	@SetupNoteValue				; if yes, branch
+	bne	@RenderNoteEdge_And_SetupNewNoteValue	; if yes, branch (TODO: Ignore `DisplaySprite`?)
 
 @RenderNote:
 	@pixel_data:	equr	a2
 
 	moveq	#0, d0
 	move.b	obSTPixelDataFrame(a0), d0
+
+@RenderNote2:
 	lea	SoundTest_NoteEmitter_PixelDataFrames(pc), @pixel_data
 	adda.w	(@pixel_data, d0), @pixel_data
 
@@ -127,6 +148,16 @@ SoundTest_Obj_NoteEmitter:
 
 	jmp	DisplaySprite
 
+; ---------------------------------------------------------------------------
+@RenderNoteEdge:
+	moveq	#2, d0
+	add.b	obSTPixelDataFrame(a0), d0
+	bra	@RenderNote2
+
+; ---------------------------------------------------------------------------
+@RenderNoteEdge_And_SetupNewNoteValue:
+	bsr	@RenderNoteEdge
+	bra	@SetupNewNoteValue
 
 ; ---------------------------------------------------------------------------
 ; Pixel data for piano sheet
@@ -135,15 +166,25 @@ SoundTest_Obj_NoteEmitter:
 SoundTest_NoteEmitter_PixelDataFrames:
 @Index:
 	dc.w	@PixelData_Note_FM_Wide-@Index		; $00
-	dc.w	@PixelData_Note_FM_Narrow-@Index	; $02
+	dc.w	@PixelData_Note_FM_Wide_Edge-@Index	; $02
+	dc.w	@PixelData_Note_FM_Narrow-@Index	; $04
+	dc.w	@PixelData_Note_FM_Narrow_Edge-@Index	; $06
 
-	dc.w	@PixelData_Note_PSG_Wide-@Index		; $04
-	dc.w	@PixelData_Note_PSG_Narrow-@Index	; $06
+	dc.w	@PixelData_Note_PSG_Wide-@Index		; $08
+	dc.w	@PixelData_Note_PSG_Wide_Edge-@Index	; $0A
+	dc.w	@PixelData_Note_PSG_Narrow-@Index	; $0C
+	dc.w	@PixelData_Note_PSG_Narrow_Edge-@Index	; $0E
 
 @PixelData_Note_FM_Wide:
 	dc.w	4		; number of pixels (nibbles)
 	dc.b	$56, $65	; normal pixel data (even nibble start)
 	dc.b	$05, $66, $50	; shifted pixel data (odd nibble start)
+	even
+
+@PixelData_Note_FM_Wide_Edge:
+	dc.w	4		; number of pixels (nibbles)
+	dc.b	$55, $55	; normal pixel data (even nibble start)
+	dc.b	$05, $55, $50	; shifted pixel data (odd nibble start)
 	even
 
 @PixelData_Note_FM_Narrow:
@@ -152,16 +193,34 @@ SoundTest_NoteEmitter_PixelDataFrames:
 	dc.b	$05, $65	; shifted pixel data (odd nibble start)
 	even
 
+@PixelData_Note_FM_Narrow_Edge:
+	dc.w	3		; number of pixels (nibbles)
+	dc.b	$55, $50	; normal pixel data (even nibble start)
+	dc.b	$05, $55	; shifted pixel data (odd nibble start)
+	even
+
 @PixelData_Note_PSG_Wide:
 	dc.w	4		; number of pixels (nibbles)
 	dc.b	$78, $87	; normal pixel data (even nibble start)
 	dc.b	$07, $88, $70	; shifted pixel data (odd nibble start)
 	even
 
+@PixelData_Note_PSG_Wide_Edge:
+	dc.w	4		; number of pixels (nibbles)
+	dc.b	$77, $77	; normal pixel data (even nibble start)
+	dc.b	$07, $77, $70	; shifted pixel data (odd nibble start)
+	even
+
 @PixelData_Note_PSG_Narrow:
 	dc.w	3		; number of pixels (nibbles)
 	dc.b	$78, $70	; normal pixel data (even nibble start)
 	dc.b	$07, $87	; shifted pixel data (odd nibble start)
+	even
+
+@PixelData_Note_PSG_Narrow_Edge:
+	dc.w	3		; number of pixels (nibbles)
+	dc.b	$77, $70	; normal pixel data (even nibble start)
+	dc.b	$07, $77	; shifted pixel data (odd nibble start)
 	even
 
 ; ---------------------------------------------------------------------------
@@ -180,7 +239,7 @@ SoundTest_NoteEmitter_NoteIndexToSetupData:
 	@frame_narrow: = $02
 
 	@pixel_frame_wide: = 0
-	@pixel_frame_narrow: = 2
+	@pixel_frame_narrow: = 4
 
 	@start_x: = 1
 

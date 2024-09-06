@@ -351,7 +351,7 @@ FMSetFreq:
 
 		add.b	TrackTranspose(a5),d5	; Add track transposition
 		andi.w	#$7F,d5			; Clear high byte and sign bit
-		move.b	d5, TrackNote(a5)	; remember this note
+		move.b	d5, TrackNoteOutput(a5)	; remember this note
 		add.w	d5, d5
 
 		lea	FMFrequencies(pc),a0
@@ -360,7 +360,7 @@ FMSetFreq:
 		rts	
 
 .restfm:
-		st.b	TrackNote(a5)		; reset note index
+		move.b	d5, TrackNoteOutput(a5)	; reset note index
 		bra	TrackSetRest
 ; End of function FMSetFreq
 
@@ -1417,9 +1417,11 @@ StopAllSound:
 		; DANGER! This should be clearing all variables and track data, but misses the last $10 bytes of v_spcsfx_psg3_Track.
 		move.w	#((v_spcsfx_track_ram_end-v_startofvariables-$10)/4)-1,d0	; Clear $390 bytes: all variables and most track data
 	endif
+
+		moveq	#0, d1
 ; loc_725B6:
 .clearramloop:
-		clr.l	(a0)+
+		move.l	d1, (a0)+
 		dbf	d0,.clearramloop
 
 		MPCM_stopZ80
@@ -1820,20 +1822,20 @@ PSGDoNext:
 
 ; sub_728AC:
 PSGSetFreq:
-		subi.b	#$81,d5			; Convert to 0-based index
-		bcs.s	.restpsg		; If $80, put track at rest
+		subi.b	#$80,d5			; Convert to 0-based index
+		beq.s	.restpsg		; If $80, put track at rest
 
 		add.b	TrackTranspose(a5),d5	; Add in channel transposition
 		andi.w	#$7F,d5			; Clear high byte and sign bit
-		move.b	d5, TrackNote(a5)	; remember this note
+		move.b	d5, TrackNoteOutput(a5)	; remember this note
 		add.w	d5,d5
-		lea	PSGFrequencies(pc),a0
+		lea	PSGFrequencies-2(pc),a0
 		move.w	(a0,d5.w),TrackFreq(a5)	; Set new frequency
 		bra.w	FinishTrackUpdate
 ; ===========================================================================
 ; loc_728CA:
 .restpsg:
-		st.b	TrackNote(a5)		; reset note index
+		move.b	d5,TrackNoteOutput(a5)		; reset note index
 		bset	#1,TrackPlaybackControl(a5)	; Set 'track at rest' bit
 		move.w	#-1,TrackFreq(a5)		; Invalidate note frequency
 		jsr	FinishTrackUpdate(pc)

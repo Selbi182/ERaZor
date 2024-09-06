@@ -629,9 +629,9 @@ SoundTest_CharToTile:
 		elseif @char = "'"
 			@return (@base_pat + $2E) | $8000
 		elseif @char = '"'
-			@return (@base_pat + $2F) | $8000	
+			@return (@base_pat + $2F) | $8000
 		elseif @char = '/'
-			@return (@base_pat + $30) | $8000	
+			@return (@base_pat + $30) | $8000
 	
 		elseif (@char >= '0') & (@char <= '9')
 			@return (@base_pat + (@char-$30)) | $8000

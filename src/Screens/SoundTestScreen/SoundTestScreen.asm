@@ -52,13 +52,6 @@ SoundTestScreen:
 	jsr	LoadPLC_Direct
 	jsr	PLC_ExecuteOnce_Direct
 
-	; ### Dummy Plane A fill
-	vram	SoundTest_PlaneA_VRAM, VDP_Ctrl
-	move.w	#$1000/2, d0
-	
-	@l:	move.w	#$8000, VDP_Data
-		dbf	d0, @l
-
 	; ### Dummy Highlight ####
 	vram	SoundTest_DummyHL_VRAM, VDP_Ctrl
 	move.l	#$EEEEEEEE, d0
@@ -189,18 +182,18 @@ SoundTest_SetupVDP:
 		move.w	(@vdp_regs)+, (@vdp_ctrl)
 		dbf	@loop_cnt, @setup_vdp_loop
 
-	; Clear Plane A (the logical one)
-	@dma_len: = $1000 ; bytes
-	@dma_dest: = SoundTest_PlaneA_VRAM
+	; Clear-fill Plane A (the logical one)
+	@fill_value:	equr	d0
 
-	move.l	#(($9400+((@dma_len-1)>>8))<<16)|($9300+((@dma_len-1)&$FF)), (@vdp_ctrl)
-	move.l	#(($9700+$80)<<16)|$8F01, (@vdp_ctrl)
-	move.l	#($40000000+(((@dma_dest)&$3FFF)<<16)+(((@dma_dest)&$C000)>>14))|$80, (@vdp_ctrl)
-	move.w	#$0000, -4(@vdp_ctrl)
-
-	@wait_dma:
-		move.w	(@vdp_ctrl), ccr
-		bvs.s	@wait_dma
+	vram	SoundTest_PlaneA_VRAM, (@vdp_ctrl)
+	move.l	#$80008000, @fill_value
+	move.w	#$1000/$20-1, @loop_cnt
+	
+	@clear_plane_a_loop:
+		rept $20/4
+			move.l	@fill_value, (@vdp_data)
+		endr
+		dbf	@loop_cnt, @clear_plane_a_loop
 
 	; Init HScroll buffer
 	@hscroll_value: = (320-SoundTest_Visualizer_Width*8)/2

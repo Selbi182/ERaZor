@@ -2,10 +2,9 @@
 obSTSelectedTrack:	equ	$20	; .b
 
 obSTScrollDelay:	equ	$22	; .w
-obSTScrollValue:	equ	$24	; .w
-obSTScrollTarget:	equ	$26	; .w
-obSTScrollTarget2:	equ	$28	; .w
-obSTScrollMaxValue:	equ	$2A	; .w
+obSTScrollValue:	equ	$24	; .l	16.16 FIXED
+obSTScrollTarget:	equ	$28	; .w
+obSTScrollTarget2:	equ	$2A	; .w
 
 obST_MinTrack	= $81
 obST_MaxTrack	= $DF
@@ -43,6 +42,7 @@ SoundTest_Obj_TrackSelector:
 @Main:
 	bsr	@UpdateScrolling
 
+	; React to button presses
 	move.b	Joypad|Press, d0
 
 	btst	#iRight, d0			; is Right pressed?
@@ -82,43 +82,25 @@ SoundTest_Obj_TrackSelector:
 	jmp	PlaySound_Special
 
 @chkPlay:
-	btst	#iC, d0				; is action pressed?
+	btst	#iC, d0				; is C pressed?
 	beq.s	@ret				; if not, branch
 	move.b	obSTSelectedTrack(a0), d0
 	jmp	PlaySound_Special
 
-@ret	rts
+@ret:	rts
 
 ; ---------------------------------------------------------------------------
 @UpdateTrackInfo:
+	@track_info:	equr	a5
+
 	moveq	#0, d0
 	move.b	obSTSelectedTrack(a0), d0
 	subi.b	#obST_MinTrack, d0
 	lsl.w	#3, d0
-	lea	@TrackLineData(pc), a5
-	adda.w	d0, a5
+	lea	@TrackLineData(pc), @track_info
+	adda.w	d0, @track_info
 
-	move.w	#60*2, obSTScrollDelay(a0)		; set scroll delay
-
-	; Reset scrolling
-	moveq	#0, d0
-	move.w	d0, obSTScrollValue(a0)
-	move.w	d0, obSTSCrollTarget2(a0)
-	add.w	#(320-SoundTest_Visualizer_Width*8)/2-5*8, d0
-	neg.w	d0
-	move.w	d0, SoundTest_HScrollBuffer+26*2
-
-	; Determine scrolling max value
-	moveq	#0, d0
-	move.b	4(a5), d0				; get description string length
-	sub.w	#33, d0
-	lsl.w	#3, d0
-	bpl.s	@setup_scrolling
-	moveq	#0, d0					; disable scrolling
-
-@setup_scrolling:
-	move.w	d0, obSTScrollMaxValue(a0)
-	move.w	d0, obSTSCrollTarget(a0)		; want to scroll to the end
+	bsr	@SetupScrolling
 
 @RedrawTrackInfo:
 	move.l	a0, -(sp)
@@ -126,15 +108,50 @@ SoundTest_Obj_TrackSelector:
 
 	lea	SoundTest_DrawText, a4
 
-	SoundTest_DrawFormattedString a4, "%<.b obSTSelectedTrack(a0)>: %<.l (a5) str>                        ", 28, #SoundTest_PlaneA_VRAM+24*$80+4
-	SoundTest_DrawFormattedString a4, "%<.l 4(a5) str>                                                    ", 52, #SoundTest_PlaneA_VRAM+26*$80+4
+	SoundTest_DrawFormattedString a4, "%<.b obSTSelectedTrack(a0)>: %<.l (@track_info) str>                        ", 28, #SoundTest_PlaneA_VRAM+24*$80+4
+	SoundTest_DrawFormattedString a4, "%<.l 4(@track_info) str>                                                    ", 52, #SoundTest_PlaneA_VRAM+26*$80+4
 
 	move.w	(sp)+, d7
 	move.l	(sp)+, a0
 	rts
 
 ; ---------------------------------------------------------------------------
+@SetupScrolling:
+	@initial_scroll_delay: = 2*60 ; frames
+
+	; Reset scrolling
+	moveq	#0, d0
+	move.l	d0, obSTScrollValue(a0)
+	move.w	d0, obSTSCrollTarget2(a0)		; secondary scroll target for swapping (always zero)
+	add.w	#(320-SoundTest_Visualizer_Width*8)/2-5*8, d0
+	neg.w	d0
+	move.w	d0, SoundTest_HScrollBuffer+26*2
+
+	; Determine scrolling max value
+	moveq	#0, d0
+	move.b	4(@track_info), d0			; get description string length
+	sub.w	#33, d0
+	lsl.w	#3, d0
+	bls.s	@disable_scrolling			; branch if result is zero or negative
+
+	move.w	#@initial_scroll_delay, obSTScrollDelay(a0)
+	add.w	#2*8, d0				; small correction to account for right side padding
+	move.w	d0, obSTScrollTarget(a0)		; want to scroll to the end
+	rts
+
+@disable_scrolling:
+	moveq	#0, d0					; disable scrolling
+	move.w	d0, obSTSCrollTarget(a0)		; want to scroll to the end
+
+@disable_scrolling_2:
+	move.w	#-1, obSTScrollDelay(a0)		; set an infinitely long delay
+	rts
+
+; ---------------------------------------------------------------------------
 @UpdateScrolling:
+	@scroll_vel: = $8000
+
+	; This timer delays scrolling in-between cycles
 	tst.w	obSTScrollDelay(a0)
 	beq.s	@scrollToTarget
 	subq.w	#1, obSTScrollDelay(a0)
@@ -145,24 +162,26 @@ SoundTest_Obj_TrackSelector:
 	cmp.w	obSTScrollTarget(a0), d0
 	beq.s	@scrollReachedTarget
 	bhi.s	@scrollLeft
-	addq.w	#1+1, d0
+	addi.l	#@scroll_vel, obSTScrollValue(a0)
+	bra.s	@setScrolling
 
 @scrollLeft:
-	subq.w	#1, d0
+	subi.l	#@scroll_vel, obSTScrollValue(a0)
 
 @setScrolling:
-	move.w	d0, obSTScrollValue(a0)
+	move.w	obSTScrollValue(a0), d0
 	add.w	#(320-SoundTest_Visualizer_Width*8)/2-5*8, d0
 	neg.w	d0
 	move.w	d0, SoundTest_HScrollBuffer+26*2
-	move.w	#1, obSTScrollDelay(a0)
 	rts
 
 @scrollReachedTarget:
+	move.w	#0, obSTScrollValue+2(a0)		; clear fractional part
 	move.l	obSTScrollTarget(a0), d0		; swap scroll targets
 	swap	d0					; ''
+	beq.s	@disable_scrolling_2			; if both targets are zero, we don't have scrolling
 	move.l	d0, obSTScrollTarget(a0)		; ''
-	move.w	#60*2, obSTScrollDelay(a0)		; set scroll delay
+	move.w	#@initial_scroll_delay, obSTScrollDelay(a0); set scroll delay
 	rts
 
 ; ---------------------------------------------------------------------------

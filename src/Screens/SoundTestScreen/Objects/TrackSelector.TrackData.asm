@@ -1,6 +1,9 @@
 
 ; Generates a string with length definition
-@str:	macro *, string, padLen
+@str:	macro *, string, maxLen
+	if strlen(\string) > maxLen
+		inform 3, "Maximum supported length exceeded!"
+	endif
 \*:	dc.b	\string
 \*.len:	equ *-\*
 	dc.b	0
@@ -150,7 +153,7 @@
 @Music8A_Source:	@str 'SUPER STREET FIGHTER II TURBO - OPENING SEQUENCE', @descMaxLen
 
 @Music8B_Name:		@str '=P MONITOR', @titleMaxLen
-@Music8B_Source:	@str 'ORIGINAL VERSION OF SONIC ERAZOR FROM 2010', @descMaxLen
+@Music8B_Source:	@str 'THE ORIGINAL VERSION OF SONIC ERAZOR FROM 2010', @descMaxLen
 
 @Music8C_Name:		@str 'GREEN HILL PLACE BOSS', @titleMaxLen
 @Music8C_Source:	@str 'SONIC ADVANCE 3 - BOSS', @descMaxLen

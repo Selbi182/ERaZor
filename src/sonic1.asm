@@ -4993,12 +4993,19 @@ SS_MainLoop:
 
 		jsr	WhiteFlash2
 
-		moveq	#$25,d3			; set target to bumpers
-		jsr	SS_RemoveAllCustom	; remove all touched bumpers
-		moveq	#$32,d3			; set target to bumpers
-		jsr	SS_RemoveAllCustom	; remove all touched bumpers
-		moveq	#$33,d3			; set target to bumpers
-		jsr	SS_RemoveAllCustom	; remove all touched bumpers
+		moveq	#$25,d3			; set target to idle bumpers
+		jsr	SS_RemoveAllCustom	; remove all
+
+		lea	($FF4400).l,a0		; delete recently touched bumpers (still on active animation)
+		moveq	#$20-1,d0
+@delbump:	cmpi.b	#2,(a0)
+		bne.s	@next
+		movea.l	4(a0),a1
+		clr.b	(a1)
+		clr.l	(a0)
+		clr.l	4(a0)
+@next:		addq.w	#8,a0
+		dbf	d0,@delbump
 
 		move.w	#$B9,d0			; play annoying crumbling sound instead
 		jsr	PlaySound		; play sound
@@ -5223,15 +5230,8 @@ PalCycle_SS:				; XREF: loc_DA6; SpecialStage
 		; set background clouds/bubbles interval time
 		move.w	#$1FF,d0		; background cycle time (casual)
 		frantic				; are we in frantic?
-		beq.s	@notfrantic		; if not, branch
+		beq.s	@setnewtimer		; if not, branch
 		move.w	#$FF,d0			; change background twice as frequently in frantic
-@notfrantic
-		; TODO do something interesting with the background in part 2
-	;	tst.b	(Blackout).w		; is this the blackout blackout special stage?
-	;	beq.s	@setnewtimer		; if not, branch
-	;	cmpi.b	#2,($FFFFFE57).w	; are we in part 2?
-	;	bne.s	@setnewtimer		; if not, branch
-	;	move.w	#$FF,d0			; aaaaaa
 
 @setnewtimer:
 		move.w	d0,($FFFFF79C).w	; set new timer for next interval
@@ -10753,7 +10753,7 @@ Obj1F_Main:				; XREF: Obj1F_Index
 		move.b	#$10,obHeight(a0)
 		move.b	#8,obWidth(a0)
 		move.l	#Map_obj1F,obMap(a0)
-		move.w	#$400,obGfx(a0)
+		move.w	#$2400,obGfx(a0)
 		move.b	#4,obRender(a0)
 		move.b	#3,obPriority(a0)
 		
@@ -11029,12 +11029,12 @@ loc_17F70X:
 Obj1F_Flashing:
 		btst	#7,(OptionsBits).w	; is photosensitive mode enabled?
 		bne.s	Obj1F_NoFlash		; if yes, no flash
-		btst	#3,(OptionsBits).w	; is cinematic HUD enabled?
-		bne.s	Obj1F_NoFlash		; if yes, don't do palette flashing to avoid seizues
+	;	btst	#3,(OptionsBits).w	; is cinematic HUD enabled?
+	;	bne.s	Obj1F_NoFlash		; if yes, don't do palette flashing to avoid seizues
 		tst.b	($FFFFF5D1).w		; is Sonic dying?
 		bne.s	Obj1F_NoFlash		; if yes, disable flash
 
-		lea	($FFFFFB02).w,a1		; load second colour
+		lea	($FFFFFB22).w,a1		; load second colour
 		moveq	#0,d1				; make sure d1 is empty
 		tst.w	(a1)				; is colour empty?
 		bne.s	loc_17F7EX			; if not, branch
@@ -11163,13 +11163,13 @@ loc_17F70XX:
 Obj1F_Flashing2:
 		btst	#7,(OptionsBits).w	; is photosensitive mode enabled?
 		bne.s	Obj1F_NoFlash2		; if yes, no flash
-		btst	#3,(OptionsBits).w	; is cinematic HUD enabled?
-		bne.s	Obj1F_NoFlash2		; if yes, don't do palette flashing to avoid seizues
+	;	btst	#3,(OptionsBits).w	; is cinematic HUD enabled?
+	;	bne.s	Obj1F_NoFlash2		; if yes, don't do palette flashing to avoid seizues
 		tst.b	($FFFFF5D1).w		; is Sonic dying?
 		bne.s	Obj1F_NoFlash2		; if yes, disable flash
 
 
-		lea	($FFFFFB02).w,a1		; load second colour
+		lea	($FFFFFB22).w,a1		; load second colour
 		moveq	#0,d1				; make sure d1 is empty
 		tst.w	(a1)				; is colour empty?
 		bne.s	loc_17F7EXX			; if not, branch
@@ -12788,11 +12788,6 @@ FZEscape_ScreenBoom:
 
 		move.l	a0,-(sp)		; backup to stack
 		jsr	Pal_CutToWhite		; instantly turn screen white
-		; todo make sure black bars stay black
-	;	move.w	#0,($FFFFFB00)
-	;	move.w	#0,($FFFFFB20)
-	;	move.w	#0,($FFFFFB40)
-	;	move.w	#0,($FFFFFB60)
 		move.l	(sp)+,a0		; restore from stack
 
 		move.w	#BlackBars.MaxHeight,BlackBars.Height ; force bars to max

@@ -545,7 +545,7 @@ HubRing_Ending:
 		bra.w	RunStory
 
 HubRing_Blackout:
-		bclr	#1,(ScreenFuzz).w	; clear temporary screen fuzz flag
+		bclr	#2,(ScreenFuzz).w	; clear temporary screen fuzz flag
 		move.w	#$401,($FFFFFE10).w	; set level to Unreal
 		move.b	#1,(Blackout).w		; set Blackout Challenge flag
 		bra.w	StartLevel		; good luck

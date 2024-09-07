@@ -32,7 +32,7 @@ namespace S1ObjectDefinitions.Common
 
 		public override void Init(ObjectData data)
 		{
-            byte[] artfile = ObjectHelper.OpenArtFile("../artkosp/rings.kospm", CompressionType.Nemesis);
+            byte[] artfile = ObjectHelper.OpenArtFile("../artkosp/rings.kospm", CompressionType.KosinskiPlusM);
             img = ObjectHelper.MapASMToBmp(artfile, "../_maps/obj25.asm", 0, 1);
 		}
 

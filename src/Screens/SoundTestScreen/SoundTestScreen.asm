@@ -14,17 +14,7 @@ SoundTestScreen:
 	ints_disable			; we can do it since music is stopped
 	display_disable
 
-	@vdp_ctrl:	equr	a6
-
-	; VDP setup
-	lea	VDP_Ctrl, @vdp_ctrl
-	move.w	#$8004, (@vdp_ctrl)
-	move.w	#$8200|(SoundTest_PlaneB_VRAM/$400), (@vdp_ctrl)	; Plane A address
-	move.w	#$8400|(SoundTest_PlaneA_VRAM/$2000), (@vdp_ctrl)	; Plane B address
-	move.w	#$8C81+8, (@vdp_ctrl)		; enable S&H
-	move.w	#$9011, (@vdp_ctrl)		; set plane size to 64x64
-	move.w	#$8B00, (@vdp_ctrl)		; VScroll: full, HScroll: full
-	move.w	#$8710, (@vdp_ctrl)
+	bsr	SoundTest_SetupVDP
 
 	; Clear object RAM
 	lea	Objects, a1
@@ -38,6 +28,17 @@ SoundTestScreen:
 		dbf	d1, @clear_obj_ram_loop
 
 	assert.w a1, eq, #Objects_End
+
+	; Init HScroll buffer
+	@hscroll_value: = (320-SoundTest_Visualizer_Width*8)/2
+
+	lea	SoundTest_HScrollBuffer, a1
+	moveq	#28/2-1, d1
+	move.l	#(@hscroll_value<<16)|(@hscroll_value), d0
+
+	@init_hscroll_buffer_loop:
+		move.l	d0, (a1)+
+		dbf	d1, @init_hscroll_buffer_loop
 
 	; Load screen palette
 	lea	Pal_Active, a0	; TODO: use `Pal_Target`, implement fade in
@@ -61,30 +62,15 @@ SoundTestScreen:
 		dbf	d1, @loop
 
 	SoundTest_CreateObject #SoundTest_Obj_TrackSelector
+	SoundTest_CreateObject #SoundTest_Obj_BGPaletteEffect
+	;SoundTest_CreateObject #SoundTest_Obj_DummyHL
 	jsr	SoundTest_CreateNoteEmitters
-
-	; Clear Plane A
-	@dma_len: = $1000 ; bytes
-	@dma_dest: = SoundTest_PlaneA_VRAM
-
-	lea	VDP_Ctrl, @vdp_ctrl
-	move.l	#(($9400+((@dma_len-1)>>8))<<16)|($9300+((@dma_len-1)&$FF)), (@vdp_ctrl)
-	move.l	#(($9700+$80)<<16)|$8F01, (@vdp_ctrl)
-	move.l	#($40000000+(((@dma_dest)&$3FFF)<<16)+(((@dma_dest)&$C000)>>14))|$80, (@vdp_ctrl)
-	move.w	#$0000, -4(@vdp_ctrl)
-
-	@wait_dma:
-		move.w	(@vdp_ctrl), ccr
-		bvs.s	@wait_dma
-
-	move.w	#$8F02, (@vdp_ctrl)
 
 	; Load/render Plane B
 	lea	SoundTest_BG2_MapEni(pc), a0
 	lea	$FF0000, a1
-	move.w	#$2000|(SoundTest_BG_VRAM/$20), d0
+	move.w	#(SoundTest_BG_VRAM/$20), d0
 	jsr	EniDec
-
 	vramWrite $FF0000, $2000, SoundTest_PlaneB_VRAM
 
 	; Load piano mappings
@@ -137,7 +123,11 @@ SoundTest_Exit:
 
 	include	"Screens/SoundTestScreen/Objects/NoteEmitters.asm"
 
+	include	"Screens/SoundTestScreen/Objects/DummyHL.asm"
+
 	include	"Screens/SoundTestScreen/Objects/TrackSelector.asm"
+
+	include	"Screens/SoundTestScreen/Objects/BGPaletteEffect.asm"
 
 ; ---------------------------------------------------------------------------
 ; Pattern load cues list for all Sonud test screen graphics
@@ -157,6 +147,76 @@ SoundTest_PLC_List:
 	dc.w	SoundTest_Font_VRAM
 
 	dc.w	-1
+
+; ---------------------------------------------------------------------------
+; Sound Test Screen
+; ---------------------------------------------------------------------------
+
+SoundTest_SetupVDP:
+
+	@vdp_ctrl:	equr	a5
+	@vdp_data:	equr	a6
+
+	lea	VDP_Ctrl, @vdp_ctrl
+	lea	VDP_Data-VDP_Ctrl(@vdp_ctrl), @vdp_data
+
+	; Setup VDP registers
+	@loop_cnt:	equr	d6
+	@vdp_regs:	equr	a2
+
+	lea	@VDPRegistersList(pc), @vdp_regs
+	moveq	#@VDPRegistersList.Size-1, @loop_cnt
+
+	@setup_vdp_loop:
+		move.w	(@vdp_regs)+, (@vdp_ctrl)
+		dbf	@loop_cnt, @setup_vdp_loop
+
+	; Clear Plane A (the logical one)
+	@dma_len: = $1000 ; bytes
+	@dma_dest: = SoundTest_PlaneA_VRAM
+
+	move.l	#(($9400+((@dma_len-1)>>8))<<16)|($9300+((@dma_len-1)&$FF)), (@vdp_ctrl)
+	move.l	#(($9700+$80)<<16)|$8F01, (@vdp_ctrl)
+	move.l	#($40000000+(((@dma_dest)&$3FFF)<<16)+(((@dma_dest)&$C000)>>14))|$80, (@vdp_ctrl)
+	move.w	#$0000, -4(@vdp_ctrl)
+
+	@wait_dma:
+		move.w	(@vdp_ctrl), ccr
+		bvs.s	@wait_dma
+
+	; Init HScroll buffer
+	@hscroll_value: = (320-SoundTest_Visualizer_Width*8)/2
+
+	move.l	#(@hscroll_value<<16)|(@hscroll_value), d0
+	move.w	#$8F20, (@vdp_ctrl)
+
+	vram	$FC00, (@vdp_ctrl)
+	moveq	#28/2-1, d1
+	@fill_plane_a_hscroll:
+		move.l	d0, (@vdp_data)
+		dbf	d1, @fill_plane_a_hscroll
+
+	vram	$FC02, (@vdp_ctrl)
+	moveq	#28/2-1, d1
+	@fill_plane_b_hscroll:
+		move.l	d0, (@vdp_data)
+		dbf	d1, @fill_plane_b_hscroll
+
+	move.w	#$8F02, (@vdp_ctrl)
+
+	rts
+
+; ---------------------------------------------------------------------------
+@VDPRegistersList:
+	dc.w	$8004
+	dc.w	$8200|(SoundTest_PlaneB_VRAM/$400)	; Plane A address
+	dc.w	$8400|(SoundTest_PlaneA_VRAM/$2000)	; Plane B address
+	;dc.w	$8C81+8		; enable S&H (TODO: Fill Plane A with $8000)
+	dc.w	$9011		; set plane size to 64x64
+	dc.w	$8B02		; VScroll: full, HScroll: 1-tile
+	dc.w	$8710
+
+@VDPRegistersList.Size:	equ (*-@VDPRegistersList)/2
 
 
 ; ===========================================================================
@@ -311,8 +371,13 @@ SoundTest_Visualizer_Update:
 	@pixel_buffer:		equr	a0
 	@pixel_buffer_half1:	equr	a1
 	@pixel_buffer_half2:	equr	a2
-	@pixel_data_half1:	equr	d2
-	@pixel_data_half2:	equr	d3
+
+	@pixel_data_half1_p1:	equr	d2
+	@pixel_data_half1_p2:	equr	d3
+	@pixel_data_half1_p3:	equr	d4
+	@pixel_data_half1_p4:	equr	d5
+	@pixel_data_half1_p5:	equr	d6
+	@pixel_data_half2:	equr	d7
 
 	; ----------------------------------------------
 	; Initially draw an empty line in pixel buffer
@@ -322,18 +387,33 @@ SoundTest_Visualizer_Update:
 	lea	(@pixel_buffer), @pixel_buffer_half1
 	lea	@pixel_buffer_half_size(@pixel_buffer), @pixel_buffer_half2
 
-	moveq	#0, @pixel_data_half1
+	movem.l	@PianoSeparatorData(pc), @pixel_data_half1_p1-@pixel_data_half1_p5
 	moveq	#0, @pixel_data_half2
 
-	rept @pixel_buffer_size/8
-		move.l	@pixel_data_half1, (@pixel_buffer_half1)+
+	rept @pixel_buffer_size/(8*5)
+		move.l	@pixel_data_half1_p1, (@pixel_buffer_half1)+
+		move.l	@pixel_data_half2, (@pixel_buffer_half2)+
+		move.l	@pixel_data_half1_p2, (@pixel_buffer_half1)+
+		move.l	@pixel_data_half2, (@pixel_buffer_half2)+
+		move.l	@pixel_data_half1_p3, (@pixel_buffer_half1)+
+		move.l	@pixel_data_half2, (@pixel_buffer_half2)+
+		move.l	@pixel_data_half1_p4, (@pixel_buffer_half1)+
+		move.l	@pixel_data_half2, (@pixel_buffer_half2)+
+		move.l	@pixel_data_half1_p5, (@pixel_buffer_half1)+
 		move.l	@pixel_data_half2, (@pixel_buffer_half2)+
 	endr
-	if (@pixel_buffer_size % 8) = 4
-		swap	@pixel_data_half1
-		move.w	@pixel_data_half1, (@pixel_buffer_half1)+
+	@remaining_buffer: = (@pixel_buffer_size % (8*5))
+	if @remaining_buffer = 20
+		move.l	@pixel_data_half1_p1, (@pixel_buffer_half1)+
+		move.l	@pixel_data_half2, (@pixel_buffer_half2)+
+		move.l	@pixel_data_half1_p2, (@pixel_buffer_half1)+
+		move.l	@pixel_data_half2, (@pixel_buffer_half2)+
+		swap	@pixel_data_half1_p3
+		move.w	@pixel_data_half1_p3, (@pixel_buffer_half1)+
 		swap	@pixel_data_half2
 		move.w	@pixel_data_half2, (@pixel_buffer_half2)+
+	else
+		inform 3, "Bad remaining buffer: \#@remaining_buffer"
 	endif
 
 	; -----------------------------
@@ -384,13 +464,12 @@ SoundTest_Visualizer_Update:
 @pos_ok:
 	rts
 
+; ---------------------------------------------------------------------------
+@PianoSeparatorData:
+	@i: = $F
 
-@Dummy_PixelData:
-	dc.w	1 ; pixels
+	dc.w	$1000*@i, $0000, $0100*@i, $0000, $0000, $1000*@i, $0000, $0100*@i, $0000, $0000
 
-@even:	dc.b	$60
-@odd:	dc.b	$06
-	even
 
 ; ---------------------------------------------------------------------------
 ; Writes given pixel data to the pixel data
@@ -603,40 +682,40 @@ SoundTest_CharToTile:
 	@char:	= $20	; ignore ASCII codes $00..$1F, those are control character we'll never use
 	while (@char < $80)
 		if @char = ' '
-			@return $8000
+			@return $8000|$4000
 
 		elseif @char = '!'
-			@return (@base_pat + $A) | $8000
+			@return (@base_pat + $A) | $8000|$4000
 		elseif @char = '='
-			@return (@base_pat + $B) | $8000
+			@return (@base_pat + $B) | $8000|$4000
 		elseif @char = '&'
-			@return (@base_pat + $C) | $8000
+			@return (@base_pat + $C) | $8000|$4000
 		elseif @char = '<'
-			@return (@base_pat + $D) | $8000
+			@return (@base_pat + $D) | $8000|$4000
 		elseif @char = '>'
-			@return (@base_pat + $E) | $8000
+			@return (@base_pat + $E) | $8000|$4000
 
 		elseif @char = '-'
-			@return (@base_pat + $29) | $8000
+			@return (@base_pat + $29) | $8000|$4000
 		elseif @char = '.'
-			@return (@base_pat + $2A) | $8000
+			@return (@base_pat + $2A) | $8000|$4000
 		elseif @char = ','
-			@return (@base_pat + $2B) | $8000
+			@return (@base_pat + $2B) | $8000|$4000
 		elseif @char = '?'
-			@return (@base_pat + $2C) | $8000
+			@return (@base_pat + $2C) | $8000|$4000
 		elseif @char = ':'
-			@return (@base_pat + $2D) | $8000
+			@return (@base_pat + $2D) | $8000|$4000
 		elseif @char = "'"
-			@return (@base_pat + $2E) | $8000
+			@return (@base_pat + $2E) | $8000|$4000
 		elseif @char = '"'
-			@return (@base_pat + $2F) | $8000
+			@return (@base_pat + $2F) | $8000|$4000
 		elseif @char = '/'
-			@return (@base_pat + $30) | $8000
+			@return (@base_pat + $30) | $8000|$4000
 	
 		elseif (@char >= '0') & (@char <= '9')
-			@return (@base_pat + (@char-$30)) | $8000
+			@return (@base_pat + (@char-$30)) | $8000|$4000
 		else
-			@return	(@base_pat + (@char-$41) + 10+5) | $8000
+			@return	(@base_pat + (@char-$41) + 10+5) | $8000|$4000
 		endif
 		@char: = @char + 1
 	endw
@@ -694,19 +773,23 @@ SoundTest_Font_KospM:
 
 ; ---------------------------------------------------------------------------
 SoundTest_Palette:
-	; Line 0
+	; Line 0: Background + FM piano key overlay
+	;incbin	"Screens/SoundTestScreen/Data/BG2_Pal.bin"
+	dc.w	$0000, $0a2c, $0a28, $088e, $0a2a, $0806, $082c, $0a6c
+	dc.w	$086e, $00EE, $00E2, $08E8, $0CEC, $00E2, $0282, $0242
+
+	; Line 1: Background (highlighted) + PSG piano key overlay
+	dc.w	$0000, $0e6e, $0e6c, $0cce, $0e6e, $0c4a, $0c6e, $0eae
+	;dc.w	$0cce, $00EE, $0EE2, $0EE8, $0EEC, $0EE2, $0882, $0442
+	dc.w	$0cce, $08EE, $0E2E, $0E8E, $0ECE, $0E2E, $0828, $0424
+
+	;dc.w	$0000, $0020, $0220, $0240, $0242, $0462, $0464, $0684
+	;dc.w	$0686, $08A6, $08A8, $0AC8, $0ACA, $0CEA, $0CEC, $0EEE
+
+	; Line 2: Text & stuff
 	dc.w	$0000, $0222, $0444, $0666, $0EEE, $0EEE, $0CCC, $0EEE
 	dc.w	$0042, $0262, $0284, $04A6, $06A6, $06C8, $08C8, $08EA
 
-	; Line 1: Background
-	incbin	"Screens/SoundTestScreen/Data/BG2_Pal.bin"
-	;dc.w	$0E0E, $0220, $0440, $0660, $0880, $0AA0, $0CC0, $0EE0
-	;dc.w	$0CC0, $0AA0, $0880, $0660, $0440, $0220, $0000, $0E0E
-
-	; Line 2: Background (unused)
-	dc.w	$0000, $0020, $0220, $0240, $0242, $0462, $0464, $0684
-	dc.w	$0686, $08A6, $08A8, $0AC8, $0ACA, $0CEA, $0CEC, $0EEE
-
 	; Line 3: Piano
 	dc.w	$0E0E, $0000, $0888, $0CCC, $0EEE, $0240, $0480, $0406
-	dc.w	$060C, $00EE, $08EE, $0E0E, $0E0E, $0E0E, $0E0E, $0E0E
+	dc.w	$060C, $00EE, $08EE, $0E0E, $0E0E, $0E0E, $0E0E, $0828

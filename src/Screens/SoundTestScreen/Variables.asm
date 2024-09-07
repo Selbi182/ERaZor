@@ -9,7 +9,7 @@ SoundTest_Visualizer_Height:		equ	16	; tiles
 SoundTest_Visualizer_NumOctaves:	equ	7
 SoundTest_Visualizer_MaxWriteRequests:	equ	SoundTest_Visualizer_NumOctaves*12+2
 
-SoundTest_StringBufferSize:	equ	40+1
+SoundTest_StringBufferSize:	equ	48+1
 
 	if SoundTest_Visualizer_Height % 16
 		inform 2, "SoundTest_Visualizer_Height must be multiple of 16" ; because it wraps around a 32x64 plane
@@ -39,6 +39,8 @@ SoundTest_VScrollBuffer2:		rs.w	224+2	; entries 0..223 = Plane B, 224 = Plane C 
 SoundTest_VScrollBufferPtrSwapper:	rs.w	2
 SoundTest_NextVScrollBufferPtr:		equ	SoundTest_VScrollBufferPtrSwapper+0
 SoundTest_ActiveVScrollBufferPtr:	equ	SoundTest_VScrollBufferPtrSwapper+2
+
+SoundTest_HScrollBuffer:		rs.w	28	; H-Scroll buffer (per tile)
 
 SoundTest_VRAMBufferPoolPtr:		rs.w	1
 

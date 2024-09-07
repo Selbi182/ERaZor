@@ -22,14 +22,6 @@ SoundTest_VBlank:
 	dbf	d0, *					; waste ~$700 * 10 cycles on PAL consoles
 @not_PAL:
 
-	; Transfer palette
-	move.l	#$94009340, (a5)
-	move.l	#$96FD9580, (a5)
-	move.w	#$977F, (a5)
-	move.w	#$C000, (a5)
-	move.w	#$80, -(sp)
-	move.w	(sp)+, (a5)
-
 	; Transfer sprites
 	move.l	#$94019340, (a5)
 	move.l	#$96FC9500, (a5)
@@ -38,9 +30,27 @@ SoundTest_VBlank:
 	move.w	#$83, -(sp)
 	move.w	(sp)+, (a5)
 
-	vram	$FC00, (a5)
-	move.w	#(320-SoundTest_Visualizer_Width*8)/2, -4(a5)	; HScroll
-	move.w	#(320-SoundTest_Visualizer_Width*8)/2, -4(a5)	; HScroll
+	; Transfer HScroll buffer
+	@dma_source: = SoundTest_HScrollBuffer
+	@dma_dest: = $FC00+2
+	@dma_len: = 28*2
+
+	move.w	#$8F20, (a5)		; set auto-increment for per-tile HScroll-buffer
+	move.l	#$94000000+((((@dma_len)>>1)&$FF00)<<8)+$9300+(((@dma_len)>>1)&$FF),(a5)
+	move.l	#$96000000+((((@dma_source)>>1)&$FF00)<<8)+$9500+(((@dma_source)>>1)&$FF), (a5)
+	move.w	#$9700+(((((@dma_source)>>1)&$FF0000)>>16)&$7F),(a5)
+	move.w	#$4000+((@dma_dest)&$3FFF),(a5)
+	move.w	#$80+(((@dma_dest)&$C000)>>14), -(sp)
+	move.w	(sp)+, (a5)
+	move.w	#$8F02, (a5)		; restore auto-increment
+
+	; Transfer palette
+	move.l	#$94009340, (a5)
+	move.l	#$96FD9580, (a5)
+	move.w	#$977F, (a5)
+	move.w	#$C000, (a5)
+	move.w	#$80, -(sp)
+	move.w	(sp)+, (a5)
 
 	; Transfer standard DMA queue
 	jsr	ProcessDMAQueue

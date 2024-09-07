@@ -33,15 +33,15 @@ SoundTest_Obj_BGPaletteEffect:
 	;move.w	$34(a0), a1		; a1 = track selector
 	;move.b	obSTSelectedTrack(a1), d0
 	;jsr	MegaPCM_PlaySample
-	move.w	#$200, @fade_vel(a0)
+	move.w	#$120, @fade_vel(a0)
 	rts
 
 ; ---------------------------------------------------------------------------
 @UpdateFadeFactor:
-	sub.w	#$38, @fade_vel(a0)
-	cmp.w	#-$600, @fade_vel(a0)
+	sub.w	#$24, @fade_vel(a0)
+	cmp.w	#-$200, @fade_vel(a0)
 	bgt.s	@1
-	move.w	#-$600, @fade_vel(a0)
+	move.w	#-$200, @fade_vel(a0)
 @1
 
 	move.w	@fade_vel(a0), d0

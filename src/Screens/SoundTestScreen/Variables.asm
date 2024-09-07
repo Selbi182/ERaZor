@@ -9,7 +9,7 @@ SoundTest_Visualizer_Height:		equ	16	; tiles
 SoundTest_Visualizer_NumOctaves:	equ	7
 SoundTest_Visualizer_MaxWriteRequests:	equ	SoundTest_Visualizer_NumOctaves*12+2
 
-SoundTest_StringBufferSize:	equ	40+1
+SoundTest_StringBufferSize:	equ	52+1
 
 	if SoundTest_Visualizer_Height % 16
 		inform 2, "SoundTest_Visualizer_Height must be multiple of 16" ; because it wraps around a 32x64 plane
@@ -23,6 +23,7 @@ SoundTest_Piano_VRAM:		rs.b	filesize("Screens/SoundTestScreen/Data/BasePiano_Til
 SoundTest_PianoOverlays_VRAM:	rs.b	filesize("Screens/SoundTestScreen/Data/BasePiano_KeyOverlays_Tiles.bin")
 SoundTest_BG_VRAM:		rs.b	filesize("Screens/SoundTestScreen/Data/BG2_Tiles.bin")
 SoundTest_Font_VRAM:		rs.b	filesize("Screens/SoundTestScreen/Data/Font.bin")
+SoundTest_HeaderFont_VRAM:	rs.b	filesize("artkosp/LevelSigns.unc")
 SoundTest_DummyHL_VRAM:		rs.b	4*4*$20
 	if __rs > $A000
 		infrom 2, "Out of VRAM for graphics!"
@@ -39,6 +40,8 @@ SoundTest_VScrollBuffer2:		rs.w	224+2	; entries 0..223 = Plane B, 224 = Plane C 
 SoundTest_VScrollBufferPtrSwapper:	rs.w	2
 SoundTest_NextVScrollBufferPtr:		equ	SoundTest_VScrollBufferPtrSwapper+0
 SoundTest_ActiveVScrollBufferPtr:	equ	SoundTest_VScrollBufferPtrSwapper+2
+
+SoundTest_HScrollBuffer:		rs.w	28	; H-Scroll buffer (per tile)
 
 SoundTest_VRAMBufferPoolPtr:		rs.w	1
 

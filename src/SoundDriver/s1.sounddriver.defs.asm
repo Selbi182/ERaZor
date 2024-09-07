@@ -32,7 +32,10 @@ TrackModulationVal:	equ	$1C		; FM/PSG only (2 bytes)
 TrackDetune:		equ	$1E		; FM/PSG only
 TrackPSGNoise:		equ	$1F		; PSG only
 TrackFeedbackAlgo:	equ	$1F		; FM only
-TrackNote:		equ	$20		; Currently played note (WARNING: Overwrites MSB of voice pointer below; no side effects and unused in BGM tracks)
+TrackNoteOutput:	equ	$20		; Currently played note output for Sound test, can be modified by outside of SMPS.
+						; $00 = rest, $01..5F = note pressed, $81..DF = note press acknowledged by Sound test (if active)
+						; NOTE: Sound test adds $80 to this byte once it registers note change; this trick allows re-register pressing of the same note
+						; WARNING! Overwrites MSB of voice pointer below; no side effects and unused in BGM tracks)
 TrackVoicePtr:		equ	$20		; FM SFX only (4 bytes)
 TrackLoopCounters:	equ	$24		; All tracks (multiple bytes)
 TrackGoSubStack:	equ	TrackSz	; All tracks (multiple bytes. This constant won't get to be used because of an optimisation that just uses TrackSz)

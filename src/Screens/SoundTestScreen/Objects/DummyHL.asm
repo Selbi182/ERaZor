@@ -5,7 +5,7 @@ SoundTest_Obj_DummyHL:
 	move.l	#@Map, 4(a0)
 	move.w	#$80+3*8-4+$80, 8(a0)
 	move.b	#1, obPriority(a0)
-	move.w	#$80+5*8, $A(a0)
+	move.w	#$80+5*8-8, $A(a0)
 	move.l	#@Main, $3C(a0)
 
 @Main:	

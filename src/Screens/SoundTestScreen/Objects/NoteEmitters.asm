@@ -15,6 +15,7 @@ obSTPixelDataX:		equ $28 ; .w
 
 SoundTest_CreateNoteEmitters:
 
+	@layer:		equr	d3
 	@note_type:	equr	d4
 	@note_pal:	equr	d5
 	@loop_cnt:	equr	d6
@@ -23,32 +24,28 @@ SoundTest_CreateNoteEmitters:
 	; FM emitters
 	lea	(SoundDriverRAM+v_music_fm_tracks+TrackNoteOutput).w, @note_addr
 	moveq	#_ST_TYPE_FM, @note_type
-	moveq	#0, @note_pal	; use palette line #0
+	moveq	#2, @layer		; use priority layer #1
+	moveq	#0, @note_pal		; use palette line #0
 	moveq	#6-1, @loop_cnt
-
-	@create_fm_emitters_loop:
-		SoundTest_CreateObject #SoundTest_Obj_NoteEmitter
-		move.w	@note_addr, obSTNoteAddr(a1)
-		move.w	@note_type, obSTNoteType(a1)
-		move.w	@note_pal, obSTNoteBasePalette(a1)
-		lea	TrackSz(@note_addr), @note_addr
-
-		dbf	@loop_cnt, @create_fm_emitters_loop
+	bsr.s	@create_emitters_loop
 
 	; PSG emitters
 	lea	(SoundDriverRAM+v_music_psg_tracks+TrackNoteOutput).w, @note_addr
 	moveq	#_ST_TYPE_PSG, @note_type
+	moveq	#1, @layer		; use priority layer #1
 	move.w	#$2000, @note_pal	; use palette line #1
 	moveq	#3-1, @loop_cnt
+	; fallthrough
 
-	@create_psg_emitters_loop:
+	@create_emitters_loop:
 		SoundTest_CreateObject #SoundTest_Obj_NoteEmitter
+		move.b	@layer, obPriority(a1)
 		move.w	@note_addr, obSTNoteAddr(a1)
 		move.w	@note_type, obSTNoteType(a1)
 		move.w	@note_pal, obSTNoteBasePalette(a1)
 		lea	TrackSz(@note_addr), @note_addr
 
-		dbf	@loop_cnt, @create_psg_emitters_loop
+		dbf	@loop_cnt, @create_emitters_loop
 
 	rts
 
@@ -172,8 +169,10 @@ SoundTest_Obj_NoteEmitter:
 
 ; ---------------------------------------------------------------------------
 @RenderNoteEdge_And_SetupNewNoteValue:
+	move.w	d0, -(sp)
 	addq.b	#1, obFrame(a0) 	; use fade out frame (TODO: generate a separate sprite)
 	bsr	@RenderNoteEdge
+	move.w	(sp)+, d0
 	bra	@SetupNewNoteValue
 
 ; ---------------------------------------------------------------------------

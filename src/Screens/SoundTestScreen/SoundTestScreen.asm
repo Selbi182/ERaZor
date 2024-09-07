@@ -62,6 +62,7 @@ SoundTestScreen:
 		dbf	d1, @loop
 
 	SoundTest_CreateObject #SoundTest_Obj_TrackSelector
+	SoundTest_CreateObject #SoundTest_Obj_Header
 	SoundTest_CreateObject #SoundTest_Obj_BGPaletteEffect
 	;SoundTest_CreateObject #SoundTest_Obj_DummyHL
 	jsr	SoundTest_CreateNoteEmitters
@@ -121,6 +122,8 @@ SoundTest_Exit:
 
 ; ---------------------------------------------------------------------------
 
+	include	"Screens/SoundTestScreen/Objects/Header.asm"
+
 	include	"Screens/SoundTestScreen/Objects/NoteEmitters.asm"
 
 	include	"Screens/SoundTestScreen/Objects/DummyHL.asm"
@@ -145,6 +148,9 @@ SoundTest_PLC_List:
 
 	dc.l	SoundTest_Font_KospM
 	dc.w	SoundTest_Font_VRAM
+
+	dc.l	ArtKospM_LevelSigns
+	dc.w	SoundTest_HeaderFont_VRAM
 
 	dc.w	-1
 

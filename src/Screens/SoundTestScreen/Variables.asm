@@ -23,6 +23,7 @@ SoundTest_Piano_VRAM:		rs.b	filesize("Screens/SoundTestScreen/Data/BasePiano_Til
 SoundTest_PianoOverlays_VRAM:	rs.b	filesize("Screens/SoundTestScreen/Data/BasePiano_KeyOverlays_Tiles.bin")
 SoundTest_BG_VRAM:		rs.b	filesize("Screens/SoundTestScreen/Data/BG2_Tiles.bin")
 SoundTest_Font_VRAM:		rs.b	filesize("Screens/SoundTestScreen/Data/Font.bin")
+SoundTest_HeaderFont_VRAM:	rs.b	filesize("artkosp/LevelSigns.unc")
 SoundTest_DummyHL_VRAM:		rs.b	4*4*$20
 	if __rs > $A000
 		infrom 2, "Out of VRAM for graphics!"

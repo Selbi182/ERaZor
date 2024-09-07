@@ -52,6 +52,13 @@ SoundTestScreen:
 	jsr	LoadPLC_Direct
 	jsr	PLC_ExecuteOnce_Direct
 
+	; ### Dummy Plane A fill
+	vram	SoundTest_PlaneA_VRAM, VDP_Ctrl
+	move.w	#$1000/2, d0
+	
+	@l:	move.w	#$8000, VDP_Data
+		dbf	d0, @l
+
 	; ### Dummy Highlight ####
 	vram	SoundTest_DummyHL_VRAM, VDP_Ctrl
 	move.l	#$EEEEEEEE, d0
@@ -61,10 +68,15 @@ SoundTestScreen:
 		move.l	d0, VDP_Data
 		dbf	d1, @loop
 
-	SoundTest_CreateObject #SoundTest_Obj_TrackSelector
+	SoundTest_CreateObject #SoundTest_Obj_TrackSelector ; a1
+	lea	(a1), a4; ###
+
 	SoundTest_CreateObject #SoundTest_Obj_Header
+
 	SoundTest_CreateObject #SoundTest_Obj_BGPaletteEffect
-	;SoundTest_CreateObject #SoundTest_Obj_DummyHL
+	move.w	a4, $34(a1) ; ###
+
+	SoundTest_CreateObject #SoundTest_Obj_DummyHL
 	jsr	SoundTest_CreateNoteEmitters
 
 	; Load/render Plane B
@@ -217,7 +229,7 @@ SoundTest_SetupVDP:
 	dc.w	$8004
 	dc.w	$8200|(SoundTest_PlaneB_VRAM/$400)	; Plane A address
 	dc.w	$8400|(SoundTest_PlaneA_VRAM/$2000)	; Plane B address
-	;dc.w	$8C81+8		; enable S&H (TODO: Fill Plane A with $8000)
+	dc.w	$8C81+8		; enable S&H (TODO: Fill Plane A with $8000)
 	dc.w	$9011		; set plane size to 64x64
 	dc.w	$8B02		; VScroll: full, HScroll: 1-tile
 	dc.w	$8710

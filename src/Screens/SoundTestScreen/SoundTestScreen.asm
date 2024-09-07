@@ -781,7 +781,7 @@ SoundTest_Palette:
 	; Line 1: Background (highlighted) + PSG piano key overlay
 	dc.w	$0000, $0e6e, $0e6c, $0cce, $0e6e, $0c4a, $0c6e, $0eae
 	;dc.w	$0cce, $00EE, $0EE2, $0EE8, $0EEC, $0EE2, $0882, $0442
-	dc.w	$0cce, $08EE, $0E2E, $0E8E, $0ECE, $0E2E, $0828, $0424
+	dc.w	$0cce, $008E, $0E2E, $0E8E, $0ECE, $0E2E, $0828, $0424
 
 	;dc.w	$0000, $0020, $0220, $0240, $0242, $0462, $0464, $0684
 	;dc.w	$0686, $08A6, $08A8, $0AC8, $0ACA, $0CEA, $0CEC, $0EEE

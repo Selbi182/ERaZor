@@ -124,30 +124,45 @@ SoundTest_Obj_NoteEmitter:
 	move.w	d0, obGfx(a0)
 
 	move.b	(@setup_data)+, obFrame(a0)
-	move.b	#2, obTimeFrame(a0)			; set delay for the initial "key on" frame
+	move.b	#3, obTimeFrame(a0)			; set delay for the initial "key on" frame
 	
 	move.b	(@setup_data)+, d0
 	add.w	obSTNoteType(a0), d0
 	move.b	d0, obSTPixelDataFrame(a0)
 
-*@ToRenderNote:
-	move.l	#@ObjRoutine_RenderNote, obCodePtr(a0)
-	bra	@RenderNoteEdge
+*@ToDisplayNote:
+	move.l	#@ObjRoutine_DisplayNote, obCodePtr(a0)
+	bsr	@RenderNoteEdge
+	bra.s	@Display
 
 ; ---------------------------------------------------------------------------
-@ObjRoutine_RenderNote:
+@ObjRoutine_DisplayNote:
 	; Switches from "key on" to "key held" frame when timer expires
 	subq.b	#1, obTimeFrame(a0)
-	bne.s	@RenderNote
+	bne.s	@DisplayNote
 	addq.b	#1, obFrame(a0)
-	move.l	#@RenderNote, obCodePtr(a0)
+	move.l	#@DisplayNote, obCodePtr(a0)
 
-@RenderNote:
+@DisplayNote:
 	movea.w	obSTNoteAddr(a0), @source_note
 	move.b	(@source_note), d0
 	cmp.b	obSTNoteValue(a0), d0			; has note value changed?
-	bne	@RenderNoteEdge_And_SetupNewNoteValue	; if yes, branch (TODO: Ignore `DisplaySprite`?)
+	bne	@DisplayNoteOff				; if yes, branch
 
+	bsr.s	@RenderNote
+
+@Display:
+	jmp	DisplaySprite
+
+@DisplayNoteOff:	; d0 = new note value
+	move.w	d0, -(sp)
+	bsr	@RenderNoteEdge
+	bsr	@MakeFadeoutSprite
+	move.w	(sp)+, d0
+	bra	@SetupNewNoteValue
+
+; ---------------------------------------------------------------------------
+@RenderNote:
 	moveq	#0, d0
 	move.b	obSTPixelDataFrame(a0), d0
 
@@ -158,22 +173,45 @@ SoundTest_Obj_NoteEmitter:
 	adda.w	(@pixel_data, d0), @pixel_data
 
 	SoundTest_AddWriteRequest obSTPixelDataX(a0), @pixel_data, a4
-
-	jmp	DisplaySprite
+	rts
 
 ; ---------------------------------------------------------------------------
 @RenderNoteEdge:
-	moveq	#2, d0
+	moveq	#2, d0			; use "note edge" frame modifier
 	add.b	obSTPixelDataFrame(a0), d0
 	bra	@RenderNote2
 
 ; ---------------------------------------------------------------------------
-@RenderNoteEdge_And_SetupNewNoteValue:
-	move.w	d0, -(sp)
-	addq.b	#1, obFrame(a0) 	; use fade out frame (TODO: generate a separate sprite)
-	bsr	@RenderNoteEdge
-	move.w	(sp)+, d0
-	bra	@SetupNewNoteValue
+@MakeFadeoutSprite:
+	SoundTest_CreateChildObject #@ObjRoutine_FadeoutSprite	; a1 = object
+
+	; Inherit all object properties
+	move.w	obGfx(a0), obGfx(a1)
+	move.l	obMap(a0), obMap(a1)
+	move.w	obX(a0), obX(a1)
+	move.w	obScreenY(a0), obScreenY(a1)
+
+	moveq	#-4, d0
+	and.b	obFrame(a0), d0
+	addq.b	#2, d0					; ensure frame is set to "Fade1"
+	move.b	d0, obFrame(a1)
+
+	move.b	obPriority(a0), d0
+	addq.b	#2, d0
+	move.b	d0, obPriority(a1)
+	rts
+
+; ---------------------------------------------------------------------------
+@ObjRoutine_FadeoutSprite:
+	add.b	#$100/4, obTimeFrame(a0)
+	bcc	@Display
+	addq.b	#1, obFrame(a0)
+	moveq	#3, d0
+	and.b	obFrame(a0), d0
+	bne	@Display
+	jmp	DeleteObject
+
+
 
 ; ---------------------------------------------------------------------------
 ; Pixel data for piano sheet

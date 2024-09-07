@@ -15,6 +15,24 @@ obST_MaxTrack	= $DF
 ; ---------------------------------------------------------------------------
 
 SoundTest_Obj_TrackSelector:
+
+	; Draw arrows upon init (these are static and won't be redrawn)
+	@char_to_tile:	equr	a1
+	@vdp_data:	equr	a5
+
+	if def(__DEBUG__) ; ints should be disabled when accessing VDP
+		move.w	sr, d0
+ 		assert.w d0, hs, #$2600
+	endif
+
+	lea	SoundTest_CharToTile(pc), @char_to_tile
+	lea	VDP_Data, @vdp_data
+	vram	SoundTest_PlaneA_VRAM+24*$80, VDP_Ctrl-VDP_Data(@vdp_data)
+	move.w	('<'-$20)*2(@char_to_tile), (@vdp_data)
+	vram	SoundTest_PlaneA_VRAM+24*$80+(4+30)*2, VDP_Ctrl-VDP_Data(@vdp_data)
+	move.w	('>'-$20)*2(@char_to_tile), (@vdp_data)
+
+	; Initialize object now
 	moveq	#$FFFFFF81, d0			; play initial music
 	jsr	PlaySound_Special
 	move.b	d0, obSTSelectedTrack(a0)	; set initial track
@@ -108,8 +126,8 @@ SoundTest_Obj_TrackSelector:
 
 	lea	SoundTest_DrawText, a4
 
-	SoundTest_DrawFormattedString a4, "< %<.b obSTSelectedTrack(a0)>:%<.l (a5) str> >", 35, #SoundTest_PlaneA_VRAM+24*$80
-	SoundTest_DrawFormattedString a4, "  %<.l 4(a5) str>", 48, #SoundTest_PlaneA_VRAM+26*$80
+	SoundTest_DrawFormattedString a4, "%<.b obSTSelectedTrack(a0)>: %<.l (a5) str>                        ", 28, #SoundTest_PlaneA_VRAM+24*$80+4
+	SoundTest_DrawFormattedString a4, "%<.l 4(a5) str>                                                    ", 52, #SoundTest_PlaneA_VRAM+26*$80+4
 
 	move.w	(sp)+, d7
 	move.l	(sp)+, a0

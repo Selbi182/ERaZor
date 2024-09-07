@@ -1,13 +1,12 @@
 
-; Generates a padded string with length definition
-@paddedString: macro *, string, padLen
+; Generates a string with length definition
+@str:	macro *, string, padLen
 \*:	dc.b	\string
 \*.len:	equ *-\*
-	dcb.b	\padLen-strlen(\string), ' '
 	dc.b	0
 	endm
 
-; Writes down a padded string pointer
+; Writes down a padded string pointer, includes string length in MSB
 @dcStr:	macro
 	rept narg
 		dc.l	((\1\.len)<<24) | (\1 & $FFFFFF)
@@ -17,40 +16,40 @@
 
 ; ---------------------------------------------------------------------------
 
-	; BGM
-	@dcStr	@Music81_Name, @Music81_Source
-	@dcStr	@Music82_Name, @Music82_Source
-	@dcStr	@Music83_Name, @Music83_Source
-	@dcStr	@Music84_Name, @Music84_Source
-	@dcStr	@Music85_Name, @Music85_Source
-	@dcStr	@Music86_Name, @Music86_Source
-	@dcStr	@Music87_Name, @Music87_Source
-	@dcStr	@Music88_Name, @Music88_Source
-	@dcStr	@Music89_Name, @Music89_Source
-	@dcStr	@Music8A_Name, @Music8A_Source
-	@dcStr	@Music8B_Name, @Music8B_Source
-	@dcStr	@Music8C_Name, @Music8C_Source
-	@dcStr	@Music8D_Name, @Music8D_Source
-	@dcStr	@Music8E_Name, @Music8E_Source
-	@dcStr	@Music8F_Name, @Music8F_Source
-	@dcStr	@Music90_Name, @Music90_Source
-	@dcStr	@Music91_Name, @Music91_Source
-	@dcStr	@Music92_Name, @Music92_Source
-	@dcStr	@Music93_Name, @Music93_Source
-	@dcStr	@Music94_Name, @Music94_Source
-	@dcStr	@Music95_Name, @Music95_Source
-	@dcStr	@Music96_Name, @Music96_Source
-	@dcStr	@Music97_Name, @Music97_Source
-	@dcStr	@Music98_Name, @Music98_Source
-	@dcStr	@Music99_Name, @Music99_Source
-	@dcStr	@Music9A_Name, @Music9A_Source
-	@dcStr	@Music9B_Name, @Music9B_Source
-	@dcStr	@Music9C_Name, @Music9C_Source
-	@dcStr	@Music9D_Name, @Music9D_Source
-	@dcStr	@Music9E_Name, @Music9E_Source
-	@dcStr	@Music9F_Name, @Music9F_Source
+	; BGM ($81..$9F)
+	@dcStr	@Music81_Name, @Music81_Source	; $81
+	@dcStr	@Music82_Name, @Music82_Source	; $82
+	@dcStr	@Music83_Name, @Music83_Source	; $83
+	@dcStr	@Music84_Name, @Music84_Source	; $84
+	@dcStr	@Music85_Name, @Music85_Source	; $85
+	@dcStr	@Music86_Name, @Music86_Source	; $86
+	@dcStr	@Music87_Name, @Music87_Source	; $87
+	@dcStr	@Music88_Name, @Music88_Source	; $88
+	@dcStr	@Music89_Name, @Music89_Source	; $89
+	@dcStr	@Music8A_Name, @Music8A_Source	; $8A
+	@dcStr	@Music8B_Name, @Music8B_Source	; $8B
+	@dcStr	@Music8C_Name, @Music8C_Source	; $8C
+	@dcStr	@Music8D_Name, @Music8D_Source	; $8D
+	@dcStr	@Music8E_Name, @Music8E_Source	; $8E
+	@dcStr	@Music8F_Name, @Music8F_Source	; $8F
+	@dcStr	@Music90_Name, @Music90_Source	; $90
+	@dcStr	@Music91_Name, @Music91_Source	; $91
+	@dcStr	@Music92_Name, @Music92_Source	; $92
+	@dcStr	@Music93_Name, @Music93_Source	; $93
+	@dcStr	@Music94_Name, @Music94_Source	; $94
+	@dcStr	@Music95_Name, @Music95_Source	; $95
+	@dcStr	@Music96_Name, @Music96_Source	; $96
+	@dcStr	@Music97_Name, @Music97_Source	; $97
+	@dcStr	@Music98_Name, @Music98_Source	; $98
+	@dcStr	@Music99_Name, @Music99_Source	; $99
+	@dcStr	@Music9A_Name, @Music9A_Source	; $9A
+	@dcStr	@Music9B_Name, @Music9B_Source	; $9B
+	@dcStr	@Music9C_Name, @Music9C_Source	; $9C
+	@dcStr	@Music9D_Name, @Music9D_Source	; $9D
+	@dcStr	@Music9E_Name, @Music9E_Source	; $9E
+	@dcStr	@Music9F_Name, @Music9F_Source	; $9F
 
-	; SFX
+	; SFX ($A0..$DF)
 	@dcStr	@Sound_Header, @SoundA0_Name	; $A0
 	@dcStr	@Sound_Header, @SoundA1_Name	; $A1
 	@dcStr	@Sound_Header, @SoundA2_Name	; $A2
@@ -117,170 +116,170 @@
 	@dcStr	@Sound_Header, @SoundDF_Name	; $DF
 
 ; ---------------------------------------------------------------------------
-@titlePadding: = 28
-@descPadding: = 52
+@titleMaxLen: = 28
+@descMaxLen: = 52
 
-@Music81_Name:		@paddedString 'NIGHT HILL PLACE', @titlePadding
-@Music81_Source:	@paddedString 'F1 POLE POSITION - HOCKENHEIM RING', @descPadding
+@Music81_Name:		@str 'NIGHT HILL PLACE', @titleMaxLen
+@Music81_Source:	@str 'F1 POLE POSITION - HOCKENHEIM RING', @descMaxLen
 
-@Music82_Name:		@paddedString 'LABYRINTHY PLACE', @titlePadding
-@Music82_Source:	@paddedString 'MEGA MAN 4 - DR. COSSACK STAGE 2', @descPadding
+@Music82_Name:		@str 'LABYRINTHY PLACE', @titleMaxLen
+@Music82_Source:	@str 'MEGA MAN 4 - DR. COSSACK STAGE 2', @descMaxLen
 
-@Music83_Name:		@paddedString 'RUINED PLACE', @titlePadding
-@Music83_Source:	@paddedString "ETERNAL CHAMPIONS - BLADE'S THEME", @descPadding
+@Music83_Name:		@str 'RUINED PLACE', @titleMaxLen
+@Music83_Source:	@str "ETERNAL CHAMPIONS - BLADE'S THEME", @descMaxLen
 
-@Music84_Name		@paddedString 'SCAR NIGHT PLACE', @titlePadding
-@Music84_Source:	@paddedString 'MEGA MAN IV - GB - TITLE SCREEN', @descPadding
+@Music84_Name		@str 'SCAR NIGHT PLACE', @titleMaxLen
+@Music84_Source:	@str 'MEGA MAN IV - GB - TITLE SCREEN', @descMaxLen
 
-@Music85_Name:		@paddedString 'UBERHUB PLACE', @titlePadding
-@Music85_Source:	@paddedString 'MEGA MAN 7 - FREEZE MAN STAGE', @descPadding
+@Music85_Name:		@str 'UBERHUB PLACE', @titleMaxLen
+@Music85_Source:	@str 'MEGA MAN 7 - FREEZE MAN STAGE', @descMaxLen
 
-@Music86_Name:		@paddedString 'GREEN HILL PLACE', @titlePadding
-@Music86_Source:	@paddedString 'MEGA MAN X - SPARK MANDRILL', @descPadding
+@Music86_Name:		@str 'GREEN HILL PLACE', @titleMaxLen
+@Music86_Source:	@str 'MEGA MAN X - SPARK MANDRILL', @descMaxLen
 
-@Music87_Name:		@paddedString 'TUTORIAL PLACE', @titlePadding
-@Music87_Source:	@paddedString 'NINJA GAIDEN - STAGE 4-2', @descPadding
+@Music87_Name:		@str 'TUTORIAL PLACE', @titleMaxLen
+@Music87_Source:	@str 'NINJA GAIDEN - STAGE 4-2', @descMaxLen
 
-@Music88_Name:		@paddedString 'SPECIAL STAGE CLEAR', @titlePadding
-@Music88_Source:	@paddedString "SONIC THE HEDGEHOG 1 - YEAH, IT'S THE SAME", @descPadding
+@Music88_Name:		@str 'SPECIAL STAGE CLEAR', @titleMaxLen
+@Music88_Source:	@str "SONIC THE HEDGEHOG 1 - YEAH, IT'S THE SAME", @descMaxLen
 
-@Music89_Name:		@paddedString 'SPECIAL PLACE', @titlePadding
-@Music89_Source:	@paddedString 'TECMO WRESTLING - HIDDEN TRACK', @descPadding
+@Music89_Name:		@str 'SPECIAL PLACE', @titleMaxLen
+@Music89_Source:	@str 'TECMO WRESTLING - HIDDEN TRACK', @descMaxLen
 
-@Music8A_Name:		@paddedString 'TITLE SCREEN', @titlePadding
-@Music8A_Source:	@paddedString 'SUPER STREET FIGHTER II TURBO - OPENING SEQUENCE', @descPadding
+@Music8A_Name:		@str 'TITLE SCREEN', @titleMaxLen
+@Music8A_Source:	@str 'SUPER STREET FIGHTER II TURBO - OPENING SEQUENCE', @descMaxLen
 
-@Music8B_Name:		@paddedString '=P MONITOR', @titlePadding
-@Music8B_Source:	@paddedString 'ORIGINAL VERSION OF SONIC ERAZOR FROM 2010', @descPadding
+@Music8B_Name:		@str '=P MONITOR', @titleMaxLen
+@Music8B_Source:	@str 'ORIGINAL VERSION OF SONIC ERAZOR FROM 2010', @descMaxLen
 
-@Music8C_Name:		@paddedString 'GREEN HILL PLACE BOSS', @titlePadding
-@Music8C_Source:	@paddedString 'SONIC ADVANCE 3 - BOSS', @descPadding
+@Music8C_Name:		@str 'GREEN HILL PLACE BOSS', @titleMaxLen
+@Music8C_Source:	@str 'SONIC ADVANCE 3 - BOSS', @descMaxLen
 
-@Music8D_Name:		@paddedString 'FINALOR PLACE', @titlePadding
-@Music8D_Source:	@paddedString 'PULSEMAN - SHUTDOWN', @descPadding
+@Music8D_Name:		@str 'FINALOR PLACE', @titleMaxLen
+@Music8D_Source:	@str 'PULSEMAN - SHUTDOWN', @descMaxLen
 
-@Music8E_Name:		@paddedString '...UNUSED...', @titlePadding
-@Music8E_Source:	@paddedString 'SONIC THE HEDGEHOG 1 - ACT CLEAR', @descPadding
+@Music8E_Name:		@str '...UNUSED...', @titleMaxLen
+@Music8E_Source:	@str 'SONIC THE HEDGEHOG 1 - ACT CLEAR', @descMaxLen
 
-@Music8F_Name:		@paddedString '...ALSO UNUSED...', @titlePadding
-@Music8F_Source:	@paddedString 'SONIC THE HEDGEHOG 1 - GAME OVER', @descPadding
+@Music8F_Name:		@str '...ALSO UNUSED...', @titleMaxLen
+@Music8F_Source:	@str 'SONIC THE HEDGEHOG 1 - GAME OVER', @descMaxLen
 
-@Music90_Name:		@paddedString 'THE GREAT ESCAPE', @titlePadding
-@Music90_Source:	@paddedString 'MEGA MAN X3 - OPENING STAGE', @descPadding
+@Music90_Name:		@str 'THE GREAT ESCAPE', @titleMaxLen
+@Music90_Source:	@str 'MEGA MAN X3 - OPENING STAGE', @descMaxLen
 
-@Music91_Name:		@paddedString 'INVINCIBILITY', @titlePadding
-@Music91_Source:	@paddedString 'DANGEROUS SEED - ENDING THEME', @descPadding
+@Music91_Name:		@str 'INVINCIBILITY', @titleMaxLen
+@Music91_Source:	@str 'DANGEROUS SEED - ENDING THEME', @descMaxLen
 
-@Music92_Name:		@paddedString 'FUN IN LABYRINTHY PLACE', @titlePadding
-@Music92_Source:	@paddedString 'SONIC THE HEDGEHOG 1 - DROWN', @descPadding
+@Music92_Name:		@str 'FUN IN LABYRINTHY PLACE', @titleMaxLen
+@Music92_Source:	@str 'SONIC THE HEDGEHOG 1 - DROWN', @descMaxLen
 
-@Music93_Name:		@paddedString '...YUP, UNUSED...', @titlePadding
-@Music93_Source:	@paddedString 'SONIC THE HEDGEHOG 1 - 1-UP JINGLE', @descPadding
+@Music93_Name:		@str '...YUP, UNUSED...', @titleMaxLen
+@Music93_Source:	@str 'SONIC THE HEDGEHOG 1 - 1-UP JINGLE', @descMaxLen
 
-@Music94_Name:		@paddedString 'GREEN HILL ZO... PLACE', @titlePadding
-@Music94_Source:	@paddedString 'SONIC THE HEDGEHOG 1 - GREEN HILL ZONE', @descPadding
+@Music94_Name:		@str 'GREEN HILL ZO... PLACE', @titleMaxLen
+@Music94_Source:	@str 'SONIC THE HEDGEHOG 1 - GREEN HILL ZONE', @descMaxLen
 
-@Music95_Name:		@paddedString 'INTRO CUTSCENE', @titlePadding
-@Music95_Source:	@paddedString 'STREET FIGHTER II - KEN''S THEME', @descPadding
+@Music95_Name:		@str 'INTRO CUTSCENE', @titleMaxLen
+@Music95_Source:	@str 'STREET FIGHTER II - KEN''S THEME', @descMaxLen
 
-@Music96_Name:		@paddedString 'STAR AGONY PLACE', @titlePadding
-@Music96_Source:	@paddedString 'THUNDER FORCE III - STAGE 7: ORN BASE', @descPadding
+@Music96_Name:		@str 'STAR AGONY PLACE', @titleMaxLen
+@Music96_Source:	@str 'THUNDER FORCE III - STAGE 7: ORN BASE', @descMaxLen
 
-@Music97_Name:		@paddedString 'CREDITS', @titlePadding
-@Music97_Source:	@paddedString 'GUNDAM WING: ENDLESS DUEL - OPENING / RHYTHM EMOTION', @descPadding
+@Music97_Name:		@str 'CREDITS', @titleMaxLen
+@Music97_Source:	@str 'GUNDAM WING: ENDLESS DUEL - OPENING / RHYTHM EMOTION', @descMaxLen
 
-@Music98_Name:		@paddedString 'CRABMEAT BOSS', @titlePadding
-@Music98_Source:	@paddedString 'SONIC ADVANCE 3 - BOSS', @descPadding
+@Music98_Name:		@str 'CRABMEAT BOSS', @titleMaxLen
+@Music98_Source:	@str 'SONIC ADVANCE 3 - BOSS', @descMaxLen
 
-@Music99_Name:		@paddedString 'TUTORIAL INTRODUCTION', @titlePadding
-@Music99_Source:	@paddedString 'MEGA MAN 5 - DARK MAN/PROTO MAN STAGES', @descPadding
+@Music99_Name:		@str 'TUTORIAL INTRODUCTION', @titleMaxLen
+@Music99_Source:	@str 'MEGA MAN 5 - DARK MAN/PROTO MAN STAGES', @descMaxLen
 
-@Music9A_Name:		@paddedString 'UNREAL PLACE', @titlePadding
-@Music9A_Source:	@paddedString 'SHINOBI III - WHIRLWIND', @descPadding
+@Music9A_Name:		@str 'UNREAL PLACE', @titleMaxLen
+@Music9A_Source:	@str 'SHINOBI III - WHIRLWIND', @descMaxLen
 
-@Music9B_Name:		@paddedString 'WALKING BOMB BOSS', @titlePadding
-@Music9B_Source:	@paddedString 'SONIC ADVANCE 3 - BOSS - PINCH', @descPadding
+@Music9B_Name:		@str 'WALKING BOMB BOSS', @titleMaxLen
+@Music9B_Source:	@str 'SONIC ADVANCE 3 - BOSS - PINCH', @descMaxLen
 
-@Music9C_Name:		@paddedString '??? UNUSED ???', @titlePadding ; Blackout Challenge
-@Music9C_Source:	@paddedString 'PULSEMAN - SHUTDOWN - DARK REMIX', @descPadding
+@Music9C_Name:		@str '??? UNUSED ???', @titleMaxLen ; Blackout Challenge
+@Music9C_Source:	@str 'PULSEMAN - SHUTDOWN - DARK REMIX', @descMaxLen
 
-@Music9D_Name:		@paddedString 'ENDING SEQUENCE', @titlePadding
-@Music9D_Source:	@paddedString 'ZILLION PUSH - PUSH!', @descPadding
+@Music9D_Name:		@str 'ENDING SEQUENCE', @titleMaxLen
+@Music9D_Source:	@str 'ZILLION PUSH - PUSH!', @descMaxLen
 
-@Music9E_Name:		@paddedString 'FINAL BOSS', @titlePadding
-@Music9E_Source:	@paddedString 'SONIC THE HEDGEHOG 3 - FINAL BOSS... TOO', @descPadding
+@Music9E_Name:		@str 'FINAL BOSS', @titleMaxLen
+@Music9E_Source:	@str 'SONIC THE HEDGEHOG 3 - FINAL BOSS... TOO', @descMaxLen
 
-@Music9F_Name:		@paddedString 'INHUMAN MODE', @titlePadding
-@Music9F_Source:	@paddedString 'MEGA MAN ZERO 4 - STRAIGHT AHEAD', @descPadding
+@Music9F_Name:		@str 'INHUMAN MODE', @titleMaxLen
+@Music9F_Source:	@str 'MEGA MAN ZERO 4 - STRAIGHT AHEAD', @descMaxLen
 
 ; ---------------------------------------------------------------------------
 
-@Sound_Header:		@paddedString '-SFX-', @titlePadding	
-@Sound_NoSource:	@paddedString ' ', @descPadding
+@Sound_Header:		@str '-SFX-', @titleMaxLen	
+@Sound_NoSource:	@str ' ', @descMaxLen
 
-@SoundA0_Name:		@paddedString 'YOU JUMPED', @descPadding
-@SoundA1_Name:		@paddedString 'YOU TOUCHED A CHECKPOINT', @descPadding
-@SoundA2_Name:		@paddedString "THE SOUND OF... I DON'T KNOW", @descPadding
-@SoundA3_Name:		@paddedString 'YOU ARE DEAD', @descPadding
-@SoundA4_Name:		@paddedString 'YOU STOPPED', @descPadding
-@SoundA5_Name:		@paddedString 'A FIREBALL WAS SPAT, I GUESS?', @descPadding
-@SoundA6_Name:		@paddedString 'IMPALED WITH EXTREME PREJUDICE', @descPadding
-@SoundA7_Name:		@paddedString 'YOU ARE PUSHING A ROCK', @descPadding
-@SoundA8_Name:		@paddedString 'YOU ARE GETTING WARPED', @descPadding
-@SoundA9_Name:		@paddedString 'THE BEST SOUND IN THE GAME', @descPadding
-@SoundAA_Name:		@paddedString 'YOU ARE ENTERING WATER', @descPadding
-@SoundAB_Name:		@paddedString 'NO IDEA WHAT THIS IS EITHER', @descPadding
-@SoundAC_Name:		@paddedString 'EXPLOSIONS.', @descPadding
-@SoundAD_Name:		@paddedString 'YOU GOT AIR', @descPadding
-@SoundAE_Name:		@paddedString 'A FIREBALL WAS SPAT... AGAIN', @descPadding
-@SoundAF_Name:		@paddedString 'YOU GOT A SHIELD', @descPadding
-@SoundB0_Name:		@paddedString 'YOU ENTERED HELL', @descPadding
-@SoundB1_Name:		@paddedString "BZZZZ", @descPadding
-@SoundB2_Name:		@paddedString 'LEARN HOW TO SWIM DUMMY', @descPadding
-@SoundB3_Name:		@paddedString "HOW MANY DAMN FIREBALL SOUNDS ARE IN THIS GAME?!", @descPadding
-@SoundB4_Name:		@paddedString 'YOU HIT A BUMPER', @descPadding
-@SoundB5_Name:		@paddedString 'YOU GOT A RING', @descPadding
-@SoundB6_Name:		@paddedString 'SPIKES HAVE MOVED', @descPadding
-@SoundB7_Name:		@paddedString 'I WISH TERRAFORMING WAS REAL', @descPadding
-@SoundB8_Name:		@paddedString 'SPIKES HAVE MOVED... AGAIN', @descPadding
-@SoundB9_Name:		@paddedString 'YOU BROKE SOMETHING BIG TIME', @descPadding
-@SoundBA_Name:		@paddedString 'YOU TOUCHED GRA- I MEAN GLASS', @descPadding
-@SoundBB_Name:		@paddedString 'A FLAPPY DOOR HAS OPENED', @descPadding
-@SoundBC_Name:		@paddedString 'YOU DASHED', @descPadding
-@SoundBD_Name:		@paddedString 'A STOMPER HAS STOMPED', @descPadding
-@SoundBE_Name:		@paddedString 'YOU ARE SPINNING', @descPadding
-@SoundBF_Name:		@paddedString 'YOU WISH THIS SOUND WAS ACTUALLY IN THE GAME', @descPadding
-@SoundC0_Name:		@paddedString 'A BAT IS TAKING TO THE SKIES', @descPadding
-@SoundC1_Name:		@paddedString 'EXPLOSIONS.', @descPadding
-@SoundC2_Name:		@paddedString 'YOU SHOULD GO OUTSIDE', @descPadding
-@SoundC3_Name:		@paddedString 'I WISH TELEPORTATION WAS REAL', @descPadding
-@SoundC4_Name:		@paddedString 'EXPLOSIONS.', @descPadding
-@SoundC5_Name:		@paddedString 'THE SOUND THAT PLAYS WHEN YOUR CRUSH SAYS YES', @descPadding
-@SoundC6_Name:		@paddedString 'YOU SUCK', @descPadding
-@SoundC7_Name:		@paddedString "CHAINY THING GOIN' UP", @descPadding
-@SoundC8_Name:		@paddedString "ROCKET THING GOIN' UP / ANOTHER FIREBALL SOUND", @descPadding
-@SoundC9_Name:		@paddedString 'JUST ONE MORE, COME ON...', @descPadding
-@SoundCA_Name:		@paddedString 'YOU ENTERED A SPECIAL STAGE', @descPadding
-@SoundCB_Name:		@paddedString 'EXPLOSIONS.', @descPadding
-@SoundCC_Name:		@paddedString 'YOU TOUCHED A SPRING', @descPadding
-@SoundCD_Name:		@paddedString 'YOU PRESSED A BUTTON', @descPadding
-@SoundCE_Name:		@paddedString 'YOU GOT ANOTHER RING', @descPadding
-@SoundCF_Name:		@paddedString 'YOU BEAT A LEVEL, HOORAY', @descPadding
-@SoundD0_Name:		@paddedString 'YOU DREAM OF THE BEACH', @descPadding
-@SoundD1_Name:		@paddedString 'YOU ARE ABOUT TO GO NYOOM', @descPadding
-@SoundD2_Name:		@paddedString 'YOU ARE ABOUT TO GO REALLY NYOOM', @descPadding
-@SoundD3_Name:		@paddedString 'YOU WENT REALLY NYOOM', @descPadding
-@SoundD4_Name:		@paddedString 'LITERALLY NOTHING', @descPadding
-@SoundD5_Name:		@paddedString 'THE SOUND OF SILENCE', @descPadding
-@SoundD6_Name:		@paddedString 'STILL NOTHING', @descPadding
-@SoundD7_Name:		@paddedString 'PATHETIC EXPLOSION', @descPadding
-@SoundD8_Name:		@paddedString 'MENU SELECTION', @descPadding
-@SoundD9_Name:		@paddedString 'OPTION CONFIRMED', @descPadding
-@SoundDA_Name:		@paddedString 'OPTION DENIED', @descPadding
-@SoundDB_Name:		@paddedString 'REALLY HECKING BIG EXPLOSION', @descPadding
-@SoundDC_Name:		@paddedString 'NUH UH', @descPadding
-@SoundDD_Name:		@paddedString 'PROBABLY A NUKE GOING OFF', @descPadding
-@SoundDE_Name:		@paddedString 'HOW HIGH IN THE SKY CAN YOU FLY?', @descPadding
-@SoundDF_Name:		@paddedString 'AW MAN YOU BROKE IT', @descPadding
+@SoundA0_Name:		@str 'YOU JUMPED', @descMaxLen
+@SoundA1_Name:		@str 'YOU TOUCHED A CHECKPOINT', @descMaxLen
+@SoundA2_Name:		@str "THE SOUND OF... I DON'T KNOW", @descMaxLen
+@SoundA3_Name:		@str 'YOU ARE DEAD', @descMaxLen
+@SoundA4_Name:		@str 'YOU STOPPED', @descMaxLen
+@SoundA5_Name:		@str 'A FIREBALL WAS SPAT, I GUESS?', @descMaxLen
+@SoundA6_Name:		@str 'IMPALED WITH EXTREME PREJUDICE', @descMaxLen
+@SoundA7_Name:		@str 'YOU ARE PUSHING A ROCK', @descMaxLen
+@SoundA8_Name:		@str 'YOU ARE GETTING WARPED', @descMaxLen
+@SoundA9_Name:		@str 'THE BEST SOUND IN THE GAME', @descMaxLen
+@SoundAA_Name:		@str 'YOU ARE ENTERING WATER', @descMaxLen
+@SoundAB_Name:		@str 'NO IDEA WHAT THIS IS EITHER', @descMaxLen
+@SoundAC_Name:		@str 'EXPLOSIONS.', @descMaxLen
+@SoundAD_Name:		@str 'YOU GOT AIR', @descMaxLen
+@SoundAE_Name:		@str 'A FIREBALL WAS SPAT... AGAIN', @descMaxLen
+@SoundAF_Name:		@str 'YOU GOT A SHIELD', @descMaxLen
+@SoundB0_Name:		@str 'YOU ENTERED HELL', @descMaxLen
+@SoundB1_Name:		@str "BZZZZ", @descMaxLen
+@SoundB2_Name:		@str 'LEARN HOW TO SWIM DUMMY', @descMaxLen
+@SoundB3_Name:		@str "HOW MANY DAMN FIREBALL SOUNDS ARE IN THIS GAME?!", @descMaxLen
+@SoundB4_Name:		@str 'YOU HIT A BUMPER', @descMaxLen
+@SoundB5_Name:		@str 'YOU GOT A RING', @descMaxLen
+@SoundB6_Name:		@str 'SPIKES HAVE MOVED', @descMaxLen
+@SoundB7_Name:		@str 'I WISH TERRAFORMING WAS REAL', @descMaxLen
+@SoundB8_Name:		@str 'SPIKES HAVE MOVED... AGAIN', @descMaxLen
+@SoundB9_Name:		@str 'YOU BROKE SOMETHING BIG TIME', @descMaxLen
+@SoundBA_Name:		@str 'YOU TOUCHED GRA- I MEAN GLASS', @descMaxLen
+@SoundBB_Name:		@str 'A FLAPPY DOOR HAS OPENED', @descMaxLen
+@SoundBC_Name:		@str 'YOU DASHED', @descMaxLen
+@SoundBD_Name:		@str 'A STOMPER HAS STOMPED', @descMaxLen
+@SoundBE_Name:		@str 'YOU ARE SPINNING', @descMaxLen
+@SoundBF_Name:		@str 'YOU WISH THIS SOUND WAS ACTUALLY IN THE GAME', @descMaxLen
+@SoundC0_Name:		@str 'A BAT IS TAKING TO THE SKIES', @descMaxLen
+@SoundC1_Name:		@str 'EXPLOSIONS.', @descMaxLen
+@SoundC2_Name:		@str 'YOU SHOULD GO OUTSIDE', @descMaxLen
+@SoundC3_Name:		@str 'I WISH TELEPORTATION WAS REAL', @descMaxLen
+@SoundC4_Name:		@str 'EXPLOSIONS.', @descMaxLen
+@SoundC5_Name:		@str 'THE SOUND THAT PLAYS WHEN YOUR CRUSH SAYS YES', @descMaxLen
+@SoundC6_Name:		@str 'YOU SUCK', @descMaxLen
+@SoundC7_Name:		@str "CHAINY THING GOIN' UP", @descMaxLen
+@SoundC8_Name:		@str "ROCKET THING GOIN' UP / ANOTHER FIREBALL SOUND", @descMaxLen
+@SoundC9_Name:		@str 'JUST ONE MORE, COME ON...', @descMaxLen
+@SoundCA_Name:		@str 'YOU ENTERED A SPECIAL STAGE', @descMaxLen
+@SoundCB_Name:		@str 'EXPLOSIONS.', @descMaxLen
+@SoundCC_Name:		@str 'YOU TOUCHED A SPRING', @descMaxLen
+@SoundCD_Name:		@str 'YOU PRESSED A BUTTON', @descMaxLen
+@SoundCE_Name:		@str 'YOU GOT ANOTHER RING', @descMaxLen
+@SoundCF_Name:		@str 'YOU BEAT A LEVEL, HOORAY', @descMaxLen
+@SoundD0_Name:		@str 'YOU DREAM OF THE BEACH', @descMaxLen
+@SoundD1_Name:		@str 'YOU ARE ABOUT TO GO NYOOM', @descMaxLen
+@SoundD2_Name:		@str 'YOU ARE ABOUT TO GO REALLY NYOOM', @descMaxLen
+@SoundD3_Name:		@str 'YOU WENT REALLY NYOOM', @descMaxLen
+@SoundD4_Name:		@str 'LITERALLY NOTHING', @descMaxLen
+@SoundD5_Name:		@str 'THE SOUND OF SILENCE', @descMaxLen
+@SoundD6_Name:		@str 'STILL NOTHING', @descMaxLen
+@SoundD7_Name:		@str 'PATHETIC EXPLOSION', @descMaxLen
+@SoundD8_Name:		@str 'MENU SELECTION', @descMaxLen
+@SoundD9_Name:		@str 'OPTION CONFIRMED', @descMaxLen
+@SoundDA_Name:		@str 'OPTION DENIED', @descMaxLen
+@SoundDB_Name:		@str 'REALLY HECKING BIG EXPLOSION', @descMaxLen
+@SoundDC_Name:		@str 'NUH UH', @descMaxLen
+@SoundDD_Name:		@str 'PROBABLY A NUKE GOING OFF', @descMaxLen
+@SoundDE_Name:		@str 'HOW HIGH IN THE SKY CAN YOU FLY?', @descMaxLen
+@SoundDF_Name:		@str 'AW MAN YOU BROKE IT', @descMaxLen
 
 	even

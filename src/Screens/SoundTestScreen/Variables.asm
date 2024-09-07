@@ -9,7 +9,7 @@ SoundTest_Visualizer_Height:		equ	16	; tiles
 SoundTest_Visualizer_NumOctaves:	equ	7
 SoundTest_Visualizer_MaxWriteRequests:	equ	SoundTest_Visualizer_NumOctaves*12+2
 
-SoundTest_StringBufferSize:	equ	48+1
+SoundTest_StringBufferSize:	equ	52+1
 
 	if SoundTest_Visualizer_Height % 16
 		inform 2, "SoundTest_Visualizer_Height must be multiple of 16" ; because it wraps around a 32x64 plane

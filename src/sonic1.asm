@@ -20439,11 +20439,14 @@ Obj50_Main:				; XREF: Obj50_Index
 		move.b	#$11,obHeight(a0)
 		move.b	#8,obWidth(a0)
 		move.b	#$CC,obColType(a0)
-	;	bsr	ObjectFall
-	;	jsr	ObjHitFloor
-	;	tst.w	d1
-	;	bpl.s	locret_F89E
-	;	add.w	d1,obY(a0)	; match	object's position with the floor
+
+		move.w	obX(a0),$32(a0)		; remember origin X pos for finer offscreen check
+
+		bsr	ObjectFall
+		jsr	ObjHitFloor
+		tst.w	d1
+		bpl.s	locret_F89E
+		add.w	d1,obY(a0)	; match	object's position with the floor
 		move.w	#0,obVelY(a0)
 		addq.b	#2,obRoutine(a0)
 		bchg	#0,obStatus(a0)
@@ -20459,7 +20462,17 @@ Obj50_Action:				; XREF: Obj50_Index
 		jsr	obj50_Index2(pc,d1.w)
 		lea	(Ani_obj50).l,a1
 		bsr	AnimateSprite
-		bra.w	MarkObjGone
+
+	;	bra.w	MarkObjGone
+		move.w	$32(a0),d0
+		andi.w	#$FF80,d0
+		move.w	($FFFFF700).w,d1
+		subi.w	#$80,d1
+		andi.w	#$FF80,d1
+		sub.w	d1,d0
+		cmpi.w	#$280,d0
+		bhi.w	Mark_ChkGone
+		bra.w	DisplaySprite
 ; ===========================================================================
 Obj50_Index2:	dc.w Obj50_Move-Obj50_Index2
 		dc.w Obj50_FixToFloor-Obj50_Index2
@@ -20499,7 +20512,7 @@ Obj50_NotInhumanCrush:
 		blt.s	Obj50_Pause
 		cmpi.w	#$C,d1
 		bge.s	Obj50_Pause
-	;	add.w	d1,obY(a0)	; match	object's position to the floor
+		add.w	d1,obY(a0)	; match	object's position to the floor
 		jsr	obj50_ChkWall
 		bne.s	Obj50_Pause
 		rts	

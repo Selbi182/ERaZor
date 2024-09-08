@@ -1,19 +1,16 @@
 [CENTER][B][SIZE=7]Sonic ERaZor 7[/SIZE][/B]
-or, [I]Sonic ERaZor – Seventh Public Release[/I], if you prefer it old-school
+(or, [I]Sonic ERaZor – Seventh Public Release[/I], if you prefer it old-school)
 
-[IMG]https://i.imgur.com/QZNgYUA.png[/IMG] [IMG]https://i.imgur.com/QZNgYUA.png[/IMG] [IMG]https://i.imgur.com/QZNgYUA.png[/IMG]
-[IMG]https://i.imgur.com/QZNgYUA.png[/IMG] [IMG]https://i.imgur.com/QZNgYUA.png[/IMG] [IMG]https://i.imgur.com/QZNgYUA.png[/IMG]
-[IMG]https://i.imgur.com/QZNgYUA.png[/IMG] [IMG]https://i.imgur.com/QZNgYUA.png[/IMG] [IMG]https://i.imgur.com/QZNgYUA.png[/IMG]
+[MEDIA=youtube]mPfPq7GdOK4[/MEDIA]
 
+This is a complete overhaul of the classic, chaotic, explosion-filled [I]Sonic the Hedgehog (16-bit) [/I]ROM hack, and it marks the first new release since 2016! Work on this update began in October 2023, and it took a full ten months to see its completion. Besides adding new stuff and fixing bugs, improving a ton about the poorly aged game design was just as important: if something wasn't fun, it got mercilessly rethought and reworked, or just straight up rewritten from scratch – with a few deliberate exceptions for nostalgia's sake.
+In a way, this update was like finishing a beta after almost a decade.
 
-[URL='http://selbi.hapisan.com/erazor'][B][SIZE=6]DOWNLOAD HERE![/SIZE][/B][/URL][/CENTER]
-
-
-[CENTER]This is a complete overhaul of the classic, chaotic, explosion-filled [I]Sonic the Hedgehog (16-bit) [/I]ROM hack, and it marks the first new release since 2016! Work on this update began in October 2023, and it took a full ten months to see its completion. Besides adding new stuff and fixing bugs, improving a ton about the poorly aged game design was just as important: if something wasn't fun, it got mercilessly rethought and reworked, or just straight up rewritten from scratch – with a few deliberate exceptions for nostalgia's sake. In a way, this update was like finishing an early-access game after almost a decade.
+[URL='http://selbi.hapisan.com/erazor'][B][SIZE=8]Download[/SIZE][/B][/URL]
 
 [I]If you aren't familiar with ERaZor yet, I suggest you take a brief look at [URL='https://info.sonicretro.org/Sonic_ERaZor']the wiki page[/URL] first.[/I]
 
-[SPOILER='Backstory (aka. blame RHS)']Stop me if you've heard this one before: "Final version of Sonic ERaZor." Yeah, we're beating that dead horse once again, though this time it's at least been a while – 8 years since the last release, to be precise. Don't get me wrong, I really do mean I originally had no plans to work on it again. Hell, [URL='https://forums.sonicretro.org/index.php?threads/sonic-erazor-source-code-and-everything-else.41682/']I even made the source code public[/URL]. But then something happened – that's right, [URL='https://www.youtube.com/watch?v=MaIDlHM3qC4']redhotsonic happened[/URL]. While I did spot the odd bug or design quirk here and there over the past few years already, it was his video – specifically the showcase of a massive, unavoidable hard crash if the game ran without SRAM – that finally made me break my oath. So, uh, thanks? :v:
+[SPOILER='Backstory (blame redhotsonic)']Stop me if you've heard this one before: "Final version of Sonic ERaZor." Yeah, we're beating that dead horse once again, though this time it's at least been a while – 8 years since the last release, to be precise. Don't get me wrong, I really do mean I originally had no plans to work on it again. Hell, [URL='https://forums.sonicretro.org/index.php?threads/sonic-erazor-source-code-and-everything-else.41682/']I even made the source code public[/URL]. But then something happened – that's right, [URL='https://www.youtube.com/watch?v=MaIDlHM3qC4']redhotsonic happened[/URL]. While I did spot the odd bug or design quirk here and there over the past few years already, it was his video – specifically the showcase of a massive, unavoidable hard crash if the game ran without SRAM – that finally made me break my oath. So, uh, thanks? :V
 
 But after almost a decade of silence, I didn't want to release a new version only containing a single bugfix. One thing led to another, and suddenly this revival grew into its own beast. A lovely beast, though; I haven't been this excited about anything tech-related in actual ages. It is genuinely a great feeling to look at the clock and see it's already 3 a.m. because I got so lost in the zone while working on something I'm passionate about. I missed that feeling. If there's anything you might want to take away from this sappy ramble, it's this: don't worry about dusting off the ol' reliable. If working on it makes you happy, that's all that matters.
 
@@ -25,20 +22,23 @@ Originally, I wanted to post the full changelog here. But, uh... it's easier to 
 [LIST]
 [*]Introduced Casual/Frantic Mode [I](see below for more info, it's a big one)[/I]
 [*]Reworked. Every. Single. Level. Some more and some less, but all in some significant way. For the most part it was to reduce awkwardness, but there's also a ton of new cool content. I won't spoil anything though~
-[*]Added fancy new and improved cinematic Black Bars! In fact, they are so fancy they behave differently between emulators and real hardware, so it also comes with a custom configuration screen.
+[*]Massive engine overhauls courtesy of vladikcomper, including the implementation of his amazing MegaPCM 2 sound driver (along with a fancy Sound Test screen)!
+[*]Added fancy new and improved cinematic Black Bars! [I]So[/I] fancy, in fact, that they are so fancy they behave differently between emulators and real hardware, so it also comes with a custom configuration screen.
 [*]Speaking of real hardware... full compatibility with real hardware! [URL='https://www.youtube.com/watch?v=nGBZvsZhtfA']Yes, even without SRAM[/URL] :V
-[*]Massive engine overhauls courtesy of vladikcomper, including the implementation of his amazing MegaPCM 2 sound driver!
 [*]Rewrote every single custom screen mode from scratch (most notably, the story text screen – boy, that code was a mess).
 [*]Oh yeah, regarding stories: everything text-related received a total rewrite. English hard.
 [*]Completely overhauled Uberhub Place to hopefully feel more engaging now. But if it still isn't your thing...
 [*]Added "Skip Uberhub Place" and "Skip Story Screens" options, for that authentic playthrough-in-one-sitting-without-interruptions experience (inspired by "Straight Version", for those who remember).
 [*]Added "Photosensitive Mode" option to turn off all flashy lights and camera shakes. Furthermore, the intensity of flashy lights has been reduced a lot in general – no more epilepsy warning necessary, dear YouTubers.
-[*]Added a new unlockable option at the end of the base game and heavily polished up the other one as well.
+[*]Added two new unlockable options and greatly overhauled the existing one, all in an effort to loosely connect them to the ERZ letters from the game's name.
 [*]Added/reworked tons of easter eggs! Which means I can't tell you anything about them...
 [*]And in general, just a plethora of bug fixes and general quality-of-life improvements!
 [/LIST]
 
 [B][SIZE=6]Casual/Frantic Mode[/SIZE][/B]
+
+[IMG]https://i.imgur.com/t8Fug2t.png[/IMG]
+
 In a nutshell, this is a difficulty selection screen, though quite a bit more involved than just the traditional "easy/hard". In fact, it might just be the single largest feature addition to ERaZor since... ever. It made the game much more accessible while also kinda giving it New Game+ on top. To understand what it's for, you need to understand why it was introduced in the first place.
 
 See, my attempts at balancing ERaZor have always been a never-ending tug-of-war – too hard scared off the casual players, too easy bored the seasoned ones. But one day I realized something: the main culprit for many people seems to be [I]pressure[/I]. A challenge doesn't even need to be hard, something like the ring counter starting to tick down on its own was already enough for many players to feel overwhelmed.
@@ -59,7 +59,6 @@ And while death might feel like an ever-present threat, there are some interesti
 [/LIST]
 Casual is the new baseline difficulty and is recommended for new players, but this is explicitely not a requirement: do you want to take your time or do you want to be constantly pushed forward? The choice is no longer mine, it's yours!
 
-
 [SIZE=6][B]Credits[/B][/SIZE]
 I want to give my most sincere appreciation to everyone in the ERaZor 7 squad and everyone else who helped along the way! Without you guys, this update would've been impossible to complete:
 [LIST]
@@ -74,3 +73,8 @@ I want to give my most sincere appreciation to everyone in the ERaZor 7 squad an
 [*][B]Give[/B], [B]Craze[/B], and [B]DeltaW[/B]: Additional one-time playtesting to get input from fresh perspectives.
 [/LIST]
 And a special bonus shout-out to [B]amphobius[/B] aka. [I]DalekSam[/I]! While we lost contact years ago, his amazing music ports are the DNA of ERaZor to this day. It wouldn't be the same game without him!
+
+[SIZE=6][B]Screenshots[/B][/SIZE]
+Do note that these deliberately avoid spoilers, so don't be fooled by thinking they tell you the full story. You have to play the game yourself!
+
+[IMG]https://i.imgur.com/fWSKCGQ.png[/IMG] [IMG]https://i.imgur.com/UJo1i07.png[/IMG] [IMG]https://i.imgur.com/92Ci2VP.png[/IMG] [IMG]https://i.imgur.com/w3YDAv0.png[/IMG] [IMG]https://i.imgur.com/1D80MQO.png[/IMG] [IMG]https://i.imgur.com/07R6KEe.png[/IMG] [IMG]https://i.imgur.com/QFIrom6.png[/IMG] [IMG]https://i.imgur.com/qqtalSZ.png[/IMG] [IMG]https://i.imgur.com/lvxx63k.png[/IMG] [IMG]https://i.imgur.com/0C76EzQ.png[/IMG] [IMG]https://i.imgur.com/Ji2GAAc.png[/IMG] [IMG]https://i.imgur.com/GqBGNe7.png[/IMG]

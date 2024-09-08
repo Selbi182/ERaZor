@@ -1,55 +1,68 @@
 
 SoundTest_Obj_DummyHL:
-	move.b	#0, 1(a0)
-	move.w	#(SoundTest_DummyHL_VRAM/$20)|$6000, 2(a0)
-	move.l	#@Map, 4(a0)
-	move.w	#$80+3*8-4+$80, 8(a0)
-	move.b	#1, obPriority(a0)
-	move.w	#$80+5*8-8, $A(a0)
-	move.l	#@Main, $3C(a0)
+	SoundTest_CreateChildObject #@Init	; generate secondary sprite (becase we can't cover more than 256 pixels)
+	move.w	#$80+3*8-4+$80, obX(a0)
+	move.w	#$80+3*8-4+$80+$80, obX(a1)
+	move.b	#1, obFrame(a1)
 
-@Main:	
+@Init:
+	move.w	#(SoundTest_DummyHL_VRAM/$20)|$6000, obGfx(a0)
+	move.l	#@SpriteMappings, obMap(a0)
+	move.b	#0, obPriority(a0)
+	move.w	#$80+5*8-8, obScreenY(a0)
+	move.l	#@Display, obCodePtr(a0)
+
+@Display:
 	jmp	DisplaySprite
 
-@Map:	dc.w	2
-	dc.b	32+4
-	dc.b	$0, $F, 0, 0, -$80
-	dc.b	$0, $F, 0, 0, -$60
-	dc.b	$0, $F, 0, 0, -$40
-	dc.b	$0, $F, 0, 0, -$20
-	dc.b	$0, $F, 0, 0, 0
-	dc.b	$0, $F, 0, 0, $20
-	dc.b	$0, $F, 0, 0, $40
-	dc.b	$0, $F, 0, 0, $60
-	dc.b	$0, $F, 0, 0, $78
+@SpriteMappings:
+	dc.w	@Frame1-@SpriteMappings
+	dc.w	@Frame2-@SpriteMappings
 
-	dc.b	$20, $F, 0, 0, -$80
-	dc.b	$20, $F, 0, 0, -$60
-	dc.b	$20, $F, 0, 0, -$40
-	dc.b	$20, $F, 0, 0, -$20
-	dc.b	$20, $F, 0, 0, 0
-	dc.b	$20, $F, 0, 0, $20
-	dc.b	$20, $F, 0, 0, $40
-	dc.b	$20, $F, 0, 0, $60
-	dc.b	$20, $F, 0, 0, $78
+@Frame1:
+	dc.b	8*4
 
-	dc.b	$40, $F, 0, 0, -$80
-	dc.b	$40, $F, 0, 0, -$60
-	dc.b	$40, $F, 0, 0, -$40
-	dc.b	$40, $F, 0, 0, -$20
-	dc.b	$40, $F, 0, 0, 0
-	dc.b	$40, $F, 0, 0, $20
-	dc.b	$40, $F, 0, 0, $40
-	dc.b	$40, $F, 0, 0, $60
-	dc.b	$40, $F, 0, 0, $78
+	@y: = 0
+	rept 4
+		dc.b	@y, $F, 0, 4*2, -$80
+		dc.b	@y, $F, 0, 4*1, -$60
+		dc.b	@y, $F, 0, 0, -$40
+		dc.b	@y, $F, 0, 4*4, -$20
+		dc.b	@y, $F, 0, 4*3, 0
+		dc.b	@y, $F, 0, 4*2, $20
+		dc.b	@y, $F, 0, 4*1, $40
+		dc.b	@y, $F, 0, 0, $60
+		@y: = @y + $20
+	endr
 
-	dc.b	$60, $F, 0, 0, -$80
-	dc.b	$60, $F, 0, 0, -$60
-	dc.b	$60, $F, 0, 0, -$40
-	dc.b	$60, $F, 0, 0, -$20
-	dc.b	$60, $F, 0, 0, 0
-	dc.b	$60, $F, 0, 0, $20
-	dc.b	$60, $F, 0, 0, $40
-	dc.b	$60, $F, 0, 0, $60
-	dc.b	$60, $F, 0, 0, $78
+@Frame2:
+	dc.b	4
+
+	@y: = 0
+	rept 4
+		dc.b	@y, %1011, 0, 4*4, 0
+		@y: = @y + $20
+	endr
 	even
+
+
+Dummy_HL_Art:
+	@dcSpriteLine: macro line
+		rept 8*4
+			dc.l	\line
+		endr
+		endm
+
+	@dcSpriteLine	$EEEEEEEE
+	@dcSpriteLine	$EEEEEEEE
+
+	@dcSpriteLine	$0EEEEEEE
+	@dcSpriteLine	$EEEEEEEE
+	@dcSpriteLine	$E0EEEEEE ; -
+	@dcSpriteLine	$EEEEEEEE
+
+	@dcSpriteLine	$EEEEEEEE
+	@dcSpriteLine	$0EEEEEEE
+
+
+Dummy_HL_Art.len: equ *-Dummy_HL_Art

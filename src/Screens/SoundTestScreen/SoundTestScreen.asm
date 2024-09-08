@@ -53,22 +53,18 @@ SoundTestScreen:
 	jsr	PLC_ExecuteOnce_Direct
 
 	; ### Dummy Highlight ####
-	vram	SoundTest_DummyHL_VRAM, VDP_Ctrl
-	move.l	#$EEEEEEEE, d0
-	moveq	#4*4*$20/4-1, d1
+	vramWrite Dummy_HL_Art, Dummy_HL_Art.len, SoundTest_DummyHL_VRAM
+	;vram	SoundTest_DummyHL_VRAM, VDP_Ctrl
+	;move.l	#$EEEEEEEE, d0
+	;moveq	#4*4*$20/4-1, d1
+;
+	;@loop:
+	;	move.l	d0, VDP_Data
+	;	dbf	d1, @loop
 
-	@loop:
-		move.l	d0, VDP_Data
-		dbf	d1, @loop
-
-	SoundTest_CreateObject #SoundTest_Obj_TrackSelector ; a1
-	lea	(a1), a4; ###
-
+	SoundTest_CreateObject #SoundTest_Obj_TrackSelector
 	SoundTest_CreateObject #SoundTest_Obj_Header
-
 	SoundTest_CreateObject #SoundTest_Obj_BGPaletteEffect
-	move.w	a4, $34(a1) ; ###
-
 	SoundTest_CreateObject #SoundTest_Obj_DummyHL
 	jsr	SoundTest_CreateNoteEmitters
 
@@ -477,7 +473,7 @@ SoundTest_Visualizer_Update:
 
 ; ---------------------------------------------------------------------------
 @PianoSeparatorData:
-	@i: = $F
+	@i: = 0;$F
 
 	dc.w	$1000*@i, $0000, $0100*@i, $0000, $0000, $1000*@i, $0000, $0100*@i, $0000, $0000
 

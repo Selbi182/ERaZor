@@ -156,7 +156,7 @@
 @Music8B_Source:	@str 'THE ORIGINAL VERSION OF SONIC ERAZOR FROM 2010', @descMaxLen
 
 @Music8C_Name:		@str 'GREEN HILL PLACE BOSS', @titleMaxLen
-@Music8C_Source:	@str 'SONIC ADVANCE 3 - BOSS', @descMaxLen
+@Music8C_Source:	@str 'SONIC ADVANCE 3 - CHAOS ANGEL ACT 1', @descMaxLen
 
 @Music8D_Name:		@str 'FINALOR PLACE', @titleMaxLen
 @Music8D_Source:	@str 'PULSEMAN - SHUTDOWN', @descMaxLen

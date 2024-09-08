@@ -63,8 +63,8 @@ SoundTestScreen:
 
 	SoundTest_CreateObject #SoundTest_Obj_TrackSelector
 	SoundTest_CreateObject #SoundTest_Obj_Header
-	SoundTest_CreateObject #SoundTest_Obj_BGPaletteEffect
-	SoundTest_CreateObject #SoundTest_Obj_DummyHL
+	SoundTest_CreateObject #SoundTest_Obj_VisualizerOverlay
+	SoundTest_CreateObject #SoundTest_Obj_VisualizerPaletteEffect
 	jsr	SoundTest_CreateNoteEmitters
 
 	; Load/render Plane B
@@ -239,11 +239,11 @@ SoundTest_SingleFadeFrom:
 
 	include	"Screens/SoundTestScreen/Objects/NoteEmitters.asm"
 
-	include	"Screens/SoundTestScreen/Objects/DummyHL.asm"
-
 	include	"Screens/SoundTestScreen/Objects/TrackSelector.asm"
 
-	include	"Screens/SoundTestScreen/Objects/BGPaletteEffect.asm"
+	include	"Screens/SoundTestScreen/Objects/VisualizerOverlay.asm"
+
+	include	"Screens/SoundTestScreen/Objects/VisualizerPaletteEffect.asm"
 
 ; ---------------------------------------------------------------------------
 ; Pattern load cues list for all Sound Test screen graphics

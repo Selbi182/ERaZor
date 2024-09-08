@@ -14,35 +14,9 @@ obST_MaxTrack	= $DF
 ; ---------------------------------------------------------------------------
 
 SoundTest_Obj_TrackSelector:
-
-	; ###
-	move.l	#@SpriteMappings, obMap(a0)
-	move.w	#(SoundTest_UIBorderOverlay_VRAM/$20)|$6000, obGfx(a0)
-	move.w	#$80+3*8-4+$80, obX(a0)
-	move.w	#$80+240-8*6-8, obScreenY(a0)
-
-	SoundTest_CreateChildObject #DisplaySprite
-	move.l	#@SpriteMappings, obMap(a1)
-	move.w	#(SoundTest_UIBorderOverlay_VRAM/$20)|$6000, obGfx(a1)
-	move.b	#1, obFrame(a1)
-	move.w	#$80+3*8-4+$80+$80, obX(a1)
-	move.w	#$80+240-8*6-8, obScreenY(a1)
-
-	; Draw arrows upon init (these are static and won't be redrawn)
-	@char_to_tile:	equr	a1
-	@vdp_data:	equr	a5
-
-	if def(__DEBUG__) ; ints should be disabled when accessing VDP
-		move.w	sr, d0
- 		assert.w d0, hs, #$2600
-	endif
-
-	lea	SoundTest_CharToTile(pc), @char_to_tile
-	lea	VDP_Data, @vdp_data
-	vram	SoundTest_PlaneA_VRAM+24*$80, VDP_Ctrl-VDP_Data(@vdp_data)
-	move.w	('<'-$20)*2(@char_to_tile), (@vdp_data)
-	vram	SoundTest_PlaneA_VRAM+24*$80+(4+30)*2, VDP_Ctrl-VDP_Data(@vdp_data)
-	move.w	('>'-$20)*2(@char_to_tile), (@vdp_data)
+	; Create box overlay and arrow sub-objects
+	SoundTest_CreateChildObject #SoundTest_Obj_TrackSelector_Overlay
+	SoundTest_CreateChildObject #SoundTest_Obj_TrackSelector_Arrows
 
 	; Initialize object now
 	moveq	#$FFFFFF81, d0			; play initial music
@@ -54,7 +28,6 @@ SoundTest_Obj_TrackSelector:
 ; ---------------------------------------------------------------------------
 @Main:
 	bsr	@UpdateScrolling
-	jsr	DisplaySprite
 
 	; React to button presses
 	move.b	Joypad|Press, d0
@@ -209,6 +182,53 @@ SoundTest_Obj_TrackSelector:
 ; ---------------------------------------------------------------------------
 @TrackLineData:
 	include	"Screens/SoundTestScreen/Objects/TrackSelector.TrackData.asm"
+
+; ---------------------------------------------------------------------------
+; Subobject: Arrow keys
+; ---------------------------------------------------------------------------
+
+SoundTest_Obj_TrackSelector_Arrows:
+
+	@char_to_tile:	equr	a2
+
+	SoundTest_CreateChildObject #@Init	; a1 = right arror
+	lea	SoundTest_CharToTile(pc), @char_to_tile
+	move.w	('>'-$20)*2(@char_to_tile), obGfx(a1)	; right arrow settings
+	move.w	#$80+320-8*4, obX(a1)			; ''
+	move.w	('<'-$20)*2(@char_to_tile), obGfx(a0)	; left arrow settings
+	move.w	#$80+8*3, obX(a0)			; ''
+
+@Init:
+	move.b	#1<<5, obRender(a0)		; sprite piece mode
+	move.l	#@Sprite, obMap(a0)
+	move.w	#$80+224-8*4-4, obScreenY(a0)
+	move.l	#@Main, obCodePtr(a0)
+
+@Main:
+	jmp	DisplaySprite
+
+; ---------------------------------------------------------------------------
+@Sprite:
+	dc.b	0, %0000, 0, 0, 0
+	even
+
+; ---------------------------------------------------------------------------
+; Subobject: Shadowed box overlay
+; ---------------------------------------------------------------------------
+
+SoundTest_Obj_TrackSelector_Overlay:
+	SoundTest_CreateChildObject #@Init	; a1 = secondary sprite
+	move.w	#$80+3*8-4+$80, obX(a0)		; X-position for the primary sprite
+	move.w	#$80+3*8-4+$80+$80, obX(a1)	; X-position for the secondary sprite
+	move.b	#1, obFrame(a1)			; secondary sprite frame
+
+@Init:
+	move.w	#(SoundTest_UIBorderOverlay_VRAM/$20)|$6000, obGfx(a0)
+	move.l	#@SpriteMappings, obMap(a0)
+	move.b	#1, obPriority(a0)
+	move.w	#$80+240-8*6-8, obScreenY(a0)
+	move.l	#DisplaySprite, obCodePtr(a0)
+	jmp	DisplaySprite
 
 ; ---------------------------------------------------------------------------
 @SpriteMappings:

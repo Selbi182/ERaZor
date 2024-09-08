@@ -281,7 +281,7 @@ DACUpdateTrack:
 		move.b	TrackSavedDAC(a5),d0	; Get sample
 		cmpi.b	#$80,d0			; Is it a rest?
 		beq.s	.locret			; Return if yes
-		move.b	d0, TrackNoteOutput(a5)	; ###
+		move.b	d0, TrackNoteOutput(a5)	; Notify Sound test of a played DAC
 		MPCM_stopZ80
 		move.b	d0, MPCM_Z80_RAM+Z_MPCM_CommandInput	; send DAC sample to Mega PCM
 		MPCM_startZ80

@@ -62,7 +62,6 @@ SoundTestScreen:
 	jsr	PLC_ExecuteOnce_Direct
 
 	SoundTest_CreateObject #SoundTest_Obj_TrackSelector
-	SoundTest_CreateObject #SoundTest_Obj_Header
 	SoundTest_CreateObject #SoundTest_Obj_VisualizerOverlay
 	SoundTest_CreateObject #SoundTest_Obj_VisualizerPaletteEffect
 	jsr	SoundTest_CreateNoteEmitters
@@ -83,6 +82,18 @@ SoundTestScreen:
 	vram	SoundTest_PlaneA_VRAM+$A00, d0
 	lea	$FF0000, a1
 	moveq	#36-1, d1
+	moveq	#3-1, d2
+	jsr	ShowVDPGraphics
+
+	; Load header mappings
+	lea	SoundTest_Header_MapEni(pc), a0
+	lea	$FF0000, a1
+	move.w	#$8000|$6000|(SoundTest_Header_VRAM/$20), d0
+	jsr	EniDec
+
+	vram	SoundTest_PlaneA_VRAM+$80+10*2, d0
+	lea	$FF0000, a1
+	moveq	#20-1, d1
 	moveq	#3-1, d2
 	jsr	ShowVDPGraphics
 
@@ -108,6 +119,9 @@ SoundTestScreen:
 	endif
 	move.w	#@pat_2, (@vdp_data)
 
+	moveq	#0, d0
+	move.l	d0, SoundTest_HScrollBuffer		; correct scrolling for the "Sound test" header
+	move.w	d0, SoundTest_HScrollBuffer+4		; ''
 	move.b	#$10, SoundTest_FadeCounter		; prepare fade in
 
 	; Screen init
@@ -235,8 +249,6 @@ SoundTest_SingleFadeFrom:
 ; Screen objects/controllers
 ; ---------------------------------------------------------------------------
 
-	include	"Screens/SoundTestScreen/Objects/Header.asm"
-
 	include	"Screens/SoundTestScreen/Objects/NoteEmitters.asm"
 
 	include	"Screens/SoundTestScreen/Objects/TrackSelector.asm"
@@ -262,8 +274,8 @@ SoundTest_PLC_List:
 	dc.l	SoundTest_Font_KospM
 	dc.w	SoundTest_Font_VRAM
 
-	dc.l	ArtKospM_LevelSigns
-	dc.w	SoundTest_HeaderFont_VRAM
+	dc.l	SoundTest_Header_Tiles_KospM
+	dc.w	SoundTest_Header_VRAM
 
 	dc.l	SoundTest_UIBorderOverlay_Tiles_KospM
 	dc.w	SoundTest_UIBorderOverlay_VRAM
@@ -854,16 +866,6 @@ SoundTest_PianoSheet_MapKosp:
 	even
 
 ; ---------------------------------------------------------------------------
-SoundTest_BG1_MapEni:
-	incbin	"Screens/SoundTestScreen/Data/BG1_Map.eni"
-	even
-
-; ---------------------------------------------------------------------------
-SoundTest_BG1_TilesKospM:
-	incbin	"Screens/SoundTestScreen/Data/BG1_Tiles.kospm"
-	even
-
-; ---------------------------------------------------------------------------
 SoundTest_BG2_MapEni:
 	incbin	"Screens/SoundTestScreen/Data/BG2_Map.eni"
 	even
@@ -879,6 +881,11 @@ SoundTest_Piano_MapEni:
 	even
 
 ; ---------------------------------------------------------------------------
+SoundTest_Header_MapEni:
+	incbin	"Screens/SoundTestScreen/Data/Header_Map.eni"
+	even
+
+; ---------------------------------------------------------------------------
 SoundTest_Piano_TilesKospM:
 	incbin	"Screens/SoundTestScreen/Data/BasePiano_Tiles.kospm"
 	even
@@ -891,6 +898,11 @@ SoundTest_PianoOverlays_TilesKospM:
 ; ---------------------------------------------------------------------------
 SoundTest_Font_KospM:
 	incbin	"Screens/SoundTestScreen/Data/Font.kospm"
+	even
+
+; ---------------------------------------------------------------------------
+SoundTest_Header_Tiles_KospM:
+	incbin	"Screens/SoundTestScreen/Data/Header_Tiles.kospm"
 	even
 
 ; ---------------------------------------------------------------------------

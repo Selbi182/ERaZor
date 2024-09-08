@@ -23,7 +23,7 @@ SoundTest_Piano_VRAM:		rsfile	"Screens/SoundTestScreen/Data/BasePiano_Tiles.bin"
 SoundTest_PianoOverlays_VRAM:	rsfile	"Screens/SoundTestScreen/Data/BasePiano_KeyOverlays_Tiles.bin"
 SoundTest_BG_VRAM:		rsfile	"Screens/SoundTestScreen/Data/BG2_Tiles.bin"
 SoundTest_Font_VRAM:		rsfile	"Screens/SoundTestScreen/Data/Font.bin"
-SoundTest_HeaderFont_VRAM:	rsfile	"artkosp/LevelSigns.unc"
+SoundTest_Header_VRAM:		rsfile	"Screens/SoundTestScreen/Data/Header_Tiles.bin"
 SoundTest_UIBorderOverlay_VRAM:	rsfile	"Screens/SoundTestScreen/Data/UIBorderOverlay_Tiles.bin"
 	if __rs > $A000
 		infrom 2, "Out of VRAM for graphics!"

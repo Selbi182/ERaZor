@@ -267,7 +267,7 @@ SoundTest_VDeform_Update:
 		endif
 
 		; Render highlighted BG between scanlines 32 .. 32+SoundTest_Visualizer_Height*8
-		if (@current_scanline >= 32) & (@current_scanline < (32 + SoundTest_Visualizer_Height*8))
+		if (@current_scanline >= 32) & (@current_scanline < (32 + SoundTest_Visualizer_Height*8 + 8*3))
 			moveq	#0, @vscroll_value
 			move.l	(@distort_stream)+, @var0
 			asr.w	#2, @var0

@@ -110,7 +110,7 @@ SoundTest_Obj_TrackSelector:
 
 ; ---------------------------------------------------------------------------
 @SetupScrolling:
-	@initial_scroll_delay: = 2*60 ; frames
+	@initial_scroll_delay: = 1*60+30 ; frames
 
 	; Reset scrolling
 	moveq	#0, d0

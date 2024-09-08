@@ -1,6 +1,8 @@
 ; ---------------------------------------------------------------------------
 ; Sound Test Screen
 ; ---------------------------------------------------------------------------
+; (c) 2024, vladikcomper
+; ---------------------------------------------------------------------------
 
 SoundTestScreen:
 	; Obligatory part to clean up after previous game mode
@@ -393,7 +395,7 @@ SoundTest_VDeform_Update:
 			moveq	#$FFFFFF00|@current_scanline, @scanline
 		endif
 
-		; Render highlighted BG between scanlines 32 .. 32+SoundTest_Visualizer_Height*8
+		; Render highlighted BG between scanlines 32 .. 32+SoundTest_Visualizer_Height*8+8*3
 		if (@current_scanline >= 32) & (@current_scanline < (32 + SoundTest_Visualizer_Height*8 + 8*3))
 			moveq	#0, @vscroll_value
 			move.l	(@distort_stream)+, @var0
@@ -521,6 +523,7 @@ SoundTest_Visualizer_Update:
 	lea	(@pixel_buffer), @pixel_buffer_half1
 	lea	@pixel_buffer_half_size(@pixel_buffer), @pixel_buffer_half2
 
+	; TODO: Replace with zeroes
 	movem.l	@PianoSeparatorData(pc), @pixel_data_half1_p1-@pixel_data_half1_p5
 	moveq	#0, @pixel_data_half2
 
@@ -606,7 +609,7 @@ SoundTest_Visualizer_Update:
 
 
 ; ---------------------------------------------------------------------------
-; Writes given pixel data to the pixel data
+; Writes given pixel data to the pixel buffer
 ; ---------------------------------------------------------------------------
 ; WRITE REQUEST FORMAT:
 ;	$00	.w	Start X-pixel
@@ -706,7 +709,7 @@ SoundTest_Visualizer_WritePixelsToPixelBuffer:
 ; ---------------------------------------------------------------------------
 
 SoundTest_Visualizer_TransferPixelBufferToVRAM:
-	
+
 	; INPUT REGISTERS:
 	@pixel_buffer:	equr	a0
 	@write_dest:	equr	d0

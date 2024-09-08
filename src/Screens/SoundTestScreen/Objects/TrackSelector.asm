@@ -135,7 +135,7 @@ SoundTest_Obj_TrackSelector:
 
 @disable_scrolling:
 	moveq	#0, d0					; disable scrolling
-	move.w	d0, obSTSCrollTarget(a0)		; want to scroll to the end
+	move.w	d0, obSTSCrollTarget(a0)		; ''
 
 @disable_scrolling_2:
 	move.w	#-1, obSTScrollDelay(a0)		; set an infinitely long delay

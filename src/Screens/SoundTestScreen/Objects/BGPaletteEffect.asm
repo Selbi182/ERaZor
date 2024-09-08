@@ -16,6 +16,9 @@ SoundTest_Obj_BGPaletteEffect:
 	move.l	#@ObjRoutine_Main, obCodePtr(a0)
 
 @ObjRoutine_Main:
+	tst.b	SoundTest_FadeCounter			; are we fading?
+	bne	@ret					; if yes, don't mess with the palette
+
 	bsr	@UpdateFadeFactor
 	bsr	@UpdatePalette
 

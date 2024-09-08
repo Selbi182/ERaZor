@@ -13,8 +13,14 @@ SoundTest_Obj_DummyHL:
 	move.l	#@Display, obCodePtr(a0)
 
 @Display:
-	jmp	DisplaySprite
+	move.b	SoundTest_FadeCounter, d0
+	bne.s	@ret
 
+@disp:	jmp	DisplaySprite
+
+@Ret:	rts
+
+; -----------------------------------------------------------------------------
 @SpriteMappings:
 	dc.w	@Frame1-@SpriteMappings
 	dc.w	@Frame2-@SpriteMappings

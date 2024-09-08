@@ -58,6 +58,7 @@ SoundTest_Obj_TrackSelector:
 
 	; React to button presses
 	move.b	Joypad|Press, d0
+	bmi.s	@ExitScreen
 
 	btst	#iRight, d0			; is Right pressed?
 	beq.s	@chkLeft			; if not, branch
@@ -100,6 +101,11 @@ SoundTest_Obj_TrackSelector:
 	beq.s	@ret				; if not, branch
 	move.b	obSTSelectedTrack(a0), d0
 	jmp	PlaySound_Special
+
+; ---------------------------------------------------------------------------
+@ExitScreen:
+	st.b	SoundTest_ExitFlag		; set exit flag
+	move.b	#-$10, SoundTest_FadeCounter	; also perform a fade out
 
 @ret:	rts
 

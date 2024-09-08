@@ -55,7 +55,10 @@ SoundTest_VisualizerWriteRequests:	rs.b	6*SoundTest_Visualizer_MaxWriteRequests
 SoundTest_VisualizerWriteRequests_End:	equ	__rs
 SoundTest_VisualizerWriteRequestsPos:	rs.w	1
 
+
 SoundTest_CurrentTextStartScreenPos:	rs.w	1
 SoundTest_StringBuffer:			rs.b	SoundTest_StringBufferSize
+SoundTest_FadeCounter:			rs.b	1
+SoundTest_ExitFlag:			rs.b	1
 					rseven
 

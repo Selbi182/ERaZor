@@ -14,6 +14,9 @@ SoundTestScreen:
 	ints_disable			; we can do it since music is stopped
 	display_disable
 
+	jsr	BlackBars.Reset		; Black bars aren't supported
+	jsr	BlackBars.VBlankUpdate	; make Black bars restore VDP settings
+
 	bsr	SoundTest_SetupVDP
 
 	; Clear object RAM
@@ -41,10 +44,16 @@ SoundTestScreen:
 		dbf	d1, @init_hscroll_buffer_loop
 
 	; Load screen palette
-	lea	Pal_Active, a0	; TODO: use `Pal_Target`, implement fade in
+	lea	Pal_Target, a0
 	lea 	SoundTest_Palette(pc), a1
 	rept 128/4
 		move.l	(a1)+, (a0)+
+	endr
+
+	lea	Pal_Active, a0		; fill current palette with black
+	moveq	#0, d0
+	rept 128/4
+		move.l	d0, (a0)+
 	endr
 
 	; Load all compressed graphics
@@ -99,39 +108,125 @@ SoundTestScreen:
 	endif
 	move.w	#@pat_2, (@vdp_data)
 
+	move.b	#$10, SoundTest_FadeCounter		; prepare fade in
+
 	; Screen init
 	SoundTest_ResetVRAMBufferPool
+	sf.b	SoundTest_ExitFlag
 	jsr	SoundTest_VDeform_Init
 	jsr	SoundTest_Visualizer_Init
 	jsr	ObjectsLoad
 	jsr	BuildSprites
 
 	display_enable
-
 	move.w	#SoundTest_VBlank, VBlankSubW
 
 ; ---------------------------------------------------------------------------
 SoundTest_MainLoop:
 	st.b	VBlankRoutine
 	jsr	DelayProgram
-	jsr	SoundTest_VDeform_Update
+	bsr	SoundTest_VDeform_Update
 	assert.w SoundTest_VRAMBufferPoolPtr, eq, #Art_Buffer		; VRAM buffer pool should be reset by the beginning of the frame
 	SoundTest_InitWriteRequests
 	jsr	ObjectsLoad
 	jsr	BuildSprites
 	SoundTest_FinalizeWriteRequests a0
-	jsr	SoundTest_Visualizer_Update
+	bsr	SoundTest_Visualizer_Update
+	bsr	SoundTest_UpdateFading
 
-	; TODO: Exit flag check
-	tst.b	Joypad|Press			; Start pressed?
-	bpl	SoundTest_MainLoop		; if not, branch
+	tst.b	SoundTest_ExitFlag			; exit flag set?
+	beq	SoundTest_MainLoop			; if not, branch
+	tst.b	SoundTest_FadeCounter			; faded out?
+	bne	SoundTest_MainLoop			; if not, branch
+	; fallthrough
 
-; ===========================================================================
-
+; ---------------------------------------------------------------------------
 SoundTest_Exit:
 	move.w	#$8C81, VDP_Ctrl		; disable S&H
 	move.w	#VBlank, VBlankSubW		; restore Sonic 1's VBlank
 	jmp	Exit_SoundTestScreen
+
+; ---------------------------------------------------------------------------
+SoundTest_UpdateFading:
+	move.b	SoundTest_FadeCounter, d0	; is fading requested?
+	beq.s	@ret				; if not, branch
+	bmi.s	@fade_out
+	subq.b	#1, d0
+	move.b	d0, SoundTest_FadeCounter
+	jmp	SoundTest_SingleFadeTo
+
+@fade_out:
+	addq.b	#1, d0
+	move.b	d0, SoundTest_FadeCounter
+	jmp	SoundTest_SingleFadeFrom
+
+@ret:	rts
+
+; ---------------------------------------------------------------------------
+SoundTest_SingleFadeTo:
+	; INPUT:
+	;	d0.w	Fade factor ($F = max, $0 = no fading)
+
+	lea	Pal_Active, a0
+	lea	Pal_Target, a1
+	moveq	#$40-1, d5		; d5 -> Fade length
+	andi.b	#$E, d0			; make sure fade factor is correct
+	move.b	d0, d1
+	lsl.b	#4, d1			; d1 -> Fade Factor (2nd channel)
+
+	@ParseColors:
+		move.b	(a1)+,d2		; d2 -> B
+		sub.b	d0,d2			; d2 -> B' (faded)
+		bcc.s	@outB
+		moveq	#0, d2
+	@outB:	move.b	d2,(a0)+		; output B'
+
+		move.b	(a1)+, d2		; d2 -> GR
+		move.b	d2, d3
+		andi.b	#$E0, d3		; d3 -> G0
+		sub.b	d1, d3			; d3 -> G'0
+		bcc.s	@endG
+		moveq	#0, d3
+	@endG:
+		andi.b	#$E, d2			; d2 -> R
+		sub.b	d0, d2			; d2 -> R'
+		bcc.s	@endR
+		moveq	#0, d2
+	@endR:
+		or.b	d2, d3			; d3 -> G'R'
+		move.b	d3, (a0)+		; output G'R'
+		
+		dbf	d5, @ParseColors
+
+	assert.w a0, eq, #Pal_Active+$80
+	rts
+
+; ---------------------------------------------------------------------------
+SoundTest_SingleFadeFrom:
+	lea	Pal_Active, a0
+	moveq	#$40-1, d5		; d5 -> Fade length
+
+	@ParseColors:
+		tst.b	(a0)+			; is B zero?
+		beq.s	@Green			; if yes, branch
+		subq.b	#2,-1(a0)		; decrease B
+
+	@Green: move.b	(a0),d2			; d2 -> GR
+		move.b	d2,d3
+		andi.b	#$E0,d2			; d2 -> G0
+		beq.s	@Red
+		subi.b	#$20,d2
+
+	@Red:	andi.b	#$E,d3			; d3 -> 0R
+		beq.s	@GRout
+		subq.b	#2,d3
+
+	@GRout: or.b	d2,d3
+		move.b	d3,(a0)+
+		dbf	d5, @ParseColors
+
+	assert.w a0, eq, #Pal_Active+$80
+	rts
 
 ; ---------------------------------------------------------------------------
 

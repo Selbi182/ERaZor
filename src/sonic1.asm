@@ -5,7 +5,7 @@
 ; ------------------------------------------------------
 	if def(__BENCHMARK__)=0
 ; Vladik's Debugger
-__DEBUG__: equ 1
+;__DEBUG__: equ 1
 
 	else
 		; MD Replay state. Used for playing pre-recorded gameplay in benchmarks.
@@ -40,10 +40,10 @@ __DEBUG__: equ 1
 ; $302 - Star Agony Place
 ; $502 - Finalor Place
 	if def(__BENCHMARK__)=0
-QuickLevelSelect = 1
-QuickLevelSelect_ID = -1
+QuickLevelSelect = 0
+QuickLevelSelect_ID = 0
 ; ------------------------------------------------------
-DebugModeDefault = 1
+DebugModeDefault = 0
 DebugSurviveNoRings = 1
 ; ------------------------------------------------------
 DoorsAlwaysOpen = 0
@@ -3002,6 +3002,8 @@ LevelSelect:
 ; ---------------------------------------------------------------------------
 
 LevelSelect_DoSelect:
+		jsr	Pal_FadeFrom
+
 		moveq	#0,d0
 		move.l	d0,($FFFFFE22).w ; clear time
 		move.b	d0,($FFFFFE16).w ; clear special stage number

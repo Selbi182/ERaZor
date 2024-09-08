@@ -192,7 +192,7 @@
 @Music97_Source:	@str 'GUNDAM WING: ENDLESS DUEL - OPENING / RHYTHM EMOTION', @descMaxLen
 
 @Music98_Name:		@str 'CRABMEAT BOSS', @titleMaxLen
-@Music98_Source:	@str 'SONIC ADVANCE 3 - BOSS', @descMaxLen
+@Music98_Source:	@str 'SONIC ADVANCE 3 - BOSS - PINCH', @descMaxLen
 
 @Music99_Name:		@str 'TUTORIAL INTRODUCTION', @titleMaxLen
 @Music99_Source:	@str 'MEGA MAN 5 - DARK MAN/PROTO MAN STAGES', @descMaxLen
@@ -201,7 +201,7 @@
 @Music9A_Source:	@str 'SHINOBI III - WHIRLWIND', @descMaxLen
 
 @Music9B_Name:		@str 'WALKING BOMB BOSS', @titleMaxLen
-@Music9B_Source:	@str 'SONIC ADVANCE 3 - BOSS - PINCH', @descMaxLen
+@Music9B_Source:	@str 'SONIC ADVANCE 3 - BOSS - PINCH... BUT DIFFERENT', @descMaxLen
 
 @Music9C_Name:		@str '??? UNUSED ???', @titleMaxLen ; Blackout Challenge
 @Music9C_Source:	@str 'PULSEMAN - SHUTDOWN - DARK REMIX', @descMaxLen

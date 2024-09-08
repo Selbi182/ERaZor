@@ -10,7 +10,11 @@ asm68k /k /m /o ws+,op+,os+,ow+,oz+,oaq+,osq+,omq+,ae-,v+ /p sonic1.asm, s1erz.b
 echo.
 echo ============================================
 if exist s1erz.bin (
-	Debugger\convsym.exe Debugger\Generated\s1erz.sym s1erz.bin -a
+	REM build with debug symbols
+	REM Debugger\convsym.exe Debugger\Generated\s1erz.sym s1erz.bin -a
+
+	REM build WITHOUT debug symbols
+	Debugger\convsym.exe Debugger/Generated/s1erz.sym s1erz.bin -tolower -inopt "/processLocals-" -a
 	echo Successfully built!
 ) else (
 	echo !!! BUILD FAILED !!!

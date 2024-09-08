@@ -1,6 +1,7 @@
 
 _ST_TYPE_FM:	equ 0
 _ST_TYPE_PSG:	equ 8
+_ST_TYPE_SFX:	equ $10
 
 obSTNoteAddr:		equ $20	; .w
 obSTNoteType:		equ $22	; .w
@@ -35,6 +36,14 @@ SoundTest_CreateNoteEmitters:
 	moveq	#1, @layer		; use priority layer #1
 	move.w	#$2000, @note_pal	; use palette line #1
 	moveq	#3-1, @loop_cnt
+	bsr.s	@create_emitters_loop
+
+	; SFX emitters
+	lea	(SoundDriverRAM+v_sfx_track_ram+TrackNoteOutput).w, @note_addr
+	moveq	#_ST_TYPE_SFX, @note_type
+	moveq	#2, @layer		; use priority layer #2
+	move.w	#$4000, @note_pal	; use palette line #2
+	moveq	#6-1, @loop_cnt
 	; fallthrough
 
 	@create_emitters_loop:
@@ -197,7 +206,7 @@ SoundTest_Obj_NoteEmitter:
 	move.b	d0, obFrame(a1)
 
 	move.b	obPriority(a0), d0
-	addq.b	#2, d0
+	addq.b	#3, d0
 	move.b	d0, obPriority(a1)
 	rts
 
@@ -228,6 +237,11 @@ SoundTest_NoteEmitter_PixelDataFrames:
 	dc.w	@PixelData_Note_PSG_Wide_Edge-@Index	; $0A
 	dc.w	@PixelData_Note_PSG_Narrow-@Index	; $0C
 	dc.w	@PixelData_Note_PSG_Narrow_Edge-@Index	; $0E
+
+	dc.w	@PixelData_Note_SFX_Wide-@Index		; $10
+	dc.w	@PixelData_Note_SFX_Wide_Edge-@Index	; $12
+	dc.w	@PixelData_Note_SFX_Narrow-@Index	; $14
+	dc.w	@PixelData_Note_SFX_Narrow_Edge-@Index	; $16
 
 @PixelData_Note_FM_Wide:
 	dc.w	4		; number of pixels (nibbles)
@@ -275,6 +289,30 @@ SoundTest_NoteEmitter_PixelDataFrames:
 	dc.w	3		; number of pixels (nibbles)
 	dc.b	$77, $70	; normal pixel data (even nibble start)
 	dc.b	$07, $77	; shifted pixel data (odd nibble start)
+	even
+
+@PixelData_Note_SFX_Wide:
+	dc.w	4		; number of pixels (nibbles)
+	dc.b	$9A, $A9	; normal pixel data (even nibble start)
+	dc.b	$09, $AA, $90	; shifted pixel data (odd nibble start)
+	even
+
+@PixelData_Note_SFX_Wide_Edge:
+	dc.w	4		; number of pixels (nibbles)
+	dc.b	$99, $99	; normal pixel data (even nibble start)
+	dc.b	$09, $99, $90	; shifted pixel data (odd nibble start)
+	even
+
+@PixelData_Note_SFX_Narrow:
+	dc.w	3		; number of pixels (nibbles)
+	dc.b	$9A, $90	; normal pixel data (even nibble start)
+	dc.b	$09, $A9	; shifted pixel data (odd nibble start)
+	even
+
+@PixelData_Note_SFX_Narrow_Edge:
+	dc.w	3		; number of pixels (nibbles)
+	dc.b	$99, $90	; normal pixel data (even nibble start)
+	dc.b	$09, $99	; shifted pixel data (odd nibble start)
 	even
 
 ; ---------------------------------------------------------------------------

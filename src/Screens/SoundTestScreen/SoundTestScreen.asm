@@ -147,6 +147,9 @@ SoundTest_Exit:
 	jmp	Exit_SoundTestScreen
 
 ; ---------------------------------------------------------------------------
+; Controls screen fade in/out sequences
+; ---------------------------------------------------------------------------
+
 SoundTest_UpdateFading:
 	move.b	SoundTest_FadeCounter, d0	; is fading requested?
 	beq.s	@ret				; if not, branch
@@ -229,6 +232,8 @@ SoundTest_SingleFadeFrom:
 	rts
 
 ; ---------------------------------------------------------------------------
+; Screen objects/controllers
+; ---------------------------------------------------------------------------
 
 	include	"Screens/SoundTestScreen/Objects/Header.asm"
 
@@ -241,7 +246,7 @@ SoundTest_SingleFadeFrom:
 	include	"Screens/SoundTestScreen/Objects/BGPaletteEffect.asm"
 
 ; ---------------------------------------------------------------------------
-; Pattern load cues list for all Sonud test screen graphics
+; Pattern load cues list for all Sound Test screen graphics
 ; ---------------------------------------------------------------------------
 
 SoundTest_PLC_List:
@@ -263,7 +268,7 @@ SoundTest_PLC_List:
 	dc.l	SoundTest_UIBorderOverlay_Tiles_KospM
 	dc.w	SoundTest_UIBorderOverlay_VRAM
 
-	dc.w	-1
+	dc.w	-1	; end marker
 
 ; ---------------------------------------------------------------------------
 ; Sound Test Screen
@@ -328,7 +333,7 @@ SoundTest_SetupVDP:
 	dc.w	$8004
 	dc.w	$8200|(SoundTest_PlaneB_VRAM/$400)	; Plane A address
 	dc.w	$8400|(SoundTest_PlaneA_VRAM/$2000)	; Plane B address
-	dc.w	$8C81+8		; enable S&H (TODO: Fill Plane A with $8000)
+	dc.w	$8C81+8		; enable S&H
 	dc.w	$9011		; set plane size to 64x64
 	dc.w	$8B02		; VScroll: full, HScroll: 1-tile
 	dc.w	$8700
@@ -895,23 +900,18 @@ SoundTest_UIBorderOverlay_Tiles_KospM:
 
 ; ---------------------------------------------------------------------------
 SoundTest_Palette:
-	; Line 0: Background + FM piano key overlay
-	;incbin	"Screens/SoundTestScreen/Data/BG2_Pal.bin"
-	dc.w	$0000, $0a2c, $0a28, $088e, $0a2a, $0806, $082c, $0a6c
-	dc.w	$086e, $00EE, $00E2, $08E8, $0CEC, $00E2, $0282, $0242
+	; Line 0: Background | FM piano key overlay
+	dc.w	$0000, $0A2C, $0A28, $088E, $0A2A, $0806, $082C, $0A6C
+	dc.w	$086E, $00EE, $00E2, $08E8, $0CEC, $00E2, $0282, $0242
 
-	; Line 1: Background (highlighted) + PSG piano key overlay
-	dc.w	$0000, $0e6e, $0e6c, $0cce, $0e6e, $0c4a, $0c6e, $0eae
-	;dc.w	$0cce, $00EE, $0EE2, $0EE8, $0EEC, $0EE2, $0882, $0442
-	dc.w	$0cce, $008E, $0E2E, $0E8E, $0ECE, $0E2E, $0828, $0424
+	; Line 1: Background (highlighted) | PSG piano key overlay
+	dc.w	$0000, $0E6E, $0E6C, $0CCE, $0E6E, $0C4A, $0C6E, $0EAE
+	dc.w	$0CCE, $008E, $0E2E, $0E8E, $0ECE, $0E2E, $0828, $0424
 
-	;dc.w	$0000, $0020, $0220, $0240, $0242, $0462, $0464, $0684
-	;dc.w	$0686, $08A6, $08A8, $0AC8, $0ACA, $0CEA, $0CEC, $0EEE
-
-	; Line 2: Text & stuff
+	; Line 2: Text & stuff | SFX piano key overlay
 	dc.w	$0000, $0222, $0444, $0666, $0EEE, $0EEE, $0EEE, $0AAA
-	dc.w	$0042, $0262, $0284, $04A6, $06A6, $06C8, $08C8, $08EA
+	dc.w	$0042, $008E, $002E, $048E, $08CE, $002E, $0028, $0024
 
-	; Line 3: Piano
+	; Line 3: Piano & Visualizer pixel colors
 	dc.w	$0E0E, $0000, $0888, $0CCC, $0EEE, $0240, $0480, $0406
-	dc.w	$060C, $00EE, $08EE, $0E0E, $0E0E, $0000, $0E0E, $0828
+	dc.w	$060C, $0004, $000C, $0E0E, $0E0E, $0E0E, $0E0E, $0E0E

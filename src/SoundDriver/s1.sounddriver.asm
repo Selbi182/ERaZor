@@ -1626,6 +1626,7 @@ FMNoteOn:
 
 ; sub_726FE:
 FMNoteOff:
+		sf.b	TrackNoteOutput(a5)
 		btst	#4,TrackPlaybackControl(a5)	; Is 'do not attack next note' set?
 		bne.s	locret_72714			; Return if yes
 		btst	#2,TrackPlaybackControl(a5)	; Is SFX overriding?
@@ -1958,6 +1959,7 @@ VolEnvHold:
 
 ; sub_729A0:
 PSGNoteOff:
+		sf.b	TrackNoteOutput(a5)
 		btst	#2,TrackPlaybackControl(a5)	; Is SFX overriding?
 		bne.s	locret_729B4			; Return if so
 ; loc_729A6:

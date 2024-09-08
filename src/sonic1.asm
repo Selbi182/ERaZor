@@ -3319,6 +3319,8 @@ Level:					; XREF: GameModeArray
 
 		cmpi.w	#$001,($FFFFFE10).w
 		beq.s	@notitlecardart
+		cmpi.w	#$500,($FFFFFE10).w
+		beq.s	@notitlecardart
 		lea	PLC_TitleCard, a1
 		jsr	LoadPLC_Direct
 @notitlecardart:
@@ -3751,7 +3753,7 @@ Level_StartGame:
 
 ; LVML::
 Level_MainLoop:
-		bsr	Level_MainLoop_Main	; simulate fun
+		bsr	Level_MainLoop_Main	; go to subroutine that simulates fun
 
 		tst.w	($FFFFFE02).w		; is the level set to restart?
 		bne.w	Level			; if yes, restart level
@@ -16523,7 +16525,7 @@ Obj39:					; XREF: Obj_Index
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Object 3A - Bomb Machine in Eggman Cutscene
+; Object 3A - The Bomb Machine
 ; ---------------------------------------------------------------------------
 
 Obj3A:					; XREF: Obj_Index
@@ -23645,7 +23647,7 @@ Ani_obj5E:
 ;│This code is very delicate.
 ;│Edit responsibly. Or not.
 ;└─ｖ─────────────────────────
-;　∧,,∧
+;.　∧,,∧
 ; （＾o＾）
 ;.（　　）
 
@@ -44713,14 +44715,14 @@ PLC_Ending:
 ; Pattern load cues - Bomb Machine Cutscene
 ; ---------------------------------------------------------------------------
 PLC_EggmanSBZ2:
-		dc.l ArtKospM_Sbz2Eggman	; Eggman
-		dc.w $8000
 		dc.l ArtKospM_Switch	; switch
 		dc.w $9400
-		dc.l ArtKospM_BombOld	; bomb enemy
-		dc.w $A660
 		dc.l ArtKospM_BombMach	; bomb machine
 		dc.w $5600
+		dc.l ArtKospM_Sbz2Eggman	; Eggman
+		dc.w $8000
+		dc.l ArtKospM_BombOld	; bomb enemy
+		dc.w $A660
 		dc.w -1
 
 ; ---------------------------------------------------------------------------

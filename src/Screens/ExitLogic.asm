@@ -329,6 +329,7 @@ Exit_IntroCutscene:
 ; ===========================================================================
 
 Exit_BombMachineCutscene:
+		jsr	Pal_FadeFrom
 		move.w	#$301,($FFFFFE10).w	; set level to Scar Night Place
 		bra.w	StartLevel		; start level
 ; ===========================================================================

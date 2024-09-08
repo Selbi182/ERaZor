@@ -6,7 +6,7 @@ SoundTest_Obj_DummyHL:
 	move.b	#1, obFrame(a1)
 
 @Init:
-	move.w	#(SoundTest_DummyHL_VRAM/$20)|$6000, obGfx(a0)
+	move.w	#(SoundTest_UIBorderOverlay_VRAM/$20)|$6000, obGfx(a0)
 	move.l	#@SpriteMappings, obMap(a0)
 	move.b	#0, obPriority(a0)
 	move.w	#$80+5*8-8, obScreenY(a0)
@@ -44,68 +44,3 @@ SoundTest_Obj_DummyHL:
 		@y: = @y + $20
 	endr
 	even
-
-
-Dummy_HL_Art:
-	@dcSpriteLine: macro line
-		rept 8*4
-			dc.l	\line
-		endr
-		endm
-
-	@dcSpriteLine2: macro line, line2, line3
-		rept 8*4/2-1
-			dc.l	\line2
-			dc.l	\line
-		endr
-		dc.l	\line2
-		dc.l	\line3
-		endm
-
-
-	@dcSpriteLine	$EEEEEEEE
-	@dcSpriteLine	$EEEEEEEE
-
-	@dcSpriteLine	$0EEEEEEE
-	@dcSpriteLine	$EEEEEEEE
-	@dcSpriteLine	$E0EEEEEE ; -
-	@dcSpriteLine	$EEEEEEEE
-
-	@dcSpriteLine	$EEEEEEEE
-	@dcSpriteLine	$0EEEEEEE
-
-	; Just HL
-	@i: = $D
-
-	@dcSpriteLine2	$FFFFFFFF, $FFFFFFFF, $11111111*@i
-	@dcSpriteLine2	$FFFFFFFF, $FFFFFFFF, $11111111*@i
-	@dcSpriteLine2	$FFFFFFFF, $FFFFFFFF, $11111111*@i
-	@dcSpriteLine2	$FFFFFFFF, $FFFFFFFF, $11111111*@i
-
-	@dcSpriteLine	$10000000*@i
-
-	@dcSpriteLine2	$0FFFFFFF+$10000000*@i, $0FFFFFFF+$10000000*@i, $11111111*@i
-	@dcSpriteLine2	$FFFFFFFF, $FFFFFFFF, $11111111*@i
-	@dcSpriteLine2	$FFFFFFFF, $FFFFFFFF, $11111111*@i
-	@dcSpriteLine2	$FFFFFFFF, $FFFFFFFF, $11111111*@i
-
-	; Bottom border
-	dc.l	$00000000
-	dc.l	$00000000
-	dc.l	$00000000
-	dc.l	$00000000
-	dc.l	$00000000
-	dc.l	$00000000
-	dc.l	$00000000
-	dc.l	$11111111
-
-	dc.l	$00000000
-	dc.l	$00000000
-	dc.l	$00000000
-	dc.l	$00000000
-	dc.l	$00000000
-	dc.l	$00000000
-	dc.l	$00000000
-	dc.l	$01111111
-
-Dummy_HL_Art.len: equ *-Dummy_HL_Art

@@ -14,6 +14,15 @@ rseven	macro
 	endif
 	endm
 
+; reserves memory determined by the file size, fails if file doesn't exist
+rsfile	macro *, filename
+	__rsfilesise: = filesize(\filename)
+	if __rsfilesise = -1
+		inform 3, "File \filename not found!"
+	endif
+\*:	rs.b	__rsfilesise
+	endm
+
 ; Enable/display display
 display_enable	macro
 	move.w	($FFFFF60C).w,d0	; enable screen output

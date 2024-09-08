@@ -52,9 +52,6 @@ SoundTestScreen:
 	jsr	LoadPLC_Direct
 	jsr	PLC_ExecuteOnce_Direct
 
-	; ### Dummy Highlight / UI elements ####
-	vramWrite Dummy_HL_Art, Dummy_HL_Art.len, SoundTest_DummyHL_VRAM
-
 	SoundTest_CreateObject #SoundTest_Obj_TrackSelector
 	SoundTest_CreateObject #SoundTest_Obj_Header
 	SoundTest_CreateObject #SoundTest_Obj_BGPaletteEffect
@@ -81,8 +78,8 @@ SoundTestScreen:
 	jsr	ShowVDPGraphics
 
 	; Draw top separator
-	@pat_1:	= (SoundTest_DummyHL_VRAM/$20+4*17)|$8000|$6000
-	@pat_2:	= (SoundTest_DummyHL_VRAM/$20+4*17+1)|$8000|$6000
+	@pat_1:	= (SoundTest_UIBorderOverlay_VRAM/$20+4*17)|$8000|$6000
+	@pat_2:	= (SoundTest_UIBorderOverlay_VRAM/$20+4*17+1)|$8000|$6000
 
 	@fill_value:	equr	d0
 	@vdp_ctrl:	equr	a5
@@ -167,6 +164,9 @@ SoundTest_PLC_List:
 
 	dc.l	ArtKospM_LevelSigns
 	dc.w	SoundTest_HeaderFont_VRAM
+
+	dc.l	SoundTest_UIBorderOverlay_Tiles_KospM
+	dc.w	SoundTest_UIBorderOverlay_VRAM
 
 	dc.w	-1
 
@@ -791,6 +791,11 @@ SoundTest_PianoOverlays_TilesKospM:
 ; ---------------------------------------------------------------------------
 SoundTest_Font_KospM:
 	incbin	"Screens/SoundTestScreen/Data/Font.kospm"
+	even
+
+; ---------------------------------------------------------------------------
+SoundTest_UIBorderOverlay_Tiles_KospM:
+	incbin	"Screens/SoundTestScreen/Data/UIBorderOverlay_Tiles.kospm"
 	even
 
 ; ---------------------------------------------------------------------------

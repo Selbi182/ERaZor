@@ -17,13 +17,13 @@ SoundTest_Obj_TrackSelector:
 
 	; ###
 	move.l	#@SpriteMappings, obMap(a0)
-	move.w	#(SoundTest_DummyHL_VRAM/$20)|$6000, obGfx(a0)
+	move.w	#(SoundTest_UIBorderOverlay_VRAM/$20)|$6000, obGfx(a0)
 	move.w	#$80+3*8-4+$80, obX(a0)
 	move.w	#$80+240-8*6-8, obScreenY(a0)
 
 	SoundTest_CreateChildObject #DisplaySprite
 	move.l	#@SpriteMappings, obMap(a1)
-	move.w	#(SoundTest_DummyHL_VRAM/$20)|$6000, obGfx(a1)
+	move.w	#(SoundTest_UIBorderOverlay_VRAM/$20)|$6000, obGfx(a1)
 	move.b	#1, obFrame(a1)
 	move.w	#$80+3*8-4+$80+$80, obX(a1)
 	move.w	#$80+240-8*6-8, obScreenY(a1)

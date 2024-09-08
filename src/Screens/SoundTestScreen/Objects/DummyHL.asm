@@ -89,6 +89,23 @@ Dummy_HL_Art:
 	@dcSpriteLine2	$FFFFFFFF, $FFFFFFFF, $11111111*@i
 	@dcSpriteLine2	$FFFFFFFF, $FFFFFFFF, $11111111*@i
 
+	; Bottom border
+	dc.l	$00000000
+	dc.l	$00000000
+	dc.l	$00000000
+	dc.l	$00000000
+	dc.l	$00000000
+	dc.l	$00000000
+	dc.l	$00000000
+	dc.l	$11111111
 
+	dc.l	$00000000
+	dc.l	$00000000
+	dc.l	$00000000
+	dc.l	$00000000
+	dc.l	$00000000
+	dc.l	$00000000
+	dc.l	$00000000
+	dc.l	$01111111
 
 Dummy_HL_Art.len: equ *-Dummy_HL_Art

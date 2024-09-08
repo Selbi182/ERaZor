@@ -52,15 +52,8 @@ SoundTestScreen:
 	jsr	LoadPLC_Direct
 	jsr	PLC_ExecuteOnce_Direct
 
-	; ### Dummy Highlight ####
+	; ### Dummy Highlight / UI elements ####
 	vramWrite Dummy_HL_Art, Dummy_HL_Art.len, SoundTest_DummyHL_VRAM
-	;vram	SoundTest_DummyHL_VRAM, VDP_Ctrl
-	;move.l	#$EEEEEEEE, d0
-	;moveq	#4*4*$20/4-1, d1
-;
-	;@loop:
-	;	move.l	d0, VDP_Data
-	;	dbf	d1, @loop
 
 	SoundTest_CreateObject #SoundTest_Obj_TrackSelector
 	SoundTest_CreateObject #SoundTest_Obj_Header
@@ -86,6 +79,28 @@ SoundTestScreen:
 	moveq	#36-1, d1
 	moveq	#3-1, d2
 	jsr	ShowVDPGraphics
+
+	; Draw top separator
+	@pat_1:	= (SoundTest_DummyHL_VRAM/$20+4*17)|$8000|$6000
+	@pat_2:	= (SoundTest_DummyHL_VRAM/$20+4*17+1)|$8000|$6000
+
+	@fill_value:	equr	d0
+	@vdp_ctrl:	equr	a5
+	@vdp_data:	equr	a6
+
+	lea	VDP_Ctrl, @vdp_ctrl
+	lea	VDP_Data-VDP_Ctrl(@vdp_ctrl), @vdp_data
+	vram	SoundTest_PlaneA_VRAM+$180, (@vdp_ctrl)
+
+	move.l	#(@pat_1<<16)|(@pat_1), @fill_value
+	move.w	#@pat_2, (@vdp_data)
+	rept (SoundTest_Visualizer_Width-1) / 2
+		move.l	@fill_value, (@vdp_data)
+	endr
+	if (SoundTest_Visualizer_Width-1) % 2
+		move.w	@fill_value, (@vdp_data)
+	endif
+	move.w	#@pat_2, (@vdp_data)
 
 	; Screen init
 	SoundTest_ResetVRAMBufferPool

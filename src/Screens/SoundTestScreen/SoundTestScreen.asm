@@ -782,7 +782,7 @@ SoundTest_Font_KospM:
 SoundTest_Palette:
 	; Line 0: Background + FM piano key overlay
 	;incbin	"Screens/SoundTestScreen/Data/BG2_Pal.bin"
-	dc.w	$0222, $0a2c, $0a28, $088e, $0a2a, $0806, $082c, $0a6c
+	dc.w	$0000, $0a2c, $0a28, $088e, $0a2a, $0806, $082c, $0a6c
 	dc.w	$086e, $00EE, $00E2, $08E8, $0CEC, $00E2, $0282, $0242
 
 	; Line 1: Background (highlighted) + PSG piano key overlay
@@ -794,9 +794,9 @@ SoundTest_Palette:
 	;dc.w	$0686, $08A6, $08A8, $0AC8, $0ACA, $0CEA, $0CEC, $0EEE
 
 	; Line 2: Text & stuff
-	dc.w	$0000, $0222, $0444, $0666, $0EEE, $0EEE, $0CCC, $0EEE
+	dc.w	$0000, $0222, $0444, $0666, $0EEE, $0EEE, $0EEE, $0AAA
 	dc.w	$0042, $0262, $0284, $04A6, $06A6, $06C8, $08C8, $08EA
 
 	; Line 3: Piano
 	dc.w	$0E0E, $0000, $0888, $0CCC, $0EEE, $0240, $0480, $0406
-	dc.w	$060C, $00EE, $08EE, $0E0E, $0E0E, $0222, $0E0E, $0828
+	dc.w	$060C, $00EE, $08EE, $0E0E, $0E0E, $0000, $0E0E, $0828

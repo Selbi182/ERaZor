@@ -77,17 +77,17 @@ Dummy_HL_Art:
 	; Just HL
 	@i: = $D
 
-	@dcSpriteLine2	$FFFFFFFF, $00000000, $11111111*@i
-	@dcSpriteLine2	$FFFFFFFF, $00000000, $11111111*@i
-	@dcSpriteLine2	$FFFFFFFF, $00000000, $11111111*@i
-	@dcSpriteLine2	$FFFFFFFF, $00000000, $11111111*@i
+	@dcSpriteLine2	$FFFFFFFF, $FFFFFFFF, $11111111*@i
+	@dcSpriteLine2	$FFFFFFFF, $FFFFFFFF, $11111111*@i
+	@dcSpriteLine2	$FFFFFFFF, $FFFFFFFF, $11111111*@i
+	@dcSpriteLine2	$FFFFFFFF, $FFFFFFFF, $11111111*@i
 
 	@dcSpriteLine	$10000000*@i
 
-	@dcSpriteLine2	$0FFFFFFF+$10000000*@i, $10000000*@i, $11111111*@i
-	@dcSpriteLine2	$FFFFFFFF, $00000000, $11111111*@i
-	@dcSpriteLine2	$FFFFFFFF, $00000000, $11111111*@i
-	@dcSpriteLine2	$FFFFFFFF, $00000000, $11111111*@i
+	@dcSpriteLine2	$0FFFFFFF+$10000000*@i, $0FFFFFFF+$10000000*@i, $11111111*@i
+	@dcSpriteLine2	$FFFFFFFF, $FFFFFFFF, $11111111*@i
+	@dcSpriteLine2	$FFFFFFFF, $FFFFFFFF, $11111111*@i
+	@dcSpriteLine2	$FFFFFFFF, $FFFFFFFF, $11111111*@i
 
 
 

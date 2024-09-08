@@ -15,6 +15,19 @@ obST_MaxTrack	= $DF
 
 SoundTest_Obj_TrackSelector:
 
+	; ###
+	move.l	#@SpriteMappings, obMap(a0)
+	move.w	#(SoundTest_DummyHL_VRAM/$20)|$6000, obGfx(a0)
+	move.w	#$80+3*8-4+$80, obX(a0)
+	move.w	#$80+240-8*6-8, obScreenY(a0)
+
+	SoundTest_CreateChildObject #DisplaySprite
+	move.l	#@SpriteMappings, obMap(a1)
+	move.w	#(SoundTest_DummyHL_VRAM/$20)|$6000, obGfx(a1)
+	move.b	#1, obFrame(a1)
+	move.w	#$80+3*8-4+$80+$80, obX(a1)
+	move.w	#$80+240-8*6-8, obScreenY(a1)
+
 	; Draw arrows upon init (these are static and won't be redrawn)
 	@char_to_tile:	equr	a1
 	@vdp_data:	equr	a5
@@ -41,6 +54,7 @@ SoundTest_Obj_TrackSelector:
 ; ---------------------------------------------------------------------------
 @Main:
 	bsr	@UpdateScrolling
+	jsr	DisplaySprite
 
 	; React to button presses
 	move.b	Joypad|Press, d0
@@ -125,6 +139,7 @@ SoundTest_Obj_TrackSelector:
 	move.w	d0, obSTSCrollTarget2(a0)		; secondary scroll target for swapping (always zero)
 	add.w	#(320-SoundTest_Visualizer_Width*8)/2-5*8, d0
 	neg.w	d0
+	move.w	d0, SoundTest_HScrollBuffer+25*2
 	move.w	d0, SoundTest_HScrollBuffer+26*2
 
 	; Determine scrolling max value
@@ -172,6 +187,7 @@ SoundTest_Obj_TrackSelector:
 	move.w	obSTScrollValue(a0), d0
 	add.w	#(320-SoundTest_Visualizer_Width*8)/2-5*8, d0
 	neg.w	d0
+	move.w	d0, SoundTest_HScrollBuffer+25*2
 	move.w	d0, SoundTest_HScrollBuffer+26*2
 	rts
 
@@ -187,3 +203,25 @@ SoundTest_Obj_TrackSelector:
 ; ---------------------------------------------------------------------------
 @TrackLineData:
 	include	"Screens/SoundTestScreen/Objects/TrackSelector.TrackData.asm"
+
+; ---------------------------------------------------------------------------
+@SpriteMappings:
+	dc.w	@Frame0-@SpriteMappings
+	dc.w	@Frame1-@SpriteMappings
+
+@Frame0:
+	dc.b	8
+	dc.b	0, %1111, 0, 4*13, -$80
+	dc.b	0, %1111, 0, 4*8, -$60
+	dc.b	0, %1111, 0, 4*8, -$40
+	dc.b	0, %1111, 0, 4*8, -$20
+	dc.b	0, %1111, 0, 4*8, $00
+	dc.b	0, %1111, 0, 4*8, $20
+	dc.b	0, %1111, 0, 4*8, $40
+	dc.b	0, %1111, 0, 4*8, $60
+
+@Frame1:
+	dc.b	2
+	dc.b	0, %1011, 0, 4*9, $00
+	dc.b	0, %0011, $80, 4*12, $18
+	even

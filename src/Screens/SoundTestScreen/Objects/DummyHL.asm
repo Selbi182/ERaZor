@@ -53,6 +53,16 @@ Dummy_HL_Art:
 		endr
 		endm
 
+	@dcSpriteLine2: macro line, line2, line3
+		rept 8*4/2-1
+			dc.l	\line2
+			dc.l	\line
+		endr
+		dc.l	\line2
+		dc.l	\line3
+		endm
+
+
 	@dcSpriteLine	$EEEEEEEE
 	@dcSpriteLine	$EEEEEEEE
 
@@ -63,6 +73,22 @@ Dummy_HL_Art:
 
 	@dcSpriteLine	$EEEEEEEE
 	@dcSpriteLine	$0EEEEEEE
+
+	; Just HL
+	@i: = $D
+
+	@dcSpriteLine2	$FFFFFFFF, $00000000, $11111111*@i
+	@dcSpriteLine2	$FFFFFFFF, $00000000, $11111111*@i
+	@dcSpriteLine2	$FFFFFFFF, $00000000, $11111111*@i
+	@dcSpriteLine2	$FFFFFFFF, $00000000, $11111111*@i
+
+	@dcSpriteLine	$10000000*@i
+
+	@dcSpriteLine2	$0FFFFFFF+$10000000*@i, $10000000*@i, $11111111*@i
+	@dcSpriteLine2	$FFFFFFFF, $00000000, $11111111*@i
+	@dcSpriteLine2	$FFFFFFFF, $00000000, $11111111*@i
+	@dcSpriteLine2	$FFFFFFFF, $00000000, $11111111*@i
+
 
 
 Dummy_HL_Art.len: equ *-Dummy_HL_Art

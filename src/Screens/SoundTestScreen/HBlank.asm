@@ -21,6 +21,11 @@ SoundTest_GenerateHBlankCode: macro start_buffer_pos
 			move.l	#$40020010, VDP_Ctrl			; apply Plane A <-> Plane C switch
 			move.w	(start_buffer_pos+225*2).w, VDP_Data	; ''
 			move.l	#$40000010, VDP_Ctrl			; back to Plane B updates
+		elseif @scanline = 224 - 8*5
+			move.l	#$40020010, VDP_Ctrl			; ###
+			move.w	#4, VDP_Data				; ###
+			move.l	#$40000010, VDP_Ctrl			; back to Plane B updates
+
 		endif
 		if @scanline < 223
 			move.w	#@HInt_Scanline_\#@next_scanline, HBlankSubW

@@ -926,4 +926,4 @@ SoundTest_Palette:
 
 	; Line 3: Piano & Visualizer pixel colors
 	dc.w	$0E0E, $0000, $0888, $0CCC, $0EEE, $0240, $0480, $0406
-	dc.w	$060C, $0004, $000C, $0E0E, $0E0E, $0E0E, $0E0E, $0E0E
+	dc.w	$060C, $0004, $000C, $0000, $0000, $0000, $0000, $0AAA

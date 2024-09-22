@@ -112,9 +112,6 @@ HBlank_Bars_HardwareOptimized:
 	rte
 
 ; ---------------------------------------------------------------------------
-; Hardware-optimized Black Bars(tm) horizontal interrupt handlers
-; ---------------------------------------------------------------------------
-
 HBlank_Bars_PastQuarter_HardwareOptimized:
 	move.w	BlackBars.SecondHCnt,VDP_Ctrl			; send $8Axx to VDP to set HInt counter for the second invocation
 	move.w	#@ToBottom,HBlankSubW				; handle bottom next time

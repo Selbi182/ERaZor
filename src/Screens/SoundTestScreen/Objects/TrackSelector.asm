@@ -95,11 +95,11 @@ SoundTest_Obj_TrackSelector:
 
 	bsr	@SetupScrolling
 
-@RedrawTrackInfo:
+*@RedrawTrackInfo:
 	move.l	a0, -(sp)
 	move.w	d7, -(sp)
 
-	lea	SoundTest_DrawText, a4
+	lea	SoundTest_DrawText(pc), a4
 
 	SoundTest_DrawFormattedString a4, "%<.b obSTSelectedTrack(a0)>: %<.l (@track_info) str>                        ", 28, #SoundTest_PlaneA_VRAM+24*$80+4
 	SoundTest_DrawFormattedString a4, "%<.l 4(@track_info) str>                                                    ", 52, #SoundTest_PlaneA_VRAM+26*$80+4

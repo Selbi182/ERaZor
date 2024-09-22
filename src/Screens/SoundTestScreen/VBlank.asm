@@ -78,7 +78,6 @@ SoundTest_VBlank:
 	jsr	UpdateSoundDriver
 
 @Quit:
-	; TODO: Action
 	movem.l	(sp)+, d0-a6
 	rte
 

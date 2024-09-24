@@ -156,10 +156,18 @@ DeformScreen_Generic:
 		lsl.l	#8-3, d0
 		add.l	d0, CamYPos2
 
-		move.w	CamXPos, d0		; apply horizontal scrolling
-		neg.w	d0			; ''
+		if SCREEN_XDISP
+			moveq	#SCREEN_XDISP, d0
+			sub.w	CamXPos, d0
+		else
+			move.w	CamXPos, d0		; apply horizontal scrolling
+			neg.w	d0			; ''
+		endif
 		swap	d0
 		move.w	CamXPos2, d0
+		if SCREEN_XDISP
+			sub.w	#SCREEN_XDISP, d0
+		endif
 		neg.w	d0
 
 		moveq	#240/16-1, d1		; repeat to cover the entire 240-pixel screen
@@ -218,8 +226,13 @@ Deform_GHZ:
 		add.l	#$C000, $14(a2)
 		add.l	#$8000, $18(a2)			; make sure this one is unused!
 
-		move.w	CamXPos, d0
-		neg.w	d0
+		if SCREEN_XDISP
+			moveq	#SCREEN_XDISP, d0
+			sub.w	CamXPos, d0
+		else
+			move.w	CamXPos, d0
+			neg.w	d0
+		endif
 		swap	d0
 
 		move.w	CamYPos2, d4
@@ -254,14 +267,19 @@ Deform_GHZ:
 
 		; Scroll mountains (rear)
 		move.w	CamXpos4, d0
+		if SCREEN_XDISP
+			sub.w	#SCREEN_XDISP, d0
+		endif
 		neg.w	d0
 		moveq	#$30/$10-1, d1				; d1 = Number of 16x16 blocks to send
 		jsr	(a2)
 
 		; Scroll mountains (near)
 		move.w	CamXpos3, d0
+		if SCREEN_XDISP
+			sub.w	#SCREEN_XDISP, d0
+		endif
 		neg.w	d0
-
 		moveq	#$20/$10-1, d1				; d1 = Number of 16x16 blocks to send
 		jsr	(a2)
 
@@ -398,11 +416,19 @@ Deform_LZ:
 
 		move.w	($FFFFF70C).w,($FFFFF618).w
 		lea	($FFFFCC00).w,a1
-		move.w	#$DF,d1
-		move.w	($FFFFF700).w,d0
-		neg.w	d0
+		move.w	#224-1,d1
+		if SCREEN_XDISP
+			moveq	#SCREEN_XDISP, d0
+			sub.w	CamXpos, d0
+		else
+			move.w	CamXpos, d0
+			neg.w	d0
+		endif
 		swap	d0
-		move.w	($FFFFF708).w,d0
+		move.w	CamXpos2, d0
+		if SCREEN_XDISP
+			sub.w	#SCREEN_XDISP, d0
+		endif
 		neg.w	d0
 
 loc_63C6:
@@ -432,11 +458,19 @@ Deform_LZ_Extended:
 
 		; Setup scroll value
 		lea	($FFFFCC00).w,a1
-		move.w	($FFFFF700).w,d0
-		neg.w	d0			; d0 = Plane A scrolling
+		if SCREEN_XDISP
+			moveq	#SCREEN_XDISP, d0
+			sub.w	CamXpos, d0
+		else
+			move.w	CamXpos, d0
+			neg.w	d0			; d0 = Plane A scrolling
+		endif
 		move.w	d0,d1			; d1 = Plane A scrolling (backup)
 		swap	d0
-		move.w	($FFFFF708).w,d0
+		move.w	CamXpos2, d0
+		if SCREEN_XDISP
+			sub.w	#SCREEN_XDISP, d0
+		endif
 		neg.w	d0			; d0 = Plane B scrolling
 
 		; Calculate water line and decide where to start
@@ -669,23 +703,38 @@ DeformScreen_ProcessBlocks:
 
 DeformScreen_ProcessBlocks_NoOverflowCheck:
 		lea	HSRAM_Buffer, a1
-		move.w	CamXPos, d0
-		neg.w	d0
+		if SCREEN_XDISP
+			moveq	#SCREEN_XDISP, d3
+			moveq	#SCREEN_XDISP, d0
+			sub.w	CamXPos, d0
+		else
+			move.w	CamXPos, d0
+			neg.w	d0
+		endif
 		swap	d0
 		andi.w	#$F, d2
 		add.w	d2, d2
 		move.w	(a2)+, d0
+		if SCREEN_XDISP
+			add.w	d3, d0
+		endif
 		moveq	#$F-1, d1			; repeat for $F blocks to cover up to 240 pixels (but see below)
 		jsr	@pixelJump(pc, d2)		; skip pixels for first row
 
 		sub.w	#$10*2, d2
 		neg.w	d2
 		move.w	(a2)+, d0
+		if SCREEN_XDISP
+			add.w	d3, d0
+		endif
 		moveq	#1-1, d1			; repeat for one more block to cover exactly 240 pixels
 		jmp	@pixelJump(pc, d2)		; skip pixels for the last row
 
 		@blockLoop:
 			move.w	(a2)+, d0		; get block X-position for scrolling
+			if SCREEN_XDISP
+				add.w	d3, d0
+			endif
 
 		@pixelJump:
 			rept 16
@@ -708,8 +757,13 @@ Deform_SLZ:
 		move.w	($FFFFF70C).w,($FFFFF618).w
 
 		lea	($FFFFCC00).w,a1	; load beginning address of horizontal scroll buffer to a1
-		move.w	($FFFFF700).w,d4	; load FG screen's X position
-		neg.w	d4			; negate (positive to negative)
+		if SCREEN_XDISP
+			moveq	#SCREEN_XDISP, d4
+			sub.w	CamXpos, d4		; load FG screen's X position
+		else
+			move.w	CamXpos, d4		; load FG screen's X position
+			neg.w	d4			; negate (positive to negative)
+		endif
 
 		move.w	($FFFFFE04).w,d2
 		ori.w	#1,d2
@@ -956,75 +1010,7 @@ Deform_SBZ:
 		tst.b	($FFFFFE11).w			; is it Tutorial?
 		bne.w	DeformScreen_Generic		; if yes, branch
 
-		move.l	d0, d1				; layer 3 - near buildings
-		asr.l	#1, d1				;
-		add.l	d1, d0				;
-		move.l	d0, CamXPos4			;
-
-		; Calculate y-position for the background
-		; based on displacement since the last camera move
-		move.w	CamYShift, d0
-		ext.l	d0
-		lsl.l	#8-3, d0
-		add.l	d0, CamYPos2
-
-		lea	ScrollBlocks_Buffer, a1
-		
-		; Scroll clouds
-		;
-		; NOTICE:
-		; Clouds scrolling calculation has been re-implemented and improved.
-		;
-		move.l	CamXPos, d0
-		asr.l	#1, d0							; d0 = 1/2 * CamXPos
-		move.l	d0, d1
-		asr.l	#6-1, d1						; d1 = 1/64 * CamXPos
-
-		neg.l	d0
-		swap	d0
-		moveq	#4-1, d2
-
-		@cloud_loop:
-			move.w	d0, (a1)+
-			swap	d0
-			add.l	d1, d0
-			swap	d0
-			dbf	d2, @cloud_loop
-
-		; Scroll distant brown buildings
-		move.w	CamXPos2, d0
-		neg.w	d0
-		moveq	#$A-1, d1
-
-		@buildings_loop1:
-			move.w	d0, (a1)+
-			dbf	d1, @buildings_loop1
-
-		; Scroll upper black buildings
-		move.w	CamXPos4, d0
-		neg.w	d0
-		moveq	#7-1, d1
-
-		@buildings_loop2:
-			move.w	d0, (a1)+
-			dbf	d1, @buildings_loop2
-
-		; Scroll lower black buildings
-		move.w	CamXPos3,d0
-		neg.w	d0
-		moveq	#$B-1, d1
-
-		@buildings_loop3:
-			move.w	d0, (a1)+
-			dbf	d1, @buildings_loop3
-
-		lea	ScrollBlocks_Buffer, a2
-		move.w	CamYPos2, d0
-		move.w	d0, d2
-		andi.w	#$1F0, d0
-		lsr.w	#3, d0
-		lea	(a2,d0), a2
-		bra.w	DeformScreen_ProcessBlocks
+		RaiseError "SBZ1 Deformation not implemented"
 
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 
@@ -1035,8 +1021,13 @@ Deform_FZ:
 		move.w	($FFFFF70C).w,($FFFFF618).w 
 
 		lea	($FFFFCC00).w,a1	; load beginning address of horizontal scroll buffer to a1
-		move.w	($FFFFF700).w,d4	; load FG screen's X position
-		neg.w	d4			; negate (positive to negative)
+		if SCREEN_XDISP
+			moveq	#SCREEN_XDISP, d4
+			sub.w	CamXpos, d4		; load FG screen's X position
+		else
+			move.w	CamXpos, d4		; load FG screen's X position
+			neg.w	d4			; negate (positive to negative)
+		endif
 
 		move.w	($FFFFFE04).w,d2	; get current level timer
 		lsl.w	#2,d2			; speed it up
@@ -1233,26 +1224,26 @@ S_H_CameraMove_End:
 
 S_H_NoExtendedCam:
 		sub.w	($FFFFF700).w,d0
-		subi.w	#$90,d0
-		bmi.s	loc_65F6
+		subi.w	#SCREEN_WIDTH/2-$10, d0
+		bmi.s	@ScrollLeft
 		subi.w	#$10,d0
-		bpl.s	loc_65CC
+		bpl.s	@ScrollRight
 		clr.w	($FFFFF73A).w
 		rts
 ; ===========================================================================
 
-loc_65CC:
+@ScrollRight:
 		cmpi.w	#$10,d0
-		bcs.s	loc_65D6
+		bcs.s	@ScrollRight_Ok
 		move.w	#$10,d0
 
-loc_65D6:
+@ScrollRight_Ok:
 		add.w	($FFFFF700).w,d0
 		cmp.w	($FFFFF72A).w,d0
-		blt.s	loc_65E4
+		blt.s	@CalcXShift
 		move.w	($FFFFF72A).w,d0
 
-loc_65E4:
+@CalcXShift:
 		move.w	d0,d1
 		sub.w	($FFFFF700).w,d1
 		asl.w	#8,d1
@@ -1261,29 +1252,18 @@ loc_65E4:
 		rts	
 ; ===========================================================================
 
-loc_65F6:				; XREF: ScrollHoriz2
+@ScrollLeft:				; XREF: ScrollHoriz2
 		cmpi.w	#-$10,d0
-		bcc.s	@cont
+		bge.s	@ScrollLeft_Ok
 		move.w	#-$10,d0	
 		
-@cont:
+@ScrollLeft_Ok:
 		add.w	($FFFFF700).w,d0
 		cmp.w	($FFFFF728).w,d0
-		bgt.s	loc_65E4
+		bgt.s	@CalcXShift
 		move.w	($FFFFF728).w,d0
-		bra.s	loc_65E4
+		bra.s	@CalcXShift
 ; End of function ScrollHoriz2
-
-; ===========================================================================
-		tst.w	d0
-		bpl.s	loc_6610
-		move.w	#-2,d0
-		bra.s	loc_65F6
-; ===========================================================================
-
-loc_6610:
-		move.w	#2,d0
-		bra.s	loc_65CC
 
 ; ---------------------------------------------------------------------------
 ; Subroutine to	scroll the level vertically as Sonic moves
@@ -1354,7 +1334,7 @@ loc_662A:
 		addi.w	#$20,d0
 		sub.w	($FFFFF73E).w,d0
 		bcs.s	loc_6696
-		subi.w	#$40,d0
+		subi.w	#SCREEN_HEIGHT/2-$30,d0
 		bcc.s	loc_6696
 		tst.b	($FFFFF75C).w
 		bne.s	loc_66A8

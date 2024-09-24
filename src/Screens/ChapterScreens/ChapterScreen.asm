@@ -168,6 +168,10 @@ CS_LoadChapterPal:
 		rept	8
 			move.l	(a1)+, (a2)+
 		endr
+		move.l	#0, d1
+		rept	8*3
+			move.l	d1, (a2)+
+		endr
 		rts
 
 CS_ChapterPal:
@@ -208,6 +212,11 @@ CS_OHDIGHZ:
 		moveq	#8-1,d0				; 16 colours
 CS_PalLoopOHD:	move.l	(a1)+,(a2)+
 		dbf	d0,CS_PalLoopOHD
+
+		moveq	#8*3-1,d0
+		moveq	#0,d1
+CS_PalLoop1HD:	move.l	d1, (a2)+			; clear the rest of palette
+		dbf	d0, CS_PalLoop1HD
 
 		display_enable
 		jsr	Pal_FadeTo

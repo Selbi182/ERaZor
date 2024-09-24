@@ -137,7 +137,11 @@ DH_Continue:
 		lea	Objects,a0
 		moveq	#$7F,d7
 		jsr	loc_D368
+		move.l	a5, -(sp)
+		move.l	a6, -(sp)
 		jsr	BuildSprites
+		move.l	(sp)+, a6
+		move.l	(sp)+, a5
 		jsr	PalCycle_Load
 		
 		; continue to render Sonic's DPLC to avoid visual quirks

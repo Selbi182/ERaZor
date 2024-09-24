@@ -103,6 +103,10 @@ AniArt_Slot3_Timer:	equ	$FFFFF7B7			; b	Slot 3 : Timer value
 AniArt_Slot4_Frame:	equ	$FFFFF7B8			; b	Slot 4 : Art frame	-- WARNING! Occupies higher byte of "AniArt_UpdateProc"!
 AniArt_UpdateProc:	equ	$FFFFF7B8			; l	Update procedure pointer
 
+Sprite_Buffer:		equ	$FFFFF800			;	VDP sprites buffer
+Sprite_Buffer_End:	equ	$FFFFFA80
+
+
 Pal_Active:		equ	$FFFFFB00			; ~	Active palette
 Pal_Target:		equ	$FFFFFB80			; ~	Target palette for fading
 

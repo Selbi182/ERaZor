@@ -40537,7 +40537,8 @@ loc_1B210:
 		move.b	(a1)+,d1
 		subq.b	#1,d1
 		bmi.s	loc_1B268
-		jsr	sub_D762
+		;jsr	sub_D762
+		illegal
 
 loc_1B268:
 		addq.w	#4,a4
@@ -42687,7 +42688,7 @@ Obj21_ChkScore:
 		move.b	#1,obFrame(a0)		; use SCORE frame
 		move.w	#$C5,$36(a0)		; set X-position
 		move.w	#$94,obScreenY(a0)		; set Y-position
-		move.w	#$1D1,obX(a0)
+		move.w	#$80+$151,obX(a0)
 		bra.w	Obj21_FrameSelected	; skip
 
 Obj21_ChkRings:

@@ -270,7 +270,11 @@ xpos	= 8
 ypos	= $A
 xpos2	= $14
 
+	if SCREEN_WIDTH=320
 _StartVel = $1400
+	else
+_StartVel = $1540
+	endif
 _Accel = $B8
 
 DH_OWindow_Init:
@@ -281,7 +285,7 @@ DH_OWindow_Init:
 		moveq	#4,d0
 		swap	d0
 		move.l	d0,xpos2(a0)			; xpos
-		move.w	#$80+224/2,ypos(a0)		; ypos
+		move.w	#$80+SCREEN_HEIGHT/2,ypos(a0)	; ypos
 		move.w	#_StartVel,xvel(a0)		; xvel
 		move.l	#DH_OWindow_Appear,obj(a0)
 		
@@ -302,7 +306,7 @@ DH_OWindow_Appear:
 		asl.l	#8,d0
 		add.l	d0,xpos2(a0)		; calc new xpos
 		move.w	xpos2(a0),xpos(a0)	; update actual xpos
-		move.w	#$80+320/2,d0
+		move.w	#$80+SCREEN_WIDTH/2,d0
 		cmp.w	xpos(a0),d0		; have we reaches screen center?
 		ble.s	@GotoProcess		; if yes, branch
 
@@ -312,7 +316,7 @@ DH_OWindow_Appear:
 		cmpi.b	#$C,($FFFFF600).w	; are we in a level?
 		bne.s	@nah			; if not, branch
 
-		move.w	#$120,d0		; $120 = target X pos when the tut box is centered
+		move.w	#$80+SCREEN_WIDTH/2,d0	; target X pos when the tut box is centered
 		sub.w	xpos(a0),d0 		; subtract current tut box X pos
 		lsr.w	#4,d0			; reduce
 
@@ -578,7 +582,7 @@ DH_OWindow_Disappear:
 		asl.l	#8,d0
 		add.l	d0,xpos2(a0)		; calc new xpos
 		move.w	xpos2(a0),xpos(a0)	; update actual xpos
-		move.w	#$80+320+$50,d0
+		move.w	#$80+SCREEN_WIDTH+$50,d0
 		cmp.w	xpos(a0),d0		; have we passed screen?
 		ble.s	DH_KillWindow		; if yes, branch
 		rts

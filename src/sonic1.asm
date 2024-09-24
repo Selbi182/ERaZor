@@ -10106,7 +10106,7 @@ Obj27_Animate:				; XREF: Obj27_Index
 		bpl.s	Obj27_Display
 		move.b	#4,obTimeFrame(a0)	; set frame duration to	7 frames
 		addq.b	#1,obFrame(a0)	; next frame
-		cmpi.b	#6,obFrame(a0)	; is the final frame (05) displayed?
+		cmpi.b	#5,obFrame(a0)	; is the final frame (05) displayed?
 		beq.s	Obj27_Delete	; if yes, branch
 
 Obj27_Display:

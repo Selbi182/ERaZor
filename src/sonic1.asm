@@ -25752,7 +25752,7 @@ Obj03_Setup:
 		addq.b	#2,obRoutine(a0)	; set to "Obj03_Display"
 		move.l	#Map_Obj03,obMap(a0)	; load mappings
 		move.b	#4,obPriority(a0)	; set priority
-		move.b	#4,obRender(a0)		; set render flag
+		move.b	#%100,obRender(a0)	; set render flag
 		move.b	#$56,obActWid(a0)	; set display width
 		move.b	obSubtype(a0),obFrame(a0) ; set frame to subtype ID
 		subi.w	#$C,obY(a0)		; adjust Y pos
@@ -25797,7 +25797,7 @@ Obj03_Setup:
 		move.l	#Map_Obj03,obMap(a1)	; load mappings
 		move.b	#4,obPriority(a1)	; set priority
 		move.b	obRender(a0),obRender(a1) ; copy render flags
-		move.b	#86,obActWid(a1)	; set display width
+		move.b	#56,obActWid(a1)	; set display width
 		move.w	#($6200/$20),obGfx(a1)	; set art, use first palette line
 		move.b	#9,obFrame(a1)		; set to "PLACE" frame
 		move.w	obY(a1),$38(a1)		; remember base Y pos
@@ -25810,9 +25810,11 @@ Obj03_Display:
 		bne.s	@notodd			; if yes, branch
 		bset	#5,obGfx(a0)		; use second palette row (gives a slight flicker effect)
 @notodd:
+		tst.b	obRender(a0)		; is object on-screen?
+		bpl.s	@chkDelete		; if not, branch
 		bsr.s	Obj03_BackgroundColor
 
-@waitintro:
+@chkDelete:
 		move.w	obX(a0),d0
 		andi.w	#$FF80,d0
 		move.w	($FFFFF700).w,d1
@@ -25825,61 +25827,61 @@ Obj03_Display:
 ; ===========================================================================
 
 Obj03_BackgroundColor:
-		moveq	#$000,d1		; set default BG color to black
-	
-		moveq	#0,d0			; clear d0
-		move.b	($FFFFF700).w,d0	; get upper X camera position (1 unit = $100 pixels)
-		subi.b	#3,d0			; start at X pos $300
-		bpl.s	@chktutsign
-		move.w	#$444,d1		; set color for options sign
-		bra.s	@applybgcolor
-	
-	@chktutsign:
-		subi.b	#3,d0
-		bmi.s	@applybgcolor
-		cmpi.b	#$13-5,d0
-		bhs.s	@applybgcolor
-		andi.b	#$0E,d0
-		move.w	Obj03_BG(pc,d0.w),d1
-		andi.w	#$0EEE,d1
-@applybgcolor:
-		move.w	d1,d0		; base color
+		moveq	#$F, d0
+		and.b	obFrame(a0), d0
+		add.w	d0, d0
+		add.w	d0, d0				; d0 = Frame * 4
+		move.l	@BGColorData(pc, d0), d0
+		bmi.s	@quit
+		movea.w	d0, a1				; a1 = target palette pointer
+		swap	d0				; d0 = base color
 
-		btst	#7,(OptionsBits).w	; is photosensitive mode enabled?
-		beq.s	@doflash		; if not, branch
-		move.w	#$888,d1		; mask
-		bsr.w	Pal_LimitColor
-		bra.s	@apply
+		tst.b	OptionsBits			; is photosensitive mode enabled?
+		bmi.s	@photosensitiveMode		; if yes, branch
 
-@doflash:
 		moveq	#0,d1
 		move.w	($FFFFFE0E).w,d2
 		btst	#5,d2
-		beq.s	@getmask
+		beq.s	@getMask
 		btst	#6,d2
-		bne.s	@getmask
+		bne.s	@getMask
 		lsr.w	#1,d2
 		andi.w	#$1E,d2
 		move.w	d2,d1
-@getmask:
-		move.w	Obj03_BGMask(pc,d1.w),d1	; mask
-		bsr.w	Pal_LimitColor
-
-@apply:
-		move.w	d3,($FFFFFB5E).w	; apply color (color 16 of palette row 3)
+@getMask:
+		move.w	@BGMasks(pc,d1.w), d1	; d1 = mask
+		bsr.w	Pal_LimitColor		; d3 = capped color
+		move.w	d3, (a1)
 		rts
+
+@photosensitiveMode:
+		move.w	#$888, d1
+		bsr.w	Pal_LimitColor		; d3 = capped color
+		move.w	d3, (a1)
+@quit:		rts
+
 ; ---------------------------------------------------------------------------
-Obj03_BG:
-		dc.w	$2E4	; GHP
-		dc.w	$E2E	; SP
-		dc.w	$02E	; RP
-		dc.w	$EA2	; LP
-		dc.w	$E2A	; UP
-		dc.w	$E24	; SAP
-		dc.w	$000	; FP
-		even
+@BGColorData:	;	col,  palette		; frame
+		dc.w	$2E4, Pal_Active+$5E	; $00 - Night Hill
+		dc.w	$E2E, Pal_Active+$5E-6	; $01 - Special
+		dc.w	$02E, Pal_Active+$5E	; $02 - Ruined
+		dc.w	$EA2, Pal_Active+$5E-6	; $03 - Labyrinthy
+		dc.w	$E2A, Pal_Active+$5E	; $04 - Unreal
+		dc.w	$E24, Pal_Active+$5E-6	; $05 - Scar Night
+		dc.w	$000, Pal_Active+$5E	; $00 - Finalor
+		dc.w	$000, Pal_Active+$5E	; $07 - Tutorial
+		dc.w	$444, Pal_Active+$5E	; $08 - Options
+		dc.w	-1, -1			; $09 - Place
+		dc.w	$000, Pal_Active+$5E	; $0A - Exit Tutorial
+		dc.w	$444, Pal_Active+$5E	; $0B - Sound Test :3
+		dc.w	$444, Pal_Active+$5E	; $0C - Intro Scene
+		dc.w	$000, Pal_Active+$5E	; $0D - The End
+		dc.w	$000, Pal_Active+$5E	; $0E - Skip Tutorial
+		dc.w	$000, Pal_Active+$5E	; $0F - Real
+		dc.w	-1, -1
+
 ; ---------------------------------------------------------------------------
-Obj03_BGMask:
+@BGMasks:
 		dc.w	$A88
 		dc.w	$866
 		dc.w	$A88

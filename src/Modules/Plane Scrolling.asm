@@ -1007,10 +1007,7 @@ Deform_SBZ:
 		asr.l	#1, d0				; layer 1 - brown buildings
 		move.l	d0, CamXPos2			;
 
-		tst.b	($FFFFFE11).w			; is it Tutorial?
-		bne.w	DeformScreen_Generic		; if yes, branch
-
-		RaiseError "SBZ1 Deformation not implemented"
+		bra.w	DeformScreen_Generic
 
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 

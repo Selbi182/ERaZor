@@ -73,12 +73,13 @@ DebugModeDefault = 1
 DebugSurviveNoRings = 1
 DoorsAlwaysOpen = 1
 LowBossHP = 1
-TestDisplayDeleteBugs = 0
 	endif
 
 ; ------------------------------------------------------
 		include	"Debugger/Debugger.asm"
-		include	"modules/MD Replay.asm"
+		include	"Modules/MD Replay.asm"
+		include "Modules/DeleteObjectQueue.defs.asm"
+
 ; ------------------------------------------------------
 
 ; ===========================================================================
@@ -2830,9 +2831,11 @@ Title_SonPalLoop:
 		dbf	d0,Title_SonPalLoop	; loop
 		movem.l	(sp)+,d0-a2		; restore d0 to a2
 
+		DeleteQueue_Init
 		jsr	ObjectsLoad
 		bsr	DeformBgLayer
 		jsr	BuildSprites
+		jsr	DeleteQueue_Execute
 		moveq	#0,d0			; load standard patterns
 		bsr	LoadPLC2
 		move.w	#0,($FFFFFFE4).w
@@ -2855,9 +2858,11 @@ Title_MainLoop:
 
 		move.b	#4,VBlankRoutine
 		bsr	DelayProgram
+		DeleteQueue_Init
 		jsr	ObjectsLoad
 		bsr	DeformBgLayer
 		jsr	BuildSprites
+		jsr	DeleteQueue_Execute
 		bsr	PalCycle_Title
 		bsr	PLC_Execute
 
@@ -2912,8 +2917,10 @@ LevelSelect_Load:
 		bsr.w	LevSelTextLoad
 
 		addi.w	#15,($FFFFD0C0+obScreenY).w	; slightly adjust banner
+		DeleteQueue_Init
 		jsr	ObjectsLoad
 		jsr	BuildSprites
+		jsr	DeleteQueue_Execute
 		move.b	#4,VBlankRoutine	; run v-blank one more time...
 		bsr.w	DelayProgram		; ...to clear inputs
 
@@ -3693,8 +3700,10 @@ Level_Delay:
 @titlecardloop:
 		move.b	#$C,VBlankRoutine
 		bsr	DelayProgram
+		DeleteQueue_Init
 		jsr	ObjectsLoad
 		jsr	BuildSprites
+		jsr	DeleteQueue_Execute
 		bsr	PLC_Execute
 		move.w	($FFFFD108).w,d0
 		cmp.w	($FFFFD130).w,d0	; has title card sequence finished?
@@ -3711,8 +3720,10 @@ Level_Delay:
 		jsr 	LevelRenderer_DrawLayout_BG
 		bsr	ColIndexLoad
 		bsr	LZWaterEffects
+		DeleteQueue_Init
 		jsr	ObjectsLoad
 		jsr	BuildSprites
+		jsr	DeleteQueue_Execute
 		VBlank_UnsetMusicOnly
 		move.b	#$C,VBlankRoutine
 		bsr	DelayProgram
@@ -3795,11 +3806,13 @@ Level_MainLoop_Main:
 @noredraw:
 		; main level rendering
 		bsr	LZWaterEffects
+		DeleteQueue_Init
 		jsr	ObjectsLoad
 		bsr	DeformBgLayer		; GenerateCameraShake is called from within here
 		jsr 	LevelRenderer_Update_FG
 		jsr 	LevelRenderer_Update_BG
 		jsr	BuildSprites
+		jsr	DeleteQueue_Execute
 		bsr	UndoCameraShake		; undo camera shake now that the rendering is done
 		jsr	ObjPosLoad
 		bsr	PalCycle_Load
@@ -4952,8 +4965,10 @@ SS_SetupFinish:
 		move.b	#$A,VBlankRoutine
 		bsr	DelayProgram
 		move.w	($FFFFF604).w,($FFFFF602).w
+		DeleteQueue_Init
 		jsr	ObjectsLoad
 		jsr	BuildSprites
+		jsr	DeleteQueue_Execute
 		jsr	SS_ShowLayout
 		bsr	SS_BGAnimate
 		bsr	PalCycle_SS
@@ -5039,6 +5054,7 @@ SS_WaitVBlank:
 		move.b	#$A,VBlankRoutine
 		bsr	DelayProgram
 		move.w	($FFFFF604).w,($FFFFF602).w
+		DeleteQueue_Init
 		jsr	ObjectsLoad
 
 		; stage rotation for motion blur
@@ -5068,6 +5084,7 @@ SS_WaitVBlank:
 
 @render:
 		jsr	BuildSprites
+		jsr	DeleteQueue_Execute
 		jsr	SS_ShowLayout
 		jsr	SS_BGAnimate
 		rts
@@ -5096,8 +5113,10 @@ SS_EndLoop:
 		move.b	#$16,VBlankRoutine
 		bsr	DelayProgram
 		move.w	($FFFFF604).w,($FFFFF602).w
+		DeleteQueue_Init
 		jsr	ObjectsLoad
 		jsr	BuildSprites
+		jsr	DeleteQueue_Execute
 	;	bsr	PLC_Execute
 		jsr	SS_ShowLayout
 		bsr	SS_BGAnimate
@@ -5129,8 +5148,10 @@ SS_EndClrObjRamX:
 
 		move.b	#$C,VBlankRoutine
 		bsr	DelayProgram
+		DeleteQueue_Init
 		jsr	ObjectsLoad
 		jsr	BuildSprites
+		jsr	DeleteQueue_Execute
 		bsr	Pal_MakeFlash
 		bsr	Pal_FadeFrom
 
@@ -5675,8 +5696,10 @@ End_LoadSonic:
 		move.b	#4,VBlankRoutine
 		bsr	DelayProgram
 		jsr	ObjPosLoad
+		DeleteQueue_Init
 		jsr	ObjectsLoad
 		jsr	BuildSprites
+		jsr	DeleteQueue_Execute
 
 		bsr	OscillateNumInit
 		move.b	#1,($FFFFFE1F).w
@@ -5705,6 +5728,7 @@ End_MainLoop:
 @nopause:
 
 		bsr	End_MoveSonic
+		DeleteQueue_Init
 		jsr	ObjectsLoad
 		bsr	DeformBgLayer
 		jsr	RandomNumber
@@ -5712,6 +5736,7 @@ End_MainLoop:
 		jsr 	LevelRenderer_Update_FG
 		jsr 	LevelRenderer_Update_BG
 		jsr	BuildSprites
+		jsr	DeleteQueue_Execute
 		jsr	ObjPosLoad
 		jsr	AnimatedArt_Update
 		cmpi.b	#6,($FFFFD024).w	; is Sonic dying?
@@ -13497,8 +13522,10 @@ Obj2E_ChkEnd:
 
 Obj2E_Delete:				; XREF: Obj2E_Index
 		subq.w	#1,obTimeFrame(a0)
-		bmi.w	DeleteObject
-		rts	
+		bpl.s	@ret
+		addq.w	#4, sp			; avoid "DisplaySprite" call
+		bra	DeleteObject
+@ret:		rts	
 ; ---------------------------------------------------------------------------
 ; Subroutine to	make the sides of a monitor solid
 ; ---------------------------------------------------------------------------
@@ -17278,6 +17305,11 @@ Map_obj3C:
 		include	"_maps\obj3C.asm"
 
 ; ---------------------------------------------------------------------------
+*DeleteObject:
+*DeleteObject2:
+	include	"Modules/DeleteObjectQueue.asm"
+
+; ---------------------------------------------------------------------------
 ; Object code loading subroutine
 ; ---------------------------------------------------------------------------
 
@@ -17285,56 +17317,25 @@ Map_obj3C:
 
 
 ObjectsLoad:				; XREF: TitleScreen; et al
+		assert.w DeleteQueue_Ptr, eq, #DeleteQueue	; delete queue should be flushed from the previous frame
+
 		lea	($FFFFD000).w,a0 ; set address for object RAM
 		moveq	#$7F,d7
 		moveq	#0,d0
-		
-		; disabled death check, objects now keep on running when you die (to quote Vladik: "it looks fresh")
-	;	cmpi.b	#$18,(GameMode).w	; is this the ending sequence?
-	;	beq.s	loc_D348		; if yes, branch
-	;	cmpi.b	#6,($FFFFD024).w	; is Sonic dying?
-	;	bcc.s	loc_D362		; if yes, branch
 
-loc_D348:
+	@RunObject:
 		move.b	(a0),d0		; load object number from RAM
-		beq.s	loc_D358
+		beq.s	@Next
 		add.w	d0,d0
 		add.w	d0,d0
-		movea.l	Obj_Index-obMap(pc,d0.w),a1
-	if TestDisplayDeleteBugs=1
-		ext.l	d7		; clear upper word 
-	endif
+		movea.l	Obj_Index-4(pc,d0.w),a1
 		jsr	(a1)		; run the object's code
 		moveq	#0,d0
 
-loc_D358:
+	@Next:
 		lea	$40(a0),a0	; next object
-		dbf	d7,loc_D348
-		rts	
-; ===========================================================================
-
-loc_D362:
-		cmpi.b	#$A,($FFFFD000+$24).w	; Has Sonic drowned?
-		beq.s	loc_D348		; If so, run objects a little longer
-		moveq	#$1F,d7
-		bsr.s	loc_D348
-		moveq	#$5F,d7
-
-loc_D368:
-		moveq	#0,d0
-		move.b	(a0),d0
-		beq.s	loc_D378
-		tst.b	obRender(a0)
-		bpl.s	loc_D378
-		bsr	DisplaySprite
-
-loc_D378:
-		lea	$40(a0),a0
-
-loc_D37C:
-		dbf	d7,loc_D368
-		rts	
-; End of function ObjectsLoad
+		dbf	d7, @RunObject
+		rts
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -17376,12 +17377,12 @@ Obj_Index:
 		dc.l Obj81, Obj82, Obj83, Obj84
 		dc.l Obj85, Obj86, Obj87, Obj88
 		dc.l Obj89, Obj8A, Obj8B, Obj8C
-		dc.l Obj8D
-		even
+		dc.l Obj8D, ClearObjectSlot
 
+; ---------------------------------------------------------------------------
 Obj8D:
-	movea.l	$3C(a0), a1
-	assert.l a1, ne, #0
+		movea.l	$3C(a0), a1
+		assert.l a1, ne, #0
 	jmp	(a1)
 
 ; ---------------------------------------------------------------------------
@@ -17510,15 +17511,6 @@ SpeedToScreenPos:
 
 
 DisplaySprite:
-	if TestDisplayDeleteBugs=1
-		tst.l	d7		; was flag already set?
-		bpl.s	@0		; if not, branch
-		moveq	#0,d0
-		move.b	(a0),d0
-		illegal			; flag was already set
-@0:		ori.l	#$FFFF0000,d7
-	endif
-
 		moveq	#7, d0
 		and.b	obPriority(a0), d0
 		add.w	d0, d0
@@ -17542,15 +17534,6 @@ DisplaySprite_LayersPointers:
 ; ---------------------------------------------------------------
 
 DisplaySprite2:
-	if TestDisplayDeleteBugs=1
-		tst.l	d7		; was flag already set?
-		bpl.s	@0		; if not, branch
-		moveq	#0,d0
-		move.b	(a0),d0
-		illegal			; flag was already set
-@0:		ori.l	#$FFFF0000,d7
-	endif
-
 		moveq	#7, d0
 		and.b	obPriority(a1), d0
 		add.w	d0, d0
@@ -17564,33 +17547,6 @@ DisplaySprite2:
 @display_done:
 		rts
 ; End of function DisplaySprite2
-
-; ---------------------------------------------------------------------------
-; Subroutine to	delete an object
-; ---------------------------------------------------------------------------
-
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
-
-DeleteObject:
-	if TestDisplayDeleteBugs=1
-		tst.l	d7		; was flag already set?
-		bpl.s	@0		; if not, branch
-		moveq	#0,d0
-		move.b	(a0),d0
-		illegal			; flag was already set
-@0:		ori.l	#$FFFF0000,d7
-	endif
-
-		movea.l	a0,a1
-
-DeleteObject2:
-		moveq	#0,d0
-		rept	$40/4
-			move.l	d0,(a1)+
-		endr
-		rts	
-; End of function DeleteObject
 
 ; ---------------------------------------------------------------------------
 *BuildSprites:

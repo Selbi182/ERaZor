@@ -102,8 +102,10 @@ CS_ClrObjRam:	move.l	d0,(a1)+
 		move.b	#4,($FFFFD000).w		; load chapter numbers object (<-- past Selbi, why the fuck did you make this an object???)
 		move.b	#0,($FFFFD000+obRoutine).w	; set to init routine
 		move.b	($FFFFFFA7).w,($FFFFD000+obFrame).w ; set chapter number to frame (first frame in maps is duplicated)
+		DeleteQueue_Init
 		jsr	ObjectsLoad
 		jsr	BuildSprites
+		jsr	DeleteQueue_Execute
 
 		display_enable
 
@@ -226,8 +228,10 @@ CS_PalLoop1HD:	move.l	d1, (a2)+			; clear the rest of palette
 CS_SetupEndLoop:	
 		move.w	#180,($FFFFF614).w	; set end wait time
 CS_Loop:
+		DeleteQueue_Init
 		jsr	ObjectsLoad
 		jsr	BuildSprites
+		jsr	DeleteQueue_Execute
 		move.b	#2,VBlankRoutine
 		jsr	DelayProgram
 		tst.b	($FFFFF604).w		; is start HELD?

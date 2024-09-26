@@ -101,8 +101,10 @@ BlackBarsConfigScreen:
 
 	jsr	RandomNumber			; better RNG please
 	jsr	BlackBarsConfigScreen_MoveCamera
+	DeleteQueue_Init
 	jsr	ObjectsLoad
 	jsr	BuildSprites
+	jsr	DeleteQueue_Execute
 	jsr	ChangeRingFrame
 	jsr	PCL_Load
 	jsr	BlackBarsConfigScreen_DeformBG

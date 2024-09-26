@@ -86,8 +86,10 @@ CreditsScreen:
 		move.b	#4,VBlankRoutine
 		jsr	DelayProgram
 		move.l	d0,-(sp)
+		DeleteQueue_Init
 		jsr	ObjectsLoad
 		jsr	BuildSprites
+		jsr	DeleteQueue_Execute
 		move.l	(sp)+,d0
 		dbf	d0,@delay
 
@@ -99,8 +101,10 @@ CreditsScreen:
 CreditsScreen_Loop:
 		move.b	#4,VBlankRoutine
 		jsr	DelayProgram
+		DeleteQueue_Init
 		jsr	ObjectsLoad
 		jsr	BuildSprites
+		jsr	DeleteQueue_Execute
 
 @creditsmain:
 		cmpi.b	#Credits_Pages,(Credits_Page).w		; final page?
@@ -154,8 +158,10 @@ Credits_EndLoop:
 		; final loop on the final page
 		move.b	#4,VBlankRoutine
 		jsr	DelayProgram
+		DeleteQueue_Init
 		jsr	ObjectsLoad
 		jsr	BuildSprites
+		jsr	DeleteQueue_Execute
 		andi.b	#$F0,($FFFFF605).w			; is A, B, C, or Start pressed?
 		beq.s	Credits_EndLoop				; if not, loop
 		clr.b	(Credits_Page).w

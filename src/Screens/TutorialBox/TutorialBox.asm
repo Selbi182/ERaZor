@@ -69,7 +69,7 @@ Tutorial_DisplayHint:
 		; Init objects
 		lea	_DH_WindowObj,a0
 		move.w	d0,-(sp)
-		jsr	DeleteObject			; clear slot
+		jsr	ClearObjectSlot			; clear slot
 		move.w	(sp)+,d0
 		move.l	#DH_OWindow_Init,obj(a0)
 		lea	Hints_List,a1

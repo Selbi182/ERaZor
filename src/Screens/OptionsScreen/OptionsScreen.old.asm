@@ -80,8 +80,10 @@ OptionsScreen:				; XREF: GameModeArray
 		move.w	#$7F,obScreenY(a0)	; set Y-position
 		bset	#7,obGfx(a0)		; make object high plane
 		
+		DeleteQueue_Init
 		jsr	ObjectsLoad
 		jsr	BuildSprites
+		jsr	DeleteQueue_Execute
 
 		move.b	#$86,d0		; play Options screen music (Spark Mandrill)
 		jsr	PlaySound_Special
@@ -196,8 +198,10 @@ CheckEnable_PlacePlacePlace:
 OptionsScreen_MainLoop:
 		move.b	#2,VBlankRoutine
 		jsr	DelayProgram
+		DeleteQueue_Init
 		jsr	ObjectsLoad
 		jsr	BuildSprites
+		jsr	DeleteQueue_Execute
 		jsr	PLC_Execute
 
 		jsr	BackgroundEffects_Update

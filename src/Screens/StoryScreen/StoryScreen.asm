@@ -69,8 +69,10 @@ STS_ClrObjRam:	move.l	d0,(a1)+
 		move.w	#$87,obScreenY(a0)		; set Y-position
 		bset	#7,obGfx(a0)		; otherwise make object high plane
 
+		DeleteQueue_Init
 		jsr	ObjectsLoad
 		jsr	BuildSprites
+		jsr	DeleteQueue_Execute
 	
 		lea	($C00000).l,a6
 		move.l	#$50000003,4(a6)
@@ -143,8 +145,10 @@ StoryScreen_BGColors:
 ; LevelSelect:
 StoryScreen_MainLoop:
 		move.b	#$1C,VBlankRoutine
+		DeleteQueue_Init
 		jsr	DelayProgram
 		jsr	ObjectsLoad
+		jsr	DeleteQueue_Execute
 		jsr	BuildSprites
 
 		jsr	BackgroundEffects_Update
@@ -182,8 +186,10 @@ STS_FadeOutScreen:
 @finalfadeout:
 		move.b	#2,VBlankRoutine
 		jsr	DelayProgram
+		DeleteQueue_Init
 		jsr	ObjectsLoad
 		jsr	BuildSprites
+		jsr	DeleteQueue_Execute
 
 		lea	($FFFFCC00+STS_BaseRow*32).w,a0	; set up H-scroll buffer to the point where the main text is located
 		moveq	#(STS_LinesMain)-1,d2		; set loop count of line count

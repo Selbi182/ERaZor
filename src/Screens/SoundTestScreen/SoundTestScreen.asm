@@ -131,8 +131,10 @@ SoundTestScreen:
 	sf.b	SoundTest_ExitFlag
 	jsr	SoundTest_VDeform_Init
 	jsr	SoundTest_Visualizer_Init
+	DeleteQueue_Init
 	jsr	ObjectsLoad
 	jsr	BuildSprites
+	jsr	DeleteQueue_Execute
 
 	display_enable
 	move.w	#SoundTest_VBlank, VBlankSubW
@@ -144,8 +146,10 @@ SoundTest_MainLoop:
 	bsr	SoundTest_VDeform_Update
 	assert.w SoundTest_VRAMBufferPoolPtr, eq, #Art_Buffer		; VRAM buffer pool should be reset by the beginning of the frame
 	SoundTest_InitWriteRequests
+	DeleteQueue_Init
 	jsr	ObjectsLoad
 	jsr	BuildSprites
+	jsr	DeleteQueue_Execute
 	SoundTest_FinalizeWriteRequests a0
 	bsr	SoundTest_Visualizer_Update
 	bsr	SoundTest_UpdateFading

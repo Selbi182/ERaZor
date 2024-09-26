@@ -6,9 +6,11 @@ LevelLayout_FG:		equ 	LevelLayout_RAM			;	FG level layout (A400-A5FF)
 LevelLayout_BG:		equ 	LevelLayout_RAM+$200		;	BG level layout (A600-A7FF)
 
 DrawBuffer_RAM:		equ	$FFFFA800			;	draw buffer RAM (A800-AB7F)
-LevelRend_RAM:		equ	$FFFFAB80			;	level renderer RAM (AB80-AC98)
+LevelRend_RAM:		equ	$FFFFAB80			;	level renderer RAM (AB80-AB98)
 
-; <<FOR SALE>>							;	<<FOR SALE / $20,000>> (AF40-ABFF)
+DeleteQueue:		equ	$FFFFAB98			;	Delete queue
+DeleteQueue_End:	equ	$FFFFABFE
+DeleteQueue_Ptr:	equ	$FFFFABFE			;	Delete objects queue pointer
 
 Sprites_Queue:		equ	$FFFFAC00			;	object sprites queued for display (AC00-AFFF)
 
@@ -105,7 +107,6 @@ AniArt_UpdateProc:	equ	$FFFFF7B8			; l	Update procedure pointer
 
 Sprite_Buffer:		equ	$FFFFF800			;	VDP sprites buffer
 Sprite_Buffer_End:	equ	$FFFFFA80
-
 
 Pal_Active:		equ	$FFFFFB00			; ~	Active palette
 Pal_Target:		equ	$FFFFFB80			; ~	Target palette for fading

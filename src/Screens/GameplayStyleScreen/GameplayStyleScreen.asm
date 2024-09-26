@@ -106,8 +106,10 @@ GSS_MainLoop:
 		move.w	#0,($FFFFFB00).w
 		move.b	#$12,VBlankRoutine
 		jsr	DelayProgram
+		DeleteQueue_Init
 		jsr	ObjectsLoad
 		jsr	BuildSprites
+		jsr	DeleteQueue_Execute
 
 		move.b	($FFFFF605).w,d1	; get button presses
 	 	andi.b	#$F,d1			; is D-pad pressed?

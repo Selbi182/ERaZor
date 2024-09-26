@@ -5830,8 +5830,7 @@ Obj8B:
 		moveq	#0,d0
 		move.b	obRoutine(a0),d0
 		move.w	@Index(pc,d0.w),d1
-		jsr	@Index(pc,d1.w)
-		jmp	DisplaySprite
+		jmp	@Index(pc,d1.w)
 
 ; ===========================================================================
 @Index:		dc.w @Emitter-@Index
@@ -5896,12 +5895,10 @@ Obj8B:
 		add.w	obScreenY(a0), d0
 		cmp.w	#SCREEN_HEIGHT+8, d0
 		bhs.s	@Destroy
+		jmp	DisplaySprite
 
-		rts
+@Destroy:	jmp 	DeleteObject
 
-@Destroy:
-		addq.w  #4,sp 		; skip the `jmp DisplaySprite` so it doesn't save the object (tysm markey)
-		jmp 	DeleteObject
 ; ---------------------------------------------------------------------------
 Map_obj8B:
 		include	"_maps\obj8B.asm"

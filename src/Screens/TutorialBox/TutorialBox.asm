@@ -595,7 +595,7 @@ DH_OWindow_Disappear:
 ; ---------------------------------------------------------------
 
 DH_KillWindow:
-		sf.b	(a0)			; kill windows
+		clr.w	(a0)			; kill windows
 
 		; restore backed-up palette
 		cmpi.b	#10,($FFFFFF6E).w	; is this the introduction text?

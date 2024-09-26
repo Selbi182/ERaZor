@@ -29,7 +29,7 @@
 		dc.w	$0080, $00A8	; syz 4
 
 		dc.w	$01A0, $0160	; sbz 1 (Bomb Machine Cutscene, start loc irrelevant)
-		dc.w	$0180, $068C	; SBZ 2 (Tutorial Place)
+		dc.w	$0180+SCREEN_XCORR, $068C	; SBZ 2 (Tutorial Place)
 		dc.w	$0B86, $05AC	; SBZ 3 (Finalor Place)
 		dc.w	$0080, $00A8	; sbz 4
 

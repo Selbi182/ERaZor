@@ -11002,8 +11002,10 @@ Obj1F_BossDelete:
 		move.b	#$25,obAnim(a1)	; use inhuman rotate animation
 		move.b	#2,obRoutine(a1)
 		move.b	#1,($FFFFFFEB).w	; set jumpdash flag
+		jsr	FixCamera
 		move.b	#1,(RedrawEverything).w
 
+		move.b	#0, ($FFFFF76C).w		; reset OPL routine index
 		clr.w	($FFFFFE30).w		; clear any set level checkpoints
 
 		move.b	#$34,($FFFFD080).w 		; load title card object
@@ -16171,6 +16173,7 @@ Obj34_Setup:				; XREF: Obj34_Index
 		bne.s	@notnhp			; if not, branch	
 		move.w	#$002,($FFFFFE10).w		; change level ID to GHZ3
 		movem.l	d7/a0,-(sp)
+		move.b	#0, ($FFFFF76C).w		; reset OPL routine index
 		jsr	LevelLayoutLoad			; load GHZ3 layout
 		movem.l	(sp)+,d7/a0
 		jsr	PlayLevelMusic
@@ -17690,7 +17693,7 @@ loc_D964:
 		bls.s	loc_D976
 		tst.b	obMap(a0)
 		bpl.s	loc_D972
-		addq.b	#1,obRender(a2)
+		addq.b	#1,1(a2)
 
 loc_D972:
 		addq.w	#6,a0
@@ -17806,7 +17809,7 @@ locret_DA3A:
 ; ===========================================================================
 
 loc_DA3C:
-		tst.b	obMap(a0)
+		tst.b	4(a0)
 		bpl.s	OPL_MakeItem
 		btst	#7,obGfx(a2,d2.w)
 		beq.s	OPL_MakeItem
@@ -17858,7 +17861,7 @@ loc_DA94:
 		dbf	d0,loc_DA94	; repeat $5F times
 
 locret_DAA0:
-		assert.w a1, lo, #$F000
+		assert.w a1, lo, #$F000, Debugger_ObjSlots
 		rts	
 ; End of function SingleObjLoad
 
@@ -17883,6 +17886,21 @@ loc_DAB0:
 locret_DABC:
 		rts	
 ; End of function SingleObjLoad2
+
+	if def(__DEBUG__)
+Debugger_ObjSlots:
+	Console.WriteLine "%<pal1>Objects IDs in slots:%<pal0>"
+	Console.Write "%<setw,39>"       ; format slots table nicely ...
+
+	lea	Objects, a0
+	move.w	#(Objects_End-Objects)/$40-1, d0
+ 
+	@DisplayObjSlot:
+		Console.Write "%<.b (a0)> "
+		lea	$40(a0), a0
+		dbf	d0, @DisplayObjSlot
+	rts
+	endif
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------

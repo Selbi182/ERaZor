@@ -125,7 +125,7 @@ SoundTest_Obj_NoteEmitter:
 	; Setup note for rendering
 	move.w	(@setup_data)+, d0
 	move.w	d0, obSTPixelDataX(a0)
-	add.w	#$80+(320-SoundTest_Visualizer_Width*8)/2, d0
+	add.w	#$80+(SCREEN_WIDTH-SoundTest_Visualizer_Width*8)/2, d0
 	move.w	d0, obX(a0)
 
 	move.w	(@setup_data)+, d0

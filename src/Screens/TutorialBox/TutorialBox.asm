@@ -11,12 +11,12 @@
 ; Program Setup
 ; ---------------------------------------------------------------
 
-_DH_BG_Pattern		= $BBBBBBBB		; tile pattern for hint's BG
 _DH_BG_Pattern_2	= $B			;
 _DH_VRAM_Base		= $5800			; base VRAM address for display window
 _DH_VRAM_Border		= $5700			; VRAM address for window border
 _DH_WindowObj		= $FFFFD400		; address for window object        
 _DH_WindowObj_Art	= _DH_VRAM_Border/$20	; art pointer for window object
+_DH_WindowFill_NumParts = 4			; number of chunks fill art is split into
 
 TutDim_Min	= 7
 TutDim_Max	= $10
@@ -62,16 +62,13 @@ Tutorial_DisplayHint:
 		move.b	d0,($FFFFFF6E).w		; store text ID
 		movem.l	a0/a5-a6,-(sp)
 
-		; Setup registers for constant use
-		lea	VDP_Ctrl,a6           
-		lea	VDP_Data,a5
-
 		; Init objects
 		lea	_DH_WindowObj,a0
 		move.w	d0,-(sp)
 		jsr	ClearObjectSlot			; clear slot
 		move.w	(sp)+,d0
 		move.l	#DH_OWindow_Init,obj(a0)
+		
 		lea	Hints_List,a1
 		andi.w	#$FF,d0
 		add.w	d0,d0
@@ -85,37 +82,19 @@ Tutorial_DisplayHint:
 		
 		; Init hint window gfx
 		move.b	#8,VBlankRoutine
-		jsr	DelayProgram			; perform vsync before operation, fix Sonic's DPCL
-		VBlank_SetMusicOnly			; disable interrupts
-		ints_push
-		bsr	DH_ClearWindow			; draw window
-		lea	Art_DH_WindowBorder,a1		; load border art
-		vram	_DH_VRAM_Border,(a6)
-		moveq	#7,d0				; transfer 8 tiles
-@0		move.l	(a1)+,(a5)
-		move.l	(a1)+,(a5)
-		move.l	(a1)+,(a5)
-		move.l	(a1)+,(a5)
-		move.l	(a1)+,(a5)
-		move.l	(a1)+,(a5)
-		move.l	(a1)+,(a5)
-		move.l	(a1)+,(a5)
-		dbf	d0,@0
-		ints_pop
-		VBlank_UnsetMusicOnly
+		move.l	#DH_LoadArt, VBlankCallback
+		jsr	DelayProgram			; perform vsync before operation
 
 		cmpi.b	#10,($FFFFFF6E).w	; is this the introduction text?
 		bne.s	DH_MainLoop		; if not, branch
 		jsr	BackgroundEffects_Setup
-		lea	VDP_Ctrl,a6   
-		lea	VDP_Data,a5
 
 ; ---------------------------------------------------------------
 ; Display Hint Main Loop
 ; ---------------------------------------------------------------
 
 DH_MainLoop:
-		move.b	#2,VBlankRoutine
+		move.b	#4,VBlankRoutine
 		jsr	DelayProgram
 
 		cmpi.b	#10,($FFFFFF6E).w	; is this the introduction text?
@@ -130,25 +109,17 @@ DH_MainLoop:
 DH_Continue:
 		; Run window object code
 		lea	_DH_WindowObj,a0
+		lea	VDP_Ctrl, a6
+		lea	VDP_Data, a5
 		movea.l	obj(a0),a1
 		jsr	(a1)			; run window object
 
 		; Display other objects
 		lea	Objects,a0
 		moveq	#$7F,d7
-		jsr	loc_D368
-		move.l	a5, -(sp)
-		move.l	a6, -(sp)
+		bsr	DH_DisplayObjects
 		jsr	BuildSprites
-		move.l	(sp)+, a6
-		move.l	(sp)+, a5
 		jsr	PalCycle_Load
-		
-		; continue to render Sonic's DPLC to avoid visual quirks
-		move.l	a0,-(sp)
-		lea	($FFFFD000).w,a0
-		jsr	LoadSonicDynPLC
-		move.l	(sp)+,a0
 
 		; palette cycle to highlight letters
 		btst	#7,(OptionsBits).w	; photosensitive mode?
@@ -175,6 +146,7 @@ DH_Continue:
 		; Check if it's over
 		tst.b	_DH_WindowObj	; object window dead?
 		bne.w	DH_MainLoop	; if not, branch
+		; fallthrough
 
 ; ---------------------------------------------------------------
 ; Return to the game
@@ -187,8 +159,48 @@ DH_Quit:
 		; Display objects one final time
 		lea	Objects,a0
 		moveq	#$7F,d7
-		jsr	loc_D368
+		jsr	DH_DisplayObjects
 		moveq	#0, d7				; short circuit ObjectsLoad if we're there
+		rts
+
+; ---------------------------------------------------------------
+; Loads tutorial box art during VBlank
+; ---------------------------------------------------------------
+
+DH_LoadArt:
+		bsr	DH_ClearWindow			; draw window
+
+		lea	Art_DH_WindowBorder,a1		; load border art
+		lea	VDP_Data, a5
+		lea	VDP_Ctrl, a6
+
+		vram	_DH_VRAM_Border,(a6)
+		moveq	#8-1,d0				; transfer 8 tiles
+@0		move.l	(a1)+,(a5)
+		move.l	(a1)+,(a5)
+		move.l	(a1)+,(a5)
+		move.l	(a1)+,(a5)
+		move.l	(a1)+,(a5)
+		move.l	(a1)+,(a5)
+		move.l	(a1)+,(a5)
+		move.l	(a1)+,(a5)
+		dbf	d0,@0
+		rts
+
+; ---------------------------------------------------------------
+; Displays in-level objects (if any)
+; ---------------------------------------------------------------
+
+DH_DisplayObjects:
+		moveq	#0,d0
+		tst.b	obRender(a0)
+		bpl.s	@Skip
+		cmp.b	#$19, (a0)		; ### Don't display after-images to avoid visual glitches
+		beq.s	@Skip			; ''
+		jsr	DisplaySprite
+
+@Skip:		lea	$40(a0),a0
+		dbf	d7, DH_DisplayObjects
 		rts
 
 ; ---------------------------------------------------------------
@@ -196,22 +208,16 @@ DH_Quit:
 ; ---------------------------------------------------------------
 
 DH_ClearWindow:
-		VBlank_SetMusicOnly
-		vram	_DH_VRAM_Base,(a6)
-		move.l	#_DH_BG_Pattern,d0
-		move.w	#$A0-1,d1	; do $A0 tiles
+		@base_vram: = _DH_VRAM_Base
+		@size: = ($A0*$20/_DH_WindowFill_NumParts)
 
-@DrawTile:
-		move.l	d0,(a5)
-		move.l	d0,(a5)
-		move.l	d0,(a5)
-		move.l	d0,(a5)
-		move.l	d0,(a5)
-		move.l	d0,(a5)
-		move.l	d0,(a5)
-		move.l	d0,(a5)
-		dbf	d1,@DrawTile
-		VBlank_UnsetMusicOnly
+		rept _DH_WindowFill_NumParts
+			move.l	#Art_DH_WindowFill, d1
+			move.w	#@base_vram, d2
+			move.w	#@size>>1, d3
+			jsr	QueueDMATransfer
+			@base_vram: = @base_vram + @size
+		endr
 		rts
 
 ; ---------------------------------------------------------------
@@ -649,6 +655,10 @@ fhv	= 3<<3
 		even
 
 ; ===============================================================
+
+Art_DH_WindowFill:
+		dcb.b	$A0*$20/_DH_WindowFill_NumParts, (_DH_BG_Pattern_2<<4)|(_DH_BG_Pattern_2)
+		even
 
 Art_DH_WindowBorder:
 		incbin	'Screens/TutorialBox/TutorialBox_Art.bin'

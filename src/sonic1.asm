@@ -3478,7 +3478,7 @@ Level_GetBgm:
 		bsr	PalLoad2		; load palette (based on d0)
 		move.w	#$E00,(BGThemeColor).w	; set theme color for background effects
 
-		move.b	#10,d0		; VLADIK => Load hint number
+		moveq	#10,d0		; VLADIK => Load hint number
 		jsr	Tutorial_DisplayHint	; VLADIK => Display hint
 		
 		jsr	ClearScreen
@@ -4483,8 +4483,10 @@ LineLengths_Neg:
 
 Fuzz_TutBox:
 		jsr	DeformBgLayer
+		jsr 	LevelRenderer_Update_FG
+		jsr 	LevelRenderer_Update_BG
 
-		move.w	#$120,d3		; $120 = target X pos when the tut box is centered
+		move.w	#$80+SCREEN_WIDTH/2,d3	; $120 = target X pos when the tut box is centered
 		sub.w	($FFFFD408).w,d3 	; subtract current tut box X pos
 		asr.w	#2,d3			; reduce
 		move.w	($FFFFFE0E).w,d5 	; get V-blank frame counter (we can't use FE04 here cause we're trapped)
@@ -16177,7 +16179,8 @@ Obj34_Setup:				; XREF: Obj34_Index
 		btst	#3,(OptionsBits).w	; is cinematic HUD enabled?
 		bne.s	@regular		; if yes, branch
 		lea	PLC_TitleCard, a1
-		jsr	LoadPLC_Direct
+		jmp	LoadPLC_Direct
+
 @waitdelay:
 		rts
 

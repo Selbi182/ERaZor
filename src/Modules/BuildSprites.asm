@@ -37,7 +37,8 @@ BuildSprites:
 	; Process 8 sprite priority layers in order
 	bsr	@ProcessSpriteLayers
 
-	; Clear sprites queue and unlink the last sprite
+@FinalizeSpriteBuffer:
+	; Clear sprite queue and unlink the last sprite
 	moveq	#0, @var0
 	tst.w	@spr_counter			; do we have any sprites left?
 	beq.s	@unlink_done			; if not, branch
@@ -50,6 +51,28 @@ BuildSprites:
 		@current_queue_ptr: = @current_queue_ptr + $80
 	endr
 	rts
+
+; --------------------------------------------------------------
+; Special variant of BuildSprites for Special stages
+; --------------------------------------------------------------
+
+@BuildSprites_SS:
+	jsr	SS_ShowLayout			; prepare SS sprites
+
+	lea 	Sprite_Buffer, @spr_buffer
+	moveq	#80-1, @spr_counter
+
+	; Black Bars(tm) may inject special code for sprite masking
+	move.w	BlackBars.Handler, a0
+	jsr	_BB_BuildSpritesCallback(a0)	; updates @spr_buffer, @spr_counter
+
+	moveq	#80, @spr_link
+	sub.b	@spr_counter, @spr_link
+
+	bsr	@ProcessSpriteLayers
+	bsr	@ProcessSSLayout
+
+	bra	@FinalizeSpriteBuffer
 
 ; --------------------------------------------------------------
 ;
@@ -157,7 +180,7 @@ BuildSprites:
 
 	moveq	#0, @piece_cnt
 	btst	#5, @render			; is raw mappings bit set?
-	bne.s	@DrawSprite			; if yes, branch
+	bne.s	@DrawSprite_Cont ;####			; if yes, branch
 
 	;moveq	#0, @var0			-- OPTIMIZED OUT
 	move.b	obFrame(@obj), @var0		; get mapping frame
@@ -171,7 +194,17 @@ BuildSprites:
 
 ; ==============================================================
 @DrawSprite:
+	; ###
+	if def(__DEBUG__)
+		;movem.l	a1-a3/d0-d3, -(sp)
+		;move.l	@maps, d1
+		;jsr	MDDBG__GetSymbolByOffset
+		;add.w	d0, d1
+		;assert.w d1, eq, #1, @Debugger_Object	; mappings should point to a proper symbol
+		;movem.l	(sp)+, a1-a3/d0-d3
+	endif
 
+@DrawSprite_Cont:
 	@base_pat:	equr	@obj
 	@pat:		equr	@render
 
@@ -275,6 +308,11 @@ BuildSprites:
 	
 	@GenerateDrawSprite 1, 0
 
+; --------------------------------------------------------------
+;
+; --------------------------------------------------------------
+
+	if def(__DEBUG__)
 @Debugger_Object:
 	Console.WriteLine "addr=%<.w @obj>"
 	Console.WriteLine "id=%<.b (@obj)>"
@@ -282,3 +320,38 @@ BuildSprites:
 	Console.WriteLine "maps=%<.l obMap(@obj) sym>"
 	Console.WriteLine "frame=%<.b obFrame(@obj)>"
 	rts
+	endif
+
+; --------------------------------------------------------------
+;
+; --------------------------------------------------------------
+
+	rept 80
+		move.l	(@spr_queue)+, @var0
+		move.b	@spr_link, @var0
+		addq.b	#1, @spr_link
+		move.l	@var0, (@spr_buffer)+
+		move.l	(@spr_queue)+, (@spr_buffer)+
+	endr
+
+@ProcessSSLayout.ExecuteQueue:
+	rts
+
+; --------------------------------------------------------------
+@ProcessSSLayout:
+	lea	SS_SpritesQueue, @spr_queue
+	move.w	(@spr_queue)+, @var0
+	addq.w	#1, @spr_counter
+	cmp.w	@spr_counter, @var0
+	bls.s	@ProcessSSLayout.SpriteCount_Ok
+	move.w	@spr_counter, @var0
+
+@ProcessSSLayout.SpriteCount_Ok:
+	mulu.w	#10, @var0
+	neg.w	@var0
+	jmp	@ProcessSSLayout.ExecuteQueue(pc, @var0)
+
+; --------------------------------------------------------------
+
+; A ditry trick to make a local label global without breaking everything else
+BuildSprites_SS:	equ	@BuildSprites_SS

@@ -4896,8 +4896,12 @@ SS_ClrNemRam:	move.l	d0,(a1)+
 		jsr	SS_Load		; load special stage layout
 		bsr	SS_BGAnimate
 		
-		move.l	#0,($FFFFF700).w
-		move.l	#0,($FFFFF704).w
+		jsr	SS_LoadWallsArt
+		jsr	SS_UpdateWallsArt_Forced
+
+		moveq	#0, d0
+		move.l	d0,CamXpos
+		move.l	d0,CamYpos
 		move.b	#9,($FFFFD000).w ; load	special	stage Sonic object
 		move.b	#$34,($FFFFD080).w ; load title	card object
 
@@ -4969,9 +4973,8 @@ SS_SetupFinish:
 		move.w	($FFFFF604).w,($FFFFF602).w
 		DeleteQueue_Init
 		jsr	ObjectsLoad
-		jsr	BuildSprites
+		jsr	BuildSprites_SS
 		jsr	DeleteQueue_Execute
-		jsr	SS_ShowLayout
 		bsr	SS_BGAnimate
 		bsr	PalCycle_SS
 @0:		bsr	Pal_WhiteToBlack
@@ -5085,9 +5088,9 @@ SS_WaitVBlank:
 		bra.s	@checkblackout
 
 @render:
-		jsr	BuildSprites
+		jsr	BuildSprites_SS
 		jsr	DeleteQueue_Execute
-		jsr	SS_ShowLayout
+		jsr	SS_UpdateWallsArt
 		jsr	SS_BGAnimate
 		rts
 
@@ -5117,10 +5120,10 @@ SS_EndLoop:
 		move.w	($FFFFF604).w,($FFFFF602).w
 		DeleteQueue_Init
 		jsr	ObjectsLoad
-		jsr	BuildSprites
+		jsr	BuildSprites_SS
 		jsr	DeleteQueue_Execute
 	;	bsr	PLC_Execute
-		jsr	SS_ShowLayout
+		jsr	SS_UpdateWallsArt
 		bsr	SS_BGAnimate
 		
 		subq.w	#1,($FFFFF794).w
@@ -5152,8 +5155,9 @@ SS_EndClrObjRamX:
 		bsr	DelayProgram
 		DeleteQueue_Init
 		jsr	ObjectsLoad
-		jsr	BuildSprites
+		jsr	BuildSprites_SS
 		jsr	DeleteQueue_Execute
+		jsr	SS_UpdateWallsArt
 		bsr	Pal_MakeFlash
 		bsr	Pal_FadeFrom
 
@@ -8540,7 +8544,7 @@ Obj18_OnPlatform:				; XREF: Obj18_Index
 		move.w	obX(a0),($FFFFD008).w	; force Sonic to center of platform
 		clr.w	($FFFFD010).w		; clear Sonic's X speed
 		
-		bsr	SingleObjLoad		; load explosion object
+		jsr	SingleObjLoad		; load explosion object
 		bne.s	Obj18_SYZEnd
 		move.b	#$3F,(a1)
 		move.w	obX(a0),obX(a1)
@@ -29889,6 +29893,7 @@ LoadSonicDynPLC:			; XREF: Obj01_Control; et al
 		beq.s	locret_13C96
 		move.b	d0,($FFFFF766).w
 		lea	(SonicDynPLC).l,a2
+
 		add.w	d0,d0
 		adda.w	(a2,d0.w),a2
 		moveq	#0,d5
@@ -40403,136 +40408,8 @@ Touch_D7orE1:				; XREF: Touch_Special
 ; End of function Touch_Special
 
 ; ---------------------------------------------------------------------------
-; Subroutine to	show the special stage layout
-; ---------------------------------------------------------------------------
-
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
-
-SS_ShowLayout:				; XREF: SpecialStage
-		bsr	SS_AniWallsRings
-		bsr	SS_AniItems
-		move.w	d5,-(sp)
-		lea	($FFFF8000).w,a1
-		move.b	($FFFFF780).w,d0	; get current rotation
-	;	andi.b	#$FC,d0			; original smoothing used in S1
-		jsr	(CalcSine).l
-		move.w	d0,d4
-		move.w	d1,d5
-		muls.w	#$18,d4
-		muls.w	#$18,d5
-		moveq	#0,d2
-		move.w	($FFFFF700).w,d2
-		divu.w	#$18,d2
-		swap	d2
-		neg.w	d2
-		addi.w	#-$B4,d2
-		moveq	#0,d3
-		move.w	($FFFFF704).w,d3
-		divu.w	#$18,d3
-		swap	d3
-		neg.w	d3
-		addi.w	#-$B4,d3
-		move.w	#$F,d7
-
-loc_1B19E:
-		movem.w	d0-d2,-(sp)
-		movem.w	d0-d1,-(sp)
-		neg.w	d0
-		muls.w	d2,d1
-		muls.w	d3,d0
-		move.l	d0,d6
-		add.l	d1,d6
-		movem.w	(sp)+,d0-d1
-		muls.w	d2,d0
-		muls.w	d3,d1
-		add.l	d0,d1
-		move.l	d6,d2
-		move.w	#$F,d6
-
-loc_1B1C0:
-		move.l	d2,d0
-		asr.l	#8,d0
-		move.w	d0,(a1)+
-		move.l	d1,d0
-		asr.l	#8,d0
-		move.w	d0,(a1)+
-		add.l	d5,d2
-		add.l	d4,d1
-		dbf	d6,loc_1B1C0
-
-		movem.w	(sp)+,d0-d2
-		addi.w	#$18,d3
-		dbf	d7,loc_1B19E
-
-		move.w	(sp)+,d5
-		lea	($FF0000).l,a0
-		moveq	#0,d0
-		move.w	($FFFFF704).w,d0
-		divu.w	#$18,d0
-		mulu.w	#$80,d0
-		adda.l	d0,a0
-		moveq	#0,d0
-		move.w	($FFFFF700).w,d0
-		divu.w	#$18,d0
-		adda.w	d0,a0
-		lea	($FFFF8000).w,a4
-		move.w	#$F,d7
-
-loc_1B20C:
-		move.w	#$F,d6
-
-loc_1B210:
-		moveq	#0,d0
-		move.b	(a0)+,d0
-		beq.s	loc_1B268
-		cmpi.b	#$4E,d0
-		bhi.s	loc_1B268
-		move.w	(a4),d3
-		addi.w	#$120,d3
-		cmpi.w	#$70,d3
-		bcs.s	loc_1B268
-		cmpi.w	#$1D0,d3
-		bcc.s	loc_1B268
-		move.w	obGfx(a4),d2
-		addi.w	#$F0,d2
-		cmpi.w	#$70,d2
-		bcs.s	loc_1B268
-		cmpi.w	#$170,d2
-		bcc.s	loc_1B268
-		lea	($FF4000).l,a5
-		lsl.w	#3,d0
-		lea	(a5,d0.w),a5
-		movea.l	(a5)+,a1
-		move.w	(a5)+,d1
-		add.w	d1,d1
-		adda.w	(a1,d1.w),a1
-		movea.w	(a5)+,a3
-		moveq	#0,d1
-		move.b	(a1)+,d1
-		subq.b	#1,d1
-		bmi.s	loc_1B268
-		;jsr	sub_D762
-		illegal
-
-loc_1B268:
-		addq.w	#4,a4
-		dbf	d6,loc_1B210
-
-		lea	$70(a0),a0
-		dbf	d7,loc_1B20C
-
-		move.b	d5,($FFFFF62C).w
-		cmpi.b	#$50,d5
-		beq.s	loc_1B288
-		move.l	#0,(a2)
-		rts	
-; ===========================================================================
-
-loc_1B288:
-		move.b	#0,-5(a2)
-		rts	
-; End of function SS_ShowLayout
+*SS_ShowLayout:
+		include	"Modules/SS_ShowLayout.asm"
 
 ; ---------------------------------------------------------------------------
 ; Subroutine to	animate	walls and rings	in the special stage
@@ -40947,14 +40824,17 @@ loc_1B6F8:	move.b	(a0)+,(a1)+
 		lea	$40(a1),a1
 		dbf	d1,loc_1B6F6
 
-		lea	($FF4008).l,a1
-		lea	(SS_MapIndex).l,a0
+		; Initialize SS mappings table
+		lea 	($FF4008).l,a1
+		lea 	(SS_MapIndex).l,a0
 		moveq	#$4D,d1
-loc_1B714:	move.l	(a0)+,(a1)+
+
+loc_1B714:
+		move.l	(a0)+,(a1)+		; copy mappings pointer
 		move.w	#0,(a1)+
-		move.b	-obMap(a0),-obRender(a1)
-		move.w	(a0)+,(a1)+
-		dbf	d1,loc_1B714
+		move.b	-4(a0),-1(a1)		; copy frame number
+		move.w	(a0)+,(a1)+		; copy pattern base
+		dbf 	d1,loc_1B714
 
 		lea	($FF4400).l,a1
 		move.w	#$3F,d1
@@ -41109,9 +40989,9 @@ SS_MapIndex:
 		dc.w $45F0
 		dc.l Map_SS_R
 		dc.w $2F0
-		dc.l Map_obj47+$1000000	; add frame no.	* $1000000
+		dc.l Map_SSBumper+$1000000	; add frame no.	* $1000000
 		dc.w $23B
-		dc.l Map_obj47+$2000000
+		dc.l Map_SSBumper+$2000000
 		dc.w $23B
 		dc.l Map_SS_R
 		dc.w $797
@@ -41125,7 +41005,7 @@ SS_MapIndex:
 		dc.w $7A0
 		dc.l Map_SS_R
 		dc.w $7A9
-		dc.l Map_obj25
+		dc.l Map_SSRings
 		dc.w $27B2
 		dc.l Map_SS_Chaos3
 		dc.w $770
@@ -41141,13 +41021,13 @@ SS_MapIndex:
 		dc.w $770
 		dc.l Map_SS_R
 		dc.w $4F0
-		dc.l Map_obj25+$4000000
+		dc.l Map_SSRings+$4000000
 		dc.w $27B2
-		dc.l Map_obj25+$5000000
+		dc.l Map_SSRings+$5000000
 		dc.w $27B2
-		dc.l Map_obj25+$6000000
+		dc.l Map_SSRings+$6000000
 		dc.w $27B2
-		dc.l Map_obj25+$7000000
+		dc.l Map_SSRings+$7000000
 		dc.w $27B2
 		dc.l Map_SS_Glass
 		dc.w $23F0
@@ -41170,47 +41050,73 @@ SS_MapIndex:
 		even
 
 ; ---------------------------------------------------------------------------
-; Sprite mappings - special stage "R" block
+; Special stage sprite mappings
 ; ---------------------------------------------------------------------------
-Map_SS_R:
-		include	"_maps\SSRblock.asm"
+
+*Map_SS_R:
+*Map_SS_Glass:
+*Map_SS_Up:
+*Map_SS_Down:
+*Map_SS_Chaos1:
+*Map_SS_Chaos2:
+*Map_SS_Chaos3:
+*Map_SS_Walls:
+		include "_maps/SS_Sprites.asm"
+
+
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Subroutine to load special stage animated walls art
+; ---------------------------------------------------------------------------
+
+SS_LoadWallsArt:
+		move.w	#-1, ($FF7FFE).l			; reset last walls frame
+
+		lea	ArtKosp_SSWalls, a0
+		lea	$FF6000, a1
+		jmp	KosPlusDec
+
+
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Subroutine to display rotated walls art
+; ---------------------------------------------------------------------------
+
+SS_UpdateWallsArt_Forced:
+		move.w	($FF400C).l, d0
+		bra	SS_UpdateDPLC
 
 ; ---------------------------------------------------------------------------
-; Sprite mappings - special stage breakable glass blocks and red-white blocks
-; ---------------------------------------------------------------------------
-Map_SS_Glass:
-		include	"_maps\SSglassblock.asm"
+SS_UpdateWallsArt:
+		move.w	($FF400C).l, d0			; d0 = Current walls frame
+		cmp.w	($FF7FFE).l, d0
+		beq.s	SS_UpdateDPLC_Done
 
-; ---------------------------------------------------------------------------
-; Sprite mappings - special stage "UP" block
-; ---------------------------------------------------------------------------
-Map_SS_Up:
-		include	"_maps\SSUPblock.asm"
+SS_UpdateDPLC:
+		move.w	d0, ($FF7FFE).l
+		lea	DPLC_SSWalls(pc), a2
+		add.w	d0,d0
+		adda.w	(a2,d0.w), a2
+		moveq	#0, d5
+		add.b	(a2)+, d5
+		subq.w	#1, d5
+		bmi.s	SS_UpdateDPLC_Done
+		move.w	#$2840, d4			; vram
+		move.l	#$FF6000, d6			; art pointer
+		jmp	SPLC_ReadEntry
 
-; ---------------------------------------------------------------------------
-; Sprite mappings - special stage "DOWN" block
-; ---------------------------------------------------------------------------
-Map_SS_Down:
-		include	"_maps\SSDOWNblock.asm"
+SS_UpdateDPLC_Done:
+		rts
 
+; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Sprite mappings - special stage chaos	emeralds
+; SS Walls - Dynamic Pattern Load Cues
 ; ---------------------------------------------------------------------------
-Map_SS_Chaos1:	dc.w byte_1B96C-Map_SS_Chaos1
-		dc.w byte_1B97E-Map_SS_Chaos1
-Map_SS_Chaos2:	dc.w byte_1B972-Map_SS_Chaos2
-		dc.w byte_1B97E-Map_SS_Chaos2
-Map_SS_Chaos3:	dc.w byte_1B978-Map_SS_Chaos3
-		dc.w byte_1B97E-Map_SS_Chaos3
-byte_1B96C:	dc.b 1
-		dc.b $F8, 5, 0,	0, $F8
-byte_1B972:	dc.b 1
-		dc.b $F8, 5, 0,	4, $F8
-byte_1B978:	dc.b 1
-		dc.b $F8, 5, 0,	8, $F8
-byte_1B97E:	dc.b 1
-		dc.b $F8, 5, 0,	$C, $F8
+
+*DPLC_SSWalls: 
+		include "_maps\SSWalls DPLC.asm"
 		even
+
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Object 09 - Sonic (special stage)
@@ -41600,18 +41506,18 @@ locret_1BBB4:
 SS_FixCamera:				; XREF: Obj09
 		move.w	obY(a0),d2
 		move.w	obX(a0),d3
-		move.w	($FFFFF700).w,d0
-		subi.w	#$A0,d3
+		move.w	CamXPos,d0
+		sub.w	#SCREEN_WIDTH/2,d3
 		bcs.s	loc_1BBCE
 		sub.w	d3,d0
-		sub.w	d0,($FFFFF700).w
+		sub.w	d0,CamXPos
 
 loc_1BBCE:
-		move.w	($FFFFF704).w,d0
-		subi.w	#$70,d2
+		move.w	CamYPos,d0
+		subi.w	#SCREEN_HEIGHT/2,d2
 		bcs.s	locret_1BBDE
 		sub.w	d2,d0
-		sub.w	d0,($FFFFF704).w
+		sub.w	d0,CamYPos
 
 locret_1BBDE:
 		rts	
@@ -44366,8 +44272,6 @@ PLC_SpeStage:
 		dc.w 0
 		dc.l ArtKospM_TitleCard	; title cards
 		dc.w $0A20
-		dc.l ArtKospM_SSWalls	; walls
-		dc.w $2840
 		dc.l ArtKospM_Bumper		; bumper
 		dc.w $4760
 		dc.l ArtKospM_SSGOAL		; GOAL block
@@ -44539,15 +44443,11 @@ ArtKospM_Flicky:	incbin	artkosp\flicky.kospm	; flicky
 		even
 ArtKospM_Squirrel:	incbin	artkosp\squirrel.kospm	; squirrel
 		even
-; ---------------------------------------------------------------------------
-; Sprite mappings - walls of the special stage
-; ---------------------------------------------------------------------------
-Map_SSWalls:
-		include	"_maps\SSwalls.asm"
+
 ; ---------------------------------------------------------------------------
 ; Compressed graphics - special stage
 ; ---------------------------------------------------------------------------
-ArtKospM_SSWalls:	incbin	artkosp\sswalls.kospm	; special stage walls
+ArtKosp_SSWalls:	incbin	artkosp\sswalls.kosp	; special stage walls
 		even
 Eni_SSBg2:	incbin	misc\eni_ssbg2.bin	; special stage background (mappings)
 		even

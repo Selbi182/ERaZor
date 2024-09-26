@@ -1,6 +1,9 @@
 
 ChunksArray:	 	equ 	$FF0000 			;	256x256 chunks table (0000-A400)
 
+SS_PositionMatrix:	equ	$FFFF8000			;	Sprites positions matrix for SS
+SS_SpritesQueue:	equ	$FFFF9000			;	Sprites queue for the special stage
+
 LevelLayout_RAM:	equ	$FFFFA400
 LevelLayout_FG:		equ 	LevelLayout_RAM			;	FG level layout (A400-A5FF)
 LevelLayout_BG:		equ 	LevelLayout_RAM+$200		;	BG level layout (A600-A7FF)

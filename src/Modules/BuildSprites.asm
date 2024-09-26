@@ -25,13 +25,13 @@ BuildSprites:
 	@piece_cnt:	equr	d7
 
 	lea 	Sprite_Buffer, @spr_buffer
-	moveq	#80, @spr_counter
+	moveq	#80-1, @spr_counter
 
 	; Black Bars(tm) may inject special code for sprite masking
 	move.w	BlackBars.Handler, a0
 	jsr	_BB_BuildSpritesCallback(a0)	; updates @spr_buffer, @spr_counter
 
-	moveq	#80+1, @spr_link
+	moveq	#80, @spr_link
 	sub.b	@spr_counter, @spr_link
 
 	; Process 8 sprite priority layers in order
@@ -91,6 +91,8 @@ BuildSprites:
 @ProcessSpriteLayers.ExecuteQueue.ProcessObject:
 
 	movea.w	(@spr_queue)+, @obj
+
+	assert.l obMap(@obj), ne, , @Debugger_Object
 
 	move.b	obRender(@obj), @render
 	moveq	#%1100, @var0
@@ -153,40 +155,19 @@ BuildSprites:
 	move.w	@xpos, @base_xpos
 	move.w	@ypos, @base_ypos
 
+	moveq	#0, @piece_cnt
 	btst	#5, @render			; is raw mappings bit set?
-	bne.s	@DisplaySprite.DrawPiece	; if yes, branch
+	bne.s	@DrawSprite			; if yes, branch
 
 	;moveq	#0, @var0			-- OPTIMIZED OUT
 	move.b	obFrame(@obj), @var0		; get mapping frame
 	add.w	@var0, @var0
 	adda.w	(@maps, @var0), @maps		; load mappings for this frame
 
-	moveq	#0, @piece_cnt
 	move.b	(@maps)+, @piece_cnt		; get pieces count from mappings data
-	sub.w	@piece_cnt, @spr_counter	; mark all sprite pieces as drawn ...
-	ble.s	@DisplaySprite.FinalizeBuffer	; if @spr_counter <= 0, limit number of pieces drawn
-
 	subq.w	#1, @piece_cnt
 	bpl.s	@DrawSprite			; if we have pieces to draw, branch
 	rts					; otherwise, do nothing ...
-
-; --------------------------------------------------------------
-@DisplaySprite.FinalizeBuffer:
-	add.w	@spr_counter, @piece_cnt	; subtract "negative" number in @spr_counter from @piece_cnt
-	subq.w	#1, @piece_cnt
-
-@DisplaySprite.FinalizeBuffer2:
-	movea.w	@proc_layer_sp, sp		; jump out objects sprite layers processing routine ...
-	bpl.s	@DrawSprite			; if we have pieces to draw, branch
-	rts
-
-; --------------------------------------------------------------
-@DisplaySprite.DrawPiece:
-	moveq	#1-1, @piece_cnt
-	subq.w	#1, @spr_counter
-	beq.s	@DisplaySprite.FinalizeBuffer2	; if @spr_counter <= 0, limit number of pieces drawn
-
-*	bra.s	@DrawSprite
 
 ; ==============================================================
 @DrawSprite:
@@ -265,6 +246,10 @@ BuildSprites:
 		move.w	@pat, (@spr_buffer)+
 		move.w	@xpos, (@spr_buffer)+
 
+		dbf	@spr_counter, @DrawSpritePiece_Next_\@	; go on if we still have sprites to draw ...
+		move.w	@proc_layer_sp, sp			; otherwise short-circuit layer processing
+		rts						; ''
+
 	@DrawSpritePiece_Next_\@:
 		dbf 	@piece_cnt, @DrawSpritePiece_Loop_\@
 		rts
@@ -289,3 +274,11 @@ BuildSprites:
 	bcs.s	@DrawSprite_XYFlip
 	
 	@GenerateDrawSprite 1, 0
+
+@Debugger_Object:
+	Console.WriteLine "addr=%<.w @obj>"
+	Console.WriteLine "id=%<.b (@obj)>"
+	Console.WriteLine "art=%<.w obGfx(@obj)>"
+	Console.WriteLine "maps=%<.l obMap(@obj) sym>"
+	Console.WriteLine "frame=%<.b obFrame(@obj)>"
+	rts

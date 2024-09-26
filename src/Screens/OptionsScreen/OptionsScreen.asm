@@ -99,8 +99,8 @@ OptionsScreen:				; XREF: GameModeArray
 		; Load objects
 		lea	($FFFFD100).w,a0
 		move.b	#2,(a0)			; load ERaZor banner object
-		move.w	#$11E,obX(a0)		; set X-position
-		move.w	#$82,obScreenY(a0)	; set Y-position
+		move.w	#$80+SCREEN_WIDTH/2-2,obX(a0)	; set X-position
+		move.w	#$82,obScreenY(a0)		; set Y-position
 		bset	#7,obGfx(a0)		; make object high plane
 		jsr	ObjectsLoad
 		jsr	BuildSprites

@@ -22,12 +22,13 @@
 SCREEN_WIDTH:	equ 400
 SCREEN_HEIGHT:	equ 224
 SCREEN_XDISP:	equ (320 - SCREEN_WIDTH) / 2	; GensPlusGX-Wide just centers the screen, X-coordinate of left-most corner is offset.
+SCREEN_XCORR:	equ (SCREEN_WIDTH - 320) / 2	; this one corrects camera boundaries
 
 	else
 SCREEN_WIDTH:	equ 320
 SCREEN_HEIGHT:	equ 224
 SCREEN_XDISP:	equ 0
-
+SCREEN_XCORR:	equ 0
 	endif
 
 ; ------------------------------------------------------
@@ -5826,7 +5827,7 @@ Obj8B:
 		bne.s	@Return
 		move.b	(a0),(a1)
 		move.b	#2,obRoutine(a1)
-		move.w	#$125,obX(a1) 
+		move.w	#$80+SCREEN_WIDTH/2,obX(a1) 
 		move.w	#$EC,obScreenY(a1) 
 
 @Return:
@@ -5854,22 +5855,17 @@ Obj8B:
 
 @ChkOffscreen:
 		jsr 	SpeedToScreenPos
-		
-		; X < $40
-		cmpi.w	#$40,obX(a0)
-		bmi.w	@Destroy
 
-		; X > $1D0
-		cmpi.w	#$1D0,obX(a0)
-		bpl.w	@Destroy
+		moveq	#-$80, d0
+		add.w	obX(a0), d0
+		cmp.w	#SCREEN_WIDTH+8, d0
+		bhs.s	@Destroy
 
-		; Y < $60
-		cmpi.w	#$60,obScreenY(a0)
-		bmi.w	@Destroy
+		moveq	#-$80, d0
+		add.w	obScreenY(a0), d0
+		cmp.w	#SCREEN_HEIGHT+8, d0
+		bhs.s	@Destroy
 
-		; Y > $100
-		cmpi.w	#$170,obScreenY(a0)
-		bpl.w	@Destroy
 		rts
 
 @Destroy:
@@ -6371,7 +6367,7 @@ Resize_GHZ3main:
 		bcs.s	locret_6E96			; if not, branch
 		move.w	#$400,($FFFFF726).w		; set lower y-boundary
 
-		cmpi.w	#$27D0+GHZ3Add,($FFFFD008).w	; is Sonic near boss?
+		cmpi.w	#$27D0+GHZ3Add-SCREEN_XCORR,($FFFFD008).w	; is Sonic near boss?
 		bcc.s	loc_6E98			; if yes, branch
 		
 locret_6E96:
@@ -6388,7 +6384,7 @@ Resize_GHZ3boss:
 		move.w	#$300,($FFFFF726).w
 		move.w	($FFFFF700).w,($FFFFF728).w
 
-		cmpi.w	#$2960+GHZ3Add,($FFFFF700).w
+		cmpi.w	#$2960+GHZ3Add-SCREEN_XCORR,($FFFFF700).w
 		bcs.s	locret_6EE8
 		jsr	SingleObjLoad
 		bne.s	loc_6ED0
@@ -7201,7 +7197,7 @@ loc_72F4:
 ; ===========================================================================
 
 Resize_FZboss:
-		cmpi.w	#$2300,($FFFFF700).w
+		cmpi.w	#$2300-SCREEN_XCORR,($FFFFF700).w
 		bcs.s	loc_7312
 		jsr	SingleObjLoad
 		bne.s	loc_7312
@@ -7249,7 +7245,7 @@ Resize_FZAddBombs:
 ; ===========================================================================
 
 Resize_FZend:
-		cmpi.w	#$2450,($FFFFF700).w
+		cmpi.w	#$2450-SCREEN_XCORR,($FFFFF700).w
 		bcs.s	loc_7320
 		addq.b	#2,($FFFFF742).w
 
@@ -10958,7 +10954,7 @@ Obj1F_BossDelete:
 		move.b	#0,($FFFFF7AA).w		; unlock screen
 		move.b	#2,($FFFFFFAA).w		; set flag 1, 2
 		move.w	#$25C5,($FFFFF728).w		; set new left boundary
-		move.w	#$5060,($FFFFF72A).w		; set new right boundary
+		move.w	#$5060-SCREEN_XCORR,($FFFFF72A).w; set new right boundary
 
 		move.b	#$DB,d0			; play epic explosion sound
 		jsr	PlaySound
@@ -13601,7 +13597,7 @@ Obj0E_Index:	dc.w Obj0E_Main-Obj0E_Index
 
 Obj0E_Main:				; XREF: Obj0E_Index
 		addq.b	#2,obRoutine(a0)
-		move.w	#$150,obX(a0)
+		move.w	#$80+SCREEN_WIDTH/2+$30,obX(a0)
 	;	move.w	#$DE,obScreenY(a0)
 		move.w	#0,obScreenY(a0)
 		move.l	#Map_obj0E,obMap(a0)
@@ -13688,7 +13684,7 @@ locret_A6F8:				; XREF: Obj0F_Index
 
 Obj0F_PrsStart1:			; XREF: Obj0F_Index
 		addq.w	#4,obX(a0)	; move object across the screen
-		cmpi.w	#$170,obX(a0)
+		cmpi.w	#$80+SCREEN_WIDTH-$40,obX(a0)
 		blt.s	Obj0F_Animate
 		addq.b	#2,obRoutine(a0)
 		bra.s	Obj0F_Animate
@@ -13696,7 +13692,7 @@ Obj0F_PrsStart1:			; XREF: Obj0F_Index
 
 Obj0F_PrsStart2:			; XREF: Obj0F_Index
 		subq.w	#4,obX(a0)	; move object across the screen
-		cmpi.w	#$40,obX(a0)
+		cmpi.w	#$80-$40,obX(a0)
 		bgt.s	Obj0F_Animate
 		subq.b	#2,obRoutine(a0)
 ; ---------------------------------------------------------------------------
@@ -16412,7 +16408,7 @@ Obj34_NotIsAct:
 		addq.w	#MoveOffSpeedY,obScreenY(a0)
 @cont2:
 		addq.w	#MoveOffSpeedX,obX(a0)
-		cmpi.w	#$200,obX(a0)
+		cmpi.w	#$80+SCREEN_WIDTH+$40, obX(a0)
 		bgt.w	Obj34_JustDelete
 		bra.w	Obj34_Display
 
@@ -16523,10 +16519,10 @@ Obj34_ItemData:
 ; Start and finish positions
 ; ---------------------------------------------------------------------------
 Obj34_ConData:
-		dc.w $0030, $0120 ; Stage Name (e.g. NIGHT HILL)
-		dc.w $0000, $0139 ; PLACE
-		dc.w $0414, $0154 ; "ACT" text and Act Number
-		dc.w $0214, $0154 ; Oval
+		dc.w $0030, $80+SCREEN_WIDTH/2		; Stage Name (e.g. NIGHT HILL)
+		dc.w $0000, $80+SCREEN_WIDTH/2+$19	; PLACE
+		dc.w $0414, $80+SCREEN_WIDTH/2+$34	; "ACT" text and Act Number
+		dc.w $0214, $80+SCREEN_WIDTH/2+$34	; Oval
 		even
 ; ===========================================================================
 
@@ -25650,7 +25646,7 @@ word_1E0EC:	dc 1
 ; ---------------------------------------------------------------------------
 ; Object 02 - ERaZor Banner / U Mad Bro? Sign
 ; --------------------------------------------------------------------------
-UMadBro_X 	= $EB
+UMadBro_X 	= $80+SCREEN_WIDTH/2-$35
 UMadBro_YStart	= $22A
 UMadBro_YEnd	= $158
 ; --------------------------------------------------------------------------
@@ -25692,7 +25688,7 @@ Obj02_NotEnding:
 		bra.s	Obj02_FinishSetup		; use XY positions set while loading object
 
 Obj02_TitleScreen:
-		move.w	#$11F,obX(a0)			; set X-position
+		move.w	#$80+SCREEN_WIDTH/2-1,obX(a0)	; set X-position
 		move.w	#$115,obScreenY(a0)		; set Y-position
 
 Obj02_FinishSetup:
@@ -34332,7 +34328,7 @@ Obj8A_Index:	dc.w Obj8A_Main-Obj8A_Index
 
 Obj8A_Main:				; XREF: Obj8A_Index
 		addq.b	#2,obRoutine(a0)
-		move.w	#$120,obX(a0)
+		move.w	#$80+SCREEN_WIDTH/2,obX(a0)
 		move.w	#$F0,obScreenY(a0)
 		move.l	#Map_obj8A,obMap(a0)
 		move.w	#$5A0,obGfx(a0)
@@ -38287,7 +38283,7 @@ off_19E80:	dc.w loc_19E90-off_19E80, loc_19EA8-off_19E80
 loc_19E90:				; XREF: off_19E80
 		tst.l	PLC_Pointer
 		bne.s	loc_19EA2
-		cmpi.w	#$2450,($FFFFF700).w
+		cmpi.w	#$2450-SCREEN_XCORR,($FFFFF700).w
 		bcs.s	loc_19EA2
 		addq.b	#2,$34(a0)
 		move.w	#$9E,d0		; set song $9E
@@ -42688,40 +42684,40 @@ Obj21_ChkScore:
 		cmpi.b	#1,$30(a0)		; is object set to SCORE?
 		bne.s	Obj21_ChkRings		; if not, branch
 		move.b	#1,obFrame(a0)		; use SCORE frame
-		move.w	#$C5,$36(a0)		; set X-position
-		move.w	#$94,obScreenY(a0)		; set Y-position
-		move.w	#$80+$151,obX(a0)
+		move.w	#$80+$14,obScreenY(a0)		; set Y-position
+		move.w	#$80+$45,$36(a0)		; set target X-position
+		move.w	#$80+SCREEN_WIDTH+$11,obX(a0)	; set start X-position
 		bra.w	Obj21_FrameSelected	; skip
 
 Obj21_ChkRings:
 		cmpi.b	#2,$30(a0)		; is object set to RINGS?
 		bne.s	Obj21_ChkTime		; if not, branch
 		move.b	#2,obFrame(a0)		; use RINGS frame
-		move.w	#$18F,obX(a0)		; set X-position
-		move.w	#$94,$38(a0)		; set Y-position
-		move.w	#$1A0,obScreenY(a0)
+		move.w	#$80+SCREEN_WIDTH-$31,obX(a0)		; set X-position
+		move.w	#$80+$14,$38(a0)			; set target Y-position
+		move.w	#$80+SCREEN_HEIGHT+$40,obScreenY(a0)	; set start Y-position
 		bra.s	Obj21_FrameSelected	; skip
 
 Obj21_ChkTime:
 		cmpi.b	#3,$30(a0)		; is object set to TIME?
 		bne.s	Obj21_ChkLives		; if not, branch
 		move.b	#4,obFrame(a0)		; use TIME frame (3 is the red ring frame, so we have to use 4)
-		move.w	#$AD,obX(a0)		; set X-position
-		move.w	#$43,obScreenY(a0)
-		move.w	#$14B,$38(a0)		; set Y-position
+		move.w	#$80+$2D,obX(a0)	; set X-position
+		move.w	#$43,obScreenY(a0)		; set start Y-position
+		move.w	#$80+SCREEN_HEIGHT-$15,$38(a0)	; set target Y-position
 		bra.s	Obj21_FrameSelected	; skip
 
 Obj21_ChkLives:
-		cmpi.b	#4,$30(a0)		; is object set to LIVES?
+		cmpi.b	#4,$30(a0)		; is object set to DEATHS?
 		bne.s	Obj21_FrameSelected	; if not, branch
-		move.b	#5,obFrame(a0)		; use LIVES frame
-		move.w	#$19B,$36(a0)		; set X-position
-		cmpi.w	#$400,($FFFFFE10).w
-		bne.s	@cont
-		move.w	#$130,$36(a0)		; set X-position
+		move.b	#5,obFrame(a0)		; use DEATHS frame
+		move.w	#$80+SCREEN_WIDTH-$25,$36(a0)	; set target X-position
+		cmpi.w	#$400,($FFFFFE10).w		; are we Uberhub?
+		bne.s	@cont				; if not, branch
+		move.w	#$80+SCREEN_WIDTH/2+$10,$36(a0)	; set target X-position (centered)
 @cont:
-		move.w	#$14B,obScreenY(a0)		; set Y-position
-		move.w	#$8F,obX(a0)
+		move.w	#$80+$F,obX(a0)			; set start X-position
+		move.w	#$80+SCREEN_HEIGHT-$15,obScreenY(a0)	; set Y-position
 
 Obj21_FrameSelected:
 		move.b	#0,obRender(a0)
@@ -42788,7 +42784,7 @@ Obj21_FZEscapeTimer:
 		bne.s	@noflash		; if that time isn't over yet, branch
 		move.w	#$26CA,obGfx(a0)	; use palette line 2
 @noflash:
-		cmpi.w	#$11C,obX(a0)		; is object after $11C on X-axis?
+		cmpi.w	#$80+SCREEN_WIDTH/2-4,obX(a0)	; is object after $11C on X-axis?
 		bhs.s	Obj21_Display2		; if not, branch
 		add.w	d0,obX(a0)		; move HUD
 
@@ -42812,10 +42808,10 @@ Obj21_NoMoveOff:
 		cmpi.b	#6,($FFFFD024).w	; is Sonic dying?
 		blo.s	Obj21_NotDying		; if not, branch
 		
-		cmpi.b	#4,$30(a0)		; is object set to LIVES?
+		cmpi.b	#4,$30(a0)		; is object set to DEATHS?
 		bne.s	@nodeathsmove		; if not, branch
 
-		cmpi.w	#$130,obX(a0)		; reached target X position?
+		cmpi.w	#$80+SCREEN_WIDTH/2+$10,obX(a0)	; reached target X position?
 		bls.s	@xreached		; if yes, branch
 		subi.w	#6,obX(a0)		; move to the left	
 @xreached:

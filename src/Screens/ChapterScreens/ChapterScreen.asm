@@ -270,8 +270,8 @@ Obj04_Setup:
 		move.b	#0,$18(a0)		; set priority
 		move.b	#0,1(a0)		; set render flag
 		move.w	#$0100,2(a0)		; set art tile, use first palette line
-		move.w	#$123,8(a0)		; set X-position
-		move.w	#$D3,$A(a0)		; set Y-position
+		move.w	#$80+SCREEN_WIDTH/2+3, obX(a0)	; set X-position
+		move.w	#$D3, obScreenY(a0)		; set Y-position
 
 Obj04_Display:
 		jmp	DisplaySprite		; jump to DisplaySprite

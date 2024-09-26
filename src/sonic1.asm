@@ -10268,7 +10268,7 @@ Obj3F_Animate_NoMove:
 		bpl.s	Obj3F_Display
 		move.b	#4,obTimeFrame(a0)	; set frame duration to	7 frames
 		addq.b	#1,obFrame(a0)	; next frame
-		cmpi.b	#6,obFrame(a0)	; is the final frame (05) displayed?
+		cmpi.b	#5,obFrame(a0)	; is the final frame (05) displayed?
 		beq.s	Obj3F_Delete	; if yes, branch
 
 Obj3F_Display:

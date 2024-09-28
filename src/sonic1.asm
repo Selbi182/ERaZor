@@ -22499,10 +22499,19 @@ Obj5C_Main:				; XREF: Obj5C_Index
 		move.b	#4,obRoutine(a1)		
 
 Obj5C_GirderLarge:			; XREF: Obj5C_Index
-		move.l	($FFFFF700).w,d1
-		add.l	d1,d1
-		swap	d1
-		neg.w	d1
+		if SCREEN_XCORR
+			moveq	#-SCREEN_XCORR, d1
+			sub.w	CamXPos, d1
+			add.w	d1, d1
+		else
+			move.w	CamXPos, d1
+			add.w	d1, d1
+			neg.w	d1
+		endif
+		and.w	#$1FF,d1
+		if SCREEN_XDISP
+			add.w	#-SCREEN_XDISP,d1
+		endif
 		move.w	d1,obX(a0)
 
 		move.l	($FFFFF704).w,d1
@@ -22521,7 +22530,12 @@ Obj5C_GirderLarge:			; XREF: Obj5C_Index
 		addi.w	#$100,d1
 		move.w	d1,obScreenY(a0)
 
-		bra.w	Obj5C_Display
+		cmpi.w	#$1D00-SCREEN_XCORR,($FFFFF700).w	; maximum camera pos
+		bhs.w	@dontdisplay
+		cmpi.w	#$D00-SCREEN_XCORR,($FFFFF700).w	; minimum left camera pos
+		bhs.w	DisplaySprite
+@dontdisplay:
+		rts
 ; ===========================================================================
 
 Obj5C_Main2:				; XREF: Obj5C_Index
@@ -22532,13 +22546,25 @@ Obj5C_Main2:				; XREF: Obj5C_Index
 		move.b	#1,obFrame(a0)
 
 Obj5C_GirderSmall:			; XREF: Obj5C_Index
-		move.l	($FFFFF700).w,d1
-		add.l	d1,d1
-		swap	d1
-		move.w	d1,d2
-		lsr.w	#2,d2
-		sub.w	d2,d1
-		neg.w	d1
+		move.l	CamXPos,d1
+		if SCREEN_XCORR
+			moveq	#-SCREEN_XCORR, d1
+			sub.w	CamXPos, d1
+			add.w	d1, d1
+			move.w	d1, d2
+			asr.w	#2, d2
+			sub.w	d2, d1
+		else
+			move.w	CamXPos, d1
+			move.w	d1,d2
+			lsr.w	#2,d2
+			sub.w	d2,d1
+			neg.w	d1
+		endif
+		and.w	#$1FF,d1
+		if SCREEN_XDISP
+			add.w	#-SCREEN_XDISP,d1
+		endif
 		move.w	d1,obX(a0)
 
 		move.l	($FFFFF704).w,d1
@@ -22554,12 +22580,10 @@ Obj5C_GirderSmall:			; XREF: Obj5C_Index
 		neg.w	d1
 		addi.w	#$100,d1
 		move.w	d1,obScreenY(a0)
-; ---------------------------------------------------------------------------
 
-Obj5C_Display:
-		cmpi.w	#$1D18,($FFFFF700).w	; maximum camera pos
+		cmpi.w	#$1D20-SCREEN_XCORR,($FFFFF700).w	; maximum camera pos
 		bhs.w	@dontdisplay
-		cmpi.w	#$D18,($FFFFF700).w	; minimum left camera pos
+		cmpi.w	#$D40-SCREEN_XCORR,($FFFFF700).w	; minimum left camera pos
 		bhs.w	DisplaySprite
 @dontdisplay:
 		rts

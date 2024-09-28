@@ -68,12 +68,6 @@ BlackBarsConfigScreen:
 	move.w	#BlackBars.MaxHeight, BlackBars.Height
 	move.b	#0,BlackBarsConfig_Exiting
 	jsr	BlackBarsConfigScreen_InitUI
-
-	; Overwrite default console font 
-	vram	$8000
-	lea	($C00000).l,a6
-	lea	(ArtKospM_FontOverrideArt).l,a0
-	jsr	KosPlusMDec_VRAM
 	
 	; Brighten up white palette for better legibility
 	move.w	#$EEE,d0
@@ -396,20 +390,17 @@ BBCS_LeaveConsole:	macro scratchReg
 
 ; ---------------------------------------------------------------
 BlackBarsConfigScreen_InitUI:
+	; Initialize console subsystem (MD Debugger)
 	lea	VDP_Ctrl, a5
 	lea	-4(a5), a6
-
-	; Load font
-	vram	BlackBarsConfig_VRAM_Font, (a5)		; VDP => Setup font offset in VRAM
-	lea	MDDBG__Art1bpp_Font, a0		; a0 = 1bpp source art
-	lea	@ArtDecodeTable(pc), a1		; a1 = 1bpp decode table
-	move.w	(a0)+, d4			; d4 = font size - 1
-	jsr	MDDBG__Decomp1bpp		; decompress font (input: a0-a1/a6, uses: a0/d0-d4)
-
-	; Initialize console subsystem (MD Debugger)
 	lea	@ConsoleConfig(pc), a1			; a1 = console config
 	lea	BlackBarsConfig_ConsoleRAM, a3		; a3 = console RAM
 	jsr	MDDBG__Console_InitShared
+
+	; Load font
+	vram	BlackBarsConfig_VRAM_Font, (a5)
+	lea	BBCS_ArtKospM_Font(pc), a0
+	jsr	KosPlusMDec_VRAM
 
 	; Initial UI header
 	bra	BlackBarsConfigScreen_WriteText
@@ -489,7 +480,7 @@ BlackBarsConfigScreen_RedrawUI:
 
 
 ; ===============================================================
-ArtKospM_FontOverrideArt:
-	incbin	Screens\BlackBarsConfigScreen\Font_Override.kospm
+BBCS_ArtKospM_Font:
+	incbin	Screens\BlackBarsConfigScreen\Font.kospm
 	even
 ; ===============================================================

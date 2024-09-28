@@ -215,9 +215,14 @@ BlackBarsConfigScreen_DeformBG:
 
 	lea	HSRAM_Buffer, a1
 
-	moveq	#0, d0
-	move.w	CamXPos2, d0
-	neg.w	d0
+	if SCREEN_XDISP
+		move.w	#SCREEN_XDISP, d0
+		sub.w	CamXPos2, d0
+	else
+		moveq	#0, d0
+		move.w	CamXPos2, d0
+		neg.w	d0
+	endif
 
 	moveq	#240/16-1, d1		; repeat to cover the entire 240-pixel screen
 	jmp	DeformScreen_SendBlocks
@@ -297,52 +302,73 @@ BlackBarsConfigScreen_GenerateSprites:
 
 ; ---------------------------------------------------------------
 @RingData:
-	dc.w	$0, $0
-	dc.w	$54, $80
-	dc.w	$54*2, $0
-	dc.w	$54*3, $80
+	
+	@sprite_x_spacing: = $40
+	@sprite_y_spacing: = $80
+	@sprite_width: = 64
+	@sprite_height: = 64
 
-	dc.w	-1	; TODO proper screen wrapping
-	dc.w	$0+320, $0+224
-	dc.w	$54+320, $80+224
-	dc.w	$54*2+320, $0+224
-	dc.w	$54*3+320, $80+224
-	dc.w	-1
+	; Dynamically generate sprites with the given spacing to cover the entire screen
+
+	@x: = 0
+	@sprite_x_warp_dist: = 0
+
+	while @x <= SCREEN_WIDTH + @sprite_width
+
+		@y: = 0
+		@sprite_y_warp_dist: = 0
+
+		while @y <= SCREEN_HEIGHT + @sprite_height
+			dc.w	@x, @y	; first unque line
+			dc.w	@x + @sprite_x_spacing, @y + @sprite_y_spacing	; second unqiue line (then repeat)
+
+			@y: = @y + @sprite_y_spacing*2
+			@sprite_y_warp_dist: = @sprite_y_warp_dist + @sprite_y_spacing*2
+		endw
+
+		@x: = @x + @sprite_x_spacing*2
+		@sprite_x_warp_dist: = @sprite_x_warp_dist + @sprite_x_spacing*2
+	endw
+
+	dc.w	-1	; end of list marker
 
 ; ---------------------------------------------------------------
 @Obj_Ring:
 	move.l	#Map_obj4B,obMap(a0)
 	move.w	#$2000|($A200/$20),obGfx(a0)
-	ori.b	#4,obRender(a0)
-	move.b	#$60,obActWid(a0)
+	ori.b	#%10100, obRender(a0)
+	move.b	#@sprite_width/2, obActWid(a0)	; `obActWid` isn't correct, it should've been "visible X radius" or "width / 2"
+	move.b	#@sprite_height/2, obHeight(a0)	; `obHeight` isn't correct, it should've been "visible Y redius" or "height / 2"
 	move.b	#4,obPriority(a0)
 	move.l	#@Main, $3C(a0)
 
 @Main:
-	move.w	8(a0), d0
+	move.w	obX(a0), d0
 	sub.w	CamXPos, d0
-	cmpi.w	#-8, d0
-	bge.s	@j0
-	add.w	#320+16, 8(a0)
-	bra.s	@xok
+	add.w	#@sprite_width/2, d0		; offset X position by sprite X-radius for proper culling
+	bpl.s	@x_chk_right
+	add.w	#@sprite_x_warp_dist, obX(a0)
+	bra.s	@x_ok
 
-@j0:	cmp.w	#320+8, d0
-	ble.s	@xok
-	sub.w	#320+16, 8(a0)
+@x_chk_right:
+	cmp.w	#@sprite_x_warp_dist, d0
+	blo.s	@x_ok
+	sub.w	#@sprite_x_warp_dist, obX(a0)
+@x_ok:
 
-@xok:
-	move.w	$C(a0), d0
+	move.w	obY(a0), d0
 	sub.w	CamYPos, d0
-	cmpi.w	#-8, d0
-	bge.s	@j1
-	add.w	#224+16, $C(a0)
-	bra.s	@yok
+	add.w	#@sprite_height/2, d0		; offset Y position by sprite Y-radius for proper culling
+	bpl.s	@y_chk_bottom
+	add.w	#@sprite_y_warp_dist, obY(a0)
+	bra.s	@y_ok
 
-@j1:	cmp.w	#224+8, d0
-	ble.s	@yok
-	sub.w	#224+16, $C(a0)
+@y_chk_bottom:
+	cmp.w	#@sprite_y_warp_dist, d0
+	blo.s	@y_ok
+	sub.w	#@sprite_y_warp_dist, obY(a0)
+@y_ok:
 
-@yok:
 	move.b	($FFFFFEC3).w, obFrame(a0)
 	jmp	DisplaySprite
 

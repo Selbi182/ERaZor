@@ -27822,24 +27822,25 @@ FixLevel:
 ; ---------------------------------------------------------------------------
 
 FixCamera:
-		moveq	#0,d0
+		moveq	#0, d0
+		move.l	d0, ($FFFFF73A).w	; clear camera shifts
+		move.b	d0, (CameraShake).w	; clear camera shaking
+
+		;moveq	#0,d0			-- OPTIMIZED OUT
 		move.w	($FFFFD008).w,d0	; load Sonic's X-location into d0
-		subi.w	#320/2,d0		; substract 160 pixels from it (half of 320, horizontal screen size)
+		subi.w	#SCREEN_WIDTH/2,d0	; substract half screen's width from it
 		bpl.s	@fixx
 		moveq	#0,d0
 @fixx:		swap	d0
-		move.l	d0,($FFFFF700).w	; put result into X-camera location
+		move.l	d0, CamXPos		; put result into X-camera location
 
 		moveq	#0,d0
 		move.w	($FFFFD00C).w,d0	; load Sonic's Y-location into d0
-		subi.w	#224/2,d0		; substract 112 pixels from it (half of 224, vertical screen size)
+		subi.w	#SCREEN_HEIGHT/2,d0	; substract half screen's height from it
 		bpl.s	@fixy
 		moveq	#0,d0
 @fixy:		swap	d0
-		move.l	d0,($FFFFF704).w	; put result into Y-camera location
-
-		clr.l	($FFFFF73A).w		; clear camera shifts
-		clr.b	(CameraShake).w		; clear camera shaking
+		move.l	d0, CamYPos		; put result into Y-camera location
 		rts
 
 ; ---------------------------------------------------------------------------

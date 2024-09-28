@@ -17568,15 +17568,15 @@ DisplaySprite2:
 
 ChkObjOnScreen:
 		move.w	obX(a0),d0	; get object x-position
-		sub.w	($FFFFF700).w,d0 ; subtract screen x-position
+		sub.w	CamXPos,d0	; subtract screen x-position
 		bmi.s	NotOnScreen
-		cmpi.w	#320,d0		; is object on the screen?
+		cmpi.w	#SCREEN_WIDTH,d0; is object on the screen?
 		bge.s	NotOnScreen	; if not, branch
 
 		move.w	obY(a0),d1	; get object y-position
-		sub.w	($FFFFF704).w,d1 ; subtract screen y-position
+		sub.w	CamYPos,d1	; subtract screen y-position
 		bmi.s	NotOnScreen
-		cmpi.w	#224,d1		; is object on the screen?
+		cmpi.w	#SCREEN_HEIGHT,d1; is object on the screen?
 		bge.s	NotOnScreen	; if not, branch
 
 		moveq	#0,d0		; set flag to 0
@@ -17596,18 +17596,18 @@ ChkObjOnScreen2:
 		moveq	#0,d1
 		move.b	obActWid(a0),d1
 		move.w	obX(a0),d0
-		sub.w	($FFFFF700).w,d0
+		sub.w	CamXPos,d0
 		add.w	d1,d0
 		bmi.s	NotOnScreen2
 		add.w	d1,d1
 		sub.w	d1,d0
-		cmpi.w	#320,d0
+		cmpi.w	#SCREEN_WIDTH,d0
 		bge.s	NotOnScreen2
 
 		move.w	obY(a0),d1
-		sub.w	($FFFFF704).w,d1
+		sub.w	CamYPos,d1
 		bmi.s	NotOnScreen2
-		cmpi.w	#224,d1
+		cmpi.w	#SCREEN_HEIGHT,d1
 		bge.s	NotOnScreen2
 
 		moveq	#0,d0

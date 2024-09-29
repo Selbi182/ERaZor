@@ -486,7 +486,7 @@ BlackBars_Selbi:
 		bne.w	BlackBars_SetHeight		; if yes, disable black bars immediately
 		
 		; I'm well aware of how terrible this code is
-		cmpi.l	#$4EE00001,($FFFFFF7A).w
+		cmpi.w	#Pal_Active+$10+2*5,($FFFFFF7A).w
 		bne.w	BlackBars_SetHeight
 		subi.w	#1,BlackBars.Height
 		moveq	#60,d0

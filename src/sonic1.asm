@@ -920,10 +920,10 @@ Pause_ChkStart:
 
 Pause_Restore:
 		move.b	#$80,($FFFFF003).w	; something with music
-		lea	($FFFFFA80).w,a0	; get palette
-		lea	($FFFFC910).w,a1 	; get backup up palette
-		move.w	#$007F,d3		; set d3 to $3F (+1 for the first run)
-@restorepal:	move.w	(a1)+,(a0)+		; set new palette
+		lea	Pal_Water_Active,a0	; get palette
+		lea	PalCache_PauseEffect,a1 ; get backup up palette
+		moveq	#$3F,d3			; set d3 to $3F
+@restorepal:	move.l	(a1)+,(a0)+		; set new palette
 		dbf	d3,@restorepal		; loop for each colour
 		clr.b	($FFFFFFB5).w		; clear flag
 		move.w	#0,($FFFFF63A).w 	; unpause the game
@@ -1308,7 +1308,7 @@ cylen = 8
 		btst	#1,(ScreenFuzz).w		; is piss enabled?
 		beq.s	@notcinematic			; if not, branch
 		move.w	#$0780,($FFFFD000+obGfx).w	; welp
-		lea	($FFFFFB00).w,a2		; have fun with the eyesore
+		lea	Pal_Active,a2		; have fun with the eyesore
 @notcinematic:
 		move.w	($FFFFFE04).w,d0		; load V-Blank counter into d0
 		move.w	d0,d2				; copy to d2
@@ -1560,7 +1560,7 @@ Pal_FadeTo:
 
 Pal_FadeTo2:
 		moveq	#0,d0
-		lea	($FFFFFB00).w,a0
+		lea	Pal_Active,a0
 		move.b	($FFFFF626).w,d0
 		adda.w	d0,a0
 		moveq	#0,d1
@@ -1589,7 +1589,7 @@ loc_1DCE:
 ;FadeIn_FromBlack:
 Pal_FadeIn:				; XREF: Pal_FadeTo
 		moveq	#0,d0
-		lea	($FFFFFB00).w,a0	; destination
+		lea	Pal_Active,a0	; destination
 		lea	($FFFFFB80).w,a1	; source
 		move.b	($FFFFF626).w,d0	; number of colors to affect
 		adda.w	d0,a0
@@ -1603,7 +1603,7 @@ loc_1DFA:
 		cmpi.b	#1,($FFFFFE10).w	; are we in LZ?
 		bne.s	locret_1E24		; if not, branch
 		moveq	#0,d0
-		lea	($FFFFFA80).w,a0
+		lea	Pal_Water_Active,a0
 		lea	($FFFFFA00).w,a1
 		move.b	($FFFFF626).w,d0
 		adda.w	d0,a0
@@ -1675,7 +1675,7 @@ loc_1E5C:
 ;FadeOut_ToBlack:
 Pal_FadeOut:				; XREF: Pal_FadeFrom
 		moveq	#0,d0
-		lea	($FFFFFB00).w,a0
+		lea	Pal_Active,a0
 		move.b	($FFFFF626).w,d0
 		adda.w	d0,a0
 		move.b	($FFFFF627).w,d0
@@ -1685,7 +1685,7 @@ loc_1E82:
 		dbf	d0,loc_1E82
 
 		moveq	#0,d0
-		lea	($FFFFFA80).w,a0
+		lea	Pal_Water_Active,a0
 		move.b	($FFFFF626).w,d0
 		adda.w	d0,a0
 		move.b	($FFFFF627).w,d0
@@ -1730,7 +1730,7 @@ FCO_NoRed:
 Pal_MakeWhite:				; XREF: SpecialStage
 		move.w	#$3F,($FFFFF626).w
 		moveq	#0,d0
-		lea	($FFFFFB00).w,a0
+		lea	Pal_Active,a0
 		move.b	($FFFFF626).w,d0
 		adda.w	d0,a0
 		move.w	#$EEE,d1
@@ -1755,7 +1755,7 @@ loc_1EF4:
 ;WhiteIn_FromWhite:
 Pal_WhiteToBlack:			; XREF: Pal_MakeWhite
 		moveq	#0,d0
-		lea	($FFFFFB00).w,a0
+		lea	Pal_Active,a0
 		lea	($FFFFFB80).w,a1
 		move.b	($FFFFF626).w,d0
 		adda.w	d0,a0
@@ -1774,7 +1774,7 @@ Pal_NoSpecial:
 		cmpi.b	#1,($FFFFFE10).w
 		bne.s	locret_1F4A
 		moveq	#0,d0
-		lea	($FFFFFA80).w,a0
+		lea	Pal_Water_Active,a0
 		lea	($FFFFFA00).w,a1
 		move.b	($FFFFF626).w,d0
 		adda.w	d0,a0
@@ -1854,7 +1854,7 @@ loc_1F86:
 ;WhiteOut_ToWhite:
 Pal_ToWhite:				; XREF: Pal_MakeFlash
 		moveq	#0,d0
-		lea	($FFFFFB00).w,a0
+		lea	Pal_Active,a0
 		move.b	($FFFFF626).w,d0
 		adda.w	d0,a0
 		move.b	($FFFFF627).w,d0
@@ -1863,7 +1863,7 @@ loc_1FAC:
 		bsr.s	Pal_AddColor2
 		dbf	d0,loc_1FAC
 		moveq	#0,d0
-		lea	($FFFFFA80).w,a0
+		lea	Pal_Water_Active,a0
 		move.b	($FFFFF626).w,d0
 		adda.w	d0,a0
 		move.b	($FFFFF627).w,d0
@@ -1921,7 +1921,7 @@ Pal_CutToWhite:
 ; ---------------------------------------------------------------------------
 
 Pal_CutFill:
-		lea	($FFFFFB00).w,a0
+		lea	Pal_Active,a0
 		moveq	#$40-1,d1
 @fill:		move.w	d0,(a0)+
 		dbf	d1,@fill
@@ -2168,12 +2168,11 @@ loc_2160:
 ; ---------------------------------------------------------------------------
 
 Pal_MakeBlackWhite:
-		lea	($FFFFFA80).w,a3 	; get palette index
+		lea	Pal_Water_Active,a3 	; get palette index
 
 Pal_MakeBlackWhite2:
-		lea	($FFFFC910).w,a4	; backup palette location
-		moveq	#0,d3			; clear d3
-		move.w	#$7F,d3			; set d3 to $3F (+1 for the first run)
+		lea	PalCache_PauseEffect,a4	; backup palette location
+		moveq	#$7F,d3			; set d3 to $3F (+1 for the first run)
 
 Pal_MBW_Loop:
 		moveq	#0,d0			; clear d0
@@ -2605,7 +2604,7 @@ SegaScreen:				; XREF: GameModeArray
 
 		moveq	#0,d0
 		bsr	PalLoad2	; load Sega logo palette
-		move.w	#$0000,($FFFFFB00).w	; set background colour to black
+		move.w	#$0000,Pal_Active	; set background colour to black
 		move.w	#$0000,($FFFFFB02).w	; set background colour to black
 		move.b	#$00,($FF2000).l	; clear counter
 
@@ -2699,7 +2698,7 @@ Sega_WaitEnd:
 		move.b	#$D3,d0
 		bsr	PlaySound_Special ; play crash sound
 		move.b	#1,($FFFFFFBE).w
-		move.w	#$000,($FFFFFB00).w
+		move.w	#$000,Pal_Active
 		move.w	#$000,($FFFFFB02).w
 		move.w	#$222,($FFFFFB04).w
 		move.w	#$222,($FFFFFB0C).w
@@ -3065,7 +3064,7 @@ LevSel_Blackout:jmp	HubRing_Blackout
 
 LevelSelect_Palette:
 		moveq	#0,d1			; instantly turn the entire palette black
-		lea	($FFFFFB00).w,a1
+		lea	Pal_Active,a1
 		move.w	#$3F,d2
 @clearpalafter:	move.w	d1,(a1)+
 		dbf	d2,@clearpalafter
@@ -3737,7 +3736,7 @@ Level_Delay:
 		move.w	#$8014,($C00004).l	; enable h-ints for the black bars
 		move.w	#$202F,($FFFFF626).w
 		moveq	#0,d0
-		lea	($FFFFFB00).w,a0
+		lea	Pal_Active,a0
 		move.b	($FFFFF626).w,d0
 		adda.w	d0,a0
 		moveq	#0,d1
@@ -4952,7 +4951,7 @@ SS_SetupFinish:
 		move.w	#BlackBars.MaxHeight,BlackBars.Height
 		move.w	#$3F,($FFFFF626).w
 		moveq	#0,d0
-		lea	($FFFFFB00).w,a0
+		lea	Pal_Active,a0
 		move.b	($FFFFF626).w,d0
 		adda.w	d0,a0
 
@@ -25971,7 +25970,7 @@ Map_Obj06:
 ; ===========================================================================
 
 UberhubEasteregg:
-		lea	($FFFFFB00).w,a1
+		lea	Pal_Active,a1
 		moveq	#(64/2)-1,d2
 @loopdestroypalette:
 		jsr	RandomNumber
@@ -26201,19 +26200,23 @@ Obj01_Normal:
 		clr.b	($FFFFF7CC).w
 		cmpi.b	#6,obRoutine(a0)
 		bne.s	Obj01_RoutineNotDeath
-		movem.l	d3-a1,-(sp)
-		lea	($FFFFFB20).w,a0	; get palette
-		lea	($FFFFC910+$80).w,a1 	; get backup up palette
-		move.w	#$002F,d3		; set d3 to $3F (+1 for the first run)
 
-Pal_RTN_LoopXXX:
-		move.w	(a1)+,(a0)+		; set new palette
-		dbf	d3,Pal_RTN_LoopXXX	; loop for each colour
+		; Restore palette when entering debug mode upon death
+		movem.l	d3-a1,-(sp)
+		lea	Pal_Water_Active,a0	; get palette
+		lea	PalCache_PauseEffect,a1	; get backup up palette
+		moveq	#$3F,d3
+	@PalRestore:
+		move.l	(a1)+,(a0)+		; set new palette
+		dbf	d3,@PalRestore		; loop for each colour
 		movem.l	(sp)+,d3-a1
-		clr.b	($FFFFFFAC).w
-		move.w	#$0090,($FFFFD048).w
-		move.w	#$0108,($FFFFD04A).w
-		move.w	#$0108,($FFFFD04C).w
+		moveq	#0, d0
+		move.b	d0, ($FFFFFFAC).w	; clear dying flag
+		move.b	d0, ($FFFFF5D1).w	; clear death flag
+		move.b	d0, ($FFFFFFE9).w	; clear camera lock
+		move.w	#$0090,($FFFFD048).w	; set "DEATHS" object X-pos
+		move.w	#$0108,($FFFFD04A).w	; set "DEATHS" object Y-pos
+		move.w	#$0108,($FFFFD04C).w	;
 
 Obj01_RoutineNotDeath:
 		move.b	#2,obRoutine(a0)
@@ -27655,15 +27658,15 @@ WF_DoWhiteFlash:
 		btst	#7,(OptionsBits).w	; is photosensitive mode enabled?
 		bne.w	WF_SetCameraLag		; if yes, don't do flashy lights
 
-		lea	($FFFFFA80).w,a3	; load palette location to a3
-		lea	($FFFFCA00).w,a4	; load backup location to a4
-		move.w	#$003F,d3		; set d3 to $7F (+1 for the first run)
+		lea	Pal_Water_Active,a3	; load palette location to a3
+		lea	PalCache_FlashEffect,a4	; load backup location to a4
+		moveq	#$3F,d3			; set d3 to $7F (+1 for the first run)
 WF_BackupPal_Loop:
 		move.l	(a3)+,(a4)+		; backup palette
 		dbf	d3,WF_BackupPal_Loop	; loop
 
-		lea	($FFFFFA80).w,a1	; load palette location to a3
-		move.w	#$007F,d3		; set d3 to $7F (+1 for the first run)
+		lea	Pal_Water_Active,a1	; load palette location to a3
+		moveq	#$7F,d3			; set d3 to $7F (+1 for the first run)
 WF_MakeWhite_Loop:
 		move.w	(a1),d1			; get current color in palette
 	
@@ -27741,8 +27744,8 @@ WhiteFlash_Restore:
 		btst	#7,(OptionsBits).w	; is photosensitive mode enabled?
 		bne.s	WF_Restore_End		; if yes, branch
 
-		lea	($FFFFFA80).w,a4	; load palette location to a4
-		lea	($FFFFCA00).w,a3	; load backed up palette to a3
+		lea	Pal_Water_Active,a4	; load palette location to a4
+		lea	PalCache_FlashEffect,a3	; load backed up palette to a3
 		move.w	#$007F,d5		; set d3 to $7F (+1 for the first run)
 WF_Restore_Loop:
 		move.w	(a3)+,(a4)+		; set new palette palette

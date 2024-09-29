@@ -296,7 +296,7 @@ DH_OWindow_Init:
 		move.l	#DH_OWindow_Appear,obj(a0)
 		
 		; backup palette, used for the fading
-		lea	($FFFFFB00).w,a1
+		lea	Pal_Active,a1
 		lea	($FFFFFB80).w,a2
 		moveq	#$20-1,d0
 @backup:
@@ -335,7 +335,7 @@ DH_OWindow_Appear:
 
 @fadeout:
 		lea	($FFFFFB80).w,a1
-		lea	($FFFFFB00).w,a2
+		lea	Pal_Active,a2
 		moveq	#$10-1,d6
 		jsr	Pal_FadeAlpha_Black	; fade out first part
 		; colors for the actual textbox are in between these two
@@ -572,7 +572,7 @@ DH_OWindow_Disappear:
 
 @fadein:
 		lea	($FFFFFB80).w,a1
-		lea	($FFFFFB00).w,a2
+		lea	Pal_Active,a2
 		moveq	#$10-1,d6
 		jsr	Pal_FadeAlpha_Black	; fade out first part
 		; colors for the actual textbox are in between these two
@@ -601,7 +601,7 @@ DH_KillWindow:
 		cmpi.b	#10,($FFFFFF6E).w	; is this the introduction text?
 		beq.s	@nah			; if yes, branch
 		lea	($FFFFFB80).w,a1
-		lea	($FFFFFB00).w,a2
+		lea	Pal_Active,a2
 		moveq	#$20-1,d0
 @restore:
 		move.l	(a1)+,(a2)+

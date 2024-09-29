@@ -91,7 +91,7 @@ GSS_LoadPal:
 		lea	(Pal_Difficulty_Frantic).l,a1	; load frantic palette
 @loadpal:
 		moveq	#8-1,d1	
-		lea	($FFFFFB00).w,a2
+		lea	Pal_Active,a2
 		tst.b	d0
 		beq.s	@PalLoop
 		adda.w	#$80,a2
@@ -103,7 +103,7 @@ GSS_LoadPal:
 
 ; I HATE THIS CODE SO MUCH <-- I think it's already pretty swag ngl
 GSS_MainLoop:
-		move.w	#0,($FFFFFB00).w
+		move.w	#0,Pal_Active
 		move.b	#$12,VBlankRoutine
 		jsr	DelayProgram
 		DeleteQueue_Init

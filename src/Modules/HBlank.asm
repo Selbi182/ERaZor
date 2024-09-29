@@ -32,7 +32,7 @@ HBlank_WaterSurface:
 	@transferColors:
 		moveq	#0, d0
 		move.w	(a2)+, d0
-		lea	($FFFFFA80).w, a0
+		lea	Pal_Water_Active, a0
 		adda.w	d0, a0
 		addi.w	#$C000,d0
 		swap	d0

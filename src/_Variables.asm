@@ -15,24 +15,21 @@ LevelRend_RAM:		equ	$FFFFAB80			;	level renderer RAM (AB80-AB98)
 								;	Get your offer today for full AB98-AC00 chunk! Contact Vladikcomper.
 
 Sprites_Queue:		equ	$FFFFAC00			;	object sprites queued for display (AC00-AFFF)
-
-Art_Buffer: 		equ 	$FFFFB000			;	Art buffer, used for decompression and transfers (B000-CAFF)
+Art_Buffer: 		equ 	$FFFFB000			;	Art buffer, used for decompression and transfers (B000-C000)
 Art_Buffer_End:		equ	$FFFFC000			;	WARNING! Buffer should be at least $1000 bytes for PLC system to work
-
+*			equ	$FFFFC000			;	<<<FOR SALE>> (C000-C700)
+DeleteQueue:		equ	$FFFFC700			;	Delete queue
+DeleteQueue_End:	equ	$FFFFC7FE
+DeleteQueue_Ptr:	equ	$FFFFC7FE			;	Delete objects queue pointer
 DMAQueue:		equ	$FFFFC800			;
 DMAQueuePos:		equ	$FFFFC8FC			; .l	DMA queue position pointer
-
-DeleteQueue:		equ	$FFFFC900			;	Delete queue
-DeleteQueue_End:	equ	$FFFFC9FE
-DeleteQueue_Ptr:	equ	$FFFFC9FE			;	Delete objects queue pointer
-
+PalCache_PauseEffect:	equ	$FFFFC900			;	Palette cache for pause effect (C900-C9FF)
+PalCache_FlashEffect:	equ	$FFFFCA00			;	Palette cache for flash effect (CA00-CAFF)
 Sonic_PosArray		equ	$FFFFCB00			;	Sonic's previous positions array (CB00-CBFF)
-
 HSRAM_Buffer:		equ	$FFFFCC00			;	Horizontal scroll RAM buffer
 HSRAM_Buffer_End:	equ	HSRAM_Buffer+240*4
-
 ScrollBlocks_Buffer:	equ	$FFFFCFC0			;	Buffer for scrolling 16x16 blocks ($20 blocks)
-ScrollBlocks_Buffer_End:	equ	$FFFFD000
+ScrollBlocks_Buffer_End:equ	$FFFFD000
 
 Objects:		equ	$FFFFD000			;	Objects RAM (D000-EFFF)
 Objects_End:		equ	$FFFFF000			;	End of Objects RAM
@@ -120,6 +117,7 @@ AniArt_UpdateProc:	equ	$FFFFF7B8			; l	Update procedure pointer
 Sprite_Buffer:		equ	$FFFFF800			;	VDP sprites buffer
 Sprite_Buffer_End:	equ	$FFFFFA80
 
+Pal_Water_Active:	equ	$FFFFFA80			; ~	Active underwater palette
 Pal_Active:		equ	$FFFFFB00			; ~	Active palette
 Pal_Target:		equ	$FFFFFB80			; ~	Target palette for fading
 

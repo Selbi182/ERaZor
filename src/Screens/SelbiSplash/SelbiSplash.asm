@@ -167,7 +167,7 @@ SelbiSplash_UpdateEndPal:
 		move.w	d0,d4
 @gopal:
 		lea	(Pal_Quality).l,a1		; Load palette
-		lea	($FFFFFB00).w,a2
+		lea	Pal_Active,a2
 		moveq	#($160/4)-1,d6
 @LoadCRAM:	move.w	(a1)+,d0
 		bsr	SelbiPissFilter
@@ -389,7 +389,7 @@ SelbiSplash_DisableDebug:
 ; the original to-white code cause it looks better with the yellow tint here
 Pal_ToWhiteYellow:				; XREF: Pal_MakeFlash
 		moveq	#0,d0
-		lea	($FFFFFB00).w,a0
+		lea	Pal_Active,a0
 		move.b	($FFFFF626).w,d0
 		adda.w	d0,a0
 		move.b	($FFFFF627).w,d0
@@ -398,7 +398,7 @@ Pal_ToWhiteYellow:				; XREF: Pal_MakeFlash
 		bsr.s	Pal_AddColor2_Yellow
 		dbf	d0,@loc_1FAC
 		moveq	#0,d0
-		lea	($FFFFFA80).w,a0
+		lea	Pal_Water_Active,a0
 		move.b	($FFFFF626).w,d0
 		adda.w	d0,a0
 		move.b	($FFFFF627).w,d0

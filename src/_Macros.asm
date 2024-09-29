@@ -27,13 +27,13 @@ rsfile	macro *, filename
 display_enable	macro
 	move.w	($FFFFF60C).w,d0	; enable screen output
 	ori.b	#$40,d0
-	move.w	d0,($C00004).l
+	move.w	d0,VDP_Ctrl
 	endm
 
 display_disable	macro
 	move.w	($FFFFF60C).w,d0	; disable screen output
 	andi.b	#$BF,d0
-	move.w	d0,($C00004).l
+	move.w	d0,VDP_Ctrl
 	endm
 
 ; Enable/disable interrupts
@@ -67,7 +67,7 @@ vramWrite:	macro source, len, dest
 ; Set VDP to VRAM write
 vram	macro	offset,operand
 	if (narg=1)
-		move.l	#($40000000+(((\offset)&$3FFF)<<16)+(((\offset)&$C000)>>14)),($C00004).l
+		move.l	#($40000000+(((\offset)&$3FFF)<<16)+(((\offset)&$C000)>>14)),VDP_Ctrl
 	else
 		move.l	#($40000000+(((\offset)&$3FFF)<<16)+(((\offset)&$C000)>>14)),\operand
 	endc

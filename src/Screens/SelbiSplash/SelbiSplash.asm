@@ -20,7 +20,7 @@ SelbiSplash:
 		VBlank_SetMusicOnly
 
 SelbiSplash_VDP:
-		lea	($C00004).l,a6			; Setup VDP
+		lea	VDP_Ctrl,a6			; Setup VDP
 		move.w	#$8004,(a6)
 		move.w	#$8230,(a6)
 		move.w	#$8407,(a6)
@@ -32,7 +32,7 @@ SelbiSplash_VDP:
 		jsr	ClearScreen			; Clear screen
 		
 SelbiSplash_Art:
-		move.l	#$40000000,($C00004).l		; Load art
+		move.l	#$40000000,VDP_Ctrl		; Load art
 		lea	(ArtKospM_SelbiSplash).l,a0
 		jsr	KosPlusMDec_VRAM
 		
@@ -95,8 +95,8 @@ SelbiSplash_Loop:
 		bpl	SelbiSplash_WaitEnd		; if not, branch
 
 		VBlank_SetMusicOnly
-		lea	($C00000).l,a5			; load VDP data port address to a5
-		lea	($C00004).l,a6			; load VDP address port address to a6
+		lea	VDP_Data,a5			; load VDP data port address to a5
+		lea	VDP_Ctrl,a6			; load VDP control port address to a6
 		move.l	($FFFFFF7A).w,(a6)		; set VDP address to write to
 		move.l	#$44444444,d2
 		move.l	d2,(a5)				; dump art to V-Ram
@@ -124,7 +124,7 @@ SelbiSplash_Loop:
 @cont2:
 		move.w	#$D0,($FFFFF614).w
 		VBlank_SetMusicOnly
-		lea	($C00000).l,a5
+		lea	VDP_Data,a5
 		lea	$04(a5),a6
 		move.w	#$8014,(a6)			; enable h-ints for the black bars
 		move.l	#$40000010,(a6)
@@ -223,7 +223,7 @@ SelbiSplash_EffectsEnd:
 		neg.w	d0
 @cont1x:
 		VBlank_SetMusicOnly
-		lea	($C00000).l,a5
+		lea	VDP_Data,a5
 		lea	$04(a5),a6
 		move.w	#$8B00,(a6)
 		move.l	#$40000010,(a6)
@@ -237,7 +237,7 @@ SelbiSplash_EffectsEnd:
 		beq.s	@cont2x
 		neg.w	d0
 @cont2x:
-		lea	($C00000).l,a5
+		lea	VDP_Data,a5
 		lea	$04(a5),a6
 		move.w	#$8B00,(a6)
 		move.l	#$7C000003,(a6)
@@ -284,7 +284,7 @@ SelbiSplash_LoadPRESENTS:
 		VBlank_SetMusicOnly
 		bsr	SelbiSplash_UpdateEndPal
 
-		lea	($C00004).l,a6
+		lea	VDP_Ctrl,a6
 		lea	VDP_Quality(pc),a0
 		move.w	#$8000,d0
 		move.w	#$0100,d1
@@ -364,7 +364,7 @@ SelbiSplash_Next:
 		bne.s	@NoStopShadow				; MJ: if not, continue normally
 		move.w	#$8C00|%11110111,d0			; MJ: $8C	; APHE SNNB - H-resol (0N|1Y) | Pixel int (0N|1Y) | H-sync (0N|1Y) | Extern-pix (0N|1Y) | S/H (0N|1Y) | Interlace (00N|01Y|11-Split) | H-resol (0-20|1-28)
 		and.b	VDP_Quality+$0C(pc),d0			; MJ: remove shadow/highlight
-		move.w	d0,($C00004).l				; MJ: ''
+		move.w	d0,VDP_Ctrl				; MJ: ''
 
 	@NoStopShadow:
 		dbf	d4,@FadePrivate

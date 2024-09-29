@@ -26,7 +26,7 @@ ChapterScreen:
 		jsr	Pal_FadeFrom			; Fade out previous palette
 		VBlank_SetMusicOnly
 
-		lea	($C00004).l,a6			; Setup VDP
+		lea	VDP_Ctrl,a6			; Setup VDP
 		move.w	#$8004,(a6)
 		move.w	#$8230,(a6)
 		move.w	#$8407,(a6)
@@ -298,8 +298,8 @@ Map_Obj04:
 ; ---------------------------------------------------------------------------
 
 ShowVDPGraphics2:
-		lea	($C00000).l,a6		; load VDP data port address to a6
-		lea	($C00004).l,a4		; load VDP address port address to a4
+		lea	VDP_Data,a6		; load VDP data port address to a6
+		lea	VDP_Ctrl,a4		; load VDP control port address to a4
 		move.l	#$800000,d4		; prepare line add value
 
 MapScreen2_Row:

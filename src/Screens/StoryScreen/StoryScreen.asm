@@ -42,7 +42,7 @@ StoryTextScreen:				; XREF: GameModeArray
 		jsr	Pal_FadeFrom
 		VBlank_SetMusicOnly
 		
-		lea	($C00004).l,a6
+		lea	VDP_Ctrl,a6
 		move.w	#$8004,(a6)
 		move.w	#$8230,(a6)
 		move.w	#$8407,(a6)
@@ -59,7 +59,7 @@ StoryTextScreen:				; XREF: GameModeArray
 STS_ClrObjRam:	move.l	d0,(a1)+
 		dbf	d1,STS_ClrObjRam ; fill object RAM ($D000-$EFFF) with $0
 
-		move.l	#$64000002,($C00004).l
+		move.l	#$64000002,VDP_Ctrl
 		lea	(ArtKospM_ERaZorNoBG).l,a0
 		jsr	KosPlusMDec_VRAM
 
@@ -74,7 +74,7 @@ STS_ClrObjRam:	move.l	d0,(a1)+
 		jsr	BuildSprites
 		jsr	DeleteQueue_Execute
 	
-		lea	($C00000).l,a6
+		lea	VDP_Data,a6
 		move.l	#$50000003,4(a6)
 		lea	(STS_FontArt).l,a5
 		move.w	#$28F,d1
@@ -103,8 +103,8 @@ STS_ClrScroll:	move.l	d0,(a1)+
 		dbf	d1,STS_ClrScroll	; fill scroll data with 0
 		move.l	d0,($FFFFF616).w
 
-		lea	($C00000).l,a6
-		move.l	#$60000003,($C00004).l
+		lea	VDP_Data,a6
+		move.l	#$60000003,VDP_Ctrl
 		move.w	#$3FF,d1
 STS_ClrVram:	move.l	d0,(a6)
 		dbf	d1,STS_ClrVram		; fill VRAM with 0
@@ -262,7 +262,7 @@ StoryScreen_ContinueWriting:
 ; ---------------------------------------------------------------------------
 
 @dowrite:
-		lea	($C00000).l,a6			; load VDP data port to a6
+		lea	VDP_Data,a6			; load VDP data port to a6
 		move.l	#STS_VRAMBase,d3		; base screen position
 		
 		moveq	#0,d1				; clear d1
@@ -348,7 +348,7 @@ StoryScreen_WritePressStart:
 		rts					; don't continue writing
 
 @dowrite:
-		lea	($C00000).l,a6			; load VDP data port to a6
+		lea	VDP_Data,a6			; load VDP data port to a6
 		move.l	#STS_PressStart_VRAMBase,d3	; base screen position
 		
 		moveq	#0,d1				; clear d1
@@ -383,7 +383,7 @@ StoryText_WriteFull:
 		bsr	StoryText_Load			; reload beginning of story text into a1
 		
 		VBlank_SetMusicOnly
-		lea	($C00000).l,a6
+		lea	VDP_Data,a6
 		move.l	#STS_VRAMBase,d4		; base screen position
 		move.w	#STS_VRAMSettings,d3		; VRAM setting (high plane, palette line 4, VRAM address $D000)
 		moveq	#STS_LinesMain-1,d1		; number of lines of text
@@ -434,7 +434,7 @@ StoryScreen_DrawLines:
 ; ---------------------------------------------------------------------------
 
 STS_DrawLine:
-		lea	($C00000).l,a6
+		lea	VDP_Data,a6
 		move.w	(STS_CurrentChar).w,d1		; make line length match the currently drawn text...
 		lsr.w	#1,d1				; ...with its speed cut in half
 		cmpi.w	#STS_DrawnLine_Length,d1	; are we at the maximum allowed line length?

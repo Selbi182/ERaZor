@@ -653,8 +653,8 @@ Joypad_Read:
 
 
 VDPSetupGame:				; XREF: GameClrRAM; ChecksumError
-		lea	($C00004).l,a0
-		lea	($C00000).l,a1
+		lea	VDP_Ctrl,a0
+		lea	VDP_Data,a1
 		lea	(VDPSetupArray).l,a2
 		moveq	#$12,d7
 
@@ -666,7 +666,7 @@ VDP_Loop:
 		move.w	d0,($FFFFF60C).w
 		move.w	#$8ADF,($FFFFF624).w
 		moveq	#0,d0
-		move.l	#$C0000000,($C00004).l ; set VDP to CRAM write
+		move.l	#$C0000000,VDP_Ctrl ; set VDP to CRAM write
 		move.w	#$3F,d7
 
 VDP_ClrCRAM:
@@ -676,12 +676,12 @@ VDP_ClrCRAM:
 		clr.l	($FFFFF616).w
 		clr.l	($FFFFF61A).w
 		move.l	d1,-(sp)
-		lea	($C00004).l,a5
+		lea	VDP_Ctrl,a5
 		move.w	#$8F01,(a5)
 		move.l	#$94FF93FF,(a5)
 		move.w	#$9780,(a5)
 		move.l	#$40000080,(a5)
-		move.w	#0,($C00000).l	; clear	the screen
+		move.w	#0,VDP_Data	; clear	the screen
 
 loc_128E:
 		move.w	(a5),d1
@@ -727,12 +727,12 @@ ClearScreen:
 		VBlank_SetMusicOnly
 		jsr	DrawBuffer_Clear
 
-		lea	($C00004).l,a5
+		lea	VDP_Ctrl,a5
 		move.w	#$8F01,(a5)
 		move.l	#$940F93FF,(a5)
 		move.w	#$9780,(a5)
 		move.l	#$40000083,(a5)
-		move.w	#0,($C00000).l
+		move.w	#0,VDP_Data
 
 loc_12E6:
 		move.w	(a5),d1
@@ -740,12 +740,12 @@ loc_12E6:
 		bne.s	loc_12E6
 
 		move.w	#$8F02,(a5)
-		lea	($C00004).l,a5
+		lea	VDP_Ctrl,a5
 		move.w	#$8F01,(a5)
 		move.l	#$940F93FF,(a5)
 		move.w	#$9780,(a5)
 		move.l	#$60000083,(a5)
-		move.w	#0,($C00000).l
+		move.w	#0,VDP_Data
 
 loc_1314:
 		move.w	(a5),d1
@@ -784,8 +784,8 @@ loc_134A:
 ClearVRAM:
 		move.w	sr, -(sp)
 		move	#$2700,sr		; disable IRQ's
-		lea	($C00000).l,a5		; load VDP data port address to a5
-		lea	$04(a5),a6		; load VDP address port address to a6
+		lea	VDP_Data,a5		; load VDP data port address to a5
+		lea	$04(a5),a6		; load VDP control port address to a6
 		move.w	#$8F01,(a6)		; set increment mode to 1 byte
 		move.l	#$94FF93FF,(a6)		; set repeat times (number of bytes)
 		move.w	#$9780,(a6)		; set source (no source location)
@@ -880,7 +880,7 @@ PG_CheckAllowed:
 PG_SSPause:
 		btst	#7,($FFFFF605).w	; is Start button pressed?
 		beq.s	PG_DoPause		; if not, branch
-		move.w	#$8014,($C00004).l	; enable h-ints for the black bars
+		move.w	#$8014,VDP_Ctrl	; enable h-ints for the black bars
 
 PG_DoPause:
 		move.w	#1,($FFFFF63A).w	; freeze time
@@ -946,8 +946,8 @@ Pause_SlowMo:
 
 
 ShowVDPGraphics:			; XREF: SegaScreen; TitleScreen; SS_BGLoad
-		lea	($C00000).l,a6		; load VDP data port address to a6
-		lea	($C00004).l,a4		; load VDP address port address to a4
+		lea	VDP_Data,a6		; load VDP data port address to a6
+		lea	VDP_Ctrl,a4		; load VDP control port address to a4
 		move.l	#$800000,d4		; prepare line add value
 
 MapScreen_Row:
@@ -2564,7 +2564,7 @@ SegaScreen:				; XREF: GameModeArray
 		display_disable
 		VBlank_SetMusicOnly
 
-		lea	($C00004).l,a6
+		lea	VDP_Ctrl,a6
 		move.w	#$8004,(a6)
 		move.w	#$8230,(a6)
 		move.w	#$8407,(a6)
@@ -2580,13 +2580,13 @@ SegaScreen:				; XREF: GameModeArray
 		dbf	d1,@clearscroll
 
 		move.l	#$40000010,(a6)	; set VDP control port to VSRAM mode and start at 00
-		lea	($C00000).l,a0	; init VDP data port in a0	
+		lea	VDP_Data,a0	; init VDP data port in a0	
 		moveq	#0,d0		; clear VSRAM
 		moveq	#40-1,d1	; do it for all 16-pixel strips
 @clearvsram:	move.w	d0,(a0)		; dump art to VSRAM
 		dbf	d1,@clearvsram	; repeat until all lines are done
 
-		move.l	#$40000000,($C00004).l
+		move.l	#$40000000,VDP_Ctrl
 		lea	(ArtKospM_SegaLogo).l,a0 ; load Sega logo patterns
 		bsr	KosPlusMDec_VRAM
 
@@ -2738,7 +2738,7 @@ TitleScreen:				; XREF: GameModeArray
 
 		VBlank_SetMusicOnly
 		bsr	PLC_ClearQueue
-		lea	($C00004).l,a6
+		lea	VDP_Ctrl,a6
 		move.w	#$8004,(a6)
 		move.w	#$8230,(a6)
 		move.w	#$8407,(a6)
@@ -2758,10 +2758,10 @@ Title_ClrObjRam:
 		dbf	d1,Title_ClrObjRam ; fill object RAM ($D000-$EFFF) with	$0
 
 		VBlank_SetMusicOnly		; disable unterbrechen
-		move.l	#$40000001,($C00004).l
+		move.l	#$40000001,VDP_Ctrl
 		lea	(ArtKospM_TitleFg).l,a0 ; load title screen patterns
 		bsr	KosPlusMDec_VRAM
-		move.l	#$60000001,($C00004).l
+		move.l	#$60000001,VDP_Ctrl
 		lea	(ArtKospM_TitleSonic).l,a0 ; load Sonic title screen patterns
 		bsr	KosPlusMDec_VRAM
 
@@ -2789,11 +2789,11 @@ Title_ClrObjRam:
 		moveq	#$15,d2
 		bsr	ShowVDPGraphics
 
-		move.l	#$40000000,($C00004).l
+		move.l	#$40000000,VDP_Ctrl
 		lea	(ArtKospM_Title).l,a0 ; load title screen patterns
 		bsr	KosPlusMDec_VRAM
 
-		move.l	#$64000002,($C00004).l
+		move.l	#$64000002,VDP_Ctrl
 		lea	(ArtKospM_ERaZor).l,a0
 		bsr	KosPlusMDec_VRAM
 
@@ -2895,13 +2895,13 @@ LevelSelect_Load:
 		move.l	d0,($FFFFF616).w
 		
 		move	#$2700,sr
-		lea	($C00000).l,a6
-		move.l	#$60000003,($C00004).l
+		lea	VDP_Data,a6
+		move.l	#$60000003,VDP_Ctrl
 		move.w	#$3FF,d1
 @clearvram:	move.l	d0,(a6)
 		dbf	d1,@clearvram
 
-		lea	($C00000).l,a6
+		lea	VDP_Data,a6
 		move.l	#$50000003,4(a6)
 		lea	(Art_Text).l,a5
 		move.w	#$28F,d1
@@ -3124,7 +3124,7 @@ LevSel_End:
 
 LevSelTextLoad:				; XREF: TitleScreen
 		lea	(LevelMenuText).l,a1
-		lea	($C00000).l,a6
+		lea	VDP_Data,a6
 		move.l	#$62900003,d4	; screen position (text)
 		move.w	#$E680,d3	; VRAM setting
 		moveq	#$14,d1		; number of lines of text
@@ -3320,9 +3320,9 @@ MusicList:
 
 ; Level::	<-- for quick search
 Level:					; XREF: GameModeArray
-		move.w	#$8014,($C00004).l	; enable h-ints
+		move.w	#$8014,VDP_Ctrl	; enable h-ints
 		bsr	Pal_FadeFrom
-		move.w	#$8004,($C00004).l	; disable h-ints
+		move.w	#$8004,VDP_Ctrl	; disable h-ints
 		bset	#7,(GameMode).w ; add $80 to screen mode (for pre level sequence)
 		bsr	PLC_ClearQueue
 		jsr	DrawBuffer_Clear
@@ -3394,7 +3394,7 @@ Level_ClrVars3:	move.l	d0,(a1)+
 		dbf	d1,Level_ClrVars3 ; clear object variables
 
 		bsr	ClearScreen
-		lea	($C00004).l,a6
+		lea	VDP_Ctrl,a6
 		move.w	#$8B03,(a6)
 		move.w	#$8230,(a6)
 		move.w	#$8407,(a6)
@@ -3733,7 +3733,7 @@ Level_Delay:
 
 		; the following code is basically just Pal_FadeTo2 but
 		; adjusted to already start displaying the level during the fade-in
-		move.w	#$8014,($C00004).l	; enable h-ints for the black bars
+		move.w	#$8014,VDP_Ctrl	; enable h-ints for the black bars
 		move.w	#$202F,($FFFFF626).w
 		moveq	#0,d0
 		lea	Pal_Active,a0
@@ -4810,12 +4810,12 @@ SpecialStage:				; XREF: GameModeArray
 @notblackout:
 		move.w	#$CA,d0
 		bsr	PlaySound_Special ; play special stage entry sound
-		move.w	#$8014,($C00004).l	; enable h-ints
+		move.w	#$8014,VDP_Ctrl	; enable h-ints
 		bsr	Pal_MakeFlash
 
 @sssetup:
 		VBlank_SetMusicOnly
-		lea	($C00004).l,a6
+		lea	VDP_Ctrl,a6
 		move.w	#$8B03,(a6)
 		move.w	#$8AAF,($FFFFF624).w
 		move.w	#$9011,(a6)
@@ -4824,12 +4824,12 @@ SpecialStage:				; XREF: GameModeArray
 		move.w	($FFFFF624).w,(a6)		; apply H-int counter
 		bsr	ClearScreen
 
-		lea	($C00004).l,a5
+		lea	VDP_Ctrl,a5
 		move.w	#$8F01,(a5)
 		move.l	#$946F93FF,(a5)
 		move.w	#$9780,(a5)
 		move.l	#$50000081,(a5)
-		move.w	#0,($C00000).l
+		move.w	#0,VDP_Data
 loc_463C:
 		move.w	(a5),d1
 		btst	#1,d1
@@ -4947,7 +4947,7 @@ SS_SetupFinish:
 
 		; the following code is basically just Pal_MakeWhite but
 		; adjusted to already start displaying the level during the fade-in
-		move.w	#$8014,($C00004).l	; enable h-ints for the black bars
+		move.w	#$8014,VDP_Ctrl	; enable h-ints for the black bars
 		move.w	#BlackBars.MaxHeight,BlackBars.Height
 		move.w	#$3F,($FFFFF626).w
 		moveq	#0,d0
@@ -5257,7 +5257,7 @@ PalCycle_SS:				; XREF: loc_DA6; SpecialStage
 		subq.w	#1,($FFFFF79C).w	; sub 1 from remaining time before changing pal
 		bpl.w	locret_49E6		; if time remains, branch
 
-		lea	($C00004).l,a6
+		lea	VDP_Ctrl,a6
 		move.w	($FFFFF79A).w,d0
 		addq.w	#1,($FFFFF79A).w
 	;	andi.w	#$1F,d0
@@ -5291,8 +5291,8 @@ PalCycle_SS:				; XREF: loc_DA6; SpecialStage
 		move.b	(a0)+,d0
 		move.w	d0,(a6)
 
-		move.l	#$40000010,($C00004).l
-		move.l	($FFFFF616).w,($C00000).l
+		move.l	#$40000010,VDP_Ctrl
+		move.l	($FFFFF616).w,VDP_Data
 
 		moveq	#0,d0
 		move.b	(a0)+,d0
@@ -5641,7 +5641,7 @@ End_ClrRam3:	move.l	d0,(a1)+
 		dbf	d1,End_ClrRam3	; clear	variables
 
 		bsr	ClearScreen
-		lea	($C00004).l,a6
+		lea	VDP_Ctrl,a6
 		move.w	#$8B03,(a6)
 		move.w	#$8230,(a6)
 		move.w	#$8407,(a6)
@@ -5710,7 +5710,7 @@ End_LoadSonic:
 		move.w	#1800,($FFFFF614).w
 		move.b	#$18,VBlankRoutine
 		bsr	DelayProgram
-		move.w	#$8014,($C00004).l	; enable h-ints
+		move.w	#$8014,VDP_Ctrl	; enable h-ints
 		display_enable
 		move.w	#$3F,($FFFFF626).w
 		bsr	Pal_FadeTo
@@ -26210,6 +26210,7 @@ Obj01_Normal:
 		move.l	(a1)+,(a0)+		; set new palette
 		dbf	d3,@PalRestore		; loop for each colour
 		movem.l	(sp)+,d3-a1
+
 		moveq	#0, d0
 		move.b	d0, ($FFFFFFAC).w	; clear dying flag
 		move.b	d0, ($FFFFF5D1).w	; clear death flag
@@ -41728,7 +41729,7 @@ Obj09_ChkEmer:
 
 Emershit:
 		move.b	#1,($FFFFF7CC).w	; lock controls
-		move.w	#$8014,($C00004).l	; enable h-ints for the black bars
+		move.w	#$8014,VDP_Ctrl	; enable h-ints for the black bars
 
 		move.b	#5,(a2)			; this is important to end the stage
 		move.w	#$88,d0			; play special stage beaten jingle
@@ -42157,7 +42158,7 @@ Obj09_GoalNotSolid:
 		beq.s	@notblackout		; if not, branch
 
 		move.b	#1,($FFFFF7CC).w	; lock controls
-		move.w	#$8014,($C00004).l	; enable h-ints for the black bars
+		move.w	#$8014,VDP_Ctrl	; enable h-ints for the black bars
 
 		bsr	SS_RemoveCollectedItem
 		move.b	#5,(a2)			; this is important to end the stage
@@ -42818,7 +42819,7 @@ Hud_ChkBonus:
 		tst.b	($FFFFF7D6).w	; do time/ring bonus counters need updating?
 		beq.s	Hud_End		; if not, branch
 		clr.b	($FFFFF7D6).w
-		move.l	#$6E000002,($C00004).l
+		move.l	#$6E000002,VDP_Ctrl
 		moveq	#0,d1
 		move.w	($FFFFF7D2).w,d1 ; load	time bonus
 		bsr	Hud_TimeRingBonus
@@ -42872,7 +42873,7 @@ HudDb_ChkBonus:
 		tst.b	($FFFFF7D6).w	; does the ring/time bonus counter need	updating?
 		beq.s	HudDb_End	; if not, branch
 		clr.b	($FFFFF7D6).w
-		move.l	#$6E000002,($C00004).l ; set VRAM address
+		move.l	#$6E000002,VDP_Ctrl ; set VRAM address
 		moveq	#0,d1
 		move.w	($FFFFF7D2).w,d1 ; load	time bonus
 		bsr	Hud_TimeRingBonus
@@ -42892,7 +42893,7 @@ HudDb_End:
 
 
 Hud_LoadZero:				; XREF: HudUpdate
-		move.l	#$5F400003,($C00004).l
+		move.l	#$5F400003,VDP_Ctrl
 		lea	Hud_TilesZero(pc),a2
 		move.w	#2,d2
 		bra.s	loc_1C83E
@@ -42906,9 +42907,9 @@ Hud_LoadZero:				; XREF: HudUpdate
 
 
 Hud_Base:				; XREF: Level; SS_EndLoop; EndingSequence
-		lea	($C00000).l,a6
+		lea	VDP_Data,a6
 		bsr	Hud_Lives
-		move.l	#$5C400003,($C00004).l
+		move.l	#$5C400003,VDP_Ctrl
 		lea	Hud_TilesBase(pc),a2
 		move.w	#$E,d2
 
@@ -42951,7 +42952,7 @@ Hud_TilesZero:	dc.b $FF, $FF, 0, 0
 
 
 HudDb_XY:				; XREF: HudDebug
-		move.l	#$5C400003,($C00004).l ; set VRAM address
+		move.l	#$5C400003,VDP_Ctrl ; set VRAM address
 		move.w	($FFFFF700).w,d1 ; load	camera x-position
 		swap	d1
 		move.w	($FFFFD008).w,d1 ; load	Sonic's x-position
@@ -43077,8 +43078,8 @@ loc_1C92C:
 
 
 ContScrCounter:				; XREF: ContinueScreen
-		move.l	#$5F800003,($C00004).l ; set VRAM address
-		lea	($C00000).l,a6
+		move.l	#$5F800003,VDP_Ctrl ; set VRAM address
+		lea	VDP_Data,a6
 		lea	(Hud_10).l,a2
 		moveq	#1,d6
 		moveq	#0,d4

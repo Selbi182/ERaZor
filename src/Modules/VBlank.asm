@@ -37,7 +37,7 @@ VBlank:				; XREF: StartOfRom
 		addq.l	#1, VBlank_NonLagFrameCounter
 		move.w	VDP_Ctrl,d0
 		move.l	#$40000010,VDP_Ctrl
-		move.l	($FFFFF616).w,($C00000).l
+		move.l	($FFFFF616).w,VDP_Data
 		btst	#6,($FFFFFFF8).w		; are we PAL?
 		beq.s	loc_B42				; if not, branch
 		move.w	#$700,d0

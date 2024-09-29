@@ -9,7 +9,7 @@ GameplayStyleScreen:
 		jsr	Pal_FadeFrom			; fade out previous palette
 
 		VBlank_SetMusicOnly
-		lea	($C00004).l,a6			; Setup VDP
+		lea	VDP_Ctrl,a6			; Setup VDP
 		move.w	#$8004,(a6)
 		move.w	#$8230,(a6)
 		move.w	#$8407,(a6)
@@ -39,19 +39,19 @@ GameplayStyleScreen:
 		dbf	d1,@clearscroll
 
 		move.l	#$40000010,(a6)
-		lea	($C00000).l,a0
+		lea	VDP_Data,a0
 		moveq	#0,d0
 		moveq	#40-1,d1
 @clearvsram:	move.w	d0,(a0)
 		dbf	d1,@clearvsram
 
-		move.l	#$40000000,($C00004).l		; load art
-		lea	($C00000).l,a6
+		move.l	#$40000000,VDP_Ctrl		; load art
+		lea	VDP_Data,a6
 		lea	(ArtKospM_Difficulty).l,a0
 		jsr	KosPlusMDec_VRAM
 
 		vram	$2000
-		lea	($C00000).l,a6
+		lea	VDP_Data,a6
 		lea	(ArtKospM_PixelStars).l,a0
 		jsr	KosPlusMDec_VRAM
 
@@ -59,7 +59,7 @@ GameplayStyleScreen:
 		move.l	#$40000003,d0
 		moveq	#$27,d1
 		moveq	#$1B,d2
-		lea	($C00004).l,a4
+		lea	VDP_Ctrl,a4
 		move.l	#$800000,d4
 @row:		move.l	d0,(a4)			; set VDP to VRam write mode
 		move.w	d1,d3			; reload number of columns

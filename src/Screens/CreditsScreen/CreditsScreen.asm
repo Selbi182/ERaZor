@@ -30,7 +30,7 @@ CreditsScreen:
 		jsr	DelayProgram
 
 		VBlank_SetMusicOnly
-		lea	($C00004).l,a6
+		lea	VDP_Ctrl,a6
 		move.w	#$8004,(a6)
 		move.w	#$8230,(a6)
 		move.w	#$8720,(a6)
@@ -40,7 +40,7 @@ CreditsScreen:
 		jsr	ClearScreen
 
 		move.l	#$40000010,(a6)
-		lea	($C00000).l,a0
+		lea	VDP_Data,a0
 		moveq	#0,d0
 		moveq	#40-1,d1
 @clearvsram:	move.w	d0,(a0)
@@ -51,7 +51,7 @@ CreditsScreen:
 		jsr	KosPlusMDec_VRAM			; decompress and dump
 
 		vram	$2000
-		lea	($C00000).l,a6
+		lea	VDP_Data,a6
 		lea	(ArtKospM_PixelStars).l,a0
 		jsr	KosPlusMDec_VRAM
 		VBlank_UnsetMusicOnly
@@ -231,7 +231,7 @@ CS_ScrollMappings:
 CS_WriteCurrentPage:
 		VBlank_SetMusicOnly
 		bsr	Credits_LoadPage		; load current page data offset into a0
-		lea	($C00000).l,a1			; load VDP data port address to a1
+		lea	VDP_Data,a1			; load VDP data port address to a1
 		move.l	#$40000003,d3			; prepare V-Ram address
 		move.l	d3,d6				; load V-Ram address
 		move.l	#$00800000,d5			; prepare value for increase lines

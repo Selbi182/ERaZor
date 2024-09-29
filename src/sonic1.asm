@@ -10870,8 +10870,8 @@ Obj1F_NotInhumanCrush:
 		lea	(Ani_obj1F).l,a1
 		bsr	AnimateSprite
 		cmpi.w	#$000,($FFFFFE10).w		; is level GHZ1?
-		bne.w	MarkObjGone			; if not, branch
-		bra.w	DisplaySprite
+		beq	DisplaySprite			; if yes, branch
+		jmp	MarkObjGone
 ; ===========================================================================
 Obj1F_Index2:	dc.w Obj1F_WaitFire-Obj1F_Index2	; $00
 		dc.w Obj1F_WalkOnFloor-Obj1F_Index2	; $02
@@ -11005,8 +11005,9 @@ Obj1F_BossDelete:
 		jsr	FixCamera
 		move.b	#1,(RedrawEverything).w
 
-		move.b	#0, ($FFFFF76C).w		; reset OPL routine index
-		clr.w	($FFFFFE30).w		; clear any set level checkpoints
+		moveq	#0, d0
+		move.w	d0, ($FFFFF76C).w		; reset OPL routine index
+		move.w	d0, ($FFFFFE30).w		; clear any set level checkpoints
 
 		move.b	#$34,($FFFFD080).w 		; load title card object
 		move.b	#100,($FFFFD080+$30).w		; set delay before loading title cards
@@ -16173,7 +16174,7 @@ Obj34_Setup:				; XREF: Obj34_Index
 		bne.s	@notnhp			; if not, branch	
 		move.w	#$002,($FFFFFE10).w		; change level ID to GHZ3
 		movem.l	d7/a0,-(sp)
-		move.b	#0, ($FFFFF76C).w		; reset OPL routine index
+		clr.w	($FFFFF76C).w			; reset OPL routine index
 		jsr	LevelLayoutLoad			; load GHZ3 layout
 		movem.l	(sp)+,d7/a0
 		jsr	PlayLevelMusic
@@ -17619,230 +17620,9 @@ NotOnScreen2:				; XREF: ChkObjOnScreen2
 ; End of function ChkObjOnScreen2
 
 ; ---------------------------------------------------------------------------
-; Subroutine to	load a level's objects
-; ---------------------------------------------------------------------------
+*ObjPosLoad:
+		include "Modules/Object Manager.asm"
 
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
-
-ObjPosLoad:				; XREF: Level; et al
-		moveq	#0,d0
-		move.b	($FFFFF76C).w,d0
-		move.w	OPL_Index(pc,d0.w),d0
-		jmp	OPL_Index(pc,d0.w)
-; End of function ObjPosLoad
-
-; ===========================================================================
-OPL_Index:	dc.w OPL_Main-OPL_Index
-		dc.w OPL_Next-OPL_Index
-; ===========================================================================
-
-OPL_Main:				; XREF: OPL_Index
-		addq.b	#2,($FFFFF76C).w
-		move.w	($FFFFFE10).w,d0
-		lsl.b	#6,d0
-		lsr.w	#4,d0
-		lea	(ObjPos_Index).l,a0
-		movea.l	a0,a1
-		adda.w	(a0,d0.w),a0
-		move.l	a0,($FFFFF770).w
-		move.l	a0,($FFFFF774).w
-		adda.w	obGfx(a1,d0.w),a1
-		move.l	a1,($FFFFF778).w
-		move.l	a1,($FFFFF77C).w
-		lea	($FFFFFC00).w,a2
-		move.w	#$101,(a2)+
-		move.w	#$5E,d0
-
-OPL_ClrList:
-		clr.l	(a2)+
-		dbf	d0,OPL_ClrList	; clear	pre-destroyed object list
-
-		lea	($FFFFFC00).w,a2
-		moveq	#0,d2
-		move.w	($FFFFF700).w,d6
-		subi.w	#$80,d6
-		bcc.s	loc_D93C
-		moveq	#0,d6
-
-loc_D93C:
-		andi.w	#$FF80,d6
-		movea.l	($FFFFF770).w,a0
-
-loc_D944:
-		cmp.w	(a0),d6
-		bls.s	loc_D956
-		tst.b	obMap(a0)
-		bpl.s	loc_D952
-		move.b	(a2),d2
-		addq.b	#1,(a2)
-
-loc_D952:
-		addq.w	#6,a0
-		bra.s	loc_D944
-; ===========================================================================
-
-loc_D956:
-		move.l	a0,($FFFFF770).w
-		movea.l	($FFFFF774).w,a0
-		subi.w	#$80,d6
-		bcs.s	loc_D976
-
-loc_D964:
-		cmp.w	(a0),d6
-		bls.s	loc_D976
-		tst.b	obMap(a0)
-		bpl.s	loc_D972
-		addq.b	#1,1(a2)
-
-loc_D972:
-		addq.w	#6,a0
-		bra.s	loc_D964
-; ===========================================================================
-
-loc_D976:
-		move.l	a0,($FFFFF774).w
-		move.w	#-1,($FFFFF76E).w
-
-OPL_Next:				; XREF: OPL_Index
-		lea	($FFFFFC00).w,a2
-		moveq	#0,d2
-		move.w	($FFFFF700).w,d6
-		andi.w	#$FF80,d6
-		cmp.w	($FFFFF76E).w,d6
-		beq.w	locret_DA3A
-		bge.s	loc_D9F6
-		move.w	d6,($FFFFF76E).w
-		movea.l	($FFFFF774).w,a0
-		subi.w	#$80,d6
-		bcs.s	loc_D9D2
-
-loc_D9A6:
-		cmp.w	-6(a0),d6
-		bge.s	loc_D9D2
-		subq.w	#6,a0
-		tst.b	obMap(a0)
-		bpl.s	loc_D9BC
-		subq.b	#1,obRender(a2)
-		move.b	obRender(a2),d2
-
-loc_D9BC:
-		bsr	loc_DA3C
-		bne.s	loc_D9C6
-		subq.w	#6,a0
-		bra.s	loc_D9A6
-; ===========================================================================
-
-loc_D9C6:
-		tst.b	obMap(a0)
-		bpl.s	loc_D9D0
-		addq.b	#1,obRender(a2)
-
-loc_D9D0:
-		addq.w	#6,a0
-
-loc_D9D2:
-		move.l	a0,($FFFFF774).w
-		movea.l	($FFFFF770).w,a0
-		addi.w	#$300,d6
-
-loc_D9DE:
-		cmp.w	-6(a0),d6
-		bgt.s	loc_D9F0
-		tst.b	-obGfx(a0)
-		bpl.s	loc_D9EC
-		subq.b	#1,(a2)
-
-loc_D9EC:
-		subq.w	#6,a0
-		bra.s	loc_D9DE
-; ===========================================================================
-
-loc_D9F0:
-		move.l	a0,($FFFFF770).w
-		rts	
-; ===========================================================================
-
-loc_D9F6:
-		move.w	d6,($FFFFF76E).w
-		movea.l	($FFFFF770).w,a0
-		addi.w	#$280,d6
-
-loc_DA02:
-		cmp.w	(a0),d6
-		bls.s	loc_DA16
-		tst.b	obMap(a0)
-		bpl.s	loc_DA10
-		move.b	(a2),d2
-		addq.b	#1,(a2)
-
-loc_DA10:
-		bsr	loc_DA3C
-		beq.s	loc_DA02
-		tst.b	$04(a0)		; was this object a remember state?
-		bpl.s	loc_DA16	; if not, branch
-		subq.b	#1,(a2)		; move right counter back
-		
-loc_DA16:
-		move.l	a0,($FFFFF770).w
-		movea.l	($FFFFF774).w,a0
-		subi.w	#$300,d6
-		bcs.s	loc_DA36
-
-loc_DA24:
-		cmp.w	(a0),d6
-		bls.s	loc_DA36
-		tst.b	obMap(a0)
-		bpl.s	loc_DA32
-		addq.b	#1,obRender(a2)
-
-loc_DA32:
-		addq.w	#6,a0
-		bra.s	loc_DA24
-; ===========================================================================
-
-loc_DA36:
-		move.l	a0,($FFFFF774).w
-
-locret_DA3A:
-		rts	
-; ===========================================================================
-
-loc_DA3C:
-		tst.b	4(a0)
-		bpl.s	OPL_MakeItem
-		btst	#7,obGfx(a2,d2.w)
-		beq.s	OPL_MakeItem
-		addq.w	#6,a0
-		moveq	#0,d0
-		rts	
-; ===========================================================================
-
-OPL_MakeItem:
-		bsr	SingleObjLoad
-		bne.s	locret_DA8A
-		move.w	(a0)+,obX(a1)
-		move.w	(a0)+,d0
-		move.w	d0,d1
-		andi.w	#$FFF,d0
-		move.w	d0,obY(a1)
-		rol.w	#2,d1
-		andi.b	#3,d1
-		move.b	d1,obRender(a1)
-		move.b	d1,obStatus(a1)
-		move.b	(a0)+,d0
-		bpl.s	loc_DA80
-		bset	#7,$02(a2,d2.w)		; set as removed
-		andi.b	#$7F,d0
-		move.b	d2,obRespawnNo(a1)
-
-loc_DA80:
-		move.b	d0,0(a1)
-		move.b	(a0)+,obSubtype(a1)
-		moveq	#0,d0
-
-locret_DA8A:
-		rts	
 ; ---------------------------------------------------------------------------
 ; Single object	loading	subroutine
 ; ---------------------------------------------------------------------------
@@ -45022,50 +44802,56 @@ ArtKospM_RingFlash:	incbin	artkosp\ringflash.kospm	; ring flash that appears whe
 		even
 ;ArtKospM_SGMC:	incbin artkosp\sgmc.kospm
 ;		even
-		
-	;	incbin	misc\padding3.bin
-	;	even
 
 ; ---------------------------------------------------------------------------
-; Sprite locations index
+; Object positions index
 ; ---------------------------------------------------------------------------
-ObjPos_Index:	dc.w ObjPos_GHZ1-ObjPos_Index, ObjPos_Null-ObjPos_Index
-		dc.w ObjPos_GHZ2-ObjPos_Index, ObjPos_Null-ObjPos_Index
-		dc.w ObjPos_GHZ3-ObjPos_Index, ObjPos_Null-ObjPos_Index
-		dc.w ObjPos_Null-ObjPos_Index, ObjPos_Null-ObjPos_Index
-		dc.w ObjPos_Null-ObjPos_Index, ObjPos_Null-ObjPos_Index
-		dc.w ObjPos_LZ2-ObjPos_Index,  ObjPos_Null-ObjPos_Index
-		dc.w ObjPos_Null-ObjPos_Index, ObjPos_Null-ObjPos_Index
-		dc.w ObjPos_Null-ObjPos_Index, ObjPos_Null-ObjPos_Index
-		dc.w ObjPos_MZ1-ObjPos_Index,  ObjPos_Null-ObjPos_Index
-		dc.w ObjPos_Null-ObjPos_Index, ObjPos_Null-ObjPos_Index
-		dc.w ObjPos_Null-ObjPos_Index, ObjPos_Null-ObjPos_Index
-		dc.w ObjPos_Null-ObjPos_Index, ObjPos_Null-ObjPos_Index
-		dc.w ObjPos_Null-ObjPos_Index, ObjPos_Null-ObjPos_Index
-		dc.w ObjPos_SLZ2-ObjPos_Index, ObjPos_Null-ObjPos_Index
-		dc.w ObjPos_SLZ3-ObjPos_Index, ObjPos_Null-ObjPos_Index
-		dc.w ObjPos_Null-ObjPos_Index, ObjPos_Null-ObjPos_Index
-		dc.w ObjPos_SYZ1-ObjPos_Index, ObjPos_Null-ObjPos_Index
-		dc.w ObjPos_Null-ObjPos_Index, ObjPos_Null-ObjPos_Index
-		dc.w ObjPos_Null-ObjPos_Index, ObjPos_Null-ObjPos_Index
-		dc.w ObjPos_Null-ObjPos_Index, ObjPos_Null-ObjPos_Index
-		dc.w ObjPos_SBZ1-ObjPos_Index, ObjPos_Null-ObjPos_Index
-		dc.w ObjPos_SBZ2-ObjPos_Index, ObjPos_Null-ObjPos_Index
-		dc.w ObjPos_FZ-ObjPos_Index,   ObjPos_Null-ObjPos_Index
-		dc.w ObjPos_Null-ObjPos_Index, ObjPos_Null-ObjPos_Index
-		dc.w ObjPos_End-ObjPos_Index,  ObjPos_Null-ObjPos_Index
-		dc.w ObjPos_End-ObjPos_Index,  ObjPos_Null-ObjPos_Index
-		dc.w ObjPos_End-ObjPos_Index,  ObjPos_Null-ObjPos_Index
-		dc.w ObjPos_End-ObjPos_Index,  ObjPos_Null-ObjPos_Index
-		dc.w ObjPos_Null-ObjPos_Index, ObjPos_Null-ObjPos_Index
-		dc.w ObjPos_Null-ObjPos_Index, ObjPos_Null-ObjPos_Index
-		dc.w ObjPos_Null-ObjPos_Index, ObjPos_Null-ObjPos_Index
-		dc.w ObjPos_Null-ObjPos_Index, ObjPos_Null-ObjPos_Index
-		dc.w ObjPos_Null-ObjPos_Index, ObjPos_Null-ObjPos_Index
-		dc.w ObjPos_Null-ObjPos_Index, ObjPos_Null-ObjPos_Index
-		dc.w ObjPos_Null-ObjPos_Index, ObjPos_Null-ObjPos_Index
-		dc.w ObjPos_Null-ObjPos_Index, ObjPos_Null-ObjPos_Index
-	
+ObjPos_Index:	dc.w ObjPos_GHZ1-ObjPos_Index
+		dc.w ObjPos_GHZ2-ObjPos_Index
+		dc.w ObjPos_GHZ3-ObjPos_Index
+		dc.w ObjPos_Null-ObjPos_Index
+
+		dc.w ObjPos_Null-ObjPos_Index
+		dc.w ObjPos_LZ2-ObjPos_Index
+		dc.w ObjPos_Null-ObjPos_Index
+		dc.w ObjPos_Null-ObjPos_Index
+
+		dc.w ObjPos_MZ1-ObjPos_Index
+		dc.w ObjPos_Null-ObjPos_Index
+		dc.w ObjPos_Null-ObjPos_Index
+		dc.w ObjPos_Null-ObjPos_Index
+
+		dc.w ObjPos_Null-ObjPos_Index
+		dc.w ObjPos_SLZ2-ObjPos_Index
+		dc.w ObjPos_SLZ3-ObjPos_Index
+		dc.w ObjPos_Null-ObjPos_Index
+
+		dc.w ObjPos_SYZ1-ObjPos_Index
+		dc.w ObjPos_Null-ObjPos_Index
+		dc.w ObjPos_Null-ObjPos_Index
+		dc.w ObjPos_Null-ObjPos_Index
+
+		dc.w ObjPos_SBZ1-ObjPos_Index
+		dc.w ObjPos_SBZ2-ObjPos_Index
+		dc.w ObjPos_FZ-ObjPos_Index
+		dc.w ObjPos_Null-ObjPos_Index
+
+		dc.w ObjPos_End-ObjPos_Index
+		dc.w ObjPos_End-ObjPos_Index
+		dc.w ObjPos_End-ObjPos_Index
+		dc.w ObjPos_End-ObjPos_Index
+
+		dc.w ObjPos_Null-ObjPos_Index
+		dc.w ObjPos_Null-ObjPos_Index
+		dc.w ObjPos_Null-ObjPos_Index
+		dc.w ObjPos_Null-ObjPos_Index
+
+		dc.w ObjPos_Null-ObjPos_Index
+		dc.w ObjPos_Null-ObjPos_Index
+		dc.w ObjPos_Null-ObjPos_Index
+		dc.w ObjPos_Null-ObjPos_Index
+
+		dc.w    $FFFF,$0000,$0000
 ObjPos_GHZ1:	incbin	LevelData\objpos\ghz1.bin
 		even
 ObjPos_GHZ2:	incbin	LevelData\objpos\ghz2.bin

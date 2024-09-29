@@ -97,6 +97,11 @@ CamXShift:		equ	$FFFFF73A			; w	Camera X shift from the previous frame (FG, 8.8 
 CamYShift:		equ	$FFFFF73C			; w	Camera Y shift from the previous frame (FG, 8.8 fixed)
 
 SonicLookUpDownTimer:	equ	$FFFFF778			; b	Timer for camera delay when looking up/down
+*			equ	$FFFFF779			; b 	<<FREE>>
+*			equ	$FFFFF77A			; b 	<<FREE>>
+*			equ	$FFFFF77B			; b 	<<FREE>>
+*			equ	$FFFFF77C			; l	<<FREE>>
+
 AniArt_Slot_RAM:	equ	$FFFFF7B0
 AniArt_Slot0_Frame:	equ	$FFFFF7B0			; b	Slot 0 : Art frame
 AniArt_Slot0_Timer:	equ	$FFFFF7B1			; b	Slot 0 : Timer value 
@@ -114,6 +119,9 @@ Sprite_Buffer_End:	equ	$FFFFFA80
 
 Pal_Active:		equ	$FFFFFB00			; ~	Active palette
 Pal_Target:		equ	$FFFFFB80			; ~	Target palette for fading
+
+ObjectSpawnTable:	equ	$FFFFFC00			;	Object respawn status table
+ObjectSpawnTable_End:	equ	$FFFFFD00			;
 
 VBlank_FrameCounter:	equ	$FFFFFE0C			; l	Global frame counter for VBlank (includes lag frames)
 

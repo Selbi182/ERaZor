@@ -62,8 +62,6 @@ DebugSurviveNoRings = 1
 ; ------------------------------------------------------
 DoorsAlwaysOpen = 0
 LowBossHP = 0
-; ------------------------------------------------------
-TestDisplayDeleteBugs = 0
 ; ======================================================
 	else
 ; BENCHMARK build settings (DO NOT CHANGE!)
@@ -17632,13 +17630,13 @@ NotOnScreen2:				; XREF: ChkObjOnScreen2
 
 SingleObjLoad:
 		lea	($FFFFD800).w,a1 ; start address for object RAM
-		move.w	#$5F,d0
+		moveq	#$5F,d0
 
 loc_DA94:
 		tst.b	(a1)		; is object RAM	slot empty?
 		beq.s	locret_DAA0	; if yes, branch
 		lea	$40(a1),a1	; goto next object RAM slot
-		dbf	d0,loc_DA94	; repeat $5F times
+		dbf	d0,loc_DA94	; repeat $60 times
 
 locret_DAA0:
 		assert.w a1, lo, #$F000, Debugger_ObjSlots
@@ -17651,7 +17649,7 @@ locret_DAA0:
 
 SingleObjLoad2:
 		movea.l	a0,a1
-		move.w	#-$1000,d0
+		move.w	#Objects_End,d0
 		sub.w	a0,d0
 		lsr.w	#6,d0
 		subq.w	#1,d0
@@ -44594,8 +44592,6 @@ ArtKospM_EndSonic:	incbin	artkosp\endsonic.kospm	; ending sequence Sonic
 ;		even
 ;ArtKospM_EndStH:	incbin	artkosp\endtext.kospm	; ending sequence "Sonic the Hedgehog" text
 ;		even
-	;	incbin	misc\padding2.bin
-	;	even
 ; ---------------------------------------------------------------------------
 ; Collision data
 ; ---------------------------------------------------------------------------

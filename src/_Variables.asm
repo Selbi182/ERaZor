@@ -11,9 +11,8 @@ LevelLayout_BG:		equ 	LevelLayout_RAM+$200		;	BG level layout (A600-A7FF)
 DrawBuffer_RAM:		equ	$FFFFA800			;	draw buffer RAM (A800-AB7F)
 LevelRend_RAM:		equ	$FFFFAB80			;	level renderer RAM (AB80-AB98)
 
-DeleteQueue:		equ	$FFFFAB98			;	Delete queue
-DeleteQueue_End:	equ	$FFFFABFE
-DeleteQueue_Ptr:	equ	$FFFFABFE			;	Delete objects queue pointer
+*			equ	$FFFFAB98			;	<<<FOR SALE>>> a rare RAM real eastate surounded by luxorious Level renderer and Sprite queue
+								;	Get your offer today for full AB98-AC00 chunk! Contact Vladikcomper.
 
 Sprites_Queue:		equ	$FFFFAC00			;	object sprites queued for display (AC00-AFFF)
 
@@ -22,6 +21,10 @@ Art_Buffer_End:		equ	$FFFFC000			;	WARNING! Buffer should be at least $1000 byte
 
 DMAQueue:		equ	$FFFFC800			;
 DMAQueuePos:		equ	$FFFFC8FC			; .l	DMA queue position pointer
+
+DeleteQueue:		equ	$FFFFC900			;	Delete queue
+DeleteQueue_End:	equ	$FFFFC9FE
+DeleteQueue_Ptr:	equ	$FFFFC9FE			;	Delete objects queue pointer
 
 Sonic_PosArray		equ	$FFFFCB00			;	Sonic's previous positions array (CB00-CBFF)
 

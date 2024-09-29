@@ -4523,7 +4523,6 @@ Fuzz_TutBox:
 
 ClearEverySpecialFlag:
 		moveq	#0,d0
-		move.w	d0,($FFFFC904).w
 		move.b	d0,($FFFFF5D0).w
 		move.b	d0,($FFFFF5D1).w
 		move.b	d0,RedrawEverything
@@ -27155,10 +27154,10 @@ Sonic_LookUp:
 		move.b	#7,obAnim(a0)	; use "looking up" animation
 		cmpi.w	#$101,($FFFFFE10).w	; is level LZ2?
 		beq.s	Sonic_Duck		; if yes, disable vertical camera shift
-		addq.b	#1,($FFFFC903).w
-		cmp.b	#$78,($FFFFC903).w
+		addq.b	#1,SonicLookUpDownTimer
+		cmp.b	#$78,SonicLookUpDownTimer
 		bcs.s	Obj01_ResetScr_Part2
-		move.b	#$78,($FFFFC903).w
+		move.b	#$78,SonicLookUpDownTimer
 		cmpi.w	#$C8,($FFFFF73E).w
 		beq.s	loc_12FC2
 		addq.w	#2,($FFFFF73E).w
@@ -27172,10 +27171,10 @@ Sonic_Duck:
 		move.b	#8,obAnim(a0)	; use "ducking"	animation
 		cmpi.w	#$101,($FFFFFE10).w	; is level LZ2?
 		beq.s	Obj01_ResetScr		; if yes, disable vertical camera shift
-		addq.b	#1,($FFFFC903).w
-		cmpi.b	#$78,($FFFFC903).w
+		addq.b	#1,SonicLookUpDownTimer
+		cmpi.b	#$78,SonicLookUpDownTimer
 		bcs.s	Obj01_ResetScr_Part2
-		move.b	#$78,($FFFFC903).w
+		move.b	#$78,SonicLookUpDownTimer
 		cmpi.w	#8,($FFFFF73E).w
 		beq.s	loc_12FC2
 		subq.w	#2,($FFFFF73E).w
@@ -27183,7 +27182,7 @@ Sonic_Duck:
 ; ===========================================================================
 
 Obj01_ResetScr:
-		move.b	#0,($FFFFC903).w
+		move.b	#0,SonicLookUpDownTimer
 		
 Obj01_ResetScr_Part2:
 		cmpi.w	#$60,($FFFFF73E).w ; is	screen in its default position?

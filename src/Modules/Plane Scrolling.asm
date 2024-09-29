@@ -1097,22 +1097,6 @@ ScrollHoriz:				; XREF: DeformBgLayer
 ; ===========================================================================
 
 SH_NoDelay:
-		move.w	($FFFFC904).w,d1
-		beq.s	@cont1
-		sub.w	#$100,d1
-		move.w	d1,($FFFFC904).w
-		moveq	#0,d1
-		move.b	($FFFFC904).w,d1
-		lsl.b	#2,d1
-		addq.b	#4,d1
-		move.w	($FFFFF7A8).w,d0
-		sub.b	d1,d0
-		lea	($FFFFCB00).w,a1
-		move.w	(a1,d0.w),d0
-		and.w	#$3FFF,d0
-		bra.w	S_H_NoExtendedCam
-		
-@cont1:
 		move.w	($FFFFD008).w,d0	; move Sonic's X-pos to d0
 
 CamSpeed = 2					; set camera moving speed (standart 2 or 3)

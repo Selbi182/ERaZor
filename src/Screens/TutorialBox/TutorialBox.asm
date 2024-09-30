@@ -61,15 +61,23 @@ _end	= $FF	; finish hint
 Tutorial_DisplayHint:
 		move.b	d0,($FFFFFF6E).w		; store text ID
 		movem.l	a0/a5-a6,-(sp)
+		move.w	d0,-(sp)
+
+		; Clear "BuildSprites" display queue to avoid displaying objects twice
+		moveq	#0, d0
+		@current_queue_ptr: = Sprites_Queue
+		rept 8
+			move.w	d0, @current_queue_ptr
+			@current_queue_ptr: = @current_queue_ptr + $80
+		endr
 
 		; Init objects
 		lea	_DH_WindowObj,a0
-		move.w	d0,-(sp)
-		jsr	ClearObjectSlot			; clear slot
-		move.w	(sp)+,d0
+		jsr	ClearObjectSlot
 		move.l	#DH_OWindow_Init,obj(a0)
-		
+
 		lea	Hints_List,a1
+		move.w	(sp)+,d0
 		andi.w	#$FF,d0
 		add.w	d0,d0
 		add.w	d0,d0

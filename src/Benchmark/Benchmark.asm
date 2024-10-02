@@ -79,7 +79,7 @@ Benchmark.Run:
 
 	jsr	VDPSetupGame			; switch to Sonic 1 VDP settings
 	move.b	#$C, GameMode			; simulate "normal level" mode (because it checks game mode)
-	move.w	#$002, $FFFFFE10		; set level to GHP
+	move.w	#QuickLevelSelect_ID, $FFFFFE10	; set level
 	jsr	Level				; PLAY IT!!!11
 
 	bsr	@ReloadConsoleMode		; must restore MD Shell after running "sandboxed" Sonic 1 game mode

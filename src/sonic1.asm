@@ -12101,11 +12101,10 @@ Obj25_Animate:				; XREF: Obj25_Index
 		tst.b	($FFFFFE2C).w		; do we have a shield?
 		beq.s	Obj25_NoRingMove	; if not, branch
 		bsr	AttractedRing_Check	; check if we're near enough for attraction
-		tst.b	$29(a0)			; test flag
-		beq.s	Obj25_NoRingMove	; if it wasn't set, we weren't near enough
+		bne.s	Obj25_NoRingMove	; if not, we weren't near enough
+		move.b	#1,$29(a0)		; set attraction flag
 		move.b	#$37,0(a0)		; change ring object to bouncing ring object, to give this decent effect
 		move.b	#2,obRoutine(a0)	; make sure the ring just bounces, we don't want to loose 10 rings
-		move.b	#1,$29(a0)		; set attraction flag
 		bsr.s	Obj25_MarkGone		; make sure ring doesn't respawn (if it moves offscreen, tough luck buddy)
  
  Obj25_NoRingMove:
@@ -12181,23 +12180,20 @@ AttractedRing_Dist = $60
 ;=============================================
 
 AttractedRing_Check:
-		move.w	obX(a0),d0		; load object's X pos
-		sub.w	($FFFFD008).w,d0	; minus sonic's X pos from it
-		bpl.w	Ring_XChk		; if answer is possitive, branch
-		neg.w	d0			; reverse d0
-Ring_XChk:	cmpi.w	#AttractedRing_Dist,d0	; is sonic within XX pixels of the ring?
-		bge.s	NoRingMove		; if not, branch
+		moveq	#AttractedRing_Dist, d0
+		add.w	obX(a0), d0
+		sub.w	($FFFFD000+obX).w, d0
+		cmp.w	#2*AttractedRing_Dist, d0
+		bhs.s	@ReturnNotAttracted	; return Z=0
 
-		move.w	obY(a0),d1		; load object's Y pos
-		sub.w	($FFFFD00C).w,d1	; minus sonic's Y pos from it
-		bpl.w	Ring_YChk		; if answer is possitive, branch
-		neg.w	d1			; reverse d1
-Ring_YChk:	cmpi.w	#AttractedRing_Dist,d1	; is sonic within XX pixels of the object?
-		bge.s	NoRingMove		; if not, branch
+		moveq	#AttractedRing_Dist, d0
+		add.w	obY(a0), d0
+		sub.w	($FFFFD000+obY).w, d0
+		cmp.w	#2*AttractedRing_Dist, d0
+		bhs.s	@ReturnNotAttracted	; return Z=0
+		moveq	#0, d0			; return Z=1
 
-		move.b	#1,$29(a0)		; set attraction flag
-
-NoRingMove:
+@ReturnNotAttracted:
 		rts
 ; ===========================================================================
 
@@ -12211,7 +12207,7 @@ AttractedRing_Move:
 		asl.w	#AttractedRing_Speed,d0
 		asl.w	#AttractedRing_Speed,d1
 		
-		move.w	d1,obVelX(a0)		; move the final calculated speed to ring's Y-speed
+		move.w	d1,obVelX(a0)		; move the final calculated speed to ring's X-speed
 		move.w	d0,obVelY(a0)		; move the final calculated speed to ring's Y-speed
 		jmp	SpeedToPos		; let SpeedToPos do the rest
 ; End of function AttractedRing_Move
@@ -12346,6 +12342,8 @@ Obj37_MainLoop:				; XREF: Obj37_Index
 		cmpi.w	#$FF-20,$30(a0)		; bit of delay before...
 		bhi.s	Obj37_NoRingsMove	; ...collecting rings of smashed objects
 @moveanyway:	bsr	AttractedRing_Check
+		bne.s	Obj37_NoRingsMove
+		move.b	#1, $29(a0)
 		bra.s	Obj37_NoRingsMove
 @continueattract:
 		tst.b	($FFFFFE2C).w		; is Sonic still having a shield?

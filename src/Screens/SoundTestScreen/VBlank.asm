@@ -74,8 +74,10 @@ SoundTest_VBlank:
 
 	bsr	SoundTest_VBlank_SetupHBlank
 
-	; Note that music is only updated during non-lag frames to keep piano consistent
-	jsr	UpdateSoundDriver
+	if def(__BENCHMARK__)=0
+		; Note that music is only updated during non-lag frames to keep piano consistent
+		jsr	UpdateSoundDriver
+	endif
 
 @Quit:
 	movem.l	(sp)+, d0-a6

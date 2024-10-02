@@ -5,7 +5,7 @@
 ; ------------------------------------------------------
 	if def(__BENCHMARK__)=0
 ; Vladik's Debugger
-;__DEBUG__: equ 1
+__DEBUG__: equ 1
 
 	else
 		; MD Replay state. Used for playing pre-recorded gameplay in benchmarks.
@@ -56,10 +56,10 @@ USE_NEW_BUILDSPRITES:	equ	1	; New BuildSprites system is still faster than S1's,
 ; $302 - Star Agony Place
 ; $502 - Finalor Place
 	if def(__BENCHMARK__)=0
-QuickLevelSelect = 0
-QuickLevelSelect_ID = 0
+QuickLevelSelect = 1
+QuickLevelSelect_ID = $302
 ; ------------------------------------------------------
-DebugModeDefault = 0
+DebugModeDefault = 1
 DebugSurviveNoRings = 1
 ; ------------------------------------------------------
 DoorsAlwaysOpen = 0
@@ -5878,7 +5878,7 @@ Obj8B:
 		
 		jsr	RandomDirection
 		ori.w	#$20,obVelY(a0)	; add a bit of forced vertical movement to reduce horizontal sprite flicker
-		
+
 ; ---------------------------------------------------------------------------
 
 @ChkOffscreen:
@@ -8961,8 +8961,8 @@ Obj19_DoAfter:
 		lea	($FFFFD000).w,a1	; load Sonic into a1
 		move.l	obMap(a1),obMap(a0)	; copy Sonic's mappings
  		move.l	obFrame(a1),obFrame(a0)	; copy Sonic's current frame
- 		move.b	obRender(a1),obRender(a0)	; copy Sonic's render flag
-		move.w	obGfx(a1),obGfx(a0)		; set starting art block to $780 (Sonic art)
+ 		move.b	obRender(a1),obRender(a0); copy Sonic's render flag
+		move.w	obGfx(a1),obGfx(a0)	; set starting art block to $780 (Sonic art)
 		addq.b	#1,obPriority(a0)	; decrease priority as afterimage ages
 
 		jmp	DisplaySprite		; display our afterimaged frame
@@ -12184,13 +12184,13 @@ AttractedRing_Check:
 		add.w	obX(a0), d0
 		sub.w	($FFFFD000+obX).w, d0
 		cmp.w	#2*AttractedRing_Dist, d0
-		bhs.s	@ReturnNotAttracted	; return Z=0
+		bhi.s	@ReturnNotAttracted	; return Z=0
 
 		moveq	#AttractedRing_Dist, d0
 		add.w	obY(a0), d0
 		sub.w	($FFFFD000+obY).w, d0
 		cmp.w	#2*AttractedRing_Dist, d0
-		bhs.s	@ReturnNotAttracted	; return Z=0
+		bhi.s	@ReturnNotAttracted	; return Z=0
 		moveq	#0, d0			; return Z=1
 
 @ReturnNotAttracted:
@@ -17387,7 +17387,7 @@ Obj_Index:
 Obj8D:
 		movea.l	$3C(a0), a1
 		assert.l a1, ne, #0
-	jmp	(a1)
+		jmp	(a1)
 
 ; ---------------------------------------------------------------------------
 ; Subroutine to	make an	object fall downwards, increasingly fast
@@ -42372,7 +42372,7 @@ Obj21_Main:
 		
 		addq.b	#2,obRoutine(a0)		; increase routine counter
 		move.w	#0,obScreenY(a0)		; Y-position
-		move.l	#Map_obj21,obMap(a0)	; load mappings
+		move.l	#Map_obj21,obMap(a0)		; load mappings
 
 Obj21_ChkScore:
 		cmpi.b	#1,$30(a0)		; is object set to SCORE?

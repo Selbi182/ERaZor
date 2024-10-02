@@ -126,7 +126,11 @@ BlackBars.EmulatorOptimizedHandlers:
 @BuildSpritesCallback:
 	; Reserve 2 sprite slots for sprite masking
 	; NOTE: These slots are finalized in BlackBars handler during VBlank
-	subq.w	#2, d5			; reserve 2 slots
+	if USE_NEW_BUILDSPRITES
+		subq.w	#2, d5			; reserve 2 slots
+	else
+		addq.w	#2, d5			; reserve 2 slots
+	endif
 	move.l	#$01700F01, (a2)+	; Y-pos, size, link
 	move.l	#$00000001, (a2)+	; pattern, X-pos
 	move.l	#$01700F02, (a2)+	; Y-pos, size, link

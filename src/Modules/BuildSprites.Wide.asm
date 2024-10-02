@@ -1,5 +1,5 @@
 ; -----------------------------------------------------------------------------
-; Optimized sprite renderer with sprite piece culling
+; Optimized sprite renderer with sprite piece culling for widescreen
 ; -----------------------------------------------------------------------------
 ; (c) 2024, Vladikcomper
 ; -----------------------------------------------------------------------------

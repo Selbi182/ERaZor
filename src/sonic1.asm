@@ -23,12 +23,14 @@ SCREEN_WIDTH:	equ 400
 SCREEN_HEIGHT:	equ 224
 SCREEN_XDISP:	equ (320 - SCREEN_WIDTH) / 2	; GensPlusGX-Wide just centers the screen, X-coordinate of left-most corner is offset.
 SCREEN_XCORR:	equ (SCREEN_WIDTH - 320) / 2	; this one corrects camera boundaries
+USE_NEW_BUILDSPRITES:	equ	1
 
 	else
 SCREEN_WIDTH:	equ 320
 SCREEN_HEIGHT:	equ 224
 SCREEN_XDISP:	equ 0
 SCREEN_XCORR:	equ 0
+USE_NEW_BUILDSPRITES:	equ	1	; New BuildSprites system is still faster than S1's, even with extra checks for sprite culling
 	endif
 
 ; ------------------------------------------------------
@@ -17554,7 +17556,11 @@ DisplaySprite2:
 
 ; ---------------------------------------------------------------------------
 *BuildSprites:
-	include	"Modules/BuildSprites.asm"
+	if USE_NEW_BUILDSPRITES
+		include	"Modules/BuildSprites.Wide.asm"
+	else
+		include	"Modules/BuildSprites.Normal.asm"
+	endif
 
 ; ---------------------------------------------------------------------------
 ; Subroutine to	check if an object is on the screen
@@ -40212,7 +40218,11 @@ Touch_D7orE1:				; XREF: Touch_Special
 
 ; ---------------------------------------------------------------------------
 *SS_ShowLayout:
-		include	"Modules/SS_ShowLayout.asm"
+		if USE_NEW_BUILDSPRITES
+			include	"Modules/SS_ShowLayout.Wide.asm"
+		else
+			include	"Modules/SS_ShowLayout.Normal.asm"
+		endif
 
 ; ---------------------------------------------------------------------------
 ; Subroutine to	animate	walls and rings	in the special stage

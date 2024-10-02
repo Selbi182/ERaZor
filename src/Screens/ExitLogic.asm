@@ -44,6 +44,10 @@ ReturnToUberhub_Chapter:
 ; ---------------------------------------------------------------------------
 
 StartLevel:
+	if def(__BENCHMARK__)
+		move.b	#0, GameMode
+		rts
+	else
 		move.b	#1,($FFFFFFE9).w	; set fade-out in progress flag
 
 		move.w	($FFFFFE10).w,d0	; get level ID
@@ -61,6 +65,7 @@ StartLevel:
 		; special stage
 		move.b	#$10,(GameMode).w	; set to special stage
 		rts				; return to MainGameLoop
+	endif
 
 
 ; ===========================================================================

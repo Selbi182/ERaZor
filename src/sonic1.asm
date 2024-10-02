@@ -68,7 +68,7 @@ LowBossHP = 0
 	else
 ; BENCHMARK build settings (DO NOT CHANGE!)
 QuickLevelSelect = 0
-QuickLevelSelect_ID = $400
+QuickLevelSelect_ID = $200
 DebugModeDefault = 1
 DebugSurviveNoRings = 1
 DoorsAlwaysOpen = 1
@@ -44947,7 +44947,7 @@ FixBugs:	equ	1	; want to fix SMPS bugs
 		include "Benchmark/Benchmark.asm"
 	endif
 	if def(__MD_REPLAY__)
-		MDReplay_IncludeMovie "Benchmark/bench-ghp.mdr"
+		MDReplay_IncludeMovie "Benchmark/bench-rp.mdr"
 	endif
 
 ; ---------------------------------------------------------------------------

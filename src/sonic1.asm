@@ -3330,12 +3330,7 @@ Level:					; XREF: GameModeArray
 		jsr	DrawBuffer_Clear
 		display_enable
 
-		; immediately clear the first tile in VRAM to avoid graphical issues
 		VBlank_SetMusicOnly
-		vram	$0000
-		rept	$20-1
-		move.w	#0,VDP_Data
-		endr
 
 	;	jsr	ClearVRAM	; only comment this in for testing, never in prod!
 

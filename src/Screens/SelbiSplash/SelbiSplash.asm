@@ -62,7 +62,7 @@ SelbiSplash:
 		endr
 		dbf	d1, @ClearPal
 
-		; Preload Part 1 of Bitmap MD image to VRAM (we can do it because we don't touch area)
+		; Preload Part 1 of Bitmap MD image to VRAM (we can do it because we don't touch this area)
 		vram	$0000
 		lea	BitmapMD_VRAM_Part1, a0
 		jsr	KosPlusMDec_VRAM

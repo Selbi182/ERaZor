@@ -490,7 +490,7 @@ BlackBars_Selbi:
 		; I'm well aware of how terrible this code is
 		cmpi.w	#Pal_Active+$10+2*5,($FFFFFF7A).w
 		bne.w	BlackBars_SetHeight
-		subi.w	#1,BlackBars.Height
+		subq.w	#1,BlackBars.Height
 		moveq	#60,d0
 		move.w	d0,BlackBars.TargetHeight
 		bra.w	BlackBars_ShowCustom
@@ -12110,8 +12110,8 @@ Obj25_Animate:				; XREF: Obj25_Index
  Obj25_NoRingMove:
 		move.b	($FFFFFEC3).w,obFrame(a0) ;	set frame
 
-		move.w	$32(a0),d0
-		andi.w	#$FF80,d0
+		moveq	#-$80,d0
+		and.w	$32(a0),d0
 		move.w	($FFFFF700).w,d1
 		subi.w	#$80,d1
 		andi.w	#$FF80,d1
@@ -12131,7 +12131,7 @@ Obj25_Collect:				; XREF: Obj25_Index
 		bsr.s	Obj25_MarkGone
 
 Obj25_Sparkle:				; XREF: Obj25_Index
-		lea	(Ani_obj25).l,a1
+		lea	Ani_obj25(pc),a1
 		bsr	AnimateSprite
 		bra.w	DisplaySprite
 ; ===========================================================================
@@ -12441,7 +12441,7 @@ Obj37_Collect:				; XREF: Obj37_Index
 		bsr	CollectRing
 
 Obj37_Sparkle:				; XREF: Obj37_Index
-		lea	(Ani_obj25).l,a1
+		lea	Ani_obj25(pc),a1
 		bsr	AnimateSprite
 		bra.w	DisplaySprite
 ; ===========================================================================
@@ -13762,16 +13762,22 @@ Anim_Run:
 		bmi.s	Anim_End_FF	; if animation is complete, branch
 
 Anim_Next:
-		move.b	d0,d1
-		andi.b	#$1F,d0
-		move.b	d0,obFrame(a0)	; load sprite number
-		move.b	obStatus(a0),d0
-		rol.b	#3,d1
-		eor.b	d0,d1
-		andi.b	#3,d1
-		andi.b	#$FC,obRender(a0)
-		or.b	d1,obRender(a0)
-		addq.b	#1,obAniFrame(a0)	; next frame number
+		moveq	#$1F, d1
+		and.b	d0, d1
+		move.b	d1, obFrame(a0)		; save frame number
+
+		; Update render flags
+		moveq	#3, d1
+		rol.b	#3, d0
+		and.b	d1, d0			; d0 = 0000 00XY (frame)
+		and.b	obStatus(a0), d1	; d1 = 0000 00XY (status)
+		eor.b	d1, d0			; d0 = 0000 00XY (final)
+		moveq	#$FFFFFFFC, d1
+		and.b	obRender(a0), d1
+		or.b	d0, d1			; d1 = ---- --XY
+		move.b	d1, obRender(a0)
+
+		addq.b	#1, obAniFrame(a0) 	; next frame number
 
 Anim_Wait:
 		rts	
@@ -17398,20 +17404,19 @@ Obj8D:
 Gravity = $38
 
 ObjectFall:
-		move.w	obVelX(a0),d0
-		ext.l	d0
+		movem.w	obVelX(a0), d0/d2
 		lsl.l	#8,d0
 		add.l	d0,obX(a0)
+		lsl.l	#8,d2
+		add.l	d2,obY(a0)
 
-		move.w	obVelY(a0),d0
 		tst.b	($FFFFFFE5).w		; is air freeze enabled?
 		beq.s	@fullgravity		; if not, use regular gravity
-		subi.w	#Gravity/2,obVelY(a0)	; otherwise just half gravity
+		add.w	#Gravity/2,obVelY(a0)	; otherwise just half gravity
+		rts
+
 @fullgravity:
-		addi.w	#Gravity,obVelY(a0)	; increase vertical speed
-		ext.l	d0
-		lsl.l	#8,d0
-		add.l	d0,obY(a0)
+		add.w	#Gravity,obVelY(a0)	; increase vertical speed
 		rts	
 ; End of function ObjectFall
 

@@ -220,10 +220,8 @@ DH_ClearWindow:
 		@size: = ($A0*$20/_DH_WindowFill_NumParts)
 
 		rept _DH_WindowFill_NumParts
-			move.l	#Art_DH_WindowFill, d1
-			move.w	#@base_vram, d2
-			move.w	#@size>>1, d3
-			jsr	QueueDMATransfer
+			QueueStaticDMA Art_DH_WindowFill, @size, @base_vram
+
 			@base_vram: = @base_vram + @size
 		endr
 		rts

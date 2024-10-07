@@ -11,12 +11,12 @@
 ; Program Setup
 ; ---------------------------------------------------------------
 
-_DH_BG_Pattern		= $BBBBBBBB		; tile pattern for hint's BG
 _DH_BG_Pattern_2	= $B			;
 _DH_VRAM_Base		= $5800			; base VRAM address for display window
 _DH_VRAM_Border		= $5700			; VRAM address for window border
 _DH_WindowObj		= $FFFFD400		; address for window object        
 _DH_WindowObj_Art	= _DH_VRAM_Border/$20	; art pointer for window object
+_DH_WindowFill_NumParts = 4			; number of chunks fill art is split into
 
 TutDim_Min	= 7
 TutDim_Max	= $10
@@ -61,18 +61,23 @@ _end	= $FF	; finish hint
 Tutorial_DisplayHint:
 		move.b	d0,($FFFFFF6E).w		; store text ID
 		movem.l	a0/a5-a6,-(sp)
+		move.w	d0,-(sp)
 
-		; Setup registers for constant use
-		lea	VDP_Ctrl,a6           
-		lea	VDP_Data,a5
+		; Clear "BuildSprites" display queue to avoid displaying objects twice
+		moveq	#0, d0
+		@current_queue_ptr: = Sprites_Queue
+		rept 8
+			move.w	d0, @current_queue_ptr
+			@current_queue_ptr: = @current_queue_ptr + $80
+		endr
 
 		; Init objects
 		lea	_DH_WindowObj,a0
-		move.w	d0,-(sp)
-		jsr	DeleteObject			; clear slot
-		move.w	(sp)+,d0
+		jsr	ClearObjectSlot
 		move.l	#DH_OWindow_Init,obj(a0)
+
 		lea	Hints_List,a1
+		move.w	(sp)+,d0
 		andi.w	#$FF,d0
 		add.w	d0,d0
 		add.w	d0,d0
@@ -85,37 +90,19 @@ Tutorial_DisplayHint:
 		
 		; Init hint window gfx
 		move.b	#8,VBlankRoutine
-		jsr	DelayProgram			; perform vsync before operation, fix Sonic's DPCL
-		VBlank_SetMusicOnly			; disable interrupts
-		ints_push
-		bsr	DH_ClearWindow			; draw window
-		lea	Art_DH_WindowBorder,a1		; load border art
-		vram	_DH_VRAM_Border,(a6)
-		moveq	#7,d0				; transfer 8 tiles
-@0		move.l	(a1)+,(a5)
-		move.l	(a1)+,(a5)
-		move.l	(a1)+,(a5)
-		move.l	(a1)+,(a5)
-		move.l	(a1)+,(a5)
-		move.l	(a1)+,(a5)
-		move.l	(a1)+,(a5)
-		move.l	(a1)+,(a5)
-		dbf	d0,@0
-		ints_pop
-		VBlank_UnsetMusicOnly
+		move.l	#DH_LoadArt, VBlankCallback
+		jsr	DelayProgram			; perform vsync before operation
 
 		cmpi.b	#10,($FFFFFF6E).w	; is this the introduction text?
 		bne.s	DH_MainLoop		; if not, branch
 		jsr	BackgroundEffects_Setup
-		lea	VDP_Ctrl,a6   
-		lea	VDP_Data,a5
 
 ; ---------------------------------------------------------------
 ; Display Hint Main Loop
 ; ---------------------------------------------------------------
 
 DH_MainLoop:
-		move.b	#2,VBlankRoutine
+		move.b	#4,VBlankRoutine
 		jsr	DelayProgram
 
 		cmpi.b	#10,($FFFFFF6E).w	; is this the introduction text?
@@ -130,21 +117,17 @@ DH_MainLoop:
 DH_Continue:
 		; Run window object code
 		lea	_DH_WindowObj,a0
+		lea	VDP_Ctrl, a6
+		lea	VDP_Data, a5
 		movea.l	obj(a0),a1
 		jsr	(a1)			; run window object
 
 		; Display other objects
 		lea	Objects,a0
 		moveq	#$7F,d7
-		jsr	loc_D368
+		bsr	DH_DisplayObjects
 		jsr	BuildSprites
 		jsr	PalCycle_Load
-		
-		; continue to render Sonic's DPLC to avoid visual quirks
-		move.l	a0,-(sp)
-		lea	($FFFFD000).w,a0
-		jsr	LoadSonicDynPLC
-		move.l	(sp)+,a0
 
 		; palette cycle to highlight letters
 		btst	#7,(OptionsBits).w	; photosensitive mode?
@@ -171,6 +154,7 @@ DH_Continue:
 		; Check if it's over
 		tst.b	_DH_WindowObj	; object window dead?
 		bne.w	DH_MainLoop	; if not, branch
+		; fallthrough
 
 ; ---------------------------------------------------------------
 ; Return to the game
@@ -183,8 +167,48 @@ DH_Quit:
 		; Display objects one final time
 		lea	Objects,a0
 		moveq	#$7F,d7
-		jsr	loc_D368
+		jsr	DH_DisplayObjects
 		moveq	#0, d7				; short circuit ObjectsLoad if we're there
+		rts
+
+; ---------------------------------------------------------------
+; Loads tutorial box art during VBlank
+; ---------------------------------------------------------------
+
+DH_LoadArt:
+		bsr	DH_ClearWindow			; draw window
+
+		lea	Art_DH_WindowBorder,a1		; load border art
+		lea	VDP_Data, a5
+		lea	VDP_Ctrl, a6
+
+		vram	_DH_VRAM_Border,(a6)
+		moveq	#8-1,d0				; transfer 8 tiles
+@0		move.l	(a1)+,(a5)
+		move.l	(a1)+,(a5)
+		move.l	(a1)+,(a5)
+		move.l	(a1)+,(a5)
+		move.l	(a1)+,(a5)
+		move.l	(a1)+,(a5)
+		move.l	(a1)+,(a5)
+		move.l	(a1)+,(a5)
+		dbf	d0,@0
+		rts
+
+; ---------------------------------------------------------------
+; Displays in-level objects (if any)
+; ---------------------------------------------------------------
+
+DH_DisplayObjects:
+		moveq	#0,d0
+		tst.b	obRender(a0)
+		bpl.s	@Skip
+		cmp.b	#$19, (a0)		; ### Don't display after-images to avoid visual glitches
+		beq.s	@Skip			; ''
+		jsr	DisplaySprite
+
+@Skip:		lea	$40(a0),a0
+		dbf	d7, DH_DisplayObjects
 		rts
 
 ; ---------------------------------------------------------------
@@ -192,22 +216,14 @@ DH_Quit:
 ; ---------------------------------------------------------------
 
 DH_ClearWindow:
-		VBlank_SetMusicOnly
-		vram	_DH_VRAM_Base,(a6)
-		move.l	#_DH_BG_Pattern,d0
-		move.w	#$A0-1,d1	; do $A0 tiles
+		@base_vram: = _DH_VRAM_Base
+		@size: = ($A0*$20/_DH_WindowFill_NumParts)
 
-@DrawTile:
-		move.l	d0,(a5)
-		move.l	d0,(a5)
-		move.l	d0,(a5)
-		move.l	d0,(a5)
-		move.l	d0,(a5)
-		move.l	d0,(a5)
-		move.l	d0,(a5)
-		move.l	d0,(a5)
-		dbf	d1,@DrawTile
-		VBlank_UnsetMusicOnly
+		rept _DH_WindowFill_NumParts
+			QueueStaticDMA Art_DH_WindowFill, @size, @base_vram
+
+			@base_vram: = @base_vram + @size
+		endr
 		rts
 
 ; ---------------------------------------------------------------
@@ -266,7 +282,11 @@ xpos	= 8
 ypos	= $A
 xpos2	= $14
 
+	if SCREEN_WIDTH=320
 _StartVel = $1400
+	else
+_StartVel = $1540
+	endif
 _Accel = $B8
 
 DH_OWindow_Init:
@@ -277,12 +297,12 @@ DH_OWindow_Init:
 		moveq	#4,d0
 		swap	d0
 		move.l	d0,xpos2(a0)			; xpos
-		move.w	#$80+224/2,ypos(a0)		; ypos
+		move.w	#$80+SCREEN_HEIGHT/2,ypos(a0)	; ypos
 		move.w	#_StartVel,xvel(a0)		; xvel
 		move.l	#DH_OWindow_Appear,obj(a0)
 		
 		; backup palette, used for the fading
-		lea	($FFFFFB00).w,a1
+		lea	Pal_Active,a1
 		lea	($FFFFFB80).w,a2
 		moveq	#$20-1,d0
 @backup:
@@ -298,7 +318,7 @@ DH_OWindow_Appear:
 		asl.l	#8,d0
 		add.l	d0,xpos2(a0)		; calc new xpos
 		move.w	xpos2(a0),xpos(a0)	; update actual xpos
-		move.w	#$80+320/2,d0
+		move.w	#$80+SCREEN_WIDTH/2,d0
 		cmp.w	xpos(a0),d0		; have we reaches screen center?
 		ble.s	@GotoProcess		; if yes, branch
 
@@ -308,7 +328,7 @@ DH_OWindow_Appear:
 		cmpi.b	#$C,($FFFFF600).w	; are we in a level?
 		bne.s	@nah			; if not, branch
 
-		move.w	#$120,d0		; $120 = target X pos when the tut box is centered
+		move.w	#$80+SCREEN_WIDTH/2,d0	; target X pos when the tut box is centered
 		sub.w	xpos(a0),d0 		; subtract current tut box X pos
 		lsr.w	#4,d0			; reduce
 
@@ -321,7 +341,7 @@ DH_OWindow_Appear:
 
 @fadeout:
 		lea	($FFFFFB80).w,a1
-		lea	($FFFFFB00).w,a2
+		lea	Pal_Active,a2
 		moveq	#$10-1,d6
 		jsr	Pal_FadeAlpha_Black	; fade out first part
 		; colors for the actual textbox are in between these two
@@ -558,7 +578,7 @@ DH_OWindow_Disappear:
 
 @fadein:
 		lea	($FFFFFB80).w,a1
-		lea	($FFFFFB00).w,a2
+		lea	Pal_Active,a2
 		moveq	#$10-1,d6
 		jsr	Pal_FadeAlpha_Black	; fade out first part
 		; colors for the actual textbox are in between these two
@@ -574,20 +594,20 @@ DH_OWindow_Disappear:
 		asl.l	#8,d0
 		add.l	d0,xpos2(a0)		; calc new xpos
 		move.w	xpos2(a0),xpos(a0)	; update actual xpos
-		move.w	#$80+320+$50,d0
+		move.w	#$80+SCREEN_WIDTH+$50,d0
 		cmp.w	xpos(a0),d0		; have we passed screen?
 		ble.s	DH_KillWindow		; if yes, branch
 		rts
 ; ---------------------------------------------------------------
 
 DH_KillWindow:
-		sf.b	(a0)			; kill windows
+		clr.w	(a0)			; kill windows
 
 		; restore backed-up palette
 		cmpi.b	#10,($FFFFFF6E).w	; is this the introduction text?
 		beq.s	@nah			; if yes, branch
 		lea	($FFFFFB80).w,a1
-		lea	($FFFFFB00).w,a2
+		lea	Pal_Active,a2
 		moveq	#$20-1,d0
 @restore:
 		move.l	(a1)+,(a2)+
@@ -641,6 +661,10 @@ fhv	= 3<<3
 		even
 
 ; ===============================================================
+
+Art_DH_WindowFill:
+		dcb.b	$A0*$20/_DH_WindowFill_NumParts, (_DH_BG_Pattern_2<<4)|(_DH_BG_Pattern_2)
+		even
 
 Art_DH_WindowBorder:
 		incbin	'Screens/TutorialBox/TutorialBox_Art.bin'

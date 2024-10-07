@@ -79,8 +79,8 @@ BlackBars.EmulatorOptimizedHandlers:
 	; Sprite masking trick for the last rendered raster line
 	move.w	#224+$80+1, d1
 	sub.w	d0, d1
-	move.w	d1, $FFFFF800
-	move.w	d1, $FFFFF808
+	move.w	d1, Sprite_Buffer
+	move.w	d1, Sprite_Buffer+8
 
 	cmp.w	#224/2-1,d0					; are we taking half the screen?
 	bhi.s	@make_black_screen				; if yes, branch
@@ -109,6 +109,8 @@ BlackBars.EmulatorOptimizedHandlers:
 	sub.w	#224-1,d1
 	neg.w	d1
 	lsr.w	#1,d0
+	bcc.s	@make_bars_cont
+	move.w	#HBlank_Bars_PastQuarterOdd_EmulatorOptimized, HBlankSubW
 	bra.s	@make_bars_cont
 ; ---------------------------------------------------------------------------
 
@@ -126,7 +128,11 @@ BlackBars.EmulatorOptimizedHandlers:
 @BuildSpritesCallback:
 	; Reserve 2 sprite slots for sprite masking
 	; NOTE: These slots are finalized in BlackBars handler during VBlank
-	addq.w	#2, d5			; reserve 2 slots
+	if USE_NEW_BUILDSPRITES
+		subq.w	#2, d5			; reserve 2 slots
+	else
+		addq.w	#2, d5			; reserve 2 slots
+	endif
 	move.l	#$01700F01, (a2)+	; Y-pos, size, link
 	move.l	#$00000001, (a2)+	; pattern, X-pos
 	move.l	#$01700F02, (a2)+	; Y-pos, size, link
@@ -183,6 +189,8 @@ BlackBars.HardwareOptimizedHandlers:
 	sub.w	#224-1,d1
 	neg.w	d1
 	lsr.w	#1,d0
+	bcc.s	@make_bars_cont
+	move.w	#HBlank_Bars_PastQuarterOdd_HardwareOptimized, HBlankSubW
 	bra.s	@make_bars_cont
 ; ---------------------------------------------------------------------------
 

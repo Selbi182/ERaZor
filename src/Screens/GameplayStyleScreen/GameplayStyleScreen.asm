@@ -9,7 +9,7 @@ GameplayStyleScreen:
 		jsr	Pal_FadeFrom			; fade out previous palette
 
 		VBlank_SetMusicOnly
-		lea	($C00004).l,a6			; Setup VDP
+		lea	VDP_Ctrl,a6			; Setup VDP
 		move.w	#$8004,(a6)
 		move.w	#$8230,(a6)
 		move.w	#$8407,(a6)
@@ -39,19 +39,19 @@ GameplayStyleScreen:
 		dbf	d1,@clearscroll
 
 		move.l	#$40000010,(a6)
-		lea	($C00000).l,a0
+		lea	VDP_Data,a0
 		moveq	#0,d0
 		moveq	#40-1,d1
 @clearvsram:	move.w	d0,(a0)
 		dbf	d1,@clearvsram
 
-		move.l	#$40000000,($C00004).l		; load art
-		lea	($C00000).l,a6
+		move.l	#$40000000,VDP_Ctrl		; load art
+		lea	VDP_Data,a6
 		lea	(ArtKospM_Difficulty).l,a0
 		jsr	KosPlusMDec_VRAM
 
 		vram	$2000
-		lea	($C00000).l,a6
+		lea	VDP_Data,a6
 		lea	(ArtKospM_PixelStars).l,a0
 		jsr	KosPlusMDec_VRAM
 
@@ -59,7 +59,7 @@ GameplayStyleScreen:
 		move.l	#$40000003,d0
 		moveq	#$27,d1
 		moveq	#$1B,d2
-		lea	($C00004).l,a4
+		lea	VDP_Ctrl,a4
 		move.l	#$800000,d4
 @row:		move.l	d0,(a4)			; set VDP to VRam write mode
 		move.w	d1,d3			; reload number of columns
@@ -91,7 +91,7 @@ GSS_LoadPal:
 		lea	(Pal_Difficulty_Frantic).l,a1	; load frantic palette
 @loadpal:
 		moveq	#8-1,d1	
-		lea	($FFFFFB00).w,a2
+		lea	Pal_Active,a2
 		tst.b	d0
 		beq.s	@PalLoop
 		adda.w	#$80,a2
@@ -103,11 +103,13 @@ GSS_LoadPal:
 
 ; I HATE THIS CODE SO MUCH <-- I think it's already pretty swag ngl
 GSS_MainLoop:
-		move.w	#0,($FFFFFB00).w
+		move.w	#0,Pal_Active
 		move.b	#$12,VBlankRoutine
 		jsr	DelayProgram
+		DeleteQueue_Init
 		jsr	ObjectsLoad
 		jsr	BuildSprites
+		jsr	DeleteQueue_Execute
 
 		move.b	($FFFFF605).w,d1	; get button presses
 	 	andi.b	#$F,d1			; is D-pad pressed?

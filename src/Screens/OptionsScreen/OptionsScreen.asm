@@ -99,11 +99,13 @@ OptionsScreen:				; XREF: GameModeArray
 		; Load objects
 		lea	($FFFFD100).w,a0
 		move.b	#2,(a0)			; load ERaZor banner object
-		move.w	#$11E,obX(a0)		; set X-position
-		move.w	#$82,obScreenY(a0)	; set Y-position
+		move.w	#$80+SCREEN_WIDTH/2-2,obX(a0)	; set X-position
+		move.w	#$82,obScreenY(a0)		; set Y-position
 		bset	#7,obGfx(a0)		; make object high plane
+		DeleteQueue_Init
 		jsr	ObjectsLoad
 		jsr	BuildSprites
+		jsr	DeleteQueue_Execute
 
 		move.b	#$86,d0		; play Options screen music (Spark Mandrill)
 		jsr	PlaySound_Special
@@ -136,8 +138,10 @@ OptionsScreen_MainLoop:
 		assert.w Options_StringBufferCanary, eq, #Options_CanaryValue	; guard against buffer overflows
 
 		bsr	Options_HandleUpdate
+		DeleteQueue_Init
 		jsr	ObjectsLoad
 		jsr	BuildSprites
+		jsr	DeleteQueue_Execute
 		jsr	PLC_Execute
 
 		jsr	BackgroundEffects_Update

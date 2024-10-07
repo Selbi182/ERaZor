@@ -1,30 +1,35 @@
 
 ChunksArray:	 	equ 	$FF0000 			;	256x256 chunks table (0000-A400)
 
+SS_PositionMatrix:	equ	$FFFF8000			;	Sprites positions matrix for SS
+SS_SpritesQueue:	equ	$FFFF9000			;	Sprites queue for the special stage
+
 LevelLayout_RAM:	equ	$FFFFA400
 LevelLayout_FG:		equ 	LevelLayout_RAM			;	FG level layout (A400-A5FF)
 LevelLayout_BG:		equ 	LevelLayout_RAM+$200		;	BG level layout (A600-A7FF)
 
 DrawBuffer_RAM:		equ	$FFFFA800			;	draw buffer RAM (A800-AB7F)
-LevelRend_RAM:		equ	$FFFFAB80			;	level renderer RAM (AB80-AC98)
+LevelRend_RAM:		equ	$FFFFAB80			;	level renderer RAM (AB80-AB98)
 
-; <<FOR SALE>>							;	<<FOR SALE / $20,000>> (AF40-ABFF)
+*			equ	$FFFFAB98			;	<<<FOR SALE>>> a rare RAM real eastate surounded by luxorious Level renderer and Sprite queue
+								;	Get your offer today for full AB98-AC00 chunk! Contact Vladikcomper.
 
 Sprites_Queue:		equ	$FFFFAC00			;	object sprites queued for display (AC00-AFFF)
-
-Art_Buffer: 		equ 	$FFFFB000			;	Art buffer, used for decompression and transfers (B000-CAFF)
+Art_Buffer: 		equ 	$FFFFB000			;	Art buffer, used for decompression and transfers (B000-C000)
 Art_Buffer_End:		equ	$FFFFC000			;	WARNING! Buffer should be at least $1000 bytes for PLC system to work
-
+*			equ	$FFFFC000			;	<<<FOR SALE>> (C000-C700)
+DeleteQueue:		equ	$FFFFC700			;	Delete queue
+DeleteQueue_End:	equ	$FFFFC7FE
+DeleteQueue_Ptr:	equ	$FFFFC7FE			;	Delete objects queue pointer
 DMAQueue:		equ	$FFFFC800			;
 DMAQueuePos:		equ	$FFFFC8FC			; .l	DMA queue position pointer
-
+PalCache_PauseEffect:	equ	$FFFFC900			;	Palette cache for pause effect (C900-C9FF)
+PalCache_FlashEffect:	equ	$FFFFCA00			;	Palette cache for flash effect (CA00-CAFF)
 Sonic_PosArray		equ	$FFFFCB00			;	Sonic's previous positions array (CB00-CBFF)
-
 HSRAM_Buffer:		equ	$FFFFCC00			;	Horizontal scroll RAM buffer
 HSRAM_Buffer_End:	equ	HSRAM_Buffer+240*4
-
 ScrollBlocks_Buffer:	equ	$FFFFCFC0			;	Buffer for scrolling 16x16 blocks ($20 blocks)
-ScrollBlocks_Buffer_End:	equ	$FFFFD000
+ScrollBlocks_Buffer_End:equ	$FFFFD000
 
 Objects:		equ	$FFFFD000			;	Objects RAM (D000-EFFF)
 Objects_End:		equ	$FFFFF000			;	End of Objects RAM
@@ -91,6 +96,12 @@ Camera_RAM_Size:	equ	$FFFFF724-Camera_RAM
 CamXShift:		equ	$FFFFF73A			; w	Camera X shift from the previous frame (FG, 8.8 fixed)
 CamYShift:		equ	$FFFFF73C			; w	Camera Y shift from the previous frame (FG, 8.8 fixed)
 
+SonicLookUpDownTimer:	equ	$FFFFF778			; b	Timer for camera delay when looking up/down
+*			equ	$FFFFF779			; b 	<<FREE>>
+*			equ	$FFFFF77A			; b 	<<FREE>>
+*			equ	$FFFFF77B			; b 	<<FREE>>
+*			equ	$FFFFF77C			; l	<<FREE>>
+
 AniArt_Slot_RAM:	equ	$FFFFF7B0
 AniArt_Slot0_Frame:	equ	$FFFFF7B0			; b	Slot 0 : Art frame
 AniArt_Slot0_Timer:	equ	$FFFFF7B1			; b	Slot 0 : Timer value 
@@ -103,8 +114,15 @@ AniArt_Slot3_Timer:	equ	$FFFFF7B7			; b	Slot 3 : Timer value
 AniArt_Slot4_Frame:	equ	$FFFFF7B8			; b	Slot 4 : Art frame	-- WARNING! Occupies higher byte of "AniArt_UpdateProc"!
 AniArt_UpdateProc:	equ	$FFFFF7B8			; l	Update procedure pointer
 
+Sprite_Buffer:		equ	$FFFFF800			;	VDP sprites buffer
+Sprite_Buffer_End:	equ	$FFFFFA80
+
+Pal_Water_Active:	equ	$FFFFFA80			; ~	Active underwater palette
 Pal_Active:		equ	$FFFFFB00			; ~	Active palette
 Pal_Target:		equ	$FFFFFB80			; ~	Target palette for fading
+
+ObjectSpawnTable:	equ	$FFFFFC00			;	Object respawn status table
+ObjectSpawnTable_End:	equ	$FFFFFD00			;
 
 VBlank_FrameCounter:	equ	$FFFFFE0C			; l	Global frame counter for VBlank (includes lag frames)
 

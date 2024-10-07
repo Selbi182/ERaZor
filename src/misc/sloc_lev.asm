@@ -13,7 +13,7 @@
 		dc.w	$00B4, $078C	; LZ 2 (Labyrinthy Place fast forward)
 		dc.w	$0B80, $0000	; lz 4
 
-		dc.w	$01AF, $026C	; MZ 1 (Ruined Place)
+		dc.w	$01AF+SCREEN_XCORR, $026C	; MZ 1 (Ruined Place)
 		dc.w	$009C, $0264	; mz 2
 		dc.w	$004F, $000F	; mz 3
 		dc.w	$0080, $00A8	; mz 4
@@ -29,7 +29,7 @@
 		dc.w	$0080, $00A8	; syz 4
 
 		dc.w	$01A0, $0160	; sbz 1 (Bomb Machine Cutscene, start loc irrelevant)
-		dc.w	$0180, $068C	; SBZ 2 (Tutorial Place)
+		dc.w	$0180+SCREEN_XCORR, $068C	; SBZ 2 (Tutorial Place)
 		dc.w	$0B86, $05AC	; SBZ 3 (Finalor Place)
 		dc.w	$0080, $00A8	; sbz 4
 

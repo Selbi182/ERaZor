@@ -26,7 +26,7 @@ ChapterScreen:
 		jsr	Pal_FadeFrom			; Fade out previous palette
 		VBlank_SetMusicOnly
 
-		lea	($C00004).l,a6			; Setup VDP
+		lea	VDP_Ctrl,a6			; Setup VDP
 		move.w	#$8004,(a6)
 		move.w	#$8230,(a6)
 		move.w	#$8407,(a6)
@@ -102,8 +102,10 @@ CS_ClrObjRam:	move.l	d0,(a1)+
 		move.b	#4,($FFFFD000).w		; load chapter numbers object (<-- past Selbi, why the fuck did you make this an object???)
 		move.b	#0,($FFFFD000+obRoutine).w	; set to init routine
 		move.b	($FFFFFFA7).w,($FFFFD000+obFrame).w ; set chapter number to frame (first frame in maps is duplicated)
+		DeleteQueue_Init
 		jsr	ObjectsLoad
 		jsr	BuildSprites
+		jsr	DeleteQueue_Execute
 
 		display_enable
 
@@ -168,6 +170,10 @@ CS_LoadChapterPal:
 		rept	8
 			move.l	(a1)+, (a2)+
 		endr
+		move.l	#0, d1
+		rept	8*3
+			move.l	d1, (a2)+
+		endr
 		rts
 
 CS_ChapterPal:
@@ -209,6 +215,11 @@ CS_OHDIGHZ:
 CS_PalLoopOHD:	move.l	(a1)+,(a2)+
 		dbf	d0,CS_PalLoopOHD
 
+		moveq	#8*3-1,d0
+		moveq	#0,d1
+CS_PalLoop1HD:	move.l	d1, (a2)+			; clear the rest of palette
+		dbf	d0, CS_PalLoop1HD
+
 		display_enable
 		jsr	Pal_FadeTo
 
@@ -217,8 +228,10 @@ CS_PalLoopOHD:	move.l	(a1)+,(a2)+
 CS_SetupEndLoop:	
 		move.w	#180,($FFFFF614).w	; set end wait time
 CS_Loop:
+		DeleteQueue_Init
 		jsr	ObjectsLoad
 		jsr	BuildSprites
+		jsr	DeleteQueue_Execute
 		move.b	#2,VBlankRoutine
 		jsr	DelayProgram
 		tst.b	($FFFFF604).w		; is start HELD?
@@ -261,8 +274,8 @@ Obj04_Setup:
 		move.b	#0,$18(a0)		; set priority
 		move.b	#0,1(a0)		; set render flag
 		move.w	#$0100,2(a0)		; set art tile, use first palette line
-		move.w	#$123,8(a0)		; set X-position
-		move.w	#$D3,$A(a0)		; set Y-position
+		move.w	#$80+SCREEN_WIDTH/2+3, obX(a0)	; set X-position
+		move.w	#$D3, obScreenY(a0)		; set Y-position
 
 Obj04_Display:
 		jmp	DisplaySprite		; jump to DisplaySprite
@@ -285,8 +298,8 @@ Map_Obj04:
 ; ---------------------------------------------------------------------------
 
 ShowVDPGraphics2:
-		lea	($C00000).l,a6		; load VDP data port address to a6
-		lea	($C00004).l,a4		; load VDP address port address to a4
+		lea	VDP_Data,a6		; load VDP data port address to a6
+		lea	VDP_Ctrl,a4		; load VDP control port address to a4
 		move.l	#$800000,d4		; prepare line add value
 
 MapScreen2_Row:

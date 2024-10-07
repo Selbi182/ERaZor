@@ -32,7 +32,7 @@ HBlank_WaterSurface:
 	@transferColors:
 		moveq	#0, d0
 		move.w	(a2)+, d0
-		lea	($FFFFFA80).w, a0
+		lea	Pal_Water_Active, a0
 		adda.w	d0, a0
 		addi.w	#$C000,d0
 		swap	d0
@@ -70,8 +70,14 @@ HBlank_Bars_EmulatorOptimized:
 @ToBottom:
 	move.w	#HBlank_Bars_Bottom, HBlankSubW
 	rte
-; ---------------------------------------------------------------------------
 
+; ---------------------------------------------------------------------------
+HBlank_Bars_PastQuarterOdd_EmulatorOptimized:
+	move.w	#$8A00, VDP_Ctrl				; skips one scanline
+	move.w	#HBlank_Bars_PastQuarter_EmulatorOptimized, HBlankSubW
+	rte
+
+; ---------------------------------------------------------------------------
 HBlank_Bars_PastQuarter_EmulatorOptimized:
 	move.w	BlackBars.SecondHCnt, VDP_Ctrl			; send $8Axx to VDP to set HInt counter for the second invocation
 	move.w	#@ToBottom, HBlankSubW				; handle bottom next time
@@ -112,9 +118,12 @@ HBlank_Bars_HardwareOptimized:
 	rte
 
 ; ---------------------------------------------------------------------------
-; Hardware-optimized Black Bars(tm) horizontal interrupt handlers
-; ---------------------------------------------------------------------------
+HBlank_Bars_PastQuarterOdd_HardwareOptimized:
+	move.w	#$8A00, VDP_Ctrl				; skips one scanline
+	move.w	#HBlank_Bars_PastQuarter_HardwareOptimized, HBlankSubW
+	rte
 
+; ---------------------------------------------------------------------------
 HBlank_Bars_PastQuarter_HardwareOptimized:
 	move.w	BlackBars.SecondHCnt,VDP_Ctrl			; send $8Axx to VDP to set HInt counter for the second invocation
 	move.w	#@ToBottom,HBlankSubW				; handle bottom next time

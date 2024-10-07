@@ -212,6 +212,7 @@ MDDBG__ErrorHandler_ConsoleConfig_Initial: equ ErrorHandler+$2D2
 MDDBG__Str_OffsetLocation_24bit: equ ErrorHandler+$30C
 MDDBG__Str_OffsetLocation_32bit: equ ErrorHandler+$315
 MDDBG__Art1bpp_Font: equ ErrorHandler+$350
+MDDBG__GetSymbolByOffset: equ ErrorHandler+$64A
 MDDBG__FormatString: equ ErrorHandler+$960
 MDDBG__Console_Init: equ ErrorHandler+$A3A
 MDDBG__Console_InitShared: equ ErrorHandler+$A78

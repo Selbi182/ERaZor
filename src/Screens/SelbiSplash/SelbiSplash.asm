@@ -11,16 +11,20 @@ SelbiSplash_MusicID		EQU	$B7		; Music to play
 SelbiSplash_Wait		EQU	$30		; Time to wait ($100)
 SelbiSplash_PalChgSpeed		EQU	$200		; Speed for the palette to be changed ($200)
 Selbi_DebugCheat		EQU	20		; Inputs required to unlock debug cheat
+
+_VRAM_SelbiArt:		equ	$F400
+
 ; ---------------------------------------------------------------------------------------------------------------------
 SelbiSplash:
 		move.b	#$E4,d0
 		jsr	PlaySound_Special		; Stop music
 		jsr	PLC_ClearQueue			; Clear PLCs
 		jsr	Pal_FadeFrom			; Fade out previous palette
+
+		display_disable
 		VBlank_SetMusicOnly
 
-SelbiSplash_VDP:
-		lea	($C00004).l,a6			; Setup VDP
+		lea	VDP_Ctrl,a6			; Setup VDP
 		move.w	#$8004,(a6)
 		move.w	#$8230,(a6)
 		move.w	#$8407,(a6)
@@ -31,36 +35,54 @@ SelbiSplash_VDP:
 		clr.b	($FFFFF64E).w
 		jsr	ClearScreen			; Clear screen
 		
-SelbiSplash_Art:
-		move.l	#$40000000,($C00004).l		; Load art
-		lea	(ArtKospM_SelbiSplash).l,a0
+		; Load art
+		vram	_VRAM_SelbiArt
+		lea	ArtKospM_SelbiSplash, a0
 		jsr	KosPlusMDec_VRAM
-		
-SelbiSplash_Mappings:
-		lea	(MapUnc_SelbiSplash).l,a1
+
+		; Load mappings
+		lea	$FF0000, a1
+		lea	MapEni_SelbiSplash, a0
+		move.w	#_VRAM_SelbiArt/$20, d0
+		jsr	EniDec
+		lea	$FF0000, a1
 		move.l	#$40000003,d0
 		moveq	#$27,d1
 		moveq	#$1B,d2
-		jsr	ShowVDPGraphics		
-		VBlank_UnsetMusicOnly
+		jsr	ShowVDPGraphics
 
-SelbiSplash_Palette:
-		lea	(Pal_SelbiSplash).l,a1		; Load palette
-		lea	($FFFFFB80).w,a2
-		moveq	#7,d0
-SelbiSplash_PalLoop:
-		move.l	(a1)+,(a2)+
-		dbf	d0,SelbiSplash_PalLoop
-		
+		; Clear the palette
+		moveq	#0, d0
+		lea	Pal_Active, a2
+		moveq	#$80/$10-1, d1
+
+	@ClearPal:
+		rept 4
+			move.l	d0, (a2)+
+		endr
+		dbf	d1, @ClearPal
+
+		; Preload Part 1 of Bitmap MD image to VRAM (we can do it because we don't touch this area)
+		vram	$0000
+		lea	BitmapMD_VRAM_Part1, a0
+		jsr	KosPlusMDec_VRAM
+		VBlank_UnsetMusicOnly	
+
+		; Preload Part 2 of Bitmap MD image to RAM (so we can transfer it later)
+		lea	BitmapMD_VRAM_Part2, a0
+		lea	$FF0000, a1
+		jsr	KosPlusDec
+
 SelbiSplash_SetWait:
 		move.w	#SelbiSplash_Wait,($FFFFF614).w	; Wait time
-		jsr	Pal_FadeTo			; Fade palette in
-		
-		vram	$4E40, ($FFFFFF7A).w
+
+		move.w	#Pal_Active+$10, ($FFFFFF7A).w
 		move.w	#0,($FFFFFF7E).w
 		move.w	#6,($FFFFF5B0).w
 		move.w	#Selbi_DebugCheat,($FFFFFFE4).w		; set up to inputs required to unlock debug mode
+
 		display_enable
+
 		bra.s	SelbiSplash_Loop
 ; ---------------------------------------------------------------------------------------------------------------------
 
@@ -74,49 +96,27 @@ SelbiSplash_Sounds:
 
 ; ---------------------------------------------------------------------------------------------------------------------
 SelbiSplash_Loop:
-		tst.b	($FFFFFFAF).w
-		beq.s	@Normal
-		move.b	#$1A,VBlankRoutine		; custom V-Blank subroutine specifically for this screen
-		jsr	DelayProgram			; Run delay program
-		bra.s	@Special
-
-	@Normal:
 		move.b	#2,VBlankRoutine		; Function 2 in vInt
 		jsr	DelayProgram			; Run delay program
 
-	@Special:
 		tst.w	($FFFFF614).w			; Test wait time
 		beq.w	SelbiSplash_Next		; is it over? branch
 
-
-		cmpi.l	#$4EE00001,($FFFFFF7A).w	; vram=$4EE0
+		cmpi.w	#Pal_Active+$10+2*5,($FFFFFF7A).w
 		beq.w	@cont
 		cmpi.w	#$20,($FFFFF614).w		; is time less than $20?
 		bpl	SelbiSplash_WaitEnd		; if not, branch
 
-		VBlank_SetMusicOnly
-		lea	($C00000).l,a5			; load VDP data port address to a5
-		lea	($C00004).l,a6			; load VDP address port address to a6
-		move.l	($FFFFFF7A).w,(a6)		; set VDP address to write to
-		move.l	#$44444444,d2
-		move.l	d2,(a5)				; dump art to V-Ram
-		move.l	d2,(a5)				; ''
-		move.l	d2,(a5)				; ''
-		move.l	d2,(a5)				; ''
-		move.l	d2,(a5)				; ''
-		move.l	d2,(a5)				; ''
-		move.l	d2,(a5)				; ''
-		move.l	d2,(a5)				; ''
-		addi.l	#$00200000,($FFFFFF7A).w	; select next tile
-		VBlank_UnsetMusicOnly
+		movea.w	($FFFFFF7A).w, a1
+		move.w	#$EEE, (a1)+			; display letter
+		move.w	a1, ($FFFFFF7A).w		; select next letter
 
-		lea	(SelbiSplash_Sounds).l,a1
 		move.w	($FFFFFF7E).w,d3
-		move.b	(a1,d3.w),d0
+		move.b	SelbiSplash_Sounds(pc,d3.w), d0
 		jsr	PlaySound_Special
-		addi.w	#1,($FFFFFF7E).w
+		addq.w	#1,($FFFFFF7E).w
 
-		cmpi.l	#$4EE00001,($FFFFFF7A).w
+		cmpi.w	#Pal_Active+$10+2*5,($FFFFFF7A).w
 		beq.s	@cont2
 		addi.w	#$20,($FFFFF614).w
 
@@ -124,7 +124,7 @@ SelbiSplash_Loop:
 @cont2:
 		move.w	#$D0,($FFFFF614).w
 		VBlank_SetMusicOnly
-		lea	($C00000).l,a5
+		lea	VDP_Data,a5
 		lea	$04(a5),a6
 		move.w	#$8014,(a6)			; enable h-ints for the black bars
 		move.l	#$40000010,(a6)
@@ -132,15 +132,6 @@ SelbiSplash_Loop:
 		VBlank_UnsetMusicOnly
 
 @cont:
-		; palette flashing effect
-		; (this is a terrible way of doing this lol)
-	;	sub.w	#SelbiSplash_PalChgSpeed,($FFFFFB04)
-	;	sub.w	#SelbiSplash_PalChgSpeed,($FFFFFB06)
-	;	sub.w	#SelbiSplash_PalChgSpeed,($FFFFFB08)
-	;	sub.w	#SelbiSplash_PalChgSpeed,($FFFFFB0A)
-	;	sub.w	#SelbiSplash_PalChgSpeed,($FFFFFB0C)
-	;	sub.w	#SelbiSplash_PalChgSpeed,($FFFFFB0E)
-
 		; new flashing effect
 		cmpi.w	#$90,($FFFFF614).w
 		bge.w	SelbiSplash_EffectsEnd
@@ -166,8 +157,8 @@ SelbiSplash_UpdateEndPal:
 		andi.w	#$E,d0
 		move.w	d0,d4
 @gopal:
-		lea	(Pal_Quality).l,a1		; Load palette
-		lea	($FFFFFB00).w,a2
+		lea	BitmapMD_CRAM, a1	; Load palette
+		lea	Pal_Active, a2
 		moveq	#($160/4)-1,d6
 @LoadCRAM:	move.w	(a1)+,d0
 		bsr	SelbiPissFilter
@@ -223,7 +214,7 @@ SelbiSplash_EffectsEnd:
 		neg.w	d0
 @cont1x:
 		VBlank_SetMusicOnly
-		lea	($C00000).l,a5
+		lea	VDP_Data,a5
 		lea	$04(a5),a6
 		move.w	#$8B00,(a6)
 		move.l	#$40000010,(a6)
@@ -237,7 +228,7 @@ SelbiSplash_EffectsEnd:
 		beq.s	@cont2x
 		neg.w	d0
 @cont2x:
-		lea	($C00000).l,a5
+		lea	VDP_Data,a5
 		lea	$04(a5),a6
 		move.w	#$8B00,(a6)
 		move.l	#$7C000003,(a6)
@@ -275,35 +266,16 @@ SelbiSplash_DontChangePal:
 
 SelbiSplash_LoadPRESENTS:
 		jsr	Pal_CutToBlack
+
 		move.b	#2,VBlankRoutine
 		jsr	DelayProgram			; VSync so gfx loading below isn't terribly out of VBlank
 		jsr	BlackBars.Reset
+
+		move.l	#SelbiSplash_DisplayBitmapMD, VBlankCallback
 		move.b	#2,VBlankRoutine
 		jsr	DelayProgram
-		
-		VBlank_SetMusicOnly
+
 		bsr	SelbiSplash_UpdateEndPal
-
-		lea	($C00004).l,a6
-		lea	VDP_Quality(pc),a0
-		move.w	#$8000,d0
-		move.w	#$0100,d1
-		moveq	#$12-1,d2
-	@LoadVDP:
-		move.b	(a0)+,d0
-		move.w	d0,(a6)
-		add.w	d1,d0
-		dbf	d2,@LoadVDP
-
-		move.w	#$8100|%00010100,(a6)		; $81	; SDVM P100 - SMS mode (0N|1Y) | Display (0N|1Y) | V-Interrupt (0N|1Y) | DMA (0N|1Y) | V-resolution (0-1C|1-1E)
-		move.l	#$94809300,(a6)
-		move.l	#$96009500|(((Art_Quality/2)&$FF00)<<8)|((Art_Quality/2)&$FF),(a6)
-		move.l	#$97004000|((Art_Quality/2)&$7F0000),(a6)
-		move.w	#$0080,-(sp)
-		move.w	(sp)+,(a6)
-
-		move.w	#$8100|%01110100,(a6)		; $81	; SDVM P100 - SMS mode (0N|1Y) | Display (0N|1Y) | V-Interrupt (0N|1Y) | DMA (0N|1Y) | V-resolution (0-1C|1-1E)
-		VBlank_UnsetMusicOnly
 
 		move.b	#1,($FFFFFFAF).w		; set flag that we are in the final phase of the screen
 
@@ -347,7 +319,7 @@ SelbiSplash_LoopEnd:
 		
 SelbiSplash_Next:
 		clr.b	($FFFFFFAF).w
-		clr.l	($FFFFFF7A).w
+		clr.w	($FFFFFF7A).w
 
 		move.w	#$3F,($FFFFF626).w
 		moveq	#$07,d4					; MJ: set repeat times
@@ -355,7 +327,7 @@ SelbiSplash_Next:
 
 	@FadePrivate:
 		jsr	PLC_Execute
-		move.b	#$1A,VBlankRoutine
+		move.b	#2,VBlankRoutine
 		jsr	DelayProgram
 		bchg	#$00,d6					; MJ: change delay counter
 		beq	@FadePrivate				; MJ: if null, delay a frame
@@ -363,8 +335,8 @@ SelbiSplash_Next:
 		cmpi.w	#$03,d4					; MJ: have we reached a point where shadow/highlight can been hidden?
 		bne.s	@NoStopShadow				; MJ: if not, continue normally
 		move.w	#$8C00|%11110111,d0			; MJ: $8C	; APHE SNNB - H-resol (0N|1Y) | Pixel int (0N|1Y) | H-sync (0N|1Y) | Extern-pix (0N|1Y) | S/H (0N|1Y) | Interlace (00N|01Y|11-Split) | H-resol (0-20|1-28)
-		and.b	VDP_Quality+$0C(pc),d0			; MJ: remove shadow/highlight
-		move.w	d0,($C00004).l				; MJ: ''
+		and.b	BitmapMD_VDP+$0C(pc),d0			; MJ: remove shadow/highlight
+		move.w	d0,VDP_Ctrl				; MJ: ''
 
 	@NoStopShadow:
 		dbf	d4,@FadePrivate
@@ -385,11 +357,29 @@ SelbiSplash_DisableDebug:
 		bra.w	SelbiSplash_LoopEnd
 
 ; ---------------------------------------------------------------------------------------------------------------------
+SelbiSplash_DisplayBitmapMD:
+		lea	VDP_Ctrl,a6
+		lea	BitmapMD_VDP(pc),a0
+		move.w	#$8000,d0
+		move.w	#$0100,d1
+		moveq	#$12-1,d2
+	@LoadVDP:
+		move.b	(a0)+,d0
+		move.w	d0,(a6)
+		add.w	d1,d0
+		dbf	d2,@LoadVDP
+
+		vramWrite $FF0000, $4000, $C000		; load Bitmap MD VRAM Part 2 (this one actually displays shit now)
+
+		move.w	#$8100|%01110100,(a6)		; $81	; SDVM P100 - SMS mode (0N|1Y) | Display (0N|1Y) | V-Interrupt (0N|1Y) | DMA (0N|1Y) | V-resolution (0-1C|1-1E)
+		rts
+
+; ---------------------------------------------------------------------------------------------------------------------
 
 ; the original to-white code cause it looks better with the yellow tint here
 Pal_ToWhiteYellow:				; XREF: Pal_MakeFlash
 		moveq	#0,d0
-		lea	($FFFFFB00).w,a0
+		lea	Pal_Active,a0
 		move.b	($FFFFF626).w,d0
 		adda.w	d0,a0
 		move.b	($FFFFF627).w,d0
@@ -398,7 +388,7 @@ Pal_ToWhiteYellow:				; XREF: Pal_MakeFlash
 		bsr.s	Pal_AddColor2_Yellow
 		dbf	d0,@loc_1FAC
 		moveq	#0,d0
-		lea	($FFFFFA80).w,a0
+		lea	Pal_Water_Active,a0
 		move.b	($FFFFF626).w,d0
 		adda.w	d0,a0
 		move.b	($FFFFF627).w,d0
@@ -441,17 +431,13 @@ Pal_AddColor2_Yellow:				; XREF: Pal_ToWhite
 ; End of function Pal_MakeFlash
 
 ; ---------------------------------------------------------------------------------------------------------------------
-ArtKospM_SelbiSplash:	incbin	"Screens/SelbiSplash/Art_SoftSelbi.kospm"
+MapEni_SelbiSplash:	incbin	"Screens/SelbiSplash/Map_Selbi.eni"
 			even
-MapUnc_SelbiSplash:	incbin	"Screens/SelbiSplash/MapsUnc_SoftSelbi.bin"
+ArtKospM_SelbiSplash:	incbin	"Screens/SelbiSplash/Art_Selbi.kospm"
 			even
-Pal_SelbiSplash:	incbin	"Screens/SelbiSplash/Pal_SoftSelbi.bin"
-			even 
 
-VDP_Quality:		incbin	"Screens\SelbiSplash\selbiv2k\VDP.bin"
-			even
-Pal_Quality:		incbin	"Screens\SelbiSplash\selbiv2k\CRAM.bin"
-			even
-	align	$10000
-Art_Quality:		incbin	"Screens\SelbiSplash\selbiv2k\VRAM.bin"
+BitmapMD_VDP:		incbin	"Screens/SelbiSplash/BitmapMD_VDP.bin"
+BitmapMD_CRAM:		incbin	"Screens/SelbiSplash/BitmapMD_CRAM.bin"
+BitmapMD_VRAM_Part1:	incbin	"Screens/SelbiSplash/BitmapMD_VRAM_Part1.kospm"
+BitmapMD_VRAM_Part2:	incbin	"Screens/SelbiSplash/BitmapMD_VRAM_Part2.kosp"
 			even

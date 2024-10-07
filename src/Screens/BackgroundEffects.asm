@@ -6,7 +6,7 @@
 ; must be called once during game mode init
 BackgroundEffects_Setup:
 		VBlank_SetMusicOnly
-		move.w	#$8B03,($C00004).l	; set scrolling mode to H: per-scanline // V: whole screen
+		move.w	#$8B03,VDP_Ctrl	; set scrolling mode to H: per-scanline // V: whole screen
 
 		lea	VDP_Data, a6
 		vram	$C000, 4(a6)		; set VDP to VRAM and start at C000 (location of Plane A nametable)

@@ -95,11 +95,11 @@ SoundTest_Obj_TrackSelector:
 
 	bsr	@SetupScrolling
 
-@RedrawTrackInfo:
+*@RedrawTrackInfo:
 	move.l	a0, -(sp)
 	move.w	d7, -(sp)
 
-	lea	SoundTest_DrawText, a4
+	lea	SoundTest_DrawText(pc), a4
 
 	SoundTest_DrawFormattedString a4, "%<.b obSTSelectedTrack(a0)>: %<.l (@track_info) str>                        ", 28, #SoundTest_PlaneA_VRAM+24*$80+4
 	SoundTest_DrawFormattedString a4, "%<.l 4(@track_info) str>                                                    ", 52, #SoundTest_PlaneA_VRAM+26*$80+4
@@ -116,7 +116,7 @@ SoundTest_Obj_TrackSelector:
 	moveq	#0, d0
 	move.l	d0, obSTScrollValue(a0)
 	move.w	d0, obSTSCrollTarget2(a0)		; secondary scroll target for swapping (always zero)
-	add.w	#(320-SoundTest_Visualizer_Width*8)/2-5*8, d0
+	add.w	#(SCREEN_WIDTH-SoundTest_Visualizer_Width*8)/2-5*8, d0
 	neg.w	d0
 	move.w	d0, SoundTest_HScrollBuffer+25*2
 	move.w	d0, SoundTest_HScrollBuffer+26*2
@@ -164,7 +164,7 @@ SoundTest_Obj_TrackSelector:
 
 @setScrolling:
 	move.w	obSTScrollValue(a0), d0
-	add.w	#(320-SoundTest_Visualizer_Width*8)/2-5*8, d0
+	add.w	#(SCREEN_WIDTH-SoundTest_Visualizer_Width*8)/2-5*8, d0
 	neg.w	d0
 	move.w	d0, SoundTest_HScrollBuffer+25*2
 	move.w	d0, SoundTest_HScrollBuffer+26*2
@@ -194,9 +194,9 @@ SoundTest_Obj_TrackSelector_Arrows:
 	SoundTest_CreateChildObject #@Init	; a1 = right arror
 	lea	SoundTest_CharToTile(pc), @char_to_tile
 	move.w	('>'-$20)*2(@char_to_tile), obGfx(a1)	; right arrow settings
-	move.w	#$80+320-8*4, obX(a1)			; ''
+	move.w	#$80+320-SCREEN_XDISP-8*4, obX(a1)			; ''
 	move.w	('<'-$20)*2(@char_to_tile), obGfx(a0)	; left arrow settings
-	move.w	#$80+8*3, obX(a0)			; ''
+	move.w	#$80-SCREEN_XDISP+8*3, obX(a0)			; ''
 
 @Init:
 	move.b	#1<<5, obRender(a0)		; sprite piece mode
@@ -218,8 +218,8 @@ SoundTest_Obj_TrackSelector_Arrows:
 
 SoundTest_Obj_TrackSelector_Overlay:
 	SoundTest_CreateChildObject #@Init	; a1 = secondary sprite
-	move.w	#$80+3*8-4+$80, obX(a0)		; X-position for the primary sprite
-	move.w	#$80+3*8-4+$80+$80, obX(a1)	; X-position for the secondary sprite
+	move.w	#$80+3*8-SCREEN_XDISP-4+$80, obX(a0)		; X-position for the primary sprite
+	move.w	#$80+3*8-SCREEN_XDISP-4+$80+$80, obX(a1)	; X-position for the secondary sprite
 	move.b	#1, obFrame(a1)			; secondary sprite frame
 
 @Init:

@@ -26,7 +26,7 @@ SoundTest_Font_VRAM:		rsfile	"Screens/SoundTestScreen/Data/Font.bin"
 SoundTest_Header_VRAM:		rsfile	"Screens/SoundTestScreen/Data/Header_Tiles.bin"
 SoundTest_UIBorderOverlay_VRAM:	rsfile	"Screens/SoundTestScreen/Data/UIBorderOverlay_Tiles.bin"
 	if __rs > $A000
-		infrom 2, "Out of VRAM for graphics!"
+		inform 2, "Out of VRAM for graphics!"
 	endif
 
 ; ---------------------------------------------------------------------------

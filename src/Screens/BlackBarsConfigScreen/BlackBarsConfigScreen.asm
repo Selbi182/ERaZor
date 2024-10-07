@@ -68,12 +68,6 @@ BlackBarsConfigScreen:
 	move.w	#BlackBars.MaxHeight, BlackBars.Height
 	move.b	#0,BlackBarsConfig_Exiting
 	jsr	BlackBarsConfigScreen_InitUI
-
-	; Overwrite default console font 
-	vram	$8000
-	lea	($C00000).l,a6
-	lea	(ArtKospM_FontOverrideArt).l,a0
-	jsr	KosPlusMDec_VRAM
 	
 	; Brighten up white palette for better legibility
 	move.w	#$EEE,d0
@@ -101,8 +95,10 @@ BlackBarsConfigScreen:
 
 	jsr	RandomNumber			; better RNG please
 	jsr	BlackBarsConfigScreen_MoveCamera
+	DeleteQueue_Init
 	jsr	ObjectsLoad
 	jsr	BuildSprites
+	jsr	DeleteQueue_Execute
 	jsr	ChangeRingFrame
 	jsr	PCL_Load
 	jsr	BlackBarsConfigScreen_DeformBG
@@ -213,9 +209,14 @@ BlackBarsConfigScreen_DeformBG:
 
 	lea	HSRAM_Buffer, a1
 
-	moveq	#0, d0
-	move.w	CamXPos2, d0
-	neg.w	d0
+	if SCREEN_XDISP
+		move.w	#SCREEN_XDISP, d0
+		sub.w	CamXPos2, d0
+	else
+		moveq	#0, d0
+		move.w	CamXPos2, d0
+		neg.w	d0
+	endif
 
 	moveq	#240/16-1, d1		; repeat to cover the entire 240-pixel screen
 	jmp	DeformScreen_SendBlocks
@@ -295,52 +296,73 @@ BlackBarsConfigScreen_GenerateSprites:
 
 ; ---------------------------------------------------------------
 @RingData:
-	dc.w	$0, $0
-	dc.w	$54, $80
-	dc.w	$54*2, $0
-	dc.w	$54*3, $80
+	
+	@sprite_x_spacing: = $40
+	@sprite_y_spacing: = $80
+	@sprite_width: = 64
+	@sprite_height: = 64
 
-	dc.w	-1	; TODO proper screen wrapping
-	dc.w	$0+320, $0+224
-	dc.w	$54+320, $80+224
-	dc.w	$54*2+320, $0+224
-	dc.w	$54*3+320, $80+224
-	dc.w	-1
+	; Dynamically generate sprites with the given spacing to cover the entire screen
+
+	@x: = 0
+	@sprite_x_warp_dist: = 0
+
+	while @x <= SCREEN_WIDTH + @sprite_width
+
+		@y: = 0
+		@sprite_y_warp_dist: = 0
+
+		while @y <= SCREEN_HEIGHT + @sprite_height
+			dc.w	@x, @y	; first unque line
+			dc.w	@x + @sprite_x_spacing, @y + @sprite_y_spacing	; second unqiue line (then repeat)
+
+			@y: = @y + @sprite_y_spacing*2
+			@sprite_y_warp_dist: = @sprite_y_warp_dist + @sprite_y_spacing*2
+		endw
+
+		@x: = @x + @sprite_x_spacing*2
+		@sprite_x_warp_dist: = @sprite_x_warp_dist + @sprite_x_spacing*2
+	endw
+
+	dc.w	-1	; end of list marker
 
 ; ---------------------------------------------------------------
 @Obj_Ring:
 	move.l	#Map_obj4B,obMap(a0)
 	move.w	#$2000|($A200/$20),obGfx(a0)
-	ori.b	#4,obRender(a0)
-	move.b	#$60,obActWid(a0)
+	ori.b	#%10100, obRender(a0)
+	move.b	#@sprite_width/2, obActWid(a0)	; `obActWid` isn't correct, it should've been "visible X radius" or "width / 2"
+	move.b	#@sprite_height/2, obHeight(a0)	; `obHeight` isn't correct, it should've been "visible Y redius" or "height / 2"
 	move.b	#4,obPriority(a0)
 	move.l	#@Main, $3C(a0)
 
 @Main:
-	move.w	8(a0), d0
+	move.w	obX(a0), d0
 	sub.w	CamXPos, d0
-	cmpi.w	#-8, d0
-	bge.s	@j0
-	add.w	#320+16, 8(a0)
-	bra.s	@xok
+	add.w	#@sprite_width/2, d0		; offset X position by sprite X-radius for proper culling
+	bpl.s	@x_chk_right
+	add.w	#@sprite_x_warp_dist, obX(a0)
+	bra.s	@x_ok
 
-@j0:	cmp.w	#320+8, d0
-	ble.s	@xok
-	sub.w	#320+16, 8(a0)
+@x_chk_right:
+	cmp.w	#@sprite_x_warp_dist, d0
+	blo.s	@x_ok
+	sub.w	#@sprite_x_warp_dist, obX(a0)
+@x_ok:
 
-@xok:
-	move.w	$C(a0), d0
+	move.w	obY(a0), d0
 	sub.w	CamYPos, d0
-	cmpi.w	#-8, d0
-	bge.s	@j1
-	add.w	#224+16, $C(a0)
-	bra.s	@yok
+	add.w	#@sprite_height/2, d0		; offset Y position by sprite Y-radius for proper culling
+	bpl.s	@y_chk_bottom
+	add.w	#@sprite_y_warp_dist, obY(a0)
+	bra.s	@y_ok
 
-@j1:	cmp.w	#224+8, d0
-	ble.s	@yok
-	sub.w	#224+16, $C(a0)
+@y_chk_bottom:
+	cmp.w	#@sprite_y_warp_dist, d0
+	blo.s	@y_ok
+	sub.w	#@sprite_y_warp_dist, obY(a0)
+@y_ok:
 
-@yok:
 	move.b	($FFFFFEC3).w, obFrame(a0)
 	jmp	DisplaySprite
 
@@ -368,20 +390,17 @@ BBCS_LeaveConsole:	macro scratchReg
 
 ; ---------------------------------------------------------------
 BlackBarsConfigScreen_InitUI:
+	; Initialize console subsystem (MD Debugger)
 	lea	VDP_Ctrl, a5
 	lea	-4(a5), a6
-
-	; Load font
-	vram	BlackBarsConfig_VRAM_Font, (a5)		; VDP => Setup font offset in VRAM
-	lea	MDDBG__Art1bpp_Font, a0		; a0 = 1bpp source art
-	lea	@ArtDecodeTable(pc), a1		; a1 = 1bpp decode table
-	move.w	(a0)+, d4			; d4 = font size - 1
-	jsr	MDDBG__Decomp1bpp		; decompress font (input: a0-a1/a6, uses: a0/d0-d4)
-
-	; Initialize console subsystem (MD Debugger)
 	lea	@ConsoleConfig(pc), a1			; a1 = console config
 	lea	BlackBarsConfig_ConsoleRAM, a3		; a3 = console RAM
 	jsr	MDDBG__Console_InitShared
+
+	; Load font
+	vram	BlackBarsConfig_VRAM_Font, (a5)
+	lea	BBCS_ArtKospM_Font(pc), a0
+	jsr	KosPlusMDec_VRAM
 
 	; Initial UI header
 	bra	BlackBarsConfigScreen_WriteText
@@ -461,7 +480,7 @@ BlackBarsConfigScreen_RedrawUI:
 
 
 ; ===============================================================
-ArtKospM_FontOverrideArt:
-	incbin	Screens\BlackBarsConfigScreen\Font_Override.kospm
+BBCS_ArtKospM_Font:
+	incbin	Screens\BlackBarsConfigScreen\Font.kospm
 	even
 ; ===============================================================

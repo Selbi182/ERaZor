@@ -3577,8 +3577,9 @@ Level_Delay:
 @notslz:
 
 ; ---------------------------------
-
+		VBlank_SetMusicOnly
 		jsr	Hud_Base
+		VBlank_UnsetMusicOnly
 
 		; loop until title cards have finished displaying during the dark part
 		; and until PLC has finished loading
@@ -42795,7 +42796,7 @@ Hud_LoadZero:				; XREF: HudUpdate
 		move.l	#$5F400003,VDP_Ctrl
 		lea	Hud_TilesZero(pc),a2
 		move.w	#2,d2
-		bra.s	loc_1C83E
+		bra	loc_1C83E
 ; End of function Hud_LoadZero
 
 ; ---------------------------------------------------------------------------
@@ -42806,6 +42807,16 @@ Hud_LoadZero:				; XREF: HudUpdate
 
 
 Hud_Base:				; XREF: Level; SS_EndLoop; EndingSequence
+		; Interrupts should be disabled
+		if def(__DEBUG__)
+			tst.b	VBlank_MusicOnly
+			bne.s	@interrupts_ok
+			move.w	sr, -(sp)
+			assert.b (sp), hs, #$26
+			addq.w	#2, sp
+		@interrupts_ok:
+		endif
+
 		lea	VDP_Data,a6
 		bsr	Hud_Lives
 		move.l	#$5C400003,VDP_Ctrl
@@ -43508,7 +43519,7 @@ Debug_Exit:
 
 @notc:
 		btst	#4,d0			; is button B pressed?
-		beq.s	Debug_DoNothing	; if not, branch
+		beq	Debug_DoNothing	; if not, branch
 		moveq	#0,d0
 		move.w	d0,($FFFFFE08).w ; deactivate debug mode
 		
@@ -43525,8 +43536,10 @@ Debug_Exit:
 	;	move.w	($FFFFFEF0).w,($FFFFF72C).w ; restore level boundaries
 	;	move.w	($FFFFFEF2).w,($FFFFF726).w
 		cmpi.b	#$10,(GameMode).w	; are you in the special stage?
-		beq.s	Debug_Exit_SS		; if yes, branch
+		beq	Debug_Exit_SS		; if yes, branch
+		VBlank_SetMusicOnly
 		jsr	Hud_Base		; restore HUD after using debug mode
+		VBlank_UnsetMusicOnly
 		ori.b	#1,($FFFFFE1D).w	; update rings counter
 		bra.s	Debug_DoNothing
 

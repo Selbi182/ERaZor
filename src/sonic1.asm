@@ -22228,6 +22228,7 @@ Obj5C_GirderSmall:			; XREF: Obj5C_Index
 			sub.w	d2, d1
 		else
 			move.w	CamXPos, d1
+			add.w	d1, d1
 			move.w	d1,d2
 			lsr.w	#2,d2
 			sub.w	d2,d1

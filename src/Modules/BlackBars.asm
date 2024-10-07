@@ -79,8 +79,8 @@ BlackBars.EmulatorOptimizedHandlers:
 	; Sprite masking trick for the last rendered raster line
 	move.w	#224+$80+1, d1
 	sub.w	d0, d1
-	move.w	d1, $FFFFF800
-	move.w	d1, $FFFFF808
+	move.w	d1, Sprite_Buffer
+	move.w	d1, Sprite_Buffer+8
 
 	cmp.w	#224/2-1,d0					; are we taking half the screen?
 	bhi.s	@make_black_screen				; if yes, branch

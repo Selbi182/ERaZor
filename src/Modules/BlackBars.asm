@@ -109,6 +109,8 @@ BlackBars.EmulatorOptimizedHandlers:
 	sub.w	#224-1,d1
 	neg.w	d1
 	lsr.w	#1,d0
+	bcc.s	@make_bars_cont
+	move.w	#HBlank_Bars_PastQuarterOdd_EmulatorOptimized, HBlankSubW
 	bra.s	@make_bars_cont
 ; ---------------------------------------------------------------------------
 
@@ -187,6 +189,8 @@ BlackBars.HardwareOptimizedHandlers:
 	sub.w	#224-1,d1
 	neg.w	d1
 	lsr.w	#1,d0
+	bcc.s	@make_bars_cont
+	move.w	#HBlank_Bars_PastQuarterOdd_HardwareOptimized, HBlankSubW
 	bra.s	@make_bars_cont
 ; ---------------------------------------------------------------------------
 

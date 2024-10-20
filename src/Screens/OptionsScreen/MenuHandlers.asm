@@ -96,7 +96,7 @@ Options_GameplayStyle_Redraw:
 
 Options_GameplayStyle_Handle:
 	move.b	Joypad|Press, d1	; get button presses
- 	andi.b	#$FC,d1			; is left, right, A, B, C, or Start pressed?
+ 	andi.b	#$F0,d1			; is A, B, C, or Start pressed?
 	beq.s	@ret			; if not, branch
 	
 	tst.b	(PlacePlacePlace).w	; is easter egg flag set?
@@ -532,7 +532,7 @@ Options_BlackBarsMode_Redraw:
 
 Options_BlackBarsMode_Handle:
 	move.b	Joypad|Press,d1			; get button presses
- 	andi.b	#$FC,d1				; is left, right, A, B, C, or Start pressed?
+ 	andi.b	#$F0,d1				; is A, B, C, or Start pressed?
 	beq.w	@ret				; if not, branch
 
 	btst	#6,d1				; is specifically A pressed?

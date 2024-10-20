@@ -6770,7 +6770,7 @@ Resize_SLZ3:
 		move.b	#2,($FFFFD01C).w
 		tst.w	($FFFFD012).w
 		bmi.s	@end
-		move.w	#-$10,($FFFFD012).w
+		move.w	#-$100,($FFFFD012).w
 		rts
 
 @lastright:
@@ -7211,6 +7211,7 @@ Resize_FZEscape:
 
 		move.w	#0,($FFFFF72C).w	; unlock controls
 		addq.w	#1,($FFFFFE20).w	; give one insurance ring (without updating rings counter) to prevent some bullshit deaths
+		move.w	#$60,($FFFFF73E).w	; reset looking up/down
 
 		move.b	#7,(CameraShake_Intensity).w
 
@@ -7242,7 +7243,7 @@ Resize_FZEscape:
 
 @nodoubleboost:
 		move.w	#$90,d0
-		jmp	PlaySound		; play GHP music (originally a placeholder, now gonna stay cause it's epic)
+		jmp	PlaySound		; play escape music
 ; ===========================================================================	
 
 Resize_FZEscape2:
@@ -11407,8 +11408,9 @@ Obj22_Main:				; XREF: Obj22_Index
 		beq.s	Obj22_Action
 		move.w	obX(a0),$36(a0)	; remember original X position
 		move.w	obY(a0),$38(a0)	; remember original Y position
-		move.b	#BBExplosionInterval,$30(a0)
-		
+	;	move.b	#BBExplosionInterval,$30(a0)
+		clr.b	$30(a0)			; clear initial explosion delay counter
+
 Obj22_Action:				; XREF: Obj22_Index
 		moveq	#0,d0
 		move.b	ob2ndRout(a0),d0
@@ -11578,7 +11580,7 @@ Obj22_MoveEnd:
 
 Obj22_XChk:
 		cmpi.w	#$15,d0			; is sonic within $15 pixels of the object?
-		bge.w	Obj22_End		; if not, branch
+		bge.w	Obj22_ResetExplode	; if not, branch
 
 		move.w	obY(a0),d1		; load object's Y pos
 		sub.w	($FFFFD00C).w,d1	; minus sonic's Y pos from it
@@ -11587,9 +11589,13 @@ Obj22_XChk:
 
 Obj22_YChk:
 		cmpi.w	#$15,d1			; is sonic within $15 pixels of the object?
-		bge.w	Obj22_End		; if not, branch
-	;	bsr	BossDefeated3		; load random explosion (harmful)
+		blt.w	Obj22_ProximityExplode	; if yes, branch
 
+Obj22_ResetExplode:
+		clr.b	$30(a0)			; clear initial explosion delay counter
+		bra.w	Obj22_End		; if not, branch
+
+Obj22_ProximityExplode:
 		subq.b	#1,$30(a0)
 		bpl.s	Obj22_Return2
 		move.b	#BBExplosionInterval,$30(a0)
@@ -16707,7 +16713,7 @@ Obj36_NotInhuman:
 ; Spikes types $1x and $5x face	sideways
 
 Obj36_SideWays:				; XREF: Obj36_Solid
-		move.w	#$1B,d1
+		move.w	#$17,d1
 		move.w	d2,d3
 		addq.w	#1,d3
 		move.w	obX(a0),d4
@@ -18784,7 +18790,7 @@ Map_Obj12:
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Object 47 - pinball bumper (SYZ)
+; Object 47 - bumper (SYZ)
 ; ---------------------------------------------------------------------------
 
 Obj47:					; XREF: Obj_Index
@@ -18829,23 +18835,6 @@ Obj47_Hit:				; XREF: Obj47_Index
 		move.b	#1,obAnim(a0)
 		move.w	#$B4,d0
 		jsr	(PlaySound_Special).l ;	play bumper sound
-		lea	($FFFFFC00).w,a2
-		moveq	#0,d0
-		move.b	obRespawnNo(a0),d0
-		beq.s	Obj47_Score
-		cmpi.b	#$8A,obGfx(a2,d0.w)	; has bumper been hit $8A times?
-		bcc.s	Obj47_Display	; if yes, Sonic	gets no	points
-		addq.b	#1,obGfx(a2,d0.w)
-
-Obj47_Score:
-		moveq	#10,d0
-		jsr	AddPoints	; add 100 to score
-		bsr	SingleObjLoad
-		bne.s	Obj47_Display
-		move.b	#$29,0(a1)	; load points object
-		move.w	obX(a0),obX(a1)
-		move.w	obY(a0),obY(a1)
-		move.b	#4,obFrame(a1)
 
 Obj47_Display:
 		lea	(Ani_obj47).l,a1
@@ -18857,7 +18846,7 @@ Obj47_Display:
 		andi.w	#$FF80,d1
 		sub.w	d1,d0
 		cmpi.w	#$280,d0
-		bhi.s	Obj47_ChkHit
+		bhi.w	DeleteObject
 
 		cmpi.w	#$400,($FFFFFE10).w	; are we in Uberhub?
 		bne.s	@display		; if not, branch
@@ -18868,16 +18857,6 @@ Obj47_Display:
 		bra.w	DisplaySprite
 ; ===========================================================================
 
-Obj47_ChkHit:				; XREF: Obj47_Display
-		lea	($FFFFFC00).w,a2
-		moveq	#0,d0
-		move.b	obRespawnNo(a0),d0
-		beq.s	Obj47_Delete
-		bclr	#7,obGfx(a2,d0.w)
-
-Obj47_Delete:
-		bra.w	DeleteObject
-; ===========================================================================
 Ani_obj47:
 		include	"_anim\obj47.asm"
 
@@ -22367,19 +22346,28 @@ Obj0B_Main:				; XREF: Obj0B_Index
 
 Obj0B_Action:				; XREF: Obj0B_Index
 		tst.b	obColProp(a0)		; has Sonic touched the	pole?
-		beq.s	Obj0B_Display		; if not, branch
-		tst.b	($FFFFFFEB).w		; is Sonic jumpdashing?
-		bne.s	Obj0B_BreakPole		; if yes, break pole
+		beq.s	@chkcol			; if not, branch
+		cmpi.b	#%01,($FFFFFFEB).w	; is Sonic jumpdashing (but not double jumping)?
+		beq.s	Obj0B_BreakPole		; if yes, break pole
 
+@chkcol:
 		; make pole solid
 		moveq	#0,d1
 		move.b	obActWid(a0),d1
 		addi.w	#4,d1
+		cmpi.b	#1,obSubtype(a0)
+		bne.s	@notfirst
+		addi.w	#4,d1
+
+@notfirst:
 		moveq	#0,d2
 		move.b	obHeight(a0),d2
 		move.w	d2,d3
 		addq.w	#1,d3
 		jsr	SolidObject
+		bne.s	@0
+		clr.b	obColProp(a0)
+@0:
 		bra.s	Obj0B_Display
 ; ===========================================================================
 
@@ -26819,6 +26807,8 @@ loc_12F70:
 	;	bra.s	Obj01_ResetScr
 ; ===========================================================================
 
+SonicLookUpDownTime = 60 ; default is 120
+
 Sonic_LookUp:
 		btst	#0,($FFFFF602).w ; is up being pressed?
 		beq.s	Sonic_Duck	; if not, branch
@@ -26827,9 +26817,9 @@ Sonic_LookUp:
 		cmpi.w	#$101,($FFFFFE10).w	; is level LZ2?
 		beq.s	Sonic_Duck		; if yes, disable vertical camera shift
 		addq.b	#1,SonicLookUpDownTimer
-		cmp.b	#$78,SonicLookUpDownTimer
+		cmpi.b	#SonicLookUpDownTime,SonicLookUpDownTimer
 		bcs.s	Obj01_ResetScr_Part2
-		move.b	#$78,SonicLookUpDownTimer
+		move.b	#SonicLookUpDownTime,SonicLookUpDownTimer
 		cmpi.w	#$C8,($FFFFF73E).w
 		beq.s	loc_12FC2
 		addq.w	#2,($FFFFF73E).w
@@ -26844,9 +26834,9 @@ Sonic_Duck:
 		cmpi.w	#$101,($FFFFFE10).w	; is level LZ2?
 		beq.s	Obj01_ResetScr		; if yes, disable vertical camera shift
 		addq.b	#1,SonicLookUpDownTimer
-		cmpi.b	#$78,SonicLookUpDownTimer
+		cmpi.b	#SonicLookUpDownTime,SonicLookUpDownTimer
 		bcs.s	Obj01_ResetScr_Part2
-		move.b	#$78,SonicLookUpDownTimer
+		move.b	#SonicLookUpDownTime,SonicLookUpDownTimer
 		cmpi.w	#8,($FFFFF73E).w
 		beq.s	loc_12FC2
 		subq.w	#2,($FFFFF73E).w
@@ -27868,6 +27858,8 @@ SH_Objects:
 ; ---------------------------------------------------------------------------
 
 Sonic_DoubleJump:
+		ori.b	#%10,($FFFFFFEB).w	; set double jump flag
+
 		move.w	#$A0,d0			; set jumping sound		
 		tst.b	($FFFFFFE7).w		; is inhuman mode on?
 		beq.s	DJ_PlaySound		; if not, branch
@@ -33487,7 +33479,8 @@ Obj79_Main:				; XREF: Obj79_Index
 		cmpi.b	#1,obSubtype(a0)
 		beq.s	@delete
 		bra.s	@notrpfrantic
-@delete:	jmp	DeleteObject
+@delete:	addq.l	#4,sp			; prevent sprite rendering
+		jmp	DeleteObject
 
 @notrpfrantic:
 		addq.b	#2,obRoutine(a0)
@@ -34166,6 +34159,13 @@ Obj3D_MainStuff:
 		move.w	#$3F,d0
 loopdashit:	cmpi.b	#$18,(a1)		; is current object a platform?
 		bne.s	@cont			; if not, branch
+
+		frantic
+		bne.s	@frantic
+		cmpi.w	#$50FD,obX(a1)	; middle platform in GHP boss
+		beq.s	@cont		; you get to live
+@frantic:
+
 		move.b	#$3F,(a1)		; turn into an explosion
 		move.b	#0,obRoutine(a1)
 		move.b	#1,$30(a1)		; make explosion harmless
@@ -38139,13 +38139,13 @@ Obj85_PillarPossibilties:
 		dc.w pillar4, pillar1	; 0C
 		dc.w pillar1, pillar3	; 10
 		dc.w pillar3, pillar1	; 14
-		dc.w pillar2, pillar3	; 18
-		dc.w pillar3, pillar2	; 1C
+		dc.w pillar2, pillar1	; 18
+		dc.w pillar3, pillar4	; 1C
 
 		; extra possibilities for frantic only
+		dc.w pillar2, pillar3
+		dc.w pillar3, pillar2
 		dc.w pillar1, pillar2
-		dc.w pillar2, pillar1
-		dc.w pillar3, pillar4
 		dc.w pillar4, pillar3
 		dc.w pillar1, pillar4
 		dc.w pillar4, pillar1

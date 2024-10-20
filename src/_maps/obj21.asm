@@ -30,9 +30,9 @@ Obj21_Rings:	dc.b 3
 		dc.b $F9, $01, $80, $00, $1D	; S
 
 Obj21_AltRings:	dc.b 3
-		dc.b $F8, $09, $A0, $30, $DE	; Rings Counter (Alternate)
-		dc.b $FB, $0D, $A0, $08, $01	; RING (Alternate)
-		dc.b $FB, $01, $A0, $00, $1C	; S (Alternate)
+		dc.b $F7, $09, $A0, $30, $E0	; Rings Counter (Alternate)
+		dc.b $F8, $0D, $A0, $08, $02	; RING (Alternate)
+		dc.b $F8, $01, $A0, $00, $1E	; S (Alternate)
 
 Obj21_Time:	dc.b 4
 		dc.b $F9, $09, $80, $10, $E0	; TIM

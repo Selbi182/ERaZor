@@ -117,6 +117,12 @@
 	@dcStr	@Sound_Header, @SoundDD_Name	; $DD
 	@dcStr	@Sound_Header, @SoundDE_Name	; $DE
 	@dcStr	@Sound_Header, @SoundDF_Name	; $DF
+	
+	@dcStr	@Sound_Misc, @SoundE0_Name	; $E0
+	@dcStr	@Sound_Misc, @SoundE1_Name	; $E1
+	@dcStr	@Sound_Misc, @SoundE2_Name	; $E2
+	@dcStr	@Sound_Misc, @SoundE3_Name	; $E3
+	@dcStr	@Sound_Misc, @SoundE4_Name	; $E4
 
 ; ---------------------------------------------------------------------------
 @titleMaxLen: = 28
@@ -217,8 +223,7 @@
 
 ; ---------------------------------------------------------------------------
 
-@Sound_Header:		@str '-SFX-', @titleMaxLen	
-@Sound_NoSource:	@str ' ', @descMaxLen
+@Sound_Header:		@str '-SFX-', @titleMaxLen
 
 @SoundA0_Name:		@str 'YOU JUMPED', @descMaxLen
 @SoundA1_Name:		@str 'YOU TOUCHED A CHECKPOINT', @descMaxLen
@@ -239,7 +244,7 @@
 @SoundB0_Name:		@str 'YOU ENTERED HELL', @descMaxLen
 @SoundB1_Name:		@str "BZZZZ", @descMaxLen
 @SoundB2_Name:		@str 'LEARN HOW TO SWIM DUMMY', @descMaxLen
-@SoundB3_Name:		@str "HOW MANY DAMN FIREBALL SOUNDS ARE IN THIS GAME?!", @descMaxLen
+@SoundB3_Name:		@str "HOW MANY FIREBALL SOUNDS ARE IN THIS GAME?!", @descMaxLen
 @SoundB4_Name:		@str 'YOU HIT A BUMPER', @descMaxLen
 @SoundB5_Name:		@str 'YOU GOT A RING', @descMaxLen
 @SoundB6_Name:		@str 'SPIKES HAVE MOVED', @descMaxLen
@@ -260,7 +265,7 @@
 @SoundC5_Name:		@str 'THE SOUND THAT PLAYS WHEN YOUR CRUSH SAYS YES', @descMaxLen
 @SoundC6_Name:		@str 'YOU SUCK', @descMaxLen
 @SoundC7_Name:		@str "CHAINY THING GOIN' UP", @descMaxLen
-@SoundC8_Name:		@str "ROCKET THING GOIN' UP / ANOTHER FIREBALL SOUND", @descMaxLen
+@SoundC8_Name:		@str "ROCKET THING GOIN' UP", @descMaxLen
 @SoundC9_Name:		@str 'JUST ONE MORE, COME ON...', @descMaxLen
 @SoundCA_Name:		@str 'YOU ENTERED A SPECIAL STAGE', @descMaxLen
 @SoundCB_Name:		@str 'EXPLOSIONS.', @descMaxLen
@@ -284,5 +289,15 @@
 @SoundDD_Name:		@str 'PROBABLY A NUKE GOING OFF', @descMaxLen
 @SoundDE_Name:		@str 'HOW HIGH IN THE SKY CAN YOU FLY?', @descMaxLen
 @SoundDF_Name:		@str 'AW MAN YOU BROKE IT', @descMaxLen
+
+; ---------------------------------------------------------------------------
+
+@Sound_Misc:		@str '-MISC-', @titleMaxLen	
+
+@SoundE0_Name:		@str 'FADE OUT MUSIC', @descMaxLen
+@SoundE1_Name:		@str 'SEGA CHANT FEATURING YOURS TRULY', @descMaxLen
+@SoundE2_Name:		@str 'MUSIC SPEED: FAST', @descMaxLen
+@SoundE3_Name:		@str 'MUSIC SPEED: NORMAL', @descMaxLen
+@SoundE4_Name:		@str 'STOP MUSIC', @descMaxLen
 
 	even

@@ -7,7 +7,7 @@ obSTScrollTarget:	equ	$28	; .w
 obSTScrollTarget2:	equ	$2A	; .w
 
 obST_MinTrack	= $81
-obST_MaxTrack	= $DF
+obST_MaxTrack	= $E4
 
 ; ---------------------------------------------------------------------------
 ; Track selector controller for the sound test

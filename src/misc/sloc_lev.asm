@@ -28,10 +28,10 @@
 		dc.w	$0038, $00EE	; syz 3
 		dc.w	$0080, $00A8	; syz 4
 
-		dc.w	$01A0, $0160	; sbz 1 (Bomb Machine Cutscene, start loc irrelevant)
+		dc.w	$0200, $0160	; SBZ 1 (Bomb Machine Cutscene)
 		dc.w	$0180+SCREEN_XCORR, $068C	; SBZ 2 (Tutorial Place)
 		dc.w	$0B86, $05AC	; SBZ 3 (Finalor Place)
-		dc.w	$0080, $00A8	; sbz 4
+		dc.w	$2286, $05AC	; SBZ 3 (Finalor Place fast forward)
 
 		dc.w	$0620, $016B	; Unknown
 		dc.w	$1030, $026C	; Ending Sequence

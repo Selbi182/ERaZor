@@ -1098,8 +1098,17 @@ ScrollHoriz:				; XREF: DeformBgLayer
 
 SH_NoDelay:
 		move.w	($FFFFD008).w,d0	; move Sonic's X-pos to d0
+; ---------------------------------------------------------------------------
 
-CamSpeed = 2					; set camera moving speed (standart 2 or 3)
+SH_ExtendedCamera:
+
+	if def(__WIDESCREEN__)
+ExtCam_Offset = $68
+ExtCam_Speed = 4
+	else
+ExtCam_Offset = $40
+ExtCam_Speed = 2
+	endif
 
 		cmpi.w	#$601,($FFFFFE10).w	; is this the ending sequence?
 		bne.s	S_H_NoEnding		; if not, branch
@@ -1176,16 +1185,16 @@ S_H_PeeloutSpindash:
 ; ===========================================================================
 
 S_H_FastEnough_Right:
-		cmpi.w	#$40,(ExtCamShift).w	; is camera moving counter at or over $40?
+		cmpi.w	#ExtCam_Offset,(ExtCamShift).w	; is camera moving counter at or over the limit?
 		bge.s	S_H_CameraMove_End	; if yes, don't change camera moving
-		add.w	#CamSpeed,(ExtCamShift).w	; otherwise, make camera move to the left
+		add.w	#ExtCam_Speed,(ExtCamShift).w	; otherwise, make camera move to the left
 		bra.s	S_H_CameraMove_End	; skip to processing code
 ; ===========================================================================
 
 S_H_FastEnough_Left:
-		cmpi.w	#-$40,(ExtCamShift).w	; is camera moving counter at or below -$40?
+		cmpi.w	#-ExtCam_Offset,(ExtCamShift).w	; is camera moving counter at or below the limit?
 		ble.s	S_H_CameraMove_End	; if yes, don't change camera moving
-		sub.w	#CamSpeed,(ExtCamShift).w	; otherwise, make camera move to the right
+		sub.w	#ExtCam_Speed,(ExtCamShift).w	; otherwise, make camera move to the right
 		bra.s	S_H_CameraMove_End	; skip to processing code
 ; ===========================================================================
 
@@ -1193,12 +1202,12 @@ S_H_ResetCamera:
 		tst.w	(ExtCamShift).w		; is camera moving counter empty?
 		beq.s	S_H_NoExtendedCam	; if yes, branch to end
 		bpl.s	S_H_ResetCamera_Left	; is it positive? if yes, branch to code for left moving
-		add.w	#CamSpeed,(ExtCamShift).w	; otherwise make it move to the right again
+		add.w	#ExtCam_Speed,(ExtCamShift).w	; otherwise make it move to the right again
 		bra.s	S_H_CameraMove_End	; skip to end
 ; ===========================================================================
 
 S_H_ResetCamera_Left:
-		sub.w	#CamSpeed,(ExtCamShift).w	; make camera move to the left again
+		sub.w	#ExtCam_Speed,(ExtCamShift).w	; make camera move to the left again
 
 S_H_CameraMove_End:
 		add.w	(ExtCamShift).w,d0	; add counter to normal camera location

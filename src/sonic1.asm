@@ -56,8 +56,8 @@ USE_NEW_BUILDSPRITES:	equ	1	; New BuildSprites system is still faster than S1's,
 ; $302 - Star Agony Place
 ; $502 - Finalor Place
 	if def(__BENCHMARK__)=0
-QuickLevelSelect = 1
-QuickLevelSelect_ID = $302
+QuickLevelSelect = 0
+QuickLevelSelect_ID = -1
 ; ------------------------------------------------------
 DebugModeDefault = 1
 DebugSurviveNoRings = 1
@@ -3490,11 +3490,6 @@ loc_3946:
 		jsr	Pal_CutToBlack
 		moveq	#3,d0
 		jsr	PalLoad2		; load Sonic palette
-
-		lea	($FFFFD440).w,a1
-		move.b	#$5F,(a1)	; load walking bomb enemy
-		move.w	#$01E4,obX(a1)
-		move.w	#$0150,obY(a1)
 
 		jsr	SingleObjLoad
 		move.b	#$82,(a1)	; load SBZ2 Eggman object
@@ -7126,7 +7121,7 @@ Resize_FZAddBombs:
 		tst.b	(HUD_BossHealth).w
 		beq.s	@End
 		
-		bra.w	@Continue	; as cool as these are, sprite limit :(
+	;	bra.w	@Continue	; as cool as these are, sprite limit :(
 
 		cmpi.b	#10,(HUD_BossHealth).w
 		bgt.s	@Continue
@@ -10155,7 +10150,7 @@ Obj3F_Animate_NoMove:
 		move.b	#4,obTimeFrame(a0)	; set frame duration to	7 frames
 		addq.b	#1,obFrame(a0)	; next frame
 		cmpi.b	#5,obFrame(a0)	; is the final frame (05) displayed?
-		beq.s	Obj3F_Delete	; if yes, branch
+		bhs.s	Obj3F_Delete	; if yes, branch
 
 Obj3F_Display:
 		cmpi.b	#$34,($FFFFD080).w	; are title cards currently visible?
@@ -18829,7 +18824,6 @@ Obj47_Hit:				; XREF: Obj47_Index
 		asr.l	#8,d0
 		move.w	d0,obVelY(a1)	; bounce Sonic away
 		bset	#1,obStatus(a1)
-		bclr	#4,obStatus(a1)
 		bclr	#5,obStatus(a1)
 		clr.b	$3C(a1)
 		move.b	#1,obAnim(a0)
@@ -24728,7 +24722,6 @@ Obj64_Wobble:				; XREF: Obj64_ChkWater
 		move.w	#$23,$3E(a1)
 		move.b	#0,$3C(a1)
 		bclr	#5,obStatus(a1)
-		bclr	#4,obStatus(a1)
 		btst	#2,obStatus(a1)
 		beq.w	Obj64_Burst
 		bclr	#2,obStatus(a1)
@@ -27235,8 +27228,6 @@ Sonic_ChgJumpDir:			; XREF: Obj01_MdJump; Obj01_MdJump2
 		move.w	($FFFFF760).w,d6
 		move.w	($FFFFF762).w,d5
 		asl.w	#1,d5
-		btst	#4,obStatus(a0)
-		bne.s	Obj01_ResetScr2
 		move.w	obVelX(a0),d0
 		btst	#2,($FFFFF602).w ; is left being pressed?
 		beq.s	loc_13278	; if not, branch
@@ -28522,14 +28513,15 @@ loc_1341C:
 		jsr	(PlaySound_Special).l ;	play jumping sound
 		move.b	#$13,obHeight(a0)
 		move.b	#9,obWidth(a0)
-		btst	#2,obStatus(a0)
-		bne.s	loc_13490
 		move.b	#$E,obHeight(a0)
 		move.b	#7,obWidth(a0)
+		btst	#2,obStatus(a0)
+		bne.s	@alreadyrolling
 		move.b	#2,obAnim(a0)	; use "jumping"	animation
 		bset	#2,obStatus(a0)
 		addq.w	#5,obY(a0)
 
+@alreadyrolling:
 		tst.b	($FFFFFF77).w		; is antigrav enabled?
 		beq.s	locret_1348E		; if not, branch
 		btst	#6,($FFFFF603).w	; was specifically A pressed to jump?
@@ -28537,11 +28529,6 @@ loc_1341C:
 		clr.w	obVelY(a0)
 
 locret_1348E:
-		rts	
-; ===========================================================================
-
-loc_13490:
-		bset	#4,obStatus(a0)
 		rts	
 ; End of function Sonic_Jump
 
@@ -29077,7 +29064,6 @@ Sonic_ResetOnFloor:			; XREF: PlatformObject; et al
 S_ROF_NotFZ:
 		bclr	#5,obStatus(a0)
 		bclr	#1,obStatus(a0)
-		bclr	#4,obStatus(a0)
 		btst	#2,obStatus(a0)
 		beq.s	loc_137E4
 		bclr	#2,obStatus(a0)
@@ -37478,13 +37464,19 @@ Obj82_Main:				; XREF: Obj82_Index
 		; bomb machine
 		jsr	SingleObjLoad
 		move.b	#$3A,(a1)
-		move.w	#$01B4,obX(a1)
+		move.w	#$0234,obX(a1)
 		move.w	#$0130,obY(a1)
 		move.l	a0,$30(a1)
 
+		; bomb
+		lea	($FFFFD440).w,a1
+		move.b	#$5F,(a1)	; load walking bomb enemy
+		move.w	#$0264,obX(a1)
+		move.w	#$0150,obY(a1)
+
 		; eggman
 		lea	Obj82_ObjData(pc),a2
-		move.w	#$50,obX(a0)
+		move.w	#$D0,obX(a0)
 		move.w	#$185,obY(a0)
 		move.b	#$F,obColType(a0)
 		move.b	#$10,obColProp(a0)
@@ -37504,7 +37496,7 @@ Obj82_Main:				; XREF: Obj82_Index
 		bne.s	Obj82_Eggman
 		move.l	a0,$34(a1)
 		move.b	#$82,(a1)
-		move.w	#$170,obX(a1)
+		move.w	#$1F0,obX(a1)
 		move.w	#$19B,obY(a1)
 		clr.b	ob2ndRout(a0)
 		move.b	(a2)+,obRoutine(a1)
@@ -37539,13 +37531,13 @@ Obj82_EggIndex:	dc.w Obj82_ChkSonic-Obj82_EggIndex
 Obj82_ChkSonic:				; XREF: Obj82_EggIndex
 		move.w	obX(a0),d0
 
-		cmpi.w	#$110,d0
+		cmpi.w	#$190,d0
 		blt.s	@cont
 		move.b	#1,obAnim(a0)	; make eggman laugh
 
 @cont:
 		move.w	#$B0,obVelX(a0)
-		cmpi.w	#$140,d0
+		cmpi.w	#$1C0,d0
 		blt.s	loc_19934
 		addq.b	#2,ob2ndRout(a0)
 		move.w	#1,$3C(a0)	; set delay to 3 seconds
@@ -37574,7 +37566,7 @@ Obj82_Leap:				; XREF: Obj82_EggIndex
 		move.w	#-$3C0,obVelY(a0)
 
 loc_1996A:
-		cmpi.w	#$170,obX(a0)
+		cmpi.w	#$1F0,obX(a0)
 		blt.s	loc_19976
 		clr.w	obVelX(a0)
 
@@ -37609,7 +37601,7 @@ Obj82_FindBlocks:
 		jsr	SingleObjLoad
 		move.b	#$3A,(a1)
 		move.b	#$A,obRoutine(a1)
-		move.w	#$01B4,obX(a1)
+		move.w	#$0234,obX(a1)
 		move.w	#$0128,obY(a1)
 
 		move.l	#Map_BombMachine,obMap(a1)
@@ -38947,6 +38939,8 @@ Obj86_Generator:			; XREF: Obj86_Index
 		move.b	#0,obRoutine(a0)
 		move.b	#0,$31(a0)
 
+		bclr	#3,($FFFFD000+obStatus).w	; clear on-platform flag
+
 		movem.l	d7/a1-a3,-(sp)
 		jsr	WhiteFlash2
 		movem.l	(sp)+,d7/a1-a3
@@ -38954,8 +38948,8 @@ Obj86_Generator:			; XREF: Obj86_Index
 		move.w	#$B9,d0
 		jsr	PlaySound
 
-		move.b	#$F,(CameraShake_Intensity).w	; one last big shake
-		ori.b	#10,(CameraShake).w     	; normal camera shake
+		move.b	#$1F,(CameraShake_Intensity).w	; one last big shake
+		ori.b	#12,(CameraShake).w     	; normal camera shake
 
 		lea	($FFFFD800).w,a1
 		moveq	#$3F,d0
@@ -40956,6 +40950,11 @@ Obj09_Display:				; XREF: Obj09_OnWall
 		tst.b	(Blackout).w		; is easter egg SS enabled?
 		beq.s	@normalspinni		; if not, use regular animation
 		move.w	#$300,d1
+
+		btst	#5,($FFFFF602).w		; is C held?
+		beq.s	@notc				; if not, branch
+		add.w	d1,d1				; double max target speed
+@notc:
 		cmpi.b	#2,($FFFFFE57).w	; are we in part 2?
 		beq.s	@customspinni		; if yes, go to alternate animation
 
@@ -41292,6 +41291,10 @@ Obj09_EasterEggSpecial:
 		move.w	#Blackout_FallSpeed2,d5
 
 @notparttwo:
+		btst	#5,($FFFFF602).w		; is C held?
+		beq.s	@notc				; if not, branch
+		add.w	d5,d5				; double max target speed
+@notc:
 		move.l	obY(a0),d2
 		move.l	obX(a0),d3
 		move.b	($FFFFF780).w,d0

@@ -51,7 +51,10 @@ SonAni_Run:	dc.b $FF, $1E, $1F, $20, $21, $FF, $FF,	$FF
 SonAni_Roll:	dc.b $FE, $2E, $2F, $30, $31, $32, $FF,	$FF
 SonAni_Roll2:	dc.b $FE, $2E, $2F, $32, $30, $31, $32,	$FF
 SonAni_Push:	dc.b $FD, $45, $46, $47, $48, $FF, $FF,	$FF
-SonAni_Wait:	dc.b $17, 1, 1,	1, 1, 1, 1, 1, 1, 1, 1,	1, 1, 3, 2, $FE, 1 ;2, 2, 3, 4, $FE, 2, 0
+;SonAni_Wait:	dc.b $17, 1, 1,	1, 1, 1, 1, 1, 1, 1, 1,	1, 1, 3, 2, $FE, 1 ;2, 2, 3, 4, $FE, 2, 0
+SonAni_Wait:	dc.b 7, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 
+		dc.b     2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,  2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,  2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
+		dc.b     3,  $FE, 37
 SonAni_Balance:	dc.b $1F, $3A, $3B, $FF
 SonAni_LookUp:	dc.b $3F, 5, $FF, 0
 SonAni_Duck:	dc.b $3F, $39, $FF, 0

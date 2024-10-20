@@ -1,7 +1,7 @@
 @echo off
 
-REM Run the just_build.bat file
-call just_build.bat
+REM Run the build.bat file
+call build.bat
 
 REM Get the current date in YYYY-MM-DD format
 for /f "tokens=2 delims==" %%I in ('wmic os get localdatetime /value') do set datetime=%%I

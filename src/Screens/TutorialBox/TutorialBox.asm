@@ -822,11 +822,9 @@ Hint_Pre:
 		boxtxt	"REQUIRED BASICS."
 		boxtxt_next
 
-		boxtxt	"POSITION YOURSELF"
-		boxtxt	"IN FRONT OF THE"
-		boxtxt	"INFORMATION MONITORS"
-		boxtxt	"AND PRESS a TO BRING"
-		boxtxt	"UP INFORMATION ABOUT"
+		boxtxt	"PRESS a IN FRONT OF"
+		boxtxt	"THE INFO MONITORS"
+		boxtxt	"FOR SHORT GUIDES ON"
 		boxtxt	"GAME MECHANICS AND"
 		boxtxt	"OTHER USEFUL TIPS!"
 		boxtxt_next
@@ -879,7 +877,7 @@ Hint_1:
 		
 		boxtxt	"   FOR EXAMPLE..."
 		boxtxt_pause
-		boxtxt	"  ONCE YOU ENTER A"
+		boxtxt	" AFTER YOU FINISH A"
 		boxtxt	"   FRANTIC STAGE,"
 		boxtxt	" YOUR RINGS WILL BE"
 		boxtxt	"   RESET TO zero!"
@@ -889,7 +887,7 @@ Hint_1:
 Hint_2:
 		boxtxt	"CONTROLS - airborne"
 		boxtxt_pause
-		boxtxt	" c - JUMP DASH"
+		boxtxt	" c - JUMP DASH/"
 		boxtxt	"     HOMING ATTACK"
 		boxtxt_line
 		boxtxt	" b - DOUBLE JUMP"
@@ -931,10 +929,10 @@ Hint_3:
 		boxtxt_pause
 		boxtxt	" THE FLOOR IS LAVA!"
 		boxtxt_pause
-		boxtxt	" AND IT HUNGERS FOR"
-		boxtxt	" YOU UNTIL YOU DIE!"
-		boxtxt_pause
 		boxtxt	"  WELL, SOMETIMES."
+		boxtxt_pause
+		boxtxt	" DON'T STAND ON THE"
+		boxtxt	"  GROUND TOO MUCH!"
 		boxtxt_end
 
 ;		 --------------------
@@ -1106,7 +1104,7 @@ Hint_6:
 		boxtxt	"    ARE FRIENDS."
 		boxtxt_pause
 		boxtxt	"  IN FRANTIC, THEY"
-		boxtxt	"   WANT YOU DEAD."
+		boxtxt	"   INSTAKILL YOU."
 		boxtxt_pause
 
 		dc.b	_frantic
@@ -1164,7 +1162,7 @@ Hint_7:
 Hint_8:
 		boxtxt	"alternative gravity"
 		boxtxt_pause
-		boxtxt	"PRESS c REPEATEDLY"
+		boxtxt	"MASH THE c BUTTON"
 		boxtxt	"WHILE IN AIR AND USE"
 		boxtxt	"THE d_pad TO HOP AND"
 		boxtxt	"DASH IN WHATEVER"
@@ -1173,6 +1171,8 @@ Hint_8:
 
 ;		 --------------------
 Hint_9:
+		boxtxt	"anti-gravity"
+		boxtxt_pause
 		boxtxt	"HEDGEHOG SPACE GOLF"
 		boxtxt	"ISN'T YOUR THING?"
 		boxtxt_pause
@@ -1283,7 +1283,10 @@ Hint_End_AfterCasual:
 		boxtxt	"BEATING THE GAME IN"
 		boxtxt	"casual mode!"
 		boxtxt_pause
-		boxtxt	"BUT BEFORE YOU GO..."
+		boxtxt	"MAYBE YOU'D LIKE TO"
+		boxtxt	"TRY frantic NEXT?"
+		boxtxt_pause
+		boxtxt	"SPEAKING OF..."
 		boxtxt_NEXT
 
 		boxtxt	"IF YOU SAW ANYTHING"

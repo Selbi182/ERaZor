@@ -808,35 +808,42 @@ WaitForVDP:
 		rts				; return
 ; End of function ClearVRAM
 
-; ---------------------------------------------------------------------------
-; Subroutine to	play a sound or	music track
-; ---------------------------------------------------------------------------
 
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Subroutines to play a sound or music track
+; ---------------------------------------------------------------------------
+SoundQueue1	equ	$FFFFF00A
+SoundQueue2	equ	$FFFFF00B
+; ---------------------------------------------------------------------------
+Sounds_MusicEnd  = $9F
+Sounds_MiscStart = $E0
+; ---------------------------------------------------------------------------
 
 PlaySound:
-		move.b	d0,($FFFFF00A).w
-		rts	
-; End of function PlaySound
-
+		tst.b	(SoundQueue1).w
+		beq.s	@setsound
+		cmpi.b	#Sounds_MusicEnd,(SoundQueue1).w
+		bls.s	@end
+		cmpi.b	#Sounds_MiscStart,(SoundQueue1).w
+		bhs.s	@end
+@setsound:
+		move.b	d0,(SoundQueue1).w
+@end:		rts
 ; ---------------------------------------------------------------------------
-; Subroutine to	play a special sound/music (E0-E4)
-;
-; E0 - Fade out
-; E1 - Sega
-; E2 - Speed up
-; E3 - Normal speed
-; E4 - Stop
-; ---------------------------------------------------------------------------
-
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
 
 PlaySound_Special:
-		move.b	d0,($FFFFF00B).w
-		rts	
-; End of function PlaySound_Special
+		tst.b	(SoundQueue2).w
+		beq.s	@setsound
+		cmpi.b	#Sounds_MusicEnd,(SoundQueue2).w
+		bls.s	@end
+		cmpi.b	#Sounds_MiscStart,(SoundQueue2).w
+		bhs.s	@end
+@setsound:
+		move.b	d0,(SoundQueue2).w
+@end:		rts
+; End of function PlaySound
+
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -3527,8 +3534,8 @@ Level_LoadObj:
 		move.b	d0,($FFFFFE1B).w ; clear lives counter
 
 		clr.w	(FranticDrain).w		; clear frantic ring drain
-		cmpi.w	#$400,($FFFFFE10).w	; are we in Uberhub?
-		beq.s	loc_39E8		; if yes, don't do ring drain
+	;	cmpi.w	#$400,($FFFFFE10).w	; are we in Uberhub?
+	;	beq.s	loc_39E8		; if yes, don't do ring drain
 		move.w	($FFFFFE20).w,d1	; get your rings from the last level
 		beq.s	loc_39E8		; if you had none, branch
 		cmpi.w	#999,d1			; did it somehow end up above the allowed maximum?
@@ -10117,8 +10124,8 @@ Obj3F_Main2:
 		cmpi.b	#1,($FFFFFFAA).w
 		beq.s	Obj3F_NotHarmful
 @cont:		move.b	#$84,obColType(a0)
-		moveq	#10,d0		; add 100 ...
-		jsr	AddPoints	; ... points
+	;	moveq	#10,d0		; add 100 ...
+	;	jsr	AddPoints	; ... points
 
 Obj3F_NotHarmful:
 		move.b	#$C,obActWid(a0)
@@ -10157,7 +10164,9 @@ Obj3F_Animate_NoMove:
 		addq.b	#1,obFrame(a0)	; next frame
 		cmpi.b	#5,obFrame(a0)	; is the final frame (05) displayed?
 		bhs.s	Obj3F_Delete	; if yes, branch
-
+		cmpi.b	#2,obFrame(a0)	; are we done with the harmful frames?
+		bls.s	Obj3F_Display	; if not, branch
+		clr.b	obColType(a0)	; make explosion harmless now
 Obj3F_Display:
 		cmpi.b	#$34,($FFFFD080).w	; are title cards currently visible?
 		beq.s	Obj3F_Delete		; if yes, delete explosion (visual collision otherwise)
@@ -10945,8 +10954,8 @@ loc_17F70XY:
 		move.b	#$20,$3E(a0)			; set flashing timer
 		move.w	#$AC,d0				; set sound
 		jsr	(PlaySound_Special).l 		; play boss damage sound
-		moveq	#10,d0		; add 100 ...
-		jsr	AddPoints	; ... points
+	;	moveq	#10,d0		; add 100 ...
+	;	jsr	AddPoints	; ... points
 
 loc_17F70X:
 		cmpi.b	#2,obColProp(a0)			; only having 2 lives left?
@@ -11078,8 +11087,8 @@ Obj1F_WalkOnFloor:			; XREF: Obj1F_Index2
 		move.b	#$20,$3E(a0)			; set flashing timer
 		move.w	#$AC,d0				; set sound
 		jsr	(PlaySound_Special).l 		; play boss damage sound
-		moveq	#100,d0		; add 1000 ...
-		jsr	AddPoints	; ... points
+	;	moveq	#100,d0		; add 1000 ...
+	;	jsr	AddPoints	; ... points
 		
 
 loc_17F70XX:
@@ -12328,10 +12337,13 @@ Obj37_ChkDel:				; XREF: Obj37_MainLoop
 		bra.w	DisplaySprite
 ; ===========================================================================
 
-Obj37_Collect:				; XREF: Obj37_Index
-		addq.b	#2,obRoutine(a0)
+Obj37_Collect:				; XREF: Obj37_Index	
+		tst.b	($FFFFFE2C).w	; does Sonic have a shield?
+		bne.s	@nopoints	; if yes, don't award points
 		moveq	#10,d0		; add 100 ...
 		jsr	AddPoints	; ... points
+@nopoints:
+		addq.b	#2,obRoutine(a0)
 		move.b	#0,obColType(a0)
 		move.b	#1,obPriority(a0)
 		bsr	CollectRing
@@ -12976,8 +12988,10 @@ loc_A1EC:				; XREF: Obj26_Solid
 		bmi.s	loc_A20A
 	;	tst.b	($FFFFFFE7).w
 	;	bne.s	loc_A25C
-		tst.b	($FFFFFFEB).w	; test for active jumpdash
-		bne.s	loc_A25C	; if we are going to destroy it with a jumpdash, branch
+	
+		cmpi.b	#%01,($FFFFFFEB).w	; is Sonic jumpdashing (but not double jumping)?
+		beq.s	loc_A25C	; if we are going to destroy it with a jumpdash, branch
+
 		cmpi.b	#2,obAnim(a1)	; is Sonic rolling?
 		beq.s	loc_A25C	; if yes, branch
 		cmp.b	#$1F,obAnim(a1)	; is Sonic spin-dashing?
@@ -23273,8 +23287,8 @@ Obj5F_Explode:				; XREF: Obj5F_Index2
 		rts
 
 @notdefeated:
-		moveq	#10,d0		; add 100 ...
-		jsr	AddPoints	; ... points
+	;	moveq	#10,d0		; add 100 ...
+	;	jsr	AddPoints	; ... points
 
 		jsr	SingleObjLoad
 		bne.s	@reset
@@ -26458,10 +26472,13 @@ S_D_BA_NotEmpty:
 
 S_D_NotGHZ2:
 		; frantic ring drain system
-		frantic				; are we in frantic mode?
-		beq.s	S_D_AfterImage	 	; if not, branch
 		tst.w	(FranticDrain).w	; are any rings left to be drained?
 		bls.s	S_D_AfterImage		; if not, branch		
+		frantic				; are we in frantic mode?
+		bne.s	@franticdrain		; if yes, branch
+		clr.w	(FranticDrain).w	; clear frantic ring drain for casual mode
+		beq.s	S_D_AfterImage	 	; skip
+@franticdrain:
 		tst.b	($FFFFD400+$3A).w	; is intro animation for rings HUD finished?
 		beq.s	S_D_AfterImage		; if not, branch
 		tst.b	($FFFFFFB9).w		; is a white flash currently in progres?
@@ -26538,8 +26555,8 @@ Obj01_Inhuman:
 		move.w	($FFFFFE04).w,d0	; get level timer
 		andi.w	#3,d0			; subtract a ring every 4 frames
 		bne.s	Obj01_ChkInvin		; if not on allowed frame, branch
-		ori.b	#1,($FFFFFE1D).w	; update rings counter
-		subq.w	#1,($FFFFFE20).w	; subtract 1 ring
+		addq.w	#1,(FranticDrain).w	; drain 1 ring
+		tst.w	($FFFFFE20).w		; check current rings
 		bhi.s	@notdead		; if rings remain, branch
 		jmp	KillSonic_Inhuman	; you ran out of rings, hecking die noob
 @notdead:
@@ -27675,7 +27692,8 @@ JD_NotMZ:
 JD_NoWhiteFlash:
 		move.b	#1,($FFFFFFAD).w	; enable after image
 		move.b	#2,obAnim(a0)		; set rolling animation
-		
+		move.b	#0,$3C(a0)		; clear jump-height limit flag (needed for proper monitor bounce)
+
 		btst	#0,($FFFFF602).w	; is up pressed?
 		bne.w	Sonic_DoubleJump	; if yes, branch to double jump code
 		btst	#1,($FFFFF602).w	; is down pressed?
@@ -27865,7 +27883,7 @@ SH_Objects:
 ; ---------------------------------------------------------------------------
 
 Sonic_DoubleJump:
-		ori.b	#%10,($FFFFFFEB).w	; set double jump flag
+		move.b	#%11,($FFFFFFEB).w	; set double jump flag
 
 		move.w	#$A0,d0			; set jumping sound		
 		tst.b	($FFFFFFE7).w		; is inhuman mode on?
@@ -33590,7 +33608,7 @@ Obj79_HitLamp:
 	;	move.b	d2,($FFFFFF97).w	; copy subtype to checkpoint counter
 
 @hitrest:
-		move.w	#1000,d0		; add 10000 ...
+		move.w	#10000,d0		; add 100000 ...
 		jsr	AddPoints	; ... points
 
 		addq.b	#2,obRoutine(a0)
@@ -33797,8 +33815,8 @@ Obj7D_Emblem:
 		move.b	($FFFFFFA0).w,obFrame(a0)	; set new frame
 		move.w	#$C9,d0			; play bonus sound
 		jsr	(PlaySound_Special).l
-		moveq	#10,d0			; add 100 points
-		jsr	AddPoints
+	;	moveq	#10,d0			; add 100 points
+	;	jsr	AddPoints
 
 		; jump emblem left and right in the loop
 		move.w	#Obj7D_LeftRightJump,d0
@@ -34146,8 +34164,8 @@ Obj3D_MainStuff:
 		bne.s	Obj3D_ShipFlash
 		move.b	#$20,$3E(a0)	; set number of	times for ship to flash
 		bsr	BossDamageSound ; play boss damage sound
-		moveq	#10,d0		; add 100 ...
-		jsr	AddPoints	; ... points
+	;	moveq	#10,d0		; add 100 ...
+	;	jsr	AddPoints	; ... points
 		move.b	obColProp(a0),(HUD_BossHealth).w	; copy lives to HUD boss health counter
 
 		tst.b	(PlacePlacePlace).w
@@ -38064,8 +38082,8 @@ loc_19F6A:	move.w	d0,($FFFFD010).w	; set bounce
 
 		move.b	obColProp(a0),(HUD_BossHealth).w
 		bsr	BossDamageSound
-		moveq	#10,d0		; add 100 ...
-		jsr	AddPoints	; ... points
+	;	moveq	#10,d0		; add 100 ...
+	;	jsr	AddPoints	; ... points
 
 		cmpi.b	#10,obColProp(a0)	; does eggman have exactly 10 lives now?
 		bne.s	@nobosspinch		; if not, branch
@@ -39673,8 +39691,8 @@ locret_1AEF2:
 Touch_Monitor:
 		tst.w	obVelY(a0)		; is Sonic falling down?
 		bpl.s	Touch_Monitor_ChkBreak	; if yes, branch
-		tst.b	($FFFFFFEB).w		; is homing flag set?
-		bne.s	Touch_Monitor_ChkBreak	; if yes, treat as touching from top
+		cmpi.b	#%01,($FFFFFFEB).w	; is Sonic jumpdashing (but not double jumping)?
+		beq.s	Touch_Monitor_ChkBreak	; if yes, treat as touching from top
 
 		; bounce from below effect
 		move.w	obY(a0),d0
@@ -39769,11 +39787,11 @@ loc_1AF82:
 		move.w	Enemy_Points(pc,d0.w),d0
 		cmpi.w	#$20,($FFFFF7D0).w ; have 16 enemies been destroyed?
 		bcs.s	loc_1AF9C	; if not, branch
-		move.w	#1000,d0	; fix bonus to 10000
 		move.w	#$A,$3E(a1)
-
+		move.w	#1000,d0	; fix bonus to 10000
 loc_1AF9C:
 		bsr	AddPoints
+
 		move.b	#$27,0(a1)	; change object	to points
 		move.b	#0,obRoutine(a1)
 
@@ -39807,8 +39825,9 @@ Enemy_Points:	dc.w 100, 200, 500, 1000
 ; -----------------------------------------------------------------------------------
 
 BounceJD:
-		tst.b	($FFFFFFEB).w		; was jumpdash flag set?
-		beq.s	BounceJD_End		; if not, branch
+		cmpi.b	#%01,($FFFFFFEB).w	; is Sonic jumpdashing (but not double jumping)?
+		bne.s	BounceJD_End		; if not, branch
+
 		clr.b	($FFFFFFEB).w		; if yes, clear jumpdash flag (make sonic jumpdash again)
 		move.w	#-$600,obVelY(a0)	; bounce Sonic upwards
 		clr.w	obVelX(a0)		; clear X-velocity (stop sonic horizontally)
@@ -42551,13 +42570,16 @@ Obj21_NoUpdate:
 @ringshud:
 		moveq	#2,d0			; set default ring frame to d0
 		tst.w	($FFFFFE20).w		; do you have any rings?
-		beq.s	Obj21_Flash2		; if not, make ring counter flash
+		beq.s	Obj21_Flash2		; if not, always make ring counter flash
 
 		; flash on drain
 		move.w	#$80+SCREEN_WIDTH-$31,obX(a0)		; set X-position
-		move.w	($FFFFFE20).w,d1	; get current rings
-		cmp.w	$3E(a0),d1		; compare against previous rings
-		bhs.s	Obj21_Cont	; if we have the same or more rings than previously, branch
+		
+		tst.w	(FranticDrain).w
+		beq.s	Obj21_Cont
+	;	move.w	($FFFFFE20).w,d1	; get current rings
+	;	cmp.w	$3E(a0),d1		; compare against previous rings
+	;	bhs.s	Obj21_Cont	; if we have the same or more rings than previously, branch
 
 		move.w	$38(a0),obScreenY(a0)			; set target Y-position
 		
@@ -42576,8 +42598,8 @@ Obj21_Flash2:
 		ori.b	#1,($FFFFFE1D).w	; update ring counter
 		btst	#3,($FFFFFE05).w	; change the rings counter design every X frames
 		bne.s	Obj21_Cont		; if that time isn't over yet, branch
-		cmpi.b	#$4,($FFFFFE10).w	; are we in Uberhub?
-		beq.s	Obj21_Cont		; if yes, never flash ring HUD (annoying af over time)
+	;	cmpi.b	#$4,($FFFFFE10).w	; are we in Uberhub?
+	;	beq.s	Obj21_Cont		; if yes, never flash ring HUD (annoying af over time)
 		addq.w	#1,d0			; make ring counter flash red
 
 Obj21_Cont:
@@ -44055,6 +44077,10 @@ PLC_SpeStage:
 		dc.w $EE00
 		dc.l ArtKospM_Ring		; rings
 		dc.w $F640
+		dc.l ArtKospM_SSZone1	; ZONE 1 block
+		dc.w $F2E0
+		dc.l ArtKospM_SSZone2	; ZONE 2 block
+		dc.w $F400
 		dc.w -1
 
 PLC_SSBlackout:
@@ -44235,6 +44261,10 @@ ArtKospM_SSWBlock:	incbin	artkosp\ssw.kospm		; special stage W block
 ArtKospM_SSGlass:	incbin	artkosp\ssglass.kospm	; special stage destroyable glass block
 		even
 ArtKospM_Bumper:	incbin	artkosp\syzbumpe.kospm	; bumper
+		even
+ArtKospM_SSZone1:	incbin	artkosp\sszone1.kospm	; special stage ZONE1 block
+		even
+ArtKospM_SSZone2:	incbin	artkosp\sszone2.kospm	; ZONE2 block
 		even
 ;ArtKospM_ResultEm:	incbin	artkosp\ssresems.kospm	; chaos emeralds on special stage results screen
 ;		even

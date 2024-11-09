@@ -1129,12 +1129,16 @@ S_H_ExtendedCamera:
 		btst	#0,(OptionsBits).w	; is extended camera enabled?
 		beq.w	S_H_NoExtendedCam	; if not, you're lame and old-fashioned but k
 
+		tst.b	($FFFFFF77).w		; is antigrav enabled?
+		beq.s	@noantigrav		; if not, branch
+		btst	#1,($FFFFD022).w	; is Sonic in air?
+		bne.w	S_H_ResetCamera		; if yes, reset
+
+@noantigrav:
 		cmpi.b	#3,($FFFFFE10).w	; are we in SLZ?
 		bne.s	S_H_BuzzIgnore		; if not, branch
 		tst.b	($FFFFFFA9).w		; is Sonic fighting against the walking bomb?
 		bne.w	S_H_ResetCamera		; if yes, branch	
-		tst.b	($FFFFFF77).w		; is antigrav enabled?
-		bne.w	S_H_ResetCamera		; if yes, branch
 
 S_H_BuzzIgnore:
 		tst.b	($FFFFF7CD).w		; has Sonic jumped into a giant ring?

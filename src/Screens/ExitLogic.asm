@@ -262,7 +262,8 @@ Exit_StoryScreen:
 		jsr	Tutorial_DisplayHint	; VLADIK => Display hint
 
 @restartgame:
-		bra.w	Start_FirstGameMode	; restart game
+	;	bra.w	Start_FirstGameMode	; restart game
+		bra.w	ReturnToUberhub		; 7.1 return to uberhub instead of restarting the full game
 ; ===========================================================================
 
 Exit_CreditsScreen:

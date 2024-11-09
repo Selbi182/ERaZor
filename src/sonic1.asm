@@ -60,7 +60,7 @@ QuickLevelSelect = 0
 QuickLevelSelect_ID = -1
 ; ------------------------------------------------------
 DebugModeDefault = 1
-DebugSurviveNoRings = 1
+DebugSurviveNoRings = 0
 ; ------------------------------------------------------
 DoorsAlwaysOpen = 0
 LowBossHP = 0
@@ -109,9 +109,14 @@ StartOfRom:
 		dc.b 'SEGA MEGA DRIVE ' ; Hardware system ID
 
 Date:		dc.b '(C) SELBI 2024  ' ; Release date
-Title_Local:	dc.b 'Sonic ERaZor 7                                  ' ; Domestic name
-Title_Int:	dc.b 'Sonic ERaZor 7                                  ' ; International name
-Serial:		dc.b 'SP 18201337-07' 	; Serial/version number
+	if def(__WIDESCREEN__)
+Title_Local:	dc.b 'Sonic ERaZor 7.1 - Widescreen Edition           ' ; Domestic name
+Title_Int:	dc.b 'Sonic ERaZor 7.1 - Widescreen Edition           ' ; International name
+	else
+Title_Local:	dc.b 'Sonic ERaZor 7.1                                ' ; Domestic name
+Title_Int:	dc.b 'Sonic ERaZor 7.1                                ' ; International name
+	endif
+Serial:		dc.b 'SP 18201337-08' 	; Serial/version number
 
 Checksum:	dc.w 0
 		dc.b 'J               '	; I/O support
@@ -10858,6 +10863,7 @@ Obj1F_BossDelete:
 		clr.l	($FFFFFE22).w			; clear time
 		ori.b	#1,($FFFFFE1E).w 		; update time counter
 		clr.b	($FFFFFE2C).w			; clear shield
+		clr.b	($FFFFFFE7).w			; disable inhuman mode
 
 		move.b	#2,($FFFFFFD4).w		; set flag 4, 2
 		move.b	#0,($FFFFF7AA).w		; unlock screen
@@ -11988,6 +11994,8 @@ loc_9C0E:
 Obj25_Animate:				; XREF: Obj25_Index
 		tst.b	($FFFFFE2C).w		; do we have a shield?
 		beq.s	Obj25_NoRingMove	; if not, branch
+		tst.w	($FFFFFE08).w		; is debug mode active?
+		bne.s	Obj25_NoRingMove	; if yes, branch
 		bsr	AttractedRing_Check	; check if we're near enough for attraction
 		bne.s	Obj25_NoRingMove	; if not, we weren't near enough
 		move.b	#1,$29(a0)		; set attraction flag
@@ -13323,20 +13331,19 @@ Obj2E_ChkS:
 		movem.l	(sp)+,d0-a1		; restore
 
 @notruinedplace:
-		move.b	#1,($FFFFFFE7).w ; make sonic immortal
+		move.b	#1,($FFFFFFE7).w	; enable inhuman mode
+		clr.b	($FFFFFE2D).w		; remove invincibility
+		clr.b	($FFFFFE2C).w		; remove shield
 
-		clr.b	($FFFFFE2D).w	; remove invinceblity
-		clr.b	($FFFFFE2C).w	; remove shield
-		cmpi.w	#$200,($FFFFFE10).w	; are we in Ruined Place?
-		beq.s	Obj2E_RuinedPlace	; if yes, branch
 		move.w	#$C3,d0			; play special stage entry sound
-		jmp	(PlaySound).l
+		tst.w	($FFFFFE10).w		; are we in NHP?
+		beq.s	@inhumanmusic		; if yes, branch
+		cmpi.w	#$200,($FFFFFE10).w	; are we in Ruined Place?
+		bne.s	@playsound		; if not, branch
+@inhumanmusic:	move.w	#$9F,d0			; set song $9F
+@playsound:	jmp	PlaySound
 
-Obj2E_RuinedPlace:
-		move.w	#$9F,d0		; set song $9F
-		jmp	PlaySound	; play inhuman mode music
-
-
+; ===========================================================================
 Obj2E_SpikesBlood:
 	dc.l	ArtKospM_SpikesBlood
 	dc.w	$A360
@@ -14831,7 +14838,7 @@ Obj31_MakeStomper:			; XREF: Obj31_Main
 		add.w	obY(a0),d0
 		move.w	d0,obY(a1)
 		move.l	#Map_obj31,obMap(a1)
-		move.w	#$300,obGfx(a1)
+		move.w	#$5F00/$20,obGfx(a1)
 		move.b	#4,obRender(a1)
 		move.w	obY(a1),$30(a1)
 		move.b	obSubtype(a0),obSubtype(a1)
@@ -15120,7 +15127,7 @@ Obj45_Load:				; XREF: Obj45_Main
 		add.w	obX(a0),d0
 		move.w	d0,obX(a1)
 		move.l	#Map_obj45,obMap(a1)
-		move.w	#$300,obGfx(a1)
+		move.w	#$5F00/$20,obGfx(a1)
 		move.b	#4,obRender(a1)
 		move.w	obX(a1),$30(a1)
 		move.w	obX(a0),$3A(a1)
@@ -41514,22 +41521,40 @@ Obj09_ColCheck:				; XREF: Obj09_Collision
 
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 
+SSCollectibleHitboxOffset = 10
 
 Obj09_ChkItems_Collectible:			; XREF: Obj09_Display
 		tst.b	$31(a0)				; was the goal touched during wall detection?
 		bne.w	Obj09_TouchGoal			; if so, bypass all checks and go straight to goal reaction
+
 		lea	($FF0000).l,a1
+		
+		; y check
 		moveq	#0,d4
 		move.w	obY(a0),d4
 		addi.w	#$50,d4
 		divu.w	#$18,d4
 		mulu.w	#$80,d4
 		adda.l	d4,a1
+		
+		move.l	a1,a2			; backup
+
 		moveq	#0,d4
 		move.w	obX(a0),d4
-		addi.w	#$20,d4
+		addi.w	#$20-SSCollectibleHitboxOffset,d4		; hitbox detection towards the left
 		divu.w	#$18,d4
 		adda.w	d4,a1
+		move.b	(a1),d4			; load nearest items to Sonic into d4
+		bne.s	Obj09_ChkRing		; if it's not empty, begin checking which item we hit
+
+		move.l	a2,a1			; restore
+
+		moveq	#0,d4
+		move.w	obX(a0),d4
+		addi.w	#$20+SSCollectibleHitboxOffset,d4		; hitbox detection towards the right
+		divu.w	#$18,d4
+		adda.w	d4,a1
+
 		move.b	(a1),d4			; load nearest items to Sonic into d4
 		bne.s	Obj09_ChkRing		; if it's not empty, begin checking which item we hit
 
@@ -42505,16 +42530,16 @@ Obj21_NoUpdate:
 @liveshud:
 		move.b	#5,obFrame(a0)
 		tst.b	(HUD_BossHealth).w		; is boss health currently meant to be displayed?
-		beq.s	Obj21_Display		; if yes, branch
+		beq.w	Obj21_Display		; if yes, branch
 		cmpi.b	#6,($FFFFD024).w	; is Sonic dying?
-		bhs.s	Obj21_Display		; if yes, branch
+		bhs.w	Obj21_Display		; if yes, branch
 		move.b	#6,obFrame(a0)
-		bra.s	Obj21_Display
+		bra.w	Obj21_Display
 ; ---------------------------------------------------------------------------
 
 @timeshud:
 		cmpi.b	#9,($FFFFFE23).w	; is hundredth digit currently showing a 9?
-		bne.s	Obj21_Display		; if not, branch
+		bne.w	Obj21_Display		; if not, branch
 		move.w	#$06CA,obGfx(a0)	; use palette line 1
 		ori.b	#1,($FFFFFE1E).w 	; update time counter
 		btst	#3,($FFFFFE05).w	; change the time counter palette every X frames
@@ -42527,14 +42552,27 @@ Obj21_NoUpdate:
 		moveq	#2,d0			; set default ring frame to d0
 		tst.w	($FFFFFE20).w		; do you have any rings?
 		beq.s	Obj21_Flash2		; if not, make ring counter flash
+
+		; flash on drain
+		move.w	#$80+SCREEN_WIDTH-$31,obX(a0)		; set X-position
 		move.w	($FFFFFE20).w,d1	; get current rings
 		cmp.w	$3E(a0),d1		; compare against previous rings
-		bhs.s	@nodrainflash		; if we have the same or more rings than previously, branch
-		addq.w	#1,d0			; otherwise, ring count got reduced, make flash
-@nodrainflash:
-		bra.s	Obj21_Cont
+		bhs.s	Obj21_Cont	; if we have the same or more rings than previously, branch
 
-Obj21_Flash2:
+		move.w	$38(a0),obScreenY(a0)			; set target Y-position
+		
+		jsr	RandomNumber
+		andi.l	#$00030003,d0
+		subq.w	#2,d0
+		add.w	d0,obX(a0)
+		swap	d0
+		subq.w	#2,d0
+		add.w	d0,obScreenY(a0)
+
+		eori.b	#%01,obFrame(a0)	; alter flashing frame
+		bra.s	Obj21_BackupRings
+
+Obj21_Flash2:	
 		ori.b	#1,($FFFFFE1D).w	; update ring counter
 		btst	#3,($FFFFFE05).w	; change the rings counter design every X frames
 		bne.s	Obj21_Cont		; if that time isn't over yet, branch
@@ -42544,6 +42582,8 @@ Obj21_Flash2:
 
 Obj21_Cont:
 		move.b	d0,obFrame(a0)
+
+Obj21_BackupRings:
 		move.w	($FFFFFE20).w,$3E(a0)
 
 Obj21_Display:
@@ -43818,9 +43858,11 @@ PLC_MZ:
 		dc.l ArtKospM_MZ		; MZ main patterns
 		dc.w 0
 		dc.l ArtKospM_MzMetal	; metal	blocks
-		dc.w $6000
+		dc.w $5F00 ; $6000
 	;	dc.l ArtKospM_MzFire		; fireballs
 	;	dc.w $68A0
+		dc.l ArtKospM_MZIcons		; info icons
+		dc.w $6880
 		dc.l ArtKospM_OkCool		; ok cool
 		dc.w $6A00
 		dc.l ArtKospM_Swing		; swinging platform
@@ -44268,6 +44310,8 @@ ArtKospM_MzGlass:	incbin	artkosp\mzglassy.kospm	; MZ green glassy block
 ArtKospM_Lava:	incbin	artkosp\mzlava.kospm	; MZ lava
 		even
 ArtKospM_MzBlock:	incbin	artkosp\mzblock.kospm	; MZ green pushable block
+		even
+ArtKospM_MZIcons:	incbin	artkosp\MZinfoicons.kospm	; MZ info icons
 		even
 ; ---------------------------------------------------------------------------
 ; Compressed graphics - SLZ stuff

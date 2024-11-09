@@ -11,29 +11,35 @@ Options_MenuData:
 	dc.l	Options_GameplayStyle_Redraw		; redraw handler
 	dc.l	Options_GameplayStyle_Handle		; update handler
 
+	; Autoskip
+	dcScreenPos	$E000, 7, 6			; start on-screen position
+	dc.l	Options_Autoskip_Redraw			; redraw handler
+	dc.l	Options_Autoskip_Handle			; update handler
+
 	; Extended camera
-	dcScreenPos	$E000, 8, 6			; start on-screen position
+	dcScreenPos	$E000, 9, 6			; start on-screen position
 	dc.l	Options_ExtendedCamera_Redraw		; redraw handler
 	dc.l	Options_ExtendedCamera_Handle		; update handler
-
-	; Skip story screens
+	; Peelout style
 	dcScreenPos	$E000, 10, 6			; start on-screen position
-	dc.l	Options_SkipStoryScreens_Redraw		; redraw handler
-	dc.l	Options_SkipStoryScreens_Handle		; update handler
-	; Skip Uberhub place
-	dcScreenPos	$E000, 11, 6			; start on-screen position
-	dc.l	Options_SkipUberhubPlace_Redraw		; redraw handler
-	dc.l	Options_SkipUberHubPlace_Handle		; update handler
+	dc.l	Options_PeeloutStyle_Redraw		; redraw handler
+	dc.l	Options_PeeloutStyle_Handle		; update handler
 
-	; Photosensitive mode
+	; Flashy Lights
+	dcScreenPos	$E000, 12, 6			; start on-screen position
+	dc.l	Options_FlashyLights_Redraw		; redraw handler
+	dc.l	Options_FlashyLights_Handle		; update handler
+	; Camera Shake
 	dcScreenPos	$E000, 13, 6			; start on-screen position
-	dc.l	Options_PhotosensitiveMode_Redraw	; redraw handler
-	dc.l	Options_PhotosensitiveMode_Handle	; update handler
+	dc.l	Options_CameraShake_Redraw		; redraw handler
+	dc.l	Options_CameraShake_Handle		; update handler
+
 
 	; Black bars setup
 	dcScreenPos	$E000, 15, 6			; start on-screen position
 	dc.l	Options_BlackBarsMode_Redraw		; redraw handler
 	dc.l	Options_BlackBarsMode_Handle		; update handler
+
 
 	; E - Cinematic mode
 	dcScreenPos	$E000, 17, 6			; start on-screen position
@@ -81,7 +87,7 @@ Options_GameplayStyle_Redraw:
 	and.b	OptionsBits, d0
 	beq.s	@0
 	lea	@Str_Option2(pc), a1
-@0:	Options_PipeString a4, "GAMEPLAY STYLE       %<.l a1 str>", 28
+@0:	Options_PipeString a4, "DIFFICULTY           %<.l a1 str>", 28
 	rts
 
 ; ---------------------------------------------------------------------------
@@ -153,6 +159,44 @@ Options_ExtendedCamera_Handle:
 @done:	rts
 
 
+
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; "PEELOUT STYLE" redraw function
+; ---------------------------------------------------------------------------
+; INPUT:
+;	a4	= `Options_DrawText_Normal` or `Options_DrawText_Highlighted`
+; ---------------------------------------------------------------------------
+
+Options_PeeloutStyle_Redraw:
+	lea	@Str_BlackBars_Emulator(pc), a1
+	btst	#1, BlackBars.HandlerId
+	beq.s	@0
+	lea	@Str_BlackBars_Hardware(pc), a1
+@0:	Options_PipeString a4, "PEEL-OUT STYLE      %<.l a1 str>", 28
+	rts
+
+@Str_BlackBars_Emulator:
+	dc.b	'  UP + A', 0
+
+@Str_BlackBars_Hardware:
+	dc.b	'UP + ABC', 0
+	even
+
+; ---------------------------------------------------------------------------
+; "PEELOUT STYLE" handle function
+; ---------------------------------------------------------------------------
+
+Options_PeeloutStyle_Handle:
+	move.b	Joypad|Press,d1			; get button presses
+ 	andi.b	#$F0,d1				; is A, B, C, or Start pressed?
+	beq.w	@ret				; if not, branch
+
+	bchg	#1, BlackBars.HandlerId		; toggle black bars mode
+	bsr	Options_PlayRespectiveToggleSound
+	st.b	Options_RedrawCurrentItem
+@ret:	rts
+
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; "SKIP UBERHUB PLACE" redraw function
@@ -190,19 +234,35 @@ Options_SkipUberHubPlace_Handle:
 ;	a4	= `Options_DrawText_Normal` or `Options_DrawText_Highlighted`
 ; ---------------------------------------------------------------------------
 
-Options_SkipStoryScreens_Redraw:
-	lea	Options_Str_Off(pc), a1
-	btst	#1, OptionsBits
-	beq.s	@0
-	lea	Options_Str_On(pc), a1
-@0:	Options_PipeString a4, "SKIP STORY SCREENS       %<.l a1 str>", 28
+Options_Autoskip_Redraw:
+	;lea	Options_Str_Off(pc), a1
+	;btst	#1, OptionsBits
+	;beq.s	@0
+	;moveq	#0,d0
+	move.b	(ScreenFuzz).w,d0
+	add.w	d0, d0
+	add.w	d0, d0				; d0 = ModeId * 4
+	movea.l	@AutoskipList(pc,d0), a1
+	
+	Options_PipeString a4, "AUTOSKIP       %<.l a1 str>", 28
 	rts
+
+; ---------------------------------------------------------------------------
+@AutoskipList:
+	dc.l	@Str_Mode00,@Str_Mode01,@Str_Mode10,@Str_Mode11
+
+@Str_Mode00:	dc.b	'          OFF',0
+@Str_Mode01:	dc.b	'STORY SCREENS',0
+@Str_Mode10:	dc.b	'UBERHUB PLACE',0
+@Str_Mode11:	dc.b	'         BOTH',0
+		even
+
 
 ; ---------------------------------------------------------------------------
 ; "SKIP STORY SCREENS" handle function
 ; ---------------------------------------------------------------------------
 
-Options_SkipStoryScreens_Handle:
+Options_Autoskip_Handle:
 	move.b	Joypad|Press, d1		; get button presses
 	andi.b	#$FC, d1			; is left, right, A, B, C, or Start pressed?
 	beq.w	@done				; if not, branch
@@ -220,19 +280,31 @@ Options_SkipStoryScreens_Handle:
 ;	a4	= `Options_DrawText_Normal` or `Options_DrawText_Highlighted`
 ; ---------------------------------------------------------------------------
 
-Options_PhotosensitiveMode_Redraw:
-	lea	Options_Str_Off(pc), a1
+Options_FlashyLights_Redraw:
 	btst	#7, OptionsBits
-	beq.s	@0
-	lea	Options_Str_On(pc), a1
-@0:	Options_PipeString a4, "PHOTOSENSITIVE MODE      %<.l a1 str>", 28
+	
+	move.b	(ScreenFuzz).w,d0
+	add.w	d0, d0
+	add.w	d0, d0				; d0 = ModeId * 4
+	movea.l	@FlashyLightsList(pc,d0), a1
+	
+	Options_PipeString a4, "SCREEN FLASH     %<.l a1 str>", 28
 	rts
+
+; ---------------------------------------------------------------------------
+@FlashyLightsList:
+	dc.l	@Str_Mode00,@Str_Mode01,@Str_Mode10
+
+@Str_Mode00:	dc.b	'   MODERATE',0
+@Str_Mode01:	dc.b	'        OFF',0
+@Str_Mode10:	dc.b	'  EPILEPTIC',0
+		even
 
 ; ---------------------------------------------------------------------------
 ; "PHOTOSENSITIVE MODE" handle function
 ; ---------------------------------------------------------------------------
 
-Options_PhotosensitiveMode_Handle:
+Options_FlashyLights_Handle:
 	move.b	Joypad|Press, d1		; get button presses
 	andi.b	#$FC, d1			; is left, right, A, B, C, or Start pressed?
 	beq.w	@done				; if not, branch
@@ -240,6 +312,54 @@ Options_PhotosensitiveMode_Handle:
 	bsr	Options_PlayRespectiveToggleSound
 	st.b	Options_RedrawCurrentItem
 @done:	rts
+
+
+
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; "SKIP STORY SCREENS" redraw function
+; ---------------------------------------------------------------------------
+; INPUT:
+;	a4	= `Options_DrawText_Normal` or `Options_DrawText_Highlighted`
+; ---------------------------------------------------------------------------
+
+Options_CameraShake_Redraw:
+	;lea	Options_Str_Off(pc), a1
+	;btst	#1, OptionsBits
+	;beq.s	@0
+	;moveq	#0,d0
+	move.b	(ScreenFuzz).w,d0
+	add.w	d0, d0
+	add.w	d0, d0				; d0 = ModeId * 4
+	movea.l	@AutoskipList(pc,d0), a1
+	
+	Options_PipeString a4, "CAMERA SHAKE   %<.l a1 str>", 28
+	rts
+
+; ---------------------------------------------------------------------------
+@AutoskipList:
+	dc.l	@Str_Mode01,@Str_Mode10,@Str_Mode11
+
+@Str_Mode01:	dc.b	'     MODERATE',0
+@Str_Mode10:	dc.b	'         WEAK',0
+@Str_Mode11:	dc.b	'       STUPID',0
+		even
+
+
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; "PHOTOSENSITIVE MODE" handle function
+; ---------------------------------------------------------------------------
+
+Options_CameraShake_Handle:
+	move.b	Joypad|Press, d1		; get button presses
+	andi.b	#$FC, d1			; is left, right, A, B, C, or Start pressed?
+	beq.w	@done				; if not, branch
+	bchg	#7, OptionsBits			; toggle photosensitive mode
+	bsr	Options_PlayRespectiveToggleSound
+	st.b	Options_RedrawCurrentItem
+@done:	rts
+
 
 
 ; ===========================================================================

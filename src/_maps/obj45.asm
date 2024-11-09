@@ -15,9 +15,9 @@ byte_BC6C:	dc.b 3
 		dc.b 0,	$B, $10, $1F, $F4
 		dc.b $F0, 3, 0,	$2B, $C
 byte_BC7C:	dc.b 3
-		dc.b $E8, $C, $12, $1B,	$F0
-		dc.b $FC, $C, $12, $1B,	$F0
-		dc.b $10, $C, $12, $1B,	$F0
+		dc.b $E8, $C, $12, $1B+8, $F0
+		dc.b $FC, $C, $12, $1B+8, $F0
+		dc.b $10, $C, $12, $1B+8, $F0
 byte_BC8C:	dc.b 1
 		dc.b $F0, 3, 8,	$2B, $FC
 byte_BC92:	dc.b 2

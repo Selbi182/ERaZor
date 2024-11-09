@@ -19,11 +19,11 @@ byte_BB64:	dc.b 5
 		dc.b $F4, $A, 8, 6, $10
 		dc.b $F4, 6, 8,	0, $28
 byte_BB7E:	dc.b 5
-		dc.b $F0, 3, $12, $1F, $D4
-		dc.b $F0, 3, $12, $1F, $E8
-		dc.b $F0, 3, $12, $1F, $FC
-		dc.b $F0, 3, $12, $1F, $10
-		dc.b $F0, 3, $12, $1F, $24
+		dc.b $F0, 3, $12, $1F+8, $D4
+		dc.b $F0, 3, $12, $1F+8, $E8
+		dc.b $F0, 3, $12, $1F+8, $FC
+		dc.b $F0, 3, $12, $1F+8, $10
+		dc.b $F0, 3, $12, $1F+8, $24
 byte_BB98:	dc.b 1
 		dc.b $DC, $F, $10, $F, $F0
 byte_BB9E:	dc.b 2

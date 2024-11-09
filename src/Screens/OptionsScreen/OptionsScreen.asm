@@ -465,6 +465,8 @@ Options_CharToTile:
 			@return 0
 		elseif @char = '-'
 			@return Options_VRAM+$B
+		elseif @char = '+'
+			@return Options_VRAM+$C
 		elseif @char = '<'
 			@return Options_VRAM+$D
 		elseif @char = '>'

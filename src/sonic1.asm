@@ -63,7 +63,7 @@ DebugModeDefault = 1
 DebugSurviveNoRings = 1
 ; ------------------------------------------------------
 DoorsAlwaysOpen = 0
-LowBossHP = 1
+LowBossHP = 0
 ; ======================================================
 	else
 ; BENCHMARK build settings (DO NOT CHANGE!)
@@ -2239,7 +2239,7 @@ Pal_SLZ:		incbin	palette\slz.bin
 Pal_SYZ:		incbin	palette\syz.bin
 Pal_SYZGray:
 		dc.w	$0222,$0000,$0444,$0666,$0888,$0CCC,$0EEE,$0AAA,$0888,$0444,$0AAA,$0666,$00EE,$0088,$0044,$0444
-		dc.w	$0444,$0000,$0EEE,$0AAA,$0888,$0666,$0222,$0222,$0000,$0AAA,$0666,$0222,$0EEE,$0888,$0666,$0000
+		dc.w	$0444,$0000,$0EEE,$0AAA,$0888,$0666,$0222,$0222,$0000,$0AAA,$0666,$0222,$0666,$0888,$0666,$0000
 		dc.w	$0444,$0000,$0666,$0888,$0AAA,$0CCC,$0EEE,$0444,$0000,$0888,$0666,$0EEE,$0222,$0444,$0888,$0000
 		even
 	
@@ -12353,7 +12353,7 @@ Obj37_ChkDel:				; XREF: Obj37_MainLoop
 
 Obj37_Collect:				; XREF: Obj37_Index	
 		tst.b	($FFFFFE2C).w	; does Sonic have a shield?
-		bne.s	@nopoints	; if yes, don't award points
+		beq.s	@nopoints	; if not, don't award points
 		moveq	#10,d0		; add 100 ...
 		jsr	AddPoints	; ... points
 @nopoints:
@@ -13276,6 +13276,8 @@ Obj2E_ChkShield:
 		beq.s	Obj2E_Shield_NoBonus	; if not, branch
 		addi.w	#25,($FFFFFE20).w	; give 25 bonus rings
 		ori.b	#1,($FFFFFE1D).w	; update the ring counter
+		move.w	#250,d0			; add 2500 ...
+		jsr	AddPoints		; ... points
 		move.w	#$C5,d0			; play ka-ching sound
 
 Obj2E_Shield_NoBonus:
@@ -37910,10 +37912,11 @@ Obj85_ObjData2:	dc.b 2,	0, 4, $20, $19	; routine num, animation, sprite priority
 ; ===========================================================================
 
 Obj85_Main:				; XREF: Obj85_Index
-		move.b	#3,(CameraShake_Intensity).w	; start the boss with reduced camera shake intensity
+		move.b	#1,(CameraShake_Intensity).w	; start the boss with reduced camera shake intensity
+
 		tst.b	(PlacePlacePlace).w
 		beq.s	@noeasteregg
-		move.b	#7,(CameraShake_Intensity).w	; ramp up camera shake intensity during pinch mode
+		move.b	#7,(CameraShake_Intensity).w
 @noeasteregg:
 		lea	Obj85_ObjData(pc),a2
 		lea	Obj85_ObjData2(pc),a3
@@ -38109,7 +38112,7 @@ loc_19F6A:	move.w	d0,($FFFFD010).w	; set bounce
 		bne.s	@nobosspinch		; if not, branch
 		move.w	#$E2,d0
 		jsr	(PlaySound_Special).l	; speed up music
-		move.b	#7,(CameraShake_Intensity).w	; ramp up camera shake intensity during pinch mode
+		move.b	#3,(CameraShake_Intensity).w	; ramp up camera shake intensity during pinch mode
 @nobosspinch:
 
 		tst.b	obColProp(a0)	; does eggman lost all his lives?

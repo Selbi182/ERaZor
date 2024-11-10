@@ -60,10 +60,10 @@ QuickLevelSelect = 0
 QuickLevelSelect_ID = -1
 ; ------------------------------------------------------
 DebugModeDefault = 1
-DebugSurviveNoRings = 0
+DebugSurviveNoRings = 1
 ; ------------------------------------------------------
 DoorsAlwaysOpen = 0
-LowBossHP = 0
+LowBossHP = 1
 ; ======================================================
 	else
 ; BENCHMARK build settings (DO NOT CHANGE!)
@@ -3440,9 +3440,18 @@ Level_NoMusic2:
 Level_NotIntro:
 		cmpi.w	#$502,($FFFFFE10).w	; is this Finalor Place?
 		bne.s	@notfinalor		; if not, branch
+		tst.b	($FFFFFE30).w		; are we restarting from the checkpoint?
+		bne.s	@fpcheckpoint		; if yes, branch
 		moveq	#$1F,d0
 		jsr	LoadPLC			; load FZ boss patterns
+		bra.s	@notfinalor
 
+@fpcheckpoint:
+		move.b	#1,(FZEscape).w		; preload first escape flag
+		move.b	#$A,($FFFFF742).w	; go straight to the escape sequence logic
+		move.w	#$28C0+$10,($FFFFF700).w ; preload left boundary (+$10 cause it looks nicer)
+		move.w	#$28C0,($FFFFF72A).w	; preload right boundary
+		
 @notfinalor:
 		cmpi.w	#$500,($FFFFFE10).w	; is this the bomb machine cutscene?
 		bne.s	@notmachine		; if not, branch
@@ -7088,8 +7097,10 @@ Resize_FZ:
 		move.w	ResizeFZ_Index(pc,d0.w),d0
 		jmp	ResizeFZ_Index(pc,d0.w)
 ; ===========================================================================
-ResizeFZ_Index:	dc.w Resize_FZmain-ResizeFZ_Index, Resize_FZboss-ResizeFZ_Index
-		dc.w Resize_FZend-ResizeFZ_Index, Resize_FZAddBombs-ResizeFZ_Index
+ResizeFZ_Index:	dc.w Resize_FZmain-ResizeFZ_Index
+		dc.w Resize_FZboss-ResizeFZ_Index
+		dc.w Resize_FZend-ResizeFZ_Index
+		dc.w Resize_FZAddBombs-ResizeFZ_Index
 		dc.w locret_7322-ResizeFZ_Index
 
 		dc.w Resize_FZend2-ResizeFZ_Index
@@ -7179,7 +7190,8 @@ locret_7322:
 ; ===========================================================================
 
 Resize_FZend2:
-		clr.b	($FFFFFE1E).w		; stop time counter
+		clr.b	($FFFFFE1E).w			; stop time counter
+		move.b	#1,($FFFFF7AA).w		; prevent Sonic from walking offscreen to the right
 		move.w	($FFFFF700).w,($FFFFF728).w	; lock left boundary as you walk right
 
 		tst.b	(FZEscape).w		; has escape sequence flag been set? (Eggman object deleted after crash)
@@ -7322,6 +7334,8 @@ PLC_FZNuke:
 		dc.w -1
 ; ---------------------------------------------------------------------------
 PLC_FZEscape:
+		dc.l ArtKospM_SbzDoor1
+		dc.w $5500
 		dc.l ArtKospM_HSpring
 		dc.w $A460
 		dc.l ArtKospM_HardPS_Tut
@@ -12401,12 +12415,12 @@ Obj4B_Main:				; XREF: Obj4B_Index
 		rts					; otherwise, hide ring to avoid visual quirks in frantic fast spawn
 
 @notintroring:
-		cmpi.w	#$502,($FFFFFE10).w
-		bne.s	@notfzescape
-		tst.b	(FZEscape).w
-		beq.s	@delete
-		tst.b	obSubtype(a0)	; is this the skip ring?
-		bmi.s	@notfzescape	; if not, branch
+		cmpi.w	#$502,($FFFFFE10).w		; are we in FP?
+		bne.s	@notfzescape			; if not, branch
+		btst	#1,(FZEscape).w			; is full escape active?
+		beq.s	@delete				; if not, delete to avoid collision with the nuke art
+		tst.b	obSubtype(a0)			; is this the skip ring?
+		bmi.s	@notfzescape			; if not, branch
 @delete:
 		jmp	DeleteObject
 @notfzescape:
@@ -12914,11 +12928,12 @@ Obj26_Main:				; XREF: Obj26_Index
 		rts				; don't show speed shoes monitor before escape started
 	
 	@notshoes:
-		frantic				; are we in frantic?
-		beq.s	@init			; if not, branch
 		cmpi.b	#8,obSubtype(a0)	; is this the P monitor?
 		bne.s	@init			; if not, branch
-		; delete P monitor in frantic cause no rings for you
+		frantic				; are we in frantic?
+		bne.s	@del			; if yes, always delete P monitor cause no rings for you
+		tst.b	(FZEscape).w		; is escape already active?
+		beq.s	@init			; if not, show monitor
 @del:
 		jmp	DeleteObject
 
@@ -31884,6 +31899,11 @@ Obj6A_PostFinalBoss2:
 ; ===========================================================================
 
 Obj6A_Main:				; XREF: Obj6A_Index
+		tst.b	(FZEscape).w		; is escape already active?
+		beq.s	@init			; if not, show monitor
+		jmp	DeleteObject		; already delete buzzsaw
+
+@init:
 		addq.b	#2,obRoutine(a0)
 		move.l	#Map_obj6A,obMap(a0)
 		move.w	#$4000|($76A0/$20),obGfx(a0)
@@ -39268,6 +39288,12 @@ Obj3E_Var:	dc.b 2,	$20, 4,	0	; routine, width, priority, frame
 ; ===========================================================================
 
 Obj3E_Main:				; XREF: Obj3E_Index
+	if def(__WIDESCREEN__)=0
+		subi.w	#$28,obX(a0)	; center capsule in non-widescreen
+		; it would make more sense to do this for the widescreen variant
+		; but then we run into trouble with the offscreen deletion
+	endif
+
 		move.l	#Map_obj3E,obMap(a0)
 		move.w	#$6000/$20,obGfx(a0)
 		move.b	#4,obRender(a0)

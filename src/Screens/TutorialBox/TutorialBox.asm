@@ -1104,7 +1104,7 @@ Hint_6:
 		boxtxt	"    ARE FRIENDS."
 		boxtxt_pause
 		boxtxt	"  IN FRANTIC, THEY"
-		boxtxt	"   INSTAKILL YOU."
+		boxtxt	"   WANT YOU DEAD."
 		boxtxt_pause
 
 		dc.b	_frantic

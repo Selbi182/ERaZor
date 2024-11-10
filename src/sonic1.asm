@@ -11470,7 +11470,9 @@ Obj22_Action:				; XREF: Obj22_Index
 		jsr	obj22_Index2(pc,d1.w)
 		lea	(Ani_obj22).l,a1
 		bsr.w	AnimateSprite
-		bra.w	MarkObjGone
+		cmpi.w	#$001,($FFFFFE10).w	; is level GHZ2 (intro cutscene)?
+		beq.w	DisplaySprite		; if yes, never delete
+		bra.w	MarkObjGone		; display and delete if offscren
 ; ===========================================================================
 Obj22_Index2:	dc.w Obj22_Move-Obj22_Index2
 		dc.w Obj22_ChkNrSonic-Obj22_Index2

@@ -9257,7 +9257,7 @@ Map_obj53:
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Object 1C - scenery (GHZ bridge stump, SAP A and C buttons)
+; Object 1C - scenery (GHZ bridge stump, A and C buttons/icons)
 ; ---------------------------------------------------------------------------
 
 Obj1C:					; XREF: Obj_Index
@@ -9335,6 +9335,8 @@ Map_obj1C:
 ; ---------------------------------------------------------------------------
 ; Object 1D - Exploding scenery object used in Finalor Place
 ; ---------------------------------------------------------------------------
+ExplodingScenery_Interval = 3
+; ---------------------------------------------------------------------------
 
 Obj1D:					; XREF: Obj_Index
 		moveq	#0,d0
@@ -9343,60 +9345,47 @@ Obj1D:					; XREF: Obj_Index
 		jmp	Obj1D_Index(pc,d1.w)
 ; ===========================================================================
 Obj1D_Index:	dc.w Obj1D_Main-Obj1D_Index
-		dc.w Obj1D_Action-Obj1D_Index
+		dc.w Obj1D_Explosions-Obj1D_Index
+; ---------------------------------------------------------------------------
+		dc.w Obj1D_BonusText_Main-Obj1D_Index
+		dc.w Obj1D_BonusText_Display-Obj1D_Index
 ; ===========================================================================
 
 Obj1D_Main:				; XREF: Obj1D_Index
 		cmpi.w	#$502,($FFFFFE10).w
-		beq.s	@cont
+		beq.s	@chktype
 		jmp	DeleteObject
-@cont:
-		addq.b	#2,obRoutine(a0)
 
-		clr.b	$34(a0)			; clear flag
-		move.b	obSubtype(a0),d0	; is this the following-Sonic object?
-		bpl.s	@0			; if not, branch
-		move.b	#1,$34(a0)		; set flag
-@0:
-		andi.b	#$F,d0			; remove extra crap
-		move.b	d0,obSubtype(a0)	; store new subtype
-
-		move.b	d0,d1		; get object subtype (range: 0-A)
-		moveq	#30,d0		; set base cooldown time to 30 frames
-		add.b	d1,d1		; multiply it by 2
-		sub.b	d1,d0		; substract from cooldown time
-		move.b	d0,$30(a0)	; backup value
-		move.b	d0,$32(a0)	; backup value
-; ---------------------------------------------------------------------------
-
-Obj1D_Action:
-		tst.b	$34(a0)			; is this the following-Sonic object?
-		beq.s	@0			; if not, branch
-		cmpi.b	#2,(FZEscape).w		; is escape sequence already set?
-		bhs.s	@updatepos		; if yes, branch
+@chktype:
+		tst.b	obSubtype(a0)		; bonus text object?
+		bpl.s	@explosions		; if not, branch
+		move.b	#4,obRoutine(a0)
 		rts
 
-@updatepos:
+@explosions:
+		addq.b	#2,obRoutine(a0)
+		moveq	#ExplodingScenery_Interval,d0
+		move.b	d0,$30(a0)
+		move.b	d0,$32(a0)
+; ---------------------------------------------------------------------------
+
+Obj1D_Explosions:
 		move.w	($FFFFD008).w,obX(a0)	; copy Sonic's X position
 		move.w	($FFFFD00C).w,obY(a0)	; copy Sonic's Y position
-		bra.s	@1
 
-@0:
-		tst.b	$34(a0)			; is this the following-Sonic object?
-		bne.s	@1			; if yes, branch
-		tst.b	(FZEscape).w		; is escape sequence already set?
-		bne.s	@1			; if yes, branch
-		jmp	DeleteObject		; delete the static scenery objects before the escape
-		
-@1:
-		subq.b	#1,$32(a0)	; substract 1 from cooldown timer
-		bpl.s	Obj1D_ChkDelete	; has the time run out? if not, branch
-		move.b	$30(a0),$32(a0)	; reset cooldown
+		cmpi.b	#2,(FZEscape).w		; is escape sequence already set?
+		beq.s	@explosions		; if yes, branch
+		rts				; wait for escape to really start
 
-		ori.b	#$FF,(CameraShake).w		; infinite camera shake hooray
+@explosions:
+		subq.b	#1,$32(a0)		; substract 1 from cooldown timer
+		bpl.s	@end			; has the time run out? if not, branch
+		move.b	$30(a0),$32(a0)		; reset cooldown
+
+		ori.b	#$FF,(CameraShake).w	; infinite camera shake hooray
 
 		bsr	SingleObjLoad
-		bne.s	Obj1D_ChkDelete
+		bne.s	@end
 		move.b	#$3F,0(a1)	; load explosion object
 		move.w	obX(a0),obX(a1)
 		move.w	obY(a0),obY(a1)
@@ -9414,23 +9403,42 @@ Obj1D_Action:
 		beq.s	@set
 		asl.w	#1,d1
 		asl.w	#1,d0
-@set:
-		add.w	d1,obX(a1)
+@set:		add.w	d1,obX(a1)
 		add.w	d0,obY(a1)
-	
-Obj1D_ChkDelete:				; XREF: Obj1D_Index
-		tst.b	$34(a0)			; is this the following-Sonic object?
-		bne.s	@0			; if yes, don't delete
-		move.w	obX(a0),d0
-		andi.w	#$FF80,d0
-		move.w	($FFFFF700).w,d1
-		subi.w	#$80,d1
-		andi.w	#$FF80,d1
-		sub.w	d1,d0
-		cmpi.w	#$280,d0
-		bhi.w	DeleteObject
-@0:
-		rts
+
+@end:
+		rts			; never delete
+; ===========================================================================
+
+Obj1D_BonusText_Main:
+		; WIP bonus text object
+		; this thing is supposed to give encouraging messages on repeat deaths
+		addq.b	#2,obRoutine(a0)
+
+	;	move.l	#Map_Obj1D_BonusText,obMap(a0)
+		move.l	#Map_Obj03,obMap(a0)
+	;	move.w	#$7300/$20,obGfx(a0)
+		move.w	#$5600/$20,obGfx(a0)
+		ori.b	#4,obRender(a0)
+		move.b	#$20,obActWid(a0)
+		move.b	#2,obPriority(a0)
+
+		; used for the sway
+		move.w	obY(a0),$32(a0)
+
+Obj1D_BonusText_Display:		
+		move.w	($FFFFFE0E).w,d0
+		add.w	obX(a0),d0
+		add.w	d0,d0
+		jsr	(CalcSine).l
+		asr.w	#6,d0
+		add.w	$32(a0),d0
+		move.w	d0,obY(a0)
+
+		jmp	MarkObjGone	; display
+; ===========================================================================
+;Map_Obj1D_BonusText:
+;		include	"_maps\obj1C.asm"
 ; ===========================================================================
 
 
@@ -16422,49 +16430,51 @@ Obj34_ChangeArt:			; XREF: Obj34_ChkPos2
 		bsr	Obj34_LoadPostGraphics
 
 Obj34_Delete:
-		cmpi.b	#$10,(GameMode).w		; is level SLZ1 (special stage)?
-		beq.w	Obj34_JustDelete		; if yes, branch
-		
-		cmpi.w	#$501,($FFFFFE10).w
-		beq	Obj34_JustDelete
-		cmpi.w	#$002,($FFFFFE10).w
-		bne.s	@cont
-		cmpi.b	#2,($FFFFFFAA).w
-		bne.s	@cont
-		bra.s	Obj34_JustDelete
+		cmpi.b	#$10,(GameMode).w	; is level special stage?
+		beq.w	Obj34_JustDelete	; if yes, delete
+		cmpi.w	#$501,($FFFFFE10).w	; are we in the tutorial?
+		beq.s	Obj34_JustDelete	; if yes, delete
+		cmpi.w	#$002,($FFFFFE10).w	; are we in the intro cutscene?
+		beq.s	Obj34_JustDelete	; if yes, delete
+		cmpi.b	#2,($FFFFFFAA).w	; has the crabmeat been defeated?
+		beq.s	Obj34_JustDelete	; if yes, delete
+		bsr	HUD_LoadObjects		; otherwise, load HUD
 
-@cont:
+Obj34_JustDelete:
+		bra.w	DeleteObject
+; ===========================================================================
+
+HUD_LoadObjects:
 		move.b	#$21,($FFFFD040).w		; load HUD object
 		move.b	#1,($FFFFD070).w		; set to SCORE
+		move.b	#0,($FFFFD064).w		; reset routine
 		move.w	#HudSpeed,($FFFFD072).w		; set X-speed
 		move.w	#HudSpeed,($FFFFD074).w		; set Y-speed
+		
 		move.b	#$21,($FFFFD400).w		; load HUD object
 		move.b	#2,($FFFFD430).w		; set to RINGS
+		move.b	#0,($FFFFD424).w		; reset routine
 		move.w	#HUDSpeed,d3			; load HUD speed into d3
 		neg.w	d3				; negate it
 		move.w	d3,($FFFFD432).w		; set X-speed
 		move.w	#HUDSpeed,($FFFFD434).w		; set Y-speed
-		
+
 		move.b	#$21,($FFFFD480).w		; load HUD object
 		move.b	#4,($FFFFD4B0).w		; set to LIVES
+		move.b	#0,($FFFFD4A4).w		; reset routine
 		move.w	#HUDSpeed,d3			; load HUD speed into d3
 		neg.w	d3				; negate it
 		move.w	d3,($FFFFD4B2).w		; set X-speed
 		move.w	d3,($FFFFD4B4).w		; set Y-speed
 
-		cmpi.w	#$400,($FFFFFE10).w		; is level SYZ1 (overworld)?
-		beq.s	Obj34_JustDelete		; if yes, branch
-
 		move.b	#$21,($FFFFD440).w		; load HUD object
 		move.b	#3,($FFFFD470).w		; set to TIME
+		move.b	#0,($FFFFD464).w		; reset routine
 		move.w	#HUDSpeed,($FFFFD472).w		; set X-speed
 		move.w	#HUDSpeed,d3			; load HUD speed into d3
 		neg.w	d3				; negate it
 		move.w	d3,($FFFFD474).w		; set Y-speed
-
-Obj34_JustDelete:
-	;	move.b	#1,($FFFFFFD3).w		; make Sonic release the auto-peelout
-		bra.w	DeleteObject
+		rts
 ; ===========================================================================
 
 Obj34_Display:
@@ -26146,6 +26156,9 @@ Obj01_Normal:
 		beq.s	Obj01_NoDebug	; if not, branch
 		btst	#4,($FFFFF605).w ; is button B pressed?
 		beq.s	Obj01_NoDebug	; if not, branch
+		cmpi.b	#8,obRoutine(a0) ; is level restart counter already set?
+		bhs.s	Obj01_NoDebug	; if yes, no more debug
+
 		move.w	#1,($FFFFFE08).w ; change Sonic	into a ring/item
 		clr.b	($FFFFF7CC).w
 		cmpi.b	#6,obRoutine(a0)
@@ -26168,6 +26181,8 @@ Obj01_Normal:
 		move.w	#$0090,($FFFFD048).w	; set "DEATHS" object X-pos
 		move.w	#$0108,($FFFFD04A).w	; set "DEATHS" object Y-pos
 		move.w	#$0108,($FFFFD04C).w	;
+
+		jsr	HUD_LoadObjects	; reload HUD
 
 Obj01_RoutineNotDeath:
 		move.b	#2,obRoutine(a0)
@@ -33552,8 +33567,8 @@ Obj79_Main:				; XREF: Obj79_Index
 		bne.s	@delete			; if yes, branch
 		frantic
 		beq.s	@notrpfrantic
-		cmpi.w	#$200,($FFFFFE10).w
-		beq.s	@delete
+	;	cmpi.w	#$200,($FFFFFE10).w
+	;	beq.s	@delete
 		
 		cmpi.w	#$101,($FFFFFE10).w
 		bne.s	@notrpfrantic
@@ -40030,13 +40045,19 @@ KillSonic:
 
 Kill_DoKill:
 		move.b	#1,($FFFFF5D1).w	; set death flag
+
+		; grayscale on death
+		movem.l	d7/a1-a3,-(sp)
+		moveq	#3,d0
+		jsr	PalLoad2		; fix Sonic's palette before dying (for stuff like inhuman mode)
+		movem.l	(sp)+,d7/a1-a3
 		jsr	Pal_MakeBlackWhite	; turn palette black and white
 		move.w	#$000,($FFFFFB22).w	; force a specific color to always be black (boss flashing)
 		
-		move.w	($FFFFF700).w,($FFFFF728).w	; lock left screen position
-		move.w	($FFFFF700).w,($FFFFF72A).w	; lock right screen position		
-		move.w	($FFFFF704).w,($FFFFF72C).w	; lock top screen position
-		move.w	($FFFFF704).w,($FFFFF72E).w	; lock bottom screen position
+	;	move.w	($FFFFF700).w,($FFFFF728).w	; lock left screen position
+	;	move.w	($FFFFF700).w,($FFFFF72A).w	; lock right screen position		
+	;	move.w	($FFFFF704).w,($FFFFF72C).w	; lock top screen position
+	;	move.w	($FFFFF704).w,($FFFFF72E).w	; lock bottom screen position
 
 		cmpi.b	#$18,(GameMode).w	; is this the ending sequence?
 		bne.s	SH_NotEnding		; if not, branch
@@ -42387,17 +42408,25 @@ Obj21_ChkRings:
 		bne.s	Obj21_ChkTime		; if not, branch
 		move.b	#2,obFrame(a0)		; use RINGS frame
 		move.w	#$80+SCREEN_WIDTH-$31,obX(a0)		; set X-position
-		move.w	#$80+$14,$38(a0)			; set target Y-position
 		move.w	#$80+SCREEN_HEIGHT+$40,obScreenY(a0)	; set start Y-position
+		move.w	#$80+$14,$38(a0)			; set target Y-position
+	if def(__WIDESCREEN__)
+		addi.w	#SCREEN_XCORR*2,obScreenY(a0)	; sync timing for intro move-in
+	endif
 		bra.s	Obj21_FrameSelected	; skip
 
 Obj21_ChkTime:
 		cmpi.b	#3,$30(a0)		; is object set to TIME?
 		bne.s	Obj21_ChkLives		; if not, branch
+		cmpi.w	#$400,($FFFFFE10).w	; is level Uberhub?
+		beq.w	Obj21_Delete		; if yes, delete time HUD
 		move.b	#4,obFrame(a0)		; use TIME frame (3 is the red ring frame, so we have to use 4)
 		move.w	#$80+$2D,obX(a0)	; set X-position
 		move.w	#$43,obScreenY(a0)		; set start Y-position
 		move.w	#$80+SCREEN_HEIGHT-$15,$38(a0)	; set target Y-position
+	if def(__WIDESCREEN__)
+		subi.w	#SCREEN_XCORR*2,obScreenY(a0)	; sync timing for intro move-in
+	endif
 		bra.s	Obj21_FrameSelected	; skip
 
 Obj21_ChkLives:
@@ -42632,16 +42661,13 @@ Obj21_NoUpdate:
 		beq.s	Obj21_Flash2		; if not, always make ring counter flash
 
 		; flash on drain
-		move.w	#$80+SCREEN_WIDTH-$31,obX(a0)		; set X-position
-		
+		tst.b	$3A(a0)				; is intro animation for rings HUD done?
+		beq.s	Obj21_Cont			; if not, branch
+		move.w	#$80+SCREEN_WIDTH-$31,obX(a0)	; fix X-position
+		move.w	$38(a0),obScreenY(a0)		; fix Y-position
+
 		tst.w	(FranticDrain).w
 		beq.s	Obj21_Cont
-	;	move.w	($FFFFFE20).w,d1	; get current rings
-	;	cmp.w	$3E(a0),d1		; compare against previous rings
-	;	bhs.s	Obj21_Cont	; if we have the same or more rings than previously, branch
-
-		move.w	$38(a0),obScreenY(a0)			; set target Y-position
-		
 		jsr	RandomNumber
 		andi.l	#$00030003,d0
 		subq.w	#2,d0

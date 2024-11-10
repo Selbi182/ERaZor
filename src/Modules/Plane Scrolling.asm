@@ -114,13 +114,16 @@ DeformBgLayer:				; XREF: TitleScreen; Level; EndingSequence
 		tst.b	($FFFFFFE9).w		; is level set to restart?
 		bne.w	DeformBgLayer_Done	; if yes, branch
 
+		tst.b	($FFFFF5D1).w		; is Sonic dying?
+		bne.s	@lockcamera		; if yes, lock camera in place
 		bsr	ScrollHoriz
 		bsr	ScrollVertical
-		bsr	DynScrResizeLoad
- 	
- 		jsr	GenerateCameraShake	; apply camera shake now (needs to be done after the above scroll routines)
+@lockcamera:
+
+		bsr	DynScrResizeLoad 	
+		jsr	GenerateCameraShake	; apply camera shake now (needs to be done after the above scroll routines)
  
- DeformBgLayer2:
+DeformBgLayer2:
 		moveq	#0,d0
 		move.b	CurrentZone, d0
 		add.w	d0,d0

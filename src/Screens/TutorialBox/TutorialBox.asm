@@ -1160,24 +1160,46 @@ Hint_7:
 
 ;		 --------------------
 Hint_8:
-		boxtxt	"alternative gravity"
+		boxtxt	"hedgehog space golf"
 		boxtxt_pause
 		boxtxt	"MASH THE c BUTTON"
-		boxtxt	"WHILE IN AIR AND USE"
-		boxtxt	"THE d_pad TO HOP AND"
-		boxtxt	"DASH IN WHATEVER"
-		boxtxt	"DIRECTION YOU WANT!"
+		boxtxt	"AND CONTROL YOUR"
+		boxtxt	"DIRECTION WITH THE"
+		boxtxt	"d_pad TO HOP AND"
+		boxtxt	"DASH IN MID-AIR LIKE"
+		boxtxt	"A GOLF BALL!"
+		boxtxt_pause
+
+		dc.b	_frantic
+		boxtxt	"    frantic mode"
+		boxtxt_pause
+		boxtxt	"  THIS IS AWKWARD."
+		boxtxt	" I RAN OUT OF BONUS"
+		boxtxt	"    TIPS. UHM..."
+		boxtxt_pause
+		boxtxt	"DID YOU KNOW THAT..."
+		dc.b	_pause
+		boxtxt	"   SONIC IS BLUE?"
 		boxtxt_end
 
 ;		 --------------------
 Hint_9:
-		boxtxt	"anti-gravity"
+		boxtxt	"og anti-gravity"
 		boxtxt_pause
 		boxtxt	"HEDGEHOG SPACE GOLF"
 		boxtxt	"ISN'T YOUR THING?"
-		boxtxt_pause
+		boxtxt_line
 		boxtxt	"TRY HOLDING a TO"
-		boxtxt	"INVERT GRAVITY!"
+		boxtxt	"INVERT GRAVITY LIKE"
+		boxtxt	"IN THE GOOD DAYS!"
+		boxtxt_pause
+
+		dc.b	_frantic
+		boxtxt	"    frantic mode"
+		boxtxt_pause
+		boxtxt	"   STILL NOTHING."
+		boxtxt_end
+
 		boxtxt_end
 
 ;		 --------------------

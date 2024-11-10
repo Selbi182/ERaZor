@@ -2819,7 +2819,7 @@ LevelSelect_Load:
 		move.w	#0,($FFFFFF82).w	; set initial cursor position to entry 1
 		bsr.w	LevSelTextLoad
 
-		addi.w	#15,($FFFFD0C0+obScreenY).w	; slightly adjust banner
+		addi.w	#23,($FFFFD0C0+obScreenY).w	; slightly adjust ERaZor banner
 		DeleteQueue_Init
 		jsr	ObjectsLoad
 		jsr	BuildSprites
@@ -2947,9 +2947,11 @@ LevelSelect_DoSelect:
 		
 		cmpi.w	#$001,d0	; is this the intro sequence?
 		beq.s	LevSel_Intro	; if yes, branch
+		cmpi.w	#$503,d0	; is this the great escape?
+		beq.s	LevSel_Escape	; if yes, branch
 		cmpi.w	#$601,d0	; is this the ending sequence?
 		beq.s	LevSel_Ending	; if yes, branch
-		cmpi.w	#$666,d0	; is blackout challenge?
+		cmpi.w	#$666,d0	; is this the blackout challenge?
 		beq.s	LevSel_Blackout	; if yes, branch
 		
 		move.b	#1,($FFFFF5D1).w ; skip tutorial introduction text
@@ -2958,6 +2960,7 @@ LevelSelect_DoSelect:
 
 ; jumpers, cause the exit logic is too far out of range
 LevSel_Intro:	jmp	HubRing_IntroStart
+LevSel_Escape:	jmp	HubRing_Escape
 LevSel_Ending:	jmp	HubRing_Ending
 LevSel_Blackout:jmp	HubRing_Blackout
 ; ===========================================================================
@@ -2992,7 +2995,7 @@ LevelSelect_Palette:
 ; ---------------------------------------------------------------------------
 ; Subroutine to	change what you're selecting in the level select
 ; ---------------------------------------------------------------------------
-LevSelEntries = 15
+LevSelEntries = 16
 ; ---------------------------------------------------------------------------
 
 LevSelControls:				; XREF: LevelSelect
@@ -3114,6 +3117,7 @@ LevelMenuText:
 		dc.b	'   7 SCAR NIGHT PLACE   '
 		dc.b	'   8 STAR AGONY PLACE   '
 		dc.b	'   9 FINALOR PLACE      '
+		dc.b	'   X THE GREAT ESCAPE   '
 		dc.b	'   TUTORIAL PLACE       '
 		dc.b	'   INTRO SEQUENCE       '
 		dc.b	'   BOMB MACHINE         '
@@ -3135,6 +3139,7 @@ LSelectPointers:
 		dc.w	$301	; Scar Night Place
 		dc.w	$302	; Star Agony Place
 		dc.w	$502	; Finalor Place
+		dc.w	$503	; The Great Escape
 		dc.w	$501	; Tutorial Place
 		dc.w	$001	; Intro Sequence
 		dc.w	$500	; Bomb Machine Cutscene
@@ -3449,9 +3454,19 @@ Level_NotIntro:
 @fpcheckpoint:
 		move.b	#1,(FZEscape).w		; preload first escape flag
 		move.b	#$A,($FFFFF742).w	; go straight to the escape sequence logic
-		move.w	#$28C0+$10,($FFFFF700).w ; preload left boundary (+$10 cause it looks nicer)
-		move.w	#$28C0,($FFFFF72A).w	; preload right boundary
-		
+		move.w	#$28E0,($FFFFD008).w	; Sonic's X-pos
+		move.w	#$5B0,($FFFFD00C).w	; Sonic's Y-pos
+
+		move.w	#$28C0,d0		; x stuff
+		move.w	d0,($FFFFF72A).w	; right boundary
+		move.w	d0,($FFFFF700).w 	; camera X-pos
+		addi.w	#$10,($FFFFF700).w	; (+$10 cause it looks nicer)
+
+		move.w	#$510,d0		; y stuff
+		move.w	d0,($FFFFF704).w	; camera Y-pos
+		move.w	d0,($FFFFF726).w	; lower y-boundary of level (target)
+		move.w	d0,($FFFFF72E).w	; lower y-boundary of level (current)
+
 @notfinalor:
 		cmpi.w	#$500,($FFFFFE10).w	; is this the bomb machine cutscene?
 		bne.s	@notmachine		; if not, branch
@@ -12386,8 +12401,10 @@ GRing_Unreal     = 6
 GRing_ScarNight  = 7
 GRing_StarAgony  = 8
 GRing_Finalor    = 9
+GRing_Finalor_Escape = $A
 GRing_NightHill_First  = $11
 GRing_ScarNight_First  = $17
+GRing_Finalor_First  = $19
 GRing_Options    = $81
 GRing_Tutorial   = $82
 GRing_Blackout   = $83
@@ -12454,13 +12471,14 @@ Obj4B_Main:				; XREF: Obj4B_Index
 		bne.s	@firstnhpring		; if not, branch
 @chknhp:	moveq	#0,d0			; has the player beaten this level before?
 		jsr	Check_LevelBeaten_Current
-		bne.s	Obj4B_Main_Cont		; if yes, show both rings
+		bne.w	Obj4B_Main_Cont		; if yes, show both rings
 		jmp	DeleteObject		; otherwise, delete this ring
 @firstnhpring:
 		cmpi.b	#GRing_NightHill_First,d1 ; is this the first ring leading to Night Hill Place?
 		bne.s	@snprings		; if not, branch
 		moveq	#0,d0			; has the player beaten this level before?
 		bra.s	@adjustfirst		; further checks down below
+
 @snprings:
 		cmpi.b	#GRing_ScarNight,d1	; is this a ring leading to Scar Night Place (SNP act 1)?
 		beq.s	@chksnp			; if yes, branch
@@ -12470,13 +12488,29 @@ Obj4B_Main:				; XREF: Obj4B_Index
 		jsr	Check_LevelBeaten_Current
 		bne.s	Obj4B_Main_Cont		; if yes, show both rings
 		jmp	DeleteObject		; otherwise, delete this ring
-
 @firstsnpring:
 		cmpi.b	#GRing_ScarNight_First,d1 ; is this the first ring leading to Scar Night Place?
-		bne.s	@chkend			; if not, branch
+		bne.s	@fprings		; if not, branch
 		moveq	#5,d0			; has the player beaten this level before?
-@adjustfirst:	andi.b	#$F,obSubtype(a0)
+		bra.s	@adjustfirst		; further checks down below
+
+@fprings:
+		cmpi.b	#GRing_Finalor,d1	; is this a ring leading to Finalor Place (boss)?
+		beq.s	@chkfp			; if yes, branch
+		cmpi.b	#GRing_Finalor_Escape,d1 ; is this a ring leading to Finalor Place (escape)?
+		bne.s	@firstfpring		; if not, branch
+@chkfp:		moveq	#6,d0			; has the player beaten this level before?
 		jsr	Check_LevelBeaten_Current
+		bne.s	Obj4B_Main_Cont		; if yes, show both rings
+		jmp	DeleteObject		; otherwise, delete this ring
+@firstfpring:
+		cmpi.b	#GRing_Finalor_First,d1 ; is this the first ring leading to Finalor Place?
+		bne.s	@chkend			; if not, branch
+		moveq	#6,d0			; has the player beaten this level before?
+
+@adjustfirst:
+		andi.b	#$F,obSubtype(a0)	; limit to main subtype
+		jsr	Check_LevelBeaten_Current ; check if level in d0 is beaten
 		beq.s	Obj4B_Main_Cont		; if not, display this ring instead of the other two
 		jmp	DeleteObject		; otherwise, delete this ring
 
@@ -33695,12 +33729,11 @@ Obj79_StoreInfo:			; XREF: Obj79_HitLamp
 		move.w	obX(a0),($FFFFFE32).w		; x-position
 		move.w	obY(a0),($FFFFFE34).w		; y-position
 		move.w	($FFFFFE20).w,($FFFFFE36).w 	; rings
-		move.b	($FFFFFE1B).w,($FFFFFE54).w 	; lives
 		move.l	($FFFFFE22).w,($FFFFFE38).w 	; time
 		move.b	($FFFFF742).w,($FFFFFE3C).w 	; routine counter for dynamic level mod
 		move.w	($FFFFF72E).w,($FFFFFE3E).w 	; lower y-boundary of level
-		move.w	($FFFFF700).w,($FFFFFE40).w 	; screen x-position
-		move.w	($FFFFF704).w,($FFFFFE42).w 	; screen y-position
+		move.w	($FFFFF700).w,($FFFFFE40).w 	; camera x-position
+		move.w	($FFFFF704).w,($FFFFFE42).w 	; camera y-position
 		move.w	($FFFFF708).w,($FFFFFE44).w 	; bg position
 		move.w	($FFFFF70C).w,($FFFFFE46).w 	; bg position
 		move.w	($FFFFF710).w,($FFFFFE48).w 	; bg position
@@ -33727,33 +33760,30 @@ Obj79_StoreInfo:			; XREF: Obj79_HitLamp
 
 
 Obj79_LoadInfo:				; XREF: LevelSizeLoad
-		move.b	($FFFFFE31).w,($FFFFFE30).w
-		move.w	($FFFFFE32).w,($FFFFD008).w
-		move.w	($FFFFFE34).w,($FFFFD00C).w
-		move.w	($FFFFFE36).w,($FFFFFE20).w
-		move.b	($FFFFFE54).w,($FFFFFE1B).w
-	;	clr.w	($FFFFFE20).w
-		clr.b	($FFFFFE1B).w
-		move.l	($FFFFFE38).w,($FFFFFE22).w
-		move.b	#59,($FFFFFE25).w
-		subq.b	#1,($FFFFFE24).w
-		move.b	($FFFFFE3C).w,($FFFFF742).w
-		move.b	($FFFFFE52).w,($FFFFF64D).w
-		move.w	($FFFFFE3E).w,($FFFFF72E).w
-		move.w	($FFFFFE3E).w,($FFFFF726).w
-		move.w	($FFFFFE40).w,($FFFFF700).w
-		move.w	($FFFFFE42).w,($FFFFF704).w
-		move.w	($FFFFFE44).w,($FFFFF708).w
-		move.w	($FFFFFE46).w,($FFFFF70C).w
-		move.w	($FFFFFE48).w,($FFFFF710).w
-		move.w	($FFFFFE4A).w,($FFFFF714).w
-		move.w	($FFFFFE4C).w,($FFFFF718).w
-		move.w	($FFFFFE4E).w,($FFFFF71C).w
-		cmpi.b	#1,($FFFFFE10).w
-		bne.s	loc_170E4
-		move.w	($FFFFFE50).w,($FFFFF648).w
-		move.b	($FFFFFE52).w,($FFFFF64D).w
-		move.b	($FFFFFE53).w,($FFFFF64E).w
+		move.b	($FFFFFE31).w,($FFFFFE30).w	; checkpoint number
+		move.w	($FFFFFE32).w,($FFFFD008).w	; x-pos
+		move.w	($FFFFFE34).w,($FFFFD00C).w	; y-pos
+		move.w	($FFFFFE36).w,($FFFFFE20).w	; rings
+		move.l	($FFFFFE38).w,($FFFFFE22).w	; time
+		move.b	#59,($FFFFFE25).w		; reset milliseconds
+		subq.b	#1,($FFFFFE24).w		; sub 1 second
+		move.b	($FFFFFE3C).w,($FFFFF742).w	; routine counter for dynamic level mod
+		move.w	($FFFFFE3E).w,($FFFFF72E).w	; lower y-boundary of level (current)
+		move.w	($FFFFFE3E).w,($FFFFF726).w	; lower y-boundary of level (target)
+		move.w	($FFFFFE40).w,($FFFFF700).w	; camera x-pos
+		move.w	($FFFFFE42).w,($FFFFF704).w	; camera y-pos
+		move.w	($FFFFFE44).w,($FFFFF708).w	; bg position
+		move.w	($FFFFFE46).w,($FFFFF70C).w	; bg position
+		move.w	($FFFFFE48).w,($FFFFF710).w	; bg position
+		move.w	($FFFFFE4A).w,($FFFFF714).w	; bg position
+		move.w	($FFFFFE4C).w,($FFFFF718).w	; bg position
+		move.w	($FFFFFE4E).w,($FFFFF71C).w	; bg position
+
+		cmpi.b	#1,($FFFFFE10).w		; are we in LZ?
+		bne.s	loc_170E4			; if not, branch
+		move.w	($FFFFFE50).w,($FFFFF648).w	; water height
+		move.b	($FFFFFE52).w,($FFFFF64D).w	; rountine counter for water
+		move.b	($FFFFFE53).w,($FFFFF64E).w	; water direction
 
 loc_170E4:
 		tst.b	($FFFFFE30).w

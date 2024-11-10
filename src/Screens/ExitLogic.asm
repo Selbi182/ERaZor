@@ -472,6 +472,7 @@ GRing_Exits:	dc.w	ReturnToUberhub-GRing_Exits	; invalid ring
 		dc.w	HubRing_SNP-GRing_Exits
 		dc.w	HubRing_SAP-GRing_Exits
 		dc.w	HubRing_FP-GRing_Exits		
+		dc.w	HubRing_Escape-GRing_Exits		
 ; ---------------------------------------------------------------------------
 GRing_Misc:	dc.w	ReturnToUberhub-GRing_Exits	; invalid ring
 		dc.w	HubRing_Options-GRing_Exits ; <-- notice the offsets!
@@ -520,6 +521,13 @@ HubRing_SAP:	move.w	#$302,($FFFFFE10).w	; set level to SLZ3
 
 HubRing_FP:	move.w	#$502,($FFFFFE10).w	; set level to FZ
 		bra.w	RunChapter
+
+HubRing_Escape:
+		move.w	#$502,($FFFFFE10).w	; set level to FZ
+		moveq	#1,d0			; pre-collect checkpoint...
+		move.b	d0,($FFFFFE30).w	; ...before the...
+		move.b	d0,($FFFFFE31).w	; ...escape sequence
+		bra.w	StartLevel
 ; ---------------------------------------------------------------------------
 
 HubRing_IntroStart:

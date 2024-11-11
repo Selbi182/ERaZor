@@ -10,7 +10,6 @@ Options_MenuData:
 	dcScreenPos	$E000, 6, 6			; start on-screen position
 	dc.l	Options_GameplayStyle_Redraw		; redraw handler
 	dc.l	Options_GameplayStyle_Handle		; update handler
-
 	; Autoskip
 	dcScreenPos	$E000, 7, 6			; start on-screen position
 	dc.l	Options_Autoskip_Redraw			; redraw handler
@@ -24,22 +23,23 @@ Options_MenuData:
 	dcScreenPos	$E000, 10, 6			; start on-screen position
 	dc.l	Options_PeeloutStyle_Redraw		; redraw handler
 	dc.l	Options_PeeloutStyle_Handle		; update handler
-
 	; Flashy Lights
-	dcScreenPos	$E000, 12, 6			; start on-screen position
+	dcScreenPos	$E000, 11, 6			; start on-screen position
 	dc.l	Options_FlashyLights_Redraw		; redraw handler
 	dc.l	Options_FlashyLights_Handle		; update handler
 	; Camera Shake
-	dcScreenPos	$E000, 13, 6			; start on-screen position
+	dcScreenPos	$E000, 12, 6			; start on-screen position
 	dc.l	Options_CameraShake_Redraw		; redraw handler
 	dc.l	Options_CameraShake_Handle		; update handler
-
+	; Audio
+	dcScreenPos	$E000, 13, 6			; start on-screen position
+	dc.l	Options_Audio_Redraw			; redraw handler
+	dc.l	Options_Audio_Handle			; update handler
 
 	; Black bars setup
 	dcScreenPos	$E000, 15, 6			; start on-screen position
 	dc.l	Options_BlackBarsMode_Redraw		; redraw handler
 	dc.l	Options_BlackBarsMode_Handle		; update handler
-
 
 	; E - Cinematic mode
 	dcScreenPos	$E000, 17, 6			; start on-screen position
@@ -169,18 +169,18 @@ Options_ExtendedCamera_Handle:
 ; ---------------------------------------------------------------------------
 
 Options_PeeloutStyle_Redraw:
-	lea	@Str_BlackBars_Emulator(pc), a1
-	btst	#1, BlackBars.HandlerId
+	lea	@Str_UPandA(pc), a1
+	btst	#4, OptionsBits2
 	beq.s	@0
-	lea	@Str_BlackBars_Hardware(pc), a1
-@0:	Options_PipeString a4, "PEEL-OUT STYLE      %<.l a1 str>", 28
+	lea	@Str_UPandABC(pc), a1
+@0:	Options_PipeString a4, "PEELOUT STYLE       %<.l a1 str>", 28
 	rts
 
-@Str_BlackBars_Emulator:
-	dc.b	'  UP + A', 0
-
-@Str_BlackBars_Hardware:
-	dc.b	'UP + ABC', 0
+@Str_UPandA:
+	dc.b	'   ^ + A', 0
+	even
+@Str_UPandABC:
+	dc.b	' ^ + ABC', 0
 	even
 
 ; ---------------------------------------------------------------------------
@@ -188,58 +188,33 @@ Options_PeeloutStyle_Redraw:
 ; ---------------------------------------------------------------------------
 
 Options_PeeloutStyle_Handle:
-	move.b	Joypad|Press,d1			; get button presses
- 	andi.b	#$F0,d1				; is A, B, C, or Start pressed?
-	beq.w	@ret				; if not, branch
-
-	bchg	#1, BlackBars.HandlerId		; toggle black bars mode
-	bsr	Options_PlayRespectiveToggleSound
-	st.b	Options_RedrawCurrentItem
-@ret:	rts
-
-; ===========================================================================
-; ---------------------------------------------------------------------------
-; "SKIP UBERHUB PLACE" redraw function
-; ---------------------------------------------------------------------------
-; INPUT:
-;	a4	= `Options_DrawText_Normal` or `Options_DrawText_Highlighted`
-; ---------------------------------------------------------------------------
-
-Options_SkipUberHubPlace_Redraw:
-	lea	Options_Str_Off(pc), a1
-	btst	#2, OptionsBits
-	beq.s	@0
-	lea	Options_Str_On(pc), a1
-@0:	Options_PipeString a4, "SKIP UBERHUB PLACE       %<.l a1 str>", 28
-	rts
-
-; ---------------------------------------------------------------------------
-; "SKIP UBERHUB PLACE" handle function
-; ---------------------------------------------------------------------------
-
-Options_SkipUberHubPlace_Handle:
-	move.b	Joypad|Press, d1		; get button presses
-	andi.b	#$FC, d1			; is left, right, A, B, C, or Start pressed?
-	beq.w	@done				; if not, branch
-	bchg	#2, OptionsBits			; toggle Uberhub autoskip
+	move.b	Joypad|Press,d1		; get button presses
+	andi.b	#$FC,d1			; is left, right, A, B, C, or Start pressed?
+	beq.w	@done			; if not, branch
+	bchg	#4, OptionsBits2	; toggle peelout style
 	bsr	Options_PlayRespectiveToggleSound
 	st.b	Options_RedrawCurrentItem
 @done:	rts
 
+
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; "SKIP STORY SCREENS" redraw function
+; "AUTOSKIP" redraw function
 ; ---------------------------------------------------------------------------
 ; INPUT:
 ;	a4	= `Options_DrawText_Normal` or `Options_DrawText_Highlighted`
 ; ---------------------------------------------------------------------------
 
 Options_Autoskip_Redraw:
-	;lea	Options_Str_Off(pc), a1
-	;btst	#1, OptionsBits
-	;beq.s	@0
-	;moveq	#0,d0
-	move.b	(ScreenFuzz).w,d0
+	moveq	#0,d0
+	btst	#1, OptionsBits		; skip story screens enabled?
+	beq.s	@0
+	addq.b	#1,d0
+@0:
+	btst	#2, OptionsBits		; skip Uberhub Place enabled?
+	beq.s	@1
+	addq.b	#2,d0
+@1:
 	add.w	d0, d0
 	add.w	d0, d0				; d0 = ModeId * 4
 	movea.l	@AutoskipList(pc,d0), a1
@@ -259,17 +234,41 @@ Options_Autoskip_Redraw:
 
 
 ; ---------------------------------------------------------------------------
-; "SKIP STORY SCREENS" handle function
+; "AUTOSKIP" handle function
 ; ---------------------------------------------------------------------------
 
 Options_Autoskip_Handle:
-	move.b	Joypad|Press, d1		; get button presses
-	andi.b	#$FC, d1			; is left, right, A, B, C, or Start pressed?
-	beq.w	@done				; if not, branch
-	bchg	#1, OptionsBits			; toggle Story screens autoskip
-	bsr	Options_PlayRespectiveToggleSound
+	move.b	Joypad|Press,d1			; get button presses
+	andi.b	#$FC,d1				; is left, right, A, B, C, or Start pressed?
+	beq.w	@ret				; if not, branch
+
+	moveq	#0,d0
+	move.b	OptionsBits,d0
+	lsr.b	#1,d0
+	andi.b	#%11, d0
+	btst	#iLeft, Joypad|Press		; is left pressed?
+	bne.s	@selectPrevious			; if yes, branch
+	addq.b	#1, d0				; use next mode
+	bra.s	@finalize
+@selectPrevious:
+	subq.b	#1, d0				; use previous mode
+@finalize:
+	andi.b	#%11, d0			; wrap modes
+	move.b	d0,d1
+	lsl.b	#1,d0
+	
+	bclr	#1,OptionsBits
+	bclr	#2,OptionsBits
+	or.b	d0,OptionsBits
+
 	st.b	Options_RedrawCurrentItem
-@done:	rts
+
+	tst.b	d1				; check if current selection is OFF
+	eori.b	#%00100,ccr			; invert Z flag (play off sound for off, on for anything else)
+	bsr	Options_PlayRespectiveToggleSound
+
+@ret:	rts
+
 
 
 ; ===========================================================================
@@ -281,23 +280,29 @@ Options_Autoskip_Handle:
 ; ---------------------------------------------------------------------------
 
 Options_FlashyLights_Redraw:
-	btst	#7, OptionsBits
-	
-	move.b	(ScreenFuzz).w,d0
+	moveq	#0,d0
+	btst	#7, OptionsBits		; photosensitive mode enabled?
+	beq.s	@0			; if not, branch
+	addq.b	#1,d0
+@0:
+	btst	#6, OptionsBits		; max white flash enabled?
+	beq.s	@1			; if not, branch
+	moveq	#2,d0
+@1:
 	add.w	d0, d0
 	add.w	d0, d0				; d0 = ModeId * 4
 	movea.l	@FlashyLightsList(pc,d0), a1
 	
-	Options_PipeString a4, "SCREEN FLASH     %<.l a1 str>", 28
+	Options_PipeString a4, "SCREEN FLASH  %<.l a1 str>", 28
 	rts
 
 ; ---------------------------------------------------------------------------
 @FlashyLightsList:
 	dc.l	@Str_Mode00,@Str_Mode01,@Str_Mode10
 
-@Str_Mode00:	dc.b	'   MODERATE',0
-@Str_Mode01:	dc.b	'        OFF',0
-@Str_Mode10:	dc.b	'  EPILEPTIC',0
+@Str_Mode00:	dc.b	'      STANDARD',0
+@Str_Mode01:	dc.b	'PHOTOSENSITIVE',0
+@Str_Mode10:	dc.b	' MAX INTENSITY',0
 		even
 
 ; ---------------------------------------------------------------------------
@@ -305,60 +310,149 @@ Options_FlashyLights_Redraw:
 ; ---------------------------------------------------------------------------
 
 Options_FlashyLights_Handle:
-	move.b	Joypad|Press, d1		; get button presses
-	andi.b	#$FC, d1			; is left, right, A, B, C, or Start pressed?
-	beq.w	@done				; if not, branch
-	bchg	#7, OptionsBits			; toggle photosensitive mode
-	bsr	Options_PlayRespectiveToggleSound
-	st.b	Options_RedrawCurrentItem
-@done:	rts
+	move.b	Joypad|Press,d1			; get button presses
+	andi.b	#$FC,d1				; is left, right, A, B, C, or Start pressed?
+	beq.w	@ret				; if not, branch
 
+	moveq	#0,d0
+	move.b	OptionsBits,d0
+	lsr.b	#6,d0
+	andi.b	#%11, d0
+@repeat:
+	btst	#iLeft, Joypad|Press		; is left pressed?
+	bne.s	@selectPrevious			; if yes, branch
+	addq.b	#1, d0				; use next mode
+	bra.s	@finalize
+@selectPrevious:
+	subq.b	#1, d0				; use previous mode
+@finalize:
+	andi.b	#%11, d0			; wrap modes
+	cmpi.b	#%11, d0			; is photosensitive mode and max white mode enabled at once?
+	beq.s	@repeat				; this is an illegal state, repeat button input
+
+	move.b	d0,d1
+	lsl.b	#6,d0
+	
+	bclr	#6,OptionsBits
+	bclr	#7,OptionsBits
+	or.b	d0,OptionsBits
+
+	st.b	Options_RedrawCurrentItem
+
+	tst.b	d1				; check if current selection is OFF
+	eori.b	#%00100,ccr			; invert Z flag (play off sound for off, on for anything else)
+	bsr	Options_PlayRespectiveToggleSound
+
+@ret:	rts
 
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; "SKIP STORY SCREENS" redraw function
+; "CAMERA SHAKING" redraw function
 ; ---------------------------------------------------------------------------
 ; INPUT:
 ;	a4	= `Options_DrawText_Normal` or `Options_DrawText_Highlighted`
 ; ---------------------------------------------------------------------------
 
 Options_CameraShake_Redraw:
-	;lea	Options_Str_Off(pc), a1
-	;btst	#1, OptionsBits
-	;beq.s	@0
-	;moveq	#0,d0
-	move.b	(ScreenFuzz).w,d0
-	add.w	d0, d0
-	add.w	d0, d0				; d0 = ModeId * 4
-	movea.l	@AutoskipList(pc,d0), a1
-	
-	Options_PipeString a4, "CAMERA SHAKE   %<.l a1 str>", 28
+	lea	@Str_Normal(pc), a1
+	btst	#2, OptionsBits2
+	beq.s	@0
+	lea	@Str_Weak(pc), a1
+@0:	Options_PipeString a4, "CAMERA SHAKE        %<.l a1 str>", 28
 	rts
 
-; ---------------------------------------------------------------------------
-@AutoskipList:
-	dc.l	@Str_Mode01,@Str_Mode10,@Str_Mode11
-
-@Str_Mode01:	dc.b	'     MODERATE',0
-@Str_Mode10:	dc.b	'         WEAK',0
-@Str_Mode11:	dc.b	'       STUPID',0
-		even
-
+@Str_Normal:
+	dc.b	'STANDARD', 0
+	even
+@Str_Weak:
+	dc.b	'    WEAK', 0
+	even
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; "PHOTOSENSITIVE MODE" handle function
+; "CAMERA SHAKING" handle function
 ; ---------------------------------------------------------------------------
 
 Options_CameraShake_Handle:
 	move.b	Joypad|Press, d1		; get button presses
 	andi.b	#$FC, d1			; is left, right, A, B, C, or Start pressed?
 	beq.w	@done				; if not, branch
-	bchg	#7, OptionsBits			; toggle photosensitive mode
+	bchg	#2, OptionsBits2		; toggle weak camera shaking
 	bsr	Options_PlayRespectiveToggleSound
 	st.b	Options_RedrawCurrentItem
 @done:	rts
+
+
+
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; "AUDIO" redraw function
+; ---------------------------------------------------------------------------
+; INPUT:
+;	a4	= `Options_DrawText_Normal` or `Options_DrawText_Highlighted`
+; ---------------------------------------------------------------------------
+
+Options_Audio_Redraw:
+	moveq	#0,d0
+	btst	#0, OptionsBits2	; is music disabled?
+	beq.s	@0
+	addq.b	#1,d0
+@0:
+	btst	#1, OptionsBits2	; is sfx disabled?
+	beq.s	@1
+	addq.b	#2,d0
+@1:
+	add.w	d0, d0
+	add.w	d0, d0				; d0 = ModeId * 4
+	movea.l	@AudioList(pc,d0), a1
+	
+	Options_PipeString a4, "AUDIO      %<.l a1 str>", 28
+	rts
+
+; ---------------------------------------------------------------------------
+@AudioList:
+	dc.l	@Str_Mode00,@Str_Mode01,@Str_Mode10,@Str_Mode11
+
+@Str_Mode00:	dc.b	'         STANDARD',0
+@Str_Mode01:	dc.b	'    DISABLE MUSIC',0
+@Str_Mode10:	dc.b	'      DISABLE SFX',0
+@Str_Mode11:	dc.b	'          SILENCE',0
+		even
+
+; ---------------------------------------------------------------------------
+; "AUDIO" handle function
+; ---------------------------------------------------------------------------
+
+Options_Audio_Handle:
+	move.b	Joypad|Press,d1			; get button presses
+	andi.b	#$FC,d1				; is left, right, A, B, C, or Start pressed?
+	beq.w	@ret				; if not, branch
+
+	moveq	#0,d0
+	move.b	OptionsBits2,d0
+	andi.b	#%11, d0
+	btst	#iLeft, Joypad|Press		; is left pressed?
+	bne.s	@selectPrevious			; if yes, branch
+	addq.b	#1, d0				; use next mode
+	bra.s	@finalize
+@selectPrevious:
+	subq.b	#1, d0				; use previous mode
+@finalize:
+	andi.b	#%11, d0			; wrap modes
+	move.b	d0,d1
+	
+	bclr	#0,OptionsBits2
+	bclr	#1,OptionsBits2
+	or.b	d0,OptionsBits2
+
+	st.b	Options_RedrawCurrentItem
+
+	tst.b	d1				; check if current selection is OFF
+	eori.b	#%00100,ccr			; invert Z flag (play off sound for off, on for anything else)
+	bsr	Options_PlayRespectiveToggleSound
+
+@ret:	rts
 
 
 

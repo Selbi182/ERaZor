@@ -8,6 +8,8 @@
 
 ; ---------------------------------------------------------------------------
 
+Options_Music = $86
+
 Options_DeleteSRAMInitialCount = 5
 
 Options_VRAM = $8570
@@ -38,8 +40,19 @@ Options_RedrawCurrentItem:	rs.b	1
 ;  bit 3 = Cinematic Mode (black bars)
 ;  bit 4 = Nonstop Inhuman Mode
 ;  bit 5 = Gamplay Style (0 - Casual Mode // 1 - Frantic Mode)
-;  bit 6 = [unused]
-;  bit 7 = Photosensitive Mode
+;  bit 6 = Max White Flash
+;  bit 7 = Photosensitive Mode (Screen Flash set to weak)
+; ---------------------------------------------------------------------------
+; Second options bitfield
+; RAM location: $FFFFFF94
+;  bit 0 = Disable Music
+;  bit 1 = Disable SFX
+;  bit 2 = Weak Camera Shake
+;  bit 3 = [unusued]
+;  bit 4 = Peelout Style
+;  bit 5 = [unusued]
+;  bit 6 = [unusued]
+;  bit 7 = [unusued]
 ; ---------------------------------------------------------------------------
 ; Screen Effects are kept in a separate address: $FFFFFF91
 ; bit 0 = piss filter
@@ -47,7 +60,8 @@ Options_RedrawCurrentItem:	rs.b	1
 ; ---------------------------------------------------------------------------
 ; Default options when starting the game for the first time
 ; (Casual Mode, Extended Camera)
-DefaultOptions = %00000001
+DefaultOptions  = %00000001
+DefaultOptions2 = %00000000
 ; ---------------------------------------------------------------------------
 
 OptionsScreen:				; XREF: GameModeArray
@@ -107,7 +121,7 @@ OptionsScreen:				; XREF: GameModeArray
 		jsr	BuildSprites
 		jsr	DeleteQueue_Execute
 
-		move.b	#$86,d0		; play Options screen music (Spark Mandrill)
+		move.b	#Options_Music,d0		; play Options screen music (Spark Mandrill)
 		jsr	PlaySound_Special
 		bsr	Options_LoadPal
 		move.w	#$00E,(BGThemeColor).w	; set theme color for background effects
@@ -185,7 +199,8 @@ Options_InitState:
 ; ---------------------------------------------------------------------------
 
 Options_SetDefaults:
-		move.b	#DefaultOptions,(OptionsBits).w	; load default options
+		move.b	#DefaultOptions,(OptionsBits).w		; load default options
+		move.b	#DefaultOptions2,(OptionsBits2).w	; load default options 2
 		clr.b	(ScreenFuzz).w
 		rts
 
@@ -290,9 +305,10 @@ Options_HandleUpdate:
 		move.w	d0, ($FFFFFF98).w
 		move.b	d0, ($FFFFFF9A).w
 
-		move.b	#1,($A130F1).l		; enable SRAM
-		move.b	OptionsBits,($200001).l	; backup options flags
-		move.b	#0,($A130F1).l		; disable SRAM
+		moveq	#$FFFFFFE0, d0
+		jsr	PlaySound_Special
+
+		jsr	SRAM_SaveNow
 
 		moveq	#0,d0			; return to Uberhub
 		jmp	Exit_OptionsScreen
@@ -471,6 +487,8 @@ Options_CharToTile:
 			@return Options_VRAM+$D
 		elseif @char = '>'
 			@return Options_VRAM+$E
+		elseif @char = '^'
+			@return Options_VRAM+$29
 		elseif @char = '?'
 			@return Options_VRAM+$2A
 		elseif @char = '.'

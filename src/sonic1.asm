@@ -821,6 +821,7 @@ Sounds_MiscStart = $E0
 ; ---------------------------------------------------------------------------
 
 PlaySound:
+		bsr	HandleSoundDisabled
 		tst.b	(SoundQueue1).w
 		beq.s	@setsound
 		cmpi.b	#Sounds_MusicEnd,(SoundQueue1).w
@@ -833,6 +834,7 @@ PlaySound:
 ; ---------------------------------------------------------------------------
 
 PlaySound_Special:
+		bsr	HandleSoundDisabled
 		tst.b	(SoundQueue2).w
 		beq.s	@setsound
 		cmpi.b	#Sounds_MusicEnd,(SoundQueue2).w
@@ -840,10 +842,33 @@ PlaySound_Special:
 		cmpi.b	#Sounds_MiscStart,(SoundQueue2).w
 		bhs.s	@end
 @setsound:
+
 		move.b	d0,(SoundQueue2).w
 @end:		rts
 ; End of function PlaySound
 
+; ---------------------------------------------------------------------------
+
+HandleSoundDisabled:
+		cmpi.b	#Sounds_MusicEnd,d0
+		bls.s	@music
+		cmpi.b	#Sounds_MiscStart,d0
+		blo.s	@sfx
+		rts				; always allow misc sounds
+
+@music:
+		btst	#0,(OptionsBits2).w	; is music disabled?
+		bne.s	@disabled		; if yes, branch
+		rts
+
+@sfx:
+		btst	#1,(OptionsBits2).w	; are sfx disabled?
+		bne.s	@disabled		; if yes, branch
+		rts
+
+@disabled:
+		addq.l	#4,sp			; don't play sound
+		rts
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -2551,8 +2576,11 @@ Sega_WaitPallet:
 ; ---------------------------------------------------------------------------
 
 Sega_SegaChant:
+		btst	#1,(OptionsBits2).w	; are sfx disabled?
+		bne.s	@noangel		; if yes, no chant
 		move.b	#$E1,d0			; play "SEGA" sound...
 		bsr	PlaySound_Special 	; ...featuring the beautiful voice of yours truly
+@noangel:
 
 		move.w	#120-1,d0		; delay after the angel's voice has gone silent
 @Wait_SegaPCM:	move.b	#2,VBlankRoutine
@@ -4238,8 +4266,9 @@ GenerateCameraShake:
 		move.b	(CurrentRandomNumber).w,d0	; get a random number (will be used for X shake)
 		move.b	(CurrentRandomNumber+1).w,d1	; get a different random number (will be used for Y shake)
 
-		btst	#7,(OptionsBits).w		; is photosensitive mode enabled?
-		bne.s	@photosensitive			; if not, branch
+	;	btst	#7,(OptionsBits).w		; is photosensitive mode enabled?
+		btst	#2,(OptionsBits2).w		; is weak camera shake enabled?
+		bne.s	@photosensitive			; if yes, branch
 		moveq	#0,d2				; clear d2
 		move.b	(CameraShake_Intensity).w,d2	; get currently set camera shake intensity
 		bhi.s	@intensityset			; if it's already set, branch
@@ -27727,7 +27756,7 @@ WF_MakeWhite_Loop:
 		cmpi.b	#1,($FFFFFFD6).w	; is a W-block being touched in the special stage?
 		beq.s	@boost			; if yes, boost
 			
-		btst	#3,(OptionsBits).w	; is cinematic HUD enabled?
+		btst	#6,(OptionsBits).w	; is max white flash enabled?
 		beq.s	@wfnotcinematic		; if not, branch
 
 @boost:
@@ -28098,8 +28127,14 @@ SPO_NotMZ:
 		beq.s	SPO_Simulated		; if yes, branch
 		cmpi.b	#7,obAnim(a0)		; is anim looking up?
 		bne.w	SPO_End			; if not, return
+
+		; peelout style check
 		move.b	($FFFFF603).w,d0	; read controller
-		andi.b	#$40,d0			; pressing A?
+		moveq	#$70,d1			; check for ABC
+		btst	#4,(OptionsBits2).w	; is peelout style set to up+ABC?
+		bne.s	@chkpress		; if yes, branch
+		andi.b	#$40,d1			; check exclusively for A
+@chkpress:	and.b	d1,d0			; pressing a required button?
 		beq.w	SPO_End			; if not, return
 
 SPO_Simulated:

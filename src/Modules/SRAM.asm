@@ -4,10 +4,11 @@
 ; SRAM Loading Routine
 ; ---------------------------------------------------------------------------
 ; Format (note, SRAM can only be written to odd addresses):
-; 00 op 00 ch  00 d1 00 d2  00 l1 00 l2  00 r1 00 r2  00 s1 00 s2  00 s3 00 s4  00 cm 00 rs  00 bb 00 mb  mg
-;    01    03     05    07     09    0B     0D    0F     11    13     15    17     19    1B     1D    1F
+; 00 o1 00 o2  00 ch 00 d1  00 d2 00 l1  00 l2 00 r1  00 r2 00 s1  00 s2 00 s3  00 s4 00 cm  00 rs 00 bb  00 mb 00 mg
+;    01    03     05    07     09    0B     0D    0F     11    13     15    17     19    1B     1D    1F     21    23
 ;
-;  op = Options Bitset ($FFFFFF92)
+;  o1 = Options Bitset ($FFFFFF92)
+;  o2 = Options Bitset 2 ($FFFFFF94)
 ;  ch = Current Chapter ($FFFFFFA7)
 ;  d_ = Open Doors Bitset - Casual/Frantic  ($FFFFFF8A-FFFFFF8B)
 ;  l_ = Lives (or Deaths rather, lol) ($FFFFFE12-FFFFFE13)
@@ -20,7 +21,8 @@
 ;  mg = Magic Number (always set to 182, absence implies no SRAM)
 ; ---------------------------------------------------------------------------
 SRAM_Options	= 1
-SRAM_Chapter	= 2 + SRAM_Options
+SRAM_Options2	= 2 + SRAM_Options
+SRAM_Chapter	= 2 + SRAM_Options2
 SRAM_Doors	= 2 + SRAM_Chapter ; 2 bytes
 SRAM_Lives	= 4 + SRAM_Doors ; 2 bytes
 SRAM_Rings	= 4 + SRAM_Lives ; 2 bytes
@@ -53,6 +55,7 @@ SRAMFound:
 		lea	($200000).l,a1				; base of SRAM
 
 		move.b	SRAM_Options(a1),(OptionsBits).w	; load options flags
+		move.b	SRAM_Options2(a1),(OptionsBits2).w	; load options 2 flags
 
 		move.b	SRAM_Chapter(a1),($FFFFFFA7).w		; load current chapter
 
@@ -95,6 +98,7 @@ SRAM_Reset:
 		; Thank me later, I just saved you hours.
 		moveq	#0,d0					; set d0 to 0
 		move.b	d0,SRAM_Options(a1)			; clear option flags
+		move.b	d0,SRAM_Options2(a1)			; clear option 2 flags
 		move.b	d0,SRAM_Chapter(a1)			; clear current chapter
 		movep.w	d0,SRAM_Doors(a1)			; clear open doors bitset
 		movep.w	d0,SRAM_Lives(a1)			; clear lives/deaths
@@ -107,6 +111,7 @@ SRAM_Reset:
 	
 		jsr	Options_SetDefaults			; reset default options
 		move.b	(OptionsBits).w,SRAM_Options(a1)	; ^
+		move.b	(OptionsBits2).w,SRAM_Options2(a1)	; ^
 
 		move.b	#SRAM_MagicNumber,SRAM_Exists(a1) 	; set magic number ("SRAM exists")
 	endif	; def(__MD_REPLAY__)=0
@@ -139,6 +144,8 @@ SRAM_SaveNow:
 		moveq	#0,d0					; clear d0
 		move.b	(OptionsBits).w,d0			; move option flags to d0
 		move.b	d0,SRAM_Options(a1)			; backup option flags
+		move.b	(OptionsBits2).w,d0			; move option 2 flags to d0
+		move.b	d0,SRAM_Options2(a1)			; backup option 2 flags
 		move.b	($FFFFFFA7).w,d0			; move current chapter to d0
 		move.b	d0,SRAM_Chapter(a1)			; backup current chapter
 		move.w	(Doors_Casual).w,d0			; move open doors bitset to d0

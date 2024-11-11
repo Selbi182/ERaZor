@@ -7306,7 +7306,6 @@ Resize_FZEscape3:
 		blo.s	@0			; if not, branch
 		move.w	#$25C0,($FFFFF72A).w	; right boundary
 		addq.b	#2,($FFFFF742).w	; next routine
-
 @0:
 		rts
 
@@ -7323,18 +7322,14 @@ Resize_FZEscape3:
 ; XXXXXXXXX
 
 Resize_FZEscape4:
-		; Y check
-		cmpi.w 	#$04AC, ($FFFFD00C).w
-		bgt.s 	@Return
-
-		; X check
-		cmpi.w 	#$1800, ($FFFFD00A).w
-		bgt.s 	@Return
-
+		cmpi.w 	#$04AC,($FFFFD00C).w
+		bhi.s 	@below
 		move.w	#$00D0, ($FFFFF728).w	; set left level boundary
 		move.w	#$0400,($FFFFF726).w	; set lower level boundary
+		rts
 
-@Return:
+@below:
+		move.w	#$A25,($FFFFF726).w	; reset lower level boundary
 		rts
 
 ; ===========================================================================
@@ -9284,8 +9279,7 @@ Obj1C_Main:				; XREF: Obj1C_Index
 		move.b	(a1)+,obPriority(a0)
 		move.b	(a1)+,obColType(a0)
 
-		; used for the sway
-		move.w	obY(a0),$32(a0)
+		move.w	obY(a0),$32(a0)	; used for the sway
 
 Obj1C_ChkDel:				; XREF: Obj1C_Index
 		; sway
@@ -9313,23 +9307,40 @@ Obj1C_ChkDel:				; XREF: Obj1C_Index
 ; ---------------------------------------------------------------------------
 ; Variables for	object $1C are stored in an array
 ; ---------------------------------------------------------------------------
-Obj1C_Var:	dc.l Map_obj1C		; mappings address
+Obj1C_Var:
+		dc.l Map_obj1C		; mappings address
 		dc.w $6880/$20		; VRAM setting
 		dc.b 0,	8, 2, 0		; frame, width,	priority, collision response
+		
 		dc.l Map_obj1C
 		dc.w ($6880+$80)/$20
 		dc.b 0,	8, 2, 0
+
 		dc.l Map_obj1C
 		dc.w $44D8
 		dc.b 0,	8, 2, 0
+
 		dc.l Map_obj11
 		dc.w $438E
 		dc.b 1,	$10, 1,	0
+
+
+		dc.l Map_obj1C_RP
+		dc.w $2000
+		dc.b 0,	8, 2, 0
+		
+		dc.l Map_obj1C_RP
+		dc.w $2000
+		dc.b 1,	8, 2, 0
+
 ; ---------------------------------------------------------------------------
 ; Sprite mappings - SLZ	lava thrower
 ; ---------------------------------------------------------------------------
 Map_obj1C:
 		include	"_maps\obj1C.asm"
+
+Map_obj1C_RP:
+		include	"_maps\RPHints.asm"
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -10147,6 +10158,7 @@ Obj3F_Main2:
 
 		cmpi.w	#$502,($FFFFFE10).w	; are we in FP?
 		bne.s	@notfp			; if not, branch
+		ori.w	#$8000,obGfx(a0)	; draw high
 		cmpi.b	#$A,($FFFFF742).w	; has boss been defeated yet?
 		bhs.s	@notfp			; if yes, branch
 		move.b	#7,obPriority(a0)	; make explosions super low priority during the boss fight cause to avoid flicker for more important stuff
@@ -15103,6 +15115,8 @@ loc_B902:
 		bne.s	loc_B91C
 		tst.b	obRender(a0)
 		bpl.s	loc_B91C
+		cmpi.w	#$1100,($FFFFD008).w	; are we shortly before the inhuman challenge?
+		bhs.s	loc_B91C		; if yes, stop playing sounds
 		move.w	#$C7,d0
 		jsr	(PlaySound_Special).l ;	play rising chain sound
 
@@ -27933,6 +27947,7 @@ SH_Return2:
 
 SH_Objects:
 		dc.b	$1F	; Crabmeat (including the boss)
+		dc.b	$55	; Basaran
 		dc.b	$22	; Buzz Bomber
 		dc.b	$26	; all monitors except Eggman
 		dc.b	$2B	; Chopper
@@ -27940,7 +27955,6 @@ SH_Objects:
 	;	dc.b	$3D	; GHP boss
 		dc.b	$40	; Motobug
 	;	dc.b	$50	; Yadrin
-		dc.b	$55	; Basaran
 		dc.b	-1	; this marks the end of the list
 		even
 ; -------------------------------------------------------------------------------
@@ -33641,6 +33655,32 @@ Obj79_HitLamp:
 		cmpi.w	#$002,($FFFFFE10).w	; are we in GHP?
 		beq.s	@endghpaction		; if yes, end the black bars action stuff
 
+		cmpi.w	#$200,($FFFFFE10).w	; are we in RP?
+		bne.s	@notrp			; if not, branch
+	;	frantic				; are we in frantic?
+	;	beq.s	@notrp			; always allow in casual
+		tst.b	($FFFFFFE7).w		; inhuman mode already active?
+		bne.s	@disallow		; if yes, disallow cheesing
+		cmpi.w	#250,($FFFFFE20).w	; do you have at least 250 rings?
+		bhs.s	@notrp			; if yes, branch
+@disallow:
+		cmpi.b	#1,obFrame(a0)		; already hit?
+		beq.w	locret_16F90		; if yes, branch
+		move.b	#1,obFrame(a0)		; use "post only" frame, with no lamp
+		move.w	#$DC,d0			; play nuh uh sound
+		jsr	(PlaySound).l		; play sound	
+		rts
+
+		jsr	SingleObjLoad
+		bne.w	locret_16F90		; if yes, branch
+		move.b	#$3F,(a1)
+		move.b	#0,obRoutine(a1)
+		move.b	#1,$30(a1)
+		move.w	obX(a0),obX(a1)
+		move.w	obY(a0),obY(a1)
+		rts				; block checkpoint
+
+@notrp:
 		cmpi.w	#$101,($FFFFFE10).w	; are we in LP?
 		bne.w	@regular		; if not, lampposts have no vertical hitbox
 		move.w	($FFFFD00C).w,d0

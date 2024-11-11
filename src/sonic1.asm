@@ -63,7 +63,7 @@ DebugModeDefault = 1
 DebugSurviveNoRings = 1
 ; ------------------------------------------------------
 DoorsAlwaysOpen = 0
-LowBossHP = 0
+LowBossHP = 1
 ; ======================================================
 	else
 ; BENCHMARK build settings (DO NOT CHANGE!)
@@ -7281,6 +7281,12 @@ Resize_FZEscape:
 		move.w	#-$1000,($FFFFD010).w
 
 @nodoubleboost:
+		jsr	SingleObjLoad
+		bne.s	@noexplosionsthisissosad
+		move.b	#$1D,(a1)		; load exploding scenery object
+		move.b	#0,obSubtype(a1)
+
+@noexplosionsthisissosad:
 		move.w	#$90,d0
 		jmp	PlaySound		; play escape music
 ; ===========================================================================	
@@ -9346,7 +9352,8 @@ Map_obj1C_RP:
 ; ---------------------------------------------------------------------------
 ; Object 1D - Exploding scenery object used in Finalor Place
 ; ---------------------------------------------------------------------------
-ExplodingScenery_Interval = 3
+ExplodingScenery_Interval = 7
+ExplodingScenery_IntPinch = 1
 ; ---------------------------------------------------------------------------
 
 Obj1D:					; XREF: Obj_Index
@@ -9381,40 +9388,55 @@ Obj1D_Main:				; XREF: Obj1D_Index
 ; ---------------------------------------------------------------------------
 
 Obj1D_Explosions:
-		move.w	($FFFFD008).w,obX(a0)	; copy Sonic's X position
-		move.w	($FFFFD00C).w,obY(a0)	; copy Sonic's Y position
+		move.w	($FFFFF700).w,d0
+		addi.w	#SCREEN_WIDTH/2,d0
+		move.w	d0,obX(a0)	; copy camera X position
 
+		move.w	($FFFFF704).w,d0
+		addi.w	#SCREEN_HEIGHT/2,d0
+		move.w	d0,obY(a0)	; copy camera Y position
+
+		tst.b	($FFFFF5D1).w		; is Sonic dying?
+		bne.s	@no
 		cmpi.b	#2,(FZEscape).w		; is escape sequence already set?
 		beq.s	@explosions		; if yes, branch
-		rts				; wait for escape to really start
+@no		rts				; wait for escape to really start
 
 @explosions:
+		tst.b	($FFFFFE23).w		; are more than 100 seconds left?
+		bne.s	@nopinch		; if not, branch
+		moveq	#0,d0			; clear d0
+		move.b	($FFFFFE24).w,d0	; get seconds
+		lsr.b	#2,d0			; reduce quite a bit
+		bne.s	@nopinch		; if the result isn't zero, branch
+		move.b	#ExplodingScenery_IntPinch,$30(a0) ; otherwise, ramp up the interval
+		move.w	#$C4,d0			; play explosion sound every single frame...
+		jsr	PlaySound_Special	; ...for that oomph
+@nopinch:
+
 		subq.b	#1,$32(a0)		; substract 1 from cooldown timer
-		bpl.s	@end			; has the time run out? if not, branch
+		bhs.s	@end			; has the time run out? if not, branch
 		move.b	$30(a0),$32(a0)		; reset cooldown
 
 		ori.b	#$FF,(CameraShake).w	; infinite camera shake hooray
+		move.w	#$C4,d0			; play explosion sound
+		jsr	PlaySound_Special
 
 		bsr	SingleObjLoad
 		bne.s	@end
 		move.b	#$3F,0(a1)	; load explosion object
+		move.b	#1,$30(a1)	; make explosion harmless
+		move.b	#1,$31(a1)
 		move.w	obX(a0),obX(a1)
 		move.w	obY(a0),obY(a1)
-		move.b	#1,$30(a1)	; make explosion harmless
-		move.b	#0,$31(a1)
 		
 		; random deviation
 		jsr	(RandomNumber).l
-		moveq	#0,d1
-		move.b	d0,d1
-		subi.w	#$80,d1
-		lsr.w	#8,d0
-		subi.w	#$50,d0
-		btst	#0,($FFFFFE05).w
-		beq.s	@set
-		asl.w	#1,d1
-		asl.w	#1,d0
-@set:		add.w	d1,obX(a1)
+		andi.l	#$00FF01FF,d0
+		subi.w	#$200/2,d0
+		add.w	d0,obX(a1)
+		swap	d0
+		subi.w	#$100/2,d0
 		add.w	d0,obY(a1)
 
 @end:
@@ -10873,11 +10895,11 @@ Obj1F_Timesup:
 Obj1F_BossDefeated:
 		move.b	#1,($FFFFF7CC).w		; lock controls
 		clr.b	($FFFFFFEB).w
-		clr.l	($FFFFF602).w			; clear any remaining button presses
 
 		tst.b	($FFFFFFD5).w			; first time this routine gets run?
 		bne.s	@0				; if not, branch
 		move.b	#1,($FFFFFFD5).w		; set flag 3
+		clr.l	($FFFFF602).w			; clear any remaining button presses
 		move.b	#$E0,d0				; fade out music
 		jsr	PlaySound			; play it
 
@@ -10894,8 +10916,30 @@ Obj1F_BossDefeated:
 		move.b	#8,obAnim(a0)
 
 @conxt:
-		cmpi.b	#$12,obAnim(a0)
-		beq.s	@ToLevelTransition		; if it's empty, delete boss
+		; fast forward if stage is already beaten
+		tst.b	($FFFFF605).w			; was anything pressed this frame?
+		beq.s	@nofastforward			; if not, branch
+		move.b	($FFFFF604).w,d0		; get button presses
+		tst.w	($FFFFFFFA).w			; is debug cheat enabled?
+		beq.s	@notdebug			; if not, branch
+		cmpi.b	#$60,d0				; is A&C held? (filter out B to not interfere with debug mode)
+		bne.s	@nofastforward			; if not, branch
+		bra.s	@abcpressed			; do the thing
+@notdebug:	cmpi.b	#$70,d0				; is exactly ABC held?
+		bne.s	@nofastforward			; if not, branch
+
+@abcpressed:
+	;	cmpi.b	#9,obAnim(a0)			; has a little bit of time passed since the animation started?
+	;	bls.s	@nofastforward			; if not, branch
+	;	moveq	#0,d0				; has the player beaten this level before?
+	;	jsr	Check_LevelBeaten_Current	; check
+	;	beq.s	@nofastforward			; if not, branch
+		bra.w	Obj1F_BossDelete
+@nofastforward:
+
+
+		cmpi.b	#$12,obAnim(a0)			; is final animation played?
+		bhs.s	@ToLevelTransition		; if yes, go to transition part (crabmeat lifts its leg)
 		bsr	BossDefeated2			; otherwise let it explode
 		move.b	#1,($FFFFFFD4).w		; set flag 4
 		rts					; return
@@ -12971,6 +13015,8 @@ Obj26_Main:				; XREF: Obj26_Index
 		blo.s	@chkfp			; ...meaning shields, rings...
 		cmpi.b	#6,obSubtype(a0)	; ...invicibility...
 		bhi.s	@chkfp			; ...or shoes (for FP)
+		cmpi.b	#4,obSubtype(a0)	; shield monitor?
+		beq.s	@chkfp			; if yes, make an exception
 		move.b	#2,obSubtype(a0)	; change into a useless =P monitor
 		bra.s	@init			; skip
 
@@ -13393,8 +13439,8 @@ Obj2E_ChkS:
 
 		cmpi.w	#$200,($FFFFFE10).w	; is this Ruined Place?
 		bne.s	@notruinedplace		; if not, branch
-		frantic
-		beq.s	@noob
+	;	frantic
+	;	beq.s	@noob
 		addi.w	#100,($FFFFFE20).w	; give 100 rings
 		ori.b	#1,($FFFFFE1D).w	; update rings counter
 @noob:
@@ -23417,6 +23463,29 @@ Obj5F_BossDefeated:
 		move.b	#0,($FFFFD000+obAniFrame).w	; reset Sonic waiting animation
 		clr.w	($FFFFD010).w			; clear Sonic's X speed
 		clr.w	($FFFFD014).w			; clear Sonic's inertia
+
+		; fast forward if stage is already beaten
+		tst.b	($FFFFF605).w			; was anything pressed this frame?
+		beq.s	@nofastforward			; if not, branch
+		move.b	($FFFFF604).w,d0		; get button presses
+		tst.w	($FFFFFFFA).w			; is debug cheat enabled?
+		beq.s	@notdebug			; if not, branch
+		cmpi.b	#$60,d0				; is A&C held? (filter out B to not interfere with debug mode)
+		bne.s	@nofastforward			; if not, branch
+		bra.s	@abcpressed			; do the thing
+@notdebug:	cmpi.b	#$70,d0				; is exactly ABC held?
+		bne.s	@nofastforward			; if not, branch
+
+@abcpressed:
+	;	moveq	#5,d0				; has the player beaten this level before?
+	;	jsr	Check_LevelBeaten_Current	; check
+	;	beq.s	@nofastforward			; if not, branch
+		cmpi.b	#8,($FFFFFF76).w		; already at the end?
+		bhs.s	@nofastforward			; if yes, branch
+		move.b	#8,($FFFFFF76).w		; go straight to the...
+		move.w	#1*60+30+1,($FFFFFF7C).w	; ...pathetic explosion
+@nofastforward:
+
 		clr.l	($FFFFF602).w			; clear any remaining button presses
 
 @walksonicend:
@@ -28543,9 +28612,7 @@ S_F_NotGHZ2:
 		move.b	#$23,0(a1)		; load missile object
 		move.w	obX(a0),obX(a1)		; select sonic's current X-pos as destination point
 		move.w	obY(a0),obY(a1)		; do the same with sonic's Y-pos
-		
 
-		; if no other D-pad button was held, shoot downwards by default
 		move.w	#$200,obVelY(a1)	; move bullet downwards
 		move.w	obVelY(a0),d1		; get Sonic's Y-speed
 		cmpi.w	#$800,d1		; is Sonic falling faster than $800?
@@ -28562,6 +28629,19 @@ S_F_PlaySound:
 		move.w	#$C4,d0			; set sound $C4
 		jsr	(PlaySound_Special).l	; play exploding bomb sound
 
+S_F_RPRingCost:
+		frantic				; are we in frantic?
+		bne.s	S_F_End			; if yes, branch (this is the one time casual gets something exclusive)
+		cmpi.w	#$200,($FFFFFE10).w	; are we in RP?
+		bne.s	S_F_End			; if not branch
+		btst	#4,(OptionsBits).w	; is nonstop inhuman enabled?
+		bne.s	S_F_End			; if yes, branch
+		ori.b	#1,($FFFFFE1D).w	; update ring counter
+		subq.w	#1,($FFFFFE20).w	; sub 1 ring
+		bpl.s	S_F_End			; if rings remain, branch
+		clr.w	($FFFFFE20).w		; reset rings
+		jmp	KillSonic_Inhuman	; you died lol
+	
 S_F_End:
 		rts				; return
 ; End of function Sonic_Fire
@@ -33653,7 +33733,7 @@ Obj79_HitLamp:
 		bcc.w	locret_16F90
 
 		cmpi.w	#$002,($FFFFFE10).w	; are we in GHP?
-		beq.s	@endghpaction		; if yes, end the black bars action stuff
+		beq.w	@endghpaction		; if yes, end the black bars action stuff
 
 		cmpi.w	#$200,($FFFFFE10).w	; are we in RP?
 		bne.s	@notrp			; if not, branch
@@ -33667,17 +33747,20 @@ Obj79_HitLamp:
 		cmpi.b	#1,obFrame(a0)		; already hit?
 		beq.w	locret_16F90		; if yes, branch
 		move.b	#1,obFrame(a0)		; use "post only" frame, with no lamp
+		move.w	#$AC,d0			; play minor explosion
+		jsr	(PlaySound).l
 		move.w	#$DC,d0			; play nuh uh sound
-		jsr	(PlaySound).l		; play sound	
-		rts
+		jsr	(PlaySound_Special).l
 
 		jsr	SingleObjLoad
-		bne.w	locret_16F90		; if yes, branch
+		bne.w	locret_16F90
 		move.b	#$3F,(a1)
 		move.b	#0,obRoutine(a1)
 		move.b	#1,$30(a1)
+		move.b	#1,$31(a1)
 		move.w	obX(a0),obX(a1)
 		move.w	obY(a0),obY(a1)
+		subi.w	#28,obY(a1)
 		rts				; block checkpoint
 
 @notrp:

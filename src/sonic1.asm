@@ -1224,10 +1224,10 @@ PalCycle_SAP:
 		bne.w	PCSLZ_Red_End		; if not, branch
 		tst.b	($FFFFFF77).w		; is antigrav enabled?
 		beq.w	PCSLZ_Red_End		; if not, branch
-		btst	#7,(OptionsBits).w	; is photosensitive mode enabled?
-		beq.s	@dosappal		; if not, branch
-		move.b	#5,($FFFFFFBC).w	; fixate color to red
-		bra.w	PCSLZ_Red_Cont		; skip all the other pal cycle stuff
+	;	btst	#7,(OptionsBits).w	; is photosensitive mode enabled?
+	;	beq.s	@dosappal		; if not, branch
+	;	move.b	#5,($FFFFFFBC).w	; fixate color to red
+	;	bra.w	PCSLZ_Red_Cont		; skip all the other pal cycle stuff
 
 @dosappal:
 
@@ -29006,8 +29006,8 @@ SAP_HitWall:
 
 SAP_LoadSonicPal:
 		; load antigrav palette for Sonic
-		btst	#7,(OptionsBits).w	; is photosensitive mode enabled?
-		bne.s	@nopal			; if yes, don't mess with Sonic
+	;	btst	#7,(OptionsBits).w	; is photosensitive mode enabled?
+	;	bne.s	@nopal			; if yes, don't mess with Sonic
 		moveq	#$11,d0			; load Sonic's antigrav palette line in palette line 2
 		btst	#1,(ScreenFuzz).w	; is piss enabled?
 		beq.s	@loadpal		; if not, branch

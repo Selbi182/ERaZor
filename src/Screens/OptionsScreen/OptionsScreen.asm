@@ -308,8 +308,6 @@ Options_HandleUpdate:
 		moveq	#$FFFFFFE0, d0
 		jsr	PlaySound_Special
 
-		jsr	SRAM_SaveNow
-
 		moveq	#0,d0			; return to Uberhub
 		jmp	Exit_OptionsScreen
 

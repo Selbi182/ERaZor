@@ -101,8 +101,9 @@ Options_GameplayStyle_Redraw:
 ; ---------------------------------------------------------------------------
 
 Options_GameplayStyle_Handle:
+	moveq	#0,d1
 	move.b	Joypad|Press, d1	; get button presses
- 	andi.b	#$F0,d1			; is A, B, C, or Start pressed?
+	andi.b	#$FC,d1			; is left, right, A, B, C, or Start pressed?
 	beq.s	@ret			; if not, branch
 	
 	tst.b	(PlacePlacePlace).w	; is easter egg flag set?
@@ -116,7 +117,7 @@ Options_GameplayStyle_Handle:
 	bra.s	@redraw
 
 @noteaster:
-	btst	#6,d1			; is specifically A pressed?
+	andi.b	#$C,d1			; specifically left or right pressed?
 	bne.s	@quicktoggle		; if yes, quick toggle
 	moveq	#1,d0			; set to GameplayStyleScreen
 	jmp	Exit_OptionsScreen
@@ -293,7 +294,7 @@ Options_FlashyLights_Redraw:
 	add.w	d0, d0				; d0 = ModeId * 4
 	movea.l	@FlashyLightsList(pc,d0), a1
 	
-	Options_PipeString a4, "SCREEN FLASH  %<.l a1 str>", 28
+	Options_PipeString a4, "FLASHY LIGHTS %<.l a1 str>", 28
 	rts
 
 ; ---------------------------------------------------------------------------
@@ -301,7 +302,7 @@ Options_FlashyLights_Redraw:
 	dc.l	@Str_Mode00,@Str_Mode01,@Str_Mode10
 
 @Str_Mode00:	dc.b	'      STANDARD',0
-@Str_Mode01:	dc.b	'PHOTOSENSITIVE',0
+@Str_Mode01:	dc.b	'       REDUCED',0
 @Str_Mode10:	dc.b	' MAX INTENSITY',0
 		even
 

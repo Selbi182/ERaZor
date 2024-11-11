@@ -130,10 +130,12 @@ DH_Continue:
 		jsr	PalCycle_Load
 
 		; palette cycle to highlight letters
-		btst	#7,(OptionsBits).w	; photosensitive mode?
-		bne.s	@noletterflashing	; if yes, branch
 		move.w	($FFFFFE0E).w,d0
 		lsl.w	#4,d0
+		btst	#7,(OptionsBits).w	; photosensitive mode?
+		beq.s	@normal			; if not, branch
+		lsr.w	#1,d0			; reduce flashing speed
+@normal:
 		jsr	CalcSine
 		cmpi.w	#$100,d0
 		bne.s	@contff
@@ -150,7 +152,6 @@ DH_Continue:
 		andi.w	#$CCE,d0
 		move.w	d0,($FFFFFB34).w
 		
-@noletterflashing:
 		; Check if it's over
 		tst.b	_DH_WindowObj	; object window dead?
 		bne.w	DH_MainLoop	; if not, branch

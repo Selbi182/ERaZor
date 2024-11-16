@@ -56,14 +56,14 @@ USE_NEW_BUILDSPRITES:	equ	1	; New BuildSprites system is still faster than S1's,
 ; $302 - Star Agony Place
 ; $502 - Finalor Place
 	if def(__BENCHMARK__)=0
-QuickLevelSelect = 0
+QuickLevelSelect = 1
 QuickLevelSelect_ID = -1
 ; ------------------------------------------------------
 DebugModeDefault = 1
-DebugSurviveNoRings = 1
+DebugSurviveNoRings = 0
 ; ------------------------------------------------------
 DoorsAlwaysOpen = 0
-LowBossHP = 1
+LowBossHP = 0
 ; ======================================================
 	else
 ; BENCHMARK build settings (DO NOT CHANGE!)
@@ -7834,7 +7834,7 @@ Obj11_ChkDel:				; XREF: Obj11_Display; Obj11_Action2
 		sub.w	d1,d0
 		cmpi.w	#$280,d0
 		bhi.w	Obj11_DelAll
-		bra.w	DisplaySprite
+		jmp	DisplaySprite
 ; ===========================================================================
 
 Obj11_DelAll:				; XREF: Obj11_ChkDel
@@ -9472,35 +9472,134 @@ Obj1D_Explosions:
 		rts			; never delete
 ; ===========================================================================
 
-Obj1D_BonusText_Main:
-		; WIP bonus text object
-		; this thing is supposed to give encouraging messages on repeat deaths
-		addq.b	#2,obRoutine(a0)
+; ---------------------------------------------------------------------------
+; Bonus texts spawning in Finalor Place after the player dies
+; ---------------------------------------------------------------------------
 
-	;	move.l	#Map_Obj1D_BonusText,obMap(a0)
-		move.l	#Map_Obj03,obMap(a0)
-	;	move.w	#$7300/$20,obGfx(a0)
-		move.w	#$5600/$20,obGfx(a0)
+FPBonusText_Length = 4*7	; = 28
+
+FPBonusTexts:	; THESE ARE ALL GENERIC PLACEHOLDERS FOR THE TIME BEING!!!
+		dc.b	"     OH, BACK SO SOON?      "
+		dc.b	"    WELCOME BACK, AGAIN!    "
+		dc.b	"     AW MAN, SO CLOSE!      "
+		dc.b	"       YOU CAN DO IT!       "
+		
+		dc.b	" THIS DRUM BEAT IS A BANGER "
+		dc.b	"YES, THE COOL MUSIC IS BACK!"
+		dc.b	"  PEELOUTING IS FASTER BTW  "
+		dc.b	" WAIT AT THE MONITOR A BIT  "
+		
+		dc.b	" TRY TO AVOID THE CRUSHERS! "
+		dc.b	" TRY TO AVOID THE BUZZSAW!  "
+		dc.b	"   TRY TO AVOID THE ORBS!   "
+		dc.b	"  TRY TO AVOID SKILL ISSUE! "
+		
+		dc.b	"  THIS IS GETTING AWKWARD   "
+		dc.b	"   I GOT NO MORE TIPS...    "
+		dc.b	"  YOU ARE ON YOUR OWN NOW   "
+		dc.b	"  I AM OUTTA HERE, SEE YA   "
+		even
+; ---------------------------------------------------------------------------
+
+Obj1D_BonusText_Main:
+		addq.b	#2,obRoutine(a0)
+		move.l	#Map_Obj1D_BonusText,obMap(a0)
+		move.w	#$2000|($5600/$20),obGfx(a0)
 		ori.b	#4,obRender(a0)
 		move.b	#$20,obActWid(a0)
 		move.b	#2,obPriority(a0)
+		move.w	obY(a0),$32(a0)		; used for the sway
 
-		; used for the sway
-		move.w	obY(a0),$32(a0)
+		; load text into VRAM
+		moveq	#0,d0
+		move.w	($FFFFFE12).w,d0	; load death counter (TODO based on level entrance)
+		subq.w	#1,d0
+		bcs.w	Obj1D_Delete		; player didn't die yet
+		
+		andi.w	#$F,d0			; 16 entries
+
+		mulu.w	#FPBonusText_Length,d0	; multiply by length per entry
+		lea	(FPBonusTexts).l,a1	; load text
+		adda.w	d0,a1			; set final starting offset for entry
+
+		VBlank_SetMusicOnly
+		vram	$5600
+		lea	(VDP_Data).l,a6
+		moveq	#FPBonusText_Length-1,d0
+
+@write:
+		moveq	#0,d1
+		move.b	(a1)+,d1
+
+@chkspace:	cmpi.b	#' ',d1
+		bne.s	@chkquestion
+		moveq	#'Z'+1,d1
+		bra.s	@do
+
+@chkquestion:	cmpi.b	#'?',d1
+		bne.s	@chkexcl
+		moveq	#'Z'+2,d1
+		bra.s	@do
+
+@chkexcl:	cmpi.b	#'!',d1
+		bne.s	@chkdot
+		moveq	#'A'-5,d1
+		bra.s	@do
+
+@chkdot:	cmpi.b	#'.',d1
+		bne.s	@chkcomma
+		moveq	#'Z'+3,d1
+		bra.s	@do
+
+@chkcomma:	cmpi.b	#',',d1
+		bne.s	@do
+		moveq	#'Z'+4,d1
+
+@do:
+		subi.b	#'A'-$F,d1	; normalize to menutext.bin
+		lsl.w	#5,d1		; * 64 pixels
+
+		lea	(Art_Text).l,a2
+		adda.w	d1,a2		; find letter offset in Art_Text
+		rept	8
+		move.l	(a2)+,(a6)	; write all pixels
+		endr
+		dbf	d0,@write
+
+		VBlank_UnsetMusicOnly
+
 
 Obj1D_BonusText_Display:		
 		move.w	($FFFFFE0E).w,d0
-		add.w	obX(a0),d0
 		add.w	d0,d0
 		jsr	(CalcSine).l
 		asr.w	#6,d0
 		add.w	$32(a0),d0
 		move.w	d0,obY(a0)
+		
+	;	move.w	($FFFFD008).w,obX(a0)
+		move.w	($FFFFF700).w,d0
+		addi.w	#SCREEN_WIDTH/2,d0
+		move.w	d0,obX(a0)
 
-		jmp	MarkObjGone	; display
+		cmpi.w	#$1000,obX(a0)
+		blo.s	@nodisplay
+
+		cmpi.w	#$2000,obX(a0)
+		bhs.s	Obj1D_Delete
+
+		jmp	DisplaySprite
+
+@nodisplay:
+		rts
 ; ===========================================================================
-;Map_Obj1D_BonusText:
-;		include	"_maps\obj1C.asm"
+
+Obj1D_Delete:
+		jmp	DeleteObject
+; ===========================================================================
+
+Map_Obj1D_BonusText:
+		include	"_maps\obj1D.asm"
 ; ===========================================================================
 
 
@@ -28727,10 +28826,10 @@ loc_1341C:
 		jsr	(PlaySound_Special).l ;	play jumping sound
 		move.b	#$13,obHeight(a0)
 		move.b	#9,obWidth(a0)
-		move.b	#$E,obHeight(a0)
-		move.b	#7,obWidth(a0)
 		btst	#2,obStatus(a0)
 		bne.s	@alreadyrolling
+		move.b	#$E,obHeight(a0)
+		move.b	#7,obWidth(a0)
 		move.b	#2,obAnim(a0)	; use "jumping"	animation
 		bset	#2,obStatus(a0)
 		addq.w	#5,obY(a0)

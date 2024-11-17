@@ -88,6 +88,7 @@ Start_FirstGameMode:
 
 		; Emulator detection to autoskip the screen for known faulty behavior (primarily in Kega)
 		; Inspired by: https://github.com/DevsArchive/genesis-emulator-detector
+	if def(__WIDESCREEN__)=0 ; skip  the skipping screen in widescreen mode because it has the info text
 		lea	VDP_Debug, a0
 		move.w	#1, (a0)		; Write to the VDP debug register (for BlastEm detection)
 		ori.b	#0, d0
@@ -98,6 +99,7 @@ Start_FirstGameMode:
 		beq.w	@skip			; If so, then Kega Fusion has been detected
 		cmpi.w	#1, d0			; Did it return what it was last written?
 		beq.w	@skip			; If so, then an old version of BlastEm has been detected
+	endif
 
 @blackbarsscreen:
 		move.b	#$38,(GameMode).w	; set to Black Bars configuration screen

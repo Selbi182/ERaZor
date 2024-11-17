@@ -448,8 +448,8 @@ BlackBars_SetHeight:
 		rts					; return
 ; ===========================================================================
 
-BlackBars.GHPCasual  = 60*3/2
-BlackBars.GHPFrantic = 20
+BlackBars.GHPCasual  = 60*3
+BlackBars.GHPFrantic = 60/2
 ; ---------------------------------------------------------------------------
 
 BlackBars.GHP:
@@ -475,8 +475,8 @@ BlackBars.GHP:
 		bhi.s	@timeleft			; if time is left, branch
 		move.b	BlackBars.GHPTimerReset,BlackBars.GHPTimer ; reset grow interval timer
 
-		addq.w	#1,BlackBars.TargetHeight ; grow bars by one tick
-		cmpi.w	#224/2-2,BlackBars.Height	; did we reach kill height yet? (full screen covered)
+		addq.w	#1,BlackBars.TargetHeight 	; grow bars by one tick
+		cmpi.w	#224/2,BlackBars.Height		; did we reach kill height yet? (full screen covered)
 		blo.s	@noscreenkill			; if not, branch
 		jmp	KillSonic_Inhuman		; hecking kill Sonic, even in nonstop inhuman
 
@@ -485,7 +485,7 @@ BlackBars.GHP:
 		jsr	PlaySound_Special		; ...badump sound		
 
 @timeleft:		
-		bra	BlackBars_ShowCustom		; force display
+		bra.w	BlackBars_ShowCustom		; force display
 ; ---------------------------------------------------------------------------
 
 BlackBars_Selbi:
@@ -735,19 +735,8 @@ ClearScreen:
 		VBlank_SetMusicOnly
 		jsr	DrawBuffer_Clear
 
-		lea	VDP_Ctrl,a5
-		move.w	#$8F01,(a5)
-		move.l	#$940F93FF,(a5)
-		move.w	#$9780,(a5)
-		move.l	#$40000083,(a5)
-		move.w	#0,VDP_Data
+		bsr	ClearPlaneA
 
-loc_12E6:
-		move.w	(a5),d1
-		btst	#1,d1
-		bne.s	loc_12E6
-
-		move.w	#$8F02,(a5)
 		lea	VDP_Ctrl,a5
 		move.w	#$8F01,(a5)
 		move.l	#$940F93FF,(a5)
@@ -783,6 +772,24 @@ loc_134A:
 		rts
 ; End of function ClearScreen
 
+
+; ---------------------------------------------------------------------------
+
+ClearPlaneA:
+		lea	VDP_Ctrl,a5
+		move.w	#$8F01,(a5)
+		move.l	#$940F93FF,(a5)
+		move.w	#$9780,(a5)
+		move.l	#$40000083,(a5)
+		move.w	#0,VDP_Data
+
+loc_12E6:
+		move.w	(a5),d1
+		btst	#1,d1
+		bne.s	loc_12E6
+		move.w	#$8F02,(a5)
+		rts
+		
 ; ---------------------------------------------------------------------------
 ; Subroutine to	clear the entire VRAM
 ; ---------------------------------------------------------------------------
@@ -26683,6 +26690,7 @@ loc_12CB6:
 ; ---------------------------------------------------------------------------
 
 Sonic_Display:				; XREF: loc_12C7E
+		; NHP waterfall teleporting
 		tst.w	($FFFFFE10).w		; is level GHZ1?
 		bne.w	S_D_NoTeleport		; if not, branch
 
@@ -28303,8 +28311,8 @@ SPO_CheckDelay:
 
 SPO_SlowPeelout:
 		moveq	#0,d1			; clear d1
-		move.w	#$A00,d1		; set slowpeelout speed
-		bra.s	SPO_ChkUW		; skip SPO_FastPeelout
+	;	move.w	#$A00,d1		; set slowpeelout speed
+	;	bra.s	SPO_ChkUW		; skip SPO_FastPeelout
 
 SPO_FastPeelout:
 		moveq	#0,d1			; clear d1

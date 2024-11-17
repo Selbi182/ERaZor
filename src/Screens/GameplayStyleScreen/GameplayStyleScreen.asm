@@ -70,6 +70,21 @@ GameplayStyleScreen:
 		add.l	d4,d0			; increae to next row on VRam
 		dbf	d2,@row			; repeat til all rows have dumped
 
+	if def(__WIDESCREEN__)
+		; making the screen slightly nicer in widescreen mode
+		lea	($FFFFCC00).w,a1
+		moveq	#SCREEN_XCORR,d0
+		neg.w	d0
+		swap	d0
+		move.w	#224-1,d1
+@wideadjust:
+		move.l	d0,(a1)+
+		cmpi.w	#112,d1
+		bne.s	@next
+		neg.l	d0
+@next:		dbf	d1,@wideadjust
+	endif
+
 		moveq	#1,d0
 		bsr	GSS_LoadPal
 		VBlank_UnsetMusicOnly

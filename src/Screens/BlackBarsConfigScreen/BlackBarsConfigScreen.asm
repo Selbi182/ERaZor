@@ -11,8 +11,9 @@ BlackBarsConfig_VRAM_Font:		equ	$8000
 BlackBarsConfig_ConsoleRAM:		equ	LevelLayout_FG		; borrow FG layout RAM
 BlackBarsConfig_SelectedItemId:		equ	LevelLayout_FG+$40	; .b
 BlackBarsConfig_RedrawUI:		equ	LevelLayout_FG+$41	; .b
-BlackBarsConfig_JoypadHeldTimers:	equ	LevelLayout_FG+$42
-BlackBarsConfig_Exiting:		equ	LevelLayout_FG+$43
+BlackBarsConfig_JoypadHeldTimers:	equ	LevelLayout_FG+$42	; .b
+BlackBarsConfig_Exiting:		equ	LevelLayout_FG+$43	; .b
+BlackBarsConfig_PreTextActive:		equ	LevelLayout_FG+$44	; .b
 
 ; -----------------------------------------------------------------------------
 BlackBarsConfigScreen:
@@ -65,10 +66,18 @@ BlackBarsConfigScreen:
 	jsr	LevelRenderer_DrawLayout_BG
 
 	; Init screen
-	move.w	BlackBars.BaseHeight, BlackBars.Height
-	move.b	#0,BlackBarsConfig_Exiting
 	jsr	BlackBarsConfigScreen_InitUI
-	
+	move.w	BlackBars.BaseHeight, BlackBars.Height
+	move.b	#0, BlackBarsConfig_Exiting
+
+	if def(__WIDESCREEN__);=0 ; TODO invert
+		move.b	#1, BlackBarsConfig_PreTextActive
+		jsr	BlackBarsConfigScreen_WriteText_WidescreenInfo
+	else
+		move.b	#0, BlackBarsConfig_PreTextActive
+		jsr	BlackBarsConfigScreen_WriteText
+	endif
+
 	; Brighten up white palette for better legibility
 	move.w	#$EEE,d0
 	move.w	d0,($FFFFFB84).w
@@ -84,7 +93,7 @@ BlackBarsConfigScreen:
 	move.w	#$8014, VDP_Ctrl		; enable HInt-s
 
 	jsr	Pal_FadeTo
-
+	
 ; ---------------------------------------------------------------
 ; Main Loop
 ; ---------------------------------------------------------------
@@ -104,6 +113,26 @@ BlackBarsConfigScreen:
 	jsr	BlackBarsConfigScreen_DeformBG
 	jsr	LevelRenderer_Update_BG
 
+; ---------------------------------------------------------------
+; Input Response
+
+	; pre-text for the widescreen version
+	moveq	#0,d0
+	tst.b	BlackBarsConfig_PreTextActive
+	beq.w	@pretextdone
+	andi.b	#Start|A|B|C,Joypad|Press
+	beq.w	@MainLoop
+
+	VBlank_SetMusicOnly
+	move.w	#$DA,d0
+	jsr	PlaySound_Special
+	jsr	ClearPlaneA
+	clr.b	BlackBarsConfig_PreTextActive
+	jsr	BlackBarsConfigScreen_WriteText
+	VBlank_UnsetMusicOnly
+	bra.w	@MainLoop
+
+@pretextdone:
 	tst.b	BlackBarsConfig_Exiting		; is exiting flag set?
 	bne.s	@exiting			; if yes, ignore button presses
 
@@ -127,7 +156,9 @@ BlackBarsConfigScreen:
 	; quit screen on other button press
 	move.b	Joypad|Press,d0
 	andi.b	#B|C|Start,d0
-	beq.s	@MainLoop
+	beq.w	@MainLoop
+	move.w	#$D9,d0
+	jsr	PlaySound_Special
 	move.b	#1,BlackBarsConfig_Exiting	; set exiting flag
 	move.l	#BlackBarsConfigScreen_RedrawUI, VBlankCallback	; redraw one last time
 ; ---------------------------------------------------------------
@@ -146,6 +177,8 @@ BlackBarsConfigScreen:
 ; ===============================================================
 
 @toggle:
+	move.w	#$D8,d0
+	jsr	PlaySound_Special
 	bchg	#1, BlackBars.HandlerId		; toggle selected option
 	jsr	BlackBars.SetHandler
 	move.l	#BlackBarsConfigScreen_RedrawUI, VBlankCallback	; defer redraw to VInt
@@ -407,6 +440,11 @@ BlackBarsConfigScreen_GenerateSprites:
 @y_ok:
 
 	move.b	($FFFFFEC3).w, obFrame(a0)
+
+	tst.b	BlackBarsConfig_PreTextActive
+	beq.s	@display
+	rts
+@display:
 	jmp	DisplaySprite
 
 
@@ -443,10 +481,7 @@ BlackBarsConfigScreen_InitUI:
 	; Load font
 	vram	BlackBarsConfig_VRAM_Font, (a5)
 	lea	BBCS_ArtKospM_Font(pc), a0
-	jsr	KosPlusMDec_VRAM
-
-	; Initial UI header
-	bra	BlackBarsConfigScreen_WriteText
+	jmp	KosPlusMDec_VRAM
 
 ; ---------------------------------------------------------------
 @ArtDecodeTable:
@@ -476,8 +511,8 @@ BlackBarsConfigScreen_WriteText:
 	BBCS_EnterConsole a0
 
 	Console.SetXY #12, #6
-	Console.Write "  SONIC ERAZOR"
-	Console.Write "%<endl>%<endl>"
+	Console.Write "  SONIC ERAZOR%<endl>"
+	Console.Write "----------------%<endl>"
 	Console.Write "BLACK BARS SETUP"
 
 	Console.SetXY #4, #20
@@ -517,6 +552,52 @@ BlackBarsConfigScreen_RedrawUI:
 	rts
 @hweaster:
 	Console.Write '%<pal0>> "WINNERS DON''T USE GENS"   '
+	rts
+; ---------------------------------------------------------------
+; ===============================================================
+; ---------------------------------------------------------------
+
+BlackBarsConfigScreen_WriteText_WidescreenInfo:
+	BBCS_EnterConsole a0
+
+	Console.SetXY #4, #6
+	Console.Write "SONIC ERAZOR: WIDESCREEN EDITION%<endl>"
+	Console.Write "--------------------------------"
+
+
+	Console.SetXY #2, #9
+	Console.Write "   THIS IS A SPECIAL 16:9 VERSION%<endl>"
+	Console.Write "    OF THIS ROM HACK EXCLUSIVELY%<endl>"
+	Console.Write " AND SPECIFICALLY OPTIMIZED FOR THE"
+	Console.Write "%<endl>"
+	Console.Write '       "GENESIS PLUS GX WIDE"%<endl>'
+	Console.Write '         CORE FOR RETROARCH'
+	Console.Write "%<endl>"
+	Console.Write "   AND IT'LL WILL BE A VERY AWKWARD%<endl>"
+	Console.Write "  EXPERIENCE FOR ANY OTHER EMULATOR!"
+	Console.Write "%<endl>%<endl>%<endl>"
+	Console.Write "      YOU CAN FIND AND DOWNLOAD%<endl>"
+	Console.Write " THE REGULAR 4:3 VERSION OVER HERE:"
+	Console.Write "%<endl>%<endl>"
+	Console.Write "  HTTPS://SELBI.HAPISAN.COM/ERAZOR"
+
+
+
+	Console.SetXY #-4, #7
+	Console.Write "IF%<endl>%<endl>%<endl>%<endl>"
+	Console.Write "YOU%<endl>%<endl>%<endl>%<endl>"
+	Console.Write "CAN%<endl>%<endl>%<endl>%<endl>"
+	Console.Write "READ%<endl>%<endl>%<endl>%<endl>"
+	Console.Write "THIS"
+	Console.SetXY #40, #6
+	Console.Write " YOU%<endl>%<endl>%<endl>%<endl>"
+	Console.Write " ARE%<endl>%<endl>%<endl>%<endl>"
+	Console.Write "GOOD%<endl>%<endl>%<endl>%<endl>"
+	Console.Write "  TO%<endl>%<endl>%<endl>%<endl>"
+	Console.Write " GO!"
+	
+
+	BBCS_LeaveConsole a0
 	rts
 ; ---------------------------------------------------------------
 ; ===============================================================

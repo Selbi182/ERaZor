@@ -56,7 +56,7 @@ USE_NEW_BUILDSPRITES:	equ	1	; New BuildSprites system is still faster than S1's,
 ; $302 - Star Agony Place
 ; $502 - Finalor Place
 	if def(__BENCHMARK__)=0
-QuickLevelSelect = 1
+QuickLevelSelect = 0
 QuickLevelSelect_ID = -1
 ; ------------------------------------------------------
 DebugModeDefault = 1
@@ -448,8 +448,8 @@ BlackBars_SetHeight:
 		rts					; return
 ; ===========================================================================
 
-BlackBars.GHPCasual  = 60*3
-BlackBars.GHPFrantic = 60
+BlackBars.GHPCasual  = 60*3/2
+BlackBars.GHPFrantic = 20
 ; ---------------------------------------------------------------------------
 
 BlackBars.GHP:
@@ -460,8 +460,9 @@ BlackBars.GHP:
 
 		tst.b	($FFFFF7AA).w			; fighting against boss? (for 3P easter egg)
 		bne.s	@baseheightokay			; if yes, branch
-		cmpi.w	#BlackBars.MaxHeight,BlackBars.Height	; are bars smaller than the base height?
-		bhs.s	@baseheightokay				; if not, branch
+		move.w	BlackBars.BaseHeight,d0		; get base black bar height
+		cmp.w	BlackBars.Height,d0		; are bars smaller than the base height?
+		blo.s	@baseheightokay			; if not, branch
 		addq.w	#BlackBars.GrowSize,BlackBars.TargetHeight ; grow bars until we reach the minimum height
 @baseheightokay:
 
@@ -474,7 +475,7 @@ BlackBars.GHP:
 		bhi.s	@timeleft			; if time is left, branch
 		move.b	BlackBars.GHPTimerReset,BlackBars.GHPTimer ; reset grow interval timer
 
-		addq.w	#BlackBars.GrowSize,BlackBars.TargetHeight ; grow bars by one tick
+		addq.w	#1,BlackBars.TargetHeight ; grow bars by one tick
 		cmpi.w	#224/2-2,BlackBars.Height	; did we reach kill height yet? (full screen covered)
 		blo.s	@noscreenkill			; if not, branch
 		jmp	KillSonic_Inhuman		; hecking kill Sonic, even in nonstop inhuman
@@ -3697,7 +3698,7 @@ Level_Delay:
 @fadefromblack:
 		tst.b	($FFFFF7CC).w	; are controls locked?
 		beq.s	@nobars		; if not, branch
-		move.w	#BlackBars.MaxHeight,BlackBars.Height ; force bars to max during locked controls fade in (like NHP)
+		move.w	BlackBars.BaseHeight,BlackBars.Height ; force bars to max during locked controls fade in (like NHP)
 @nobars:
 		movem.l	d4-d6, -(sp)
 		bsr	Level_MainLoop_Main
@@ -4897,7 +4898,7 @@ SS_SetupFinish:
 		; the following code is basically just Pal_MakeWhite but
 		; adjusted to already start displaying the level during the fade-in
 		move.w	#$8014,VDP_Ctrl	; enable h-ints for the black bars
-		move.w	#BlackBars.MaxHeight,BlackBars.Height
+		move.w	BlackBars.BaseHeight,BlackBars.Height
 		move.w	#$3F,($FFFFF626).w
 		moveq	#0,d0
 		lea	Pal_Active,a0
@@ -4965,6 +4966,7 @@ SS_MainLoop:
 		move.w	#$A8,d0			; play special stage exit sound
 		jsr	(PlaySound_Special).l	; play sound
 		clr.w	($FFFFFE20).w		; lose all your rings, loser
+		addq.w	#1,(RelativeDeaths).w	; add one relative death for the current stage
 		bra.s	SS_WaitVBlank		; skip
 @nothps:
 
@@ -5642,7 +5644,7 @@ End_LoadSonic:
 		
 		bset	#0,($FFFFD022).w ; make	Sonic face left
 		move.b	#1,($FFFFF7CC).w ; lock	controls
-		move.w	#$400,($FFFFF602).w ; move Sonic to the	left
+		move.w	#$400,($FFFFF602).w ; move Sonic to the	left (force left press)
 		move.w	#-$800,($FFFFD014).w ; set Sonic's speed
 		move.b	#4,VBlankRoutine
 		bsr	DelayProgram
@@ -5688,6 +5690,7 @@ End_MainLoop:
 		jsr 	LevelRenderer_Update_BG
 		jsr	BuildSprites
 		jsr	DeleteQueue_Execute
+		jsr	UndoCameraShake		; undo camera shake now that the rendering is done
 		jsr	ObjPosLoad
 		jsr	AnimatedArt_Update
 		cmpi.b	#6,($FFFFD024).w	; is Sonic dying?
@@ -5695,8 +5698,10 @@ End_MainLoop:
 		bsr	PCL_Load		; pal cycle while alive
 
 @checkeaster:
-		btst	#4,(OptionsBits).w	; is nonstop inhuman enabled?
-		beq.s	@checkfadeout		; if not, branch	
+	;	btst	#4,(OptionsBits).w	; is nonstop inhuman enabled?
+	;	beq.s	@checkfadeout		; if not, branch	
+		cmpi.w	#$800,($FFFFF602).w	; moving to the right?
+		bne.s	@checkfadeout		; if not, branch
 		cmpi.w	#$300,($FFFFD00C).w	; compare to Sonic's Y pos
 		bls.s	@checkfadeout		; if he's above, all good
 		cmpi.w	#$1020,($FFFFD008).w	; compare to Sonic's X pos
@@ -5723,12 +5728,22 @@ End_MainLoop:
 
 
 End_MoveSonic:				; XREF: End_MainLoop
-		move.b	#1,($FFFFF7CC).w ; lock	controls
+	;	tst.w	($FFFFF602).w
+	;	beq.s	End_MoveSonic_End
+
+	;	move.b	#1,($FFFFF7CC).w ; lock	controls
 		cmpi.w	#$90,($FFFFD008).w ; has Sonic passed $90 on y-axis?
 		bcc.s	End_MoveSonExit	; if not, branch
 		move.w	#$800,($FFFFF602).w ; move Sonic to the	right
 
 End_MoveSonExit:	
+	;	btst	#3,($FFFFD022).w
+	;	beq.s	End_MoveSonic_End
+	;	move.w	#$000,($FFFFF602).w
+	;	move.w	#$40,($FFFFD014).w
+	;	move.b	#0,($FFFFF7CC).w ; lock	controls
+
+End_MoveSonic_End:	
 		rts	
 ; End of function End_MoveSonic
 
@@ -5938,7 +5953,7 @@ LevSz_StartLoc:				; XREF: LevelSizeLoad
 		bra.s	@altsloc		; otherwise, use fast forward spawn location
 		
 @chkuberhub:
-		; frantic Uberhub fast spawn
+		; Uberhub frantic fast spawn
 		cmpi.w	#$400,($FFFFFE10).w	; is level SYZ?
 		bne.s 	@load			; if not, branch
 
@@ -7999,7 +8014,7 @@ Obj15_SetSolid:				; XREF: Obj15_Index
 
 Obj15_Action:				; XREF: Obj15_Index
 		jsr	obj15_Move
-		bsr	DisplaySprite
+		jsr	DisplaySprite
 		bra.w	Obj15_ChkDel
 ; ===========================================================================
 
@@ -8352,10 +8367,20 @@ Obj18_Index:	dc.w Obj18_Main-Obj18_Index
 ; ===========================================================================
 
 Obj18_Main:				; XREF: Obj18_Index
+		cmpi.b	#6,($FFFFFE10).w	; is this the ending sequence?
+		bne.s	@notending		; if not, branch
+		tst.w	($FFFFFE12).w		; do you have zero deaths?
+		bne.s	@delete			; if not, delete
+		bra.s	@notfrantic		; Sonic doesn't die hooray
+@notending:
 		frantic
 		beq.s	@notfrantic
 		cmpi.w	#$50FD,obX(a0)	; middle platform in GHP boss
-		beq.w	DeleteObject
+		bne.s	@notfrantic
+
+@delete:
+		bra.w	DeleteObject
+
 @notfrantic:
 		addq.b	#2,obRoutine(a0)
 		move.w	#$4000,obGfx(a0)
@@ -9472,32 +9497,32 @@ Obj1D_Explosions:
 		rts			; never delete
 ; ===========================================================================
 
+; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Bonus texts spawning in Finalor Place after the player dies
 ; ---------------------------------------------------------------------------
-
-FPBonusText_Length = 4*7	; = 28
-
-FPBonusTexts:	; THESE ARE ALL GENERIC PLACEHOLDERS FOR THE TIME BEING!!!
-		dc.b	"     OH, BACK SO SOON?      "
+FPBonusText_Entries = 16
+FPBonusText_Length  = 4*7	; = 28
+; ---------------------------------------------------------------------------
+FPBonusTexts:	dc.b	"     OH, BACK SO SOON?      "
 		dc.b	"    WELCOME BACK, AGAIN!    "
-		dc.b	"     AW MAN, SO CLOSE!      "
 		dc.b	"       YOU CAN DO IT!       "
+		dc.b	"     AW MAN, SO CLOSE!      "
 		
+		dc.b	" BTW, PEELOUTING IS FASTER  "
+		dc.b	" WAIT AT THE MONITOR A BIT  "	; skipped in frantic
 		dc.b	" THIS DRUM BEAT IS A BANGER "
 		dc.b	"YES, THE COOL MUSIC IS BACK!"
-		dc.b	"  PEELOUTING IS FASTER BTW  "
-		dc.b	" WAIT AT THE MONITOR A BIT  "
 		
 		dc.b	" TRY TO AVOID THE CRUSHERS! "
 		dc.b	" TRY TO AVOID THE BUZZSAW!  "
 		dc.b	"   TRY TO AVOID THE ORBS!   "
-		dc.b	"  TRY TO AVOID SKILL ISSUE! "
+		dc.b	"   TRY TO AVOID BEING BAD!  "
 		
+		dc.b	"    I AM OUT OF TIPS...     "
+		dc.b	"           UHH...           "
 		dc.b	"  THIS IS GETTING AWKWARD   "
-		dc.b	"   I GOT NO MORE TIPS...    "
-		dc.b	"  YOU ARE ON YOUR OWN NOW   "
-		dc.b	"  I AM OUTTA HERE, SEE YA   "
+		dc.b	"YOU GOT THIS. SEE YOU LATER!"
 		even
 ; ---------------------------------------------------------------------------
 
@@ -9505,19 +9530,28 @@ Obj1D_BonusText_Main:
 		addq.b	#2,obRoutine(a0)
 		move.l	#Map_Obj1D_BonusText,obMap(a0)
 		move.w	#$2000|($5600/$20),obGfx(a0)
-		ori.b	#4,obRender(a0)
-		move.b	#$20,obActWid(a0)
-		move.b	#2,obPriority(a0)
-		move.w	obY(a0),$32(a0)		; used for the sway
+		move.b	#0,obRender(a0)
+		move.b	#0,obPriority(a0)
+		move.w	#224,obScreenY(a0)
+		move.w	obScreenY(a0),$32(a0)
+		move.w	#272,obX(a0)
+	if def(__WIDESCREEN__)
+		addi.w	#SCREEN_XCORR,obX(a0)
+	endif
 
 		; load text into VRAM
 		moveq	#0,d0
-		move.w	($FFFFFE12).w,d0	; load death counter (TODO based on level entrance)
-		subq.w	#1,d0
-		bcs.w	Obj1D_Delete		; player didn't die yet
-		
-		andi.w	#$F,d0			; 16 entries
-
+		move.w	(RelativeDeaths).w,d0	; load relative deaths counter
+		subq.w	#1,d0			; skip 0 deaths
+		bcs.w	Obj1D_Delete		; if player didn't die yet, delete
+		frantic				; are we in frantic?
+		beq.s	@notfrantic		; if not, branch
+		cmpi.w	#5,d0			; is this the tip about the P monitor or later?
+		blo.s	@notfrantic		; if not, branch
+		addq.w	#1,d0			; skip this tip because there is no monitor in frantic
+@notfrantic:
+		cmpi.w	#FPBonusText_Entries,d0	; did player die more than we have entries for?
+		bhs.w	Obj1D_Delete		; if yes, man you suck. no more text
 		mulu.w	#FPBonusText_Length,d0	; multiply by length per entry
 		lea	(FPBonusTexts).l,a1	; load text
 		adda.w	d0,a1			; set final starting offset for entry
@@ -9527,7 +9561,7 @@ Obj1D_BonusText_Main:
 		lea	(VDP_Data).l,a6
 		moveq	#FPBonusText_Length-1,d0
 
-@write:
+@writeloop:
 		moveq	#0,d1
 		move.b	(a1)+,d1
 
@@ -9535,39 +9569,32 @@ Obj1D_BonusText_Main:
 		bne.s	@chkquestion
 		moveq	#'Z'+1,d1
 		bra.s	@do
-
 @chkquestion:	cmpi.b	#'?',d1
 		bne.s	@chkexcl
 		moveq	#'Z'+2,d1
 		bra.s	@do
-
 @chkexcl:	cmpi.b	#'!',d1
 		bne.s	@chkdot
 		moveq	#'A'-5,d1
 		bra.s	@do
-
 @chkdot:	cmpi.b	#'.',d1
 		bne.s	@chkcomma
 		moveq	#'Z'+3,d1
 		bra.s	@do
-
 @chkcomma:	cmpi.b	#',',d1
 		bne.s	@do
 		moveq	#'Z'+4,d1
 
-@do:
-		subi.b	#'A'-$F,d1	; normalize to menutext.bin
+@do:		subi.b	#'A'-$F,d1	; normalize to menutext.bin
 		lsl.w	#5,d1		; * 64 pixels
-
 		lea	(Art_Text).l,a2
 		adda.w	d1,a2		; find letter offset in Art_Text
 		rept	8
 		move.l	(a2)+,(a6)	; write all pixels
 		endr
-		dbf	d0,@write
-
+		dbf	d0,@writeloop
 		VBlank_UnsetMusicOnly
-
+; ---------------------------------------------------------------------------
 
 Obj1D_BonusText_Display:		
 		move.w	($FFFFFE0E).w,d0
@@ -9575,31 +9602,27 @@ Obj1D_BonusText_Display:
 		jsr	(CalcSine).l
 		asr.w	#6,d0
 		add.w	$32(a0),d0
-		move.w	d0,obY(a0)
-		
-	;	move.w	($FFFFD008).w,obX(a0)
-		move.w	($FFFFF700).w,d0
-		addi.w	#SCREEN_WIDTH/2,d0
-		move.w	d0,obX(a0)
+		move.w	d0,obScreenY(a0)
 
-		cmpi.w	#$1000,obX(a0)
-		blo.s	@nodisplay
-
-		cmpi.w	#$2000,obX(a0)
-		bhs.s	Obj1D_Delete
-
-		jmp	DisplaySprite
-
-@nodisplay:
+		move.w	($FFFFD008).w,d0
+		cmpi.w	#$1000,d0
+		bhs.s	@display
 		rts
+
+@display:
+		cmpi.w	#$2000,d0
+		bhs.s	Obj1D_Delete
+		bra.w	DisplaySprite
 ; ===========================================================================
 
 Obj1D_Delete:
 		jmp	DeleteObject
-; ===========================================================================
 
+; ===========================================================================
+; ---------------------------------------------------------------------------
 Map_Obj1D_BonusText:
 		include	"_maps\obj1D.asm"
+; ---------------------------------------------------------------------------
 ; ===========================================================================
 
 
@@ -10181,6 +10204,8 @@ Obj27_Main:				; XREF: Obj27_Index
 		beq.s	Obj27_FinishSetup
 		cmpi.w	#$101,($FFFFFE10).w
 		beq.s	Obj27_FinishSetup
+		cmpi.w	#$601,($FFFFFE10).w
+		beq.s	Obj27_FinishSetup
 
 		bsr	SingleObjLoad
 		bne.s	Obj27_FinishSetup
@@ -10207,6 +10232,10 @@ Obj27_FinishSetup:				; XREF: Obj27_Index
 		jsr	(PlaySound_Special).l ;	play breaking enemy sound
 		
 		ori.b	#10,(CameraShake).w     	; normal camera shake
+
+		cmpi.w	#$601,($FFFFFE10).w
+		beq.w	Obj27_Delete
+
 		tst.b	($FFFFFFF9).w
 		beq.s	Obj27_Animate
 		ori.b	#180,(CameraShake).w	; intense camera shaking
@@ -12980,7 +13009,7 @@ FZEscape_ScreenBoom:
 		jsr	Pal_CutToWhite		; instantly turn screen white
 		move.l	(sp)+,a0		; restore from stack
 
-		move.w	#BlackBars.MaxHeight,BlackBars.Height ; force bars to max
+		move.w	BlackBars.BaseHeight,BlackBars.Height ; force bars to max
 		move.w	#120,d5			; delay for two seconds
 @WaitLoop:	move.b	#$12,VBlankRoutine
 		jsr	DelayProgram
@@ -15688,6 +15717,7 @@ loc_BDD6:
 		move.b	#$3F,0(a0)		; change switch into explodion (no double fun allowed, sorry)
 		move.b	#0,obRoutine(a0)	; set to initial routine
 		move.b	#0,$31(a0)
+		bclr	#3,($FFFFD022).w
 		rts				; don't do anything else
 
 @notnonstopinhuman:
@@ -15722,6 +15752,8 @@ loc_BDD6:
 		lea	$FFFFD000,a1
 		move.w	d1,obVelY(a1)	; move Sonic upwards
 		addq.w	#8,obY(a1)
+		
+		clr.l	($FFFFF602).w			; clear any remaining button presses
 		bset	#1,obStatus(a1) ; in air
 		bset	#2,obStatus(a1) ; rolling
 		bclr	#3,obStatus(a1) ; not standing
@@ -29553,6 +29585,7 @@ GameOver:				; XREF: Obj01_Death
 		clr.b	($FFFFFE1E).w		; stop time counter
 		ori.b	#1,($FFFFFE1C).w	; update lives counter
 		addq.w	#1,($FFFFFE12).w	; add one death
+		addq.w	#1,(RelativeDeaths).w	; add one relative death for the current stage
 	;	addi.w	#47,($FFFFFE12).w	; add a ton of deaths of testing
 		cmpi.w	#999,($FFFFFE12).w	; are we at 999 deaths?
 		blo.s	loc_138D4		; if not, branch
@@ -41956,8 +41989,8 @@ Obj09_Chk1Up:
 		move.l	a1,obMap(a2)
 
 Obj09_Get1Up:
-		addq.w	#1,($FFFFFE12).w ; add 1 to number of lives
-		addq.b	#1,($FFFFFE1C).w ; add 1 to lives counter
+	;	addq.w	#1,($FFFFFE12).w ; add 1 to number of lives
+	;	addq.b	#1,($FFFFFE1C).w ; add 1 to lives counter
 		move.w	#$C5,d0
 		jsr	(PlaySound).l	; play extra life music
 		moveq	#0,d4
@@ -42121,13 +42154,15 @@ Obj09_TouchGoal:
 
 TouchGoalBlock:
 		jsr	WhiteFlash2
-
+		
 		move.w	($FFFFFF86).w,obX(a0)	; restore saved X-pos
 		move.w	($FFFFFF88).w,obY(a0)	; restore saved Y-pos
 
 		clr.w	obVelX(a0)
 		clr.w	obVelY(a0)
 		clr.w	obInertia(a0)
+
+		addq.w	#1,(RelativeDeaths).w	; add one relative death for the current stage
 
 		move.w	#$C3,d0			; play giant ring sound by default
 
@@ -42239,8 +42274,10 @@ Obj09_ChkW:
 		move.w	obX(a0),($FFFFFF86).w	; save Sonic's X-position
 		move.w	obY(a0),($FFFFFF88).w	; save Sonic's Y-position
 		
-		move.w	#$C3,d0			; play giant ring sound
-		jsr	(PlaySound_Special).l
+		move.w	#$C3,d0			; set giant ring sound
+		jsr	(PlaySound).l		; play it
+		move.w	#$A8,d0			; set warping sound
+		jsr	(PlaySound_Special).l	; play it
 
 Obj09_ChkW_NoChange:
 		rts
@@ -42334,6 +42371,8 @@ Obj09_RevStage:
 
 @cont:
 		move.w	#$C3,d0			; set giant ring sound
+		jsr	(PlaySound).l		; play it
+		move.w	#$BC,d0			; set dashing sound
 		jmp	(PlaySound_Special).l	; play it
 ; ===========================================================================
 
@@ -44460,6 +44499,8 @@ PLC_Ending:
 		dc.w $B4A0
 		dc.l ArtKospM_Squirrel	; squirrel
 		dc.w $B660
+		dc.l ArtKospM_Monitors	; monitors
+		dc.w $D000
 		dc.w -1
 
 ; ---------------------------------------------------------------------------

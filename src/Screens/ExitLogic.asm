@@ -49,6 +49,8 @@ StartLevel:
 		rts
 	else
 		move.b	#1,($FFFFFFE9).w	; set fade-out in progress flag
+		clr.w	($FFFFFE30).w		; clear any set level checkpoints
+		clr.w	(RelativeDeaths).w	; clear relative death counter
 
 		move.w	($FFFFFE10).w,d0	; get level ID
 		cmpi.w	#$300,d0		; set to Special Place?
@@ -573,8 +575,6 @@ HubRing_Blackout:
 
 ; GotThroughAct:
 Exit_Level:
-		clr.w	($FFFFFE30).w		; clear any set level checkpoints
-
 		cmpi.w	#$501,($FFFFFE10).w	; did we beat the tutorial?
 		beq.w	GTA_Tutorial		; if yes, branch
 
@@ -633,6 +633,9 @@ GTA_LP:		moveq	#3,d0			; unlock fourth door
 GTA_UP:		moveq	#4,d0			; open fifth door
 		bsr	Set_DoorOpen
 		move.b	#6,(StoryTextID).w	; set number for text to 6
+		tst.w	(RelativeDeaths).w	; zero death run?
+		bne.w	RunStory		; if not, regular text
+		move.b	#$A,(StoryTextID).w	; alternative text for pros
 		bra.w	RunStory
 
 GTA_SNPSAP:	moveq	#5,d0			; unlock sixth door

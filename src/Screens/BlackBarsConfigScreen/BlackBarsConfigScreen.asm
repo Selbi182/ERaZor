@@ -65,7 +65,7 @@ BlackBarsConfigScreen:
 	jsr	LevelRenderer_DrawLayout_BG
 
 	; Init screen
-	move.w	#BlackBars.MaxHeight, BlackBars.Height
+	move.w	BlackBars.BaseHeight, BlackBars.Height
 	move.b	#0,BlackBarsConfig_Exiting
 	jsr	BlackBarsConfigScreen_InitUI
 	
@@ -107,15 +107,26 @@ BlackBarsConfigScreen:
 	tst.b	BlackBarsConfig_Exiting		; is exiting flag set?
 	bne.s	@exiting			; if yes, ignore button presses
 
+@chkbaseheightadjust:
+	; adjust black bars base height on A+up/down
+	moveq	#0,d0
+	move.b	Joypad|Held,d0
+	btst	#iA,d0
+	beq.s	@chktoggle
+	andi.b	#Up|Down,d0
+	bne.s	@adjustbaseheight
+
+@chktoggle:
 	; toggle selection on up/down
 	moveq	#0,d0
 	move.b	Joypad|Press,d0
 	andi.b	#Up|Down, d0
 	bne.s	@toggle
-
+	
+@chkexit:
 	; quit screen on other button press
 	move.b	Joypad|Press,d0
-	andi.b	#A|B|C|Start,d0
+	andi.b	#B|C|Start,d0
 	beq.s	@MainLoop
 	move.b	#1,BlackBarsConfig_Exiting	; set exiting flag
 	move.l	#BlackBarsConfigScreen_RedrawUI, VBlankCallback	; redraw one last time
@@ -125,7 +136,7 @@ BlackBarsConfigScreen:
 	cmpi.w	#224/2,BlackBars.Height		; did we fill up the full screen?
 	bhs.s	@exit				; if yes, branch
 	addq.w	#4,BlackBars.Height		; grow black bars
-	bra.s	@MainLoop			; loop
+	bra.w	@MainLoop			; loop
 ; ===============================================================
 
 @exit:
@@ -139,8 +150,40 @@ BlackBarsConfigScreen:
 	jsr	BlackBars.SetHandler
 	move.l	#BlackBarsConfigScreen_RedrawUI, VBlankCallback	; defer redraw to VInt
 	bra.w	@MainLoop
+; ===============================================================
 
- ; ---------------------------------------------------------------
+@adjustbaseheight:
+	btst	#0,($FFFFFE0F).w
+	beq.w	@MainLoop
+
+	moveq	#1,d1
+	andi.b	#Up,d0
+	beq.s	@adjust
+	neg.w	d1
+
+@adjust:
+	move.w	#$A2,d0
+	moveq	#0,d2
+	move.w	BlackBars.BaseHeight,d2
+	add.w	d1,d2
+	bgt.s	@pos
+	moveq	#1,d2
+	moveq	#0,d0
+@pos:
+	cmpi.w	#224/2,d2
+	bls.s	@set
+	move.w	#224/2,d2
+	moveq	#0,d0
+@set:
+	move.w	d2,BlackBars.BaseHeight
+	move.w	d2,BlackBars.Height
+	move.w	d2,BlackBars.TargetHeight
+	
+	tst.w	d0
+	beq.w	@MainLoop
+	jsr	PlaySound_Special
+	bra.w	@MainLoop
+; ---------------------------------------------------------------
 ; ===============================================================
 
 

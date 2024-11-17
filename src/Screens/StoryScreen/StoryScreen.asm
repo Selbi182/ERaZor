@@ -603,6 +603,7 @@ StoryText_Index:
 		dc.l	StoryText_7	; text after beating Scar Night Place
 		dc.l	StoryText_8	; text after jumping in the ring for the Ending Sequence
 		dc.l	StoryText_9	; text after beating the blackout challenge special stage
+		dc.l	StoryText_6X	; text after beating Unreal Place without touching any checkpoints
 ; ---------------------------------------------------------------------------
 
 STS_Continue:	ststxt	"~PRESS~START~TO~CONTINUE...~"
@@ -671,7 +672,8 @@ StoryText_3:	; text after beating Special Place
 ; ---------------------------------------------------------------------------
 
 StoryText_4:	; text after beating Ruined Place
-		ststxt	"MAN, WHY DIDN'T YOU LISTEN?"
+		ststxt	"I FEEL LIKE THIS STAGE WAS"
+		ststxt	"A METAPHOR ABOUT CAPITALISM."
 		ststxt_line
 		ststxt	"AT LEAST YOUR EFFORTS OF"
 		ststxt	"SHOOTING YOURSELF THROUGH"
@@ -682,7 +684,6 @@ StoryText_4:	; text after beating Ruined Place
 		ststxt_line
 		ststxt	"WAIT A MINUTE, I JUST HAD"
 		ststxt	"AN ABSOLUTELY AMAZING IDEA."
-		ststxt_line
 		ststxt	"LET'S SEE HOW YOU DO"
 		ststxt	"WHEN THE CAMERA"
 		ststxt	"GUIDES THE NARRATIVE..."
@@ -728,6 +729,27 @@ StoryText_6:	; text after beating Unreal Place
 		ststxt	"SEVENTH EMERALD. SORTA."
 		dc.b	-1
 		even
+
+StoryText_6X:	; ($A) text after beating Unreal Place without touching any checkpoints
+		ststxt	"IF I SEE SUCH A PATHETIC"
+		ststxt	"EXCUSE FOR WHAT YOU CALL"
+		ststxt	"^SKILL^ AGAIN-"
+		ststxt_line
+		ststxt	"WAIT A MINUTE, WHAT?!"
+		ststxt	"YOU BEAT THE ENTIRE STAGE"
+		ststxt	"WITHOUT TOUCHING EVEN"
+		ststxt	"A SINGLE GOAL BLOCK???"
+		ststxt	"UHH... I DON'T KNOW WHAT"
+		ststxt	"TO SAY, OTHER THAN WOW."
+		ststxt	"THIS MUST HAVE TAKEN A LONG"
+		ststxt	"TIME TO GET RIGHT!"
+		ststxt_line
+		ststxt	"BUT THIS CHANGES NOTHING,"
+		ststxt	"YOU'LL STILL GO TO SPACE."
+		dc.b	-1
+		even
+
+
 ; ---------------------------------------------------------------------------
 
 StoryText_7:	; text after beating Scar Night Place

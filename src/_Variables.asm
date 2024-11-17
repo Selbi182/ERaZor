@@ -152,6 +152,8 @@ OptionsBits		equ	$FFFFFF92			; b	bit field for the user options
 Progress		equ	$FFFFFF93			; b	bit field for overall game state (bit 0 - base game // bit 1 - blackout)
 OptionsBits2		equ	$FFFFFF94			; b	second bit field for the user options
 
+RelativeDeaths		equ	$FFFFFFCA			; w	number of deaths since the player started the current level
+
 ExtCamShift		equ	$FFFFFFCE			; w	current signed pixel offset for the extended camera
 
 	if def(__MD_REPLAY__)

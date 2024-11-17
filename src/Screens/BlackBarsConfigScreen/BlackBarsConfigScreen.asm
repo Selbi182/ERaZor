@@ -562,27 +562,25 @@ BlackBarsConfigScreen_WriteText_WidescreenInfo:
 
 	Console.SetXY #4, #6
 	Console.Write "SONIC ERAZOR: WIDESCREEN EDITION%<endl>"
-	Console.Write "--------------------------------"
-
+	Console.Write "%<pal2>--------------------------------%<pal0>"
 
 	Console.SetXY #2, #9
 	Console.Write "   THIS IS A SPECIAL 16:9 VERSION%<endl>"
 	Console.Write "    OF THIS ROM HACK EXCLUSIVELY%<endl>"
 	Console.Write " AND SPECIFICALLY OPTIMIZED FOR THE"
-	Console.Write "%<endl>"
+	Console.Write "%<endl>%<endl>"
 	Console.Write '       "GENESIS PLUS GX WIDE"%<endl>'
 	Console.Write '         CORE FOR RETROARCH'
-	Console.Write "%<endl>"
-	Console.Write "   AND IT'LL WILL BE A VERY AWKWARD%<endl>"
-	Console.Write "  EXPERIENCE FOR ANY OTHER EMULATOR!"
-	Console.Write "%<endl>%<endl>%<endl>"
-	Console.Write "      YOU CAN FIND AND DOWNLOAD%<endl>"
-	Console.Write " THE REGULAR 4:3 VERSION OVER HERE:"
+	Console.Write "%<endl>%<endl>"
+	Console.Write "      AND IT IS A VERY AWKWARD%<endl>"
+	Console.Write " EXPERIENCE FOR ANY OTHER EMULATOR!"
+	Console.Write "%<endl>%<endl>"
+	Console.Write "     GO TO THIS URL TO DOWNLOAD%<endl>"
+	Console.Write "      THE REGULAR 4:3 VERSION:"
 	Console.Write "%<endl>%<endl>"
 	Console.Write "  HTTPS://SELBI.HAPISAN.COM/ERAZOR"
 
-
-
+	; this text overflows to the left and right, making it invisible in 4:3 mode
 	Console.SetXY #-4, #7
 	Console.Write "IF%<endl>%<endl>%<endl>%<endl>"
 	Console.Write "YOU%<endl>%<endl>%<endl>%<endl>"
@@ -596,7 +594,6 @@ BlackBarsConfigScreen_WriteText_WidescreenInfo:
 	Console.Write "  TO%<endl>%<endl>%<endl>%<endl>"
 	Console.Write " GO!"
 	
-
 	BBCS_LeaveConsole a0
 	rts
 ; ---------------------------------------------------------------

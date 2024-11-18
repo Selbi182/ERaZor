@@ -73,7 +73,10 @@ SMPS_PAL_Timer:		equ	$FFFFF608			; b	Timer for SMPS PAL optimization
 
 VBlankRoutine:		equ	$FFFFF62A			; b	VBlank routine id
 
-*			equ	$FFFFF640			; w	<<FREE>>
+RingFrame		equ	$FFFFF640			; b	current synchronized smooth ring frame
+RingFrame_Timer		equ	$FFFFF641			; b	time until next smooth ring frame change
+RingFrame2		equ	$FFFFF642			; b	current synchronized smooth ring frame for lost rings (no timer; updates every frame)
+
 *			equ	$FFFFF644			; w	<<FOR SALE>>
 
 PLC_RAM:		equ	$FFFFF680			;	PLC system variables (F680-F69E)

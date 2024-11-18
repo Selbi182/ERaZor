@@ -4482,6 +4482,7 @@ ClearEverySpecialFlag:
 		move.b	d0,RedrawEverything
 		move.w	d0,FranticDrain
 		move.w	d0,BGThemeColor
+		move.l	d0,($FFFFF640).w
 		move.b	d0,($FFFFF734).w
 		move.w	d0,($FFFFF7BE).w
 		move.l	d0,($FFFFFF60).w
@@ -4694,8 +4695,51 @@ loc_4250:
 		subq.b	#1,($FFFFFEC6).w
 
 locret_4272:
+		bsr	SmoothRingsAnimate
 		rts	
 ; End of function ChangeRingFrame
+
+
+; ---------------------------------------------------------------------------
+; Smooth ring animation DMA transfer based on this guide:
+; https://sonicresearch.org/community/index.php?threads/dynamically-loading-ring-animation-frames-into-vram-in-sonic-1.6800/
+; ---------------------------------------------------------------------------
+SmoothRingsAnimate_Delay = 3
+; ---------------------------------------------------------------------------
+
+SmoothRingsAnimate:
+		subq.b	#1,(RingFrame_Timer).w
+		bpl.s	@lostrings
+		move.b	#SmoothRingsAnimate_Delay,(RingFrame_Timer).w
+		move.b	(RingFrame).w,d1
+		addq.b	#1,d1
+		andi.b	#7,d1
+		move.b	d1,(RingFrame).w
+		move.w	#$F640,d2
+		bsr	RingDMATransfer
+		
+@lostrings:
+		tst.b	($FFFFFEC6).w			; is lost rings timer active?
+		beq.s	@end				; if not, no change necessary
+		move.b	(RingFrame2).w,d1
+		addq.b	#1,d1
+		andi.b	#7,d1
+		move.b	d1,(RingFrame2).w
+		move.w	#$F640+($20*4),d2
+		bsr	RingDMATransfer
+
+@end:
+		rts
+
+; ---------------------------------------------------------------------------
+
+RingDMATransfer:
+		andi.l	#7,d1				; clear all of d1 except the 8 frames we want
+		lsl.w	#7,d1				; Each ring frame takes $80 bytes, so multiply by $80
+		add.l	#Art_Ring,d1			; Queue a DMA transfer for this ring frame
+		move.w	#$80/2,d3
+		jmp	QueueDMATransfer
+
 
 ; ---------------------------------------------------------------------------
 ; End-of-act signpost pattern loading subroutine
@@ -12272,7 +12316,8 @@ Obj25_Animate:				; XREF: Obj25_Index
 		bsr.s	Obj25_MarkGone		; make sure ring doesn't respawn (if it moves offscreen, tough luck buddy)
  
  Obj25_NoRingMove:
-		move.b	($FFFFFEC3).w,obFrame(a0) ;	set frame
+	;	move.b	($FFFFFEC3).w,obFrame(a0) 	; set frame
+		move.b	#0,obFrame(a0)			; always frame 0 now that we have DMA'd smooth frames
 
 		moveq	#-$80,d0
 		and.w	$32(a0),d0
@@ -12491,10 +12536,12 @@ Obj37_ResetCounter:
 ; ---------------------------------------------------------------------------
 
 Obj37_MainLoop:				; XREF: Obj37_Index
-		move.b	($FFFFFEC7).w,d0	; get custom frame timer
+	;	move.b	($FFFFFEC7).w,d0	; get custom frame timer
+		moveq	#1,d0			; use RingFrame2
 		tst.w	$36(a0)			; is ring already laying on the ground?
 		beq.s	@setframe		; if not, branch
-		move.b	($FFFFFEC3).w,d0	; use regular ring timer instead
+	;	move.b	($FFFFFEC3).w,d0	; use regular ring timer instead
+		moveq	#0,d0			; use regular RingFrame
 @setframe:	move.b	d0,obFrame(a0)		; set new frame
 		
 		tst.b	$29(a0)			; was ring already set to follow you?
@@ -45038,6 +45085,8 @@ Art_MzLava1:	incbin	artunc\mzlava1.bin	; MZ lava surface
 Art_MzLava2:	incbin	artunc\mzlava2.bin	; MZ lava
 		even
 Art_MzTorch:	incbin	artunc\mztorch.bin	; MZ torch in background
+		even
+Art_Ring:	incbin	artunc\RingsSmooth.bin	; smooth ring animations from the 2013 decomps
 		even
 ;Art_RingFlash:	incbin	artunc\ringflash.bin	; ring flash that appears when you enter a giant ring
 ;		even

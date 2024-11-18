@@ -67,13 +67,14 @@ BlackBarsConfigScreen:
 
 	; Init screen
 	jsr	BlackBarsConfigScreen_InitUI
-	move.w	BlackBars.BaseHeight, BlackBars.Height
 	move.b	#0, BlackBarsConfig_Exiting
 
-	if def(__WIDESCREEN__);=0 ; TODO invert
+	if def(__WIDESCREEN__)
+		move.w	#0, BlackBars.Height
 		move.b	#1, BlackBarsConfig_PreTextActive
 		jsr	BlackBarsConfigScreen_WriteText_WidescreenInfo
 	else
+		move.w	BlackBars.BaseHeight, BlackBars.Height
 		move.b	#0, BlackBarsConfig_PreTextActive
 		jsr	BlackBarsConfigScreen_WriteText
 	endif
@@ -86,6 +87,9 @@ BlackBarsConfigScreen:
 	move.w	d0,($FFFFFB8A).w
 	move.w	d0,($FFFFFB8C).w
 	move.w	#$CCC,($FFFFFB8E).w
+	
+	move.w	#$000,($FFFFFBC0).w	; BG color
+	
 
 	VBlank_UnsetMusicOnly
 	display_enable
@@ -120,15 +124,16 @@ BlackBarsConfigScreen:
 	moveq	#0,d0
 	tst.b	BlackBarsConfig_PreTextActive
 	beq.w	@pretextdone
-	andi.b	#Start|A|B|C,Joypad|Press
+	andi.b	#Start|A|C,Joypad|Press
 	beq.w	@MainLoop
 
 	VBlank_SetMusicOnly
-	move.w	#$DA,d0
+	move.w	#$A9,d0
 	jsr	PlaySound_Special
 	jsr	ClearPlaneA
 	clr.b	BlackBarsConfig_PreTextActive
 	jsr	BlackBarsConfigScreen_WriteText
+	move.w	BlackBars.BaseHeight, BlackBars.Height
 	VBlank_UnsetMusicOnly
 	bra.w	@MainLoop
 
@@ -137,10 +142,10 @@ BlackBarsConfigScreen:
 	bne.s	@exiting			; if yes, ignore button presses
 
 @chkbaseheightadjust:
-	; adjust black bars base height on A+up/down
+	; adjust black bars base height on B + up/down
 	moveq	#0,d0
 	move.b	Joypad|Held,d0
-	btst	#iA,d0
+	btst	#iB,d0
 	beq.s	@chktoggle
 	andi.b	#Up|Down,d0
 	bne.s	@adjustbaseheight
@@ -155,7 +160,7 @@ BlackBarsConfigScreen:
 @chkexit:
 	; quit screen on other button press
 	move.b	Joypad|Press,d0
-	andi.b	#B|C|Start,d0
+	andi.b	#A|C|Start,d0
 	beq.w	@MainLoop
 	move.w	#$D9,d0
 	jsr	PlaySound_Special
@@ -166,7 +171,7 @@ BlackBarsConfigScreen:
 @exiting:
 	cmpi.w	#224/2,BlackBars.Height		; did we fill up the full screen?
 	bhs.s	@exit				; if yes, branch
-	addq.w	#4,BlackBars.Height		; grow black bars
+	addq.w	#2,BlackBars.Height		; grow black bars
 	bra.w	@MainLoop			; loop
 ; ===============================================================
 
@@ -512,7 +517,7 @@ BlackBarsConfigScreen_WriteText:
 
 	Console.SetXY #12, #6
 	Console.Write "  SONIC ERAZOR%<endl>"
-	Console.Write "----------------%<endl>"
+	Console.Write "%<pal2>----------------%<pal0>%<endl>"
 	Console.Write "BLACK BARS SETUP"
 
 	Console.SetXY #4, #20
@@ -557,45 +562,57 @@ BlackBarsConfigScreen_RedrawUI:
 ; ===============================================================
 ; ---------------------------------------------------------------
 
+ if def(__WIDESCREEN__)
 BlackBarsConfigScreen_WriteText_WidescreenInfo:
 	BBCS_EnterConsole a0
 
-	Console.SetXY #4, #6
-	Console.Write "SONIC ERAZOR: WIDESCREEN EDITION%<endl>"
-	Console.Write "%<pal2>--------------------------------%<pal0>"
 
-	Console.SetXY #2, #9
-	Console.Write "   THIS IS A SPECIAL 16:9 VERSION%<endl>"
-	Console.Write "    OF THIS ROM HACK EXCLUSIVELY%<endl>"
-	Console.Write " AND SPECIFICALLY OPTIMIZED FOR THE"
+	Console.SetXY #6, #2
+	Console.Write "        SONIC ERAZOR"
 	Console.Write "%<endl>%<endl>"
-	Console.Write '       "GENESIS PLUS GX WIDE"%<endl>'
-	Console.Write '         CORE FOR RETROARCH'
+	Console.Write "W  I  D  E  S  C  R  E  E  N%"
+
+	Console.SetXY #3, #7
+	Console.Write "%<pal2>----------------------------------%<pal0>"
 	Console.Write "%<endl>%<endl>"
-	Console.Write "      AND IT IS A VERY AWKWARD%<endl>"
-	Console.Write " EXPERIENCE FOR ANY OTHER EMULATOR!"
+	Console.Write "  THIS IS A SPECIAL 16:9 VERSION%<endl>"
+	Console.Write "   OF THIS ROM HACK EXCLUSIVELY%<endl>"
+	Console.Write "AND SPECIFICALLY OPTIMIZED FOR THE"
+	Console.Write "%<endl>%<endl>"
+	Console.Write '      "GENESIS PLUS GX WIDE"%<endl>'
+	Console.Write '        CORE FOR RETROARCH'
+	Console.Write "%<endl>%<endl>"
+	Console.Write "  AND IT WILL BE A HELLA AWKWARD%<endl>"
+	Console.Write "EXPERIENCE FOR ANY OTHER EMULATOR!"
+	Console.Write "%<endl>%<endl>"
+	Console.Write "%<pal2>----------------------------------%<pal0>"
+
+	Console.SetXY #2, #22
+	Console.Write "  HTTPS://SELBI.HAPISAN.COM/ERAZOR"
 	Console.Write "%<endl>%<endl>"
 	Console.Write "     GO TO THIS URL TO DOWNLOAD%<endl>"
-	Console.Write "      THE REGULAR 4:3 VERSION:"
-	Console.Write "%<endl>%<endl>"
-	Console.Write "  HTTPS://SELBI.HAPISAN.COM/ERAZOR"
+	Console.Write "      THE REGULAR 4:3 VERSION."
+
 
 	; this text overflows to the left and right, making it invisible in 4:3 mode
-	Console.SetXY #-4, #7
-	Console.Write "IF%<endl>%<endl>%<endl>%<endl>"
-	Console.Write "YOU%<endl>%<endl>%<endl>%<endl>"
-	Console.Write "CAN%<endl>%<endl>%<endl>%<endl>"
-	Console.Write "READ%<endl>%<endl>%<endl>%<endl>"
+	Console.SetXY #-4, #2
+	Console.Write "  %<pal2>IF%<endl>%<endl>%<endl>%<endl>%<endl>%<endl>"
+	Console.Write " YOU%<endl>%<endl>%<endl>%<endl>%<endl>%<endl>"
+	Console.Write " CAN%<endl>%<endl>%<endl>%<endl>%<endl>%<endl>"
+	Console.Write "READ%<endl>%<endl>%<endl>%<endl>%<endl>%<endl>"
 	Console.Write "THIS"
-	Console.SetXY #40, #6
-	Console.Write " YOU%<endl>%<endl>%<endl>%<endl>"
-	Console.Write " ARE%<endl>%<endl>%<endl>%<endl>"
-	Console.Write "GOOD%<endl>%<endl>%<endl>%<endl>"
-	Console.Write "  TO%<endl>%<endl>%<endl>%<endl>"
-	Console.Write " GO!"
+
+	Console.SetXY #40, #1
+	Console.Write "YOU%<endl>%<endl>%<endl>%<endl>%<endl>%<endl>"
+	Console.Write "ARE%<endl>%<endl>%<endl>%<endl>%<endl>%<endl>"
+	Console.Write "GOOD%<endl>%<endl>%<endl>%<endl>%<endl>%<endl>"
+	Console.Write "TO%<endl>%<endl>%<endl>%<endl>%<endl>%<endl>"
+	Console.Write "GO!%<pal0>"
+
 	
 	BBCS_LeaveConsole a0
 	rts
+ endif
 ; ---------------------------------------------------------------
 ; ===============================================================
 

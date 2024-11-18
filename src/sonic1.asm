@@ -28459,7 +28459,7 @@ loc2_1ACF4:
 		move.b	#0,($FFFFD1DC).w	; clear spindash dust animation
 		move.w	#$BC,d0			; spin release sound
 		jsr	(PlaySound_Special).l	; play it!
-		bra.s	loc2_1AD78
+		bra.w	loc2_1AD78
 ; ===========================================================================
 spdsh_norm:
 		dc.w  $800		; 0
@@ -28497,6 +28497,13 @@ loc2_1AD48:
 		move.b	($FFFFF603).w,d0	; read controller
 		andi.w	#$70,d0			; pressing A/B/C?
 		beq.w	loc2_1AD78		; if not, branch
+
+		cmpi.w	#$200,($FFFFFE10).w	; is level MZ1?
+		bne.s	@notrp			; if not, branch
+		tst.b	($FFFFFF73).w		; P monitor broken?
+		bne.w	loc2_1AD78		; if yes, prevent revving because players are stupid
+@notrp:
+
 		move.b	#$1F,obAnim(a0)		; reset spdsh animation
 		move.w	#$D1,d0			; was $E0 in sonic 2
 		move.b	#2,($FFFFD1DC).w	; Set the spindash dust animation to $2.
@@ -40063,7 +40070,7 @@ locret_1AEF2:
 ; ===========================================================================
 
 Touch_Monitor:
-		tst.w	obVelY(a0)		; is Sonic falling down?
+		tst.w	obVelY(a0)		; is Sonic falling down or on a flat ground?
 		bpl.s	Touch_Monitor_ChkBreak	; if yes, branch
 		cmpi.b	#%01,($FFFFFFEB).w	; is Sonic jumpdashing (but not double jumping)?
 		beq.s	Touch_Monitor_ChkBreak	; if yes, treat as touching from top
@@ -40098,13 +40105,13 @@ Touch_Monitor_ChkBreak:
 		neg.w	d0			; otherwie negate d0
 @chkspeed:	cmpi.w	#$A00,d0		; is Sonic fast enough to break monitor by touching?
 		blo.s	Touch_Monitor_End	; if not, branch
-		bclr	#5,obStatus(a0)		; clear pushing flag
 
 @break:
 		neg.w	obVelY(a0)		; reverse Sonic's y-motion
 		bsr	BounceJD		; jump to BounceJD
 @break_nobounce:
 		addq.b	#2,obRoutine(a1)	; break monitor open
+		bclr	#5,obStatus(a0)		; clear pushing flag
 
 Touch_Monitor_End:
 		rts	

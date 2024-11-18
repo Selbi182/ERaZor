@@ -2,684 +2,683 @@
 ; Dynamic Pattern Loading Cues - output from ClownMapEd - Sonic 1 format
 ; --------------------------------------------------------------------------------
 
-.sonic_dplc_frame_offsets:
-	dc.w	.sonic_dplc_frame0-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame1-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame2-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame3-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame4-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame5-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame6-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame7-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame8-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame9-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame10-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame11-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame12-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame13-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame14-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame15-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame16-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame17-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame18-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame19-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame20-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame21-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame22-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame23-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame24-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame25-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame26-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame27-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame28-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame29-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame30-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame31-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame32-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame33-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame34-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame35-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame36-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame37-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame38-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame39-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame40-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame41-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame42-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame43-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame44-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame45-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame46-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame47-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame48-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame49-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame50-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame51-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame52-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame53-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame54-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame55-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame56-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame57-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame58-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame59-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame60-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame61-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame62-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame63-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame64-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame65-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame66-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame67-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame68-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame69-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame70-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame71-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame72-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame73-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame74-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame75-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame76-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame77-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame78-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame79-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame80-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame81-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame82-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame83-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame84-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame85-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame86-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame87-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame88-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame89-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame90-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame91-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame92-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame93-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame94-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame95-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame96-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame97-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame98-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame99-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame100-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame101-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame102-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame103-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame104-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame105-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame106-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame107-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame108-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame109-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame110-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame111-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame112-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame113-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame114-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame115-.sonic_dplc_frame_offsets
-	dc.w	.sonic_dplc_frame116-.sonic_dplc_frame_offsets
+CME_005F1952:
+	dc.w	CME_005F1952_0-CME_005F1952
+	dc.w	CME_005F1952_1-CME_005F1952
+	dc.w	CME_005F1952_2-CME_005F1952
+	dc.w	CME_005F1952_3-CME_005F1952
+	dc.w	CME_005F1952_4-CME_005F1952
+	dc.w	CME_005F1952_5-CME_005F1952
+	dc.w	CME_005F1952_6-CME_005F1952
+	dc.w	CME_005F1952_7-CME_005F1952
+	dc.w	CME_005F1952_8-CME_005F1952
+	dc.w	CME_005F1952_9-CME_005F1952
+	dc.w	CME_005F1952_A-CME_005F1952
+	dc.w	CME_005F1952_B-CME_005F1952
+	dc.w	CME_005F1952_C-CME_005F1952
+	dc.w	CME_005F1952_D-CME_005F1952
+	dc.w	CME_005F1952_E-CME_005F1952
+	dc.w	CME_005F1952_F-CME_005F1952
+	dc.w	CME_005F1952_10-CME_005F1952
+	dc.w	CME_005F1952_11-CME_005F1952
+	dc.w	CME_005F1952_12-CME_005F1952
+	dc.w	CME_005F1952_13-CME_005F1952
+	dc.w	CME_005F1952_14-CME_005F1952
+	dc.w	CME_005F1952_15-CME_005F1952
+	dc.w	CME_005F1952_16-CME_005F1952
+	dc.w	CME_005F1952_17-CME_005F1952
+	dc.w	CME_005F1952_18-CME_005F1952
+	dc.w	CME_005F1952_19-CME_005F1952
+	dc.w	CME_005F1952_1A-CME_005F1952
+	dc.w	CME_005F1952_1B-CME_005F1952
+	dc.w	CME_005F1952_1C-CME_005F1952
+	dc.w	CME_005F1952_1D-CME_005F1952
+	dc.w	CME_005F1952_1E-CME_005F1952
+	dc.w	CME_005F1952_1F-CME_005F1952
+	dc.w	CME_005F1952_20-CME_005F1952
+	dc.w	CME_005F1952_21-CME_005F1952
+	dc.w	CME_005F1952_22-CME_005F1952
+	dc.w	CME_005F1952_23-CME_005F1952
+	dc.w	CME_005F1952_24-CME_005F1952
+	dc.w	CME_005F1952_25-CME_005F1952
+	dc.w	CME_005F1952_26-CME_005F1952
+	dc.w	CME_005F1952_27-CME_005F1952
+	dc.w	CME_005F1952_28-CME_005F1952
+	dc.w	CME_005F1952_29-CME_005F1952
+	dc.w	CME_005F1952_2A-CME_005F1952
+	dc.w	CME_005F1952_2B-CME_005F1952
+	dc.w	CME_005F1952_2C-CME_005F1952
+	dc.w	CME_005F1952_2D-CME_005F1952
+	dc.w	CME_005F1952_2E-CME_005F1952
+	dc.w	CME_005F1952_2F-CME_005F1952
+	dc.w	CME_005F1952_30-CME_005F1952
+	dc.w	CME_005F1952_31-CME_005F1952
+	dc.w	CME_005F1952_32-CME_005F1952
+	dc.w	CME_005F1952_33-CME_005F1952
+	dc.w	CME_005F1952_34-CME_005F1952
+	dc.w	CME_005F1952_35-CME_005F1952
+	dc.w	CME_005F1952_36-CME_005F1952
+	dc.w	CME_005F1952_37-CME_005F1952
+	dc.w	CME_005F1952_38-CME_005F1952
+	dc.w	CME_005F1952_39-CME_005F1952
+	dc.w	CME_005F1952_3A-CME_005F1952
+	dc.w	CME_005F1952_3B-CME_005F1952
+	dc.w	CME_005F1952_3C-CME_005F1952
+	dc.w	CME_005F1952_3D-CME_005F1952
+	dc.w	CME_005F1952_3E-CME_005F1952
+	dc.w	CME_005F1952_3F-CME_005F1952
+	dc.w	CME_005F1952_40-CME_005F1952
+	dc.w	CME_005F1952_41-CME_005F1952
+	dc.w	CME_005F1952_42-CME_005F1952
+	dc.w	CME_005F1952_43-CME_005F1952
+	dc.w	CME_005F1952_44-CME_005F1952
+	dc.w	CME_005F1952_45-CME_005F1952
+	dc.w	CME_005F1952_46-CME_005F1952
+	dc.w	CME_005F1952_47-CME_005F1952
+	dc.w	CME_005F1952_48-CME_005F1952
+	dc.w	CME_005F1952_49-CME_005F1952
+	dc.w	CME_005F1952_4A-CME_005F1952
+	dc.w	CME_005F1952_4B-CME_005F1952
+	dc.w	CME_005F1952_4C-CME_005F1952
+	dc.w	CME_005F1952_4D-CME_005F1952
+	dc.w	CME_005F1952_4E-CME_005F1952
+	dc.w	CME_005F1952_4F-CME_005F1952
+	dc.w	CME_005F1952_50-CME_005F1952
+	dc.w	CME_005F1952_51-CME_005F1952
+	dc.w	CME_005F1952_52-CME_005F1952
+	dc.w	CME_005F1952_53-CME_005F1952
+	dc.w	CME_005F1952_54-CME_005F1952
+	dc.w	CME_005F1952_55-CME_005F1952
+	dc.w	CME_005F1952_56-CME_005F1952
+	dc.w	CME_005F1952_57-CME_005F1952
+	dc.w	CME_005F1952_58-CME_005F1952
+	dc.w	CME_005F1952_59-CME_005F1952
+	dc.w	CME_005F1952_5A-CME_005F1952
+	dc.w	CME_005F1952_5B-CME_005F1952
+	dc.w	CME_005F1952_5C-CME_005F1952
+	dc.w	CME_005F1952_5D-CME_005F1952
+	dc.w	CME_005F1952_5E-CME_005F1952
+	dc.w	CME_005F1952_5F-CME_005F1952
+	dc.w	CME_005F1952_60-CME_005F1952
+	dc.w	CME_005F1952_61-CME_005F1952
+	dc.w	CME_005F1952_62-CME_005F1952
+	dc.w	CME_005F1952_63-CME_005F1952
+	dc.w	CME_005F1952_64-CME_005F1952
+	dc.w	CME_005F1952_65-CME_005F1952
+	dc.w	CME_005F1952_66-CME_005F1952
+	dc.w	CME_005F1952_67-CME_005F1952
+	dc.w	CME_005F1952_68-CME_005F1952
+	dc.w	CME_005F1952_69-CME_005F1952
+	dc.w	CME_005F1952_6A-CME_005F1952
+	dc.w	CME_005F1952_6B-CME_005F1952
+	dc.w	CME_005F1952_6C-CME_005F1952
+	dc.w	CME_005F1952_6D-CME_005F1952
+	dc.w	CME_005F1952_6E-CME_005F1952
+	dc.w	CME_005F1952_6F-CME_005F1952
+	dc.w	CME_005F1952_70-CME_005F1952
+	dc.w	CME_005F1952_71-CME_005F1952
+	dc.w	CME_005F1952_72-CME_005F1952
+	dc.w	CME_005F1952_73-CME_005F1952
+	dc.w	CME_005F1952_74-CME_005F1952
 
-.sonic_dplc_frame0:
+CME_005F1952_0:
 	dc.b	0
 
-.sonic_dplc_frame1:
+CME_005F1952_1:
 	dc.b	2
 	dc.w	$F000
 	dc.w	$0010
 
-.sonic_dplc_frame2:
+CME_005F1952_2:
 	dc.b	1
 	dc.w	$E011
 
-.sonic_dplc_frame3:
+CME_005F1952_3:
 	dc.b	1
 	dc.w	$E017
 
-.sonic_dplc_frame4:
-	dc.b	2
-	dc.w	$5017
-	dc.w	$8020
+CME_005F1952_4:
+	dc.b	1
+	dc.w	$E017
 
-.sonic_dplc_frame5:
+CME_005F1952_5:
 	dc.b	2
 	dc.w	$500B
 	dc.w	$8029
 
-.sonic_dplc_frame6:
+CME_005F1952_6:
 	dc.b	2
 	dc.w	$F032
 	dc.w	$5042
 
-.sonic_dplc_frame7:
+CME_005F1952_7:
 	dc.b	2
 	dc.w	$7032
 	dc.w	$B048
 
-.sonic_dplc_frame8:
+CME_005F1952_8:
 	dc.b	1
 	dc.w	$E054
 
-.sonic_dplc_frame9:
+CME_005F1952_9:
 	dc.b	2
 	dc.w	$5054
 	dc.w	$D063
 
-.sonic_dplc_frame10:
+CME_005F1952_A:
 	dc.b	2
 	dc.w	$5054
 	dc.w	$B071
 
-.sonic_dplc_frame11:
+CME_005F1952_B:
 	dc.b	2
 	dc.w	$7032
 	dc.w	$907D
 
-.sonic_dplc_frame12:
+CME_005F1952_C:
 	dc.b	2
 	dc.w	$F087
 	dc.w	$5097
 
-.sonic_dplc_frame13:
+CME_005F1952_D:
 	dc.b	3
 	dc.w	$5087
 	dc.w	$F09D
 	dc.w	$00AD
 
-.sonic_dplc_frame14:
+CME_005F1952_E:
 	dc.b	2
 	dc.w	$F0AE
 	dc.w	$20BE
 
-.sonic_dplc_frame15:
+CME_005F1952_F:
 	dc.b	2
 	dc.w	$F0C1
 	dc.w	$60D1
 
-.sonic_dplc_frame16:
+CME_005F1952_10:
 	dc.b	2
 	dc.w	$50C1
 	dc.w	$C0D8
 
-.sonic_dplc_frame17:
+CME_005F1952_11:
 	dc.b	4
 	dc.w	$5087
 	dc.w	$0093
 	dc.w	$109D
 	dc.w	$A0E5
 
-.sonic_dplc_frame18:
+CME_005F1952_12:
 	dc.b	2
 	dc.w	$F0F0
 	dc.w	$5100
 
-.sonic_dplc_frame19:
+CME_005F1952_13:
 	dc.b	2
 	dc.w	$70F0
 	dc.w	$B106
 
-.sonic_dplc_frame20:
+CME_005F1952_14:
 	dc.b	1
 	dc.w	$E112
 
-.sonic_dplc_frame21:
+CME_005F1952_15:
 	dc.b	2
 	dc.w	$5112
 	dc.w	$D121
 
-.sonic_dplc_frame22:
+CME_005F1952_16:
 	dc.b	2
 	dc.w	$5112
 	dc.w	$B12F
 
-.sonic_dplc_frame23:
+CME_005F1952_17:
 	dc.b	3
 	dc.w	$70F0
 	dc.w	$0106
 	dc.w	$813B
 
-.sonic_dplc_frame24:
+CME_005F1952_18:
 	dc.b	2
 	dc.w	$F144
 	dc.w	$4154
 
-.sonic_dplc_frame25:
+CME_005F1952_19:
 	dc.b	3
 	dc.w	$5144
 	dc.w	$0157
 	dc.w	$F159
 
-.sonic_dplc_frame26:
+CME_005F1952_1A:
 	dc.b	2
 	dc.w	$F169
 	dc.w	$2179
 
-.sonic_dplc_frame27:
+CME_005F1952_1B:
 	dc.b	2
 	dc.w	$F17C
 	dc.w	$518C
 
-.sonic_dplc_frame28:
+CME_005F1952_1C:
 	dc.b	2
 	dc.w	$517C
 	dc.w	$C192
 
-.sonic_dplc_frame29:
+CME_005F1952_1D:
 	dc.b	4
 	dc.w	$5144
 	dc.w	$0157
 	dc.w	$115E
 	dc.w	$A19F
 
-.sonic_dplc_frame30:
+CME_005F1952_1E:
 	dc.b	2
 	dc.w	$F1AA
 	dc.w	$11BA
 
-.sonic_dplc_frame31:
+CME_005F1952_1F:
 	dc.b	2
 	dc.w	$5054
 	dc.w	$B1BC
 
-.sonic_dplc_frame32:
+CME_005F1952_20:
 	dc.b	2
 	dc.w	$51AA
 	dc.w	$B1C8
 
-.sonic_dplc_frame33:
+CME_005F1952_21:
 	dc.b	2
 	dc.w	$5054
 	dc.w	$B1D4
 
-.sonic_dplc_frame34:
+CME_005F1952_22:
 	dc.b	2
 	dc.w	$F1E0
 	dc.w	$41F0
 
-.sonic_dplc_frame35:
+CME_005F1952_23:
 	dc.b	2
 	dc.w	$F1F5
 	dc.w	$3205
 
-.sonic_dplc_frame36:
+CME_005F1952_24:
 	dc.b	3
 	dc.w	$51E0
 	dc.w	$01F4
 	dc.w	$D209
 
-.sonic_dplc_frame37:
+CME_005F1952_25:
 	dc.b	2
 	dc.w	$71F5
 	dc.w	$B217
 
-.sonic_dplc_frame38:
+CME_005F1952_26:
 	dc.b	2
 	dc.w	$F223
 	dc.w	$1233
 
-.sonic_dplc_frame39:
+CME_005F1952_27:
 	dc.b	2
 	dc.w	$5112
 	dc.w	$B235
 
-.sonic_dplc_frame40:
+CME_005F1952_28:
 	dc.b	2
 	dc.w	$5223
 	dc.w	$B241
 
-.sonic_dplc_frame41:
+CME_005F1952_29:
 	dc.b	2
 	dc.w	$5112
 	dc.w	$B24D
 
-.sonic_dplc_frame42:
+CME_005F1952_2A:
 	dc.b	2
 	dc.w	$F259
 	dc.w	$4269
 
-.sonic_dplc_frame43:
+CME_005F1952_2B:
 	dc.b	2
 	dc.w	$F26E
 	dc.w	$327E
 
-.sonic_dplc_frame44:
+CME_005F1952_2C:
 	dc.b	3
 	dc.w	$5259
 	dc.w	$026D
 	dc.w	$D282
 
-.sonic_dplc_frame45:
+CME_005F1952_2D:
 	dc.b	2
 	dc.w	$726E
 	dc.w	$B290
 
-.sonic_dplc_frame46:
+CME_005F1952_2E:
 	dc.b	1
 	dc.w	$F29C
 
-.sonic_dplc_frame47:
+CME_005F1952_2F:
 	dc.b	1
 	dc.w	$F2AC
 
-.sonic_dplc_frame48:
+CME_005F1952_30:
 	dc.b	1
 	dc.w	$F2BC
 
-.sonic_dplc_frame49:
+CME_005F1952_31:
 	dc.b	1
 	dc.w	$F2CC
 
-.sonic_dplc_frame50:
+CME_005F1952_32:
 	dc.b	1
 	dc.w	$F2DC
 
-.sonic_dplc_frame51:
+CME_005F1952_33:
 	dc.b	1
 	dc.w	$E2EC
 
-.sonic_dplc_frame52:
+CME_005F1952_34:
 	dc.b	1
 	dc.w	$F2FB
 
-.sonic_dplc_frame53:
+CME_005F1952_35:
 	dc.b	1
 	dc.w	$E30B
 
-.sonic_dplc_frame54:
+CME_005F1952_36:
 	dc.b	1
 	dc.w	$F31A
 
-.sonic_dplc_frame55:
+CME_005F1952_37:
 	dc.b	2
 	dc.w	$F32A
 	dc.w	$133A
 
-.sonic_dplc_frame56:
+CME_005F1952_38:
 	dc.b	2
 	dc.w	$F33C
 	dc.w	$034C
 
-.sonic_dplc_frame57:
+CME_005F1952_39:
 	dc.b	1
 	dc.w	$E6FE
 
-.sonic_dplc_frame58:
+CME_005F1952_3A:
 	dc.b	2
 	dc.w	$F35B
 	dc.w	$536B
 
-.sonic_dplc_frame59:
+CME_005F1952_3B:
 	dc.b	3
 	dc.w	$0071
 	dc.w	$F371
 	dc.w	$3381
 
-.sonic_dplc_frame60:
+CME_005F1952_3C:
 	dc.b	1
 	dc.w	$E385
 
-.sonic_dplc_frame61:
+CME_005F1952_3D:
 	dc.b	1
 	dc.w	$8394
 
-.sonic_dplc_frame62:
+CME_005F1952_3E:
 	dc.b	1
 	dc.w	$C39D
 
-.sonic_dplc_frame63:
+CME_005F1952_3F:
 	dc.b	1
 	dc.w	$E3AA
 
-.sonic_dplc_frame64:
+CME_005F1952_40:
 	dc.b	1
 	dc.w	$E3B9
 
-.sonic_dplc_frame65:
+CME_005F1952_41:
 	dc.b	2
 	dc.w	$F3C8
 	dc.w	$13D8
 
-.sonic_dplc_frame66:
+CME_005F1952_42:
 	dc.b	2
 	dc.w	$F3DA
 	dc.w	$13EA
 
-.sonic_dplc_frame67:
+CME_005F1952_43:
 	dc.b	2
 	dc.w	$F3EC
 	dc.w	$33FC
 
-.sonic_dplc_frame68:
+CME_005F1952_44:
 	dc.b	2
 	dc.w	$F3F7
 	dc.w	$3407
 
-.sonic_dplc_frame69:
+CME_005F1952_45:
 	dc.b	2
 	dc.w	$F40B
 	dc.w	$041B
 
-.sonic_dplc_frame70:
+CME_005F1952_46:
 	dc.b	1
 	dc.w	$D41C
 
-.sonic_dplc_frame71:
+CME_005F1952_47:
 	dc.b	2
 	dc.w	$F42A
 	dc.w	$043A
 
-.sonic_dplc_frame72:
+CME_005F1952_48:
 	dc.b	2
 	dc.w	$841C
 	dc.w	$443B
 
-.sonic_dplc_frame73:
+CME_005F1952_49:
 	dc.b	2
 	dc.w	$F440
 	dc.w	$1450
 
-.sonic_dplc_frame74:
+CME_005F1952_4A:
 	dc.b	1
 	dc.w	$D452
 
-.sonic_dplc_frame75:
+CME_005F1952_4B:
 	dc.b	2
 	dc.w	$F460
 	dc.w	$5470
 
-.sonic_dplc_frame76:
+CME_005F1952_4C:
 	dc.b	2
 	dc.w	$F476
 	dc.w	$4486
 
-.sonic_dplc_frame77:
+CME_005F1952_4D:
 	dc.b	3
 	dc.w	$147E
 	dc.w	$F486
 	dc.w	$2496
 
-.sonic_dplc_frame78:
+CME_005F1952_4E:
 	dc.b	2
 	dc.w	$F499
 	dc.w	$24A9
 
-.sonic_dplc_frame79:
+CME_005F1952_4F:
 	dc.b	2
 	dc.w	$F4AC
 	dc.w	$14BC
 
-.sonic_dplc_frame80:
+CME_005F1952_50:
 	dc.b	1
 	dc.w	$B4BE
 
-.sonic_dplc_frame81:
+CME_005F1952_51:
 	dc.b	1
 	dc.w	$54CA
 
-.sonic_dplc_frame82:
+CME_005F1952_52:
 	dc.b	1
 	dc.w	$14D0
 
-.sonic_dplc_frame83:
+CME_005F1952_53:
 	dc.b	1
 	dc.w	$E385
 
-.sonic_dplc_frame84:
+CME_005F1952_54:
 	dc.b	1
 	dc.w	$C39D
 
-.sonic_dplc_frame85:
+CME_005F1952_55:
 	dc.b	2
 	dc.w	$F4D2
 	dc.w	$14E2
 
-.sonic_dplc_frame86:
+CME_005F1952_56:
 	dc.b	3
 	dc.w	$106D
 	dc.w	$F4E4
 	dc.w	$14F4
 
-.sonic_dplc_frame87:
+CME_005F1952_57:
 	dc.b	2
 	dc.w	$F4F6
 	dc.w	$2506
 
-.sonic_dplc_frame88:
+CME_005F1952_58:
 	dc.b	1
 	dc.w	$F509
 
-.sonic_dplc_frame89:
+CME_005F1952_59:
 	dc.b	1
 	dc.w	$F519
 
-.sonic_dplc_frame90:
+CME_005F1952_5A:
 	dc.b	1
 	dc.w	$F529
 
-.sonic_dplc_frame91:
+CME_005F1952_5B:
 	dc.b	1
 	dc.w	$F539
 
-.sonic_dplc_frame92:
+CME_005F1952_5C:
 	dc.b	1
 	dc.w	$F549
 
-.sonic_dplc_frame93:
+CME_005F1952_5D:
 	dc.b	1
 	dc.w	$F559
 
-.sonic_dplc_frame94:
+CME_005F1952_5E:
 	dc.b	2
 	dc.w	$F569
 	dc.w	$2579
 
-.sonic_dplc_frame95:
+CME_005F1952_5F:
 	dc.b	2
 	dc.w	$F57C
 	dc.w	$258C
 
-.sonic_dplc_frame96:
+CME_005F1952_60:
 	dc.b	2
 	dc.w	$F58F
 	dc.w	$259F
 
-.sonic_dplc_frame97:
+CME_005F1952_61:
 	dc.b	2
 	dc.w	$F5A2
 	dc.w	$15B2
 
-.sonic_dplc_frame98:
+CME_005F1952_62:
 	dc.b	2
 	dc.w	$F5B4
 	dc.w	$65C4
 
-.sonic_dplc_frame99:
+CME_005F1952_63:
 	dc.b	2
 	dc.w	$F5CB
 	dc.w	$45DB
 
-.sonic_dplc_frame100:
+CME_005F1952_64:
 	dc.b	2
 	dc.w	$F5E0
 	dc.w	$65F0
 
-.sonic_dplc_frame101:
+CME_005F1952_65:
 	dc.b	2
 	dc.w	$F5F7
 	dc.w	$4607
 
-.sonic_dplc_frame102:
+CME_005F1952_66:
 	dc.b	2
 	dc.w	$F60C
 	dc.w	$261C
 
-.sonic_dplc_frame103:
+CME_005F1952_67:
 	dc.b	2
 	dc.w	$F61F
 	dc.w	$262F
 
-.sonic_dplc_frame104:
+CME_005F1952_68:
 	dc.b	2
 	dc.w	$F632
 	dc.w	$2642
 
-.sonic_dplc_frame105:
+CME_005F1952_69:
 	dc.b	2
 	dc.w	$F645
 	dc.w	$1655
 
-.sonic_dplc_frame106:
+CME_005F1952_6A:
 	dc.b	2
 	dc.w	$F657
 	dc.w	$6667
 
-.sonic_dplc_frame107:
+CME_005F1952_6B:
 	dc.b	2
 	dc.w	$F66E
 	dc.w	$467E
 
-.sonic_dplc_frame108:
+CME_005F1952_6C:
 	dc.b	2
 	dc.w	$F683
 	dc.w	$6693
 
-.sonic_dplc_frame109:
+CME_005F1952_6D:
 	dc.b	2
 	dc.w	$F69A
 	dc.w	$46AA
 
-.sonic_dplc_frame110:
+CME_005F1952_6E:
 	dc.b	2
 	dc.w	$F6BF
 	dc.w	$36CF
 
-.sonic_dplc_frame111:
+CME_005F1952_6F:
 	dc.b	2
 	dc.w	$F6D3
 	dc.w	$66E3
 
-.sonic_dplc_frame112:
+CME_005F1952_70:
 	dc.b	2
 	dc.w	$F6EA
 	dc.w	$36FA
 
-.sonic_dplc_frame113:
+CME_005F1952_71:
 	dc.b	2
 	dc.w	$F476
 	dc.w	$4486
 
-.sonic_dplc_frame114:
+CME_005F1952_72:
 	dc.b	2
 	dc.w	$F6BF
 	dc.w	$36CF
 
-.sonic_dplc_frame115:
+CME_005F1952_73:
 	dc.b	2
 	dc.w	$F6D3
 	dc.w	$66E3
 
-.sonic_dplc_frame116:
+CME_005F1952_74:
 	dc.b	2
 	dc.w	$F6EA
 	dc.w	$36FA

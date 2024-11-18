@@ -2,129 +2,129 @@
 ; Sprite mappings - output from ClownMapEd - Sonic 1/CD format
 ; --------------------------------------------------------------------------------
 
-.sonic_map_frame_offsets:
-	dc.w	.sonic_map_frame0-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame1-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame2-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame3-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame4-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame5-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame6-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame7-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame8-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame9-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame10-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame11-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame12-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame13-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame14-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame15-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame16-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame17-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame18-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame19-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame20-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame21-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame22-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame23-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame24-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame25-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame26-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame27-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame28-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame29-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame30-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame31-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame32-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame33-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame34-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame35-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame36-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame37-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame38-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame39-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame40-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame41-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame42-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame43-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame44-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame45-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame46-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame47-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame48-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame49-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame50-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame51-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame52-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame53-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame54-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame55-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame56-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame57-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame58-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame59-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame60-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame61-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame62-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame63-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame64-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame65-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame66-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame67-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame68-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame69-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame70-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame71-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame72-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame73-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame74-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame75-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame76-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame77-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame78-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame79-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame80-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame81-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame82-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame83-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame84-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame85-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame86-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame87-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame88-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame89-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame90-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame91-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame92-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame93-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame94-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame95-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame96-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame97-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame98-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame99-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame100-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame101-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame102-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame103-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame104-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame105-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame106-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame107-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame108-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame109-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame110-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame111-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame112-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame113-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame114-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame115-.sonic_map_frame_offsets
-	dc.w	.sonic_map_frame116-.sonic_map_frame_offsets
+CME_6FDB32F1:
+	dc.w	CME_6FDB32F1_0-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_1-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_2-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_3-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_4-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_5-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_6-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_7-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_8-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_9-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_A-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_B-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_C-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_D-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_E-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_F-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_10-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_11-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_12-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_13-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_14-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_15-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_16-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_17-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_18-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_19-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_1A-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_1B-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_1C-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_1D-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_1E-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_1F-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_20-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_21-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_22-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_23-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_24-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_25-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_26-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_27-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_28-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_29-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_2A-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_2B-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_2C-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_2D-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_2E-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_2F-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_30-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_31-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_32-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_33-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_34-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_35-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_36-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_37-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_38-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_39-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_3A-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_3B-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_3C-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_3D-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_3E-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_3F-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_40-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_41-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_42-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_43-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_44-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_45-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_46-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_47-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_48-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_49-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_4A-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_4B-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_4C-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_4D-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_4E-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_4F-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_50-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_51-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_52-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_53-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_54-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_55-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_56-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_57-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_58-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_59-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_5A-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_5B-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_5C-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_5D-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_5E-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_5F-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_60-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_61-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_62-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_63-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_64-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_65-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_66-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_67-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_68-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_69-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_6A-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_6B-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_6C-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_6D-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_6E-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_6F-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_70-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_71-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_72-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_73-CME_6FDB32F1
+	dc.w	CME_6FDB32F1_74-CME_6FDB32F1
 
-.sonic_map_frame0:
+CME_6FDB32F1_0:
 	dc.b	0
 
-.sonic_map_frame1:
+CME_6FDB32F1_1:
 	dc.b	4
 
 	dc.b	-20
@@ -147,7 +147,7 @@
 	dc.w	$000E
 	dc.b	-8
 
-.sonic_map_frame2:
+CME_6FDB32F1_2:
 	dc.b	3
 
 	dc.b	-20
@@ -165,10 +165,10 @@
 	dc.w	$000C
 	dc.b	-8
 
-.sonic_map_frame3:
+CME_6FDB32F1_3:
 	dc.b	3
 
-	dc.b	-20
+	dc.b	-19
 	dc.b	$09
 	dc.w	$0009
 	dc.b	-16
@@ -183,13 +183,8 @@
 	dc.w	$0006
 	dc.b	-8
 
-.sonic_map_frame4:
+CME_6FDB32F1_4:
 	dc.b	3
-
-	dc.b	-20
-	dc.b	$09
-	dc.w	$0006
-	dc.b	-16
 
 	dc.b	-4
 	dc.b	$09
@@ -198,10 +193,15 @@
 
 	dc.b	12
 	dc.b	$08
-	dc.w	$000C
+	dc.w	$0006
 	dc.b	-8
 
-.sonic_map_frame5:
+	dc.b	-19
+	dc.b	$09
+	dc.w	$0009
+	dc.b	-16
+
+CME_6FDB32F1_5:
 	dc.b	3
 
 	dc.b	-20
@@ -219,7 +219,7 @@
 	dc.w	$0003
 	dc.b	-8
 
-.sonic_map_frame6:
+CME_6FDB32F1_6:
 	dc.b	4
 
 	dc.b	-21
@@ -242,7 +242,7 @@
 	dc.w	$0014
 	dc.b	-20
 
-.sonic_map_frame7:
+CME_6FDB32F1_7:
 	dc.b	2
 
 	dc.b	-20
@@ -255,7 +255,7 @@
 	dc.w	$0008
 	dc.b	-11
 
-.sonic_map_frame8:
+CME_6FDB32F1_8:
 	dc.b	2
 
 	dc.b	-19
@@ -268,7 +268,7 @@
 	dc.w	$0006
 	dc.b	-13
 
-.sonic_map_frame9:
+CME_6FDB32F1_9:
 	dc.b	4
 
 	dc.b	-21
@@ -291,7 +291,7 @@
 	dc.w	$0012
 	dc.b	-20
 
-.sonic_map_frame10:
+CME_6FDB32F1_A:
 	dc.b	2
 
 	dc.b	-20
@@ -304,7 +304,7 @@
 	dc.w	$0006
 	dc.b	-21
 
-.sonic_map_frame11:
+CME_6FDB32F1_B:
 	dc.b	3
 
 	dc.b	-19
@@ -322,7 +322,7 @@
 	dc.w	$000C
 	dc.b	-12
 
-.sonic_map_frame12:
+CME_6FDB32F1_C:
 	dc.b	5
 
 	dc.b	-21
@@ -350,7 +350,7 @@
 	dc.w	$0015
 	dc.b	-5
 
-.sonic_map_frame13:
+CME_6FDB32F1_D:
 	dc.b	6
 
 	dc.b	-20
@@ -383,7 +383,7 @@
 	dc.w	$0016
 	dc.b	20
 
-.sonic_map_frame14:
+CME_6FDB32F1_E:
 	dc.b	4
 
 	dc.b	-19
@@ -406,7 +406,7 @@
 	dc.w	$0010
 	dc.b	-3
 
-.sonic_map_frame15:
+CME_6FDB32F1_F:
 	dc.b	5
 
 	dc.b	-21
@@ -434,7 +434,7 @@
 	dc.w	$0015
 	dc.b	-5
 
-.sonic_map_frame16:
+CME_6FDB32F1_10:
 	dc.b	4
 
 	dc.b	-20
@@ -457,7 +457,7 @@
 	dc.w	$0010
 	dc.b	-4
 
-.sonic_map_frame17:
+CME_6FDB32F1_11:
 	dc.b	5
 
 	dc.b	-19
@@ -485,7 +485,7 @@
 	dc.w	$0011
 	dc.b	-3
 
-.sonic_map_frame18:
+CME_6FDB32F1_12:
 	dc.b	4
 
 	dc.b	-12
@@ -508,7 +508,7 @@
 	dc.w	$0010
 	dc.b	-5
 
-.sonic_map_frame19:
+CME_6FDB32F1_13:
 	dc.b	2
 
 	dc.b	-12
@@ -521,7 +521,7 @@
 	dc.w	$0008
 	dc.b	-4
 
-.sonic_map_frame20:
+CME_6FDB32F1_14:
 	dc.b	2
 
 	dc.b	-12
@@ -534,7 +534,7 @@
 	dc.w	$0006
 	dc.b	-3
 
-.sonic_map_frame21:
+CME_6FDB32F1_15:
 	dc.b	4
 
 	dc.b	-12
@@ -557,7 +557,7 @@
 	dc.w	$000E
 	dc.b	-5
 
-.sonic_map_frame22:
+CME_6FDB32F1_16:
 	dc.b	2
 
 	dc.b	-12
@@ -570,7 +570,7 @@
 	dc.w	$0006
 	dc.b	-4
 
-.sonic_map_frame23:
+CME_6FDB32F1_17:
 	dc.b	3
 
 	dc.b	-12
@@ -588,7 +588,7 @@
 	dc.w	$0009
 	dc.b	-3
 
-.sonic_map_frame24:
+CME_6FDB32F1_18:
 	dc.b	6
 
 	dc.b	-3
@@ -621,7 +621,7 @@
 	dc.w	$0014
 	dc.b	19
 
-.sonic_map_frame25:
+CME_6FDB32F1_19:
 	dc.b	6
 
 	dc.b	-4
@@ -654,7 +654,7 @@
 	dc.w	$0006
 	dc.b	-4
 
-.sonic_map_frame26:
+CME_6FDB32F1_1A:
 	dc.b	4
 
 	dc.b	-5
@@ -677,7 +677,7 @@
 	dc.w	$0011
 	dc.b	-3
 
-.sonic_map_frame27:
+CME_6FDB32F1_1B:
 	dc.b	5
 
 	dc.b	-3
@@ -705,7 +705,7 @@
 	dc.w	$0013
 	dc.b	-5
 
-.sonic_map_frame28:
+CME_6FDB32F1_1C:
 	dc.b	4
 
 	dc.b	-4
@@ -728,7 +728,7 @@
 	dc.w	$0011
 	dc.b	-4
 
-.sonic_map_frame29:
+CME_6FDB32F1_1D:
 	dc.b	5
 
 	dc.b	-5
@@ -756,7 +756,7 @@
 	dc.w	$0006
 	dc.b	-3
 
-.sonic_map_frame30:
+CME_6FDB32F1_1E:
 	dc.b	2
 
 	dc.b	-18
@@ -769,7 +769,7 @@
 	dc.w	$0006
 	dc.b	-20
 
-.sonic_map_frame31:
+CME_6FDB32F1_1F:
 	dc.b	2
 
 	dc.b	-18
@@ -782,7 +782,7 @@
 	dc.w	$0006
 	dc.b	-20
 
-.sonic_map_frame32:
+CME_6FDB32F1_20:
 	dc.b	2
 
 	dc.b	-18
@@ -795,7 +795,7 @@
 	dc.w	$0006
 	dc.b	-20
 
-.sonic_map_frame33:
+CME_6FDB32F1_21:
 	dc.b	2
 
 	dc.b	-18
@@ -808,7 +808,7 @@
 	dc.w	$0006
 	dc.b	-20
 
-.sonic_map_frame34:
+CME_6FDB32F1_22:
 	dc.b	4
 
 	dc.b	-18
@@ -831,7 +831,7 @@
 	dc.w	$0014
 	dc.b	-18
 
-.sonic_map_frame35:
+CME_6FDB32F1_23:
 	dc.b	3
 
 	dc.b	-18
@@ -849,7 +849,7 @@
 	dc.w	$0008
 	dc.b	-10
 
-.sonic_map_frame36:
+CME_6FDB32F1_24:
 	dc.b	4
 
 	dc.b	-18
@@ -872,7 +872,7 @@
 	dc.w	$0006
 	dc.b	-18
 
-.sonic_map_frame37:
+CME_6FDB32F1_25:
 	dc.b	3
 
 	dc.b	-18
@@ -890,7 +890,7 @@
 	dc.w	$0008
 	dc.b	-10
 
-.sonic_map_frame38:
+CME_6FDB32F1_26:
 	dc.b	2
 
 	dc.b	-12
@@ -903,7 +903,7 @@
 	dc.w	$0006
 	dc.b	-2
 
-.sonic_map_frame39:
+CME_6FDB32F1_27:
 	dc.b	2
 
 	dc.b	-12
@@ -916,7 +916,7 @@
 	dc.w	$0006
 	dc.b	-2
 
-.sonic_map_frame40:
+CME_6FDB32F1_28:
 	dc.b	2
 
 	dc.b	-12
@@ -929,7 +929,7 @@
 	dc.w	$0006
 	dc.b	-2
 
-.sonic_map_frame41:
+CME_6FDB32F1_29:
 	dc.b	2
 
 	dc.b	-12
@@ -942,7 +942,7 @@
 	dc.w	$0006
 	dc.b	-2
 
-.sonic_map_frame42:
+CME_6FDB32F1_2A:
 	dc.b	4
 
 	dc.b	-6
@@ -965,7 +965,7 @@
 	dc.w	$0014
 	dc.b	-2
 
-.sonic_map_frame43:
+CME_6FDB32F1_2B:
 	dc.b	2
 
 	dc.b	-14
@@ -978,7 +978,7 @@
 	dc.w	$0008
 	dc.b	-2
 
-.sonic_map_frame44:
+CME_6FDB32F1_2C:
 	dc.b	4
 
 	dc.b	-6
@@ -1001,7 +1001,7 @@
 	dc.w	$0006
 	dc.b	-2
 
-.sonic_map_frame45:
+CME_6FDB32F1_2D:
 	dc.b	2
 
 	dc.b	-14
@@ -1014,7 +1014,7 @@
 	dc.w	$0008
 	dc.b	-2
 
-.sonic_map_frame46:
+CME_6FDB32F1_2E:
 	dc.b	1
 
 	dc.b	-16
@@ -1022,7 +1022,7 @@
 	dc.w	$0000
 	dc.b	-16
 
-.sonic_map_frame47:
+CME_6FDB32F1_2F:
 	dc.b	1
 
 	dc.b	-16
@@ -1030,7 +1030,7 @@
 	dc.w	$0000
 	dc.b	-16
 
-.sonic_map_frame48:
+CME_6FDB32F1_30:
 	dc.b	1
 
 	dc.b	-16
@@ -1038,7 +1038,7 @@
 	dc.w	$0000
 	dc.b	-16
 
-.sonic_map_frame49:
+CME_6FDB32F1_31:
 	dc.b	1
 
 	dc.b	-16
@@ -1046,7 +1046,7 @@
 	dc.w	$0000
 	dc.b	-16
 
-.sonic_map_frame50:
+CME_6FDB32F1_32:
 	dc.b	1
 
 	dc.b	-16
@@ -1054,7 +1054,7 @@
 	dc.w	$0000
 	dc.b	-16
 
-.sonic_map_frame51:
+CME_6FDB32F1_33:
 	dc.b	2
 
 	dc.b	-12
@@ -1067,7 +1067,7 @@
 	dc.w	$000C
 	dc.b	12
 
-.sonic_map_frame52:
+CME_6FDB32F1_34:
 	dc.b	1
 
 	dc.b	-16
@@ -1075,7 +1075,7 @@
 	dc.w	$0000
 	dc.b	-16
 
-.sonic_map_frame53:
+CME_6FDB32F1_35:
 	dc.b	2
 
 	dc.b	-20
@@ -1088,7 +1088,7 @@
 	dc.w	$000C
 	dc.b	-12
 
-.sonic_map_frame54:
+CME_6FDB32F1_36:
 	dc.b	1
 
 	dc.b	-16
@@ -1096,7 +1096,7 @@
 	dc.w	$0000
 	dc.b	-16
 
-.sonic_map_frame55:
+CME_6FDB32F1_37:
 	dc.b	2
 
 	dc.b	-19
@@ -1109,7 +1109,7 @@
 	dc.w	$0006
 	dc.b	-16
 
-.sonic_map_frame56:
+CME_6FDB32F1_38:
 	dc.b	4
 
 	dc.b	-19
@@ -1132,7 +1132,7 @@
 	dc.w	$0010
 	dc.b	-24
 
-.sonic_map_frame57:
+CME_6FDB32F1_39:
 	dc.b	2
 
 	dc.b	-12
@@ -1145,7 +1145,7 @@
 	dc.w	$000C
 	dc.b	-16
 
-.sonic_map_frame58:
+CME_6FDB32F1_3A:
 	dc.b	3
 
 	dc.b	-20
@@ -1163,7 +1163,7 @@
 	dc.w	$0806
 	dc.b	-32
 
-.sonic_map_frame59:
+CME_6FDB32F1_3B:
 	dc.b	3
 
 	dc.b	-20
@@ -1181,7 +1181,7 @@
 	dc.w	$1800
 	dc.b	0
 
-.sonic_map_frame60:
+CME_6FDB32F1_3C:
 	dc.b	3
 
 	dc.b	-12
@@ -1199,7 +1199,7 @@
 	dc.w	$000C
 	dc.b	-4
 
-.sonic_map_frame61:
+CME_6FDB32F1_3D:
 	dc.b	2
 
 	dc.b	-12
@@ -1212,7 +1212,7 @@
 	dc.w	$0800
 	dc.b	0
 
-.sonic_map_frame62:
+CME_6FDB32F1_3E:
 	dc.b	3
 
 	dc.b	-12
@@ -1230,7 +1230,7 @@
 	dc.w	$0009
 	dc.b	-20
 
-.sonic_map_frame63:
+CME_6FDB32F1_3F:
 	dc.b	3
 
 	dc.b	-12
@@ -1248,7 +1248,7 @@
 	dc.w	$000C
 	dc.b	-4
 
-.sonic_map_frame64:
+CME_6FDB32F1_40:
 	dc.b	3
 
 	dc.b	-24
@@ -1266,7 +1266,7 @@
 	dc.w	$000E
 	dc.b	-8
 
-.sonic_map_frame65:
+CME_6FDB32F1_41:
 	dc.b	4
 
 	dc.b	-8
@@ -1289,7 +1289,7 @@
 	dc.w	$0011
 	dc.b	-8
 
-.sonic_map_frame66:
+CME_6FDB32F1_42:
 	dc.b	4
 
 	dc.b	-8
@@ -1312,7 +1312,7 @@
 	dc.w	$0011
 	dc.b	-8
 
-.sonic_map_frame67:
+CME_6FDB32F1_43:
 	dc.b	5
 
 	dc.b	-24
@@ -1340,7 +1340,7 @@
 	dc.w	$0013
 	dc.b	-20
 
-.sonic_map_frame68:
+CME_6FDB32F1_44:
 	dc.b	5
 
 	dc.b	-24
@@ -1368,7 +1368,7 @@
 	dc.w	$0008
 	dc.b	-20
 
-.sonic_map_frame69:
+CME_6FDB32F1_45:
 	dc.b	2
 
 	dc.b	-19
@@ -1381,7 +1381,7 @@
 	dc.w	$0009
 	dc.b	-21
 
-.sonic_map_frame70:
+CME_6FDB32F1_46:
 	dc.b	3
 
 	dc.b	-20
@@ -1399,7 +1399,7 @@
 	dc.w	$000C
 	dc.b	-13
 
-.sonic_map_frame71:
+CME_6FDB32F1_47:
 	dc.b	2
 
 	dc.b	-19
@@ -1412,7 +1412,7 @@
 	dc.w	$0009
 	dc.b	-21
 
-.sonic_map_frame72:
+CME_6FDB32F1_48:
 	dc.b	3
 
 	dc.b	-20
@@ -1430,7 +1430,7 @@
 	dc.w	$000C
 	dc.b	-13
 
-.sonic_map_frame73:
+CME_6FDB32F1_49:
 	dc.b	2
 
 	dc.b	-20
@@ -1443,7 +1443,7 @@
 	dc.w	$0006
 	dc.b	-16
 
-.sonic_map_frame74:
+CME_6FDB32F1_4A:
 	dc.b	3
 
 	dc.b	-20
@@ -1461,7 +1461,7 @@
 	dc.w	$000D
 	dc.b	-8
 
-.sonic_map_frame75:
+CME_6FDB32F1_4B:
 	dc.b	3
 
 	dc.b	-24
@@ -1479,7 +1479,7 @@
 	dc.w	$000A
 	dc.b	-12
 
-.sonic_map_frame76:
+CME_6FDB32F1_4C:
 	dc.b	5
 
 	dc.b	-24
@@ -1507,7 +1507,7 @@
 	dc.w	$0014
 	dc.b	-12
 
-.sonic_map_frame77:
+CME_6FDB32F1_4D:
 	dc.b	5
 
 	dc.b	-24
@@ -1535,7 +1535,7 @@
 	dc.w	$0006
 	dc.b	-12
 
-.sonic_map_frame78:
+CME_6FDB32F1_4E:
 	dc.b	2
 
 	dc.b	-20
@@ -1548,7 +1548,7 @@
 	dc.w	$0003
 	dc.b	-16
 
-.sonic_map_frame79:
+CME_6FDB32F1_4F:
 	dc.b	3
 
 	dc.b	-20
@@ -1566,7 +1566,7 @@
 	dc.w	$000F
 	dc.b	-8
 
-.sonic_map_frame80:
+CME_6FDB32F1_50:
 	dc.b	1
 
 	dc.b	-16
@@ -1574,7 +1574,7 @@
 	dc.w	$0000
 	dc.b	-12
 
-.sonic_map_frame81:
+CME_6FDB32F1_51:
 	dc.b	1
 
 	dc.b	-12
@@ -1582,7 +1582,7 @@
 	dc.w	$0000
 	dc.b	-8
 
-.sonic_map_frame82:
+CME_6FDB32F1_52:
 	dc.b	1
 
 	dc.b	-8
@@ -1590,7 +1590,7 @@
 	dc.w	$0000
 	dc.b	-4
 
-.sonic_map_frame83:
+CME_6FDB32F1_53:
 	dc.b	3
 
 	dc.b	-12
@@ -1608,7 +1608,7 @@
 	dc.w	$080C
 	dc.b	-20
 
-.sonic_map_frame84:
+CME_6FDB32F1_54:
 	dc.b	3
 
 	dc.b	-12
@@ -1626,7 +1626,7 @@
 	dc.w	$0809
 	dc.b	-12
 
-.sonic_map_frame85:
+CME_6FDB32F1_55:
 	dc.b	3
 
 	dc.b	-16
@@ -1644,7 +1644,7 @@
 	dc.w	$000E
 	dc.b	-12
 
-.sonic_map_frame86:
+CME_6FDB32F1_56:
 	dc.b	3
 
 	dc.b	-21
@@ -1662,7 +1662,7 @@
 	dc.w	$0000
 	dc.b	12
 
-.sonic_map_frame87:
+CME_6FDB32F1_57:
 	dc.b	2
 
 	dc.b	-16
@@ -1675,7 +1675,7 @@
 	dc.w	$0010
 	dc.b	12
 
-.sonic_map_frame88:
+CME_6FDB32F1_58:
 	dc.b	1
 
 	dc.b	-8
@@ -1683,7 +1683,7 @@
 	dc.w	$0000
 	dc.b	-12
 
-.sonic_map_frame89:
+CME_6FDB32F1_59:
 	dc.b	1
 
 	dc.b	-8
@@ -1691,7 +1691,7 @@
 	dc.w	$0000
 	dc.b	-12
 
-.sonic_map_frame90:
+CME_6FDB32F1_5A:
 	dc.b	1
 
 	dc.b	-8
@@ -1699,7 +1699,7 @@
 	dc.w	$0000
 	dc.b	-12
 
-.sonic_map_frame91:
+CME_6FDB32F1_5B:
 	dc.b	1
 
 	dc.b	-8
@@ -1707,7 +1707,7 @@
 	dc.w	$0000
 	dc.b	-12
 
-.sonic_map_frame92:
+CME_6FDB32F1_5C:
 	dc.b	1
 
 	dc.b	-8
@@ -1715,7 +1715,7 @@
 	dc.w	$0000
 	dc.b	-12
 
-.sonic_map_frame93:
+CME_6FDB32F1_5D:
 	dc.b	1
 
 	dc.b	-8
@@ -1723,7 +1723,7 @@
 	dc.w	$0000
 	dc.b	-12
 
-.sonic_map_frame94:
+CME_6FDB32F1_5E:
 	dc.b	2
 
 	dc.b	-4
@@ -1736,7 +1736,7 @@
 	dc.w	$0003
 	dc.b	-12
 
-.sonic_map_frame95:
+CME_6FDB32F1_5F:
 	dc.b	2
 
 	dc.b	-4
@@ -1749,7 +1749,7 @@
 	dc.w	$0003
 	dc.b	-12
 
-.sonic_map_frame96:
+CME_6FDB32F1_60:
 	dc.b	2
 
 	dc.b	-4
@@ -1762,7 +1762,7 @@
 	dc.w	$0003
 	dc.b	-12
 
-.sonic_map_frame97:
+CME_6FDB32F1_61:
 	dc.b	2
 
 	dc.b	-4
@@ -1775,7 +1775,7 @@
 	dc.w	$0002
 	dc.b	-12
 
-.sonic_map_frame98:
+CME_6FDB32F1_62:
 	dc.b	5
 
 	dc.b	-17
@@ -1803,7 +1803,7 @@
 	dc.w	$0016
 	dc.b	0
 
-.sonic_map_frame99:
+CME_6FDB32F1_63:
 	dc.b	3
 
 	dc.b	-16
@@ -1821,7 +1821,7 @@
 	dc.w	$0013
 	dc.b	16
 
-.sonic_map_frame100:
+CME_6FDB32F1_64:
 	dc.b	5
 
 	dc.b	-16
@@ -1849,7 +1849,7 @@
 	dc.w	$0016
 	dc.b	7
 
-.sonic_map_frame101:
+CME_6FDB32F1_65:
 	dc.b	3
 
 	dc.b	-17
@@ -1867,7 +1867,7 @@
 	dc.w	$0013
 	dc.b	16
 
-.sonic_map_frame102:
+CME_6FDB32F1_66:
 	dc.b	2
 
 	dc.b	-20
@@ -1880,7 +1880,7 @@
 	dc.w	$0010
 	dc.b	-4
 
-.sonic_map_frame103:
+CME_6FDB32F1_67:
 	dc.b	2
 
 	dc.b	-20
@@ -1893,7 +1893,7 @@
 	dc.w	$0010
 	dc.b	-4
 
-.sonic_map_frame104:
+CME_6FDB32F1_68:
 	dc.b	2
 
 	dc.b	-20
@@ -1906,7 +1906,7 @@
 	dc.w	$0010
 	dc.b	-4
 
-.sonic_map_frame105:
+CME_6FDB32F1_69:
 	dc.b	2
 
 	dc.b	-20
@@ -1919,7 +1919,7 @@
 	dc.w	$0010
 	dc.b	-4
 
-.sonic_map_frame106:
+CME_6FDB32F1_6A:
 	dc.b	4
 
 	dc.b	-24
@@ -1942,7 +1942,7 @@
 	dc.w	$0015
 	dc.b	23
 
-.sonic_map_frame107:
+CME_6FDB32F1_6B:
 	dc.b	3
 
 	dc.b	-24
@@ -1960,7 +1960,7 @@
 	dc.w	$0005
 	dc.b	-8
 
-.sonic_map_frame108:
+CME_6FDB32F1_6C:
 	dc.b	5
 
 	dc.b	-23
@@ -1988,7 +1988,7 @@
 	dc.w	$0014
 	dc.b	0
 
-.sonic_map_frame109:
+CME_6FDB32F1_6D:
 	dc.b	3
 
 	dc.b	-24
@@ -2006,7 +2006,7 @@
 	dc.w	$0005
 	dc.b	-9
 
-.sonic_map_frame110:
+CME_6FDB32F1_6E:
 	dc.b	5
 
 	dc.b	-24
@@ -2034,7 +2034,7 @@
 	dc.w	$0013
 	dc.b	-1
 
-.sonic_map_frame111:
+CME_6FDB32F1_6F:
 	dc.b	5
 
 	dc.b	-24
@@ -2062,7 +2062,7 @@
 	dc.w	$0015
 	dc.b	7
 
-.sonic_map_frame112:
+CME_6FDB32F1_70:
 	dc.b	5
 
 	dc.b	-16
@@ -2090,7 +2090,7 @@
 	dc.w	$0012
 	dc.b	-1
 
-.sonic_map_frame113:
+CME_6FDB32F1_71:
 	dc.b	5
 
 	dc.b	0
@@ -2118,7 +2118,7 @@
 	dc.w	$1814
 	dc.b	-4
 
-.sonic_map_frame114:
+CME_6FDB32F1_72:
 	dc.b	5
 
 	dc.b	8
@@ -2146,7 +2146,7 @@
 	dc.w	$1813
 	dc.b	-17
 
-.sonic_map_frame115:
+CME_6FDB32F1_73:
 	dc.b	5
 
 	dc.b	-24
@@ -2174,7 +2174,7 @@
 	dc.w	$1815
 	dc.b	-25
 
-.sonic_map_frame116:
+CME_6FDB32F1_74:
 	dc.b	5
 
 	dc.b	-24

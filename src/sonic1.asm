@@ -9382,6 +9382,12 @@ Obj1C_Index:	dc.w Obj1C_Main-Obj1C_Index
 ; ===========================================================================
 
 Obj1C_Main:				; XREF: Obj1C_Index
+		cmpi.w	#$200,($FFFFFE10).w
+		bne.s	@notrp
+		cmpi.b	#4,obSubtype(a0)	; delete the 25 ring tutorial
+		beq.w	DeleteObject		; cause it's no longer needed
+
+@notrp:
 		cmpi.b	#6,($FFFFFE10).w	; is this the ending sequence?
 		bne.s	@notending		; if not, branch
 		tst.w	($FFFFFE12).w		; do you have zero deaths?
@@ -10749,8 +10755,8 @@ loc_925C:
 ; ===========================================================================
 
 loc_9260:				; XREF: Obj28_Index
-		bsr	sub_9404
-		bcc.s	loc_927C
+	;	bsr	sub_9404
+	;	bcc.s	loc_927C
 		move.w	$32(a0),obVelX(a0)
 		move.w	$34(a0),obVelY(a0)
 		move.b	#$E,obRoutine(a0)
@@ -10762,8 +10768,8 @@ loc_927C:
 ; ===========================================================================
 
 loc_9280:				; XREF: Obj28_Index
-		bsr	sub_9404
-		bpl.s	loc_92B6
+	;	bsr	sub_9404
+	;	bpl.s	loc_92B6
 		clr.w	obVelX(a0)
 		clr.w	$32(a0)
 		bsr	SpeedToPos
@@ -10845,8 +10851,8 @@ loc_936C:
 ; ===========================================================================
 
 loc_9370:				; XREF: Obj28_Index
-		bsr	sub_9404
-		bpl.s	loc_93C0
+;		bsr	sub_9404
+;		bpl.s	loc_93C0
 		bsr	SpeedToPos
 		addi.w	#$18,obVelY(a0)
 		tst.w	obVelY(a0)
@@ -13603,19 +13609,17 @@ Obj2E_ChkShield:
 		bne.s	Obj2E_ChkInvinc
 		tst.b	($FFFFFFE7).w	; has sonic destroyed a S monitor?
 		bne.s	Obj2E_ChkInvinc	; if yes, don't give sonic a shield
-		move.w	#$AF,d0			; play shield sound
+
 		tst.b	($FFFFFE2C).w		; is sonic already having a shield?
 		beq.s	Obj2E_Shield_NoBonus	; if not, branch
-		addi.w	#25,($FFFFFE20).w	; give 25 bonus rings
-		ori.b	#1,($FFFFFE1D).w	; update the ring counter
-		move.w	#250,d0			; add 2500 ...
-		jsr	AddPoints		; ... points
-		move.w	#$C5,d0			; play ka-ching sound
+		addi.b	#25,($FFFFFE2C).w	; add 25 bonus rings (controlled in Obj01_ChkShield)
+		rts				; do nothing else
 
 Obj2E_Shield_NoBonus:
-		move.b	#1,($FFFFFE2C).w ; give	Sonic a	shield	
-		move.b	#$38,($FFFFD180).w ; load shield object	($38)
-		jmp	(PlaySound).l	; play shield sound
+		move.b	#1,($FFFFFE2C).w	; give Sonic a shield	
+		move.b	#$38,($FFFFD180).w	; load shield object ($38)
+		move.w	#$AF,d0			; play shield sound
+		jmp	(PlaySound).l		; play shield sound
 ; ===========================================================================
 
 Obj2E_ChkInvinc:
@@ -26967,25 +26971,31 @@ Obj01_Inhuman:
 
 Obj01_ChkInvin:
 		tst.b	($FFFFFE2D).w	; does Sonic have invincibility?
-		beq.w	Obj01_ChkShoes	; if not, branch	; change to beq.w
+		beq.w	Obj01_ChkGoggles	; if not, branch	; change to beq.w
 		tst.w	$32(a0)		; check	time remaining for invinciblity
-		beq.w	Obj01_ChkShoes	; if no	time remains, branch	; change to beq.w
+		beq.w	Obj01_ChkGoggles	; if no	time remains, branch	; change to beq.w
 		subq.w	#1,$32(a0)	; subtract 1 from time
-		bne.w	Obj01_ChkShoes	; change to bne.w
+		bne.w	Obj01_ChkGoggles	; change to bne.w
 		tst.b	($FFFFF7AA).w
 		bne.w	Obj01_RmvInvin	; change to bne.w
 		cmpi.w	#$C,($FFFFFE14).w
 		bcs.w	Obj01_RmvInvin	; change to bcs.w
 		jsr	PlayLevelMusic	; restart level music
-
 Obj01_RmvInvin:
 		move.b	#0,($FFFFFE2D).w ; cancel invincibility
 		
 Obj01_ChkGoggles:
 		tst.b	($FFFFFFE1).w	; has sonic destroyed a goggle monitor?
-		beq.w	Obj01_ChkShoes	; if not, branch
-		bset	#7,obGfx(a0)	; make sonic being on the foreground
-		
+		beq.w	Obj01_ChkShield	; if not, branch
+	;	bset	#7,obGfx(a0)	; make sonic being on the foreground
+		nop
+
+Obj01_ChkShield:
+		cmpi.b	#2,($FFFFFE2C).w	; are bonus rings set to be awarded?
+		blt.s	Obj01_ChkShoes		; if not, branch
+		jsr	CollectRing		; get one bonus ring
+		subq.b	#1,($FFFFFE2C).w
+
 Obj01_ChkShoes:
 		tst.b	($FFFFFE2E).w	; does Sonic have speed	shoes?
 		beq.s	Obj01_ExitChk	; if not, branch
@@ -27545,7 +27555,10 @@ loc_131A6:
 loc_131AA:
 		tst.w	obInertia(a0)		; is Sonic moving?
 		bne.s	loc_131CC	; if yes, branch
+		
+		; unrolling
 		bclr	#2,obStatus(a0)
+		bclr	#5,obStatus(a0)	; clear pushing flag just in case
 		move.b	#$13,obHeight(a0)
 		move.b	#9,obWidth(a0)
 		move.b	#5,obAnim(a0)	; use "standing" animation
@@ -42598,11 +42611,11 @@ Obj09_GoalNotSolid:
 		move.b	#0,($FF1FAD).l		; remove blocks over emerald cave
 		move.b	#0,($FF1FAE).l		; remove blocks over emerald cave
 
-		move.b	#1,($FF12BD).l		; place blocks over W blocks
-		move.b	#1,($FF12BE).l		; place blocks over W blocks
+		move.b	#1,($FF13BD).l		; place blocks over W blocks
+		move.b	#1,($FF13BE).l		; place blocks over W blocks
 
-		move.b	#0,($FF11BC).l		; remove blocks next to W blocks
-		move.b	#0,($FF123C).l		; remove blocks next to W blocks
+		move.b	#0,($FF12BB).l		; remove blocks next to W blocks
+		move.b	#0,($FF133B).l		; remove blocks next to W blocks
 
 		move.b	#0,($FF11AC).l		; remove blocks next to R blocks
 		move.b	#0,($FF122C).l		; remove blocks next to R blocks

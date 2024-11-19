@@ -1010,7 +1010,13 @@ Deform_SBZ:
 		asr.l	#1, d0				; layer 1 - brown buildings
 		move.l	d0, CamXPos2			;
 
-		bra.w	DeformScreen_Generic
+		bsr	DeformScreen_Generic
+		
+		tst.w	($FFFFF70C).w			; did background underflow due to inhuman shenanigans?
+		bpl.s	@end				; if not, branch
+		move.w	#0,($FFFFF70C).w		; make sure background doesn't underflow
+@end:
+		rts
 
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 

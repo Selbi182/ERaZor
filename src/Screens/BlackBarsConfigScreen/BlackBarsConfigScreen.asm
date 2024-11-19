@@ -570,7 +570,7 @@ BlackBarsConfigScreen_WriteText_WidescreenInfo:
 	BBCS_EnterConsole a0
 
 
-	Console.SetXY #6, #2
+	Console.SetXY #6, #3
 	Console.Write "        SONIC ERAZOR"
 	Console.Write "%<endl>%<endl>"
 	Console.Write "W  I  D  E  S  C  R  E  E  N%"
@@ -590,7 +590,7 @@ BlackBarsConfigScreen_WriteText_WidescreenInfo:
 	Console.Write "%<endl>%<endl>"
 	Console.Write "%<pal2>----------------------------------%<pal0>"
 
-	Console.SetXY #2, #22
+	Console.SetXY #2, #21
 	Console.Write "  HTTPS://SELBI.HAPISAN.COM/ERAZOR"
 	Console.Write "%<endl>%<endl>"
 	Console.Write "     GO TO THIS URL TO DOWNLOAD%<endl>"
@@ -599,18 +599,18 @@ BlackBarsConfigScreen_WriteText_WidescreenInfo:
 
 	; this text overflows to the left and right, making it invisible in 4:3 mode
 	Console.SetXY #-4, #2
-	Console.Write "  %<pal2>IF%<endl>%<endl>%<endl>%<endl>%<endl>%<endl>"
-	Console.Write " YOU%<endl>%<endl>%<endl>%<endl>%<endl>%<endl>"
-	Console.Write " CAN%<endl>%<endl>%<endl>%<endl>%<endl>%<endl>"
-	Console.Write "READ%<endl>%<endl>%<endl>%<endl>%<endl>%<endl>"
+	Console.Write "%<pal2>IF%<endl>%<endl>%<endl>%<endl>%<endl>%<endl>"
+	Console.Write "YOU%<endl>%<endl>%<endl>%<endl>%<endl>%<endl>"
+	Console.Write "CAN%<endl>%<endl>%<endl>%<endl>%<endl>%<endl>"
+	Console.Write "READ%<endl>%<endl>%<endl>%<endl>%<endl>%<endl>%<endl>"
 	Console.Write "THIS"
 
 	Console.SetXY #40, #1
-	Console.Write "YOU%<endl>%<endl>%<endl>%<endl>%<endl>%<endl>"
-	Console.Write "ARE%<endl>%<endl>%<endl>%<endl>%<endl>%<endl>"
+	Console.Write " YOU%<endl>%<endl>%<endl>%<endl>%<endl>%<endl>"
+	Console.Write " ARE%<endl>%<endl>%<endl>%<endl>%<endl>%<endl>"
 	Console.Write "GOOD%<endl>%<endl>%<endl>%<endl>%<endl>%<endl>"
-	Console.Write "TO%<endl>%<endl>%<endl>%<endl>%<endl>%<endl>"
-	Console.Write "GO!%<pal0>"
+	Console.Write "  TO%<endl>%<endl>%<endl>%<endl>%<endl>%<endl>%<endl>"
+	Console.Write " GO!%<pal0>"
 
 	
 	BBCS_LeaveConsole a0

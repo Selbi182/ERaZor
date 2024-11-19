@@ -51,7 +51,7 @@
 	dc.w $0000, $0720, $0060
 	dc.w $0004, $0000, $0500	; ending sequence (fake)
 	dc.w $0110, $0310, $0060
-	dc.w $0004, $0000, $0EC0	; Ending Sequence (real)
+	dc.w $0004, $0000, $0FC0	; Ending Sequence (real)
 	dc.w $0110, $0310, $0060
 	dc.w $0004, $0000, $2FFF	;
 	dc.w $0000, $0520, $0060

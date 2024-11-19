@@ -34,7 +34,7 @@
 		dc.w	$2286, $05AC	; SBZ 3 (Finalor Place fast forward)
 
 		dc.w	$0620, $016B	; Unknown
-		dc.w	$1030, $026C	; Ending Sequence
+		dc.w	$1130, $026C	; Ending Sequence
 		dc.w	$0080, $00A8	; Null
 		dc.w	$0080, $00A8	; Null
 		even

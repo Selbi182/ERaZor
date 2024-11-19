@@ -102,7 +102,7 @@ BlackBarsConfigScreen:
 ; Main Loop
 ; ---------------------------------------------------------------
 
-@MainLoop:
+BlackBarsConfigScreen_MainLoop:
 	move.b	#4, VBlankRoutine
 	jsr	DelayProgram
 
@@ -125,7 +125,7 @@ BlackBarsConfigScreen:
 	tst.b	BlackBarsConfig_PreTextActive
 	beq.w	@pretextdone
 	andi.b	#Start|A|C,Joypad|Press
-	beq.w	@MainLoop
+	beq.w	BlackBarsConfigScreen_MainLoop
 
 	VBlank_SetMusicOnly
 	move.w	#$A9,d0
@@ -135,7 +135,7 @@ BlackBarsConfigScreen:
 	jsr	BlackBarsConfigScreen_WriteText
 	move.w	BlackBars.BaseHeight, BlackBars.Height
 	VBlank_UnsetMusicOnly
-	bra.w	@MainLoop
+	bra.w	BlackBarsConfigScreen_MainLoop
 
 @pretextdone:
 	tst.b	BlackBarsConfig_Exiting		; is exiting flag set?
@@ -148,7 +148,7 @@ BlackBarsConfigScreen:
 	btst	#iB,d0
 	beq.s	@chktoggle
 	andi.b	#Up|Down,d0
-	bne.s	@adjustbaseheight
+	bne.w	BlackBars_AdjustBaseHeight
 
 @chktoggle:
 	; toggle selection on up/down
@@ -161,7 +161,7 @@ BlackBarsConfigScreen:
 	; quit screen on other button press
 	move.b	Joypad|Press,d0
 	andi.b	#A|C|Start,d0
-	beq.w	@MainLoop
+	beq.w	BlackBarsConfigScreen_MainLoop
 	move.w	#$D9,d0
 	jsr	PlaySound_Special
 	move.b	#1,BlackBarsConfig_Exiting	; set exiting flag
@@ -172,7 +172,7 @@ BlackBarsConfigScreen:
 	cmpi.w	#224/2,BlackBars.Height		; did we fill up the full screen?
 	bhs.s	@exit				; if yes, branch
 	addq.w	#2,BlackBars.Height		; grow black bars
-	bra.w	@MainLoop			; loop
+	bra.w	BlackBarsConfigScreen_MainLoop	; loop
 ; ===============================================================
 
 @exit:
@@ -187,40 +187,43 @@ BlackBarsConfigScreen:
 	bchg	#1, BlackBars.HandlerId		; toggle selected option
 	jsr	BlackBars.SetHandler
 	move.l	#BlackBarsConfigScreen_RedrawUI, VBlankCallback	; defer redraw to VInt
-	bra.w	@MainLoop
+	bra.w	BlackBarsConfigScreen_MainLoop
 ; ===============================================================
 
-@adjustbaseheight:
-	btst	#0,($FFFFFE0F).w
-	beq.w	@MainLoop
+BlackBars_Adjust_Min = 2
+BlackBars_Adjust_Max = 224/2
 
-	moveq	#1,d1
+BlackBars_AdjustBaseHeight:
+	btst	#0,($FFFFFE0F).w		; only every other frame
+	beq.w	BlackBarsConfigScreen_MainLoop
+
+	moveq	#1,d1				; move down
 	andi.b	#Up,d0
 	beq.s	@adjust
-	neg.w	d1
+	neg.w	d1				; move up
 
 @adjust:
-	move.w	#$A2,d0
-	moveq	#0,d2
 	move.w	BlackBars.BaseHeight,d2
-	add.w	d1,d2
-	bgt.s	@pos
-	moveq	#1,d2
-	moveq	#0,d0
-@pos:
-	cmpi.w	#224/2,d2
-	bls.s	@set
-	move.w	#224/2,d2
-	moveq	#0,d0
-@set:
+	add.w	d1,d2				; set new height
+
+	cmpi.w	#BlackBars_Adjust_Min,d2
+	bge.s	@minok
+	move.w	#BlackBars_Adjust_Min,d2
+	bra.s	@justset
+@minok:
+	cmpi.w	#BlackBars_Adjust_Max,d2
+	ble.s	@maxok
+	move.w	#BlackBars_Adjust_Max,d2
+	bra.s	@justset
+@maxok:
+	move.w	#$A2,d0				; play crunch sound
+	jsr	PlaySound_Special
+
+@justset:
 	move.w	d2,BlackBars.BaseHeight
 	move.w	d2,BlackBars.Height
 	move.w	d2,BlackBars.TargetHeight
-	
-	tst.w	d0
-	beq.w	@MainLoop
-	jsr	PlaySound_Special
-	bra.w	@MainLoop
+	bra.w	BlackBarsConfigScreen_MainLoop
 ; ---------------------------------------------------------------
 ; ===============================================================
 

@@ -5755,7 +5755,7 @@ End_MainLoop:
 		bne.s	@checkfadeout		; if not, branch
 		cmpi.w	#$300,($FFFFD00C).w	; compare to Sonic's Y pos
 		bls.s	@checkfadeout		; if he's above, all good
-		cmpi.w	#$1020,($FFFFD008).w	; compare to Sonic's X pos
+		cmpi.w	#$1120,($FFFFD008).w	; compare to Sonic's X pos
 		bls.s	@checkfadeout		; if he's left of the boundary, all good
 		move.w	#1,($FFFFFE02).w	; start credits to not softlock in nonstop inhuman
 
@@ -5783,7 +5783,7 @@ End_MoveSonic:				; XREF: End_MainLoop
 	;	beq.s	End_MoveSonic_End
 
 	;	move.b	#1,($FFFFF7CC).w ; lock	controls
-		cmpi.w	#$90,($FFFFD008).w ; has Sonic passed $90 on y-axis?
+		cmpi.w	#$90+$100+$20,($FFFFD008).w ; has Sonic passed $90 on y-axis?
 		bcc.s	End_MoveSonExit	; if not, branch
 		move.w	#$800,($FFFFF602).w ; move Sonic to the	right
 
@@ -7463,12 +7463,17 @@ PLC_FZEscape:
 ; ---------------------------------------------------------------------------
 
 Resize_Ending:				; XREF: Resize_Index
-		move.w	#$0000,($FFFFF72C).w
-		move.w	#$0320,($FFFFF726).w
+		move.w	#$0000,($FFFFF72C).w	; upper boundary
+		move.w	#$0320,($FFFFF726).w	; bottom boundary
+		
+		tst.w	($FFFFFE12).w		; do you have zero deaths?
+		beq.s	@deathless		; if yes, branch
+		move.w	#$100,($FFFFF728).w	; normal left boundary
+@deathless:
 
 		tst.b	($FFFFFF78).w		; pit flag already set?
 		bne.s	@end			; if yes, branch
-		cmp.w	#$0A29,($FFFFD008).w	; is Sonic near the pit?
+		cmp.w	#$0B29,($FFFFD008).w	; is Sonic near the pit?
 		bhs.s	@end			; if not, branch
 
 		move.b	#1,($FFFFFF78).w	; set pit flag
@@ -9377,6 +9382,12 @@ Obj1C_Index:	dc.w Obj1C_Main-Obj1C_Index
 ; ===========================================================================
 
 Obj1C_Main:				; XREF: Obj1C_Index
+		cmpi.b	#6,($FFFFFE10).w	; is this the ending sequence?
+		bne.s	@notending		; if not, branch
+		tst.w	($FFFFFE12).w		; do you have zero deaths?
+		bne.w	DeleteObject		; if not, delete
+
+@notending:
 		addq.b	#2,obRoutine(a0)
 		moveq	#0,d0
 		move.b	obSubtype(a0),d0	; copy object type to d0
@@ -9444,6 +9455,11 @@ Obj1C_Var:
 		dc.w $2000
 		dc.b 1,	8, 2, 0
 
+
+		dc.l Map_obj1C_End
+		dc.w ($7A00/$20)
+		dc.b 0,	$40, 2, 0
+
 ; ---------------------------------------------------------------------------
 ; Sprite mappings - SLZ	lava thrower
 ; ---------------------------------------------------------------------------
@@ -9452,6 +9468,9 @@ Map_obj1C:
 
 Map_obj1C_RP:
 		include	"_maps\RPHints.asm"
+
+Map_obj1C_End:
+		include	"_maps\End0Deaths.asm"
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -25817,6 +25836,14 @@ Obj03_Setup:
 		addi.w	#$18,obY(a0)		; a bit of vertical adjustment for special signs
 
 @noeaster:
+		cmpi.b	#7,obSubtype(a0)	; is this the tutorial entrance?
+		bne.s	@regular		; if not, branch
+		jsr	Check_TutorialVisited
+		bne.s	Obj03_Display
+		move.b	#$10,obFrame(a0)	; FUN FUN FUN
+		bra.s	Obj03_Display
+
+@regular:
 		cmpi.b	#7,obSubtype(a0)	; is this a regular level sign? (for an act)
 		bge.s	Obj03_Display		; if not, branch
 		bsr	SingleObjLoad		; load an object
@@ -25834,8 +25861,16 @@ Obj03_Setup:
 		move.w	#($6200/$20),obGfx(a1)	; set art, use first palette line
 		move.b	#9,obFrame(a1)		; set to "PLACE" frame
 		move.w	obY(a1),$38(a1)		; remember base Y pos
+; ---------------------------------------------------------------------------
 		
 Obj03_Display:
+		cmpi.b	#$10,obFrame(a0)	; fun tutorial?
+		bne.s	@chkfilter		; if not, branch
+		tst.b	($FFFFD000).w		; jumped into the ring?
+		bne.s	@chkfilter		; if not, branch
+		move.b	#7,obFrame(a0)		; get trolled it was actually the tutorial lmao
+
+@chkfilter:
 		bclr	#5,obGfx(a0)		; use first palette row
 		btst	#1,($FFFFFE05).w	; is this an odd frame?
 		beq.s	@notodd			; if not, branch
@@ -25861,7 +25896,7 @@ Obj03_Display:
 
 Obj03_BackgroundColor:
 		moveq	#$F, d0
-		and.b	obFrame(a0), d0
+		and.b	obSubtype(a0), d0
 		add.w	d0, d0
 		add.w	d0, d0				; d0 = Frame * 4
 		move.l	@BGColorData(pc, d0), d0
@@ -44543,6 +44578,8 @@ PLC_Ending:
 		dc.w $6B00
 		dc.l ArtKospM_EndFan		; fan
 		dc.w $7400
+		dc.l ArtKospM_0Deaths		; 0 death text
+		dc.w $7A00
 		dc.l ArtKospM_OkCool		; ok cool
 		dc.w $BA00
 		dc.l ArtKospM_UMadBro	; U Mad Bro?!
@@ -44800,6 +44837,8 @@ ArtKospM_MZIcons:	incbin	artkosp\MZinfoicons.kospm	; MZ info icons
 ArtKospM_Fan:	incbin	artkosp\slzfan.kospm	; SLZ fan
 		even
 ArtKospM_EndFan:	incbin	artkosp\endfan.kospm	; ending sequence fan
+		even
+ArtKospM_0Deaths:	incbin	artkosp\end0deaths.kospm	; ending 0 deaths text
 		even
 ;ArtKospM_SlzWall:	incbin	artkosp\slzwall.kospm	; SLZ smashable wall
 ;		even

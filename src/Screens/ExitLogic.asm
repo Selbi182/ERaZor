@@ -120,14 +120,13 @@ Exit_BlackBarsScreen:
 ; ===========================================================================
 
 Exit_SegaScreen:
-		btst	#4,($FFFFF604).w	; was B held as we exited?
-		bne.s	@blackbarsscreen	; if yes, show black bars screen again
 		move.b	#$1C,(GameMode).w	; set to Selbi splash screen
-		rts
-
-@blackbarsscreen:
+		tst.w	($FFFFFFFA).w		; is debug mode enabled?
+		beq.s	@end			; if not, branch
+		btst	#4,($FFFFF604).w	; was B held as we exited?
+		beq.s	@end			; if not, branch
 		move.b	#$38,(GameMode).w	; set to Black Bars configuration screen
-		rts
+@end:		rts
 ; ===========================================================================
 
 Exit_SelbiSplash:
@@ -554,6 +553,7 @@ HubRing_SoundTest:
 		rts
 
 HubRing_Tutorial:
+		bsr	Set_TutorialVisited
 		move.w	#$501,($FFFFFE10).w	; set level to SBZ2
 		bra.w	StartLevel
 
@@ -722,6 +722,7 @@ Doors_All	= %01111111 ; (upper bit is unused)
 State_BaseGame_Casual	= 0
 State_BaseGame_Frantic	= 1
 State_Blackout          = 2
+State_TutorialVisited   = 3
 ; ---------------------------------------------------------------------------
 
 		; d0 = bit we want to test
@@ -793,6 +794,12 @@ Check_BlackoutFirst:
 		bsr	Check_BlackoutBeaten	; have you already beaten the blackout challenge?		
 		eori.b	#%00100,ccr		; invert Z flag
 @end:		rts
+; ---------------------------------------------------------------------------
+
+Check_TutorialVisited:
+		btst	#State_TutorialVisited,(Progress).w
+		rts
+
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -860,6 +867,12 @@ Set_BaseGameDone_Casual:
 Set_BlackoutDone:
 		bset	#State_Blackout,(Progress).w	; you have beaten the blackout challenge, mad respect
 		rts
+; ---------------------------------------------------------------------------
+
+Set_TutorialVisited:
+		bset	#State_TutorialVisited,(Progress).w
+		rts
+
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
 

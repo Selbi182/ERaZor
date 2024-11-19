@@ -124,7 +124,7 @@ OptionsScreen:				; XREF: GameModeArray
 		move.b	#Options_Music,d0		; play Options screen music (Spark Mandrill)
 		jsr	PlaySound_Special
 		bsr	Options_LoadPal
-		move.w	#$00E,(BGThemeColor).w	; set theme color for background effects
+		move.w	#$0EE,(BGThemeColor).w	; set theme color for background effects
 
 		jsr	BackgroundEffects_Setup
 

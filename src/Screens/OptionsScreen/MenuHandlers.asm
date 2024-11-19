@@ -751,9 +751,9 @@ Options_BlackBarsMode_Handle:
 	beq.w	@ret				; if not, branch
 
 	btst	#6,d1				; is specifically A pressed?
-	bne.s	@quicktoggle			; if yes, quick toggle
-	moveq	#2,d0				; set to BlackBarsConfigScreen
-	jmp	Exit_OptionsScreen
+	beq.s	@gotosetupscreen		; if not, branch
+	tst.w	($FFFFFFFA).w			; is debug mode enabled?
+	beq.s	@gotosetupscreen		; if not, branch
 
 @quicktoggle:
 	bchg	#1, BlackBars.HandlerId		; toggle black bars mode
@@ -761,6 +761,10 @@ Options_BlackBarsMode_Handle:
 	jsr	BlackBars.SetHandler
 	st.b	Options_RedrawCurrentItem
 @ret:	rts
+
+@gotosetupscreen:
+	moveq	#2,d0				; set to BlackBarsConfigScreen
+	jmp	Exit_OptionsScreen
 
 ; ---------------------------------------------------------------------------
 ; Helper functions and data

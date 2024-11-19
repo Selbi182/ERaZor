@@ -929,9 +929,10 @@ Hint_3:
 		boxtxt	"    frantic mode"
 		boxtxt_pause
 		boxtxt	" THE FLOOR IS LAVA!"
-		boxtxt_pause
+		dc.b	_pause
 		boxtxt	"  WELL, SOMETIMES."
 		boxtxt_pause
+		boxtxt	" IN CERTAIN LEVELS,"
 		boxtxt	" DON'T STAND ON THE"
 		boxtxt	"  GROUND TOO MUCH!"
 		boxtxt_end
@@ -967,9 +968,18 @@ Hint_4:
 		boxtxt	"KNOW THESE WERE IN"
 		boxtxt	"THE GAME."
 		boxtxt_next
+
+		boxtxt	"FIRST OF ALL, HERE'S"
+		boxtxt	"A LINK FOR THE FULL"
+		boxtxt	"HACK SOURCE CODE!"
+		boxtxt_line
+		boxtxt	"erazor:selbi:club"
+		boxtxt_pause
+		boxtxt	"NEXT UP, SOME CHEATS"
+		boxtxt	"AND SECRETS..."
+		boxtxt_next
 		
-		boxtxt	"FIRST OFF, HOW TO"
-		boxtxt	"ENABLE debug mode."
+		boxtxt	"debug mode"
 		boxtxt_pause
 		boxtxt	"WHEN YOU'RE IN THE"
 		boxtxt	"FINAL PHASE OF THE"
@@ -978,24 +988,63 @@ Hint_4:
 		boxtxt	"TWENTY TIMES!"
 		boxtxt_next
 
-		boxtxt	"SECONDLY, ARE YOU A"
-		boxtxt	"speedrunner?"
+		boxtxt	"level select"
+		boxtxt_pause
+		boxtxt	"HOLD a + start ON"
+		boxtxt	"THE TITLE SCREEN"
+		boxtxt	"AFTER YOU'VE ENABLED"
+		boxtxt	"DEBUG MODE! PRESS a"
+		boxtxt	"IN THERE TO TOGGLE"
+		boxtxt	"CASUAL/FRANTIC."
+		boxtxt_next
+
+		boxtxt	"speedrun pro-tip"
 		boxtxt_pause
 		boxtxt	"WHILE STARTING A NEW"
 		boxtxt	"GAME, HOLD a IN THE"
 		boxtxt	"CASUAL/FRANTIC MENU"
-		boxtxt	"TO AUTO-ENABLE ALL"
-		boxtxt	"SKIP OPTIONS!"
+		boxtxt	"TO ENABLE AUTOSKIP"
+		boxtxt	"AND JUMP RIGHT INTO"
+		boxtxt	"NIGHT HILL PLACE!"
 		boxtxt_next
- 
-		boxtxt	"THIRDLY, FOR MY"
-		boxtxt	"fellow nerds."
+
+		boxtxt	"skip boss cutscenes"
 		boxtxt_pause
-		boxtxt	"HERE'S A LINK TO"
-		boxtxt	"THE FULL SOURCE CODE"
-		boxtxt	"OF SONIC ERAZOR!"
-		boxtxt_line
-		boxtxt	"erazor:selbi:club"
+		boxtxt	"AFTER BEATING THE"
+		boxtxt	"CRABMEAT BOSS OR"
+		boxtxt	"WALKING BOMB BOSS,"
+		boxtxt	"HOLD a + b + c"
+		boxtxt	"TO SKIP THE LONG"
+		boxtxt	"CUTSCENE!"
+		boxtxt_next
+	
+		boxtxt	"adjust black bars"
+		boxtxt_pause
+		boxtxt	"IN THE SETUP SCREEN"
+		boxtxt	"FOR THE BLACK BARS,"
+		boxtxt	"HOLD b + up/down"
+		boxtxt	"TO ADJUST THE BARS'"
+		boxtxt	"BASE HEIGHT. USEFUL"
+		boxtxt	"FOR CINEMATIC MODE!"
+		boxtxt_next
+
+		boxtxt	"drunk special stages"
+		boxtxt_pause
+		boxtxt	"ENABLE motion blur"
+		boxtxt	"AND HOLD a + up/down"
+		boxtxt	"TO ROTATE A SPECIAL"
+		boxtxt	"STAGE AROUND WITHOUT"
+		boxtxt	"AFFECTING GRAVITY."
+		boxtxt	"RIVETING VERTIGO!"
+		boxtxt_next
+
+		boxtxt	"skip tutorial texts"
+		boxtxt_pause
+		boxtxt	"GETTING TIRED OF ME?"
+		boxtxt	"YOU CAN SKIP THESE"
+		boxtxt	"SMALL ON-SCREEN"
+		boxtxt	"TEXTBOXES BY HOLDING"
+		boxtxt	"a AND THEN start!"
 		boxtxt_next
 		
 		boxtxt	"AND LASTLY, FOR THE"

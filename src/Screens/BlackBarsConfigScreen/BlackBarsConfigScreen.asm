@@ -162,7 +162,7 @@ BlackBarsConfigScreen_MainLoop:
 	move.b	Joypad|Press,d0
 	andi.b	#A|C|Start,d0
 	beq.w	BlackBarsConfigScreen_MainLoop
-	move.w	#$D9,d0
+	move.w	#$A9,d0
 	jsr	PlaySound_Special
 	move.b	#1,BlackBarsConfig_Exiting	; set exiting flag
 	move.l	#BlackBarsConfigScreen_RedrawUI, VBlankCallback	; redraw one last time
@@ -171,7 +171,7 @@ BlackBarsConfigScreen_MainLoop:
 @exiting:
 	cmpi.w	#224/2,BlackBars.Height		; did we fill up the full screen?
 	bhs.s	@exit				; if yes, branch
-	addq.w	#2,BlackBars.Height		; grow black bars
+	addq.w	#4,BlackBars.Height		; grow black bars
 	bra.w	BlackBarsConfigScreen_MainLoop	; loop
 ; ===============================================================
 

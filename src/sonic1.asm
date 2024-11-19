@@ -5067,14 +5067,23 @@ SS_WaitVBlank:
 		move.b	($FFFFF602).w,d1	; get held buttons
 		btst	#6,d1			; is A held?
 		beq.s	@rotatedrender		; if not, branch
-		
+
+		moveq	#0,d2
 		move.w	#$100,d0		; set rotation speed
 		btst	#0,d1			; is up held?
 		beq.s	@chkdown		; if not, branch
 		add.w	d0,(ExtCamShift).w	; rotate clockwise
+		moveq	#1,d2
 @chkdown:	btst	#1,d1			; is down held?
-		beq.s	@rotatedrender		; if not, branch
+		beq.s	@chksound		; if not, branch
 		sub.w	d0,(ExtCamShift).w	; rotate counterclockwise
+		moveq	#1,d2
+
+@chksound:
+		tst.b	d2			; only play sound if stage actually rotated
+		beq.s	@rotatedrender
+		move.w	#$A2,d0			; play crunch sound
+		jsr	PlaySound_Special
 
 @rotatedrender:
 		move.w	(ExtCamShift).w,d0	; get current shifted rotation

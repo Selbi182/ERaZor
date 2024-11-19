@@ -46,6 +46,8 @@
 		dc.w SonAni_EXTREME-SonicAniData	; $2A
 		dc.w SonAni_DeathGrnd-SonicAniData	; $2B
 		dc.w SonAni_Drown2-SonicAniData		; $2C
+		dc.w SonAni_Annoyed-SonicAniData	; $2D
+
 SonAni_Walk:	dc.b $FF, 8, 9,	$A, $B,	6, 7, $FF
 SonAni_Run:	dc.b $FF, $1E, $1F, $20, $21, $FF, $FF,	$FF
 SonAni_Roll:	dc.b $FE, $2E, $2F, $30, $31, $32, $FF,	$FF
@@ -55,7 +57,7 @@ SonAni_Push:	dc.b $FD, $45, $46, $47, $48, $FF, $FF,	$FF
 
 SonAni_Wait:	dc.b 6
 		dc.b 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 
-		dc.b 4
+		dc.b 4 ; annoyed, frame 36
 		dc.b 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,  2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,  2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,  2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
 		dc.b 3 ; omg he can blink
 		dc.b $FE, 12*4+1
@@ -99,4 +101,5 @@ SonAni_DownDash:	dc.b 0, $35, $75, $FF
 SonAni_EXTREME:		dc.b 0,0,1,2,3,4,5,6,7,8,9,$A,$B,$C,$D,$E,$F,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$1A,$1B,$1C,$1D,$1E,$1F,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$2A,$2B,$2C,$2D,$2E,$2F,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$3A,$3B,$3C,$3D,$3E,$3F,$40,$41,$42,$43,$44,$45,$46,$47,$48,$49,$4A,$4B,$4C,$4D,$4E,$4F,$50,$51,$52,$53,$54,$55,$56,$57,$58,$59,$5A,$5B,$5C,$5D,$5E,$5F,$60,$61,$62,$63,$64,$65,$66,$67,$68,$69,$6A,$6B,$6C,$6D,$6E,$6F,$70,$71,$72,$73,$74,$FF
 SonAni_DeathGrnd:	dc.b $2F, $54, $FF, 0
 SonAni_Drown2:		dc.b 5, $54, $FD, $17
+SonAni_Annoyed:		dc.b 5, 4, $FF, 0
 		even

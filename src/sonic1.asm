@@ -8086,15 +8086,15 @@ Obj15_Action:				; XREF: Obj15_Index
 Obj15_Action2:				; XREF: Obj15_Index
 		moveq	#0,d1
 		move.b	obActWid(a0),d1
-		bsr	ExitPlatform
+		jsr	ExitPlatform
 		move.w	obX(a0),-(sp)
 		jsr	obj15_Move
 		move.w	(sp)+,d2
 		moveq	#0,d3
 		move.b	obHeight(a0),d3
 		addq.b	#1,d3
-		bsr	MvSonicOnPtfm
-		bsr	DisplaySprite
+		jsr	MvSonicOnPtfm
+		jsr	DisplaySprite
 		bra.w	Obj15_ChkDel
 
 		rts
@@ -11179,7 +11179,13 @@ Obj1F_BossDefeated:
 		bra.w	Obj1F_BossDelete
 @nofastforward:
 
+		btst	#1,($FFFFD022).w		; is Sonic in air?
+		bne.s	@waitexplosions			; if yes, branch
+		tst.w	($FFFFD014).w
+		bne.s	@waitexplosions
+		move.b	#0,($FFFFD000+obAniFrame).w	; prevent idle animation
 
+@waitexplosions:
 		cmpi.b	#$12,obAnim(a0)			; is final animation played?
 		bhs.s	@ToLevelTransition		; if yes, go to transition part (crabmeat lifts its leg)
 		bsr	BossDefeated2			; otherwise let it explode
@@ -11189,17 +11195,29 @@ Obj1F_BossDefeated:
 @ToLevelTransition:
 		move.b	#8,ob2ndRout(a0)		; => "Obj1F_LevelTransition"
 		move.b	#150,4(a0)			; set timer
-		
 ; ===========================================================================
+
 Obj1F_LevelTransition:
 		subq.b	#1,4(a0)
 		beq.s	Obj1F_BossDelete
-		
+
+		cmpi.b	#3,obFrame(a0)
+		bne.s	@x
+		bsr	AnnoyedSonic
+@x:
 		cmpi.b	#60,4(a0)
-		bne.s	@0
+		beq.s	@blip
+		rts
+@blip:
 		move.b	#$A9,d0			; play blip sound
 		jsr	PlaySound
-@0:		rts
+; ---------------------------------------------------------------------------
+
+AnnoyedSonic:
+	;	move.b	#$2D,($FFFFD000+obAnim).w	; doesn't work... so instead...
+		move.b	#36,($FFFFD000+obAniFrame).w	; force idle animation to be on the frame where he is annoyed
+		rts
+; ===========================================================================
 
 Obj1F_BossDelete:
 		clr.b	(HUD_BossHealth).w			; revert lives counter to normal
@@ -23437,7 +23455,7 @@ Ani_obj5E:
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 BombWalkSpeed_Boss = $140
-BombFuseTime_Boss = 41
+BombFuseTime_Boss = 51
 BombDistance_Boss = $50
 BombPellets_Boss = 1
 ; ---------------------------------------------------------------------------
@@ -23833,6 +23851,11 @@ Obj5F_BossDefeatedBlip:
 		blo.s	@hidebomb
 
 		cmpi.w	#3*60+30,d1
+		bhi.s	@noannoyed
+		jsr	AnnoyedSonic
+
+@noannoyed:
+		cmpi.w	#3*60+30,d1
 		bne.s	@noblip
 		move.b	#0,obFrame(a0)
 		move.w	#$A9,d0
@@ -24030,6 +24053,49 @@ Obj5F_MakeShrap:			; XREF: loc_11B7C
 		move.b	#$98,obColType(a1)
 		bset	#7,obRender(a1)
 
+
+		moveq	#20,d1
+		sub.b	(BossHealth).w,d1
+		bpl.s	@0
+		moveq	#20,d1
+@0:		lsr.w	#1,d1
+
+		move.w	#$80,d4	; load default speed
+		mulu.w	d1,d4
+		cmpi.w	#$400,d4
+		bhs.s	@ok
+		move.w	#$400,d4
+@ok:
+		move.w	($FFFFD008).w,d1	; load Sonic's X-pos into d1
+		sub.w	obX(a0),d1		; sub bomb's X-pos from it
+	;	move.w	($FFFFD00C).w,d2	; load Sonic's Y-pos into d2
+		move.w	obY(a0),d2		; always assume same Y position
+		sub.w	obY(a0),d2		; sub bomb's Y-pos from it
+		jsr	CalcAngle		; calculate the angle
+		jsr	CalcSine		; calculate the sine
+		muls.w	d4,d0			; multiply result 1 shotgun speed
+		muls.w	d4,d1			; multiply result 2 by shotgun speed
+		asr.l	#8,d0			; align the results to the correct position in the bitfield ...
+		asr.l	#8,d1			; ... (e.g. 00000000xxxxxxxxxxxxxxxx00000000 to 0000000000000000xxxxxxxxxxxxxxxx)
+		
+		move.l	($FFFFF636).w,d3	; get last random number
+		ror.l	#1,d3			; rotate to next
+		move.l	d3,($FFFFF636).w	; save new value (without rerunning RNG algorithm)
+
+		andi.l	#$03FF03FF,d3		; mask by variance
+		subi.w	#$200,d3		; center variance for X
+		add.w	d3,d1			; add variance to X
+		swap	d3			; get other result
+		subi.w	#$200,d3		; center variance for Y
+		add.w	d3,d0			; add variance to Y
+		move.w	d1,obVelX(a1)		; set final result to Sonic's X-speed
+		move.w	d0,obVelY(a1)		; set final result to Sonic's Y-speed
+		subi.w	#$180,obVelY(a1)
+
+		bra.w	loc_11BCE
+
+
+		; this was the old super RNG-dependent version
 		jsr	RandomNumber
 		move.l	d1,d4
 		move.w	d4,d5
@@ -24064,6 +24130,24 @@ Obj5F_End:				; XREF: Obj5F_Index
 
 		bsr.w	SpeedToPos
 
+@xoffchk:
+		tst.b	obRender(a0)	; is object on screen?
+		bmi.s	@yoffchk	; if yes, all good
+		cmpi.b	#4,obAnim(a0)	; is this shrapnel?
+		bne.s	@yoffchk	; if not, branch
+		move.w	($FFFFD008).w,d0
+		cmp.w	obX(a0),d0
+		bcs.s	@right
+	@left:	tst.w	obVelX(a0)
+		bmi.s	@del
+		bra.s	@yoffchk
+	@right:	tst.w	obVelX(a0)
+		bpl.s	@del
+		bra.s	@yoffchk
+	@del:	jmp	DeleteObject
+	
+
+@yoffchk:
 		move.w	obY(a0),d0
 		cmpi.w	#$3D0,d0
 		bhi.w	DeleteObject

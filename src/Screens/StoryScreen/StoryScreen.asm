@@ -339,6 +339,10 @@ STS_CenterCurrentLine:
 
 StoryScreen_WritePressStart:
 		lea	(STS_Continue).l,a1		; load "Press Start..." text to a1
+		tst.b	(PlacePlacePlace).w		; PLACE PLACE PLACE?
+		beq.s	@normal				; if not, branch
+		lea	(STS_ContPlace).l,a1		; load dumb text
+@normal:
 		adda.w	(STS_CurrentChar).w,a1		; find the char we want to write
 
 		moveq	#0,d0				; clear d0
@@ -583,14 +587,20 @@ ststxt_line macro
 StoryText_Load:
 		moveq	#0,d0				; clear d0
 		move.b	(STS_ScreenID).w,d0 		; get ID for the current text we want to display
+
+		tst.b	(PlacePlacePlace).w		; PLACE PLACE PLACE?
+		beq.s	@normal				; if not, branch
+		lea	(StoryText_Place).l,a1		; PLACE PLACE PLACE!
+		cmpi.b	#9,d0				; is this the blackout challenge?
+		bne.s	@ret				; if not, branch
+		lea	(StoryText_9X).l,a1		; use even stupider secret text for the meme
+	@ret:	rts
+
+@normal:
 		add.w	d0,d0				; times four...
 		add.w	d0,d0				; ...for long alignment
 		movea.l	StoryText_Index(pc,d0.w),a1	; load story address into a1
-
-		tst.b	(PlacePlacePlace).w		; PLACE PLACE PLACE?
-		beq.s	@end				; if not, branch
-		lea	(StoryText_Place).l,a1		; PLACE PLACE PLACE!
-@end:		rts
+		rts
 ; ---------------------------------------------------------------------------
 StoryText_Index:
 		dc.l	STS_Continue	; continue text at the bottom of the screen
@@ -604,11 +614,17 @@ StoryText_Index:
 		dc.l	StoryText_8	; text after jumping in the ring for the Ending Sequence
 		dc.l	StoryText_9	; text after beating the blackout challenge special stage
 		dc.l	StoryText_6X	; text after beating Unreal Place without touching any checkpoints
+		dc.l	StoryText_9X	; text after beating the blackout challenge in true-BS mode
 ; ---------------------------------------------------------------------------
 
 STS_Continue:	ststxt	"~PRESS~START~TO~CONTINUE...~"
 		dc.b	-1
 		even
+
+STS_ContPlace:	ststxt	"~~~PLACE~PLACE~TO~PLACE...~~"
+		dc.b	-1
+		even
+
 ; ---------------------------------------------------------------------------
 
 StoryText_1:	; text after intro cutscene
@@ -672,8 +688,8 @@ StoryText_3:	; text after beating Special Place
 ; ---------------------------------------------------------------------------
 
 StoryText_4:	; text after beating Ruined Place
-		ststxt	"I FEEL LIKE THIS STAGE WAS"
-		ststxt	"A METAPHOR ABOUT CAPITALISM."
+		ststxt	"WAS THIS LEVEL A METAPHOR"
+		ststxt	"FOR CAPITALISM OR SOMETHING?"
 		ststxt_line
 		ststxt	"AT LEAST YOUR EFFORTS OF"
 		ststxt	"SHOOTING YOURSELF THROUGH"
@@ -704,7 +720,7 @@ StoryText_5:	; text after beating Labyrinth Place
 		ststxt	"PINKY PROMISE!"
 		ststxt_line
 		ststxt	"HOWEVER, YOU'VE KILLED"
-		ststxt	"THE MIGHTY JAWS OF DESTINY,"
+		ststxt	"THE MIGHTY ^JAWS^ OF DESTINY"
 		ststxt	"AND THEREFORE MUST BE SERVED"
 		ststxt	"THE ULTIMATE PUNISHMENT."
 		dc.b	-1
@@ -753,7 +769,7 @@ StoryText_6X:	; ($A) text after beating Unreal Place without touching any checkp
 ; ---------------------------------------------------------------------------
 
 StoryText_7:	; text after beating Scar Night Place
-		ststxt	"LOOK, I GET IT. I REALLY DO."
+		ststxt	"LOOK, I REALLY DO GET IT."
 		ststxt	"WHEN I PLAY BUZZ WIRE GAMES,"
 		ststxt	"I ALSO SCREAM IN EXCITEMENT!"
 		ststxt	"BUT I'M REALLY STARTING"
@@ -831,6 +847,26 @@ StoryText_Place: ; text when PLACE PLACE PLACE
 		dc.b	-1
 		even
 
+; ---------------------------------------------------------------------------
+
+StoryText_9X:	; text after beating the blackout challenge in true-BS mode
+		ststxt	"HOLY PLACE... YOU PLACED IT!"
+		ststxt	"YOU'VE PLACED THE"
+		ststxt	"PLACE PLACE PLACE CHALLENGE!"
+		ststxt_line
+		ststxt	"WHEN I PLACED YOU BACK IN"
+		ststxt	"PLACE PLACE AND SAID YOU'D"
+		ststxt	"HAVE TO PLACE THE ENTIRE"
+		ststxt	"PLACE, I DIDN'T THINK"
+		ststxt	"YOU'D ACTUALLY PLACE IT."
+		ststxt_line
+		ststxt	"THANK YOU FOR PLACING MY"
+		ststxt	"PLACE TO THE BITTER PLACE!"
+		ststxt	"IT MEANS THE PLACE TO ME."
+		ststxt_line
+		ststxt	"- PLACE -"
+		dc.b	-1
+		even
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
 

@@ -48,9 +48,9 @@ Options_RedrawCurrentItem:	rs.b	1
 ;  bit 0 = Disable Music
 ;  bit 1 = Disable SFX
 ;  bit 2 = Weak Camera Shake
-;  bit 3 = [unusued]
+;  bit 3 = Intense Camera Shake
 ;  bit 4 = Peelout Style
-;  bit 5 = [unusued]
+;  bit 5 = Space Golf/Antigrav Mode
 ;  bit 6 = [unusued]
 ;  bit 7 = [unusued]
 ; ---------------------------------------------------------------------------
@@ -59,8 +59,12 @@ Options_RedrawCurrentItem:	rs.b	1
 ; bit 1 = motion blur
 ; ---------------------------------------------------------------------------
 ; Default options when starting the game for the first time
-; (Casual Mode, Extended Camera)
+	if def(__WIDESCREEN__)
+DefaultOptions  = %00000000	; extended camera not needed in widescreen
+	else
 DefaultOptions  = %00000001
+	endif
+
 DefaultOptions2 = %00000000
 ; ---------------------------------------------------------------------------
 

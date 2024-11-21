@@ -888,12 +888,12 @@ Hint_1:
 Hint_2:
 		boxtxt	"CONTROLS - airborne"
 		boxtxt_pause
-		boxtxt	" c - JUMP DASH/"
-		boxtxt	"     HOMING ATTACK"
+		boxtxt	" c - JUMP DASH"
 		boxtxt_line
 		boxtxt	" b - DOUBLE JUMP"
 		boxtxt_pause
-		boxtxt	" a - UP NEXT..."
+		boxtxt	"THESE WILL BE YOUR"
+		boxtxt	"BREAD AND BUTTER!"
 		boxtxt_pause
 
 		dc.b	_frantic
@@ -1247,9 +1247,7 @@ Hint_9:
 		dc.b	_frantic
 		boxtxt	"    frantic mode"
 		boxtxt_pause
-		boxtxt	"   STILL NOTHING."
-		boxtxt_end
-
+		boxtxt	"  YUP, STILL BLUE."
 		boxtxt_end
 
 ;		 --------------------
@@ -1471,7 +1469,7 @@ Hint_End_NonstopInhumanUnlock:
 		boxtxt	"z FOR ZENITH"
 		boxtxt_line
 		boxtxt	"YOU HAVE UNLOCKED"
-		boxtxt	"true inhuman mode!"
+		boxtxt	"erAzOR powers!"
 		boxtxt_pause
 		boxtxt	"ALL HAIL OUR NEW"
 		boxtxt	"OVERLORD! MAY THE"

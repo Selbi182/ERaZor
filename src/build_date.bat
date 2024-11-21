@@ -10,9 +10,9 @@ set month=%datetime:~4,2%
 set day=%datetime:~6,2%
 set currentDate=%year%-%month%-%day%
 
-REM Delete any previous "Sonic ERaZor - Test Build *.bin" files
-del "Sonic ERaZor 7 - Test Build *.bin"
+REM Delete any previous test builds
+del "Sonic ERaZor 7.1 - Test Build *.bin"
 
 REM Rename the output file
-set outputFile="Sonic ERaZor 7 - Test Build [%currentDate%].bin"
+set outputFile="Sonic ERaZor 7.1 - Test Build [%currentDate%].bin"
 ren s1erz.bin %outputFile%

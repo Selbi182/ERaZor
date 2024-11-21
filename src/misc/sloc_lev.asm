@@ -25,7 +25,7 @@
 
 		dc.w	$0380, $0060	; SYZ 1 (Uberhub casual)
 		dc.w	$008E, $0030	; SYZ 1 (Uberhub frantic)
-		dc.w	$0038, $00EE	; syz 3
+		dc.w	$0278, $0030	; SYZ 1 (Uberhub intro from intro cutscene)
 		dc.w	$0080, $00A8	; syz 4
 
 		dc.w	$0200, $0160	; SBZ 1 (Bomb Machine Cutscene)

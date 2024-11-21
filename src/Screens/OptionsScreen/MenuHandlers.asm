@@ -301,9 +301,9 @@ Options_FlashyLights_Redraw:
 @FlashyLightsList:
 	dc.l	@Str_Mode00,@Str_Mode01,@Str_Mode10
 
-@Str_Mode00:	dc.b	'      STANDARD',0
-@Str_Mode01:	dc.b	'       REDUCED',0
-@Str_Mode10:	dc.b	' MAX INTENSITY',0
+@Str_Mode00:	dc.b	'        NORMAL',0
+@Str_Mode01:	dc.b	'      REDUCDED',0
+@Str_Mode10:	dc.b	'  VERY INTENSE',0
 		even
 
 ; ---------------------------------------------------------------------------
@@ -356,19 +356,32 @@ Options_FlashyLights_Handle:
 ; ---------------------------------------------------------------------------
 
 Options_CameraShake_Redraw:
-	lea	@Str_Normal(pc), a1
-	btst	#2, OptionsBits2
-	beq.s	@0
-	lea	@Str_Weak(pc), a1
-@0:	Options_PipeString a4, "CAMERA SHAKE        %<.l a1 str>", 28
+	moveq	#0,d0
+	btst	#2, OptionsBits2	; weak cam shake enabled?
+	beq.s	@0			; if not, branch
+	addq.b	#1,d0
+@0:
+	btst	#3, OptionsBits2	; intense cam shake also enabled?
+	beq.s	@1			; if not, branch
+	addq.b	#2,d0
+@1:
+	add.w	d0, d0
+	add.w	d0, d0				; d0 = ModeId * 4
+	movea.l	@CameraShakeList(pc,d0), a1
+	
+	Options_PipeString a4, "CAMERA SHAKE  %<.l a1 str>", 28
 	rts
 
-@Str_Normal:
-	dc.b	'STANDARD', 0
-	even
-@Str_Weak:
-	dc.b	'    WEAK', 0
-	even
+; ---------------------------------------------------------------------------
+@CameraShakeList:
+	dc.l	@Str_Mode00,@Str_Mode01,@Str_Mode10,@Str_Mode11
+
+@Str_Mode00:	dc.b	'        NORMAL',0
+@Str_Mode01:	dc.b	'          WEAK',0
+@Str_Mode10:	dc.b	'   JUST STUPID',0
+@Str_Mode11:	dc.b	'      DISABLED',0
+		even
+
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -378,12 +391,36 @@ Options_CameraShake_Redraw:
 Options_CameraShake_Handle:
 	move.b	Joypad|Press, d1		; get button presses
 	andi.b	#$FC, d1			; is left, right, A, B, C, or Start pressed?
-	beq.w	@done				; if not, branch
-	bchg	#2, OptionsBits2		; toggle weak camera shaking
-	bsr	Options_PlayRespectiveToggleSound
-	st.b	Options_RedrawCurrentItem
-@done:	rts
+	beq.w	@ret				; if not, branch
 
+	moveq	#0,d0
+	move.b	OptionsBits2,d0
+	lsr.b	#2,d0
+	andi.b	#%11, d0
+@repeat:
+	btst	#iLeft, Joypad|Press		; is left pressed?
+	bne.s	@selectPrevious			; if yes, branch
+	addq.b	#1, d0				; use next mode
+	bra.s	@finalize
+@selectPrevious:
+	subq.b	#1, d0				; use previous mode
+@finalize:
+	andi.b	#%11, d0			; wrap modes
+
+	move.b	d0,d1
+	lsl.b	#2,d0
+	
+	bclr	#2,OptionsBits2
+	bclr	#3,OptionsBits2
+	or.b	d0,OptionsBits2
+
+	st.b	Options_RedrawCurrentItem
+
+	tst.b	d1				; check if current selection is OFF
+	eori.b	#%00100,ccr			; invert Z flag (play off sound for off, on for anything else)
+	bsr	Options_PlayRespectiveToggleSound
+
+@ret:	rts
 
 
 ; ===========================================================================
@@ -415,7 +452,7 @@ Options_Audio_Redraw:
 @AudioList:
 	dc.l	@Str_Mode00,@Str_Mode01,@Str_Mode10,@Str_Mode11
 
-@Str_Mode00:	dc.b	'         STANDARD',0
+@Str_Mode00:	dc.b	'           NORMAL',0
 @Str_Mode01:	dc.b	'    DISABLE MUSIC',0
 @Str_Mode10:	dc.b	'      DISABLE SFX',0
 @Str_Mode11:	dc.b	'          SILENCE',0
@@ -603,25 +640,44 @@ Options_ScreenEffects_Handle:
 ; ---------------------------------------------------------------------------
 
 Options_NonstopInhuman_Redraw:
-	lea	Options_Str_Off(pc), a1
-	btst	#4, OptionsBits
+	moveq	#0,d0
+	btst	#4, OptionsBits		; is true inhuman enabled?
 	beq.s	@0
-	lea	Options_Str_On(pc), a1
+	addq.b	#1,d0
+@0:
+	btst	#5, OptionsBits2	; is space golf enabled?
+	beq.s	@1
+	addq.b	#2,d0
+@1:
+	add.w	d0, d0
+	add.w	d0, d0				; d0 = ModeId * 4
+	movea.l	@ErazorPowerTextList(pc,d0), a1
 
-@0:	lea	@Str_NonstopInhuman_Locked(pc), a0
+	lea	@Str_ErazorPower_Locked(pc), a0
 	jsr	Check_BlackoutBeaten		; has the player beaten all levels in frantic?
-	beq.s	@1				; if not, branch
-	lea	@Str_NonstopInhuman_Normal(pc), a0
+	beq.s	@2				; if not, branch
+	lea	@Str_ErazorPower_Normal(pc), a0
 
-@1:	Options_PipeString a4, "%<.l a0 str>      %<.l a1 str>", 28
+@2:	Options_PipeString a4, "%<.l a0 str> %<.l a1 str>", 28
 	rts
 
-@Str_NonstopInhuman_Normal:
-	dc.b	'Z TRUE INHUMAN     ', 0
+; ---------------------------------------------------------------------------
+@Str_ErazorPower_Normal:
+	dc.b	'Z ERAZOR POWER  ', 0
 
-@Str_NonstopInhuman_Locked:
-	dc.b	'Z ???? ???????     ', 0
+@Str_ErazorPower_Locked:
+	dc.b	'Z ?????? ?????  ', 0
 	even
+
+@ErazorPowerTextList:
+	dc.l	@Str_Mode00,@Str_Mode01,@Str_Mode10,@Str_Mode11
+
+@Str_Mode00:	dc.b	'        OFF',0
+@Str_Mode01:	dc.b	'    INHUMAN',0
+@Str_Mode10:	dc.b	' SPACE GOLF',0
+@Str_Mode11:	dc.b	'   ...BOTH?',0
+		even
+
 
 ; ---------------------------------------------------------------------------
 ; "NONSTOP INHUMAN" handle function
@@ -638,18 +694,54 @@ Options_NonstopInhuman_Handle:
 	bne.s	@nodebugunlock		; if not, branch
 	jsr	Toggle_BlackoutBeaten	; toggle blackout challenge beaten state to toggle the unlock for nonstop inhuman
 	bclr	#4,(OptionsBits).w	; make sure option doesn't stay accidentally enabled
+	bclr	#5,(OptionsBits2).w	; make sure option doesn't stay accidentally enabled
 	st.b	Options_RedrawCurrentItem
 	rts
 
 @nodebugunlock:
-	;tst.b	(PlacePlacePlace).w		; easter egg enabled?
-	;bne.w	Options_PlayDisallowedSound	; if yes, branch
 	jsr	Check_BlackoutBeaten		; has the player specifically beaten the blackout challenge?
 	beq.w	Options_PlayDisallowedSound	; if not, branch
-	bchg	#4, OptionsBits			; toggle nonstop inhuman
-	bsr	Options_PlayRespectiveToggleSound
+
+
+	moveq	#0,d0
+	btst	#4,(OptionsBits).w
+	beq.s	@0
+	bset	#0,d0
+@0	btst	#5,(OptionsBits2).w
+	beq.s	@1
+	bset	#1,d0
+@1
+	btst	#iLeft, Joypad|Press		; is left pressed?
+	bne.s	@selectPrevious			; if yes, branch
+	addq.w	#1, d0				; use next mode
+	bra.s	@finalize
+
+@selectPrevious:
+	subq.w	#1, d0				; use previous mode
+
+@finalize:
+	andi.w	#%11, d0			; wrap modes
+
+	bclr	#4,(OptionsBits).w	
+	btst	#0,d0
+	beq.s	@0x
+	bset	#4,(OptionsBits).w
+@0x	
+	bclr	#5,(OptionsBits2).w
+	btst	#1,d0
+	beq.s	@1x
+	bset	#5,(OptionsBits2).w
+@1x	
+
 	st.b	Options_RedrawCurrentItem
+
+	tst.b	d0				; check if current selection is OFF
+	eori.b	#%00100,ccr			; invert Z flag (play off sound for off, on for anything else)
+	bsr	Options_PlayRespectiveToggleSound
+
 @ret:	rts
+
+
 
 
 ; ===========================================================================

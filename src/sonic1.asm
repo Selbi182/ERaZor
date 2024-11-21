@@ -947,6 +947,7 @@ Pause_MainLoop:
 		bsr.s	Pause_Restore		; restore from pause (grayscale palette, etc.)
 		cmpi.w	#$400,($FFFFFE10).w	; are we already in Uberhub?
 		beq.s	@uberhubception		; if yes, branch
+		bclr	#4,(ScreenFuzz).w
 		jmp	ReturnToUberhub		; return to Uberhub from anywhere (needs to be a jump due to range)
 
 @uberhubception:
@@ -3432,6 +3433,13 @@ Level_NoPreTut:
 		cmpi.w	#$001,($FFFFFE10).w	; is level intro cutscene?
 		beq.s	Level_NoMusic		; if yes, don't play music here
 
+		cmpi.w	#$500,($FFFFFE10).w	; is level SBZ1?
+		bne.s	@notbombmachine		; if yes, don't play music
+		move.b	#$8D,d0
+		jsr	PlaySound
+		bra.s	Level_NoMusic
+
+@notbombmachine:
 		cmpi.w	#$002,($FFFFFE10).w	; is level GHP?
 		bne.s	@playregularlevelmusic	; if not, branch
 		cmpi.b	#4,($FFFFFE30).w	; did we hit the fourth checkpoint yet?
@@ -3444,12 +3452,6 @@ Level_NoPreTut:
 		bsr	PlayLevelMusic		; play level music
 
 Level_NoMusic:
-		cmpi.w	#$500,($FFFFFE10).w	; is level SBZ1?
-		bne.s	Level_NoMusic2		; if yes, don't play music
-		move.b	#$8D,d0
-		jsr	PlaySound
-
-Level_NoMusic2:
 		clr.b	($FFFFFF98).w
 		clr.b	($FFFFFF99).w
 		clr.w	ExtCamShift	; clear extended camera counter
@@ -3684,6 +3686,14 @@ Level_Delay:
 		; load Sonic object
 		cmpi.w	#$500,($FFFFFE10).w	; is this the bomb machine cutscene?
 		beq.s	@nosonicload		; if yes, don't load Sonic
+		
+		cmpi.w	#$400,($FFFFFE10).w
+		bne.s	@sonicload
+		cmpi.w	#$0278,($FFFFD008).w
+		bne.s	@sonicload
+		clr.l	($FFFFD010).w
+		bra.s	@nosonicload
+@sonicload:
 		move.b	#1,($FFFFD000).w	; load Sonic object
 @nosonicload:
 
@@ -3722,6 +3732,36 @@ Level_Delay:
 		addq.b	#4,($FFFFD124).w ; make	title card move
 		addq.b	#4,($FFFFD164).w ; make	title card move
 
+
+		cmpi.w	#$001,($FFFFFE10).w
+		beq.s	Level_StartGame
+		cmpi.w	#$400,($FFFFFE10).w
+		beq.s	@fromintro
+		bclr	#4,(ScreenFuzz).w 
+		bra.s	Level_StartGame
+
+@fromintro:
+		btst	#4,(ScreenFuzz).w 
+		beq.s	Level_StartGame
+		bclr	#4,(ScreenFuzz).w 
+
+		cmpi.w	#$0278,($FFFFD008).w
+		bne.s	Level_StartGame
+		move.w	#$1000,($FFFFD010).w	; shoot Sonic down in Uberhub's intro
+		move.w	#-$200,($FFFFD012).w	; shoot Sonic down in Uberhub's intro
+		move.w	#$C3,d0			; set giant ring sound
+		jsr	(PlaySound).l		; play it
+		move.w	#$BC,d0			; set dashing sound
+		jsr	(PlaySound_Special).l	; play it
+		jsr	WhiteFlash2
+		move.b	#1,($FFFFD000).w	; load Sonic object
+
+		jsr	SingleObjLoad
+		bne.s	Level_StartGame
+		move.b	#$7C,(a1)
+		move.b	#6,obRoutine(a1)
+		move.w	($FFFFD008).w,obX(a1)
+		move.w	($FFFFD00C).w,obY(a1)
 Level_StartGame:
 	;	move.w	#$8014,($C00004)	; enable horizontal interrupts (normally only enabled in LZ)
 		bclr	#7,(GameMode).w	; clear pre-level sequence flag
@@ -4261,13 +4301,20 @@ byte_3FCF:	dc.b 0			; XREF: LZWaterSlides
 ; Subroutine to generate a random camera offset (X and Y), if necessary
 ; (This routine is called from within DeformBgLayer)
 ; ---------------------------------------------------------------------------
-CamShake_DefaultIntensity = 7	; should be 2^n - 1
+; should be 2^n - 1
+CamShake_DefaultIntensity = 7
 CamShake_PhotosensitiveIntensity = 1
+CamShake_StupidIntensity = $F
 ; ---------------------------------------------------------------------------
 
 GenerateCameraShake:
 		tst.b	(CameraShake).w			; is camera shake currently active?
 		beq.w	@end				; if not, nothing to do
+
+		move.b	(OptionsBits2).w,d0		; get secondary options bits
+		andi.b	#%1100,d0			; mask for weak and intense cam shake
+		cmpi.b	#%1100,d0			; are both enabled at once?
+		beq.w	@end				; if yes, that means OFF
 
 		moveq	#0,d0				; clear d0
 		moveq	#0,d1				; clear d1
@@ -4277,6 +4324,8 @@ GenerateCameraShake:
 	;	btst	#7,(OptionsBits).w		; is photosensitive mode enabled?
 		btst	#2,(OptionsBits2).w		; is weak camera shake enabled?
 		bne.s	@photosensitive			; if yes, branch
+		btst	#3,(OptionsBits2).w		; is intense camera shake enabled?
+		bne.s	@stupid				; if yes, enjoy the eye massage
 		moveq	#0,d2				; clear d2
 		move.b	(CameraShake_Intensity).w,d2	; get currently set camera shake intensity
 		bhi.s	@intensityset			; if it's already set, branch
@@ -4284,6 +4333,9 @@ GenerateCameraShake:
 		bra.s	@updateram
 	@photosensitive:
 		moveq	#CamShake_PhotosensitiveIntensity,d2 ; use reduced intensity
+		bra.s	@updateram
+	@stupid:
+		moveq	#CamShake_StupidIntensity,d2	; use stupid intensity
 	@updateram:
 		move.b	d2,(CameraShake_Intensity).w	; update intensity in RAM
 
@@ -5182,12 +5234,15 @@ Blackout_RotationSpeed2 = $1C0
 BlackoutChallenge:
 	;	cmpi.b	#2,($FFFFFE57).w	; are we in part 2?
 	;	beq.w	@blackoutcontrols	; if yes, no longer apply palette
+		tst.b	($FFFFFFB1).w		; is white flash counter empty?
+		bne.w	@blackoutcontrols	; if yes, branch
+
 
 		; continously apply the red/black palette		
 		movem.l	d0-a1,-(sp)
 		lea	($FFFFFB4E).w,a1 	; get palette
 		moveq	#0,d3			; clear d3
-		move.b	#7,d3			; set d3 to 7 (+1 for the first run)
+		move.b	#7+16,d3			; set d3 to 7 (+1 for the first run)
 @blackoutpalette:
 		moveq	#0,d0			; clear d0
 		move.w	(a1),d0			; get colour
@@ -5212,6 +5267,7 @@ BlackoutChallenge:
 
 @blackoutcontrols:
 		; blackout challenge controls
+		; other half in Obj09_Display
 		move.w	#Blackout_RotationSpeed,d1		; set base rotation speed
 		cmpi.b	#2,($FFFFFE57).w			; are we in part 2?
 		bne.s	@notparttwo				; if not, branch
@@ -5264,6 +5320,8 @@ SS_BGLoad:				; XREF: SpecialStage
 PalCycle_SS:				; XREF: loc_DA6; SpecialStage
 		tst.w	($FFFFF63A).w		; is game paused?
 		bne.w	locret_49E6		; if yes, branch
+		tst.b	($FFFFFFB1).w		; is white flash counter empty?
+		bne.w	locret_49E6		; if not, branch
 
 		subq.w	#1,($FFFFF79C).w	; sub 1 from remaining time before changing pal
 		bpl.w	locret_49E6		; if time remains, branch
@@ -6016,7 +6074,12 @@ LevSz_StartLoc:				; XREF: LevelSizeLoad
 		; Uberhub frantic fast spawn
 		cmpi.w	#$400,($FFFFFE10).w	; is level SYZ?
 		bne.s 	@load			; if not, branch
+		btst	#4,(ScreenFuzz).w 
+		beq.s	@notintro
+		addq.w	#2,d0
+		bra.s	@load
 
+	@notintro:
 		frantic				; are we in frantic mode?
 		bne.s	@frantic		; if yes, branch
 		bsr	Check_JustFinishedFP	; has the player just escaped FP for the first time?
@@ -6415,7 +6478,7 @@ Resize_GHZ3main:
 		bcs.s	locret_6E96			; if not, branch
 		move.w	#$400,($FFFFF726).w		; set lower y-boundary
 
-		cmpi.w	#$27D0+GHZ3Add-SCREEN_XCORR,($FFFFD008).w	; is Sonic near boss?
+		cmpi.w	#$2838+GHZ3Add-SCREEN_XCORR,($FFFFD008).w	; is Sonic near boss?
 		bcc.s	loc_6E98			; if yes, branch
 		
 locret_6E96:
@@ -9393,8 +9456,12 @@ Obj1C_Index:	dc.w Obj1C_Main-Obj1C_Index
 Obj1C_Main:				; XREF: Obj1C_Index
 		cmpi.w	#$200,($FFFFFE10).w
 		bne.s	@notrp
-		cmpi.b	#4,obSubtype(a0)	; delete the 25 ring tutorial
-		beq.w	DeleteObject		; cause it's no longer needed
+		cmpi.b	#4,obSubtype(a0)	; delete the 25 ring tutorial...
+		beq.w	DeleteObject		; ...cause it's no longer needed
+		cmpi.b	#5,obSubtype(a0)	; is this the 250 ring message?
+		bne.s	@notrp			; if not, branch
+		frantic				; are we in frantic?
+		beq.w	DeleteObject		; delete in casual
 
 @notrp:
 		cmpi.b	#6,($FFFFFE10).w	; is this the ending sequence?
@@ -9612,17 +9679,25 @@ FPBonusTexts:	dc.b	"     OH, BACK SO SOON?      "
 ; ---------------------------------------------------------------------------
 
 Obj1D_BonusText_Main:
+		tst.b	(FZEscape).w		; escape already active?
+		bne.w	DeleteObject		; no longer show
+
 		addq.b	#2,obRoutine(a0)
 		move.l	#Map_Obj1D_BonusText,obMap(a0)
 		move.w	#$2000|($5600/$20),obGfx(a0)
 		move.b	#0,obRender(a0)
 		move.b	#0,obPriority(a0)
-		move.w	#224,obScreenY(a0)
-		move.w	obScreenY(a0),$32(a0)
+
 		move.w	#272,obX(a0)
 	if def(__WIDESCREEN__)
 		addi.w	#SCREEN_XCORR,obX(a0)
 	endif
+		move.w	obX(a0),$30(a0)
+		addi.w	#SCREEN_WIDTH,obX(a0)
+
+		move.w	#224,obScreenY(a0)
+		move.w	obScreenY(a0),$32(a0)
+
 
 		; load text into VRAM
 		moveq	#0,d0
@@ -9681,7 +9756,7 @@ Obj1D_BonusText_Main:
 		VBlank_UnsetMusicOnly
 ; ---------------------------------------------------------------------------
 
-Obj1D_BonusText_Display:		
+Obj1D_BonusText_Display:
 		move.w	($FFFFFE0E).w,d0
 		add.w	d0,d0
 		jsr	(CalcSine).l
@@ -9693,10 +9768,15 @@ Obj1D_BonusText_Display:
 		cmpi.w	#$1000,d0
 		bhs.s	@display
 		rts
-
 @display:
-		cmpi.w	#$2000,d0
+		cmpi.w	#$2080,d0
 		bhs.s	Obj1D_Delete
+
+		move.w	obX(a0),d0
+		cmp.w	$30(a0),d0
+		ble.s	@xtargetok
+		subq.w	#8,obX(a0)
+@xtargetok:
 		bra.w	DisplaySprite
 ; ===========================================================================
 
@@ -12754,13 +12834,6 @@ Obj4B_Index:	dc.w Obj4B_Main-Obj4B_Index
 ; ===========================================================================
 
 Obj4B_Main:				; XREF: Obj4B_Index
-		cmpi.b	#GRing_Intro,obSubtype(a0)	; is this the intro ring in uberhub?
-		bne.s	@notintroring			; if not, branch
-		tst.b	($FFFFFF7F).w			; intro sequence done?
-		bne.s	@notintroring			; if yes, branch
-		rts					; otherwise, hide ring to avoid visual quirks in frantic fast spawn
-
-@notintroring:
 		cmpi.w	#$502,($FFFFFE10).w		; are we in FP?
 		bne.s	@notfzescape			; if not, branch
 		btst	#1,(FZEscape).w			; is full escape active?
@@ -12893,6 +12966,14 @@ Obj4B_Animate:				; XREF: Obj4B_Index
 @cont:
 		move.b	$36(a0),obFrame(a0)
 
+		cmpi.w	#$400,($FFFFFE10).w
+		bne.s	@nointro
+		tst.b	($FFFFD000).w
+		beq.w	Obj4B_DontCollect
+		tst.b	($FFFFFF7F).w
+		beq.w	Obj4B_DontCollect
+
+@nointro:
 		tst.b	$3C(a0)
 		bne.w	Obj4B_DontCollect
 		tst.w	($FFFFFE08).w
@@ -13216,14 +13297,14 @@ Obj7C_FakeFlash:
 		move.w	#$2462,obGfx(a0)
 		cmpi.w	#$400,($FFFFFE10).w
 		bne.s	@cont
-		move.w	#$2484,obGfx(a0)
+		move.w	#$2000|(($8E00+$C40)/$20),obGfx(a0)
 @cont:
 		ori.b	#4,obRender(a0)
 		move.b	#0,obPriority(a0)
 		move.b	#$20,obActWid(a0)
 		move.b	#$FF,obFrame(a0)
-		move.w	#$C3,d0			; play giant ring sound
-		jsr	(PlaySound).l
+	;	move.w	#$C3,d0			; play giant ring sound
+	;	jsr	(PlaySound).l
 
 Obj7C_FakeFlash_Animate:				; XREF: Obj7C_Index
 		addq.b	#1,obFrame(a0)
@@ -20260,8 +20341,8 @@ Obj50_FixToFloor:			; XREF: Obj50_Index2
 		move.b	#0,$31(a1)
 
 Obj50_NotInhumanCrush:
-		bsr	SpeedToPos
-		bsr	ObjHitFloor
+		jsr	SpeedToPos
+		jsr	ObjHitFloor
 		cmpi.w	#-8,d1
 		blt.s	Obj50_Pause
 		cmpi.w	#$C,d1
@@ -26001,9 +26082,9 @@ Obj03_BackgroundColor:
 		movea.w	d0, a1				; a1 = target palette pointer
 		swap	d0				; d0 = base color
 
-		tst.b	OptionsBits			; is photosensitive mode enabled?
-		bmi.s	@photosensitiveMode		; if yes, branch
-
+		btst	#7,(OptionsBits).w		; is photosensitive mode enabled?
+		bne.s	@photosensitiveMode		; if yes, branch
+	
 		moveq	#0,d1
 		move.w	($FFFFFE0E).w,d2
 		btst	#5,d2
@@ -27029,8 +27110,13 @@ Obj01_JD_Minus:
 ; Start of S monitor code
 Obj01_ChkS:
 		btst	#4,(OptionsBits).w	; is nonstop inhuman enabled?
-		beq.s	Obj01_Inhuman		; if not, branch
+		beq.s	@chkspacegolf		; if not, branch
 		move.b	#1,($FFFFFFE7).w 	; enable inhuman mode automatically. have fun, nerd
+
+@chkspacegolf:
+		btst	#5,(OptionsBits2).w	; is nonstop space golf enabled?
+		beq.s	Obj01_Inhuman		; if not, branch
+		move.b	#1,($FFFFFF77).w	; enable space golf. have fun, I guess
 
 Obj01_Inhuman:
 		tst.b	($FFFFFFE7).w		; is inhuman mode enabled?
@@ -27592,6 +27678,8 @@ Sonic_Unroll:
 		move.b	#9,obWidth(a0)	; restore X-hitbox-radius
 		move.b	#0,obAnim(a0)	; use running anim
 		subq.w	#5,obY(a0)	; sub 5 from Sonic's Y-position
+		move.w	#$A9,d0
+		jsr	PlaySound_Special
 @end:
 		rts			; return
 ; End of function Sonic_RollSpeed
@@ -34107,8 +34195,8 @@ Obj79_HitLamp:
 
 		cmpi.w	#$200,($FFFFFE10).w	; are we in RP?
 		bne.s	@notrp			; if not, branch
-	;	frantic				; are we in frantic?
-	;	beq.s	@notrp			; always allow in casual
+		frantic				; are we in frantic?
+		beq.s	@notrp			; always allow in casual
 		tst.b	($FFFFFFE7).w		; inhuman mode already active?
 		bne.s	@disallow		; if yes, disallow cheesing
 		cmpi.w	#250,($FFFFFE20).w	; do you have at least 250 rings?
@@ -40773,10 +40861,20 @@ loc_1B2E4:
 		tst.b	($FFFFFFAE).w		; whiteflash in progress?
 		bne.s	@lightup		; if yes, branch
 		cmpi.b	#2,($FFFFFE57).w 	; are we in part 2?
-		bne.s	@notblackout		; if not, branch
+		beq.s	@part2			; if yes, branch
+		btst	#5,($FFFFF602).w	; is C held?
+		bne.s	@lightup		; if yes, branch
+		bra.s	@notblackout		; skip
+
+@part2:
 		btst	#7,(OptionsBits).w	; is photosensitive mode enabled?
 		bne.s	@lightup		; if yes, no flash
-		btst	#3,($FFFFFE0F).w	; blink skull frame
+		moveq	#3,d0
+		btst	#5,($FFFFF602).w	; is C held?
+		beq.s	@chkfreq		; if yes, branch
+		moveq	#2,d0
+@chkfreq:
+		btst	d0,($FFFFFE0F).w	; blink skull frame
 		beq.s	@notblackout		; if not in time, branch
 @lightup:
 		bset	#0,$138(a1)		; use lit-up skull icon
@@ -42479,7 +42577,7 @@ Obj09_ChkW:
 		
 		move.w	#$C3,d0			; set giant ring sound
 		jsr	(PlaySound).l		; play it
-		move.w	#$A8,d0			; set warping sound
+		move.w	#$BC,d0			; set dashing sound
 		jsr	(PlaySound_Special).l	; play it
 
 Obj09_ChkW_NoChange:
@@ -42575,7 +42673,7 @@ Obj09_RevStage:
 @cont:
 		move.w	#$C3,d0			; set giant ring sound
 		jsr	(PlaySound).l		; play it
-		move.w	#$BC,d0			; set dashing sound
+		move.w	#$A8,d0			; set warping sound
 		jmp	(PlaySound_Special).l	; play it
 ; ===========================================================================
 

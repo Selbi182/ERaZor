@@ -299,7 +299,7 @@ Pal_Credits:
 		dc.w	$0422,$0ECC,$0A88	
 		dc.w	0,0
 		; - stars
-		dc.w	$EEE,$CCE,$ECC
+		dc.w	$EEE,$666,$444
 		dc.w	0,0,0,0,0,0
 
 		; line 2 - header bottom

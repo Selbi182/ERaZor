@@ -26542,6 +26542,7 @@ Obj07_Init:
 		move.b	#0,obPriority(a0)
 		move.b	#$40,obHeight(a0)
 		move.b	#$60,obWidth(a0)
+		move.b	#$D7,obColType(a0)	; enable bumper
 
 		; used for the sway
 		move.w	obY(a0),$32(a0)
@@ -26559,6 +26560,7 @@ Obj07_Init:
 @notrp:		cmpi.w	#$101,d0
 		bne.s	@notlp
 		move.w	#$9800/$20,obGfx(a0)
+		move.b	#0,obColType(a0)	; disable bumper
 @notlp:		cmpi.w	#$302,d0
 		bne.s	@notsap
 		move.w	#$6600/$20,obGfx(a0)
@@ -26597,6 +26599,40 @@ Obj07_Animate:
 		add.w	$32(a0),d0
 		move.w	d0,obY(a0)
 
+		; bumper behavior
+		tst.b	obColProp(a0)	; has Sonic touched the	bumper?
+		beq.w	Obj07_Display	; if not, branch
+		clr.b	obColProp(a0)
+		lea	($FFFFD000).w,a1
+		move.w	obX(a0),d1
+		move.w	obY(a0),d2
+		sub.w	obX(a1),d1
+		sub.w	obY(a1),d2
+		jsr	(CalcAngle).l
+		jsr	(CalcSine).l
+		muls.w	#-$700,d1
+		asr.l	#8,d1
+		move.w	d1,obVelX(a1)	; bounce Sonic away
+		muls.w	#-$700,d0
+		asr.l	#8,d0
+		move.w	d0,obVelY(a1)	; bounce Sonic away
+		bset	#1,obStatus(a1)
+		bclr	#5,obStatus(a1)
+		clr.b	$3C(a1)
+	;	move.b	#1,obAnim(a0)
+		move.w	#$B4,d0
+		jsr	(PlaySound_Special).l ;	play bumper sound
+	
+		; rotate
+		move.b	obRender(a0),d0
+		move.b	d0,d1
+		andi.b	#~%11,d1
+		addq.b	#1,d0
+		andi.b	#%11,d0
+		or.b	d1,d0
+		move.b	d0,obRender(a0)
+
+Obj07_Display:
 		jmp	DisplaySprite
 ; ===========================================================================
 
@@ -29115,7 +29151,7 @@ Sonic_Fire:
 		jmp	AnnoyedSonic
 
 InhumanMode:
-		bsr	SingleObjLoad		; check if SingleObjLoad is already in use
+		jsr	SingleObjLoad		; check if SingleObjLoad is already in use
 		bne.w	S_F_End			; if it is, don't do anything
 		cmpi.w	#$001,($FFFFFE10).w	; is this the intro cutscene?
 		bne.s	S_F_NotGHZ2		; if not branch
@@ -34872,6 +34908,9 @@ Obj3D_MainStuff:
 		bne.s	Obj3D_ShipFlash
 		move.b	#$20,$3E(a0)	; set number of	times for ship to flash
 		bsr	BossDamageSound ; play boss damage sound
+
+		clr.b	($FFFFFFEB).w	; clear jumpdash flag to allow multiple double jumps
+
 	;	moveq	#10,d0		; add 100 ...
 	;	jsr	AddPoints	; ... points
 		move.b	obColProp(a0),(HUD_BossHealth).w	; copy lives to HUD boss health counter
@@ -34885,7 +34924,7 @@ Obj3D_MainStuff:
 
 		tst.b	($FFFFFFD1).w		; was flag to destroy the platforms already set?
 		bne.s	Obj3D_ShipFlash		; if yes, branch
-		cmpi.b	#7,obColProp(a0)	; does boss have exactly 7 lives now?
+		cmpi.b	#5,obColProp(a0)	; does boss have exactly 5 lives now?
 		bne.s	Obj3D_ShipFlash		; if not, branch
 		move.b	#1,($FFFFFFD1).w	; set flag now
 		lea	($FFFFD800).w,a1
@@ -34986,7 +35025,7 @@ loc_17916:
 ; ===========================================================================
 
 Obj3D_ShipMove:				; XREF: Obj3D_ShipIndex
-		cmpi.b	#7,obColProp(a0)
+		cmpi.b	#5,obColProp(a0)
 		bgt.s	@cont2
 		move.b	#$E2,d0
 		jsr	(PlaySound_Special).l	; speed up music
@@ -35388,7 +35427,9 @@ Obj48_Display2:				; XREF: Obj48_Index
 		bsr	sub_17C2A
 
 		; swing balls and speed that up as boss health goes down
-		cmpi.b	#7,obColProp(a1)
+		frantic			; are we in frantic?
+		beq.s	@cont2		; if not, skip this speed up for the noobs
+		cmpi.b	#5,obColProp(a1)
 		bhi.s	@cont2
 		jsr	(Obj48_Move).l
 @cont2

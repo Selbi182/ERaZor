@@ -59,7 +59,7 @@ SonAni_Wait:	dc.b 6
 		dc.b 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 
 		dc.b 4 ; annoyed, frame 36
 		dc.b 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,  2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,  2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,  2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
-		dc.b 3 ; omg he can blink
+		dc.b 3 ; omg he can blink, frame 85
 		dc.b $FE, 12*4+1
 
 SonAni_Balance:	dc.b $1F, $3A, $3B, $FF

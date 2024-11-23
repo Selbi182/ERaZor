@@ -4348,7 +4348,7 @@ GenerateCameraShake:
 		sub.w	d3,d0				; make 50% of the numbers negative
 		and.w	d2,d1				; limit random number by intensity (this is now the X offset)
 		sub.w	d3,d1				; make 50% of the numbers negative
-		
+
 		add.w	d0,($FFFFF700).w		; add X shake offset to camera X position
 		bpl.s	@xgood				; if not, branch
 		add.w	($FFFFF700).w,d0
@@ -4895,10 +4895,14 @@ loc_463C:
 		bsr	PLC_ExecuteOnce	; load special stage patterns
 
 		tst.b	(Blackout).w		; is this the blackout special stage?
-		beq.s	@notskull		; if not, branch
+		beq.s	@notblackout		; if not, branch
 		tst.b	(PlacePlacePlace).w	; easter egg flag set?
-		bne.s	@notskull		; if yes, keep it old-school
-		moveq	#$1B,d0
+		beq.s	@skull			; if not, use skulls
+		bra.s	@notskull		; otherwise, keep it old school
+@notblackout:
+		btst	#3,(OptionsBits2).w	; intense cam shake enabled?
+		beq.s	@notskull		; if not, branch
+@skull		moveq	#$1B,d0
 		bsr	PLC_ExecuteOnce		; load unique blackout challenge patterns (skull)
 @notskull
 
@@ -5073,13 +5077,15 @@ SS_MainLoop:
 		bra.s	SS_WaitVBlank		; skip
 @nothps:
 
-		; respawn at last checkpoint when pressing A (inteded to be used when you get stuck in nonstop inhuman)
+		; remove bumpers when pressing A in nonstop inhuman mode
 		btst	#6,($FFFFF603).w	; was A pressed this frame?
 		beq.s	SS_WaitVBlank		; if not, branch
 		btst	#4,(OptionsBits).w	; is nonstop inhuman enabled?
 		beq.s	SS_WaitVBlank		; if not, branch
 
+
 		jsr	WhiteFlash2
+		ori.b	#10,(CameraShake).w     	; normal camera shake
 
 		moveq	#$25,d3			; set target to idle bumpers
 		jsr	SS_RemoveAllCustom	; remove all
@@ -6889,6 +6895,8 @@ Resize_SLZ2boss1:
 		rts
 ; ===========================================================================
 
+BombBoss_Health = 24
+
 Resize_SLZ2boss2:
 		cmpi.w	#$B00,($FFFFD008).w
 		bcs.s	locret_715C
@@ -6907,7 +6915,7 @@ Resize_SLZ2boss2:
 	;	moveq	#18,d0			; set number of	hits to 18 (frantic)
 	;@notfrantic:
 
-		moveq	#20,d0			; set number of	hits to 20
+		moveq	#BombBoss_Health,d0	; set number of	hits
 	if LowBossHP=1
 		moveq	#1,d0
 	endif
@@ -13194,6 +13202,8 @@ FZEscape_ScreenBoom:
 
 		move.l	a0,-(sp)		; backup to stack
 		jsr	Pal_CutToWhite		; instantly turn screen white
+		move.w	#$000,($FFFFFB02).w	; keep black bars black
+		jsr	ClearScreen
 		move.l	(sp)+,a0		; restore from stack
 
 		move.w	BlackBars.BaseHeight,BlackBars.Height ; force bars to max
@@ -16841,10 +16851,10 @@ Obj34_Delete:
 		beq.w	Obj34_JustDelete	; if yes, delete
 		cmpi.w	#$501,($FFFFFE10).w	; are we in the tutorial?
 		beq.s	Obj34_JustDelete	; if yes, delete
-		cmpi.w	#$002,($FFFFFE10).w	; are we in the intro cutscene?
-		beq.s	Obj34_JustDelete	; if yes, delete
-		cmpi.b	#2,($FFFFFFAA).w	; has the crabmeat been defeated?
-		beq.s	Obj34_JustDelete	; if yes, delete
+	;	cmpi.w	#$002,($FFFFFE10).w	; are we in GHP?
+	;	beq.s	Obj34_JustDelete	; if yes, delete (<--- what???)
+	;	cmpi.b	#2,($FFFFFFAA).w	; has the crabmeat been defeated?
+	;	beq.s	Obj34_JustDelete	; if yes, delete
 		bsr	HUD_LoadObjects		; otherwise, load HUD
 
 Obj34_JustDelete:
@@ -23066,13 +23076,16 @@ Obj5D_Action:				; XREF: Obj5D_Index
 		cmpi.b	#2,($FFFFFFA9).w	; is Sonic fighting against the walking bomb?
 		bne.w	Obj5D_ChkDel		; if not, branch
 
-		; fans closing in in frantic
-		frantic				; are we in frantic?
-		beq.s	@fanison		; if not, branch
-		moveq	#20,d0			; get base health
+		; fans closing in
+		moveq	#BombBoss_Health,d0	; get base health
 		sub.b	(BossHealth).w,d0	; subtract current health
 		move.w	d0,d1
 		lsl.w	#1,d0
+		frantic				; are we in frantic?
+		beq.s	@notfrantic		; if not, branch
+		lsl.w	#1,d0
+
+@notfrantic:
 		add.w	d1,d0
 		btst	#0,obRender(a0)
 		bne.s	@0
@@ -23124,7 +23137,7 @@ Obj5D_Action:				; XREF: Obj5D_Index
 
 @forcesonicinplace:
 		tst.b	($FFFFF7CC).w		; are controls already locked?
-		bne.w	@fansound		; if yes, branch
+		bne.w	Obj5D_Animate		; if yes, branch
 		move.b	#1,$30(a0)		; fast animation
 		btst	#1,obStatus(a0)		; is fan vertically flipped?
 		bne.w	Obj5D_Animate		; if yes, make it cosmetic only
@@ -23535,7 +23548,8 @@ Ani_obj5E:
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-BombWalkSpeed_Boss = $140
+; health is set in Resize_SLZ1
+BombWalkSpeed_Boss = $140*2
 BombFuseTime_Boss = 51
 BombDistance_Boss = $50
 BombPellets_Boss = 1
@@ -23614,9 +23628,16 @@ Obj5F_Action:				; XREF: Obj5F_Index
 		blo.s	@doaction		; if not, branch
 		tst.w	($FFFFFE08).w		; is debug mode	on?
 		bne.s	@doaction		; if yes, ignore invicibility frames
-		cmpi.b	#20,(BossHealth).w	; is boss still at full health?
+		cmpi.b	#BombBoss_Health,(BossHealth).w	; is boss still at full health?
 		bhs.s	@doaction		; if yes, branch
-		
+
+		frantic				; are we in frantic?
+		beq.s	@notfrantic		; if not, branch
+		addq.b	#1,(BossHealth).w	; regain one HP per bounce
+		move.b	(BossHealth).w,(HUD_BossHealth).w ; update boss health in HUD
+		move.b	#1,($FFFFFE1C).w	; update lives
+@notfrantic:
+
 		move.b	#0,ob2ndRout(a0)	; reset to walking state
 		move.b	#$A9,d0			; play blip sound
 		jsr	PlaySound_Special
@@ -23698,10 +23719,10 @@ Obj5F_Walk2:	bset	#0,obStatus(a0)
 
 Obj5F_Return:		
 		move.w	#BombWalkSpeed_Boss,d0
-		moveq	#22,d1
-		sub.b	(BossHealth).w,d1
-		lsl.w	#5,d1
-		add.w	d1,d0
+	;	moveq	#24+1,d1
+	;	sub.b	(BossHealth).w,d1
+	;	lsl.w	#5,d1
+	;	add.w	d1,d0
 
 		btst	#0,obStatus(a0)
 		bne.s	@0
@@ -23711,6 +23732,8 @@ Obj5F_Return:
 ; ===========================================================================
 
 Obj5F_Wait:
+		bsr.w	Obj5F_FaceSonic
+
 		subq.w	#1,$30(a0)
 		bne.w	locret_11B5E
 		addq.b	#2,ob2ndRout(a0)	; set to explode
@@ -23731,7 +23754,7 @@ Obj5F_FC2:
 ; ===========================================================================
 
 Obj5F_Explode:				; XREF: Obj5F_Index2
-		cmpi.b	#1,(BossHealth).w		; remove one life
+		cmpi.b	#1,(BossHealth).w
 		bgt.s	@doend
 		tst.b	($FFFFF7CC).w			; are controls already locked?
 		bne.s	@doend				; if yes, branch
@@ -23744,6 +23767,12 @@ Obj5F_Explode:				; XREF: Obj5F_Index2
 
 @doend:
 		subq.b	#1,(BossHealth).w		; remove one life
+
+	;	cmpi.b	#2,(BossHealth).w	; to test infinite health
+	;	bge.s	@k
+	;	move.b	#2,(BossHealth).w
+	;@k:
+
 		move.b	(BossHealth).w,(HUD_BossHealth).w ; update boss health in HUD
 		move.b	#1,($FFFFFE1C).w		; update lives
 
@@ -23805,10 +23834,12 @@ Obj5F_BossDefeated:
 		bra.s	@walksonicend			; skip
 
 @rightok:
-		move.b	#0,($FFFFD000+obAniFrame).w	; reset Sonic waiting animation
 		clr.w	($FFFFD010).w			; clear Sonic's X speed
 		clr.w	($FFFFD014).w			; clear Sonic's inertia
-
+		btst	#1,($FFFFD022).w
+		bne.s	@inair
+		move.b	#0,($FFFFD000+obAniFrame).w	; reset Sonic waiting animation
+@inair:
 		; fast forward if stage is already beaten
 		tst.b	($FFFFF605).w			; was anything pressed this frame?
 		beq.s	@nofastforward			; if not, branch
@@ -24099,18 +24130,18 @@ loc_11B7C:
 		move.w	$34(a0),obY(a0)
 		moveq	#BombPellets_Boss,d6	; bomb pellets
 		moveq	#0,d6		; bomb pellets
-		moveq	#20,d1
+		moveq	#BombBoss_Health,d1
 		sub.b	(BossHealth).w,d1
 		bpl.s	@0
-		moveq	#20,d1
+		moveq	#BombBoss_Health,d1
 @0:		lsr.w	#1,d1
 		add.w	d1,d6		; d6 is now the amount of shrapnel to spawn - 1
 		
 
 @cont
 		movea.l	a0,a1
-	;	tst.w	($FFFFD030).w	; does Sonic have invincibility frames left?
-	;	bne.w	DeleteObject	; if yes, branch
+		tst.w	($FFFFD030).w	; does Sonic have invincibility frames left?
+		bne.w	DeleteObject	; if yes, branch
 
 		cmpi.b	#$1A,($FFFFD000+obAnim).w	; is Sonic's animation $1A (hurting)?
 		beq.w	DeleteObject			; if yes, cancel fuse
@@ -24135,10 +24166,10 @@ Obj5F_MakeShrap:			; XREF: loc_11B7C
 		bset	#7,obRender(a1)
 
 
-		moveq	#20,d1
+		moveq	#BombBoss_Health,d1
 		sub.b	(BossHealth).w,d1
 		bpl.s	@0
-		moveq	#20,d1
+		moveq	#BombBoss_Health,d1
 @0:		lsr.w	#1,d1
 
 		move.w	#$80,d4	; load default speed
@@ -24147,11 +24178,18 @@ Obj5F_MakeShrap:			; XREF: loc_11B7C
 		bhs.s	@ok
 		move.w	#$400,d4
 @ok:
+
+		moveq	#0,d1
 		move.w	($FFFFD008).w,d1	; load Sonic's X-pos into d1
 		sub.w	obX(a0),d1		; sub bomb's X-pos from it
-	;	move.w	($FFFFD00C).w,d2	; load Sonic's Y-pos into d2
-		move.w	obY(a0),d2		; always assume same Y position
-		sub.w	obY(a0),d2		; sub bomb's Y-pos from it
+		bpl.s	@pos
+		neg.w	d1
+@pos:
+		btst	#0,obStatus(a0)
+		bne.s	@bl
+		neg.w	d1
+@bl:
+		moveq	#0,d2			; always assume same Y position
 		jsr	CalcAngle		; calculate the angle
 		jsr	CalcSine		; calculate the sine
 		muls.w	d4,d0			; multiply result 1 shotgun speed
@@ -24173,6 +24211,16 @@ Obj5F_MakeShrap:			; XREF: loc_11B7C
 		move.w	d0,obVelY(a1)		; set final result to Sonic's Y-speed
 		subi.w	#$180,obVelY(a1)
 
+
+		tst.w	d6
+		bne.w	loc_11BCE
+	;	move.w	#0,obVelX(a1)
+		move.w	#-$380,obVelX(a1)
+		move.w	#-$380,obVelY(a1)
+		
+		btst	#0,obStatus(a0)
+		beq.w	loc_11BCE
+		neg.w	obVelX(a1)
 		bra.w	loc_11BCE
 
 
@@ -26058,6 +26106,8 @@ Obj03_Display:
 @notodd:
 		tst.b	obRender(a0)		; is object on-screen?
 		bpl.s	@chkDelete		; if not, branch
+		tst.b	($FFFFFF7F).w		; are we done falling down the intro tube?
+		beq.s	@chkDelete		; if not, don't display
 		bsr.s	Obj03_BackgroundColor
 
 @chkDelete:
@@ -26119,11 +26169,11 @@ Obj03_BackgroundColor:
 		dc.w	$444, Pal_Active+$5E	; $08 - Options
 		dc.w	-1, -1			; $09 - Place
 		dc.w	$000, Pal_Active+$5E	; $0A - Exit Tutorial
-		dc.w	$444, Pal_Active+$5E	; $0B - Sound Test :3
-		dc.w	$444, Pal_Active+$5E	; $0C - Intro Scene
-		dc.w	$000, Pal_Active+$5E	; $0D - The End
+		dc.w	$A28, Pal_Active+$5E	; $0B - Sound Test :3
+		dc.w	$000, Pal_Active+$5E	; $0C - Intro Scene
+		dc.w	$022, Pal_Active+$5E	; $0D - The End
 		dc.w	$000, Pal_Active+$5E	; $0E - Skip Tutorial
-		dc.w	$000, Pal_Active+$5E	; $0F - Real
+		dc.w	$00E, Pal_Active+$5E	; $0F - Real
 		dc.w	-1, -1
 
 ; ---------------------------------------------------------------------------
@@ -29052,11 +29102,19 @@ AR_End:
 
 
 Sonic_Fire:
-		tst.b	($FFFFFFE7).w		; is inhuman mode enabled?
-		beq.w	S_F_End			; if not, don't do anything
 		move.b	($FFFFF603).w,d0	; move button press to d0
 		andi.b	#$40,d0			; and it by $40 (A)
 		beq.w	S_F_End			; if A is not being pressed, branch
+		tst.b	($FFFFFFE7).w		; is inhuman mode enabled?
+		bne.s	InhumanMode		; if yes, do the thingy
+		cmpi.b	#5,obAnim(a0)
+		bne.w	S_F_End
+		move.w	#$A9,d0
+		jsr	PlaySound_Special
+		move.b	#6,($FFFFD000+obTimeFrame).w	; reset time frame
+		jmp	AnnoyedSonic
+
+InhumanMode:
 		bsr	SingleObjLoad		; check if SingleObjLoad is already in use
 		bne.w	S_F_End			; if it is, don't do anything
 		cmpi.w	#$001,($FFFFFE10).w	; is this the intro cutscene?
@@ -40862,18 +40920,18 @@ loc_1B2E4:
 		bne.s	@lightup		; if yes, branch
 		cmpi.b	#2,($FFFFFE57).w 	; are we in part 2?
 		beq.s	@part2			; if yes, branch
-		btst	#5,($FFFFF602).w	; is C held?
-		bne.s	@lightup		; if yes, branch
+	;	btst	#5,($FFFFF602).w	; is C held?
+	;	bne.s	@lightup		; if yes, branch
 		bra.s	@notblackout		; skip
 
 @part2:
 		btst	#7,(OptionsBits).w	; is photosensitive mode enabled?
 		bne.s	@lightup		; if yes, no flash
 		moveq	#3,d0
-		btst	#5,($FFFFF602).w	; is C held?
-		beq.s	@chkfreq		; if yes, branch
-		moveq	#2,d0
-@chkfreq:
+	;	btst	#5,($FFFFF602).w	; is C held?
+	;	beq.s	@chkfreq		; if yes, branch
+	;	moveq	#2,d0
+;@chkfreq:
 		btst	d0,($FFFFFE0F).w	; blink skull frame
 		beq.s	@notblackout		; if not in time, branch
 @lightup:
@@ -41641,7 +41699,30 @@ Obj09_Display:				; XREF: Obj09_OnWall
 		jsr	Obj09_ChkItems_Collectible
 		jsr	Obj09_ChkItems_Solid
 		jsr	SpeedToPos
+
+		moveq	#0,d0			; no shake
+		tst.b	(CameraShake).w		; is camera shake currently active?
+		beq.s	@nocamshake		; if not, branch
+		subq.b	#1,(CameraShake).w	; subtract one from timer
+		btst	#3,(OptionsBits2).w	; intense cam shake enabled?
+		beq.s	@nocamshake		; if not, branch
+		jsr	RandomNumber
+		andi.l	#$000F000F,d0
+		subi.l	#$00080008,d0
+		move.w	d0,d4
+		swap	d0
+		move.w	d0,d5
+		add.w	d4,obX(a0)
+		add.w	d5,obY(a0)
 		bsr	SS_FixCamera
+		sub.w	d4,obX(a0)
+		sub.w	d5,obY(a0)
+		bra.s	@rest
+
+@nocamshake:
+		bsr	SS_FixCamera
+
+@rest:
 		move.w	($FFFFF780).w,d0
 		add.w	($FFFFF782).w,d0
 		move.w	d0,($FFFFF780).w
@@ -42465,7 +42546,6 @@ TouchGoalBlock:
 
 		addq.w	#1,(RelativeDeaths).w	; add one relative death for the current stage
 
-		move.w	#$C3,d0			; play giant ring sound by default
 
 		cmpi.w	#$401,($FFFFFE10).w	; are we in Unreal Place?
 		beq.s	TouchGoal_Unreal	; if yes, branch
@@ -42490,7 +42570,7 @@ TouchGoal_Unreal:
 		tst.b	(Blackout).w	; is this the blackout blackout special stage?
 		beq.s	@notblackout		; if not, branch
 		cmpi.b	#2,($FFFFFE57).w	; are we in part 2?
-		beq.s	@norestore		; if yes, branch
+		beq.w	TouchGoal_MegaSound	; if yes, branch
 		clr.b	($FFFFFE57).w		; clear emerald counter
 		move.b	#$3F,($FF11BD).l	; restore red emerald
 		move.b	#$40,($FF11C1).l	; restore grey emerald
@@ -42498,11 +42578,7 @@ TouchGoal_Unreal:
 		move.b	#$2F,($FF24CA).l	; reset glass blocks
 		move.b	#$2F,($FF254A).l
 		move.b	#$2F,($FF25CA).l
-@norestore:
-		move.w	#$B9,d0			; play annoying crumbling sound instead
-		jsr	PlaySound		; play sound
-		move.w	#$DB,d0			; play annoying crumbling sound instead
-		bra.s	TouchGoal_PlaySound
+		bra.s	TouchGoal_MegaSound
 
 @notblackout:
 		clr.b	($FFFFFE57).w		; clear emerald counter
@@ -42515,7 +42591,17 @@ TouchGoal_Unreal:
 		move.b	#$30,($FF25CA).l
 
 TouchGoal_PlaySound:
+		btst	#3,(OptionsBits2).w	; intense cam shake enabled?
+		bne.s	TouchGoal_MegaSound	; if yes, branch
+		move.w	#$C3,d0			; play giant ring sound by default
 		jmp	PlaySound_Special	; play selected sound
+
+TouchGoal_MegaSound:
+		ori.b	#10,(CameraShake).w     ; normal camera shake
+		move.w	#$B9,d0			; play annoying crumbling sound instead
+		jsr	PlaySound		; play sound
+		move.w	#$DB,d0			; play annoying crumbling sound instead
+		jmp	PlaySound_Special
 ; ===========================================================================
 
 Obj09_ChkBumper:
@@ -43037,7 +43123,9 @@ Obj21_ChkLives:
 		bne.s	@cont				; if not, branch
 		move.w	#$80+SCREEN_WIDTH/2+$10,$36(a0)	; set target X-position (centered)
 @cont:
-		move.w	#$80+$F,obX(a0)			; set start X-position
+		move.w	$36(a0),d0
+		subi.w	#$10C+SCREEN_XCORR*2,d0
+		move.w	d0,obX(a0)			; set start X-position
 		move.w	#$80+SCREEN_HEIGHT-$15,obScreenY(a0)	; set Y-position
 
 Obj21_FrameSelected:

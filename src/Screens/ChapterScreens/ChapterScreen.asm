@@ -64,6 +64,25 @@ CS_ClrObjRam:	move.l	d0,(a1)+
 		moveq	#28-1,d2
 		jsr	ShowVDPGraphics
 
+	; widescreen-only line extensions
+	if def(__WIDESCREEN__)
+		lea	VDP_Data,a6
+		lea	VDP_Ctrl,a4
+		move.l	#$407A0003|($800000*7),(a4)
+		moveq	#2,d3
+@lbonusline:	move.w	#$2B,(a6)
+		dbf	d3,@lbonusline
+		move.l	#$40800003|($800000*6),(a4) ; for some reason these are offset by one row
+		moveq	#2,d3
+@lbonuslinex:	move.w	#$2B,(a6)
+		dbf	d3,@lbonuslinex
+
+		move.l	#$40480003|($800000*7),(a4)
+		moveq	#6,d3
+@rbonusline:	move.w	#$2B,(a6)
+		dbf	d3,@rbonusline
+	endif
+
 		lea	(Pal_ChapterHeader).l,a1	; load chapter 3 stuff instead
 		lea	($FFFFFB80).w,a2
 		move.b	#8-1,d0				; 16 colours

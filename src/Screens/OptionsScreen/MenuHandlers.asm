@@ -10,11 +10,11 @@ Options_MenuData:
 	dcScreenPos	$E000, 6, 6			; start on-screen position
 	dc.l	Options_GameplayStyle_Redraw		; redraw handler
 	dc.l	Options_GameplayStyle_Handle		; update handler
+	
 	; Autoskip
-	dcScreenPos	$E000, 7, 6			; start on-screen position
+	dcScreenPos	$E000, 8, 6			; start on-screen position
 	dc.l	Options_Autoskip_Redraw			; redraw handler
 	dc.l	Options_Autoskip_Handle			; update handler
-
 	; Extended camera
 	dcScreenPos	$E000, 9, 6			; start on-screen position
 	dc.l	Options_ExtendedCamera_Redraw		; redraw handler

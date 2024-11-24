@@ -27,8 +27,13 @@ STS_PressStart_VRAMSettings = $8000|$4000|($D000/$20)
 
 ; lines at top and bottom
 STS_DrawnLine_Extra	= 4
+	if def(__WIDESCREEN__)
+STS_DrawnLine_Length	= 8+STS_LineLength+STS_DrawnLine_Extra-1
+STS_VRAMBase_Line 	= $60000003
+	else
 STS_DrawnLine_Length	= STS_LineLength+STS_DrawnLine_Extra-1
 STS_VRAMBase_Line 	= $60000003|($20000*(STS_BaseCol-(STS_DrawnLine_Extra/2)))
+	endif
 STS_TopLine_Offset	= STS_BaseRow-2
 STS_BottomLine_Offset	= STS_TopLine_Offset+STS_LinesTotal-2
 STS_LineChar_Left	= $C0/$20

@@ -8336,12 +8336,11 @@ Obj15_DelLoop:
 ; ===========================================================================
 
 Obj15_Delete:				; XREF: Obj15_Index
-		bsr	DeleteObject
-		rts	
+		jmp	DeleteObject
 ; ===========================================================================
 
 Obj15_Display:				; XREF: Obj15_Index
-		bra.w	DisplaySprite
+		jmp	DisplaySprite
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Sprite mappings - GHZ	and MZ swinging	platforms
@@ -9096,6 +9095,7 @@ Obj19_DoAfter:
  		move.b	$FFFFD000+obFrame, obFrame(a0)	; copy Sonic's current frame
  		move.b	$FFFFD000+obRender, obRender(a0); copy Sonic's render flags
 		move.w	$FFFFD000+obGfx, obGfx(a0)	; set starting art block to $780 (Sonic art)
+		addq.b	#1,obPriority(a0)	; decrease priority as afterimage ages
 
 		jmp	DisplaySprite		; display our afterimaged frame
 ; ===========================================================================

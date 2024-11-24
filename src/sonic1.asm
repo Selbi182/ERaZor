@@ -41482,8 +41482,8 @@ SS_MapIndex:
 		dc.w $6142
 		dc.l Map_SSWalls
 		dc.w $6142
-		dc.l Map_obj47
-		dc.w $23B
+		dc.l Map_SSBumper
+		dc.w $160
 		dc.l Map_SS_R
 		dc.w $570
 		dc.l Map_SS_R
@@ -41509,9 +41509,9 @@ SS_MapIndex:
 		dc.l Map_SS_R
 		dc.w $2F0
 		dc.l Map_SSBumper+$1000000	; add frame no.	* $1000000
-		dc.w $23B
+		dc.w $160
 		dc.l Map_SSBumper+$2000000
-		dc.w $23B
+		dc.w $160
 		dc.l Map_SS_R
 		dc.w $797
 		dc.l Map_SS_R
@@ -44892,7 +44892,7 @@ PLC_SpeStage:
 		dc.l ArtKospM_TitleCard	; title cards
 		dc.w $0A20
 		dc.l ArtKospM_SSBumper		; bumper
-		dc.w $4760
+		dc.w $2C00
 		dc.l ArtKospM_SSGOAL		; GOAL block
 		dc.w $4A20
 		dc.l ArtKospM_SSUpDown	; UP and DOWN blocks

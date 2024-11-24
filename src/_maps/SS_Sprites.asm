@@ -65,8 +65,8 @@ Map_SS_Up:
 
 SS_Sprites_Bank:
 	dc.w	$FFF0, $0FFF, $0000, $FFF0
-	dc.w	$FFF4, $0AFF, $0010, $FFF4
-	dc.w	$FFF0, $0FFF, $0019, $FFF0
+	dc.w	$FFF0, $0FFF, $0010, $FFF0
+	dc.w	$FFF0, $0FFF, $0020, $FFF0
 	dc.w	$FFF8, $05FF, $0000, $FFF8
 	dc.w	$FFF8, $05FF, $0004, $FFF8
 	dc.w	$FFF8, $01FF, $0008, $FFFC

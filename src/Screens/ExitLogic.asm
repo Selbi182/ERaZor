@@ -160,7 +160,7 @@ Exit_GameplayStyleScreen:
 		moveq	#$E,d0			; load FZ palette (cause tutorial boxes are built into SBZ)
 		jsr	PalLoad2		; load palette	
 		moveq	#$13,d0			; load warning text about revisiting the tutorial for frantic
-		jsr	Tutorial_DisplayHint	; VLADIK => Display hint
+		jsr	TutorialBox_Display	; VLADIK => Display hint
 @notfrantic:
 		jsr	SRAM_SaveNow		; save our progress now
 		move.b	#$24,(GameMode).w	; we came from the options menu, return to it
@@ -262,7 +262,7 @@ Exit_StoryScreen:
 		jsr	PalLoad2		; load palette
 
 		moveq	#$16,d0			; load text after beating the blackout challenge for the first time
-		jsr	Tutorial_DisplayHint	; VLADIK => Display hint
+		jsr	TutorialBox_Display	; VLADIK => Display hint
 
 @restartgame:
 	;	bra.w	Start_FirstGameMode	; restart game
@@ -288,25 +288,25 @@ Exit_CreditsScreen:
 		btst	#0,($FFFFFF95).w
 		beq.s	@checkfrantic
 		moveq	#$F,d0			; load text after beating the game in casual mode
-		jsr	Tutorial_DisplayHint	; VLADIK => Display hint
+		jsr	TutorialBox_Display	; VLADIK => Display hint
 		bra.s	@checkcinematicunlock
 @checkfrantic:
 		btst	#1,($FFFFFF95).w
 		beq.s	@checkcinematicunlock
 		moveq	#$10,d0			; load text after beating the game in frantic mode
-		jsr	Tutorial_DisplayHint	; VLADIK => Display hint
+		jsr	TutorialBox_Display	; VLADIK => Display hint
 
 @checkcinematicunlock:
 		btst	#2,($FFFFFF95).w
 		beq.s	@checkmotionblur
 		moveq	#$14,d0			; load Cinematic Mode unlock text
-		jsr	Tutorial_DisplayHint	; VLADIK => Display hint
+		jsr	TutorialBox_Display	; VLADIK => Display hint
 
 @checkmotionblur:
 		btst	#3,($FFFFFF95).w
 		beq.s	@checkblackout
 		moveq	#$15,d0			; load motion blur unlock text
-		jsr	Tutorial_DisplayHint	; VLADIK => Display hint
+		jsr	TutorialBox_Display	; VLADIK => Display hint
 
 @checkblackout:
 		btst	#4,($FFFFFF95).w
@@ -314,7 +314,7 @@ Exit_CreditsScreen:
 		move.b	#$E0,d0
 		jsr	PlaySound_Special	; fade out music to set the atmosphere
 		moveq	#$12,d0			; load Blackout Challenge teaser text
-		jsr	Tutorial_DisplayHint	; VLADIK => Display hint
+		jsr	TutorialBox_Display	; VLADIK => Display hint
 		move.b	#$9C,d0
 		jsr	PlaySound_Special	; briefly play some normal music to reset the Sega chant
 		
@@ -509,7 +509,7 @@ HubRing_LP:
 		moveq	#$E,d0			; load FZ palette (cause tutorial boxes are built into SBZ)
 		jsr	PalLoad2		; load palette	
 		moveq	#$11,d0			; load warning text that black bars don't work in LP
-		jsr	Tutorial_DisplayHint	; VLADIK => Display hint
+		jsr	TutorialBox_Display	; VLADIK => Display hint
 @nobars:
 		move.w	#$101,($FFFFFE10).w	; set level to LZ2
 		bra.w	RunChapter

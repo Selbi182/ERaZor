@@ -22,7 +22,8 @@ DeleteQueue:		equ	$FFFFC700			;	Delete queue
 DeleteQueue_End:	equ	$FFFFC7FE
 DeleteQueue_Ptr:	equ	$FFFFC7FE			;	Delete objects queue pointer
 DMAQueue:		equ	$FFFFC800			;
-DMAQueuePos:		equ	$FFFFC8FC			; .l	DMA queue position pointer
+DMAQueuePos:		equ	$FFFFC8FC			; .w	DMA queue position pointer
+*			equ	$FFFFC8FE			; .w	<<<FREE>>>
 PalCache_PauseEffect:	equ	$FFFFC900			;	Palette cache for pause effect (C900-C9FF)
 PalCache_FlashEffect:	equ	$FFFFCA00			;	Palette cache for flash effect (CA00-CAFF)
 Sonic_PosArray		equ	$FFFFCB00			;	Sonic's previous positions array (CB00-CBFF)
@@ -146,6 +147,9 @@ CameraShake_XOffset	equ	$FFFFFF62			; w	current camera shake X offset
 CameraShake_YOffset	equ	$FFFFFF64			; w	current camera shake Y offset
 
 HUD_BossHealth		equ	$FFFFFF68			; b	current health of a boss to be displayed instead of the HUD deaths counter
+
+TutorialBoxId		equ	$FFFFFF6E			; b	requested tutorial box id
+
 BossHealth		equ	$FFFFFF75			; b	current health of a boss (not used by all bosses!)
 
 Doors_Casual		equ	$FFFFFF8A			; b	bit field for beaten levels in casual

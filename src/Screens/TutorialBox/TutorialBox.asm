@@ -18,6 +18,9 @@ _DH_WindowObj		= $FFFFD400		; address for window object
 _DH_WindowObj_Art	= _DH_VRAM_Border/$20	; art pointer for window object
 _DH_WindowFill_NumParts = 4			; number of chunks fill art is split into
 
+_DH_WithOwnBG:		equ	$FFFFFF80	; add to "TutorialBoxId" to enable own background
+_DH_WithBGFuzz:		equ	$40		; add to "TutorialBoxId" to enable fuzzy BG effect
+
 TutDim_Min	= 7
 TutDim_Max	= $10
 
@@ -58,18 +61,33 @@ _end	= $FF	; finish hint
 
 ; ===============================================================
 
-Tutorial_DisplayHint:
-		move.b	d0,($FFFFFF6E).w		; store text ID
-		movem.l	a0/a5-a6,-(sp)
-		move.w	d0,-(sp)
+Queue_TutorialBox_Display:
+		move.b	d0, TutorialBoxId
+		rts
 
-		; Clear "BuildSprites" display queue to avoid displaying objects twice
-		moveq	#0, d0
-		@current_queue_ptr: = Sprites_Queue
-		rept 8
-			move.w	d0, @current_queue_ptr
-			@current_queue_ptr: = @current_queue_ptr + $80
-		endr
+TutorialBox_Display:
+		move.b	d0, TutorialBoxId
+		; fallthrough
+
+; ----------------------------------------------------------------
+TutorialBox:
+		assert.b TutorialBoxId, ne	; we should have a requested ID when we get there
+
+		movem.l	a5-a6,-(sp)
+
+		; Make sure "TutorialBox_Display" wasn't called from within the object.
+		; It must be called when the current frame is finished rendering.
+		; The following DEBUG-only code checks if BuildSprites layers were flushed to
+		; avoid visual gliches when entering and leaving the screen.
+		if def(__DEBUG__)
+			moveq	#0, d0
+			@current_queue_ptr: = Sprites_Queue
+			rept 8
+				or.w	@current_queue_ptr, d0
+				@current_queue_ptr: = @current_queue_ptr + $80
+			endr
+			assert.w d0, eq	; all layers should be empty
+		endif
 
 		; Init objects
 		lea	_DH_WindowObj,a0
@@ -77,7 +95,8 @@ Tutorial_DisplayHint:
 		move.l	#DH_OWindow_Init,obj(a0)
 
 		lea	Hints_List,a1
-		move.w	(sp)+,d0
+		moveq	#$3F, d0
+		and.b	TutorialBoxId, d0
 		andi.w	#$FF,d0
 		add.w	d0,d0
 		add.w	d0,d0
@@ -93,8 +112,8 @@ Tutorial_DisplayHint:
 		move.l	#DH_LoadArt, VBlankCallback
 		jsr	DelayProgram			; perform vsync before operation
 
-		cmpi.b	#10,($FFFFFF6E).w	; is this the introduction text?
-		bne.s	DH_MainLoop		; if not, branch
+		tst.b	TutorialBoxId			; is "own background" bit set?
+		bpl.s	DH_MainLoop			; if not, branch
 		jsr	BackgroundEffects_Setup
 
 ; ---------------------------------------------------------------
@@ -105,14 +124,15 @@ DH_MainLoop:
 		move.b	#4,VBlankRoutine
 		jsr	DelayProgram
 
-		cmpi.b	#10,($FFFFFF6E).w	; is this the introduction text?
-		beq.s	@0			; if yes, branch
-		cmpi.b	#$C,($FFFFF600).w	; are we in a level?
-		bne.s	DH_Continue		; if not, don't do fuzz
-		jsr	Fuzz_TutBox		; do cinematic screen fuzz if applicable
-		bra.s	DH_Continue
-@0:	
+		; Apply BG effects if respective bits are set
+		move.b	TutorialBoxId, d0	; is "own background" bit set?
+		bpl.s	@0			; if not, branch
 		jsr	BackgroundEffects_Update
+		move.b	TutorialBoxId, d0	; d0 was probably corrupted, so reload it anyways
+
+@0:		add.b	d0, d0			; is "with BG fuzz" bit set?
+		bpl.s	DH_Continue		; if not, don't do fuzz
+		jsr	Fuzz_TutBox		; do cinematic screen fuzz if applicable
 
 DH_Continue:
 		; Run window object code
@@ -162,14 +182,8 @@ DH_Continue:
 ; ---------------------------------------------------------------
 
 DH_Quit:
-		movem.l	(sp)+,a0/a5-a6
-		clr.b	($FFFFFF6E).w			; unset text ID
-		
-		; Display objects one final time
-		lea	Objects,a0
-		moveq	#$7F,d7
-		jsr	DH_DisplayObjects
-		moveq	#0, d7				; short circuit ObjectsLoad if we're there
+		movem.l	(sp)+, a5-a6
+		clr.b	TutorialBoxId			; unset text ID
 		rts
 
 ; ---------------------------------------------------------------
@@ -204,8 +218,6 @@ DH_DisplayObjects:
 		moveq	#0,d0
 		tst.b	obRender(a0)
 		bpl.s	@Skip
-		cmp.b	#$19, (a0)		; ### Don't display after-images to avoid visual glitches
-		beq.s	@Skip			; ''
 		jsr	DisplaySprite
 
 @Skip:		lea	$40(a0),a0
@@ -324,10 +336,9 @@ DH_OWindow_Appear:
 		ble.s	@GotoProcess		; if yes, branch
 
 		; darken palette as box fades in
-		cmpi.b	#10,($FFFFFF6E).w	; is this the introduction text?
-		beq.s	@nah			; if yes, branch
-		cmpi.b	#$C,($FFFFF600).w	; are we in a level?
-		bne.s	@nah			; if not, branch
+		move.b	TutorialBoxId, d0	; get tutorial id
+		add.b	d0, d0			; is "with BG fuzz" bit set?
+		bpl.s	@nah			; if not, branch
 
 		move.w	#$80+SCREEN_WIDTH/2,d0	; target X pos when the tut box is centered
 		sub.w	xpos(a0),d0 		; subtract current tut box X pos
@@ -562,10 +573,9 @@ _CooldownVal	= 2
 
 DH_OWindow_Disappear:
 		; brighten palette as box fades out
-		cmpi.b	#10,($FFFFFF6E).w	; is this the introduction text?
-		beq.s	@nah			; if yes, branch
-		cmpi.b	#$C,($FFFFF600).w	; are we in a level?
-		bne.s	@nah			; if not, branch
+		move.b	TutorialBoxId, d0	; get tutorial id
+		add.b	d0, d0			; is "with BG fuzz" bit set?
+		bpl.s	@nah			; if not, branch
 
 		move.w	xpos(a0),d0 		; get current tut box X pos (which is starting at $120 here)
 		subi.w	#$120,d0		; subtract $120
@@ -605,8 +615,9 @@ DH_KillWindow:
 		clr.w	(a0)			; kill windows
 
 		; restore backed-up palette
-		cmpi.b	#10,($FFFFFF6E).w	; is this the introduction text?
-		beq.s	@nah			; if yes, branch
+		move.b	TutorialBoxId, d0	; get tutorial id
+		add.b	d0, d0			; is "with BG fuzz" bit set?
+		bpl.s	@nah			; if not, branch
 		lea	($FFFFFB80).w,a1
 		lea	Pal_Active,a2
 		moveq	#$20-1,d0

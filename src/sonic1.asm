@@ -391,7 +391,7 @@ BlackBars.SetState:
 		bra.w	BlackBars_DontShow		; don't show black bars in any other game modes
 
 @validgamemode:
-		tst.b	($FFFFFF6E).w			; are tutorial boxes currently shown?
+		tst.b	TutorialBoxId			; are tutorial boxes currently shown?
 		bne.w	BlackBars_DontShow		; if yes, don't show to not mess with the h-ints
 		move.w	($FFFFFE10).w,d0		; get current level ID
 		cmpi.w	#$500,d0			; is this the bomb machine cutscene?
@@ -1051,7 +1051,7 @@ PalCycle_Load:				; XREF: Demo; Level_MainLoop; End_MainLoop
 		bne.s	@nopalcycle		; if yes, branch
 		tst.b	($FFFFFFB9).w		; is white flash in progress?
 		bne.s	@nopalcycle		; if yes, branch?
-		tst.b	($FFFFFF6E).w		; are tutorial boxes currently shown?
+		tst.b	TutorialBoxId		; are tutorial boxes currently shown?
 		bne.s	@nopalcycle		; if yes, branch
 		cmpi.b	#6,($FFFFD024).w	; is Sonic dying?
 		bhs.s	@nopalcycle		; if yes, branch
@@ -3421,14 +3421,14 @@ Level_GetBgm:
 		bsr	PalLoad2		; load palette (based on d0)
 		move.w	#$E00,(BGThemeColor).w	; set theme color for background effects
 
-		moveq	#10,d0		; VLADIK => Load hint number
-		jsr	Tutorial_DisplayHint	; VLADIK => Display hint
+		moveq	#10|_DH_WithOwnBG,d0	; VLADIK => Load hint number
+		jsr	TutorialBox_Display	; VLADIK => Display hint
 		
 		jsr	ClearScreen
 
 		moveq	#0,d1
 		lea	($FFFFFB20).w,a1
-		move.w	#$17,d2
+		moveq	#$17,d2
 	@clearpalafter:
 		move.l	d1,(a1)+
 		dbf	d2,@clearpalafter
@@ -3778,6 +3778,12 @@ Level_StartGame:
 ; LVML::
 Level_MainLoop:
 		bsr	Level_MainLoop_Main	; go to subroutine that simulates fun
+
+		tst.b	TutorialBoxId		; have we requested a tutorial box?
+		beq.s	@skip			; if not, branch
+		jsr	TutorialBox		; run it
+		assert.b TutorialBoxId, eq	; flag should be reset by it
+	@skip:
 
 		tst.w	($FFFFFE02).w		; is the level set to restart?
 		bne.w	Level			; if yes, restart level
@@ -9052,21 +9058,26 @@ Map_obj18c:
 ; ---------------------------------------------------------------------------
 
 Obj19:
-		moveq	#0,d0			; clear d0
-		move.b	obRoutine(a0),d0		; move routine counte to d0
+		move.w	obRoutine(a0),d0
 		move.w	Obj19_Index(pc,d0.w),d1 ; move the index to d1
 		jmp	Obj19_Index(pc,d1.w)	; find out the current position in the index
 ; ===========================================================================
 Obj19_Index:
-		dc.w Obj19_Increase-Obj19_Index ; repeat all this 2 times
+		dc.w Obj19_Init-Obj19_Index ; repeat all this 2 times
 		dc.w Obj19_DoAfter-Obj19_Index
 		dc.w Obj19_Increase-Obj19_Index
 		dc.w Obj19_DoAfter-Obj19_Index
 		dc.w Obj19_Remove-Obj19_Index	; remove the afterimage sprite
 ; ===========================================================================
 
+Obj19_Init:
+		move.l	$FFFFD000+obMap, obMap(a0)	; copy Sonic's mappings
+		move.b	#2, obPriority(a0)
+		; fallthrough
+
 Obj19_Increase:
-		addq.b	#2,obRoutine(a0)		; increase routine counter
+		clr.b	obRender(a0)		; mark sprite as not displayed (avoids displaying of broken sprites during tutorial box)
+		addq.w	#2,obRoutine(a0)	; increase routine counter
 
 Obj19_Return:
 		rts				; return
@@ -9076,18 +9087,15 @@ Obj19_DoAfter:
 		cmpi.b	#6,($FFFFD024).w	; is Sonic dying?
 		bhs.s	Obj19_Remove		; if yes, branch
 
-		addq.b	#2,obRoutine(a0)		; increase routine counter
+		addq.w	#2,obRoutine(a0)	; increase routine counter
 		move.b	($FFFFFE05).w,d0	; copy the game frame timer to d0
 		and.b	$30(a0),d0		; and it by the number in $30(a0) (each after image sprite is flashing a bit more than the rest)
 		bne.s	Obj19_Return		; branch, if the frame timer is too big
 		addq.b	#1,$30(a0)		; increase this counter
 
-		lea	($FFFFD000).w,a1	; load Sonic into a1
-		move.l	obMap(a1),obMap(a0)	; copy Sonic's mappings
- 		move.l	obFrame(a1),obFrame(a0)	; copy Sonic's current frame
- 		move.b	obRender(a1),obRender(a0); copy Sonic's render flag
-		move.w	obGfx(a1),obGfx(a0)	; set starting art block to $780 (Sonic art)
-		addq.b	#1,obPriority(a0)	; decrease priority as afterimage ages
+ 		move.b	$FFFFD000+obFrame, obFrame(a0)	; copy Sonic's current frame
+ 		move.b	$FFFFD000+obRender, obRender(a0); copy Sonic's render flags
+		move.w	$FFFFD000+obGfx, obGfx(a0)	; set starting art block to $780 (Sonic art)
 
 		jmp	DisplaySprite		; display our afterimaged frame
 ; ===========================================================================
@@ -13042,45 +13050,20 @@ Obj4B_YPositive:
 		bne.w	@notsap			; if not, branch
 
 		tst.b	(PlacePlacePlace).w
-		beq.s	@easteregg
+		beq.s	@load_easteregg
 		jmp	TrollKill
 
-@easteregg:
-		jsr	DeleteObject		; delete easter egg ring
-		clr.w	($FFFFD010).w		; clear Sonic's X speed
-		clr.w	($FFFFD012).w		; clear Sonic's Y speed
-		clr.l	($FFFFF602).w		; clear any remaining button presses
-		
+@load_easteregg:
+		lea	Obj_SAPEasterEgg(pc), a2
+		jsr	CreateDynObject
 
-		jsr	SAP_LoadSonicPal	; force text color to be consistent (cause it happens to share Sonic's antigrav line)
-		move.w	#$222,($FFFFFB36).w	; keep textbox background color gray
-		move.b	#$9D,d0			; play funni music
-		jsr	PlaySound
+		moveq	#0, d0
+		move.w	d0, ($FFFFD010).w	; clear Sonic's X speed
+		move.w	d0, ($FFFFD012).w	; clear Sonic's Y speed
+		move.l	d0, ($FFFFF602).w	; clear any remaining button presses
 
-		move.b	#0,($FFFFD400).w	; delete rings HUD
+		jmp	DeleteObject		; delete the base ring
 
-		move.b	#$C,d0			; VLADIK => Load hint number based on subtype
-		jsr	Tutorial_DisplayHint	; VLADIK => Display hint
-
-		moveq	#$A,d0			; reload SLZ patterns overwritten by the textbox
-		jsr	(LoadPLC).l		; (this is slow and inefficient as fuck lmao -- UPDATE: not anymore thanks to vlad!)
-		moveq	#$B,d0			; reload the other SLZ patterns overwritten by the textbox
-		jsr	(LoadPLC).l		; ye
-
-		jsr	SAP_LoadSonicPal	; reload Sonic's antigrav palette
-
-		move.b	#$21,($FFFFD400).w	; reload HUD object
-		move.b	#0,($FFFFD424).w	; set to routine 0
-		move.b	#2,($FFFFD430).w	; set to rings HUD
-
-		move.w	#999,($FFFFFE20).w	; here's a little something for you
-		ori.b	#1,($FFFFFE1D).w	; update rings counter
-		
-		move.b	#$96,d0			; restart regular music
-		btst	#4,(OptionsBits).w	; is nonstop inhuman enabled?
-		beq.s	@play			; if not, branch
-		move.b	#$84,d0			; restart lame default music	
-@play:		jmp	PlaySound
 ; ===========================================================================
 
 @notsap:
@@ -13250,6 +13233,62 @@ FZEscape_ScreenBoom:
 		rts
 
 ; ===========================================================================
+; ---------------------------------------------------------------------------
+; SAP easter egg controller object
+; ---------------------------------------------------------------------------
+
+Obj_SAPEasterEgg:
+		if def(__DEBUG__)
+			; This is a safety check to ensure the following code runs only once and changes $3C(a0) after itself
+			move.l	#@illegal, $3C(a0)
+		endif
+
+		jsr	SAP_LoadSonicPal	; force text color to be consistent (cause it happens to share Sonic's antigrav line)
+		move.w	#$222,($FFFFFB36).w	; keep textbox background color gray
+		move.b	#$9D,d0			; play funni music
+		jsr	PlaySound
+
+		move.b	#0,($FFFFD400).w	; delete rings HUD
+
+		moveq	#$C|_DH_WithBGFuzz,d0		; VLADIK => Load hint number based on subtype
+		jsr	Queue_TutorialBox_Display	; VLADIK => Display hint
+
+		move.l	#@WaitTutorialBox, $3C(a0)
+		rts
+
+; ---------------------------------------------------------------------------
+@WaitTutorialBox:
+		if def(__DEBUG__)
+			; This is a safety check to ensure the following code runs only once
+			move.l	#@illegal, $3C(a0)
+		endif
+
+		assert.b TutorialBoxId, eq	; tutorial box should've displayed by this frame
+
+		moveq	#$A,d0			; reload SLZ patterns overwritten by the textbox
+		jsr	(LoadPLC).l		; (this is slow and inefficient as fuck lmao -- UPDATE: not anymore thanks to vlad!)
+		moveq	#$B,d0			; reload the other SLZ patterns overwritten by the textbox
+		jsr	(LoadPLC).l		; ye
+
+		jsr	SAP_LoadSonicPal	; reload Sonic's antigrav palette
+
+		move.b	#$21,($FFFFD400).w	; reload HUD object
+		move.b	#0,($FFFFD424).w	; set to routine 0
+		move.b	#2,($FFFFD430).w	; set to rings HUD
+
+		move.w	#999,($FFFFFE20).w	; here's a little something for you
+		ori.b	#1,($FFFFFE1D).w	; update rings counter
+		
+		move.b	#$96,d0			; restart regular music
+		btst	#4,(OptionsBits).w	; is nonstop inhuman enabled?
+		beq.s	@play			; if not, branch
+		move.b	#$84,d0			; restart lame default music	
+@play:		jsr	PlaySound
+
+		jmp	DeleteObject
+
+; ---------------------------------------------------------------------------
+@illegal:	illegal
 
 
 ; ===========================================================================
@@ -18077,6 +18116,24 @@ NotOnScreen2:				; XREF: ChkObjOnScreen2
 ; ---------------------------------------------------------------------------
 *ObjPosLoad:
 		include "Modules/Object Manager.asm"
+
+; ---------------------------------------------------------------------------
+; Creates an object with dynamic code pointer
+; ---------------------------------------------------------------------------
+; INPUT:
+;	a2	- Code pointer
+;
+; OUTPUT:
+;	a1	- Object pointer
+; ---------------------------------------------------------------------------
+
+CreateDynObject:
+		bsr.s	SingleObjLoad
+		bne.s	@ret
+		move.b	#$8D, (a1)
+		move.l	a2, $3C(a1)
+		moveq	#0, d0			; return Z=1
+@ret:		rts
 
 ; ---------------------------------------------------------------------------
 ; Single object	loading	subroutine
@@ -26543,7 +26600,8 @@ Obj06_ChkA:
 		move.b	#$E,d0			; show alternate text for last monitor
 		
 @displayhint:
-		jmp	Tutorial_DisplayHint	; VLADIK => Display hint
+		or.b	#_DH_WithBGFuzz, d0		; want my BG fuzzy
+		jmp	Queue_TutorialBox_Display	; VLADIK => Display hint
 
 Obj06_NoA:
 		move.b	#1,obFrame(a0)		; don't show A button

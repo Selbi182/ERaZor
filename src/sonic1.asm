@@ -7431,6 +7431,7 @@ Resize_FZEscape:
 		move.w	#0,($FFFFF72C).w	; unlock controls
 		addq.w	#1,($FFFFFE20).w	; give one insurance ring (without updating rings counter) to prevent some bullshit deaths
 		move.w	#$60,($FFFFF73E).w	; reset looking up/down
+		move.w	#$06CA,($FFFFFD440+obGfx).w ; make sure time HUD uses palette line 1
 
 		move.b	#7,(CameraShake_Intensity).w
 
@@ -9653,16 +9654,35 @@ Obj1D_Explosions:
 		move.w	obY(a0),obY(a1)
 		
 		; random deviation
-		jsr	(RandomNumber).l
-		andi.l	#$00FF01FF,d0
-		subi.w	#$200/2,d0
-		add.w	d0,obX(a1)
-		swap	d0
-		subi.w	#$100/2,d0
-		add.w	d0,obY(a1)
+		jsr	(RandomNumber).l	; get a random number
+		andi.l	#$003F00FF,d0		; we need a random number up to $140 (320)
+		move.w	d0,d2			; backup first $100 random bytes
+		swap	d0			; swap random number long
+		add.w	d0,d2			; add the $40 random number to the $100 one to give us $140
+		subi.w	#320/2,d2		; center horizontally
+		add.w	d2,obX(a1)		; apply X deviation
+
+		jsr	RandomNumber
+		andi.w	#$00FF,d1		; get other random number and limit by $100 (256, good enough)
+		subi.w	#$100/2,d1		; center vertically + account for slightly larger random number
+		add.w	d1,obY(a1)		; apply Y deviation
+		
+		; adjust for camera speed
+		moveq	#0,d0			; clear d3
+		move.w	($FFFFF73A).w,d0	; get number of pixels scrolled horizontally since the previous frame
+		asr.w	#5,d0
+	;	ext.w	d0			; convert to word (we need the negatives)
+	;	asl.w	#3,d0			; boost
+		add.w	d0,obX(a1)		; apply X deviation for camera
+		moveq	#0,d0			; clear d3
+		move.w	($FFFFF73C).w,d0	; get number of pixels scrolled vertically since the previous frame
+		asr.w	#5,d0
+	;	ext.w	d0			; convert to word (we need the negatives)
+	;	asl.w	#3,d0			; boost
+		add.w	d0,obY(a1)		; apply Y deviation
 
 @end:
-		rts			; never delete
+		rts			; never delete the generator
 ; ===========================================================================
 
 ; ===========================================================================
@@ -9685,7 +9705,7 @@ FPBonusTexts:	dc.b	"     OH, BACK SO SOON?      "
 		dc.b	" TRY TO AVOID THE CRUSHERS! "
 		dc.b	" TRY TO AVOID THE BUZZSAW!  "
 		dc.b	"   TRY TO AVOID THE ORBS!   "
-		dc.b	"   TRY TO AVOID BEING BAD!  "
+		dc.b	"  HAVE YOU TRIED NOT DYING? "
 		
 		dc.b	"    I AM OUT OF TIPS...     "
 		dc.b	"           UHH...           "
@@ -9785,13 +9805,17 @@ Obj1D_BonusText_Display:
 		bhs.s	@display
 		rts
 @display:
-		cmpi.w	#$2080,d0
-		bhs.s	Obj1D_Delete
+		cmpi.w	#$2100,d0
+	;	bhs.s	Obj1D_Delete
+		bhs.s	@moveout
 
 		move.w	obX(a0),d0
 		cmp.w	$30(a0),d0
 		ble.s	@xtargetok
+@moveout:
 		subq.w	#8,obX(a0)
+		cmpi.w	#-$80,obX(a0)
+		ble.s	Obj1D_Delete
 @xtargetok:
 		bra.w	DisplaySprite
 ; ===========================================================================
@@ -16863,6 +16887,14 @@ Obj34_Delete:
 		cmpi.w	#$501,($FFFFFE10).w	; are we in the tutorial?
 		beq.s	Obj34_JustDelete	; if yes, delete
 		
+		cmpi.w	#$502,($FFFFFE10).w	; is this FP?
+		bne.s	@notfp			; if not, branch
+		jsr	SingleObjLoad
+		bne.s	@notfp
+		move.b	#$1D,(a1)		; load bonus text object
+		move.b	#$80,obSubtype(a1)	; set to correct subtype
+
+@notfp:
 		cmpi.w	#$302,($FFFFFE10).w	; is this SAP
 		bne.s	@loadhud
 		cmpi.b	#$21,($FFFFD400).w
@@ -17429,7 +17461,7 @@ Obj36_Type01:				; XREF: Obj36_TypeIndex
 	;	add.w	$32(a0),d0
 	;	move.w	d0,obY(a0)	; move the object vertically
 		rts	
-; ========================================3===================================
+; ===========================================================================
 
 Obj36_Type02:				; XREF: Obj36_TypeIndex
 		jsr	obj36_Wait
@@ -17440,23 +17472,34 @@ Obj36_Type02:				; XREF: Obj36_TypeIndex
 		rts	
 ; ===========================================================================
 
+; moving spikes in the tutorial tube
 Obj36_Wait:
+		cmpi.b	#%01,($FFFFFFEB).w	; is Sonic jumpdashing (but not double jumping)?
+		bne.s	@cycle			; if not, branch
+		cmpi.w	#$B00,($FFFFD012).w	; currently downdashing (going down very fast)?
+		bge.s	@moveout		; if yes, move spikes away
+
+@cycle:
 		move.w	($FFFFFE04).w,d0
-		divu.w	#59,d0
+		divu.w	#20,d0
 		andi.l	#$FFFF0000,d0
 		bne.s	locret_CFE6
-		
-		moveq	#$30,d0		; set move distance to $20 pixels
+		bsr	@playsound
+
 		tst.w	$34(a0)
-		bne.s	@0
+		bne.s	@movein
+
+@moveout:
+		moveq	#$30,d0		; set move distance to $30 pixels
 		btst	#0,obStatus(a0)	; is spike mirrored?
 		beq.s	@1
 		neg.w	d0
-@1:		move.w	d0,$34(a0)
-		bra.s	@playsound
+	@1:	move.w	d0,$34(a0)
+		rts
 
-@0:
+@movein:
 		clr.w	$34(a0)
+		rts
 
 @playsound:
 		tst.b	obRender(a0)
@@ -27779,17 +27822,12 @@ locret_1314E:
 Sonic_Unroll:
 		btst	#2,obStatus(a0)	; is Sonic already rolling?
 		beq.s	@end		; if not, branch
-		btst	#0,($FFFFF602)	; is up being pressed?
+		btst	#0,($FFFFF603)	; is up being pressed?
 		beq.s	@end		; if not, branch
-		bclr	#2,obStatus(a0)	; clear rolling flag
-		move.b	#$13,obHeight(a0) ; restore Y-hitbox-radius
-		move.b	#9,obWidth(a0)	; restore X-hitbox-radius
-		move.b	#0,obAnim(a0)	; use running anim
-		subq.w	#5,obY(a0)	; sub 5 from Sonic's Y-position
-		move.w	#$A9,d0
+		jsr	Sonic_ResetOnFloor ; unroll Sonic
+		move.w	#$A9,d0		; play blip sound
 		jsr	PlaySound_Special
-@end:
-		rts			; return
+@end:		rts			; return
 ; End of function Sonic_RollSpeed
 
 

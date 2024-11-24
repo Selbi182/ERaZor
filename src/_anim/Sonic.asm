@@ -93,7 +93,7 @@ SonAni_FastRunning:	dc.b $FF, $5E, $5F, $60, $61, $FF, $FF, $FF, $FF, $FF
 SonAni_Null1:		dc.b 0
 SonAni_Null2:		dc.b 0
 SonAni_Null3:		dc.b 0
-SonAni_Death_New:	dc.b 0, $74, $73, $72, $71, $70, $6F, $6E, $FF, 0
+SonAni_Death_New:	dc.b 0, $75, $74, $73, $72, $71, $70, $6F, $6E, $FF, 0
 SonAni_Running_SPO:	dc.b 1, $1E, $1F, $20, $21, $1E, $1F, $1E, $1F, $20, $21, $FD, $27
 SonAni_Sprinting_SPO:	dc.b 0, $5E, $5F, $60, $61, $FF
 SonAni_HomeRoll:	dc.b 0, $2E, $2F, $32, $30, $31, $32, $FF

@@ -271,7 +271,7 @@ Exit_StoryScreen:
 
 Exit_CreditsScreen:
 		tst.b	($FFFFFF95).w		; were any post-credits texts set to be displayed?
-		beq.s	@restartfromcredits	; if not, branch
+		beq.w	@restartfromcredits	; if not, branch
 
 		jsr	Pal_FadeFrom		; fade out palette
 		jsr	ClearScreen		; clear screen
@@ -315,7 +315,9 @@ Exit_CreditsScreen:
 		jsr	PlaySound_Special	; fade out music to set the atmosphere
 		moveq	#$12,d0			; load Blackout Challenge teaser text
 		jsr	Tutorial_DisplayHint	; VLADIK => Display hint
-
+		move.b	#$9C,d0
+		jsr	PlaySound_Special	; briefly play some normal music to reset the Sega chant
+		
 @restartfromcredits:
 		bra.w	Start_FirstGameMode	; restart game from Sega Screen
 
@@ -649,6 +651,7 @@ GTA_SNPSAP:	moveq	#5,d0			; unlock sixth door
 
 GTA_FP:		moveq	#6,d0			; unlock seventh door (door to the credits)
 		bsr	Set_DoorOpen
+		bsr	Set_TutorialVisited	; set tutorial visited now in case it wasn't already
 		btst	#2,(OptionsBits).w	; is Skip Uberhub Place enabled?		
 		beq.w	ReturnToUberhub		; if not, return to Uberhub
 		jsr	Check_AllLevelsBeaten_Current ; has the player beaten all levels?
@@ -816,6 +819,7 @@ UnlockEverything:
 		bsr	Set_BaseGameDone_Casual		; unlock cinematic mode
 		bsr	Set_BaseGameDone_Frantic	; unlock motion blur
 		bsr	Set_BlackoutDone		; unlock nonstop inhuman
+		bsr	Set_TutorialVisited		; set tutorial visited
 		move.b	#7,(CurrentChapter).w		; set to final chapter
 		rts
 

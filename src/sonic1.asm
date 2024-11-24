@@ -369,7 +369,7 @@ NullInt:
 
 ; BlackBars::
 BlackBars.GrowSize = 2
-BlackBars.MaxHeight = 36
+BlackBars.MaxHeight = 32
 
 	include	"Modules/BlackBars.asm"
 
@@ -448,8 +448,8 @@ BlackBars_SetHeight:
 		rts					; return
 ; ===========================================================================
 
-BlackBars.GHPCasual  = 60*3
-BlackBars.GHPFrantic = 60/2
+;BlackBars.GHPCasual  = 60*3
+BlackBars.GHPFrantic = 25
 ; ---------------------------------------------------------------------------
 
 BlackBars.GHP:
@@ -460,16 +460,18 @@ BlackBars.GHP:
 
 		tst.b	($FFFFF7AA).w			; fighting against boss? (for 3P easter egg)
 		bne.s	@baseheightokay			; if yes, branch
-		move.w	BlackBars.BaseHeight,d0		; get base black bar height
+	;	move.w	BlackBars.BaseHeight,d0		; get base black bar height
+		move.w	#BlackBars.MaxHeight,d0		; get fixed max height cause the stage is built around it
 		cmp.w	BlackBars.Height,d0		; are bars smaller than the base height?
 		blo.s	@baseheightokay			; if not, branch
 		addq.w	#BlackBars.GrowSize,BlackBars.TargetHeight ; grow bars until we reach the minimum height
 @baseheightokay:
-
-		move.b	#BlackBars.GHPCasual,d0		; set casual reset time
 		frantic					; are we in Frantic mode?
-		beq.s	@notfrantic			; if not, branch
-		move.b	#BlackBars.GHPFrantic,d0	; set frantic reset time
+		beq.s	@timeleft			; if not, branch
+	;	move.b	#BlackBars.GHPCasual,d0		; set casual reset time
+	;	frantic					; are we in Frantic mode?
+	;	beq.s	@notfrantic			; if not, branch
+		moveq	#BlackBars.GHPFrantic,d0	; set frantic reset time
 @notfrantic:	move.b	d0,BlackBars.GHPTimerReset	; set reset time
 		subq.b	#1,BlackBars.GHPTimer		; sub 1 from grow interval timer
 		bhi.s	@timeleft			; if time is left, branch
@@ -518,15 +520,17 @@ BlackBars_Intro:
 		bsr	PalLoad2
 
 @initdone:
-		cmpi.w	#36,BlackBars.Height		; did we reach the target position??
-		bls.s	@show				; if not, branch
+		move.w	BlackBars.BaseHeight,d0
+		cmp.w	BlackBars.Height,d0 		; did we reach the target position?
+		bhi.s	@show				; if not, branch
 		btst	#0,($FFFFFE05).w
 		bne.s	@show
 		subq.w	#1,BlackBars.TargetHeight	; shrink black bars
 @show:		bra.w	BlackBars_ShowCustom		; show bars
-	
+
 @chase:
-		move.w	#36,BlackBars.TargetHeight
+		move.w	BlackBars.BaseHeight,BlackBars.TargetHeight
+		
 		bra.w	BlackBars_ShowCustom
 ; ---------------------------------------------------------------------------
 
@@ -5730,6 +5734,7 @@ End_ClrRam3:	move.l	d0,(a1)+
 		move.w	#$1E,($FFFFFE14).w
 		move.w	#$601,($FFFFFE10).w ; set level	number to 0601 (no flowers)
 		move.b	#1,($FFFFF7CC).w
+		clr.w	($FFFFFE30).w		; clear any set level checkpoints
 
 End_LoadData:
 		move.b	#4,VBlankRoutine
@@ -8634,15 +8639,18 @@ Obj18_OnPlatform:				; XREF: Obj18_Index
 		tst.b	obSubtype(a0)		; is this the platform to go back up?
 		bmi.s	@gobackup		; if yes, branch
 		
-		btst	#1,($FFFFF603).w	; down pressed?
+		moveq	#%11,d0			; up or down...
+		and.b	($FFFFF603).w,d0	; ...pressed?
 		beq.s	Obj18_NotSYZX		; if not, branch
 		move.w	#$800,($FFFFD012).w	; shoot Sonic down
 		move.b	#2,($FFFFD01C).w	; rolling animation
 		bra.s	@platformgoboom
 
 @gobackup:
-		btst	#0,($FFFFF603).w	; up pressed?
+		moveq	#%11,d0			; up or down...
+		and.b	($FFFFF603).w,d0	; ...pressed?
 		beq.s	Obj18_NotSYZX		; if not, branch
+		
 		move.w	#-$1000,($FFFFD012).w	; shoot Sonic up
 
 		subi.w	#$50,($FFFFD00C).w
@@ -11333,7 +11341,7 @@ Obj1F_BossDelete:
 		move.w	#-$C80,obVelX(a1)	; weeeeeee
 		move.w	#0,obVelY(a1)
 		addq.w	#8,obY(a1)
-		bclr	#0,obStatus(a1) ; face right
+		bset	#0,obStatus(a1) ; face left
 		bset	#1,obStatus(a1) ; in air
 		bset	#2,obStatus(a1) ; rolling
 		bclr	#3,obStatus(a1) ; not standing
@@ -13202,9 +13210,11 @@ FZEscape_ScreenBoom:
 
 		move.l	a0,-(sp)		; backup to stack
 		jsr	Pal_CutToWhite		; instantly turn screen white
+		tst.b	($FFFFD000).w		; already jumped into the ring?
+		bne.s	@realend		; if yes, branch
 		move.w	#$000,($FFFFFB02).w	; keep black bars black
-		jsr	ClearScreen
-		move.l	(sp)+,a0		; restore from stack
+		jsr	ClearScreen		; clear screen (though it's not enough)
+@realend:	move.l	(sp)+,a0		; restore from stack
 
 		move.w	BlackBars.BaseHeight,BlackBars.Height ; force bars to max
 		move.w	#120,d5			; delay for two seconds
@@ -16766,6 +16776,7 @@ Obj34_TargetOK:
 		cmpi.b	#2,($FFFFFFAA).w	; has flag after Crabmeat boss been set?
 		bne.s	Obj34_ChkPos_End	; if not, branch
 		move.b	#0,($FFFFF7CC).w	; unlock controls
+	;	move.w	#BlackBars.MaxHeight,BlackBars.TargetHeight ; set proper black bars height now
 
 		bra.s	Obj34_ChkPos_End
 ; ===========================================================================
@@ -16851,10 +16862,18 @@ Obj34_Delete:
 		beq.w	Obj34_JustDelete	; if yes, delete
 		cmpi.w	#$501,($FFFFFE10).w	; are we in the tutorial?
 		beq.s	Obj34_JustDelete	; if yes, delete
+		
+		cmpi.w	#$302,($FFFFFE10).w	; is this SAP
+		bne.s	@loadhud
+		cmpi.b	#$21,($FFFFD400).w
+		beq.s	Obj34_JustDelete
+
 	;	cmpi.w	#$002,($FFFFFE10).w	; are we in GHP?
 	;	beq.s	Obj34_JustDelete	; if yes, delete (<--- what???)
 	;	cmpi.b	#2,($FFFFFFAA).w	; has the crabmeat been defeated?
 	;	beq.s	Obj34_JustDelete	; if yes, delete
+
+@loadhud:
 		bsr	HUD_LoadObjects		; otherwise, load HUD
 
 Obj34_JustDelete:
@@ -26461,10 +26480,13 @@ Obj06_ChkA:
 
 		tst.b	(FZEscape).w		; are we in the FZ escape sequence?
 		beq.s	@displayhint		; if not, branch
-		cmpi.b	#$B,d0			; is this the last text box?
+		cmpi.b	#$B,d0			; is this the easter egg text box?
 		beq.s	@lasteaster		; if yes, branch
+		cmpi.b	#$D,d0			; is this the last normal text box?
+		beq.s	@explode		; if yes, fuck it in particular
 		tst.b	($FFFFFFB4).w		; is this the first text box checked during the escape?
 		beq.s	@first			; if yes, branch
+	@explode:
 		move.b	#$3F,(a0)		; blow up the tutorial box
 		move.b	#0,$31(a0)
 		move.b	#1,$30(a0)		; make explosion harmless
@@ -30393,7 +30415,8 @@ Obj0A_ChkWater:				; XREF: Obj0A_Index
 		move.b	#6,obRoutine(a0)
 		addq.b	#7,obAnim(a0)
 		cmpi.b	#$D,obAnim(a0)
-		beq.s	Obj0A_Display
+		bls.s	Obj0A_Display
+		move.b	#$D,obAnim(a0)
 		bra.s	Obj0A_Display
 ; ===========================================================================
 
@@ -44868,7 +44891,7 @@ PLC_SpeStage:
 		dc.w 0
 		dc.l ArtKospM_TitleCard	; title cards
 		dc.w $0A20
-		dc.l ArtKospM_Bumper		; bumper
+		dc.l ArtKospM_SSBumper		; bumper
 		dc.w $4760
 		dc.l ArtKospM_SSGOAL		; GOAL block
 		dc.w $4A20
@@ -45056,6 +45079,8 @@ ArtKosp_SSWalls:	incbin	artkosp\sswalls.kosp	; special stage walls
 Eni_SSBg2:	incbin	misc\eni_ssbg2.bin	; special stage background (mappings)
 		even
 ArtKospM_SSBgCloud:	incbin	artkosp\ssbg2.kospm	; special stage clouds background
+		even
+ArtKospM_SSBumper:	incbin	artkosp\ssbumper.kospm	; special stage bumper
 		even
 ArtKospM_SSGOAL:	incbin	artkosp\ssgoal.kospm	; special stage GOAL block
 		even

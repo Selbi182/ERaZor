@@ -5,8 +5,8 @@
 
 SoundTest_Obj_VisualizerOverlay:
 	SoundTest_CreateChildObject #@Init	; generate secondary sprite (becase we can't cover more than 256 pixels)
-	move.w	#$80+3*8-4-SCREEN_XDISP+$80, obX(a0)		; X-position for the main sprite
-	move.w	#$80+3*8-4-SCREEN_XDISP+$80+$80, obX(a1)	; X-position for the secondary sprite
+	move.w	#$80+(SCREEN_WIDTH-SoundTest_Visualizer_Width*8)/2+$80, obX(a0)		; X-position for the main sprite
+	move.w	#$80+(SCREEN_WIDTH-SoundTest_Visualizer_Width*8)/2+$100, obX(a1)	; X-position for the secondary sprite
 	move.b	#1, obFrame(a1)			; set secondary sprite frame
 
 @Init:
@@ -48,10 +48,21 @@ SoundTest_Obj_VisualizerOverlay:
 	endr
 
 @Frame2:
-	dc.b	4
-	@y: = 0
-	rept 4
-		dc.b	@y, %1011, 0, 4*4, 0
-		@y: = @y + $20
-	endr
-	even
+	if def(__WIDESCREEN__)=0
+		dc.b	4
+		@y: = 0
+		rept 4
+			dc.b	@y, %1011, 0, 4*4, 0
+			@y: = @y + $20
+		endr
+		even
+	else
+		dc.b	4*2
+		@y: = 0
+		rept 4
+			dc.b	@y, $F, 0, 4*4, 0
+			dc.b	@y, $F, 0, 4*3, $20
+			@y: = @y + $20
+		endr
+		even
+	endif

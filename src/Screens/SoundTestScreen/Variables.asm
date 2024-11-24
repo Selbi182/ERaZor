@@ -4,9 +4,18 @@ SoundTest_PlaneA_VRAM:		equ	$A000	; FG
 SoundTest_PlaneB_VRAM:		equ	$C000	; BG
 SoundTest_PlaneC_VRAM:		equ	$B000	; reserved for Piano Sheet / Visualizer
 
+	if def(__WIDESCREEN__)=0
+; 4:3 configuration
 SoundTest_Visualizer_Width:		equ	35	; tiles
 SoundTest_Visualizer_Height:		equ	16	; tiles
 SoundTest_Visualizer_NumOctaves:	equ	7
+	else
+; Widescreen configuration
+SoundTest_Visualizer_Width:		equ	40	; tiles
+SoundTest_Visualizer_Height:		equ	16	; tiles
+SoundTest_Visualizer_NumOctaves:	equ	8
+	endif
+
 SoundTest_Visualizer_MaxWriteRequests:	equ	SoundTest_Visualizer_NumOctaves*12+2
 
 SoundTest_StringBufferSize:	equ	52+1
@@ -19,9 +28,14 @@ SoundTest_StringBufferSize:	equ	52+1
 
 				rsset	$20
 SoundTest_Visualizer_VRAM:	rs.b	SoundTest_Visualizer_Width*SoundTest_Visualizer_Height*$20
-SoundTest_Piano_VRAM:		rsfile	"Screens/SoundTestScreen/Data/BasePiano_Tiles.bin"
-SoundTest_PianoOverlays_VRAM:	rsfile	"Screens/SoundTestScreen/Data/BasePiano_KeyOverlays_Tiles.bin"
+			if def(__WIDESCREEN__)=0
 SoundTest_BG_VRAM:		rsfile	"Screens/SoundTestScreen/Data/BG2_Tiles.bin"
+SoundTest_Piano_VRAM:		rsfile	"Screens/SoundTestScreen/Data/BasePiano_Tiles.bin"
+			else
+SoundTest_BG_VRAM:		rsfile	"Screens/SoundTestScreen/Data/BG2_Tiles_Wide.bin"
+SoundTest_Piano_VRAM:		rsfile	"Screens/SoundTestScreen/Data/BasePiano_Tiles_Wide.bin"
+			endif
+SoundTest_PianoOverlays_VRAM:	rsfile	"Screens/SoundTestScreen/Data/BasePiano_KeyOverlays_Tiles.bin"
 SoundTest_Font_VRAM:		rsfile	"Screens/SoundTestScreen/Data/Font.bin"
 SoundTest_Header_VRAM:		rsfile	"Screens/SoundTestScreen/Data/Header_Tiles.bin"
 SoundTest_UIBorderOverlay_VRAM:	rsfile	"Screens/SoundTestScreen/Data/UIBorderOverlay_Tiles.bin"

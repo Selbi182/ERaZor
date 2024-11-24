@@ -83,7 +83,7 @@ SoundTestScreen:
 
 	vram	SoundTest_PlaneA_VRAM+$A00, d0
 	lea	$FF0000, a1
-	moveq	#36-1, d1
+	moveq	#(SoundTest_Visualizer_Width+1)-1, d1
 	moveq	#3-1, d2
 	jsr	ShowVDPGraphics
 
@@ -508,53 +508,21 @@ SoundTest_Visualizer_Update:
 
 	; USES:
 	@var0:			equr	d0
-	@pixel_buffer:		equr	a0
-	@pixel_buffer_half1:	equr	a1
-	@pixel_buffer_half2:	equr	a2
-
-	@pixel_data_half1_p1:	equr	d2
-	@pixel_data_half1_p2:	equr	d3
-	@pixel_data_half1_p3:	equr	d4
-	@pixel_data_half1_p4:	equr	d5
-	@pixel_data_half1_p5:	equr	d6
-	@pixel_data_half2:	equr	d7
 
 	; ----------------------------------------------
 	; Initially draw an empty line in pixel buffer
 	; ----------------------------------------------
 
+	@pixel_buffer:		equr	a0
+
 	lea	SoundTest_Visualizer_PixelBuffer, @pixel_buffer
-	lea	(@pixel_buffer), @pixel_buffer_half1
-	lea	@pixel_buffer_half_size(@pixel_buffer), @pixel_buffer_half2
 
-	; TODO: Replace with zeroes
-	movem.l	@PianoSeparatorData(pc), @pixel_data_half1_p1-@pixel_data_half1_p5
-	moveq	#0, @pixel_data_half2
-
-	rept @pixel_buffer_size/(8*5)
-		move.l	@pixel_data_half1_p1, (@pixel_buffer_half1)+
-		move.l	@pixel_data_half2, (@pixel_buffer_half2)+
-		move.l	@pixel_data_half1_p2, (@pixel_buffer_half1)+
-		move.l	@pixel_data_half2, (@pixel_buffer_half2)+
-		move.l	@pixel_data_half1_p3, (@pixel_buffer_half1)+
-		move.l	@pixel_data_half2, (@pixel_buffer_half2)+
-		move.l	@pixel_data_half1_p4, (@pixel_buffer_half1)+
-		move.l	@pixel_data_half2, (@pixel_buffer_half2)+
-		move.l	@pixel_data_half1_p5, (@pixel_buffer_half1)+
-		move.l	@pixel_data_half2, (@pixel_buffer_half2)+
+	moveq	#0, @var0
+	rept @pixel_buffer_size/4
+		move.l	@var0, (@pixel_buffer)+
 	endr
-	@remaining_buffer: = (@pixel_buffer_size % (8*5))
-	if @remaining_buffer = 20
-		move.l	@pixel_data_half1_p1, (@pixel_buffer_half1)+
-		move.l	@pixel_data_half2, (@pixel_buffer_half2)+
-		move.l	@pixel_data_half1_p2, (@pixel_buffer_half1)+
-		move.l	@pixel_data_half2, (@pixel_buffer_half2)+
-		swap	@pixel_data_half1_p3
-		move.w	@pixel_data_half1_p3, (@pixel_buffer_half1)+
-		swap	@pixel_data_half2
-		move.w	@pixel_data_half2, (@pixel_buffer_half2)+
-	else
-		inform 3, "Bad remaining buffer: \#@remaining_buffer"
+	if (@pixel_buffer_size % 4) = 2
+		move.w	@var0, (@pixel_buffer)+
 	endif
 
 	; -----------------------------
@@ -604,12 +572,6 @@ SoundTest_Visualizer_Update:
 	move.w	#0, SoundTest_VisualizerPos_TilePtr
 @pos_ok:
 	rts
-
-; ---------------------------------------------------------------------------
-@PianoSeparatorData:
-	@i: = 0;$F
-
-	dc.w	$1000*@i, $0000, $0100*@i, $0000, $0000, $1000*@i, $0000, $0100*@i, $0000, $0000
 
 
 ; ---------------------------------------------------------------------------
@@ -869,22 +831,38 @@ SoundTest_CharToTile:
 
 ; WARNING! This was pre-compiled for `SoundTest_Visualizer_VRAM = $20`
 SoundTest_PianoSheet_MapKosp:
-	incbin	"Screens/SoundTestScreen/Data/PianoSheet_Map.kosp"
+	if def(__WIDESCREEN__)=0
+		incbin	"Screens/SoundTestScreen/Data/PianoSheet_Map.kosp"
+	else
+		incbin	"Screens/SoundTestScreen/Data/PianoSheet_Map_Wide.kosp"
+	endif
 	even
 
 ; ---------------------------------------------------------------------------
 SoundTest_BG2_MapEni:
-	incbin	"Screens/SoundTestScreen/Data/BG2_Map.eni"
+	if def(__WIDESCREEN__)=0
+		incbin	"Screens/SoundTestScreen/Data/BG2_Map.eni"
+	else
+		incbin	"Screens/SoundTestScreen/Data/BG2_Map_Wide.eni"
+	endif
 	even
 
 ; ---------------------------------------------------------------------------
 SoundTest_BG2_TilesKospM:
-	incbin	"Screens/SoundTestScreen/Data/BG2_Tiles.kospm"
+	if def(__WIDESCREEN__)=0
+		incbin	"Screens/SoundTestScreen/Data/BG2_Tiles.kospm"
+	else
+		incbin	"Screens/SoundTestScreen/Data/BG2_Tiles_Wide.kospm"
+	endif
 	even
 
 ; ---------------------------------------------------------------------------
 SoundTest_Piano_MapEni:
-	incbin	"Screens/SoundTestScreen/Data/BasePiano_Map.eni"
+	if def(__WIDESCREEN__)=0
+		incbin	"Screens/SoundTestScreen/Data/BasePiano_Map.eni"
+	else
+		incbin	"Screens/SoundTestScreen/Data/BasePiano_Map_Wide.eni"
+	endif
 	even
 
 ; ---------------------------------------------------------------------------
@@ -894,7 +872,11 @@ SoundTest_Header_MapEni:
 
 ; ---------------------------------------------------------------------------
 SoundTest_Piano_TilesKospM:
-	incbin	"Screens/SoundTestScreen/Data/BasePiano_Tiles.kospm"
+	if def(__WIDESCREEN__)=0
+		incbin	"Screens/SoundTestScreen/Data/BasePiano_Tiles.kospm"
+	else
+		incbin	"Screens/SoundTestScreen/Data/BasePiano_Tiles_Wide.kospm"
+	endif
 	even
 
 ; ---------------------------------------------------------------------------

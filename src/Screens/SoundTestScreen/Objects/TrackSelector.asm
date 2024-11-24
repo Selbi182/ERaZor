@@ -124,7 +124,7 @@ SoundTest_Obj_TrackSelector:
 	; Determine scrolling max value
 	moveq	#0, d0
 	move.b	4(@track_info), d0			; get description string length
-	sub.w	#33, d0
+	sub.w	#SoundTest_Visualizer_Width-2, d0
 	lsl.w	#3, d0
 	bls.s	@disable_scrolling			; branch if result is zero or negative
 
@@ -194,9 +194,9 @@ SoundTest_Obj_TrackSelector_Arrows:
 	SoundTest_CreateChildObject #@Init	; a1 = right arror
 	lea	SoundTest_CharToTile(pc), @char_to_tile
 	move.w	('>'-$20)*2(@char_to_tile), obGfx(a1)	; right arrow settings
-	move.w	#$80+320-SCREEN_XDISP-8*4, obX(a1)			; ''
+	move.w	#$80+(SCREEN_WIDTH+SoundTest_Visualizer_Width*8)/2-12, obX(a1)	; ''
 	move.w	('<'-$20)*2(@char_to_tile), obGfx(a0)	; left arrow settings
-	move.w	#$80-SCREEN_XDISP+8*3, obX(a0)			; ''
+	move.w	#$80+(SCREEN_WIDTH-SoundTest_Visualizer_Width*8)/2+4, obX(a0)	; ''
 
 @Init:
 	move.b	#1<<5, obRender(a0)		; sprite piece mode
@@ -218,8 +218,8 @@ SoundTest_Obj_TrackSelector_Arrows:
 
 SoundTest_Obj_TrackSelector_Overlay:
 	SoundTest_CreateChildObject #@Init	; a1 = secondary sprite
-	move.w	#$80+3*8-SCREEN_XDISP-4+$80, obX(a0)		; X-position for the primary sprite
-	move.w	#$80+3*8-SCREEN_XDISP-4+$80+$80, obX(a1)	; X-position for the secondary sprite
+	move.w	#$80+(SCREEN_WIDTH-SoundTest_Visualizer_Width*8)/2+$80, obX(a0)		; X-position for the main sprite
+	move.w	#$80+(SCREEN_WIDTH-SoundTest_Visualizer_Width*8)/2+$100, obX(a1)	; X-position for the secondary sprite
 	move.b	#1, obFrame(a1)			; secondary sprite frame
 
 @Init:
@@ -247,7 +247,14 @@ SoundTest_Obj_TrackSelector_Overlay:
 	dc.b	0, %1111, 0, 4*8, $60
 
 @Frame1:
-	dc.b	2
-	dc.b	0, %1011, 0, 4*9, $00
-	dc.b	0, %0011, $80, 4*12, $18
+	if def(__WIDESCREEN__)=0
+		dc.b	2
+		dc.b	0, %1011, 0, 4*9, $00
+		dc.b	0, %0011, $80, 4*12, $18
+	else
+		dc.b	3
+		dc.b	0, %1111, 0, 4*8, $00
+		dc.b	0, %1111, 0, 4*8, $20
+		dc.b	0, %0011, $80, 4*12, $40
+	endif
 	even

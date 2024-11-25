@@ -8541,6 +8541,17 @@ Obj18_Main:				; XREF: Obj18_Index
 Obj18_NotLZ:
 		cmpi.b	#4,($FFFFFE10).w ; check if level is SYZ
 		bne.w	Obj18_NotSYZ
+
+		cmpi.w	#$1680,obX(a0)		; is this a platform at the FP room?
+		bne.s	@notfp			; if not, branch
+		tst.b	obSubtype(a0)		; is this the platform that shoots down?
+		bne.s	@notfp			; if not, branch
+		moveq	#6,d0			; has the player beaten FP already?
+		jsr	Check_LevelBeaten_Current
+		bne.s	@notfp			; if yes, display platform
+		jmp	DeleteObject		; otherwise, delete
+
+@notfp:
 		move.l	#Map_obj18a,obMap(a0) ; SYZ specific code
 		move.w	#$4000+($A660/$20),obGfx(a0)
 		move.b	#$90,obActWid(a0)	; make platforms SUPER wide for easy access
@@ -26242,8 +26253,11 @@ Obj03_Display:
 ; ===========================================================================
 
 Obj03_BackgroundColor:
-		moveq	#$F, d0
-		and.b	obSubtype(a0), d0
+		moveq	#$1F, d0
+		and.b	obFrame(a0), d0
+
+		assert.b obFrame(a0), ls, #$10
+
 		add.w	d0, d0
 		add.w	d0, d0				; d0 = Frame * 4
 		move.l	@BGColorData(pc, d0), d0
@@ -26286,13 +26300,14 @@ Obj03_BackgroundColor:
 		dc.w	$000, Pal_Active+$5E	; $00 - Finalor
 		dc.w	$000, Pal_Active+$5E	; $07 - Tutorial
 		dc.w	$444, Pal_Active+$5E	; $08 - Options
-		dc.w	-1, -1			; $09 - Place
+		dc.w	-1, -1			; $09 - "Place" text
 		dc.w	$000, Pal_Active+$5E	; $0A - Exit Tutorial
 		dc.w	$A28, Pal_Active+$5E	; $0B - Sound Test :3
 		dc.w	$000, Pal_Active+$5E	; $0C - Intro Scene
 		dc.w	$022, Pal_Active+$5E	; $0D - The End
 		dc.w	$000, Pal_Active+$5E	; $0E - Skip Tutorial
-		dc.w	$00E, Pal_Active+$5E	; $0F - Real
+		dc.w	$00E, Pal_Active+$5E	; $0F - Real (Blackout Challenge)
+		dc.w	$248, Pal_Active+$5E	; $10 - FUN tutorial bait
 		dc.w	-1, -1
 
 ; ---------------------------------------------------------------------------

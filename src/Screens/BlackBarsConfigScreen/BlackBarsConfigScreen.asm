@@ -570,12 +570,12 @@ BlackBarsConfigScreen_WriteText_WidescreenInfo:
 	BBCS_EnterConsole a0
 
 
-	Console.SetXY #6, #3
+	Console.SetXY #6, #2
 	Console.Write "        SONIC ERAZOR"
 	Console.Write "%<endl>%<endl>"
 	Console.Write "W  I  D  E  S  C  R  E  E  N%"
 
-	Console.SetXY #3, #7
+	Console.SetXY #3, #6
 	Console.Write "%<pal2>----------------------------------%<pal0>"
 	Console.Write "%<endl>%<endl>"
 	Console.Write "  THIS IS A SPECIAL 16:9 VERSION%<endl>"
@@ -587,14 +587,17 @@ BlackBarsConfigScreen_WriteText_WidescreenInfo:
 	Console.Write "%<endl>%<endl>"
 	Console.Write "  AND IT WILL BE A HELLA AWKWARD%<endl>"
 	Console.Write "EXPERIENCE FOR ANY OTHER EMULATOR!"
+	Console.Write "%<endl>"
+	Console.Write "    GO TO THIS URL TO DOWNLOAD%<endl>"
+	Console.Write "     THE REGULAR 4:3 VERSION:"
+	Console.Write "%<endl>%<endl>"
+	Console.Write " HTTPS://SELBI.HAPISAN.COM/ERAZOR"
 	Console.Write "%<endl>%<endl>"
 	Console.Write "%<pal2>----------------------------------%<pal0>"
 
-	Console.SetXY #2, #21
-	Console.Write "  HTTPS://SELBI.HAPISAN.COM/ERAZOR"
-	Console.Write "%<endl>%<endl>"
-	Console.Write "     GO TO THIS URL TO DOWNLOAD%<endl>"
-	Console.Write "      THE REGULAR 4:3 VERSION."
+	Console.SetXY #5, #24
+	Console.Write "   FOR THE BEST EXPERIENCE, %<endl>"
+	Console.Write "DISABLE SPRITE LIMITS AS WELL!"
 
 
 	; this text overflows to the left and right, making it invisible in 4:3 mode

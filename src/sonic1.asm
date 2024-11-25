@@ -26412,7 +26412,7 @@ Obj06_Setup:
 		cmpi.w	#$000,($FFFFFE10).w		; is level Night Hill Place?
 		beq.s	Obj06_ArtLocFound		; if yes, branch
 
-		move.w	#$04FF,obGfx(a0)		; set art pointer, use palette line 1
+		move.w	#$04FC,obGfx(a0)		; set art pointer, use palette line 1
 		cmpi.w	#$200,($FFFFFE10).w		; is level Ruined Place?
 		beq.s	Obj06_ArtLocFound		; if yes, branch
 
@@ -44852,7 +44852,7 @@ PLC_MZ:
 		dc.l ArtKospM_Basaran	; basaran enemy
 		dc.w $9700
 		dc.l ArtKospM_HardPS		; hard part skipper
-		dc.w $9FE0
+		dc.w $9F80
 		dc.w -1
 
 PLC_MZ2:

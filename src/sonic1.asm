@@ -60,7 +60,7 @@ QuickLevelSelect = 0
 QuickLevelSelect_ID = -1
 ; ------------------------------------------------------
 DebugModeDefault = 1
-DebugSurviveNoRings = 0
+DebugSurviveNoRings = 1
 ; ------------------------------------------------------
 DoorsAlwaysOpen = 0
 LowBossHP = 0
@@ -7541,10 +7541,12 @@ PLC_FZEscape:
 		dc.w $5500
 		dc.l ArtKospM_HSpring
 		dc.w $A460
-		dc.l ArtKospM_HardPS_Tut
+		dc.l ArtKospM_HardPS
 		dc.w $6C00
+		dc.l ArtKospM_Infobox
+		dc.w $6E80
 		dc.l ArtKospM_Switch
-		dc.w $70A0
+		dc.w $7100
 		dc.w -1
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
@@ -15859,7 +15861,7 @@ Obj32_Main:				; XREF: Obj32_Index
 		
 		cmpi.b	#5,($FFFFFE10).w	; is level SBZ?
 		bne.s	@switchcheckmz		; if not, branch
-		move.w	#($7120/$20),obGfx(a0)	; SBZ maps
+		move.w	#($7180/$20),obGfx(a0)	; SBZ maps
 @switchcheckmz:
 		cmpi.b	#2,($FFFFFE10).w	; is level MZ?
 		bne.s	@switchchecklz		; if not, branch
@@ -26436,10 +26438,12 @@ Obj06_ArtLocFound:
 		beq.s	Obj06_ChkDist			; if yes, that means it's a regular hard part skipper, so branch
 		move.b	#4,obRoutine(a0)		; otherwise it's a tutorial box
 		move.b	#1,obFrame(a0)			; use tutorial box frame
+		move.w	#$0364,obGfx(a0)		; set art pointer, use palette line 1
 		bra.w	Obj06_InfoBox			; skip
 ; ---------------------------------------------------------------------------
 
 Obj06_ChkDist:
+		move.b	#0,obFrame(a0)		; hide "SKIP" text
 		clr.b	($FFFFFF74).w		; clear spindash block flag
 		move.w	($FFFFD008).w,d0	; get Sonic's X-pos
 		sub.w	obX(a0),d0		; substract the X-pos from the current object from it
@@ -26452,6 +26456,7 @@ Obj06_ChkDist:
 		cmpi.w	#$20,d0			; is Sonic within $10 pixels of that object?
 		bhi.w	Obj06_Display		; if not, branch
 		move.b	#1,($FFFFFF74).w	; set spindash block flag
+		move.b	#3,obFrame(a0)		; show "SKIP" text
 
 		tst.b	($FFFFFFB1).w		; is white flash counter empty?
 		bpl.w	Obj06_Display		; if not, branch (to prevent the white getting stuck)
@@ -44937,10 +44942,12 @@ PLC_SYZ2:
 PLC_SBZ:
 		dc.l ArtKospM_SBZ		; SBZ main patterns
 		dc.w 0
-		dc.l ArtKospM_HardPS_Tut	; hard part skipper
+		dc.l ArtKospM_HardPS		; hard part skipper
 		dc.w $6C00
+		dc.l ArtKospM_Infobox		; infoboxes
+		dc.w $6E80
 		dc.l ArtKospM_Switch	; switch
-		dc.w $70A0
+		dc.w $7100
 		dc.l ArtKospM_LevelSigns	; level signs
 		dc.w $7300
 		dc.l ArtKospM_SbzDoor1	; door
@@ -45447,8 +45454,10 @@ ArtKospM_Bonus:	incbin	artkosp\bonus.kospm	; hidden bonuses at end of a level
 ;		even
 ArtKospM_HardPS:	incbin	artkosp\HardPartSkipper.kospm ; Hard Part Skipper
 		even
-ArtKospM_HardPS_Tut:	incbin	artkosp\HardPartSkipper_Tutorial.kospm ; Hard Part Skipper in the tutorial (includes info boxes)
+ArtKospM_Infobox:	incbin	artkosp\Infobox_Tutorial.kospm ; info boxes in the tutorials
 		even
+;ArtKospM_HardPS_Tut:	incbin	artkosp\HardPartSkipper_Tutorial.kospm ; Hard Part Skipper in the tutorial (includes info boxes)
+;		even
 ArtKospM_BombMach:	incbin	artkosp\BombMachine.kospm	; bomb machine
 		even
 ArtKospM_OkCool:	incbin	artkosp\okcool.kospm ; ok cool

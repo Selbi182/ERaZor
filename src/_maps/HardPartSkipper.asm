@@ -1,15 +1,53 @@
 ; --------------------------------------------------------------------------------
-; Sprite mappings - output from SonMapEd - Sonic 1 format
+; Sprite mappings - output from ClownMapEd - Sonic 1/CD format
 ; --------------------------------------------------------------------------------
 
-SME_CHx9l:	
-		dc.w SME_CHx9l_6-SME_CHx9l, SME_CHx9l_C-SME_CHx9l	
-		dc.w SME_CHx9l_12-SME_CHx9l	
-SME_CHx9l_6:	dc.b 1	
-		dc.b $F0, $F, 0, 0, $F0	
-SME_CHx9l_C:	dc.b 1	
-		dc.b $F0, $F, 0, $10, $F0	
-SME_CHx9l_12:	dc.b 2	
-		dc.b $F0, $F, 0, $10, $F0	
-		dc.b $D6, 5, 0, $20, $F8	
-		even
+CME_E931A8C5:
+	dc.w	CME_E931A8C5_0-CME_E931A8C5
+	dc.w	CME_E931A8C5_1-CME_E931A8C5
+	dc.w	CME_E931A8C5_2-CME_E931A8C5
+	dc.w	CME_E931A8C5_3-CME_E931A8C5
+
+CME_E931A8C5_0:
+	dc.b	1
+
+	dc.b	-16
+	dc.b	$0F
+	dc.w	$0000
+	dc.b	-16
+
+CME_E931A8C5_1:
+	dc.b	1
+
+	dc.b	-16
+	dc.b	$0F
+	dc.w	$0010
+	dc.b	-16
+
+CME_E931A8C5_2:
+	dc.b	2
+
+	dc.b	-16
+	dc.b	$0F
+	dc.w	$0010
+	dc.b	-16
+
+	dc.b	-42
+	dc.b	$05
+	dc.w	$0020
+	dc.b	-8
+
+CME_E931A8C5_3:
+	dc.b	2
+
+	dc.b	-38
+	dc.b	$0C
+	dc.w	$0010
+	dc.b	-16
+
+	dc.b	-16
+	dc.b	$0F
+	dc.w	$0000
+	dc.b	-16
+
+	even

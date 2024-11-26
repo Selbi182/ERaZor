@@ -7,55 +7,56 @@
 Options_MenuData:
 
 	; Gameplay style
-	dcScreenPos	$E000, 6, 6			; start on-screen position
+	dcScreenPos	$E000, 6, 5			; start on-screen position
 	dc.l	Options_GameplayStyle_Redraw		; redraw handler
 	dc.l	Options_GameplayStyle_Handle		; update handler
 	
 	; Autoskip
-	dcScreenPos	$E000, 8, 6			; start on-screen position
+	dcScreenPos	$E000, 8, 5			; start on-screen position
 	dc.l	Options_Autoskip_Redraw			; redraw handler
 	dc.l	Options_Autoskip_Handle			; update handler
 	; Extended camera
-	dcScreenPos	$E000, 9, 6			; start on-screen position
+	dcScreenPos	$E000, 9, 5			; start on-screen position
 	dc.l	Options_ExtendedCamera_Redraw		; redraw handler
 	dc.l	Options_ExtendedCamera_Handle		; update handler
 	; Peelout style
-	dcScreenPos	$E000, 10, 6			; start on-screen position
+	dcScreenPos	$E000, 10, 5			; start on-screen position
 	dc.l	Options_PeeloutStyle_Redraw		; redraw handler
 	dc.l	Options_PeeloutStyle_Handle		; update handler
+	
 	; Flashy Lights
-	dcScreenPos	$E000, 11, 6			; start on-screen position
+	dcScreenPos	$E000, 11, 5			; start on-screen position
 	dc.l	Options_FlashyLights_Redraw		; redraw handler
 	dc.l	Options_FlashyLights_Handle		; update handler
 	; Camera Shake
-	dcScreenPos	$E000, 12, 6			; start on-screen position
+	dcScreenPos	$E000, 12, 5			; start on-screen position
 	dc.l	Options_CameraShake_Redraw		; redraw handler
 	dc.l	Options_CameraShake_Handle		; update handler
 	; Audio
-	dcScreenPos	$E000, 13, 6			; start on-screen position
+	dcScreenPos	$E000, 13, 5			; start on-screen position
 	dc.l	Options_Audio_Redraw			; redraw handler
 	dc.l	Options_Audio_Handle			; update handler
 
 	; Black bars setup
-	dcScreenPos	$E000, 15, 6			; start on-screen position
+	dcScreenPos	$E000, 15, 5			; start on-screen position
 	dc.l	Options_BlackBarsMode_Redraw		; redraw handler
 	dc.l	Options_BlackBarsMode_Handle		; update handler
 
 	; E - Cinematic mode
-	dcScreenPos	$E000, 17, 6			; start on-screen position
+	dcScreenPos	$E000, 17, 5			; start on-screen position
 	dc.l	Options_CinematicMode_Redraw		; redraw handler
 	dc.l	Options_CinematicMode_Handle		; update handler
 	; R - Screen Effects
-	dcScreenPos	$E000, 18, 6			; start on-screen position
+	dcScreenPos	$E000, 18, 5			; start on-screen position
 	dc.l	Options_ScreenEffects_Redraw		; redraw handler
 	dc.l	Options_ScreenEffects_Handle		; update handler
 	; Z - True Inhuman
-	dcScreenPos	$E000, 19, 6			; start on-screen position
+	dcScreenPos	$E000, 19, 5			; start on-screen position
 	dc.l	Options_NonstopInhuman_Redraw		; redraw handler
 	dc.l	Options_NonstopInhuman_Handle		; update handler
 
 	; Delete save game
-	dcScreenPos	$E000, 21, 6			; start on-screen position
+	dcScreenPos	$E000, 21, 5			; start on-screen position
 	dc.l	Options_DeleteSaveGame_Redraw		; redraw handler
 	dc.l	Options_DeleteSaveGame_Handle		; update handler
 
@@ -87,7 +88,7 @@ Options_GameplayStyle_Redraw:
 	and.b	OptionsBits, d0
 	beq.s	@0
 	lea	@Str_Option2(pc), a1
-@0:	Options_PipeString a4, "DIFFICULTY           %<.l a1 str>", 28
+@0:	Options_PipeString a4, "SELECT DIFFICULTY      %<.l a1 str>", 30
 	rts
 
 ; ---------------------------------------------------------------------------
@@ -103,9 +104,9 @@ Options_GameplayStyle_Redraw:
 Options_GameplayStyle_Handle:
 	moveq	#0,d1
 	move.b	Joypad|Press, d1	; get button presses
-	andi.b	#$FC,d1			; is left, right, A, B, C, or Start pressed?
+	andi.b	#$F0,d1			; is A, B, C, or Start pressed?
 	beq.s	@ret			; if not, branch
-	
+
 	tst.b	(PlacePlacePlace).w	; is easter egg flag set?
 	beq.s	@noteaster		; if not, branch
 	clr.b	(PlacePlacePlace).w	; clear easter egg flag
@@ -117,8 +118,12 @@ Options_GameplayStyle_Handle:
 	bra.s	@redraw
 
 @noteaster:
-	andi.b	#$C,d1			; specifically left or right pressed?
+	btst	#6,d1			; is specifically A pressed?
+	beq.s	@gss			; if not, branch
+	tst.w	($FFFFFFFA).w		; is debug mode enabled?
 	bne.s	@quicktoggle		; if yes, quick toggle
+
+@gss:
 	moveq	#1,d0			; set to GameplayStyleScreen
 	jmp	Exit_OptionsScreen
 
@@ -143,7 +148,7 @@ Options_ExtendedCamera_Redraw:
 	btst	#0, OptionsBits
 	beq.s	@0
 	lea	Options_Str_On(pc), a1
-@0:	Options_PipeString a4, "EXTENDED CAMERA          %<.l a1 str>", 28
+@0:	Options_PipeString a4, "EXTENDED CAMERA            %<.l a1 str>", 30
 	rts
 
 ; ---------------------------------------------------------------------------
@@ -174,14 +179,14 @@ Options_PeeloutStyle_Redraw:
 	btst	#4, OptionsBits2
 	beq.s	@0
 	lea	@Str_UPandABC(pc), a1
-@0:	Options_PipeString a4, "PEELOUT STYLE       %<.l a1 str>", 28
+@0:	Options_PipeString a4, "PEELOUT STYLE          %<.l a1 str>", 30
 	rts
 
 @Str_UPandA:
-	dc.b	'   ^ + A', 0
+	dc.b	'  ^ + A', 0
 	even
 @Str_UPandABC:
-	dc.b	' ^ + ABC', 0
+	dc.b	'^ + ABC', 0
 	even
 
 ; ---------------------------------------------------------------------------
@@ -220,7 +225,7 @@ Options_Autoskip_Redraw:
 	add.w	d0, d0				; d0 = ModeId * 4
 	movea.l	@AutoskipList(pc,d0), a1
 	
-	Options_PipeString a4, "AUTOSKIP       %<.l a1 str>", 28
+	Options_PipeString a4, "AUTOSKIP         %<.l a1 str>", 30
 	rts
 
 ; ---------------------------------------------------------------------------
@@ -230,7 +235,7 @@ Options_Autoskip_Redraw:
 @Str_Mode00:	dc.b	'          OFF',0
 @Str_Mode01:	dc.b	'STORY SCREENS',0
 @Str_Mode10:	dc.b	'UBERHUB PLACE',0
-@Str_Mode11:	dc.b	'         BOTH',0
+@Str_Mode11:	dc.b	'  STORY + HUB',0
 		even
 
 
@@ -294,7 +299,7 @@ Options_FlashyLights_Redraw:
 	add.w	d0, d0				; d0 = ModeId * 4
 	movea.l	@FlashyLightsList(pc,d0), a1
 	
-	Options_PipeString a4, "FLASHY LIGHTS %<.l a1 str>", 28
+	Options_PipeString a4, "FLASHY LIGHTS   %<.l a1 str>", 30
 	rts
 
 ; ---------------------------------------------------------------------------
@@ -302,8 +307,8 @@ Options_FlashyLights_Redraw:
 	dc.l	@Str_Mode00,@Str_Mode01,@Str_Mode10
 
 @Str_Mode00:	dc.b	'        NORMAL',0
-@Str_Mode01:	dc.b	'      REDUCDED',0
-@Str_Mode10:	dc.b	'  VERY INTENSE',0
+@Str_Mode01:	dc.b	'PHOTOSENSITIVE',0
+@Str_Mode10:	dc.b	'     INTENSIVE',0
 		even
 
 ; ---------------------------------------------------------------------------
@@ -369,17 +374,17 @@ Options_CameraShake_Redraw:
 	add.w	d0, d0				; d0 = ModeId * 4
 	movea.l	@CameraShakeList(pc,d0), a1
 	
-	Options_PipeString a4, "CAMERA SHAKE  %<.l a1 str>", 28
+	Options_PipeString a4, "CAMERA SHAKING     %<.l a1 str>", 30
 	rts
 
 ; ---------------------------------------------------------------------------
 @CameraShakeList:
 	dc.l	@Str_Mode00,@Str_Mode01,@Str_Mode10,@Str_Mode11
 
-@Str_Mode00:	dc.b	'        NORMAL',0
-@Str_Mode01:	dc.b	'          WEAK',0
-@Str_Mode10:	dc.b	'   JUST STUPID',0
-@Str_Mode11:	dc.b	'      DISABLED',0
+@Str_Mode00:	dc.b	'     NORMAL',0
+@Str_Mode01:	dc.b	'       WEAK',0
+@Str_Mode10:	dc.b	'JUST STUPID',0
+@Str_Mode11:	dc.b	'   DISABLED',0
 		even
 
 
@@ -445,17 +450,17 @@ Options_Audio_Redraw:
 	add.w	d0, d0				; d0 = ModeId * 4
 	movea.l	@AudioList(pc,d0), a1
 	
-	Options_PipeString a4, "AUDIO      %<.l a1 str>", 28
+	Options_PipeString a4, "AUDIO MODE       %<.l a1 str>", 30
 	rts
 
 ; ---------------------------------------------------------------------------
 @AudioList:
 	dc.l	@Str_Mode00,@Str_Mode01,@Str_Mode10,@Str_Mode11
 
-@Str_Mode00:	dc.b	'           NORMAL',0
-@Str_Mode01:	dc.b	'    DISABLE MUSIC',0
-@Str_Mode10:	dc.b	'      DISABLE SFX',0
-@Str_Mode11:	dc.b	'          SILENCE',0
+@Str_Mode00:	dc.b	'       NORMAL',0
+@Str_Mode01:	dc.b	'DISABLE MUSIC',0
+@Str_Mode10:	dc.b	'  DISABLE SFX',0
+@Str_Mode11:	dc.b	'TOTAL SILENCE',0
 		even
 
 ; ---------------------------------------------------------------------------
@@ -513,7 +518,7 @@ Options_CinematicMode_Redraw:
 	beq.s	@1				; if not, branch
 	lea	@Str_Cinematic_Normal(pc), a0
 
-@1:	Options_PipeString a4, "%<.l a0 str>         %<.l a1 str>", 28
+@1:	Options_PipeString a4, "%<.l a0 str>           %<.l a1 str>", 30
 	rts
 
 ; ---------------------------------------------------------------------------
@@ -571,7 +576,7 @@ Options_ScreenEffects_Redraw:
 	beq.s	@0				; if not, branch
 	lea	@Str_ScreenEffects_Normal(pc), a0
 
-@0:	Options_PipeString a4, "%<.l a0 str> %<.l a1 str>", 28
+@0:	Options_PipeString a4, "%<.l a0 str>   %<.l a1 str>", 30
 	rts
 
 ; ---------------------------------------------------------------------------
@@ -658,7 +663,7 @@ Options_NonstopInhuman_Redraw:
 	beq.s	@2				; if not, branch
 	lea	@Str_ErazorPower_Normal(pc), a0
 
-@2:	Options_PipeString a4, "%<.l a0 str> %<.l a1 str>", 28
+@2:	Options_PipeString a4, "%<.l a0 str>    %<.l a1 str>", 30
 	rts
 
 ; ---------------------------------------------------------------------------
@@ -672,10 +677,10 @@ Options_NonstopInhuman_Redraw:
 @ErazorPowerTextList:
 	dc.l	@Str_Mode00,@Str_Mode01,@Str_Mode10,@Str_Mode11
 
-@Str_Mode00:	dc.b	'        OFF',0
-@Str_Mode01:	dc.b	'    INHUMAN',0
-@Str_Mode10:	dc.b	' SPACE GOLF',0
-@Str_Mode11:	dc.b	'   ...BOTH?',0
+@Str_Mode00:	dc.b	'       OFF',0
+@Str_Mode01:	dc.b	'   INHUMAN',0
+@Str_Mode10:	dc.b	'SPACE GOLF',0
+@Str_Mode11:	dc.b	'  ...BOTH?',0
 		even
 
 
@@ -756,7 +761,7 @@ Options_DeleteSaveGame_Redraw:
 	moveq	#0, d0
 	move.b	Options_DeleteSRAMCounter, d0
 	lea	@Str_DeleteSRAMCountDown(pc,d0), a1
-	Options_PipeString a4, "DELETE SAVE GAME       %<.l a1 str>", 28
+	Options_PipeString a4, "DELETE SAVE GAME         %<.l a1 str>", 30
 	rts
 
 @Str_DeleteSRAMCountDown:
@@ -823,7 +828,7 @@ Options_BlackBarsMode_Redraw:
 	btst	#1, BlackBars.HandlerId
 	beq.s	@0
 	lea	@Str_BlackBars_Hardware(pc), a1
-@0:	Options_PipeString a4, "BLACK BARS SETUP    %<.l a1 str>", 28
+@0:	Options_PipeString a4, "BLACK BARS SETUP      %<.l a1 str>", 30
 	rts
 
 @Str_BlackBars_Emulator:

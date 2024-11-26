@@ -986,10 +986,59 @@ Hint_4:
 		boxtxt_line
 		boxtxt	"erazor:selbi:club"
 		boxtxt_pause
-		boxtxt	"NEXT UP, SOME CHEATS"
-		boxtxt	"AND SECRETS..."
+		boxtxt	"NEXT UP, SOME HANDY"
+		boxtxt	"SPEEDRUN TRICKS..."
 		boxtxt_next
-		
+
+
+		boxtxt	"speedrun pro-tip A"
+		boxtxt_pause
+		boxtxt	"WHILE STARTING A NEW"
+		boxtxt	"GAME, HOLD a IN THE"
+		boxtxt	"CASUAL/FRANTIC MENU"
+		boxtxt	"TO ENABLE AUTOSKIP"
+		boxtxt	"AND JUMP RIGHT INTO"
+		boxtxt	"NIGHT HILL PLACE!"
+		boxtxt_next
+
+		boxtxt	"speedrun pro-tip B"
+		boxtxt_pause
+		boxtxt	"AFTER BEATING THE"
+		boxtxt	"CRABMEAT BOSS OR"
+		boxtxt	"WALKING BOMB BOSS,"
+		boxtxt	"HOLD a + b + c"
+		boxtxt	"TO SKIP THE LONG"
+		boxtxt	"CUTSCENE!"
+		boxtxt_next
+	
+		boxtxt	"speedrun pro-tip C"		
+		boxtxt_pause
+		boxtxt	"IN CASUAL MODE, YOU"
+		boxtxt	"CAN INSTANTLY SKIP"
+		boxtxt	"ANY SPECIAL STAGE"
+		boxtxt	"WITH a + b + c"
+		boxtxt	"HELD AT ONCE!"
+		boxtxt_next
+
+		boxtxt	"speedrun pro-tip D"
+		boxtxt_pause
+		boxtxt	"GETTING TIRED OF ME?"
+		boxtxt	"YOU CAN SKIP THESE"
+		boxtxt	"SMALL ON-SCREEN"
+		boxtxt	"TEXTBOXES BY HOLDING"
+		boxtxt	"a AND THEN start!"
+		boxtxt_next
+
+
+		boxtxt	"AND THAT'S ALL THERE"
+		boxtxt	"IS FOR SPEEDRUNS."
+		boxtxt_pause
+		boxtxt	"NOW, HERE ARE SOME"
+		boxtxt	"COOL CHEATS AND"
+		boxtxt	"HIDDEN FEATURES TO"
+		boxtxt	"MESS AROUND WITH!"
+		boxtxt_next
+
 		boxtxt	"debug mode"
 		boxtxt_pause
 		boxtxt	"WHEN YOU'RE IN THE"
@@ -1009,26 +1058,6 @@ Hint_4:
 		boxtxt	"CASUAL/FRANTIC."
 		boxtxt_next
 
-		boxtxt	"speedrun pro-tip"
-		boxtxt_pause
-		boxtxt	"WHILE STARTING A NEW"
-		boxtxt	"GAME, HOLD a IN THE"
-		boxtxt	"CASUAL/FRANTIC MENU"
-		boxtxt	"TO ENABLE AUTOSKIP"
-		boxtxt	"AND JUMP RIGHT INTO"
-		boxtxt	"NIGHT HILL PLACE!"
-		boxtxt_next
-
-		boxtxt	"skip boss cutscenes"
-		boxtxt_pause
-		boxtxt	"AFTER BEATING THE"
-		boxtxt	"CRABMEAT BOSS OR"
-		boxtxt	"WALKING BOMB BOSS,"
-		boxtxt	"HOLD a + b + c"
-		boxtxt	"TO SKIP THE LONG"
-		boxtxt	"CUTSCENE!"
-		boxtxt_next
-	
 		boxtxt	"adjust black bars"
 		boxtxt_pause
 		boxtxt	"IN THE SETUP SCREEN"
@@ -1049,15 +1078,6 @@ Hint_4:
 		boxtxt	"RIVETING VERTIGO!"
 		boxtxt_next
 
-		boxtxt	"skip tutorial texts"
-		boxtxt_pause
-		boxtxt	"GETTING TIRED OF ME?"
-		boxtxt	"YOU CAN SKIP THESE"
-		boxtxt	"SMALL ON-SCREEN"
-		boxtxt	"TEXTBOXES BY HOLDING"
-		boxtxt	"a AND THEN start!"
-		boxtxt_next
-		
 		boxtxt	"AND LASTLY, FOR THE"
 		boxtxt	"true masochists"
 		boxtxt	"OUT THERE."
@@ -1147,15 +1167,6 @@ Hint_6:
 		boxtxt_line
 		boxtxt	"IN FRONT OF THIS"
 		boxtxt	"DEVICE TO SKIP IT!"
-		boxtxt_next
-		
-		boxtxt	"THIS ALSO WORKS IN"
-		boxtxt	"SPECIAL STAGES"
-		boxtxt	"AT ANY TIME WITH"
-		boxtxt_line
-		boxtxt	"a + b + c"
-		boxtxt_line
-		boxtxt	"HELD AT ONCE!"
 		boxtxt_next
 
 		boxtxt	" but remember this1"

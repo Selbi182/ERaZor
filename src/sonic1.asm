@@ -3419,7 +3419,7 @@ Level_GetBgm:
 
 		moveq	#$E,d0			; use FZ palette
 		bsr	PalLoad2		; load palette (based on d0)
-		move.w	#$E00,(BGThemeColor).w	; set theme color for background effects
+		move.w	#$EC0,(BGThemeColor).w	; set theme color for background effects
 
 		moveq	#10|_DH_WithOwnBG,d0	; VLADIK => Load hint number
 		jsr	TutorialBox_Display	; VLADIK => Display hint
@@ -5743,8 +5743,9 @@ End_ClrRam3:	move.l	d0,(a1)+
 		clr.w	($FFFFFE30).w		; clear any set level checkpoints
 
 End_LoadData:
-		move.b	#4,VBlankRoutine
+		move.b	#$18,VBlankRoutine
 		bsr	DelayProgram
+
 		jsr	AnimatedArt_Init
 		moveq	#$1C,d0
 		bsr	PLC_ExecuteOnce	; load ending sequence patterns
@@ -5781,7 +5782,7 @@ End_LoadSonic:
 		move.b	#1,($FFFFF7CC).w ; lock	controls
 		move.w	#$400,($FFFFF602).w ; move Sonic to the	left (force left press)
 		move.w	#-$800,($FFFFD014).w ; set Sonic's speed
-		move.b	#4,VBlankRoutine
+		move.b	#$18,VBlankRoutine
 		bsr	DelayProgram
 		jsr	ObjPosLoad
 		DeleteQueue_Init
@@ -5863,22 +5864,11 @@ End_MainLoop:
 
 
 End_MoveSonic:				; XREF: End_MainLoop
-	;	tst.w	($FFFFF602).w
-	;	beq.s	End_MoveSonic_End
+		cmpi.w	#$1A0,($FFFFD008).w	; has Sonic passed the X trigger point?
+		bhs.s	@end			; if not, branch
+		move.w	#$800,($FFFFF602).w	; move Sonic to the right again
 
-	;	move.b	#1,($FFFFF7CC).w ; lock	controls
-		cmpi.w	#$90+$100+$20,($FFFFD008).w ; has Sonic passed $90 on y-axis?
-		bcc.s	End_MoveSonExit	; if not, branch
-		move.w	#$800,($FFFFF602).w ; move Sonic to the	right
-
-End_MoveSonExit:	
-	;	btst	#3,($FFFFD022).w
-	;	beq.s	End_MoveSonic_End
-	;	move.w	#$000,($FFFFF602).w
-	;	move.w	#$40,($FFFFD014).w
-	;	move.b	#0,($FFFFF7CC).w ; lock	controls
-
-End_MoveSonic_End:	
+@end:
 		rts	
 ; End of function End_MoveSonic
 
@@ -6443,7 +6433,7 @@ locret_6E08:
 
 		jsr	SingleObjLoad
 		move.b	#$1F,0(a1)
-		move.w	#$22E7,obX(a1)
+		move.w	#$22E7+SCREEN_XCORR,obX(a1)
 		move.w	#$04AE,obY(a1)
 
 		clr.w	($FFFFD014).w
@@ -13230,11 +13220,15 @@ FZEscape_ScreenBoom:
 
 		move.l	a0,-(sp)		; backup to stack
 		jsr	Pal_CutToWhite		; instantly turn screen white
+
 		tst.b	($FFFFD000).w		; already jumped into the ring?
-		bne.s	@realend		; if yes, branch
+		bne.s	@restore		; if not, branch
 		move.w	#$000,($FFFFFB02).w	; keep black bars black
 		jsr	ClearScreen		; clear screen (though it's not enough)
-@realend:	move.l	(sp)+,a0		; restore from stack
+		cmpi.w	#1,($FFFFFE20).w	; do we still have the insurance ring?
+		bne.s	@restore		; if not, branch
+		clr.w	($FFFFFE20).w		; remove it
+@restore:	move.l	(sp)+,a0		; restore from stack
 
 		move.w	BlackBars.BaseHeight,BlackBars.Height ; force bars to max
 		move.w	#120,d5			; delay for two seconds
@@ -13243,7 +13237,13 @@ FZEscape_ScreenBoom:
 		dbf	d5,@WaitLoop
 
 		bclr	#2,(ScreenFuzz).w	; clear temporary screen fuzz flag
-		rts
+
+		tst.b	($FFFFD000).w		; already jumped into the ring?
+		bne.s	@end			; if not, branch
+		move.l	a0,-(sp)
+		jsr	Pal_FadeFrom		; fade out palette now to hide artifacts
+		move.l	(sp)+,a0
+@end:		rts
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -23209,13 +23209,13 @@ Obj5D_Action:				; XREF: Obj5D_Index
 		bne.w	Obj5D_ChkDel		; if not, branch
 
 		; fans closing in
+		frantic				; are we in frantic?
+		beq.s	@fanison		; if not, branch
+
 		moveq	#BombBoss_Health,d0	; get base health
 		sub.b	(BossHealth).w,d0	; subtract current health
 		move.w	d0,d1
-		lsl.w	#1,d0
-		frantic				; are we in frantic?
-		beq.s	@notfrantic		; if not, branch
-		lsl.w	#1,d0
+		lsl.w	#2,d0
 
 @notfrantic:
 		add.w	d1,d0
@@ -23523,6 +23523,9 @@ Obj5E_Fuse:				; XREF: Obj5E_Index
 @adjust:	add.w	d0,$34(a0)
 @nofusemove:
 
+		tst.b	obRender(a0)		; is bomb on screen?
+		bpl.s	@nobonussparkles	; if not, don't generate bonus sparkles
+
 		moveq	#0,d0
 		move.w	($FFFFFE04).w,d0
 		andi.w	#$F,d0
@@ -23603,11 +23606,10 @@ Obj5E_Shrapnel:				; XREF: Obj5E_Index
 
 @chkrender:
 		tst.b	obRender(a0)		; is shrapnel still on screen?
-		bmi.w	Obj5E_Display		; if yes, render
+		bmi.w	Obj5E_Render		; if yes, render
 		tst.b	$30(a0)			; is lifetime extension still on?
-		bpl.w	Obj5E_Render		; if yes, render anyway
-		bra.w	Obj5E_Delete		; otherwise, delete old offscreen shrapnel
-
+		bmi.w	Obj5E_Delete		; if not, delete old offscreen shrapnel
+		rts				; otherwise don't render but keep alive
 ; ===========================================================================
 ; ===========================================================================
 
@@ -23681,7 +23683,7 @@ Ani_obj5E:
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; health is set in Resize_SLZ1
-BombWalkSpeed_Boss = $140*2
+BombWalkSpeed_Boss = $140
 BombFuseTime_Boss = 51
 BombDistance_Boss = $50
 BombPellets_Boss = 1
@@ -24272,8 +24274,8 @@ loc_11B7C:
 
 @cont
 		movea.l	a0,a1
-		tst.w	($FFFFD030).w	; does Sonic have invincibility frames left?
-		bne.w	DeleteObject	; if yes, branch
+		cmpi.w	#60,($FFFFD030).w	; does Sonic have invincibility frames left?
+		bhs.w	DeleteObject		; if yes, branch
 
 		cmpi.b	#$1A,($FFFFD000+obAnim).w	; is Sonic's animation $1A (hurting)?
 		beq.w	DeleteObject			; if yes, cancel fuse
@@ -26648,12 +26650,13 @@ UberhubEasteregg:
 		and.w	d3,d1
 		move.w	d1,(a1)+
 		dbf	d2,@loopdestroypalette
-		
 		lea	($FFFFFB40).w,a1
 		jsr	SineWavePalette
 
+		movem.l	d7/a1-a3,-(sp)
 		moveq	#$18,d0			; load FZ palette (cause tutorial boxes are built into SBZ)
-		jsr	PalLoad2		; load palette	
+		jsr	PalLoad2
+		movem.l	(sp)+,d7/a1-a3
 		
 		moveq	#$FFFFFF88,d0		; play special stage jingle...
 		jsr	PlaySound		; ...specifically because it tends to ruin the music following it lol
@@ -29283,8 +29286,8 @@ Sonic_Fire:
 		bne.s	InhumanMode		; if yes, do the thingy
 		cmpi.b	#5,obAnim(a0)
 		bne.w	S_F_End
-		move.w	#$A9,d0
-		jsr	PlaySound_Special
+	;	move.w	#$A9,d0
+	;	jsr	PlaySound_Special
 		move.b	#6,($FFFFD000+obTimeFrame).w	; reset time frame
 		jmp	AnnoyedSonic
 
@@ -30034,12 +30037,6 @@ KSJMP2:
 ; ---------------------------------------------------------------------------
 
 Obj01_Death:				; XREF: Obj01_Index
-		cmpi.w	#$601,($FFFFFE10).w	; is this the ending sequence?
-		bne.s	Obj01_Death_NoMS	; if not, branch
-		move.b	#$E4,d0
-		jsr	PlaySound_Special ; stop music
-
-Obj01_Death_NoMS:
 		cmpi.b	#$17,obAnim(a0)		; is drowing animation being showed?
 		bne.s	Obj01_NotDrownAnim	; if not, branch
 		bset	#7,obGfx(a0)		; make sonic being on the foreground
@@ -40883,6 +40880,8 @@ Kill_DoKill:
 		cmpi.b	#$18,(GameMode).w	; is this the ending sequence?
 		bne.s	SH_NotEnding		; if not, branch
 		move.w	#0,($FFFFF72A).w	; lock screen
+		move.b	#$E4,d0
+		jsr	PlaySound_Special	; stop music
 
 SH_NotEnding:
 		clr.b	($FFFFFFAA).w		; clear crabmeat boss flag 1

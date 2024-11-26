@@ -85,7 +85,7 @@ GameplayStyleScreen:
 @next:		dbf	d1,@wideadjust
 	endif
 
-		moveq	#1,d0
+		moveq	#1,d0			; write palette to fade-in palette buffer
 		bsr	GSS_LoadPal
 		VBlank_UnsetMusicOnly
 		display_enable
@@ -127,10 +127,23 @@ GSS_MainLoop:
 		jsr	DeleteQueue_Execute
 
 		move.b	($FFFFF605).w,d1	; get button presses
-	 	andi.b	#$F,d1			; is D-pad pressed?
-		beq.s	@NoUpdate		; if not, branch
-		bchg 	#5,(OptionsBits).w 	; toggle casual/frantic flag
-		moveq	#0,d0
+		btst	#0,d1			; specifically up pressed?
+		bne.s	@uppress		; if yes, branch
+		btst	#1,d1			; specifically down pressed?
+		bne.s	@downpress		; if yes, branch
+		bra.s	@NoUpdate		; skip
+
+@uppress:
+		bclr 	#5,(OptionsBits).w 	; set to casual (technically, "disable frantic")
+		beq.s	@NoUpdate		; was it already set to casual? if so, no update
+		bra.s	@update			; otherwise, refresh screen
+
+@downpress:
+		bset 	#5,(OptionsBits).w 	; enable frantic
+		bne.s	@NoUpdate		; was it already set to frantic? if so, no update
+
+@update:
+		moveq	#0,d0			; write palette directly
 		bsr	GSS_LoadPal		; refresh palette
 		move.w	#$D8,d0			; play option toggle sound
 		jsr	(PlaySound_Special).l

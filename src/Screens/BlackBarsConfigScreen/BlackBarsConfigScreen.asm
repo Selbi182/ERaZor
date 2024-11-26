@@ -569,7 +569,6 @@ BlackBarsConfigScreen_RedrawUI:
 BlackBarsConfigScreen_WriteText_WidescreenInfo:
 	BBCS_EnterConsole a0
 
-
 	Console.SetXY #6, #2
 	Console.Write "        SONIC ERAZOR"
 	Console.Write "%<endl>%<endl>"
@@ -583,7 +582,7 @@ BlackBarsConfigScreen_WriteText_WidescreenInfo:
 	Console.Write "AND SPECIFICALLY OPTIMIZED FOR THE"
 	Console.Write "%<endl>%<endl>"
 	Console.Write '      "GENESIS PLUS GX WIDE"%<endl>'
-	Console.Write '        CORE FOR RETROARCH'
+	Console.Write '   CORE AVAILABLE FOR RETROARCH'
 	Console.Write "%<endl>%<endl>"
 	Console.Write "  AND IT WILL BE A HELLA AWKWARD%<endl>"
 	Console.Write "EXPERIENCE FOR ANY OTHER EMULATOR!"
@@ -601,20 +600,29 @@ BlackBarsConfigScreen_WriteText_WidescreenInfo:
 
 
 	; this text overflows to the left and right, making it invisible in 4:3 mode
-	Console.SetXY #-4, #2
-	Console.Write "%<pal2>IF%<endl>%<endl>%<endl>%<endl>%<endl>%<endl>"
-	Console.Write "YOU%<endl>%<endl>%<endl>%<endl>%<endl>%<endl>"
-	Console.Write "CAN%<endl>%<endl>%<endl>%<endl>%<endl>%<endl>"
-	Console.Write "READ%<endl>%<endl>%<endl>%<endl>%<endl>%<endl>%<endl>"
-	Console.Write "THIS"
-
-	Console.SetXY #40, #1
-	Console.Write " YOU%<endl>%<endl>%<endl>%<endl>%<endl>%<endl>"
-	Console.Write " ARE%<endl>%<endl>%<endl>%<endl>%<endl>%<endl>"
-	Console.Write "GOOD%<endl>%<endl>%<endl>%<endl>%<endl>%<endl>"
-	Console.Write "  TO%<endl>%<endl>%<endl>%<endl>%<endl>%<endl>%<endl>"
+	Console.SetXY #-4, #6
+	Console.Write "  %<pal2>IF%<endl>%<endl>"
+	Console.Write " YOU%<endl>%<endl>"
+	Console.Write " CAN%<endl>%<endl>"
+	Console.Write "READ%<endl>%<endl>"
+	Console.Write "THIS%<endl>%<endl>"
+	Console.Write " YOU%<endl>%<endl>"
+	Console.Write " ARE%<endl>%<endl>"
+	Console.Write "GOOD%<endl>%<endl>"
+	Console.Write "  TO%<endl>%<endl>"
 	Console.Write " GO!%<pal0>"
 
+	Console.SetXY #40, #5
+	Console.Write "%<pal2>IF%<endl>%<endl>"
+	Console.Write "YOU%<endl>%<endl>"
+	Console.Write "CAN%<endl>%<endl>"
+	Console.Write "READ%<endl>%<endl>"
+	Console.Write "THIS%<endl>%<endl>"
+	Console.Write "YOU%<endl>%<endl>"
+	Console.Write "ARE%<endl>%<endl>"
+	Console.Write "GOOD%<endl>%<endl>"
+	Console.Write "TO%<endl>%<endl>"
+	Console.Write "GO!%<pal0>"
 	
 	BBCS_LeaveConsole a0
 	rts

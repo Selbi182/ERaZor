@@ -62,7 +62,7 @@ Options_MenuData:
 	dc.l	Options_DeleteSaveGame_Redraw		; redraw handler
 	dc.l	Options_DeleteSaveGame_Handle		; update handler
 
-	; Delete save game
+	; Exit
 	dcScreenPos	$E000, OpBaseY+19, 5			; start on-screen position
 	dc.l	Options_Exit_Redraw			; redraw handler
 	dc.l	Options_Exit_Handle			; update handler
@@ -94,7 +94,7 @@ Options_GameplayStyle_Redraw:
 	and.b	OptionsBits, d0
 	beq.s	@0
 	lea	@Str_Option2(pc), a1
-@0:	Options_PipeString a4, "SELECT DIFFICULTY      %<.l a1 str>", 30
+@0:	Options_PipeString a4, "CHANGE DIFFICULTY      %<.l a1 str>", 30
 	rts
 
 ; ---------------------------------------------------------------------------

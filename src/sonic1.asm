@@ -3360,10 +3360,16 @@ Level_ClrVars3:	move.l	d0,(a1)+
 		cmpi.b	#1,($FFFFFE10).w	; is level LZ?
 		beq.s	Level_LZWaterSetup	; if yes, branch
 		clr.b	($FFFFFF97).w		; clear the lamp post counter if we're not in Labyrinth Zone
-		clr.b	($FFFFFFFE).w
+		clr.b	($FFFFFFFE).w		; clear =P monitor flag
 		bra.s	Level_LoadPal		; branch
 
 Level_LZWaterSetup:
+		tst.b	(PlacePlacePlace).w	; PLACE PLACE PLACE?
+		beq.s	@noeasteregg		; if not, branch
+		clr.b	($FFFFFF97).w		; clear the lamp post counter if we're not in Labyrinth Zone
+		clr.b	($FFFFFFFE).w		; clear =P monitor flag
+
+@noeasteregg:		
 		tst.b	($FFFFFFFE).w		; did the player die before destroying the =P monitor?
 		bne.s	@nointronyoom		; if not, branch
 		bset	#1,($FFFFD022).w
@@ -8538,20 +8544,21 @@ Obj18_NotLZ:
 		cmpi.b	#4,($FFFFFE10).w ; check if level is SYZ
 		bne.w	Obj18_NotSYZ
 
+		move.l	#Map_obj18a,obMap(a0) ; SYZ specific code
+		move.w	#$4000+($A660/$20),obGfx(a0)
+		move.b	#$90,obActWid(a0)	; make platforms SUPER wide for easy access
+		addq.w	#1,obY(a0)	; fix vertical pixel offset
+
 		cmpi.w	#$1680,obX(a0)		; is this a platform at the FP room?
 		bne.s	@notfp			; if not, branch
 		tst.b	obSubtype(a0)		; is this the platform that shoots down?
 		bne.s	@notfp			; if not, branch
 		moveq	#6,d0			; has the player beaten FP already?
 		jsr	Check_LevelBeaten_Current
-		bne.s	@notfp			; if yes, display platform
+		bne.s	Obj18_NotSYZ			; if yes, display platform
 		jmp	DeleteObject		; otherwise, delete
 
 @notfp:
-		move.l	#Map_obj18a,obMap(a0) ; SYZ specific code
-		move.w	#$4000+($A660/$20),obGfx(a0)
-		move.b	#$90,obActWid(a0)	; make platforms SUPER wide for easy access
-		addq.w	#1,obY(a0)	; fix vertical pixel offset
 
 		; glowing yellow arrows when stepping on platform in Uberhub
 		jsr	SingleObjLoad
@@ -14102,13 +14109,22 @@ Obj0E_Main:				; XREF: Obj0E_Index
 		move.l	#Map_obj0E,obMap(a0)
 		move.w	#$2300,obGfx(a0)
 	;	move.b	#1,obPriority(a0)
-		move.b	#29,obDelayAni(a0)	; set time delay to 0.5	seconds
+	;	move.b	#29,obDelayAni(a0)	; set time delay to 0.5	seconds
+
+		move.b	#220,d0	 		; delay in NTSC
+		btst	#6,($FFFFFFF8).w	; are we PAL?
+		beq.s	@notpal			; if not, branch
+		move.w	#182,d0	 		; delay in PAL
+@notpal:
+		move.b	d0,obDelayAni(a0)	; set time delay until Sonic appears (synced to the music)
+
+
 		lea	(Ani_obj0E).l,a1
 		bsr	AnimateSprite
 
 Obj0E_Delay:				; XREF: Obj0E_Index
 		subq.b	#1,obDelayAni(a0)	; subtract 1 from time delay
-		bpl.s	Obj0E_Wait	; if time remains, branch
+		bne.s	Obj0E_Wait	; if time remains, branch
 		addq.b	#2,obRoutine(a0)	; go to	next routine
 		bra.w	DisplaySprite
 ; ===========================================================================
@@ -23010,6 +23026,8 @@ Obj0B_BreakPole:
 		ori.b	#10,(CameraShake).w	; camera shaking
 		move.w	#$DF,d0			; jester explosion sound
 		jsr	PlaySound_Special
+		jsr	WhiteFlash2
+		move.b	#4,($FFFFFFB2).w	; shorter camera lag
 
 Obj0B_BreakPole_NoSound:
 		addq.b	#2,obRoutine(a0)	; set to display only
@@ -26466,7 +26484,11 @@ Obj06_ChkDist:
 		cmpi.w	#$20,d0			; is Sonic within $10 pixels of that object?
 		bhi.w	Obj06_Display		; if not, branch
 		move.b	#1,($FFFFFF74).w	; set spindash block flag
+
+		frantic	
+		bne.s	@noskiptext
 		move.b	#3,obFrame(a0)		; show "SKIP" text
+@noskiptext:
 
 		tst.b	($FFFFFFB1).w		; is white flash counter empty?
 		bpl.w	Obj06_Display		; if not, branch (to prevent the white getting stuck)
@@ -26612,6 +26634,13 @@ Obj06_ChkA:
 		jsr	DisplaySprite		; VLADIK => Make sure sprite is displayed
 		move.b	obSubtype(a0),d0	; VLADIK => Load hint number based on subtype
 
+		cmpi.b	#9,d0			; og anti-grav text?
+		bne.s	@chkescape		; if not, branch
+		tst.b	($FFFFFF77).w		; antigrav enabled?
+		bne.s	@chkescape		; if yes, all good
+		moveq	#$17,d0			; otherwise, you dirty sequence breaker
+
+	@chkescape:
 		tst.b	(FZEscape).w		; are we in the FZ escape sequence?
 		beq.s	@displayhint		; if not, branch
 		cmpi.b	#$B,d0			; is this the easter egg text box?
@@ -42952,7 +42981,7 @@ Obj09_RevStage:
 @cont:
 		move.w	#$C3,d0			; set giant ring sound
 		jsr	(PlaySound).l		; play it
-		move.w	#$A8,d0			; set warping sound
+		move.w	#$BC,d0			; set dashing sound
 		jmp	(PlaySound_Special).l	; play it
 ; ===========================================================================
 
@@ -43083,6 +43112,7 @@ Obj09_GoalNotSolid:
 
 		move.b	#1,($FF13BD).l		; place blocks over W blocks
 		move.b	#1,($FF13BE).l		; place blocks over W blocks
+		move.b	#1,($FF13BF).l		; place blocks over W blocks
 
 		move.b	#0,($FF12BB).l		; remove blocks next to W blocks
 		move.b	#0,($FF133B).l		; remove blocks next to W blocks

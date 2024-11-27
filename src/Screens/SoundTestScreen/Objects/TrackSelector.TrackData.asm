@@ -282,8 +282,8 @@
 @SoundD6_Name:		@str 'STILL NOTHING', @descMaxLen
 @SoundD7_Name:		@str 'PATHETIC EXPLOSION', @descMaxLen
 @SoundD8_Name:		@str 'MENU SELECTION', @descMaxLen
-@SoundD9_Name:		@str 'OPTION CONFIRMED', @descMaxLen
-@SoundDA_Name:		@str 'OPTION DENIED', @descMaxLen
+@SoundD9_Name:		@str 'HECK YEAH', @descMaxLen
+@SoundDA_Name:		@str 'HECK NO', @descMaxLen
 @SoundDB_Name:		@str 'REALLY HECKING BIG EXPLOSION', @descMaxLen
 @SoundDC_Name:		@str 'NUH UH', @descMaxLen
 @SoundDD_Name:		@str 'PROBABLY A NUKE GOING OFF', @descMaxLen

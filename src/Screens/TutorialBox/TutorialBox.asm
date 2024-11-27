@@ -715,6 +715,7 @@ Hints_List:	; note: these IDs are 1-based
 		dc.l	Hint_End_CinematicUnlock	; $14
 		dc.l	Hint_End_MotionBlurUnlock	; $15
 		dc.l	Hint_End_NonstopInhumanUnlock	; $16
+		dc.l	Hint_9SequenceBreak		; $17
 
 ; ---------------------------------------------------------------
 ; Hints Scripts
@@ -861,19 +862,21 @@ Hint_1:
 		boxtxt	"NO RUSH AT ALL."
 		boxtxt_next
 
-		boxtxt	"CONTROLS - grounded"
+		boxtxt	"CONTROLS - standing"
 		boxtxt_pause
 		boxtxt	" SPIN DASH"
 		boxtxt	" ~ + a/b/c"
 		boxtxt_line
 		boxtxt	" SUPER PEEL OUT"
-		boxtxt	" ^ + a"
+		boxtxt	" ^ + a/OPTIONS"
 		boxtxt_next
 
 		boxtxt	"AND TO JUMP, YOU"
 		boxtxt	"HAVE TO PRESS-"
 		boxtxt_pause
-		boxtxt	"...NEVER MIND."
+		boxtxt	"...UHH..."
+		boxtxt_pause
+		boxtxt	"...I FORGOT."
 		boxtxt_pause
 
 		dc.b	_frantic
@@ -1258,6 +1261,17 @@ Hint_9:
 		boxtxt	"    frantic mode"
 		boxtxt_pause
 		boxtxt	"  YUP, STILL BLUE."
+		boxtxt_end
+
+Hint_9SequenceBreak:
+		boxtxt	"AH. YEAH. COOL."
+		boxtxt_pause
+		boxtxt	"WALTZ RIGHT PAST THE"
+		boxtxt	"HEDGEHOG SPACE GOLF"
+		boxtxt	"BUTTON AND RUIN"
+		boxtxt	"THE WHOLE TUTORIAL."
+		boxtxt_pause
+		boxtxt	"POOPYHEAD."
 		boxtxt_end
 
 ;		 --------------------

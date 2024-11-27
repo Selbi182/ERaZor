@@ -2625,7 +2625,7 @@ Sega_WaitEnd:
 		jsr	CalcSine
 		asr.w	#5, d1
 
-		btst	#0,	d5
+		btst	#0, d5
 		beq.s 	@NoNegation
 
 		neg.l	d1
@@ -2643,11 +2643,11 @@ Sega_WaitEnd:
 		subq.b	#1,($FFFFFFBD).w
 		bpl.s	Sega_NoSound
 		move.b	#$D3,d0
-		bsr	PlaySound_Special ; play crash sound
+		bsr	PlaySound_Special ; play peelout release sound
 		move.b	#1,($FFFFFFBE).w
 		move.w	#$000,Pal_Active
 		move.w	#$000,($FFFFFB02).w
-		move.w	#$222,($FFFFFB04).w
+		move.w	#$000,($FFFFFB02).w
 		move.w	#$222,($FFFFFB0C).w
 		jsr	Pal_MakeBlackWhite
 		
@@ -2656,6 +2656,8 @@ Sega_WaitEnd:
 		move.w	#$10*3-1,d1
 @white:		move.w	d0,(a0)+
 		dbf	d1,@white
+
+		move.w	#$000,($FFFFFB40).w	; keep background black
 		
 Sega_NoSound:
 		move.b	#2,VBlankRoutine
@@ -3414,6 +3416,8 @@ Level_GetBgm:
 		tst.b	($FFFFF5D1).w		; did the player die?
 		bne.s	Level_NoPreTut		; if yes, don't replay intro text
 		
+		move.w	#0,BlackBars.Height	; prevent black screen for the first few frames
+
 		move.b	#$99,d0			; play introduction music
 		jsr	PlaySound_Special
 
@@ -6589,7 +6593,7 @@ Resize_LZ2:
 		frantic					; are we in frantic?
 		beq.s	@notfrantic			; if not, branch
 		move.w	($FFFFFE04).w,d2		; get frame timer
-		move.w	#$BB,d0				; play badum sound
+		move.w	#$BB,d0				; play badump sound
 		moveq	#$1F,d1				; use slow delay
 		btst	#1,($FFFFD022).w		; is Sonic in air?
 		bne.s	@inair				; if yes, branch
@@ -7536,7 +7540,7 @@ PLC_FZEscape:
 		dc.l ArtKospM_Infobox
 		dc.w $6E80
 		dc.l ArtKospM_Switch
-		dc.w $7100
+		dc.w $7200
 		dc.w -1
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
@@ -15861,7 +15865,7 @@ Obj32_Main:				; XREF: Obj32_Index
 		
 		cmpi.b	#5,($FFFFFE10).w	; is level SBZ?
 		bne.s	@switchcheckmz		; if not, branch
-		move.w	#($7180/$20),obGfx(a0)	; SBZ maps
+		move.w	#($7280/$20),obGfx(a0)	; SBZ maps
 @switchcheckmz:
 		cmpi.b	#2,($FFFFFE10).w	; is level MZ?
 		bne.s	@switchchecklz		; if not, branch
@@ -26180,7 +26184,7 @@ Obj03_Setup:
 @0:
 		cmpi.w	#$501,($FFFFFE10).w	; is this the tutorial?
 		bne.s	@nottut			; if not, branch
-		move.w	#($7300/$20),obGfx(a0)	; use alternate mappings
+		move.w	#($7400/$20),obGfx(a0)	; use alternate mappings
 		bset	#7,obGfx(a0)		; make it high plane
 		btst	#2,(OptionsBits).w	; is Skip Uberhub Place enabled?
 		beq.s	@nottut			; if not, branch
@@ -26306,7 +26310,7 @@ Obj03_BackgroundColor:
 		dc.w	$444, Pal_Active+$5E	; $08 - Options
 		dc.w	-1, -1			; $09 - "Place" text
 		dc.w	$000, Pal_Active+$5E	; $0A - Exit Tutorial
-		dc.w	$A28, Pal_Active+$5E	; $0B - Sound Test :3
+		dc.w	$000, Pal_Active+$5E	; $0B - Sound Test :3
 		dc.w	$000, Pal_Active+$5E	; $0C - Intro Scene
 		dc.w	$022, Pal_Active+$5E	; $0D - The End
 		dc.w	$000, Pal_Active+$5E	; $0E - Skip Tutorial
@@ -26411,7 +26415,7 @@ Obj06_Setup:
 		move.b	#$56,obActWid(a0)		; set display width
 
 		move.w	#$049B,obGfx(a0)		; set art pointer, use palette line 1
-		cmpi.w	#$000,($FFFFFE10).w		; is level Night Hill Place?
+		tst.w	($FFFFFE10).w			; is level Night Hill Place?
 		beq.s	Obj06_ArtLocFound		; if yes, branch
 
 		move.w	#$04FC,obGfx(a0)		; set art pointer, use palette line 1
@@ -26439,8 +26443,12 @@ Obj06_ArtLocFound:
 		tst.b	obSubtype(a0)			; is the subtype 0?
 		beq.s	Obj06_ChkDist			; if yes, that means it's a regular hard part skipper, so branch
 		move.b	#4,obRoutine(a0)		; otherwise it's a tutorial box
-		move.b	#1,obFrame(a0)			; use tutorial box frame
-		move.w	#$0364,obGfx(a0)		; set art pointer, use palette line 1
+		move.b	#0,obFrame(a0)			; use tutorial box frame
+		move.l	#Map_Obj06Tut,obMap(a0)		; load mappings
+		move.w	#$6E80/$20,obGfx(a0)		; set tutorial box tile offset
+		cmpi.w	#$400,($FFFFFE10).w		; is this Uberhub?
+		bne.w	Obj06_InfoBox			; if not, branch
+		move.w	#$6000|($FC00/$20),obGfx(a0)	; disgustingly broken mappings lol
 		bra.w	Obj06_InfoBox			; skip
 ; ---------------------------------------------------------------------------
 
@@ -26570,7 +26578,6 @@ Obj06_InfoBox:
 		btst	#1,($FFFFD022).w	; is Sonic airborne?
 		bne.w	Obj06_NoA		; if yes, disallow interaction
 @allowairborne:
-		move.b	#2,obFrame(a0)		; show A button
 		move.w	($FFFFD008).w,d0	; get Sonic's X-pos
 		sub.w	obX(a0),d0		; substract the X-pos from the current object from it
 		addi.w	#$20,d0			; add $10 to it
@@ -26583,6 +26590,11 @@ Obj06_InfoBox:
 		bhi.w	Obj06_NoA		; if not, branch
 
 Obj06_ChkA:
+		move.w	($FFFFFE04).w,d0	; use frame timer as base for the screen static
+		andi.w	#3,d0			; 4 static frames
+		addq.w	#2,d0			; offset by 2 (frame 0 is screen off, frame 1 is static without A)
+		move.b	d0,obFrame(a0)		; show A button with screen static
+
 		btst	#6,($FFFFF603).w	; is A pressed?
 		beq.w	Obj06_Display		; if not, branch
 
@@ -26626,12 +26638,14 @@ Obj06_ChkA:
 		jmp	Queue_TutorialBox_Display	; VLADIK => Display hint
 
 Obj06_NoA:
-		move.b	#1,obFrame(a0)		; don't show A button
+		move.b	#0,obFrame(a0)		; don't show A button
 		bra.w	Obj06_Display
 ; ===========================================================================
 
 Map_Obj06:
 		include	"_maps\HardPartSkipper.asm"
+Map_Obj06Tut:
+		include	"_maps\TutorialBox.asm"
 
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
@@ -44946,9 +44960,9 @@ PLC_SBZ:
 		dc.l ArtKospM_Infobox		; infoboxes
 		dc.w $6E80
 		dc.l ArtKospM_Switch	; switch
-		dc.w $7100
+		dc.w $7200
 		dc.l ArtKospM_LevelSigns	; level signs
-		dc.w $7300
+		dc.w $7400
 		dc.l ArtKospM_SbzDoor1	; door
 		dc.w $9800
 		dc.l ArtKospM_HSpring		; horizontal spring

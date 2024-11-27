@@ -6,60 +6,66 @@
 
 Options_MenuData:
 
+	OpBaseY: = 6
+
 	; Gameplay style
-	dcScreenPos	$E000, 6, 5			; start on-screen position
+	dcScreenPos	$E000, OpBaseY, 5			; start on-screen position
 	dc.l	Options_GameplayStyle_Redraw		; redraw handler
 	dc.l	Options_GameplayStyle_Handle		; update handler
 	
 	; Autoskip
-	dcScreenPos	$E000, 8, 5			; start on-screen position
+	dcScreenPos	$E000, OpBaseY+2, 5			; start on-screen position
 	dc.l	Options_Autoskip_Redraw			; redraw handler
 	dc.l	Options_Autoskip_Handle			; update handler
 	; Extended camera
-	dcScreenPos	$E000, 9, 5			; start on-screen position
+	dcScreenPos	$E000, OpBaseY+3, 5			; start on-screen position
 	dc.l	Options_ExtendedCamera_Redraw		; redraw handler
 	dc.l	Options_ExtendedCamera_Handle		; update handler
 	; Peelout style
-	dcScreenPos	$E000, 10, 5			; start on-screen position
+	dcScreenPos	$E000, OpBaseY+4, 5			; start on-screen position
 	dc.l	Options_PeeloutStyle_Redraw		; redraw handler
 	dc.l	Options_PeeloutStyle_Handle		; update handler
 	
 	; Flashy Lights
-	dcScreenPos	$E000, 11, 5			; start on-screen position
+	dcScreenPos	$E000, OpBaseY+5, 5			; start on-screen position
 	dc.l	Options_FlashyLights_Redraw		; redraw handler
 	dc.l	Options_FlashyLights_Handle		; update handler
 	; Camera Shake
-	dcScreenPos	$E000, 12, 5			; start on-screen position
+	dcScreenPos	$E000, OpBaseY+6, 5			; start on-screen position
 	dc.l	Options_CameraShake_Redraw		; redraw handler
 	dc.l	Options_CameraShake_Handle		; update handler
 	; Audio
-	dcScreenPos	$E000, 13, 5			; start on-screen position
+	dcScreenPos	$E000, OpBaseY+7, 5			; start on-screen position
 	dc.l	Options_Audio_Redraw			; redraw handler
 	dc.l	Options_Audio_Handle			; update handler
 
 	; Black bars setup
-	dcScreenPos	$E000, 15, 5			; start on-screen position
+	dcScreenPos	$E000, OpBaseY+9, 5			; start on-screen position
 	dc.l	Options_BlackBarsMode_Redraw		; redraw handler
 	dc.l	Options_BlackBarsMode_Handle		; update handler
 
 	; E - Cinematic mode
-	dcScreenPos	$E000, 17, 5			; start on-screen position
+	dcScreenPos	$E000, OpBaseY+11, 5			; start on-screen position
 	dc.l	Options_CinematicMode_Redraw		; redraw handler
 	dc.l	Options_CinematicMode_Handle		; update handler
 	; R - Screen Effects
-	dcScreenPos	$E000, 18, 5			; start on-screen position
+	dcScreenPos	$E000, OpBaseY+12, 5			; start on-screen position
 	dc.l	Options_ScreenEffects_Redraw		; redraw handler
 	dc.l	Options_ScreenEffects_Handle		; update handler
 	; Z - True Inhuman
-	dcScreenPos	$E000, 19, 5			; start on-screen position
+	dcScreenPos	$E000, OpBaseY+13, 5			; start on-screen position
 	dc.l	Options_NonstopInhuman_Redraw		; redraw handler
 	dc.l	Options_NonstopInhuman_Handle		; update handler
 
 	; Delete save game
-	dcScreenPos	$E000, 21, 5			; start on-screen position
+	dcScreenPos	$E000, OpBaseY+15, 5			; start on-screen position
 	dc.l	Options_DeleteSaveGame_Redraw		; redraw handler
 	dc.l	Options_DeleteSaveGame_Handle		; update handler
 
+	; Delete save game
+	dcScreenPos	$E000, OpBaseY+19, 5			; start on-screen position
+	dc.l	Options_Exit_Redraw			; redraw handler
+	dc.l	Options_Exit_Handle			; update handler
 
 
 Options_MenuData_End:
@@ -862,6 +868,44 @@ Options_BlackBarsMode_Handle:
 @gotosetupscreen:
 	moveq	#2,d0				; set to BlackBarsConfigScreen
 	jmp	Exit_OptionsScreen
+
+
+
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; "EXIT OPTIONS" redraw function
+; ---------------------------------------------------------------------------
+; INPUT:
+;	a4	= `Options_DrawText_Normal` or `Options_DrawText_Highlighted`
+; ---------------------------------------------------------------------------
+
+Options_Exit_Redraw:
+	Options_PipeString a4, "   SAVE + EXIT OPTIONS MENU   ", 30
+	rts
+
+; ---------------------------------------------------------------------------
+; "EXIT OPTIONS" handle function
+; ---------------------------------------------------------------------------
+
+Options_Exit_Handle:
+	move.b	Joypad|Press,d1		; get button presses
+	andi.b	#$FC,d1			; is left, right, A, B, C, or Start pressed?
+	beq.w	@done			; if not, branch
+
+	; randomize background color on left/right
+	andi.b	#$C,d1
+	beq.s	@exit
+	jsr	RandomNumber
+	andi.w	#$EEE,d0
+	move.w	d0,(BGThemeColor).w
+	move.w	#$A9,d0			; play blip sound
+	jmp	PlaySound_Special
+
+@exit:
+	st.b	Options_Exiting		; exit options menu
+@done:	rts
+
+
 
 ; ---------------------------------------------------------------------------
 ; Helper functions and data

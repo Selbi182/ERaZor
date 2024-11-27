@@ -548,7 +548,7 @@ MiscRing_IntroEnd:
 		bra.w	RunStory
 
 HubRing_Options:
-		clr.w	($FFFFFF82).w		; set default selected entry
+		st.b	($FFFFFF82).w		; set default selected entry
 		move.b	#$24,(GameMode).w	; load options menu
 		rts
 

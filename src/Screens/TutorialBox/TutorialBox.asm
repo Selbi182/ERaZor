@@ -982,61 +982,43 @@ Hint_4:
 
 		boxtxt	"FIRST OF ALL, HERE'S"
 		boxtxt	"A LINK FOR THE FULL"
-		boxtxt	"HACK SOURCE CODE!"
+		boxtxt	"HACK SOURCE CODE."
 		boxtxt_line
 		boxtxt	"erazor:selbi:club"
 		boxtxt_pause
-		boxtxt	"NEXT UP, SOME HANDY"
-		boxtxt	"SPEEDRUN TRICKS..."
+		boxtxt	"NEXT, SOME SECRETS"
+		boxtxt	"AND CHEATS!"
 		boxtxt_next
 
 
-		boxtxt	"speedrun pro-tip A"
+		boxtxt	"true_bs mode"
 		boxtxt_pause
-		boxtxt	"WHILE STARTING A NEW"
-		boxtxt	"GAME, HOLD a IN THE"
-		boxtxt	"CASUAL/FRANTIC MENU"
-		boxtxt	"TO ENABLE AUTOSKIP"
-		boxtxt	"AND JUMP RIGHT INTO"
-		boxtxt	"NIGHT HILL PLACE!"
+		boxtxt	"HOLD abc AT ONCE"
+		boxtxt	"WHILE ENTERING THE"
+		boxtxt	"OPTIONS MENU! THIS"
+		boxtxt	"MODE HAS NO RINGS,"
+		boxtxt	"NO CHECKPOINTS, AND"
+		boxtxt	"OTHER STUPID BS."
 		boxtxt_next
 
-		boxtxt	"speedrun pro-tip B"
+		boxtxt	"adjust black bars"
 		boxtxt_pause
-		boxtxt	"AFTER BEATING THE"
-		boxtxt	"CRABMEAT BOSS OR"
-		boxtxt	"WALKING BOMB BOSS,"
-		boxtxt	"HOLD a + b + c"
-		boxtxt	"TO SKIP THE LONG"
-		boxtxt	"CUTSCENE!"
-		boxtxt_next
-	
-		boxtxt	"speedrun pro-tip C"		
-		boxtxt_pause
-		boxtxt	"IN CASUAL MODE, YOU"
-		boxtxt	"CAN INSTANTLY SKIP"
-		boxtxt	"ANY SPECIAL STAGE"
-		boxtxt	"WITH a + b + c"
-		boxtxt	"HELD AT ONCE!"
+		boxtxt	"GO TO THE BLACK BARS"
+		boxtxt	"SETUP SCREEN AND"
+		boxtxt	"HOLD b + up/down TO"
+		boxtxt	"ADJUST THE HEIGHT!"
+		boxtxt	"TO RESET, HOLD b AND"
+		boxtxt	"THEN PRESS start."
 		boxtxt_next
 
-		boxtxt	"speedrun pro-tip D"
+		boxtxt	"drunk special stages"
 		boxtxt_pause
-		boxtxt	"GETTING TIRED OF ME?"
-		boxtxt	"YOU CAN SKIP THESE"
-		boxtxt	"SMALL ON-SCREEN"
-		boxtxt	"TEXTBOXES BY HOLDING"
-		boxtxt	"a AND THEN start!"
-		boxtxt_next
-
-
-		boxtxt	"AND THAT'S ALL THERE"
-		boxtxt	"IS FOR SPEEDRUNS."
-		boxtxt_pause
-		boxtxt	"NOW, HERE ARE SOME"
-		boxtxt	"COOL CHEATS AND"
-		boxtxt	"HIDDEN FEATURES TO"
-		boxtxt	"MESS AROUND WITH!"
+		boxtxt	"ENABLE motion blur"
+		boxtxt	"AND HOLD a + up/down"
+		boxtxt	"TO ROTATE A SPECIAL"
+		boxtxt	"STAGE AROUND WITHOUT"
+		boxtxt	"AFFECTING GRAVITY."
+		boxtxt	"RIVETING VERTIGO!"
 		boxtxt_next
 
 		boxtxt	"debug mode"
@@ -1058,47 +1040,53 @@ Hint_4:
 		boxtxt	"CASUAL/FRANTIC."
 		boxtxt_next
 
-		boxtxt	"adjust black bars"
-		boxtxt_pause
-		boxtxt	"IN THE SETUP SCREEN"
-		boxtxt	"FOR THE BLACK BARS,"
-		boxtxt	"HOLD b + up/down"
-		boxtxt	"TO ADJUST THE BARS'"
-		boxtxt	"BASE HEIGHT. USEFUL"
-		boxtxt	"FOR CINEMATIC MODE!"
+
+		boxtxt	"AND LASTLY, FOUR"
+		boxtxt	"TIME-SAVING TRICKS"
+		boxtxt	"FOR SPEEDRUNS, OR"
+		boxtxt	"IF YOU EVER WANT"
+		boxtxt	"TO REPLAY ERAZOR"
+		boxtxt	"AND JUMP RIGHT IN!"
 		boxtxt_next
 
-		boxtxt	"drunk special stages"
+		boxtxt	"speedrun pro-tip A"
 		boxtxt_pause
-		boxtxt	"ENABLE motion blur"
-		boxtxt	"AND HOLD a + up/down"
-		boxtxt	"TO ROTATE A SPECIAL"
-		boxtxt	"STAGE AROUND WITHOUT"
-		boxtxt	"AFFECTING GRAVITY."
-		boxtxt	"RIVETING VERTIGO!"
+		boxtxt	"WHILE STARTING A NEW"
+		boxtxt	"GAME, HOLD a IN THE"
+		boxtxt	"CASUAL/FRANTIC MENU"
+		boxtxt	"TO ENABLE AUTOSKIP"
+		boxtxt	"AND JUMP RIGHT INTO"
+		boxtxt	"night hill place!"
 		boxtxt_next
 
-		boxtxt	"AND LASTLY, FOR THE"
-		boxtxt	"true masochists"
-		boxtxt	"OUT THERE."
+		boxtxt	"speedrun pro-tip B"
 		boxtxt_pause
-		boxtxt	"HOLD abc AT ONCE"
-		boxtxt	"WHILE ENTERING THE"
-		boxtxt	"OPTIONS MENU FOR"
-		boxtxt	"A TOUGH TWIST..."
+		boxtxt	"AFTER BEATING THE"
+		boxtxt	"CRABMEAT BOSS OR"
+		boxtxt	"WALKING BOMB BOSS,"
+		boxtxt	"HOLD a + b + c"
+		boxtxt	"TO SKIP THE LONG"
+		boxtxt	"CUTSCENES!"
 		boxtxt_next
-		
-		boxtxt	"true_bs MODE!"
+	
+		boxtxt	"speedrun pro-tip C"		
 		boxtxt_pause
-		boxtxt	"- ABSOLUTELY UNFAIR!"
-		dc.b	_pause
-		boxtxt	"- COMPLETION DOES"
-		boxtxt	"  NOTHING AT ALL!"
-		dc.b	_pause
-		boxtxt	"- PROBABLY NOT FUN!"
-		boxtxt_pause
-		boxtxt	"HAVE FUN!"
+		boxtxt	"IN CASUAL MODE, YOU"
+		boxtxt	"CAN INSTANTLY SKIP"
+		boxtxt	"ANY SPECIAL STAGE"
+		boxtxt	"WITH a + b + c"
+		boxtxt	"HELD AT ONCE!"
 		boxtxt_next
+
+		boxtxt	"speedrun pro-tip D"
+		boxtxt_pause
+		boxtxt	"GETTING TIRED OF ME?"
+		boxtxt	"YOU CAN SKIP THESE"
+		boxtxt	"SMALL ON-SCREEN"
+		boxtxt	"TEXTBOXES BY HOLDING"
+		boxtxt	"a AND THEN start!"
+		boxtxt_next
+
 
 		boxtxt	"AND THAT WRAPS UP"
 		boxtxt	"THE INFO DUMP."

@@ -147,6 +147,8 @@ BlackBarsConfigScreen_MainLoop:
 	move.b	Joypad|Held,d0
 	btst	#iB,d0
 	beq.s	@chktoggle
+	btst	#iStart,Joypad|Press
+	bne.w	BlackBars_AdjustBaseHeight_Reset
 	andi.b	#Up|Down,d0
 	bne.w	BlackBars_AdjustBaseHeight
 
@@ -190,14 +192,15 @@ BlackBarsConfigScreen_MainLoop:
 	bra.w	BlackBarsConfigScreen_MainLoop
 ; ===============================================================
 
-BlackBars_Adjust_Min = 2
+BlackBars_Adjust_Min = 0
 BlackBars_Adjust_Max = 224/2
+BlackBars_Adjust_Step = 2
 
 BlackBars_AdjustBaseHeight:
 	btst	#0,($FFFFFE0F).w		; only every other frame
 	beq.w	BlackBarsConfigScreen_MainLoop
 
-	moveq	#1,d1				; move down
+	moveq	#BlackBars_Adjust_Step,d1	; move down
 	andi.b	#Up,d0
 	beq.s	@adjust
 	neg.w	d1				; move up
@@ -206,9 +209,10 @@ BlackBars_AdjustBaseHeight:
 	move.w	BlackBars.BaseHeight,d2
 	add.w	d1,d2				; set new height
 
+BlackBars_AdjustBaseHeight_Direct:
 	cmpi.w	#BlackBars_Adjust_Min,d2
 	bge.s	@minok
-	move.w	#BlackBars_Adjust_Min,d2
+	moveq	#BlackBars_Adjust_Min,d2
 	bra.s	@justset
 @minok:
 	cmpi.w	#BlackBars_Adjust_Max,d2
@@ -216,14 +220,20 @@ BlackBars_AdjustBaseHeight:
 	move.w	#BlackBars_Adjust_Max,d2
 	bra.s	@justset
 @maxok:
-	move.w	#$A2,d0				; play crunch sound
+	move.w	#$A2,d0
 	jsr	PlaySound_Special
 
 @justset:
+	andi.w	#$FFFE,d2
 	move.w	d2,BlackBars.BaseHeight
 	move.w	d2,BlackBars.Height
 	move.w	d2,BlackBars.TargetHeight
 	bra.w	BlackBarsConfigScreen_MainLoop
+; ---------------------------------------------------------------
+
+BlackBars_AdjustBaseHeight_Reset:
+	move.w	#BlackBars.MaxHeight,d2
+	bra.s	BlackBars_AdjustBaseHeight_Direct
 ; ---------------------------------------------------------------
 ; ===============================================================
 

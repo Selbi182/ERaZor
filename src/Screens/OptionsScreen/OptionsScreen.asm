@@ -30,6 +30,7 @@ Options_VRAMStartScreenPos:	rs.w	1
 Options_VRAMBufferPoolPtr:	rs.w	1
 Options_DeleteSRAMCounter:	rs.b	1
 Options_RedrawCurrentItem:	rs.b	1
+Options_Exiting:		rs.b	1
 
 ; ---------------------------------------------------------------------------
 ; All options are kept in a single byte to save space (it's all flags anyway)
@@ -128,7 +129,8 @@ OptionsScreen:				; XREF: GameModeArray
 		move.b	#Options_Music,d0		; play Options screen music (Spark Mandrill)
 		jsr	PlaySound_Special
 		bsr	Options_LoadPal
-		move.w	#$E00,(BGThemeColor).w	; set theme color for background effects
+		move.w	#$008,(BGThemeColor).w	; set theme color for background effects
+		clr.b	Options_Exiting
 
 		jsr	BackgroundEffects_Setup
 
@@ -148,6 +150,8 @@ OptionsScreen:				; XREF: GameModeArray
 ; ---------------------------------------------------------------------------
 
 OptionsScreen_MainLoop:
+		jsr	RandomNumber
+
 		move.l	#@FlushVRAMBufferPool, VBlankCallback
 		move.b	#2,VBlankRoutine
 		jsr	DelayProgram
@@ -196,6 +200,15 @@ Options_InitState:
 		move.b	#$81,($FFFFFF84).w
 
 		move.b	#Options_DeleteSRAMInitialCount, Options_DeleteSRAMCounter
+
+		tst.w	($FFFFFF82).w		; is a valid selection in memory?
+		bpl.s	@end			; if yes, use that
+		bsr	Options_SelectExit	; otherwise select the exit entry by default
+@end:		rts
+; ---------------------------------------------------------------------------
+
+Options_SelectExit:
+		move.w	#Options_MenuData_NumItems-1, ($FFFFFF82).w
 		rts
 
 ; ---------------------------------------------------------------------------
@@ -235,49 +248,32 @@ CheckEnable_PlacePlacePlace:
 
 Options_IntialDraw:
 		; Render header and tool tip
-		lea	Options_DrawText_Highlighted(pc), a4
+	;	lea	Options_DrawText_Highlighted(pc), a4
+		lea	Options_DrawText_Normal(pc), a4
 		lea	@ItemData_Header_Top(pc), a0
 		bsr	Options_RedrawMenuItem_Direct
-
-	;	lea	@ItemData_Header_Top2(pc), a0
-	;	bsr	Options_RedrawMenuItem_Direct
 
 		lea	@ItemData_Header_Bottom(pc), a0
 		bsr	Options_RedrawMenuItem_Direct
 		
-		lea	Options_DrawText_Normal(pc), a4
-		lea	@ItemData_Tooltip(pc), a0
-		bsr	Options_RedrawMenuItem_Direct
-
 		; Render all interactive menu items
 		bra	Options_RedrawAllMenuItems
 
 ; ---------------------------------------------------------------------------
 @ItemData_Header_Top:
-		dcScreenPos $E000, 4, 4			; start on-screen position
-		dc.l	@DrawHeader			; redraw handler
+		dcScreenPos $E000, 4, 0			; start on-screen position
+		dc.l	@DrawHeaderR			; redraw handler
 		
-@ItemData_Header_Top2:
-		dcScreenPos $E000, 4, 4			; start on-screen position
-		dc.l	@DrawHeader2			; redraw handler
-
 @ItemData_Header_Bottom:
-		dcScreenPos $E000, 23, 4		; start on-screen position
-		dc.l	@DrawHeader			; redraw handler
-
-@ItemData_Tooltip:
-		dcScreenPos $E000, 25, 10		; start on-screen position
-		dc.l	@DrawTooltip			; redraw handler
+		dcScreenPos $E000, 23, 2		; start on-screen position
+		dc.l	@DrawHeaderL			; redraw handler
 
 ; ---------------------------------------------------------------------------
-@DrawHeader:
-		Options_PipeString a4, '<------------------------------>'
+@DrawHeaderR:
+		Options_PipeString a4, '------------------------------------->'
 		rts
-@DrawHeader2:
-		Options_PipeString a4, '          CHANGE STUFF          '
-		rts
-@DrawTooltip:
-		Options_PipeString a4, 'PRESS  _`abc TO EXIT'
+@DrawHeaderL:
+		Options_PipeString a4, '<-------------------------------------'
 		rts
 
 ; ===========================================================================
@@ -286,14 +282,13 @@ Options_IntialDraw:
 ; ---------------------------------------------------------------------------
 
 Options_HandleUpdate:
-		tst.b	Joypad|Press			; Start pressed?
-		bmi.s	@HandleExit			; if yes, branch
-
 		bsr	Options_HandleUpDown
 		
 		move.w	($FFFFFF82).w, d0
-		bsr.w	Options_HandeMenuItem		; handle currently selected menu item
+		bsr.w	Options_HandleMenuItem		; handle currently selected menu item
 		
+		tst.b	Options_Exiting			; was exiting flag set?
+		bne.s	@HandleExit			; if yes, exit options screen
 		tst.b	Options_RedrawCurrentItem	; was redraw flag set?
 		beq.s	@done				; if not, branch
 		sf.b	Options_RedrawCurrentItem	; reset flag
@@ -328,16 +323,24 @@ Options_HandleUpDown:
 @joypad:		equr	d1
 
 		move.w	($FFFFFF82).w, @current_selection	; get current selection
+		move.w	@current_selection, @prev_selection	; remember previous selection now
+
+		cmpi.b	#B,Joypad|Held
+		beq.s	@MoveSelectionToLast
+
 		moveq	#Up|Down, @joypad
 		and.b	Joypad|Press, @joypad			; Up or Down pressed?
 		beq	@Done					; if not, branch
-		move.w	@current_selection, @prev_selection	; remember previous selection now
+
+
 		lsr.w	@joypad					; Up pressed?
 		bcc.s	@MoveSelectionDown			; if not, branch
 
 		; Move selection up (with boundary checks)
 		subq.w	#1, @current_selection
 		bpl.s	@UpdateSelection
+
+	@MoveSelectionToLast:
 		moveq	#Options_MenuData_NumItems-1, @current_selection
 		bra.s	@UpdateSelection
 
@@ -352,6 +355,10 @@ Options_HandleUpDown:
 	@UpdateSelection:
 		KDebug.WriteLine "Setting selection: %<.w d0>"
 		move.w	@current_selection, ($FFFFFF82).w	; set new selection
+
+		cmp.w	@current_selection, @prev_selection
+		beq.w	@Done
+		bclr	#iB,Joypad|Press
 		assert.w @current_selection, ne, @prev_selection
 
 		; Always reset SRAM delete counter
@@ -406,7 +413,7 @@ Options_RedrawMenuItem_Direct:
 		jmp	(a0)					; execute redraw
 
 ; ---------------------------------------------------------------------------
-Options_HandeMenuItem:
+Options_HandleMenuItem:
 		Options_GetMenuItem d0, a0			; a0 = item pointer
 		move.l	6(a0), a0				; a0 = update handler
 		jmp	(a0)					; execute update

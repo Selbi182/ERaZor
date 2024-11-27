@@ -66,21 +66,30 @@ CS_ClrObjRam:	move.l	d0,(a1)+
 
 	; widescreen-only line extensions
 	if def(__WIDESCREEN__)
+		CS_LineChar: = $2B  ; mapping ID of the line - tipped versions are right before and after
+
 		lea	VDP_Data,a6
 		lea	VDP_Ctrl,a4
 		move.l	#$407A0003|($800000*7),(a4)
 		moveq	#2,d3
-@lbonusline:	move.w	#$2B,(a6)
+@lbonusline:	move.w	#CS_LineChar,(a6)
 		dbf	d3,@lbonusline
-		move.l	#$40800003|($800000*6),(a4) ; for some reason these are offset by one row
+		move.l	#$40000003|($800000*7),(a4) ; screen wrap happened, go one line up
 		moveq	#2,d3
-@lbonuslinex:	move.w	#$2B,(a6)
+@lbonuslinex:	move.w	#CS_LineChar,(a6)
 		dbf	d3,@lbonuslinex
 
 		move.l	#$40480003|($800000*7),(a4)
 		moveq	#6,d3
-@rbonusline:	move.w	#$2B,(a6)
+@rbonusline:	move.w	#CS_LineChar,(a6)
 		dbf	d3,@rbonusline
+
+		; final touches at the tips
+		move.l	#$407A0003|($800000*7),(a4)
+		move.w	#CS_LineChar-1,(a6)
+		
+		move.l	#$40540003|($800000*7),(a4)
+		move.w	#CS_LineChar+1,(a6)
 	endif
 
 		lea	(Pal_ChapterHeader).l,a1	; load chapter 3 stuff instead

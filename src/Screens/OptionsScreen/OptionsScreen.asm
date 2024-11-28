@@ -232,6 +232,8 @@ CheckEnable_PlacePlacePlace:
 		bset	#5,(OptionsBits).w	; force-enable frantic mode
 		bclr	#4,(OptionsBits).w	; force-disable nonstop inhuman
 		bclr	#1,(OptionsBits).w	; force-enable story screens
+		bclr	#5,(OptionsBits2).w	; force-disable space golf
+
 @noenable:
 		move.w	#$E3,d0			; regular music speed
 		tst.b	(PlacePlacePlace).w	; is easter egg flag enabled?

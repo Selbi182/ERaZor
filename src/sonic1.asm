@@ -13338,9 +13338,9 @@ Obj_SAPEasterEgg:
 		ori.b	#1,($FFFFFE1D).w	; update rings counter
 		
 		move.b	#$96,d0			; restart regular music
-		btst	#4,(OptionsBits).w	; is nonstop inhuman enabled?
-		beq.s	@play			; if not, branch
-		move.b	#$84,d0			; restart lame default music	
+	;	btst	#4,(OptionsBits).w	; is nonstop inhuman enabled?
+	;	beq.s	@play			; if not, branch
+	;	move.b	#$84,d0			; restart lame default music	
 @play:		jsr	PlaySound
 
 		jmp	DeleteObject
@@ -16047,6 +16047,9 @@ loc_BDD6:
 		bne.w	Obj32_ShowPressed	; if not, branch
 		move.b	#0,($FFFFF7CC).w	; unlock controls
 		clr.b	($FFFFFFE5).w		; clear air freeze flags
+
+		bra.s	@notnonstopinhuman
+
 		btst	#4,(OptionsBits).w	; is nonstop inhuman enabled?
 		beq.s	@notnonstopinhuman	; if not, branch	
 		move.b	#$3F,0(a0)		; change switch into explodion (no double fun allowed, sorry)
@@ -18011,7 +18014,11 @@ ObjectFall_Sonic:
 		subi.w	#Gravity,d3		; inverse gravity
 		btst	#6,($FFFFF602).w	; is A pressed?
 		beq.s	@OFS_NoA		; if not, branch
+
+		btst	#6,($FFFFF603).w	; is A pressed this frame?
+		beq.s	@OFS_NoRoll		; if not, branch
 		move.b	#2,obAnim(a0)		; change to rolling animation
+@OFS_NoRoll:
 		move.b	#1,($FFFFFFEB).w	; set jumpdash flag (to prevent it)
 		tst.w	obVelY(a0)
 		bmi.s	@OFS_Negative
@@ -28518,8 +28525,12 @@ WF_MakeWhite_Loop:
 		; intensity control
 		moveq	#2,d4			; intensity boost (for any normal stage)
 		
-		cmpi.w	#$302,($FFFFFE10).w	; is level Star Agony Place?
-		beq.s	@wfintensitynoboost	; if yes, branch
+	;	cmpi.w	#$302,($FFFFFE10).w	; is level Star Agony Place?
+	;	bne.s	@notsap			; it not, branch
+	;	tst.b	(CameraShake).w
+	;	bne.s	@wfintensitynoboost	; if yes, branch
+
+@notsap:
 		cmpi.b	#$10,(GameMode).w	; are we in a special stage?
 		bne.s	@wfintensity		; if not, branch
 		tst.b	($FFFFFFBF).w		; Unreal Place floating challenge enabled?
@@ -29160,8 +29171,8 @@ AF_UpBoost = $180
 Sonic_AirFreeze:
 		tst.b	($FFFFFF77).w		; is antigrav enabled?
 		beq.w	AM_End			; if not, branch
-		tst.b	($FFFFFFE7).w		; is inhuman mode enabled?
-		bne.w	AM_End			; if yes, disallow air freeze
+	;	tst.b	($FFFFFFE7).w		; is inhuman mode enabled?
+	;	bne.w	AM_End			; if yes, disallow air freeze
 
 		move.b	($FFFFF602).w,d1	; get button pressed
 		btst	#5,d1			; is C pressed?
@@ -29697,10 +29708,103 @@ locret_135A2:
 
 ; SLZHitWall:
 SAP_HitWall:
-		cmpi.w	#$302,($FFFFFE10).w		; are we in SAP?
-		bne.w	@end				; if not, branch
 		tst.b	($FFFFFF77).w			; is antigrav enabled?
 		beq.w	@end				; if not, branch
+		cmpi.w	#$302,($FFFFFE10).w		; are we in SAP?
+		bne.w	@end				; if not, branch
+
+	;	tst.b	(CameraShake).w
+	;	bne.s	@do
+
+
+		cmpi.b	#$1A,obAnim(a0)	; check if in hurt animation
+		beq.w	@do
+
+		btst	#4,(OptionsBits).w	; is nonstop inhuman enabled?
+		bne.s	@infinite		; if yes, branch
+
+		cmpi.b	#100,(CameraShake).w
+		bhs.w	@do
+
+		tst.b	(CameraShake).w
+		beq.s	@infinite
+
+		addq.w	#1,(FranticDrain).w
+
+	@infinite:
+	;	jsr	RandomDirection
+
+	;	move.w	(a1)+,d0
+	;	neg.w	d0
+	;	move.w	d0,obVelX(a0)		; set final result to Sonic's X-speed
+	;	move.w	(a1)+,d0
+	;	neg.w	d0
+	;	move.w	d0,obVelY(a0)		; set final result to Sonic's Y-speed
+
+
+
+	;	bset	#1,obStatus(a0)			; set status to be airborne
+		clr.l	($FFFFF602).w			; clear any remaining button presses
+		bset	#1,obStatus(a0) ; in air
+		bset	#2,obStatus(a0) ; rolling
+		bclr	#3,obStatus(a0) ; not standing
+		move.b	#$25,obAnim(a0)	; use inhuman rotate animation
+		move.b	#2,obRoutine(a0)
+		move.b	#0,$3C(a0)
+		move.b	#1,($FFFFFFEB).w	; set jumpdash flag
+
+		
+		clr.b	($FFFFFFE5).w			; clear air freeze flags
+		clr.w	ExtCamShift	; clear extended camera counter
+
+		lea	($FFFFCB00).w,a1	; get recorded position
+		move.w	($FFFFF7A8).w,d0
+		subi.b	#8,d0
+		lea	(a1,d0.w),a1
+		move.w	(a1)+,d1		; load X-pos of nearest enemy into d1
+		sub.w	obX(a0),d1		; sub Sonic's X-pos from it
+		move.w	(a1)+,d2		; load Y-pos of nearest enemy into d1
+		sub.w	obY(a0),d2		; sub Sonic's Y-pos from it
+		jsr	CalcAngle		; calculate the angle
+		jsr	CalcSine		; calculate the sine
+
+		muls.w	#$1000,d0		; multiply result 1 by $900 (this line is for the Y-speed)
+		muls.w	#$1000,d1		; multiply result 2 by $900 (this line is for the X-speed)
+		asr.l	#8,d0			; align the results to the correct position in the bitfield ...
+		asr.l	#8,d1			; ... (e.g. 00000000xxxxxxxxxxxxxxxx00000000 to 0000000000000000xxxxxxxxxxxxxxxx)
+
+		move.w	d1,obVelX(a0)		; set final result to Sonic's X-speed
+		move.w	d0,obVelY(a0)		; set final result to Sonic's Y-speed
+		jsr	SpeedToPos
+
+		jsr	WhiteFlash2
+		move.b	#16,($FFFFFFB1).w	; set inhuman crush flag
+		
+		move.w	#$000,($FFFFFB40).w
+		move.b	#0,($FFFFFFB2).w	; shorter camera lag
+
+
+		addi.b	#50,(CameraShake).w
+
+		move.w	#$BC,d0
+		jsr	PlaySound
+		move.w	#$DE,d0
+		jsr	PlaySound_Special
+
+		addq.l	#4,sp
+		bra.w	@end
+
+
+
+
+
+
+
+
+
+	@do:
+		move.b	#0,(CameraShake).w
+
 		move.b	#0,($FFFFF7CC).w		; make sure controls remain unlocked
 		clr.b	($FFFFFFE5).w			; clear air freeze flags
 		clr.w	obVelX(a0)			; clear X speed

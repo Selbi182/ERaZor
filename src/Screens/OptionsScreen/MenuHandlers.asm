@@ -669,24 +669,24 @@ Options_NonstopInhuman_Redraw:
 	beq.s	@2				; if not, branch
 	lea	@Str_ErazorPower_Normal(pc), a0
 
-@2:	Options_PipeString a4, "%<.l a0 str>    %<.l a1 str>", 30
+@2:	Options_PipeString a4, "%<.l a0 str>   %<.l a1 str>", 30
 	rts
 
 ; ---------------------------------------------------------------------------
 @Str_ErazorPower_Normal:
-	dc.b	'Z ERAZOR POWER  ', 0
+	dc.b	'Z ERAZOR POWERS', 0
 
 @Str_ErazorPower_Locked:
-	dc.b	'Z ?????? ?????  ', 0
+	dc.b	'Z ?????? ??????', 0
 	even
 
 @ErazorPowerTextList:
 	dc.l	@Str_Mode00,@Str_Mode01,@Str_Mode10,@Str_Mode11
 
-@Str_Mode00:	dc.b	'       OFF',0
-@Str_Mode01:	dc.b	'   INHUMAN',0
-@Str_Mode10:	dc.b	'SPACE GOLF',0
-@Str_Mode11:	dc.b	'  ...BOTH?',0
+@Str_Mode00:	dc.b	'         OFF',0
+@Str_Mode01:	dc.b	'TRUE INHUMAN',0
+@Str_Mode10:	dc.b	'  SPACE GOLF',0
+@Str_Mode11:	dc.b	'    ...BOTH?',0
 		even
 
 

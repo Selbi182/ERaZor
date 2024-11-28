@@ -1044,7 +1044,7 @@ Hint_4:
 		boxtxt_next
 
 
-		boxtxt	"AND LASTLY, FOUR"
+		boxtxt	"AND LASTLY, FIVE"
 		boxtxt	"TIME-SAVING TRICKS"
 		boxtxt	"FOR SPEEDRUNS, OR"
 		boxtxt	"IF YOU EVER WANT"
@@ -1064,15 +1064,23 @@ Hint_4:
 
 		boxtxt	"speedrun pro-tip B"
 		boxtxt_pause
-		boxtxt	"AFTER BEATING THE"
-		boxtxt	"CRABMEAT BOSS OR"
-		boxtxt	"WALKING BOMB BOSS,"
-		boxtxt	"HOLD a + b + c"
-		boxtxt	"TO SKIP THE LONG"
-		boxtxt	"CUTSCENES!"
+		boxtxt	"PRESS start TO"
+		boxtxt	"SKIP THE ANIMATION"
+		boxtxt	"WHEN YOU JUMP INTO"
+		boxtxt	"A GIANT RING!"
+		boxtxt_next
+
+		boxtxt	"speedrun pro-tip C"
+		boxtxt_pause
+		boxtxt	"HOLD a + b + c TO"
+		boxtxt	"SKIP LONG CUTSCENES!"
+		boxtxt	"THIS INCLUDES THE"
+		boxtxt	"NUKE, AS WELL AS THE"
+		boxtxt	"WALKING BOMB AND"
+		boxtxt	"CRABMEAT BOSSES."
 		boxtxt_next
 	
-		boxtxt	"speedrun pro-tip C"		
+		boxtxt	"speedrun pro-tip D"		
 		boxtxt_pause
 		boxtxt	"IN CASUAL MODE, YOU"
 		boxtxt	"CAN INSTANTLY SKIP"
@@ -1081,9 +1089,10 @@ Hint_4:
 		boxtxt	"HELD AT ONCE!"
 		boxtxt_next
 
-		boxtxt	"speedrun pro-tip D"
+		boxtxt	"speedrun pro-tip E"
 		boxtxt_pause
 		boxtxt	"GETTING TIRED OF ME?"
+		boxtxt_pause
 		boxtxt	"YOU CAN SKIP THESE"
 		boxtxt	"SMALL ON-SCREEN"
 		boxtxt	"TEXTBOXES BY HOLDING"

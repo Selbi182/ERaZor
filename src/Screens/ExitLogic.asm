@@ -557,7 +557,7 @@ HubRing_SoundTest:
 		rts
 
 HubRing_Tutorial:
-		bsr	Set_TutorialVisited
+		bsr	Set_TutorialVisited	; the FUN begins
 		move.w	#$501,($FFFFFE10).w	; set level to SBZ2
 		bra.w	StartLevel
 
@@ -728,6 +728,7 @@ State_BaseGame_Casual	= 0
 State_BaseGame_Frantic	= 1
 State_Blackout          = 2
 State_TutorialVisited   = 3
+State_HubEasterVisited  = 4
 ; ---------------------------------------------------------------------------
 
 		; d0 = bit we want to test
@@ -804,7 +805,11 @@ Check_BlackoutFirst:
 Check_TutorialVisited:
 		btst	#State_TutorialVisited,(Progress).w
 		rts
+; ---------------------------------------------------------------------------
 
+Check_HubEasterVisited:
+		btst	#State_HubEasterVisited,(Progress).w
+		rts
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -820,6 +825,7 @@ UnlockEverything:
 		bsr	Set_BaseGameDone_Frantic	; unlock motion blur
 		bsr	Set_BlackoutDone		; unlock nonstop inhuman
 		bsr	Set_TutorialVisited		; set tutorial visited
+		bsr	Set_HubEasterVisited		; set Uberhub easter egg as visited
 		move.b	#7,(CurrentChapter).w		; set to final chapter
 		rts
 
@@ -867,7 +873,6 @@ Set_BaseGameDone_Frantic:
 Set_BaseGameDone_Casual:
 		bset	#State_BaseGame_Casual,(Progress).w	; you have beaten the base game in casual, congrats
 		rts
-
 ; ---------------------------------------------------------------------------
 
 Set_BlackoutDone:
@@ -877,6 +882,11 @@ Set_BlackoutDone:
 
 Set_TutorialVisited:
 		bset	#State_TutorialVisited,(Progress).w
+		rts
+; ---------------------------------------------------------------------------
+
+Set_HubEasterVisited:
+		bset	#State_HubEasterVisited,(Progress).w
 		rts
 
 ; ---------------------------------------------------------------------------

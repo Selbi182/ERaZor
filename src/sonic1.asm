@@ -939,6 +939,11 @@ PG_DoPause:
 		bne.s	Pause_MainLoop		; if yes, branch
 		move.b	#1,($FFFFFFB5).w	; set flag
 		move.b	#1,($FFFFF003).w	; pause music
+
+		moveq	#%1100,d0
+		and.b	OptionsBits2,d0
+		cmpi.b	#%1100,d0		; check if camera shake is set to disabled
+		beq.s	Pause_MainLoop		; if yes, don't do grayscale
 		jsr	Pal_MakeBlackWhite	; make palette grayscale while game is paused
 
 Pause_MainLoop:
@@ -971,14 +976,19 @@ Pause_ChkStart:
 		beq.w	Pause_MainLoop		; if not, loop
 
 Pause_Restore:
+		clr.b	($FFFFFFB5).w		; clear flag
+		move.w	#0,($FFFFF63A).w 	; unpause the game
 		move.b	#$80,($FFFFF003).w	; something with music
+
+		moveq	#%1100,d0		
+		and.b	OptionsBits2,d0
+		cmpi.b	#%1100,d0		; check if camera shake is set to disabled
+		beq.s	Pause_DoNothing		; if yes, branch
 		lea	Pal_Water_Active,a0	; get palette
 		lea	PalCache_PauseEffect,a1 ; get backup up palette
 		moveq	#$3F,d3			; set d3 to $3F
 @restorepal:	move.l	(a1)+,(a0)+		; set new palette
 		dbf	d3,@restorepal		; loop for each colour
-		clr.b	($FFFFFFB5).w		; clear flag
-		move.w	#0,($FFFFF63A).w 	; unpause the game
 
 Pause_DoNothing:
 		rts				; return
@@ -3761,8 +3771,8 @@ Level_Delay:
 
 		cmpi.w	#$0278,($FFFFD008).w
 		bne.s	Level_StartGame
-		move.w	#$1000,($FFFFD010).w	; shoot Sonic down in Uberhub's intro
-		move.w	#-$200,($FFFFD012).w	; shoot Sonic down in Uberhub's intro
+		move.w	#$1000,($FFFFD010).w
+		move.w	#-$200,($FFFFD012).w
 		move.w	#$C3,d0			; set giant ring sound
 		jsr	(PlaySound).l		; play it
 		move.w	#$BC,d0			; set dashing sound
@@ -3772,7 +3782,7 @@ Level_Delay:
 
 		jsr	SingleObjLoad
 		bne.s	Level_StartGame
-		move.b	#$7C,(a1)
+		move.b	#$7C,(a1)		; load fake giant ring flash object
 		move.b	#6,obRoutine(a1)
 		move.w	($FFFFD008).w,obX(a1)
 		move.w	($FFFFD00C).w,obY(a1)
@@ -5761,6 +5771,10 @@ End_LoadData:
 		bsr	PLC_ExecuteOnce	; load ending sequence patterns
 		jsr	Hud_Base
 		bsr	LevelSizeLoad
+	if def(__WIDESCREEN__)
+		addi.w	#SCREEN_XCORR*2,($FFFFD008).w
+	endif
+
 		bsr	DeformBgLayer
 		bset	#2,($FFFFF754).w
 
@@ -6091,12 +6105,18 @@ LevSz_StartLoc:				; XREF: LevelSizeLoad
 		; Uberhub frantic fast spawn
 		cmpi.w	#$400,($FFFFFE10).w	; is level SYZ?
 		bne.s 	@load			; if not, branch
-		btst	#4,(ScreenFuzz).w 
-		beq.s	@notintro
-		addq.w	#2,d0
-		bra.s	@load
+		btst	#4,(ScreenFuzz).w 	; did we exit from the intro cutscene?
+		beq.s	@notintro		; if not, branch
+		addq.w	#2,d0			; use special intro ring start loc
+		bra.s	@load			; skip
 
-	@notintro:
+	@notintro:	
+		btst	#4,(OptionsBits).w	; is nonstop inhuman enabled?
+		beq.s	@chkfrantic		; if not, branch
+		jsr	Check_HubEasterVisited	; has the player already visited the easter egg?
+		beq.s	@load			; if not, always go to casual loc as a subtle nudge to the player
+
+	@chkfrantic:
 		frantic				; are we in frantic mode?
 		bne.s	@frantic		; if yes, branch
 		bsr	Check_JustFinishedFP	; has the player just escaped FP for the first time?
@@ -6906,7 +6926,7 @@ Resize_SLZ2boss1:
 		rts
 ; ===========================================================================
 
-BombBoss_Health = 24
+BombBoss_Health = 25
 
 Resize_SLZ2boss2:
 		cmpi.w	#$B00,($FFFFD008).w
@@ -6930,7 +6950,7 @@ Resize_SLZ2boss2:
 	if LowBossHP=1
 		moveq	#1,d0
 	endif
-		addq.b	#1,d0			; add one more hit for the intro cutscene
+	;	addq.b	#1,d0			; add one more hit for the intro cutscene
 		move.b	d0,(BossHealth).w	; set lives
 		move.b	d0,(HUD_BossHealth).w	; set lives in HUD
 
@@ -8654,13 +8674,16 @@ Obj18_OnPlatform:				; XREF: Obj18_Index
 		cmpi.w	#$400,($FFFFFE10).w	; is level SYZ1?
 		bne.w	Obj18_NotSYZX
 
+		btst	#1,($FFFFD022).w		; is Sonic in air?
+		bne.w	Obj18_NotSYZX			; if yes, branch
+
 		move.b	#1,$3F(a0)		; show arrows
 
 		tst.b	obSubtype(a0)		; is this the platform to go back up?
 		bmi.s	@gobackup		; if yes, branch
 		
 		moveq	#%11,d0			; up or down...
-		and.b	($FFFFF603).w,d0	; ...pressed?
+		and.b	($FFFFF602).w,d0	; ...held?
 		beq.s	Obj18_NotSYZX		; if not, branch
 		move.w	#$800,($FFFFD012).w	; shoot Sonic down
 		move.b	#2,($FFFFD01C).w	; rolling animation
@@ -8668,7 +8691,7 @@ Obj18_OnPlatform:				; XREF: Obj18_Index
 
 @gobackup:
 		moveq	#%11,d0			; up or down...
-		and.b	($FFFFF603).w,d0	; ...pressed?
+		and.b	($FFFFF602).w,d0	; ...held?
 		beq.s	Obj18_NotSYZX		; if not, branch
 		
 		move.w	#-$1000,($FFFFD012).w	; shoot Sonic up
@@ -9734,6 +9757,10 @@ FPBonusTexts:	dc.b	"     OH, BACK SO SOON?      "
 		dc.b	"  THIS IS GETTING AWKWARD   "
 		dc.b	"YOU GOT THIS. SEE YOU LATER!"
 		even
+
+FPBonusTexts_Place:
+		dc.b	"     PLACE PLACE PLACE!     "
+		even
 ; ---------------------------------------------------------------------------
 
 Obj1D_BonusText_Main:
@@ -9756,7 +9783,6 @@ Obj1D_BonusText_Main:
 		move.w	#224,obScreenY(a0)
 		move.w	obScreenY(a0),$32(a0)
 
-
 		; load text into VRAM
 		moveq	#0,d0
 		move.w	(RelativeDeaths).w,d0	; load relative deaths counter
@@ -9774,6 +9800,11 @@ Obj1D_BonusText_Main:
 		lea	(FPBonusTexts).l,a1	; load text
 		adda.w	d0,a1			; set final starting offset for entry
 
+		tst.b	(PlacePlacePlace).w	; is easter egg flag set?
+		beq.s	@noteaster		; if not, branch
+		lea	(FPBonusTexts_Place).l,a1
+
+@noteaster:
 		VBlank_SetMusicOnly
 		vram	$5600
 		lea	(VDP_Data).l,a6
@@ -13192,6 +13223,9 @@ Obj4B_MoveOffScreen:			; XREF: Obj4B_Index
 		rts				; wait until ring is off-screen
 
 @contnotred:
+		btst	#iStart,Joypad|Press	; start pressed?
+		bne.w	Obj4B_Exit		; if yes, skip all the ring stuff
+
 		tst.b	($FFFFFF7D).w		; is ring moving up?
 		bne.s	@goinup			; if yes, branch
 		addi.w	#$10,obVelY(a0)		; move ring down
@@ -20431,7 +20465,7 @@ Obj50_Main:				; XREF: Obj50_Index
 		move.l	#Map_obj50,obMap(a0)
 		move.w	#$247B,obGfx(a0)
 		move.b	#4,obRender(a0)
-		move.b	#4,obPriority(a0)
+		move.b	#2,obPriority(a0)
 		move.b	#$14,obActWid(a0)
 		move.b	#$11,obHeight(a0)
 		move.b	#8,obWidth(a0)
@@ -23026,6 +23060,8 @@ Obj0B_BreakPole:
 		ori.b	#10,(CameraShake).w	; camera shaking
 		move.w	#$DF,d0			; jester explosion sound
 		jsr	PlaySound_Special
+		tst.b	obSubtype(a0)		; is this a cosmetic-only pole?
+		bmi.s	Obj0B_BreakPole_NoSound	; if yes, branch
 		jsr	WhiteFlash2
 		move.b	#4,($FFFFFFB2).w	; shorter camera lag
 
@@ -23033,6 +23069,9 @@ Obj0B_BreakPole_NoSound:
 		addq.b	#2,obRoutine(a0)	; set to display only
 		move.b	#1,obFrame(a0)		; break	the pole
 		clr.b	obColType(a0)		; clear collision type
+
+		tst.b	obSubtype(a0)		; is this a cosmetic-only pole?
+		bmi.s	Obj0B_Display		; if yes, branch
 
 		move.b	#1,($FFFFFFFE).w	; make sure =P monitor is enabled (if the player somehow skipped it)
 		move.b	obSubtype(a0),d0	; get subtype
@@ -23236,6 +23275,9 @@ Obj5D_Action:				; XREF: Obj5D_Index
 
 		moveq	#BombBoss_Health,d0	; get base health
 		sub.b	(BossHealth).w,d0	; subtract current health
+		bpl.s	@ok
+		moveq	#0,d0
+	@ok:
 		move.w	d0,d1
 		lsl.w	#2,d0
 
@@ -23784,12 +23826,14 @@ Obj5F_Action:				; XREF: Obj5F_Index
 		blo.s	@doaction		; if not, branch
 		tst.w	($FFFFFE08).w		; is debug mode	on?
 		bne.s	@doaction		; if yes, ignore invicibility frames
-		cmpi.b	#BombBoss_Health,(BossHealth).w	; is boss still at full health?
-		bhs.s	@doaction		; if yes, branch
+	;	cmpi.b	#BombBoss_Health,(BossHealth).w	; is boss still at full health?
+	;	bhs.s	@doaction		; if yes, branch
 
 		frantic				; are we in frantic?
 		beq.s	@notfrantic		; if not, branch
-		addq.b	#1,(BossHealth).w	; regain one HP per bounce
+		cmpi.b	#99,(BossHealth).w
+		bhs.s	@notfrantic
+		addq.b	#1,(BossHealth).w	; regen one HP per bounce
 		move.b	(BossHealth).w,(HUD_BossHealth).w ; update boss health in HUD
 		move.b	#1,($FFFFFE1C).w	; update lives
 @notfrantic:
@@ -24118,8 +24162,8 @@ Obj5F_BossDefeatedBlip:
 		beq.s	@patheticexplosion
 		blo.s	@hidebomb
 
-		cmpi.w	#3*60+30,d1
-		bhi.s	@noannoyed
+	;	cmpi.w	#3*60+30,d1
+	;	bhi.s	@noannoyed
 		jsr	AnnoyedSonic
 
 @noannoyed:
@@ -24220,12 +24264,14 @@ Obj5F_Display:				; XREF: Obj5F_Index
 		move.w	d0,obVelX(a1)
 		swap	d0
 		subi.w	#$FF,d0
+		asl.w	#1,d0
 		move.w	d0,obVelY(a1)
-		move.w	$30(a0),d0
-		lsr.w	#1,d0
-		move.w	#BombFuseTime_Boss,d1
-		sub.w	d0,d1
-		move.w	d1,$30(a1)	; set fuse time
+	;	move.w	$30(a0),d0
+	;	lsr.w	#1,d0
+	;	move.w	#BombFuseTime_Boss,d1
+	;	sub.w	d0,d1
+	;	move.w	d1,$30(a1)	; set fuse time
+		move.w	#15,$30(a1)	; set lifetime for sparkle
 
 @conty:
 		cmpi.b	#5,obAnim(a0)
@@ -24289,7 +24335,7 @@ loc_11B7C:
 		moveq	#BombBoss_Health,d1
 		sub.b	(BossHealth).w,d1
 		bpl.s	@0
-		moveq	#BombBoss_Health,d1
+		moveq	#0,d1
 @0:		lsr.w	#1,d1
 		add.w	d1,d6		; d6 is now the amount of shrapnel to spawn - 1
 		
@@ -24325,7 +24371,7 @@ Obj5F_MakeShrap:			; XREF: loc_11B7C
 		moveq	#BombBoss_Health,d1
 		sub.b	(BossHealth).w,d1
 		bpl.s	@0
-		moveq	#BombBoss_Health,d1
+		moveq	#0,d1
 @0:		lsr.w	#1,d1
 
 		move.w	#$80,d4	; load default speed
@@ -26221,9 +26267,9 @@ Obj03_Setup:
 		cmpi.b	#7,obSubtype(a0)	; is this the tutorial entrance?
 		bne.s	@regular		; if not, branch
 		jsr	Check_TutorialVisited
-		bne.s	Obj03_Display
+		bne.w	Obj03_Display
 		move.b	#$10,obFrame(a0)	; FUN FUN FUN
-		bra.s	Obj03_Display
+		bra.w	Obj03_Display
 
 @regular:
 		cmpi.b	#7,obSubtype(a0)	; is this a regular level sign? (for an act)
@@ -26241,8 +26287,22 @@ Obj03_Setup:
 		move.b	obRender(a0),obRender(a1) ; copy render flags
 		move.b	#56,obActWid(a1)	; set display width
 		move.w	#($6200/$20),obGfx(a1)	; set art, use first palette line
-		move.b	#9,obFrame(a1)		; set to "PLACE" frame
 		move.w	obY(a1),$38(a1)		; remember base Y pos
+
+		move.b	#9,obFrame(a1)		; set to "PLACE" frame
+		tst.b	obSubtype(a0)		; is this the GHZ sign?
+		bne.s	@notghz			; if not, branch
+		moveq	#0,d0			; has the player beaten this level before?
+		jsr	Check_LevelBeaten_Current
+		beq.s	@notghz			; if not, branch
+		move.b	#$11,obFrame(a1)	; use "GREEN HILL" frame
+@notghz:
+		cmpi.b	#5,obSubtype(a0)	; is this the SLZ sign?
+		bne.s	Obj03_Display		; if not, branch
+		moveq	#5,d0			; has the player beaten this level before?
+		jsr	Check_LevelBeaten_Current
+		beq.s	Obj03_Display		; if not, branch
+		move.b	#$12,obFrame(a1)	; use "STAR AGONY" frame
 ; ---------------------------------------------------------------------------
 		
 Obj03_Display:
@@ -26260,11 +26320,15 @@ Obj03_Display:
 		bne.s	@notodd			; if yes, branch
 		bset	#5,obGfx(a0)		; use second palette row (gives a slight flicker effect)
 @notodd:
-		tst.b	obRender(a0)		; is object on-screen?
-		bpl.s	@chkDelete		; if not, branch
 		tst.b	($FFFFFF7F).w		; are we done falling down the intro tube?
 		beq.s	@chkDelete		; if not, don't display
-		bsr.s	Obj03_BackgroundColor
+	;	tst.b	obRender(a0)		; is object on-screen?
+	;	bmi.s	@bg			; if yes, do bg color
+	;	cmpi.b	#6,obSubtype(a0)	; is this the FP sign?
+	;	beq.s	@bg			; if yes, update color early because the sign is huge
+	;	bra.s	@chkDelete		; otherwise skip color update
+	@bg:
+		bsr.s	Obj03_BackgroundColor	; update background color
 
 @chkDelete:
 		move.w	obX(a0),d0
@@ -26282,7 +26346,7 @@ Obj03_BackgroundColor:
 		moveq	#$1F, d0
 		and.b	obFrame(a0), d0
 
-		assert.b obFrame(a0), ls, #$10
+		assert.b obFrame(a0), ls, #$12
 
 		add.w	d0, d0
 		add.w	d0, d0				; d0 = Frame * 4
@@ -26704,7 +26768,9 @@ UberhubEasteregg:
 		moveq	#$FFFFFF88,d0		; play special stage jingle...
 		jsr	PlaySound		; ...specifically because it tends to ruin the music following it lol
 		moveq	#$FFFFFFB9,d0		; play huge crumble sound...
-		jmp	PlaySound_Special	; ...for bonus atmosphere
+		jsr	PlaySound_Special	; ...for bonus atmosphere
+
+		jmp	Set_HubEasterVisited	; set easter egg as visited
 ; ===========================================================================
 
 
@@ -30932,6 +30998,17 @@ Obj38_Shield:				; XREF: Obj38_Index
 		move.b	($FFFFD022).w,obStatus(a0)
 		lea	(Ani_obj38).l,a1
 		jsr	AnimateSprite
+
+		; double shield collection color flicker effect
+		btst	#0,($FFFFFE05).w
+		bne.s	@reset
+		cmpi.b	#2,($FFFFFE2C).w	; are bonus rings set to be awarded?
+		blt.s	@reset			; if not, branch
+		eori.w	#$2000,obGfx(a0)
+		bra.s	Obj38_DisplaySprite
+@reset:
+		andi.w	#~$2000,obGfx(a0)
+
 Obj38_DisplaySprite:
 		jmp	DisplaySprite
 ; ===========================================================================
@@ -35084,7 +35161,7 @@ Obj3D_MainStuff:
 		tst.b	obColType(a0)
 		bne.w	locret_1784A
 		tst.b	$3E(a0)
-		bne.s	Obj3D_ShipFlash
+		bne.w	Obj3D_ShipFlash
 		move.b	#$20,$3E(a0)	; set number of	times for ship to flash
 		bsr	BossDamageSound ; play boss damage sound
 
@@ -35101,11 +35178,31 @@ Obj3D_MainStuff:
 		subq.w	#6,BlackBars.TargetHeight
 @noeasteregg:
 
+		cmpi.b	#18,obColProp(a0)	; does boss have exactly 18 lives now?
+		beq.s	@flash			; if yes, branch
+		cmpi.b	#16,obColProp(a0)	; does boss have exactly 16 lives now?
+		bne.s	@noflash		; if not, branch
+@flash:		
+		move.w	#$A6,d0
+		jsr	(PlaySound_Special).l
+		move.w	#$B3,d0
+		jsr	(PlaySound).l
+	;	jsr	WhiteFlash2
+		ori.b	#30,(CameraShake).w
+
+@noflash:
+
 		tst.b	($FFFFFFD1).w		; was flag to destroy the platforms already set?
 		bne.s	Obj3D_ShipFlash		; if yes, branch
 		cmpi.b	#5,obColProp(a0)	; does boss have exactly 5 lives now?
 		bne.s	Obj3D_ShipFlash		; if not, branch
 		move.b	#1,($FFFFFFD1).w	; set flag now
+
+		move.w	#$DB,d0
+		jsr	(PlaySound).l
+		jsr	WhiteFlash2
+		ori.b	#20,(CameraShake).w
+
 		lea	($FFFFD800).w,a1
 		move.w	#$3F,d0
 loopdashit:	cmpi.b	#$18,(a1)		; is current object a platform?
@@ -35124,6 +35221,8 @@ loopdashit:	cmpi.b	#$18,(a1)		; is current object a platform?
 @cont:		lea	$40(a1),a1
 		dbf	d0,loopdashit
 
+
+
 Obj3D_ShipFlash:
 		tst.b	($FFFFF5D1).w		; is Sonic dying?
 		bne.s	@noflash		; if yes, disable flash
@@ -35141,6 +35240,7 @@ Obj3D_ShipFlash:
 		subq.b	#1,$3E(a0)
 		bne.s	locret_1784A
 		move.b	#$F,obColType(a0)
+		move.w	#$000,($FFFFFB22).w
 
 locret_1784A:
 		rts	
@@ -35256,6 +35356,7 @@ Obj3D_DefeatStart:				; XREF: Obj3D_ShipIndex
 		move.b	#1,($FFFFFE1C).w
 		move.b	#0,(HUD_BossHealth).w
 		bset	#0,obStatus(a0)
+		ori.b	#10,(CameraShake).w
 		bra.w	BossDefeated
 ; ===========================================================================
 
@@ -39239,11 +39340,11 @@ loc_1A15C:
 loc_1A166:
 		; set right boundary after defeating the FZ boss
 		move.w	($FFFFF72A).w,d0
-		addq.w	#2,d0
+		addq.w	#3,d0
 		cmpi.w	#$2760,d0
 		bhs.s	loc_1A172
 		move.w	d0,($FFFFF72A).w
-	;	move.w	#$2760,($FFFFF72A).w	
+
 
 loc_1A172:
 		; solidity for Eggman as he runs to his ship
@@ -40396,6 +40497,9 @@ Obj81_FlyUp2:
 ; ---------------------------------------------------------------------------
 
 Obj81_Move:
+		cmpi.b	#A|B|C,Joypad|Held
+		beq.s	Obj81_Boom
+
 		jsr	SpeedToPos
 		jmp	DisplaySprite
 		

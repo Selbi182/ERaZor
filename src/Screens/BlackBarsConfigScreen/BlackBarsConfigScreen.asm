@@ -582,7 +582,7 @@ BlackBarsConfigScreen_WriteText_WidescreenInfo:
 	Console.SetXY #6, #2
 	Console.Write "        SONIC ERAZOR"
 	Console.Write "%<endl>%<endl>"
-	Console.Write "W  I  D  E  S  C  R  E  E  N%"
+	Console.Write "W  I  D  E  S  C  R  E  E  N"
 
 	Console.SetXY #3, #6
 	Console.Write "%<pal2>----------------------------------%<pal0>"
@@ -594,10 +594,10 @@ BlackBarsConfigScreen_WriteText_WidescreenInfo:
 	Console.Write '      "GENESIS PLUS GX WIDE"%<endl>'
 	Console.Write '   CORE AVAILABLE FOR RETROARCH'
 	Console.Write "%<endl>%<endl>"
-	Console.Write "  AND IT WILL BE A HELLA AWKWARD%<endl>"
+	Console.Write "  AND IT WILL BE A SUPER AWKWARD%<endl>"
 	Console.Write "EXPERIENCE FOR ANY OTHER EMULATOR!"
 	Console.Write "%<endl>"
-	Console.Write "    GO TO THIS URL TO DOWNLOAD%<endl>"
+	Console.Write "    VISIT THIS URL TO DOWNLOAD%<endl>"
 	Console.Write "     THE REGULAR 4:3 VERSION:"
 	Console.Write "%<endl>%<endl>"
 	Console.Write " HTTPS://SELBI.HAPISAN.COM/ERAZOR"

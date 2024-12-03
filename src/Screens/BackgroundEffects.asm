@@ -47,6 +47,9 @@ BackgroundEffects_PalCycle:
 		and.w	($FFFFFE0E).w,d0	; get V-blank timer (AND $3)
 		bne.w	@bgpalend
 
+		tst.b	($FFFFFFB9).w
+		bne.w	@bgpalend
+
 		moveq	#0,d0
 		move.l	#BG_Mask_Colors,d2
 		movea.l	d2,a1

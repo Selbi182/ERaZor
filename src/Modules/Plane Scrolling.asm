@@ -329,6 +329,7 @@ Deform_GHZ:
 
 Deform_TS:				; XREF: Deform_Index
 		lea	($FFFFCC00).w,a1	; set a1 to horizontal scroll buffer
+		moveq	#0,d0
 
 		move.w	($FFFFD008).w,d0	; load screen's X position
 		neg.w	d0			; negate (positive to negative)
@@ -394,6 +395,19 @@ DTS_Loop:
 		add.l	d0,d3			; increase speed for next row
 		swap	d3			; swap it
 		dbf	d2,DTS_Loop		; loop
+
+
+	; adjust copyright alignment in widescreen
+	if def(__WIDESCREEN__)
+		lea	($FFFFCC00+(4*200)).w,a1
+		moveq	#SCREEN_XCORR,d0
+		moveq	#8-1,d1
+@copyright:
+		add.w	d0,(a1)+
+		addq.w	#2,a1
+		dbf	d1,@copyright
+	endif
+
 		rts				; return
 ; End of function Deform_TS
 
@@ -1130,7 +1144,7 @@ S_H_NoEnding:
 		bne.s	S_H_ExtendedCamera	; if not, branch
 		tst.b	($FFFFFFD8).w		; has Buzz Bomber been destroyed?
 		bne.s	S_H_BuzzIgnore		; if yes, branch
-		sub.w	#$35,d0			; make the middle between Sonic and the Bomber the cam-position
+		subi.w	#$35+SCREEN_XCORR,d0	; make the middle between Sonic and the Bomber the cam-position
 		bra.w	S_H_NoExtendedCam	; skip
 ; ===========================================================================
 

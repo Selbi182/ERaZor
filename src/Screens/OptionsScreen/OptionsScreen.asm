@@ -50,7 +50,7 @@ Options_Exiting:		rs.b	1
 ;  bit 1 = Disable SFX
 ;  bit 2 = Weak Camera Shake
 ;  bit 3 = Intense Camera Shake
-;  bit 4 = Peelout Style
+;  bit 4 = Track-All-Mistakes Mode
 ;  bit 5 = Space Golf/Antigrav Mode
 ;  bit 6 = [unusued]
 ;  bit 7 = [unusued]
@@ -127,7 +127,7 @@ OptionsScreen:				; XREF: GameModeArray
 		jsr	DeleteQueue_Execute
 
 		move.b	#Options_Music,d0		; play Options screen music (Spark Mandrill)
-		jsr	PlaySound_Special
+		jsr	PlaySound
 		bsr	Options_LoadPal
 		move.w	#$008,(BGThemeColor).w	; set theme color for background effects
 		clr.b	Options_Exiting
@@ -170,9 +170,31 @@ OptionsScreen_MainLoop:
 		jsr	ERZBanner_PalCycle
 		bsr	Options_SelectedLinePalCycle
 
+		tst.b	($FFFFFFB1).w
+		bmi.s	@noflash
+		subq.b	#1,($FFFFFFB1).w
+@noflash	jsr	WhiteFlash_Restore
+
+		move.w	#0,($FFFFF618).w
+		moveq	#0,d0			; no shake
+		tst.b	(CameraShake).w		; is camera shake currently active?
+		beq.s	@nocamshake		; if not, branch
+		subq.b	#1,(CameraShake).w	; subtract one from timer
+		bne.s	@do
+		bra.s	@nocamshake
+	@do:
+		jsr	GenerateCameraShake
+		move.w	(CameraShake_XOffset).w,d1
+		btst	#3, OptionsBits2	; intense cam shake also enabled?
+		beq.s	@1			; if not, branch
+		add.w	d1,d1
+	@1:
+		add.w	d1,($FFFFF618).w
+@nocamshake:
+
 		cmp.b	#$24, GameMode				; are we still running Options gamemode?
-		beq	OptionsScreen_MainLoop			; if yes, branch
-		rts
+		beq	OptionsScreen_MainLoop			; if yes, loop
+		rts						; exit options menu
 
 ; ---------------------------------------------------------------------------
 @FlushVRAMBufferPool:
@@ -272,7 +294,7 @@ Options_IntialDraw:
 
 ; ---------------------------------------------------------------------------
 @DrawHeaderR:
-		Options_PipeString a4, '------------------------------------->'
+		Options_PipeString a4, '--------------CHANGE-STUFF----------->'
 		rts
 @DrawHeaderL:
 		Options_PipeString a4, '<-------------------------------------'
@@ -327,7 +349,7 @@ Options_HandleUpDown:
 		move.w	($FFFFFF82).w, @current_selection	; get current selection
 		move.w	@current_selection, @prev_selection	; remember previous selection now
 
-		cmpi.b	#B,Joypad|Held
+		cmpi.b	#Start,Joypad|Held
 		beq.s	@MoveSelectionToLast
 
 		moveq	#Up|Down, @joypad
@@ -360,7 +382,7 @@ Options_HandleUpDown:
 
 		cmp.w	@current_selection, @prev_selection
 		beq.w	@Done
-		bclr	#iB,Joypad|Press
+		bclr	#iStart,Joypad|Press
 		assert.w @current_selection, ne, @prev_selection
 
 		; Always reset SRAM delete counter

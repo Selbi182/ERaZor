@@ -50,7 +50,7 @@ StartLevel:
 	else
 		move.b	#1,($FFFFFFE9).w	; set fade-out in progress flag
 		clr.w	($FFFFFE30).w		; clear any set level checkpoints
-		clr.w	(RelativeDeaths).w	; clear relative death counter
+		clr.w	(RelativeDeaths).w	; clear relative death counter now that we have entered a new level
 
 		move.w	($FFFFFE10).w,d0	; get level ID
 		cmpi.w	#$300,d0		; set to Special Place?
@@ -125,7 +125,7 @@ Exit_SegaScreen:
 		beq.s	@end			; if not, branch
 		btst	#4,($FFFFF604).w	; was B held as we exited?
 		beq.s	@end			; if not, branch
-		move.b	#$38,(GameMode).w	; set to Black Bars configuration screen
+		bra.w	HubRing_Options		; go straight to options screen
 @end:		rts
 ; ===========================================================================
 
@@ -451,6 +451,8 @@ Exit_GiantRing:
 
 		cmpi.w	#$001,($FFFFFE10).w	; is level intro cutscene?
 		beq.w	MiscRing_IntroEnd	; if yes, branch
+		cmpi.w	#$402,($FFFFFE10).w	; did we beat Unterhub?
+		beq.w	Exit_Level		; if yes, consider this a beaten level
 		cmpi.b	#5,($FFFFFE10).w	; is this the a ring in the tutorial/Finalor?
 		beq.w	Exit_Level		; if yes, consider this a beaten level
 
@@ -486,6 +488,7 @@ GRing_Misc:	dc.w	ReturnToUberhub-GRing_Exits	; invalid ring
 		dc.w	HubRing_IntroStart-GRing_Exits
 		dc.w	HubRing_Ending-GRing_Exits
 		dc.w	HubRing_SoundTest-GRing_Exits
+		dc.w	HubRing_Unterhub-GRing_Exits
 ; ===========================================================================
 
 HubRing_NHP:	move.w	#$000,($FFFFFE10).w	; set level to GHZ1
@@ -573,7 +576,9 @@ HubRing_Blackout:
 		move.b	#1,(Blackout).w		; set Blackout Challenge flag
 		bra.w	StartLevel		; good luck
 
-
+HubRing_Unterhub:
+		move.w	#$402,($FFFFFE10).w	; set level to SYZ3
+		bra.w	StartLevel
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Subroutine to unlock the doors in Uberhub after you finish a normal level
@@ -592,6 +597,9 @@ Exit_Level:
 
 		cmpi.w	#$200,($FFFFFE10).w	; did we beat RP?
 		beq.w	GTA_RP			; if yes, branch
+
+		cmpi.w	#$402,($FFFFFE10).w	; did we beat Unterhub?
+		beq.w	GTA_Unterhub		; if yes, branch
 
 		cmpi.w	#$101,($FFFFFE10).w	; did we beat LP?
 		beq.w	GTA_LP			; if yes, branch
@@ -629,6 +637,12 @@ GTA_SP:		moveq	#1,d0			; unlock second door
 GTA_RP:		moveq	#2,d0			; unlock third door
 		bsr	Set_DoorOpen
 		move.b	#4,(StoryTextID).w	; set number for text to 4
+		bra.w	RunStory
+
+GTA_Unterhub:	
+		moveq	#7,d0			; set Unterhub as beaten
+		bsr	Set_DoorOpen
+		move.b	#$C,(StoryTextID).w	; set number for text to $C
 		bra.w	RunStory
 
 GTA_LP:		moveq	#3,d0			; unlock fourth door
@@ -723,7 +737,7 @@ NextLevel_Array:
 ; Subtroutines to ease coordinating the game progress (casual/frantic)
 ; (NOTE: Frantic takes priority over Casual in all instances!)
 ; ---------------------------------------------------------------------------
-Doors_All	= %01111111 ; (upper bit is unused)
+Doors_All	= %11111111
 State_BaseGame_Casual	= 0
 State_BaseGame_Frantic	= 1
 State_Blackout          = 2
@@ -755,13 +769,11 @@ Check_AllLevelsBeaten_Current:
 		rts
 
 Check_AllLevelsBeaten_Casual:
-		andi.b	#Doors_All,(Doors_Casual).w	; mask against valid door bitsets
 		cmpi.b	#Doors_All,(Doors_Casual).w	; check if all doors have been unlocked (casual)
 		eori.b	#%00100,ccr			; invert Z flag
 		rts
 
 Check_AllLevelsBeaten_Frantic:
-		andi.b	#Doors_All,(Doors_Frantic).w	; mask against valid door bitsets
 		cmpi.b	#Doors_All,(Doors_Frantic).w	; check if all doors have been unlocked (frantic)
 		eori.b	#%00100,ccr			; invert Z flag
 		rts

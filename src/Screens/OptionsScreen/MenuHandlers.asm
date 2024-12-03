@@ -17,25 +17,25 @@ Options_MenuData:
 	dcScreenPos	$E000, OpBaseY+2, 5			; start on-screen position
 	dc.l	Options_Autoskip_Redraw			; redraw handler
 	dc.l	Options_Autoskip_Handle			; update handler
-	; Extended camera
+	; Track all mistakes
 	dcScreenPos	$E000, OpBaseY+3, 5			; start on-screen position
+	dc.l	Options_TrackAllMistakes_Redraw		; redraw handler
+	dc.l	Options_TrackAllMistakes_Handle		; update handler
+	
+	; Extended camera
+	dcScreenPos	$E000, OpBaseY+5, 5			; start on-screen position
 	dc.l	Options_ExtendedCamera_Redraw		; redraw handler
 	dc.l	Options_ExtendedCamera_Handle		; update handler
-	; Peelout style
-	dcScreenPos	$E000, OpBaseY+4, 5			; start on-screen position
-	dc.l	Options_PeeloutStyle_Redraw		; redraw handler
-	dc.l	Options_PeeloutStyle_Handle		; update handler
-	
 	; Flashy Lights
-	dcScreenPos	$E000, OpBaseY+5, 5			; start on-screen position
+	dcScreenPos	$E000, OpBaseY+6, 5			; start on-screen position
 	dc.l	Options_FlashyLights_Redraw		; redraw handler
 	dc.l	Options_FlashyLights_Handle		; update handler
 	; Camera Shake
-	dcScreenPos	$E000, OpBaseY+6, 5			; start on-screen position
+	dcScreenPos	$E000, OpBaseY+7, 5			; start on-screen position
 	dc.l	Options_CameraShake_Redraw		; redraw handler
 	dc.l	Options_CameraShake_Handle		; update handler
 	; Audio
-	dcScreenPos	$E000, OpBaseY+7, 5			; start on-screen position
+	dcScreenPos	$E000, OpBaseY+8, 5			; start on-screen position
 	dc.l	Options_Audio_Redraw			; redraw handler
 	dc.l	Options_Audio_Handle			; update handler
 
@@ -94,7 +94,7 @@ Options_GameplayStyle_Redraw:
 	and.b	OptionsBits, d0
 	beq.s	@0
 	lea	@Str_Option2(pc), a1
-@0:	Options_PipeString a4, "CHANGE DIFFICULTY      %<.l a1 str>", 30
+@0:	Options_PipeString a4, "DIFFICULTY             %<.l a1 str>", 30
 	rts
 
 ; ---------------------------------------------------------------------------
@@ -154,7 +154,12 @@ Options_ExtendedCamera_Redraw:
 	btst	#0, OptionsBits
 	beq.s	@0
 	lea	Options_Str_On(pc), a1
+
+	if def(__WIDESCREEN__)
+@0:	Options_PipeString a4, "WIDE EXTENDED CAMERA       %<.l a1 str>", 30
+	else
 @0:	Options_PipeString a4, "EXTENDED CAMERA            %<.l a1 str>", 30
+	endif
 	rts
 
 ; ---------------------------------------------------------------------------
@@ -165,6 +170,7 @@ Options_ExtendedCamera_Handle:
 	move.b	Joypad|Press,d1		; get button presses
 	andi.b	#$FC,d1			; is left, right, A, B, C, or Start pressed?
 	beq.w	@done			; if not, branch
+
 	bchg	#0, OptionsBits		; toggle extended camera
 	bsr	Options_PlayRespectiveToggleSound
 	st.b	Options_RedrawCurrentItem
@@ -174,36 +180,41 @@ Options_ExtendedCamera_Handle:
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; "PEELOUT STYLE" redraw function
+; "TRACK ALL MISTAKES" redraw function
 ; ---------------------------------------------------------------------------
 ; INPUT:
 ;	a4	= `Options_DrawText_Normal` or `Options_DrawText_Highlighted`
 ; ---------------------------------------------------------------------------
 
-Options_PeeloutStyle_Redraw:
-	lea	@Str_UPandA(pc), a1
+Options_TrackAllMistakes_Redraw:
+	lea	Options_Str_Off(pc), a1
 	btst	#4, OptionsBits2
 	beq.s	@0
-	lea	@Str_UPandABC(pc), a1
-@0:	Options_PipeString a4, "PEELOUT STYLE          %<.l a1 str>", 30
+	lea	Options_Str_On(pc), a1
+@0:	Options_PipeString a4, "TRACK ALL MISTAKES         %<.l a1 str>", 30
 	rts
 
-@Str_UPandA:
-	dc.b	'  ^ + A', 0
-	even
-@Str_UPandABC:
-	dc.b	'^ + ABC', 0
-	even
 
 ; ---------------------------------------------------------------------------
-; "PEELOUT STYLE" handle function
+; "TRACK ALL MISTAKES" handle function
 ; ---------------------------------------------------------------------------
 
-Options_PeeloutStyle_Handle:
+Options_TrackAllMistakes_Handle:
 	move.b	Joypad|Press,d1		; get button presses
 	andi.b	#$FC,d1			; is left, right, A, B, C, or Start pressed?
 	beq.w	@done			; if not, branch
-	bchg	#4, OptionsBits2	; toggle peelout style
+
+	; TODO hint on A
+	btst	#6,d1				; is specifically A pressed?
+	beq.s	@normal				; if not, branch
+	;moveq	#$E,d0			; load FZ palette (cause tutorial boxes are built into SBZ)
+	;jsr	PalLoad2		; load palette
+	moveq	#$18,d0			; load text after beating the blackout challenge for the first time
+	jsr	TutorialBox_Display	; VLADIK => Display hint
+	rts
+
+@normal:
+	bchg	#4, OptionsBits2	; toggle track all mistakes modes
 	bsr	Options_PlayRespectiveToggleSound
 	st.b	Options_RedrawCurrentItem
 @done:	rts
@@ -254,6 +265,17 @@ Options_Autoskip_Handle:
 	andi.b	#$FC,d1				; is left, right, A, B, C, or Start pressed?
 	beq.w	@ret				; if not, branch
 
+	; TODO hint on A
+	btst	#6,d1				; is specifically A pressed?
+	beq.s	@normal				; if not, branch
+	;moveq	#$E,d0			; load FZ palette (cause tutorial boxes are built into SBZ)
+	;jsr	PalLoad2		; load palette
+
+	moveq	#$16,d0			; load text after beating the blackout challenge for the first time
+	jsr	TutorialBox_Display	; VLADIK => Display hint
+	rts
+
+@normal:
 	moveq	#0,d0
 	move.b	OptionsBits,d0
 	lsr.b	#1,d0
@@ -326,6 +348,9 @@ Options_FlashyLights_Handle:
 	andi.b	#$FC,d1				; is left, right, A, B, C, or Start pressed?
 	beq.w	@ret				; if not, branch
 
+	tst.b	($FFFFFFB9).w			; is white flash in progress?
+	bne.w	@ret				; if yes, branch
+
 	moveq	#0,d0
 	move.b	OptionsBits,d0
 	lsr.b	#6,d0
@@ -333,10 +358,10 @@ Options_FlashyLights_Handle:
 @repeat:
 	btst	#iLeft, Joypad|Press		; is left pressed?
 	bne.s	@selectPrevious			; if yes, branch
-	addq.b	#1, d0				; use next mode
+	subq.b	#1, d0				; use next mode
 	bra.s	@finalize
 @selectPrevious:
-	subq.b	#1, d0				; use previous mode
+	addq.b	#1, d0				; use previous mode
 @finalize:
 	andi.b	#%11, d0			; wrap modes
 	cmpi.b	#%11, d0			; is photosensitive mode and max white mode enabled at once?
@@ -349,11 +374,16 @@ Options_FlashyLights_Handle:
 	bclr	#7,OptionsBits
 	or.b	d0,OptionsBits
 
+	jsr	WhiteFlash3
+
 	st.b	Options_RedrawCurrentItem
 
-	tst.b	d1				; check if current selection is OFF
+
+	move.l	#%11000000,d1
+	and.b	OptionsBits,d1
 	eori.b	#%00100,ccr			; invert Z flag (play off sound for off, on for anything else)
 	bsr	Options_PlayRespectiveToggleSound
+
 
 @ret:	rts
 
@@ -374,23 +404,22 @@ Options_CameraShake_Redraw:
 @0:
 	btst	#3, OptionsBits2	; intense cam shake also enabled?
 	beq.s	@1			; if not, branch
-	addq.b	#2,d0
+	moveq	#2,d0
 @1:
 	add.w	d0, d0
 	add.w	d0, d0				; d0 = ModeId * 4
 	movea.l	@CameraShakeList(pc,d0), a1
 	
-	Options_PipeString a4, "CAMERA SHAKING     %<.l a1 str>", 30
+	Options_PipeString a4, "CAMERA SHAKE    %<.l a1 str>", 30
 	rts
 
 ; ---------------------------------------------------------------------------
 @CameraShakeList:
-	dc.l	@Str_Mode00,@Str_Mode01,@Str_Mode10,@Str_Mode11
+	dc.l	@Str_Mode00,@Str_Mode01,@Str_Mode10;,@Str_Mode11
 
-@Str_Mode00:	dc.b	'     NORMAL',0
-@Str_Mode01:	dc.b	'       WEAK',0
-@Str_Mode10:	dc.b	'JUST STUPID',0
-@Str_Mode11:	dc.b	'   DISABLED',0
+@Str_Mode00:	dc.b	'        NORMAL',0
+@Str_Mode01:	dc.b	'PHOTOSENSITIVE',0
+@Str_Mode10:	dc.b	'TOTALLY STUPID',0
 		even
 
 
@@ -417,6 +446,8 @@ Options_CameraShake_Handle:
 	subq.b	#1, d0				; use previous mode
 @finalize:
 	andi.b	#%11, d0			; wrap modes
+	cmpi.b	#%11, d0			; is weak and intense camera shake enabled at once?
+	beq.s	@repeat				; this is an illegal state, repeat button input
 
 	move.b	d0,d1
 	lsl.b	#2,d0
@@ -425,9 +456,15 @@ Options_CameraShake_Handle:
 	bclr	#3,OptionsBits2
 	or.b	d0,OptionsBits2
 
+	ori.b	#30,(CameraShake).w
+	move.b	#0,(CameraShake_Intensity).w
+	jsr	GenerateCameraShake
+	move.w	#0,($FFFFF618).w
+
 	st.b	Options_RedrawCurrentItem
 
-	tst.b	d1				; check if current selection is OFF
+	moveq	#%1100,d1
+	and.b	OptionsBits2,d1
 	eori.b	#%00100,ccr			; invert Z flag (play off sound for off, on for anything else)
 	bsr	Options_PlayRespectiveToggleSound
 
@@ -497,7 +534,21 @@ Options_Audio_Handle:
 
 	st.b	Options_RedrawCurrentItem
 
-	tst.b	d1				; check if current selection is OFF
+	moveq	#0,d0
+	btst	#0, OptionsBits2	; is music disabled?
+	beq.s	@0
+	move.w	#$E4,d0			; stop music
+	jsr	PlaySound_Special
+	move.b	#2,VBlankRoutine
+	jsr	DelayProgram
+	bra.s	@1
+@0:
+	move.b	#Options_Music,d0
+	jsr	PlaySound
+@1:
+
+	moveq	#%11,d1
+	and.b	OptionsBits2,d1
 	eori.b	#%00100,ccr			; invert Z flag (play off sound for off, on for anything else)
 	bsr	Options_PlayRespectiveToggleSound
 

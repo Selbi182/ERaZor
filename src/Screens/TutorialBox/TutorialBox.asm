@@ -711,11 +711,12 @@ Hints_List:	; note: these IDs are 1-based
 		dc.l	Hint_End_AfterFrantic		; $10
 		dc.l	Hint_LP_BlackBars		; $11
 		dc.l	Hint_End_BlackoutTeaser		; $12
-		dc.l	Hint_FranticTutorial		; $13
+		dc.l	Hint_Options_FranticTutorial		; $13
 		dc.l	Hint_End_CinematicUnlock	; $14
 		dc.l	Hint_End_MotionBlurUnlock	; $15
 		dc.l	Hint_End_NonstopInhumanUnlock	; $16
 		dc.l	Hint_9SequenceBreak		; $17
+		dc.l	Hint_Options_CountAllMistakes	; $18
 
 ; ---------------------------------------------------------------
 ; Hints Scripts
@@ -825,21 +826,14 @@ Hint_Pre:
 		boxtxt	"AND explosions!"
 		boxtxt_next
 
-		boxtxt	"BECAUSE TEARS OF"
-		boxtxt	"FRUSTRATION SHOULD"
-		boxtxt	"BE KEPT TO A MINIMUM"
-		boxtxt	"AT ALL TIMES, THE"
-		boxtxt	"FOLLOWING STAGE WILL"
-		boxtxt	"TEACH YOU SOME OF"
-		boxtxt	"THIS GAME'S UNIQUE"
-		boxtxt	"REQUIRED BASICS."
-		boxtxt_next
-
-		boxtxt	"PRESS a IN FRONT OF"
-		boxtxt	"THE INFO MONITORS"
-		boxtxt	"FOR SHORT GUIDES ON"
-		boxtxt	"GAME MECHANICS AND"
-		boxtxt	"OTHER USEFUL TIPS!"
+		boxtxt	"THE FOLLOWING STAGE"
+		boxtxt	"EXPLAINS SOME OF"
+		boxtxt	"THIS HACK'S UNIQUE"
+		boxtxt	"GAME MECHANICS."
+		boxtxt_line
+		boxtxt	"PRESS a TO ACTIVATE"
+		boxtxt	"AN INFO MONITOR."
+		boxtxt	"read them all!"
 		boxtxt_next
 
 		boxtxt_line
@@ -867,8 +861,8 @@ Hint_1:
 		boxtxt	" SPIN DASH"
 		boxtxt	" ~ + a/b/c"
 		boxtxt_line
-		boxtxt	" SUPER PEEL OUT"
-		boxtxt	" ^ + a/OPTIONS"
+		boxtxt	" ULTRA PEEL OUT"
+		boxtxt	" ^ + a"
 		boxtxt_next
 
 		boxtxt	"AND TO JUMP, YOU"
@@ -1202,6 +1196,12 @@ Hint_7:
 		boxtxt	"IN THIS GAME!"
 		boxtxt_next
 
+		boxtxt	"YOU WILL ALSO ONLY"
+		boxtxt	"LOSE twenty rings"
+		boxtxt	"ON HIT INSTEAD OF"
+		boxtxt	"THE WHOLE BUNCH!"
+		boxtxt_next
+
 		boxtxt	"FURTHERMORE, TO NOT"
 		boxtxt	"WASTE YOUR TIME,"
 		boxtxt	"MOST CHALLENGES"	
@@ -1439,7 +1439,37 @@ Hint_End_BlackoutTeaser:
 		boxtxt_end
 
 ;		 --------------------
-Hint_FranticTutorial:
+Hint_Options_CountAllMistakes:
+		boxtxt	"GETTING TELEPORTED"
+		boxtxt	"OR HURT WILL GET"
+		boxtxt	"TRACKED IN THE DEATH"
+		boxtxt	"COUNTER AS WELL."
+		boxtxt_line
+		boxtxt	"DON'T WORRY, THIS IS"
+		boxtxt	"COSMETIC-ONLY TO SEE"
+		boxtxt	"HOW YOU'RE DOING!"
+		boxtxt_next
+
+		; TODO text for autoskip
+		boxtxt	"GO STRAIGHT TO THE"
+		boxtxt	"NEXT LEVEL AFTER"
+		boxtxt	"BEATING ONE INSTEAD"
+		boxtxt	"OF RETURNING TO"
+		boxtxt	"UBERHUB PLACE."
+		boxtxt_line
+		boxtxt	"GREAT FOR SPEEDRUNS"
+		boxtxt	"OR REPLAYS!"
+		boxtxt_next
+
+		; TODO text for flashy lights
+		boxtxt	"DO NOTE THAT"
+		boxtxt	"photosensitive ALSO"
+		boxtxt	"DISABLES VARIOUS"
+		boxtxt	"OTHER EFFECTS!"
+		boxtxt_end
+
+;		 --------------------
+Hint_Options_FranticTutorial:
 		boxtxt	"RESPECT FOR GOING"
 		boxtxt	"WITH frantic mode!"
 		boxtxt_line

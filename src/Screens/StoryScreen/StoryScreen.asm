@@ -620,6 +620,7 @@ StoryText_Index:
 		dc.l	StoryText_9	; text after beating the blackout challenge special stage
 		dc.l	StoryText_6X	; text after beating Unreal Place without touching any checkpoints
 		dc.l	StoryText_9X	; text after beating the blackout challenge in true-BS mode
+		dc.l	StoryText_Unter	; text after beating Unterhub Place
 ; ---------------------------------------------------------------------------
 
 STS_Continue:	ststxt	"~PRESS~START~TO~CONTINUE...~"
@@ -708,6 +709,26 @@ StoryText_4:	; text after beating Ruined Place
 		ststxt	"LET'S SEE HOW YOU DO"
 		ststxt	"WHEN THE CAMERA"
 		ststxt	"GUIDES THE NARRATIVE..."
+		dc.b	-1
+		even
+; ---------------------------------------------------------------------------
+
+StoryText_Unter: ; text after beating Unterhub Place
+		ststxt	"THIS WILL BE THE TEXT ONCE"
+		ststxt	"YOU BEAT UNTERHUB PLACE"
+		ststxt_line
+		ststxt	"PLACE PLACE PLACE PLACE"
+		ststxt	"PLACE PLACE PLACE PLACE"
+		ststxt	"PLACE PLACE PLACE PLACE"
+		ststxt	"PLACE PLACE PLACE PLACE"
+		ststxt	"PLACE PLACE PLACE PLACE"
+		ststxt	"PLACE PLACE PLACE PLACE"
+		ststxt_line
+		ststxt	"PLACE PLACE PLACE PLACE"
+		ststxt	"PLACE PLACE PLACE PLACE"
+		ststxt	"PLACE PLACE PLACE PLACE"
+		ststxt	"PLACE PLACE PLACE PLACE"
+		ststxt	"PLACE PLACE PLACE PLACE"
 		dc.b	-1
 		even
 ; ---------------------------------------------------------------------------

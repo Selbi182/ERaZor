@@ -1,31 +1,89 @@
 ; --------------------------------------------------------------------------------
-; Sprite mappings - output from SonMapEd - Sonic 1 format
+; Sprite mappings - output from ClownMapEd - Sonic 1/CD format
 ; --------------------------------------------------------------------------------
 
-SME_A2xNg:	
-		dc.w SME_A2xNg_10-SME_A2xNg, SME_A2xNg_16-SME_A2xNg	
-		dc.w SME_A2xNg_1C-SME_A2xNg, SME_A2xNg_22-SME_A2xNg	
-		dc.w SME_A2xNg_28-SME_A2xNg, SME_A2xNg_2E-SME_A2xNg	
-		dc.w SME_A2xNg_43-SME_A2xNg, SME_A2xNg_4E-SME_A2xNg	
-SME_A2xNg_10:	dc.b 1	
-		dc.b $F8, 5, 0, 0, $F8	
-SME_A2xNg_16:	dc.b 1	
-		dc.b $F8, 5, 0, 0, $F8	
-SME_A2xNg_1C:	dc.b 1	
-		dc.b $FC, 0, 0, 6, $FC	
-SME_A2xNg_22:	dc.b 1	
-		dc.b $14, 9, 0, 7, $F4	
-SME_A2xNg_28:	dc.b 1	
-		dc.b $14, 5, 0, $D, $F8	
-SME_A2xNg_2E:	dc.b 4	
-		dc.b $F0, 4, 0, $11, $F8	
-		dc.b $F8, 1, 0, $13, $F8	
-		dc.b $F8, 1, 8, $13, 0	
-		dc.b 8, 4, 0, $15, $F8	
-SME_A2xNg_43:	dc.b 2	
-		dc.b 0, 5, 0, $17, 0	
-		dc.b 0, 0, 0, $1B, $10	
-SME_A2xNg_4E:	dc.b 2	
-		dc.b $18, 4, 0, $1C, 0	
-		dc.b 0, $B, 0, $1E, $10	
-		even
+CME_4AECA3B2:
+	dc.w	CME_4AECA3B2_0-CME_4AECA3B2
+	dc.w	CME_4AECA3B2_1-CME_4AECA3B2
+	dc.w	CME_4AECA3B2_2-CME_4AECA3B2
+	dc.w	CME_4AECA3B2_3-CME_4AECA3B2
+	dc.w	CME_4AECA3B2_4-CME_4AECA3B2
+	dc.w	CME_4AECA3B2_5-CME_4AECA3B2
+	dc.w	CME_4AECA3B2_6-CME_4AECA3B2
+	dc.w	CME_4AECA3B2_7-CME_4AECA3B2
+
+CME_4AECA3B2_0:
+	dc.b	1
+
+	dc.b	-8
+	dc.b	$05
+	dc.w	$0000
+	dc.b	-8
+
+CME_4AECA3B2_1:
+	dc.b	1
+
+	dc.b	-8
+	dc.b	$05
+	dc.w	$0000
+	dc.b	-8
+
+CME_4AECA3B2_2:
+	dc.b	1
+
+	dc.b	-4
+	dc.b	$00
+	dc.w	$0006
+	dc.b	-4
+
+CME_4AECA3B2_3:
+	dc.b	1
+
+	dc.b	20
+	dc.b	$09
+	dc.w	$0007
+	dc.b	-12
+
+CME_4AECA3B2_4:
+	dc.b	1
+
+	dc.b	20
+	dc.b	$05
+	dc.w	$000D
+	dc.b	-8
+
+CME_4AECA3B2_5:
+	dc.b	1
+
+	dc.b	-12
+	dc.b	$03
+	dc.w	$0013
+	dc.b	-4
+
+CME_4AECA3B2_6:
+	dc.b	2
+
+	dc.b	0
+	dc.b	$05
+	dc.w	$0017
+	dc.b	0
+
+	dc.b	0
+	dc.b	$00
+	dc.w	$001B
+	dc.b	16
+
+CME_4AECA3B2_7:
+	dc.b	2
+
+	dc.b	24
+	dc.b	$04
+	dc.w	$001C
+	dc.b	0
+
+	dc.b	0
+	dc.b	$0B
+	dc.w	$001E
+	dc.b	16
+
+	even

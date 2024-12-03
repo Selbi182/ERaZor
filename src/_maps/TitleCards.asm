@@ -29,6 +29,7 @@ Map_Obj34:
 		dc.w	TTL_Unreal-Map_Obj34
 		dc.w	TTL_StarAgony-Map_Obj34
 		dc.w	TTL_Act_9-Map_Obj34
+		dc.w	TTL_Unterhub-Map_Obj34
 ; ---------------------------------------------------------------------------
 
 TTL_Uberhub:
@@ -42,6 +43,50 @@ TTL_Uberhub:
 		dc.b	-8
 		dc.b	$05
 		dc.w	$0004
+		dc.b	-19
+
+		dc.b	-8
+		dc.b	$05
+		dc.w	$0010
+		dc.b	-3
+
+		dc.b	-8
+		dc.b	$05
+		dc.w	$003A
+		dc.b	11
+
+		dc.b	-8
+		dc.b	$05
+		dc.w	$001C
+		dc.b	28
+
+		dc.b	-8
+		dc.b	$05
+		dc.w	$0046
+		dc.b	44
+
+		dc.b	-8
+		dc.b	$05
+		dc.w	$0004
+		dc.b	60
+
+TTL_Unterhub:
+		dc.b	8
+
+		dc.b	-8
+		dc.b	$05
+		dc.w	$0046
+		dc.b	-51
+
+		dc.b	-8
+		dc.b	$05
+		dc.w	$002E
+		dc.b	-35
+
+		dc.b	-8
+		dc.b	$05
+		;dc.w	$000C ; D
+		dc.w	$0042 ; T
 		dc.b	-19
 
 		dc.b	-8

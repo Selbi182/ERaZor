@@ -31,6 +31,10 @@ LevelRend_RAM_Size              equ     __RS-LevelRend_RAM
 	inform 3, 'Level renderer RAM structure takes too much memory (>$18 bytes)'
     endif
 
+; Make sure global constants are sane
+    if SCREEN_WIDTH % 8
+	inform 3, 'SCREEN_WIDTH must be multiple of 8 (Got \#SCREEN_WIDTH)'
+    endif
 
 ; ---------------------------------------------------------------
 ; Level renderer default configurations
@@ -56,13 +60,8 @@ LevelRenderer_Config_FG:
 @Layers:
 	; X-layer #0
 	dc.w    $7FF8                           ; $00 - Y-position at which this layer ends
-    if def(__WIDESCREEN__)
 	dc.w    -$10                            ; $02 - X-displacement of rendering area (relative to camera X-pos)
-	dc.w    (400/8+5-1) | _LR_Layer_Normal  ; $04 - "Width - 1" (in tiles) of rendering area (relative to the displacement)
-    else
-	dc.w    -$10                            ; $02 - X-displacement of rendering area (relative to camera X-pos)
-	dc.w    (320/8+5-1) | _LR_Layer_Normal  ; $04 - "Width - 1" (in tiles) of rendering area (relative to the displacement)
-    endif
+	dc.w    (SCREEN_WIDTH/8+5-1) | _LR_Layer_Normal  ; $04 - "Width - 1" (in tiles) of rendering area (relative to the displacement)
 	dc.w    CamXpos                         ; $06 - Camera X-position address
 
 	dc.w    $0000                           ; finish layers list ...
@@ -101,24 +100,14 @@ LevelRenderer_Config_BG_GHZ:
 
 	; X-layer #1 - Montains (rear)
 	dc.w    $0070                           ; $00 - Y-position at which this layer ends
-    if def(__WIDESCREEN__)
 	dc.w    -$10                            ; $02 - X-displacement of rendering area (relative to camera X-pos)
-	dc.w    (400/8+5-1) | _LR_Layer_Normal  ; $04 - "Width - 1" (in tiles) of rendering area (relative to the displacement)
-    else
-	dc.w    -$10                            ; $02 - X-displacement of rendering area (relative to camera X-pos)
-	dc.w    (320/8+5-1) | _LR_Layer_Normal  ; $04 - "Width - 1" (in tiles) of rendering area (relative to the displacement)
-    endif
+	dc.w    (SCREEN_WIDTH/8+5-1) | _LR_Layer_Normal  ; $04 - "Width - 1" (in tiles) of rendering area (relative to the displacement)
 	dc.w    CamXPos4                        ; $06 - Camera X-position
 
 	; X-layer #2 - Montains (near)
 	dc.w    $0098                           ; $00 - Y-position at which this layer ends
-    if def(__WIDESCREEN__)
 	dc.w    -$10                            ; $02 - X-displacement of rendering area (relative to camera X-pos)
-	dc.w    (400/8+5-1) | _LR_Layer_Normal  ; $04 - "Width - 1" (in tiles) of rendering area (relative to the displacement)
-    else
-	dc.w    -$10                            ; $02 - X-displacement of rendering area (relative to camera X-pos)
-	dc.w    (320/8+5-1) | _LR_Layer_Normal  ; $04 - "Width - 1" (in tiles) of rendering area (relative to the displacement)
-    endif
+	dc.w    (SCREEN_WIDTH/8+5-1) | _LR_Layer_Normal  ; $04 - "Width - 1" (in tiles) of rendering area (relative to the displacement)
 	dc.w    CamXPos3                        ; $06 - Camera X-position
 
 	; X-layer #3 - Waterfalls
@@ -146,35 +135,20 @@ LevelRenderer_Config_BG_MZ:
 
 	; X-layer #1 - Montains         (Y = $250 .. $270)
 	dc.w    $0270                           ; $00 - Y-position at which this layer ends
-    if def(__WIDESCREEN__)
 	dc.w    -$10                            ; $02 - X-displacement of rendering area (relative to camera X-pos)
-	dc.w    (400/8+5-1) | _LR_Layer_Normal  ; $04 - "Width - 1" (in tiles) of rendering area (relative to the displacement)
-    else
-	dc.w    -$10                            ; $02 - X-displacement of rendering area (relative to camera X-pos)
-	dc.w    (320/8+5-1) | _LR_Layer_Normal  ; $04 - "Width - 1" (in tiles) of rendering area (relative to the displacement)
-    endif
+	dc.w    (SCREEN_WIDTH/8+5-1) | _LR_Layer_Normal  ; $04 - "Width - 1" (in tiles) of rendering area (relative to the displacement)
 	dc.w    CamXPos4                        ; $06 - Camera X-position
 
 	; X-layer #2 - Bushes
 	dc.w    $0300                           ; $00 - Y-position at which this layer ends
-    if def(__WIDESCREEN__)
 	dc.w    -$10                            ; $02 - X-displacement of rendering area (relative to camera X-pos)
-	dc.w    (400/8+5-1) | _LR_Layer_Normal  ; $04 - "Width - 1" (in tiles) of rendering area (relative to the displacement)
-    else
-	dc.w    -$10                            ; $02 - X-displacement of rendering area (relative to camera X-pos)
-	dc.w    (320/8+5-1) | _LR_Layer_Normal  ; $04 - "Width - 1" (in tiles) of rendering area (relative to the displacement)
-    endif
+	dc.w    (SCREEN_WIDTH/8+5-1) | _LR_Layer_Normal  ; $04 - "Width - 1" (in tiles) of rendering area (relative to the displacement)
 	dc.w    CamXPos3                        ; $06 - Camera X-position
 
 	; X-layer #3 - Interior
 	dc.w    $0800                           ; $00 - Y-position at which this layer ends
-    if def(__WIDESCREEN__)
 	dc.w    -$10                            ; $02 - X-displacement of rendering area (relative to camera X-pos)
-	dc.w    (400/8+5-1) | _LR_Layer_Normal  ; $04 - "Width - 1" (in tiles) of rendering area (relative to the displacement)
-    else
-	dc.w    -$10                            ; $02 - X-displacement of rendering area (relative to camera X-pos)
-	dc.w    (320/8+5-1) | _LR_Layer_Normal  ; $04 - "Width - 1" (in tiles) of rendering area (relative to the displacement)
-    endif
+	dc.w    (SCREEN_WIDTH/8+5-1) | _LR_Layer_Normal  ; $04 - "Width - 1" (in tiles) of rendering area (relative to the displacement)
 	dc.w    CamXpos2                        ; $06 - Camera X-position
 
 	dc.w    $0000                           ; finish layers list ...
@@ -196,24 +170,14 @@ LevelRenderer_Config_BG_SYZ:
 
 	; X-layer #1 - Montains         (Y = $80 .. $D0)
 	dc.w    $00D0                           ; $00 - Y-position at which this layer ends
-    if def(__WIDESCREEN__)
 	dc.w    -$10                            ; $02 - X-displacement of rendering area (relative to camera X-pos)
-	dc.w    (400/8+5-1) | _LR_Layer_Normal  ; $04 - "Width - 1" (in tiles) of rendering area (relative to the displacement)
-    else
-	dc.w    -$10                            ; $02 - X-displacement of rendering area (relative to camera X-pos)
-	dc.w    (320/8+5-1) | _LR_Layer_Normal  ; $04 - "Width - 1" (in tiles) of rendering area (relative to the displacement)
-    endif
+	dc.w    (SCREEN_WIDTH/8+5-1) | _LR_Layer_Normal  ; $04 - "Width - 1" (in tiles) of rendering area (relative to the displacement)
 	dc.w    CamXPos2                        ; $06 - Camera X-position
 
 	; X-layer #2 - Buildings        (Y = $D0 .. $130)
 	dc.w    $0130                           ; $00 - Y-position at which this layer ends
-    if def(__WIDESCREEN__)
 	dc.w    -$10                            ; $02 - X-displacement of rendering area (relative to camera X-pos)
-	dc.w    (400/8+5-1) | _LR_Layer_Normal  ; $04 - "Width - 1" (in tiles) of rendering area (relative to the displacement)
-    else
-	dc.w    -$10                            ; $02 - X-displacement of rendering area (relative to camera X-pos)
-	dc.w    (320/8+5-1) | _LR_Layer_Normal  ; $04 - "Width - 1" (in tiles) of rendering area (relative to the displacement)
-    endif
+	dc.w    (SCREEN_WIDTH/8+5-1) | _LR_Layer_Normal  ; $04 - "Width - 1" (in tiles) of rendering area (relative to the displacement)
 	dc.w    CamXPos3                        ; $06 - Camera X-position
 
 	; X-layer #2 - Bushes
@@ -241,35 +205,20 @@ LevelRenderer_Config_BG_SBZ1:
 
 	; X-layer #1 - Brown buildings  (Y = $40 .. $E0)
 	dc.w    $00E0                           ; $00 - Y-position at which this layer ends
-    if def(__WIDESCREEN__)
 	dc.w    -$10                            ; $02 - X-displacement of rendering area (relative to camera X-pos)
-	dc.w    (400/8+5-1) | _LR_Layer_Normal  ; $04 - "Width - 1" (in tiles) of rendering area (relative to the displacement)
-    else
-	dc.w    -$10                            ; $02 - X-displacement of rendering area (relative to camera X-pos)
-	dc.w    (320/8+5-1) | _LR_Layer_Normal  ; $04 - "Width - 1" (in tiles) of rendering area (relative to the displacement)
-    endif
+	dc.w    (SCREEN_WIDTH/8+5-1) | _LR_Layer_Normal  ; $04 - "Width - 1" (in tiles) of rendering area (relative to the displacement)
 	dc.w    CamXPos2                        ; $06 - Camera X-position
 
 	; X-layer #2 - Buildings        (Y = $E0 .. $150)
 	dc.w    $0150                           ; $00 - Y-position at which this layer ends
-    if def(__WIDESCREEN__)
 	dc.w    -$10                            ; $02 - X-displacement of rendering area (relative to camera X-pos)
-	dc.w    (400/8+5-1) | _LR_Layer_Normal  ; $04 - "Width - 1" (in tiles) of rendering area (relative to the displacement)
-    else
-	dc.w    -$10                            ; $02 - X-displacement of rendering area (relative to camera X-pos)
-	dc.w    (320/8+5-1) | _LR_Layer_Normal  ; $04 - "Width - 1" (in tiles) of rendering area (relative to the displacement)
-    endif
+	dc.w    (SCREEN_WIDTH/8+5-1) | _LR_Layer_Normal  ; $04 - "Width - 1" (in tiles) of rendering area (relative to the displacement)
 	dc.w    CamXPos4                        ; $06 - Camera X-position
 
 	; X-layer #2 - Buildings (near)
 	dc.w    $0800                           ; $00 - Y-position at which this layer ends
-    if def(__WIDESCREEN__)
 	dc.w    -$10                            ; $02 - X-displacement of rendering area (relative to camera X-pos)
-	dc.w    (400/8+5-1) | _LR_Layer_Normal  ; $04 - "Width - 1" (in tiles) of rendering area (relative to the displacement)
-    else
-	dc.w    -$10                            ; $02 - X-displacement of rendering area (relative to camera X-pos)
-	dc.w    (320/8+5-1) | _LR_Layer_Normal  ; $04 - "Width - 1" (in tiles) of rendering area (relative to the displacement)
-    endif
+	dc.w    (SCREEN_WIDTH/8+5-1) | _LR_Layer_Normal  ; $04 - "Width - 1" (in tiles) of rendering area (relative to the displacement)
 	dc.w    CamXPos3                        ; $06 - Camera X-position
 
 	dc.w    $0000                           ; finish layers list ...

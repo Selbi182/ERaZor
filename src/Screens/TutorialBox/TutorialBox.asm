@@ -756,6 +756,11 @@ mapchar macro char
 			dc.b	_font2, $1+DH_CharOffset
 		elseif \char = '^'
 			dc.b	_font2, $5+DH_CharOffset
+		elseif \char = '0'
+			dc.b	$2A+DH_CharOffset
+		elseif \char = '9'
+			dc.b	_font2, $2A+DH_CharOffset
+
 		elseif (\char >= 'a') & (\char <= 'z')
 			dc.b	_font2, \char-$20
 		elseif \char = '?'
@@ -1344,7 +1349,7 @@ Hint_TutorialConclusion:
 		boxtxt	"ONE FINAL TIP..."
 		boxtxt_line
 		boxtxt	"YOU CAN RETURN TO"
-		boxtxt	"UBERHUB PLACE"
+		boxtxt	"0BERHUB PLACE"
 		boxtxt	"AT ANY TIME BY"
 		boxtxt	"PRESSING a WHILE"
 		boxtxt	"THE GAME IS paused!"
@@ -1394,7 +1399,7 @@ Hint_End_AfterCasual:
 
 		boxtxt	"IF YOU SAW ANYTHING"
 		boxtxt	"WEIRD NEAR THE END"
-		boxtxt	"OF uberhub place..."
+		boxtxt	"OF 9berhub place..."
 		boxtxt_pause
 		boxtxt	"IGNORE IT."
 		boxtxt_next
@@ -1429,7 +1434,7 @@ Hint_End_AfterFrantic:
 ;		 --------------------
 Hint_End_BlackoutTeaser:
 		boxtxt	"THE HORRORS OF"
-		boxtxt	"uberhub#s end"
+		boxtxt	"9berhub#s end"
 		boxtxt	"HAVE BEEN UNSEALED."
 		boxtxt_pause
 		boxtxt	"THERE IS NO ONE TO"
@@ -1455,7 +1460,7 @@ Hint_Options_CountAllMistakes:
 		boxtxt	"NEXT LEVEL AFTER"
 		boxtxt	"BEATING ONE INSTEAD"
 		boxtxt	"OF RETURNING TO"
-		boxtxt	"UBERHUB PLACE."
+		boxtxt	"0BERHUB PLACE."
 		boxtxt_line
 		boxtxt	"GREAT FOR SPEEDRUNS"
 		boxtxt	"OR REPLAYS!"

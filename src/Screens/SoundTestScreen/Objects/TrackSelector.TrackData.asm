@@ -140,7 +140,7 @@
 @Music84_Name		@str 'SCAR NIGHT PLACE', @titleMaxLen
 @Music84_Source:	@str 'MEGA MAN IV - GB - TITLE SCREEN', @descMaxLen
 
-@Music85_Name:		@str 'UBERHUB PLACE', @titleMaxLen
+@Music85_Name:		@str '^BERHUB PLACE', @titleMaxLen
 @Music85_Source:	@str 'MEGA MAN 7 - FREEZE MAN STAGE', @descMaxLen
 
 @Music86_Name:		@str 'GREEN HILL PLACE', @titleMaxLen
@@ -167,10 +167,10 @@
 @Music8D_Name:		@str 'FINALOR PLACE', @titleMaxLen
 @Music8D_Source:	@str 'PULSEMAN - SHUTDOWN', @descMaxLen
 
-@Music8E_Name:		@str '...UNUSED...', @titleMaxLen
-@Music8E_Source:	@str 'SONIC THE HEDGEHOG 1 - ACT CLEAR', @descMaxLen
+@Music8E_Name:		@str 'UNTERHUB PLACE', @titleMaxLen
+@Music8E_Source:	@str 'SONIC 3D BLAST - THE FINAL FIGHT', @descMaxLen
 
-@Music8F_Name:		@str '...ALSO UNUSED...', @titleMaxLen
+@Music8F_Name:		@str 'NOT READING THE TUTORIAL', @titleMaxLen
 @Music8F_Source:	@str 'SONIC THE HEDGEHOG 1 - GAME OVER', @descMaxLen
 
 @Music90_Name:		@str 'THE GREAT ESCAPE', @titleMaxLen
@@ -182,8 +182,8 @@
 @Music92_Name:		@str 'FUN IN LABYRINTHY PLACE', @titleMaxLen
 @Music92_Source:	@str 'SONIC THE HEDGEHOG 1 - DROWN', @descMaxLen
 
-@Music93_Name:		@str '...YUP, UNUSED...', @titleMaxLen
-@Music93_Source:	@str 'SONIC THE HEDGEHOG 1 - 1-UP JINGLE', @descMaxLen
+@Music93_Name:		@str 'UNTERHUB PLACE BOSS', @titleMaxLen
+@Music93_Source:	@str 'GUNSTAR HEROES - MILITARY ON THE MAX POWER', @descMaxLen
 
 @Music94_Name:		@str 'GREEN HILL ZO... PLACE', @titleMaxLen
 @Music94_Source:	@str 'SONIC THE HEDGEHOG 1 - GREEN HILL ZONE', @descMaxLen
@@ -209,7 +209,7 @@
 @Music9B_Name:		@str 'WALKING BOMB BOSS', @titleMaxLen
 @Music9B_Source:	@str 'SONIC ADVANCE 3 - BOSS - PINCH... BUT DIFFERENT', @descMaxLen
 
-@Music9C_Name:		@str '??? UNUSED ???', @titleMaxLen ; Blackout Challenge
+@Music9C_Name:		@str 'BLACKOUT CHALLENGE', @titleMaxLen
 @Music9C_Source:	@str 'PULSEMAN - SHUTDOWN - DARK REMIX', @descMaxLen
 
 @Music9D_Name:		@str 'ENDING SEQUENCE', @titleMaxLen

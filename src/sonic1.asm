@@ -3289,7 +3289,7 @@ MusicList:
 		dc.b	$85	; Uberhub Place (Overworld)
 		dc.b	$87	; Tutorial Place (SBZ 2)
 		dc.b	$84	; Star Agony Place
-		dc.b	$85	; Unterhub Place
+		dc.b	$8E	; Unterhub Place
 		even
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
@@ -7156,6 +7156,7 @@ Resize_SYZ3:
 ; ===========================================================================
 off_71B2:	dc.w Resize_SYZ3main-off_71B2
 		dc.w Resize_SYZ3loadboss-off_71B2
+		dc.w Resize_SYZ3waitboss-off_71B2
 		dc.w Resize_SYZ3boss-off_71B2
 		dc.w Resize_SYZ3end-off_71B2
 ; ===========================================================================
@@ -7164,84 +7165,98 @@ off_71B2:	dc.w Resize_SYZ3main-off_71B2
 Resize_SYZ3main:
 		move.w	#$21C,($FFFFF726).w	; default boundary bottom
 
-		cmpi.w	#$08B0,($FFFFD008).w	; after 600 units?
+		cmpi.w	#$08B0,($FFFFD008).w	; in the arena?
 		blo.s	locret_71CE		; if not, branch
 		addq.b	#2,($FFFFF742).w
 
 		move.w	#$E0,d0
 		jsr	PlaySound_Special	; fade out music
-
 		moveq	#$11,d0
-		bsr.w	LoadPLC		; load boss patterns
+		jsr	LoadPLC			; load boss patterns
+		lea	(PLC_Roller).l,a1
+		jsr	LoadPLC_Direct
 
 		movem.l	d7/a0-a3,-(sp)
-	;	jsr	Pal_MakeBlackWhite	; turn palette black and white
-		jsr 	Pal_FadeOut 	; i guess this works????
+		jsr 	Pal_FadeOut 		; i guess this works????
 		moveq	#3,d0			; brighten up this place by...
 		jsr	PalLoad2		; ...loading Sonic's palette
 		jsr	WhiteFlash2
 		move.b	#0,($FFFFFFB2).w	; shorter camera lag
 		movem.l	(sp)+,d7/a0-a3
 
-	;	lea	(PLC_SYZBossBonus).l,a1	; load FZEscape patterns
-	;	jmp	LoadPLC_Direct		; (mostly tutorial objects)
+		jsr	SingleObjLoad
+		bne.s	locret_71CE
+		move.b	#$43,(a1)		; load roller enemy
+		move.w	#$1098,obX(a1)
+		move.w	#$0252,obY(a1)
+
 locret_71CE:
 		rts	
 ; ===========================================================================
-
-PLC_SYZBossBonus:
-	;	dc.l ArtKospM_SYZDoors		; SYZ doors
-	;	dc.w $6000
-		dc.l ArtKospM_Shield		; shield
-		dc.w $A820
+PLC_Roller:
+		dc.l ArtKospM_Roller
+		dc.w $9700
 		dc.w -1
 ; ===========================================================================
 
 Resize_SYZ3loadboss:
-		move.w	#$1AC,($FFFFF726).w
+		cmpi.w	#$1040,($FFFFD008).w	; did we reach eggman yet?
+		blo.s	locret_71CE		; if not, branch
 
-		cmpi.w	#$1500,($FFFFF700).w
-		bhs.s	@loadboss
-		rts
-@loadboss:
 		addq.b	#2,($FFFFF742).w
 		move.b	#1,($FFFFFFA9).w	; set boss flag
 
-		move.w	#$8C,d0
-		jsr	PlaySound	; play boss music
+		move.b	#0,($FFFFD000+obAniFrame).w ; reset Sonic waiting animation
+		move.b	#1,($FFFFF7CC).w	; lock controls
+		clr.w	($FFFFD000+obVelX).w
+		clr.w	($FFFFD000+obInertia).w
+		clr.l	($FFFFF602).w		; clear any remaining button presses
 
 		jsr	SingleObjLoad
-		move.b	#$75,(a1)	; load SYZ boss	object
-		rts
+		bne.s	@end
+		move.b	#$75,(a1)		; load SYZ boss	object
+
+@end		rts
+; ===========================================================================
+
+Resize_SYZ3waitboss:
+		move.w	#$1A8,($FFFFF726).w	; bottom boundary for arena
+		move.w	#$8C0,($FFFFF728).w	; left boundary
+		move.w	#$1A80,($FFFFF72A).w	; right boundary
+		move.w	#$0188,($FFFFF72C).w	; top boundary
+		move.w	#$AC,($FFFFF73E).w	; reset looking up/down
+
+		; once first chunk is broken, starts the actual boss
+		cmp.b	#$1A,($FFFFD000+obAnim).w ; check if in hurt animation
+		bne.s	@end			; if not, branch
+		addq.b	#2,($FFFFF742).w
+
+		move.b	#0,($FFFFF7CC).w	; unlock controls
+		move.w	#$60,($FFFFF73E).w	; reset looking up/down
+		move.w	#$93,d0
+		jsr	PlaySound		; play Unterhub boss music
+@end:		rts
 ; ===========================================================================
 
 Resize_SYZ3boss:
-		move.w	#$8C0,($FFFFF728).w	; left boundary
-	;	move.w	#$1700,($FFFFF72A).w	; right boundary
-		move.w	#$1A80,($FFFFF72A).w	; right boundary
-		move.w	#$0188,($FFFFF72C).w	; top boundary
-		move.w	#$1AC,($FFFFF726).w	; raise boundary bottom
-
-		tst.b	($FFFFF7A7).w		; has boss been defeatd?
+		frantic				; are we in frantic?
+		bne.s	@frantic		; if yes, branch
+		btst	#0,($FFFFF7A7).w	; has final hit been dealt?
+		beq.s	@frantic		; if not, branch
+		move.w	#$23C,($FFFFF726).w	; default boundary bottom for casual mode
+@frantic:
+		btst	#1,($FFFFF7A7).w	; has boss been defeated and deleted?
 		beq.s	@end			; if not, branch
 		addq.b	#2,($FFFFF742).w
-	;	move.w	#$85,d0
-	;	jsr	(PlaySound).l		; play SYZ music
-
-	;	move.w	#$1800,d0
-	;	move.w	#$200,d1
-	;	moveq	#$07,d2
-	;	jsr	Sub_ChangeChunk
-	;	move.b	#1,(RedrawEverything).w
+		jsr	PlayLevelMusic		; restart level music
 @end:
 		rts
 ; ===========================================================================
 
 Resize_SYZ3end:
+		move.b	#0,($FFFFFFA9).w	; clear boss flag
 		move.w	#$0000,($FFFFF72C).w	; top boundary
 		move.w	#$1A80,($FFFFF72A).w	; right boundary
-	;	move.w	#$23C,($FFFFF726).w	; default boundary bottom
-	;	move.w	($FFFFF700).w,($FFFFF728).w
 		rts	
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -10086,7 +10101,7 @@ Obj2A_OpenShut:				; XREF: Obj2A_Index
 		tst.b	obSubtype(a0)		; is this the end door?
 		bpl.w	Obj2A_Green		; if yes, open door
 		move.w	#$0800+($6100/$20),obGfx(a0)	; use red light art
-		tst.b	($FFFFF7A7).w		; is boss defeated?
+		btst	#1,($FFFFF7A7).w	; is boss defeated?
 		bne.w	Obj2A_Green		; if yes, open door
 		bra.w	Obj2A_Animate		; otherwise, keep it closed
 
@@ -11532,6 +11547,12 @@ AnnoyedSonic:
 	;	move.b	#$2D,($FFFFD000+obAnim).w	; doesn't work... so instead...
 		move.b	#36,($FFFFD000+obAniFrame).w	; force idle animation to be on the frame where he is annoyed
 		rts
+; ---------------------------------------------------------------------------
+
+SusSonic:
+		move.b	#85,($FFFFD000+obAniFrame).w	; force idle animation to be on the frame where he is sus
+		rts
+
 ; ===========================================================================
 
 Obj1F_BossDelete:
@@ -18967,24 +18988,16 @@ Obj43_Index:	dc.w Obj43_Main-Obj43_Index
 ; ===========================================================================
 
 Obj43_Main:				; XREF: Obj43_Index
-		move.b	#$E,obHeight(a0)
-		move.b	#8,obWidth(a0)
-		bsr	ObjectFall
-		jsr	ObjHitFloor
-		tst.w	d1
-		bpl.s	locret_E052
-		add.w	d1,obY(a0)	; match	roller's position with the floor
-		move.w	#0,obVelY(a0)
 		addq.b	#2,obRoutine(a0)
 		move.l	#Map_obj43,obMap(a0)
-		move.w	#$4B8,obGfx(a0)
+		move.w	#$9700/$20,obGfx(a0)
+		bset	#7,obGfx(a0)		; make it high plane
 		move.b	#4,obRender(a0)
 		move.b	#4,obPriority(a0)
 		move.b	#$10,obActWid(a0)
 
-locret_E052:
-		rts	
-; ===========================================================================
+		move.b	#120,$30(a0)		; delay before jump
+; ---------------------------------------------------------------------------
 
 Obj43_Action:				; XREF: Obj43_Index
 		moveq	#0,d0
@@ -18993,124 +19006,34 @@ Obj43_Action:				; XREF: Obj43_Index
 		jsr	obj43_Index2(pc,d1.w)
 		lea	(Ani_obj43).l,a1
 		bsr	AnimateSprite
-		move.w	obX(a0),d0
-		andi.w	#$FF80,d0
-		move.w	($FFFFF700).w,d1
-		subi.w	#$80,d1
-		andi.w	#$FF80,d1
-		sub.w	d1,d0
-		cmpi.w	#$280,d0
-		bgt.w	Obj43_ChkGone
 		bra.w	DisplaySprite
 ; ===========================================================================
-
-Obj43_ChkGone:				; XREF: Obj43_Action
-		lea	($FFFFFC00).w,a2
-		moveq	#0,d0
-		move.b	obRespawnNo(a0),d0
-		beq.s	Obj43_Delete
-		bclr	#7,obGfx(a2,d0.w)
-
-Obj43_Delete:
-		bra.w	DeleteObject
-; ===========================================================================
-Obj43_Index2:	dc.w Obj43_RollChk-Obj43_Index2
-		dc.w Obj43_RollNoChk-Obj43_Index2
-		dc.w Obj43_ChkJump-Obj43_Index2
-		dc.w Obj43_MatchFloor-Obj43_Index2
+Obj43_Index2:	dc.w Obj43_Wait-Obj43_Index2
+		dc.w Obj43_Jump-Obj43_Index2
 ; ===========================================================================
 
-Obj43_RollChk:				; XREF: Obj43_Index2
-		move.w	($FFFFD008).w,d0
-		subi.w	#$100,d0
-		bcs.s	loc_E0D2
-		sub.w	obX(a0),d0	; check	distance between Roller	and Sonic
-		bcs.s	loc_E0D2
-		addq.b	#4,ob2ndRout(a0)
-		move.b	#2,obAnim(a0)
-		move.w	#$700,obVelX(a0)	; move Roller horizontally
-		move.b	#$8E,obColType(a0)	; make Roller invincible
+Obj43_Wait:
+		tst.b	($FFFFFFA9).w		; sequence started yet?
+		beq.s	@end			; if not, wait
 
-loc_E0D2:
-		addq.l	#4,sp
-		rts	
-; ===========================================================================
-
-Obj43_RollNoChk:			; XREF: Obj43_Index2
-		cmpi.b	#2,obAnim(a0)
-		beq.s	loc_E0F8
-		subq.w	#1,$30(a0)
-		bpl.s	locret_E0F6
-		move.b	#1,obAnim(a0)
-		move.w	#$700,obVelX(a0)
-		move.b	#$8E,obColType(a0)
-
-locret_E0F6:
-		rts	
-; ===========================================================================
-
-loc_E0F8:
+		subq.b	#1,$30(a0)		; countdown delay
+		bpl.s	@end			; if time remains, branch
 		addq.b	#2,ob2ndRout(a0)
-		rts	
-; ===========================================================================
+		move.w	#$80,obVelX(a0)
+		move.w	#-$500,obVelY(a0)
+		move.w	#$AB,d0
+		jsr	PlaySound_Special
+		move.b	#1,obAnim(a0)
 
-Obj43_ChkJump:				; XREF: Obj43_Index2
-		jsr	obj43_Stop
-		bsr	SpeedToPos
-		jsr	ObjHitFloor
-		cmpi.w	#-8,d1
-		blt.s	Obj43_Jump
-		cmpi.w	#$C,d1
-		bge.s	Obj43_Jump
-		add.w	d1,obY(a0)
-		rts	
+@end:		rts
 ; ===========================================================================
 
 Obj43_Jump:
-		addq.b	#2,ob2ndRout(a0)
-		bset	#0,$32(a0)
-		beq.s	locret_E12E
-		move.w	#-$600,obVelY(a0)	; move Roller vertically
-
-locret_E12E:
-		rts	
-; ===========================================================================
-
-Obj43_MatchFloor:			; XREF: Obj43_Index2
 		bsr	ObjectFall
-		tst.w	obVelY(a0)
-		bmi.s	locret_E150
-		jsr	ObjHitFloor
-		tst.w	d1
-		bpl.s	locret_E150
-		add.w	d1,obY(a0)	; match	Roller's position with the floor
-		subq.b	#2,ob2ndRout(a0)
-		move.w	#0,obVelY(a0)
-
-locret_E150:
+		bsr	SpeedToPos
+		cmpi.w	#$300,obY(a0)
+		bhs.w	DeleteObject
 		rts	
-
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
-
-Obj43_Stop:				; XREF: Obj43_ChkJump
-		tst.b	$32(a0)
-		bmi.s	locret_E188
-		move.w	($FFFFD008).w,d0
-		subi.w	#$30,d0
-		sub.w	obX(a0),d0
-		bcc.s	locret_E188
-		move.b	#0,obAnim(a0)
-		move.b	#$E,obColType(a0)
-		clr.w	obVelX(a0)
-		move.w	#120,$30(a0)	; set waiting time to 2	seconds
-		move.b	#2,ob2ndRout(a0)
-		bset	#7,$32(a0)
-
-locret_E188:
-		rts	
-; End of function Obj43_Stop
-
 ; ===========================================================================
 Ani_obj43:
 		include	"_anim\obj43.asm"
@@ -38167,9 +38090,11 @@ Map_obj5Ea:
 ; ---------------------------------------------------------------------------
 ; Object 75 - Eggman (SYZ)
 ; ---------------------------------------------------------------------------
-Obj75_BaseY = $1D0
+Obj75_BaseXOffset = $600
+Obj75_BaseY = $1D8
 Obj75_BossSpeed = $400
-Obj75Boss_Health = 12
+Obj75_SlamThreshold = $C
+Obj75Boss_Health = 16
 ; ---------------------------------------------------------------------------
 
 Obj75:					; XREF: Obj_Index
@@ -38191,7 +38116,10 @@ Obj75_ObjData:	dc.b 2,	0, 5		; routine number, animation, priority
 ; ===========================================================================
 
 Obj75_Main:				; XREF: Obj75_Index
-		move.w	#$1680,obX(a0)
+		move.w	($FFFFD008).w,d0
+		subi.w	#Obj75_BaseXOffset,d0
+		move.w	d0,obX(a0)	; set base X position to be slightly behind Sonic
+
 		move.w	#Obj75_BaseY,obY(a0)
 		move.w	obX(a0),$30(a0)
 		move.w	obY(a0),$38(a0)
@@ -38236,6 +38164,13 @@ Obj75_LoadBoss:				; XREF: Obj75_Main
 ; ===========================================================================
 
 Obj75_ShipMain:				; XREF: Obj75_Index
+		; keep in arena
+		cmpi.w	#$920,obX(a0)
+		bhs.s	@leftok
+		move.w	#$920,obX(a0)
+		clr.w	obVelX(a0)
+@leftok:
+
 		moveq	#0,d0
 		move.b	ob2ndRout(a0),d0
 		move.w	Obj75_ShipIndex(pc,d0.w),d1
@@ -38262,7 +38197,7 @@ Obj75_MoveToSonic:
 		cmpi.b	#6,($FFFFD024).w	; is Sonic dying?
 		blo.s	@normal			; if not, branch
 		addq.w	#1,obY(a0)		; move eggman laughing into frame
-		bra.s	Obj75_CheckFlash	; disable other movement
+		bra.w	Obj75_CheckFlash	; disable other movement
 
 @normal:
 		bset	#0,obStatus(a0)
@@ -38287,9 +38222,38 @@ loc_19202:
 		lsr.w	#5,d0
 		move.b	d0,$34(a0)
 
-		bsr	Obj75_CheckSlam
+		; rubberbanding	
+		tst.b	($FFFFF7CC).w		; are controls locked?
+		bne.s	@rubberleftok
+
+		Obj75_Rubberbanding: = SCREEN_WIDTH
+		move.w	obX(a0),d0
+		sub.w	($FFFFD008).w,d0
+		cmpi.w	#Obj75_Rubberbanding,d0
+		ble.s	@rubberrightok
+		move.w	($FFFFD008).w,d0
+		addi.w	#Obj75_Rubberbanding,d0
+		move.w	d0,obX(a0)
+		move.w	d0,$30(a0)
+@rubberrightok:
+		cmpi.w	#-Obj75_Rubberbanding,d0
+		bge.s	@rubberleftok
+		move.w	($FFFFD008).w,d0
+		subi.w	#Obj75_Rubberbanding,d0
+		move.w	d0,obX(a0)
+		move.w	d0,$30(a0)
+@rubberleftok:
+
+		bsr	Obj75_CheckSlam		; see if eggman can slam
 
 Obj75_CheckFlash:
+		; TODO remove once no longer needed
+		move.w	($FFFFD008).w,d0
+		sub.w	obX(a0),d0
+		bpl.s	@ok
+		neg.w	d0
+@ok:		move.w	d0,($FFFFFFEE).w	; track distance in debug HUD
+
 		tst.b	obColType(a0)
 		bne.s	Obj75_ResetBlack
 		tst.b	$3E(a0)
@@ -38332,7 +38296,7 @@ Obj75_CheckSlam:
 		bpl.s	@pos
 		neg.w	d0
 @pos:
-		cmpi.w	#$10,d0
+		cmpi.w	#Obj75_SlamThreshold,d0
 		bhi.s	@end
 		move.b	#4,ob2ndRout(a0)	; set to slam down
 		move.w	#-$400,obVelY(a0)	; move eggman up a little before slam
@@ -38347,18 +38311,6 @@ Obj75_CheckSlam:
 Obj75_SlamDown:
 		cmpi.b	#6,($FFFFD024).w	; is Sonic dying?
 		bhs.w	Obj75_GoBackUp		; if yes, don't load
-
-		; keep in arena
-		cmpi.w	#$920,obX(a0)
-		bhs.s	@leftok
-		move.w	#$920,obX(a0)
-		clr.w	obVelX(a0)
-@leftok:
-		cmpi.w	#$17E0,obX(a0)
-		blo.s	@rightok
-		move.w	#$17E0,obX(a0)
-		clr.w	obVelX(a0)
-@rightok:
 
 		; slam
 		addi.w	#$38,obVelY(a0)		; increase gravity
@@ -38379,26 +38331,23 @@ Obj75_DestroyChunk:
 		jsr	Sub_FindChunkByCoordinate
 		move.b	(a0),d0
 		move.l	(sp)+,a0
-
-		cmpi.b	#$46,d0
-		bne.s	@break
-		bra.w	Obj75_SlamEnd
+		tst.b	d0			; empty chunk (casual)?
+		beq.w	Obj75_SlamEnd		; if yes, miss
+		cmpi.b	#$46,d0			; spoopy chunk (frantic)?
+		beq.w	Obj75_SlamEnd		; if yes, miss
 
 @break:
 		asr	obVelY(a0)
 		asr	obVelY(a0)
-
 		move.b	#$80,(RedrawEverything).w	; redraw everything without affecting the camera
-
 		jsr	WhiteFlash2
 		move.b	#0,($FFFFFFB2).w	; shorter camera lag
 		ori.b	#40,(CameraShake).w	; camera shaking
 
-		move.w	#$DF,d0
-		jsr	PlaySound
 		move.w	#$B9,d0
+		jsr	PlaySound
+		move.w	#$DB,d0
 		jsr	PlaySound_Special
-
 
 		move.w	obX(a0),d2
 		andi.w	#$FF00,d2
@@ -38416,27 +38365,49 @@ Obj75_DestroyChunk:
 		dbf	d1,@explosions
 @end:
 
-		; move Sonic left if he's too close to the right
-		cmpi.w	#$1700,($FFFFD008).w
-		blo.s	@nosonicmove
-		move.b	#4,($FFFFD024).w
-		move.b	#$1A,($FFFFD01C).w
-		bset	#1,($FFFFD022).w
-		move.w	#-$600,($FFFFD012).w
-		move.w	#-$1000,($FFFFD010).w
+		; move Sonic if he stood on the chunk as it exploded
+		cmpi.w	#$1800,($FFFFD008).w		; is Sonic at the door?
+		bhs.s	@movesonic			; if yes, always move
+		btst	#1,($FFFFD022).w		; is Sonic in air?
+		bne.s	@nosonicmove			; if yes, all good
+@movesonic:
+		move.w	($FFFFD008).w,d1
+		andi.w	#$FF00,d1
+		move.w	obX(a0),d2
+		andi.w	#$FF00,d2
+		cmp.w	d1,d2
+		bne.s	@nosonicmove
 
+		move.b	#4,($FFFFD024).w		; set to Obj01_Hurt
+		move.b	#$1A,($FFFFD01C).w
+		move.w	#-$600,($FFFFD012).w
+		move.w	#$800,($FFFFD010).w
+		bset	#1,($FFFFD022).w
+		move.b	#1,($FFFFFF72).w		; prevent invulnerability frames
+
+		move.w	($FFFFD008).w,d1
+		cmp.w	obX(a0),d1			; is Sonic to the right of Eggman?
+		bhs.s	@nosonicmove			; if yes, branch
+		neg.w	($FFFFD010).w			; negate direction
 @nosonicmove:
+
+		cmpi.w	#$1800,obX(a0)		; to the right of the arena?
+		bhs.s	Obj75_SlamEnd		; if yes, don't break chunk
+
 		; break the actual chunks
+		moveq	#0,d2			; replace with void chunk
+		frantic				; are we in frantic?
+		beq.s	@breakchunk		; if not, branch
+		moveq	#$46,d2			; use spoopy chunk instead
+@breakchunk:
 		move.l	a0,-(sp)
 		move.w	obX(a0),d3
 		move.w	d3,d0
 		move.w	#$0200,d1
-		moveq	#$46,d2
 		jsr	Sub_ChangeChunk
 
 		move.w	d3,d0
 		move.w	#$0100,d1
-		moveq	#$46,d2
 		jsr	Sub_ChangeChunk
 		move.l	(sp)+,a0
 
@@ -38445,6 +38416,15 @@ Obj75_DestroyChunk:
 
 Obj75_GoBackUp:
 		subi.w	#$38,obVelY(a0)
+
+		frantic
+		bne.s	@ok
+		asr	obVelX(a0)
+		cmpi.w	#-$180,obVelY(a0)
+		bge.s	@ok
+		move.w	#-$180,obVelY(a0)
+@ok:
+
 		cmpi.w	#Obj75_BaseY,obY(a0)
 		bhi.w	Obj75_SlamEnd
 		move.b	#0,ob2ndRout(a0)
@@ -38463,12 +38443,13 @@ Obj75_BossDefeated:			; XREF: Obj75_ShipIndex
 		move.w	#$20,obVelY(a0)
 		bset	#0,obStatus(a0)
 		bclr	#7,obStatus(a0)
-
 		bsr.w	BossDefeated
 		ori.b	#10,(CameraShake).w	; camera shaking
-
-@chkdelete:
 		jsr	SpeedToPos
+
+		bset	#0,($FFFFF7A7).w	; set boss first defeated flag (see Resize_SYZ3end)
+
+		; check delete based on mode
 		cmpi.w	#$1980,obX(a0)
 		bhs.s	Obj75_BossDelete
 		rts
@@ -38477,7 +38458,7 @@ Obj75_BossDefeated:			; XREF: Obj75_ShipIndex
 Obj75_BossDelete:
 		move.l	#10000,d0
 		bsr	AddPoints
-		move.b	#1,($FFFFF7A7).w	; set boss defeated flag (see Resize_SYZ3end)
+		bset	#1,($FFFFF7A7).w	; set second boss defeated flag (see Resize_SYZ3end)
 		jmp	DeleteObject
 ; ===========================================================================
 ; ===========================================================================
@@ -45893,8 +45874,8 @@ ArtKospM_Chopper:	incbin	artkosp\chopper.kospm	; chopper
 		even
 ArtKospM_Jaws:	incbin	artkosp\jaws.kospm		; jaws
 		even
-;ArtKospM_Roller:	incbin	artkosp\roller.kospm	; roller
-;		even
+ArtKospM_Roller:	incbin	artkosp\roller.kospm	; roller
+		even
 ArtKospM_Motobug:	incbin	artkosp\motobug.kospm	; moto bug
 		even
 ;ArtKospM_Newtron:	incbin	artkosp\newtron.kospm	; newtron

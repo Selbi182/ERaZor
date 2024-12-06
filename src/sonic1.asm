@@ -58,15 +58,15 @@ USE_NEW_BUILDSPRITES:	equ	1	; New BuildSprites system is still faster than S1's,
 ; $502 - Finalor Place
 	if def(__BENCHMARK__)=0
 QuickLevelSelect = 0
-QuickLevelSelect_ID = $400
+QuickLevelSelect_ID = $402
 ; ------------------------------------------------------
 DebugModeDefault = 1
 DebugSurviveNoRings = 1
 DebugHudPermanent = 0
 DebugOnABC = 1
 ; ------------------------------------------------------
-DoorsAlwaysOpen = 1
-LowBossHP = 0
+DoorsAlwaysOpen = 0
+LowBossHP = 1
 ; ======================================================
 	else
 ; BENCHMARK build settings (DO NOT CHANGE!)
@@ -3179,8 +3179,8 @@ LevelMenuText:
 		dc.b	'   2 GREEN HILL PLACE   '
 		dc.b	'   3 SPECIAL PLACE      '
 		dc.b	'   4 RUINED PLACE       '
-		dc.b	'   UNTERHUB PLACE       '
 		dc.b	'   5 LABYRINTHY PLACE   '
+		dc.b	'   UNTERHUB PLACE       '
 		dc.b	'   6 UNREAL PLACE       '
 		dc.b	'   7 SCAR NIGHT PLACE   '
 		dc.b	'   8 STAR AGONY PLACE   '
@@ -3202,8 +3202,8 @@ LSelectPointers:
 		dc.w	$002	; Green Hill Place
 		dc.w	$300	; Special Place
 		dc.w	$200	; Ruined Place
-		dc.w	$402	; Unterhub Place
 		dc.w	$101	; Labyrinthy Place
+		dc.w	$402	; Unterhub Place
 		dc.w	$401	; Unreal Place
 		dc.w	$301	; Scar Night Place
 		dc.w	$302	; Star Agony Place
@@ -6107,16 +6107,8 @@ LevSz_ChkLamp:				; XREF: LevelSizeLoad
 		bra.w	loc_60D0
 ; ===========================================================================
 
-Check_JustFinishedFP:
-		btst	#6,(Doors_Casual).w		; has the player finished FP in casual?
-		beq.s	@end				; if not, branch
-		jsr	Check_BaseGameBeaten_Casual	; has the player beaten the base game in casual yet?
-		eori.b	#%00100,ccr			; invert Z flag for return value
-@end:		rts
-; ===========================================================================
-
 LevSz_StartLoc:				; XREF: LevelSizeLoad
-		move.w	($FFFFFE10).w,d0
+		move.w	($FFFFFE10).w,d1
 		
 		; LP fast forward
 		cmpi.w	#$101,($FFFFFE10).w	; is level LP?
@@ -6131,10 +6123,12 @@ LevSz_StartLoc:				; XREF: LevelSizeLoad
 		bne.s 	@load			; if not, branch
 		btst	#4,(ScreenFuzz).w 	; did we exit from the intro cutscene?
 		beq.s	@notintro		; if not, branch
-		addq.w	#3,d0			; use special intro ring start loc
+		addq.w	#3,d1			; use special intro ring start loc
 		bra.s	@load			; skip
 
-	@notintro:	
+	@notintro:
+		jsr	Check_UnterhubFirst	; first Underhub sequence active?
+		bne.s	@load			; if yes, always go to trophy gallery
 		btst	#4,(OptionsBits).w	; is nonstop inhuman enabled?
 		beq.s	@chkfrantic		; if not, branch
 		jsr	Check_HubEasterVisited	; has the player already visited the easter egg?
@@ -6143,7 +6137,7 @@ LevSz_StartLoc:				; XREF: LevelSizeLoad
 	@chkfrantic:
 		frantic				; are we in frantic mode?
 		bne.s	@frantic		; if yes, branch
-		bsr	Check_JustFinishedFP	; has the player just escaped FP for the first time?
+		jsr	Check_JustFinishedFP	; has the player just escaped FP for the first time?
 		bne.s	@altsloc		; if yes, give the casual players a taste of the nyoom
 		bra.s	@load			; if not, branch
 
@@ -6154,12 +6148,12 @@ LevSz_StartLoc:				; XREF: LevelSizeLoad
 		bne.s	@load			; look at the funny trophies
 
 	@altsloc:
-		addq.w	#1,d0			; use next level coordinates instead (unused anyway, has the alt coordinates)
+		addq.w	#1,d1			; use next level coordinates instead (unused anyway, has the alt coordinates)
 
 @load:
-		lsl.b	#6,d0
-		lsr.w	#4,d0
-		lea	StartLocArray(pc,d0.w),a1 ; load Sonic's start location
+		lsl.b	#6,d1
+		lsr.w	#4,d1
+		lea	StartLocArray(pc,d1.w),a1 ; load Sonic's start location
 		bra.s	LevSz_SonicPos
 
 ; ---------------------------------------------------------------------------
@@ -7071,6 +7065,8 @@ Resize_SYZx:	dc.w Resize_SYZ1-Resize_SYZx
 
 ; Resize_Uberhub:
 Resize_SYZ1:
+		bsr	Uberhub_UnterhubCutscene
+
 		move.w	#$21C,($FFFFF726).w	; default boundary bottom
 	
 		cmpi.w	#$E0,($FFFFD00C).w	; are we at the end ring?
@@ -7121,9 +7117,9 @@ Resize_SYZ1:
 @chkunterhub:
 		cmpi.w	#$2F0,($FFFFD00C).w	; entered the tube to Unterhub?
 		blo.s	@uberhubend		; if not, branch
-	;	move.b	#1,($FFFFF7CC).w	; lock controls
 		clr.l	($FFFFF602).w		; clear any remaining button presses
 		clr.w	($FFFFD010).w
+		clr.w	($FFFFD014).w
 
 		move.w	#$700,d0		; set boundary bottom for tubes
 		move.w	d0,($FFFFF726).w	; target boundary
@@ -7133,18 +7129,98 @@ Resize_SYZ1:
 		blo.s	@uberhubend		; if not, branch
 		move.l	#$87,d0			; go to Unterhub Place
 		jmp	Exit_GiantRing
+
+; ===========================================================================
+; ---------------------------------------------------------------------------
+
+Uberhub_UnterhubCutscene:
+		jsr	Check_UnterhubFirst
+		beq.s	@end
+		moveq	#0,d0
+		move.b	($FFFFF742).w,d0
+		move.w	@unterhubcut(pc,d0.w),d0
+		jsr	@unterhubcut(pc,d0.w)
+@end:		rts
+
+; ===========================================================================
+@unterhubcut:	dc.w @UnterhubCutscene_Begin-@unterhubcut
+		dc.w @UnterhubCutscene_WaitRoller-@unterhubcut
+		dc.w @UnterhubCutscene_End-@unterhubcut
+; ===========================================================================
+
+@UnterhubCutscene_Begin:
+		tst.b	($FFFFFF7F).w		; are we done with the intro tube sequence?
+		beq.s	@waitbegin		; if not, branch
+
+		addq.b	#2,($FFFFF742).w	; begin cutscene
+
+		move.w	#$E0,d0
+		jsr	PlaySound		; fade out music
+		move.b	#1,($FFFFF7CC).w	; lock controls
+		clr.w	($FFFFD000+obVelX).w
+		clr.w	($FFFFD000+obInertia).w
+		clr.l	($FFFFF602).w		; clear any remaining button presses
+
+		jsr	SingleObjLoad
+		bne.s	@waitbegin
+		move.b	#$43,(a1)		; load roller enemy
+		move.b	#4,obRoutine(a1)	; set to cutscene routine
+
+		lea	(PLC_Roller).l,a1
+		jsr	LoadPLC_Direct
+@waitbegin:
+		rts
+; ---------------------------------------------------------------------------
+@UnterhubCutscene_WaitRoller:
+		btst	#0,($FFFFF7A7).w	; has the Roller collected the spike trophy?
+		beq.s	@waitcollect		; if not, wait
+
+		bset	#0,($FFFFF602).w	; force up press
+		move.w	#$60,($FFFFF73E).w	; reset looking up/down
+
+		btst	#1,($FFFFF7A7).w	; has the Roller hit the floor?
+		beq.s	@waitcollect		; if not, wait
+		bclr	#0,($FFFFF602).w	; clear up press again
+
+		btst	#2,($FFFFF7A7).w	; has the Roller gone offscreen below?
+		beq.s	@waitcollect		; if not, wait
+		jsr	AnnoyedSonic
+
+		btst	#3,($FFFFF7A7).w	; has the Roller been deleted?
+		beq.s	@waitcollect		; if not, wait
+		addq.b	#2,($FFFFF742).w	; end cutscene
+		move.b	#0,($FFFFF7CC).w	; unlock controls
+		move.w	#$85,d0
+		jsr	PlaySound		; restart Uberhub music
+	;	jsr	Set_RPTrophyStolen	; oh no he stole the trophy
+
+		lea	(@PLC_BigRingUberhub).l,a1
+		jsr	LoadPLC_Direct		; reload giant ring patterns (overwritten by roller)
+
+		jsr	SingleObjLoad		; spawn platform to Unterhub
+		bne.s	@waitcollect
+		move.b	#$18,(a1)
+		move.w	#$0380,obX(a1)
+		move.w	#$02D8,obY(a1)
+
+@waitcollect:
+		rts
+; ---------------------------------------------------------------------------
+@PLC_BigRingUberhub:
+		dc.l ArtKospM_BigRing		; big rings
+		dc.w $8E00
+		dc.l ArtKospM_RingFlash		; ring flash
+		dc.w $8E00+$C40
+		dc.w -1
+; ---------------------------------------------------------------------------
+
+@UnterhubCutscene_End:
+		rts
+; ---------------------------------------------------------------------------
 ; ===========================================================================
 
 Resize_SYZ2:
-		move.w	#$520,($FFFFF726).w
-		cmpi.w	#$25A0,($FFFFF700).w
-		bcs.s	locret_71A2
-		move.w	#$420,($FFFFF726).w
-		cmpi.w	#$4D0,($FFFFD00C).w
-		bcs.s	locret_71A2
-		move.w	#$520,($FFFFF726).w
-
-locret_71A2:
+		nop
 		rts	
 ; ===========================================================================
 
@@ -7171,9 +7247,8 @@ Resize_SYZ3main:
 
 		move.w	#$E0,d0
 		jsr	PlaySound_Special	; fade out music
-		moveq	#$11,d0
-		jsr	LoadPLC			; load boss patterns
-		lea	(PLC_Roller).l,a1
+
+		lea	(PLC_Roller).l,a1	; load Roller patterns
 		jsr	LoadPLC_Direct
 
 		movem.l	d7/a0-a3,-(sp)
@@ -7181,7 +7256,7 @@ Resize_SYZ3main:
 		moveq	#3,d0			; brighten up this place by...
 		jsr	PalLoad2		; ...loading Sonic's palette
 		jsr	WhiteFlash2
-		move.b	#0,($FFFFFFB2).w	; shorter camera lag
+		move.b	#0,($FFFFFFB2).w	; no camera lag
 		movem.l	(sp)+,d7/a0-a3
 
 		jsr	SingleObjLoad
@@ -7215,6 +7290,8 @@ Resize_SYZ3loadboss:
 		jsr	SingleObjLoad
 		bne.s	@end
 		move.b	#$75,(a1)		; load SYZ boss	object
+		moveq	#$11,d0
+		jsr	LoadPLC			; load boss patterns
 
 @end		rts
 ; ===========================================================================
@@ -7223,13 +7300,30 @@ Resize_SYZ3waitboss:
 		move.w	#$1A8,($FFFFF726).w	; bottom boundary for arena
 		move.w	#$8C0,($FFFFF728).w	; left boundary
 		move.w	#$1A80,($FFFFF72A).w	; right boundary
+
+		btst	#1,($FFFFD022).w	; is Sonic in air?
+		bne.s	@waitfloor		; if yes, branch
 		move.w	#$0188,($FFFFF72C).w	; top boundary
-		move.w	#$AC,($FFFFF73E).w	; reset looking up/down
+		move.w	#$AC,($FFFFF73E).w	; adjust vertical camera offset
+@waitfloor:
+
+		cmpi.b	#46,($FFFFD000+obAniFrame).w
+		blo.s	@waitsus
+		jsr	SusSonic
+@waitsus:
 
 		; once first chunk is broken, starts the actual boss
 		cmp.b	#$1A,($FFFFD000+obAnim).w ; check if in hurt animation
 		bne.s	@end			; if not, branch
 		addq.b	#2,($FFFFF742).w
+
+		movem.l	d7/a0-a3,-(sp)
+		jsr 	Pal_FadeOut 		; i guess this works????
+		moveq	#3,d0			; brighten up this place by...
+		jsr	PalLoad2		; ...loading Sonic's palette
+		jsr	WhiteFlash2
+		move.b	#20,($FFFFFFB2).w	; add some camera lag
+		movem.l	(sp)+,d7/a0-a3
 
 		move.b	#0,($FFFFF7CC).w	; unlock controls
 		move.w	#$60,($FFFFF73E).w	; reset looking up/down
@@ -7249,14 +7343,24 @@ Resize_SYZ3boss:
 		beq.s	@end			; if not, branch
 		addq.b	#2,($FFFFF742).w
 		jsr	PlayLevelMusic		; restart level music
+
+		jsr	SingleObjLoad
+		bne.s	@end
+		move.b	#$43,(a1)		; load end roller enemy
+		move.w	#$1B10,obX(a1)
+		move.w	#$02C3,obY(a1)
 @end:
 		rts
 ; ===========================================================================
 
 Resize_SYZ3end:
+		cmpi.w	#$1900,($FFFFF700).w
+		blo.s	@left
+		move.w	#$23C,($FFFFF726).w	; default boundary
+@left:
 		move.b	#0,($FFFFFFA9).w	; clear boss flag
 		move.w	#$0000,($FFFFF72C).w	; top boundary
-		move.w	#$1A80,($FFFFF72A).w	; right boundary
+		move.w	#$1B80,($FFFFF72A).w	; right boundary
 		rts	
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -8616,7 +8720,7 @@ Obj17_Delete:				; XREF: Obj17_Index
 
 Obj17_Display:				; XREF: Obj17_Index
 		jsr	obj17_RotateSpikes
-		bra.w	DisplaySprite
+		jmp	DisplaySprite
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Sprite mappings - helix of spikes on a pole (GHZ)
@@ -8651,9 +8755,12 @@ Obj18_Main:				; XREF: Obj18_Index
 		bne.s	@notuberhub		; if not, branch
 		cmpi.w	#$0380,obX(a0)		; is this the platform to Unterhub?
 		bne.s	@notuberhub		; if not, branch
-		moveq	#2,d0			; has the player beaten RP already?
-		jsr	Check_LevelBeaten_Current
+		jsr	Check_UnterhubBeaten	; Unterhub already beaten?
+		bne.s	@notuberhub		; if yes, always show
+		jsr	Check_UnterhubUnlocked	; Unterhub unlocked?
 		beq.s	@delete			; if not, delete entrance
+		tst.b	($FFFFFF7F).w		; are we done with the intro tube sequence?
+		beq.s	@delete			; if not, delete
 
 @notuberhub:
 		cmpi.b	#6,($FFFFFE10).w	; is this the ending sequence?
@@ -8794,8 +8901,10 @@ Obj18_OnPlatform:				; XREF: Obj18_Index
 		cmpi.w	#$400,($FFFFFE10).w	; is level SYZ1?
 		bne.w	Obj18_NotSYZX
 
-		btst	#1,($FFFFD022).w		; is Sonic in air?
-		bne.w	Obj18_NotSYZX			; if yes, branch
+		btst	#1,($FFFFD022).w	; is Sonic in air?
+		bne.w	Obj18_NotSYZX		; if yes, branch
+		cmpi.b	#$34,($FFFFD080).w	; are title cards currently visible?
+		beq.w	Obj18_NotSYZX		; if yes, wait until they're gone
 
 		move.b	#1,$3F(a0)		; show arrows
 
@@ -10128,6 +10237,13 @@ Obj2A_Red:
 @notblackoutdoor:
 		moveq	#0,d0
 		move.b	obSubtype(a0),d0		; and it by subtype of door (always a single bit)
+
+		cmpi.b	#2,d0				; is this the door after RP?
+		bne.s	@notpostrp			; if not, branch
+		jsr	Check_UnterhubFirst		; are we in the Unterhub sequence?
+		bne.w	Obj2A_Animate			; if yes, shut off access until you beat it
+
+@notpostrp:
 		cmpi.b	#6,d0				; is this the final door (FP|end)?
 		bne.s	@notfinaldoor			; if not, branch
 		jsr	Check_AllLevelsBeaten_Current	; only unlock final door after all levels have been legitimately beaten
@@ -18985,6 +19101,8 @@ Obj43:					; XREF: Obj_Index
 ; ===========================================================================
 Obj43_Index:	dc.w Obj43_Main-Obj43_Index
 		dc.w Obj43_Action-Obj43_Index
+; ---------------------------------------------------------------------------
+		dc.w Obj43_UberhubCutscene-Obj43_Index
 ; ===========================================================================
 
 Obj43_Main:				; XREF: Obj43_Index
@@ -18995,6 +19113,7 @@ Obj43_Main:				; XREF: Obj43_Index
 		move.b	#4,obRender(a0)
 		move.b	#4,obPriority(a0)
 		move.b	#$10,obActWid(a0)
+		move.b	#6,obColType(a0)
 
 		move.b	#120,$30(a0)		; delay before jump
 ; ---------------------------------------------------------------------------
@@ -19015,6 +19134,8 @@ Obj43_Index2:	dc.w Obj43_Wait-Obj43_Index2
 Obj43_Wait:
 		tst.b	($FFFFFFA9).w		; sequence started yet?
 		beq.s	@end			; if not, wait
+		btst	#1,($FFFFD022).w	; is Sonic in air?
+		bne.s	@end			; if yes, wait
 
 		subq.b	#1,$30(a0)		; countdown delay
 		bpl.s	@end			; if time remains, branch
@@ -19034,6 +19155,139 @@ Obj43_Jump:
 		cmpi.w	#$300,obY(a0)
 		bhs.w	DeleteObject
 		rts	
+; ===========================================================================
+; ===========================================================================
+
+Obj43_UberhubCutscene:
+		moveq	#0,d0
+		move.b	ob2ndRout(a0),d0
+		move.w	Obj43_Index3(pc,d0.w),d1
+		jsr	obj43_Index3(pc,d1.w)
+		lea	(Ani_obj43).l,a1
+		bsr	AnimateSprite
+		bra.w	DisplaySprite
+; ===========================================================================
+Obj43_Index3:	dc.w Obj43_Setup-Obj43_Index3
+		dc.w Obj43_PreWait-Obj43_Index3
+		dc.w Obj43_StealSpikeTrophy-Obj43_Index3
+		dc.w Obj43_HitFloor-Obj43_Index3
+		dc.w Obj43_BounceBack-Obj43_Index3
+		dc.w Obj43_Offscreen-Obj43_Index3
+; ===========================================================================
+
+Obj43_Setup:
+		addq.b	#2,ob2ndRout(a0)
+
+		move.l	#Map_obj43,obMap(a0)
+		move.w	#$9700/$20,obGfx(a0)
+		bset	#7,obGfx(a0)		; make it high plane
+		move.b	#4,obRender(a0)
+		move.b	#4,obPriority(a0)
+		move.b	#$10,obActWid(a0)
+		move.b	#0,obColType(a0)
+
+		move.b	#2,obAnim(a0)		; rolling
+
+		move.w	#$0280,obX(a0)
+		move.w	#$0310,obY(a0)
+
+		move.w	#3*60,$30(a0)		; pre-delay
+; ---------------------------------------------------------------------------
+
+Obj43_PreWait:
+		subq.w	#1,$30(a0)
+		bpl.s	@wait
+		addq.b	#2,ob2ndRout(a0)
+		move.w	#$600,obVelX(a0)
+		move.w	#-$800,obVelY(a0)
+		bset	#0,($FFFFF7A7).w	; set spike trophy as collected
+@wait:		rts
+; ---------------------------------------------------------------------------
+
+Obj43_StealSpikeTrophy:
+		jsr	SpeedToPos
+		addi.w	#$38,obVelY(a0)
+
+		cmpi.w	#$370,obX(a0)		; at the spike trophy yet?
+		blo.s	@waitsteal		; if not, wait
+
+	;	asr	obVelX(a0)		; slow down
+		addq.b	#2,ob2ndRout(a0)
+		move.w	#$A9,d0
+		jsr	PlaySound_Special	; play blip sound
+		
+		; find and delete spike trophy
+		lea	($FFFFD800).w,a1
+		moveq	#$40-1,d0
+@findtrophy:
+		cmpi.b	#$12,(a1)		; is current object a trophy?
+		bne.s	@next			; if not, loop
+		cmpi.b	#2,obSubtype(a1)	; is this the RP trophy?
+		beq.s	@deletetrophy		; if yes, exit
+	@next:	lea	$40(a1),a1
+		dbf	d0,@findtrophy
+		bra.s	@waitsteal		; shouldn't happen, but just in case
+@deletetrophy:
+		jsr	DeleteObject2		; delete the trophy
+@waitsteal:
+		rts
+; ---------------------------------------------------------------------------
+
+Obj43_HitFloor:
+		jsr	SpeedToPos
+		addi.w	#$38,obVelY(a0)
+
+		jsr	ObjHitFloor
+		tst.w	d1			; has Roller hit the floor yet?
+		bpl.w	@waithitthefloor	; if not, wait
+	;	add.w	d1,obY(a0)
+
+		addq.b	#2,ob2ndRout(a0)
+
+		move.b	#0,obAnim(a0)
+
+		bset	#1,($FFFFF7A7).w	; set floor as hit
+		move.w	#-$1E0,obVelX(a0)
+		move.w	#-$600,obVelY(a0)
+
+		jsr	SingleObjLoad
+		bne.s	@waithitthefloor
+		move.b	#$3F,(a1)		; load explosion
+		move.w	obX(a0),obX(a1)
+		move.w	obY(a0),obY(a1)
+		move.b	#6,obRoutine(a1)	; set to lame
+
+@waithitthefloor:
+		rts
+; ---------------------------------------------------------------------------
+
+Obj43_BounceBack:
+		jsr	SpeedToPos
+		addi.w	#$38,obVelY(a0)
+
+		tst.b	obRender(a0)
+		bmi.s	@waitoffscreen
+		addq.b	#2,ob2ndRout(a0)
+		bset	#2,($FFFFF7A7).w	; set Roller has gone offscreen below
+		clr.w	obVelX(a0)
+		clr.w	obVelY(a0)
+		move.w	#2*60,$30(a0)		; post-delay
+
+@waitoffscreen:
+		rts
+; ---------------------------------------------------------------------------
+
+Obj43_Offscreen:
+		subq.w	#1,$30(a0)
+		bpl.s	@wait
+
+		; end cutscene
+		bset	#3,($FFFFF7A7).w	; set Roller as delete
+		jmp	DeleteObject		; delete the actual object
+@wait:
+		rts
+; ---------------------------------------------------------------------------
+
 ; ===========================================================================
 Ani_obj43:
 		include	"_anim\obj43.asm"
@@ -19441,7 +19695,7 @@ Map_obj46:
 ; Object 12 - Progress emblems/trophies in Uberhub (SYZ)
 ; ---------------------------------------------------------------------------
 EmblemGfx_Casual  = $6000|($6C00/$20)
-EmblemGfx_Frantic = $6000|($7880/$20)
+EmblemGfx_Frantic = $6000|($7A00/$20)
 ; ---------------------------------------------------------------------------
 
 Obj12:					; XREF: Obj_Index
@@ -19460,12 +19714,12 @@ Obj12_CheckGameState:
 		move.w	#EmblemGfx_Casual,obGfx(a0)
 		move.b	#$D7,obColType(a0)	; enable bumper
 
-		moveq	#0,d0
-		move.b	obSubtype(a0),d0	; get subtype
-		move.b	d0,obFrame(a0)		; set frame to display
+		moveq	#0,d1
+		move.b	obSubtype(a0),d1	; get subtype
+		move.b	d1,obFrame(a0)		; set frame to display
 
 		; trophy loading logic
-		tst.b	d0			; is this the trophy after beating the blackout challenge?
+		tst.b	d1			; is this the trophy after beating the blackout challenge?
 		bpl.s	@normaltrophy		; if not, branch
 		bsr	Obj12_CheckBlackout	; has the player beaten the blackout challenge?
 		beq.s	@delete			; if not, delete
@@ -19473,19 +19727,36 @@ Obj12_CheckGameState:
 		bra.s	@ggtrophy		; display and use frantic style
 
 @normaltrophy:
-		cmpi.b	#6,d0			; is this the regular trophy for FP?
+		cmpi.b	#2,d1			; is this the RP trophy?
+		bne.s	@notrp			; if not, branch
+		jsr	Check_UnterhubBeaten	; has Unterhub already been beaten?
+		bne.s	@impaled		; if yes, branch
+		jsr	Check_UnterhubFirst	; are we in the Unterhub sequence?
+		beq.s	@notrp			; if not, branch
+		btst	#3,($FFFFF7A7).w	; has the Roller been deleted?
+		bne.w	@delete			; if yes, delete spike as well
+		bra.s	@notrp			; if not, branch
+
+	@impaled:
+		move.b	#8,obFrame(a0)		; use impaled Roller frame
+		moveq	#7,d1
+		bra.s	@checkbeaten
+@notrp:
+		cmpi.b	#6,d1			; is this the regular trophy for FP?
 		bne.s	@notfp			; if not, branch
 		bsr	Obj12_CheckBlackout	; has the player beaten the blackout challenge?
 		bne.s	@delete			; if yes, delete
 		bra.s	@checkbeaten
 @notfp:
-		cmpi.b	#$66,d0			; is this the alternate trophy for FP?
+		cmpi.b	#$66,d1			; is this the alternate trophy for FP?
 		bne.s	@checkbeaten		; if not, branch
 		move.b	#6,obFrame(a0)		; set frame to display
 		bsr	Obj12_CheckBlackout	; has the player beaten the blackout challenge?
 		beq.s	@delete			; if not, delete
 
 @checkbeaten:
+		moveq	#0,d0
+		move.b	d1,d0
 		jsr	Check_LevelBeaten_Frantic
 		beq.s	@regular		; if not, branch
 @ggtrophy:	move.w	#EmblemGfx_Frantic,obGfx(a0)
@@ -19563,6 +19834,7 @@ Obj12_Animate:
 		beq.s	@end				; if not, branch
 
 		bsr	BumpSonic			; bump Sonic away
+		clr.b	($FFFFFFEB).w			; reset jumpdash flag to allow multiple double jumps
 
 		jsr	SingleObjLoad2			; load an explosion
 		bne.w	@end
@@ -26943,7 +27215,7 @@ Obj07_Init:
 		move.w	#$BA00/$20,obGfx(a0)
 @notend:	cmpi.w	#$400,d0
 		bne.s	Obj07_Animate
-		move.w	#$8500/$20,obGfx(a0)
+		move.w	#$8AC0/$20,obGfx(a0)
 ; ---------------------------------------------------------------------------
 
 Obj07_Animate:
@@ -38247,13 +38519,6 @@ loc_19202:
 		bsr	Obj75_CheckSlam		; see if eggman can slam
 
 Obj75_CheckFlash:
-		; TODO remove once no longer needed
-		move.w	($FFFFD008).w,d0
-		sub.w	obX(a0),d0
-		bpl.s	@ok
-		neg.w	d0
-@ok:		move.w	d0,($FFFFFFEE).w	; track distance in debug HUD
-
 		tst.b	obColType(a0)
 		bne.s	Obj75_ResetBlack
 		tst.b	$3E(a0)
@@ -38337,10 +38602,14 @@ Obj75_DestroyChunk:
 		beq.w	Obj75_SlamEnd		; if yes, miss
 
 @break:
+		tst.b	($FFFFF7CC).w		; are controls still locked?
+		bne.s	@noflash		; if yes, branch
+		jsr	WhiteFlash2
+
+@noflash:
 		asr	obVelY(a0)
 		asr	obVelY(a0)
 		move.b	#$80,(RedrawEverything).w	; redraw everything without affecting the camera
-		jsr	WhiteFlash2
 		move.b	#0,($FFFFFFB2).w	; shorter camera lag
 		ori.b	#40,(CameraShake).w	; camera shaking
 
@@ -38366,7 +38635,7 @@ Obj75_DestroyChunk:
 @end:
 
 		; move Sonic if he stood on the chunk as it exploded
-		cmpi.w	#$1800,($FFFFD008).w		; is Sonic at the door?
+		cmpi.w	#$1700,($FFFFD008).w		; is Sonic at the door?
 		bhs.s	@movesonic			; if yes, always move
 		btst	#1,($FFFFD022).w		; is Sonic in air?
 		bne.s	@nosonicmove			; if yes, all good
@@ -41101,6 +41370,8 @@ Touch_Enemy:				; XREF: Touch_ChkValue
 		beq.w	Touch_KillOk	; if yes, branch
 		tst.b	(PlacePlacePlace).w	; PLACE PLACE PLACE?
 		bne.w	Touch_ChkHurt		; if yes, branch
+		cmpi.w	#$402,($FFFFFE10).w	; Unterhub?
+		beq.w	Touch_ChkHurt		; if yes, branch
 		move.w	obInertia(a0),d1	; get inertia
 		bpl.s	@fig8			; if positive, branch
 		neg.w	d1			; make positive
@@ -45397,14 +45668,14 @@ PLC_SYZ:
 		dc.l ArtKospM_SYZEmblemsCasual	; SYZ casual progression emblems
 		dc.w $6C00
 		dc.l ArtKospM_SYZEmblemsFrantic	; SYZ frantic progression emblems
-		dc.w $7880
+		dc.w $7A00
 		dc.l ArtKospM_Bumper		; bumper
 		dc.w $8800
 		dc.w -1
 
 PLC_SYZ2:
 		dc.l ArtKospM_OkCool		; ok cool
-		dc.w $8500
+		dc.w $8AC0
 		dc.l ArtKospM_BigRing		; big rings
 		dc.w $8E00
 		dc.l ArtKospM_RingFlash		; ring flash

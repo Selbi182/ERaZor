@@ -713,26 +713,6 @@ StoryText_4:	; text after beating Ruined Place
 		even
 ; ---------------------------------------------------------------------------
 
-StoryText_Unter: ; text after beating Unterhub Place
-		ststxt	"THIS WILL BE THE TEXT ONCE"
-		ststxt	"YOU BEAT UNTERHUB PLACE"
-		ststxt_line
-		ststxt	"PLACE PLACE PLACE PLACE"
-		ststxt	"PLACE PLACE PLACE PLACE"
-		ststxt	"PLACE PLACE PLACE PLACE"
-		ststxt	"PLACE PLACE PLACE PLACE"
-		ststxt	"PLACE PLACE PLACE PLACE"
-		ststxt	"PLACE PLACE PLACE PLACE"
-		ststxt_line
-		ststxt	"PLACE PLACE PLACE PLACE"
-		ststxt	"PLACE PLACE PLACE PLACE"
-		ststxt	"PLACE PLACE PLACE PLACE"
-		ststxt	"PLACE PLACE PLACE PLACE"
-		ststxt	"PLACE PLACE PLACE PLACE"
-		dc.b	-1
-		even
-; ---------------------------------------------------------------------------
-
 StoryText_5:	; text after beating Labyrinth Place
 		ststxt	"IF ONLY YOU COULD SEE YOUR"
 		ststxt	"FACE RIGHT NOW! PRICELESS!"
@@ -749,6 +729,26 @@ StoryText_5:	; text after beating Labyrinth Place
 		ststxt	"THE MIGHTY ^JAWS^ OF DESTINY"
 		ststxt	"AND THEREFORE MUST BE SERVED"
 		ststxt	"THE ULTIMATE PUNISHMENT."
+		dc.b	-1
+		even
+; ---------------------------------------------------------------------------
+
+StoryText_Unter: ; text after beating Unterhub Place
+		ststxt	"THE PROPHECIES COULDN'T"
+		ststxt	"HAVE PREPARED ME FOR THE"
+		ststxt	"ABSOLUTE TERRORS THIS"
+		ststxt	"UNHOLY REALM BENEATH OUR"
+		ststxt	"COZY HUB WORLD HAD IN"
+		ststxt	"STORE FOR HUMANITY."
+		ststxt	"IT'S A MIRACLE YOU EVEN"
+		ststxt	"MADE IT OUT ALIVE."
+		ststxt_line
+		ststxt	"OH YEAH, AND UH..."
+		ststxt	"EGGMAN WAS THERE, TOO,"
+		ststxt	"I GUESS."
+		ststxt_line
+		ststxt	"YOU'LL NEED MORE POWER!"
+		ststxt	"THE LAST EMERALDS AWAIT..."
 		dc.b	-1
 		even
 ; ---------------------------------------------------------------------------

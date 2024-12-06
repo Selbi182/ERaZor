@@ -721,6 +721,7 @@ NextLevel_Array:
 		dc.w	$300	; Special Place
 		dc.w	$200	; Ruined Place
 		dc.w	$101	; Labyrinthy Place
+		dc.w	$402	; Unterhub Place
 		dc.w	$401	; Unreal Place
 		dc.w	$500	; Bomb Machine Cutscene
 		dc.w	$301	; Scar Night Place
@@ -822,6 +823,41 @@ Check_TutorialVisited:
 Check_HubEasterVisited:
 		btst	#State_HubEasterVisited,(Progress).w
 		rts
+; ---------------------------------------------------------------------------
+
+Check_JustFinishedFP:
+		btst	#6,(Doors_Casual).w		; has the player finished FP in casual?
+		beq.s	@end				; if not, branch
+		jsr	Check_BaseGameBeaten_Casual	; has the player beaten the base game in casual yet?
+		eori.b	#%00100,ccr			; invert Z flag for return value
+@end:		rts
+; ---------------------------------------------------------------------------
+
+Check_UnterhubUnlocked:
+		moveq	#3,d0				; LP beaten?
+		bsr	Check_LevelBeaten_Current	; (...only for pacing reasons)
+		beq.s	@no				; if not, branch
+		moveq	#2,d0				; RP beaten?
+		bsr	Check_LevelBeaten_Current
+@no:		rts
+
+Check_UnterhubFirst:
+		bsr	Check_UnterhubUnlocked		; even unlocked?
+		beq.s	@no				; if not, branch
+		bsr	Check_UnterhubBeaten		; Unterhub NOT beaten?
+		eori.b	#%00100,ccr			; invert Z flag
+@no:		rts
+
+Check_UnterhubBeaten:
+		bsr	Check_UnterhubUnlocked		; Unterhub eben unlocked?
+		beq.s	@no				; if not, branch
+		moveq	#7,d0				; Unterhub beaten?
+		bsr	Check_LevelBeaten_Current
+@no:		rts
+
+; ---------------------------------------------------------------------------
+; ===========================================================================
+
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------

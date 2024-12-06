@@ -918,10 +918,20 @@ Deform_SYZ:
 		moveq	#0, d2
 		move.w	CamXPos, d2
 		lsr.w	#2,d2
-		
-	move.w	($FFFFFE04).w,d3
-	add.w	d3,d3
-	add.w	d3,d2
+	
+		; autoscroll clouds	
+		move.w	($FFFFFE04).w,d3
+		add.w	d3,d3
+
+		cmpi.w	#$402,($FFFFFE10).w
+		bne.s	@notunterhub
+		cmpi.b	#6,($FFFFF742).w
+		blo.s	@notunterhub
+		add.w	d3,d3
+		neg.w	d3
+
+@notunterhub
+		add.w	d3,d2
 		
 		neg.w	d2
 		swap	d2

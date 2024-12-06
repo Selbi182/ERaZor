@@ -44,11 +44,13 @@ TTL_Uberhub:
 		dc.b	-18
 		dc.b	$00
 		dc.w	$0029
-		dc.b	-34
+		dc.b	-33
+
 		dc.b	-18
 		dc.b	$00
 		dc.w	$0029
-		dc.b	-26
+		dc.b	-27
+
 
 		dc.b	-8
 		dc.b	$05

@@ -923,14 +923,17 @@ Deform_SYZ:
 		move.w	($FFFFFE04).w,d3
 		add.w	d3,d3
 
+		; extrafast during the Unterhub boss battle, and in reverse
 		cmpi.w	#$402,($FFFFFE10).w
 		bne.s	@notunterhub
+		tst.b	($FFFFFFA9).w
+		beq.s	@notunterhub
 		cmpi.b	#6,($FFFFF742).w
 		blo.s	@notunterhub
 		add.w	d3,d3
 		neg.w	d3
 
-@notunterhub
+@notunterhub:
 		add.w	d3,d2
 		
 		neg.w	d2

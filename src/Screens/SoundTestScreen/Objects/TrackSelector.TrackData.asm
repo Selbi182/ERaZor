@@ -236,7 +236,7 @@
 @SoundA8_Name:		@str 'YOU ARE GETTING WARPED', @descMaxLen
 @SoundA9_Name:		@str 'THE BEST SOUND IN THE GAME', @descMaxLen
 @SoundAA_Name:		@str 'YOU ARE ENTERING WATER', @descMaxLen
-@SoundAB_Name:		@str 'NO IDEA WHAT THIS IS EITHER', @descMaxLen
+@SoundAB_Name:		@str 'HE''S TRYING HIS BEST', @descMaxLen
 @SoundAC_Name:		@str 'EXPLOSIONS.', @descMaxLen
 @SoundAD_Name:		@str 'YOU GOT AIR', @descMaxLen
 @SoundAE_Name:		@str 'A FIREBALL WAS SPAT... AGAIN', @descMaxLen

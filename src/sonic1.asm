@@ -66,7 +66,7 @@ DebugHudPermanent = 0
 DebugOnABC = 1
 ; ------------------------------------------------------
 DoorsAlwaysOpen = 0
-LowBossHP = 1
+LowBossHP = 0
 ; ======================================================
 	else
 ; BENCHMARK build settings (DO NOT CHANGE!)
@@ -7145,6 +7145,7 @@ Uberhub_UnterhubCutscene:
 ; ===========================================================================
 @unterhubcut:	dc.w @UnterhubCutscene_Begin-@unterhubcut
 		dc.w @UnterhubCutscene_WaitRoller-@unterhubcut
+		dc.w @UnterhubCutscene_WaitUnlock-@unterhubcut
 		dc.w @UnterhubCutscene_End-@unterhubcut
 ; ===========================================================================
 
@@ -7186,13 +7187,12 @@ Uberhub_UnterhubCutscene:
 		beq.s	@waitcollect		; if not, wait
 		jsr	AnnoyedSonic
 
-		btst	#3,($FFFFF7A7).w	; has the Roller been deleted?
+		btst	#3,($FFFFF7A7).w	; has the Roller gone even further offscreen?
 		beq.s	@waitcollect		; if not, wait
-		addq.b	#2,($FFFFF742).w	; end cutscene
-		move.b	#0,($FFFFF7CC).w	; unlock controls
-		move.w	#$85,d0
-		jsr	PlaySound		; restart Uberhub music
-	;	jsr	Set_RPTrophyStolen	; oh no he stole the trophy
+		addq.b	#2,($FFFFF742).w	; to wait end cutscene
+
+		move.w	#$A9,d0			; play blip sound
+		jsr	PlaySound_Special
 
 		lea	(@PLC_BigRingUberhub).l,a1
 		jsr	LoadPLC_Direct		; reload giant ring patterns (overwritten by roller)
@@ -7212,6 +7212,20 @@ Uberhub_UnterhubCutscene:
 		dc.l ArtKospM_RingFlash		; ring flash
 		dc.w $8E00+$C40
 		dc.w -1
+; ---------------------------------------------------------------------------
+
+@UnterhubCutscene_WaitUnlock:
+		jsr	AnnoyedSonic
+
+		btst	#4,($FFFFF7A7).w	; has the Roller been deleted for good?
+		beq.s	@waitdelete		; if not, wait
+
+		addq.b	#2,($FFFFF742).w	; end cutscene
+		move.b	#0,($FFFFF7CC).w	; unlock controls
+		move.w	#$85,d0
+		jsr	PlaySound		; restart Uberhub music
+@waitdelete:
+		rts
 ; ---------------------------------------------------------------------------
 
 @UnterhubCutscene_End:
@@ -8802,7 +8816,7 @@ Obj18_NotLZ:
 		bne.s	@notfp			; if not, branch
 		moveq	#6,d0			; has the player beaten FP already?
 		jsr	Check_LevelBeaten_Current
-		bne.s	Obj18_NotSYZ			; if yes, display platform
+		bne.w	Obj18_NotSYZ			; if yes, display platform
 		jmp	DeleteObject		; otherwise, delete
 
 @notfp:
@@ -8827,6 +8841,12 @@ Obj18_NotLZ:
 		move.w	#$80,obAngle(a1)
 		move.l	a0,$36(a1)
 
+		cmpi.w	#$0380,obX(a0)		; is this the platform to Unterhub?
+		bne.s	@notunterhub		; if not, branch
+		move.b	#3,obFrame(a1)		; custom arrows for Unterhub entrance
+		bra.s	Obj18_NotSYZ
+
+@notunterhub:
 		tst.b	obSubtype(a0)
 		bpl.s	Obj18_NotSYZ
 		move.b	#2,obFrame(a1)		; vertically flip
@@ -10240,8 +10260,14 @@ Obj2A_Red:
 
 		cmpi.b	#2,d0				; is this the door after RP?
 		bne.s	@notpostrp			; if not, branch
+		move.l	d0,-(sp)
 		jsr	Check_UnterhubFirst		; are we in the Unterhub sequence?
-		bne.w	Obj2A_Animate			; if yes, shut off access until you beat it
+		bne.s	@shutoff
+		move.l	(sp)+,d0
+		bra.s	@notpostrp
+	@shutoff:
+		move.l	(sp)+,d0
+		bra.w	Obj2A_Animate			; if yes, shut off access until you beat it
 
 @notpostrp:
 		cmpi.b	#6,d0				; is this the final door (FP|end)?
@@ -19115,7 +19141,7 @@ Obj43_Main:				; XREF: Obj43_Index
 		move.b	#$10,obActWid(a0)
 		move.b	#6,obColType(a0)
 
-		move.b	#120,$30(a0)		; delay before jump
+		move.b	#1*60+30,$30(a0)	; delay before jump
 ; ---------------------------------------------------------------------------
 
 Obj43_Action:				; XREF: Obj43_Index
@@ -19173,6 +19199,7 @@ Obj43_Index3:	dc.w Obj43_Setup-Obj43_Index3
 		dc.w Obj43_HitFloor-Obj43_Index3
 		dc.w Obj43_BounceBack-Obj43_Index3
 		dc.w Obj43_Offscreen-Obj43_Index3
+		dc.w Obj43_OffscreenFar-Obj43_Index3
 ; ===========================================================================
 
 Obj43_Setup:
@@ -19191,7 +19218,7 @@ Obj43_Setup:
 		move.w	#$0280,obX(a0)
 		move.w	#$0310,obY(a0)
 
-		move.w	#3*60,$30(a0)		; pre-delay
+		move.w	#2*60,$30(a0)		; pre-delay
 ; ---------------------------------------------------------------------------
 
 Obj43_PreWait:
@@ -19200,7 +19227,9 @@ Obj43_PreWait:
 		addq.b	#2,ob2ndRout(a0)
 		move.w	#$600,obVelX(a0)
 		move.w	#-$800,obVelY(a0)
-		bset	#0,($FFFFF7A7).w	; set spike trophy as collected
+		bset	#0,($FFFFF7A7).w	; set Roller as initiated
+		move.w	#$AB,d0
+		jsr	PlaySound_Special
 @wait:		rts
 ; ---------------------------------------------------------------------------
 
@@ -19211,10 +19240,9 @@ Obj43_StealSpikeTrophy:
 		cmpi.w	#$370,obX(a0)		; at the spike trophy yet?
 		blo.s	@waitsteal		; if not, wait
 
-	;	asr	obVelX(a0)		; slow down
 		addq.b	#2,ob2ndRout(a0)
-		move.w	#$A9,d0
-		jsr	PlaySound_Special	; play blip sound
+		move.w	#$A6,d0
+		jsr	PlaySound_Special	; play spike sound (foreshadowing)
 		
 		; find and delete spike trophy
 		lea	($FFFFD800).w,a1
@@ -19240,7 +19268,6 @@ Obj43_HitFloor:
 		jsr	ObjHitFloor
 		tst.w	d1			; has Roller hit the floor yet?
 		bpl.w	@waithitthefloor	; if not, wait
-	;	add.w	d1,obY(a0)
 
 		addq.b	#2,ob2ndRout(a0)
 
@@ -19271,7 +19298,7 @@ Obj43_BounceBack:
 		bset	#2,($FFFFF7A7).w	; set Roller has gone offscreen below
 		clr.w	obVelX(a0)
 		clr.w	obVelY(a0)
-		move.w	#2*60,$30(a0)		; post-delay
+		move.w	#1*60+30,$30(a0)	; post-delay
 
 @waitoffscreen:
 		rts
@@ -19280,9 +19307,19 @@ Obj43_BounceBack:
 Obj43_Offscreen:
 		subq.w	#1,$30(a0)
 		bpl.s	@wait
+		move.w	#1*60+30,$30(a0)	; post-delay
+		addq.b	#2,ob2ndRout(a0)
+		bset	#3,($FFFFF7A7).w	; set Roller has gone far offscreen
+@wait:
+		rts
+; ---------------------------------------------------------------------------
+
+Obj43_OffscreenFar:
+		subq.w	#1,$30(a0)
+		bpl.s	@wait
 
 		; end cutscene
-		bset	#3,($FFFFF7A7).w	; set Roller as delete
+		bset	#4,($FFFFF7A7).w	; set Roller as deleted
 		jmp	DeleteObject		; delete the actual object
 @wait:
 		rts
@@ -19733,7 +19770,7 @@ Obj12_CheckGameState:
 		bne.s	@impaled		; if yes, branch
 		jsr	Check_UnterhubFirst	; are we in the Unterhub sequence?
 		beq.s	@notrp			; if not, branch
-		btst	#3,($FFFFF7A7).w	; has the Roller been deleted?
+		btst	#4,($FFFFF7A7).w	; has the Roller been deleted?
 		bne.w	@delete			; if yes, delete spike as well
 		bra.s	@notrp			; if not, branch
 
@@ -38660,7 +38697,7 @@ Obj75_DestroyChunk:
 		neg.w	($FFFFD010).w			; negate direction
 @nosonicmove:
 
-		cmpi.w	#$1800,obX(a0)		; to the right of the arena?
+		cmpi.w	#$1700,obX(a0)		; to the right of the arena?
 		bhs.s	Obj75_SlamEnd		; if yes, don't break chunk
 
 		; break the actual chunks
@@ -38735,14 +38772,15 @@ Obj75_BossDelete:
 Obj75_FaceMain:				; XREF: Obj75_Index
 		moveq	#1,d1
 		movea.l	$34(a0),a1
+		move.b	(a0),d0
+		cmp.b	(a1),d0
+		bne.s	Obj75_FaceDelete
+
 		moveq	#0,d0
 		move.b	ob2ndRout(a1),d0
 		move.w	off_19546(pc,d0.w),d0
 		jsr	off_19546(pc,d0.w)
 		move.b	d1,obAnim(a0)
-		move.b	(a0),d0
-		cmp.b	(a1),d0
-		bne.s	Obj75_FaceDelete
 		bra.w	loc_195BE
 ; ===========================================================================
 

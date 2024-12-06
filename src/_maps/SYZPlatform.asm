@@ -6,6 +6,7 @@ CME_1AE2106F:
 	dc.w	CME_1AE2106F_0-CME_1AE2106F
 	dc.w	CME_1AE2106F_1-CME_1AE2106F
 	dc.w	CME_1AE2106F_2-CME_1AE2106F
+	dc.w	CME_1AE2106F_3-CME_1AE2106F
 
 CME_1AE2106F_0:
 	dc.b	12
@@ -90,5 +91,18 @@ CME_1AE2106F_2:
 	dc.b	$06
 	dc.w	$1020
 	dc.b	-8
+
+CME_1AE2106F_3:
+	dc.b	2
+
+	dc.b	-90+40
+	dc.b	$06
+	dc.w	$0020
+	dc.b	-96
+
+	dc.b	-90+40
+	dc.b	$06
+	dc.w	$0020
+	dc.b	96-16
 
 	even

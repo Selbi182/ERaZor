@@ -5743,7 +5743,20 @@ Obj80:					; XREF: Obj_Index
 
 EndingSequence:				; XREF: GameModeArray
 		jsr	Pal_FadeFrom
+
 		VBlank_SetMusicOnly
+		bsr	PLC_ClearQueue
+		bsr	ClearScreen
+		lea	VDP_Ctrl,a6
+		move.w	#$8B03,(a6)
+		move.w	#$8230,(a6)
+		move.w	#$8407,(a6)
+		move.w	#$857C,(a6)
+		move.w	#$9001,(a6)
+		move.w	#$8004,(a6)		; disable h-ints (will be enabled later on)
+		move.w	#$8720,(a6)
+		move.w	#$8A00|$DF,($FFFFF624).w
+		move.w	($FFFFF624).w,(a6)
 
 		lea	($FFFFD000).w,a1
 		moveq	#0,d0
@@ -5769,18 +5782,6 @@ End_ClrRam2:	move.l	d0,(a1)+
 End_ClrRam3:	move.l	d0,(a1)+
 		dbf	d1,End_ClrRam3	; clear	variables
 
-		bsr	ClearScreen
-		lea	VDP_Ctrl,a6
-		move.w	#$8B03,(a6)
-		move.w	#$8230,(a6)
-		move.w	#$8407,(a6)
-		move.w	#$857C,(a6)
-		move.w	#$9001,(a6)
-		move.w	#$8014,(a6)	; enable h-ints for black bars
-		move.w	#$8ADF,(a6)
-		move.w	#$8720,(a6)
-		move.w	#$8ADF,($FFFFF624).w
-		move.w	($FFFFF624).w,(a6)
 		move.w	#$1E,($FFFFFE14).w
 		move.w	#$601,($FFFFFE10).w ; set level	number to 0601 (no flowers)
 		move.b	#1,($FFFFF7CC).w
@@ -7259,25 +7260,17 @@ Resize_SYZ3main:
 		blo.s	locret_71CE		; if not, branch
 		addq.b	#2,($FFFFF742).w
 
-	;	move.w	#$E0,d0
-	;	jsr	PlaySound_Special	; fade out music
-
 		lea	(PLC_Roller).l,a1	; load Roller patterns
 		jsr	LoadPLC_Direct
 
-	;	movem.l	d7/a0-a3,-(sp)
-	;	jsr 	Pal_FadeOut 		; i guess this works????
-	;	moveq	#3,d0			; brighten up this place by...
-	;	jsr	PalLoad2		; ...loading Sonic's palette
-	;	jsr	WhiteFlash2
-	;	move.b	#0,($FFFFFFB2).w	; no camera lag
-	;	movem.l	(sp)+,d7/a0-a3
+		cmpi.w	#3,(RelativeDeaths).w	; did player die at least thrice already?
+		bhs.s	locret_71CE		; if yes, skip rollerbot scene
 
 		jsr	SingleObjLoad
 		bne.s	locret_71CE
 		move.b	#$43,(a1)		; load roller enemy
 		move.w	#$10A0,obX(a1)
-		move.w	#$02C2,obY(a1)
+		move.w	#$02B2,obY(a1)
 
 locret_71CE:
 		rts	
@@ -7291,15 +7284,15 @@ PLC_Roller:
 ; ===========================================================================
 
 Resize_SYZ3loadboss:
+		move.w	#$222,($FFFFF726).w	; bottom boundary in the arena
+
 		cmpi.w	#$1070,($FFFFD008).w	; did we reach the Roller yet?
 		blo.s	locret_71CE		; if not, branch
-
 		addq.b	#2,($FFFFF742).w
 
+		move.b	#1,($FFFFFFA9).w	; set boss flag
 		move.w	#$E0,d0
 		jsr	PlaySound_Special	; fade out music
-
-		move.b	#1,($FFFFFFA9).w	; set boss flag
 
 		move.b	#0,($FFFFD000+obAniFrame).w ; reset Sonic waiting animation
 		move.b	#1,($FFFFF7CC).w	; lock controls
@@ -7322,7 +7315,7 @@ Resize_SYZ3waitboss:
 
 		btst	#1,($FFFFD022).w	; is Sonic in air?
 		bne.s	@waitfloor		; if yes, branch
-		move.w	#$021C-$20,($FFFFF72C).w ; top boundary, low enough to always see the platforms
+		move.w	#$0222-$36,($FFFFF72C).w ; top boundary, low enough to always see the platforms
 @waitfloor:
 
 		cmpi.b	#48,($FFFFD000+obAniFrame).w
@@ -7340,7 +7333,7 @@ Resize_SYZ3waitboss:
 		moveq	#3,d0			; brighten up this place by...
 		jsr	PalLoad2		; ...loading Sonic's palette
 		jsr	WhiteFlash2
-		move.b	#20,($FFFFFFB2).w	; add some camera lag
+		move.b	#30,($FFFFFFB2).w	; add some camera lag
 		movem.l	(sp)+,d7/a0-a3
 
 		move.b	#0,($FFFFF7CC).w	; unlock controls
@@ -7355,7 +7348,7 @@ Resize_SYZ3boss:
 		bne.s	@frantic		; if yes, branch
 		btst	#0,($FFFFF7A7).w	; has final hit been dealt?
 		beq.s	@frantic		; if not, branch
-		move.w	#$21C+$100,($FFFFF726).w	; lower boundary just enough to allow noobs not to die
+		move.w	#$21C+$100,($FFFFF726).w ; lower boundary just enough to allow noobs not to die
 @frantic:
 		btst	#1,($FFFFF7A7).w	; has boss been defeated and deleted?
 		beq.s	@end			; if not, branch
@@ -19925,7 +19918,7 @@ Obj12_SearchLight_Setup:
 		bset	#7,obGfx(a0)		; make it high plane
 		move.b	#4,obRender(a0)
 		move.b	#$10,obActWid(a0)
-		move.b	#6,obPriority(a0)
+		move.b	#3,obPriority(a0)
 ; ---------------------------------------------------------------------------
 
 Obj12_SearchLight_Rotating:
@@ -23766,7 +23759,8 @@ Obj5D_Main:				; XREF: Obj5D_Index
 		move.l	#Map_obj5D,obMap(a0)
 		ori.b	#4,obRender(a0)
 		move.b	#$10,obActWid(a0)
-		move.b	#4,obPriority(a0)
+		move.b	#2,obPriority(a0)
+
 
 		move.w	obX(a0),$34(a0)			; remember base X position for frantic boss
 
@@ -24316,7 +24310,7 @@ Obj5F_Main:				; XREF: Obj5F_Index
 		move.w	#$400,obGfx(a0)
 	;	move.w	#$42C,obGfx(a0)
 		ori.b	#4,obRender(a0)
-		move.b	#3,obPriority(a0)
+		move.b	#5,obPriority(a0)
 		move.b	#$C,obActWid(a0)
 
 		cmpi.w	#$500,($FFFFFE10).w
@@ -24424,7 +24418,7 @@ Obj5F_MakeFuse:
 		move.w	obStatus(a0),obStatus(a1)
 		move.b	#4,obSubtype(a1)		; set new object to routine 4
 		move.b	#3,obAnim(a1)
-		move.b	#0,obPriority(a1)
+		move.b	#4,obPriority(a1)
 		move.w	#0,obVelY(a1)	; no speed
 		move.w	#BombFuseTime_Boss,$30(a1)	; set fuse time
 		move.l	a0,$3C(a1)
@@ -24774,7 +24768,7 @@ Obj5F_Display:				; XREF: Obj5F_Index
 		move.w	obY(a0),obY(a1)
 		move.b	#$C,obSubtype(a1)	; set to routine $C
 		move.b	#5,obAnim(a1)
-		move.b	#1,obPriority(a1)
+		move.b	#4,obPriority(a1)
 
 		btst	#1,obStatus(a0)
 		beq.s	@0
@@ -26793,6 +26787,9 @@ Obj03_Setup:
 		jsr	Check_TutorialVisited
 		bne.w	Obj03_Display
 		move.b	#$10,obFrame(a0)	; FUN FUN FUN
+		frantic
+		beq.w	Obj03_Display	
+		move.b	#$11,obFrame(a0)	; FREE WIFI
 		bra.w	Obj03_Display
 
 @regular:
@@ -26819,19 +26816,22 @@ Obj03_Setup:
 		moveq	#0,d0			; has the player beaten this level before?
 		jsr	Check_LevelBeaten_Current
 		beq.s	@notghz			; if not, branch
-		move.b	#$11,obFrame(a1)	; use "GREEN HILL" frame
+		move.b	#$12,obFrame(a1)	; use "GREEN HILL" frame
 @notghz:
 		cmpi.b	#5,obSubtype(a0)	; is this the SLZ sign?
 		bne.s	Obj03_Display		; if not, branch
 		moveq	#5,d0			; has the player beaten this level before?
 		jsr	Check_LevelBeaten_Current
 		beq.s	Obj03_Display		; if not, branch
-		move.b	#$12,obFrame(a1)	; use "STAR AGONY" frame
+		move.b	#$13,obFrame(a1)	; use "STAR AGONY" frame
 ; ---------------------------------------------------------------------------
 		
 Obj03_Display:
 		cmpi.b	#$10,obFrame(a0)	; fun tutorial?
+		beq.s	@fun			; if yes, branch
+		cmpi.b	#$11,obFrame(a0)	; free wifi tutorial?
 		bne.s	@chkfilter		; if not, branch
+	@fun:
 		tst.b	($FFFFD000).w		; jumped into the ring?
 		bne.s	@chkfilter		; if not, branch
 		move.b	#7,obFrame(a0)		; get trolled it was actually the tutorial lmao
@@ -26870,7 +26870,7 @@ Obj03_BackgroundColor:
 		moveq	#$1F, d0
 		and.b	obFrame(a0), d0
 
-		assert.b obFrame(a0), ls, #$12
+		assert.b obFrame(a0), ls, #$13
 
 		add.w	d0, d0
 		add.w	d0, d0				; d0 = Frame * 4
@@ -26922,6 +26922,7 @@ Obj03_BackgroundColor:
 		dc.w	$000, Pal_Active+$5E	; $0E - Skip Tutorial
 		dc.w	$00E, Pal_Active+$5E	; $0F - Real (Blackout Challenge)
 		dc.w	$248, Pal_Active+$5E	; $10 - FUN tutorial bait
+		dc.w	$248, Pal_Active+$5E	; $11 - FREE WIFI tutorial bait
 		dc.w	-1, -1
 
 ; ---------------------------------------------------------------------------
@@ -28193,7 +28194,7 @@ Obj01_MdNormal:				; XREF: Obj01_Modes
 		bsr	Sonic_Move
 		bsr	Sonic_Roll
 		bsr	Sonic_LevelBound
-		bsr	SpeedToPos
+		jsr	SpeedToPos
 		bsr	Sonic_AnglePos
 		bsr	Sonic_SlopeRepel
 		bsr	Sonic_Fire
@@ -38499,9 +38500,11 @@ Map_obj5Ea:
 ; Object 75 - Eggman (SYZ)
 ; ---------------------------------------------------------------------------
 Obj75_BaseXOffset = $680
-Obj75_BaseY = $248
-Obj75_FloorHeight = $2B0
+Obj75_BaseXOffset_Fast = $100 
+Obj75_BaseY = $238
+Obj75_FloorHeight = $2A0
 Obj75_ArenaLeft = $A00
+Obj75_ArenaRight = $1700
 Obj75_BossSpeed = $400
 Obj75_SlamThreshold = $C
 Obj75Boss_Health = 16
@@ -38527,7 +38530,14 @@ Obj75_ObjData:	dc.b 2,	0, 5		; routine number, animation, priority
 
 Obj75_Main:				; XREF: Obj75_Index
 		move.w	($FFFFD008).w,d0
+
+		cmpi.w	#3,(RelativeDeaths).w	; did player die at least thrice already?
+		bhs.s	@fast			; if yes, fast forward scene
 		subi.w	#Obj75_BaseXOffset,d0
+		bra.s	@setx
+@fast:
+		subi.w	#Obj75_BaseXOffset_Fast,d0
+@setx:
 		move.w	d0,obX(a0)	; set base X position to be slightly behind Sonic
 
 		move.w	#Obj75_BaseY,obY(a0)
@@ -38787,8 +38797,11 @@ Obj75_DestroyChunk:
 		jsr	PlaySound_Special
 
 		; move Sonic if he stood on the chunk as it exploded
-		cmpi.w	#$1700,($FFFFD008).w		; is Sonic at the door?
-		bhs.s	@movesonic			; if yes, always move
+		cmpi.w	#Obj75_ArenaRight,($FFFFD008).w	; is Sonic at the door?
+		blo.s	@inarena			; if not, branch
+		move.w	#Obj75_ArenaRight,($FFFFD008).w
+		bra.s	@movesonic			; if yes, always move
+@inarena:
 		btst	#1,($FFFFD022).w		; is Sonic in air?
 		bne.s	@nosonicmove			; if yes, all good
 @movesonic:
@@ -38812,14 +38825,14 @@ Obj75_DestroyChunk:
 		neg.w	($FFFFD010).w			; negate direction
 @nosonicmove:
 
-		cmpi.w	#$1700,obX(a0)		; to the right of the arena?
-		bhs.w	Obj75_SlamEnd		; if yes, don't break chunk
+		cmpi.w	#Obj75_ArenaRight,obX(a0)	; to the right of the arena?
+		bhs.w	Obj75_SlamEnd			; if yes, don't break chunk
 
 		; break the actual chunks
-		moveq	#0,d2			; replace with void chunk
-		frantic				; are we in frantic?
-		beq.s	@breakchunk		; if not, branch
-		moveq	#$46,d2			; use spoopy chunk instead
+		moveq	#0,d2				; replace with void chunk
+		frantic					; are we in frantic?
+		beq.s	@breakchunk			; if not, branch
+		moveq	#$46,d2				; use spoopy chunk instead
 @breakchunk:
 		move.l	a0,-(sp)
 		move.w	obX(a0),d0
@@ -41797,8 +41810,12 @@ SH_NotEnding:
 		move.w	obY(a0),$38(a0)		; something with Y and bosses...
 		bset	#7,obGfx(a0)		; make sonic being on the foreground
 		move.w	#-$700,d0		; move sonic upwards (normal)
-	
+		bra.s	Kill_Normal
+
 Kill_InhumanMode:
+		move.b	#2,obRoutine(a0)	; reset to control routine
+
+Kill_Normal:
 		jsr	Sonic_ResetOnFloor	; do all the shit which is in Sonic_ResetOnFloor
 		bset	#1,obStatus(a0)		; make sonic to be in the air
 
@@ -43658,8 +43675,8 @@ TouchGoal_Unreal:
 		cmpi.b	#2,($FFFFFE57).w	; are we in part 2?
 		beq.w	TouchGoal_MegaSound	; if yes, branch
 		clr.b	($FFFFFE57).w		; clear emerald counter
-		move.b	#$3F,($FF11BD).l	; restore red emerald
-		move.b	#$40,($FF11C1).l	; restore grey emerald
+		move.b	#$3C,($FF11BD).l	; restore left emerald
+		move.b	#$3C,($FF11C1).l	; restore right emerald
 		move.b	#$3A,($FF1EC7).l	; reset ring to open glass blocks door
 		move.b	#$2F,($FF24CA).l	; reset glass blocks
 		move.b	#$2F,($FF254A).l

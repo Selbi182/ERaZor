@@ -7322,10 +7322,10 @@ Resize_SYZ3waitboss:
 
 		btst	#1,($FFFFD022).w	; is Sonic in air?
 		bne.s	@waitfloor		; if yes, branch
-		move.w	#$0188,($FFFFF72C).w	; top boundary
+		move.w	#$021C-$20,($FFFFF72C).w ; top boundary, low enough to always see the platforms
 @waitfloor:
 
-		cmpi.b	#46,($FFFFD000+obAniFrame).w
+		cmpi.b	#48,($FFFFD000+obAniFrame).w
 		blo.s	@waitsus
 		jsr	SusSonic
 @waitsus:
@@ -38786,22 +38786,6 @@ Obj75_DestroyChunk:
 		move.w	#$DB,d0
 		jsr	PlaySound_Special
 
-		move.w	obX(a0),d2
-		andi.w	#$FF00,d2
-		moveq	#7-1,d1
-@explosions:
-		jsr	SingleObjLoad
-		bne.s	@end
-		move.b	#$3F,(a1)
-		move.w	d2,obX(a1)
-		addi.w	#$28,d2
-		move.w	#$280,obY(a1)
-		clr.b	obRoutine(a1)
-		move.b	#1,$30(a1)		; make explosion harmless
-		move.b	#1,$31(a1)		; set mute flag
-		dbf	d1,@explosions
-@end:
-
 		; move Sonic if he stood on the chunk as it exploded
 		cmpi.w	#$1700,($FFFFD008).w		; is Sonic at the door?
 		bhs.s	@movesonic			; if yes, always move
@@ -38843,13 +38827,20 @@ Obj75_DestroyChunk:
 		jsr	Sub_ChangeChunk
 		move.l	(sp)+,a0
 
-		; delete searchlights of the chunk
+		; turn searchlights of the chunk into explosions
 		lea	($FFFFD800).w,a1
 		moveq	#$3F,d0
 @deletelights:	
 		cmpi.b	#$12,(a1)		; is current object a searchlight?
 		bne.s	@next			; if not, branch
-		move.b	#6,obRoutine(a1)	; reset to init routine to rerun deletion check
+		cmpi.b	#$A,obRoutine(a1)	; are these currently blinking searchlights?
+		bne.s	@next			; if not, branch
+
+		move.b	#$3F,(a1)		; turn into explosion
+		clr.b	obRoutine(a1)
+		move.b	#1,$30(a1)		; make explosion harmless
+		move.b	#1,$31(a1)		; set mute flag
+
 @next		lea	$40(a1),a1
 		dbf	d0,@deletelights
 

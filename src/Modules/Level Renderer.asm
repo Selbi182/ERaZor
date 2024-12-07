@@ -2,7 +2,7 @@
 ; ===============================================================
 ; ---------------------------------------------------------------
 ; Sonic Warped
-; Custom Level Renderer v.2.7
+; Custom Level Renderer v.2.8
 ; ---------------------------------------------------------------
 ; (c) 2016-2017, 2020, 2024 Vladikcomper
 ; ---------------------------------------------------------------
@@ -245,10 +245,24 @@ LevelRenderer_DrawLayout_FG:
     if def(__DEBUG__)
 	bsr     LevelRenderer_DrawLayout
 	cmp.w   #LevelRend_LayerRAM_FG_End, a1
-	bne.s   LevelRenderer_RAM_Error
+	bne.w   LevelRenderer_RAM_Error
 	rts
     else
 	bra     LevelRenderer_DrawLayout
+    endif
+
+; ---------------------------------------------------------------
+LevelRenderer_DrawLayout_FG_RAMBuffered:
+	lea     LevelRend_LayerRAM_FG, a1
+	lea     LevelRenderer_Config_FG(pc), a0
+
+    if def(__DEBUG__)
+	bsr     LevelRenderer_DrawLayout_RAMBuffered
+	cmp.w   #LevelRend_LayerRAM_FG_End, a1
+	bne.s   LevelRenderer_RAM_Error
+	rts
+    else
+	bra     LevelRenderer_DrawLayout_RAMBuffered
     endif
 
 ; ===============================================================
@@ -267,7 +281,7 @@ LevelRenderer_DrawLayout_BG_2:	equ	@draw_direct
 	and.b   CurrentZone, d0
 	add.w   d0, d0
 	add.w   d0, d0
-    @0: movea.l @BG_Configs(pc, d0), a0
+    @0: movea.l LevelRenderer_BG_Configs(pc, d0), a0
 
 @draw_direct:
 	lea     LevelRend_LayerRAM_BG, a1
@@ -284,14 +298,14 @@ LevelRenderer_DrawLayout_BG_2:	equ	@draw_direct
 
 ; ---------------------------------------------------------------
 @draw_bg_sbz1:
-	moveq   #@BG_Config_SBZ1-@BG_Configs, d0
+	moveq   #LevelRenderer_BG_Config_SBZ1-LevelRenderer_BG_Configs, d0
 	bra.s   @0
 
 ; ---------------------------------------------------------------
 ; Rendering configurations for backgrounds
 ; ---------------------------------------------------------------
 
-@BG_Configs:
+LevelRenderer_BG_Configs:
 	dc.l    LevelRenderer_Config_BG_GHZ         ; $00 - GHZ
 	dc.l    LevelRenderer_DefaultConfig_BG      ; $01 - LZ
 	dc.l    LevelRenderer_Config_BG_MZ          ; $02 - MZ
@@ -300,8 +314,41 @@ LevelRenderer_DrawLayout_BG_2:	equ	@draw_direct
 	dc.l    LevelRenderer_DefaultConfig_BG      ; $05 - SBZ2 and FZ
 	dc.l    LevelRenderer_Config_BG_GHZ         ; $06 - Ending
 	
-@BG_Config_SBZ1:
+LevelRenderer_BG_Config_SBZ1:
 	dc.l    LevelRenderer_Config_BG_SBZ1        ; SBZ1 special case
+
+; ---------------------------------------------------------------
+
+LevelRenderer_DrawLayout_BG_RAMBuffered:
+
+LevelRenderer_DrawLayout_BG_RAMBuffered_2:	equ	@draw_direct
+
+	cmp.w   #$0500, CurrentLevel        ; is level SBZ1?
+	beq.s   @draw_bg_sbz1               ; if yes, branch
+
+	moveq   #7, d0
+	and.b   CurrentZone, d0
+	add.w   d0, d0
+	add.w   d0, d0
+    @0: movea.l LevelRenderer_BG_Configs(pc, d0), a0
+
+@draw_direct:
+	lea     LevelRend_LayerRAM_BG, a1
+	move.l  a0, LevelRend_BG_Config     ; save background configuration
+
+    if def(__DEBUG__)
+	bsr     LevelRenderer_DrawLayout_RAMBuffered
+	cmp.w   #LevelRend_LayerRAM_BG_End, a1
+	bhi.s   LevelRenderer_RAM_Error
+	rts
+    else
+	bra     LevelRenderer_DrawLayout_RAMBuffered
+    endif
+
+; ---------------------------------------------------------------
+@draw_bg_sbz1:
+	moveq   #LevelRenderer_BG_Config_SBZ1-LevelRenderer_BG_Configs, d0
+	bra.s   @0
 
 ; ===============================================================
 
@@ -385,6 +432,7 @@ LevelRenderer_Update_BG:
 ; ---------------------------------------------------------------
 
 LevelRenderer_DrawLayout:
+	; ERZ-specific assertions:
 	assert.b VBlank_MusicOnly, ne	; a trap for naughty boys who don't respect VBlank
 
 	lea     VDP_Data, a6
@@ -520,6 +568,197 @@ LevelRenderer_DrawLayout:
 
 ; ===============================================================
 
+
+
+
+
+
+; ===============================================================
+; ---------------------------------------------------------------
+; Subroutine to initially render level using a RAM buffer
+; ---------------------------------------------------------------
+; NOTE: Unlike "LevelRenderer_DrawLayout" this routine renders
+; layout to a 4 KiB RAM buffer and adds a request to flush it
+; at the end of the frame.
+;
+; WARNING! This only should be called once per frame!
+; ---------------------------------------------------------------
+; INPUT:
+;       a1      Pointer to "LevelRend_RAM"
+;       a0      Layout configuration
+;
+; OUTPUT:
+;       a1      Next slot in "LevelRend_RAM"
+; ---------------------------------------------------------------
+
+LevelRenderer_DrawLayout_RAMBuffered:
+	; ERZ-specific assertions
+	assert.l PLC_Pointer, eq		; we can only use it if it's not used by PLC system
+	;assert.w DMAQueuePos, eq, #DMAQueue	; (optinal, but recommended) make sure no one requested DMAs this frame
+	;					; this also guards from calling this routine twice per frame
+
+	move.l  (a0)+, LevelRend_BaseVRAMOffset     ; setup base VRAM offset for rendering
+	movem.w (a0)+, d1/d6/a2-a3                  ; d1 = Y-displacement of rendering area (relative to camera Y-pos)
+						    ; d6 = "Height - 1" (in tiles) of rendering area (relative to the displacement)
+						    ; a2 = Camera Y-pos address
+						    ; a3 = Layout address
+
+						    ; a0 = Layers list
+
+	; Calculate Y-position to render from
+	move.w  (a2), d5                            ; d5 = "Camera Y-pos"
+	and.w   #$7F8, d5
+	move.w  d5, (a1)+                           ; LevelRend_RAM => Save last camera position
+	add.w   d1, d5                              ; d5 = ("Camera Y-pos" & $7F8) + "Y-displacement"
+
+	lea     (a0), a2                            ; a2 = Pointer to the first X-layer in the list
+						    ; a1 = Pointer to the first slot in Layer RAM
+	;bra.s  @Process_X_Layers
+
+; ---------------------------------------------------------------
+; Subroutine to render layer
+; ---------------------------------------------------------------
+; INPUT:
+;       a1      Layer RAM
+;       a2      Layer data
+;       a3      Layout address
+;       d5 .w   Start Y-position
+;       d6 .w   "Height - 1", number of rows available to draw
+;	a6	Base RAM buffer to render to (4 KiB)
+;
+; OUTPUT:
+;       a1      End of Layer RAM
+;       a2      Next layer data
+;       d5 .w   End Y-position
+;       d6 .w   "Height - 1", number of rows available to draw
+;
+; USES:
+;       d0-d4, a3-a4
+; ---------------------------------------------------------------
+
+@Process_X_Layers:
+	tst.w   (a2)                                ; is layer empty?
+	beq     @Process_Layers_Done
+
+	movem.w (a2), d1-d2/d4/a4                   ; d1 = Y-position at which this layer ends
+						    ; d2 = X-displacement of rendering area (relative to camera X-pos)
+						    ; d4 = "Width - 1" (in tiles) of rendering area (relative to the displacement)
+						    ; a4 = Camera X-position address
+
+	; Setup layer X-redraw position
+	bclr    #15, d4                             ; this MSB is set if layer is "STATIC"
+	bne.s   @xpos_static
+	move.w  (a4), a4                            ; get X-pos from RAM
+@xpos_static:
+	move.w  a4, d0
+	and.w   #-8, d0
+	move.w  d0, (a1)+                           ; LevelRend_RAM => Save last camera position
+
+	tst.w   d6                                  ; do we have tiles to draw?
+	if def(__DEBUG__)
+		bmi.w   @layer_done                         ; if not, branch
+	else
+		bmi.s   @layer_done                         ; if not, branch
+	endif
+
+	; Calculate number of rows to render within this layer ...
+	sub.w   d5, d1                              ; d1 = Y-end - Y-start = Draw height
+	if def(__DEBUG__)
+		bmi.w   @layer_done_cont                    ; if "Draw height" < 0, branch
+	else
+		bmi.s   @layer_done_cont                    ; if "Draw height" < 0, branch
+	endif
+	lsr.w   #3, d1                              ; d1 = Number of rows to draw
+	subq.w  #1, d1                              ; d1 = Number of rows to draw - 1
+	cmp.w   d6, d1                              ; d1 = Min("Number of rows to draw - 1", "Height - 1")
+	bls.s   @0                                  ; ''
+	move.w  d6, d1                              ; ''
+@0:     sub.w   d1, d6                              ; account for rows we're about to render in the global counter
+	subq.w  #1, d6  
+	swap    d6                                  ; backup "global" rows counter
+	move.w  d1, d6
+
+	; Calculate start XY-position for rendering
+	add.w   d0, d2                              ; d2 = "Camera X-pos" + "X-displacement"
+	and.w   #-8, d2                             ; d2 = "Camera X-pos" + "X-displacement" & $FFF8
+	move.w  d2, d0                              ; d0 = Start X-pos
+	move.w  d5, d1                              ; d1 = Start Y-pos
+
+	movem.l a0-a3, -(sp)
+	lea     (a3), a0                            ; a0 = Layout
+
+	; Set in-RAM XY position for drawing ...
+	lsr.w   #3-1, d2                            ; divide by 8 to get tile, multiply by 2
+	and.w   #$7E, d2                            ; d2 = Xtile*2 % $80 -- in-VRAM X-disp
+	move.w  d5, d3
+	lsl.w   #7-3, d3                            ; divide by 8 to get tile, multiply by $80
+	and.w   #$F80, d3                           ; d3 = Ytile*$80 % $1000 -- in-VRAM Y-disp
+
+	; Loop for drawing layer row
+	@draw_layer_row:
+		; Setup initial drawing position
+		move.w  d3, LevelRend_RowRedrawPos
+		move.w	d3, d7
+		add.w	d2, d7
+		assert.w d7, lo, #$1000
+		add.w	#Art_Buffer, d7
+		movea.w	d7, a6				    ; a6 = draw possition in-buffer
+
+		movem.w d0-d4, -(sp)                        ; remember drawing position
+
+		move.w  #$80, d7
+		sub.w   d2, d7                              ; d7 = ($40 - Xtile)*2
+		lsr.w   d7                                  ; d7 = ($40 - Xtile)
+		subq.w  #1, d7                              ; d7 = number of tiles before updating position
+
+		move.w  d4, d5                              ; set cols counter ...
+
+		bsr.w   ChunkStream_Init_Horizontal         ; takes a0, d0-d1 (see above), sets d2-d3 and a2-a4
+
+		@draw_layer_row_loop:
+			jsr     (a4)                            ; STREAM =>     d0 = tile
+			move.w  d0, (a6)+
+			dbf     d7, @noupd
+
+			; Reset drawing position
+			move.w	#Art_Buffer, d7
+			add.w	LevelRend_RowRedrawPos, d7
+			movea.w	d7, a6
+		@noupd: dbf     d5, @draw_layer_row_loop
+
+		movem.w (sp)+, d0-d4                    ; load current draw position
+		addq.w  #8, d1                          ; add 8 pixels to current y-pos
+		add.w   #$80, d3                        ;
+		and.w   #$F80, d3                       ; d3 = Ytile*$80 % $1000 -- in VRAM Y-disp
+		dbf     d6, @draw_layer_row
+
+	swap    d6                                  ; restore "global" rows counter
+	movem.l (sp)+, a0-a3
+
+    @layer_done:
+	move.w  (a2), d5                            ; set position at which this layer ends as new start position ...
+
+    @layer_done_cont:
+	addq.w  #8, a2                              ; next layer data
+	bra     @Process_X_Layers
+
+; ---------------------------------------------------------------
+@Process_Layers_Done:
+	if def(__DEBUG__)
+		move.w	a1, -(sp)
+	endif
+	@vdp_dma_cmd: equr d7
+
+	move.l	LevelRend_BaseVRAMOffset, @vdp_dma_cmd	    ; wa're based
+	add.w	#$80, @vdp_dma_cmd			    ; we're DMA
+	QueueStaticDMA Art_Buffer, $1000, @vdp_dma_cmd
+
+	if def(__DEBUG__)
+		move.w	(sp)+, a1
+	endif
+	rts
+
+; ===============================================================
 
 
 

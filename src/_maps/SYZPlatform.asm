@@ -98,11 +98,11 @@ CME_1AE2106F_3:
 	dc.b	-90+40
 	dc.b	$06
 	dc.w	$0020
-	dc.b	-96
+	dc.b	-96+47
 
 	dc.b	-90+40
 	dc.b	$06
 	dc.w	$0020
-	dc.b	96-16
+	dc.b	96-16-47
 
 	even

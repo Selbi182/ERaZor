@@ -7255,44 +7255,50 @@ off_71B2:	dc.w Resize_SYZ3main-off_71B2
 Resize_SYZ3main:
 		move.w	#$21C,($FFFFF726).w	; default boundary bottom
 
-		cmpi.w	#$08B0,($FFFFD008).w	; in the arena?
+		cmpi.w	#$09B0,($FFFFD008).w	; in the arena?
 		blo.s	locret_71CE		; if not, branch
 		addq.b	#2,($FFFFF742).w
 
-		move.w	#$E0,d0
-		jsr	PlaySound_Special	; fade out music
+	;	move.w	#$E0,d0
+	;	jsr	PlaySound_Special	; fade out music
 
 		lea	(PLC_Roller).l,a1	; load Roller patterns
 		jsr	LoadPLC_Direct
 
-		movem.l	d7/a0-a3,-(sp)
-		jsr 	Pal_FadeOut 		; i guess this works????
-		moveq	#3,d0			; brighten up this place by...
-		jsr	PalLoad2		; ...loading Sonic's palette
-		jsr	WhiteFlash2
-		move.b	#0,($FFFFFFB2).w	; no camera lag
-		movem.l	(sp)+,d7/a0-a3
+	;	movem.l	d7/a0-a3,-(sp)
+	;	jsr 	Pal_FadeOut 		; i guess this works????
+	;	moveq	#3,d0			; brighten up this place by...
+	;	jsr	PalLoad2		; ...loading Sonic's palette
+	;	jsr	WhiteFlash2
+	;	move.b	#0,($FFFFFFB2).w	; no camera lag
+	;	movem.l	(sp)+,d7/a0-a3
 
 		jsr	SingleObjLoad
 		bne.s	locret_71CE
 		move.b	#$43,(a1)		; load roller enemy
-		move.w	#$1098,obX(a1)
-		move.w	#$0252,obY(a1)
+		move.w	#$10A0,obX(a1)
+		move.w	#$02C2,obY(a1)
 
 locret_71CE:
 		rts	
 ; ===========================================================================
 PLC_Roller:
+		dc.l ArtKospM_SearchLight
+		dc.w $6200
 		dc.l ArtKospM_Roller
 		dc.w $9700
 		dc.w -1
 ; ===========================================================================
 
 Resize_SYZ3loadboss:
-		cmpi.w	#$1040,($FFFFD008).w	; did we reach eggman yet?
+		cmpi.w	#$1070,($FFFFD008).w	; did we reach the Roller yet?
 		blo.s	locret_71CE		; if not, branch
 
 		addq.b	#2,($FFFFF742).w
+
+		move.w	#$E0,d0
+		jsr	PlaySound_Special	; fade out music
+
 		move.b	#1,($FFFFFFA9).w	; set boss flag
 
 		move.b	#0,($FFFFD000+obAniFrame).w ; reset Sonic waiting animation
@@ -7311,14 +7317,12 @@ Resize_SYZ3loadboss:
 ; ===========================================================================
 
 Resize_SYZ3waitboss:
-		move.w	#$1A8,($FFFFF726).w	; bottom boundary for arena
 		move.w	#$8C0,($FFFFF728).w	; left boundary
 		move.w	#$1A80,($FFFFF72A).w	; right boundary
 
 		btst	#1,($FFFFD022).w	; is Sonic in air?
 		bne.s	@waitfloor		; if yes, branch
 		move.w	#$0188,($FFFFF72C).w	; top boundary
-		move.w	#$AC,($FFFFF73E).w	; adjust vertical camera offset
 @waitfloor:
 
 		cmpi.b	#46,($FFFFD000+obAniFrame).w
@@ -7351,7 +7355,7 @@ Resize_SYZ3boss:
 		bne.s	@frantic		; if yes, branch
 		btst	#0,($FFFFF7A7).w	; has final hit been dealt?
 		beq.s	@frantic		; if not, branch
-		move.w	#$23C,($FFFFF726).w	; default boundary bottom for casual mode
+		move.w	#$21C+$100,($FFFFF726).w	; lower boundary just enough to allow noobs not to die
 @frantic:
 		btst	#1,($FFFFF7A7).w	; has boss been defeated and deleted?
 		beq.s	@end			; if not, branch
@@ -7370,7 +7374,7 @@ Resize_SYZ3boss:
 Resize_SYZ3end:
 		cmpi.w	#$1900,($FFFFF700).w
 		blo.s	@left
-		move.w	#$23C,($FFFFF726).w	; default boundary
+		move.w	#$21C,($FFFFF726).w
 @left:
 		move.b	#0,($FFFFFFA9).w	; clear boss flag
 		move.w	#$0000,($FFFFF72C).w	; top boundary
@@ -10227,9 +10231,14 @@ Obj2A_OpenShut:				; XREF: Obj2A_Index
 
 		cmpi.w	#$402,($FFFFFE10).w	; is level SYZ3 (Unterhub)?
 		bne.s	@uberhub		; if not, branch
-		tst.b	obSubtype(a0)		; is this the end door?
-		bpl.w	Obj2A_Green		; if yes, open door
 		move.w	#$0800+($6100/$20),obGfx(a0)	; use red light art
+		clr.b	obAnim(a0)		; use "closing"	animation
+		move.w	($FFFFD008).w,d0
+		cmp.w	obX(a0),d0
+		bhs.w	Obj2A_Animate		; close door once Sonic is to the right of it
+
+		tst.b	obSubtype(a0)		; is this the end door?
+		bpl.w	Obj2A_Green		; if not, open door
 		btst	#1,($FFFFF7A7).w	; is boss defeated?
 		bne.w	Obj2A_Green		; if yes, open door
 		bra.w	Obj2A_Animate		; otherwise, keep it closed
@@ -19141,7 +19150,7 @@ Obj43_Main:				; XREF: Obj43_Index
 		move.b	#$10,obActWid(a0)
 		move.b	#6,obColType(a0)
 
-		move.b	#1*60+30,$30(a0)	; delay before jump
+		move.b	#1*60,$30(a0)	; delay before jump
 ; ---------------------------------------------------------------------------
 
 Obj43_Action:				; XREF: Obj43_Index
@@ -19744,9 +19753,19 @@ Obj12:					; XREF: Obj_Index
 Obj12_Index:	dc.w Obj12_CheckGameState-Obj12_Index
 		dc.w Obj12_Init-Obj12_Index
 		dc.w Obj12_Animate-Obj12_Index
+; ---------------------------------------------------------------------------
+		dc.w Obj12_SearchLight_Setup-Obj12_Index
+		dc.w Obj12_SearchLight_Rotating-Obj12_Index
+		dc.w Obj12_SearchLight_Blinking-Obj12_Index
 ; ===========================================================================
 
 Obj12_CheckGameState:
+		cmpi.w	#$402,($FFFFFE10).w	; are we in Unterhub?
+		bne.s	@uberhub		; if not, branch
+		move.b	#6,obRoutine(a0)	; set to search light
+		rts
+
+@uberhub:
 		addq.b	#2,obRoutine(a0)
 		move.w	#EmblemGfx_Casual,obGfx(a0)
 		move.b	#$D7,obColType(a0)	; enable bumper
@@ -19814,7 +19833,7 @@ Obj12_CheckBlackout:
 		
 Obj12_Init:
 		addq.b	#2,obRoutine(a0)
-		move.l	#Map_Obj12,obMap(a0)
+		move.l	#Map_Obj12_SYZEmblems,obMap(a0)
 		move.b	#$94,obRender(a0)
 		move.b	#$10,obActWid(a0)
 		move.b	#6,obPriority(a0)
@@ -19871,7 +19890,6 @@ Obj12_Animate:
 		beq.s	@end				; if not, branch
 
 		bsr	BumpSonic			; bump Sonic away
-		clr.b	($FFFFFFEB).w			; reset jumpdash flag to allow multiple double jumps
 
 		jsr	SingleObjLoad2			; load an explosion
 		bne.w	@end
@@ -19880,14 +19898,104 @@ Obj12_Animate:
 		move.w	obY(a0),obY(a1)
 		move.b	#0,$31(a1)			; do NOT mute explosion
 		move.b	#1,$30(a1)			; make explosion harmless
-
 @end:
 		jmp	MarkObjGone
+
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-Map_Obj12:
+; The original search lights (first removed from Obj12, now returned because
+; turns out I still needed them for the new boss fight lmao)
+; ---------------------------------------------------------------------------
+
+Obj12_SearchLight_Setup:
+		; check if chunk wasn't destoryed yet and delete if it already was
+		move.l	a0,-(sp)
+		move.w	obX(a0),d0
+		move.w	#$0200,d1
+		jsr	Sub_FindChunkByCoordinate
+		move.b	(a0),d0
+		move.l	(sp)+,a0
+		cmpi.b	#$45,d0			; is chunk still a searchlight bridge?
+		bne.w	DeleteObject		; if not, delete this searchlight
+
+		addq.b	#2,obRoutine(a0)
+		move.l	#Map_Obj12_SearchLight,obMap(a0)
+		move.w	#$6200/$20,obGfx(a0)
+		bset	#7,obGfx(a0)		; make it high plane
+		move.b	#4,obRender(a0)
+		move.b	#$10,obActWid(a0)
+		move.b	#6,obPriority(a0)
+; ---------------------------------------------------------------------------
+
+Obj12_SearchLight_Rotating:
+		cmpi.b	#6,($FFFFF742).w	; has boss fight started yet?
+		bhs.s	@display		; if yes, display
+		move.b	#5,obFrame(a0)		; force off frame until done boss has started
+		bra.w	Obj12_SearchLight_Display
+
+@display:
+		moveq	#0,d0
+		move.b	($FFFFF73A).w,d0	; get number of pixels scrolled horizontally since the previous frame
+		bpl.s	@0
+		neg.w	d0
+@0
+		cmpi.b	#8,d0
+		blo.s	@nochangedirection
+		tst.b	($FFFFF73A).w
+		bpl.s	@right
+@left:
+		move.b	#0,($FFFFFFAB).w
+		bra.s	@nochangedirection
+@right:
+		move.b	#1,($FFFFFFAB).w
+
+@nochangedirection:
+		move.w	obX(a0),d0
+		lsr.w	#6,d0
+		move.w	($FFFFFE0E).w,d1
+
+		tst.b	($FFFFFFAB).w	; direction inverted?
+		beq.s	@noneg		; if not, branch
+		neg.w	d1
+@noneg:
+		asr.w	#2,d1
+		add.w	d1,d0
+		andi.w	#7,d0
+		move.b	d0,obFrame(a0)
+		bra.s	Obj12_SearchLight_Display
+; ---------------------------------------------------------------------------
+
+Obj12_SearchLight_Blinking:
+		moveq	#5,d1		; off
+		btst	#2,($FFFFFE05).w
+		beq.s	@changeframe
+		moveq	#1,d1		; on
+@changeframe:
+		move.b	d1,obFrame(a0)
+		; fallthrough
+; ---------------------------------------------------------------------------
+
+Obj12_SearchLight_Display:
+		move.w	obX(a0),d0
+		andi.w	#$FF80,d0
+		move.w	($FFFFF700).w,d1
+		subi.w	#$80,d1
+		andi.w	#$FF80,d1
+		sub.w	d1,d0
+		cmpi.w	#$280,d0
+		bhi.w	DeleteObject
+		bra.w	DisplaySprite
+; ---------------------------------------------------------------------------
+; ===========================================================================
+; ---------------------------------------------------------------------------
+Map_Obj12_SYZEmblems:
 		include	"_maps\SYZEmblems.asm"
+; ---------------------------------------------------------------------------
+Map_Obj12_SearchLight:
+		include "_maps\obj12.asm"
+; ---------------------------------------------------------------------------
+; ===========================================================================
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -19915,27 +20023,16 @@ Obj47_Main:				; XREF: Obj47_Index
 
 Obj47_Hit:				; XREF: Obj47_Index
 		tst.b	obColProp(a0)		; has Sonic touched the	bumper?
-		beq.w	Obj47_Display	; if not, branch
-		clr.b	obColProp(a0)
-		lea	($FFFFD000).w,a1
-		move.w	obX(a0),d1
-		move.w	obY(a0),d2
-		sub.w	obX(a1),d1
-		sub.w	obY(a1),d2
-		jsr	(CalcAngle).l
-		jsr	(CalcSine).l
-		muls.w	#-$700,d1
-		asr.l	#8,d1
-		move.w	d1,obVelX(a1)	; bounce Sonic away
-		muls.w	#-$700,d0
-		asr.l	#8,d0
-		move.w	d0,obVelY(a1)	; bounce Sonic away
-		bset	#1,obStatus(a1)
-		bclr	#5,obStatus(a1)
-		clr.b	$3C(a1)
-		move.b	#1,obAnim(a0)
-		move.w	#$B4,d0
-		jsr	(PlaySound_Special).l ;	play bumper sound
+		beq.w	Obj47_Display		; if not, branch
+		clr.b	obColProp(a0)		; clear interaction flag
+		bsr	BumpSonic		; bump Sonic away
+		move.b	#1,obAnim(a0)		; use bouncing animation
+
+		cmpi.w	#$400,($FFFFFE10).w
+		bne.s	Obj47_Display
+		tst.w	obVelY(a1)
+		bgt.s	Obj47_Display
+		move.w	#$700,obVelY(a1)
 
 Obj47_Display:
 		lea	(Ani_obj47).l,a1
@@ -27316,8 +27413,10 @@ BumpSonic:
 		asr.l	#8,d0
 		move.w	d0,obVelY(a1)	; bounce Sonic away
 		bset	#1,obStatus(a1)
+		bset	#2,obStatus(a1)
 		bclr	#5,obStatus(a1)
 		clr.b	$3C(a1)
+		clr.b	($FFFFFFEB).w			; reset jumpdash flag to allow multiple double jumps
 		move.w	#$B4,d0
 		jmp	(PlaySound_Special).l ;	play bumper sound
 ; ===========================================================================
@@ -28108,7 +28207,7 @@ Obj01_MdJump:				; XREF: Obj01_Modes
 		bsr	Sonic_JumpHeight
 		bsr	Sonic_ChgJumpDir
 		bsr	Sonic_LevelBound
-		bsr	ObjectFall_Sonic
+		jsr	ObjectFall_Sonic
 		btst	#6,obStatus(a0)	; is Sonic underwater?
 		beq.s	loc_12E5C	; if not, branch
 		subi.w	#$28,obVelY(a0)	; use reduced gravity
@@ -28126,7 +28225,7 @@ Obj01_MdRoll:				; XREF: Obj01_Modes
 		bsr	Sonic_RollRepel
 		bsr	Sonic_RollSpeed
 		bsr	Sonic_LevelBound
-		bsr	SpeedToPos
+		jsr	SpeedToPos
 		bsr	Sonic_AnglePos
 		bsr	Sonic_SlopeRepel
 		rts	
@@ -38399,8 +38498,10 @@ Map_obj5Ea:
 ; ---------------------------------------------------------------------------
 ; Object 75 - Eggman (SYZ)
 ; ---------------------------------------------------------------------------
-Obj75_BaseXOffset = $600
-Obj75_BaseY = $1D8
+Obj75_BaseXOffset = $680
+Obj75_BaseY = $248
+Obj75_FloorHeight = $2B0
+Obj75_ArenaLeft = $A00
 Obj75_BossSpeed = $400
 Obj75_SlamThreshold = $C
 Obj75Boss_Health = 16
@@ -38474,9 +38575,9 @@ Obj75_LoadBoss:				; XREF: Obj75_Main
 
 Obj75_ShipMain:				; XREF: Obj75_Index
 		; keep in arena
-		cmpi.w	#$920,obX(a0)
+		cmpi.w	#Obj75_ArenaLeft+$20,obX(a0)
 		bhs.s	@leftok
-		move.w	#$920,obX(a0)
+		move.w	#Obj75_ArenaLeft+$20,obX(a0)
 		clr.w	obVelX(a0)
 @leftok:
 
@@ -38600,10 +38701,40 @@ Obj75_CheckSlam:
 @pos:
 		cmpi.w	#Obj75_SlamThreshold,d0
 		bhi.s	@end
+
+		; activate slam
 		move.b	#4,ob2ndRout(a0)	; set to slam down
 		move.w	#-$400,obVelY(a0)	; move eggman up a little before slam
 		asr	obVelX(a0)
 		asr	obVelX(a0)
+		move.w	#Obj75_BaseY,obY(a0)
+		andi.w	#$FFFC,obX(a0)
+
+		; make searchlights underneath eggman start blinking
+		moveq	#$36,d1			; leeway to account for eggman's arc (hand-picked)
+		tst.w	obVelX(a0)
+		bpl.s	@arc
+		neg.w	d1
+	@arc:	add.w	obX(a0),d1		; add eggman's base position
+		andi.w	#$FF00,d1		; limit to current chunk
+		cmpi.w	#Obj75_ArenaLeft,d1
+		bhs.s	@findlights
+		move.w	#Obj75_ArenaLeft,d1
+
+@findlights:
+		lea	($FFFFD800).w,a1
+		moveq	#$3F,d0
+@loop:
+		cmpi.b	#$12,(a1)		; is current object a searchlight?
+		bne.s	@next			; if not, branch
+		move.w	obX(a1),d2
+		andi.w	#$FF00,d2
+		cmp.w	d1,d2
+		bne.s	@next
+		move.b	#$A,obRoutine(a1)	; set to Obj12_SearchLight_Blinking
+@next		lea	$40(a1),a1
+		dbf	d0,@loop
+
 @end:
 		rts
 
@@ -38617,7 +38748,7 @@ Obj75_SlamDown:
 		; slam
 		addi.w	#$38,obVelY(a0)		; increase gravity
 
-		cmpi.w	#$250,obY(a0)		; below the threshold?
+		cmpi.w	#Obj75_FloorHeight,obY(a0) ; below the threshold?
 		bhs.s	Obj75_DestroyChunk	; if yes, break the chunk underneath Eggman
 		bra.w	Obj75_SlamEnd		; otherwise, keep falling
 ; ===========================================================================
@@ -38698,7 +38829,7 @@ Obj75_DestroyChunk:
 @nosonicmove:
 
 		cmpi.w	#$1700,obX(a0)		; to the right of the arena?
-		bhs.s	Obj75_SlamEnd		; if yes, don't break chunk
+		bhs.w	Obj75_SlamEnd		; if yes, don't break chunk
 
 		; break the actual chunks
 		moveq	#0,d2			; replace with void chunk
@@ -38707,15 +38838,20 @@ Obj75_DestroyChunk:
 		moveq	#$46,d2			; use spoopy chunk instead
 @breakchunk:
 		move.l	a0,-(sp)
-		move.w	obX(a0),d3
-		move.w	d3,d0
+		move.w	obX(a0),d0
 		move.w	#$0200,d1
 		jsr	Sub_ChangeChunk
-
-		move.w	d3,d0
-		move.w	#$0100,d1
-		jsr	Sub_ChangeChunk
 		move.l	(sp)+,a0
+
+		; delete searchlights of the chunk
+		lea	($FFFFD800).w,a1
+		moveq	#$3F,d0
+@deletelights:	
+		cmpi.b	#$12,(a1)		; is current object a searchlight?
+		bne.s	@next			; if not, branch
+		move.b	#6,obRoutine(a1)	; reset to init routine to rerun deletion check
+@next		lea	$40(a1),a1
+		dbf	d0,@deletelights
 
 		bra.w	Obj75_SlamEnd
 ; ===========================================================================
@@ -44669,6 +44805,7 @@ HudDb_XY:				; XREF: HudDebug
 		moveq	#0,d1
 		move.w	($FFFFF700).w,d1 ; load	camera x-position
 		swap	d1
+	;	move.w	($FFFFFFEE).w,d1 ; generic debug data
 		move.w	($FFFFD008).w,d1 ; load	Sonic's x-position
 		bsr.s	HudDb_XY2
 		move.w	($FFFFF704).w,d1 ; load	camera y-position
@@ -46134,6 +46271,8 @@ ArtKospM_SYZPlat:	incbin	artkosp\SYZPlatform.kospm	; SLZ Platform
 ArtKospM_SYZEmblemsCasual:	incbin	artkosp\SYZEmblems.kospm	; SYZ casual emblems
 		even
 ArtKospM_SYZEmblemsFrantic:	incbin	artkosp\SYZEmblems_Frantic.kospm	; SYZ frantic emblems
+		even
+ArtKospM_SearchLight:	incbin	artkosp\SearchLight.kospm	; SYZ search lights (extracted from main level tiles)
 		even
 ; ---------------------------------------------------------------------------
 ; Compressed graphics - SBZ stuff

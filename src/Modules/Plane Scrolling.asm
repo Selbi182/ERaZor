@@ -926,10 +926,11 @@ Deform_SYZ:
 		; extrafast during the Unterhub boss battle, and in reverse
 		cmpi.w	#$402,($FFFFFE10).w
 		bne.s	@notunterhub
-		tst.b	($FFFFFFA9).w
-		beq.s	@notunterhub
 		cmpi.b	#6,($FFFFF742).w
 		blo.s	@notunterhub
+		btst	#4,($FFFFF7A7).w	; make sure it doesn't happen after the trophy stealing cutscene
+		bne.s	@notunterhub
+	;	move.w	#0,CamYPos2
 		add.w	d3,d3
 		neg.w	d3
 

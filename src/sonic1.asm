@@ -29006,17 +29006,32 @@ locret_133E8:
 FixLevel:
 		tst.b	(RedrawEverything).w	; was camera set to be fixed as well?
 		bmi.s	@dontfixcamera		; if not, branch
+
+		; Reset level's camera and re-render everything
 		bsr	FixCamera		; instantly teleport camera to Sonic's current position
+		DeleteQueue_Init
+		jsr	ObjectsLoad		; force-run all objects to re-render sprites (WARNING! May have side effects)
+		jsr	DeformBgLayer2		; update background parallax (without scroll camera functions)
+		jsr	BuildSprites		; re-render sprites
+		jsr	DeleteQueue_Execute	; because we ran objects
+		jsr	ObjPosLoad		; because we fixed camera
 
 @dontfixcamera:
-		VBlank_SetMusicOnly
-		movem.l	d0-a6,-(sp)		; backup all data and address registers
-		jsr	DeformBgLayer		; fix the background position
-		jsr 	LevelRenderer_DrawLayout_FG
-		jsr 	LevelRenderer_DrawLayout_BG
-		movem.l	(sp)+,d0-a6		; restore them
-		VBlank_UnsetMusicOnly
-		rts
+		; Make sure PLC queue is clean as we'll need the entire art buffer
+		tst.l	PLC_Pointer		; do we have PLC's that may use the buffer?
+		beq.s	@plc_ok			; if not, branch
+		KDebug.WriteLine "FixLevel(): WARN: Flushing PLCs..."
+		jsr	PLC_ExecuteOnce_Direct	; force-flush all art in PLC queue (this is suboptimal, but it's an emergency case)
+	@plc_ok:
+
+		jsr 	LevelRenderer_DrawLayout_FG_RAMBuffered
+		move.b	#$16,VBlankRoutine	; flush level layout
+		jsr	DelayProgram
+
+		jsr 	LevelRenderer_DrawLayout_BG_RAMBuffered
+		move.b	#$16,VBlankRoutine	; flush level layout
+		jmp	DelayProgram
+
 ; ---------------------------------------------------------------------------
 
 FixCamera:

@@ -7358,20 +7358,20 @@ Resize_SYZ3boss:
 		jsr	SingleObjLoad
 		bne.s	@end
 		move.b	#$43,(a1)		; load end roller enemy
-		move.w	#$1B10,obX(a1)
+		move.w	#$1D10,obX(a1)
 		move.w	#$02C3,obY(a1)
 @end:
 		rts
 ; ===========================================================================
 
 Resize_SYZ3end:
-		cmpi.w	#$1900,($FFFFF700).w
+		cmpi.w	#$1A00,($FFFFF700).w
 		blo.s	@left
 		move.w	#$21C,($FFFFF726).w
 @left:
 		move.b	#0,($FFFFFFA9).w	; clear boss flag
 		move.w	#$0000,($FFFFF72C).w	; top boundary
-		move.w	#$1B80,($FFFFF72A).w	; right boundary
+		move.w	#$1D80,($FFFFF72A).w	; right boundary
 		rts	
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -38519,10 +38519,10 @@ Obj75_BaseXOffset_Fast = $100
 Obj75_BaseY = $238
 Obj75_FloorHeight = $2A0
 Obj75_ArenaLeft = $A00
-Obj75_ArenaRight = $1700
-Obj75_BossSpeed = $400
+Obj75_ArenaRight = $1900
 Obj75_SlamThreshold = $C
-Obj75Boss_Health = 16
+Obj75_BossSpeed = $400
+Obj75_BossHealth = 12
 ; ---------------------------------------------------------------------------
 
 Obj75:					; XREF: Obj_Index
@@ -38560,7 +38560,7 @@ Obj75_Main:				; XREF: Obj75_Index
 		move.w	obY(a0),$38(a0)
 		move.b	#$F,obColType(a0)
 
-		moveq	#Obj75Boss_Health,d0
+		moveq	#Obj75_BossHealth,d0
 		if LowBossHP=1
 			moveq	#1,d0
 		endif
@@ -38911,7 +38911,7 @@ Obj75_BossDefeated:			; XREF: Obj75_ShipIndex
 		bset	#0,($FFFFF7A7).w	; set boss first defeated flag (see Resize_SYZ3end)
 
 		; check delete based on mode
-		cmpi.w	#$1980,obX(a0)
+		cmpi.w	#$1B80,obX(a0)
 		bhs.s	Obj75_BossDelete
 		rts
 ; ===========================================================================

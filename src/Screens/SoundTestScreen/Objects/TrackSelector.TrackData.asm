@@ -129,97 +129,97 @@
 @descMaxLen: = 52
 
 @Music81_Name:		@str 'NIGHT HILL PLACE', @titleMaxLen
-@Music81_Source:	@str 'F1 POLE POSITION - HOCKENHEIM RING', @descMaxLen
+@Music81_Source:	@str 'F1 POLE POSITION / HOCKENHEIM RING', @descMaxLen
 
 @Music82_Name:		@str 'LABYRINTHY PLACE', @titleMaxLen
-@Music82_Source:	@str 'MEGA MAN 4 - DR. COSSACK STAGE 2', @descMaxLen
+@Music82_Source:	@str 'MEGA MAN 4 / DR. COSSACK STAGE 2', @descMaxLen
 
 @Music83_Name:		@str 'RUINED PLACE', @titleMaxLen
-@Music83_Source:	@str "ETERNAL CHAMPIONS - BLADE'S THEME", @descMaxLen
+@Music83_Source:	@str "ETERNAL CHAMPIONS / BLADE'S THEME", @descMaxLen
 
 @Music84_Name		@str 'SCAR NIGHT PLACE', @titleMaxLen
-@Music84_Source:	@str 'MEGA MAN IV - GB - TITLE SCREEN', @descMaxLen
+@Music84_Source:	@str 'MEGA MAN IV - GB / TITLE SCREEN', @descMaxLen
 
 @Music85_Name:		@str '^BERHUB PLACE', @titleMaxLen
-@Music85_Source:	@str 'MEGA MAN 7 - FREEZE MAN STAGE', @descMaxLen
+@Music85_Source:	@str 'MEGA MAN 7 / FREEZE MAN STAGE', @descMaxLen
 
 @Music86_Name:		@str 'GREEN HILL PLACE', @titleMaxLen
-@Music86_Source:	@str 'MEGA MAN X - SPARK MANDRILL', @descMaxLen
+@Music86_Source:	@str 'MEGA MAN X / SPARK MANDRILL', @descMaxLen
 
 @Music87_Name:		@str 'TUTORIAL PLACE', @titleMaxLen
-@Music87_Source:	@str 'NINJA GAIDEN - STAGE 4-2', @descMaxLen
+@Music87_Source:	@str 'NINJA GAIDEN / STAGE 4-2', @descMaxLen
 
 @Music88_Name:		@str 'SPECIAL STAGE CLEAR', @titleMaxLen
-@Music88_Source:	@str "SONIC THE HEDGEHOG 1 - YEAH, IT'S THE SAME", @descMaxLen
+@Music88_Source:	@str "SONIC THE HEDGEHOG 1 / YEAH, IT'S THE SAME", @descMaxLen
 
 @Music89_Name:		@str 'SPECIAL PLACE', @titleMaxLen
-@Music89_Source:	@str 'TECMO WRESTLING - HIDDEN TRACK', @descMaxLen
+@Music89_Source:	@str 'TECMO WRESTLING / HIDDEN TRACK', @descMaxLen
 
 @Music8A_Name:		@str 'TITLE SCREEN', @titleMaxLen
-@Music8A_Source:	@str 'SUPER STREET FIGHTER II TURBO - OPENING SEQUENCE', @descMaxLen
+@Music8A_Source:	@str 'SUPER STREET FIGHTER II TURBO / OPENING SEQUENCE', @descMaxLen
 
 @Music8B_Name:		@str '=P MONITOR', @titleMaxLen
 @Music8B_Source:	@str 'THE ORIGINAL VERSION OF SONIC ERAZOR FROM 2010', @descMaxLen
 
 @Music8C_Name:		@str 'GREEN HILL PLACE BOSS', @titleMaxLen
-@Music8C_Source:	@str 'SONIC ADVANCE 3 - CHAOS ANGEL ACT 1', @descMaxLen
+@Music8C_Source:	@str 'SONIC ADVANCE 3 / CHAOS ANGEL ACT 1', @descMaxLen
 
 @Music8D_Name:		@str 'FINALOR PLACE', @titleMaxLen
-@Music8D_Source:	@str 'PULSEMAN - SHUTDOWN', @descMaxLen
+@Music8D_Source:	@str 'PULSEMAN / SHUTDOWN', @descMaxLen
 
 @Music8E_Name:		@str 'UNTERHUB PLACE', @titleMaxLen
-@Music8E_Source:	@str 'SONIC 3D BLAST - THE FINAL FIGHT', @descMaxLen
+@Music8E_Source:	@str 'MEGA MAN 7 / FREEZE MAN STAGE - LAID-BACK REMIX', @descMaxLen
 
 @Music8F_Name:		@str 'NOT READING THE TUTORIAL', @titleMaxLen
-@Music8F_Source:	@str 'SONIC THE HEDGEHOG 1 - GAME OVER', @descMaxLen
+@Music8F_Source:	@str 'SONIC THE HEDGEHOG 1 / GAME OVER', @descMaxLen
 
 @Music90_Name:		@str 'THE GREAT ESCAPE', @titleMaxLen
-@Music90_Source:	@str 'MEGA MAN X3 - OPENING STAGE', @descMaxLen
+@Music90_Source:	@str 'MEGA MAN X3 / OPENING STAGE', @descMaxLen
 
 @Music91_Name:		@str 'INVINCIBILITY', @titleMaxLen
-@Music91_Source:	@str 'DANGEROUS SEED - ENDING THEME', @descMaxLen
+@Music91_Source:	@str 'DANGEROUS SEED / ENDING THEME', @descMaxLen
 
 @Music92_Name:		@str 'FUN IN LABYRINTHY PLACE', @titleMaxLen
-@Music92_Source:	@str 'SONIC THE HEDGEHOG 1 - DROWN', @descMaxLen
+@Music92_Source:	@str 'SONIC THE HEDGEHOG 1 / DROWN', @descMaxLen
 
 @Music93_Name:		@str 'UNTERHUB PLACE BOSS', @titleMaxLen
-@Music93_Source:	@str 'GUNSTAR HEROES - MILITARY ON THE MAX POWER', @descMaxLen
+@Music93_Source:	@str 'GUNSTAR HEROES / MILITARY ON THE MAX POWER', @descMaxLen
 
 @Music94_Name:		@str 'GREEN HILL ZO... PLACE', @titleMaxLen
-@Music94_Source:	@str 'SONIC THE HEDGEHOG 1 - GREEN HILL ZONE', @descMaxLen
+@Music94_Source:	@str 'SONIC THE HEDGEHOG 1 / GREEN HILL ZONE', @descMaxLen
 
 @Music95_Name:		@str 'INTRO CUTSCENE', @titleMaxLen
-@Music95_Source:	@str 'STREET FIGHTER II - KEN''S THEME', @descMaxLen
+@Music95_Source:	@str 'STREET FIGHTER II / KEN''S THEME', @descMaxLen
 
 @Music96_Name:		@str 'STAR AGONY PLACE', @titleMaxLen
-@Music96_Source:	@str 'THUNDER FORCE III - STAGE 7: ORN BASE', @descMaxLen
+@Music96_Source:	@str 'THUNDER FORCE III / STAGE 7: ORN BASE', @descMaxLen
 
 @Music97_Name:		@str 'CREDITS', @titleMaxLen
-@Music97_Source:	@str 'GUNDAM WING: ENDLESS DUEL - OPENING / RHYTHM EMOTION', @descMaxLen
+@Music97_Source:	@str 'GUNDAM WING: ENDLESS DUEL / RHYTHM EMOTION', @descMaxLen
 
 @Music98_Name:		@str 'CRABMEAT BOSS', @titleMaxLen
-@Music98_Source:	@str 'SONIC ADVANCE 3 - BOSS - PINCH', @descMaxLen
+@Music98_Source:	@str 'SONIC ADVANCE 3 / BOSS - PINCH', @descMaxLen
 
 @Music99_Name:		@str 'TUTORIAL INTRODUCTION', @titleMaxLen
-@Music99_Source:	@str 'MEGA MAN 5 - DARK MAN/PROTO MAN STAGES', @descMaxLen
+@Music99_Source:	@str 'MEGA MAN 5 / DARK MAN/PROTO MAN STAGES', @descMaxLen
 
 @Music9A_Name:		@str 'UNREAL PLACE', @titleMaxLen
-@Music9A_Source:	@str 'SHINOBI III - WHIRLWIND', @descMaxLen
+@Music9A_Source:	@str 'SHINOBI III / WHIRLWIND', @descMaxLen
 
 @Music9B_Name:		@str 'WALKING BOMB BOSS', @titleMaxLen
-@Music9B_Source:	@str 'SONIC ADVANCE 3 - BOSS - PINCH... BUT DIFFERENT', @descMaxLen
+@Music9B_Source:	@str 'SONIC ADVANCE 3 / BOSS - PINCH... BUT DIFFERENT', @descMaxLen
 
 @Music9C_Name:		@str 'BLACKOUT CHALLENGE', @titleMaxLen
-@Music9C_Source:	@str 'PULSEMAN - SHUTDOWN - DARK REMIX', @descMaxLen
+@Music9C_Source:	@str 'PULSEMAN / SHUTDOWN - DARK REMIX', @descMaxLen
 
 @Music9D_Name:		@str 'ENDING SEQUENCE', @titleMaxLen
-@Music9D_Source:	@str 'ZILLION PUSH - PUSH!', @descMaxLen
+@Music9D_Source:	@str 'ZILLION PUSH / PUSH!', @descMaxLen
 
 @Music9E_Name:		@str 'FINAL BOSS', @titleMaxLen
-@Music9E_Source:	@str 'SONIC THE HEDGEHOG 3 - FINAL BOSS... TOO', @descMaxLen
+@Music9E_Source:	@str 'SONIC THE HEDGEHOG 3 / FINAL BOSS... AS WELL', @descMaxLen
 
 @Music9F_Name:		@str 'INHUMAN MODE', @titleMaxLen
-@Music9F_Source:	@str 'MEGA MAN ZERO 4 - STRAIGHT AHEAD', @descMaxLen
+@Music9F_Source:	@str 'MEGA MAN ZERO 4 / STRAIGHT AHEAD', @descMaxLen
 
 ; ---------------------------------------------------------------------------
 

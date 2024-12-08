@@ -229,32 +229,13 @@ Options_TrackAllMistakes_Handle:
 ; ---------------------------------------------------------------------------
 
 Options_Autoskip_Redraw:
-	moveq	#0,d0
-	btst	#1, OptionsBits		; skip story screens enabled?
+	lea	Options_Str_Off(pc), a1
+	moveq	#%110,d0
+	and.b	OptionsBits, d0
 	beq.s	@0
-	addq.b	#1,d0
-@0:
-	btst	#2, OptionsBits		; skip Uberhub Place enabled?
-	beq.s	@1
-	addq.b	#2,d0
-@1:
-	add.w	d0, d0
-	add.w	d0, d0				; d0 = ModeId * 4
-	movea.l	@AutoskipList(pc,d0), a1
-	
-	Options_PipeString a4, "AUTOSKIP         %<.l a1 str>", 30
+	lea	Options_Str_On(pc), a1
+@0:	Options_PipeString a4, "SPEEDRUN MODE              %<.l a1 str>", 30
 	rts
-
-; ---------------------------------------------------------------------------
-@AutoskipList:
-	dc.l	@Str_Mode00,@Str_Mode01,@Str_Mode10,@Str_Mode11
-
-@Str_Mode00:	dc.b	'          OFF',0
-@Str_Mode01:	dc.b	'STORY SCREENS',0
-@Str_Mode10:	dc.b	'UBERHUB PLACE',0
-@Str_Mode11:	dc.b	'  STORY + HUB',0
-		even
-
 
 ; ---------------------------------------------------------------------------
 ; "AUTOSKIP" handle function
@@ -276,31 +257,22 @@ Options_Autoskip_Handle:
 	rts
 
 @normal:
-	moveq	#0,d0
-	move.b	OptionsBits,d0
-	lsr.b	#1,d0
-	andi.b	#%11, d0
-	btst	#iLeft, Joypad|Press		; is left pressed?
-	bne.s	@selectPrevious			; if yes, branch
-	addq.b	#1, d0				; use next mode
-	bra.s	@finalize
-@selectPrevious:
-	subq.b	#1, d0				; use previous mode
-@finalize:
-	andi.b	#%11, d0			; wrap modes
-	move.b	d0,d1
-	lsl.b	#1,d0
-	
+	; Skip Uberhub and Skip Story Screens used to be two separate options.
+	; However, nobody ever had a reason to use them separately.
+	; Merged them into one option for simplicity.
+	moveq	#%110,d0
+	and.b	OptionsBits, d0
+	beq.s	@enable
 	bclr	#1,OptionsBits
 	bclr	#2,OptionsBits
-	or.b	d0,OptionsBits
+	bra.s	@redraw
+@enable	
+	bset	#1,OptionsBits
+	bset	#2,OptionsBits
 
-	st.b	Options_RedrawCurrentItem
-
-	tst.b	d1				; check if current selection is OFF
-	eori.b	#%00100,ccr			; invert Z flag (play off sound for off, on for anything else)
+@redraw:
 	bsr	Options_PlayRespectiveToggleSound
-
+	st.b	Options_RedrawCurrentItem
 @ret:	rts
 
 

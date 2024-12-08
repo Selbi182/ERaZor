@@ -2670,7 +2670,8 @@ Music8C:	include "sound\EK\m46-Boss.asm";incbin	sound\sadv3-bosspinch.bin
 		even
 Music8D:	incbin	sound\EK\m5A-FZIntro.bin
 		even
-Music8E:	incbin	sound\music8D.bin
+;Music8E:	incbin	sound\music8D.bin
+Music8E:	include	"sound\DalekSam\whee-chill.asm"
 		even
 Music8F:	incbin	sound\music8F.bin
 		even

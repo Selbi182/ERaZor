@@ -141,6 +141,10 @@ StoryScreen_BGColors:
 		dc.w	$E02	; after SNP/SAP
 		dc.w	$000	; before ending sequence
 		dc.w	$00E	; after blackout
+		dc.w	$0EE	; after beating Unreal Place without touching any checkpoints
+		dc.w	$0EE	; after beating the blackout challenge in true-BS mode
+		dc.w	$E84	; after beating Unterhub Place
+		dc.w	$0EE	; after beating Unterhub Place without destroying the last Roller
 		even
 
 ; ---------------------------------------------------------------------------
@@ -187,6 +191,7 @@ STS_FadeOutScreen:
 		beq.s	@finalfadeout		; if yes, don't fade out music
 		move.w	#$E0,d0
 		jsr	PlaySound_Special
+		clr.b	(SoundDriverRAM+v_last_bgm).w ; clear previously set level music so it gets restarted properly
 
 @finalfadeout:
 		move.b	#2,VBlankRoutine
@@ -613,7 +618,7 @@ StoryText_Index:
 		dc.l	StoryText_2	; text after beating Night Hill Place
 		dc.l	StoryText_3	; text after beating Special Place
 		dc.l	StoryText_4	; text after beating Ruined Place
-		dc.l	StoryText_5	; text after beating Labyrinth Place
+		dc.l	StoryText_5	; text after beating Labyrinthy Place
 		dc.l	StoryText_6	; text after beating Unreal Place
 		dc.l	StoryText_7	; text after beating Scar Night Place
 		dc.l	StoryText_8	; text after jumping in the ring for the Ending Sequence
@@ -621,6 +626,7 @@ StoryText_Index:
 		dc.l	StoryText_6X	; text after beating Unreal Place without touching any checkpoints
 		dc.l	StoryText_9X	; text after beating the blackout challenge in true-BS mode
 		dc.l	StoryText_Unter	; text after beating Unterhub Place
+		dc.l	StoryText_UnterP; text after beating Unterhub Place without destroying the last Roller
 ; ---------------------------------------------------------------------------
 
 STS_Continue:	ststxt	"~PRESS~START~TO~CONTINUE...~"
@@ -713,7 +719,7 @@ StoryText_4:	; text after beating Ruined Place
 		even
 ; ---------------------------------------------------------------------------
 
-StoryText_5:	; text after beating Labyrinth Place
+StoryText_5:	; text after beating Labyrinthy Place
 		ststxt	"IF ONLY YOU COULD SEE YOUR"
 		ststxt	"FACE RIGHT NOW! PRICELESS!"
 		ststxt_line
@@ -743,11 +749,30 @@ StoryText_Unter: ; text after beating Unterhub Place
 		ststxt	"IT'S A MIRACLE YOU EVEN"
 		ststxt	"MADE IT OUT ALIVE."
 		ststxt_line
-		ststxt	"OH YEAH, AND UH..."
-		ststxt	"EGGMAN WAS THERE, TOO,"
-		ststxt	"I GUESS."
+		ststxt	"EGGMAN WAS THERE,"
+		ststxt	"TOO, I GUESS."
 		ststxt_line
+		ststxt	"THERE'S NO HELPING IT,"
 		ststxt	"YOU'LL NEED MORE POWER!"
+		ststxt	"THE LAST EMERALDS AWAIT..."
+		dc.b	-1
+		even
+
+StoryText_UnterP: ; text after beating Unterhub Place without destroying the last Roller
+		ststxt	"PACIFIST BONUS FUN FACT"
+		ststxt_line
+		ststxt	"I'M SICK AND TIRED OF"
+		ststxt	"PEOPLE COMPLAINING ABOUT"
+		ststxt	"THE LABYRINTH ZONE BOSS,"
+		ststxt	"EVEN THOUGH THE REAL"
+		ststxt	"HORRORS ALREADY CAME IN"
+		ststxt	"SPRING YARD ZONE."
+		ststxt	"SO, THIS STAGE WAS MY WAY"
+		ststxt	"OF VISUALIZING WHAT FIGHTING"
+		ststxt	"THAT BOSS FELT LIKE WHEN"
+		ststxt	"I WAS LIKE SEVEN YEARS OLD."
+		ststxt_line
+		ststxt	"BUT ENOUGH TRAUMA TALK,"
 		ststxt	"THE LAST EMERALDS AWAIT..."
 		dc.b	-1
 		even

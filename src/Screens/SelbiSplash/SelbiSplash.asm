@@ -310,8 +310,11 @@ SelbiSplash_WaitEnd:
 SelbiSplash_LoopEnd:
 		move.b	($FFFFF605).w,d0		; get button presses
 		andi.b	#$F0,d0				; filter A, B, C, or Start
-		tst.b	($FFFFFFAF).w			; are we in the final phase of the screen?
-		beq.s	@notfinal			; if not, branch
+
+		cmpi.w	#5,($FFFFFF7E).w		; did we make it to the "I" yet?
+		blo.s	@notfinal			; if not, branch
+	;	tst.b	($FFFFFFAF).w			; are we in the final phase of the screen?
+	;	beq.s	@notfinal			; if not, branch
 		andi.b	#$80,d0				; filter only Start
 @notfinal:
 		tst.b	d0				; was anything pressed?

@@ -1055,9 +1055,9 @@ Hint_4:
 		boxtxt_pause
 		boxtxt	"WHILE STARTING A NEW"
 		boxtxt	"GAME, HOLD a IN THE"
-		boxtxt	"CASUAL/FRANTIC MENU"
-		boxtxt	"TO ENABLE AUTOSKIP"
-		boxtxt	"AND JUMP RIGHT INTO"
+		boxtxt	"DIFFICULTY SELECT TO"
+		boxtxt	"ENABLE speedrun mode"
+		boxtxt	"AND START RIGHT IN"
 		boxtxt	"night hill place!"
 		boxtxt_next
 

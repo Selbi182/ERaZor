@@ -517,6 +517,10 @@ HubRing_LP:
 		move.w	#$101,($FFFFFE10).w	; set level to LZ2
 		bra.w	RunChapter
 
+HubRing_Unterhub:
+		move.w	#$402,($FFFFFE10).w	; set level to SYZ3
+		bra.w	StartLevel
+
 HubRing_UP:	move.w	#$401,($FFFFFE10).w	; set level to Special Stage 2
 		clr.b	(Blackout).w		; clear blackout special stage flag
 		bra.w	RunChapter
@@ -576,9 +580,6 @@ HubRing_Blackout:
 		move.b	#1,(Blackout).w		; set Blackout Challenge flag
 		bra.w	StartLevel		; good luck
 
-HubRing_Unterhub:
-		move.w	#$402,($FFFFFE10).w	; set level to SYZ3
-		bra.w	StartLevel
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Subroutine to unlock the doors in Uberhub after you finish a normal level
@@ -643,6 +644,9 @@ GTA_Unterhub:
 		moveq	#7,d0			; set Unterhub as beaten
 		bsr	Set_DoorOpen
 		move.b	#$C,(StoryTextID).w	; set number for text to $C
+		btst	#2,($FFFFF7A7).w	; did you kill the Roller?
+		bne.w	RunStory		; if yes, run normal story
+		move.b	#$D,(StoryTextID).w	; use pacifist story instead
 		bra.w	RunStory
 
 GTA_LP:		moveq	#3,d0			; unlock fourth door

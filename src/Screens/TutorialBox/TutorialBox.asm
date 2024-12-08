@@ -1239,11 +1239,11 @@ Hint_7:
 Hint_8:
 		boxtxt	"hedgehog space golf"
 		boxtxt_pause
+		boxtxt	"HOLD A DIRECTION"
+		boxtxt	"WITH THE d_pad AND"
 		boxtxt	"MASH THE c BUTTON"
-		boxtxt	"AND CONTROL YOUR"
-		boxtxt	"DIRECTION WITH THE"
-		boxtxt	"d_pad TO HOP AND"
-		boxtxt	"DASH IN MID-AIR LIKE"
+		boxtxt	"TO PRECISELY DASH"
+		boxtxt	"IN MID-AIR LIKE"
 		boxtxt	"A GOLF BALL!"
 		boxtxt_pause
 
@@ -1261,15 +1261,14 @@ Hint_8:
 
 ;		 --------------------
 Hint_9:
-		boxtxt	"og anti-gravity"
+		boxtxt	"classic anti-grav"
 		boxtxt_pause
 		boxtxt	"HEDGEHOG SPACE GOLF"
-		boxtxt	"ISN'T YOUR THING?"
-		boxtxt_line
-		boxtxt	"TRY HOLDING a TO"
-		boxtxt	"INVERT GRAVITY LIKE"
-		boxtxt	"IN THE GOOD DAYS!"
-		boxtxt_pause
+		boxtxt	"ALSO COMES WITH THE"
+		boxtxt	"BONUS ABILITY TO"
+		boxtxt	"INVERT GRAVITY"
+		boxtxt	"BY HOLDING a!"
+		boxtxt_next
 
 		dc.b	_frantic
 		boxtxt	"    frantic mode"

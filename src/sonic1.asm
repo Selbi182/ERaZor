@@ -10911,6 +10911,9 @@ Obj3F_Main2:
 
 		bsr	RandomDirection
 
+		cmpi.b	#3,($FFFFFE10).w	; is this an SLZ stage?
+		beq.s	@lowprio		; if yes, always use low prio
+
 		cmpi.w	#$402,($FFFFFE10).w	; are we in Unterhub?
 		bne.s	@notunterhub		; if not, branch
 		subi.w	#$380,obVelY(a0)	; move explosions up
@@ -29019,7 +29022,7 @@ FixLevel:
 FixCamera:
 		moveq	#0, d0
 		move.l	d0, ($FFFFF73A).w	; clear camera shifts
-		move.b	d0, (CameraShake).w	; clear camera shaking
+	;	move.b	d0, (CameraShake).w	; clear camera shaking
 
 		;moveq	#0,d0			-- OPTIMIZED OUT
 		move.w	($FFFFD008).w,d0	; load Sonic's X-location into d0
@@ -30277,9 +30280,11 @@ locret_135A2:
 ; Subroutine controlling the behavior when touching a Star Agony Place wall.
 ; INPUT:   (a4) = floor angle
 ; ---------------------------------------------------------------------------
-SAPBuzzWire_BounceSpeed = $B00
+SAPBuzzWire_BounceSpeed = $E00
+SAPBuzzWire_FlashLength = 10
+
 SAPTeleport_Increment = 40
-SAPTeleport_Trigger   = 120
+SAPTeleport_Trigger   = 90
 ; ---------------------------------------------------------------------------
 
 ; SLZHitWall: SAP_TouchWall:
@@ -30307,6 +30312,7 @@ SAP_HitWall:
 		bset	#1,obStatus(a0) 		; in air
 		bset	#2,obStatus(a0) 		; rolling
 		bclr	#3,obStatus(a0)			; not standing
+		bclr	#5,obStatus(a0)			; not pushing
 		move.b	#$25,obAnim(a0)			; use inhuman rotate animation
 		move.b	#2,obRoutine(a0)		; set to normal control
 		move.b	#0,$3C(a0)			; clear jump state
@@ -30318,22 +30324,28 @@ SAP_HitWall:
 		moveq	#0,d0				; clear d0
 		move.b	(a4),d0				; get stored angle from the collision detection that just happened
 		tst.b	d1				; did we touch a left/right wall?
-		bne.s	@bounce				; if yes, branch
-		subi.w	#$40,d0				; adjust for floor/ceiling output angle
+		beq.s	@floorceil			; if not, branch
+		bmi.s	@bounce
+		subi.b	#$40,d0				; adjust for right
+@floorceil:
+		subi.b	#$40,d0				; adjust for floor/ceiling output angle
+
 @bounce:
 		jsr	CalcSine
 		muls.w	#SAPBuzzWire_BounceSpeed,d0
 		muls.w	#SAPBuzzWire_BounceSpeed,d1
 		asr.l	#8,d0
 		asr.l	#8,d1
-		move.w	d1,obVelX(a0)		; set final result to Sonic's X-speed
-		move.w	d0,obVelY(a0)		; set final result to Sonic's Y-speed
-		jsr	SpeedToPos
+		move.w	d1,obVelX(a0)			; set final result to Sonic's X-speed
+		move.w	d0,obVelY(a0)			; set final result to Sonic's Y-speed
+		jsr	SpeedToPos			; immediately apply first batch of new speed
 
 		; some additional visual flair
-		jsr	WhiteFlash2			; do a white flash
-		move.b	#10,($FFFFFFB1).w		; set white flash length (controls air freeze lock)
-		move.w	#$000,($FFFFFB40).w		; but keep the background black
+		jsr	WhiteFlash2			; do a white flash...
+		move.w	#$000,($FFFFFB40).w		; ...but keep the background black
+	;	move.w	#$002,($FFFFFB42).w		; light up the off-limits grid blocks
+
+		move.b	#SAPBuzzWire_FlashLength,($FFFFFFB1).w ; set white flash length (controls air freeze lock)
 		move.b	#0,($FFFFFFB2).w		; no camera lag
 
 		move.w	#$BC,d0
@@ -30345,18 +30357,21 @@ SAP_HitWall:
 		bne.s	@end
 		move.b	#$3F,(a1)
 		move.b	#0,obRoutine(a1)
-		move.b	#1,$30(a1)		; make explosion harmless
-		move.b	#1,$31(a1)		; set mute flag
+		move.b	#1,$30(a1)			; make explosion harmless
+		move.b	#1,$31(a1)			; set mute flag
 		move.w	obX(a0),obX(a1)
 		move.w	obY(a0),obY(a1)
 @end:
+		addq.l	#4,sp				; skip remaining stuff in MdNormal, just in case
 		rts
 ; ---------------------------------------------------------------------------
 
 ; when the actual teleport happens after touching the wall too many times
 SAP_Teleport:
-		clr.b	(CameraShake).w			; reset all camera shake now
+		; cap camera shake after teleporting
+		move.b	#SAPTeleport_Increment,(CameraShake).w
 
+		; reset Sonic
 		move.b	#0,($FFFFF7CC).w		; make sure controls remain unlocked
 		clr.b	($FFFFFFE5).w			; clear air freeze flags
 		clr.w	obVelX(a0)			; clear X speed
@@ -30365,6 +30380,7 @@ SAP_Teleport:
 		move.b	#2,obAnim(a0)			; use rolling animation
 		bset	#1,obStatus(a0)			; set status to be airborne
 
+		addq.w	#1,(FranticDrain).w		; add one ring to drain
 		tst.b	(PlacePlacePlace).w		; PLACE PLACE PLACE?
 		bne.s	@kill				; if yes, git gud
 		frantic					; are we in frantic mode?
@@ -30425,8 +30441,6 @@ SAP_Teleport:
 
 SAP_LoadSonicPal:
 		; load antigrav palette for Sonic
-	;	btst	#7,(OptionsBits).w	; is photosensitive mode enabled?
-	;	bne.s	@nopal			; if yes, don't mess with Sonic
 		moveq	#$11,d0			; load Sonic's antigrav palette line in palette line 2
 		btst	#1,(ScreenFuzz).w	; is piss enabled?
 		beq.s	@loadpal		; if not, branch
@@ -30447,10 +30461,11 @@ SAP_LoadSonicPal:
 
 
 Sonic_Floor:				; XREF: Obj01_MdJump; Obj01_MdJump2
-		tst.b	($FFFFFF77).w
-		beq.s	@normal
-		cmpi.w	#$302,($FFFFFE10).w
-		beq.w	Sonic_Floor_SAP
+		tst.b	($FFFFFF77).w		; is antigrav enabled?
+		beq.s	@normal			; if not, branch
+		cmpi.w	#$302,($FFFFFE10).w	; are we in SAP?
+		beq.w	Sonic_Floor_SAP		; if yes, go to buzzwire wall logic
+
 @normal:
 		move.w	obVelX(a0),d1
 		move.w	obVelY(a0),d2
@@ -30659,11 +30674,14 @@ locret_1379E:
 ; ---------------------------------------------------------------------------
 ; Star Agony Place wall collision detection
 ; ---------------------------------------------------------------------------
+; Like finding a needle in a haystack. If I hadn't been told
+; about Hivebrain's updated disassembly, I would've never
+; been able to find all these subroutine names...
+; ---------------------------------------------------------------------------
 
 Sonic_Floor_SAP:
-		; Like finding a needle in a haystack. If I hadn't been told
-		; about Hivebrain's updated disassembly, I would've never
-		; been able to find all these subroutine names...
+		btst	#0,($FFFFFE05).w	; alternate every frame between checking for walls or for floor/ceiling
+		bne.s	@checkwalls		; this prevents some edge cases where Sonic can get stuck in a wall
 
 		bsr	Sonic_HitFloor		; (Sonic_FindFloor)
 		tst.w	d1			; has Sonic touched the floor?
@@ -30672,23 +30690,29 @@ Sonic_Floor_SAP:
 		bsr	Sonic_DontRunOnWalls	; (Sonic_FindCeiling)
 		tst.w	d1			; has Sonic touched the ceiling?
 		bmi.s	@hitfloorceil		; if yes, wall hit
+		rts
 
+@hitfloorceil:
+		moveq	#0,d1			; floor/ceiling collision flag
+		bra.w	SAP_HitWall		; wall hit
+; ---------------------------------------------------------------------------
+
+@checkwalls:
 		bsr	loc_14FD6 		; (Sonic_FindWallLeft)
 		tst.w	d1			; has Sonic touched the left wall? 
-		bmi.s	@hitwallslr		; if yes, wall hit
+		bmi.s	@hitwallsleft		; if yes, wall hit
 
 		bsr	sub_14E50 		; (Sonic_FindWallRight)
 		tst.w	d1			; has Sonic touched the right wall?
-		bmi.s	@hitwallslr		; if yes, wall hit
-
+		bmi.s	@hitwallsright		; if yes, wall hit
 		rts				; no wall hit
-; ---------------------------------------------------------------------------
 
-@hitfloorceil:	sf	d1			; floor/ceiling collision flag
+@hitwallsleft:	moveq	#-1,d1			; left collision flag
 		bra.w	SAP_HitWall		; wall hit
 
-@hitwallslr:	st	d1			; left/right collision flag
+@hitwallsright:	moveq	#1,d1			; right collision flag
 		bra.w	SAP_HitWall		; wall hit
+
 ; End of function Sonic_Floor_SAP
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
@@ -31207,12 +31231,12 @@ loc_13AFA:
 ; ===========================================================================
 
 SAnim_Push:				; XREF: SAnim_RollJump
-	;	cmpi.w	#$302,($FFFFFE10).w
-	;	bne.s	@cont
-	;	tst.b	($FFFFFF77).w
-	;	beq.s	@cont
-	;	jsr	SAP_HitWall
-;@cont:
+		cmpi.w	#$302,($FFFFFE10).w
+		bne.s	@cont
+		tst.b	($FFFFFF77).w
+		beq.s	@cont
+		jsr	SAP_HitWall		; why would you push a blinking red wall you moron
+@cont:
 		move.w	obInertia(a0),d2	; get Sonic's speed
 		bmi.s	loc_13B1E
 		neg.w	d2

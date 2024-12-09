@@ -11,7 +11,7 @@
 ; MAIN LEVEL CYCLE
 ; Uberhub Level Ring > Chapter Screen > Level > Story Screen > Uberhub
 ; ---------------------------------------------------------------------------
-ResumeFlag	equ	$FFFFF601
+NextGameMode	equ	$FFFFF601
 CurrentChapter	equ	$FFFFFFA7
 StoryTextID	equ	$FFFFFF9E
 ; ---------------------------------------------------------------------------
@@ -45,9 +45,9 @@ ReturnToUberhub_Chapter:
 
 StartLevel:
 	if def(__BENCHMARK__)
-		move.b	#0, GameMode
-		rts
-	else
+		bra.w	ReturnToSegaScreen
+	endif
+
 		move.b	#1,($FFFFFFE9).w	; set fade-out in progress flag
 		clr.w	($FFFFFE30).w		; clear any set level checkpoints
 		clr.w	(RelativeDeaths).w	; clear relative death counter now that we have entered a new level
@@ -67,7 +67,6 @@ StartLevel:
 		; special stage
 		move.b	#$10,(GameMode).w	; set to special stage
 		rts				; return to MainGameLoop
-	endif
 
 
 ; ===========================================================================
@@ -76,19 +75,14 @@ StartLevel:
 ; ---------------------------------------------------------------------------
 
 Start_FirstGameMode:
-		move.b	#0,(GameMode).w		; set first game mode to Sega Screen
+	if def(__WIDESCREEN__)=0 ; always start in the black bars screen in widescreen mode because it has important info
+		bsr	ReturnToSegaScreen	; set first game mode to Sega Screen
 
-		move.b	#2,VBlankRoutine	; set to function 2 in V-blank
-		jsr	DelayProgram		; do V-blank to read joypads
-		btst	#4,($FFFFF604).w	; was B held as we exited?
-		bne.s	@blackbarsscreen	; if yes, show black bars screen again
-
-		tst.b	(ResumeFlag).w		; is this the first time the game is being played?
+		bsr	Check_FirstStart	; is this the first time the game is being played?
 		bne.s	@skip			; if not, go straight to Sega screen
 
 		; Emulator detection to autoskip the screen for known faulty behavior (primarily in Kega)
 		; Inspired by: https://github.com/DevsArchive/genesis-emulator-detector
-	if def(__WIDESCREEN__)=0 ; skip  the skipping screen in widescreen mode because it has the info text
 		lea	VDP_Debug, a0
 		move.w	#1, (a0)		; Write to the VDP debug register (for BlastEm detection)
 		ori.b	#0, d0
@@ -103,24 +97,28 @@ Start_FirstGameMode:
 
 @blackbarsscreen:
 		move.b	#$38,(GameMode).w	; set to Black Bars configuration screen
-
+		clr.b	(NextGameMode).w	; set next game mode to be the Sega Screen
 @skip:
 		rts
 ; ===========================================================================
 
-Exit_BlackBarsScreen:
-		tst.b	(ResumeFlag).w		; is this the first time the game is being played?
-		beq.s	@firststart		; if yes, branch
-		move.b	#$24,(GameMode).w	; we came from the options menu, return to it
-		rts
-
-@firststart:
+ReturnToSegaScreen:
 		move.b	#0,(GameMode).w		; set game mode to Sega Screen
+		rts
+; ===========================================================================
+
+Exit_BlackBarsScreen:
+		move.b	(NextGameMode).w,d0	; get next game mode data
+		clr.b	(NextGameMode).w	; clear stored info now no matter what
+		cmpi.b	#$24,d0			; is next game mode set to be options screen?
+		bne.s	ReturnToSegaScreen	; if not, assume this is the first start of the game
+		move.b	d0,(GameMode).w		; set to options menu
 		rts
 ; ===========================================================================
 
 Exit_SegaScreen:
 		move.b	#$1C,(GameMode).w	; set to Selbi splash screen
+
 		tst.w	($FFFFFFFA).w		; is debug mode enabled?
 		beq.s	@end			; if not, branch
 		btst	#4,($FFFFF604).w	; was B held as we exited?
@@ -135,26 +133,27 @@ Exit_SelbiSplash:
 ; ===========================================================================
 
 Exit_TitleScreen:
-		tst.b	(ResumeFlag).w		; is this the first time the game is being played?
+		bsr	Check_FirstStart	; is this the first time the game is being played?
 		bne.w	ReturnToUberhub_Chapter	; if not, go to Uberhub (and always show chapter screen)
 		
 		; first launch
-		jsr	Options_SetDefaults	; load default options
 		move.b	#0,(CurrentChapter).w	; set chapter to 0 (so screen gets displayed once NHP is entered for the first time)
 		move.b	#$30,(GameMode).w	; for the first time, set to Gameplay Style Screen (which then starts the intro cutscene)
 		rts
 ; ===========================================================================
 
 Exit_GameplayStyleScreen:
-		tst.b	(ResumeFlag).w		; is this the first time the game is being played?
-		beq.s	@firststart		; if yes, branch
+		move.b	(NextGameMode).w,d0	; get next game mode data
+		clr.b	(NextGameMode).w	; clear stored info now no matter what
+		cmpi.b	#$24,d0			; is next game mode set to be options screen?
+		bne.s	@firststart		; if not, assume this is the first start of the game
 
 		frantic				; was the screen exited with frantic enabled?
 		beq.s	@notfrantic		; if not, branch
 		tst.b	(Doors_Frantic).w	; have any frantic levels been beaten yet?
 		bne.s	@notfrantic		; if yes, branch
 		tst.b	(Doors_Casual).w	; have any casual levels been beaten yet?
-		beq.s	@notfrantic		; if not, this tip isn't necessary yet
+		beq.s	@notfrantic		; if NOT, this tip isn't necessary yet
 		jsr	Pal_FadeFrom		; fade out palette to avoid visual glitches
 		jsr	ClearScreen		; clear screen
 		moveq	#$E,d0			; load FZ palette (cause tutorial boxes are built into SBZ)
@@ -168,8 +167,6 @@ Exit_GameplayStyleScreen:
 ; ---------------------------------------------------------------------------	
 
 @firststart:
-		move.b	#1,(ResumeFlag).w	; set resume flag now
-
 		btst	#6,($FFFFF604).w	; was A held as we exited?
 		bne.s	@speedrun		; if yes, branch
 
@@ -205,11 +202,13 @@ Exit_OptionsScreen:
 		cmpi.b	#1,d0			; is destination set to 1?
 		bne.s	@chkbars		; if not, branch
 		move.b	#$30,(GameMode).w	; set to GameplayStyleScreen if we chose that option
+		move.b	#$24,(NextGameMode).w	; return to options menu from there again
 		rts
 @chkbars:
 		cmpi.b	#2,d0			; is destination set to 2?
 		bne.s	@default		; if not, branch
 		move.b	#$38,(GameMode).w	; set to BlackBarsConfigScreen if we chose that option
+		move.b	#$24,(NextGameMode).w	; return to options menu from there again
 		rts
 
 @default:
@@ -265,8 +264,7 @@ Exit_StoryScreen:
 		jsr	TutorialBox_Display	; VLADIK => Display hint
 
 @restartgame:
-	;	bra.w	Start_FirstGameMode	; restart game
-		bra.w	ReturnToUberhub		; 7.1 return to uberhub instead of restarting the full game
+		bra.w	ReturnToUberhub		; return to uberhub, most players will now play with their new toys
 ; ===========================================================================
 
 Exit_CreditsScreen:
@@ -319,8 +317,7 @@ Exit_CreditsScreen:
 		jsr	PlaySound_Special	; briefly play some normal music to reset the Sega chant
 		
 @restartfromcredits:
-		bra.w	Start_FirstGameMode	; restart game from Sega Screen
-
+		bra.w	ReturnToSegaScreen	; restart game from Sega Screen
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -398,6 +395,7 @@ RunChapter:
 		move.b	#1,($FFFFFFE9).w	; set fade-out in progress flag
 
 		jsr	FakeLevelID		; get fake level ID for current level
+		subq.b	#2,d5			; -2 for Uberhub and tutorial
 		tst.b	d5			; did we get a valid ID?
 		bmi.s	@nochapter		; if not, something has gone terribly wrong
 
@@ -519,7 +517,7 @@ HubRing_LP:
 
 HubRing_Unterhub:
 		move.w	#$402,($FFFFFE10).w	; set level to SYZ3
-		bra.w	StartLevel
+		bra.w	RunChapter
 
 HubRing_UP:	move.w	#$401,($FFFFFE10).w	; set level to Special Stage 2
 		clr.b	(Blackout).w		; clear blackout special stage flag
@@ -748,6 +746,11 @@ State_BaseGame_Frantic	= 1
 State_Blackout          = 2
 State_TutorialVisited   = 3
 State_HubEasterVisited  = 4
+; ---------------------------------------------------------------------------
+
+Check_FirstStart:
+		tst.w	(Doors_Casual).w		; check if any levels at all have been beaten yet (.w because frantic comes next)
+		rts
 ; ---------------------------------------------------------------------------
 
 		; d0 = bit we want to test

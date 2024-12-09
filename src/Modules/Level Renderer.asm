@@ -655,19 +655,11 @@ LevelRenderer_DrawLayout_RAMBuffered:
 	move.w  d0, (a1)+                           ; LevelRend_RAM => Save last camera position
 
 	tst.w   d6                                  ; do we have tiles to draw?
-	if def(__DEBUG__)
-		bmi.w   @layer_done                         ; if not, branch
-	else
-		bmi.s   @layer_done                         ; if not, branch
-	endif
+	bmi.w   @layer_done                         ; if not, branch
 
 	; Calculate number of rows to render within this layer ...
 	sub.w   d5, d1                              ; d1 = Y-end - Y-start = Draw height
-	if def(__DEBUG__)
-		bmi.w   @layer_done_cont                    ; if "Draw height" < 0, branch
-	else
-		bmi.s   @layer_done_cont                    ; if "Draw height" < 0, branch
-	endif
+	bmi.w   @layer_done_cont                    ; if "Draw height" < 0, branch
 	lsr.w   #3, d1                              ; d1 = Number of rows to draw
 	subq.w  #1, d1                              ; d1 = Number of rows to draw - 1
 	cmp.w   d6, d1                              ; d1 = Min("Number of rows to draw - 1", "Height - 1")

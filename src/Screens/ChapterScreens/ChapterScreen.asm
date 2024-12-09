@@ -8,11 +8,12 @@
 ; 2: Special Frustration
 ; 3: Inhuman Through The Ruins
 ; 4: Wet Pit Of Death
-; 5: Hover Into Your Frustration
-; 6: Watch The Night Explode
-; 7: In The End
+; 5: Something Underneath
+; 6: Hover Into Your Frustration
+; 7: Watch The Night Explode
+; 8: In The End
 ; ---------------------------------------------------------------------------
-Chapters_Total = 7
+Chapters_Total = 8
 Chapters_TestAll = 0
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
@@ -166,6 +167,7 @@ CS_ChapterArt:
 		dc.l	ArtKospM_Chapter5
 		dc.l	ArtKospM_Chapter6
 		dc.l	ArtKospM_Chapter7
+		dc.l	ArtKospM_Chapter8
 ; ===========================================================================
 
 CS_LoadChapterMaps:
@@ -190,6 +192,7 @@ CS_ChapterMaps:
 		dc.l	MapEni_Chapter5
 		dc.l	MapEni_Chapter6
 		dc.l	MapEni_Chapter7
+		dc.l	MapEni_Chapter8
 ; ===========================================================================
 		
 CS_LoadChapterPal:
@@ -212,6 +215,7 @@ CS_ChapterPal:
 		dc.l	Pal_Chapter5
 		dc.l	Pal_Chapter6
 		dc.l	Pal_Chapter7
+		dc.l	Pal_Chapter8
 
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
@@ -369,6 +373,8 @@ ArtKospM_Chapter6:	incbin	"Screens/ChapterScreens/ChapterFiles/Tiles_Chapter6.ko
 		even
 ArtKospM_Chapter7:	incbin	"Screens/ChapterScreens/ChapterFiles/Tiles_Chapter7.kospm"
 		even
+ArtKospM_Chapter8:	incbin	"Screens/ChapterScreens/ChapterFiles/Tiles_Chapter8.kospm"
+		even
 ; ---------------------------------------------------------------------------
 MapEni_Chapter1:	incbin	"Screens/ChapterScreens/ChapterFiles/Maps_Chapter1.eni"
 		even
@@ -384,6 +390,8 @@ MapEni_Chapter6:	incbin	"Screens/ChapterScreens/ChapterFiles/Maps_Chapter6.eni"
 		even
 MapEni_Chapter7:	incbin	"Screens/ChapterScreens/ChapterFiles/Maps_Chapter7.eni"
 		even
+MapEni_Chapter8:	incbin	"Screens/ChapterScreens/ChapterFiles/Maps_Chapter8.eni"
+		even
 ; ---------------------------------------------------------------------------
 Pal_Chapter1:	incbin	"Screens/ChapterScreens/ChapterFiles/Palette_Chapter1.bin"
 		even
@@ -398,6 +406,8 @@ Pal_Chapter5:	incbin	"Screens/ChapterScreens/ChapterFiles/Palette_Chapter5.bin"
 Pal_Chapter6:	incbin	"Screens/ChapterScreens/ChapterFiles/Palette_Chapter6.bin"
 		even
 Pal_Chapter7:	incbin	"Screens/ChapterScreens/ChapterFiles/Palette_Chapter7.bin"
+		even
+Pal_Chapter8:	incbin	"Screens/ChapterScreens/ChapterFiles/Palette_Chapter8.bin"
 		even
 ; ---------------------------------------------------------------------------
 ArtKospM_OHDIGHZ:	incbin	"Screens/ChapterScreens/ChapterFiles/Tiles_OHDIGHZ.kospm"

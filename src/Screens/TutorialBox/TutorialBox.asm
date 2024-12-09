@@ -520,7 +520,7 @@ _CooldownVal	= 2
 		bsr	InitDraw
 
 @cont:
-		cmpi.b	#A+Start,Joypad|Held	; exactly A+Start held?
+		cmpi.b	#A+B+C,Joypad|Held	; exactly A+B+C held?
 		beq.w	@GotoDisappear		; if yes, quick quit
 
 		move.b	Joypad|Press,d0
@@ -760,6 +760,10 @@ mapchar macro char
 			dc.b	$2A+DH_CharOffset
 		elseif \char = '9'
 			dc.b	_font2, $2A+DH_CharOffset
+		elseif \char = '{'
+			dc.b	$2B+DH_CharOffset
+		elseif \char = '}'
+			dc.b	$2C+DH_CharOffset
 
 		elseif (\char >= 'a') & (\char <= 'z')
 			dc.b	_font2, \char-$20
@@ -816,6 +820,7 @@ Hint_Pre:
 		boxtxt_line
 		dc.b	_delay,10
 		boxtxt	"THE WILDEST JOURNEY"
+		
 		boxtxt	"YOU'LL EVER TAKE"
 		boxtxt	"WITH YOUR FAVORITE"
 		boxtxt	"BLUE HEDGEHOG!"
@@ -866,7 +871,7 @@ Hint_1:
 		boxtxt	" SPIN DASH"
 		boxtxt	" ~ + a/b/c"
 		boxtxt_line
-		boxtxt	" ULTRA PEEL OUT"
+		boxtxt	" MEGASUPER PEELOUT{}"
 		boxtxt	" ^ + a"
 		boxtxt_next
 
@@ -907,6 +912,14 @@ Hint_2:
 		boxtxt_pause
 		boxtxt	"THESE WILL BE YOUR"
 		boxtxt	"BREAD AND BUTTER!"
+		boxtxt_next
+
+		boxtxt	"HITTING AN OBJECT"
+		boxtxt	"WILL ALSO reset THE"
+		boxtxt	"COOLDOWN, SO YOU CAN"
+		boxtxt	"CHAIN MULTIPLE JUMPS"
+		boxtxt	"TOGETHER BEFORE YOU"
+		boxtxt	"HIT THE FLOOR AGAIN!"
 		boxtxt_pause
 
 		dc.b	_frantic
@@ -971,28 +984,37 @@ Hint_4:
 		boxtxt	"YOU'VE COME TO"
 		boxtxt	"THE RIGHT PLACE!"
 		boxtxt_next
-		
-		boxtxt	"   WELCOME TO THE"
-		boxtxt	"easter egg info dump"
-		boxtxt_pause
-		boxtxt	"...BECAUSE OTHERWISE"
-		boxtxt	"THERE'S NO CHANCE"
-		boxtxt	"IN HELL YOU'D EVER"
-		boxtxt	"KNOW THESE WERE IN"
-		boxtxt	"THE GAME."
-		boxtxt_next
+
 
 		boxtxt	"FIRST OF ALL, HERE'S"
 		boxtxt	"A LINK FOR THE FULL"
-		boxtxt	"HACK SOURCE CODE."
+		boxtxt	"SOURCE CODE!"
 		boxtxt_line
 		boxtxt	"erazor:selbi:club"
 		boxtxt_pause
-		boxtxt	"NEXT, SOME SECRETS"
-		boxtxt	"AND CHEATS!"
+		boxtxt	"THIS IS A REDIRECT"
+		boxtxt	"TO THE GITHUB REPO."
 		boxtxt_next
 
+		boxtxt	"ALSO, DID YOU KNOW"
+		boxtxt	"THERE'S A SPECIAL" 
+		boxtxt	"widescreen_optimized"
+		boxtxt	"OF SONIC ERAZOR?" 
+		boxtxt	"GO TO THE SAME URL"
+		boxtxt	"FOR THE DOWNLOAD!"
+		boxtxt_pause
 
+		boxtxt	"AND NOW... HELLO AND"
+		boxtxt	"WELCOME TO THE"
+		boxtxt	"easter egg infodump!"
+		boxtxt_pause
+		boxtxt	"A BUNCH OF HIDDEN"
+		boxtxt	"BUTTON COMBINATIONS,"
+		boxtxt	"RANGING FROM USEFUL"
+		boxtxt	"TO DOWNRIGHT GOOFY."
+		boxtxt_next
+
+		boxtxt_next
 		boxtxt	"true_bs mode"
 		boxtxt_pause
 		boxtxt	"HOLD abc AT ONCE"
@@ -1000,7 +1022,7 @@ Hint_4:
 		boxtxt	"OPTIONS MENU! THIS"
 		boxtxt	"MODE HAS NO RINGS,"
 		boxtxt	"NO CHECKPOINTS, AND"
-		boxtxt	"OTHER STUPID BS."
+		boxtxt	"MORE STUPID CRAP."
 		boxtxt_next
 
 		boxtxt	"adjust black bars"
@@ -1042,16 +1064,7 @@ Hint_4:
 		boxtxt	"CASUAL/FRANTIC."
 		boxtxt_next
 
-
-		boxtxt	"AND LASTLY, FIVE"
-		boxtxt	"TIME-SAVING TRICKS"
-		boxtxt	"FOR SPEEDRUNS, OR"
-		boxtxt	"IF YOU EVER WANT"
-		boxtxt	"TO REPLAY ERAZOR"
-		boxtxt	"AND JUMP RIGHT IN!"
-		boxtxt_next
-
-		boxtxt	"speedrun pro-tip A"
+		boxtxt	"quick new game"
 		boxtxt_pause
 		boxtxt	"WHILE STARTING A NEW"
 		boxtxt	"GAME, HOLD a IN THE"
@@ -1061,41 +1074,33 @@ Hint_4:
 		boxtxt	"night hill place!"
 		boxtxt_next
 
-		boxtxt	"speedrun pro-tip B"
+		boxtxt	"abc skip A"
 		boxtxt_pause
-		boxtxt	"PRESS start TO"
-		boxtxt	"SKIP THE ANIMATION"
-		boxtxt	"WHEN YOU JUMP INTO"
-		boxtxt	"A GIANT RING!"
-		boxtxt_next
-
-		boxtxt	"speedrun pro-tip C"
-		boxtxt_pause
-		boxtxt	"HOLD a + b + c TO"
-		boxtxt	"SKIP LONG CUTSCENES!"
-		boxtxt	"THIS INCLUDES THE"
-		boxtxt	"NUKE, AS WELL AS THE"
-		boxtxt	"WALKING BOMB AND"
-		boxtxt	"CRABMEAT BOSSES."
+		boxtxt	"YOU CAN SKIP MANY OF"
+		boxtxt	"THE SHORT CUTSCENES,"
+		boxtxt	"BY HOLDING a + b + c"
+		boxtxt	"AT ONCE! THIS ALSO"
+		boxtxt	"INCLUDES GIANT RING"
+		boxtxt	"ANIMATIONS."
 		boxtxt_next
 	
-		boxtxt	"speedrun pro-tip D"		
+		boxtxt	"abc skip B"
 		boxtxt_pause
 		boxtxt	"IN CASUAL MODE, YOU"
-		boxtxt	"CAN INSTANTLY SKIP"
-		boxtxt	"ANY SPECIAL STAGE"
-		boxtxt	"WITH a + b + c"
-		boxtxt	"HELD AT ONCE!"
+		boxtxt	"CAN ALSO INSTANTLY"
+		boxtxt	"SKIP A SPECIAL STAGE"
+		boxtxt	"BY HOLDING a + b + c"
+		boxtxt	"AT ONCE!"
 		boxtxt_next
 
-		boxtxt	"speedrun pro-tip E"
+		boxtxt	"abc skip C"
 		boxtxt_pause
-		boxtxt	"GETTING TIRED OF ME?"
-		boxtxt_pause
+		boxtxt	"IF YOU'RE GETTING"
+		boxtxt	"TIRED OF ME..."
 		boxtxt	"YOU CAN SKIP THESE"
 		boxtxt	"SMALL ON-SCREEN"
 		boxtxt	"TEXTBOXES BY HOLDING"
-		boxtxt	"a AND THEN start!"
+		boxtxt	"IN THE SAME MANNER!"
 		boxtxt_next
 
 
@@ -1268,7 +1273,7 @@ Hint_9:
 		boxtxt	"BONUS ABILITY TO"
 		boxtxt	"INVERT GRAVITY"
 		boxtxt	"BY HOLDING a!"
-		boxtxt_next
+		boxtxt_pause
 
 		dc.b	_frantic
 		boxtxt	"    frantic mode"

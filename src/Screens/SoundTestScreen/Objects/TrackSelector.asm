@@ -101,7 +101,10 @@ SoundTest_Obj_TrackSelector:
 
 	lea	SoundTest_DrawText(pc), a4
 
-	SoundTest_DrawFormattedString a4, "%<.b obSTSelectedTrack(a0)>: %<.l (@track_info) str>                        ", 28, #SoundTest_PlaneA_VRAM+24*$80+4
+	move.b	obSTSelectedTrack(a0),d7
+	subi.b	#$80,d7
+
+	SoundTest_DrawFormattedString a4, "%<.b d7>: %<.l (@track_info) str>                        ", 28, #SoundTest_PlaneA_VRAM+24*$80+4
 	SoundTest_DrawFormattedString a4, "%<.l 4(@track_info) str>                                                    ", 52, #SoundTest_PlaneA_VRAM+26*$80+4
 
 	move.w	(sp)+, d7

@@ -191,7 +191,7 @@ Options_TrackAllMistakes_Redraw:
 	btst	#4, OptionsBits2
 	beq.s	@0
 	lea	Options_Str_On(pc), a1
-@0:	Options_PipeString a4, "TRACK ALL MISTAKES         %<.l a1 str>", 30
+@0:	Options_PipeString a4, "COUNT YOUR MISTAKES        %<.l a1 str>", 30
 	rts
 
 

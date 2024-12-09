@@ -4,8 +4,8 @@
 ; SRAM Loading Routine
 ; ---------------------------------------------------------------------------
 ; Format (note, SRAM can only be written to odd addresses):
-; 00 o1 00 o2  00 ch 00 d1  00 d2 00 l1  00 l2 00 r1  00 r2 00 s1  00 s2 00 s3  00 s4 00 cm  00 rs 00 bb  00 mb 00 mg
-;    01    03     05    07     09    0B     0D    0F     11    13     15    17     19    1B     1D    1F     21    23
+; 00 o1 00 o2  00 ch 00 d1  00 d2 00 l1  00 l2 00 r1  00 r2 00 s1  00 s2 00 s3  00 s4 00 cm  00 bb 00 mb  00 mg
+;    01    03     05    07     09    0B     0D    0F     11    13     15    17     19    1B     1D    1F     21
 ;
 ;  o1 = Options Bitset ($FFFFFF92)
 ;  o2 = Options Bitset 2 ($FFFFFF94)
@@ -15,7 +15,6 @@
 ;  r_ = Rings ($FFFFFE20-FFFFFE21)
 ;  s_ = Score ($FFFFFE26-FFFFFE29)
 ;  cm = Complete (Base Game / Blackout challenge) ($FFFFFF93)
-;  rs = Resume Flag (0 first launch / 1 load save game) ($FFFFF601)
 ;  mb = Motion Blur (bit 0 of $FFFFFF91)
 ;  bb = Black Bars Config (0 emu mode / 2 hardware mode) ($FFFFF5D2)
 ;  mg = Magic Number (always set to 182, absence implies no SRAM)
@@ -28,8 +27,7 @@ SRAM_Lives	= 4 + SRAM_Doors ; 2 bytes
 SRAM_Rings	= 4 + SRAM_Lives ; 2 bytes
 SRAM_Score	= 4 + SRAM_Rings ; 4 bytes
 SRAM_Complete	= 8 + SRAM_Score
-SRAM_Resume	= 2 + SRAM_Complete
-SRAM_ScreenFuzz	= 2 + SRAM_Resume
+SRAM_ScreenFuzz	= 2 + SRAM_Complete
 SRAM_BlackBars	= 2 + SRAM_ScreenFuzz
 
 SRAM_Exists	= 2 + SRAM_BlackBars
@@ -73,8 +71,6 @@ SRAMFound:
 
 		move.b	SRAM_Complete(a1),($FFFFFF93).w		; load game beaten state
 
-		move.b	SRAM_Resume(a1),(ResumeFlag).w		; load resume flag
-
 		move.b	SRAM_ScreenFuzz(a1),d0			; load motion blur flag
 		andi.b	#%11,d0					; mask it against the only bits we need
 		move.b	d0,(ScreenFuzz).w			; set motion blur flag
@@ -105,7 +101,6 @@ SRAM_Reset:
 		movep.w	d0,SRAM_Rings(a1)			; clear rings
 		movep.l	d0,SRAM_Score(a1)			; clear score
 		move.b	d0,SRAM_Complete(a1)			; clear option flags
-		move.b	d0,SRAM_Resume(a1)			; clear resume flag
 		move.b	d0,SRAM_ScreenFuzz(a1)			; clear motion blur flag
 		move.b	d0,SRAM_BlackBars(a1)			; clear black bars flag
 	
@@ -158,8 +153,6 @@ SRAM_SaveNow:
 		movep.l	d0,SRAM_Score(a1)			; backup score
 		move.b	($FFFFFF93).w,d0			; move game beaten state to d0
 		move.b	d0,SRAM_Complete(a1)			; backup option flags
-		move.b	(ResumeFlag).w,d0			; move resume flag to d0
-		move.b	d0,SRAM_Resume(a1)			; backup resume flag
 		move.b	(ScreenFuzz).w,d0			; move screen fuzz to d0
 		andi.b	#%11,d0					; mask it against the only bits we need
 		move.b	d0,SRAM_ScreenFuzz(a1)			; backup motion blur flag

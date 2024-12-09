@@ -7,7 +7,7 @@ SME_L9OMt:
 		dc.w SME_L9OMt_E-SME_L9OMt, SME_L9OMt_14-SME_L9OMt	
 		dc.w SME_L9OMt_1F-SME_L9OMt, SME_L9OMt_2F-SME_L9OMt	
 		dc.w SME_L9OMt_3A-SME_L9OMt, SME_L9OMt_40-SME_L9OMt	
-		dc.w SME_L9OMt_4B-SME_L9OMt	
+		dc.w SME_L9OMt_4B-SME_L9OMt, SME_L9OMt_4Bxx-SME_L9OMt
 SME_L9OMt_E:	dc.b 1	
 		dc.b $E0, 6, 0, 0, $F8	
 SME_L9OMt_14:	dc.b 2	
@@ -29,4 +29,9 @@ SME_L9OMt_4B:	dc.b 3
 		dc.b $E0, $A, 0, 6, $E2	
 		dc.b $E0, 6, 0, 0, $FE	
 		dc.b $E0, 6, 0, 0, $E	
+SME_L9OMt_4Bxx:	dc.b 4	
+		dc.b $E0, $A, 0, 6, $E2-6-2
+		dc.b $E0, 6, 0, 0, $FE-7-1	
+		dc.b $E0, 6, 0, 0, $E-8	-1
+		dc.b $E0, 6, 0, 0, $1E-9-1
 		even

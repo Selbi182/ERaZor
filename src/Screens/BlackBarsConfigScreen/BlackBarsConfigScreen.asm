@@ -119,14 +119,21 @@ BlackBarsConfigScreen_MainLoop:
 
 ; ---------------------------------------------------------------
 ; Input Response
+	tst.b	BlackBarsConfig_Exiting		; is exiting flag set?
+	bne.w	@exiting			; if yes, ignore button presses
 
+ if def(__WIDESCREEN__)
 	; pre-text for the widescreen version
 	moveq	#0,d0
 	tst.b	BlackBarsConfig_PreTextActive
-	beq.w	@pretextdone
+	beq.w	@chkbaseheightadjust
 	andi.b	#Start|A|C,Joypad|Press
 	beq.w	BlackBarsConfigScreen_MainLoop
-
+	jsr	Check_FirstStart		; is this the first start of the game?
+	beq.s	@first				; if yes, swap to black bars setup
+	move.b	#1,BlackBarsConfig_Exiting	; otherwise, directly exit the screen to make it less annoying
+	bra.w	BlackBarsConfigScreen_MainLoop
+ @first:
 	VBlank_SetMusicOnly
 	move.w	#$A9,d0
 	jsr	PlaySound_Special
@@ -136,10 +143,7 @@ BlackBarsConfigScreen_MainLoop:
 	move.w	BlackBars.BaseHeight, BlackBars.Height
 	VBlank_UnsetMusicOnly
 	bra.w	BlackBarsConfigScreen_MainLoop
-
-@pretextdone:
-	tst.b	BlackBarsConfig_Exiting		; is exiting flag set?
-	bne.s	@exiting			; if yes, ignore button presses
+ endif
 
 @chkbaseheightadjust:
 	; adjust black bars base height on B + up/down

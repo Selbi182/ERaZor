@@ -106,7 +106,7 @@ CS_ClrObjRam:	move.l	d0,(a1)+
 
 		; load bottom half
 		moveq	#0,d0
-		move.b	($FFFFFFA7).w,d0		; get set chapter ID
+		move.b	(CurrentChapter).w,d0		; get set chapter ID
 		beq.s	@invalid			; first start of the game
 		bmi.s	@invalid			; corrupted
 		cmpi.b	#Chapters_Total,d0		; is ID for some reason set beyond the limit?
@@ -114,7 +114,7 @@ CS_ClrObjRam:	move.l	d0,(a1)+
 		bra.s	@valid				; all good
 @invalid:
 		moveq	#1,d0				; ID is either corrupted or simply the first start. set number for chapter to 1
-		move.b	d0,($FFFFFFA7).w		; also update it in RAM
+		move.b	d0,(CurrentChapter).w		; also update it in RAM
 
 @valid:
 		subq.b	#1,d0				; adjust for 0-based indexing
@@ -130,7 +130,7 @@ CS_ClrObjRam:	move.l	d0,(a1)+
 		; load chapter number object
 		move.b	#4,($FFFFD000).w		; load chapter numbers object (<-- past Selbi, why the fuck did you make this an object???)
 		move.b	#0,($FFFFD000+obRoutine).w	; set to init routine
-		move.b	($FFFFFFA7).w,($FFFFD000+obFrame).w ; set chapter number to frame (first frame in maps is duplicated)
+		move.b	(CurrentChapter).w,($FFFFD000+obFrame).w ; set chapter number to frame (first frame in maps is duplicated)
 		DeleteQueue_Init
 		jsr	ObjectsLoad
 		jsr	BuildSprites
@@ -277,7 +277,7 @@ CS_Loop:
 
 CS_Exit:
 	if Chapters_TestAll=1
-		addq.b	#1,($FFFFFFA7).w	; go to next chapter ID
+		addq.b	#1,(CurrentChapter).w	; go to next chapter ID
 		jmp	ChapterScreen		; reload chapter screen
 	endif
 		jmp	Exit_ChapterScreen	; exit chapter screen

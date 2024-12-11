@@ -111,13 +111,9 @@ CreditsScreen_Loop:
 		beq.w	@finalpage				; if yes, go to custom code
 
 		; update scroll
-		tst.b	($FFFFF604).w				; is any button held?
-		beq.s	@scrollnormal				; if not, branch
-		tst.w	($FFFFFFFA).w				; is debug mode enabled?
-		bra.s	@fast					; if yes, always allow fast forward
-		btst	#2,($FFFFFF95).w			; is this the first time the player has finished the game? (checked through post-credit cinematic mode unlock)
-		bne.s	@scrollnormal				; if not, no fast scrolling
-		bra.s	@fast					; fast forward
+		tst.b	Joypad|Held				; is literally any button held?
+		bne.s	@fast					; if yes, always allow fast forward
+
 @scrollnormal:
 		moveq	#Credits_SpeedSlow,d1			; use slowest speed by default
 		move.w	(Credits_Scroll).w,d0			; get current scroll timer

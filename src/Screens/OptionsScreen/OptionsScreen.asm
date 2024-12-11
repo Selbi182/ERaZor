@@ -128,18 +128,22 @@ OptionsScreen:				; XREF: GameModeArray
 
 		move.b	#Options_Music,d0		; play Options screen music (Spark Mandrill)
 		jsr	PlaySound
+		move.w	#$E3,d0			; regular music speed
+		tst.b	(PlacePlacePlace).w	; is easter egg flag enabled?
+		beq.s	@play			; if not, branch
+		move.w	#$E2,d0			; speed up music
+@play:		jsr	PlaySound_Special
+
 		bsr	Options_LoadPal
 		move.w	#$008,(BGThemeColor).w	; set theme color for background effects
-		clr.b	Options_Exiting
-
 		jsr	BackgroundEffects_Setup
 
+		clr.b	Options_Exiting
 		jsr	Options_InitState
-		bsr	CheckEnable_PlacePlacePlace
 		jsr	Options_IntialDraw
-
 		VBlank_UnsetMusicOnly
 		display_enable
+
 		jsr	Pal_FadeTo
 
 		assert.b VBlank_MusicOnly, eq
@@ -243,25 +247,6 @@ Options_SetDefaults:
 		clr.b	(ScreenFuzz).w
 		rts
 
-; ---------------------------------------------------------------------------
-; PLACE PLACE PLACE easter egg
-; ---------------------------------------------------------------------------
-
-CheckEnable_PlacePlacePlace:
-		cmpi.b	#$70,($FFFFF604).w	; exactly ABC held?
-		bne.s	@noenable		; if not, branch
-		move.b	#1,(PlacePlacePlace).w	; enable PLACE PLACE PLACE
-		bset	#5,(OptionsBits).w	; force-enable frantic mode
-		bclr	#4,(OptionsBits).w	; force-disable nonstop inhuman
-		bclr	#1,(OptionsBits).w	; force-enable story screens
-		bclr	#5,(OptionsBits2).w	; force-disable space golf
-
-@noenable:
-		move.w	#$E3,d0			; regular music speed
-		tst.b	(PlacePlacePlace).w	; is easter egg flag enabled?
-		beq.s	@play			; if not, branch
-		move.w	#$E2,d0			; speed up music
-@play:		jmp	PlaySound_Special
 ; ===========================================================================
 
 

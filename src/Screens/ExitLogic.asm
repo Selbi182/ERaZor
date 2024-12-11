@@ -3,17 +3,13 @@
 ; Screen Exit Logic and Game Progress Coordination
 ; ---------------------------------------------------------------------------
 ; BOOT
-; Sega Screen > Selbi Screen > Title Screen > GameplayStyleScreen/Chapter Screen
+; (Black Bars Screen) > Sega Screen > Selbi Screen > Title Screen > GameplayStyleScreen or Uberhub
 ; 
 ; FIRST START
 ; GameplayStyleScreen > One Hot Day... > Story Screen > Uberhub > NHP Ring > Chapter Screen > NHP
 ; 
 ; MAIN LEVEL CYCLE
 ; Uberhub Level Ring > Chapter Screen > Level > Story Screen > Uberhub
-; ---------------------------------------------------------------------------
-NextGameMode	equ	$FFFFF601
-CurrentChapter	equ	$FFFFFFA7
-StoryTextID	equ	$FFFFFF9E
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
 
@@ -48,6 +44,8 @@ StartLevel:
 		bra.w	ReturnToSegaScreen
 	endif
 
+		jsr	SRAM_SaveNow		; save our progress now
+
 		move.b	#1,($FFFFFFE9).w	; set fade-out in progress flag
 		clr.w	($FFFFFE30).w		; clear any set level checkpoints
 		clr.w	(RelativeDeaths).w	; clear relative death counter now that we have entered a new level
@@ -79,7 +77,7 @@ Start_FirstGameMode:
 		bsr	ReturnToSegaScreen	; set first game mode to Sega Screen
 
 		bsr	Check_FirstStart	; is this the first time the game is being played?
-		bne.s	@skip			; if not, go straight to Sega screen
+		beq.s	@skip			; if not, go straight to Sega screen
 
 		; Emulator detection to autoskip the screen for known faulty behavior (primarily in Kega)
 		; Inspired by: https://github.com/DevsArchive/genesis-emulator-detector
@@ -92,12 +90,11 @@ Start_FirstGameMode:
 		cmpi.w	#-1, d0			; Did it return -1?
 		beq.w	@skip			; If so, then Kega Fusion has been detected
 		cmpi.w	#1, d0			; Did it return what it was last written?
-		beq.w	@skip			; If so, then an old version of BlastEm has been detected
+		beq.s	@skip			; If so, then an old version of BlastEm has been detected
 	endif
 
-@blackbarsscreen:
 		move.b	#$38,(GameMode).w	; set to Black Bars configuration screen
-		clr.b	(NextGameMode).w	; set next game mode to be the Sega Screen
+		move.b	#0,(CarryOverData).w	; set next game mode to be Sega screen
 @skip:
 		rts
 ; ===========================================================================
@@ -108,11 +105,10 @@ ReturnToSegaScreen:
 ; ===========================================================================
 
 Exit_BlackBarsScreen:
-		move.b	(NextGameMode).w,d0	; get next game mode data
-		clr.b	(NextGameMode).w	; clear stored info now no matter what
-		cmpi.b	#$24,d0			; is next game mode set to be options screen?
-		bne.s	ReturnToSegaScreen	; if not, assume this is the first start of the game
-		move.b	d0,(GameMode).w		; set to options menu
+		tst.b	(CarryOverData).w	; is next game mode set to be options screen?
+		beq.s	ReturnToSegaScreen	; if not, assume this is the first start of the game
+		clr.b	(CarryOverData).w	; clear carried-over data now no matter what
+		move.b	#$24,(GameMode).w	; set to options menu
 		rts
 ; ===========================================================================
 
@@ -134,7 +130,7 @@ Exit_SelbiSplash:
 
 Exit_TitleScreen:
 		bsr	Check_FirstStart	; is this the first time the game is being played?
-		bne.w	ReturnToUberhub_Chapter	; if not, go to Uberhub (and always show chapter screen)
+		beq.w	ReturnToUberhub_Chapter	; if not, go to Uberhub (and always show chapter screen)
 		
 		; first launch
 		move.b	#0,(CurrentChapter).w	; set chapter to 0 (so screen gets displayed once NHP is entered for the first time)
@@ -143,17 +139,21 @@ Exit_TitleScreen:
 ; ===========================================================================
 
 Exit_GameplayStyleScreen:
-		move.b	(NextGameMode).w,d0	; get next game mode data
-		clr.b	(NextGameMode).w	; clear stored info now no matter what
-		cmpi.b	#$24,d0			; is next game mode set to be options screen?
-		bne.s	@firststart		; if not, assume this is the first start of the game
+		bsr	CheckEnable_PlacePlacePlace ; see if PLACE PLACE PLACE
 
+		tst.b	(CarryOverData).w	; is next game mode set to be options screen?
+		beq.s	@firststart		; if not, assume this is the first start of the game
+		clr.b	(CarryOverData).w	; clear carried-over data now no matter what
+
+		tst.b	(PlacePlacePlace).w	; is true-BS mode active?
+		bne.s	@showhint		; if yes, always show hint because it's gonna be the stupid text anyway lol
 		frantic				; was the screen exited with frantic enabled?
 		beq.s	@notfrantic		; if not, branch
 		tst.b	(Doors_Frantic).w	; have any frantic levels been beaten yet?
 		bne.s	@notfrantic		; if yes, branch
 		tst.b	(Doors_Casual).w	; have any casual levels been beaten yet?
 		beq.s	@notfrantic		; if NOT, this tip isn't necessary yet
+@showhint:
 		jsr	Pal_FadeFrom		; fade out palette to avoid visual glitches
 		jsr	ClearScreen		; clear screen
 		moveq	#$E,d0			; load FZ palette (cause tutorial boxes are built into SBZ)
@@ -161,7 +161,6 @@ Exit_GameplayStyleScreen:
 		moveq	#$13,d0			; load warning text about revisiting the tutorial for frantic
 		jsr	TutorialBox_Display	; VLADIK => Display hint
 @notfrantic:
-		jsr	SRAM_SaveNow		; save our progress now
 		move.b	#$24,(GameMode).w	; we came from the options menu, return to it
 		rts
 ; ---------------------------------------------------------------------------	
@@ -180,7 +179,6 @@ Exit_GameplayStyleScreen:
 		subq.b	#1,d0
 		bne.s 	@Wait
 
-		jsr	SRAM_SaveNow		; save our progress now
 		bra.w	HubRing_IntroStart	; start the intro cutscene
 ; ---------------------------------------------------------------------------	
 
@@ -190,32 +188,30 @@ Exit_GameplayStyleScreen:
 		bset	#2,(OptionsBits).w	; enable Skip Uberhub
 		move.w	#$D3,d0			; play peelout release sound
 		jsr	PlaySound_Special
-
-		jsr	SRAM_SaveNow		; save our progress now
 		bra.w	HubRing_NHP		; go straight to NHP
 ; ===========================================================================
 
 Exit_OptionsScreen:
-		jsr	SRAM_SaveNow		; save options to SRAM
-
 		; d0 = destination ID
 		cmpi.b	#1,d0			; is destination set to 1?
 		bne.s	@chkbars		; if not, branch
 		move.b	#$30,(GameMode).w	; set to GameplayStyleScreen if we chose that option
-		move.b	#$24,(NextGameMode).w	; return to options menu from there again
+		move.b	#1,(CarryOverData).w	; return to options menu from there again
 		rts
 @chkbars:
 		cmpi.b	#2,d0			; is destination set to 2?
 		bne.s	@default		; if not, branch
 		move.b	#$38,(GameMode).w	; set to BlackBarsConfigScreen if we chose that option
-		move.b	#$24,(NextGameMode).w	; return to options menu from there again
+		move.b	#1,(CarryOverData).w	; return to options menu from there again
 		rts
 
 @default:
+		move.b	#3,(CarryOverData).w	; set that we came from the options menu
 		bra.w	ReturnToUberhub		; return to Uberhub in all other cases
 ; ===========================================================================
 
 Exit_SoundTestScreen:
+		move.b	#2,(CarryOverData).w	; set that we came from the sound test
 		bra.w	ReturnToUberhub		; return to Uberhub
 ; ===========================================================================
 
@@ -233,10 +229,14 @@ Exit_StoryScreen:
 		cmpi.b	#9,d0			; is this the end of the blackout challenge?
 		beq.s	@postblackout		; if yes, branch
 
-		; regular story screen (including intro)
+		; regular story screen
 		btst	#2,(OptionsBits).w	; is Skip Uberhub Place enabled?
 		bne.w	SkipUberhub		; if yes, automatically go to the next level in order
-		bra.w	ReturnToUberhub		; otherwise, always return to Uberhub
+
+		cmpi.b	#1,d0			; is this the intro cutscene?
+		bne.w	ReturnToUberhub		; if not, return to Uberhub
+		move.b	#1,(CarryOverData).w	; set that we came from the intro cutscene
+		bra.w	ReturnToUberhub		; return to Uberhub
 ; ---------------------------------------------------------------------------
 
 @startending:
@@ -268,7 +268,7 @@ Exit_StoryScreen:
 ; ===========================================================================
 
 Exit_CreditsScreen:
-		tst.b	($FFFFFF95).w		; were any post-credits texts set to be displayed?
+		tst.b	(CarryOverData).w	; were any post-credits texts set to be displayed?
 		beq.w	@restartfromcredits	; if not, branch
 
 		jsr	Pal_FadeFrom		; fade out palette
@@ -283,31 +283,31 @@ Exit_CreditsScreen:
 		moveq	#$E,d0			; load FZ palette (cause tutorial boxes are built into SBZ)
 		jsr	PalLoad2		; load palette
 
-		btst	#0,($FFFFFF95).w
+		btst	#0,(CarryOverData).w
 		beq.s	@checkfrantic
 		moveq	#$F,d0			; load text after beating the game in casual mode
 		jsr	TutorialBox_Display	; VLADIK => Display hint
 		bra.s	@checkcinematicunlock
 @checkfrantic:
-		btst	#1,($FFFFFF95).w
+		btst	#1,(CarryOverData).w
 		beq.s	@checkcinematicunlock
 		moveq	#$10,d0			; load text after beating the game in frantic mode
 		jsr	TutorialBox_Display	; VLADIK => Display hint
 
 @checkcinematicunlock:
-		btst	#2,($FFFFFF95).w
+		btst	#2,(CarryOverData).w
 		beq.s	@checkmotionblur
 		moveq	#$14,d0			; load Cinematic Mode unlock text
 		jsr	TutorialBox_Display	; VLADIK => Display hint
 
 @checkmotionblur:
-		btst	#3,($FFFFFF95).w
+		btst	#3,(CarryOverData).w
 		beq.s	@checkblackout
 		moveq	#$15,d0			; load motion blur unlock text
 		jsr	TutorialBox_Display	; VLADIK => Display hint
 
 @checkblackout:
-		btst	#4,($FFFFFF95).w
+		btst	#4,(CarryOverData).w
 		beq.s	@restartfromcredits
 		move.b	#$E0,d0
 		jsr	PlaySound_Special	; fade out music to set the atmosphere
@@ -376,7 +376,7 @@ Exit_EndingSequence:
 		bset	#4,d1			; load Blackout Challenge teaser text
 
 @finish:
-		move.b	d1,($FFFFFF95).w	; set which texts to display after the credits
+		move.b	d1,(CarryOverData).w	; set which texts to display after the credits
  
 		jsr	SRAM_SaveNow		; save now
 		jsr	Pal_CutToBlack		; fill remaining palette to black for a smooth transition
@@ -415,24 +415,20 @@ RunChapter:
 		btst	#1,(OptionsBits).w	; is "Skip Story Screens" enabled?
 		bne.s	@nochapter		; if yes, start level straight away
 
-		jsr	SRAM_SaveNow		; save our progress now
 		move.b	#$28,(GameMode).w	; new chapter discovered, run chapters screen
 		rts
 
 @nochapter:
-		jsr	SRAM_SaveNow		; save our progress now
 		bra.w	StartLevel		; start level in $FE10 directly
 ; ===========================================================================
 
 RunStory:
 		btst	#1,(OptionsBits).w	; is "Skip Story Screens" enabled?
 		beq.s	RunStory_Force		; if not, run story as usual
-		jsr	SRAM_SaveNow		; save our progress now
 		move.b	(StoryTextID).w,d0	; copy story ID to d0 (needed for Exit_StoryScreen)
 		bra.w	Exit_StoryScreen	; auto-skip story screen
 
 RunStory_Force:
-		jsr	SRAM_SaveNow		; save our progress now
 		move.b	#$20,(GameMode).w	; start Story Screen
 		rts				; return
 
@@ -543,7 +539,6 @@ HubRing_Escape:
 
 HubRing_IntroStart:
 		move.b	#1,($FFFFFFE9).w	; set fade-out in progress flag
-		bset	#4,(ScreenFuzz).w	; set flag that we came from the intro cutscene (for Uberhub)
 		move.w	#$001,($FFFFFE10).w	; set to intro cutscene (this also controls the start of the intro cutscene itself)
 		move.b	#$28,(GameMode).w	; load chapters screen for intro cutscene ("One Hot Day...")
 		rts				; this is the only text screen not affected by Skip Story Texts
@@ -554,7 +549,14 @@ MiscRing_IntroEnd:
 
 HubRing_Options:
 		st.b	($FFFFFF82).w		; set default selected entry
-		move.b	#$24,(GameMode).w	; load options menu
+
+		tst.b	(PlacePlacePlace).w	; is true-BS mode already enabled?
+		bne.s	@straighttooptions	; if yes, skip gameplay style screen
+		move.b	#$30,(GameMode).w	; load GameplayStyleScreen
+		move.b	#1,(CarryOverData).w	; return to options menu from there again
+		rts
+	@straighttooptions:
+		move.b	#$24,(GameMode).w	; go straight to options
 		rts
 
 HubRing_SoundTest:
@@ -620,8 +622,9 @@ Exit_Level:
 ; ---------------------------------------------------------------------------
 
 GTA_Tutorial:	btst	#2,(OptionsBits).w	; is Skip Uberhub Place enabled?	
-		beq.w	ReturnToUberhub		; if not, return to Uberhub
-		bra.w	HubRing_NHP		; otherwise go straight to NHP
+		bne.w	HubRing_NHP		; if yes, go straight to NHP
+		move.b	#4,(CarryOverData).w	; set that we came from the tutorial
+		bra.w	ReturnToUberhub		; if not, return to Uberhub
 
 GTA_NHPGHP:	moveq	#0,d0			; unlock first door
 		bsr	Set_DoorOpen
@@ -669,10 +672,12 @@ GTA_FP:		moveq	#6,d0			; unlock seventh door (door to the credits)
 		bsr	Set_DoorOpen
 		bsr	Set_TutorialVisited	; set tutorial visited now in case it wasn't already
 		btst	#2,(OptionsBits).w	; is Skip Uberhub Place enabled?		
-		beq.w	ReturnToUberhub		; if not, return to Uberhub
+		beq.s	@fromtutorialring	; if not, branch
 		jsr	Check_AllLevelsBeaten_Current ; has the player beaten all levels?
-		beq.w	ReturnToUberhub		; if not, return to Uberhub as well
-		bra.w	HubRing_Ending		; otherwise go straight to the ending
+		bne.w	HubRing_Ending		; if yes, go straight to the ending
+@fromtutorialring:
+		move.b	#4,(CarryOverData).w	; set that we came from the tutorial
+		bra.w	ReturnToUberhub		; return to Uberhub
 ; ---------------------------------------------------------------------------
 
 GTA_Blackout:	
@@ -682,7 +687,6 @@ GTA_Blackout:
 		bset	#0,($FFFFFFA0).w	; display nonstop inhuman unlock after story text screen
 @alreadybeaten:
 		jsr	Set_BlackoutDone	; you have beaten the blackout challenge, mad respect
-		jsr	SRAM_SaveNow		; save
 		clr.b	(Blackout).w		; clear blackout special stage flag
 		move.b	#9,(StoryTextID).w	; set number for text to 9 (final congratulations)
 		bra.w	RunStory_Force		; show story screen even if they are disabled
@@ -750,6 +754,11 @@ State_HubEasterVisited  = 4
 
 Check_FirstStart:
 		tst.w	(Doors_Casual).w		; check if any levels at all have been beaten yet (.w because frantic comes next)
+		bne.s	@end				; if yes, no need to check for the tutorial
+		bsr	Check_TutorialVisited		; did you at least visit the tutorial yet?
+
+@end:
+		eori.b	#%00100,ccr			; invert Z flag
 		rts
 ; ---------------------------------------------------------------------------
 
@@ -881,8 +890,8 @@ UnlockEverything:
 		bsr	Set_BlackoutDone		; unlock nonstop inhuman
 		bsr	Set_TutorialVisited		; set tutorial visited
 		bsr	Set_HubEasterVisited		; set Uberhub easter egg as visited
-		move.b	#7,(CurrentChapter).w		; set to final chapter
-		rts
+		move.b	#8,(CurrentChapter).w		; set to final chapter
+		jmp	SRAM_SaveNow			; overwrite SRAM
 
 ; cheats called from options screen
 Toggle_BaseGameBeaten_Casual:
@@ -897,8 +906,21 @@ Toggle_BlackoutBeaten:
 		bchg	#State_Blackout,(Progress).w	; to unlock nonstop inhuman
 		rts
 
-; ---------------------------------------------------------------------------
 ; ===========================================================================
+; ---------------------------------------------------------------------------
+; PLACE PLACE PLACE easter egg
+; ---------------------------------------------------------------------------
+
+CheckEnable_PlacePlacePlace:
+		cmpi.b	#A+B+C,Joypad|Held	; exactly ABC held?
+		bne.s	@noenable		; if not, branch
+		move.b	#1,(PlacePlacePlace).w	; enable PLACE PLACE PLACE
+		bset	#5,(OptionsBits).w	; force-enable frantic mode
+		bclr	#4,(OptionsBits).w	; force-disable nonstop inhuman
+		bclr	#5,(OptionsBits2).w	; force-disable space golf
+		bclr	#1,(OptionsBits).w	; force-enable story screens
+		bclr	#2,(OptionsBits).w	; force-disable Skip Uberhub
+@noenable:	rts
 
 
 ; ===========================================================================

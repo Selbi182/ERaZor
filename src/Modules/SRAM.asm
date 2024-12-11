@@ -55,7 +55,7 @@ SRAMFound:
 		move.b	SRAM_Options(a1),(OptionsBits).w	; load options flags
 		move.b	SRAM_Options2(a1),(OptionsBits2).w	; load options 2 flags
 
-		move.b	SRAM_Chapter(a1),($FFFFFFA7).w		; load current chapter
+		move.b	SRAM_Chapter(a1),(CurrentChapter).w		; load current chapter
 
 		movep.w	SRAM_Doors(a1),d0			; load...
 		move.w	d0,(Doors_Casual).w			; ...open doors bitsets (casual and frantic)
@@ -114,7 +114,7 @@ SRAM_Reset:
 ResetGameProgress:
 	KDebug.WriteLine "ResetGameProgress()..."
 	moveq	#0,d0
-	move.b	d0,($FFFFFFA7).w			; clear current chapter
+	move.b	d0,(CurrentChapter).w			; clear current chapter
 	move.w	d0,(Doors_Casual).w			; clear open doors bitsets
 	move.w	d0,($FFFFFE12).w			; clear lives/deaths counter
 	move.w	d0,($FFFFFE20).w			; clear rings
@@ -141,7 +141,7 @@ SRAM_SaveNow:
 		move.b	d0,SRAM_Options(a1)			; backup option flags
 		move.b	(OptionsBits2).w,d0			; move option 2 flags to d0
 		move.b	d0,SRAM_Options2(a1)			; backup option 2 flags
-		move.b	($FFFFFFA7).w,d0			; move current chapter to d0
+		move.b	(CurrentChapter).w,d0			; move current chapter to d0
 		move.b	d0,SRAM_Chapter(a1)			; backup current chapter
 		move.w	(Doors_Casual).w,d0			; move open doors bitset to d0
 		movep.w	d0,SRAM_Doors(a1)			; backup open doors bitset

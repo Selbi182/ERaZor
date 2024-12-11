@@ -349,7 +349,6 @@ SelbiSplash_Next:
 
 SelbiSplash_DisableDebug:
 		jsr	UnlockEverything		; unlock all doors (in casual and frantic) and all bonus options
-		jsr	SRAM_SaveNow			; save
 		
 		move.w	#0,($FFFFFFFA).w	 	; disable debug mode
 		move.b	#$A4,d0				; set skidding sound

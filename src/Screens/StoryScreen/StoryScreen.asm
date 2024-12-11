@@ -12,7 +12,6 @@ STS_Row:		rs.b 1
 STS_Column:		rs.b 1
 STS_CurrentChar:	rs.w 1
 STS_FinalPhase:		rs.b 1
-STS_ScreenID	equ	$FFFFFF9E ; hardcoded because it's fragile
 
 ; general values
 STS_BaseRow = 7
@@ -121,7 +120,7 @@ STS_ClrVram:	move.l	d0,(a6)
 
 		; load BG color
 		moveq	#0,d0
-		move.b	(STS_ScreenID).w,d0
+		move.b	(StoryTextID).w,d0
 		subq.b	#1,d0
 		add.w	d0,d0
 		move.w	StoryScreen_BGColors(pc,d0.w),d0
@@ -187,7 +186,7 @@ STS_FadeOutScreen:
 		bsr	StoryScreen_CenterText	; center text one last time
 		move.b	#16,(STS_FinalPhase).w	; set fadeout time (using a RAM address we don't need at this point anymore) 
 		
-		cmpi.b	#8,(STS_ScreenID).w	; is this the ending sequence?
+		cmpi.b	#8,(StoryTextID).w	; is this the ending sequence?
 		beq.s	@finalfadeout		; if yes, don't fade out music
 		move.w	#$E0,d0
 		jsr	PlaySound_Special
@@ -227,7 +226,7 @@ STS_ExitScreen:
 		bsr	STS_ClearFlags
 
 		moveq	#0,d0
-		move.b	(STS_ScreenID).w,d0	; remember screen ID we came from in d0
+		move.b	(StoryTextID).w,d0	; remember screen ID we came from in d0
 		jmp	Exit_StoryScreen	; return to main source
 ; ===========================================================================
 
@@ -596,7 +595,7 @@ ststxt_line macro
 
 StoryText_Load:
 		moveq	#0,d0				; clear d0
-		move.b	(STS_ScreenID).w,d0 		; get ID for the current text we want to display
+		move.b	(StoryTextID).w,d0 		; get ID for the current text we want to display
 
 		tst.b	(PlacePlacePlace).w		; PLACE PLACE PLACE?
 		beq.s	@normal				; if not, branch

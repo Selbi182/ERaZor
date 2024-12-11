@@ -67,6 +67,7 @@ HBlankHndl:		equ	$FFFFF5FC			; l/w	Jump code for HInt
 HBlankSubW:		equ	$FFFFF5FE			; w	Word offset for HInt routine 
 
 GameMode:		equ	$FFFFF600			; b	Current game mode
+CarryOverData:		equ	$FFFFF601			; b	custom data carried over multiple game modes
 SonicControl:		equ	$FFFFF602			; w
 Joypad:			equ	$FFFFF604			; w
 SMPS_PAL_Timer:		equ	$FFFFF608			; b	Timer for SMPS PAL optimization
@@ -151,12 +152,16 @@ TutorialBoxId		equ	$FFFFFF6E			; b	requested tutorial box id
 
 BossHealth		equ	$FFFFFF75			; b	current health of a boss (not used by all bosses!)
 
+
 Doors_Casual		equ	$FFFFFF8A			; b	bit field for beaten levels in casual
 Doors_Frantic		equ	$FFFFFF8B			; b	bit field for beaten levels in frantic
 ScreenFuzz		equ	$FFFFFF91			; b	enables cinematic screen fuzz
 OptionsBits		equ	$FFFFFF92			; b	bit field for the user options
 Progress		equ	$FFFFFF93			; b	bit field for overall game state (bit 0 - base game // bit 1 - blackout)
 OptionsBits2		equ	$FFFFFF94			; b	second bit field for the user options
+
+StoryTextID		equ	$FFFFFF9E			; b	current story text ID
+CurrentChapter		equ	$FFFFFFA7			; b	current chapter ID
 
 RelativeDeaths		equ	$FFFFFFCA			; w	number of deaths since the player started the current level
 

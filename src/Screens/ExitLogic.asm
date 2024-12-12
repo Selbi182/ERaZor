@@ -168,22 +168,14 @@ Exit_GameplayStyleScreen:
 @firststart:
 		btst	#6,($FFFFF604).w	; was A held as we exited?
 		bne.s	@speedrun		; if yes, branch
-
-		move.w	#$C3,d0			; play giant ring sound
-		jsr	PlaySound_Special	
-		jsr 	WhiteFlash2
-		jsr 	Pal_FadeFrom
-		moveq	#60,d0
-@Wait:		move.b	#2,VBlankRoutine
-		jsr	DelayProgram
-		subq.b	#1,d0
-		bne.s 	@Wait
-
-		bra.w	HubRing_IntroStart	; start the intro cutscene
+		move.b	#1,($FFFFFF84).w
+		move.b	#$24,(GameMode).w
+		st.b	($FFFFFF82).w		; set default selected entry
+		rts
 ; ---------------------------------------------------------------------------	
 
 @speedrun:
-		jsr 	WhiteFlash2
+		jsr 	WhiteFlash
 		bset	#1,(OptionsBits).w	; enable Skip Story Screens
 		bset	#2,(OptionsBits).w	; enable Skip Uberhub
 		move.w	#$D3,d0			; play peelout release sound
@@ -193,6 +185,11 @@ Exit_GameplayStyleScreen:
 
 Exit_OptionsScreen:
 		; d0 = destination ID
+		cmpi.b	#-1,d0			; is destination set to -1?
+		bne.s	@chkgss			; if not, branch
+		bra.w	ReturnToSegaScreen	; game progress was reset, return to Sega Screen
+
+@chkgss:
 		cmpi.b	#1,d0			; is destination set to 1?
 		bne.s	@chkbars		; if not, branch
 		move.b	#$30,(GameMode).w	; set to GameplayStyleScreen if we chose that option
@@ -206,8 +203,24 @@ Exit_OptionsScreen:
 		rts
 
 @default:
+		tst.b	($FFFFFF84).w
+		bne.s	@firststart
 		move.b	#3,(CarryOverData).w	; set that we came from the options menu
 		bra.w	ReturnToUberhub		; return to Uberhub in all other cases
+; ---------------------------------------------------------------------------
+
+@firststart:
+		clr.b	($FFFFFF84).w
+		move.w	#$C3,d0			; play giant ring sound
+		jsr	PlaySound_Special	
+		jsr 	WhiteFlash
+		jsr 	Pal_FadeFrom
+		moveq	#60,d0
+@Wait:		move.b	#2,VBlankRoutine
+		jsr	DelayProgram
+		subq.b	#1,d0
+		bne.s 	@Wait
+		bra.w	HubRing_IntroStart	; start the intro cutscene
 ; ===========================================================================
 
 Exit_SoundTestScreen:
@@ -394,10 +407,10 @@ Exit_EndingSequence:
 RunChapter:
 		move.b	#1,($FFFFFFE9).w	; set fade-out in progress flag
 
-		jsr	FakeLevelID		; get fake level ID for current level
-		subq.b	#2,d5			; -2 for Uberhub and tutorial
+		bsr	FindCurrentChapter	; find the respective chapter for the current level
 		tst.b	d5			; did we get a valid ID?
 		bmi.s	@nochapter		; if not, something has gone terribly wrong
+		addq.b	#1,d5			; chapters are 1-based
 
 		cmpi.w	#$301,($FFFFFE10).w	; set to Scar Night Place?
 		bne.s	@checkid		; if not, branch
@@ -420,6 +433,33 @@ RunChapter:
 
 @nochapter:
 		bra.w	StartLevel		; start level in $FE10 directly
+; ---------------------------------------------------------------------------
+
+FindCurrentChapter:
+		moveq	#-1,d5			; set d5 to -1 (it'll be 0)
+		lea	(@Chapters).l,a1	; set level array index to a1
+@loop:
+		addq.w	#1,d5			; increase d5
+		move.w	(a1)+,d3		; get next level ID and load it into d3
+		bmi.s	@error			; end of the list? quit loop
+		cmp.w	($FFFFFE10).w,d3	; does it match with the current ID?
+		bne.s	@loop			; if not, loop
+		rts
+@error:
+		moveq	#-1,d5			; set d5 to "no result"
+		rts				; otherwise return
+
+@Chapters:	dc.w	$000	; 1 - Night Hill Place
+		dc.w	$300	; 2 - Special Place
+		dc.w	$200	; 3 - Ruined Place
+		dc.w	$101	; 4 - Labyrinthy Place
+		dc.w	$402	; 5 - Unterhub Place
+		dc.w	$401	; 6 - Unreal Place
+		dc.w	$301	; 7 - Scar Night Place
+		dc.w	$502	; 8 - Finalor Place
+		dc.w	-1	; None of the above
+		even
+
 ; ===========================================================================
 
 RunStory:
@@ -556,6 +596,7 @@ HubRing_Options:
 		move.b	#1,(CarryOverData).w	; return to options menu from there again
 		rts
 	@straighttooptions:
+		clr.b	($FFFFFF84).w
 		move.b	#$24,(GameMode).w	; go straight to options
 		rts
 

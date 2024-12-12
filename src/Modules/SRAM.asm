@@ -1,4 +1,3 @@
-
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; SRAM Loading Routine
@@ -69,7 +68,7 @@ SRAMFound:
 		movep.l	SRAM_Score(a1),d0			; load...
 		move.l	d0,($FFFFFE26).w			; ...score
 
-		move.b	SRAM_Complete(a1),($FFFFFF93).w		; load game beaten state
+		move.b	SRAM_Complete(a1),(Progress).w		; load game beaten state
 
 		move.b	SRAM_ScreenFuzz(a1),d0			; load motion blur flag
 		andi.b	#%11,d0					; mask it against the only bits we need
@@ -112,16 +111,52 @@ SRAM_Reset:
 	endif	; def(__MD_REPLAY__)=0
 		
 ResetGameProgress:
-	KDebug.WriteLine "ResetGameProgress()..."
-	moveq	#0,d0
-	move.b	d0,(CurrentChapter).w			; clear current chapter
-	move.w	d0,(Doors_Casual).w			; clear open doors bitsets
-	move.w	d0,($FFFFFE12).w			; clear lives/deaths counter
-	move.w	d0,($FFFFFE20).w			; clear rings
-	move.l	d0,($FFFFFE26).w			; clear score
-	move.b	d0,($FFFFFF93).w			; clear game beaten state
-	rts
+		KDebug.WriteLine "ResetGameProgress()..."
+		moveq	#0,d0
+		move.b	d0,(CurrentChapter).w			; clear current chapter
+		move.w	d0,(Doors_Casual).w			; clear open doors bitsets
+		move.w	d0,($FFFFFE12).w			; clear lives/deaths counter
+		move.w	d0,($FFFFFE20).w			; clear rings
+		move.l	d0,($FFFFFE26).w			; clear score
+		move.b	d0,(Progress).w				; clear game beaten state
+		rts
+; ===========================================================================
 
+SRAM_OptionsMenu_ResetGameProgress:
+		move.b	#1,($A130F1).l				; enable SRAM
+		lea	($200000).l,a1				; base of SRAM
+		moveq	#0,d0					; set d0 to 0
+		move.b	d0,SRAM_Chapter(a1)			; clear current chapter
+		movep.w	d0,SRAM_Doors(a1)			; clear open doors bitset
+		movep.w	d0,SRAM_Lives(a1)			; clear lives/deaths
+		movep.w	d0,SRAM_Rings(a1)			; clear rings
+		movep.l	d0,SRAM_Score(a1)			; clear score
+		move.b	d0,SRAM_Complete(a1)			; clear complete state
+		move.b	#0,($A130F1).l				; disable SRAM
+
+		; reset unlockable options, you cheater
+		bclr	#3,(OptionsBits).w			; disable cinematic mode
+		move.b	d0,(ScreenFuzz).w			; disable visal FX
+		bclr	#4,(OptionsBits).w			; disable space golf
+		bclr	#5,(OptionsBits2).w			; disable true inhuman
+
+		bra	ResetGameProgress			; reset game progress in RAM too
+; ---------------------------------------------------------------------------
+
+SRAM_OptionsMenu_ResetOptions:
+		move.b	#1,($A130F1).l				; enable SRAM
+		lea	($200000).l,a1				; base of SRAM
+		moveq	#0,d0					; set d0 to 0
+		move.b	d0,SRAM_Options(a1)			; clear option flags
+		move.b	d0,SRAM_Options2(a1)			; clear option 2 flags
+		move.b	d0,SRAM_ScreenFuzz(a1)			; clear motion blur flag
+		move.b	d0,SRAM_BlackBars(a1)			; clear black bars flag
+	
+		jsr	Options_SetDefaults			; reset default options
+		move.b	(OptionsBits).w,SRAM_Options(a1)	; ^
+		move.b	(OptionsBits2).w,SRAM_Options2(a1)	; ^
+		move.b	#0,($A130F1).l				; disable SRAM
+		rts
 ; ===========================================================================
 
 SRAM_SaveNow:
@@ -151,7 +186,7 @@ SRAM_SaveNow:
 		movep.w	d0,SRAM_Rings(a1)			; backup rings
 		move.l	($FFFFFE26).w,d0			; move score to d0
 		movep.l	d0,SRAM_Score(a1)			; backup score
-		move.b	($FFFFFF93).w,d0			; move game beaten state to d0
+		move.b	(Progress).w,d0				; move game beaten state to d0
 		move.b	d0,SRAM_Complete(a1)			; backup option flags
 		move.b	(ScreenFuzz).w,d0			; move screen fuzz to d0
 		andi.b	#%11,d0					; mask it against the only bits we need

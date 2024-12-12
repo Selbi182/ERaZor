@@ -8,7 +8,7 @@
 
 ; ---------------------------------------------------------------------------
 
-Options_Music = $86
+Options_Music = $99
 
 Options_DeleteSRAMInitialCount = 5
 
@@ -119,13 +119,15 @@ OptionsScreen:				; XREF: GameModeArray
 		lea	($FFFFD100).w,a0
 		move.b	#2,(a0)			; load ERaZor banner object
 		move.w	#$80+SCREEN_WIDTH/2-2,obX(a0)	; set X-position
-		move.w	#$82,obScreenY(a0)		; set Y-position
+		move.w	#$84,obScreenY(a0)		; set Y-position
 		bset	#7,obGfx(a0)		; make object high plane
 		DeleteQueue_Init
 		jsr	ObjectsLoad
 		jsr	BuildSprites
 		jsr	DeleteQueue_Execute
 
+		tst.b	($FFFFFF84).w
+		bne.s	@firststart
 		move.b	#Options_Music,d0		; play Options screen music (Spark Mandrill)
 		jsr	PlaySound
 		move.w	#$E3,d0			; regular music speed
@@ -133,10 +135,23 @@ OptionsScreen:				; XREF: GameModeArray
 		beq.s	@play			; if not, branch
 		move.w	#$E2,d0			; speed up music
 @play:		jsr	PlaySound_Special
+		bra.s	@cont
 
-		bsr	Options_LoadPal
-		move.w	#$008,(BGThemeColor).w	; set theme color for background effects
+@firststart:
+		vram	$2000
+		lea	VDP_Data,a6
+		lea	(ArtKospM_PixelStars).l,a0
+		jsr	KosPlusMDec_VRAM
+
+		move.b	#$8B,($FFFFD000).w		; load star object
+		move.b	#0,($FFFFD000+obRoutine).w
+		move.w 	#$80+SCREEN_WIDTH/2,($FFFFD000+obX).w		; horizontally center emitter
+		move.w 	#$EC,($FFFFD000+obScreenY).w
+
+@cont:
 		jsr	BackgroundEffects_Setup
+		move.w	#$806,(BGThemeColor).w	; set theme color for background effects
+		bsr	Options_LoadPal
 
 		clr.b	Options_Exiting
 		jsr	Options_InitState
@@ -170,14 +185,13 @@ OptionsScreen_MainLoop:
 		jsr	DeleteQueue_Execute
 		jsr	PLC_Execute
 
+		tst.b	($FFFFFF84).w
+		bne.s	@nobg
 		jsr	BackgroundEffects_Update
+@nobg:
 		jsr	ERZBanner_PalCycle
 		bsr	Options_SelectedLinePalCycle
-
-		tst.b	($FFFFFFB1).w
-		bmi.s	@noflash
-		subq.b	#1,($FFFFFFB1).w
-@noflash	jsr	WhiteFlash_Restore
+		jsr	WhiteFlash_Restore
 
 		move.w	#0,($FFFFF618).w
 		moveq	#0,d0			; no shake
@@ -193,7 +207,7 @@ OptionsScreen_MainLoop:
 		beq.s	@1			; if not, branch
 		add.w	d1,d1
 	@1:
-		add.w	d1,($FFFFF618).w
+		add.w	d1,($FFFFF618).w	; set to VSRAM
 @nocamshake:
 
 		cmp.b	#$24, GameMode				; are we still running Options gamemode?
@@ -223,7 +237,6 @@ Options_InitState:
 		move.b	d0, ($FFFFFF98).w
 		move.w	d0, ($FFFFFFB8).w
 		move.w	#21,($FFFFFF9A).w
-		move.b	#$81,($FFFFFF84).w
 
 		move.b	#Options_DeleteSRAMInitialCount, Options_DeleteSRAMCounter
 
@@ -262,8 +275,8 @@ Options_IntialDraw:
 		lea	@ItemData_Header_Top(pc), a0
 		bsr	Options_RedrawMenuItem_Direct
 
-		lea	@ItemData_Header_Bottom(pc), a0
-		bsr	Options_RedrawMenuItem_Direct
+		;lea	@ItemData_Header_Bottom(pc), a0
+		;bsr	Options_RedrawMenuItem_Direct
 		
 		; Render all interactive menu items
 		bra	Options_RedrawAllMenuItems
@@ -274,12 +287,12 @@ Options_IntialDraw:
 		dc.l	@DrawHeaderR			; redraw handler
 		
 @ItemData_Header_Bottom:
-		dcScreenPos $E000, 23, 2		; start on-screen position
+		dcScreenPos $E000, 24, 2		; start on-screen position
 		dc.l	@DrawHeaderL			; redraw handler
 
 ; ---------------------------------------------------------------------------
 @DrawHeaderR:
-		Options_PipeString a4, '--------------CHANGE-STUFF----------->'
+		Options_PipeString a4, '  <---------------------------------->'
 		rts
 @DrawHeaderL:
 		Options_PipeString a4, '<-------------------------------------'
@@ -313,10 +326,7 @@ Options_HandleUpdate:
 		move.w	d0, ($FFFFFF98).w
 		move.b	d0, ($FFFFFF9A).w
 
-		moveq	#$FFFFFFE0, d0
-		jsr	PlaySound_Special
-
-		moveq	#0,d0			; return to Uberhub
+		moveq	#0,d0				; return to Uberhub by default
 		jmp	Exit_OptionsScreen
 
 

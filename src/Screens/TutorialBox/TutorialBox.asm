@@ -716,7 +716,8 @@ Hints_List:	; note: these IDs are 1-based
 		dc.l	Hint_End_MotionBlurUnlock	; $15
 		dc.l	Hint_End_NonstopInhumanUnlock	; $16
 		dc.l	Hint_9SequenceBreak		; $17
-		dc.l	Hint_Options_CountAllMistakes	; $18
+		dc.l	Hint_Options_Autoskip		; $18
+		dc.l	Hint_Options_CountAllMistakes	; $19
 
 ; ---------------------------------------------------------------
 ; Hints Scripts
@@ -868,11 +869,12 @@ Hint_1:
 
 		boxtxt	"CONTROLS - standing"
 		boxtxt_pause
-		boxtxt	" SPIN DASH"
 		boxtxt	" ~ + a/b/c"
+		boxtxt	" SPIN DASH"
 		boxtxt_line
-		boxtxt	" MEGASUPER PEELOUT{}"
 		boxtxt	" ^ + a"
+		boxtxt	" A SUPER PEEL OUT"
+		boxtxt	" THAT DOESN'T SUCK"
 		boxtxt_next
 
 		boxtxt	"AND TO JUMP, YOU"
@@ -889,7 +891,7 @@ Hint_1:
 		boxtxt	"    UNRELATED TO"
 		boxtxt	"  CONTROLS, BUT AS"
 		boxtxt	" YOU ARE PLAYING IN"
-		boxtxt	"   FRANTIC, A FEW"
+		boxtxt	"  FRANTIC, ALL THE"
 		boxtxt	" MONITORS WILL TELL"
 		boxtxt	"    BONUS HINTS!"
 		boxtxt_next
@@ -925,11 +927,11 @@ Hint_2:
 		dc.b	_frantic
 		boxtxt	"    frantic mode"
 		boxtxt_pause
-		boxtxt	"  TIME TICKS THREE"
-		boxtxt	"   TIMES AS FAST!"
+		boxtxt	"     TIME TICKS"
+		boxtxt	"   TWICE AS FAST!"
 		boxtxt_pause
 		boxtxt	"   THAT'S ROUGHLY"
-		boxtxt	"    five minutes"
+		boxtxt	"   eight  minutes"
 		boxtxt	"  UNTIL TIME OVER."
 		boxtxt_end
 
@@ -1154,7 +1156,7 @@ Hint_FZEscape:
 		boxtxt_pause
 		boxtxt_line
 		boxtxt	"   ...THIS GOES"
-		boxtxt	"       triple"
+		boxtxt	"       double"
 		boxtxt	"     FOR YOU..."
 		boxtxt_end	
 ;		 --------------------
@@ -1304,6 +1306,12 @@ Hint_Easter_Tutorial:
 		boxtxt_pause
 		boxtxt	"GET IN THE RING,"
 		boxtxt	"LOSER!"
+		boxtxt_pause
+
+		dc.b	_frantic
+		boxtxt	"    frantic mode"
+		boxtxt_pause
+		boxtxt	"   YES, EVEN YOU."
 		boxtxt_end
 
 ;		 --------------------
@@ -1387,10 +1395,12 @@ Hint_TutorialConclusion:
 		dc.b	_frantic
 		boxtxt	"    frantic mode"
 		boxtxt_pause
-		boxtxt	"  REMEMBER, YOU CAN"
-		boxtxt	"  ALWAYS GO BACK TO"
-		boxtxt	"   casual MODE IN"
-		boxtxt	"  THE OPTIONS MENU!"
+		boxtxt	"REMEMBER, YOU AREN'T"
+		boxtxt	"  LOCKED INTO THIS"
+		boxtxt	"MODE. YOU CAN SWITCH"
+		boxtxt	"   BACK TO casual"
+		boxtxt	"   AT ANY TIME IN"
+		boxtxt	"    THE options!"
 		boxtxt_end
 
 ;		 --------------------
@@ -1406,8 +1416,10 @@ Hint_Easter_Tutorial_Escape:
 		dc.b	_frantic
 		boxtxt	"    frantic mode"
 		boxtxt_pause
-		boxtxt	"  ...THIS DOESN'T"
-		boxtxt	"  CHANGE ANYTHING."
+		boxtxt	"        ...."
+		boxtxt_pause
+		boxtxt	"    THIS DOESN'T"
+		boxtxt	"  CHANGE ANYTHING!"
 		boxtxt_end
 
 ;		 --------------------
@@ -1469,6 +1481,17 @@ Hint_End_BlackoutTeaser:
 		boxtxt_end
 
 ;		 --------------------
+Hint_Options_Autoskip:
+		boxtxt	"GO STRAIGHT TO THE"
+		boxtxt	"NEXT LEVEL AFTER"
+		boxtxt	"BEATING ONE INSTEAD"
+		boxtxt	"OF RETURNING TO"
+		boxtxt	"0BERHUB PLACE."
+		boxtxt_line
+		boxtxt	"GREAT FOR SPEEDRUNS"
+		boxtxt	"OR REPLAYS!"
+		boxtxt_end
+
 Hint_Options_CountAllMistakes:
 		boxtxt	"GETTING TELEPORTED"
 		boxtxt	"OR HURT WILL GET"
@@ -1478,24 +1501,6 @@ Hint_Options_CountAllMistakes:
 		boxtxt	"DON'T WORRY, THIS IS"
 		boxtxt	"COSMETIC-ONLY TO SEE"
 		boxtxt	"HOW YOU'RE DOING!"
-		boxtxt_next
-
-		; TODO text for autoskip
-		boxtxt	"GO STRAIGHT TO THE"
-		boxtxt	"NEXT LEVEL AFTER"
-		boxtxt	"BEATING ONE INSTEAD"
-		boxtxt	"OF RETURNING TO"
-		boxtxt	"0BERHUB PLACE."
-		boxtxt_line
-		boxtxt	"GREAT FOR SPEEDRUNS"
-		boxtxt	"OR REPLAYS!"
-		boxtxt_next
-
-		; TODO text for flashy lights
-		boxtxt	"DO NOTE THAT"
-		boxtxt	"photosensitive ALSO"
-		boxtxt	"DISABLES VARIOUS"
-		boxtxt	"OTHER EFFECTS!"
 		boxtxt_end
 
 ;		 --------------------

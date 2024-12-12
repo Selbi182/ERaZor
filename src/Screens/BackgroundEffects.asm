@@ -47,7 +47,7 @@ BackgroundEffects_PalCycle:
 		and.w	($FFFFFE0E).w,d0	; get V-blank timer (AND $3)
 		bne.w	@bgpalend
 
-		tst.b	($FFFFFFB9).w
+		tst.b	WhiteFlashCounter	; don't do when white flash is active to prevent fuckery
 		bne.w	@bgpalend
 
 		moveq	#0,d0
@@ -116,80 +116,31 @@ BG_Mask_Colors:
 
 ; Background deformation (the main effect)
 BackgroundEffects_Deformation:
-		moveq	#0,d0
-	
-BackgroundEffects_Deformation2:
-		move.l	d7,-(sp)
-		moveq	#0,d7
 		move.w	($FFFFFE0E).w,d6	; get timer
-		tst.b	d0
-		beq.s	@noadjust
-		move.w	d0,d7
-@noadjust:
+		asr.w	#1,d6
+
 		lea	($FFFFCC00).w,a1
 		move.w	#224-1,d3
-		jsr	RandomNumber
 @scroll:
-		ror.l	#1,d1
-		move.l	d1,d2
-		andi.l	#$001F0000,d2
-		
-		moveq	#0,d0
-		moveq	#0,d4
-		move.w	d6,d0	; get timer
-		swap	d0
+		move.w	d6,d2			; get timer
+		add.w	d3,d2
+
 		btst	#0,d3
-		beq.s	@1
-		neg.l	d0
-@1:
-		swap	d0
-		clr.w	d0
-		add.w	d6,d0 ; scroll everything to the right
-		btst	#0,d5
-		beq.s	@3
-		sub.w	d6,d0 ; scroll everything to the left
-@3:
-		move.w	d0,d4		; copy scroll
-		add.w	d3,d4		; add line index
-		subi.w	#224/2,d4
-		movem.l	d0/d1,-(sp)
-		move.w	d4,d0
-		jsr	CalcSine
-		
-		move.w	d3,d5
-		add.w	d6,d5
-		btst	#7,d5
-		beq.s	@2
-		neg.w	d0
-@2:
-		move.w	d0,d4
-		
-		movem.l	(sp)+,d0/d1
-		add.w	d4,d0
-		swap	d0
-		or.l	d0,d2
-		tst.b	d7
-		beq.s	@bla
-		asr.l	d7,d2
-@bla
-		clr.w	d2
-		swap	d2
+		beq.s	@0
+		neg.w	d2
+		add.w	d6,d2
+@0:
+
+		addi.w	#$20,d2			; manual adjustment cause I fucked up the art import
 		move.w	d2,(a1)+
 		addq.w	#2,a1
 		dbf	d3,@scroll
-
-		; dirty fix for two lines that are not moving properly otherwise
-		move.w	($FFFFCC00+(45*4)).w,($FFFFCC00+(47*4)).w
-		move.w	($FFFFCC00+(173*4)).w,($FFFFCC00+(175*4)).w
-
-		move.l	(sp)+,d7
 		rts
 ; ---------------------------------------------------------------------------
 
 ; V-Scroll
 BackgroundEffects_VScroll:
 		move.w	($FFFFFE0E).w,d1
-		add.w	d1,d1
 		neg.w	d1
 		move.w	d1,($FFFFF616).w	; set plane-A VSRAM (yes, not plane B)
 		rts

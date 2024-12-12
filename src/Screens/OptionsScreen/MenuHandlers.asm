@@ -57,8 +57,12 @@ Options_MenuData:
 	dc.l	Options_NonstopInhuman_Redraw		; redraw handler
 	dc.l	Options_NonstopInhuman_Handle		; update handler
 
-	; Delete save game
+	; Reset options
 	dcScreenPos	$E000, OpBaseY+15, 5			; start on-screen position
+	dc.l	Options_ResetOptions_Redraw		; redraw handler
+	dc.l	Options_ResetOptions_Handle		; update handler
+	; Delete save game
+	dcScreenPos	$E000, OpBaseY+16, 5			; start on-screen position
 	dc.l	Options_DeleteSaveGame_Redraw		; redraw handler
 	dc.l	Options_DeleteSaveGame_Handle		; update handler
 
@@ -204,13 +208,15 @@ Options_TrackAllMistakes_Handle:
 	andi.b	#$FC,d1			; is left, right, A, B, C, or Start pressed?
 	beq.w	@done			; if not, branch
 
-	; TODO hint on A
-	btst	#6,d1				; is specifically A pressed?
-	beq.s	@normal				; if not, branch
-	;moveq	#$E,d0			; load FZ palette (cause tutorial boxes are built into SBZ)
-	;jsr	PalLoad2		; load palette
-	moveq	#$18,d0			; load text after beating the blackout challenge for the first time
+	; hint on A
+	btst	#6,d1			; is specifically A pressed?
+	beq.s	@normal			; if not, branch
+	moveq	#$E,d0			; load FZ palette (cause tutorial boxes are built into SBZ)
+	jsr	PalLoad2		; load palette
+	moveq	#$19,d0
 	jsr	TutorialBox_Display	; VLADIK => Display hint
+	jsr	Options_LoadPal
+	jsr	Pal_FadeTo
 	rts
 
 @normal:
@@ -246,14 +252,15 @@ Options_Autoskip_Handle:
 	andi.b	#$FC,d1				; is left, right, A, B, C, or Start pressed?
 	beq.w	@ret				; if not, branch
 
-	; TODO hint on A
+	; hint on A
 	btst	#6,d1				; is specifically A pressed?
 	beq.s	@normal				; if not, branch
-	;moveq	#$E,d0			; load FZ palette (cause tutorial boxes are built into SBZ)
-	;jsr	PalLoad2		; load palette
-
-	moveq	#$16,d0			; load text after beating the blackout challenge for the first time
-	jsr	TutorialBox_Display	; VLADIK => Display hint
+	moveq	#$E,d0				; load FZ palette (cause tutorial boxes are built into SBZ)
+	jsr	PalLoad2			; load palette
+	moveq	#$18,d0
+	jsr	TutorialBox_Display		; VLADIK => Display hint
+	jsr	Options_LoadPal
+	jsr	Pal_FadeTo
 	rts
 
 @normal:
@@ -320,9 +327,6 @@ Options_FlashyLights_Handle:
 	andi.b	#$FC,d1				; is left, right, A, B, C, or Start pressed?
 	beq.w	@ret				; if not, branch
 
-	tst.b	($FFFFFFB9).w			; is white flash in progress?
-	bne.w	@ret				; if yes, branch
-
 	moveq	#0,d0
 	move.b	OptionsBits,d0
 	lsr.b	#6,d0
@@ -346,16 +350,11 @@ Options_FlashyLights_Handle:
 	bclr	#7,OptionsBits
 	or.b	d0,OptionsBits
 
-	jsr	WhiteFlash3
+	jsr	WhiteFlash
+	move.w	#$C3,d0
+	jsr	PlaySound_Special
 
 	st.b	Options_RedrawCurrentItem
-
-
-	move.l	#%11000000,d1
-	and.b	OptionsBits,d1
-	eori.b	#%00100,ccr			; invert Z flag (play off sound for off, on for anything else)
-	bsr	Options_PlayRespectiveToggleSound
-
 
 @ret:	rts
 
@@ -435,10 +434,8 @@ Options_CameraShake_Handle:
 
 	st.b	Options_RedrawCurrentItem
 
-	moveq	#%1100,d1
-	and.b	OptionsBits2,d1
-	eori.b	#%00100,ccr			; invert Z flag (play off sound for off, on for anything else)
-	bsr	Options_PlayRespectiveToggleSound
+	move.w	#$C4,d0
+	jsr	PlaySound_Special
 
 @ret:	rts
 
@@ -515,6 +512,8 @@ Options_Audio_Handle:
 	jsr	DelayProgram
 	bra.s	@1
 @0:
+	tst.b	($FFFFFF84).w
+	bne.s	@1
 	move.b	#Options_Music,d0
 	jsr	PlaySound
 @1:
@@ -790,7 +789,7 @@ Options_DeleteSaveGame_Redraw:
 	moveq	#0, d0
 	move.b	Options_DeleteSRAMCounter, d0
 	lea	@Str_DeleteSRAMCountDown(pc,d0), a1
-	Options_PipeString a4, "DELETE SAVE GAME         %<.l a1 str>", 30
+	Options_PipeString a4, "RESET GAME PROGRESS      %<.l a1 str>", 30
 	rts
 
 @Str_DeleteSRAMCountDown:
@@ -839,10 +838,70 @@ Options_DeleteSaveGame_Handle:
 	bra.s	@delete_fadeoutloop	; loop
 
 @delete_fadeoutend:
-	move.b	#1,($A130F1).l		; enable SRAM
-	clr.b	($200000+SRAM_Exists).l	; unset the magic number (actual SRAM deletion happens during restart)
-	move.b	#0,($A130F1).l		; disable SRAM
-	jmp	Init			; restart the game
+	jsr	SRAM_SaveNow
+	jsr	SRAM_OptionsMenu_ResetGameProgress ; reset game progress without affecting options
+	moveq	#-1,d0			; return to Sega Screen
+	jmp	Exit_OptionsScreen
+
+
+
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; "DELETE SAVE GAME" redraw function
+; ---------------------------------------------------------------------------
+; INPUT:
+;	a4	= `Options_DrawText_Normal` or `Options_DrawText_Highlighted`
+; ---------------------------------------------------------------------------
+
+Options_ResetOptions_Redraw:
+	moveq	#0, d0
+	move.b	Options_DeleteSRAMCounter, d0
+	lea	@Str_DeleteSRAMCountDown(pc,d0), a1
+	Options_PipeString a4, "RESET OPTIONS            %<.l a1 str>", 30
+	rts
+
+@Str_DeleteSRAMCountDown:
+	dcb.b	Options_DeleteSRAMInitialCount, ' '
+	dcb.b	Options_DeleteSRAMInitialCount, '>'
+	dc.b	0
+	even
+
+; ---------------------------------------------------------------------------
+Options_ResetOptions_Handle:
+	move.b	Joypad|Press,d1		; get button presses
+	andi.b	#$FC,d1			; is left, right, A, B, C, or Start pressed?
+	beq.w	@ret			; if not, return
+
+	subq.b	#1,Options_DeleteSRAMCounter	; sub one from delete counter
+	beq.s	@dodelete			; if we reached zero, rip save file
+	move.w	#$DF,d0				; play Jester explosion sound
+	jsr	PlaySound_Special
+	st.b	Options_RedrawCurrentItem
+@ret	rts
+
+@dodelete:
+	jsr	SRAM_SaveNow
+	jsr	SRAM_OptionsMenu_ResetOptions ; reset options
+
+	ori.b	#30,(CameraShake).w
+	move.b	#0,(CameraShake_Intensity).w
+	jsr	GenerateCameraShake
+	move.w	#0,($FFFFF618).w
+	jsr	WhiteFlash
+
+	move.b	#Options_DeleteSRAMInitialCount, Options_DeleteSRAMCounter
+	jsr	Options_RedrawAllMenuItems
+
+
+	move.b	#$B9,d0			; play explosion sound
+	jsr	PlaySound_Special
+	tst.b	($FFFFFF84).w
+	bne.s	@firststart
+	move.b	#Options_Music,d0
+	jsr	PlaySound
+@firststart:
+	rts
+
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -903,7 +962,12 @@ Options_BlackBarsMode_Handle:
 ; ---------------------------------------------------------------------------
 
 Options_Exit_Redraw:
+	tst.b	($FFFFFF84).w
+	bne.s	@firststart
 	Options_PipeString a4, "   SAVE + EXIT OPTIONS MENU   ", 30
+	rts
+@firststart:
+	Options_PipeString a4, "          START GAME          ", 30
 	rts
 
 ; ---------------------------------------------------------------------------

@@ -32,3 +32,6 @@ Sonic 1 Disassembly UNTOUCHED.lnk
 /src/__CHECKSUM.bat
 /src/__RETROARCH.lnk
 /src/test_build_wide.bat
+/s1Hivebrain OM3
+/src/artkosp/*.png
+*.png

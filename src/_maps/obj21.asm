@@ -31,11 +31,11 @@ Obj21_Score:	dc.b 6
 
 
 Obj21_Rings:	dc.b 4
-		dc.b $F8, $09, $80, $30, $DF	; Rings Counter
+		dc.b $F8, $09, $80, $30, $DD	; Rings Counter
 
-		dc.b $F9, $01, $A0, $06, $01	; R
-		dc.b $F9, $09, $A0, $0A, $09	; ING
-		dc.b $F9, $01, $A0, $00, $1D	; S
+		dc.b $F9, $01, $A0, $06, $FF	; R
+		dc.b $F9, $09, $A0, $0A, $07	; ING
+		dc.b $F9, $01, $A0, $00, $1C	; S
 
 Obj21_AltRings:	dc.b 4
 		dc.b $F8, $09, $C0, $30, $DF	; Rings Counter (Alternate pal 3)

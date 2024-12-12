@@ -163,6 +163,8 @@ OptionsBits2		equ	$FFFFFF94			; b	second bit field for the user options
 StoryTextID		equ	$FFFFFF9E			; b	current story text ID
 CurrentChapter		equ	$FFFFFFA7			; b	current chapter ID
 
+WhiteFlashCounter	equ	$FFFFFFB1			; b	number of remaining frames a white flash is still in progress
+
 RelativeDeaths		equ	$FFFFFFCA			; w	number of deaths since the player started the current level
 
 ExtCamShift		equ	$FFFFFFCE			; w	current signed pixel offset for the extended camera

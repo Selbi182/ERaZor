@@ -93,6 +93,8 @@ GameplayStyleScreen:
 
 		move.b	#$8B,($FFFFD000).w		; load star object
 		move.b	#0,($FFFFD000+obRoutine).w
+		move.w 	#$80+SCREEN_WIDTH/2,($FFFFD000+obX).w		; horizontally center emitter
+		move.w 	#$EC,($FFFFD000+obScreenY).w			; set emitter to top of screen
 
 		bra.s	GSS_MainLoop
 

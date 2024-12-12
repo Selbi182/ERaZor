@@ -79,6 +79,8 @@ CreditsScreen:
 
 		move.b	#$8B,($FFFFD000).w			; load starfield generator
 		move.b	#0,($FFFFD000+obRoutine).w		; set to emitter
+		move.w 	#$80+SCREEN_WIDTH/2,($FFFFD000+obX).w		; horizontally center emitter
+		move.w 	#$EC,($FFFFD000+obScreenY).w			; set emitter to top of screen
 
 		; opening delay to sync the screen to the music and prespawn some stars
 		move.w	#StartDelay,d0
@@ -464,8 +466,24 @@ Credits_Page5:
 		crdtxt	"                    "
 		crdtxt	"                    "
 		crdtxt	"                    "
-	
+
 Credits_Page6:
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"additional graphics "
+		crdtxt	"                    "
+		crdtxt	"and playtesting     "
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"JAVESIKE            "
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"                    "
+		crdtxt	"                    "
+	
+Credits_Page7:
 		crdtxt	"                    "
 		crdtxt	"                    "
 		crdtxt	"additional          "
@@ -481,7 +499,7 @@ Credits_Page6:
 		crdtxt	"                    "
 		crdtxt	"                    "
 
-Credits_Page7:
+Credits_Page8:
 		crdtxt	"                    "
 		crdtxt	"                    "
 		crdtxt	"                    "
@@ -497,7 +515,7 @@ Credits_Page7:
 		crdtxt	"                    "
 		crdtxt	"                    "
 
-Credits_Page8:
+Credits_Page9:
 		crdtxt	"                    "
 		crdtxt	"                    "
 		crdtxt	"                    "
@@ -513,7 +531,7 @@ Credits_Page8:
 		crdtxt	"                    "
 		crdtxt	"                    "
 
-Credits_Page9:
+Credits_Page10:
 		crdtxt	"                    "
 		crdtxt	"                    "
 		crdtxt	"special             "
@@ -529,21 +547,6 @@ Credits_Page9:
 		crdtxt	"                    "
 		crdtxt	"                    "
 
-Credits_Page10:
-		crdtxt	"                    "
-		crdtxt	"a huge thanks to    "
-		crdtxt	"                    "
-		crdtxt	"the erazor 7 squad  "
-		crdtxt	"                    "
-		crdtxt	"                    "
-		crdtxt	"FUZZY               "
-		crdtxt	"                    "
-		crdtxt	"CHAOTIC SOFA        "
-		crdtxt	"                    "
-		crdtxt	"VLADIKCOMPER        "
-		crdtxt	"                    "
-		crdtxt	"AJCOX               "
-		crdtxt	"                    "
 
 Credits_Page11:
 		crdtxt	"                    "

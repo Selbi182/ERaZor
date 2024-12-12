@@ -926,7 +926,7 @@ Deform_SYZ:
 		; extrafast during the Unterhub boss battle, and in reverse
 		cmpi.w	#$402,($FFFFFE10).w
 		bne.s	@notunterhub
-		cmpi.b	#6,($FFFFF742).w
+		cmpi.b	#8,($FFFFF742).w
 		blo.s	@notunterhub
 		btst	#2,($FFFFF7A7).w	; make sure it doesn't happen after the trophy stealing cutscene
 		bne.s	@notunterhub
@@ -1180,7 +1180,7 @@ S_H_ExtendedCamera:
 
 S_H_BuzzIgnore:
 		tst.b	($FFFFF7CD).w		; has Sonic jumped into a giant ring?
-		bne.s	S_H_ResetCamera		; if yes, branch
+		bne.w	S_H_ResetCamera		; if yes, branch
 
 		cmpi.w	#$501,($FFFFFE10).w
 		bne.s	@cont
@@ -1196,10 +1196,14 @@ S_H_BuzzIgnore:
 		tst.b	($FFFFFFAF).w		; is Spindash or Peelout being charged up?
 		bne.s	S_H_PeeloutSpindash	; if yes, branch
 
-		move.w	($FFFFD014).w,d2	; load sonic's ground speed to d2
-		btst	#1,($FFFFD022).w	; is sonic in the air?
-		beq.s	S_H_ChkDirection	; if not, branch
 		move.w	($FFFFD010).w,d2	; load sonic's general speed to d2 instead
+		btst	#1,($FFFFD022).w	; is sonic in the air?
+		bne.s	S_H_ChkDirection	; if not, branch
+		move.w	d2,d3
+		move.w	($FFFFD014).w,d2
+		tst.w	d3
+		bne.s	S_H_ChkDirection	; if not, branch
+		neg.w	d2
 
 S_H_ChkDirection:
 		move.w	d2,d3			; backup speed to d3

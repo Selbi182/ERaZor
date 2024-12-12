@@ -985,7 +985,6 @@ Hint_4:
 		boxtxt	"THE RIGHT PLACE!"
 		boxtxt_next
 
-
 		boxtxt	"FIRST OF ALL, HERE'S"
 		boxtxt	"A LINK FOR THE FULL"
 		boxtxt	"SOURCE CODE!"
@@ -1002,7 +1001,13 @@ Hint_4:
 		boxtxt	"OF SONIC ERAZOR?" 
 		boxtxt	"GO TO THE SAME URL"
 		boxtxt	"FOR THE DOWNLOAD!"
-		boxtxt_pause
+		boxtxt_next
+	if def(__WIDESCREEN__)
+		boxtxt	"...ALTHOUGH IT LOOKS"
+		boxtxt	"LIKE I DON'T NEED TO" 
+		boxtxt	"TELL YOU THAT."
+		boxtxt_next
+	endif
 
 		boxtxt	"AND NOW... HELLO AND"
 		boxtxt	"WELCOME TO THE"
@@ -1010,19 +1015,67 @@ Hint_4:
 		boxtxt_pause
 		boxtxt	"A BUNCH OF HIDDEN"
 		boxtxt	"BUTTON COMBINATIONS,"
-		boxtxt	"RANGING FROM USEFUL"
-		boxtxt	"TO DOWNRIGHT GOOFY."
+		boxtxt	"RANGING FROM HANDY"
+		boxtxt	"TO VERY SILLY."
 		boxtxt_next
 
-		boxtxt_next
-		boxtxt	"true_bs mode"
+
+		boxtxt	"level select"
 		boxtxt_pause
-		boxtxt	"HOLD abc AT ONCE"
-		boxtxt	"WHILE ENTERING THE"
-		boxtxt	"OPTIONS MENU! THIS"
-		boxtxt	"MODE HAS NO RINGS,"
-		boxtxt	"NO CHECKPOINTS, AND"
-		boxtxt	"MORE STUPID CRAP."
+		boxtxt	"AT THE TITLE SCREEN,"
+		boxtxt	"CIRCLE THE d_pad"
+		boxtxt	"A FEW TIMES, THEN"
+		boxtxt	"HOLD a + start!"
+		boxtxt	"PRESS a TO TOGGLE"
+		boxtxt	"CASUAL/FRANTIC."
+		boxtxt_next
+
+		boxtxt	"debug mode"
+		boxtxt_pause
+		boxtxt	"WHEN YOU'RE IN THE"
+		boxtxt	"FINAL PHASE OF THE"
+		boxtxt	"SELBI SCREEN, MASH"
+		boxtxt	"THE abc BUTTONS"
+		boxtxt	"TWENTY TIMES!"
+		boxtxt_next
+
+		boxtxt	"instant new game"
+		boxtxt_pause
+		boxtxt	"WHILE STARTING A NEW"
+		boxtxt	"GAME, HOLD a IN THE"
+		boxtxt	"DIFFICULTY SELECT TO"
+		boxtxt	"ENABLE speedrun mode"
+		boxtxt	"AND START RIGHT IN"
+		boxtxt	"night hill place!"
+		boxtxt_next
+
+		boxtxt	"abc skip - A"
+		boxtxt_pause
+		boxtxt	"YOU CAN SKIP MANY OF"
+		boxtxt	"THE SHORT CUTSCENES,"
+		boxtxt	"BY HOLDING a + b + c"
+		boxtxt	"AT ONCE! THIS ALSO"
+		boxtxt	"INCLUDES GIANT RING"
+		boxtxt	"ANIMATIONS."
+		boxtxt_next
+	
+		boxtxt	"abc skip - B"
+		boxtxt_pause
+		boxtxt	"IN CASUAL MODE, YOU"
+		boxtxt	"CAN ALSO INSTANTLY"
+		boxtxt	"SKIP A SPECIAL STAGE"
+		boxtxt	"BY HOLDING a + b + c"
+		boxtxt	"AT ONCE!"
+		boxtxt_next
+
+		boxtxt	"abc skip - C"
+		boxtxt_pause
+		boxtxt	"IF YOU'RE GETTING"
+		boxtxt	"TIRED OF ME..."
+		boxtxt	"YOU CAN SKIP THESE"
+		boxtxt	"SMALL ON-SCREEN"
+		boxtxt	"TEXTBOXES IN THE"
+		boxtxt	"SAME MANNER!"
 		boxtxt_next
 
 		boxtxt	"adjust black bars"
@@ -1045,62 +1098,14 @@ Hint_4:
 		boxtxt	"RIVETING VERTIGO!"
 		boxtxt_next
 
-		boxtxt	"debug mode"
+		boxtxt	"true_bs mode"
 		boxtxt_pause
-		boxtxt	"WHEN YOU'RE IN THE"
-		boxtxt	"FINAL PHASE OF THE"
-		boxtxt	"SELBI SCREEN, MASH"
-		boxtxt	"THE abc BUTTONS"
-		boxtxt	"TWENTY TIMES!"
-		boxtxt_next
-
-		boxtxt	"level select"
-		boxtxt_pause
-		boxtxt	"HOLD a + start ON"
-		boxtxt	"THE TITLE SCREEN"
-		boxtxt	"AFTER YOU'VE ENABLED"
-		boxtxt	"DEBUG MODE! PRESS a"
-		boxtxt	"IN THERE TO TOGGLE"
-		boxtxt	"CASUAL/FRANTIC."
-		boxtxt_next
-
-		boxtxt	"quick new game"
-		boxtxt_pause
-		boxtxt	"WHILE STARTING A NEW"
-		boxtxt	"GAME, HOLD a IN THE"
-		boxtxt	"DIFFICULTY SELECT TO"
-		boxtxt	"ENABLE speedrun mode"
-		boxtxt	"AND START RIGHT IN"
-		boxtxt	"night hill place!"
-		boxtxt_next
-
-		boxtxt	"abc skip A"
-		boxtxt_pause
-		boxtxt	"YOU CAN SKIP MANY OF"
-		boxtxt	"THE SHORT CUTSCENES,"
-		boxtxt	"BY HOLDING a + b + c"
-		boxtxt	"AT ONCE! THIS ALSO"
-		boxtxt	"INCLUDES GIANT RING"
-		boxtxt	"ANIMATIONS."
-		boxtxt_next
-	
-		boxtxt	"abc skip B"
-		boxtxt_pause
-		boxtxt	"IN CASUAL MODE, YOU"
-		boxtxt	"CAN ALSO INSTANTLY"
-		boxtxt	"SKIP A SPECIAL STAGE"
-		boxtxt	"BY HOLDING a + b + c"
-		boxtxt	"AT ONCE!"
-		boxtxt_next
-
-		boxtxt	"abc skip C"
-		boxtxt_pause
-		boxtxt	"IF YOU'RE GETTING"
-		boxtxt	"TIRED OF ME..."
-		boxtxt	"YOU CAN SKIP THESE"
-		boxtxt	"SMALL ON-SCREEN"
-		boxtxt	"TEXTBOXES BY HOLDING"
-		boxtxt	"IN THE SAME MANNER!"
+		boxtxt	"GO TO THE DIFFICULTY"
+		boxtxt	"SELECT SCREEN. THERE"
+		boxtxt	"HOLD a THEN b THEN c"
+		boxtxt	"IN THAT EXACT ORDER!"
+		boxtxt	"IT'S REALLY HARD."
+		boxtxt	"AND REALLY STUPID."
 		boxtxt_next
 
 
@@ -1377,6 +1382,15 @@ Hint_TutorialConclusion:
 		boxtxt_pause
 		boxtxt	"    AND IN A BIT"
 		boxtxt	"  YOU'LL KNOW WHY."
+		boxtxt_pause
+
+		dc.b	_frantic
+		boxtxt	"    frantic mode"
+		boxtxt_pause
+		boxtxt	"  REMEMBER, YOU CAN"
+		boxtxt	"  ALWAYS GO BACK TO"
+		boxtxt	"   casual MODE IN"
+		boxtxt	"  THE OPTIONS MENU!"
 		boxtxt_end
 
 ;		 --------------------
@@ -1387,6 +1401,13 @@ Hint_Easter_Tutorial_Escape:
 		boxtxt_pause
 		boxtxt	"YOU ARE STILL"
 		boxtxt	"A LOSER."
+		boxtxt_pause
+
+		dc.b	_frantic
+		boxtxt	"    frantic mode"
+		boxtxt_pause
+		boxtxt	"  ...THIS DOESN'T"
+		boxtxt	"  CHANGE ANYTHING."
 		boxtxt_end
 
 ;		 --------------------

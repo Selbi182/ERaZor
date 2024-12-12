@@ -13,7 +13,7 @@
 		dc.w	$00B4, $078C	; LZ 2 (Labyrinthy Place fast forward)
 		dc.w	$0B80, $0000	; lz 4
 
-		dc.w	$01AF+SCREEN_XCORR, $026C	; MZ 1 (Ruined Place)
+		dc.w	$01AF+SCREEN_XCORR, $026C ; MZ 1 (Ruined Place)
 		dc.w	$009C, $0264	; mz 2
 		dc.w	$004F, $000F	; mz 3
 		dc.w	$0080, $00A8	; mz 4
@@ -26,10 +26,10 @@
 		dc.w	$0380, $0060	; SYZ 1 (Uberhub casual)
 		dc.w	$008E, $0030	; SYZ 1 (Uberhub frantic)
 		dc.w	$008E, $0080	; SYZ 3 (Unterhub Place)
-		dc.w	$0278, $0030	; SYZ 1 (Uberhub intro from intro cutscene)
+		dc.w	$0080, $00A8	; syz 4
 
 		dc.w	$0200, $0160	; SBZ 1 (Bomb Machine Cutscene)
-		dc.w	$0180+SCREEN_XCORR, $068C	; SBZ 2 (Tutorial Place)
+		dc.w	$0180+SCREEN_XCORR, $068C ; SBZ 2 (Tutorial Place)
 		dc.w	$0B86, $05AC	; SBZ 3 (Finalor Place)
 		dc.w	$2286, $05AC	; SBZ 3 (Finalor Place fast forward)
 
@@ -37,6 +37,11 @@
 		dc.w	$1130, $026C	; Ending Sequence
 		dc.w	$0080, $00A8	; Null
 		dc.w	$0080, $00A8	; Null
+
+		dc.w	$0278, $0030	; SYZ 1 (Uberhub intro from intro cutscene)
+		dc.w	$0240, $012C	; SYZ 1 (Uberhub intro from sound test)
+		dc.w	$0200, $0234	; SYZ 1 (Uberhub intro from options)
+		dc.w	$0500, $0234	; SYZ 1 (Uberhub intro from tutorial)
 		even
 ; ---------------------------------------------------------------------------
 ; ===========================================================================

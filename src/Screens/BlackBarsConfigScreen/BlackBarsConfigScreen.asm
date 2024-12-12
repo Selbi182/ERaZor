@@ -130,7 +130,7 @@ BlackBarsConfigScreen_MainLoop:
 	andi.b	#Start|A|C,Joypad|Press
 	beq.w	BlackBarsConfigScreen_MainLoop
 	jsr	Check_FirstStart		; is this the first start of the game?
-	beq.s	@first				; if yes, swap to black bars setup
+	bne.s	@first				; if yes, swap to black bars setup
 	move.b	#1,BlackBarsConfig_Exiting	; otherwise, directly exit the screen to make it less annoying
 	bra.w	BlackBarsConfigScreen_MainLoop
  @first:

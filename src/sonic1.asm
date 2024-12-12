@@ -959,7 +959,6 @@ Pause_MainLoop:
 		bsr.s	Pause_Restore		; restore from pause (grayscale palette, etc.)
 		cmpi.w	#$400,($FFFFFE10).w	; are we already in Uberhub?
 		beq.s	@uberhubception		; if yes, branch
-		bclr	#4,(ScreenFuzz).w
 		jmp	ReturnToUberhub		; return to Uberhub from anywhere (needs to be a jump due to range)
 
 @uberhubception:
@@ -1353,7 +1352,7 @@ PalCycle_SYZ:				; XREF: PalCycle
 		tst.b	($FFFFFE11).w		; are we in Uberhub?
 		bne.s	@dopalcycle		; if not, this isn't necessary
 		jsr	Check_FirstStart	; have any levels been beaten yet?
-		beq.s	@dopalcycle		; if not, this isn't necessary
+		bne.s	@dopalcycle		; if not, this isn't necessary
 		move.w	($FFFFF700).w,d1	; get camera X pos
 		cmpi.w	#$01B0,d1		; trophy gallery out of sight to the left?
 		bls.s	@dopalcycle		; if yes, branch
@@ -2707,6 +2706,8 @@ Sega_GotoTitle:
 ; ---------------------------------------------------------------------------
 ; Title	screen
 ; ---------------------------------------------------------------------------
+LevelSelect_DPadCheatCount = 20
+; ---------------------------------------------------------------------------
 
 ; TitleScreen::
 TitleScreen:				; XREF: GameModeArray
@@ -2814,21 +2815,20 @@ Title_SonPalLoop:
 		jsr	DeleteQueue_Execute
 		moveq	#0,d0			; load standard patterns
 		bsr	LoadPLC2
-		move.w	#0,($FFFFFFE4).w
-		move.w	#0,($FFFFFFE6).w
 		VBlank_UnsetMusicOnly
 		display_enable
+
+		move.b	#LevelSelect_DPadCheatCount,($FFFFFFE6).w ; level select cheat counter
 	if QuickLevelSelect=1 
 		if QuickLevelSelect_ID=-1
-		bra.s	LevelSelect_Load
+		 bra.s	LevelSelect_Load
 		endif
 	endif
 		move.b	#$8A,d0		; play title screen music
 		bsr	PlaySound_Special
 		bsr	Pal_FadeTo
-
-
 ; ===========================================================================
+
 Title_MainLoop:
 		addq.w	#3,($FFFFD008).w
 
@@ -2851,14 +2851,32 @@ Title_MainLoop:
 		bsr.w	GenericPalCycle_Red		
 
 		move.b	($FFFFF605).w,d1	; get button presses
+		move.b	d1,d2
 		andi.b	#$B0,d1			; is B, C, or Start pressed?
-		beq.w	Title_MainLoop		; if not, branch
+		bne.s	StartGame		; if yes, start game
+		andi.b	#$0F,d2			; d-pad pressed?
+		beq.w	Title_MainLoop		; if not, loop title screen
+		subq.b	#1,($FFFFFFE6).w	; sub 1 from cheat counter
+		bne.w	Title_MainLoop		; if not, loop title screen
+		move.w	#$B5,d0			; play ring sound
+		jsr	(PlaySound_Special).l	; play it
+		bra.w	Title_MainLoop		; loop title screen
+; ---------------------------------------------------------------------------
 
 StartGame:
-		tst.w	($FFFFFFFA).w		; is debug mode enabled?
-		beq.w	Title_NoLevSel		; if not, branch. quick level select only in dev mode
 		btst	#6,($FFFFF604).w	; is A held?
-		beq.w	Title_NoLevSel		; if not, start game normally
+		beq.s	Title_NoLevSel		; if not, branch
+
+		tst.b	($FFFFFFE6).w		; was level select d-pad cheat enabled?
+		ble.s	LevelSelect_Load	; if yes, load level select
+		tst.w	($FFFFFFFA).w		; is debug mode enabled?
+		bne.s	LevelSelect_Load	; if yes, load level select
+
+Title_NoLevSel:
+		bsr	ERZ_FadeOut		; ERZ fadeout hell yea
+		jmp	Exit_TitleScreen
+; ===========================================================================
+; ---------------------------------------------------------------------------
 
 LevelSelect_Load:
 		move.w	#$E0,d0			; fade out music for level select
@@ -2901,11 +2919,6 @@ LevelSelect_Load:
 		bsr.w	DelayProgram		; ...to clear inputs
 
 		bra.w	LevelSelect		; to go level select loop
-; ===========================================================================
-
-Title_NoLevSel:
-		bsr.s	ERZ_FadeOut		; ERZ fadeout hell yea
-		jmp	Exit_TitleScreen
 ; ===========================================================================
 
 ERZ_FadeOut:
@@ -3761,22 +3774,16 @@ Level_Delay:
 
 		; load Sonic object
 		cmpi.w	#$500,($FFFFFE10).w	; is this the bomb machine cutscene?
-		beq.s	@nosonicload		; if yes, don't load Sonic
-		
-		cmpi.w	#$400,($FFFFFE10).w
-		bne.s	@sonicload
-		cmpi.w	#$0278,($FFFFD008).w
-		bne.s	@sonicload
-		clr.l	($FFFFD010).w
-		bra.s	@nosonicload
+		beq.s	@nosonicload		; if yes, don't load Sonic because he doesn't exist here
+		cmpi.w	#$400,($FFFFFE10).w	; are we in Uberhub?
+		bne.s	@sonicload		; if not, load Sonic
+		jsr	Check_UnterhubFirst	; is Unterhub cutscene currently set to be played?
+		bne.s	@sonicload		; if yes, branch
+		tst.b	(CarryOverData).w	; was a special giant ring spawn location set?
+		bne.s	@nosonicload		; if yes, don't load Sonic
 @sonicload:
 		move.b	#1,($FFFFD000).w	; load Sonic object
 @nosonicload:
-
-		; weed colors lol
-	;	move.w	#$0E0,($FFFFFB38+$80).w
-	;	move.w	#$080,($FFFFFB3A+$80).w
-	;	move.w	#$040,($FFFFFB3C+$80).w
 
 		; the following code is basically just Pal_FadeTo2 but
 		; adjusted to already start displaying the level during the fade-in
@@ -3813,39 +3820,39 @@ Level_Delay:
 		addq.b	#4,($FFFFD124).w ; make	title card move
 		addq.b	#4,($FFFFD164).w ; make	title card move
 
+		; start loc adjustments for Uberhub
+		cmpi.w	#$400,($FFFFFE10).w	; are we in Uberhub?
+		bne.s	Level_StartGame		; if not, branch
+		jsr	Check_UnterhubFirst	; is Unterhub cutscene currently set to be played?
+		bne.s	Level_StartGame		; if yes, branch
+		tst.b	(CarryOverData).w	; was a special giant ring spawn location set?
+		beq.s	Level_StartGame		; if not, branch
 
-		cmpi.w	#$001,($FFFFFE10).w
-		beq.s	Level_StartGame
-		cmpi.w	#$400,($FFFFFE10).w
-		beq.s	@fromintro
-		bclr	#4,(ScreenFuzz).w
-		bra.s	Level_StartGame
+		move.b	#1,($FFFFD000).w	; load Sonic object now
+		move.w	#$1000,($FFFFD010).w	; launch Sonic right
+		move.w	#-$200,($FFFFD012).w	; a bit more airtime
 
-@fromintro:
-		btst	#4,(ScreenFuzz).w 
-		beq.s	Level_StartGame
-		bclr	#4,(ScreenFuzz).w 
-
-		cmpi.w	#$0278,($FFFFD008).w
-		bne.s	Level_StartGame
-		move.w	#$1000,($FFFFD010).w
-		move.w	#-$200,($FFFFD012).w
 		move.w	#$C3,d0			; set giant ring sound
 		jsr	(PlaySound).l		; play it
 		move.w	#$BC,d0			; set dashing sound
 		jsr	(PlaySound_Special).l	; play it
-		jsr	WhiteFlash2
-		move.b	#1,($FFFFD000).w	; load Sonic object
+		jsr	WhiteFlash2		; do a flash
+		move.b	#12,($FFFFFFB2).w	; add some camera lag
 
-		jsr	SingleObjLoad
+		jsr	SingleObjLoad		; load fake giant ring flash object
 		bne.s	Level_StartGame
-		move.b	#$7C,(a1)		; load fake giant ring flash object
+		move.b	#$7C,(a1)
 		move.b	#6,obRoutine(a1)
 		move.w	($FFFFD008).w,obX(a1)
 		move.w	($FFFFD00C).w,obY(a1)
+
+		cmpi.b	#1,(CarryOverData).w	; did we come from the intro cutscene?
+		bne.s	Level_StartGame		; if not, branch
+		move.b	#$25,($FFFFD01C).w	; inhuman spin animation
+
 Level_StartGame:
-	;	move.w	#$8014,($C00004)	; enable horizontal interrupts (normally only enabled in LZ)
-		bclr	#7,(GameMode).w	; clear pre-level sequence flag
+		clr.b	(CarryOverData).w	; clear any remaining carry-over data
+		bclr	#7,(GameMode).w		; clear pre-level sequence flag
 
 		
 ; ---------------------------------------------------------------------------
@@ -5082,6 +5089,7 @@ SS_RemoveAllCustom:
 ; ===========================================================================
 
 SS_SetupFinish:
+		clr.b	(CarryOverData).w	; clear any remaining carry-over data
 		move.w	#0,($FFFFF790).w
 		move.w	#0,($FFFFFE08).w
 		move.w	#1800,($FFFFF614).w
@@ -6146,19 +6154,25 @@ LevSz_StartLoc:				; XREF: LevelSizeLoad
 		
 @chkuberhub:
 		; Uberhub frantic fast spawn
-		cmpi.w	#$400,($FFFFFE10).w	; is level SYZ?
+		cmpi.w	#$400,($FFFFFE10).w	; is this Uberhub place?
 		bne.s 	@load			; if not, branch
-		btst	#4,(ScreenFuzz).w 	; did we exit from the intro cutscene?
-		beq.s	@notintro		; if not, branch
-		addq.w	#3,d1			; use special intro ring start loc
-		bra.s	@load			; skip
 
-	@notintro:
-		jsr	Check_UnterhubFirst	; first Underhub sequence active?
+		jsr	Check_UnterhubFirst	; first Unterhub sequence active?
 		bne.s	@load			; if yes, always go to trophy gallery
+
+		tst.b	(CarryOverData).w	; do we have a giant ring spawn location?
+		beq.s	@notcustom		; if not, branch
+		move.w	#$700,d1		; go to the special Uberhub start locations
+		add.b	(CarryOverData).w,d1	; set custom index from carry-over data
+		subq.w	#1,d1			; offset by -1
+		bra.s	@load			; ignore other Uberhub special spawns
+
+	@notcustom:
 		btst	#4,(OptionsBits).w	; is nonstop inhuman enabled?
+		bne.s	@0			; if yes, branch
+		btst	#5,(OptionsBits2).w	; is nonstop space golf enabled?
 		beq.s	@chkfrantic		; if not, branch
-		jsr	Check_HubEasterVisited	; has the player already visited the easter egg?
+	@0:	jsr	Check_HubEasterVisited	; has the player already visited the easter egg?
 		beq.s	@load			; if not, always go to casual loc as a subtle nudge to the player
 
 	@chkfrantic:
@@ -6181,7 +6195,7 @@ LevSz_StartLoc:				; XREF: LevelSizeLoad
 		lsl.b	#6,d1
 		lsr.w	#4,d1
 		lea	StartLocArray(pc,d1.w),a1 ; load Sonic's start location
-		bra.s	LevSz_SonicPos
+		bra.w	LevSz_SonicPos
 
 ; ---------------------------------------------------------------------------
 ; Sonic	start location array
@@ -7144,7 +7158,6 @@ Resize_SYZ1:
 @chkunterhub:
 		cmpi.w	#$2F0,($FFFFD00C).w	; entered the tube to Unterhub?
 		blo.s	@uberhubend		; if not, branch
-		clr.l	($FFFFF602).w		; clear any remaining button presses
 		clr.w	($FFFFD010).w
 		clr.w	($FFFFD014).w
 
@@ -7281,9 +7294,9 @@ off_71B2:	dc.w Resize_SYZ3main-off_71B2
 
 ; Resize_Unterhub:
 Resize_SYZ3main:
-		move.w	#$21C,($FFFFF726).w	; default boundary bottom
+		move.w	#$260,($FFFFF726).w	; default boundary bottom
 
-		cmpi.w	#$09B0,($FFFFD008).w	; in the arena?
+		cmpi.w	#$09B0+$1A00,($FFFFD008).w	; in the arena?
 		blo.s	locret_71CE		; if not, branch
 		addq.b	#2,($FFFFF742).w
 
@@ -7296,7 +7309,7 @@ Resize_SYZ3main:
 		jsr	SingleObjLoad
 		bne.s	locret_71CE
 		move.b	#$43,(a1)		; load roller enemy
-		move.w	#$10A0,obX(a1)
+		move.w	#$10A0+$1A00,obX(a1)
 		move.w	#$02B2,obY(a1)
 
 locret_71CE:
@@ -7313,7 +7326,7 @@ PLC_Roller:
 Resize_SYZ3loadboss:
 		move.w	#$220,($FFFFF726).w	; bottom boundary in the arena
 
-		cmpi.w	#$1060,($FFFFD008).w	; did we reach the Roller yet?
+		cmpi.w	#$1060+$1A00,($FFFFD008).w	; did we reach the Roller yet?
 		blo.s	locret_71CE		; if not, branch
 		addq.b	#2,($FFFFF742).w
 
@@ -7337,8 +7350,8 @@ Resize_SYZ3loadboss:
 ; ===========================================================================
 
 Resize_SYZ3waitboss:
-		move.w	#$8C0,($FFFFF728).w	; left boundary
-		move.w	#$1A80,($FFFFF72A).w	; right boundary
+		move.w	#$8C0+$1A00,($FFFFF728).w	; left boundary
+		move.w	#$1A80+$1A00,($FFFFF72A).w	; right boundary
 
 		btst	#1,($FFFFD022).w	; is Sonic in air?
 		bne.s	@waitfloor		; if yes, branch
@@ -7386,20 +7399,20 @@ Resize_SYZ3boss:
 		jsr	SingleObjLoad
 		bne.s	@end
 		move.b	#$43,(a1)		; load end roller enemy
-		move.w	#$1EB0-1,obX(a1)
+		move.w	#$1EB0-1+$1A00,obX(a1)
 		move.w	#$00B0+3,obY(a1)
 @end:
 		rts
 ; ===========================================================================
 
 Resize_SYZ3end:
-		cmpi.w	#$1A00,($FFFFF700).w
+		cmpi.w	#$1A00+$1A00,($FFFFF700).w
 		blo.s	@left
 		move.w	#$21C,($FFFFF726).w
 @left:
 		move.b	#0,($FFFFFFA9).w	; clear boss flag
 		move.w	#$0000,($FFFFF72C).w	; top boundary
-		move.w	#$1F80,($FFFFF72A).w	; right boundary
+		move.w	#$1F80+$1A00,($FFFFF72A).w	; right boundary
 		rts	
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -19947,7 +19960,7 @@ Obj12_Animate:
 Obj12_SearchLight_Setup:
 		; check if chunk wasn't destoryed yet and delete if it already was
 		move.w	obX(a0),d0
-		cmpi.w	#$1900,d0
+		cmpi.w	#$1900+$1A00,d0
 		bhs.s	@nodelete
 		move.l	a0,-(sp)
 		move.w	#$0200,d1
@@ -20005,10 +20018,18 @@ Obj12_SearchLight_Rotating:
 ; ---------------------------------------------------------------------------
 
 Obj12_SearchLight_Blinking:
+		moveq	#7,d0
+		and.w	($FFFFFE0E).w,d0
+		bne.s	@nobeep
+		move.w	#$47+$80,d0
+		move.w	#$3A+$80,d0
+		jsr	PlaySound_Special
+@nobeep:
 		moveq	#5,d1		; off
 		btst	#2,($FFFFFE05).w
 		beq.s	@changeframe
 		moveq	#1,d1		; on
+
 @changeframe:
 		move.b	d1,obFrame(a0)
 		; fallthrough
@@ -23682,7 +23703,7 @@ Obj0C_OpenClose:			; XREF: Obj0C_Index
 
 Obj0C_Solid:
 		lea	(Ani_obj0C).l,a1
-		bsr	AnimateSprite
+		jsr	AnimateSprite
 		tst.b	obFrame(a0)	; is the door open?
 		bne.s	Obj0C_Display	; if yes, branch
 		move.w	($FFFFD008).w,d0
@@ -28041,7 +28062,7 @@ Obj01_JD_Minus:
 Obj01_ChkS:
 		btst	#4,(OptionsBits).w	; is nonstop inhuman enabled?
 		beq.s	@chkspacegolf		; if not, branch
-		move.b	#1,($FFFFFFE7).w 	; enable inhuman mode automatically. have fun, nerd
+		ori.b	#1,($FFFFFFE7).w 	; enable inhuman mode automatically. have fun, nerd
 
 @chkspacegolf:
 		btst	#5,(OptionsBits2).w	; is nonstop space golf enabled?
@@ -30025,19 +30046,23 @@ AR_End:
 
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 
+InhumanMode_Cooldown = 6*2
 
 Sonic_Fire:
-		move.b	($FFFFF603).w,d0	; move button press to d0
-		andi.b	#$40,d0			; and it by $40 (A)
-		beq.w	S_F_End			; if A is not being pressed, branch
 		tst.b	($FFFFFFE7).w		; is inhuman mode enabled?
+		beq.w	S_F_End			; if not, branch
+		cmpi.b	#2,($FFFFFFE7).w	; is cooldown set?
+		blo.s	@notcooldown		; if not, branch
+		subq.b	#2,($FFFFFFE7).w	; sub 2 from cooldown (don't mess with first bit)
+		rts				; prevent bullet spamming
+@notcooldown:
+		btst	#iA,Joypad|Press	; is A pressed?
 		bne.s	InhumanMode		; if yes, do the thingy
-		cmpi.b	#5,obAnim(a0)
-		bne.w	S_F_End
-	;	move.w	#$A9,d0
-	;	jsr	PlaySound_Special
-		move.b	#6,($FFFFD000+obTimeFrame).w	; reset time frame
-		jmp	AnnoyedSonic
+		cmpi.b	#5,obAnim(a0)		; is Sonic just standing there... menacingly?
+		bne.w	S_F_End			; if not, branch
+		move.b	#6,($FFFFD000+obTimeFrame).w ; reset time frame
+		jmp	AnnoyedSonic		; stop spamming A you meanie
+; ---------------------------------------------------------------------------
 
 InhumanMode:
 		jsr	SingleObjLoad		; check if SingleObjLoad is already in use
@@ -30065,10 +30090,9 @@ S_F_WithinTolerance:
 		asr.w	#7,d0
 		add.w	d0,obX(a1)		; move the missle a bit in front of Sonic
 
-S_F_PlaySound:
 		move.w	#$C4,d0			; set sound $C4
 		jsr	(PlaySound_Special).l	; play exploding bomb sound
-
+		ori.b	#InhumanMode_Cooldown+1,($FFFFFFE7).w ; set cooldown
 S_F_RPRingCost:
 		frantic				; are we in frantic?
 		bne.s	S_F_End			; if yes, branch (this is the one time casual gets something exclusive)
@@ -38510,8 +38534,8 @@ Obj75_BaseXOffset = $680
 Obj75_BaseXOffset_Fast = $100 
 Obj75_BaseY = $238
 Obj75_FloorHeight = $2A0
-Obj75_ArenaLeft = $A00
-Obj75_ArenaRight = $1900
+Obj75_ArenaLeft = $2400
+Obj75_ArenaRight = Obj75_ArenaLeft+$F00
 Obj75_SlamThreshold = $C
 
 ; balance
@@ -38700,10 +38724,7 @@ Obj75_CheckFlash:
 		clr.b	($FFFFFFEB).w	; reset jumpdash flag to allow multiple double jumps
 
 		tst.b	obColProp(a0)		; does boss have zero lives now?
-		bgt.s	loc_1923A		; if not, branch
-		move.b	#8,ob2ndRout(a0)	; set to Obj75_BossDefeated
-		move.b	#0,obColType(a0)	; disable collission
-		rts
+		ble.s	Obj75_LastHitDealt	; if yes, branch
 
 loc_1923A:
 		lea	($FFFFFB22).w,a1
@@ -38724,6 +38745,23 @@ locret_19256:
 Obj75_ResetBlack:
 		move.w	#$000,($FFFFFB22).w
 		rts	
+; ===========================================================================
+
+Obj75_LastHitDealt:
+		move.b	#8,ob2ndRout(a0)	; set to Obj75_BossDefeated
+		move.b	#0,obColType(a0)	; disable collission
+		bsr	Obj75_ResetBlack
+
+		lea	($FFFFD800).w,a1
+		moveq	#$3F,d0
+@loop:		cmpi.b	#$12,(a1)		; is current object a searchlight?
+		bne.s	@next			; if not, branch
+		cmpi.b	#$A,obRoutine(a1)	; is it currently blinking?
+		bne.s	@next			; if not, branch
+		move.b	#6,obRoutine(a1)	; reset searchlight to normal
+@next		lea	$40(a1),a1
+		dbf	d0,@loop
+		rts
 ; ===========================================================================
 
 Obj75_CheckSlam:
@@ -38929,7 +38967,7 @@ Obj75_BossDefeated:			; XREF: Obj75_ShipIndex
 		bset	#0,($FFFFF7A7).w	; set boss first defeated flag (see Resize_SYZ3end)
 
 		; check delete based on mode
-		cmpi.w	#$1B80,obX(a0)
+		cmpi.w	#$1B80+$1A00,obX(a0)
 		bhs.s	Obj75_BossDelete
 		rts
 ; ===========================================================================
@@ -41556,6 +41594,8 @@ Touch_Monitor_ChkBreak:
 
 @break:
 		neg.w	obVelY(a0)		; reverse Sonic's y-motion
+		cmpi.w	#-$C00,obVelY(a0)	; is new speed really fucking fast?
+		ble.s	@break_nobounce		; if yes, don't mess with his speed
 		bsr	BounceJD		; jump to BounceJD
 @break_nobounce:
 		addq.b	#2,obRoutine(a1)	; break monitor open

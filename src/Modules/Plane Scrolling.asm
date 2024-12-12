@@ -928,8 +928,9 @@ Deform_SYZ:
 		bne.s	@notunterhub
 		cmpi.b	#6,($FFFFF742).w
 		blo.s	@notunterhub
-		btst	#4,($FFFFF7A7).w	; make sure it doesn't happen after the trophy stealing cutscene
+		btst	#2,($FFFFF7A7).w	; make sure it doesn't happen after the trophy stealing cutscene
 		bne.s	@notunterhub
+
 	;	move.w	#0,CamYPos2
 		add.w	d3,d3
 		neg.w	d3

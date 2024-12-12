@@ -149,8 +149,14 @@ GSS_MainLoop:
 		jsr	(PlaySound_Special).l
 
 @NoUpdate:
-		andi.b	#$B0,($FFFFF605).w	; is B, C, or Start pressed?
-		beq.s	GSS_MainLoop		; if not, branch
+		move.b	Joypad|Press,d0
+		andi.b	#Start|B|C,d0		; is B, C, or Start pressed?
+		beq.s	GSS_MainLoop		; if not, loop
+		cmp.b	Joypad|Held,d0		; was only this one button pressed?
+		beq.s	@exit			; if yes, exit
+		andi.b	#Start|C,d0		; was specifically Start or C pressed?
+		beq.s	GSS_MainLoop		; if not, loop
+@exit:
 		jmp	Exit_GameplayStyleScreen
 ; ---------------------------------------------------------------------------
 ; ===========================================================================

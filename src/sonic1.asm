@@ -3678,13 +3678,12 @@ loc_3946:
 		ori.w	#2,($FFFFF7BE).w	; skip loading giant ring patterns (already done in PLC)
 		bra.s	@notuberhub
 @x:
-		lea	(@PLC_Roller).l,a1	; load Roller patterns
+		lea	(@PLC_Unterhub).l,a1	; load Roller patterns
 		jsr	LoadPLC_Direct
 		bra.s	@notuberhub
 ; ===========================================================================
 
-
-@PLC_Roller:
+@PLC_Unterhub:
 		dc.l ArtKospM_SearchLight
 		dc.w $6200
 		dc.l ArtKospM_Roller
@@ -4977,7 +4976,7 @@ SignpostArtLoad:			; XREF: Level
 		rts				; otherwise, don't load
 @rp:
 		btst	#3,($FFFFF7A7).w	; is RP boss defeated?
-		bne.s	Signpost_DoLoad_NoLock	; if yes, load art
+		bne.s	Signpost_DoLoad		; if yes, load art
 		rts				; wait until boss is defeated
 
 Signpost_DoLoad:
@@ -6868,13 +6867,10 @@ Resize_MZ1:
 		move.b	#$E0,d0			; fade out music
 		bsr	PlaySound_Special
 		move.b	#1,($FFFFFFE7).w	; enable inhuman mode in case it wasn't alread
-	;	lea	(@PLC_EggmanRP).l,a1
-	;	jsr	LoadPLC_Direct
+		lea	(@PLC_EggmanRP).l,a1
+		jsr	LoadPLC_Direct
 
 		move.w	#7*60,($FFFFFFAA).w	; wait time for lava drop sequence
-
-		moveq	#$11,d0
-		bsr.w	LoadPLC		; load boss patterns
 
 		jsr	SingleObjLoad
 		bne.s	@end
@@ -6885,8 +6881,11 @@ Resize_MZ1:
 		rts	
 
 ; ---------------------------------------------------------------------------	
-@PLC_EggmanRP:	dc.l ArtKospM_Sbz2Eggman	; Eggman
+@PLC_EggmanRP:
+		dc.l ArtKospM_Eggman		; Eggman main patterns
 		dc.w $9000
+		dc.l ArtKospM_Exhaust	; exhaust flame
+		dc.w $A540
 		dc.w -1
 ; ===========================================================================
 
@@ -6898,6 +6897,9 @@ Resize_MZ1:
 		blo.s	@end
 		cmpi.w	#$560,($FFFFD00C).w
 		blo.s	@end
+
+		move.w	#$9E,d0
+		jsr	PlaySound	; play final boss music for the meme
 
 		addq.b	#2,($FFFFF742).w
 		bset	#0,($FFFFF7A7).w	; start lava droppers
@@ -6921,8 +6923,15 @@ Resize_MZ1:
 
 		bset	#1,($FFFFF7A7).w	; set lava as dropped
 
+		cmpi.w	#3*60+30,($FFFFFFAA).w
+		bne.s	@nostop
+		move.w	#$E4,d0
+		jsr	PlaySound_Special	; stop music
+		
+@nostop
+
 		subq.w	#1,($FFFFFFAA).w
-		bne.s	@end
+		bne.w	@end
 		bset	#2,($FFFFF7A7).w	; set lava sequence as over
 		addq.b	#2,($FFFFF742).w
 		move.w	#$23E0,($FFFFF72A).w	; right boundary
@@ -7290,11 +7299,18 @@ Uberhub_UnterhubCutscene:
 		move.b	#$43,(a1)		; load roller enemy
 		move.b	#4,obRoutine(a1)	; set to cutscene routine
 
-	;	lea	(PLC_Roller).l,a1
-	;	jsr	LoadPLC_Direct
+		lea	(@PLC_Roller).l,a1
+		jsr	LoadPLC_Direct
 @waitbegin:
 		rts
 ; ---------------------------------------------------------------------------
+@PLC_Roller:
+		dc.l ArtKospM_Roller
+		dc.w $9700
+		dc.w $A820
+		dc.w -1
+; ---------------------------------------------------------------------------
+
 @UnterhubCutscene_WaitRoller:
 		btst	#0,($FFFFF7A7).w	; has the Roller collected the spike trophy?
 		beq.s	@waitcollect		; if not, wait
@@ -16183,7 +16199,11 @@ Obj45_Main:				; XREF: Obj45_Index
 		move.w	word_B9BE(pc,d0.w),d2
 		lea	(Obj45_Var).l,a2
 		movea.l	a0,a1
+
 		moveq	#1,d1
+		tst.b	obSubtype(a0)
+		bpl.s	Obj45_Load
+		moveq	#0,d1
 		bra.s	Obj45_Load
 ; ===========================================================================
 
@@ -16260,9 +16280,13 @@ Obj45_ChkDel:				; XREF: Obj45_Solid
 @bossdoor:
 		btst	#3,($FFFFF7A7).w	; is RP boss defeated?
 		beq.s	@display		; if not, display
-		bra.w	DeleteObject		; otherwise, delete
+		move.b	#$3F,0(a0)		; change into explodion
+		move.b	#0,obRoutine(a0)	; set to initial routine
+		move.b	#1,$30(a0)		; make explosion harmless
+		move.b	#0,$31(a0)		; don't mute
+		rts
+
 @display:
-	;	move.w	$3A(a0),d0
 		move.w	obX(a0),d0
 		andi.w	#$FF80,d0
 		move.w	($FFFFF700).w,d1
@@ -29923,7 +29947,10 @@ AF_UpBoost = $180
 Sonic_AirFreeze:
 		tst.b	($FFFFFF77).w		; is antigrav enabled?
 		beq.w	AM_End			; if not, branch
+		cmpi.w	#$302,($FFFFFE10).w
+		bne.s	@notsap
 		jsr	Sonic_Floor_SAP
+@notsap:
 	;	tst.b	($FFFFFFE7).w		; is inhuman mode enabled?
 	;	bne.w	AM_End			; if yes, disallow air freeze
 		tst.b	WhiteFlashCounter	; is white flash flag set?
@@ -37212,7 +37239,6 @@ Obj73_Index:	dc.w Obj73_Main-Obj73_Index
 		dc.w Obj73_ShipMain-Obj73_Index
 		dc.w Obj73_FaceMain-Obj73_Index
 		dc.w Obj73_FlameMain-Obj73_Index
-		dc.w Obj73_TubeMain-Obj73_Index
 
 Obj73_ObjData:	dc.b 2,	0, 4		; routine number, animation, priority
 		dc.b 4,	1, 4
@@ -37254,7 +37280,7 @@ Obj73_LoadBoss:				; XREF: Obj73_Main
 		move.b	(a2)+,obAnim(a1)
 		move.b	(a2)+,obPriority(a1)
 		move.l	#Map_Eggman,obMap(a1)
-		move.w	#$400,obGfx(a1)
+		move.w	#$9000/$20,obGfx(a1)
 		move.b	#4,obRender(a1)
 		move.b	#$20,obActWid(a1)
 		move.l	a0,$34(a1)
@@ -37480,10 +37506,10 @@ loc_185E4:
 		btst	#0,($FFFFF7A7).w
 		beq.s	loc_185EE
 		moveq	#4,d1		; laughing
-		cmpi.w	#4*60,($FFFFFFAA).w
+		cmpi.w	#3*60+30,($FFFFFFAA).w
 		bhi.s	loc_185EE
 		moveq	#1,d1		; stare
-		cmpi.w	#2*60,($FFFFFFAA).w
+		cmpi.w	#1*60,($FFFFFFAA).w
 		bhi.s	loc_185EE
 		moveq	#6,d1		; sweating
 
@@ -37526,25 +37552,8 @@ loc_1864A:
 		andi.b	#-4,obRender(a0)
 		or.b	d0,obRender(a0)
 		jmp	DisplaySprite
-; ===========================================================================
-; ===========================================================================
 
-Obj73_TubeMain:				; XREF: Obj73_Index
-		movea.l	$34(a0),a1
-		cmpi.b	#8,ob2ndRout(a1)
-		bne.s	loc_18688
-		tst.b	obRender(a0)
-		bpl.s	Obj73_TubeDel
 
-loc_18688:
-		move.l	#Map_BossItems,obMap(a0)
-		move.w	#$246C,obGfx(a0)
-		move.b	#4,obFrame(a0)
-		bra.s	loc_1864A
-; ===========================================================================
-
-Obj73_TubeDel:
-		jmp	DeleteObject
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Object 74 - lava that	Eggman drops (MZ)

@@ -6241,10 +6241,10 @@ LevSz_StartLoc:				; XREF: LevelSizeLoad
 		bra.s	@load			; if not, branch
 
 	@frantic:
-		jsr	Check_FirstStart	; have any levels been beaten yet?
-		beq.s	@load			; if not, branch
-		tst.b	(PlacePlacePlace).w	; easter egg?
-		bne.s	@load			; look at the funny trophies
+	;	jsr	Check_FirstStart	; have any levels been beaten yet?
+	;	beq.s	@load			; if not, branch
+	;	tst.b	(PlacePlacePlace).w	; easter egg?
+	;	bne.s	@load			; look at the funny trophies
 
 	@altsloc:
 		addq.w	#1,d1			; use next level coordinates instead (unused anyway, has the alt coordinates)
@@ -7459,13 +7459,13 @@ Resize_SYZ3waitboss:
 @waitsus:
 
 		; once first chunk is broken, starts the actual boss
-		cmp.b	#$1A,($FFFFD000+obAnim).w ; check if in hurt animation
-		bne.s	@end			; if not, branch
+		btst	#5,($FFFFF7A7).w	; has first chunk been broken?
+		beq.s	@end			; if not, branch
 		addq.b	#2,($FFFFF742).w
 
 		movem.l	d7/a0-a3,-(sp)
 		jsr 	Pal_FadeOut 		; i guess this works????
-		jsr 	Pal_FadeOut 		; i guess this works????
+	;	jsr 	Pal_FadeOut 		; i guess this works????
 		moveq	#3,d0			; brighten up this place by...
 		jsr	PalLoad2		; ...loading Sonic's palette
 		jsr	WhiteFlash
@@ -7925,6 +7925,8 @@ PLC_FZEscape:
 		dc.w $6E80
 		dc.l ArtKospM_Switch
 		dc.w $7200
+		dc.l ArtKospM_Bumper
+		dc.w $9900
 		dc.w -1
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
@@ -14418,8 +14420,8 @@ Obj2E_ChkP:
 
 		cmpi.w	#$200,($FFFFFE10).w	; is level MZ1?
 		bne.s	@checkslz		; if not, branch
-		frantic				; are we in frantic?
-		beq.s	@noob			; if not, branch
+	;	frantic				; are we in frantic?
+	;	beq.s	@noob			; if not, branch
 		tst.b	(PlacePlacePlace).w
 		bne.s	@noob
 		addi.w	#100,($FFFFFE20).w	; you made it here, give 100 rings
@@ -17292,7 +17294,7 @@ Obj34_NotSpecial2:
 		move.b	#$78,obActWid(a1)
 		move.b	#0,obRender(a1)
 		move.b	#0,obPriority(a1)
-		move.w	#20,obTimeFrame(a1)	; set time delay to 1 second (60)
+		move.w	#60,obTimeFrame(a1)	; set time delay to 1 second (60)
 		lea	$40(a1),a1	; next object
 		dbf	d1,Obj34_Loop	; repeat sequence another 3 times
 		tst.b	(Blackout).w	; are we in the blackout challenge?
@@ -17551,9 +17553,9 @@ Obj34_ItemData:
 ; Start and finish positions
 ; ---------------------------------------------------------------------------
 Obj34_ConData:
-		dc.w $0030, $80+SCREEN_WIDTH/2		; Stage Name (e.g. NIGHT HILL)
-		dc.w $0000, $80+SCREEN_WIDTH/2+$19	; PLACE
-		dc.w $0414, $80+SCREEN_WIDTH/2+$34+4	; "ACT" text and Act Number
+		dc.w $002F, $80+SCREEN_WIDTH/2		; Stage Name (e.g. NIGHT HILL)
+		dc.w $002F, $80+SCREEN_WIDTH/2+$19+3	; PLACE
+		dc.w $0413, $80+SCREEN_WIDTH/2+$34+4+5	; "ACT" text and Act Number
 		dc.w $0214, $80+SCREEN_WIDTH/2+$34	; Oval
 		even
 ; ===========================================================================
@@ -26891,8 +26893,8 @@ Obj02_Setup:
 		move.l	#Map_Obj02_End,obMap(a0)	; load mappings
 		move.w	#UMadBro_X,obX(a0)		; set X-position
 		move.w	#UMadBro_YStart,obScreenY(a0)	; set Y-position
-		addq.b	#2,obRoutine(a0)		; set to "Obj02_Display"
-		bra.s	Obj02_FinishSetup
+		addq.b	#2,obRoutine(a0)		; set to "Obj02_DisplayE"
+		bra.w	Obj02_DisplayE
 
 Obj02_NotEnding:
 		cmpi.b	#$20,(GameMode).w		; is screen mode story screen?
@@ -27455,7 +27457,11 @@ Obj06_ChkA:
 
 		btst	#6,($FFFFF603).w	; is A pressed?
 		beq.w	Obj06_Display		; if not, branch
-
+		cmpi.w	#$501,($FFFFFE10).w	; tutorial?
+		bne.s	@0			; if not, not necessary
+		tst.b	($FFFFD4C0+$3A).w	; is intro animation for rings HUD finished?
+		beq.w	Obj06_Display		; if not, branch
+@0:
 		clr.b	($FFFFF603).w		; clear controller 1 bitfield (to prevent rare softlocks)
 		move.b	#1,obFrame(a0)		; don't show A button while tutorial box is visible
 
@@ -30209,7 +30215,7 @@ InhumanMode:
 		move.w	obX(a0),obX(a1)		; select sonic's current X-pos as destination point
 		move.w	obY(a0),obY(a1)		; do the same with sonic's Y-pos
 
-		move.w	#$200,obVelY(a1)	; move bullet downwards
+		move.w	#$400,obVelY(a1)	; move bullet downwards
 		move.w	obVelY(a0),d1		; get Sonic's Y-speed
 		cmpi.w	#$800,d1		; is Sonic falling faster than $800?
 		bmi.s	S_F_WithinTolerance	; if not, branch
@@ -30988,7 +30994,6 @@ Obj01_Hurt:				; XREF: Obj01_Index
 		cmpi.b	#$1A,obAnim(a0)	; is animation $1A (hurting)?
 		beq.s	Hurt_CorrectAni	; if yes, branch
 		move.b	#$1A,obAnim(a0)	; otherwise make sure the correct anim is being used
-
 Hurt_CorrectAni:
 		jsr	SpeedToPos
 		addi.w	#$30,obVelY(a0)
@@ -31004,6 +31009,13 @@ loc_1380C:
 		bsr	Sonic_Water
 		bsr	Sonic_Animate
 		bsr	LoadSonicDynPLC
+
+		tst.b	($FFFFFF77).w		; is antigrav enabled?
+		beq.w	AM_End			; if not, branch
+		cmpi.w	#$302,($FFFFFE10).w
+		bne.s	@notsap
+		jsr	Sonic_Floor_SAP
+@notsap:
 		rts
 
 ; ---------------------------------------------------------------------------
@@ -37243,14 +37255,13 @@ Obj73_Index:	dc.w Obj73_Main-Obj73_Index
 Obj73_ObjData:	dc.b 2,	0, 4		; routine number, animation, priority
 		dc.b 4,	1, 4
 		dc.b 6,	7, 4
-		dc.b 8,	0, 3
+		even
 ; ===========================================================================
 
 Obj73_Main:				; XREF: Obj73_Index
 		move.w	obX(a0),$30(a0)
 		move.w	obY(a0),$38(a0)
 		move.b	#$F,obColType(a0)
-
 
 		moveq	#12,d0			; set number of hits
 		if LowBossHP=1
@@ -37261,7 +37272,6 @@ Obj73_Main:				; XREF: Obj73_Index
 
 		lea	Obj73_ObjData(pc),a2
 		movea.l	a0,a1
-	;	moveq	#3,d1
 		moveq	#2,d1
 		bra.s	Obj73_LoadBoss
 ; ===========================================================================
@@ -37284,7 +37294,7 @@ Obj73_LoadBoss:				; XREF: Obj73_Main
 		move.b	#4,obRender(a1)
 		move.b	#$20,obActWid(a1)
 		move.l	a0,$34(a1)
-		dbf	d1,Obj73_Loop	; repeat sequence 3 more times
+		dbf	d1,Obj73_Loop	; repeat sequence 2 more times
 
 Obj73_ShipMain:
 		moveq	#0,d0
@@ -37301,10 +37311,12 @@ Obj73_ShipMain:
 ; ===========================================================================
 Obj73_ShipIndex:dc.w Obj73_LavaSequence-Obj73_ShipIndex
 		dc.w Obj73_GoToArena-Obj73_ShipIndex
+
 		dc.w Obj73_GoingInCircles1-Obj73_ShipIndex
 		dc.w Obj73_GoingInCircles2-Obj73_ShipIndex
 		dc.w Obj73_GoingInCircles3-Obj73_ShipIndex
 		dc.w Obj73_GoingInCircles4-Obj73_ShipIndex
+
 		dc.w Obj73_Defeated-Obj73_ShipIndex
 ; ===========================================================================
 
@@ -37370,7 +37382,7 @@ Obj73_LavaSequence:
 		beq.w	Obj73_ShipMainMain	; if not, branch
 		addq.b	#2,ob2ndRout(a0)
 		move.w	#$300,obVelX(a0)
-		move.w	#-$800,obVelY(a0)
+		move.w	#-$500,obVelY(a0)
 		bset	#0,obStatus(a0)
 		bra.w	Obj73_MainStuff
 ; ===========================================================================
@@ -37387,7 +37399,7 @@ Obj73_GoToArena:
 ; ===========================================================================
 ; ===========================================================================
 
-Obj73_CircleAccel = 8
+Obj73_CircleAccel = 4
 
 Obj73_GoingInCircles1:
 		move.w	obVelX(a0),d0
@@ -37396,11 +37408,18 @@ Obj73_GoingInCircles1:
 		bge.s	@nox
 		move.w	d0,obVelX(a0)
 @nox:
-		subq.w	#Obj73_CircleAccel,obVelY(a0)
+
+		move.w	obVelY(a0),d0
+		subq.w	#Obj73_CircleAccel,d0
+		move.b	$3E(a0),d1
+		ext.w	d1
+		sub.w	d1,d0
+		move.w	d0,obVelY(a0)
+
 		bsr	BossMove
 		bset	#0,obStatus(a0)
 
-		cmpi.w	#$190,obY(a0)
+		cmpi.w	#$1B0,obY(a0)
 		bhi.w	Obj73_MainStuff
 		addq.b	#2,ob2ndRout(a0)
 		asr	obVelY(a0)
@@ -37412,11 +37431,18 @@ Obj73_GoingInCircles1:
 Obj73_GoingInCircles2:
 		move.w	obVelY(a0),d0
 		addq.w	#Obj73_CircleAccel,d0
-		cmpi.w	#$40,d0
+		cmpi.w	#$20,d0
 		bge.s	@nox
 		move.w	d0,obVelY(a0)
 @nox:
-		addq.w	#Obj73_CircleAccel,obVelX(a0)
+
+		move.w	obVelX(a0),d0
+		addq.w	#Obj73_CircleAccel,d0
+		move.b	$3E(a0),d1
+		ext.w	d1
+		add.w	d1,d0
+		move.w	d0,obVelX(a0)
+
 		bsr	BossMove
 		bset	#0,obStatus(a0)
 
@@ -37436,9 +37462,15 @@ Obj73_GoingInCircles3:
 		bge.s	@nox
 		move.w	d0,obVelX(a0)
 @nox:
-		addq.w	#Obj73_CircleAccel,obVelY(a0)
+		move.w	obVelY(a0),d0
+		addq.w	#Obj73_CircleAccel,d0
+		move.b	$3E(a0),d1
+		ext.w	d1
+		add.w	d1,d0
+		move.w	d0,obVelY(a0)
+
 		bsr	BossMove
-		bset	#0,obStatus(a0)
+		bclr	#0,obStatus(a0)
 
 		cmpi.w	#$278,obY(a0)
 		blo.w	Obj73_MainStuff
@@ -37456,7 +37488,14 @@ Obj73_GoingInCircles4:
 		ble.s	@nox
 		move.w	d0,obVelY(a0)
 @nox:
-		subq.w	#Obj73_CircleAccel,obVelX(a0)
+
+		move.w	obVelX(a0),d0
+		subq.w	#Obj73_CircleAccel,d0
+		move.b	$3E(a0),d1
+		ext.w	d1
+		sub.w	d1,d0
+		move.w	d0,obVelX(a0)
+
 		bsr	BossMove
 		bclr	#0,obStatus(a0)
 
@@ -37493,27 +37532,33 @@ Obj73_FaceMain:				; XREF: Obj73_Index
 		moveq	#1,d1		; normal
 		movea.l	$34(a0),a1
 
+		cmpi.b	#$C,ob2ndRout(a1)
+		blo.s	@notdefeated
+		moveq	#$A,d1		; exploded face
+		bra.s	Obj73_SetFace
+
+@notdefeated:
 		cmpi.b	#4,($FFFFD024).w
 		bhs.s	@hurt
 		tst.b	obColType(a1)
 		bne.s	loc_185E4
 @hurt:
 		moveq	#5,d1		; hurt
-		bra.s	loc_185EE
+		bra.s	Obj73_SetFace
 ; ===========================================================================
 
 loc_185E4:
 		btst	#0,($FFFFF7A7).w
-		beq.s	loc_185EE
+		beq.s	Obj73_SetFace
 		moveq	#4,d1		; laughing
 		cmpi.w	#3*60+30,($FFFFFFAA).w
-		bhi.s	loc_185EE
+		bhi.s	Obj73_SetFace
 		moveq	#1,d1		; stare
 		cmpi.w	#1*60,($FFFFFFAA).w
-		bhi.s	loc_185EE
+		bhi.s	Obj73_SetFace
 		moveq	#6,d1		; sweating
 
-loc_185EE:
+Obj73_SetFace:
 		move.b	d1,obAnim(a0)
 
 		movea.l	$34(a0),a1
@@ -38612,7 +38657,7 @@ Obj75_Main:				; XREF: Obj75_Index
 		moveq	#Obj75_BossHealth_Frantic,d0
 		tst.b	(PlacePlacePlace).w	; is easter egg flag set?
 		beq.s	@notfrantic		; if not, branch
-		moveq	#99,d0
+		moveq	#Obj75_BossHealth_Frantic*2,d0
 @notfrantic:
 		if LowBossHP=1
 			moveq	#1,d0
@@ -38945,6 +38990,8 @@ Obj75_DestroyChunk:
 @next		lea	$40(a1),a1
 		dbf	d0,@deletelights
 
+		bset	#5,($FFFFF7A7).w	; set flag that a chunk has been broken
+
 		bra.w	Obj75_SlamEnd
 ; ===========================================================================
 
@@ -38954,7 +39001,7 @@ Obj75_GoBackUp:
 
 		frantic
 		beq.s	@casual
-		moveq	#$48,d1
+		moveq	#$30,d1		; frantic X bonus speed
 		btst	#0,obStatus(a0)
 		beq.s	@left
 		add.w	d1,obVelX(a0)
@@ -40453,7 +40500,7 @@ Obj84_Delete:
 		jmp	DeleteObject
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Object 84 - cylinder Eggman	hides in (FZ)
+; Object 84 - cylinder Eggman hides in (FZ)
 ; ---------------------------------------------------------------------------
 
 Obj84:					; XREF: Obj_Index
@@ -40505,6 +40552,8 @@ loc_1A4DC:
 		addq.b	#2,obRoutine(a0)
 
 loc_1A4EA:
+		andi.w	#~$2000,obGfx(a0)
+
 		move.l	$3C(a0),d0
 		move.l	$38(a0),d1
 		add.l	d0,d1
@@ -40525,13 +40574,19 @@ loc_1A514:
 		move.w	d1,obY(a1)
 		move.w	obX(a0),obX(a1)
 
-
-		; WIP palette flash for cylinder Eggman is currently in
-		andi.w	#~$2000,obGfx(a0)
-		moveq	#7,d0
-		and.w	($FFFFFE04).w,d0
+		; palette flash for cylinder Eggman is currently in
+		cmpi.b	#4,obRoutine(a0)
 		bne.s	loc_1A524
 
+		moveq	#3,d0
+		cmpi.b	#10,obColProp(a1)
+		bhi.s	@nopinch
+		btst	#7,(OptionsBits).w	; is photosensitive mode enabled?
+		bne.s	@nopinch		; if yes, branch
+		moveq	#2,d0
+@nopinch:
+		btst	d0,($FFFFFE05).w
+		bne.s	loc_1A524
 		eori.w	#$2000,obGfx(a0)
 
 loc_1A524:
@@ -40655,6 +40710,7 @@ loc_1A626:
 		subq.w	#1,$32(a1)
 		clr.w	$30(a1)
 		subq.b	#2,obRoutine(a0)
+		andi.w	#~$2000,obGfx(a0)
 		rts	
 ; ===========================================================================
 

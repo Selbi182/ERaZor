@@ -2,31 +2,31 @@
 ; Sprite mappings - output from ClownMapEd - Sonic 1/CD format
 ; --------------------------------------------------------------------------------
 
-CME_FBBC7BB5:
-	dc.w	CME_FBBC7BB5_0-CME_FBBC7BB5
-	dc.w	CME_FBBC7BB5_1-CME_FBBC7BB5
-	dc.w	CME_FBBC7BB5_2-CME_FBBC7BB5
-	dc.w	CME_FBBC7BB5_3-CME_FBBC7BB5
-	dc.w	CME_FBBC7BB5_4-CME_FBBC7BB5
-	dc.w	CME_FBBC7BB5_5-CME_FBBC7BB5
-	dc.w	CME_FBBC7BB5_6-CME_FBBC7BB5
-	dc.w	CME_FBBC7BB5_7-CME_FBBC7BB5
-	dc.w	CME_FBBC7BB5_8-CME_FBBC7BB5
-	dc.w	CME_FBBC7BB5_9-CME_FBBC7BB5
-	dc.w	CME_FBBC7BB5_A-CME_FBBC7BB5
-	dc.w	CME_FBBC7BB5_B-CME_FBBC7BB5
-	dc.w	CME_FBBC7BB5_C-CME_FBBC7BB5
-	dc.w	CME_FBBC7BB5_D-CME_FBBC7BB5
-	dc.w	CME_FBBC7BB5_E-CME_FBBC7BB5
-	dc.w	CME_FBBC7BB5_F-CME_FBBC7BB5
-	dc.w	CME_FBBC7BB5_10-CME_FBBC7BB5
-	dc.w	CME_FBBC7BB5_11-CME_FBBC7BB5
-	dc.w	CME_FBBC7BB5_12-CME_FBBC7BB5
-	dc.w	CME_FBBC7BB5_13-CME_FBBC7BB5
-	dc.w	CME_FBBC7BB5_14-CME_FBBC7BB5
-	dc.w	CME_FBBC7BB5_15-CME_FBBC7BB5
+CME_A136A70E:
+	dc.w	CME_A136A70E_0-CME_A136A70E
+	dc.w	CME_A136A70E_1-CME_A136A70E
+	dc.w	CME_A136A70E_2-CME_A136A70E
+	dc.w	CME_A136A70E_3-CME_A136A70E
+	dc.w	CME_A136A70E_4-CME_A136A70E
+	dc.w	CME_A136A70E_5-CME_A136A70E
+	dc.w	CME_A136A70E_6-CME_A136A70E
+	dc.w	CME_A136A70E_7-CME_A136A70E
+	dc.w	CME_A136A70E_8-CME_A136A70E
+	dc.w	CME_A136A70E_9-CME_A136A70E
+	dc.w	CME_A136A70E_A-CME_A136A70E
+	dc.w	CME_A136A70E_B-CME_A136A70E
+	dc.w	CME_A136A70E_C-CME_A136A70E
+	dc.w	CME_A136A70E_D-CME_A136A70E
+	dc.w	CME_A136A70E_E-CME_A136A70E
+	dc.w	CME_A136A70E_F-CME_A136A70E
+	dc.w	CME_A136A70E_10-CME_A136A70E
+	dc.w	CME_A136A70E_11-CME_A136A70E
+	dc.w	CME_A136A70E_12-CME_A136A70E
+	dc.w	CME_A136A70E_13-CME_A136A70E
+	dc.w	CME_A136A70E_14-CME_A136A70E
+	dc.w	CME_A136A70E_15-CME_A136A70E
 
-CME_FBBC7BB5_0:
+CME_A136A70E_0:
 	dc.b	9
 
 	dc.b	-8
@@ -39,7 +39,7 @@ CME_FBBC7BB5_0:
 	dc.w	$0020
 	dc.b	-54
 
-	dc.b	-7
+	dc.b	-8
 	dc.b	$05
 	dc.w	$0018
 	dc.b	-46
@@ -57,12 +57,12 @@ CME_FBBC7BB5_0:
 	dc.b	-8
 	dc.b	$05
 	dc.w	$001C
-	dc.b	20
+	dc.b	19
 
 	dc.b	-8
 	dc.b	$01
 	dc.w	$0020
-	dc.b	36
+	dc.b	35
 
 	dc.b	-8
 	dc.b	$05
@@ -74,7 +74,7 @@ CME_FBBC7BB5_0:
 	dc.w	$0026
 	dc.b	60
 
-CME_FBBC7BB5_1:
+CME_A136A70E_1:
 	dc.b	7
 
 	dc.b	-8
@@ -105,14 +105,14 @@ CME_FBBC7BB5_1:
 	dc.b	-8
 	dc.b	$05
 	dc.w	$0000
-	dc.b	21
+	dc.b	22
 
 	dc.b	-8
 	dc.b	$05
 	dc.w	$0026
-	dc.b	37
+	dc.b	38
 
-CME_FBBC7BB5_2:
+CME_A136A70E_2:
 	dc.b	6
 
 	dc.b	-8
@@ -133,19 +133,19 @@ CME_FBBC7BB5_2:
 	dc.b	-8
 	dc.b	$05
 	dc.w	$002A
-	dc.b	-4
+	dc.b	-3
 
 	dc.b	-8
 	dc.b	$05
 	dc.w	$0010
-	dc.b	12
+	dc.b	13
 
 	dc.b	-8
 	dc.b	$05
 	dc.w	$000C
 	dc.b	29
 
-CME_FBBC7BB5_3:
+CME_A136A70E_3:
 	dc.b	10
 
 	dc.b	-8
@@ -181,7 +181,7 @@ CME_FBBC7BB5_3:
 	dc.b	-8
 	dc.b	$05
 	dc.w	$002A
-	dc.b	12
+	dc.b	13
 
 	dc.b	-8
 	dc.b	$05
@@ -198,7 +198,7 @@ CME_FBBC7BB5_3:
 	dc.w	$0046
 	dc.b	60
 
-CME_FBBC7BB5_4:
+CME_A136A70E_4:
 	dc.b	6
 
 	dc.b	-8
@@ -229,9 +229,9 @@ CME_FBBC7BB5_4:
 	dc.b	-8
 	dc.b	$05
 	dc.w	$0026
-	dc.b	32
+	dc.b	34
 
-CME_FBBC7BB5_5:
+CME_A136A70E_5:
 	dc.b	10
 
 	dc.b	-8
@@ -269,7 +269,7 @@ CME_FBBC7BB5_5:
 	dc.w	$0020
 	dc.b	20
 
-	dc.b	-7
+	dc.b	-8
 	dc.b	$05
 	dc.w	$0018
 	dc.b	28
@@ -282,9 +282,9 @@ CME_FBBC7BB5_5:
 	dc.b	-8
 	dc.b	$05
 	dc.w	$003E
-	dc.b	60
+	dc.b	59
 
-CME_FBBC7BB5_6:
+CME_A136A70E_6:
 	dc.b	7
 
 	dc.b	-8
@@ -300,29 +300,29 @@ CME_FBBC7BB5_6:
 	dc.b	-8
 	dc.b	$05
 	dc.w	$002A
-	dc.b	-28
+	dc.b	-27
 
 	dc.b	-8
 	dc.b	$05
 	dc.w	$0000
-	dc.b	-12
+	dc.b	-11
 
 	dc.b	-8
 	dc.b	$05
 	dc.w	$0026
-	dc.b	4
+	dc.b	5
 
 	dc.b	-8
 	dc.b	$05
 	dc.w	$002E
-	dc.b	20
+	dc.b	21
 
 	dc.b	-8
 	dc.b	$05
 	dc.w	$0036
-	dc.b	36
+	dc.b	37
 
-CME_FBBC7BB5_7:
+CME_A136A70E_7:
 	dc.b	8
 
 	dc.b	4
@@ -365,7 +365,7 @@ CME_FBBC7BB5_7:
 	dc.w	$0026
 	dc.b	46
 
-CME_FBBC7BB5_8:
+CME_A136A70E_8:
 	dc.b	7
 
 	dc.b	4
@@ -391,19 +391,19 @@ CME_FBBC7BB5_8:
 	dc.b	4
 	dc.b	$05
 	dc.w	$002A
-	dc.b	22
+	dc.b	21
 
 	dc.b	4
 	dc.b	$05
 	dc.w	$003A
-	dc.b	37
+	dc.b	36
 
 	dc.b	4
 	dc.b	$01
 	dc.w	$0020
 	dc.b	-4
 
-CME_FBBC7BB5_9:
+CME_A136A70E_9:
 	dc.b	5
 
 	dc.b	-8
@@ -431,7 +431,7 @@ CME_FBBC7BB5_9:
 	dc.w	$0010
 	dc.b	25
 
-CME_FBBC7BB5_A:
+CME_A136A70E_A:
 	dc.b	12
 
 	dc.b	4
@@ -494,7 +494,7 @@ CME_FBBC7BB5_A:
 	dc.w	$004A
 	dc.b	-8
 
-CME_FBBC7BB5_B:
+CME_A136A70E_B:
 	dc.b	9
 
 	dc.b	4
@@ -540,15 +540,15 @@ CME_FBBC7BB5_B:
 	dc.b	4
 	dc.b	$05
 	dc.w	$003E
-	dc.b	63
+	dc.b	62
 
-CME_FBBC7BB5_C:
+CME_A136A70E_C:
 	dc.b	10
 
 	dc.b	4
 	dc.b	$01
 	dc.w	$0020
-	dc.b	-83
+	dc.b	-84
 
 	dc.b	4
 	dc.b	$05
@@ -595,7 +595,7 @@ CME_FBBC7BB5_C:
 	dc.w	$0010
 	dc.b	67
 
-CME_FBBC7BB5_D:
+CME_A136A70E_D:
 	dc.b	6
 
 	dc.b	4
@@ -628,7 +628,7 @@ CME_FBBC7BB5_D:
 	dc.w	$000C
 	dc.b	40
 
-CME_FBBC7BB5_E:
+CME_A136A70E_E:
 	dc.b	12
 
 	dc.b	4
@@ -691,7 +691,7 @@ CME_FBBC7BB5_E:
 	dc.w	$0032
 	dc.b	14
 
-CME_FBBC7BB5_F:
+CME_A136A70E_F:
 	dc.b	4
 
 	dc.b	-4
@@ -714,7 +714,7 @@ CME_FBBC7BB5_F:
 	dc.w	$0026
 	dc.b	52
 
-CME_FBBC7BB5_10:
+CME_A136A70E_10:
 	dc.b	3
 
 	dc.b	4
@@ -732,7 +732,7 @@ CME_FBBC7BB5_10:
 	dc.w	$002A
 	dc.b	8
 
-CME_FBBC7BB5_11:
+CME_A136A70E_11:
 	dc.b	9
 
 	dc.b	4
@@ -780,18 +780,18 @@ CME_FBBC7BB5_11:
 	dc.w	$0020
 	dc.b	55
 
-CME_FBBC7BB5_12:
+CME_A136A70E_12:
 	dc.b	9
 
 	dc.b	-8
 	dc.b	$05
 	dc.w	$001C
-	dc.b	20
+	dc.b	19
 
 	dc.b	-8
 	dc.b	$01
 	dc.w	$0020
-	dc.b	36
+	dc.b	35
 
 	dc.b	-8
 	dc.b	$05
@@ -803,7 +803,7 @@ CME_FBBC7BB5_12:
 	dc.w	$0026
 	dc.b	60
 
-	dc.b	-7
+	dc.b	-8
 	dc.b	$05
 	dc.w	$0018
 	dc.b	-76
@@ -828,13 +828,13 @@ CME_FBBC7BB5_12:
 	dc.w	$002A
 	dc.b	-12
 
-CME_FBBC7BB5_13:
+CME_A136A70E_13:
 	dc.b	9
 
 	dc.b	-8
 	dc.b	$05
 	dc.w	$003A
-	dc.b	-78
+	dc.b	-76
 
 	dc.b	-8
 	dc.b	$05
@@ -856,10 +856,10 @@ CME_FBBC7BB5_13:
 	dc.w	$0000
 	dc.b	-2
 
-	dc.b	-7
+	dc.b	-8
 	dc.b	$05
 	dc.w	$0018
-	dc.b	13
+	dc.b	14
 
 	dc.b	-8
 	dc.b	$05
@@ -876,7 +876,7 @@ CME_FBBC7BB5_13:
 	dc.w	$0046
 	dc.b	62
 
-CME_FBBC7BB5_14:
+CME_A136A70E_14:
 	dc.b	6
 
 	dc.b	4
@@ -909,7 +909,7 @@ CME_FBBC7BB5_14:
 	dc.w	$000E
 	dc.b	-22
 
-CME_FBBC7BB5_15:
+CME_A136A70E_15:
 	dc.b	6
 
 	dc.b	4

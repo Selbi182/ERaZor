@@ -7421,7 +7421,7 @@ locret_71CE:
 Resize_SYZ3loadboss:
 		move.w	#$220,($FFFFF726).w	; bottom boundary in the arena
 
-		cmpi.w	#$1260+$1A00,($FFFFD008).w	; did we reach the Roller yet?
+		cmpi.w	#$1260+$1A00+11,($FFFFD008).w	; did we reach the Roller yet?
 		blo.s	locret_71CE		; if not, branch
 		addq.b	#2,($FFFFF742).w
 
@@ -7434,6 +7434,7 @@ Resize_SYZ3loadboss:
 		clr.w	($FFFFD000+obVelX).w
 		clr.w	($FFFFD000+obInertia).w
 		clr.l	($FFFFF602).w		; clear any remaining button presses
+		clr.w	ExtCamShift
 
 		jsr	SingleObjLoad
 		bne.s	@end
@@ -7446,7 +7447,6 @@ Resize_SYZ3loadboss:
 
 Resize_SYZ3waitboss:
 		move.w	#$8C0+$1A00,($FFFFF728).w	; left boundary
-		move.w	#$1A80+$1A00,($FFFFF72A).w	; right boundary
 
 		btst	#1,($FFFFD022).w	; is Sonic in air?
 		bne.s	@waitfloor		; if yes, branch
@@ -7462,6 +7462,7 @@ Resize_SYZ3waitboss:
 		btst	#5,($FFFFF7A7).w	; has first chunk been broken?
 		beq.s	@end			; if not, branch
 		addq.b	#2,($FFFFF742).w
+		move.w	#$1A80+$1A00,($FFFFF72A).w	; right boundary
 
 		movem.l	d7/a0-a3,-(sp)
 		jsr 	Pal_FadeOut 		; i guess this works????
@@ -19276,7 +19277,7 @@ Obj43_Main:				; XREF: Obj43_Index
 		move.b	#$10,obActWid(a0)
 		move.b	#6,obColType(a0)
 
-		move.b	#1*60,$30(a0)	; delay before jump
+		move.b	#30,$30(a0)	; delay before jump
 ; ---------------------------------------------------------------------------
 
 Obj43_Action:				; XREF: Obj43_Index
@@ -30194,14 +30195,16 @@ InhumanMode_Cooldown = 6*2
 
 Sonic_Fire:
 		tst.b	($FFFFFFE7).w		; is inhuman mode enabled?
-		beq.w	S_F_End			; if not, branch
+		beq.s	@notinhuman		; if not, branch
+
 		cmpi.b	#2,($FFFFFFE7).w	; is cooldown set?
-		blo.s	@notcooldown		; if not, branch
+		blo.s	InhumanMode		; if not, fire bullet
 		subq.b	#2,($FFFFFFE7).w	; sub 2 from cooldown (don't mess with first bit)
 		rts				; prevent bullet spamming
-@notcooldown:
-		btst	#iA,Joypad|Press	; is A pressed?
-		bne.s	InhumanMode		; if yes, do the thingy
+
+@notinhuman:
+		btst	#iA,SonicControl|Press	; is A pressed?
+		beq.w	S_F_End			; if not, nothing to do
 		cmpi.b	#5,obAnim(a0)		; is Sonic just standing there... menacingly?
 		bne.w	S_F_End			; if not, branch
 		move.b	#6,($FFFFD000+obTimeFrame).w ; reset time frame
@@ -30209,6 +30212,9 @@ Sonic_Fire:
 ; ---------------------------------------------------------------------------
 
 InhumanMode:
+		btst	#iA,SonicControl|Press	; is A pressed?
+		beq.w	S_F_End			; if not, nothing to do
+
 		jsr	SingleObjLoad		; check if SingleObjLoad is already in use
 		bne.w	S_F_End			; if it is, don't do anything
 		move.b	#$23,0(a1)		; load missile object

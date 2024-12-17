@@ -5,69 +5,75 @@
 ; ---------------------------------------------------------------------------
 
 Options_MenuData:
-
 	OpBaseY: = 6
+ if def(__WIDESCREEN__)
+	OpBaseX: = 0
+	OpLength: = 30+10
+ else
+ 	OpBaseX: = 5
+	OpLength: = 30
+ endif
 
-	; Gameplay style
-	dcScreenPos	$E000, OpBaseY, 5			; start on-screen position
+	; Difficulty
+	dcScreenPos	$E000, OpBaseY, OpBaseX			; start on-screen position
 	dc.l	Options_GameplayStyle_Redraw		; redraw handler
 	dc.l	Options_GameplayStyle_Handle		; update handler
 	
-	; Autoskip
-	dcScreenPos	$E000, OpBaseY+2, 5			; start on-screen position
+	; Speedrun mode
+	dcScreenPos	$E000, OpBaseY+2, OpBaseX	; start on-screen position
 	dc.l	Options_Autoskip_Redraw			; redraw handler
 	dc.l	Options_Autoskip_Handle			; update handler
-	; Track all mistakes
-	dcScreenPos	$E000, OpBaseY+3, 5			; start on-screen position
+	; Count your mistakes
+	dcScreenPos	$E000, OpBaseY+3, OpBaseX	; start on-screen position
 	dc.l	Options_TrackAllMistakes_Redraw		; redraw handler
 	dc.l	Options_TrackAllMistakes_Handle		; update handler
 	
 	; Extended camera
-	dcScreenPos	$E000, OpBaseY+5, 5			; start on-screen position
+	dcScreenPos	$E000, OpBaseY+5, OpBaseX	; start on-screen position
 	dc.l	Options_ExtendedCamera_Redraw		; redraw handler
 	dc.l	Options_ExtendedCamera_Handle		; update handler
-	; Flashy Lights
-	dcScreenPos	$E000, OpBaseY+6, 5			; start on-screen position
+	; Flashy lights
+	dcScreenPos	$E000, OpBaseY+6, OpBaseX	; start on-screen position
 	dc.l	Options_FlashyLights_Redraw		; redraw handler
 	dc.l	Options_FlashyLights_Handle		; update handler
-	; Camera Shake
-	dcScreenPos	$E000, OpBaseY+7, 5			; start on-screen position
+	; Camera shake
+	dcScreenPos	$E000, OpBaseY+7, OpBaseX	; start on-screen position
 	dc.l	Options_CameraShake_Redraw		; redraw handler
 	dc.l	Options_CameraShake_Handle		; update handler
-	; Audio
-	dcScreenPos	$E000, OpBaseY+8, 5			; start on-screen position
+	; Audio mode
+	dcScreenPos	$E000, OpBaseY+8, OpBaseX	; start on-screen position
 	dc.l	Options_Audio_Redraw			; redraw handler
 	dc.l	Options_Audio_Handle			; update handler
 
 	; Black bars setup
-	dcScreenPos	$E000, OpBaseY+9, 5			; start on-screen position
+	dcScreenPos	$E000, OpBaseY+9, OpBaseX	; start on-screen position
 	dc.l	Options_BlackBarsMode_Redraw		; redraw handler
 	dc.l	Options_BlackBarsMode_Handle		; update handler
 
 	; E - Cinematic mode
-	dcScreenPos	$E000, OpBaseY+11, 5			; start on-screen position
+	dcScreenPos	$E000, OpBaseY+11, OpBaseX	; start on-screen position
 	dc.l	Options_CinematicMode_Redraw		; redraw handler
 	dc.l	Options_CinematicMode_Handle		; update handler
-	; R - Screen Effects
-	dcScreenPos	$E000, OpBaseY+12, 5			; start on-screen position
+	; R - Visual FX
+	dcScreenPos	$E000, OpBaseY+12, OpBaseX	; start on-screen position
 	dc.l	Options_ScreenEffects_Redraw		; redraw handler
 	dc.l	Options_ScreenEffects_Handle		; update handler
-	; Z - True Inhuman
-	dcScreenPos	$E000, OpBaseY+13, 5			; start on-screen position
+	; Z - ERaZor Powers
+	dcScreenPos	$E000, OpBaseY+13, OpBaseX	; start on-screen position
 	dc.l	Options_NonstopInhuman_Redraw		; redraw handler
 	dc.l	Options_NonstopInhuman_Handle		; update handler
 
 	; Reset options
-	dcScreenPos	$E000, OpBaseY+15, 5			; start on-screen position
+	dcScreenPos	$E000, OpBaseY+15, OpBaseX	; start on-screen position
 	dc.l	Options_ResetOptions_Redraw		; redraw handler
 	dc.l	Options_ResetOptions_Handle		; update handler
-	; Delete save game
-	dcScreenPos	$E000, OpBaseY+16, 5			; start on-screen position
+	; Reset game progress
+	dcScreenPos	$E000, OpBaseY+16, OpBaseX	; start on-screen position
 	dc.l	Options_DeleteSaveGame_Redraw		; redraw handler
 	dc.l	Options_DeleteSaveGame_Handle		; update handler
 
-	; Exit
-	dcScreenPos	$E000, OpBaseY+19, 5			; start on-screen position
+	; Save & exit options
+	dcScreenPos	$E000, OpBaseY+19, OpBaseX	; start on-screen position
 	dc.l	Options_Exit_Redraw			; redraw handler
 	dc.l	Options_Exit_Handle			; update handler
 
@@ -98,7 +104,14 @@ Options_GameplayStyle_Redraw:
 	and.b	OptionsBits, d0
 	beq.s	@0
 	lea	@Str_Option2(pc), a1
-@0:	Options_PipeString a4, "DIFFICULTY             %<.l a1 str>", 30
+@0:
+
+ if def(__WIDESCREEN__)
+	Options_PipeString a4, "DIFFICULTY                       %<.l a1 str>", OpLength
+ else
+	Options_PipeString a4, "DIFFICULTY             %<.l a1 str>", OpLength
+ endif
+
 	rts
 
 ; ---------------------------------------------------------------------------
@@ -158,12 +171,14 @@ Options_ExtendedCamera_Redraw:
 	btst	#0, OptionsBits
 	beq.s	@0
 	lea	Options_Str_On(pc), a1
+@0:
 
-	if def(__WIDESCREEN__)
-@0:	Options_PipeString a4, "WIDE EXTENDED CAMERA       %<.l a1 str>", 30
-	else
-@0:	Options_PipeString a4, "EXTENDED CAMERA            %<.l a1 str>", 30
-	endif
+ if def(__WIDESCREEN__)
+	Options_PipeString a4, "WIDE EXTENDED CAMERA                 %<.l a1 str>", OpLength
+ else
+	Options_PipeString a4, "EXTENDED CAMERA            %<.l a1 str>", OpLength
+ endif
+
 	rts
 
 ; ---------------------------------------------------------------------------
@@ -195,7 +210,14 @@ Options_TrackAllMistakes_Redraw:
 	btst	#4, OptionsBits2
 	beq.s	@0
 	lea	Options_Str_On(pc), a1
-@0:	Options_PipeString a4, "COUNT YOUR MISTAKES        %<.l a1 str>", 30
+@0:
+
+ if def(__WIDESCREEN__)
+	Options_PipeString a4, "COUNT YOUR MISTAKES                  %<.l a1 str>", OpLength
+ else
+	Options_PipeString a4, "COUNT YOUR MISTAKES        %<.l a1 str>", OpLength
+ endif
+
 	rts
 
 
@@ -240,7 +262,14 @@ Options_Autoskip_Redraw:
 	and.b	OptionsBits, d0
 	beq.s	@0
 	lea	Options_Str_On(pc), a1
-@0:	Options_PipeString a4, "SPEEDRUN MODE              %<.l a1 str>", 30
+@0:
+
+ if def(__WIDESCREEN__)
+	Options_PipeString a4, "SPEEDRUN MODE                        %<.l a1 str>", OpLength
+ else
+	Options_PipeString a4, "SPEEDRUN MODE              %<.l a1 str>", OpLength
+ endif
+
 	rts
 
 ; ---------------------------------------------------------------------------
@@ -305,8 +334,13 @@ Options_FlashyLights_Redraw:
 	add.w	d0, d0
 	add.w	d0, d0				; d0 = ModeId * 4
 	movea.l	@FlashyLightsList(pc,d0), a1
-	
-	Options_PipeString a4, "FLASHY LIGHTS   %<.l a1 str>", 30
+
+ if def(__WIDESCREEN__)
+	Options_PipeString a4, "FLASHING LIGHTS           %<.l a1 str>", OpLength
+ else
+	Options_PipeString a4, "FLASHY LIGHTS   %<.l a1 str>", OpLength
+ endif
+
 	rts
 
 ; ---------------------------------------------------------------------------
@@ -380,8 +414,13 @@ Options_CameraShake_Redraw:
 	add.w	d0, d0
 	add.w	d0, d0				; d0 = ModeId * 4
 	movea.l	@CameraShakeList(pc,d0), a1
-	
-	Options_PipeString a4, "CAMERA SHAKE    %<.l a1 str>", 30
+
+ if def(__WIDESCREEN__)
+	Options_PipeString a4, "CAMERA SHAKING            %<.l a1 str>", OpLength
+ else
+	Options_PipeString a4, "CAMERA SHAKE    %<.l a1 str>", OpLength
+ endif
+
 	rts
 
 ; ---------------------------------------------------------------------------
@@ -461,8 +500,13 @@ Options_Audio_Redraw:
 	add.w	d0, d0
 	add.w	d0, d0				; d0 = ModeId * 4
 	movea.l	@AudioList(pc,d0), a1
-	
-	Options_PipeString a4, "AUDIO MODE       %<.l a1 str>", 30
+
+ if def(__WIDESCREEN__)
+	Options_PipeString a4, "AUDIO MODE                 %<.l a1 str>", OpLength
+ else
+	Options_PipeString a4, "AUDIO MODE       %<.l a1 str>", OpLength
+ endif
+
 	rts
 
 ; ---------------------------------------------------------------------------
@@ -545,8 +589,14 @@ Options_CinematicMode_Redraw:
 	jsr	Check_BaseGameBeaten_Casual	; has the player beaten base game in casual?
 	beq.s	@1				; if not, branch
 	lea	@Str_Cinematic_Normal(pc), a0
+@1:
 
-@1:	Options_PipeString a4, "%<.l a0 str>           %<.l a1 str>", 30
+ if def(__WIDESCREEN__)
+	Options_PipeString a4, "%<.l a0 str>                     %<.l a1 str>", OpLength
+ else
+	Options_PipeString a4, "%<.l a0 str>           %<.l a1 str>", OpLength
+ endif
+
 	rts
 
 ; ---------------------------------------------------------------------------
@@ -603,8 +653,14 @@ Options_ScreenEffects_Redraw:
 	jsr	Check_BaseGameBeaten_Frantic	; has the player beaten base game in frantic?
 	beq.s	@0				; if not, branch
 	lea	@Str_ScreenEffects_Normal(pc), a0
+@0:
 
-@0:	Options_PipeString a4, "%<.l a0 str>   %<.l a1 str>", 30
+ if def(__WIDESCREEN__)
+	Options_PipeString a4, "%<.l a0 str>             %<.l a1 str>", OpLength
+ else
+	Options_PipeString a4, "%<.l a0 str>   %<.l a1 str>", OpLength
+ endif
+
 	rts
 
 ; ---------------------------------------------------------------------------
@@ -690,8 +746,14 @@ Options_NonstopInhuman_Redraw:
 	jsr	Check_BlackoutBeaten		; has the player beaten all levels in frantic?
 	beq.s	@2				; if not, branch
 	lea	@Str_ErazorPower_Normal(pc), a0
+@2:
 
-@2:	Options_PipeString a4, "%<.l a0 str>   %<.l a1 str>", 30
+ if def(__WIDESCREEN__)
+	Options_PipeString a4, "%<.l a0 str>             %<.l a1 str>", OpLength
+ else
+	Options_PipeString a4, "%<.l a0 str>   %<.l a1 str>", OpLength
+ endif
+
 	rts
 
 ; ---------------------------------------------------------------------------
@@ -789,7 +851,11 @@ Options_DeleteSaveGame_Redraw:
 	moveq	#0, d0
 	move.b	Options_DeleteSRAMCounter, d0
 	lea	@Str_DeleteSRAMCountDown(pc,d0), a1
-	Options_PipeString a4, "RESET GAME PROGRESS      %<.l a1 str>", 30
+ if def(__WIDESCREEN__)
+	Options_PipeString a4, "RESET GAME PROGRESS                %<.l a1 str>", OpLength
+ else
+	Options_PipeString a4, "RESET GAME PROGRESS      %<.l a1 str>", OpLength
+ endif
 	rts
 
 @Str_DeleteSRAMCountDown:
@@ -857,7 +923,11 @@ Options_ResetOptions_Redraw:
 	moveq	#0, d0
 	move.b	Options_DeleteSRAMCounter, d0
 	lea	@Str_DeleteSRAMCountDown(pc,d0), a1
-	Options_PipeString a4, "RESET OPTIONS            %<.l a1 str>", 30
+ if def(__WIDESCREEN__)
+	Options_PipeString a4, "RESET OPTIONS                      %<.l a1 str>", OpLength
+ else
+	Options_PipeString a4, "RESET OPTIONS            %<.l a1 str>", OpLength
+ endif
 	rts
 
 @Str_DeleteSRAMCountDown:
@@ -916,7 +986,13 @@ Options_BlackBarsMode_Redraw:
 	btst	#1, BlackBars.HandlerId
 	beq.s	@0
 	lea	@Str_BlackBars_Hardware(pc), a1
-@0:	Options_PipeString a4, "BLACK BARS SETUP      %<.l a1 str>", 30
+@0:
+
+ if def(__WIDESCREEN__)
+	Options_PipeString a4, "BLACK BARS SETUP                %<.l a1 str>", OpLength
+ else
+	Options_PipeString a4, "BLACK BARS SETUP      %<.l a1 str>", OpLength
+ endif
 	rts
 
 @Str_BlackBars_Emulator:
@@ -964,10 +1040,18 @@ Options_BlackBarsMode_Handle:
 Options_Exit_Redraw:
 	tst.b	($FFFFFF84).w
 	bne.s	@firststart
-	Options_PipeString a4, "   SAVE + EXIT OPTIONS MENU   ", 30
+
+ if def(__WIDESCREEN__)
+	Options_PipeString a4, "        SAVE + EXIT OPTIONS MENU        ", OpLength
 	rts
-@firststart:
-	Options_PipeString a4, "          START GAME          ", 30
+  	@firststart:
+	Options_PipeString a4, "               START GAME               ", OpLength
+ else
+	Options_PipeString a4, "   SAVE + EXIT OPTIONS MENU   ", OpLength
+	rts
+	@firststart:
+	Options_PipeString a4, "          START GAME          ", OpLength
+ endif
 	rts
 
 ; ---------------------------------------------------------------------------

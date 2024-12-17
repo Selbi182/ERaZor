@@ -2261,7 +2261,7 @@ PalPointers:
 	dc.l Pal_LZ2,		$FB20 0017	; $05
 	dc.l Pal_MZ,		$FB20 0017	; $06
 	dc.l Pal_SLZ,		$FB20 0017	; $07
-	dc.l Pal_SYZ,		$FB20 0017	; $08
+	dc.l Pal_SYZ_Uberhub,	$FB20 0017	; $08
 	dc.l Pal_SBZ2,		$FB20 0017	; $09
 	dc.l Pal_Special,	$FB00 001F	; $0A
 	dc.l Pal_LZWater2,	$FB00 001F	; $0B
@@ -2279,6 +2279,7 @@ PalPointers:
 	dc.l Pal_LZWater2_Evil,	$FB00 001F	; $17
 	dc.l Pal_SBZ2,		$FB20 0005	; $18
 	dc.l Pal_Black,		$FB20 0017	; $19
+	dc.l Pal_SYZ_Unterhub,	$FB20 0017	; $1A
 	even
 
 ; ---------------------------------------------------------------------------
@@ -2296,7 +2297,8 @@ Pal_LZ2:		incbin	palette\lz2.bin
 Pal_LZWater2:		incbin	palette\lz_uw2.bin
 Pal_MZ:			incbin	palette\mz.bin
 Pal_SLZ:		incbin	palette\slz.bin
-Pal_SYZ:		incbin	palette\syz.bin
+Pal_SYZ_Uberhub:	incbin	palette\syz_uberhub.bin
+Pal_SYZ_Unterhub:	incbin	palette\syz_unterhub.bin
 Pal_SYZGray:
 		dc.w	$0222,$0000,$0444,$0666,$0888,$0CCC,$0EEE,$0AAA,$0888,$0444,$0AAA,$0666,$00EE,$0088,$0044,$0444
 		dc.w	$0444,$0000,$0EEE,$0AAA,$0888,$0666,$0222,$0222,$0000,$0AAA,$0666,$0222,$0666,$0888,$0666,$0000
@@ -6390,9 +6392,14 @@ MLB_NotGHZ2:
 		moveq	#$C,d0			; use GHZ3 palette
 
 MLB_NotGHZ3:
-		cmpi.w	#$502,($FFFFFE10).w ; is level FZ?
-		bne.s	MLB_NormalPal	; if not, branch
-		moveq	#$E,d0		; use FZ palette
+		cmpi.w	#$502,($FFFFFE10).w	; is level FZ?
+		bne.s	MLB_NotFZ		; if not, branch
+		moveq	#$E,d0			; use FZ palette
+
+MLB_NotFZ:
+		cmpi.w	#$402,($FFFFFE10).w 	; is level Unterhub?
+		bne.s	MLB_NormalPal		; if not, branch
+		moveq	#$1A,d0			; use Unterhub palette
 
 MLB_NormalPal:
 		bsr	PalLoad1	; load palette (based on	d0)
@@ -13594,7 +13601,7 @@ Obj4B_DontCollect:
 ; ===========================================================================
 
 Obj4B_Collect:				; XREF: Obj4B_Index
-		cmp.b	#4,($FFFFFE10).w	; we in uberhub?
+		cmpi.w	#$400,($FFFFFE10).w	; we in uberhub?
 		bne.s	@NoPaletteChange	; if not, don't change the palette
 		
 		cmpi.b	#GRing_Labyrinthy,obSubtype(a0)	; is this the ring to Labyrinthy Place?

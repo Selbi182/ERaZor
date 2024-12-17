@@ -67,7 +67,7 @@ CS_ClrObjRam:	move.l	d0,(a1)+
 
 	; widescreen-only line extensions
 	if def(__WIDESCREEN__)
-		CS_LineChar: = $2B  ; mapping ID of the line - tipped versions are right before and after
+		CS_LineChar: = $2C  ; mapping ID of the line - tipped versions are right before and after
 
 		lea	VDP_Data,a6
 		lea	VDP_Ctrl,a4

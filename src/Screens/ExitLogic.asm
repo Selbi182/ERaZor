@@ -124,6 +124,7 @@ Exit_SegaScreen:
 ; ===========================================================================
 
 Exit_SelbiSplash:
+		clr.b	(CarryOverData).w	; clear carried-over data now no matter what
 		move.b	#4,(GameMode).w		; set to title screen
 		rts
 ; ===========================================================================
@@ -326,10 +327,9 @@ Exit_CreditsScreen:
 		jsr	PlaySound_Special	; fade out music to set the atmosphere
 		moveq	#$12,d0			; load Blackout Challenge teaser text
 		jsr	TutorialBox_Display	; VLADIK => Display hint
-		move.b	#$9C,d0
-		jsr	PlaySound_Special	; briefly play some normal music to reset the Sega chant
 		
 @restartfromcredits:
+		clr.b	(CarryOverData).w	; clear carried-over data now no matter what
 		bra.w	ReturnToSegaScreen	; restart game from Sega Screen
 
 ; ===========================================================================

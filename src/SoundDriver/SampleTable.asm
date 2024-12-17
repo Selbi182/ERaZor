@@ -80,7 +80,7 @@ SampleTable:
 	dcSample	TYPE_DPCM, Sample_CE, 9635	; CF: Sample CF - Ohh #2
 	dcSample	TYPE_DPCM, Sample_CE, 9635	; D0: Sample CF - Ohh #2
 	dcSample	TYPE_DPCM, Sample_D1, 12196	; D1: Sample D0 - Ohh #3
-	dcSample	TYPE_PCM, SegaPCM		; D2: Sega PCM
+	dcSample	TYPE_PCM, SegaPCM, 0, FLAGS_SFX	; D2: Sega PCM
 
 
 	incdac	Sample_81, "sound/dac/Sample_81.dpcm"

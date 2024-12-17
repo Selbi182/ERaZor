@@ -20175,6 +20175,14 @@ Obj47_Index:	dc.w Obj47_Main-Obj47_Index
 ; ===========================================================================
 
 Obj47_Main:				; XREF: Obj47_Index
+		cmpi.b	#4,($FFFFFE10).w
+		bne.s	@noeaster
+		tst.b	(PlacePlacePlace).w
+		beq.s	@noeaster
+		move.b	#7,(a0) ; same effect, totally different vibe
+		rts
+
+@noeaster:
 		addq.b	#2,obRoutine(a0)
 		move.l	#Map_obj47,obMap(a0)
 		move.b	#4,obRender(a0)
@@ -27601,7 +27609,7 @@ Obj07_Init:
 @notsap:	cmpi.w	#$601,d0
 		bne.s	@notend
 		move.w	#$BA00/$20,obGfx(a0)
-@notend:	cmpi.w	#$400,d0
+@notend:	cmpi.b	#$4,($FFFFFE10).w
 		bne.s	Obj07_Animate
 		move.w	#$8AC0/$20,obGfx(a0)
 ; ---------------------------------------------------------------------------
@@ -27661,7 +27669,9 @@ Obj07_CheckVisible:
 		beq.s	@no			; if not, hide
 		bra.s	@yes			; if yes, display
 @notnhp:
-		cmpi.w	#$400,d0		; are we in Uberhub?
+		cmpi.w	#$402,d0		; are we in Uberhub?
+		beq.s	@yes			; if yes, always display
+		cmpi.w	#$400,d0		; are we in SLZ?
 		bne.s	@notuberhub		; if not, branch
 		tst.b	($FFFFFFE9).w		; fade-out in progress?
 		bne.s	@no			; if yes, hide
@@ -30198,7 +30208,7 @@ Sonic_Fire:
 		beq.s	@notinhuman		; if not, branch
 
 		cmpi.b	#2,($FFFFFFE7).w	; is cooldown set?
-		blo.s	InhumanMode		; if not, fire bullet
+		blo.s	@chkInhumanMode		; if not, check if we can fire a bullet
 		subq.b	#2,($FFFFFFE7).w	; sub 2 from cooldown (don't mess with first bit)
 		rts				; prevent bullet spamming
 
@@ -30211,10 +30221,11 @@ Sonic_Fire:
 		jmp	AnnoyedSonic		; stop spamming A you meanie
 ; ---------------------------------------------------------------------------
 
-InhumanMode:
+@chkInhumanMode:
 		btst	#iA,SonicControl|Press	; is A pressed?
 		beq.w	S_F_End			; if not, nothing to do
 
+InhumanMode:
 		jsr	SingleObjLoad		; check if SingleObjLoad is already in use
 		bne.w	S_F_End			; if it is, don't do anything
 		move.b	#$23,0(a1)		; load missile object
@@ -37246,6 +37257,8 @@ Obj77_Display:
 ; ---------------------------------------------------------------------------
 ; Object 73 - Eggman (MZ)
 ; ---------------------------------------------------------------------------
+Obj73_BossHealth = 16
+; ---------------------------------------------------------------------------
 
 Obj73:					; XREF: Obj_Index
 		moveq	#0,d0
@@ -37269,7 +37282,7 @@ Obj73_Main:				; XREF: Obj73_Index
 		move.w	obY(a0),$38(a0)
 		move.b	#$F,obColType(a0)
 
-		moveq	#12,d0			; set number of hits
+		moveq	#Obj73_BossHealth,d0		; set number of hits
 		if LowBossHP=1
 			moveq	#1,d0
 		endif
@@ -37452,7 +37465,7 @@ Obj73_GoingInCircles2:
 		bsr	BossMove
 		bset	#0,obStatus(a0)
 
-		cmpi.w	#$2080,obX(a0)
+		cmpi.w	#$2040,obX(a0)
 		blo.w	Obj73_MainStuff
 		addq.b	#2,ob2ndRout(a0)
 		asr	obVelX(a0)
@@ -38901,45 +38914,63 @@ Obj75_SlamDown:
 
 Obj75_DestroyChunk:
 		addq.b	#2,ob2ndRout(a0)	; go back up
-		asr	obVelX(a0)
+		asr	obVelX(a0)		; half X speed
 
-		; check if eggman landed on an already destroyed chunk
+		; find blinking searchlights, turn them into explosions, and destroy their chunk
 		move.l	a0,-(sp)
-		move.w	obX(a0),d0
-		move.w	#$0200,d1
-		jsr	Sub_FindChunkByCoordinate
-		move.b	(a0),d0
+		moveq	#0,d1			; chunk X coordinate to destroy
+		lea	($FFFFD800).w,a0
+		moveq	#$40-1,d0
+@deletelights:	
+		cmpi.b	#$12,(a0)		; is current object a searchlight?
+		bne.s	@next			; if not, branch
+		cmpi.b	#$A,obRoutine(a0)	; are these currently blinking searchlights?
+		bne.s	@next			; if not, branch
+		move.w	obX(a0),d1		; remember X position to destroy the chunk
+
+		move.b	#$3F,(a0)		; turn searchlight into explosion
+		clr.b	obRoutine(a0)		; reset to init routine
+		move.b	#1,$30(a0)		; make explosion harmless
+		move.b	#1,$31(a0)		; set mute flag
+
+@next		lea	$40(a0),a0
+		dbf	d0,@deletelights
 		move.l	(sp)+,a0
-		tst.b	d0			; empty chunk (casual)?
-		beq.w	Obj75_SlamEnd		; if yes, miss
-		cmpi.b	#$46,d0			; spoopy chunk (frantic)?
-		beq.w	Obj75_SlamEnd		; if yes, miss
 
 @break:
+		; break the actual chunk
+		tst.w	d1			; was any searchlight found?
+		bne.s	@hit			; if yes, branch
+		cmpi.w	#Obj75_ArenaRight,($FFFFD008).w	; is Sonic at the door?
+		bhs.s	@nobreak		; if yes, always move to prevent cheesing
+		bra.w	Obj75_SlamEnd		; if not, no searchlights were blinking, eggman missed
+
+@hit:		move.l	a0,-(sp)
+		move.w	d1,d0			; set X coordinate now
+		move.w	#$0200,d1		; Y coordinate is always the same
+		moveq	#$46,d2			; use spoopy skull chunk
+		jsr	Sub_ChangeChunk
+		move.l	(sp)+,a0
+
+@nobreak:
+		asr	obVelY(a0)		; half Y speed on impact with floor only
+		move.b	#$80,(RedrawEverything).w ; redraw everything without affecting the camera
+		ori.b	#40,(CameraShake).w	; camera shaking
+
+		; sound effects
 		tst.b	($FFFFF7CC).w		; are controls still locked?
-		bne.s	@locked		; if yes, branch
+		bne.s	@locked			; if yes, play reduced sfx to not collide with the beginning of the music
 		jsr	WhiteFlash
 		move.w	#$B9,d0
 		jsr	PlaySound
-		move.w	#$DB,d0
+@locked:	move.w	#$DB,d0
 		jsr	PlaySound_Special
-		bra	@noflash
-@locked:
-		move.w	#$DB,d0
-		jsr	PlaySound_Special
-
-@noflash:
-		asr	obVelY(a0)
-	;	asr	obVelY(a0)
-		move.b	#$80,(RedrawEverything).w	; redraw everything without affecting the camera
-		move.b	#0,($FFFFFFB2).w	; shorter camera lag
-		ori.b	#40,(CameraShake).w	; camera shaking
 
 		; move Sonic if he stood on the chunk as it exploded
 		cmpi.w	#Obj75_ArenaRight,($FFFFD008).w	; is Sonic at the door?
 		blo.s	@inarena			; if not, branch
 		move.w	#Obj75_ArenaRight,($FFFFD008).w
-		bra.s	@movesonic			; if yes, always move
+		bra.s	@movesonic			; if yes, always move to prevent cheesing
 @inarena:
 		btst	#1,($FFFFD022).w		; is Sonic in air?
 		bne.s	@nosonicmove			; if yes, all good
@@ -38950,52 +38981,17 @@ Obj75_DestroyChunk:
 		andi.w	#$FF00,d2
 		cmp.w	d1,d2
 		bne.s	@nosonicmove
-
 		move.b	#4,($FFFFD024).w		; set to Obj01_Hurt
 		move.b	#$1A,($FFFFD01C).w
 		move.w	#-$600,($FFFFD012).w
 		move.w	#$800,($FFFFD010).w
 		bset	#1,($FFFFD022).w
 		move.b	#1,($FFFFFF72).w		; prevent invulnerability frames
-
 		move.w	($FFFFD008).w,d1
 		cmp.w	obX(a0),d1			; is Sonic to the right of Eggman?
 		bhs.s	@nosonicmove			; if yes, branch
 		neg.w	($FFFFD010).w			; negate direction
 @nosonicmove:
-
-		cmpi.w	#Obj75_ArenaRight,obX(a0)	; to the right of the arena?
-		bhs.w	Obj75_SlamEnd			; if yes, don't break chunk
-
-		; break the actual chunks
-		moveq	#0,d2				; replace with void chunk
-		frantic					; are we in frantic?
-		beq.s	@breakchunk			; if not, branch
-		moveq	#$46,d2				; use spoopy chunk instead
-@breakchunk:
-		move.l	a0,-(sp)
-		move.w	obX(a0),d0
-		move.w	#$0200,d1
-		jsr	Sub_ChangeChunk
-		move.l	(sp)+,a0
-
-		; turn searchlights of the chunk into explosions
-		lea	($FFFFD800).w,a1
-		moveq	#$3F,d0
-@deletelights:	
-		cmpi.b	#$12,(a1)		; is current object a searchlight?
-		bne.s	@next			; if not, branch
-		cmpi.b	#$A,obRoutine(a1)	; are these currently blinking searchlights?
-		bne.s	@next			; if not, branch
-
-		move.b	#$3F,(a1)		; turn into explosion
-		clr.b	obRoutine(a1)
-		move.b	#1,$30(a1)		; make explosion harmless
-		move.b	#1,$31(a1)		; set mute flag
-
-@next		lea	$40(a1),a1
-		dbf	d0,@deletelights
-
 		bset	#5,($FFFFF7A7).w	; set flag that a chunk has been broken
 
 		bra.w	Obj75_SlamEnd

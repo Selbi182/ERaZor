@@ -174,7 +174,7 @@ Options_ExtendedCamera_Redraw:
 @0:
 
  if def(__WIDESCREEN__)
-	Options_PipeString a4, "WIDE EXTENDED CAMERA                 %<.l a1 str>", OpLength
+	Options_PipeString a4, "EXTENDED CAMERA FOR WIDESCREEN       %<.l a1 str>", OpLength
  else
 	Options_PipeString a4, "EXTENDED CAMERA            %<.l a1 str>", OpLength
  endif

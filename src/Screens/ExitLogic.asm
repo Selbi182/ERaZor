@@ -541,12 +541,15 @@ HubRing_RP:	move.w	#$200,($FFFFFE10).w	; set level to MZ1
 HubRing_LP:
 		btst	#3,(OptionsBits).w	; are black bars (cinematic mode) enabled?
 		beq.s	@nobars			; if not, branch
+		movem.l	a0/d7,-(sp)
 		jsr	Pal_FadeFrom		; fade out palette to avoid visual glitches
 		jsr	ClearScreen		; clear screen
+		clr.w	Blackbars.Height	; make sure box appears immediately
 		moveq	#$E,d0			; load FZ palette (cause tutorial boxes are built into SBZ)
 		jsr	PalLoad2		; load palette	
-		moveq	#$11,d0			; load warning text that black bars don't work in LP
-		jsr	TutorialBox_Display	; VLADIK => Display hint
+		movem.l	(sp)+,a0/d7
+		moveq	#$11|_DH_WithBGFuzz,d0	; load warning text that black bars don't work in LP
+		jsr	Queue_TutorialBox_Display ; VLADIK => Display hint
 @nobars:
 		move.w	#$101,($FFFFFE10).w	; set level to LZ2
 		bra.w	RunChapter

@@ -31143,7 +31143,7 @@ Obj01_NoOFX:
 		move.b	#$2C,obAnim(a0)	; set anim to drowning 2
 
 Obj01_NoOF:
-		jsr	ObjectFall
+		jsr	ObjectFall_Sonic
 		bsr	Sonic_RecordPos
 		bsr	Sonic_Animate
 		bsr	LoadSonicDynPLC
@@ -31164,15 +31164,12 @@ GameOver:				; XREF: Obj01_Death
 		addi.w	#$10,($FFFFD480+obScreenY).w ; bounce death counter
 		clr.b	($FFFFFE1E).w		; stop time counter
 
+		move.w	#4*60,$3A(a0)		; set time delay to 240 frames
 		cmpi.b	#$18,(GameMode).w	; is this the ending sequence?
-		beq.s	loc_138D4		; if yes, don't add death
-		bsr	AddDeath		; add one death
+		beq.s	locret_13900		; if yes, don't add death
 
-loc_138D4:
+		bsr	AddDeath		; add one death
 		move.w	#60,$3A(a0)		; set time delay to 60 frames
-		cmpi.w	#$18,(GameMode).w	; is this the ending sequence?
-		bne.s	locret_13900		; if not, branch
-		move.w	#240,$3A(a0)		; set time delay to 240 frames instead
 
 locret_13900:
 		rts	

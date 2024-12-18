@@ -629,6 +629,15 @@ Deform_MZ:
 		lea	ScrollBlocks_Buffer, a1
 		move.w	CamXPos, d2
 
+	; scroll clouds automatically when inhuman mode is on
+	tst.b	($FFFFFFE7).w
+	bne.s	@do
+	tst.b	($FFFFF7CC).w	; are controls locked?
+	beq.s	@notinhuman
+@do:	sub.w	($FFFFFE0E).w,d2
+	sub.w	($FFFFFE0E).w,d2
+@notinhuman:
+	
 		; NOTICE:
 		; The cloud scrolling calculation has been re-implemented and improved.
 		;

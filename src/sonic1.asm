@@ -11080,24 +11080,27 @@ Obj3F_Main2:
 		move.b	#1,obPriority(a0)
 		move.b	#0,obColType(a0)
 
-
+		; randomly spread explosions around
 		bsr	RandomDirection
+		asl.w	obVelX(a0)
+		asl.w	obVelY(a0)
 
-		cmpi.b	#3,($FFFFFE10).w	; is this an SLZ stage?
-		beq.s	@lowprio		; if yes, always use low prio
-
-		cmpi.b	#$4,($FFFFFE10).w	; are we in Unterhub?
+		cmpi.b	#4,($FFFFFE10).w	; are we in Unterhub?
 		bne.s	@notunterhub		; if not, branch
 		subi.w	#$380,obVelY(a0)	; move explosions up
 		bra.s	@lowprio		; use low prio to not collide with eggman
 
 @notunterhub:
+		cmpi.b	#3,($FFFFFE10).w	; is this an SLZ stage?
+		beq.s	@lowprio		; if yes, always use low prio
 		cmpi.w	#$502,($FFFFFE10).w	; are we in FP?
 		bne.s	@notfp			; if not, branch
 		ori.w	#$8000,obGfx(a0)	; draw high
 		cmpi.b	#$A,($FFFFF742).w	; has boss been defeated yet?
 		bhs.s	@notfp			; if yes, branch
 @lowprio:
+		tst.b	($FFFFF7CC).w		; are controls locked?
+		bne.s	@notfp			; if yes, don't do low prio ever
 		move.b	#7,obPriority(a0)	; make explosions super low priority during the boss fight cause to avoid flicker for more important stuff
 
 @notfp:
@@ -17212,9 +17215,12 @@ Obj34_Setup:				; XREF: Obj34_Index
 
 		movem.l	d7/a0,-(sp)
 		clr.w	($FFFFF76C).w			; reset OPL routine index
-		move.w	#$003,($FFFFFE10).w		; change level ID to GHZ4
-		jsr	LevelLayoutLoad			; load GHZ3 layout
+	;	move.w	#$003,($FFFFFE10).w		; change level ID to GHZ4
+	;	jsr	LevelLayoutLoad			; load GHZ3 layout
+	;	move.w	#$002,($FFFFFE10).w		; change level ID to GHZ3
+
 		move.w	#$002,($FFFFFE10).w		; change level ID to GHZ3
+		jsr	LevelLayoutLoad			; load GHZ3 layout
 		movem.l	(sp)+,d7/a0
 
 		jsr	PlayLevelMusic
@@ -27438,7 +27444,7 @@ Obj06_DoHardPartSkip:
 		clr.w	($FFFFFE20).w		; delete all your rings you cheating bastard
 		ori.b	#1,($FFFFFE1D).w	; update ring counter
 		jsr	AddFail
-		jsr	WhiteFlash_Intense	; do a mega white flash
+		jsr	WhiteFlash
 		move.b	#1,(RedrawEverything).w	; redraw screen after teleportation
 		move.w	#$C3,d0			; set giant ring sound
 		jsr	PlaySound_Special	; play it
@@ -35556,6 +35562,8 @@ Obj79_HitLamp:
 		bne.s	@notrp			; if not, branch
 		frantic				; are we in frantic?
 		beq.s	@notrp			; always allow in casual
+		cmpi.b	#3,obSubtype(a0)	; is this the checkpoint before the inhuman section?
+		bne.s	@notrp			; if not, branch
 		tst.b	($FFFFFFE7).w		; inhuman mode already active?
 		bne.s	@disallow		; if yes, disallow cheesing
 		cmpi.w	#250,($FFFFFE20).w	; do you have at least 250 rings?
@@ -37463,7 +37471,7 @@ Obj73_LavaSequence:
 
 Obj73_GoToArena:
 		bsr	BossMove
-		cmpi.w	#$260,obY(a0)
+		cmpi.w	#$160,obY(a0)
 		bhi.w	Obj73_MainStuff
 		addq.b	#2,ob2ndRout(a0)
 		clr.w	obVelX(a0)
@@ -37493,7 +37501,7 @@ Obj73_GoingInCircles1:
 		bsr	BossMove
 		bset	#0,obStatus(a0)
 
-		cmpi.w	#$1B0,obY(a0)
+		cmpi.w	#$B0,obY(a0)
 		bhi.w	Obj73_MainStuff
 		addq.b	#2,ob2ndRout(a0)
 		asr	obVelY(a0)
@@ -37546,7 +37554,7 @@ Obj73_GoingInCircles3:
 		bsr	BossMove
 		bclr	#0,obStatus(a0)
 
-		cmpi.w	#$278,obY(a0)
+		cmpi.w	#$178,obY(a0)
 		blo.w	Obj73_MainStuff
 		addq.b	#2,ob2ndRout(a0)
 		asr	obVelY(a0)
@@ -37580,6 +37588,7 @@ Obj73_GoingInCircles4:
 		asr	obVelX(a0)
 		asr	obVelX(a0)
 		bra.w	Obj73_MainStuff
+; ===========================================================================
 ; ===========================================================================
 
 Obj73_Defeated:				; XREF: Obj73_MainStuff

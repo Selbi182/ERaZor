@@ -65,7 +65,7 @@ DebugSurviveNoRings = 1
 DebugHudPermanent = 0
 ; ------------------------------------------------------
 DoorsAlwaysOpen = 0
-LowBossHP = 0
+LowBossHP = 1
 ; ======================================================
 	else
 ; BENCHMARK build settings (DO NOT CHANGE!)
@@ -2033,47 +2033,47 @@ loc_20BC:
 
 Pal_Sega1:	incbin	palette\sega1.bin
 Pal_Sega2:	incbin	palette\sega2.bin
-Pal_Sega2OG:	incbin	palette\sega2_original.bin
 
 ; ---------------------------------------------------------------------------
 ; Subroutines to load pallets
 ; ---------------------------------------------------------------------------
-
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
-
-PalLoad1:
-		lea	(PalPointers).l,a1
+LoadPalPointer:
+		lea	(PalPointers_Classic).l,a1	; use classic palettes
+		btst	#7,(OptionsBits2).w		; are remastered palettes enabled?
+		beq.s	@end				; if not, branch
+		lea	(PalPointers_Remastered).l,a1	; use remastered palettes
+@end:		
 		lsl.w	#3,d0
 		adda.w	d0,a1
 		movea.l	(a1)+,a2		; pointer
 		movea.w	(a1)+,a3		; RAM address
-		adda.w	#$80,a3
 		move.w	(a1)+,d7		; (palette length / 2) - 1
-		
-		bra.s	loc_2128
+		rts
+; ---------------------------------------------------------------------------
+
+; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+
+PalLoad1:	; write to the fade-in buffer
+		bsr	LoadPalPointer
+		adda.w	#$80,a3
+		bra.s	PalLoad_Apply
 ; End of function PalLoad1
 
 
 ; ||||||||||||||| S U B R O U T I N E |||||||||||||||||||||||||||||||||||||||
 	
 
-PalLoad2:	; virtually identical to PalLoad1, except the missing +$80 on a3
-		lea	(PalPointers).l,a1
-		lsl.w	#3,d0
-		adda.w	d0,a1
-		movea.l	(a1)+,a2
-		movea.w	(a1)+,a3
-		move.w	(a1)+,d7
+PalLoad2:	; writes directly to the active palette
+		bsr	LoadPalPointer
 
-loc_2128:
+PalLoad_Apply:
 		move.w	(a2)+,d0
 		bsr	PissFilter
 		move.w	d0,(a3)+
 		move.w	(a2)+,d0
 		bsr	PissFilter
 		move.w	d0,(a3)+
-		dbf	d7,loc_2128
+		dbf	d7,PalLoad_Apply
 		rts
 ; End of function PalLoad2
 
@@ -2085,23 +2085,9 @@ loc_2128:
 
 
 PalLoad3_Water:	; this subroutine is for palette line 1
-		lea	(PalPointers).l,a1
-		lsl.w	#3,d0
-		adda.w	d0,a1
-		movea.l	(a1)+,a2
-		movea.w	(a1)+,a3
-		suba.w	#$80,a3
-		move.w	(a1)+,d7
-
-loc_2144:
-		move.w	(a2)+,d0
-		bsr	PissFilter
-		move.w	d0,(a3)+
-		move.w	(a2)+,d0
-		bsr	PissFilter
-		move.w	d0,(a3)+
-		dbf	d7,loc_2144
-		rts
+		bsr	LoadPalPointer
+		suba.w	#$40*2,a3
+		bra.s	PalLoad_Apply
 ; End of function PalLoad3_Water
 
 
@@ -2109,23 +2095,9 @@ loc_2144:
 
 
 PalLoad4_Water:	; this subroutine is for palette lines 2-4
-		lea	(PalPointers).l,a1
-		lsl.w	#3,d0
-		adda.w	d0,a1
-		movea.l	(a1)+,a2
-		movea.w	(a1)+,a3
-		suba.w	#$100,a3
-		move.w	(a1)+,d7
-
-loc_2160:
-		move.w	(a2)+,d0
-		bsr	PissFilter
-		move.w	d0,(a3)+
-		move.w	(a2)+,d0
-		bsr	PissFilter
-		move.w	d0,(a3)+
-		dbf	d7,loc_2160
-		rts
+		bsr	LoadPalPointer
+		suba.w	#$40*2*2,a3
+		bra.s	PalLoad_Apply
 ; End of function PalLoad4_Water
 
 ; ===========================================================================
@@ -2251,76 +2223,123 @@ PissFilter_End:
 ; ---------------------------------------------------------------------------
 ; Palette pointers
 ; ---------------------------------------------------------------------------
-PalPointers:
+; PalPointers:
+PalPointers_Classic:
 	;    palette		RAM   length/2-1
 	dc.l Pal_SegaBG,	$FB00 001F	; $00
-	dc.l Pal_Title,		$FB00 001F	; $01
-	dc.l Pal_LevelSel,	$FB00 001F	; $02
-	dc.l Pal_Sonic,		$FB00 0007	; $03
-	dc.l Pal_GHZ,		$FB20 0017	; $04
-	dc.l Pal_LZ2,		$FB20 0017	; $05
-	dc.l Pal_MZ,		$FB20 0017	; $06
-	dc.l Pal_SLZ,		$FB20 0017	; $07
-	dc.l Pal_SYZ_Uberhub,	$FB20 0017	; $08
-	dc.l Pal_SBZ2,		$FB20 0017	; $09
-	dc.l Pal_Special,	$FB00 001F	; $0A
-	dc.l Pal_LZWater2,	$FB00 001F	; $0B
-	dc.l Pal_GHZ3,		$FB20 0017	; $0C
-	dc.l Pal_GHZ2,		$FB20 0017	; $0D
-	dc.l Pal_FZ,		$FB20 0017	; $0E
-	dc.l Pal_LZSonWater,	$FB00 0007	; $0F
-	dc.l Pal_SonicAntigrav,	$FB00 0007	; $10
-	dc.l Pal_SonicAntigrav,	$FB20 0007	; $11
-	dc.l Pal_SpeContinue,	$FB00 000F	; $12
-	dc.l Pal_GHZ2,		$FB20 001F	; $13
+	dc.l PalC_Title,	$FB00 001F	; $01
+	dc.l PalC_LevelSel,	$FB00 001F	; $02
+	dc.l PalC_Sonic,	$FB00 0007	; $03
+	dc.l PalC_GHZ,		$FB20 0017	; $04
+	dc.l PalC_LZ2,		$FB20 0017	; $05
+	dc.l PalC_MZ,		$FB20 0017	; $06
+	dc.l PalC_SLZ,		$FB20 0017	; $07
+	dc.l PalC_SYZ_Uberhub,	$FB20 0017	; $08
+	dc.l PalC_SBZ2,		$FB20 0017	; $09
+	dc.l PalC_Special,	$FB00 001F	; $0A
+	dc.l PalC_LZWater2,	$FB00 001F	; $0B
+	dc.l PalC_GHZ3,		$FB20 0017	; $0C
+	dc.l PalC_GHZ2,		$FB20 0017	; $0D
+	dc.l PalC_FZ,		$FB20 0017	; $0E
+	dc.l PalC_LZSonWater,	$FB00 0007	; $0F
+	dc.l PalC_SonicAntigrav,$FB00 0007	; $10
+	dc.l PalC_SonicAntigrav,$FB20 0007	; $11
+	dc.l Pal_Black,		$FB00 0007	; $12
+	dc.l PalC_GHZ2,		$FB20 001F	; $13
 	dc.l STS_Palette,	$FB00 001F	; $14
-	dc.l Pal_BCutscene,	$FB20 001F	; $15
-	dc.l Pal_SpecialEaster,	$FB00 001F	; $16
-	dc.l Pal_LZWater2_Evil,	$FB00 001F	; $17
-	dc.l Pal_SBZ2,		$FB20 0005	; $18
+	dc.l PalC_BCutscene,	$FB20 001F	; $15
+	dc.l PalC_SpecialEaster,$FB00 001F	; $16
+	dc.l PalC_LZWater2_Evil,$FB00 001F	; $17
+	dc.l PalC_SBZ2,		$FB20 0005	; $18
 	dc.l Pal_Black,		$FB20 0017	; $19
-	dc.l Pal_SYZ_Unterhub,	$FB20 0017	; $1A
+	dc.l PalC_SYZ_Unterhub,	$FB20 0017	; $1A
+	even
+
+PalPointers_Remastered:
+	;    palette		RAM   length/2-1
+	dc.l Pal_SegaBG,	$FB00 001F	; $00
+	dc.l PalR_Title,	$FB00 001F	; $01
+	dc.l PalR_LevelSel,	$FB00 001F	; $02
+	dc.l PalR_Sonic,	$FB00 0007	; $03
+	dc.l PalR_GHZ,		$FB20 0017	; $04
+	dc.l PalR_LZ2,		$FB20 0017	; $05
+	dc.l PalR_MZ,		$FB20 0017	; $06
+	dc.l PalR_SLZ,		$FB20 0017	; $07
+	dc.l PalR_SYZ_Uberhub,	$FB20 0017	; $08
+	dc.l PalR_SBZ2,		$FB20 0017	; $09
+	dc.l PalR_Special,	$FB00 001F	; $0A
+	dc.l PalR_LZWater2,	$FB00 001F	; $0B
+	dc.l PalR_GHZ3,		$FB20 0017	; $0C
+	dc.l PalR_GHZ2,		$FB20 0017	; $0D
+	dc.l PalR_FZ,		$FB20 0017	; $0E
+	dc.l PalR_LZSonWater,	$FB00 0007	; $0F
+	dc.l PalR_SonicAntigrav,$FB00 0007	; $10
+	dc.l PalR_SonicAntigrav,$FB20 0007	; $11
+	dc.l Pal_Black,		$FB00 0007	; $12
+	dc.l PalR_GHZ2,		$FB20 001F	; $13
+	dc.l STS_Palette,	$FB00 001F	; $14
+	dc.l PalR_BCutscene,	$FB20 001F	; $15
+	dc.l PalR_SpecialEaster,$FB00 001F	; $16
+	dc.l PalR_LZWater2_Evil,$FB00 001F	; $17
+	dc.l PalR_SBZ2,		$FB20 0005	; $18
+	dc.l Pal_Black,		$FB20 0017	; $19
+	dc.l PalR_SYZ_Unterhub,	$FB20 0017	; $1A
 	even
 
 ; ---------------------------------------------------------------------------
-; Palette data
+; Palette data includes
 ; ---------------------------------------------------------------------------
+; TODO once we're getting close to release, remove unchanged duplicates again
+
+; Classic palettes
+PalC_Title:		incbin	palette\Classic\title.bin
+PalC_LevelSel:		incbin	Screens\OptionsScreen\Options_Pal_Classic.bin
+PalC_Sonic:		incbin	palette\Classic\sonic.bin
+PalC_GHZ:		incbin	palette\Classic\ghz.bin
+PalC_LZ2:		incbin	palette\Classic\lz2.bin
+PalC_MZ:		incbin	palette\Classic\mz.bin
+PalC_SLZ:		incbin	palette\Classic\slz.bin
+PalC_SYZ_Uberhub:	incbin	palette\Classic\syz_uberhub.bin
+PalC_SBZ2:		incbin	palette\Classic\fz.bin
+PalC_Special:		incbin	palette\Classic\special.bin
+PalC_LZWater2:		incbin	palette\Classic\lz_uw2.bin
+PalC_GHZ3:		incbin	palette\Classic\ghz3.bin
+PalC_GHZ2:		incbin	palette\Classic\ghz2.bin
+PalC_FZ:		incbin	palette\Classic\fz.bin
+PalC_LZSonWater:	incbin	palette\Classic\son_lzuw.bin
+PalC_SonicAntigrav:	incbin	palette\Classic\sonic_antigrav.bin
+PalC_BCutscene:		incbin	palette\Classic\bombcutscene.bin
+PalC_SpecialEaster:	incbin	palette\Classic\special_blackout.bin
+PalC_LZWater2_Evil:	incbin	palette\Classic\lz_uw2_evil.bin
+PalC_SYZ_Unterhub:	incbin	palette\Classic\syz_unterhub.bin
+
+; Remastered palettes by Javesike
+PalR_Title:		incbin	palette\Remastered\title.bin
+PalR_LevelSel:		incbin	Screens\OptionsScreen\Options_Pal_Remastered.bin
+PalR_Sonic:		incbin	palette\Remastered\sonic.bin
+PalR_GHZ:		incbin	palette\Remastered\ghz.bin
+PalR_LZ2:		incbin	palette\Remastered\lz2.bin
+PalR_MZ:		incbin	palette\Remastered\mz.bin
+PalR_SLZ:		incbin	palette\Remastered\slz.bin
+PalR_SYZ_Uberhub:	incbin	palette\Remastered\syz_uberhub.bin
+PalR_SBZ2:		incbin	palette\Remastered\fz.bin
+PalR_Special:		incbin	palette\Remastered\special.bin
+PalR_LZWater2:		incbin	palette\Remastered\lz_uw2.bin
+PalR_GHZ3:		incbin	palette\Remastered\ghz3.bin
+PalR_GHZ2:		incbin	palette\Remastered\ghz2.bin
+PalR_FZ:		incbin	palette\Remastered\fz.bin
+PalR_LZSonWater:	incbin	palette\Remastered\son_lzuw.bin
+PalR_SonicAntigrav:	incbin	palette\Remastered\sonic_antigrav.bin
+PalR_BCutscene:		incbin	palette\Remastered\bombcutscene.bin
+PalR_SpecialEaster:	incbin	palette\Remastered\special_blackout.bin
+PalR_LZWater2_Evil:	incbin	palette\Remastered\lz_uw2_evil.bin
+PalR_SYZ_Unterhub:	incbin	palette\Remastered\syz_unterhub.bin
+
+; Misc
 Pal_SegaBG:		incbin	palette\sega_bg.bin
-Pal_Title:		incbin	palette\title.bin
-Pal_LevelSel:		incbin	Screens\OptionsScreen\Options_Pal.bin
-Pal_Sonic:		incbin	palette\sonic.bin
-Pal_SonicAntigrav:	incbin	palette\sonic_antigrav.bin
-Pal_GHZ:		incbin	palette\ghz.bin
-Pal_GHZ2:		incbin	palette\ghz2.bin
-Pal_GHZ3:		incbin	palette\ghz3.bin
-Pal_LZ2:		incbin	palette\lz2.bin
-Pal_LZWater2:		incbin	palette\lz_uw2.bin
-Pal_MZ:			incbin	palette\mz.bin
-Pal_SLZ:		incbin	palette\slz.bin
-Pal_SYZ_Uberhub:	incbin	palette\syz_uberhub.bin
-Pal_SYZ_Unterhub:	incbin	palette\syz_unterhub.bin
-Pal_SYZGray:
-		dc.w	$0222,$0000,$0444,$0666,$0888,$0CCC,$0EEE,$0AAA,$0888,$0444,$0AAA,$0666,$00EE,$0088,$0044,$0444
-		dc.w	$0444,$0000,$0EEE,$0AAA,$0888,$0666,$0222,$0222,$0000,$0AAA,$0666,$0222,$0666,$0888,$0666,$0000
-		dc.w	$0444,$0000,$0666,$0888,$0AAA,$0CCC,$0EEE,$0444,$0000,$0888,$0666,$0EEE,$0222,$0444,$0888,$0000
-		even
-	
-	
-Pal_SBZ2:		incbin	palette\fz.bin
-Pal_FZ:			incbin	palette\fz.bin
-Pal_Special:		incbin	palette\special.bin
-Pal_LZSonWater:		incbin	palette\son_lzuw.bin
-Pal_SpeContinue:	incbin	palette\sscontin.bin
-Pal_Ending:		incbin	palette\ending.bin
-Pal_Null:		incbin	palette\null.bin
-Pal_BCutscene:		incbin	palette\bombcutscene.bin
-Pal_SpecialEaster:	incbin	palette\specialeaster.bin
-Pal_LZWater2_Evil:	incbin	palette\lz_uw2_evil.bin
 Pal_ERaZorBanner:	incbin	palette\ERaZor.bin
-Pal_Black:
-	rept $10*4
-		dc.w	$0000
-	endr
+Pal_SYZGray:		incbin	palette\syz_gray.bin
+Pal_Black:		incbin	palette\black.bin
 
 ; ---------------------------------------------------------------------------
 ; Subroutine to	delay the program by ($FFFFF62A) frames
@@ -3686,14 +3705,16 @@ loc_3946:
 ; ===========================================================================
 
 @PLC_Unterhub:
-		dc.l ArtKospM_SearchLight
-		dc.w $6200
-		dc.l ArtKospM_Roller
+		dc.l ArtKospM_SearchLight	; search lights for boss
+		dc.w $7200
+		dc.l ArtKospM_Roller		; Roller enemy
 		dc.w $9700
 		dc.l ArtKospM_HardPS		; hard part skipper
 		dc.w $6E40
 		dc.l ArtKospM_Shield		; shield
 		dc.w $A820
+		dc.l ArtKospM_Arrow		; arrow overwriting the level sign art
+		dc.w $6B40
 		dc.w -1
 ; ===========================================================================
 
@@ -4915,6 +4936,11 @@ SmoothRingsAnimate_Delay = 3
 ; ---------------------------------------------------------------------------
 
 SmoothRingsAnimate:
+		move.l	#Art_Ring,d4
+		tst.b	(PlacePlacePlace).w
+		beq.s	@noeaster
+		move.l	#Art_Weed,d4
+@noeaster:
 		subq.b	#1,(RingFrame_Timer).w
 		bpl.s	@lostrings
 		move.b	#SmoothRingsAnimate_Delay,(RingFrame_Timer).w
@@ -4943,10 +4969,9 @@ SmoothRingsAnimate:
 RingDMATransfer:
 		andi.l	#7,d1				; clear all of d1 except the 8 frames we want
 		lsl.w	#7,d1				; Each ring frame takes $80 bytes, so multiply by $80
-	;	add.l	#Art_Weed,d1			; Queue a DMA transfer for this ring frame
-		add.l	#Art_Ring,d1			; Queue a DMA transfer for this ring frame
+		add.l	d4,d1				; add art offset
 		move.w	#$80/2,d3
-		jmp	QueueDMATransfer
+		jmp	QueueDMATransfer		; Queue a DMA transfer for this ring frame
 
 
 ; ---------------------------------------------------------------------------
@@ -5923,6 +5948,7 @@ End_LoadSonic:
 		move.w	d0,($FFFFFE02).w
 		move.w	d0,($FFFFFE04).w
 		move.b	d0,($FFFFD034).w ; clear speed shoes timer
+		jsr	ClearEverySpecialFlag
 
 		move.b	#1,($FFFFD000).w ; load	Sonic object
 		
@@ -6397,9 +6423,9 @@ MLB_NotGHZ3:
 		moveq	#$E,d0			; use FZ palette
 
 MLB_NotFZ:
-		cmpi.w	#$402,($FFFFFE10).w 	; is level Unterhub?
-		bne.s	MLB_NormalPal		; if not, branch
-		moveq	#$1A,d0			; use Unterhub palette
+	;	cmpi.w	#$402,($FFFFFE10).w 	; is level Unterhub?
+	;	bne.s	MLB_NormalPal		; if not, branch
+	;	moveq	#$1A,d0			; use Unterhub palette
 
 MLB_NormalPal:
 		bsr	PalLoad1	; load palette (based on	d0)
@@ -6853,6 +6879,7 @@ Resize_MZx:	dc.w Resize_MZ1-Resize_MZx
 		dc.w Resize_MZ3-Resize_MZx
 ; ===========================================================================
 
+; Resize_RP:
 Resize_MZ1:
 		moveq	#0,d0
 		move.b	($FFFFF742).w,d0
@@ -6877,12 +6904,12 @@ Resize_MZ1:
 		lea	(@PLC_EggmanRP).l,a1
 		jsr	LoadPLC_Direct
 
-		move.w	#7*60,($FFFFFFAA).w	; wait time for lava drop sequence
+		move.w	#8*60,($FFFFFFAA).w	; wait time for lava drop sequence
 
 		jsr	SingleObjLoad
 		bne.s	@end
 		move.b	#$73,(a1)		; load RP boss
-		move.w	#$1D48,obX(a1)
+		move.w	#$1D48+SCREEN_XCORR,obX(a1)
 		move.w	#$0568,obY(a1)
 @end:
 		rts	
@@ -6895,7 +6922,6 @@ Resize_MZ1:
 		dc.w $A540
 		dc.w -1
 ; ===========================================================================
-
 
 @RPLavaScene1:
 		move.w	($FFFFF700).w,($FFFFF728).w
@@ -6912,7 +6938,7 @@ Resize_MZ1:
 		bset	#0,($FFFFF7A7).w	; start lava droppers
 		move.w	#$0520,($FFFFF72C).w	; top boundary
 
-		move.w	#$270,d2
+		move.w	#$270,d2		; wall off the entrance
 		moveq	#3-1,d1
 	@loadblocks:
 		jsr	SingleObjLoad
@@ -6933,15 +6959,13 @@ Resize_MZ1:
 		cmpi.w	#3*60+30,($FFFFFFAA).w
 		bne.s	@nostop
 		move.w	#$E4,d0
-		jsr	PlaySound_Special	; stop music
-		
+		jsr	PlaySound_Special	; stop music	
 @nostop
-
-		subq.w	#1,($FFFFFFAA).w
-		bne.w	@end
+		subq.w	#1,($FFFFFFAA).w	; sub from timer
+		bne.w	@end			; if time remains, branch
 		bset	#2,($FFFFF7A7).w	; set lava sequence as over
 		addq.b	#2,($FFFFF742).w
-		move.w	#$23E0,($FFFFF72A).w	; right boundary
+		move.w	#$23E0-SCREEN_XCORR,($FFFFF72A).w ; right boundary
 		move.w	#$0000,($FFFFF72C).w	; top boundary
 
 		lea	($FFFFD800).w,a1
@@ -6963,6 +6987,10 @@ Resize_MZ1:
 ; ---------------------------------------------------------------------------	
 
 @RPLavaScene3:
+		move.w	#$520,($FFFFF726).w
+		cmpi.w	#$1CE0,($FFFFF700).w
+		bcs.w	@end
+		move.w	#$220,($FFFFF726).w	; main boundary bottom near the end
 		rts	
 ; ===========================================================================
 ; ===========================================================================
@@ -7472,10 +7500,8 @@ Resize_SYZ3waitboss:
 		move.w	#$1A80+$1A00,($FFFFF72A).w	; right boundary
 
 		movem.l	d7/a0-a3,-(sp)
-		jsr 	Pal_FadeOut 		; i guess this works????
-	;	jsr 	Pal_FadeOut 		; i guess this works????
-		moveq	#3,d0			; brighten up this place by...
-		jsr	PalLoad2		; ...loading Sonic's palette
+		moveq	#$1A,d0			; load Unterhub pallete
+		jsr	PalLoad2
 		jsr	WhiteFlash
 		move.b	#30,($FFFFFFB2).w	; add some camera lag
 		movem.l	(sp)+,d7/a0-a3
@@ -9038,12 +9064,6 @@ Obj18_Action:				; XREF: Obj18_Index
 ; ===========================================================================
 
 Obj18_Arrows:
-		movea.l	$36(a0),a1
-		tst.b	$3F(a1)
-		beq.s	@cont
-		
-	;	move.w	($FFFFD008).w,obX(a0)
-
 		move.b	$3E(a0),d0
 		addq.b	#3,$3E(a0)
 		jsr	(CalcSine).l
@@ -9051,11 +9071,13 @@ Obj18_Arrows:
 		move.w	d0,obVelY(a0)
 		jsr     SpeedToPos
 
-		moveq	#0,d2
-		move.b	obRoutine(a1),d0
-		cmpi.b	#4,d0
+		moveq	#0,d2		; no arrows
+		movea.l	$36(a0),a1
+		cmpi.b	#4,obRoutine(a1)
 		bne.s	@cont
-		moveq	#1,d2
+		tst.b	$3F(a1)
+		beq.s	@cont
+		moveq	#1,d2		; with arrows
 @cont:
 		bra.w	Obj18_ChkDel
 ; ===========================================================================
@@ -9064,6 +9086,7 @@ Obj18_OnPlatform:				; XREF: Obj18_Index
 		cmpi.w	#$400,($FFFFFE10).w	; is level SYZ1?
 		bne.w	Obj18_NotSYZX
 
+		move.b	#0,$3F(a0)		; don't show arrows
 		btst	#1,($FFFFD022).w	; is Sonic in air?
 		bne.w	Obj18_NotSYZX		; if yes, branch
 		cmpi.b	#$34,($FFFFD080).w	; are title cards currently visible?
@@ -11048,9 +11071,6 @@ Obj3F_Main:				; XREF: Obj3F_Index
 ; ---------------------------------------------------------------------------
 
 Obj3F_Main2:
-		cmpi.b	#$34,($FFFFD080).w	; are title cards currently visible?
-		beq.w	Obj3F_Delete		; if yes, delete explosion (visual collision otherwise)
-
 		addq.b	#2,obRoutine(a0)
 		move.l	#Map_obj3F,obMap(a0)
 		move.w	#$5A0,obGfx(a0)
@@ -11915,7 +11935,7 @@ Obj1F_BossDelete:
 		jsr	PalLoad2		; load Sonic palette
 		moveq	#$C,d0
 		jsr	PalLoad2	; load GHZ palette
-		jsr	WhiteFlash			; make white flash
+		jsr	WhiteFlash_Intense		; make mega white flash
 		movem.l	(sp)+,d0-d7/a1-a3
 		
 		move.b	#4,obRoutine(a0)		; delete crabmeat boss
@@ -13635,7 +13655,7 @@ Obj4B_NotGHZ1:
 		movem.l	d7/a1-a3,-(sp)
 		moveq	#4,d0			; load NHP palette
 		jsr	PalLoad2
-		jsr	WhiteFlash		; make white flash
+		jsr	WhiteFlash_Intense	; make mega white flash
 		movem.l	(sp)+,d7/a1-a3
 
 Obj4B_NotGHZ2:
@@ -16588,7 +16608,7 @@ loc_BDD6:
 
 		move.b	#$DB,d0			; play epic explosion sound
 		jsr	PlaySound_Special
-		jsr	WhiteFlash
+		jsr	WhiteFlash_Intense	; do mega white flash
 		move.b	#0,($FFFFFFB2).w	; clear camera delay
 
 		jsr	SingleObjLoad
@@ -17302,7 +17322,7 @@ Obj34_NotSpecial2:
 		move.b	#$78,obActWid(a1)
 		move.b	#0,obRender(a1)
 		move.b	#0,obPriority(a1)
-		move.w	#60,obTimeFrame(a1)	; set time delay to 1 second (60)
+		move.w	#50,obTimeFrame(a1)	; set time delay to 1 second (60)
 		lea	$40(a1),a1	; next object
 		dbf	d1,Obj34_Loop	; repeat sequence another 3 times
 		tst.b	(Blackout).w	; are we in the blackout challenge?
@@ -17874,17 +17894,30 @@ Obj36_Hurt:				; XREF: Obj36_SideWays; Obj36_Upright
 		cmpi.b	#5,($FFFFFE10).w	; are we in the tutorial or FP?
 		bne.s	@nottutorial		; if not, branch
 
+		move.w	obX(a0),d0
+
 		move.w	#$09E0,d1
 		move.w	#$01AC,d2
-		move.w	obX(a0),d0
 		cmpi.w	#$1000,d0
 		blo.s	@doteleport
+
 		move.w	#$1000,d1
 		move.w	#$0190,d2
 		cmpi.w	#$1500,d0
 		blo.s	@doteleport
+
+		; tax pit
 		move.w	#$1420,d1
 		move.w	#$03AC,d2
+		frantic					; are we in frantic mode?
+		beq.s	@tankhittut			; if not, branch
+		ori.b	#1,($FFFFFE1D).w		; update ring counter
+		tst.w	($FFFFFE20).w			; do you have enough rings to tank the hit?
+		bne.s	@tankhittut			; if yes, branch
+		move.w	($FFFFFE20).w,(FranticDrain).w	; drain whatever rings remain
+		jmp	TrollKill			; you died... in the tutorial
+@tankhittut:	addq.w	#5,(FranticDrain).w		; drain 5 rings
+
 @doteleport:
 		move.w	d1,($FFFFD008).w	; teleport Sonic on X-axis
 		move.w	d2,($FFFFD00C).w	; teleport Sonic on Y-axis
@@ -20082,7 +20115,7 @@ Obj12_SearchLight_Setup:
 @nodelete:
 		addq.b	#2,obRoutine(a0)
 		move.l	#Map_Obj12_SearchLight,obMap(a0)
-		move.w	#$6200/$20,obGfx(a0)
+		move.w	#$7200/$20,obGfx(a0)
 		bset	#7,obGfx(a0)		; make it high plane
 		move.b	#4,obRender(a0)
 		move.b	#$10,obActWid(a0)
@@ -20131,18 +20164,16 @@ Obj12_SearchLight_Blinking:
 		moveq	#7,d0
 		and.w	($FFFFFE0E).w,d0
 		bne.s	@nobeep
-		move.w	#$47+$80,d0
-		move.w	#$3A+$80,d0
+		move.w	#$4D+$80,d0
 		jsr	PlaySound_Special
 @nobeep:
 		moveq	#5,d1		; off
 		btst	#2,($FFFFFE05).w
 		beq.s	@changeframe
 		moveq	#1,d1		; on
-
 @changeframe:
 		move.b	d1,obFrame(a0)
-		; fallthrough
+		bra.w	DisplaySprite		; it's very important that blinking searchlights do not get deleted!
 ; ---------------------------------------------------------------------------
 
 Obj12_SearchLight_Display:
@@ -20692,7 +20723,7 @@ Obj4D_TypeIndex:dc.w Obj4D_Type00-Obj4D_TypeIndex
 ; ===========================================================================
 
 Obj4D_Type00:				; XREF: Obj4D_TypeIndex
-		addi.w	#$18,obVelY(a0)	; increase object's falling speed
+		addi.w	#$18/2,obVelY(a0)	; increase object's falling speed
 		move.w	$30(a0),d0
 		cmp.w	obY(a0),d0
 		bcc.s	locret_EFDA
@@ -20705,7 +20736,7 @@ locret_EFDA:
 ; ===========================================================================
 
 Obj4D_Type01:				; XREF: Obj4D_TypeIndex
-		addi.w	#$18,obVelY(a0)	; increase object's falling speed
+		addi.w	#$18/2,obVelY(a0)	; increase object's falling speed
 		move.w	$30(a0),d0
 		cmp.w	obY(a0),d0
 		bcc.s	locret_EFFA
@@ -27410,7 +27441,7 @@ Obj06_DoHardPartSkip:
 		clr.w	($FFFFFE20).w		; delete all your rings you cheating bastard
 		ori.b	#1,($FFFFFE1D).w	; update ring counter
 		jsr	AddFail
-		jsr	WhiteFlash		; make a white flash
+		jsr	WhiteFlash_Intense	; do a mega white flash
 		move.b	#1,(RedrawEverything).w	; redraw screen after teleportation
 		move.w	#$C3,d0			; set giant ring sound
 		jsr	PlaySound_Special	; play it
@@ -28191,9 +28222,9 @@ S_D_NotGHZ2:
 		clr.w	(FranticDrain).w	; clear frantic ring drain for casual mode
 		beq.s	S_D_AfterImage	 	; skip
 @franticdrain:
-		tst.b	($FFFFD4C0+$3A).w	; is intro animation for rings HUD finished?
-		beq.s	S_D_AfterImage		; if not, branch
-		tst.b	WhiteFlashCounter		; is a white flash currently in progres?
+		cmpi.b	#$34,($FFFFD080).w	; are title cards currently visible?
+		beq.s	S_D_AfterImage		; if yes, wait until they're gone
+		tst.b	WhiteFlashCounter	; is a white flash currently in progres?
 		bne.s	S_D_AfterImage		; if yes, branch
 		move.w	($FFFFFE04).w,d0	; get level timer
 		andi.w	#3,d0			; drain every 4 frames
@@ -29308,7 +29339,23 @@ WhiteFlash_Intensity_Default = 2
 WhiteFlash_Intensity_Intense = 7
 ; ---------------------------------------------------------------------------
 
+WhiteFlash_Intense:
+		moveq	#WhiteFlash_Intensity_Intense,d5 ; do a mega white flash no matter what
+		btst	#7,(OptionsBits).w		 ; is photosensitive mode enabled?
+		beq.s	WhiteFlash_Custom		 ; if not, branch
+		moveq	#WhiteFlash_Intensity_Default,d5 ; reduced, but not nothing
+		bra.s	WhiteFlash_Custom		 ; use predefined intensity
+; ---------------------------------------------------------------------------
+WhiteFlash_Weak:
+		moveq	#WhiteFlash_Intensity_Low,d5	 ; do a weak white flash
+		btst	#7,(OptionsBits).w		 ; is photosensitive mode enabled?
+		beq.s	WhiteFlash_Custom		 ; if not, branch
+		; otherwise use default settings
+; ---------------------------------------------------------------------------
 WhiteFlash:
+		moveq	#-1,d5			; let fate decide the intensity
+
+WhiteFlash_Custom:
 		tst.b	WhiteFlashCounter	; is white flash already active?
 		bne.w	WF_SetFlashCounter	; if yes, just refresh the counter but don't do anything else
 		btst	#7,(OptionsBits).w	; is photosensitive mode enabled?
@@ -29321,15 +29368,19 @@ WhiteFlash:
 		dbf	d3,@backup		; loop
 
 		lea	Pal_Water_Active,a1	; load palette location to a3
-		moveq	#$7F,d3			; set d3 to $7F (+1 for the first run)
+		moveq	#$80-1,d3		; set loop for every single color, including water
 @makewhite:
 		move.w	(a1),d1			; get current color in palette
-	
-		cmpi.b	#1,($FFFFFFD6).w	; is a W-block being touched in the special stage?
-		beq.s	@maxboost		; if yes, boost			
+
+	@chkpredefined:
+		tst.w	d5			; was intensity predefined?
+		bmi.s	@regular		; if not, branch
+		move.w	d5,d4			; use predefined intensity
+		bra.s	@wfintensity		; skip regular stuff
+
+	@regular:
 		btst	#6,(OptionsBits).w	; is max white flash enabled?
 		beq.s	@chkboost		; if not, branch
-	@maxboost:
 		moveq	#WhiteFlash_Intensity_Intense,d4 ; bit boost (<-- just a bit, sure :V)
 		bra.w	@wfintensity		; branch
 
@@ -29340,13 +29391,13 @@ WhiteFlash:
 		cmpi.b	#$10,(GameMode).w	; are we in a special stage?
 		bne.s	@wfintensity		; if not, branch
 		tst.b	($FFFFFFBF).w		; Unreal Place floating challenge enabled?
-		bne.s	@wfintensitynoboost	; if yes, branch
+		bne.s	@wfintensitynoboost	; if yes, don't boost (black background)
 		tst.b	(Blackout).w		; blackout challenge?
-		bne.s	@wfintensity		; if yes, branch
+		bne.s	@wfintensity		; if yes, branch (black background)
 	@wfintensitynoboost:
 		moveq	#WhiteFlash_Intensity_Low,d4 ; low intensity boost (used for all stages with black backgrounds)
 
-	@wfintensity:
+@wfintensity:
 		move.w	d1,d2			; copy color
 		andi.w	#$00E,d2		; filter for red
 		cmpi.w	#$00E,d2		; are we at max?
@@ -29433,7 +29484,7 @@ JD_NotMZ:
 		tst.b	($FFFFFE2D).w		; is invincibility mode on?
 		beq.s	JD_NoWhiteFlash		; if not, branch
 @whiteflash:
-		bsr	WhiteFlash		; make white flash
+		bsr	WhiteFlash_Weak		; do a weak white flash
 
 JD_NoWhiteFlash:
 		move.b	#1,($FFFFFFAD).w	; enable after image
@@ -30581,7 +30632,7 @@ SAP_HitWall:
 	;	jsr	SpeedToPos			; immediately apply first batch of new speed
 
 		; some additional visual flair
-		jsr	WhiteFlash			; do a white flash...
+		jsr	WhiteFlash_Weak			; do a white flash...
 		move.w	#$000,($FFFFFB40).w		; ...but keep the background black
 	;	move.w	#$002,($FFFFFB42).w		; light up the off-limits grid blocks
 
@@ -38631,7 +38682,7 @@ Obj75_ArenaRight = Obj75_ArenaLeft+$F00
 Obj75_SlamThreshold = $C
 
 ; balance
-Obj75_CasualGoBackUpSpeed = -$160
+Obj75_CasualGoBackUpSpeed = -$200
 Obj75_BossSpeed_Casual = $3D0
 Obj75_BossSpeed_Frantic = $3D0
 Obj75_BossHealth_Casual  = 12
@@ -39546,7 +39597,7 @@ Obj82_FindBlocks:
 		movem.l	d7/a1-a3,-(sp)
 		moveq	#9,d0
 		jsr	PalLoad2
-		jsr	WhiteFlash
+		jsr	WhiteFlash_Intense
 		movem.l	(sp)+,d7/a1-a3
 
 		move.b	#1,($FFFFFFC8).w	; set flag that button was pressed
@@ -40917,7 +40968,7 @@ Obj86_Generator:			; XREF: Obj86_Index
 		bclr	#3,($FFFFD000+obStatus).w	; clear on-platform flag
 
 		movem.l	d7/a1-a3,-(sp)
-		jsr	WhiteFlash
+		jsr	WhiteFlash_Intense
 		movem.l	(sp)+,d7/a1-a3
 		
 		move.w	#$B9,d0
@@ -41429,7 +41480,7 @@ Obj81_Boom:
 		move.b	#1,($FFFFFFA5).w	; move HUD off screen (and start FZEscape sequence)
 		move.w	#$DB,d0			; play medium boom sound
 		jsr	PlaySound
-		jsr	WhiteFlash		; mini flash
+		jsr	WhiteFlash_Intense	; mega flash
 		jmp	DeleteObject
 
 ; ---------------------------------------------------------------------------
@@ -44117,7 +44168,7 @@ Obj09_GoalNotSolid:
 		moveq	#3,d0			; brighten up this place by...
 		jsr	PalLoad2		; ...loading Sonic's palette
 @0:
-		jsr	WhiteFlash
+		jsr	WhiteFlash_Intense	; do a mega flash here
 		movem.l	(sp)+,d7/a1-a3
 		
 @noflash:
@@ -46457,6 +46508,8 @@ ArtKospM_Switch:	incbin	artkosp\switch.kospm	; LZ/SYZ/SBZ switch (ArtKospM_LzSwi
 ArtKospM_SYZDoors:	incbin	artkosp\SYZDoors.kospm	; SYZ doors
 		even
 ArtKospM_LevelSigns:	incbin	artkosp\LevelSigns.kospm	; SYZ level signs
+		even
+ArtKospM_Arrow:	incbin	artkosp\arrow.kospm	; arrow overwriting level signs in Unterhub
 		even
 ArtKospM_SYZPlat:	incbin	artkosp\SYZPlatform.kospm	; SLZ Platform
 		even

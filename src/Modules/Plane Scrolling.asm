@@ -1182,6 +1182,8 @@ S_H_BuzzIgnore:
 		tst.b	($FFFFF7CD).w		; has Sonic jumped into a giant ring?
 		bne.w	S_H_ResetCamera		; if yes, branch
 
+		tst.b	($FFFFFF77).w		; is antigrav enabled?
+		beq.s	@cont			; if not, branch
 		cmpi.w	#$501,($FFFFFE10).w
 		bne.s	@cont
 		cmpi.w	#$1B00,($FFFFD008).w

@@ -15,16 +15,21 @@ Options_MenuData:
  endif
 
 	; Difficulty
-	dcScreenPos	$E000, OpBaseY, OpBaseX			; start on-screen position
+	dcScreenPos	$E000, OpBaseY, OpBaseX		; start on-screen position
 	dc.l	Options_GameplayStyle_Redraw		; redraw handler
 	dc.l	Options_GameplayStyle_Handle		; update handler
 	
-	; Speedrun mode
+	; Palette style
 	dcScreenPos	$E000, OpBaseY+2, OpBaseX	; start on-screen position
+	dc.l	Options_PaletteStyle_Redraw		; redraw handler
+	dc.l	Options_PaletteStyle_Handle		; update handler
+	
+	; Speedrun mode
+	dcScreenPos	$E000, OpBaseY+3, OpBaseX	; start on-screen position
 	dc.l	Options_Autoskip_Redraw			; redraw handler
 	dc.l	Options_Autoskip_Handle			; update handler
 	; Count your mistakes
-	dcScreenPos	$E000, OpBaseY+3, OpBaseX	; start on-screen position
+	dcScreenPos	$E000, OpBaseY+4, OpBaseX	; start on-screen position
 	dc.l	Options_TrackAllMistakes_Redraw		; redraw handler
 	dc.l	Options_TrackAllMistakes_Handle		; update handler
 	
@@ -174,7 +179,7 @@ Options_ExtendedCamera_Redraw:
 @0:
 
  if def(__WIDESCREEN__)
-	Options_PipeString a4, "EXTENDED CAMERA FOR WIDESCREEN       %<.l a1 str>", OpLength
+	Options_PipeString a4, "WIDESCREEN EXTENDED CAMERA           %<.l a1 str>", OpLength
  else
 	Options_PipeString a4, "EXTENDED CAMERA            %<.l a1 str>", OpLength
  endif
@@ -191,6 +196,48 @@ Options_ExtendedCamera_Handle:
 	beq.w	@done			; if not, branch
 
 	bchg	#0, OptionsBits		; toggle extended camera
+	bsr	Options_PlayRespectiveToggleSound
+	st.b	Options_RedrawCurrentItem
+@done:	rts
+
+
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; "PALETTE STYLE" redraw function
+; ---------------------------------------------------------------------------
+; INPUT:
+;	a4	= `Options_DrawText_Normal` or `Options_DrawText_Highlighted`
+; ---------------------------------------------------------------------------
+
+Options_PaletteStyle_Redraw:
+	lea	@Str0(pc), a1
+	btst	#7, OptionsBits2
+	beq.s	@0
+	lea	@Str1(pc), a1
+@0:
+
+ if def(__WIDESCREEN__)
+	Options_PipeString a4, "PALETTE STYLE                 %<.l a1 str>", OpLength
+ else
+	Options_PipeString a4, "PALETTE STYLE       %<.l a1 str>", OpLength
+ endif
+	rts
+
+@Str0:	dc.b	'   CLASSIC', 0
+@Str1:	dc.b	'REMASTERED', 0
+	even
+
+
+; ---------------------------------------------------------------------------
+; "PALETTE STYLE" handle function
+; ---------------------------------------------------------------------------
+
+Options_PaletteStyle_Handle:
+	move.b	Joypad|Press,d1		; get button presses
+	andi.b	#$FC,d1			; is left, right, A, B, C, or Start pressed?
+	beq.w	@done			; if not, branch
+
+	bchg	#7, OptionsBits2	; toggle palette style
 	bsr	Options_PlayRespectiveToggleSound
 	st.b	Options_RedrawCurrentItem
 @done:	rts

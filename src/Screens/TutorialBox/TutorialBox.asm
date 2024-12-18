@@ -1154,10 +1154,12 @@ Hint_FZEscape:
 		dc.b	_frantic
 		boxtxt	"    frantic mode"
 		boxtxt_pause
-		boxtxt_line
 		boxtxt	"   ...THIS GOES"
 		boxtxt	"       double"
-		boxtxt	"     FOR YOU..."
+		boxtxt	"      FOR YOU."
+		boxtxt_pause
+		boxtxt	" REMEMBER, YOU HAVE"
+		boxtxt	"    A JUMP DASH!"
 		boxtxt_end	
 ;		 --------------------
 Hint_6:

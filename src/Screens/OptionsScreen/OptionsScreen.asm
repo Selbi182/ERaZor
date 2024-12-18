@@ -52,7 +52,7 @@ Options_Exiting:		rs.b	1
 ;  bit 3 = Intense Camera Shake
 ;  bit 4 = Track-All-Mistakes Mode
 ;  bit 5 = Space Golf/Antigrav Mode
-;  bit 6 = Disable HUD TODO
+;  bit 6 = [unused]
 ;  bit 7 = Classic/Remasterd Palettes
 ; ---------------------------------------------------------------------------
 ; Screen Effects are kept in a separate address: $FFFFFF91

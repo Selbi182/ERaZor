@@ -65,7 +65,7 @@ DebugSurviveNoRings = 1
 DebugHudPermanent = 0
 ; ------------------------------------------------------
 DoorsAlwaysOpen = 0
-LowBossHP = 1
+LowBossHP = 0
 ; ======================================================
 	else
 ; BENCHMARK build settings (DO NOT CHANGE!)
@@ -6665,9 +6665,6 @@ off_6E4A:	dc.w Resize_GHZ3main-off_6E4A
 GHZ3Add = $2700
 
 Resize_GHZ3main:
-		move.w	#0,($FFFFF728).w
-		move.w	#$520,($FFFFF726).w	; set lower y-boundary
-		rts
 		move.w	#$320,($FFFFF726).w	; set lower y-boundary
 
 		cmpi.w	#$1780+GHZ3Add,($FFFFF700).w	; has the camera reached $1780 on x-axis?
@@ -36771,14 +36768,11 @@ Obj48_Chain:				; XREF: Obj48_Index
 		movea.l	$34(a0),a1
 		move.b	obColProp(a1),d1
 		cmp.b	obVelX(a0),d1
-		bne.s	Obj48_Display3
+		bne.w	Obj48_DoDisplay
 		jsr	ObjectFall		; make chain fall
-		tst.b	obRender(a0)			; is chain still on screen?
-		bmi.s	Obj48_Display3		; if yes, keep displaying
+		tst.b	obRender(a0)		; is chain still on screen?
+		bmi.w	Obj48_DoDisplay		; if yes, keep displaying
 		jmp	DeleteObject		; otherwise delete it
-
-Obj48_Display3:
-		jmp	DisplaySprite
 ; ===========================================================================
 		
 Obj48_ChkVanish:			; XREF: Obj48_Index
@@ -36823,6 +36817,12 @@ Obj48_Fall:
 ; ===========================================================================
 
 Obj48_DoDisplay:
+		tst.b	obColType(a0)		; is this a hurting ball?
+		bne.s	@display		; if yes, don't delete ever
+		tst.b	($FFFFF7AA).w
+		bne.s	@display
+		jmp	DeleteObject
+@display:
 		jmp	DisplaySprite
 ; ===========================================================================
 
@@ -45477,6 +45477,7 @@ Debug_Main:				; XREF: Debug_Index
 		clr.w	obVelX(a0)	; clear Sonic's x-speed
 		clr.w	obVelY(a0)	; clear Sonic's y-speed
 		clr.w	obInertia(a0)	; clear Sonic's inertia
+		clr.b	($FFFFFFAF).w	; clear peelout flag to reset extended camera
 
 	;	move.w	($FFFFF72C).w,($FFFFFEF0).w	; buffer level x-boundary
 	;	move.w	($FFFFF726).w,($FFFFFEF2).w	; buffer level y-boundary
@@ -46843,7 +46844,7 @@ byte_68D70:	dc.b 0,	0, 0, 0
 Level_GHZ2:	incbin	'LevelData/levels/ghz2.kosp'
 		even
 byte_68E3C:	dc.b 0,	0, 0, 0
-Level_GHZ3_1:	incbin	'LevelData/levels/ghz3-2.kosp'
+Level_GHZ3_1:	incbin	'LevelData/levels/ghz3-1.kosp'
 		even
 		dc.b 0,	0, 0, 0
 Level_GHZ3_2:	incbin	'LevelData/levels/ghz3-2.kosp'
@@ -46942,7 +46943,7 @@ ArtKospM_RingFlash:	incbin	artkosp\ringflash.kospm	; ring flash that appears whe
 ; ---------------------------------------------------------------------------
 ObjPos_Index:	dc.w ObjPos_GHZ1-ObjPos_Index
 		dc.w ObjPos_GHZ2-ObjPos_Index
-		dc.w ObjPos_GHZ3_2-ObjPos_Index
+		dc.w ObjPos_GHZ3_1-ObjPos_Index
 		dc.w ObjPos_GHZ3_2-ObjPos_Index
 
 		dc.w ObjPos_Null-ObjPos_Index

@@ -1210,11 +1210,13 @@ S_H_BuzzIgnore:
 		move.w	($FFFFD010).w,d2	; load sonic's general speed to d2 instead
 		btst	#1,($FFFFD022).w	; is sonic in the air?
 		bne.s	S_H_ChkDirection	; if not, branch
-		move.w	d2,d3
-		move.w	($FFFFD014).w,d2
-		tst.w	d3
+		move.w	d2,d3			; copy X-velocity to d3
+		move.w	($FFFFD014).w,d2	; get inertia
+		tst.w	d3			; is Sonic walking on a perfectly straight wall?
 		bne.s	S_H_ChkDirection	; if not, branch
-		neg.w	d2
+		tst.w	($FFFFD012).w		; walking UP a wall?
+		bpl.s	S_H_ChkDirection	; if not, branch
+		neg.w	d2			; negate extended camera direction to make walljumps easier
 
 S_H_ChkDirection:
 		move.w	d2,d3			; backup speed to d3

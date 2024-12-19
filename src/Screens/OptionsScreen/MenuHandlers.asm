@@ -23,20 +23,20 @@ Options_MenuData:
 	dcScreenPos	$E000, OpBaseY+2, OpBaseX	; start on-screen position
 	dc.l	Options_PaletteStyle_Redraw		; redraw handler
 	dc.l	Options_PaletteStyle_Handle		; update handler
+	; Extended camera
+	dcScreenPos	$E000, OpBaseY+3, OpBaseX	; start on-screen position
+	dc.l	Options_ExtendedCamera_Redraw		; redraw handler
+	dc.l	Options_ExtendedCamera_Handle		; update handler
 	
 	; Speedrun mode
-	dcScreenPos	$E000, OpBaseY+3, OpBaseX	; start on-screen position
+	dcScreenPos	$E000, OpBaseY+4, OpBaseX	; start on-screen position
 	dc.l	Options_Autoskip_Redraw			; redraw handler
 	dc.l	Options_Autoskip_Handle			; update handler
 	; Count your mistakes
-	dcScreenPos	$E000, OpBaseY+4, OpBaseX	; start on-screen position
+	dcScreenPos	$E000, OpBaseY+5, OpBaseX	; start on-screen position
 	dc.l	Options_TrackAllMistakes_Redraw		; redraw handler
 	dc.l	Options_TrackAllMistakes_Handle		; update handler
 	
-	; Extended camera
-	dcScreenPos	$E000, OpBaseY+5, OpBaseX	; start on-screen position
-	dc.l	Options_ExtendedCamera_Redraw		; redraw handler
-	dc.l	Options_ExtendedCamera_Handle		; update handler
 	; Flashy lights
 	dcScreenPos	$E000, OpBaseY+6, OpBaseX	; start on-screen position
 	dc.l	Options_FlashyLights_Redraw		; redraw handler
@@ -179,7 +179,7 @@ Options_ExtendedCamera_Redraw:
 @0:
 
  if def(__WIDESCREEN__)
-	Options_PipeString a4, "WIDESCREEN EXTENDED CAMERA           %<.l a1 str>", OpLength
+	Options_PipeString a4, "EXTENDED WIDESCREEN CAMERA           %<.l a1 str>", OpLength
  else
 	Options_PipeString a4, "EXTENDED CAMERA            %<.l a1 str>", OpLength
  endif
@@ -305,9 +305,8 @@ Options_TrackAllMistakes_Handle:
 
 Options_Autoskip_Redraw:
 	lea	Options_Str_Off(pc), a1
-	moveq	#%110,d0
-	and.b	OptionsBits, d0
-	beq.s	@0
+	btst	#1, OptionsBits		; is Speedrun Mode enabled?
+	beq.s	@0			; if not, branch
 	lea	Options_Str_On(pc), a1
 @0:
 
@@ -340,22 +339,10 @@ Options_Autoskip_Handle:
 	rts
 
 @normal:
-	; Skip Uberhub and Skip Story Screens used to be two separate options.
-	; However, nobody ever had a reason to use them separately.
-	; Merged them into one option for simplicity.
-	moveq	#%110,d0
-	and.b	OptionsBits, d0
-	beq.s	@enable
-	bclr	#1,OptionsBits
-	bclr	#2,OptionsBits
-	bra.s	@redraw
-@enable	
-	bset	#1,OptionsBits
-	bset	#2,OptionsBits
-
-@redraw:
+	bchg	#1, OptionsBits			; toggle Speedrun Mode
 	bsr	Options_PlayRespectiveToggleSound
 	st.b	Options_RedrawCurrentItem
+
 @ret:	rts
 
 

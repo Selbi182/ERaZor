@@ -36,8 +36,8 @@ Options_Exiting:		rs.b	1
 ; All options are kept in a single byte to save space (it's all flags anyway)
 ; RAM location: $FFFFFF92
 ;  bit 0 = Extended Camera
-;  bit 1 = Skip Story Screens
-;  bit 2 = Skip Uberhub Place
+;  bit 1 = Speedrun Mode (Skip Uberhub / Skip Story Texts)
+;  bit 2 = Disable HUD TODO
 ;  bit 3 = Cinematic Mode (black bars)
 ;  bit 4 = Nonstop Inhuman Mode
 ;  bit 5 = Gamplay Style (0 - Casual Mode // 1 - Frantic Mode)

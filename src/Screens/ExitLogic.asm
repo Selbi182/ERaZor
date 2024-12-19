@@ -26,7 +26,7 @@ ReturnToUberhub:
 
 ReturnToUberhub_Chapter:
 		move.w	#$400,($FFFFFE10).w	; set level to Uberhub
-		btst	#1,(OptionsBits).w	; is "Skip Story Screens" enabled?
+		btst	#1,(OptionsBits).w	; is Speedrun Mode enabled?
 		bne.s	StartLevel		; if yes, skip chapter screen
 
 		; show chapter screen first
@@ -177,8 +177,7 @@ Exit_GameplayStyleScreen:
 
 @speedrun:
 		jsr 	WhiteFlash
-		bset	#1,(OptionsBits).w	; enable Skip Story Screens
-		bset	#2,(OptionsBits).w	; enable Skip Uberhub
+		bset	#1,(OptionsBits).w	; enable Speedrun Mode
 		move.w	#$D3,d0			; play peelout release sound
 		jsr	PlaySound_Special
 		bra.w	HubRing_NHP		; go straight to NHP
@@ -244,7 +243,7 @@ Exit_StoryScreen:
 		beq.s	@postblackout		; if yes, branch
 
 		; regular story screen
-		btst	#2,(OptionsBits).w	; is Skip Uberhub Place enabled?
+		btst	#1,(OptionsBits).w	; is Speedrun Mode enabled?
 		bne.w	SkipUberhub		; if yes, automatically go to the next level in order
 
 		cmpi.b	#1,d0			; is this the intro cutscene?
@@ -425,7 +424,7 @@ RunChapter:
 
 		bsr	Check_BaseGameBeaten_Any ; has the player already beaten the base game (of either mode)?
 		bne.s	@nochapter		; if yes, no longer display chapter screens
-		btst	#1,(OptionsBits).w	; is "Skip Story Screens" enabled?
+		btst	#1,(OptionsBits).w	; is Speedrun Mode enabled?
 		bne.s	@nochapter		; if yes, start level straight away
 
 		move.b	#$28,(GameMode).w	; new chapter discovered, run chapters screen
@@ -463,7 +462,7 @@ FindCurrentChapter:
 ; ===========================================================================
 
 RunStory:
-		btst	#1,(OptionsBits).w	; is "Skip Story Screens" enabled?
+		btst	#1,(OptionsBits).w	; is Speedrun Mode enabled?
 		beq.s	RunStory_Force		; if not, run story as usual
 		move.b	(StoryTextID).w,d0	; copy story ID to d0 (needed for Exit_StoryScreen)
 		bra.w	Exit_StoryScreen	; auto-skip story screen
@@ -665,7 +664,7 @@ Exit_Level:
 		bra.w	ReturnToUberhub		; uhh idk how this could ever happen, but just in case
 ; ---------------------------------------------------------------------------
 
-GTA_Tutorial:	btst	#2,(OptionsBits).w	; is Skip Uberhub Place enabled?	
+GTA_Tutorial:	btst	#1,(OptionsBits).w	; is Speedrun Mode enabled?	
 		bne.w	HubRing_NHP		; if yes, go straight to NHP
 		move.b	#4,(CarryOverData).w	; set that we came from the tutorial
 		bra.w	ReturnToUberhub		; if not, return to Uberhub
@@ -715,7 +714,7 @@ GTA_SNPSAP:	moveq	#5,d0			; unlock sixth door
 GTA_FP:		moveq	#6,d0			; unlock seventh door (door to the credits)
 		bsr	Set_DoorOpen
 		bsr	Set_TutorialVisited	; set tutorial visited now in case it wasn't already
-		btst	#2,(OptionsBits).w	; is Skip Uberhub Place enabled?		
+		btst	#1,(OptionsBits).w	; is Speedrun Mode enabled?		
 		beq.s	@fromtutorialring	; if not, branch
 		jsr	Check_AllLevelsBeaten_Current ; has the player beaten all levels?
 		bne.w	HubRing_Ending		; if yes, go straight to the ending
@@ -962,8 +961,7 @@ CheckEnable_PlacePlacePlace:
 		bset	#5,(OptionsBits).w	; force-enable frantic mode
 		bclr	#4,(OptionsBits).w	; force-disable nonstop inhuman
 		bclr	#5,(OptionsBits2).w	; force-disable space golf
-		bclr	#1,(OptionsBits).w	; force-enable story screens
-		bclr	#2,(OptionsBits).w	; force-disable Skip Uberhub
+		bclr	#1,(OptionsBits).w	; force-disable Speedrun Mode
 @noenable:	rts
 
 

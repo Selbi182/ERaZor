@@ -6979,7 +6979,7 @@ Resize_MZ1:
 		lea	$40(a1),a1
 		dbf	d0,@deleteblocks
 
-		move.w	#$91,d0			; play true invincibility music for the meme
+		move.w	#$9D,d0			; play ending sequence music for the meme
 		jmp	PlaySound
 ; ---------------------------------------------------------------------------	
 
@@ -7125,7 +7125,7 @@ Resize_SLZ2boss2:
 
 		jsr	SingleObjLoad
 		move.b	#$5F,0(a1)		; load bomb boss
-		move.w	#$BD0,obX(a1)
+		move.w	#$0BD0+SCREEN_XCORR,obX(a1)
 		move.w	#$038C,obY(a1)
 
 	;	moveq	#16,d0			; set number of	hits to 16 (casual)
@@ -7467,6 +7467,7 @@ Resize_SYZ3loadboss:
 		clr.w	($FFFFD000+obInertia).w
 		clr.l	($FFFFF602).w		; clear any remaining button presses
 		clr.w	ExtCamShift
+		move.b	#1,($FFFFFE2D).w	; make Sonic invincible (to avoid bs deaths)
 
 		jsr	SingleObjLoad
 		bne.s	@end
@@ -7503,6 +7504,7 @@ Resize_SYZ3waitboss:
 		move.b	#30,($FFFFFFB2).w	; add some camera lag
 		movem.l	(sp)+,d7/a0-a3
 
+		move.b	#0,($FFFFFE2D).w	; clear invincibility again
 		move.b	#0,($FFFFF7CC).w	; unlock controls
 		move.w	#$60,($FFFFF73E).w	; reset looking up/down
 		move.w	#$93,d0
@@ -10147,7 +10149,7 @@ Obj1D_Explosions:
 		move.w	d0,d2			; backup first $100 random bytes
 		swap	d0			; swap random number long
 		add.w	d0,d2			; add the $40 random number to the $100 one to give us $140
-		subi.w	#320/2,d2		; center horizontally
+		subi.w	#SCREEN_WIDTH/2,d2	; center horizontally
 		add.w	d2,obX(a1)		; apply X deviation
 
 		andi.w	#$00FF,d1		; get other random number and limit by $100 (256, good enough)
@@ -10889,6 +10891,8 @@ Obj27_Index:	dc.w Obj27_Main-Obj27_Index
 ; ===========================================================================
 
 Obj27_Main:				; XREF: Obj27_Index
+		addq.b	#2,obRoutine(a0)
+
 		cmpi.w	#$101,($FFFFFE10).w	; are we in LZ?
 		bne.s	@notlz			; if not, branch
 		cmpi.b	#82,$36(a0)		; did we come here because of Jaws?
@@ -10929,9 +10933,9 @@ Obj27_Main:				; XREF: Obj27_Index
 		jsr	PalLoad2		; reload full bright palette
 		jsr 	WhiteFlash
 		movem.l	(sp)+,d0-a3
+		bra.w	Obj27_FinishSetup
 
 @notunterhub:
-		addq.b	#2,obRoutine(a0)
 
 		; spawn bonus rings (and check which levels do not include this)
 		move.w	($FFFFFE10).w,d0
@@ -10945,8 +10949,8 @@ Obj27_Main:				; XREF: Obj27_Index
 		beq.s	Obj27_FinishSetup
 		cmpi.w	#$101,d0
 		beq.s	Obj27_FinishSetup
-		cmpi.w	#$402,d0
-		beq.s	Obj27_FinishSetup
+	;	cmpi.w	#$402,d0
+	;	beq.s	Obj27_FinishSetup
 		cmpi.w	#$601,d0
 		beq.s	Obj27_FinishSetup
 
@@ -11814,20 +11818,22 @@ Obj1F_BossDefeated:
 		move.b	#1,($FFFFF7CC).w		; lock controls
 		clr.b	($FFFFFFEB).w
 
-		tst.b	($FFFFFFD5).w			; first time this routine gets run?
-		bne.s	@0				; if not, branch
-		move.b	#1,($FFFFFFD5).w		; set flag 3
-		clr.l	($FFFFF602).w			; clear any remaining button presses
-		move.b	#$E4,d0				; stop music (fade out causes glitches with the explosion sounds)
-		jsr	PlaySound			; play it
-
+		; force Sonic to look at the Crabmeat
 		bset	#0,($FFFFD022).w
 		move.w	($FFFFD008).w,d0
 		cmp.w	obX(a0),d0
 		bcc.s	@0
 		bclr	#0,($FFFFD022).w
-
 @0:
+
+		tst.b	($FFFFFFD5).w			; first time this routine gets run?
+		bne.s	@1				; if not, branch
+		move.b	#1,($FFFFFFD5).w		; set flag 3
+		clr.l	($FFFFF602).w			; clear any remaining button presses
+		move.b	#$E4,d0				; stop music (fade out causes glitches with the explosion sounds)
+		jsr	PlaySound			; play it
+
+@1:
 		clr.w	obVelX(a0)			; clear X-speed
 		cmpi.b	#8,obAnim(a0)			; is the correct animation set?
 		bge.s	@conxt				; if yes, branch
@@ -13252,12 +13258,21 @@ Obj37_MainLoop:				; XREF: Obj37_Index
 		bhi.s	Obj37_NoRingsMove	; ...collecting rings of smashed objects
 @moveanyway:	bsr	AttractedRing_Check
 		bne.s	Obj37_NoRingsMove
-		move.b	#1, $29(a0)
+		move.b	#1,$29(a0)		; set tracking flag
 		bra.s	Obj37_NoRingsMove
 @continueattract:
 		tst.b	($FFFFFE2C).w		; is Sonic still having a shield?
 		beq.s	Obj37_NoRingsMove	; if not, branch
 		bsr	AttractedRing_Move	; move the ring
+
+		; increase speed if ring has been trailing for a while already
+		move.b	$29(a0),d0
+		addq.b	#1,d0		; increase ring attract speed
+		cmpi.b	#60,d0
+		blo.s	@ok
+		jsr	SpeedToPos
+		jsr	SpeedToPos
+@ok:		move.b	d0,$29(a0)
 		bra.w	Obj37_ChkDel
 
 Obj37_NoRingsMove:
@@ -14071,8 +14086,9 @@ loc_A1EC:				; XREF: Obj26_Solid
 		beq.s	loc_A25C	; if yes, branch
 		cmp.b	#$1F,obAnim(a1)	; is Sonic spin-dashing?
 		beq.w	loc_A25C	; if yes, branch
-		
 loc_A20A:
+		cmpi.w	#$302,($FFFFFE10).w ; is this SAP?
+		beq.w	loc_A25C	; if yes, break on touch
 		tst.w	d1
 		bpl.s	loc_A220
 		sub.w	d3,obY(a1)
@@ -14388,6 +14404,7 @@ Obj2E_ChkS:
 	;	tst.b	($FFFFFFE7).w		; has a S monitor already been broken?
 	;	bne.w	Obj2E_ChkEnd		; if yes, branch
 
+
 		move.b	#$38,($FFFFD280).w ; load stars	object ($3803)
 		move.b	#1,($FFFFD29C).w
 		move.b	#$38,($FFFFD2C0).w ; load stars	object ($3804)
@@ -14403,6 +14420,8 @@ Obj2E_ChkS:
 		ori.b	#1,($FFFFFE1D).w	; update rings counter
 @noob:
 		movem.l	d0-a1,-(sp)		; backup
+
+		jsr	WhiteFlash		; do white flash to distract from all the stuff happening here
 
 		; open up entryway and block off the way back offscreen
 		move.w	#$1100,d0
@@ -20164,6 +20183,12 @@ Obj12_SearchLight_Rotating:
 ; ---------------------------------------------------------------------------
 
 Obj12_SearchLight_Blinking:
+		cmpi.b	#6,($FFFFD024).w	; is Sonic dying?
+		blo.s	@normal			; if not, branch
+		subq.b	#4,obRoutine(a0)	; reset blinking state
+		rts
+
+@normal:
 		moveq	#7,d0
 		and.w	($FFFFFE0E).w,d0
 		bne.s	@nobeep
@@ -24617,6 +24642,9 @@ Obj5F_Action:				; XREF: Obj5F_Index
 		bgt.s	@fall			; if bomb is above the floor, make it fall
 		add.w	d1,obY(a0)		; otherwise, keep it glued to the ground
 
+		cmpi.b	#6,($FFFFD024).w	; is Sonic dying?
+		bhs.s	@dobounce		; if yes, he's very happy
+
 		cmpi.w	#60,($FFFFD030).w	; does Sonic have invincibility frames left?
 		blo.s	@doaction		; if not, branch
 		tst.w	($FFFFFE08).w		; is debug mode	on?
@@ -24633,6 +24661,7 @@ Obj5F_Action:				; XREF: Obj5F_Index
 		move.b	#1,($FFFFFE1C).w	; update lives
 @notfrantic:
 
+@dobounce:
 		move.b	#0,ob2ndRout(a0)	; reset to walking state
 		move.b	#$A9,d0			; play blip sound
 		jsr	PlaySound_Special
@@ -27052,7 +27081,7 @@ Obj03_Setup:
 		bne.s	@nottut			; if not, branch
 		move.w	#($7400/$20),obGfx(a0)	; use alternate mappings
 		bset	#7,obGfx(a0)		; make it high plane
-		btst	#2,(OptionsBits).w	; is Skip Uberhub Place enabled?
+		btst	#1,(OptionsBits).w	; is Speedrun Mode enabled?
 		beq.s	@nottut			; if not, branch
 		move.b	#$E,obFrame(a0)		; show "SKIP TUTORIAL" text instead of "EXIT TUTORIAL"
 @nottut:
@@ -35803,7 +35832,7 @@ Obj7D_Main_SLZ:
 		addq.b	#2,obRoutine(a0)
 		move.l	#Map_obj7D,obMap(a0)
 		move.w	#$84B6,obGfx(a0)
-		ori.b	#$84,obRender(a0)
+		move.b	#$84,obRender(a0)
 		move.b	#3,obPriority(a0)
 		move.b	#3,obFrame(a0)
 		move.b  #6,obAnim(a0)
@@ -35863,6 +35892,7 @@ Obj7D_Emblem:
 		jsr	(PlaySound_Special).l
 
 Obj7D_NoTouch:
+		andi.b	#~%11,obRender(a0)	; make sure emblem is not mirrored (idk how tha that happened...)
 		jmp	DisplaySprite		; otherwise continue displaying
 ; ===========================================================================
 ; ===========================================================================
@@ -36205,10 +36235,10 @@ Obj3D_MainStuff:
 		cmpi.b	#16,obColProp(a0)	; does boss have exactly 16 lives now?
 		bne.s	@noflash		; if not, branch
 @flash:		
-		move.w	#$A6,d0
+		move.w	#$DF,d0
 		jsr	(PlaySound_Special).l
-		move.w	#$B3,d0
-		jsr	(PlaySound).l
+	;	move.w	#$B3,d0
+	;	jsr	(PlaySound).l
 	;	jsr	WhiteFlash
 		ori.b	#30,(CameraShake).w
 
@@ -36717,6 +36747,13 @@ loc_17BFA:
 		cmpi.w	#$20,$32(a0)
 		beq.s	Obj48_Display
 		addq.w	#1,$32(a0)
+
+		moveq	#7,d0
+		and.w	($FFFFFE04).w,d0
+		bne.s	Obj48_Display
+		move.w	#$C7,d0
+		jsr	(PlaySound_Special).l ;	play rising chain sound
+@0
 
 Obj48_Display:
 		bsr	sub_17C2A
@@ -44346,28 +44383,6 @@ Map_Obj4F:	include	"_maps\SLZWarningSign.asm"
 ; ---------------------------------------------------------------------------
 
 Obj21:
-		cmpi.w	#$601,($FFFFFE10).w	; is this the ending sequence?
-		bne.s	Obj21_NoEnding		; if not, branch
-		rts				; if yes, don't display HUD
-; ===========================================================================
-
-Obj21_NoEnding:
-		cmpi.w	#$001,($FFFFFE10).w	; is level GHZ2?
-		bne.s	Obj21_NotGHZ2		; if not, branch
-		rts				; if yes, don't display HUD
-; ===========================================================================
-
-Obj21_NotGHZ2:
-		cmpi.w	#$000,($FFFFFE10).w	; is level GHZ1?
-		bne.s	Obj21_ShowHUD		; if not, branch
-		tst.b	($FFFFFFBB).w		; has Sonic passed the point where he can move?
-		bne.s	Obj21_ShowHUD		; if yes, branch
-		cmpi.b	#6,($FFFFD024).w	; is Sonic dying?
-		bhs.s	Obj21_ShowHUD		; if yes, branch
-		rts				; otherwise don't display HUD
-; ===========================================================================
-
-Obj21_ShowHUD:
 		moveq	#0,d0
 		move.b	obRoutine(a0),d0
 		move.w	Obj21_Index(pc,d0.w),d1
@@ -44379,13 +44394,20 @@ Obj21_Index:	dc.w Obj21_Main-Obj21_Index
 ; ===========================================================================
 
 Obj21_Main:
-		tst.w	BlackBars.Height
-		beq.s	@noblackbars
-		tst.w	BlackBars.TargetHeight	; are any black bars currently visible?
-		beq.s	@noblackbars		; if not, branch
+		cmpi.b	#6,($FFFFD024).w	; is Sonic dying?
+		blo.s	@chkbars		; if not, branch
+		cmpi.b	#4,$30(a0)		; is this the deaths counter?
+		beq.s	Obj21_ShowHUD		; if yes, always display HUD to show the death counter
+		rts				; hide other elements
+
+@chkbars:
+		tst.w	BlackBars.Height	; are black bars currently visible?
+		beq.s	Obj21_ShowHUD		; if not, branch
+		tst.w	BlackBars.TargetHeight	; are any black bars set to be currently visible?
+		beq.s	Obj21_ShowHUD		; if not, branch
 		rts				; if yes, don't load HUD yet
 
-@noblackbars:
+Obj21_ShowHUD:
 		moveq	#0,d0
 		move.l	d0,$32(a0)
 		move.l	d0,$36(a0)
@@ -45364,8 +45386,10 @@ Hud_ClrBonusLoop:
 
 Hud_Lives:				; XREF: Hud_ChkLives
 		moveq	#0,d1			; clear d1
-		tst.b	(HUD_BossHealth).w		; is boss HUD currently meant to be displayed?
+		tst.b	(HUD_BossHealth).w	; is boss HUD currently meant to be displayed?
 		beq.s	@notboss		; if not, branch
+		cmpi.b	#6,($FFFFD024).w	; is Sonic dying?
+		bhs.s	@notboss		; if yes, branch
 		move.b	(HUD_BossHealth).w,d1	; load boss health as lives instead
 		bra.w	@tenandone		; skip displaying the 100th digit
 
@@ -45652,7 +45676,7 @@ Debug_ChkRight:
 		beq.s	Debug_SetPos	; if not, branch
 		moveq	#0,d5			
 		move.w	($FFFFF72A).w,d5
-		addi.w	#320,d5
+		addi.w	#SCREEN_WIDTH,d5
 		swap	d5
 		cmp.l	d5,d3
 		bcs.s	Debug_SetPos

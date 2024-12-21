@@ -258,7 +258,7 @@ CS_PalLoop1HD:	move.l	d1, (a2)+			; clear the rest of palette
 ; ---------------------------------------------------------------------------
 
 CS_SetupEndLoop:	
-		move.w	#180,($FFFFF614).w	; set end wait time
+		move.w	#180,DemoTimer	; set end wait time
 CS_Loop:
 		DeleteQueue_Init
 		jsr	ObjectsLoad
@@ -271,7 +271,7 @@ CS_Loop:
 		move.b	($FFFFF605).w,d1	; get button presses
 		andi.b	#$70,d1			; is A, B, or C pressed?
 		bne.s	CS_Exit			; if yes, branch
-		tst.w	($FFFFF614).w		; test wait time
+		tst.w	DemoTimer		; test wait time
 		bne.s	CS_Loop			; if it isn't over, loop
 ; ---------------------------------------------------------------------------
 

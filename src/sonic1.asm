@@ -2665,7 +2665,7 @@ Sega_SegaChant:
 ; ---------------------------------------------------------------------------
 
 		move.b	#30,($FFFFFFBD).w	; frames to wait after SEGA sound
-		move.w	#160,($FFFFF614).w	; frames to wait after crash sound
+		move.w	#160,DemoTimer	; frames to wait after crash sound
 
 Sega_WaitEnd:
 		tst.b	($FFFFFFBE).w
@@ -2687,7 +2687,7 @@ Sega_WaitEnd:
 		neg.l	d1
 @NoNegation:
 		moveq	#0,d6
-		move.w	($FFFFF614).w,d6
+		move.w	DemoTimer,d6
 		subi.w	#90,d6
 		bmi.s	@0
 		lsl.w	#1,d6
@@ -2727,7 +2727,7 @@ Sega_WaitEnd:
 Sega_NoSound:
 		move.b	#2,VBlankRoutine
 		bsr	DelayProgram
-		tst.w	($FFFFF614).w
+		tst.w	DemoTimer
 		beq.s	Sega_GotoTitle
 		move.b	($FFFFF605).w,d0	; get button presses
 		andi.w	#$F0,d0			; A, B, C, or start pressed?
@@ -2821,7 +2821,7 @@ Title_ClrObjRam:
 		btst	#6,($FFFFFFF8).w		; are we PAL?
 		beq.s	@notpal				; if not, branch
 		move.w	#$53C,d0	 		; PAL
-@notpal:	move.w	d0,($FFFFF614).w	 	; run title screen for X frames (this matches the music length)
+@notpal:	move.w	d0,DemoTimer	 	; run title screen for X frames (this matches the music length)
 
 		lea	($FFFFD000).w,a1
 		moveq	#0,d0
@@ -2881,7 +2881,7 @@ Title_MainLoop:
 		bsr	PalCycle_Title
 		bsr	PLC_Execute
 
-		tst.w	($FFFFF614).w	; is time over?
+		tst.w	DemoTimer	; is time over?
 		beq.s	StartGame	; if yes, start game
 
 		lea	($FFFFFB60).w,a2
@@ -2962,7 +2962,7 @@ LevelSelect_Load:
 ERZ_FadeOut:
 		move.b	#$E0,d0			; fade out music
 		jsr	PlaySound
-		move.w	#50,($FFFFF614).w
+		move.w	#50,DemoTimer
 @fade
 		bsr	Title_YAdjust
 		move.b	#4,VBlankRoutine
@@ -2975,7 +2975,7 @@ ERZ_FadeOut:
 		move.w	#$00E,($FFFFFB60+$16).w
 		move.w	#$00E,($FFFFFB60+$1A).w
 		jsr	Pal_FadeOut
-		subq.w	#1,($FFFFF614).w
+		subq.w	#1,DemoTimer
 		bpl.s	@fade
 		rts
 
@@ -3792,7 +3792,7 @@ loc_39E8:
 		move.b	#1,($FFFFFE1E).w ; update time counter
 		move.w	#0,($FFFFF790).w
 
-		move.w	#1800,($FFFFF614).w
+		move.w	#1800,DemoTimer
 
 Level_ChkWaterPal:
 		cmpi.b	#1,($FFFFFE10).w ; is level LZ/SBZ3?
@@ -5183,7 +5183,7 @@ SS_SetupFinish:
 		clr.b	(CarryOverData).w	; clear any remaining carry-over data
 		move.w	#0,($FFFFF790).w
 		move.w	#0,($FFFFFE08).w
-		move.w	#1800,($FFFFF614).w
+		move.w	#1800,DemoTimer
 
 		display_enable
 		VBlank_UnsetMusicOnly
@@ -5355,7 +5355,7 @@ SS_WaitVBlank:
 ; ---------------------------------------------------------------------------
 
 		; exit special stage
-		move.w	#60,($FFFFF614).w ; set	delay time to 1	second
+		move.w	#60,DemoTimer ; set	delay time to 1	second
 		move.w	#$3F,($FFFFF626).w
 		clr.w	($FFFFF794).w
 
@@ -5377,7 +5377,7 @@ SS_EndLoop:
 		bsr	Pal_ToWhite
 
 loc_47D4:
-		tst.w	($FFFFF614).w
+		tst.w	DemoTimer
 		bne.s	SS_EndLoop
 
 		moveq	#0,d0
@@ -5968,7 +5968,7 @@ End_LoadSonic:
 		move.b	#1,($FFFFFE1F).w
 		move.b	#1,($FFFFFE1D).w
 		move.b	#0,($FFFFFE1E).w
-		move.w	#1800,($FFFFF614).w
+		move.w	#1800,DemoTimer
 		move.b	#$18,VBlankRoutine
 		bsr	DelayProgram
 		move.w	#$8014,VDP_Ctrl	; enable h-ints
@@ -14683,7 +14683,7 @@ Obj0E_AnimateX:
 		add.w	#$D0,obScreenY(a0)		; for some reason, I gotta bring Sonic down a little bit manually
 
 Obj0E_Animate:				; XREF: Obj0E_Index
-		cmpi.w	#$100,($FFFFF614).w
+		cmpi.w	#$100,DemoTimer
 		bgt.s	@cont
 		move.b	#6,obFrame(a0)
 		bra.w	DisplaySprite
@@ -29328,11 +29328,11 @@ FixLevel:
 	@plc_ok:
 
 		jsr 	LevelRenderer_DrawLayout_FG_RAMBuffered
-		move.b	#$16,VBlankRoutine	; flush level layout
+		move.b	#$1A,VBlankRoutine	; flush level layout
 		jsr	DelayProgram
 
 		jsr 	LevelRenderer_DrawLayout_BG_RAMBuffered
-		move.b	#$16,VBlankRoutine	; flush level layout
+		move.b	#$1A,VBlankRoutine	; flush level layout
 		jmp	DelayProgram
 
 ; ---------------------------------------------------------------------------

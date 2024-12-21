@@ -75,17 +75,17 @@ UpdateSoundDriver:
 VBlankTable:	dc.w VBlank_LagFrame-VBlankTable	; $00
 		dc.w loc_C32-VBlankTable	; $02
 		dc.w loc_C44-VBlankTable	; $04
-		dc.w loc_C5E-VBlankTable	; $06
+		dc.w VBlankIllegal-VBlankTable	; $06 (unused)
 		dc.w VBlank_Level-VBlankTable	; $08 (main one for levels)
 		dc.w loc_DA6-VBlankTable	; $0A
 		dc.w loc_E72-VBlankTable	; $0C
-		dc.w loc_F8A-VBlankTable	; $0E
+		dc.w VBlankIllegal-VBlankTable	; $0E (unused)
 		dc.w loc_C64-VBlankTable	; $10 (pause)
 		dc.w loc_F9A-VBlankTable	; $12
 		dc.w loc_C36-VBlankTable	; $14
 		dc.w loc_FA6-VBlankTable	; $16
 		dc.w loc_E72-VBlankTable	; $18
-	        dc.w VBlankIllegal-VBlankTable	; $1A
+	        dc.w VBlank_LevelLagFrame-VBlankTable; $1A (for flushing frames as level redraws)
 	        dc.w VStoryScreen-VBlankTable	; $1C
 ; ===========================================================================
 VBlankIllegal:	illegal
@@ -147,9 +147,9 @@ loc_C32:				; XREF: VBlankTable
 
 
 loc_C36:				; XREF: VBlankTable
-		tst.w	($FFFFF614).w
+		tst.w	DemoTimer
 		beq.w	locret_C42
-		subq.w	#1,($FFFFF614).w
+		subq.w	#1,DemoTimer
 
 locret_C42:
 		rts	
@@ -163,21 +163,11 @@ loc_C44:				; XREF: VBlankTable
 @0:		move.b	($FFFFF625).w,($FFFFFE07).w
 
 		jsr 	ExecuteDrawRequests
-		tst.w	($FFFFF614).w
+		tst.w	DemoTimer
 		beq.w	locret_C5C
-		subq.w	#1,($FFFFF614).w
+		subq.w	#1,DemoTimer
 
 locret_C5C:
-		rts	
-; ===========================================================================
-
-loc_C5E:				; XREF: VBlankTable
-		bsr	UpdateFrame
-		cmpi.b	#1, CurrentZone		; are we LZ?
-		bne.s	@0
-		move.w	($FFFFF624).w,(a5)
-@0:		move.b	($FFFFF625).w,($FFFFFE07).w
-
 		rts	
 ; ===========================================================================
 
@@ -188,6 +178,8 @@ loc_C64:				; XREF: VBlankTable
 ;loc_C6E:				; XREF: VBlankTable
 VBlank_Level:
 		bsr	ReadJoypads
+
+VBlank_LevelLagFrame:
 		tst.b	($FFFFF64E).w
 		bne.s	loc_CB0
 		lea	VDP_Ctrl,a5
@@ -269,9 +261,9 @@ loc_DA6:				; XREF: VBlankTable
 		jsr	(ProcessDMAQueue).l
 
 loc_E64:
-		tst.w	($FFFFF614).w
+		tst.w	DemoTimer
 		beq.w	locret_E70
-		subq.w	#1,($FFFFF614).w
+		subq.w	#1,DemoTimer
 
 locret_E70:
 		rts	
@@ -328,18 +320,7 @@ loc_F54:
 		jsr 	ExecuteDrawRequests
 		jsr	HudUpdate
 		rts	
-; ===========================================================================
 
-loc_F8A:				; XREF: VBlankTable
-		bsr	UpdateFrame
-		cmpi.b	#1, CurrentZone		; are we LZ?
-		bne.s	@0
-		move.w	($FFFFF624).w,(a5)
-@0:		move.b	($FFFFF625).w,($FFFFFE07).w
-
-		addq.b	#1,($FFFFF628).w
-		move.b	#$E,VBlankRoutine
-		rts	
 ; ===========================================================================
 
 loc_F9A:				; XREF: VBlankTable
@@ -380,9 +361,9 @@ loc_FA6:				; XREF: VBlankTable
 		jsr	(ProcessDMAQueue).l
 
 loc_1060:
-		tst.w	($FFFFF614).w
+		tst.w	DemoTimer
 		beq.w	locret_106C
-		subq.w	#1,($FFFFF614).w
+		subq.w	#1,DemoTimer
 
 locret_106C:
 		rts	

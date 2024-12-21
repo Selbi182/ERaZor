@@ -72,6 +72,8 @@ SonicControl:		equ	$FFFFF602			; w
 Joypad:			equ	$FFFFF604			; w
 SMPS_PAL_Timer:		equ	$FFFFF608			; b	Timer for SMPS PAL optimization
 
+DemoTimer:		equ	$FFFFF614			; w	Timer for demos, decremented by certain VBlank routines until zero
+
 VBlankRoutine:		equ	$FFFFF62A			; b	VBlank routine id
 
 RingFrame		equ	$FFFFF640			; b	current synchronized smooth ring frame

@@ -74,7 +74,7 @@ SelbiSplash:
 		jsr	KosPlusDec
 
 SelbiSplash_SetWait:
-		move.w	#SelbiSplash_Wait,($FFFFF614).w	; Wait time
+		move.w	#SelbiSplash_Wait,DemoTimer	; Wait time
 
 		move.w	#Pal_Active+$10, ($FFFFFF7A).w
 		move.w	#0,($FFFFFF7E).w
@@ -99,12 +99,12 @@ SelbiSplash_Loop:
 		move.b	#2,VBlankRoutine		; Function 2 in vInt
 		jsr	DelayProgram			; Run delay program
 
-		tst.w	($FFFFF614).w			; Test wait time
+		tst.w	DemoTimer			; Test wait time
 		beq.w	SelbiSplash_Next		; is it over? branch
 
 		cmpi.w	#Pal_Active+$10+2*5,($FFFFFF7A).w
 		beq.w	@cont
-		cmpi.w	#$20,($FFFFF614).w		; is time less than $20?
+		cmpi.w	#$20,DemoTimer		; is time less than $20?
 		bpl	SelbiSplash_WaitEnd		; if not, branch
 
 		movea.w	($FFFFFF7A).w, a1
@@ -118,11 +118,11 @@ SelbiSplash_Loop:
 
 		cmpi.w	#Pal_Active+$10+2*5,($FFFFFF7A).w
 		beq.s	@cont2
-		addi.w	#$20,($FFFFF614).w
+		addi.w	#$20,DemoTimer
 
 		bra	SelbiSplash_WaitEnd
 @cont2:
-		move.w	#$D0,($FFFFF614).w
+		move.w	#$D0,DemoTimer
 		VBlank_SetMusicOnly
 		lea	VDP_Data,a5
 		lea	$04(a5),a6
@@ -133,7 +133,7 @@ SelbiSplash_Loop:
 
 @cont:
 		; new flashing effect
-		cmpi.w	#$90,($FFFFF614).w
+		cmpi.w	#$90,DemoTimer
 		bge.w	SelbiSplash_EffectsEnd
 		bsr	SelbiSplash_UpdateEndPal
 		bra.w	SelbiSplash_EffectsEnd
@@ -141,7 +141,7 @@ SelbiSplash_Loop:
 
 SelbiSplash_UpdateEndPal:
 		moveq	#0,d0
-		move.w	($FFFFF614).w,d0
+		move.w	DemoTimer,d0
 		move.w	d0,d1
 		lsr.w	#4+1,d0
 		mulu.w	d1,d0
@@ -200,9 +200,9 @@ SelbiPissFilter:
 ; ---------------------------------------------------------------------------
 
 SelbiSplash_EffectsEnd:
-		cmpi.w	#$90,($FFFFF614).w		; is time less than $90?
+		cmpi.w	#$90,DemoTimer		; is time less than $90?
 		bmi.w	SelbiSplash_DontChangePal	; if yes, branch
-		cmpi.w	#$D0,($FFFFF614).w		; is time more than $D0?
+		cmpi.w	#$D0,DemoTimer		; is time more than $D0?
 		bpl.w	SelbiSplash_WaitEnd		; if yes, branch
 
 		; screen shake Y
@@ -296,7 +296,7 @@ SelbiSplash_WaitEnd:
 		bra	SelbiSplash_LoopEnd		; skip
 
 @firecheat:
-		move.w	#$90,($FFFFF614).w		; reset ending timer
+		move.w	#$90,DemoTimer		; reset ending timer
 
 		tst.w	($FFFFFFFA).w			; was debug mode already enabled?
 		bne.w	SelbiSplash_DisableDebug	; if yes, disable it

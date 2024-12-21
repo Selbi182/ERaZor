@@ -407,9 +407,15 @@ Credits_Page2:
 		crdtxt	"                    "
 		crdtxt	"                    "
 		crdtxt	"                    "
+	if def(__WIDESCREEN__)
+		crdtxt	"widescreen support  "
+		crdtxt	"                    "
+		crdtxt	"and blast processing"
+	else
 		crdtxt	"blast               "
 		crdtxt	"                    "
 		crdtxt	"processing          "
+	endif
 		crdtxt	"                    "
 		crdtxt	"                    "
 		crdtxt	"                    "

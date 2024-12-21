@@ -2235,6 +2235,7 @@ PalPointers_Classic:
 	dc.l PalC_SBZ2,		$FB20 0005	; $18
 	dc.l Pal_Black,		$FB20 0017	; $19
 	dc.l PalC_SYZ_Unterhub,	$FB20 0017	; $1A
+	dc.l PalC_SYZ_UnterBoss,$FB20 0017	; $1B
 	even
 
 PalPointers_Remastered:
@@ -2266,6 +2267,7 @@ PalPointers_Remastered:
 	dc.l PalR_SBZ2,		$FB20 0005	; $18
 	dc.l Pal_Black,		$FB20 0017	; $19
 	dc.l PalR_SYZ_Unterhub,	$FB20 0017	; $1A
+	dc.l PalR_SYZ_UnterBoss,$FB20 0017	; $1B
 	even
 
 ; ---------------------------------------------------------------------------
@@ -2294,6 +2296,7 @@ PalC_BCutscene:		incbin	palette\Classic\bombcutscene.bin
 PalC_SpecialEaster:	incbin	palette\Classic\special_blackout.bin
 PalC_LZWater2_Evil:	incbin	palette\Classic\lz_uw2_evil.bin
 PalC_SYZ_Unterhub:	incbin	palette\Classic\syz_unterhub.bin
+PalC_SYZ_UnterBoss:	incbin	palette\Classic\syz_unterhub_boss.bin
 
 ; Remastered palettes by Javesike
 PalR_Title:		incbin	palette\Remastered\title.bin
@@ -2316,6 +2319,7 @@ PalR_BCutscene:		incbin	palette\Remastered\bombcutscene.bin
 PalR_SpecialEaster:	incbin	palette\Remastered\special_blackout.bin
 PalR_LZWater2_Evil:	incbin	palette\Remastered\lz_uw2_evil.bin
 PalR_SYZ_Unterhub:	incbin	palette\Remastered\syz_unterhub.bin
+PalR_SYZ_UnterBoss:	incbin	palette\Remastered\syz_unterhub_boss.bin
 
 ; Misc
 Pal_SegaBG:		incbin	palette\sega_bg.bin
@@ -6405,9 +6409,9 @@ MLB_NotGHZ3:
 		moveq	#$E,d0			; use FZ palette
 
 MLB_NotFZ:
-	;	cmpi.w	#$402,($FFFFFE10).w 	; is level Unterhub?
-	;	bne.s	MLB_NormalPal		; if not, branch
-	;	moveq	#$1A,d0			; use Unterhub palette
+		cmpi.w	#$402,($FFFFFE10).w 	; is level Unterhub?
+		bne.s	MLB_NormalPal		; if not, branch
+		moveq	#$1A,d0			; use Unterhub palette
 
 MLB_NormalPal:
 		bsr	PalLoad1	; load palette (based on	d0)
@@ -7480,7 +7484,7 @@ Resize_SYZ3waitboss:
 		move.w	#$1A80+$1A00,($FFFFF72A).w	; right boundary
 
 		movem.l	d7/a0-a3,-(sp)
-		moveq	#$1A,d0			; load Unterhub pallete
+		moveq	#$1B,d0			; load Unterhub boss pallete
 		jsr	PalLoad2
 		jsr	WhiteFlash
 		move.b	#30,($FFFFFFB2).w	; add some camera lag
@@ -10911,8 +10915,8 @@ Obj27_Main:				; XREF: Obj27_Index
 	
 		jsr	PlayLevelMusic		; restart regular music
 		movem.l	d0-a3,-(sp)
-		moveq	#$8,d0
-		jsr	PalLoad2		; reload full bright palette
+		moveq	#$1A,d0
+		jsr	PalLoad2		; reload regular Unterhub pallete
 		jsr 	WhiteFlash
 		movem.l	(sp)+,d0-a3
 		bra.w	Obj27_FinishSetup

@@ -69,11 +69,11 @@ Obj21_Deaths:	dc.b 6
 		dc.b $F9, $01, $A0, $00, $10	; S
 
 Obj21_Death:	dc.b 5
-		dc.b $F8, $01, $80, $24, $D0	; the 10s digit from the score counter
-		dc.b $F8, $05, $81, $12, $D8	; Deaths Counter
+		dc.b $F8, $01, $80, $24, $C8+8	; the 10s digit from the score counter
+		dc.b $F8, $05, $81, $12, $D0+8	; Deaths Counter
 
-		dc.b $F9, $01, $A1, $0A, $F0	; D
-		dc.b $F9, $01, $A0, $16, $F8	; E
+		dc.b $F9, $01, $A1, $0A, $E8+8	; D
+		dc.b $F9, $01, $A0, $16, $F0+8	; E
 		dc.b $F9, $09, $A1, $0C, $00	; ATH
 
 Obj21_Fumbles:	dc.b 8

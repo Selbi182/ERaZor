@@ -1232,10 +1232,19 @@ PalCycle_SAP:
 		tst.b	($FFFFFF77).w		; is antigrav enabled?
 		beq.w	PCSLZ_Red_End		; if not, branch
 
-		move.w	#$000,($FFFFFB42).w		; light up the off-limits grid blocks
-		tst.b	(CameraShake).w
-		beq.s	@dosappal
-		move.w	#$002,($FFFFFB42).w		; light up the off-limits grid blocks
+		; buzzwire palette while active
+		moveq	#$000,d0		; turn off by default (black)
+		tst.b	(CameraShake).w		; is buzz wire active (recently touched)?
+		beq.s	@endwire		; if not, branch
+		moveq	#$002,d0		; light up the off-limits grid blocks
+		btst	#6,(OptionsBits).w	; is max white flash enabled?
+		beq.s	@endwire		; if not, branch
+		btst	#0,($FFFFFE05).w
+		beq.s	@endwire
+		moveq	#$00E,d0		; have fun with the eyesore
+
+@endwire:
+		move.w	d0,($FFFFFB42).w	; apply color to grid
 	;	move.w	#$000,($FFFFFB40).w	; force background to stay black
 
 	;	btst	#7,(OptionsBits).w	; is photosensitive mode enabled?

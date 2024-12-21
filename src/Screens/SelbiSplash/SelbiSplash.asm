@@ -17,7 +17,7 @@ _VRAM_SelbiArt:		equ	$F400
 ; ---------------------------------------------------------------------------------------------------------------------
 SelbiSplash:
 		move.b	#$E4,d0
-		jsr	PlaySound_Special		; Stop music
+		jsr	PlayCommand			; stop music
 		jsr	PLC_ClearQueue			; Clear PLCs
 		jsr	Pal_FadeFrom			; Fade out previous palette
 
@@ -113,7 +113,7 @@ SelbiSplash_Loop:
 
 		move.w	($FFFFFF7E).w,d3
 		move.b	SelbiSplash_Sounds(pc,d3.w), d0
-		jsr	PlaySound_Special
+		jsr	PlaySFX
 		addq.w	#1,($FFFFFF7E).w
 
 		cmpi.w	#Pal_Active+$10+2*5,($FFFFFF7A).w
@@ -255,14 +255,14 @@ SelbiSplash_EffectsEnd:
 		beq.w	SelbiSplash_WaitEnd
 
 		move.b	(SelbiSplash_Sounds+4),d0
-		jsr	PlaySound_Special
+		jsr	PlaySFX
 		bra	SelbiSplash_WaitEnd
 
 SelbiSplash_DontChangePal:
 		tst.b	($FFFFFFAF).w			; has final screen already been loaded?
 		bne.w	SelbiSplash_WaitEnd		; if yes, branch
 		move.b	#$B9,d0				; play massive explosion sound
-		jsr	PlaySound		
+		jsr	PlaySFX
 
 SelbiSplash_LoadPRESENTS:
 		jsr	Pal_CutToBlack
@@ -292,7 +292,7 @@ SelbiSplash_WaitEnd:
 		beq.s	@firecheat			; if we reached 0, activate cheat
 		bmi	SelbiSplash_LoopEnd		; for any further than the set input presses, don't do anything
 		move.b	#$A9,d0				; set blip sound
-		jsr	PlaySound_Special		; play it
+		jsr	PlaySFX		; play it
 		bra	SelbiSplash_LoopEnd		; skip
 
 @firecheat:
@@ -302,7 +302,7 @@ SelbiSplash_WaitEnd:
 		bne.w	SelbiSplash_DisableDebug	; if yes, disable it
 		move.w	#1,($FFFFFFFA).w	 	; enable debug mode
 		move.b	#$A8,d0				; set enter SS sound
-		jsr	PlaySound_Special		; play it
+		jsr	PlaySFX		; play it
 
 SelbiSplash_LoopEnd:
 		move.b	($FFFFF605).w,d0		; get button presses
@@ -352,7 +352,7 @@ SelbiSplash_DisableDebug:
 		
 		move.w	#0,($FFFFFFFA).w	 	; disable debug mode
 		move.b	#$A4,d0				; set skidding sound
-		jsr	PlaySound_Special		; play it
+		jsr	PlaySFX		; play it
 		bra.w	SelbiSplash_LoopEnd
 
 ; ---------------------------------------------------------------------------------------------------------------------

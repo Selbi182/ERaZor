@@ -54,13 +54,11 @@ v_last_bgm:		equ	$005	; ++ last played BGM id
 v_fadeout_delay:	equ	$006
 v_communication_byte:	equ	$007	; used in Ristar to sync with a boss' attacks; unused here
 f_updating_dac:		equ	$008	; $80 if updating DAC, $00 otherwise
-v_sound_id:		equ	$009	; sound or music copied from below
-v_soundqueue_start:	equ	$00A
-v_soundqueue0:		equ	v_soundqueue_start+0	; sound or music to play
-v_soundqueue1:		equ	v_soundqueue_start+1	; special sound to play
-v_soundqueue2:		equ	v_soundqueue_start+2	; unused sound to play
-v_soundqueue_end:	equ	v_soundqueue_start+3
-
+v_bgm_input:		equ	$009	; BGM or command id to play
+v_sfx_input:		equ	$00A	; SFX to play
+v_sfx_input_next_1:	equ	$00B	; SFX to play (next slot 1)
+v_sfx_input_next_2:	equ	$00C	; SFX to play (next slot 2)
+v_cmd_input:		equ	$00D	; command id to play
 f_voice_selector:	equ	$00E	; $00 = use music voice pointer; $40 = use special voice pointer; $80 = use track voice pointer
 v_revsound:             equ	$00F  ; ++ revving sound effect
 

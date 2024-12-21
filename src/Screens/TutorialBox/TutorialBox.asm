@@ -467,7 +467,7 @@ _CooldownVal	= 2
 		bsr	DH_DrawChar		; draw da char
 		VBlank_UnsetMusicOnly
 		moveq	#$FFFFFFD8,d0
-		jsr	PlaySound
+		jsr	PlaySFX
 		addi.w	#4*$20,vram_pos(a0)	; set pointer for next char (+4 tiles)
 		rts
 
@@ -533,7 +533,7 @@ _CooldownVal	= 2
 ; ---------------------------------------------------------------
 @ClearWindow:
 		moveq	#$FFFFFFD9,d0
-		jsr	PlaySound
+		jsr	PlaySFX
 
 		jsr	DH_ClearWindow
 		move.w	#0,row(a0)		; reset row
@@ -564,7 +564,7 @@ _CooldownVal	= 2
 
 @GotoDisappear:
 		moveq	#$FFFFFFD9,d0
-		jsr	PlaySound
+		jsr	PlaySFX
 
 		move.l	#DH_OWindow_Disappear,obj(a0)
 		move.w	#0,xvel(a0)

@@ -20,7 +20,7 @@ Chapters_TestAll = 0
 
 ChapterScreen:
 		move.b	#$E0,d0
-		jsr	PlaySound_Special		; fade out music
+		jsr	PlayCommand			; fade out music
 
 		jsr	PLC_ClearQueue			; Clear PLCs
 		jsr	DrawBuffer_Clear

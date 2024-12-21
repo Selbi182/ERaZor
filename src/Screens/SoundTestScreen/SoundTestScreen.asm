@@ -7,7 +7,7 @@
 SoundTestScreen:
 	; Obligatory part to clean up after previous game mode
 	moveq	#$FFFFFFE4, d0
-	jsr	PlaySound_Special ; stop music
+	jsr	PlayCommand		 ; stop music
 	jsr	PLC_ClearQueue
 	jsr	Pal_FadeFrom
 	jsr	DrawBuffer_Clear
@@ -165,6 +165,20 @@ SoundTest_Exit:
 	move.w	#$8C81, VDP_Ctrl		; disable S&H
 	move.w	#VBlank, VBlankSubW		; restore Sonic 1's VBlank
 	jmp	Exit_SoundTestScreen
+
+
+; ---------------------------------------------------------------------------
+; Helper function to play any sound id
+; ---------------------------------------------------------------------------
+
+SoundTest_PlaySound:
+	cmp.b	#$A0, d0
+	blo.s	@bgm
+	cmp.b	#$E0, d0
+	blo.s	@sfx
+	jmp	PlayCommand
+@bgm	jmp	PlayBGM
+@sfx	jmp	PlaySFX
 
 ; ---------------------------------------------------------------------------
 ; Controls screen fade in/out sequences

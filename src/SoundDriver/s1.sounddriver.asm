@@ -15,8 +15,6 @@
 ; The source code to a similar version of the driver can be found here:
 ; https://hiddenpalace.org/News/Sega_of_Japan_Sound_Documents_and_Source_Code
 ; ---------------------------------------------------------------------------
-; Go_SoundTypes:
-Go_SoundPriorities:	dc.l SoundPriorities
 ; Go_SoundD0:
 Go_SpecSoundIndex:	dc.l SpecSoundIndex
 Go_MusicIndex:		dc.l MusicIndex
@@ -112,11 +110,20 @@ SoundPriorities:
 ; (Called by horizontal & vert. interrupts)
 ; ---------------------------------------------------------------------------
 
+SoundDriverInit:
+		lea	SoundDriverRAM, a6
+		jmp	StopAllSound
+
+; ---------------------------------------------------------------------------
+; Subroutine to update music more than once per frame
+; (Called by horizontal & vert. interrupts)
+; ---------------------------------------------------------------------------
+
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 
 ; sub_71B4C:
 SoundDriverUpdate:
-		lea	(SoundDriverRAM&$FFFFFF).l,a6
+		lea	SoundDriverRAM, a6
 		clr.b	f_voice_selector(a6)
 		tst.b	f_pausemusic(a6)		; is music paused?
 		bne.w	PauseMusic			; if yes, branch
@@ -131,23 +138,25 @@ SoundDriverUpdate:
 		jsr	DoFadeIn(pc)
 ; loc_71BB2:
 .skipfadein:
-	if FixBugs
-		moveq	#0,d0
-		or.b	v_soundqueue2(a6),d0
-		or.w	v_soundqueue0(a6),d0
-	else
-		; DANGER! The following line only checks v_soundqueue0 and v_soundqueue1, breaking v_soundqueue2.
-		tst.w	v_soundqueue0(a6)	; is a music or sound queued for playing?
-	endif
-		beq.s	.nosndinput		; if not, branch
-		jsr	CycleSoundQueue(pc)
-; loc_71BBC:
-.nosndinput:
-		cmpi.b	#$80,v_sound_id(a6)	; is song queue set for silence (empty)?
-		beq.s	.nonewsound		; If yes, branch
-		jsr	PlaySoundID(pc)
-; loc_71BC8:
-.nonewsound:
+		move.b	v_bgm_input(a6), d7		; did we request a new BGM?
+		beq.s	.no_new_bgm			; if not, branch
+		bsr	Play_BGM			; INPUT: d7
+		clr.b	v_bgm_input(a6)			; reset sound to play
+
+.no_new_bgm:
+		move.b	v_sfx_input(a6), d7		; did we request an SFX?
+		beq.s	.no_new_sfx			; if not, branch
+		bsr	Play_SFX			; INPUT: d7
+		move.b	v_sfx_input_next_1(a6), v_sfx_input(a6)		; cycle through SFX queue
+		move.b	v_sfx_input_next_2(a6), v_sfx_input_next_1(a6)	; ''
+		clr.b	v_sfx_input_next_2(a6)				; ''
+.no_new_sfx:
+
+		move.b	v_cmd_input(a6), d7		; did we request a command?
+		beq.s	.no_new_command			; if not, branch
+		bsr	Play_Command			; input: d7
+		clr.b	v_cmd_input(a6)
+.no_new_command:
 
 		tst.b	SMPS_PAL_Timer			; are we PAL optimized?
 		beq.s	.pal_ok				; if not, branch
@@ -618,80 +627,82 @@ PauseMusic:
 		rts
 
 ; ---------------------------------------------------------------------------
-; Subroutine to	play a sound or	music track
+; Plays a requested command (usually from `v_cmd_input`)
+; ---------------------------------------------------------------------------
+; INPUT:
+;	d7	.b 	$80-based sound ID (command only)
 ; ---------------------------------------------------------------------------
 
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+Play_Command:
+		cmp.b	#$E0, d7
+		blo.s	Play_IllegalId
+		cmp.b	#$E4, d7			; command ids ($E0...$E4)
+		bls.w	Sound_E0toE4			; ''
+		bra.s	Play_IllegalId
 
-; Sound_Play:
-CycleSoundQueue:
-		movea.l	(Go_SoundPriorities).l,a0
-		lea	v_soundqueue0(a6),a1	; load music track number
-		move.b	v_sndprio(a6),d3	; Get priority of currently playing SFX
-		moveq	#v_soundqueue_end-v_soundqueue_start-1,d4
-; loc_71F12:
-.inputloop:
-		move.b	(a1),d0			; move track number to d0
-		move.b	d0,d1
-		clr.b	(a1)+			; Clear entry
-		subi.b	#$81,d0			; Make it into 0-based index
-		bcs.s	.nextinput		; If negative (i.e., it was $80 or lower), branch
-		cmpi.b	#$80,v_sound_id(a6)	; Is v_sound_id a $80 (silence/empty)?
-		beq.s	.havesound		; If yes, branch
-		move.b	d1,v_soundqueue0(a6)	; Put sound into v_soundqueue0
-		bra.s	.nextinput
-; ===========================================================================
-; loc_71F2C:
-.havesound:
-		andi.w	#$7F,d0			; Clear high byte and sign bit
-		move.b	(a0,d0.w),d2		; Get sound type
-		cmp.b	d3,d2			; Is it a lower priority sound?
-		blo.s	.nextinput		; Branch if yes
-		move.b	d2,d3			; Store new priority
-		move.b	d1,v_sound_id(a6)	; Queue sound for playing
-; loc_71F3E:
-.nextinput:
-		dbf	d4,.inputloop
+; ---------------------------------------------------------------------------
+; Plays a requested BGM (usually from `v_bgm_input`)
+; ---------------------------------------------------------------------------
+; INPUT:
+;	d7	.b 	$80-based sound ID (BGM only)
+; ---------------------------------------------------------------------------
 
-		tst.b	d3			; We don't want to change sound priority if it is negative
-		bmi.s	.locret
-		move.b	d3,v_sndprio(a6)	; Set new sound priority
-; locret_71F4A:
-.locret:
-		rts	
-; End of function CycleSoundQueue
+Play_BGM:
+		cmp.b	#$81, d7
+		blo.s	Play_IllegalId
+		cmp.b	#$9F, d7			; BGM ids ($81..$9F)
+		bls.w	Sound_PlayBGM			; ''
 
+Play_IllegalId:
+	if def(__DEBUG__)
+		RaiseError "Illegal sound id (%<.b d7>)"
+	else
+		rts
+	endif
 
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+; ---------------------------------------------------------------------------
+; Plays a requested SFX (usually from `v_sfx_input`)
+; ---------------------------------------------------------------------------
+; INPUT:
+;	d7	.b 	$80-based sound ID (SFX only)
+; ---------------------------------------------------------------------------
 
-; Sound_ChkValue:
-PlaySoundID:
-		moveq	#0,d7
-		move.b	v_sound_id(a6),d7
-		beq.w	StopAllSound
-		bpl.s	.locret			; If >= 0, return (not a valid sound, bgm or command)
-		move.b	#$80,v_sound_id(a6)	; reset	music flag
-		cmpi.b	#$9F,d7			; Is this music ($81-$93)?
-		bls.w	Sound_PlayBGM		; Branch if yes
-		cmpi.b	#$A0,d7			; Is this after music but before sfx? (redundant check)
-		blo.w	.locret			; Return if yes
-		cmpi.b	#$CF,d7			; Is this sfx ($A0-$CF)?
-		bls.w	Sound_PlaySFX		; Branch if yes
-		cmpi.b	#$D0,d7			; Is this special sfx ($D0)?
-		beq.w	Sound_PlaySpecial	; Branch if yes
-		cmpi.b	#$E0,d7			; Is this sfx ($D1-$DF)?
-		blo.w	Sound_PlaySFX		; Return if yes
-		cmpi.b	#$E4,d7			; Is this $E0-$E4?
-		bls.s	Sound_E0toE4		; Branch if yes
-; locret_71F8C:
-.locret:
-		rts	
+Play_SFX:
+		; Only IDs $A0 .. $DF are accepted
+		cmp.b	#$A0, d7
+		blo.s	Play_IllegalId
+		cmp.b	#$E0, d7
+		bhs.s	Play_IllegalId
+
+		; Filter by priority
+		lea	SoundPriorities(pc), a0	
+		moveq	#$7F, d0
+		and.b	d7, d0
+		move.b	-1(a0, d0), d2
+		cmp.b	v_sndprio(a6), d2
+		blo.s	.ignore_sound			; Ignore lower priority sound
+		tst.b	d2
+		bmi.s	.priority_done			; We don't want to change sound priority if it is negative
+		move.b	d2, v_sndprio(a6)
+.priority_done:
+
+		cmp.b	#$D0, d7
+		bne	Sound_PlaySFX
+		bra	Sound_PlaySpecial
+
+.ignore_sound:
+		; NOTICE: Causes light visual glitches in the sound test due to VDP register conflicts
+		KDebug.WriteLine "Play_SFX(): Ignoring lower priority sound (id=%<.b d7>, prio=%<.b d2>, prio_current=%<.b v_sndprio(a6)>)"
+		rts
+
 ; ===========================================================================
 
 Sound_E0toE4:
-		subi.b	#$E0,d7
-		lsl.w	#2,d7
-		jmp	Sound_ExIndex(pc,d7.w)
+		subi.b	#$E0, d7
+		and.w	#7, d7
+		add.w	d7, d7
+		add.w	d7, d7
+		jmp	Sound_ExIndex(pc, d7.w)
 ; ===========================================================================
 
 Sound_ExIndex:
@@ -700,10 +711,21 @@ Sound_ExIndex:
 		bra.w	SpeedUpMusic		; $E2
 		bra.w	SlowDownMusic		; $E3
 		bra.w	StopAllSound		; $E4
+		if def(__DEBUG__)
+			rept 3
+				illegal
+				nop
+			endr
+		else
+			rept 3
+				rts
+				nop
+			endr
+		endif
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Play "Say-gaa" PCM sound (disabled)
+; Play "Say-gaa" PCM sound
 ; ---------------------------------------------------------------------------
 ; Sound_E1: PlaySega:
 PlaySegaSound:
@@ -759,9 +781,11 @@ Sound_PlayBGM:
 		jsr	InitMusicPlayback(pc)
 		movea.l	(Go_SpeedUpIndex).l,a4
 		subi.b	#$81,d7
+		and.w	#$7F,d7
 		move.b	(a4,d7.w),v_speeduptempo(a6)
 		movea.l	(Go_MusicIndex).l,a4
-		lsl.w	#2,d7
+		add.w	d7, d7
+		add.w	d7, d7
 		movea.l	(a4,d7.w),a4		; a4 now points to (uncompressed) song data
 		moveq	#0,d0
 		move.w	(a4),d0			; load voice pointer
@@ -939,7 +963,9 @@ Sound_PlaySFX:
 .sfx_doneChecks:
 		movea.l	(Go_SoundIndex).l,a0
 		subi.b	#$A0,d7			; Make it 0-based
-		lsl.w	#2,d7			; Convert sfx ID into index
+		and.w	#$7F,d7
+		add.w	d7, d7			; Convert sfx ID into index
+		add.w	d7, d7			; ''
 		movea.l	(a0,d7.w),a3		; SFX data pointer
 		movea.l	a3,a1
 		moveq	#0,d1
@@ -1059,7 +1085,9 @@ Sound_PlaySpecial:
 		bne.w	.locret			; Return if so
 		movea.l	(Go_SpecSoundIndex).l,a0
 		subi.b	#$D0,d7			; Make it 0-based
-		lsl.w	#2,d7
+		and.w	#$7F,d7
+		add.w	d7,d7
+		add.w	d7,d7
 		movea.l	(a0,d7.w),a3
 		movea.l	a3,a1
 		moveq	#0,d0
@@ -1406,6 +1434,7 @@ FMSilenceAll:
 ; ---------------------------------------------------------------------------
 ; Stop music
 ; ---------------------------------------------------------------------------
+
 ; Sound_E4: StopSoundAndMusic:
 StopAllSound:
 		moveq	#$27,d0		; Timers, FM3 mode
@@ -1429,7 +1458,9 @@ StopAllSound:
 		move.b	#Z_MPCM_COMMAND_STOP, MPCM_Z80_RAM+Z_MPCM_CommandInput ; stop DAC playback
 		MPCM_startZ80
 
-		move.b	#$80,v_sound_id(a6)	; set music to $80 (silence)
+		moveq	#0, d0
+		move.b	d0, v_bgm_input(a6)
+		move.l	d0, v_sfx_input(a6)		; clear all sound queue + `v_cmd_input`
 		jsr	FMSilenceAll(pc)
 		bra.w	PSGSilenceAll
 
@@ -1447,8 +1478,8 @@ InitMusicPlayback:
 		move.b	f_1up_playing(a6),d2
 		move.b	f_speedup(a6),d3
 		move.b	v_fadein_counter(a6),d4
-		move.w	v_soundqueue0(a6),d5
-		move.b	v_soundqueue2(a6),d6
+		move.w	v_sfx_input(a6),d5
+		move.w	v_sfx_input_next_2(a6),d6	; v_sfx_input_next_2, v_cmd_input
 
 		lea	0+f_updating_dac(a6),a0
 		move.w	#((v_music_track_ram_end-f_updating_dac)/4)-1,d1	; Clear $220 bytes: all variables and music track data
@@ -1461,9 +1492,8 @@ InitMusicPlayback:
 		move.b	d2,f_1up_playing(a6)
 		move.b	d3,f_speedup(a6)
 		move.b	d4,v_fadein_counter(a6)
-		move.w	d5,v_soundqueue0(a6)
-		move.b	d6,v_soundqueue2(a6)
-		move.b	#$80,v_sound_id(a6)	; set music to $80 (silence)
+		move.w	d5,v_sfx_input(a6)
+		move.w	d6,v_sfx_input_next_2(a6)
 
 		lea	v_music_track_ram+TrackVoiceControl(a6),a1
 		lea	FMDACInitBytes(pc),a2

@@ -189,7 +189,7 @@ STS_FadeOutScreen:
 		cmpi.b	#8,(StoryTextID).w	; is this the ending sequence?
 		beq.s	@finalfadeout		; if yes, don't fade out music
 		move.w	#$E0,d0
-		jsr	PlaySound_Special
+		jsr	PlayCommand
 		clr.b	(SoundDriverRAM+v_last_bgm).w ; clear previously set level music so it gets restarted properly
 
 @finalfadeout:
@@ -304,7 +304,7 @@ StoryScreen_ContinueWriting:
 		cmpi.b	#STS_LinesMain,(STS_Row).w	; are we writing beyond the main content?
 		bhi.s	@writeend			; if yes, don't play sound
 		move.w	#STS_Sound,d0			; play...
-		jsr	PlaySound_Special		; ... text writing sound
+		jsr	PlaySFX				; ... text writing sound
 
 @writeend:
 		rts

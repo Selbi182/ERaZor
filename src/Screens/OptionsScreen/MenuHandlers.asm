@@ -140,9 +140,9 @@ Options_GameplayStyle_Handle:
 	clr.b	(PlacePlacePlace).w	; clear easter egg flag
 	bclr	#5,OptionsBits		; set to casual
 	move.w	#$DF,d0			; jester explosion sound
-	jsr	PlaySound
+	jsr	PlaySFX
 	move.w	#$E3,d0			; regular speed
-	jsr	PlaySound_Special
+	jsr	PlayCommand
 	bra.s	@redraw
 
 @noteaster:
@@ -420,7 +420,7 @@ Options_FlashyLights_Handle:
 
 	jsr	WhiteFlash
 	move.w	#$C3,d0
-	jsr	PlaySound_Special
+	jsr	PlaySFX
 
 	st.b	Options_RedrawCurrentItem
 
@@ -508,7 +508,7 @@ Options_CameraShake_Handle:
 	st.b	Options_RedrawCurrentItem
 
 	move.w	#$C4,d0
-	jsr	PlaySound_Special
+	jsr	PlaySFX
 
 @ret:	rts
 
@@ -585,7 +585,7 @@ Options_Audio_Handle:
 	btst	#0, OptionsBits2	; is music disabled?
 	beq.s	@0
 	move.w	#$E4,d0			; stop music
-	jsr	PlaySound_Special
+	jsr	PlayCommand
 	move.b	#2,VBlankRoutine
 	jsr	DelayProgram
 	bra.s	@1
@@ -593,7 +593,7 @@ Options_Audio_Handle:
 	tst.b	($FFFFFF84).w
 	bne.s	@1
 	move.b	#Options_Music,d0
-	jsr	PlaySound
+	jsr	PlayBGM
 @1:
 
 	moveq	#%11,d1
@@ -907,7 +907,7 @@ Options_DeleteSaveGame_Handle:
 	subq.b	#1,Options_DeleteSRAMCounter	; sub one from delete counter
 	beq.s	@dodelete			; if we reached zero, rip save file
 	move.w	#$DF,d0				; play Jester explosion sound
-	jsr	PlaySound_Special
+	jsr	PlaySFX
 	st.b	Options_RedrawCurrentItem
 @ret	rts
 
@@ -931,7 +931,7 @@ Options_DeleteSaveGame_Handle:
 	bne.s	@1			; is it not a 7th frame?, branch
 	jsr	Pal_FadeOut		; partially fade-out palette
 	move.b	#$C4,d0			; play explosion sound
-	jsr	PlaySound_Special	; ''
+	jsr	PlaySFX	; ''
 
 @1	move.b	#2,VBlankRoutine	; run V-Blank
 	jsr	DelayProgram		; ''
@@ -979,7 +979,7 @@ Options_ResetOptions_Handle:
 	subq.b	#1,Options_DeleteSRAMCounter	; sub one from delete counter
 	beq.s	@dodelete			; if we reached zero, rip save file
 	move.w	#$DF,d0				; play Jester explosion sound
-	jsr	PlaySound_Special
+	jsr	PlaySFX
 	st.b	Options_RedrawCurrentItem
 @ret	rts
 
@@ -998,11 +998,11 @@ Options_ResetOptions_Handle:
 
 
 	move.b	#$B9,d0			; play explosion sound
-	jsr	PlaySound_Special
+	jsr	PlaySFX
 	tst.b	($FFFFFF84).w
 	bne.s	@firststart
 	move.b	#Options_Music,d0
-	jsr	PlaySound
+	jsr	PlayBGM
 @firststart:
 	rts
 
@@ -1104,7 +1104,7 @@ Options_Exit_Handle:
 	andi.w	#$EEE,d0
 	move.w	d0,(BGThemeColor).w
 	move.w	#$A9,d0			; play blip sound
-	jmp	PlaySound_Special
+	jmp	PlaySFX
 
 @exit:
 	st.b	Options_Exiting		; exit options menu
@@ -1118,17 +1118,17 @@ Options_Exit_Handle:
 
 Options_PlayDisallowedSound:
 	move.w	#$DC,d0			; play option disallowed sound
-	jmp	PlaySound_Special
+	jmp	PlaySFX
 
 ; ---------------------------------------------------------------------------
 Options_PlayRespectiveToggleSound:
 	beq.s	@toggleOn
 	move.w	#$DA,d0			; play option toggled off sound
-	jmp	PlaySound_Special
+	jmp	PlaySFX
 
 @toggleOn:
 	move.w	#$D9,d0			; play option toggled on sound
-	jmp	PlaySound_Special
+	jmp	PlaySFX
 
 ; ---------------------------------------------------------------------------
 Options_Str_On:	dc.b	' ON', 0

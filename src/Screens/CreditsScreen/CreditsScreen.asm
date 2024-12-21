@@ -21,7 +21,7 @@ Credits_InvertDirection = 1
 
 CreditsScreen:
 		move.b	#$97,d0
-		jsr	PlaySound_Special			; play credits music
+		jsr	PlayBGM				; play credits music
 	;	jsr	Pal_FadeFrom
 		
 		; for a smooth transition from the ending sequence black bars

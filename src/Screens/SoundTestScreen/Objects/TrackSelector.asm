@@ -20,7 +20,7 @@ SoundTest_Obj_TrackSelector:
 
 	; Initialize object now
 	moveq	#$FFFFFF81, d0			; play initial music
-	jsr	PlaySound_Special
+	jsr	SoundTest_PlaySound
 	move.b	d0, obSTSelectedTrack(a0)	; set initial track
 	bsr	@UpdateTrackInfo		; display this track
 	move.l	#@Main, obCodePtr(a0)
@@ -67,13 +67,13 @@ SoundTest_Obj_TrackSelector:
 	btst	#iB, d0				; is B pressed?
 	beq.s	@chkPlay			; if not, branch
 	move.b	#$E4, d0
-	jmp	PlaySound_Special
+	jmp	PlayCommand
 
 @chkPlay:
 	btst	#iC, d0				; is C pressed?
 	beq.s	@ret				; if not, branch
 	move.b	obSTSelectedTrack(a0), d0
-	jmp	PlaySound_Special
+	jmp	SoundTest_PlaySound
 
 ; ---------------------------------------------------------------------------
 @ExitScreen:

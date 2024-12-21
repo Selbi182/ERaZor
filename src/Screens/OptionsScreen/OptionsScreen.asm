@@ -71,7 +71,7 @@ DefaultOptions2 = %10000000	; remastered palettes
 
 OptionsScreen:				; XREF: GameModeArray
 		moveq	#$FFFFFFE0, d0
-		jsr	PlaySound_Special
+		jsr	PlayCommand
 		jsr	Pal_FadeFrom
 		jsr	PLC_ClearQueue
 		jsr	DrawBuffer_Clear
@@ -128,13 +128,13 @@ OptionsScreen:				; XREF: GameModeArray
 
 		tst.b	($FFFFFF84).w
 		bne.s	@firststart
-		move.b	#Options_Music,d0		; play Options screen music (Spark Mandrill)
-		jsr	PlaySound
+		move.b	#Options_Music,d0	; play Options screen music (Spark Mandrill)
+		jsr	PlayBGM
 		move.w	#$E3,d0			; regular music speed
 		tst.b	(PlacePlacePlace).w	; is easter egg flag enabled?
 		beq.s	@play			; if not, branch
 		move.w	#$E2,d0			; speed up music
-@play:		jsr	PlaySound_Special
+@play:		jsr	PlayCommand
 		bra.s	@cont
 
 @firststart:
@@ -390,7 +390,7 @@ Options_HandleUpDown:
 		jsr	Options_RedrawMenuItem		; redraw previously selected item
 
 		move.b	#$D8,d0				; play move sound
-		jmp	PlaySound_Special
+		jmp	PlaySFX
 
 	@Done:	rts
 

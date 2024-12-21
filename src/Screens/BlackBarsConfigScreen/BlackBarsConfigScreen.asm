@@ -18,7 +18,7 @@ BlackBarsConfig_PreTextActive:		equ	LevelLayout_FG+$44	; .b
 ; -----------------------------------------------------------------------------
 BlackBarsConfigScreen:
 	moveq	#$FFFFFFE0, d0
-	jsr	PlaySound_Special
+	jsr	PlayCommand
 	jsr	Pal_FadeFrom
 	jsr	PLC_ClearQueue
 	jsr	DrawBuffer_Clear
@@ -136,7 +136,7 @@ BlackBarsConfigScreen_MainLoop:
  @first:
 	VBlank_SetMusicOnly
 	move.w	#$A9,d0
-	jsr	PlaySound_Special
+	jsr	PlaySFX
 	jsr	ClearPlaneA
 	clr.b	BlackBarsConfig_PreTextActive
 	jsr	BlackBarsConfigScreen_WriteText
@@ -169,7 +169,7 @@ BlackBarsConfigScreen_MainLoop:
 	andi.b	#A|C|Start,d0
 	beq.w	BlackBarsConfigScreen_MainLoop
 	move.w	#$A9,d0
-	jsr	PlaySound_Special
+	jsr	PlaySFX
 	move.b	#1,BlackBarsConfig_Exiting	; set exiting flag
 	move.l	#BlackBarsConfigScreen_RedrawUI, VBlankCallback	; redraw one last time
 ; ---------------------------------------------------------------
@@ -189,7 +189,7 @@ BlackBarsConfigScreen_MainLoop:
 
 @toggle:
 	move.w	#$D8,d0
-	jsr	PlaySound_Special
+	jsr	PlaySFX
 	bchg	#1, BlackBars.HandlerId		; toggle selected option
 	jsr	BlackBars.SetHandler
 	move.l	#BlackBarsConfigScreen_RedrawUI, VBlankCallback	; defer redraw to VInt
@@ -225,7 +225,7 @@ BlackBars_AdjustBaseHeight_Direct:
 	bra.s	@justset
 @maxok:
 	move.w	#$A2,d0
-	jsr	PlaySound_Special
+	jsr	PlaySFX
 
 @justset:
 	andi.w	#$FFFE,d2

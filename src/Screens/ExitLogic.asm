@@ -179,7 +179,7 @@ Exit_GameplayStyleScreen:
 		jsr 	WhiteFlash
 		bset	#1,(OptionsBits).w	; enable Speedrun Mode
 		move.w	#$D3,d0			; play peelout release sound
-		jsr	PlaySound_Special
+		jsr	PlaySFX
 		bra.w	HubRing_NHP		; go straight to NHP
 ; ===========================================================================
 
@@ -212,7 +212,7 @@ Exit_OptionsScreen:
 @firststart:
 		clr.b	($FFFFFF84).w
 		move.w	#$C3,d0			; play giant ring sound
-		jsr	PlaySound_Special	
+		jsr	PlaySFX	
 		jsr 	WhiteFlash
 		jsr 	Pal_FadeFrom
 		moveq	#60,d0
@@ -323,7 +323,7 @@ Exit_CreditsScreen:
 		btst	#4,(CarryOverData).w
 		beq.s	@restartfromcredits
 		move.b	#$E0,d0
-		jsr	PlaySound_Special	; fade out music to set the atmosphere
+		jsr	PlayCommand				; fade out music to set the atmosphere
 		moveq	#$12,d0			; load Blackout Challenge teaser text
 		jsr	TutorialBox_Display	; VLADIK => Display hint
 		
@@ -338,7 +338,7 @@ Exit_CreditsScreen:
 
 Exit_OneHotDay:
 		move.b	#$95,d0			; play intro cutscene music
-		jsr	PlaySound
+		jsr	PlayBGM
 		move.w	#$001,($FFFFFE10).w	; load intro cutscene
 		bra.w	StartLevel		; start level
 ; ===========================================================================
@@ -613,7 +613,7 @@ HubRing_Tutorial:
 
 HubRing_Ending:
 		move.b	#$9D,d0			; play ending sequence music
-		jsr	PlaySound
+		jsr	PlayBGM
 		move.b	#8,(StoryTextID).w	; set number for text to 8
 		bra.w	RunStory
 

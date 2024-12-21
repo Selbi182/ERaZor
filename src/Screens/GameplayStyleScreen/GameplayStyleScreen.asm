@@ -4,7 +4,7 @@
 
 GameplayStyleScreen:
 		move.b	#$E0,d0
-		jsr	PlaySound_Special		; fade out music
+		jsr	PlayCommand			; fade out music
 		jsr	PLC_ClearQueue			; clear PLCs
 		jsr	Pal_FadeFrom			; fade out previous palette
 
@@ -148,7 +148,7 @@ GSS_MainLoop:
 		moveq	#0,d0			; write palette directly
 		bsr	GSS_LoadPal		; refresh palette
 		move.w	#$D8,d0			; play option toggle sound
-		jsr	(PlaySound_Special).l
+		jsr	PlaySFX
 
 @NoUpdate:
 		move.b	Joypad|Press,d0

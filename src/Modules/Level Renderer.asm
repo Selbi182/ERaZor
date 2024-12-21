@@ -624,7 +624,6 @@ LevelRenderer_DrawLayout_RAMBuffered:
 ;       a3      Layout address
 ;       d5 .w   Start Y-position
 ;       d6 .w   "Height - 1", number of rows available to draw
-;	a6	Base RAM buffer to render to (4 KiB)
 ;
 ; OUTPUT:
 ;       a1      End of Layer RAM

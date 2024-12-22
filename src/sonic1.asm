@@ -1463,11 +1463,84 @@ loc_1B52:
 		move.w	obMap(a0,d0.w),(a1)
 
 locret_1B64:
-		rts	
+	;	fallthrough
+; ---------------------------------------------------------------------------
+
+; Red palette flashing used during the escape in Finalor Place, made by fuzzy
+PalCycle_FPEscape:
+		btst 	#1,(FZEscape).w		; is escape sequence active?
+		beq.w	@End			; if not, branch
+		
+		moveq	#0,d1
+		move.b 	FZFlashColor, d1
+		move.l 	$FFFFFE22, d2
+		lea 	$FFFFFFB48, a2
+		lea	@Colors, a3
+		lea 	@WaitTimes, a4
+		adda.w	d1, a3
+
+@FindWaitTime:
+		move.w 	(a4)+, d3
+		cmp.l 	(a4)+, d2
+		blt.s 	@FindWaitTime
+
+		; Copy palette data
+	rept 3
+		move.l 	(a3)+, d0
+		move.l	d3,-(sp)
+		jsr	PissFilter
+		move.l	(sp)+,d3
+		move.l	d0,(a2)+
+	endr
+
+		; Run timer with found wait time
+	        add.w 	d3, FZFlashTimer
+	        bcc.w	@NoOverflow
+
+		; If we overflowed, reset flash color index
+		clr.b	FZFlashColor
+
+@NoOverflow:
+		btst	#1, FZFlashTimer
+		beq.w	@End
+		cmpi.b 	#$58, FZFlashColor
+		bge.w 	@End
+		addq.b	#8, FZFlashColor
+
+@End:
+		rts
+; ---------------------------------------------------------------------------
+
+@Colors:	dc.l 	$00020224, $04460668
+		dc.l 	$00020446, $04460668
+		dc.l 	$00040446, $0668088A
+		dc.l 	$00060448, $066A088C
+		dc.l 	$0008044A, $066C088C
+		dc.l 	$000A044C, $066E088C
+		dc.l 	$000A044C, $066E088C
+		dc.l 	$0008044A, $066C088E
+		dc.l 	$00060448, $066A088C
+		dc.l 	$00040446, $0668088A
+		dc.l 	$00020446, $04460668
+		dc.l 	$00020224, $04460668
+
+; W: Overflow counter value
+; L: Min. time left
+@WaitTimes:	dc.w 	$2AA
+		dc.l	$10000000	; 100
+		dc.w 	$555
+		dc.l	$00003C39	; 60
+		dc.w 	$666
+		dc.l	$00001E39	; 30
+		dc.w 	$888
+		dc.l	$00000000	; 0
 ; End of function PalCycle_SBZ
+; ---------------------------------------------------------------------------
+; ===========================================================================
 
 
 ; ===========================================================================
+; ---------------------------------------------------------------------------
 Pal_TitleCyc:	incbin	palette\c_title.bin
 Pal_GHZCyc:	incbin	palette\c_ghz.bin
 Pal_LZCyc1:	incbin	palette\c_lz_wat.bin	; waterfalls palette
@@ -7646,76 +7719,6 @@ loc_72C2:
 ; ===========================================================================
 
 Resize_FZ:
-		btst 	#1, FZEscape
-		beq.w 	@NoPaletteChange
-
-		move.b 	FZFlashColor, d1
-		move.l 	$FFFFFE22, d2
-		lea 	$FFFFFFB48, a2
-		lea	@Colors, a3
-		lea 	@WaitTimes, a4
-		adda	d1, a3
-
-@FindWaitTime:
-		move.w 	(a4)+, d3
-		cmp.l 	(a4)+, d2
-		blt.s 	@FindWaitTime
-
-		; Copy palette data
-	rept 3
-		move.l 	(a3)+, d0
-		move.l	d3,-(sp)
-		jsr	PissFilter
-		move.l	(sp)+,d3
-		move.l	d0,(a2)+
-	endr
-
-		; Run timer with found wait time
-	        add.w 	d3, FZFlashTimer
-	        bcc.w	@NoOverflow
-
-		; If we overflowed, reset flash color index
-		move.b	#0, FZFlashColor
-
-@NoOverflow:
-		btst	#1, FZFlashTimer
-		beq.w	@NoPaletteChange
-
-		cmp.b 	#$58, FZFlashColor
-		bge.w 	@NoPaletteChange
-		
-		add.b	#8, FZFlashColor
-		bra.s 	@NoPaletteChange
-; ===========================================================================
-
-@Colors:
-		dc.l 	$00020224, $04460668
-		dc.l 	$00020446, $04460668
-		dc.l 	$00040446, $0668088A
-		dc.l 	$00060448, $066A088C
-		dc.l 	$0008044A, $066C088C
-		dc.l 	$000A044C, $066E088C
-		dc.l 	$000A044C, $066E088C
-		dc.l 	$0008044A, $066C088E
-		dc.l 	$00060448, $066A088C
-		dc.l 	$00040446, $0668088A
-		dc.l 	$00020446, $04460668
-		dc.l 	$00020224, $04460668
-
-; W: Overflow counter value
-; L: Min. time left
-@WaitTimes:
-		dc.w 	$2AA
-		dc.l	$10000000	; 100
-		dc.w 	$555
-		dc.l	$00003C39	; 60
-		dc.w 	$666
-		dc.l	$00001E39	; 30
-		dc.w 	$888
-		dc.l	$00000000	; 0
-; ===========================================================================
-
-@NoPaletteChange:
 		moveq	#0,d0
 		move.b	($FFFFF742).w,d0
 		move.w	ResizeFZ_Index(pc,d0.w),d0
@@ -29478,6 +29481,9 @@ WhiteFlash_Restore:
 		bgt.s	@end			; is counter empty now? if not, branch
 		clr.b	WhiteFlashCounter	; reset white flash counter
 
+		tst.b	($FFFFF5D1).w		; was death flag set?
+		bne.w	@end			; if yes, don't mess with the palette, already made grayscale
+
 		btst	#7,(OptionsBits).w	; is photosensitive mode enabled?
 		bne.s	@end			; if yes, branch
 		lea	Pal_Water_Active,a4	; load palette location to a4
@@ -44068,20 +44074,23 @@ Obj09_UPblock:
 
 Obj09_UPsnd:
 		tst.b	(Blackout).w		; is this the blackout blackout special stage?
-		beq.s	@conty			; if not, branch
+		beq.s	@bounceup		; if not, branch
 		addi.w	#$8000,($FFFFF780).w	; rotate screen by 180 degrees
 		move.w	#$BB,d0			; play flip sound
 		bra.s	Obj09_UPsnd2		; go to sound
 
-@conty:
-		neg.w	obVelY(a0)
-		bmi.s	@ok
-		move.w	#-Unreal_Speed,obVelY(a0) ; move Sonic upwards
-@ok:
+@bounceup:
+		move.w	obVelY(a0),d1		; get Y speed at moment of impact
+		neg.w	d1			; negate it
+		bpl.s	@fix			; if the result is still set to go down, fix the speed
+		cmpi.w	#-Unreal_Speed,d1	; is new value faster than the default value?
+		bge.s	@sety			; if not, branch
+	@fix:	move.w	#-Unreal_Speed,d1	; force default speed
+	@sety:	move.w	d1,obVelY(a0)		; set new speed
 
 Obj09_UPsnd2:
 		move.b	#1,($FFFFFFBF).w	; set Unreal Place floating challenge flag
-		jmp	PlaySFX	; play sound
+		jmp	PlaySFX			; play sound
 ; ===========================================================================
 
 ; Obj09_ChkDown:
@@ -44091,23 +44100,25 @@ Obj09_DOWNblock:
 		tst.b	$36(a0)
 		bne.w	Obj09_ChkItemsEnd
 		move.b	#$1E,$36(a0)
-	;	btst	#6,($FFFFF783).w
-	;	bne.s	Obj09_DOWNsnd
 		move.b	#2,($FFFFFFBF).w
-		tst.b	(Blackout).w	; is this the blackout blackout special stage?
-		beq.s	@conty
-		addi.w	#$8000,($FFFFF780).w
-		move.w	#$BB,d0
-		bra.s	Obj09_DOWNsnd
-@conty:
-		neg.w	obVelY(a0)
-		bpl.s	@ok
-		move.w	#Unreal_Speed,obVelY(a0) ; move Sonic downwards
-@ok
-		move.w	#$DA,d0
 
-Obj09_DOWNsnd:
-		jmp	PlaySFX ;	play up/down sound
+		tst.b	(Blackout).w	; is this the blackout blackout special stage?
+		beq.s	@bouncedown
+		addi.w	#$8000,($FFFFF780).w
+		move.w	#$BB,d0			; play badump sound
+		jmp	PlaySFX
+
+@bouncedown:
+		move.w	obVelY(a0),d1		; get Y speed at moment of impact
+		neg.w	d1			; negate it
+		bmi.s	@fix			; if the result is still set to go up, fix the speed
+		cmpi.w	#Unreal_Speed,d1	; is new value faster than the default value?
+		blt.s	@sety			; if not, branch
+	@fix:	move.w	#Unreal_Speed,d1	; force default speed
+	@sety:	move.w	d1,obVelY(a0)		; set new speed
+
+		move.w	#$DA,d0
+		jmp	PlaySFX			 ; play option toggled off sound
 ; ===========================================================================
 
 ; Obj09_ChkR:

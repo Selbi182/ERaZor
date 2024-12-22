@@ -135,6 +135,7 @@ SRAM_OptionsMenu_ResetGameProgress:
 		move.b	#0,($A130F1).l				; disable SRAM
 
 		; reset unlockable options, you cheater
+		bclr	#2,(OptionsBits).w			; disable no HUD mode
 		bclr	#3,(OptionsBits).w			; disable cinematic mode
 		move.b	d0,(ScreenFuzz).w			; disable visal FX
 		bclr	#4,(OptionsBits).w			; disable space golf

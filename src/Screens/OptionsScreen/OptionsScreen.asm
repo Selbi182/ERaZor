@@ -37,10 +37,10 @@ Options_Exiting:		rs.b	1
 ; RAM location: $FFFFFF92
 ;  bit 0 = Extended Camera
 ;  bit 1 = Speedrun Mode (Skip Uberhub / Skip Story Texts)
-;  bit 2 = Disable HUD TODO
+;  bit 2 = Disable HUD
 ;  bit 3 = Cinematic Mode (black bars)
 ;  bit 4 = Nonstop Inhuman Mode
-;  bit 5 = Gamplay Style (0 - Casual Mode // 1 - Frantic Mode)
+;  bit 5 = Difficulty (0 - Casual // 1 - Frantic)
 ;  bit 6 = Max White Flash
 ;  bit 7 = Photosensitive Mode (Screen Flash set to weak)
 ; ---------------------------------------------------------------------------
@@ -50,7 +50,7 @@ Options_Exiting:		rs.b	1
 ;  bit 1 = Disable SFX
 ;  bit 2 = Weak Camera Shake
 ;  bit 3 = Intense Camera Shake
-;  bit 4 = Track-All-Mistakes Mode
+;  bit 4 = Count-Your-Mistakes Mode
 ;  bit 5 = Space Golf/Antigrav Mode
 ;  bit 6 = [unused]
 ;  bit 7 = Classic/Remasterd Palettes

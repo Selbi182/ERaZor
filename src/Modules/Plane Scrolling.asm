@@ -396,18 +396,6 @@ DTS_Loop:
 		swap	d3			; swap it
 		dbf	d2,DTS_Loop		; loop
 
-
-	; adjust copyright alignment in widescreen
-	if def(__WIDESCREEN__)
-		lea	($FFFFCC00+(4*200)).w,a1
-		moveq	#SCREEN_XCORR,d0
-		moveq	#8-1,d1
-@copyright:
-		add.w	d0,(a1)+
-		addq.w	#2,a1
-		dbf	d1,@copyright
-	endif
-
 		rts				; return
 ; End of function Deform_TS
 

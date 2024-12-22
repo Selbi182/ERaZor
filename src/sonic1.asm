@@ -421,7 +421,7 @@ BlackBars.SetState:
 		bne.s	BlackBars_Show			; if yes, always enable
 		cmpi.b	#6,($FFFFD024).w		; is Sonic dying?
 		bhs.s	BlackBars_Show			; if yes, branch
-		btst	#3,(OptionsBits).w		; is cinematic HUD enabled?
+		btst	#3,(OptionsBits).w		; is cinematic mode (black bars) enabled?
 		bne.s	BlackBars_Show			; if yes, always enable
 
 		cmpi.w	#$400,d0			; are we in Uberhub?
@@ -857,13 +857,27 @@ PlaySFX:
 		move.b	d0, SoundDriverRAM+v_sfx_input_next_1.w
 		rts
 
-@next_2:	tst.b	SoundDriverRAM+v_sfx_input_next_2.w
+@next_2:
+		tst.b	SoundDriverRAM+v_sfx_input_next_2.w
 		bne.s	@queue_overflow
 		move.b	d0, SoundDriverRAM+v_sfx_input_next_2.w
 		rts
 
 @queue_overflow:
 		KDebug.WriteLine "PlaySFX(): Sound queue overflow (curr=%<.b SoundDriverRAM+v_sfx_input>, next1=%<.b SoundDriverRAM+v_sfx_input_next_1>, next2=%<.b SoundDriverRAM+v_sfx_input_next_2>)"
+		rts
+; ---------------------------------------------------------------------------
+
+PlaySFX_Once:
+		; check if sfx was already queued
+		cmp.b	SoundDriverRAM+v_sfx_input.w, d0
+		beq.s	@already_in_queue
+		cmp.b	SoundDriverRAM+v_sfx_input_next_1.w, d0
+		beq.s	@already_in_queue
+		cmp.b	SoundDriverRAM+v_sfx_input_next_2.w, d0
+		bne.w	PlaySFX		; if not, play it
+
+@already_in_queue:
 		rts
 ; End of function PlaySound
 
@@ -904,8 +918,6 @@ PG_CheckAllowed:
 		beq.s	PG_DoPause		; if yes, branch
 		cmpi.w	#$501,($FFFFFE10).w	; are we in the tutorial?
 		beq.s	PG_DoPause		; if yes, branch
-		btst	#3,(OptionsBits).w	; is cinematic HUD enabled?
-		bne.s	PG_DoPause		; if yes, branch
 		tst.b	($FFFFD040).w		; is HUD already loaded?
 		bne.s	PG_DoPause		; if yes, allow to pause
 		tst.b	(FZEscape).w		; are we in the FZ escape sequence?
@@ -2245,6 +2257,7 @@ PalPointers_Classic:
 	dc.l Pal_Black,		$FB20 0017	; $19
 	dc.l PalC_SYZ_Unterhub,	$FB20 0017	; $1A
 	dc.l PalC_SYZ_UnterBoss,$FB20 0017	; $1B
+	dc.l PalC_SpecialUnreal,$FB00 001F	; $1C
 	even
 
 PalPointers_Remastered:
@@ -2277,6 +2290,7 @@ PalPointers_Remastered:
 	dc.l Pal_Black,		$FB20 0017	; $19
 	dc.l PalR_SYZ_Unterhub,	$FB20 0017	; $1A
 	dc.l PalR_SYZ_UnterBoss,$FB20 0017	; $1B
+	dc.l PalR_SpecialUnreal,$FB00 001F	; $1C
 	even
 
 ; ---------------------------------------------------------------------------
@@ -2306,6 +2320,7 @@ PalC_SpecialEaster:	incbin	palette\Classic\special_blackout.bin
 PalC_LZWater2_Evil:	incbin	palette\Classic\lz_uw2_evil.bin
 PalC_SYZ_Unterhub:	incbin	palette\Classic\syz_unterhub.bin
 PalC_SYZ_UnterBoss:	incbin	palette\Classic\syz_unterhub_boss.bin
+PalC_SpecialUnreal:	incbin	palette\Classic\special_unreal.bin
 
 ; Remastered palettes by Javesike
 PalR_Title:		incbin	palette\Remastered\title.bin
@@ -2329,8 +2344,9 @@ PalR_SpecialEaster:	incbin	palette\Remastered\special_blackout.bin
 PalR_LZWater2_Evil:	incbin	palette\Remastered\lz_uw2_evil.bin
 PalR_SYZ_Unterhub:	incbin	palette\Remastered\syz_unterhub.bin
 PalR_SYZ_UnterBoss:	incbin	palette\Remastered\syz_unterhub_boss.bin
+PalR_SpecialUnreal:	incbin	palette\Remastered\special_unreal.bin
 
-; Misc
+; Misc/Shared
 Pal_SegaBG:		incbin	palette\sega_bg.bin
 Pal_ERaZorBanner:	incbin	palette\ERaZor.bin
 Pal_SYZGray:		incbin	palette\syz_gray.bin
@@ -11979,8 +11995,6 @@ loc_17F70X:
 Obj1F_Flashing:
 		btst	#7,(OptionsBits).w	; is photosensitive mode enabled?
 		bne.s	Obj1F_NoFlash		; if yes, no flash
-	;	btst	#3,(OptionsBits).w	; is cinematic HUD enabled?
-	;	bne.s	Obj1F_NoFlash		; if yes, don't do palette flashing to avoid seizues
 		tst.b	($FFFFF5D1).w		; is Sonic dying?
 		bne.s	Obj1F_NoFlash		; if yes, disable flash
 
@@ -12101,11 +12115,8 @@ loc_17F70XX:
 Obj1F_Flashing2:
 		btst	#7,(OptionsBits).w	; is photosensitive mode enabled?
 		bne.s	Obj1F_NoFlash2		; if yes, no flash
-	;	btst	#3,(OptionsBits).w	; is cinematic HUD enabled?
-	;	bne.s	Obj1F_NoFlash2		; if yes, don't do palette flashing to avoid seizues
 		tst.b	($FFFFF5D1).w		; is Sonic dying?
 		bne.s	Obj1F_NoFlash2		; if yes, disable flash
-
 
 		lea	($FFFFFB22).w,a1		; load second colour
 		moveq	#0,d1				; make sure d1 is empty
@@ -17243,8 +17254,8 @@ Obj34_Setup:				; XREF: Obj34_Index
 		jsr	PlayLevelMusic
 
 @notnhp:
-		btst	#3,(OptionsBits).w	; is cinematic HUD enabled?
-		bne.s	@regular		; if yes, branch
+		btst	#2,(OptionsBits).w	; is "cinematic mode - disable HUD" enabled?
+		bne.s	@regular		; if yes, don't load title cards
 		lea	PLC_TitleCard, a1
 		jmp	LoadPLC_Direct
 
@@ -17562,7 +17573,7 @@ Obj34_Display:
 		rts				; otherwise don't display act number
 
 Obj34_DoDisplay:
-		btst	#3,(OptionsBits).w	; is cinematic HUD enabled?
+		btst	#2,(OptionsBits).w	; is "cinematic mode - disable HUD" enabled?
 		beq.s	Obj34_DoDisplayX	; if not, branch
 		rts
 
@@ -20190,8 +20201,8 @@ Obj12_SearchLight_Blinking:
 		moveq	#7,d0
 		and.w	($FFFFFE0E).w,d0
 		bne.s	@nobeep
-		move.w	#$4D+$80,d0
-		jsr	PlaySFX
+		move.w	#$4D+$80,d0		; play beeping sound to indicate the blinking
+		jsr	PlaySFX_Once		; play sound, but make sure it doesn't ovelap
 @nobeep:
 		moveq	#5,d1		; off
 		btst	#2,($FFFFFE05).w
@@ -29762,8 +29773,6 @@ DD_End:
 Sonic_SuperPeelOut:
 		cmpi.w	#$200,($FFFFFE10).w	; is level MZ1?
 		bne.s	SPO_NotMZ		; if not, branch
-	;	btst	#3,(OptionsBits).w	; is cinematic HUD enabled?
-	;	bne.s	SPO_NotMZ
 		tst.b	($FFFFFFE7).w		; is inhuman mode on?
 		bne.w	SPO_End			; if yes, disallow
 
@@ -29892,8 +29901,6 @@ Sonic_Spindash:
 
 		cmpi.w	#$200,($FFFFFE10).w	; is level MZ1?
 		bne.s	Spdsh_NotMZ		; if not, branch
-	;	btst	#3,(OptionsBits).w	; is cinematic HUD enabled?
-	;	bne.s	Spdsh_NotMZ		; if yes, branch
 		tst.b	($FFFFFF73).w		; P monitor broken?
 		bne.s	Spdsh_NotMZ		; if yes, branch
 		tst.b	($FFFFFFE7).w		; is inhuman mode on?
@@ -35922,7 +35929,8 @@ Obj7D_SoundStopper:
 		beq.s	@del			; if not, branch
 		bclr	#0,(ScreenFuzz).w	; disable permanent motion blur
 		bclr	#1,(ScreenFuzz).w	; disable piss filter
-		bclr	#3,(OptionsBits).w	; disable cinematic HUD
+		bclr	#2,(OptionsBits).w	; disable "cinematic mode - disable HUD"
+		bclr	#3,(OptionsBits).w	; disable "cinematic mode - black bars"
 
 @del:
 		jmp	DeleteObject
@@ -44024,12 +44032,13 @@ Obj09_ChkW_NoChange:
 		rts
 ; ===========================================================================
 
+; Obj09_ChkUp:
 Obj09_UPblock:
 		cmpi.b	#$29,d0			; is the item an "UP" block?
 		bne.w	Obj09_DOWNblock		; if not, branch
 
 		tst.b	$36(a0)			; has an up block been touched recently?
-		bne.w	Obj09_ChkItemsEnd		; if yes, branch
+		bne.w	Obj09_ChkItemsEnd	; if yes, branch
 		move.b	#$1E,$36(a0)		; disable interaction with this block $1E frames
 		
 		tst.b	(Blackout).w		; is this the blackout blackout special stage?
@@ -44039,13 +44048,18 @@ Obj09_UPblock:
 		tst.b	($FFFFFFBF).w		; is Unreal Place floating challenge already active?
 		bne.s	Obj09_UPsnd		; if yes, branch
 		move.w	#$9A,d0			; set music to 9A
-		jsr	PlayBGM		; play
+		jsr	PlayBGM			; play
 
 		move.b	#$27,($FF2AA6).l	; block off the entrance you came from 1
 		move.b	#$27,($FF2B26).l	; block off the entrance you came from 2
 		move.b	#$27,($FF2BA6).l	; block off the entrance you came from 3
-		
-		move.w	#$0000,($FFFFFB40).w	; make background black
+
+		movem.l	d0-a3,-(sp)
+		moveq	#$1C,d0
+		jsr	PalLoad2		; load Unreal Place palette (cruically with a black background)
+	;	move.w	#$000,($FFFFFB40).w	; make background black
+		jsr 	WhiteFlash
+		movem.l	(sp)+,d0-a3
 
 		move.w	#$03A0,($FFFFFF86).w	; set initial checkpoint X-position
 		move.w	#$0800,($FFFFFF88).w	; set initial checkpoint Y-position
@@ -44070,6 +44084,7 @@ Obj09_UPsnd2:
 		jmp	PlaySFX	; play sound
 ; ===========================================================================
 
+; Obj09_ChkDown:
 Obj09_DOWNblock:
 		cmpi.b	#$2A,d0		; is the item a	"DOWN" block?
 		bne.s	Obj09_Rblock
@@ -44541,7 +44556,7 @@ Obj21_Display2:
 		cmpi.b	#6,($FFFFD024).w	; is Sonic dying?
 		bhs.s	@displayhud		; if yes, branch
 
-		btst	#3,(OptionsBits).w	; is cinematic HUD enabled?
+		btst	#2,(OptionsBits).w	; is "cinematic mode - disable HUD" enabled?
 		bne.s	@dontdisplay		; if yes, don't render HUD
 		tst.b	($FFFFF7CC).w		; are controls locked?
 		beq.s	@displayhud		; if yes, don't render HUD either
@@ -44739,7 +44754,7 @@ Obj21_Display:
 		cmpi.b	#6,($FFFFD024).w	; is Sonic dying?
 		bhs.s	@cont			; if yes, branch
 
-		btst	#3,(OptionsBits).w	; is cinematic HUD enabled?
+		btst	#2,(OptionsBits).w	; is "cinematic mode - disable HUD" enabled?
 		bne.s	@cont2			; if yes, don't render HUD
 		tst.b	($FFFFF7CC).w		; are controls locked?
 		beq.s	@cont			; if yes, don't render HUD either

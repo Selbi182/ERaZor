@@ -27,15 +27,14 @@ Options_MenuData:
 	dcScreenPos	$E000, OpBaseY+3, OpBaseX	; start on-screen position
 	dc.l	Options_ExtendedCamera_Redraw		; redraw handler
 	dc.l	Options_ExtendedCamera_Handle		; update handler
-	
-	; Speedrun mode
-	dcScreenPos	$E000, OpBaseY+4, OpBaseX	; start on-screen position
-	dc.l	Options_Autoskip_Redraw			; redraw handler
-	dc.l	Options_Autoskip_Handle			; update handler
 	; Count your mistakes
-	dcScreenPos	$E000, OpBaseY+5, OpBaseX	; start on-screen position
+	dcScreenPos	$E000, OpBaseY+4, OpBaseX	; start on-screen position
 	dc.l	Options_TrackAllMistakes_Redraw		; redraw handler
 	dc.l	Options_TrackAllMistakes_Handle		; update handler
+	; Speedrun mode
+	dcScreenPos	$E000, OpBaseY+5, OpBaseX	; start on-screen position
+	dc.l	Options_Autoskip_Redraw			; redraw handler
+	dc.l	Options_Autoskip_Handle			; update handler
 	
 	; Flashy lights
 	dcScreenPos	$E000, OpBaseY+6, OpBaseX	; start on-screen position
@@ -223,7 +222,7 @@ Options_PaletteStyle_Redraw:
  endif
 	rts
 
-@Str0:	dc.b	'   CLASSIC', 0
+@Str0:	dc.b	'OLD-SCHOOL', 0
 @Str1:	dc.b	'REMASTERED', 0
 	even
 
@@ -614,21 +613,29 @@ Options_Audio_Handle:
 ; ---------------------------------------------------------------------------
 
 Options_CinematicMode_Redraw:	
-	lea	Options_Str_Off(pc), a1
-	btst	#3, OptionsBits
-	beq.s	@0
-	lea	Options_Str_On(pc), a1
-
-@0:	lea	@Str_Cinematic_Locked(pc), a0
-	jsr	Check_BaseGameBeaten_Casual	; has the player beaten base game in casual?
-	beq.s	@1				; if not, branch
-	lea	@Str_Cinematic_Normal(pc), a0
+	moveq	#0,d0
+	btst	#2, OptionsBits		; is HUD disabled?
+	beq.s	@0			; if not, branch
+	addq.b	#1,d0
+@0:
+	btst	#3, OptionsBits		; is cinematic mode (black bars) enabled?
+	beq.s	@1			; if not, branch
+	addq.b	#2,d0
 @1:
+	add.w	d0, d0
+	add.w	d0, d0				; d0 = ModeId * 4
+	movea.l	@CinematicModeList(pc,d0), a1
+
+	lea	@Str_Cinematic_Locked(pc), a0
+	jsr	Check_BaseGameBeaten_Casual	; has the player beaten base game in casual?
+	beq.s	@2				; if not, branch
+	lea	@Str_Cinematic_Normal(pc), a0
+@2:
 
  if def(__WIDESCREEN__)
-	Options_PipeString a4, "%<.l a0 str>                     %<.l a1 str>", OpLength
+	Options_PipeString a4, "%<.l a0 str>             %<.l a1 str>", OpLength
  else
-	Options_PipeString a4, "%<.l a0 str>           %<.l a1 str>", OpLength
+	Options_PipeString a4, "%<.l a0 str>   %<.l a1 str>", OpLength
  endif
 
 	rts
@@ -636,10 +643,19 @@ Options_CinematicMode_Redraw:
 ; ---------------------------------------------------------------------------
 @Str_Cinematic_Normal:
 	dc.b	'E CINEMATIC MODE', 0
-
+	even
 @Str_Cinematic_Locked:
 	dc.b	'E ????????? ????', 0
 	even
+
+@CinematicModeList:
+	dc.l	@Str_Mode00,@Str_Mode01,@Str_Mode10,@Str_Mode11
+
+@Str_Mode00:	dc.b	'        OFF',0
+@Str_Mode01:	dc.b	'DISABLE HUD',0
+@Str_Mode10:	dc.b	' BLACK BARS',0
+@Str_Mode11:	dc.b	'       BOTH',0
+		even
 
 ; ---------------------------------------------------------------------------
 ; "CINEMATIC MODE" handle function
@@ -656,16 +672,41 @@ Options_CinematicMode_Handle:
 	bne.s	@nodebugunlock		; if not, branch
 	jsr	Toggle_BaseGameBeaten_Casual	; toggle base game beaten in casual state to toggle the unlock for cinematic mode
 	bclr	#3,(OptionsBits).w	; make sure option doesn't stay accidentally enabled
+	bclr	#2,(OptionsBits).w	; make sure option doesn't stay accidentally enabled
 	st.b	Options_RedrawCurrentItem
 	rts
 
 @nodebugunlock:
 	jsr	Check_BaseGameBeaten_Casual	; has the player beaten the base game in casual?
 	beq.w	Options_PlayDisallowedSound	; if not, branch
-	bchg	#3, OptionsBits			; toggle cinematic mode
+
+	moveq	#0,d0
+	move.b	OptionsBits,d0
+	lsr.b	#2,d0
+	andi.b	#%11, d0
+@repeat:
+	btst	#iLeft, Joypad|Press		; is left pressed?
+	bne.s	@selectPrevious			; if yes, branch
+	addq.b	#1, d0				; use next mode
+	bra.s	@finalize
+@selectPrevious:
+	subq.b	#1, d0				; use previous mode
+@finalize:
+	andi.b	#%11, d0			; wrap modes
+
+	move.b	d0,d1
+	lsl.b	#2,d0
+	
+	bclr	#2,OptionsBits
+	bclr	#3,OptionsBits
+	or.b	d0,OptionsBits
+
+	tst.b	d0
 	bsr	Options_PlayRespectiveToggleSound
 	st.b	Options_RedrawCurrentItem
+
 @ret:	rts
+
 
 
 ; ===========================================================================

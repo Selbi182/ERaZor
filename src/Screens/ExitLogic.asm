@@ -148,12 +148,14 @@ Exit_GameplayStyleScreen:
 
 		tst.b	(PlacePlacePlace).w	; is true-BS mode active?
 		bne.s	@showhint		; if yes, always show hint because it's gonna be the stupid text anyway lol
+
 		frantic				; was the screen exited with frantic enabled?
-		beq.s	@notfrantic		; if not, branch
+		beq.s	@nohint			; if not, branch
 		tst.b	(Doors_Frantic).w	; have any frantic levels been beaten yet?
-		bne.s	@notfrantic		; if yes, branch
+		bne.s	@nohint			; if yes, branch
 		tst.b	(Doors_Casual).w	; have any casual levels been beaten yet?
-		beq.s	@notfrantic		; if NOT, this tip isn't necessary yet
+		beq.s	@nohint			; if NOT, this tip isn't necessary yet
+
 @showhint:
 		jsr	Pal_FadeFrom		; fade out palette to avoid visual glitches
 		jsr	ClearScreen		; clear screen
@@ -161,7 +163,9 @@ Exit_GameplayStyleScreen:
 		jsr	PalLoad2		; load palette	
 		moveq	#$13,d0			; load warning text about revisiting the tutorial for frantic
 		jsr	TutorialBox_Display	; VLADIK => Display hint
-@notfrantic:
+		jsr	Unset_TutorialVisited	; show FREE CANDY
+
+@nohint:
 		move.b	#$24,(GameMode).w	; we came from the options menu, return to it
 		rts
 ; ---------------------------------------------------------------------------	
@@ -731,6 +735,7 @@ GTA_Blackout:
 @alreadybeaten:
 		jsr	Set_BlackoutDone	; you have beaten the blackout challenge, mad respect
 		clr.b	(Blackout).w		; clear blackout special stage flag
+		move.b	#5,(CarryOverData).w	; set that we came from the blackout challenge
 		move.b	#9,(StoryTextID).w	; set number for text to 9 (final congratulations)
 		bra.w	RunStory_Force		; show story screen even if they are disabled
 
@@ -1001,6 +1006,9 @@ Set_BlackoutDone:
 
 Set_TutorialVisited:
 		bset	#State_TutorialVisited,(Progress).w
+		rts
+Unset_TutorialVisited:
+		bclr	#State_TutorialVisited,(Progress).w
 		rts
 ; ---------------------------------------------------------------------------
 

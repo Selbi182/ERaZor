@@ -42,6 +42,8 @@
 		dc.w	$0240, $012C	; SYZ 1 (Uberhub intro from sound test)
 		dc.w	$0200, $0234	; SYZ 1 (Uberhub intro from options)
 		dc.w	$0500, $0234	; SYZ 1 (Uberhub intro from tutorial)
+		dc.w	$1180, $0030	; SYZ 1 (Uberhub intro blackout ring)
+
 		even
 ; ---------------------------------------------------------------------------
 ; ===========================================================================

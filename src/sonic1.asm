@@ -3984,8 +3984,6 @@ Level_Delay:
 		addq.b	#4,($FFFFD164).w ; make	title card move
 
 		; start loc adjustments for Uberhub
-	;	cmpi.w	#$200,($FFFFFE10).w
-	;	beq.s	@direct
 		cmpi.w	#$400,($FFFFFE10).w	; are we in Uberhub?
 		bne.s	Level_StartGame		; if not, branch
 		jsr	Check_UnterhubFirst	; is Unterhub cutscene currently set to be played?
@@ -4000,9 +3998,9 @@ Level_Delay:
 		move.b	#1,($FFFFD000).w	; load Sonic object now
 
 		move.w	#$C3,d0			; set giant ring sound
-		jsr	PlaySFX		; play it
+		jsr	PlaySFX			; play it
 		move.w	#$BC,d0			; set dashing sound
-		jsr	PlaySFX	; play it
+		jsr	PlaySFX			; play it
 		jsr	WhiteFlash		; do a flash
 		move.b	#12,($FFFFFFB2).w	; add some camera lag
 
@@ -4014,7 +4012,10 @@ Level_Delay:
 		move.w	($FFFFD00C).w,obY(a1)
 
 		cmpi.b	#1,(CarryOverData).w	; did we come from the intro cutscene?
+		beq.s	@spinni			; if yes, branch
+		cmpi.b	#5,(CarryOverData).w	; did we come from the blackout ring?
 		bne.s	Level_StartGame		; if not, branch
+	@spinni:
 		move.b	#$25,($FFFFD01C).w	; inhuman spin animation
 
 Level_StartGame:
@@ -6313,7 +6314,9 @@ LevSz_ChkLamp:				; XREF: LevelSizeLoad
 ; ===========================================================================
 
 LevSz_StartLoc:				; XREF: LevelSizeLoad
-		move.w	($FFFFFE10).w,d1
+		move.w	($FFFFFE10).w,d1	; get current level
+		lsl.b	#6,d1			; align current act
+		lsr.w	#4,d1			; align for intex in sloc_lev.asm (4 bytes per entry)
 		
 		; LP fast forward
 		cmpi.w	#$101,($FFFFFE10).w	; is level LP?
@@ -6332,9 +6335,12 @@ LevSz_StartLoc:				; XREF: LevelSizeLoad
 
 		tst.b	(CarryOverData).w	; do we have a giant ring spawn location?
 		beq.s	@notcustom		; if not, branch
-		move.w	#$700,d1		; go to the special Uberhub start locations
-		add.b	(CarryOverData).w,d1	; set custom index from carry-over data
+		moveq	#0,d1			; clear d1
+		move.b	(CarryOverData).w,d1	; set custom index from carry-over data
 		subq.w	#1,d1			; offset by -1
+		add.w	d1,d1			; to word...
+		add.w	d1,d1			; ...then to long
+		addi.w	#7*4*4,d1		; go to the special Uberhub start locations (7th block, 4 entries per block, 4 bytes per entry)
 		bra.s	@load			; ignore other Uberhub special spawns
 
 	@notcustom:
@@ -6347,23 +6353,12 @@ LevSz_StartLoc:				; XREF: LevelSizeLoad
 
 	@chkfrantic:
 		frantic				; are we in frantic mode?
-		bne.s	@frantic		; if yes, branch
-		jsr	Check_JustFinishedFP	; has the player just escaped FP for the first time?
-		bne.s	@altsloc		; if yes, give the casual players a taste of the nyoom
-		bra.s	@load			; if not, branch
-
-	@frantic:
-	;	jsr	Check_FirstStart	; have any levels been beaten yet?
-	;	beq.s	@load			; if not, branch
-	;	tst.b	(PlacePlacePlace).w	; easter egg?
-	;	bne.s	@load			; look at the funny trophies
+		beq.s	@load			; if not, branch
 
 	@altsloc:
-		addq.w	#1,d1			; use next level coordinates instead (unused anyway, has the alt coordinates)
+		addq.w	#4,d1			; use next level coordinates instead
 
 @load:
-		lsl.b	#6,d1
-		lsr.w	#4,d1
 		lea	StartLocArray(pc,d1.w),a1 ; load Sonic's start location
 		bra.w	LevSz_SonicPos
 
@@ -9971,6 +9966,13 @@ Obj1C_Main:				; XREF: Obj1C_Index
 		cmpi.w	#$200,($FFFFFE10).w
 		bne.s	@notrp
 
+		cmpi.b	#1,obSubtype(a0)	; is this the A hint button?
+		bne.s	@notAhint		; if not, branch
+		tst.b	($FFFFFFE7).w		; is inhuman mode enabled yet?
+		bne.s	@notAhint		; if yes, branch
+		rts				; don't display until S monitor is destroyed
+
+	@notAhint:
 		cmpi.b	#4,obSubtype(a0)	; is this the ring tutorial?
 		bne.s	@not25			; if not, branch
 		tst.b	(PlacePlacePlace).w
@@ -10375,6 +10377,9 @@ Obj2A_Main:				; XREF: Obj2A_Index
 		bne.s	@nosoundstopper		; if not, branch
 		tst.b	obSubtype(a0)		; is this the door leading to the blackout challenge?
 		bpl.s	@nosoundstopper		; if not, branch
+		cmpi.b	#-1,obSubtype(a0)	; is this a simple one-way door?
+		beq.w	@nosoundstopper		; if yes, branch
+
 	if DoorsAlwaysOpen=1
 		bra.s	@soundstopper
 	endif
@@ -10424,6 +10429,7 @@ Obj2A_OpenShut:				; XREF: Obj2A_Index
 		tst.b	obSubtype(a0)		; is this the end door?
 		bmi.w	@enddoor		; if yes, branch
 
+@onewaydoor:
 		moveq	#0,d0
 		move.w	($FFFFD008).w,d0
 		cmp.w	obX(a0),d0
@@ -10431,7 +10437,7 @@ Obj2A_OpenShut:				; XREF: Obj2A_Index
 		btst	#0,obStatus(a0)	; is object flipped?
 		bne.s	@red
 		bra.s	@green
-@sonicrightofdoor:
+	@sonicrightofdoor:
 		btst	#0,obStatus(a0)	; is object flipped?
 		beq.s	@red
 		bra.s	@green
@@ -10453,12 +10459,12 @@ Obj2A_OpenShut:				; XREF: Obj2A_Index
 		bra.w	Obj2A_Green
 	endif
 
-	;	jsr	Check_BlackoutBeaten		; has the player beaten the blackout challenge?
-	;	bne.w	Obj2A_Green			; if yes, we can assume they beat the rest of the game too
-Obj2A_Red:
+;Obj2A_Red:
 		move.w	#$0800+($6100/$20),obGfx(a0)	; use red light art
 		tst.b	obSubtype(a0)			; is this the door leading to the blackout challenge?
 		bpl.s	@notblackoutdoor		; if not, branch
+		cmpi.b	#-1,obSubtype(a0)		; is this a simple one-way door?
+		beq.w	@onewaydoor			; if this door's subtype is 0, treat it as a simple one-way door	
 		jsr	Check_BlackoutUnlocked		; check if all levels in frantic are beaten
 		beq.w	Obj2A_Animate			; if not, keep door locked
 		tst.b	$30(a0)				; has sound stopper been passed?
@@ -10538,10 +10544,12 @@ Obj2A_NotUberhub:
 ; ===========================================================================
 
 loc_899A:				; XREF: Obj2A_OpenShut
+		tst.b	obSubtype(a0)
+		bmi.s	Obj2A_Open_Normal
 		cmpi.w	#$400,($FFFFFE10).w	; is level SYZ1 (overworld)?
 		beq.s	Obj2A_Open		; if yes, branch
 
-Obj2A_Open_SBZ:
+Obj2A_Open_Normal:
 		btst	#0,obStatus(a0)
 		beq.s	Obj2A_Animate
 
@@ -23996,6 +24004,15 @@ Obj71_Solid:				; XREF: Obj71_Index
 		bne.s	Obj71_ChkDel		; if yes, disable it
 
 @notsap:
+		cmpi.w	#$400,($FFFFFE10).w	; are we in Uberhub?
+		bne.s	@notuberhub		; if not, branch
+		cmpi.w	#$1038,obX(a0)		; is this the block from the blackout challenge back to Unreal?
+		bne.s	@notuberhub		; if not, branch
+		tst.b	($FFFFFFA5).w		; already entered blackout area?
+		bne.s	@notuberhub		; if yes, activate block
+		bra.s	Obj71_ChkDel		; otherwise disable collision to allow going back down
+
+@notuberhub:
 		bsr	ChkObjOnScreen
 		bne.s	Obj71_ChkDel
 		moveq	#0,d1
@@ -35925,7 +35942,7 @@ Obj7D_SoundStopper:
 		bcc.w	@end
 
 		move.w	#$E0,d0			; set song $E0
-		jsr	PlayCommand				; fade out music		
+		jsr	PlayCommand		; fade out music		
 		movea.l	$30(a0),a1		; get saved RAM address of the door
 		move.b	#1,$30(a1)		; turn the door red
 		move.b	#1,($FFFFFFA5).w	; move HUD off screen

@@ -1055,7 +1055,7 @@ PalCycle_Load:				; XREF: Demo; Level_MainLoop; End_MainLoop
 		bne.s	@nopalcycle		; if yes, branch
 		tst.b	($FFFFFFE9).w		; is fade out currently in progress?
 		bne.s	@nopalcycle		; if yes, branch
-		tst.b	WhiteFlashCounter		; is white flash in progress?
+		tst.b	WhiteFlashCounter	; is white flash in progress?
 		bne.s	@nopalcycle		; if yes, branch
 		tst.b	TutorialBoxId		; are tutorial boxes currently shown?
 		bne.s	@nopalcycle		; if yes, branch
@@ -1244,31 +1244,11 @@ PalCycle_SAP:
 		tst.b	($FFFFFF77).w		; is antigrav enabled?
 		beq.w	PCSLZ_Red_End		; if not, branch
 
-		; buzzwire palette while active
-		moveq	#$000,d0		; turn off by default (black)
-		tst.b	(CameraShake).w		; is buzz wire active (recently touched)?
-		beq.s	@endwire		; if not, branch
-		moveq	#$002,d0		; light up the off-limits grid blocks
-		btst	#6,(OptionsBits).w	; is max white flash enabled?
-		beq.s	@endwire		; if not, branch
-		btst	#0,($FFFFFE05).w
-		beq.s	@endwire
-		moveq	#$00E,d0		; have fun with the eyesore
-
-@endwire:
-		move.w	d0,($FFFFFB42).w	; apply color to grid
-	;	move.w	#$000,($FFFFFB40).w	; force background to stay black
-
-	;	btst	#7,(OptionsBits).w	; is photosensitive mode enabled?
-	;	beq.s	@dosappal		; if not, branch
-	;	move.b	#5,($FFFFFFBC).w	; fixate color to red
-	;	bra.w	PCSLZ_Red_Cont		; skip all the other pal cycle stuff
-
-@dosappal:
+		bsr	BuzzWirePal		; apply/correct buzz wire palette
 
 		; palette rotation for Sonic
-cyoff = 4
-cylen = 8
+		cyoff: = 4
+		cylen: = 8
 		move.w	#$2780,($FFFFD000+obGfx).w	; force Sonic to use palette line 2
 		lea	($FFFFFB20).w,a2		; set start location
 		btst	#1,(ScreenFuzz).w		; is piss enabled?
@@ -1329,8 +1309,6 @@ PCSLZ_Red_End:
 @end:
 		rts
 
-; End of function PalCycle_SLZ
-
 ; ---------------------------------------------------------------------------
 PCSLZ_Red:
 	dc.w	$0222, $0002, $0002, $0002, $0002, $0002, $0002, $0002, $0002, $0002, $0002, $0002, $0002, $0002
@@ -1341,6 +1319,29 @@ PCSLZ_Red:
 	dc.w	$0EEE, $0CCE, $0AAE, $088E, $066E, $044E, $022E, $000E, $022E, $044E, $066E, $088E, $0AAE, $0CCE
 	even
 ; ---------------------------------------------------------------------------
+
+BuzzWirePal:
+		; buzzwire palette while active
+		moveq	#0,d0			; turn off by default (black)
+		tst.b	(CameraShake).w		; is buzz wire active (recently touched)?
+		beq.s	@endwire		; if not, branch
+		moveq	#$002,d0		; light up the off-limits grid blocks
+
+		moveq	#0,d1
+		move.b	(CameraShake).w,d1
+		lsr.b	#4,d1
+		andi.b	#$00E,d1
+		move.b	d1,d0
+
+		btst	#6,(OptionsBits).w	; is max white flash enabled?
+		beq.s	@endwire		; if not, branch
+		btst	#0,($FFFFFE05).w
+		beq.s	@endwire
+		moveq	#$00C,d0		; have fun with the eyesore
+	@endwire:
+		move.w	d0,($FFFFFB42).w	; apply color to grid
+		rts
+; End of function PalCycle_SLZ
 
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 
@@ -29341,8 +29342,18 @@ FixLevel:
 		tst.b	(RedrawEverything).w	; was camera set to be fixed as well?
 		bmi.s	@dontfixcamera		; if not, branch
 
-		; Reset level's camera and re-render everything
+		; Reset level's camera to Sonic
+		move.w	CamXPos,d1		; get camera X pos before teleportation
 		bsr	FixCamera		; instantly teleport camera to Sonic's current position
+		sub.w	CamXPos,d1		; camera X delta after teleportation
+		bpl.s	@0			; is it positive? branch
+		neg.w	d1			; make positive
+	@0:	cmpi.w	#$280,d1		; did we teleport further than the $280 pixels offscreen-limit?
+		bls.s	@1			; if not, do not reset OPL routine index to avoid overlapping objects loading
+		clr.w	($FFFFF76C).w		; reset OPL routine index to flush the level object RAM
+	@1:
+
+		; Re-render everything
 		DeleteQueue_Init
 		jsr	ObjectsLoad		; force-run all objects to re-render sprites (WARNING! May have side effects)
 		jsr	DeformBgLayer2		; update background parallax (without scroll camera functions)
@@ -29371,9 +29382,7 @@ FixLevel:
 FixCamera:
 		moveq	#0, d0
 		move.l	d0, ($FFFFF73A).w	; clear camera shifts
-	;	move.b	d0, (CameraShake).w	; clear camera shaking
 
-		;moveq	#0,d0			-- OPTIMIZED OUT
 		move.w	($FFFFD008).w,d0	; load Sonic's X-location into d0
 		subi.w	#SCREEN_WIDTH/2,d0	; substract half screen's width from it
 		bpl.s	@fixx
@@ -30694,10 +30703,13 @@ SAP_HitWall:
 	;	jsr	SpeedToPos			; immediately apply first batch of new speed
 
 		; some additional visual flair
-		jsr	WhiteFlash_Weak			; do a white flash...
-		move.w	#$000,($FFFFFB40).w		; ...but keep the background black
-	;	move.w	#$002,($FFFFFB42).w		; light up the off-limits grid blocks
-
+		jsr	BuzzWirePal
+		move.w	($FFFFFB42).w,d0		; backup grid color
+		move.l	d0,-(sp)
+		jsr	WhiteFlash			; do a white flash...
+		move.w	#0,($FFFFFB40).w		; ...but keep the background black
+		move.l	(sp)+,d0
+		move.w	d0,($FFFFFB42).w		; restore grid color
 		move.b	#SAPBuzzWire_FlashLength,WhiteFlashCounter ; set white flash length (controls air freeze lock)
 		move.b	#0,($FFFFFFB2).w		; no camera lag
 

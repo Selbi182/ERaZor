@@ -142,7 +142,7 @@ StoryScreen_BGColors:
 		dc.w	$00E	; after blackout
 		dc.w	$0EE	; after beating Unreal Place without touching any checkpoints
 		dc.w	$0EE	; after beating the blackout challenge in true-BS mode
-		dc.w	$E84	; after beating Unterhub Place
+		dc.w	$E28	; after beating Unterhub Place
 		dc.w	$0EE	; after beating Unterhub Place without destroying the last Roller
 		even
 

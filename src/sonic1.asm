@@ -7065,9 +7065,10 @@ Resize_MZ1:
 
 @RPLavaScene3:
 		move.w	#$520,($FFFFF726).w
-		cmpi.w	#$1CE0,($FFFFF700).w
+
+		cmpi.w	#$1D28,($FFFFD008).w
 		bcs.w	@end
-		move.w	#$220,($FFFFF726).w	; main boundary bottom near the end
+		move.w	#$110,($FFFFF726).w	; boundary bottom in the arena
 		rts	
 ; ===========================================================================
 ; ===========================================================================
@@ -7525,6 +7526,7 @@ Resize_SYZ3main:
 		move.b	#$43,(a1)		; load roller enemy
 		move.w	#$12A0+$1A00,obX(a1)
 		move.w	#$02B2,obY(a1)
+		move.b	#1,obSubtype(a1)
 
 locret_71CE:
 		rts
@@ -7609,6 +7611,7 @@ Resize_SYZ3boss:
 		move.b	#$43,(a1)		; load end roller enemy
 		move.w	#$1EB0-1+$1A00,obX(a1)
 		move.w	#$00B0+3,obY(a1)
+		move.b	#2,obSubtype(a1)
 @end:
 		rts
 ; ===========================================================================
@@ -19360,9 +19363,14 @@ Obj43_Main:				; XREF: Obj43_Index
 		move.b	#4,obRender(a0)
 		move.b	#4,obPriority(a0)
 		move.b	#$10,obActWid(a0)
-		move.b	#6,obColType(a0)
 
-		move.b	#30,$30(a0)	; delay before jump
+		move.b	#10,$30(a0)	; delay before jump (for the one before the boss)
+
+		move.b	#0,obColType(a0)
+		cmpi.b	#2,obSubtype(a0)
+		bne.s	Obj43_Action
+		move.b	#6,obColType(a0)	; only make the one destroyable that's actually meant to be destroyed
+
 ; ---------------------------------------------------------------------------
 
 Obj43_Action:				; XREF: Obj43_Index
@@ -19379,16 +19387,41 @@ Obj43_Index2:	dc.w Obj43_Wait-Obj43_Index2
 ; ===========================================================================
 
 Obj43_Wait:
+		tst.b	obSubtype(a0)
+		bne.s	@notdecoy
+
+		move.w	($FFFFD008).w,d0	; get Sonic's X-pos
+		sub.w	obX(a0),d0		; substract the X-pos from the current object from it
+		bpl.s	@0
+		neg.w	d0
+@0:		cmpi.w	#$50,d0			; is Sonic within $10 pixels of that object?
+		bhi.w	@notdecoy		; if not, branch
+
+		move.w	($FFFFD00C).w,d0	; get Sonic's X-pos
+		sub.w	obY(a0),d0		; substract the X-pos from the current object from it
+		bpl.s	@1
+		neg.w	d0
+@1:
+		cmpi.w	#$30,d0			; is Sonic within $10 pixels of that object?
+		bhi.w	@notdecoy		; if not, branch
+		bra.s	@Obj43_JumpOff
+
+@notdecoy:
+		; the one at the boss start
+		cmpi.b	#1,obSubtype(a0)
+		bne.s	@end
 		tst.b	($FFFFFFA9).w		; sequence started yet?
 		beq.s	@end			; if not, wait
 		btst	#1,($FFFFD022).w	; is Sonic in air?
 		bne.s	@end			; if yes, wait
-
 		subq.b	#1,$30(a0)		; countdown delay
 		bpl.s	@end			; if time remains, branch
+
+@Obj43_JumpOff:
 		addq.b	#2,ob2ndRout(a0)
 		move.w	#$80,obVelX(a0)
 		move.w	#-$500,obVelY(a0)
+		move.b	#0,obColType(a0)
 		move.w	#$AB,d0
 		jsr	PlaySFX
 		move.b	#1,obAnim(a0)
@@ -19400,7 +19433,7 @@ Obj43_Jump:
 		bsr	ObjectFall
 		bsr	SpeedToPos
 		cmpi.w	#$300,obY(a0)
-		bhs.w	DeleteObject
+		bge.w	DeleteObject
 		rts	
 ; ===========================================================================
 ; ===========================================================================
@@ -29644,7 +29677,7 @@ SH_EnemyLoop:
 		bpl.s	SH_NoBuzz		; if yes, branch
 		cmpi.w	#$1300,obX(a0)		; is Sonic before the X-location $1300?
 		bmi.s	SH_NoBuzz		; if yes, branch
-		bra.s	SH_NoEnemy		; otherwise, skip object
+		bra.w	SH_NoEnemy		; otherwise, skip object
 
 SH_NoBuzz:
 		cmpi.b	#$26,(a1)		; was selected object a monitor?
@@ -29662,6 +29695,13 @@ SH_NoMonitor:
 		bra.s	SH_NoEnemy		; otherwise, skip object
 
 SH_NoCrabMeat:
+		cmpi.b	#$43,(a1)		; was selected object a Roller?
+		bne.s	SH_NoRoller		; if not, branch
+		cmpi.b	#2,obSubtype(a1)	; is this the one meant to be destroyed?
+		beq.s	SH_NoRoller		; if yes, branch
+		bra.s	SH_NoEnemy		; otherwise, skip object
+
+SH_NoRoller:
 		move.w	obX(a1),d3		; load current X-pos into d3
 		sub.w	obX(a0),d3		; substract Sonic's X-pos from it
 		bpl.s	SH_XPositive		; if result it positive, branch
@@ -37429,7 +37469,7 @@ Obj73_Main:				; XREF: Obj73_Index
 			moveq	#1,d0
 		endif
 		move.b	d0,obColProp(a0)
-		move.b	d0,(HUD_BossHealth).w
+	;	move.b	d0,(HUD_BossHealth).w
 
 		lea	Obj73_ObjData(pc),a2
 		movea.l	a0,a1
@@ -37504,7 +37544,7 @@ Obj73_MainStuff:
 		bne.s	Obj73_ResetBlack
 		tst.b	$3E(a0)
 		bne.s	loc_18374
-		move.b	#$28,$3E(a0)
+		move.b	#50,$3E(a0)		; flash duration, used to be $28
 		bsr	BossDamageSound
 		move.b	obColProp(a0),(HUD_BossHealth).w
 		clr.b	($FFFFFFEB).w	; reset jumpdash flag to allow multiple double jumps
@@ -37545,6 +37585,7 @@ Obj73_LavaSequence:
 		move.w	#$300,obVelX(a0)
 		move.w	#-$500,obVelY(a0)
 		bset	#0,obStatus(a0)
+		move.b	obColProp(a0),(HUD_BossHealth).w
 		bra.w	Obj73_MainStuff
 ; ===========================================================================
 
@@ -37556,11 +37597,12 @@ Obj73_GoToArena:
 		clr.w	obVelX(a0)
 		clr.w	obVelY(a0)
 		bclr	#0,obStatus(a0)
+		bset	#7,obGfx(a0)		; make Eggman high plane now
 		bra.w	Obj73_ShipMainMain
 ; ===========================================================================
 ; ===========================================================================
 
-Obj73_CircleAccel = 4
+Obj73_CircleAccel = 2
 
 Obj73_GoingInCircles1:
 		move.w	obVelX(a0),d0
@@ -37586,6 +37628,7 @@ Obj73_GoingInCircles1:
 		asr	obVelY(a0)
 		asr	obVelY(a0)
 		asr	obVelY(a0)
+		asr	obVelX(a0)
 		bra.w	Obj73_MainStuff
 ; ===========================================================================
 
@@ -37633,12 +37676,13 @@ Obj73_GoingInCircles3:
 		bsr	BossMove
 		bclr	#0,obStatus(a0)
 
-		cmpi.w	#$178,obY(a0)
+		cmpi.w	#$170,obY(a0)
 		blo.w	Obj73_MainStuff
 		addq.b	#2,ob2ndRout(a0)
 		asr	obVelY(a0)
 		asr	obVelY(a0)
 		asr	obVelY(a0)
+		asr	obVelX(a0)
 		bra.w	Obj73_MainStuff
 ; ===========================================================================
 
@@ -38771,7 +38815,7 @@ Obj75_SlamThreshold = $C
 
 ; balance
 Obj75_CasualGoBackUpSpeed = -$200
-Obj75_FranticXGoBackUpBonusSpeed = $60
+Obj75_FranticXGoBackUpBonusSpeed = $38
 Obj75_BossSpeed_Casual = $3D0
 Obj75_BossSpeed_Frantic = $3D0
 Obj75_BossHealth_Casual  = 12

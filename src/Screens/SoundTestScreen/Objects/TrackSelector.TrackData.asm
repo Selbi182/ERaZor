@@ -212,7 +212,7 @@
 @Music9C_Name:		@str 'BLACKOUT CHALLENGE', @titleMaxLen
 @Music9C_Source:	@str 'PULSEMAN / SHUTDOWN - DARK REMIX', @descMaxLen
 
-@Music9D_Name:		@str 'ENDING SEQUENCE', @titleMaxLen
+@Music9D_Name:		@str 'A WHOLESOME MINUTE', @titleMaxLen
 @Music9D_Source:	@str 'ZILLION PUSH / PUSH!', @descMaxLen
 
 @Music9E_Name:		@str 'FINAL BOSS', @titleMaxLen

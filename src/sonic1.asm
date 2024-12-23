@@ -3181,7 +3181,7 @@ LevelSelect_DoSelect:
 		cmpi.w	#$666,d0	; is this the blackout challenge?
 		beq.s	LevSel_Blackout	; if yes, branch
 		
-		move.b	#1,($FFFFF5D1).w ; skip tutorial introduction text
+		move.b	#1,(DyingFlag).w ; skip tutorial introduction text
 
 		jmp	StartLevel	; otherwise, start level normally
 
@@ -3628,7 +3628,7 @@ Level_GetBgm:
 		cmpi.w	#$501,($FFFFFE10).w	; are we starting the tutorial?
 		bne.s	Level_NoPreTut		; if not, branch
 		
-		tst.b	($FFFFF5D1).w		; did the player die?
+		tst.b	(DyingFlag).w		; did the player die?
 		bne.s	Level_NoPreTut		; if yes, don't replay intro text
 		
 		move.w	#0,BlackBars.Height	; prevent black screen for the first few frames
@@ -4791,7 +4791,7 @@ Fuzz_TutBox:
 ClearEverySpecialFlag:
 		moveq	#0,d0
 		move.b	d0,($FFFFF5D0).w
-		move.b	d0,($FFFFF5D1).w
+		move.b	d0,(DyingFlag).w
 		move.b	d0,RedrawEverything
 		move.w	d0,FranticDrain
 		move.w	d0,BGThemeColor
@@ -10122,7 +10122,7 @@ Obj1D_Explosions:
 		addi.w	#SCREEN_HEIGHT/2,d0
 		move.w	d0,obY(a0)	; copy camera Y position
 
-		tst.b	($FFFFF5D1).w		; is Sonic dying?
+		tst.b	(DyingFlag).w		; is Sonic dying?
 		bne.s	@no
 		cmpi.b	#2,(FZEscape).w		; is escape sequence already set?
 		beq.s	@explosions		; if yes, branch
@@ -12006,7 +12006,7 @@ loc_17F70X:
 Obj1F_Flashing:
 		btst	#7,(OptionsBits).w	; is photosensitive mode enabled?
 		bne.s	Obj1F_NoFlash		; if yes, no flash
-		tst.b	($FFFFF5D1).w		; is Sonic dying?
+		tst.b	(DyingFlag).w		; is Sonic dying?
 		bne.s	Obj1F_NoFlash		; if yes, disable flash
 
 		lea	($FFFFFB22).w,a1		; load second colour
@@ -12126,7 +12126,7 @@ loc_17F70XX:
 Obj1F_Flashing2:
 		btst	#7,(OptionsBits).w	; is photosensitive mode enabled?
 		bne.s	Obj1F_NoFlash2		; if yes, no flash
-		tst.b	($FFFFF5D1).w		; is Sonic dying?
+		tst.b	(DyingFlag).w		; is Sonic dying?
 		bne.s	Obj1F_NoFlash2		; if yes, disable flash
 
 		lea	($FFFFFB22).w,a1		; load second colour
@@ -18545,6 +18545,8 @@ ObjectFall_Sonic:
 @OFS_ReverseGravity:
 		tst.b	($FFFFFF77).w		; is antigrav enabled?
 		beq.w	@OFS_FallEnd		; if not, branch
+		tst.b	(DyingFlag).w		; is Sonic dying?
+		bne.w	@OFS_FallEnd		; if yes, make sure Sonic doesn't fly into orbit and never returns
 
 		subi.w	#Gravity,d3		; inverse gravity
 		btst	#6,($FFFFF602).w	; is A pressed?
@@ -27445,6 +27447,7 @@ Obj06_ChkDist:
 		bne.w	Obj06_Display		; all buttons pressed? if not, branch
 		
 Obj06_DoHardPartSkip:
+
 		frantic				; are we in Frantic mode?
 		beq.s	@dohardpartskip		; if not, branch
 		jmp	TrollKill		; no hard part skippers for you
@@ -27495,7 +27498,7 @@ Obj06_DoHardPartSkip:
 		move.w	0(a1),($FFFFD008).w	; move X-pos to Sonic's one
 		move.w	2(a1),($FFFFD00C).w	; move Y-pos to Sonic's one
 
-		clr.l	($FFFFF602).w		; clear any remaining inputs
+	;	clr.l	($FFFFF602).w		; clear any remaining inputs
 		clr.w	($FFFFD010).w		; clear Sonic's X-speed
 		clr.w	($FFFFD012).w		; clear Sonic's Y-speed
 		clr.w	($FFFFD014).w		; clear Sonic's interia
@@ -27518,7 +27521,7 @@ Obj06_Locations:	;XXXX   YYYY
 		dc.w	$18EA, $036C	; Night Hill Place
 		dc.w	$FFFF, $FFFF	; Green Hill Place	(Unused)
 		dc.w	$FFFF, $FFFF	; Special Place		(Unused)
-		dc.w	$1E10, $02B0	; Ruined Place
+		dc.w	$1A80, $02AC	; Ruined Place
 		dc.w	$CCCC, $CCCC	; Labyrinthy Place	(Custom, see below)
 		dc.w	$2328, $0050	; Unterhub Place
 		dc.w	$FFFF, $FFFF	; Unreal Place		(Unused)
@@ -27822,7 +27825,7 @@ Map_Obj07:
 ; ---------------------------------------------------------------------------
 
 AfterImage:
-		tst.b	($FFFFFFAC).w		; is Sonic dying?
+		tst.b	(DyingFlag).w		; is Sonic dying?
 		bne.w	After_Return		; if yes, branch
 		cmpi.b	#$18,(GameMode).w	; is this the ending sequence?
 		beq.s	After_DoAfter		; if yes, branch
@@ -27920,8 +27923,7 @@ Obj01_Normal:
 		movem.l	(sp)+,d3-a1
 
 		moveq	#0, d0
-		move.b	d0, ($FFFFFFAC).w	; clear dying flag
-		move.b	d0, ($FFFFF5D1).w	; clear death flag
+		move.b	d0, (DyingFlag).w	; clear dying flag
 		move.b	d0, ($FFFFFFE9).w	; clear camera lock
 		move.w	#$0090,($FFFFD048).w	; set "DEATHS" object X-pos
 		move.w	#$0108,($FFFFD04A).w	; set "DEATHS" object Y-pos
@@ -29498,7 +29500,7 @@ WhiteFlash_Restore:
 		bgt.s	@end			; is counter empty now? if not, branch
 		clr.b	WhiteFlashCounter	; reset white flash counter
 
-		tst.b	($FFFFF5D1).w		; was death flag set?
+		tst.b	(DyingFlag).w		; was death flag set?
 		bne.w	@end			; if yes, don't mess with the palette, already made grayscale
 
 		btst	#7,(OptionsBits).w	; is photosensitive mode enabled?
@@ -36303,9 +36305,8 @@ loopdashit:	cmpi.b	#$18,(a1)		; is current object a platform?
 		dbf	d0,loopdashit
 
 
-
 Obj3D_ShipFlash:
-		tst.b	($FFFFF5D1).w		; is Sonic dying?
+		tst.b	(DyingFlag).w		; is Sonic dying?
 		bne.s	@noflash		; if yes, disable flash
 		btst	#7,(OptionsBits).w	; is photosensitive mode enabled?
 		bne.s	@noflash		; if yes, branch
@@ -38758,6 +38759,7 @@ Obj75_SlamThreshold = $C
 
 ; balance
 Obj75_CasualGoBackUpSpeed = -$200
+Obj75_FranticXGoBackUpBonusSpeed = $60
 Obj75_BossSpeed_Casual = $3D0
 Obj75_BossSpeed_Frantic = $3D0
 Obj75_BossHealth_Casual  = 12
@@ -39133,7 +39135,7 @@ Obj75_GoBackUp:
 
 		frantic
 		beq.s	@casual
-		moveq	#$30,d1		; frantic X bonus speed
+		moveq	#Obj75_FranticXGoBackUpBonusSpeed,d1		; frantic X bonus speed
 		btst	#0,obStatus(a0)
 		beq.s	@left
 		add.w	d1,obVelX(a0)
@@ -42064,7 +42066,7 @@ KillSonic:
 		beq.w	Kill_InhumanMode	; if not, don't stop the time counter / don't kill sonic
 
 Kill_DoKill:
-		move.b	#1,($FFFFF5D1).w	; set death flag
+		move.b	#1,(DyingFlag).w	; set death flag
 
 		; grayscale on death
 		movem.l	d7/a1-a3,-(sp)
@@ -42091,7 +42093,6 @@ SH_NotEnding:
 		clr.b	($FFFFFFBB).w
 		move.b	#1,($FFFFF7CC).w	; lock controls
 		move.b	#0,($FFFFFFD3).w	; $FFD3
-		move.b	#1,($FFFFFFAC).w	; set flag to delete afterimage
 		clr.b	($FFFFFFA9).w		; clear crabmeat boss flag 3
 		clr.w	($FFFFFE20).w		; clear rings
 		move.b	#70,($FFFFFFDD).w	; set delay for restart when sonic hits ground

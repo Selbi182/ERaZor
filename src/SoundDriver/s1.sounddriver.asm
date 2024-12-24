@@ -140,8 +140,8 @@ SoundDriverUpdate:
 .skipfadein:
 		move.b	v_bgm_input(a6), d7		; did we request a new BGM?
 		beq.s	.no_new_bgm			; if not, branch
+		clr.b	v_bgm_input(a6)			; reset sound to play (before the call, because it's a no-return)
 		bsr	Play_BGM			; INPUT: d7
-		clr.b	v_bgm_input(a6)			; reset sound to play
 
 .no_new_bgm:
 		move.b	v_sfx_input(a6), d7		; did we request an SFX?

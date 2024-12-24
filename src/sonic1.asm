@@ -43868,7 +43868,8 @@ Obj09_ChkEmer:
 		move.b	#$DD,d0
 		jsr	PlaySFX
 		move.w	#$E2,d0
-		bra.s	Obj09_EmerPlaySound
+		jsr	PlayCommand
+		bra.s	Obj09_ChkEmerDone
 
 Emershit:
 		move.b	#1,($FFFFF7CC).w	; lock controls
@@ -43876,16 +43877,17 @@ Emershit:
 
 		move.b	#5,(a2)			; this is important to end the stage
 		move.w	#$88,d0			; play special stage beaten jingle
-		bra.s	Obj09_EmerPlaySound
+		jsr	PlayBGM
+		bra.s	Obj09_ChkEmerDone
 
 Obj09_EmerNotAll:
 		move.w	#$C5,d0			; play single emerald collected sound
 		tst.b	(Blackout).w		; is this the blackout blackout special stage?
-		beq.s	Obj09_EmerPlaySound	; if not, branch
+		beq.s	@2			; if not, branch
 		move.w	#$A6,d0			; play spike hurt sound instead
+@2:		jsr	PlaySFX			; play SF
 
-Obj09_EmerPlaySound:
-		jsr	PlaySFX	; play music
+Obj09_ChkEmerDone:
 		moveq	#0,d4
 		rts
 ; ===========================================================================

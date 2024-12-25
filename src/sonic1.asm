@@ -1351,14 +1351,13 @@ PalCycle_SYZ:				; XREF: PalCycle
 		bpl.s	locret_1AC6
 		move.w	#5,($FFFFF634).w
 
-
 		; palcycle protection for the trophy gallery
 		tst.b	($FFFFFE11).w		; are we in Uberhub?
 		bne.s	@dopalcycle		; if not, this isn't necessary
 		jsr	Check_FirstStart	; have any levels been beaten yet?
 		bne.s	@dopalcycle		; if not, this isn't necessary
 		move.w	($FFFFF700).w,d1	; get camera X pos
-		cmpi.w	#$01B0,d1		; trophy gallery out of sight to the left?
+		cmpi.w	#$01B0-(SCREEN_XCORR*2),d1	; trophy gallery out of sight to the left?
 		bls.s	@dopalcycle		; if yes, branch
 		cmpi.w	#$0400,d1		; trophy galelry out of sight to the right?
 		bhs.s	@dopalcycle		; if yes, branch
@@ -7615,7 +7614,7 @@ Resize_SYZ3boss:
 		jsr	SingleObjLoad
 		bne.s	@end
 		move.b	#$43,(a1)		; load end roller enemy
-		move.w	#$38AF,obX(a1)
+		move.w	#$38DF,obX(a1)
 		move.w	#$00B3,obY(a1)
 		move.b	#2,obSubtype(a1)
 @end:
@@ -8431,7 +8430,7 @@ Obj11_ChkDel:				; XREF: Obj11_Display; Obj11_Action2
 		sub.w	d1,d0
 		cmpi.w	#$280,d0
 		bhi.w	Obj11_DelAll
-		jmp	DisplaySprite
+		bra.w	Obj11_Display2
 ; ===========================================================================
 
 Obj11_DelAll:				; XREF: Obj11_ChkDel
@@ -8455,18 +8454,12 @@ loc_791E:
 		dbf	d2,Obj11_DelLoop ; repeat d2 times (bridge length)
 
 Obj11_Delete:
-		jsr	DeleteObject
-		rts
-; ===========================================================================
-
 Obj11_Delete2:				; XREF: Obj11_Index
-		jsr	DeleteObject
-		rts
+		jmp	DeleteObject
 ; ===========================================================================
 
 Obj11_Display2:				; XREF: Obj11_Index
-		jsr	DisplaySprite
-		rts
+		jmp	DisplaySprite
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Sprite mappings - GHZ	bridge
@@ -14947,11 +14940,27 @@ Obj2B_ChgAni:
 Obj2B_NotInhumanCrush:
 		move.b	#1,obAnim(a0)	; use fast animation
 
-		cmpi.w	#$000,($FFFFFE10).w	; is level still NHP?
-		beq.s	locret_ABB6		; if yes, don't do explosions yet
-		bsr	BossDefeated4		; fishy go boom
-	
-locret_ABB6:
+		move.w	($FFFFD00C).w,d0
+		sub.w	obY(a0),d0
+		bpl.s	@0
+		neg.w	d0
+@0:		cmpi.w	#SCREEN_HEIGHT*2+$40,d0	; is fishy vertically near Sonic?
+		bhi.s	@end			; if not, branch
+
+		moveq	#7,d0
+		and.w	($FFFFFE04).w,d0
+		bne.s	@end
+		bsr	SingleObjLoad
+		bne.s	@end
+		move.b	#$3F,0(a1)		; load explosion object
+		move.w	obX(a0),obX(a1)
+		move.w	obY(a0),obY(a1)
+		move.b	#2,obRoutine(a1)	; only load one explosion
+		move.b	#0,$30(a1)		; make explosion HARMFUL
+		move.b	#1,$31(a1)		; set mute flag
+		move.w	#$C4,d0			; play default explosion sound (MZ block smash)
+		jmp	PlaySFX
+@end:
 		rts	
 ; ===========================================================================
 
@@ -15022,30 +15031,6 @@ locret_178A22XX:
 		rts	
 ; End of function BossDefeated
 
-BossDefeated4:
-		move.b	($FFFFFE05).w,d0
-		andi.b	#7,d0
-		bne.s	locret_178A22XXX
-		bsr	SingleObjLoad
-		bne.s	locret_178A22XX
-		move.b	#$3F,0(a1)	; load explosion object
-		move.w	obX(a0),obX(a1)
-		move.w	obY(a0),obY(a1)
-		move.b	#2,obRoutine(a1)
-		move.b	#0,$31(a1)
-	;	jsr	(RandomNumber).l
-	;	move.w	d0,d1
-	;	moveq	#0,d1
-	;	move.b	d0,d1
-	;	lsr.b	#2,d1
-	;	subi.w	#$20,d1
-	;	add.w	d1,obX(a1)
-	;	lsr.w	#8,d0
-	;	lsr.b	#3,d0
-	;	add.w	d0,obY(a1)
-
-locret_178A22XXX:
-		rts	
 
 
 ; ===========================================================================
@@ -20094,7 +20079,7 @@ Obj12_Init:
 		addq.b	#2,obRoutine(a0)
 		move.l	#Map_Obj12_SYZEmblems,obMap(a0)
 		move.b	#$94,obRender(a0)
-		move.b	#$10,obActWid(a0)
+		move.b	#$18,obActWid(a0)
 		move.b	#6,obPriority(a0)
 		move.b	#$40,obHeight(a0)
 		move.w	obY(a0),$32(a0)		; used for the sway
@@ -36952,13 +36937,15 @@ Obj48_Vanish:
 		
 		; prevent detached ball from moving offscreen
 		move.w	obX(a0),d0
-		cmpi.w	#$5060,d0
+		move.w	#$5060-SCREEN_XCORR,d1
+		cmp.w	d1,d0
 		bhi.s	@cont
-		move.w	#$5060,obX(a0)
+		move.w	d1,obX(a0)
 @cont:
-		cmpi.w	#$51A0,d0
+		move.w	#$51A0+SCREEN_XCORR,d1
+		cmp.w	d1,d0
 		blo.s	Obj48_Display4
-		move.w	#$51A0,obX(a0)
+		move.w	d1,obX(a0)
 
 Obj48_Display4:
 		bra.s	Obj48_DoDisplay

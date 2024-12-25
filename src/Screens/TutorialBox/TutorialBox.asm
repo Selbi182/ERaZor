@@ -722,12 +722,12 @@ Hints_List:	; note: these IDs are 1-based
 		dc.l	Hint_Options_Autoskip		; $18
 		dc.l	Hint_Options_AlternateHUD	; $19
 		dc.l	Hint_Options_PaletteStyle	; $1A
-
 	if def(__WIDESCREEN__)
 		dc.l	Hint_Options_WidescreenExtCam	; $1B
 	else
 		dc.l	Hint_Null			; $1B
 	endif
+		dc.l	Hint_Options_CinematicMode	; $1C
 
 ; ---------------------------------------------------------------
 ; Hints Scripts
@@ -1090,16 +1090,6 @@ Hint_4:
 		boxtxt	"SAME MANNER!"
 		boxtxt_next
 
-		boxtxt	"adjust black bars"
-		boxtxt_pause
-		boxtxt	"GO TO THE BLACK BARS"
-		boxtxt	"SETUP SCREEN AND"
-		boxtxt	"HOLD b + up/down TO"
-		boxtxt	"ADJUST THE HEIGHT!"
-		boxtxt	"TO RESET, HOLD b AND"
-		boxtxt	"THEN PRESS start."
-		boxtxt_next
-
 		boxtxt	"drunk special stages"
 		boxtxt_pause
 		boxtxt	"ENABLE motion blur"
@@ -1113,7 +1103,7 @@ Hint_4:
 		boxtxt	"true_bs mode"
 		boxtxt_pause
 		boxtxt	"GO TO THE DIFFICULTY"
-		boxtxt	"SELECT SCREEN. THERE"
+		boxtxt	"SELECT SCREEN AND"
 		boxtxt	"HOLD a THEN b THEN c"
 		boxtxt	"IN THAT EXACT ORDER!"
 		boxtxt	"IT'S REALLY HARD."
@@ -1122,7 +1112,7 @@ Hint_4:
 
 
 		boxtxt	"AND THAT WRAPS UP"
-		boxtxt	"THE INFO DUMP."
+		boxtxt	"THE INFODUMP."
 		boxtxt_line
 		boxtxt	"ENJOY THESE RANDOM"
 		boxtxt	"BONUS FEATURES!"
@@ -1567,6 +1557,18 @@ Hint_Options_PaletteStyle:
 		boxtxt	"BEAUTIFUL remasters"
 		boxtxt	"MADE BY JAVESIKE!"
 		boxtxt_end
+
+Hint_Options_CinematicMode:
+		boxtxt	"adjust black bars"
+		boxtxt_line
+		boxtxt	"GO TO THE BLACK BARS"
+		boxtxt	"SETUP SCREEN AND"
+		boxtxt	"HOLD b + up/down TO"
+		boxtxt	"ADJUST THE HEIGHT!"
+		boxtxt	"TO RESET, HOLD b AND"
+		boxtxt	"THEN PRESS start."
+		boxtxt_end
+
 ;		 --------------------
 Hint_Options_FranticTutorial:
 		boxtxt	"RESPECT FOR GOING"

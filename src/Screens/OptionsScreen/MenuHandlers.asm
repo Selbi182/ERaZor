@@ -729,6 +729,10 @@ Options_CinematicMode_Handle:
 	jsr	Check_BaseGameBeaten_Casual	; has the player beaten the base game in casual?
 	beq.w	Options_PlayDisallowedSound	; if not, branch
 
+	; hint on A
+	moveq	#$1C,d0				; ID for the explanation textbox
+	bsr	Options_HandleAHint		; show explanation textbox if A is pressed
+
 	moveq	#0,d0
 	move.b	OptionsBits,d0
 	lsr.b	#2,d0

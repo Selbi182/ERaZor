@@ -398,7 +398,7 @@ Options_HandleUpDown:
 
 		; hint to press A for the extra details on specific options
 		moveq	#0,d0				; hide A hint by default
-		move.w	($FFFFFF82).w,d1		; get currently selection
+		move.w	($FFFFFF82).w,d1		; get current selection
 	if def(__WIDESCREEN__)
 		cmpi.w	#1,d1				; Extended Widescreen Camera selected?
 		beq.s	@ahint				; if yes, show A hint
@@ -409,15 +409,24 @@ Options_HandleUpDown:
 		beq.s	@ahint				; if yes, show A hint
 		cmpi.w	#4,d1				; Palette Style selected?
 		beq.s	@ahint				; if yes, show A hint
+
+		cmpi.w	#9,d1				; Cinematic Mode selected?
+		bne.s	@notcinematic			; if not, branch
+		jsr	Check_BaseGameBeaten_Casual	; has the player beaten base game in casual?
+		bne.s	@ahint				; if yes, show A hint
+	@notcinematic:
+
 		; expand as necessary
 		bra.s	@redrawheader			; otherwise, hide A hint
+
 	@ahint:
 		moveq	#1,d0				; show A hint
+
 	@redrawheader:
 		move.b	d0,Options_HasAHint		; set state of A hint flag
 		bsr	Options_RedrawHeader		; redraw header accordingly
 
-	@playsound:
+@playsound:
 		move.b	#$D8,d0				; play move sound
 		jmp	PlaySFX
 

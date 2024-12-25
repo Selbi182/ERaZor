@@ -7510,6 +7510,8 @@ off_71B2:
 		dc.w Resize_SYZ3end-off_71B2
 ; ===========================================================================
 
+Unterhub_BossStartX_Casual = $3200-8 ; used to be $2C00 but the natural progression wasn't as intuitive as I'd hoped
+
 ; Resize_Unterhub:
 Resize_SYZ3setup:
 		addq.b	#2,($FFFFF742).w
@@ -7518,9 +7520,10 @@ Resize_SYZ3setup:
 ; ===========================================================================
 
 Resize_SYZ3main:
-		cmpi.w	#$09B0+$1A00,($FFFFD008).w	; in the arena?
+		cmpi.w	#$23B0,($FFFFD008).w	; in the arena?
 		blo.s	locret_71CE		; if not, branch
 		addq.b	#2,($FFFFF742).w
+		move.w	#Unterhub_BossStartX-$28,($FFFFF72A).w	; right boundary right at the boss start (to snap the extended camera)
 
 		cmpi.w	#3,(RelativeDeaths).w	; did player die at least thrice already?
 		bhs.s	locret_71CE		; if yes, skip rollerbot scene
@@ -7528,7 +7531,7 @@ Resize_SYZ3main:
 		jsr	SingleObjLoad
 		bne.s	locret_71CE
 		move.b	#$43,(a1)		; load roller enemy
-		move.w	#$12A0+$1A00,obX(a1)
+		move.w	#Unterhub_BossStartX+$A0,obX(a1)
 		move.w	#$02B2,obY(a1)
 		move.b	#1,obSubtype(a1)
 
@@ -7539,7 +7542,7 @@ locret_71CE:
 Resize_SYZ3loadboss:
 		move.w	#$220,($FFFFF726).w	; bottom boundary in the arena
 
-		cmpi.w	#$1260+$1A00+11,($FFFFD008).w	; did we reach the Roller yet?
+		cmpi.w	#Unterhub_BossStartX+$6B,($FFFFD008).w	; did we reach the Roller yet?
 		blo.s	locret_71CE		; if not, branch
 		addq.b	#2,($FFFFF742).w
 
@@ -7565,7 +7568,7 @@ Resize_SYZ3loadboss:
 ; ===========================================================================
 
 Resize_SYZ3waitboss:
-		move.w	#$8C0+$1A00,($FFFFF728).w	; left boundary
+		move.w	#$22C0,($FFFFF728).w	; left boundary
 
 		btst	#1,($FFFFD022).w	; is Sonic in air?
 		bne.s	@waitfloor		; if yes, branch
@@ -7581,7 +7584,7 @@ Resize_SYZ3waitboss:
 		btst	#5,($FFFFF7A7).w	; has first chunk been broken?
 		beq.s	@end			; if not, branch
 		addq.b	#2,($FFFFF742).w
-		move.w	#$1A80+$1A00,($FFFFF72A).w	; right boundary
+		move.w	#$3480,($FFFFF72A).w	; right boundary
 
 		movem.l	d7/a0-a3,-(sp)
 		moveq	#$1B,d0			; load Unterhub boss pallete
@@ -7603,31 +7606,30 @@ Resize_SYZ3boss:
 		bne.s	@frantic		; if yes, branch
 		btst	#0,($FFFFF7A7).w	; has final hit been dealt?
 		beq.s	@frantic		; if not, branch
-		move.w	#$21C+$100,($FFFFF726).w ; lower boundary just enough to allow noobs not to die
+		move.w	#$31C,($FFFFF726).w	; lower boundary just enough to allow noobs not to die
 @frantic:
 		btst	#1,($FFFFF7A7).w	; has boss been defeated and deleted?
 		beq.s	@end			; if not, branch
 		addq.b	#2,($FFFFF742).w
-	;	jsr	PlayLevelMusic		; restart level music
 
 		jsr	SingleObjLoad
 		bne.s	@end
 		move.b	#$43,(a1)		; load end roller enemy
-		move.w	#$1EB0-1+$1A00,obX(a1)
-		move.w	#$00B0+3,obY(a1)
+		move.w	#$38AF,obX(a1)
+		move.w	#$00B3,obY(a1)
 		move.b	#2,obSubtype(a1)
 @end:
 		rts
 ; ===========================================================================
 
 Resize_SYZ3end:
-		cmpi.w	#$1A00+$1A00,($FFFFF700).w
+		cmpi.w	#$3400,($FFFFF700).w
 		blo.s	@left
 		move.w	#$21C,($FFFFF726).w
 @left:
 		move.b	#0,($FFFFFFA9).w	; clear boss flag
 		move.w	#$0000,($FFFFF72C).w	; top boundary
-		move.w	#$1F80+$1A00,($FFFFF72A).w	; right boundary
+		move.w	#$3980,($FFFFF72A).w	; right boundary
 		rts	
 ; ===========================================================================
 ; ---------------------------------------------------------------------------

@@ -7602,11 +7602,11 @@ Resize_SYZ3waitboss:
 ; ===========================================================================
 
 Resize_SYZ3boss:
-		frantic				; are we in frantic?
-		bne.s	@frantic		; if yes, branch
+	;	frantic				; are we in frantic?
+	;	bne.s	@frantic		; if yes, branch
 		btst	#0,($FFFFF7A7).w	; has final hit been dealt?
 		beq.s	@frantic		; if not, branch
-		move.w	#$31C,($FFFFF726).w	; lower boundary just enough to allow noobs not to die
+		move.w	#$2A4,($FFFFF726).w	; lower boundary just enough to allow noobs not to die
 @frantic:
 		btst	#1,($FFFFF7A7).w	; has boss been defeated and deleted?
 		beq.s	@end			; if not, branch
@@ -38842,12 +38842,12 @@ Obj75_BaseXOffset_Fast = $100
 Obj75_BaseY = $238
 Obj75_FloorHeight = $2A0
 Obj75_ArenaLeft = $2400
-Obj75_ArenaRight = Obj75_ArenaLeft+$F00
+Obj75_ArenaRight = Obj75_ArenaLeft+(15*$100) ; arena is 15 bridge chunks wide
 Obj75_SlamThreshold = $C
 
 ; balance
 Obj75_CasualGoBackUpSpeed = -$200
-Obj75_FranticXGoBackUpBonusSpeed = $38
+Obj75_FranticXGoBackUpBonusSpeed = $1C
 Obj75_BossSpeed_Casual = $3D0
 Obj75_BossSpeed_Frantic = $3D0
 Obj75_BossHealth_Casual  = 12
@@ -39060,6 +39060,7 @@ Obj75_LastHitDealt:
 		move.b	#0,obColType(a0)	; disable collission
 		bsr	Obj75_ResetBlack
 
+		; reset any blinking searchlights
 		lea	($FFFFD800).w,a1
 		moveq	#$3F,d0
 @loop:		cmpi.b	#$12,(a1)		; is current object a searchlight?
@@ -39069,6 +39070,26 @@ Obj75_LastHitDealt:
 		move.b	#6,obRoutine(a1)	; reset searchlight to normal
 @next		lea	$40(a1),a1
 		dbf	d0,@loop
+
+		; remove skull chunks on last hit as the camera is now going back down
+		move.l	a0,-(sp)
+		move.b	#$80,(RedrawEverything).w ; redraw everything without affecting the camera
+		jsr	WhiteFlash
+
+		moveq	#15-1,d4
+		move.w	#Obj75_ArenaLeft,d3
+@clearskulls:
+		move.w	d3,d0			; set X coordinate now
+		move.w	#$0200,d1		; Y coordinate is always the same
+		jsr	Sub_FindChunkByCoordinate
+		move.b	(a0),d0			; get found chunk ID
+		cmpi.b	#$46,d0			; is chunk a spoopy skull?
+		bne.s	@0			; if not, branch
+		move.b	#0,(a0)			; replace skull with void chunk
+@0:
+		addi.w	#$100,d3
+		dbf	d4,@clearskulls
+		move.l	(sp)+,a0
 		rts
 ; ===========================================================================
 

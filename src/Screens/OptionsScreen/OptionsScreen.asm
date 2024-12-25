@@ -51,10 +51,10 @@ Options_HasAHint:		rs.b	1
 ;  bit 1 = Disable SFX
 ;  bit 2 = Weak Camera Shake
 ;  bit 3 = Intense Camera Shake
-;  bit 4 = Count-Your-Mistakes Mode
+;  bit 4 = Classic/Remasterd Palettes
 ;  bit 5 = Space Golf/Antigrav Mode
-;  bit 6 = [unused]
-;  bit 7 = Classic/Remasterd Palettes
+;  bit 6 = Alt HUD - Total Seconds for Score
+;  bit 7 = Alt HUD - Errors for Deaths
 ; ---------------------------------------------------------------------------
 ; Screen Effects are kept in a separate address: $FFFFFF91
 ; bit 0 = piss filter
@@ -67,7 +67,7 @@ DefaultOptions  = %00000000	; extended camera not needed in widescreen
 DefaultOptions  = %00000001
 	endif
 
-DefaultOptions2 = %10000000	; remastered palettes
+DefaultOptions2 = %00010000	; remastered palettes
 ; ---------------------------------------------------------------------------
 
 OptionsScreen:				; XREF: GameModeArray

@@ -150,8 +150,8 @@ DH_Continue:
 		jsr	PalCycle_Load
 
 		; palette cycle to highlight letters
-		cmpi.b	#$24,(GameMode).w	; are we in the options menu?
-		beq.s	@noflicker		; if yes, don't do flicker cause it collides with the ERaZor banner
+	;	cmpi.b	#$24,(GameMode).w	; are we in the options menu?
+	;	beq.s	@noflicker		; if yes, don't do flicker cause it collides with the ERaZor banner
 		move.w	($FFFFFE0E).w,d0
 		lsl.w	#4,d0
 		btst	#7,(OptionsBits).w	; photosensitive mode?
@@ -714,13 +714,13 @@ Hints_List:	; note: these IDs are 1-based
 		dc.l	Hint_End_AfterFrantic		; $10
 		dc.l	Hint_LP_BlackBars		; $11
 		dc.l	Hint_End_BlackoutTeaser		; $12
-		dc.l	Hint_Options_FranticTutorial		; $13
+		dc.l	Hint_Options_FranticTutorial	; $13
 		dc.l	Hint_End_CinematicUnlock	; $14
 		dc.l	Hint_End_MotionBlurUnlock	; $15
 		dc.l	Hint_End_NonstopInhumanUnlock	; $16
 		dc.l	Hint_9SequenceBreak		; $17
 		dc.l	Hint_Options_Autoskip		; $18
-		dc.l	Hint_Options_CountAllMistakes	; $19
+		dc.l	Hint_Options_AlternateHUD	; $19
 
 ; ---------------------------------------------------------------
 ; Hints Scripts
@@ -1049,7 +1049,7 @@ Hint_4:
 		boxtxt	"WHILE STARTING A NEW"
 		boxtxt	"GAME, HOLD a IN THE"
 		boxtxt	"DIFFICULTY SELECT TO"
-		boxtxt	"ENABLE speedrun mode"
+		boxtxt	"ENABLE arcade mode"
 		boxtxt	"AND START RIGHT IN"
 		boxtxt	"night hill place!"
 		boxtxt_next
@@ -1487,25 +1487,53 @@ Hint_End_BlackoutTeaser:
 
 ;		 --------------------
 Hint_Options_Autoskip:
+		boxtxt	"arcade mode"
+		boxtxt_line
 		boxtxt	"GO STRAIGHT TO THE"
 		boxtxt	"NEXT LEVEL AFTER"
-		boxtxt	"BEATING ONE INSTEAD"
+		boxtxt	"BEATING ONE, INSTEAD"
 		boxtxt	"OF RETURNING TO"
-		boxtxt	"0BERHUB PLACE."
+		boxtxt	"0BERHUB PLACE!"
+		boxtxt_next
+
+		boxtxt	"ALL STORY SCREENS"
+		boxtxt	"WILL BE INSTANTLY"
+		boxtxt	"SKIPPED AS WELL."
 		boxtxt_line
-		boxtxt	"GREAT FOR SPEEDRUNS"
-		boxtxt	"OR REPLAYS!"
+		boxtxt	"GREAT FOR REPLAYS"
+		boxtxt	"AND VERY HIGHLY"
+		boxtxt	"RECOMMENDED FOR"
+		boxtxt	"speedruns!"
 		boxtxt_end
 
-Hint_Options_CountAllMistakes:
+Hint_Options_AlternateHUD:
+		boxtxt	"alternate hud"
+		boxtxt_line
+		boxtxt	"REPLACE SPECIFIC"
+		boxtxt	"HUD ELEMENTS WITH"
+		boxtxt	"ALTERNATE VERSIONS"
+		boxtxt	"THAT MIGHT BE MORE"
+		boxtxt	"INTERESTING FOR"
+		boxtxt	"YOUR PLAYSTYLE!"
+		boxtxt_next
+
+		boxtxt	"score TO seconds"
+		boxtxt_line
+		boxtxt	"REPLACES THE SCORE"
+		boxtxt	"IN THE TOP LEFT WITH"
+		boxtxt	"THE total seconds"
+		boxtxt	"AQUIRED THROUGHOUT"
+		boxtxt	"YOUR JOURNEY!"
+		boxtxt_next
+
+		boxtxt	"deaths TO errors"
+		boxtxt_line
 		boxtxt	"GETTING TELEPORTED"
 		boxtxt	"OR HURT WILL GET"
 		boxtxt	"TRACKED IN THE DEATH"
 		boxtxt	"COUNTER AS WELL."
-		boxtxt_line
-		boxtxt	"DON'T WORRY, THIS IS"
-		boxtxt	"COSMETIC-ONLY TO SEE"
-		boxtxt	"HOW YOU'RE DOING!"
+		boxtxt	"DON'T WORRY, YOU"
+		boxtxt	"WON'T ACTUALLY DIE!"
 		boxtxt_end
 
 ;		 --------------------

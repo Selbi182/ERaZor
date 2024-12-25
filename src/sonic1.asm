@@ -2116,7 +2116,7 @@ Pal_Sega2:	incbin	palette\sega2.bin
 ; ---------------------------------------------------------------------------
 LoadPalPointer:
 		lea	(PalPointers_Classic).l,a1	; use classic palettes
-		btst	#7,(OptionsBits2).w		; are remastered palettes enabled?
+		btst	#4,(OptionsBits2).w		; are remastered palettes enabled?
 		beq.s	@end				; if not, branch
 		lea	(PalPointers_Remastered).l,a1	; use remastered palettes
 @end:		
@@ -31377,7 +31377,7 @@ AddDeath2:
 ; ---------------------------------------------------------------------------
 
 AddFail:
-		btst	#4,(OptionsBits2).w	; is Count-All-Fumbles Mode enabled?
+		btst	#7,(OptionsBits2).w	; is Count-All-Fumbles Mode enabled?
 		beq.s	@end			; if not, nothing to do
 		tst.b	WhiteFlashCounter		; is white flash flag set?
 		bne.s	@end
@@ -44563,10 +44563,13 @@ Obj21_ShowHUD:
 Obj21_ChkScore:
 		cmpi.b	#1,$30(a0)		; is object set to SCORE?
 		bne.s	Obj21_ChkRings		; if not, branch
-		move.b	#1,obFrame(a0)		; use SCORE frame
 		move.w	#$80+$14,obScreenY(a0)		; set Y-position
 		move.w	#$80+$45,$36(a0)		; set target X-position
 		move.w	#$80+SCREEN_WIDTH+$11,obX(a0)	; set start X-position
+		move.b	#1,obFrame(a0)		; use SCORE frame
+		btst	#6,(OptionsBits2).w	; is speedrun timer enabled?
+		beq.w	Obj21_FrameSelected	; if not, branch
+		move.b	#$A,obFrame(a0)		; use SECS frame instead
 		bra.w	Obj21_FrameSelected	; skip
 
 Obj21_ChkRings:
@@ -44807,7 +44810,7 @@ Obj21_NoUpdate:
 		bne.s	@plural			; if not, branch
 		moveq	#7,d0			; use DEATH frame
 @plural:	
-		btst	#4,(OptionsBits2).w	; is Track-All-Fails Mode enabled?
+		btst	#7,(OptionsBits2).w	; is Track-All-Fails Mode enabled?
 		beq.s	@chkbosshud		; if not, branch
 		moveq	#8,d0			; use FUMBLES frame
 @chkbosshud:
@@ -44911,15 +44914,19 @@ Map_obj21:
 
 
 AddPoints:
+		btst	#6,(OptionsBits2).w	; is speedrun timer enabled?
+		bne.s	locret_1C6B6		; if yes, disable regular score system
+
+AddPoints_Force:
 		move.b	#1,($FFFFFE1F).w ; set score counter to	update
 		lea	($FFFFFFC0).w,a2
 		lea	($FFFFFE26).w,a3
 		add.l	d0,(a3)		; add d0*10 to the score
 		move.l	#999999,d1
-		cmp.l	(a3),d1		; is #999999 higher than the score?
+		cmp.l	(a3),d1		; are we below the score limit?
 		bhi.w	loc_1C6AC	; if yes, branch
-	;	move.l	d1,(a3)		; reset	score to #999999
-		move.l	#0,(a3)		; reset	score to #0
+	;	move.l	d1,(a3)		; reset	score to 999999
+		move.l	#0,(a3)		; reset	score to 0
 		move.l	d1,(a2)
 
 loc_1C6AC:
@@ -44929,7 +44936,14 @@ loc_1C6AC:
 		move.l	d0,(a2)
 
 locret_1C6B6:
-		rts	
+		rts
+; ---------------------------------------------------------------------------
+
+AddPoints_Timer:
+		btst	#6,(OptionsBits2).w	; is speedrun timer enabled?
+		beq.s	locret_1C6B6		; if not, nothing to do
+		moveq	#10,d0			; add 100 points to simulate a second
+		bra.s	AddPoints_Force		; apply score
 ; End of function AddPoints
 
 ; ---------------------------------------------------------------------------
@@ -45024,6 +45038,8 @@ Hud_ChkTime:
 		cmpi.b	#60,(a1)		; did we reach 60 frames?
 		blo.s	Hud_ChkLives		; if not, branch
 		move.b	#0,(a1)			; clear frame counter
+
+		jsr	AddPoints_Timer
 
 		addq.b	#1,-(a1)		; add 1 to seconds
 		cmpi.b	#100,(a1)		; did we reach 100 seconds?
@@ -47217,7 +47233,10 @@ ObjPos_Null:	dc.w    $FFFF,$0000,$0000
 ;	by ConvSym utility, otherwise debugger modules won't be able
 ;	to resolve symbol names.
 ; ---------------------------------------------------------------------------
-
+; Level Renderer
+		include	'modules\Level Renderer.asm'
+		; must be before the screen includes because they are quite hefty
+; ---------------------------------------------------------------------------
 ; Screens
 		include "Screens/ExitLogic.asm"
 		include "Screens/BackgroundEffects.asm"
@@ -47230,10 +47249,6 @@ ObjPos_Null:	dc.w    $FFFF,$0000,$0000
 		include	"Screens/TutorialBox/TutorialBox.asm"
 		include	"Screens/GameplayStyleScreen/GameplayStyleScreen.asm"
 		include "Screens/BlackBarsConfigScreen/BlackBarsConfigScreen.asm"
-; ---------------------------------------------------------------------------
-
-; Level Renderer
-		include	'modules\Level Renderer.asm'
 ; ---------------------------------------------------------------------------
 		
 ; Sound Driver (MegaPCM)

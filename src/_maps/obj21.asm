@@ -14,6 +14,7 @@ Obj21_Mappings:
 		dc.w	Obj21_Death-Obj21_Mappings	; [$7]
 		dc.w	Obj21_Fumbles-Obj21_Mappings	; [$8]
 		dc.w	Obj21_Boss-Obj21_Mappings	; [$9]
+		dc.w	Obj21_ScoreTime-Obj21_Mappings	; [$A]
 ; --------------------------------------------------------------------------------
 
 Obj21_Blank	dc.b 0
@@ -28,6 +29,15 @@ Obj21_Score:	dc.b 6
 		dc.b $F8, $05, $80, $20, $10	; Second part of Score Counter
 		dc.b $F8, $01, $80, $26, $20	; faked zero
 		dc.b $F8, $01, $80, $26, $28	; faked zero
+
+Obj21_ScoreTime:dc.b 6
+		dc.b $F9, $01, $80, $00, $C8	; S
+		dc.b $F9, $01, $80, $16, $D0	; E
+		dc.b $F9, $01, $80, $02, $D8	; C
+		dc.b $F9, $01, $80, $00, $E0	; S
+
+		dc.b $F8, $0D, $80, $18, $EA	; First part of Score Counter
+		dc.b $F8, $05, $80, $20, $0A	; Second part of Score Counter
 
 
 Obj21_Rings:	dc.b 4

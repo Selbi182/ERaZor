@@ -27,14 +27,15 @@ Options_MenuData:
 	dcScreenPos	$E000, OpBaseY+3, OpBaseX	; start on-screen position
 	dc.l	Options_ExtendedCamera_Redraw		; redraw handler
 	dc.l	Options_ExtendedCamera_Handle		; update handler
-	; Count your mistakes
+
+	; Arcade mode / Speedrun mode
 	dcScreenPos	$E000, OpBaseY+4, OpBaseX	; start on-screen position
-	dc.l	Options_TrackAllMistakes_Redraw		; redraw handler
-	dc.l	Options_TrackAllMistakes_Handle		; update handler
-	; Speedrun mode
-	dcScreenPos	$E000, OpBaseY+5, OpBaseX	; start on-screen position
 	dc.l	Options_Autoskip_Redraw			; redraw handler
 	dc.l	Options_Autoskip_Handle			; update handler
+	; Alternate HUD
+	dcScreenPos	$E000, OpBaseY+5, OpBaseX	; start on-screen position
+	dc.l	Options_AlternateHUD_Redraw		; redraw handler
+	dc.l	Options_AlternateHUD_Handle		; update handler
 	
 	; Flashy lights
 	dcScreenPos	$E000, OpBaseY+6, OpBaseX	; start on-screen position
@@ -88,32 +89,6 @@ Options_MenuData_End:
 
 Options_MenuData_NumItems:	equ	(Options_MenuData_End-Options_MenuData)/10
 
-
-; ===========================================================================
-; ---------------------------------------------------------------------------
-; Handler for bonus information when pressing A (specific options only)
-; ---------------------------------------------------------------------------
-
-Options_HandleAHint:
-	btst	#6,Joypad|Press		; is specifically A pressed?
-	beq.s	@end			; if not, branch
-
-	move.l	d0,-(sp)		; backup ID
-
-	jsr 	Pal_FadeOut		; darken background...
-	jsr 	Pal_FadeOut		; ...twice
-	moveq	#$1D,d0			; load tutorial box palette...
-	jsr	PalLoad2		; ...directly
-
-	move.l	(sp)+,d0		; restore ID
-	jsr	TutorialBox_Display	; VLADIK => Display hint
-
-	moveq	#0,d0			; refresh options pal directly
-	jsr	Options_LoadPal
-
-	addq.l	#4,sp			; skip remaining stuff in the option handler
-@end:
-	rts
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -236,7 +211,7 @@ Options_ExtendedCamera_Handle:
 
 Options_PaletteStyle_Redraw:
 	lea	@Str0(pc), a1
-	btst	#7, OptionsBits2
+	btst	#4, OptionsBits2
 	beq.s	@0
 	lea	@Str1(pc), a1
 @0:
@@ -262,7 +237,7 @@ Options_PaletteStyle_Handle:
 	andi.b	#$FC,d1			; is left, right, A, B, C, or Start pressed?
 	beq.w	@done			; if not, branch
 
-	bchg	#7, OptionsBits2	; toggle palette style
+	bchg	#4, OptionsBits2	; toggle palette style
 	bsr	Options_PlayRespectiveToggleSound
 
 	moveq	#0,d0			; write directly
@@ -273,47 +248,97 @@ Options_PaletteStyle_Handle:
 
 
 
+
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; "TRACK ALL MISTAKES" redraw function
+; "ALTERNATE HUD" redraw function
 ; ---------------------------------------------------------------------------
 ; INPUT:
 ;	a4	= `Options_DrawText_Normal` or `Options_DrawText_Highlighted`
 ; ---------------------------------------------------------------------------
 
-Options_TrackAllMistakes_Redraw:
-	lea	Options_Str_Off(pc), a1
-	btst	#4, OptionsBits2
+Options_AlternateHUD_Redraw:
+	moveq	#0,d0
+	btst	#6, OptionsBits2	; is total seconds enabled?
 	beq.s	@0
-	lea	Options_Str_On(pc), a1
+	addq.b	#1,d0
 @0:
+	btst	#7, OptionsBits2	; is count-your-mistakes mode enabled?
+	beq.s	@1
+	addq.b	#2,d0
+@1:
+	add.w	d0, d0
+	add.w	d0, d0				; d0 = ModeId * 4
+	movea.l	@AltHUDList(pc,d0), a1
 
  if def(__WIDESCREEN__)
-	Options_PipeString a4, "COUNT YOUR MISTAKES                  %<.l a1 str>", OpLength
+	Options_PipeString a4, "ALTERNATE HUD            %<.l a1 str>", OpLength
  else
-	Options_PipeString a4, "COUNT YOUR MISTAKES        %<.l a1 str>", OpLength
+	Options_PipeString a4, "ALTERNATE HUD  %<.l a1 str>", OpLength
  endif
 
 	rts
 
+; ---------------------------------------------------------------------------
+@AltHUDList:
+	dc.l	@Str_Mode00,@Str_Mode01,@Str_Mode10,@Str_Mode11
+
+@Str_Mode00:	dc.b	'            OFF',0
+@Str_Mode01:	dc.b	'  SCORE>SECONDS',0
+@Str_Mode10:	dc.b	'  DEATHS>ERRORS',0
+@Str_Mode11:	dc.b	'           BOTH',0
+		even
 
 ; ---------------------------------------------------------------------------
-; "TRACK ALL MISTAKES" handle function
+; "ALTERNATE HUD" handle function
 ; ---------------------------------------------------------------------------
 
-Options_TrackAllMistakes_Handle:
-	move.b	Joypad|Press,d1		; get button presses
-	andi.b	#$FC,d1			; is left, right, A, B, C, or Start pressed?
-	beq.w	@done			; if not, branch
+Options_AlternateHUD_Handle:
+	move.b	Joypad|Press,d1			; get button presses
+	andi.b	#$FC,d1				; is left, right, A, B, C, or Start pressed?
+	beq.w	@ret				; if not, branch
 
 	; hint on A
-	moveq	#$19,d0			; ID for the explanation textbox
-	bsr	Options_HandleAHint	; show explanation textbox if A is pressed
+	moveq	#$19,d0				; ID for the explanation textbox
+	bsr	Options_HandleAHint		; show explanation textbox if A is pressed
 
-	bchg	#4, OptionsBits2	; toggle track all mistakes modes
-	bsr	Options_PlayRespectiveToggleSound
+	moveq	#0,d0
+	btst	#6,(OptionsBits2).w
+	beq.s	@0
+	bset	#0,d0
+@0	btst	#7,(OptionsBits2).w
+	beq.s	@1
+	bset	#1,d0
+@1
+	btst	#iLeft, Joypad|Press		; is left pressed?
+	bne.s	@selectPrevious			; if yes, branch
+	addq.w	#1, d0				; use next mode
+	bra.s	@finalize
+
+@selectPrevious:
+	subq.w	#1, d0				; use previous mode
+
+@finalize:
+	andi.w	#%11, d0			; wrap modes
+
+	bclr	#6,(OptionsBits2).w	
+	btst	#0,d0
+	beq.s	@0x
+	bset	#6,(OptionsBits2).w
+@0x	
+	bclr	#7,(OptionsBits2).w
+	btst	#1,d0
+	beq.s	@1x
+	bset	#7,(OptionsBits2).w
+@1x	
+
 	st.b	Options_RedrawCurrentItem
-@done:	rts
+
+	tst.b	d0				; check if current selection is OFF
+	eori.b	#%00100,ccr			; invert Z flag (play off sound for off, on for anything else)
+	bsr	Options_PlayRespectiveToggleSound
+
+@ret:	rts
 
 
 ; ===========================================================================
@@ -332,9 +357,9 @@ Options_Autoskip_Redraw:
 @0:
 
  if def(__WIDESCREEN__)
-	Options_PipeString a4, "SPEEDRUN MODE                        %<.l a1 str>", OpLength
+	Options_PipeString a4, "ARCADE MODE                          %<.l a1 str>", OpLength
  else
-	Options_PipeString a4, "SPEEDRUN MODE              %<.l a1 str>", OpLength
+	Options_PipeString a4, "ARCADE MODE                %<.l a1 str>", OpLength
  endif
 
 	rts
@@ -1192,3 +1217,35 @@ Options_PlayRespectiveToggleSound:
 Options_Str_On:	dc.b	' ON', 0
 Options_Str_Off:dc.b	'OFF', 0
 	even
+
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Handler for bonus information when pressing A (specific options only)
+; ---------------------------------------------------------------------------
+
+Options_HandleAHint:
+	btst	#6,Joypad|Press		; is specifically A pressed?
+	beq.s	@end			; if not, branch
+
+	move.l	d0,-(sp)		; backup ID
+
+	moveq	#0,d0			; play option toggled on sound
+	bsr	Options_PlayRespectiveToggleSound
+
+	jsr 	Pal_FadeOut		; darken background...
+	jsr 	Pal_FadeOut		; ...twice
+	moveq	#$1D,d0			; load tutorial box palette...
+	jsr	PalLoad2		; ...directly
+
+	move.l	(sp)+,d0		; restore ID
+	jsr	TutorialBox_Display	; VLADIK => Display hint
+
+	moveq	#0,d0			; refresh options pal directly
+	jsr	Options_LoadPal
+
+	addq.l	#4,sp			; skip remaining stuff in the option handler
+@end:
+	rts
+
+; ---------------------------------------------------------------------------
+; ===========================================================================

@@ -150,6 +150,8 @@ DH_Continue:
 		jsr	PalCycle_Load
 
 		; palette cycle to highlight letters
+		cmpi.b	#$24,(GameMode).w	; are we in the options menu?
+		beq.s	@noflicker		; if yes, don't do flicker cause it collides with the ERaZor banner
 		move.w	($FFFFFE0E).w,d0
 		lsl.w	#4,d0
 		btst	#7,(OptionsBits).w	; photosensitive mode?
@@ -171,7 +173,8 @@ DH_Continue:
 		or.w	d1,d0
 		andi.w	#$CCE,d0
 		move.w	d0,($FFFFFB34).w
-		
+@noflicker:
+
 		; Check if it's over
 		tst.b	_DH_WindowObj	; object window dead?
 		bne.w	DH_MainLoop	; if not, branch

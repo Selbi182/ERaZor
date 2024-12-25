@@ -31,6 +31,7 @@ Options_VRAMBufferPoolPtr:	rs.w	1
 Options_DeleteSRAMCounter:	rs.b	1
 Options_RedrawCurrentItem:	rs.b	1
 Options_Exiting:		rs.b	1
+Options_HasAHint:		rs.b	1
 
 ; ---------------------------------------------------------------------------
 ; All options are kept in a single byte to save space (it's all flags anyway)
@@ -151,6 +152,8 @@ OptionsScreen:				; XREF: GameModeArray
 @cont:
 		jsr	BackgroundEffects_Setup
 		move.w	#$806,(BGThemeColor).w	; set theme color for background effects
+
+		moveq	#1,d0			; load to fade-in buffer
 		bsr	Options_LoadPal
 
 		clr.b	Options_Exiting
@@ -236,6 +239,7 @@ Options_InitState:
 		move.w	d0, ($FFFFFF96).w
 		move.b	d0, ($FFFFFF98).w
 		move.w	d0, ($FFFFFFB8).w
+		move.b	d0, Options_HasAHint
 		move.w	#21,($FFFFFF9A).w
 
 		move.b	#Options_DeleteSRAMInitialCount, Options_DeleteSRAMCounter
@@ -270,32 +274,36 @@ Options_SetDefaults:
 
 Options_IntialDraw:
 		; Render header and tool tip
-	;	lea	Options_DrawText_Highlighted(pc), a4
-		lea	Options_DrawText_Normal(pc), a4
-		lea	@ItemData_Header_Top(pc), a0
-		bsr	Options_RedrawMenuItem_Direct
+		bsr	Options_RedrawHeader
 
-		;lea	@ItemData_Header_Bottom(pc), a0
-		;bsr	Options_RedrawMenuItem_Direct
-		
 		; Render all interactive menu items
 		bra	Options_RedrawAllMenuItems
+; ===========================================================================
+
+Options_RedrawHeader:
+		lea	Options_DrawText_Normal(pc), a4
+		lea	@ItemData_Header_Plain(pc), a0
+
+		tst.b	Options_HasAHint
+		beq.s	@draw
+		lea	Options_DrawText_Highlighted(pc), a4
+		lea	@ItemData_Header_AHint(pc), a0
+@draw:
+		bra	Options_RedrawMenuItem_Direct
 
 ; ---------------------------------------------------------------------------
-@ItemData_Header_Top:
-		dcScreenPos $E000, 4, 0			; start on-screen position
-		dc.l	@DrawHeaderR			; redraw handler
-		
-@ItemData_Header_Bottom:
-		dcScreenPos $E000, 24, 2		; start on-screen position
-		dc.l	@DrawHeaderL			; redraw handler
-
+@ItemData_Header_Plain:
+		dcScreenPos $E000, 4, 1		; start on-screen position
+		dc.l	@DrawHeaderPlain		; redraw handler
+@ItemData_Header_AHint:
+		dcScreenPos $E000, 4, 1		; start on-screen position
+		dc.l	@DrawHeaderAHint		; redraw handler
 ; ---------------------------------------------------------------------------
-@DrawHeaderR:
-		Options_PipeString a4, '  <---------------------------------->'
+@DrawHeaderPlain:
+		Options_PipeString a4, '<------------------------------------>'
 		rts
-@DrawHeaderL:
-		Options_PipeString a4, '<-------------------------------------'
+@DrawHeaderAHint:
+		Options_PipeString a4, '<--------PRESS _` FOR DETAILS-------->'
 		rts
 
 ; ===========================================================================
@@ -384,11 +392,26 @@ Options_HandleUpDown:
 		move.b	#Options_DeleteSRAMInitialCount, Options_DeleteSRAMCounter
 
 		move.w	@prev_selection, -(sp)
-		;move.w	@current_selection, d0		; the same register currently
 		jsr	Options_RedrawMenuItem		; redraw current item
 		move.w	(sp)+, d0
 		jsr	Options_RedrawMenuItem		; redraw previously selected item
 
+		; hint to press A for the extra details on specific options
+		moveq	#0,d0				; hide A hint by default
+		move.w	($FFFFFF82).w,d1		; get currently selection
+		cmpi.w	#3,d1				; Track Your Mistakes mode selected?
+		beq.s	@ahint				; if yes, show A hint
+		cmpi.w	#4,d1				; Speedrun Mode selected?
+		beq.s	@ahint				; if yes, show A hint
+		; expand as necessary
+		bra.s	@redrawheader			; otherwise, hide A hint
+	@ahint:
+		moveq	#1,d0				; show A hint
+	@redrawheader:
+		move.b	d0,Options_HasAHint		; set state of A hint flag
+		bsr	Options_RedrawHeader		; redraw header accordingly
+
+	@playsound:
 		move.b	#$D8,d0				; play move sound
 		jmp	PlaySFX
 
@@ -541,6 +564,21 @@ Options_CharToTile:
 ; ---------------------------------------------------------------------------
 
 Options_LoadPal:
+		tst.b	d0
+		bne.s	@tobuffer
+		moveq	#2,d0		; load level select palette
+		jsr	PalLoad2
+
+		movem.l	a1-a2, -(sp)		; backup d0 to a2
+		lea	Pal_ERaZorBanner, a1	; set ERaZor banner's palette pointer
+		lea	$FFFFFBA0-$80, a2		; set palette location
+		rept 8
+			move.l	(a1)+, (a2)+
+		endr
+		movem.l	(sp)+, a1-a2		; restore d0 to a2
+		rts
+
+@tobuffer:
 		moveq	#2,d0		; load level select palette
 		jsr	PalLoad1
 

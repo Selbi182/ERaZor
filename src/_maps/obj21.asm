@@ -47,9 +47,9 @@ Obj21_AltRings:	dc.b 4
 Obj21_AltRings2: dc.b 4
 		dc.b $F8, $09, $C0, $30, $DF	; Rings Counter (Alternate pal 4)
 
-		dc.b $F9, $01, $A0, $06, $01	; R (Alternate)
-		dc.b $F9, $09, $A0, $0A, $09	; ING (Alternate)
-		dc.b $F9, $01, $A0, $00, $1D	; S (Alternate)
+		dc.b $F9, $01, $C0, $06, $01	; R (Alternate)
+		dc.b $F9, $09, $C0, $0A, $09	; ING (Alternate)
+		dc.b $F9, $01, $C0, $00, $1D	; S (Alternate)
 
 Obj21_Time:	dc.b 4
 		dc.b $F9, $09, $80, $10, $E0	; TIM

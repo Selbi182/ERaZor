@@ -91,6 +91,32 @@ Options_MenuData_NumItems:	equ	(Options_MenuData_End-Options_MenuData)/10
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
+; Handler for bonus information when pressing A (specific options only)
+; ---------------------------------------------------------------------------
+
+Options_HandleAHint:
+	btst	#6,Joypad|Press		; is specifically A pressed?
+	beq.s	@end			; if not, branch
+
+	move.l	d0,-(sp)		; backup ID
+
+	jsr 	Pal_FadeOut		; darken background...
+	jsr 	Pal_FadeOut		; ...twice
+	moveq	#$1D,d0			; load tutorial box palette...
+	jsr	PalLoad2		; ...directly
+
+	move.l	(sp)+,d0		; restore ID
+	jsr	TutorialBox_Display	; VLADIK => Display hint
+
+	moveq	#0,d0			; refresh options pal directly
+	jsr	Options_LoadPal
+
+	addq.l	#4,sp			; skip remaining stuff in the option handler
+@end:
+	rts
+
+; ===========================================================================
+; ---------------------------------------------------------------------------
 ; "GAMEPLAY STYLE" redraw function
 ; ---------------------------------------------------------------------------
 ; INPUT:
@@ -238,6 +264,10 @@ Options_PaletteStyle_Handle:
 
 	bchg	#7, OptionsBits2	; toggle palette style
 	bsr	Options_PlayRespectiveToggleSound
+
+	moveq	#0,d0			; write directly
+	jsr	Options_LoadPal		; refresh palette accordingly
+
 	st.b	Options_RedrawCurrentItem
 @done:	rts
 
@@ -277,17 +307,9 @@ Options_TrackAllMistakes_Handle:
 	beq.w	@done			; if not, branch
 
 	; hint on A
-	btst	#6,d1			; is specifically A pressed?
-	beq.s	@normal			; if not, branch
-	moveq	#$E,d0			; load FZ palette (cause tutorial boxes are built into SBZ)
-	jsr	PalLoad2		; load palette
-	moveq	#$19,d0
-	jsr	TutorialBox_Display	; VLADIK => Display hint
-	jsr	Options_LoadPal
-	jsr	Pal_FadeTo
-	rts
+	moveq	#$19,d0			; ID for the explanation textbox
+	bsr	Options_HandleAHint	; show explanation textbox if A is pressed
 
-@normal:
 	bchg	#4, OptionsBits2	; toggle track all mistakes modes
 	bsr	Options_PlayRespectiveToggleSound
 	st.b	Options_RedrawCurrentItem
@@ -327,17 +349,9 @@ Options_Autoskip_Handle:
 	beq.w	@ret				; if not, branch
 
 	; hint on A
-	btst	#6,d1				; is specifically A pressed?
-	beq.s	@normal				; if not, branch
-	moveq	#$E,d0				; load FZ palette (cause tutorial boxes are built into SBZ)
-	jsr	PalLoad2			; load palette
-	moveq	#$18,d0
-	jsr	TutorialBox_Display		; VLADIK => Display hint
-	jsr	Options_LoadPal
-	jsr	Pal_FadeTo
-	rts
+	moveq	#$18,d0				; ID for the explanation textbox
+	bsr	Options_HandleAHint		; show explanation textbox if A is pressed
 
-@normal:
 	bchg	#1, OptionsBits			; toggle Speedrun Mode
 	bsr	Options_PlayRespectiveToggleSound
 	st.b	Options_RedrawCurrentItem
@@ -795,6 +809,9 @@ Options_ScreenEffects_Handle:
 	tst.b	d0				; check if current selection is OFF
 	eori.b	#%00100,ccr			; invert Z flag (play off sound for off, on for anything else)
 	bsr	Options_PlayRespectiveToggleSound
+
+	moveq	#0,d0				; refresh pal directly
+	jmp	Options_LoadPal
 
 @ret:	rts
 

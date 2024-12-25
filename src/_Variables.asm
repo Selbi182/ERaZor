@@ -154,6 +154,7 @@ TutorialBoxId		equ	$FFFFFF6E			; b	requested tutorial box id
 
 BossHealth		equ	$FFFFFF75			; b	current health of a boss (not used by all bosses!)
 
+SpaceGolf		equ	$FFFFFF77			; b	space golf / antigrav in Star Agony Place
 
 Doors_Casual		equ	$FFFFFF8A			; b	bit field for beaten levels in casual
 Doors_Frantic		equ	$FFFFFF8B			; b	bit field for beaten levels in frantic
@@ -170,6 +171,8 @@ WhiteFlashCounter	equ	$FFFFFFB1			; b	number of remaining frames a white flash i
 RelativeDeaths		equ	$FFFFFFCA			; w	number of deaths since the player started the current level
 
 ExtCamShift		equ	$FFFFFFCE			; w	current signed pixel offset for the extended camera
+
+Inhuman			equ	$FFFFFFE7			; b	flag when Inhuman Mode is enabled
 
 	if def(__MD_REPLAY__)
 ; WARNING! MD Replay conflicts with SMPS RAM, but SMPS is disabled when `__MD_REPLAY__` is set

@@ -618,7 +618,7 @@ Deform_MZ:
 		move.w	CamXPos, d2
 
 	; scroll clouds automatically when inhuman mode is on
-	tst.b	($FFFFFFE7).w
+	tst.b	(Inhuman).w
 	bne.s	@do
 	tst.b	($FFFFF7CC).w	; are controls locked?
 	beq.s	@notinhuman
@@ -795,7 +795,7 @@ Deform_SLZ:
 @cont:
 		cmpi.w	#$302,($FFFFFE10).w
 		bne.s	@cont2
-		tst.b	($FFFFFF77).w
+		tst.b	(SpaceGolf).w
 		beq.s	@cont2
 
 		add.w	d2,d2
@@ -1164,7 +1164,7 @@ S_H_ExtendedCamera:
 		btst	#0,(OptionsBits).w	; is extended camera enabled?
 		beq.w	S_H_NoExtendedCam	; if not, you're lame and old-fashioned but k
 
-		tst.b	($FFFFFF77).w		; is antigrav enabled?
+		tst.b	(SpaceGolf).w		; is antigrav enabled?
 		beq.s	@noantigrav		; if not, branch
 		btst	#1,($FFFFD022).w	; is Sonic in air?
 		bne.w	S_H_ResetCamera		; if yes, reset
@@ -1179,7 +1179,7 @@ S_H_BuzzIgnore:
 		tst.b	($FFFFF7CD).w		; has Sonic jumped into a giant ring?
 		bne.w	S_H_ResetCamera		; if yes, branch
 
-		tst.b	($FFFFFF77).w		; is antigrav enabled?
+		tst.b	(SpaceGolf).w		; is antigrav enabled?
 		beq.s	@cont			; if not, branch
 		cmpi.w	#$501,($FFFFFE10).w
 		bne.s	@cont

@@ -1241,7 +1241,7 @@ loc_1A60:
 PalCycle_SAP:
 		cmpi.w	#$302,($FFFFFE10).w	; are we in SAP?
 		bne.w	PCSLZ_Red_End		; if not, branch
-		tst.b	($FFFFFF77).w		; is antigrav enabled?
+		tst.b	(SpaceGolf).w		; is antigrav enabled?
 		beq.w	PCSLZ_Red_End		; if not, branch
 
 		bsr	BuzzWirePal		; apply/correct buzz wire palette
@@ -2332,6 +2332,7 @@ PalPointers_Classic:
 	dc.l PalC_SYZ_Unterhub,	$FB20 0017	; $1A
 	dc.l PalC_SYZ_UnterBoss,$FB20 0017	; $1B
 	dc.l PalC_SpecialUnreal,$FB00 001F	; $1C
+	dc.l Pal_TutorialBox,	$FB20 0005	; $1D
 	even
 
 PalPointers_Remastered:
@@ -2365,6 +2366,7 @@ PalPointers_Remastered:
 	dc.l PalR_SYZ_Unterhub,	$FB20 0017	; $1A
 	dc.l PalR_SYZ_UnterBoss,$FB20 0017	; $1B
 	dc.l PalR_SpecialUnreal,$FB00 001F	; $1C
+	dc.l Pal_TutorialBox,	$FB20 0005	; $1D
 	even
 
 ; ---------------------------------------------------------------------------
@@ -2425,6 +2427,7 @@ Pal_SegaBG:		incbin	palette\sega_bg.bin
 Pal_ERaZorBanner:	incbin	palette\ERaZor.bin
 Pal_SYZGray:		incbin	palette\syz_gray.bin
 Pal_Black:		incbin	palette\black.bin
+Pal_TutorialBox:	incbin	palette\tutorialbox.bin
 
 ; ---------------------------------------------------------------------------
 ; Subroutine to	delay the program by ($FFFFF62A) frames
@@ -2795,14 +2798,11 @@ Sega_WaitEnd:
 		move.b	#$D3,d0
 		bsr	PlaySFX ; play peelout release sound
 		move.b	#1,($FFFFFFBE).w
-		move.w	#$000,Pal_Active
-		move.w	#$000,($FFFFFB02).w
-		move.w	#$000,($FFFFFB02).w
-		move.w	#$222,($FFFFFB0C).w
-		jsr	Pal_MakeBlackWhite
+		jsr	Pal_CutToBlack
 		
 		lea	($FFFFFB20).w,a0
-		move.w	#$E80,d0
+	;	move.w	#$E80,d0		; paint Sega logo blue
+		move.w	#$22E,d0		; paint Sega logo red
 		move.w	#$10*3-1,d1
 @white:		move.w	d0,(a0)+
 		dbf	d1,@white
@@ -3637,8 +3637,8 @@ Level_GetBgm:
 		move.b	#$99,d0			; play introduction music
 		jsr	PlayBGM
 
-		moveq	#$E,d0			; use FZ palette
-		bsr	PalLoad2		; load palette (based on d0)
+		moveq	#$1D,d0			; load tutorial box palette...
+		jsr	PalLoad2		; ...directly
 		move.w	#$EC0,(BGThemeColor).w	; set theme color for background effects
 
 		moveq	#10|_DH_WithOwnBG,d0	; VLADIK => Load hint number
@@ -4806,7 +4806,7 @@ ClearEverySpecialFlag:
 		move.b	d0,($FFFFFF73).w
 		move.w	d0,($FFFFFF74).w
 		move.b	d0,($FFFFFF76).w
-		move.b	d0,($FFFFFF77).w
+		move.b	d0,(SpaceGolf).w
 		move.l	d0,($FFFFFF78).w
 		move.l	d0,($FFFFFF7C).w
 		move.b	d0,($FFFFFF7D).w
@@ -4830,7 +4830,7 @@ ClearEverySpecialFlag:
 		move.l	d0,($FFFFFFD6).w
 		move.b	d0,($FFFFFFE1).w
 		move.b	d0,($FFFFFFE5).w
-		move.b	d0,($FFFFFFE7).w
+		move.b	d0,(Inhuman).w
 		move.b	d0,($FFFFFFEB).w
 		move.b	d0,($FFFFFFF9).w
 		bclr	#2,(ScreenFuzz).w
@@ -6977,7 +6977,6 @@ Resize_MZ1:
 		addq.b	#2,($FFFFF742).w
 		move.b	#$E0,d0			; fade out music
 		bsr	PlayCommand
-		move.b	#1,($FFFFFFE7).w	; enable inhuman mode in case it wasn't alread
 		lea	(@PLC_EggmanRP).l,a1
 		jsr	LoadPLC_Direct
 
@@ -7007,6 +7006,8 @@ Resize_MZ1:
 		blo.s	@end
 		cmpi.w	#$560,($FFFFD00C).w
 		blo.s	@end
+
+		move.b	#1,(Inhuman).w	; enable inhuman mode in case it wasn't alread
 
 		move.w	#$9E,d0
 		jsr	PlayBGM	; play final boss music for the meme
@@ -7250,7 +7251,7 @@ Resize_SLZ3:
 ; ---------------------------------------------------------------------------
 
 @sapending:
-		tst.b	($FFFFFF77).w		; antigrav enabled? (sign post already touched)
+		tst.b	(SpaceGolf).w		; antigrav enabled? (sign post already touched)
 		beq.w	@end			; if not, branch
 		frantic				; are we in frantic?
 		bne.w	@end			; "training wheels don't exist."
@@ -9169,7 +9170,7 @@ Obj18_NoMovingPlatforms:
 		move.b	#0,($FFFFF7CC).w	; unlock controls
 		btst	#4,(OptionsBits).w	; is nonstop inhuman enabled?
 		bne.s	@nonstop		; if yes, branch
-		move.b	#1,($FFFFFF77).w	; make sure antigrav stays enabled
+		move.b	#1,(SpaceGolf).w	; make sure antigrav stays enabled
 @nonstop:
 		tst.b	obFrame(a0)		; has checkpoint already been touched?
 		bne.s	Obj18_NoCheckpoint	; if yes, branch
@@ -9972,7 +9973,7 @@ Obj1C_Main:				; XREF: Obj1C_Index
 
 		cmpi.b	#1,obSubtype(a0)	; is this the A hint button?
 		bne.s	@notAhint		; if not, branch
-		tst.b	($FFFFFFE7).w		; is inhuman mode enabled yet?
+		tst.b	(Inhuman).w		; is inhuman mode enabled yet?
 		bne.s	@notAhint		; if yes, branch
 		rts				; don't display until S monitor is destroyed
 
@@ -11750,7 +11751,7 @@ Obj1F_Action:				; XREF: Obj1F_Index
 		beq.s	Obj1F_NotInhumanCrush	; if yes, branch
 
 Obj1F_NoHome:
-		tst.b	($FFFFFFE7).w		; is inhuman mode on?
+		tst.b	(Inhuman).w		; is inhuman mode on?
 		bne.s	Obj1F_NotInhumanCrush	; if not, branch
 		tst.b	WhiteFlashCounter		; is inhuman crush counter empty?
 		beq.s	Obj1F_NotInhumanCrush	; if yes, branch
@@ -11924,7 +11925,7 @@ Obj1F_BossDelete:
 		clr.l	($FFFFFE22).w			; clear time
 		ori.b	#1,($FFFFFE1E).w 		; update time counter
 		clr.b	($FFFFFE2C).w			; clear shield
-		clr.b	($FFFFFFE7).w			; disable inhuman mode
+		clr.b	(Inhuman).w			; disable inhuman mode
 
 		move.b	#2,($FFFFFFD4).w		; set flag 4, 2
 		move.b	#0,($FFFFF7AA).w		; unlock screen
@@ -13695,7 +13696,7 @@ Obj4B_NotGHZ1:
 		movem.l	(sp)+,d7/a1-a3
 
 Obj4B_NotGHZ2:
-		clr.b	($FFFFFFE7).w
+		clr.b	(Inhuman).w
 		bsr	SingleObjLoad
 		bne.w	Obj4B_PlaySnd
 		move.b	#$7C,0(a1)	; load giant ring flash	object
@@ -14097,7 +14098,7 @@ loc_A1EC:				; XREF: Obj26_Solid
 		beq.w	loc_A25C
 		tst.w	obVelY(a1)
 		bmi.s	loc_A20A
-	;	tst.b	($FFFFFFE7).w
+	;	tst.b	(Inhuman).w
 	;	bne.s	loc_A25C
 	
 		cmpi.b	#%01,($FFFFFFEB).w	; is Sonic jumpdashing (but not double jumping)?
@@ -14326,22 +14327,6 @@ Obj2E_ChkSonic: ; =P monitors
 		jmp	PlaySFX			; and yeah, that's about it
 ; ===========================================================================
 
-; ---------------------------------------------------------------------------
-; Sonic speed values
-; (I put them here cause this is the first instance in the code)
-Sonic_TopSpeed 			= $A00
-Sonic_Acceleration		= $F
-Sonic_Deceleration		= $80
-
-Sonic_TopSpeed_Water 		= Sonic_TopSpeed / 2
-Sonic_Acceleration_Water	= Sonic_Acceleration / 2
-Sonic_Deceleration_Water	= Sonic_Deceleration / 2
-
-Sonic_TopSpeed_Shoes		= Sonic_TopSpeed + $680
-Sonic_Acceleration_Shoes	= Sonic_Acceleration * 2
-Sonic_Deceleration_Shoes	= Sonic_Deceleration * 2
-; ---------------------------------------------------------------------------
-
 Obj2E_ChkShoes:
 		cmpi.b	#3,d0		; does monitor contain speed shoes?
 		bne.s	Obj2E_ChkShield
@@ -14366,7 +14351,7 @@ Obj2E_ChkShoes:
 Obj2E_ChkShield:
 		cmpi.b	#4,d0		; does monitor contain a shield?
 		bne.s	Obj2E_ChkInvinc
-		tst.b	($FFFFFFE7).w	; has sonic destroyed a S monitor?
+		tst.b	(Inhuman).w	; has sonic destroyed a S monitor?
 		bne.s	Obj2E_ChkInvinc	; if yes, don't give sonic a shield
 
 		tst.b	($FFFFFE2C).w		; is sonic already having a shield?
@@ -14384,7 +14369,7 @@ Obj2E_Shield_NoBonus:
 Obj2E_ChkInvinc:
 		cmpi.b	#5,d0		; does monitor contain invincibility?
 		bne.s	Obj2E_ChkRings
-		tst.b	($FFFFFFE7).w	; has sonic destroyed a S monitor?
+		tst.b	(Inhuman).w	; has sonic destroyed a S monitor?
 		bne.s	Obj2E_ChkRings	; if yes, don't give sonic invinciblility
 		move.b	#1,($FFFFFE2D).w ; make	Sonic invincible
 		move.w	#20*60,($FFFFD032).w ; time limit for the power-up (20 seconds)
@@ -14422,7 +14407,7 @@ Obj2E_ChkS:
 		cmpi.b	#7,d0		; does monitor contain 'S'
 		bne.w	Obj2E_ChkP
 
-	;	tst.b	($FFFFFFE7).w		; has a S monitor already been broken?
+	;	tst.b	(Inhuman).w		; has a S monitor already been broken?
 	;	bne.w	Obj2E_ChkEnd		; if yes, branch
 
 
@@ -14440,9 +14425,12 @@ Obj2E_ChkS:
 		addi.w	#100,($FFFFFE20).w	; give 100 rings
 		ori.b	#1,($FFFFFE1D).w	; update rings counter
 @noob:
-		movem.l	d0-a1,-(sp)		; backup
-
 		jsr	WhiteFlash		; do white flash to distract from all the stuff happening here
+
+		tst.b	(Inhuman).w		; was inhuman mode already on?
+		bne.s	@notruinedplace		; if yes, branch
+
+		movem.l	d0-a1,-(sp)		; backup
 
 		; open up entryway and block off the way back offscreen
 		move.w	#$1100,d0
@@ -14462,7 +14450,6 @@ Obj2E_ChkS:
 		movem.l	(sp)+,d0-a1		; restore
 
 @notruinedplace:
-		move.b	#1,($FFFFFFE7).w	; enable inhuman mode
 		clr.b	($FFFFFE2D).w		; remove invincibility
 		clr.b	($FFFFFE2C).w		; remove shield
 
@@ -14470,13 +14457,19 @@ Obj2E_ChkS:
 		beq.s	@inhumanmusic		; if yes, branch
 		cmpi.w	#$200,($FFFFFE10).w	; are we in Ruined Place?
 		bne.s	@playsfx		; if not, branch
+		cmpi.w	#$11C0,obX(a0)		; is this from the main S monitor?
+		bne.s	@playsfx		; if not, don't play music
 
 @inhumanmusic:	move.w	#$9F,d0			; set song $9F
-		jmp	PlayBGM
+		jsr	PlayBGM
+		bra.s	@setinhumanflag
 
 @playsfx:	move.w	#$C3,d0			; play special stage entry sound
-		jmp	PlaySFX
+		jsr	PlaySFX
 
+@setinhumanflag:
+		move.b	#1,(Inhuman).w	; enable inhuman mode
+		rts
 ; ===========================================================================
 Obj2E_SpikesBlood:
 	dc.l	ArtKospM_SpikesBlood
@@ -16016,7 +16009,7 @@ Obj31_MakeStomper:			; XREF: Obj31_Main
 		move.b	#$38,obActWid(a1)
 		move.b	#$90,obColType(a1)
 		addq.w	#1,d1
-		tst.b	($FFFFFFE7).w
+		tst.b	(Inhuman).w
 		beq.s	loc_B76A		; if not, branch
 		ori.w	#$6000,obGfx(a1)	; use palette line four from now now
 
@@ -16574,12 +16567,12 @@ loc_BDD6:
 		cmpi.b	#$2,($FFFFFE11).w	; specifically FP?
 		beq.w	@Explode		; if yes, branch
 
-		tst.b	($FFFFFF77).w		; is antigrav already enabled?
+		tst.b	(SpaceGolf).w		; is antigrav already enabled?
 		bne.w	Obj32_ShowPressed	; if yes, branch
-		move.b	#1,($FFFFFF77).w	; enable antigrav ability
-		tst.b	($FFFFFFE7).w		; did the player make it here with inhuman still enabled?
+		move.b	#1,(SpaceGolf).w	; enable antigrav ability
+		tst.b	(Inhuman).w		; did the player make it here with inhuman still enabled?
 		beq.s	@notinhuman		; if not, branch
-		clr.b	($FFFFFFE7).w		; disable inhuman mode
+		clr.b	(Inhuman).w		; disable inhuman mode
 		movem.l	d7/a1-a3,-(sp)
 		moveq	#3,d0
 		jsr	PalLoad2		; load Sonic palette
@@ -16609,9 +16602,9 @@ loc_BDD6:
 
 @notnonstopinhuman:
 		move.w	#-$1000,d1		; default speed
-		tst.b	($FFFFFF77).w		; is antigrav already enabled?
+		tst.b	(SpaceGolf).w		; is antigrav already enabled?
 		bne.w	@Explode		; if yes, branch
-		move.b	#1,($FFFFFF77).w	; enable antigrav ability
+		move.b	#1,(SpaceGolf).w	; enable antigrav ability
 		move.b	#1,($FFFFF7CC).w	; lock controls
 		clr.w	($FFFFD010).w		; shoot sonic straight up
 		clr.l	($FFFFF602).w		; clear any remaining button presses
@@ -17878,7 +17871,7 @@ Obj36_Main:				; XREF: Obj36_Index
 Obj36_Solid:				; XREF: Obj36_Index
 	;	cmpi.w	#$502,($FFFFFE10).w	; is level FP?
 	;	beq.w	Obj36_ExplodeFP		; if yes, branch
-		tst.b	($FFFFFFE7).w		; is inhuman mode on?
+		tst.b	(Inhuman).w		; is inhuman mode on?
 		beq.s	Obj36_NotInhuman	; if not, branch
 		cmpi.w	#$200,($FFFFFE10).w	; are we in Ruined Place?
 		bne.s	Obj36_NotInhuman	; if not, branch
@@ -17979,7 +17972,7 @@ Obj36_Hurt:				; XREF: Obj36_SideWays; Obj36_Upright
 @nottutorial:
 		tst.b	($FFFFFE2D).w	; is Sonic invincible?
 		bne.w	Obj36_Display	; if yes, branch
-		tst.b	($FFFFFFE7).w		; is inhuman mode on?
+		tst.b	(Inhuman).w		; is inhuman mode on?
 		beq.w	Obj36_NotInhuman2	; if not, branch
 		cmpi.w	#$200,($FFFFFE10).w	; is level MZ1?
 		bne.w	Obj36_NotInhuman2	; if not, branch
@@ -18291,7 +18284,7 @@ locret_D180:
 ; ===========================================================================
 
 Obj3C_ChkRoll:				; XREF: Obj3C_Solid
-		tst.b	($FFFFFFE7).w
+		tst.b	(Inhuman).w
 		bne.s	Obj3C_Ok
 		cmpi.w	#$001,($FFFFFE10).w	; is this GHZ2 (intro level)?
 		beq.s	Obj3C_Ok 		; if yes, branch
@@ -18547,7 +18540,7 @@ ObjectFall_Sonic:
 
 		; OG antigrav
 @OFS_ReverseGravity:
-		tst.b	($FFFFFF77).w		; is antigrav enabled?
+		tst.b	(SpaceGolf).w		; is antigrav enabled?
 		beq.w	@OFS_FallEnd		; if not, branch
 		tst.b	(DyingFlag).w		; is Sonic dying?
 		bne.w	@OFS_FallEnd		; if yes, make sure Sonic doesn't fly into orbit and never returns
@@ -18881,6 +18874,9 @@ Obj41_Powers:	dc.w -$1000		; power	of red spring
 Obj41_Up:				; XREF: Obj41_Index
 		cmpi.w	#$501,($FFFFFE10).w
 		bne.s	@cont
+		tst.b	(DyingFlag).w		; is Sonic dying?
+		bne.s	Obj41_Up_Return		; if yes, branch
+
 		lea	($FFFFD000).w,a1
 		move.w	obX(a1),d0		; get Sonic's X-pos
 		sub.w	obX(a0),d0		; substract the X-pos from the current object from it
@@ -19081,7 +19077,7 @@ Obj42_Main:				; XREF: Obj42_Index
 		move.b	#8,obWidth(a0)
 
 Obj42_Action:				; XREF: Obj42_Index
-		tst.b	($FFFFFFE7).w
+		tst.b	(Inhuman).w
 		bne.s	Obj42_NotInhumanCrush
 		tst.b	WhiteFlashCounter
 		beq.s	Obj42_NotInhumanCrush
@@ -20158,8 +20154,6 @@ Obj12_Animate:
 		ble.w	@end				; if yes, don't bump
 
 		bsr	BumpSonic			; bump Sonic away
-		move.w	#$B4,d0
-		jsr	PlaySFX	 	; play bumper sound
 
 		jsr	SingleObjLoad2			; load an explosion
 		bne.w	@end
@@ -20480,7 +20474,7 @@ Obj0D_Touch:				; XREF: Obj0D_Index
 
 		cmpi.w	#$200,($FFFFFE10).w
 		bne.s	@notrp
-		clr.b	($FFFFFFE7).w		; disable Inhuman Mode
+		clr.b	(Inhuman).w		; disable Inhuman Mode
 		move.b	#1,($FFFFFE2D).w	; make Sonic invincible (to avoid bs deaths)
 		move.w	d7,-(sp)		; back up d7
 		moveq	#3,d0			; load Sonic's palette
@@ -20492,7 +20486,7 @@ Obj0D_Touch:				; XREF: Obj0D_Index
 		cmpi.w	#$302,($FFFFFE10).w
 		bne.s	locret_EBBA
 		move.w	#$0780,($FFFFD000+obGfx).w	; force Sonic to use palette line 1 again
-		clr.b	($FFFFFF77).w		; disable antigrav
+		clr.b	(SpaceGolf).w		; disable antigrav
 		move.w	d7,-(sp)		; back up d7
 		moveq	#3,d0			; load Sonic's palette
 		jsr	PalLoad2		; restore sonic's palette
@@ -21126,6 +21120,18 @@ Obj40_Action:				; XREF: Obj40_Index
 
 ; ---------------------------------------------------------------------------
 ; Routine to mark an enemy/monitor/ring	as destroyed
+; ---------------------------------------------------------------------------
+
+SimpleOffscreenCheck:
+		move.w	obX(a0),d0
+		andi.w	#$FF80,d0
+		move.w	($FFFFF700).w,d1
+		subi.w	#$80,d1
+		andi.w	#$FF80,d1
+		sub.w	d1,d0
+		cmpi.w	#$280,d0
+		bhi.w	DeleteObject
+		bra.w	DisplaySprite
 ; ---------------------------------------------------------------------------
 
 MarkObjGone:
@@ -24032,7 +24038,7 @@ Obj71_Solid:				; XREF: Obj71_Index
 		bne.s	@notsap			; if not, branch
 		cmpi.b	#$72,obSubtype(a0)	; is this the one for the door?
 		beq.s	@pmonitor		; if yes, branch
-		tst.b	($FFFFFF77).w		; is antigrav enabled?
+		tst.b	(SpaceGolf).w		; is antigrav enabled?
 		bne.s	Obj71_ChkDel		; if yes, disable block
 		bra.s	@notsap
 @pmonitor:
@@ -27094,7 +27100,7 @@ Obj02_DisplayE:
 		bmi.s	Obj02_DE_No			; if yes, branch
 		subq.w	#1,obScreenY(a0)		; move up
 
-Obj02_DE_No:		
+Obj02_DE_No:	
 		jmp	DisplaySprite			; jump to DisplaySprite
 ; ===========================================================================
 
@@ -27504,19 +27510,19 @@ Obj06_DoHardPartSkip:
 @checksap:
 		cmpi.w	#$302,($FFFFFE10).w	; are we in Star Agony Place?
 		bne.s	@checkfp		; if not, branch
-		tst.b	($FFFFFF77).w		; was antigrav already enabled?
+		tst.b	(SpaceGolf).w		; was antigrav already enabled?
 		bne.s	@checkfp		; if yes, branch
-		move.b	#1,($FFFFFF77).w	; enable antigrav
+		move.b	#1,(SpaceGolf).w	; enable antigrav
 		jsr	SAP_LoadSonicPal	; load Sonic's antigrav palette
 		move.b	#$96,d0			; play music
 		jsr	PlayBGM
 
 @checkfp:
-		tst.b	($FFFFFFE7).w		; is Sonic in Inhuman Mode?
+		tst.b	(Inhuman).w		; is Sonic in Inhuman Mode?
 		beq.s	@regularhps		; if not, branch
 		cmpi.w	#$502,($FFFFFE10).w	; is this FP?
 		beq.s	@regularhps		; if yes, you get to keep your toy
-		clr.b	($FFFFFFE7).w		; disable Inhuman Mode
+		clr.b	(Inhuman).w		; disable Inhuman Mode
 		move.w	d7,-(sp)		; back up d7
 		moveq	#3,d0			; load Sonic's palette
 		jsr	PalLoad2		; restore sonic's palette
@@ -27575,7 +27581,7 @@ Obj06_Locations_LP:
 ; ---------------------------------------------------------------------------
 
 Obj06_InfoBox:
-		tst.b	($FFFFFF77).w		; is antigrav enabled?
+		tst.b	(SpaceGolf).w		; is antigrav enabled?
 		bne.s	@allowairborne		; if yes, branch
 		move.b	($FFFFF602).w,d0	; get button helds
 		andi.b	#3,d0			; is up/down held?
@@ -27623,7 +27629,7 @@ Obj06_ChkA:
 
 		cmpi.b	#9,d0			; og anti-grav text?
 		bne.s	@chkescape		; if not, branch
-		tst.b	($FFFFFF77).w		; antigrav enabled?
+		tst.b	(SpaceGolf).w		; antigrav enabled?
 		bne.s	@chkescape		; if yes, all good
 		moveq	#$17,d0			; otherwise, you dirty sequence breaker
 
@@ -27684,8 +27690,8 @@ UberhubEasteregg:
 		jsr	SineWavePalette
 
 		movem.l	d7/a1-a3,-(sp)
-		moveq	#$18,d0			; load FZ palette (cause tutorial boxes are built into SBZ)
-		jsr	PalLoad2
+		moveq	#$1D,d0			; load tutorial box palette...
+		jsr	PalLoad2		; ...directly
 		movem.l	(sp)+,d7/a1-a3
 		
 		moveq	#$FFFFFF88,d0		; play special stage jingle...
@@ -27863,11 +27869,11 @@ AfterImage:
 		bne.w	After_Return		; if yes, branch
 		cmpi.b	#$18,(GameMode).w	; is this the ending sequence?
 		beq.s	After_DoAfter		; if yes, branch
-		tst.b	($FFFFFFE7).w		; is inhuman mode on?
+		tst.b	(Inhuman).w		; is inhuman mode on?
 		bne.w	After_DoAfter		; if yes, branch
 		tst.b	($FFFFFFAD).w		; is Sonic performing a jumpdash or is on a spring?
 		bne.w	After_DoAfter		; if yes, branch
-		tst.b	($FFFFFF77).w		; antigrav enabled?
+		tst.b	(SpaceGolf).w		; antigrav enabled?
 		beq.s	@cont
 		btst	#1,obStatus(a0)		; airborne?
 		bne.s	After_DoAfter
@@ -27921,6 +27927,19 @@ After_Return:
 
 ; ---------------------------------------------------------------------------
 ; Object 01 - Sonic
+; ---------------------------------------------------------------------------
+; Sonic speed values
+Sonic_TopSpeed 			equ $A00
+Sonic_Acceleration		equ $F
+Sonic_Deceleration		equ $80
+
+Sonic_TopSpeed_Water 		equ Sonic_TopSpeed / 2
+Sonic_Acceleration_Water	equ Sonic_Acceleration / 2
+Sonic_Deceleration_Water	equ Sonic_Deceleration / 2
+
+Sonic_TopSpeed_Shoes		equ Sonic_TopSpeed + $680
+Sonic_Acceleration_Shoes	equ Sonic_Acceleration * 2
+Sonic_Deceleration_Shoes	equ Sonic_Deceleration * 2
 ; ---------------------------------------------------------------------------
 
 Obj01:					; XREF: Obj_Index
@@ -28228,7 +28247,7 @@ Sonic_Display:				; XREF: loc_12C7E
 		tst.w	($FFFFFE10).w		; is level GHZ1?
 		bne.w	S_D_NoTeleport		; if not, branch
 
-		tst.b	($FFFFFFE7).w		; is inhuman mode on?
+		tst.b	(Inhuman).w		; is inhuman mode on?
 		bne.w	S_D_NoTeleport		; if yes, branch
 
 		cmpi.w	#$1BB0,obX(a0)		; is Sonic past the X-location $1BB0?
@@ -28368,23 +28387,27 @@ Obj01_JD_Minus:
 Obj01_ChkS:
 		btst	#4,(OptionsBits).w	; is nonstop inhuman enabled?
 		beq.s	@chkspacegolf		; if not, branch
-		ori.b	#1,($FFFFFFE7).w 	; enable inhuman mode automatically. have fun, nerd
+		ori.b	#1,(Inhuman).w 	; enable inhuman mode automatically. have fun, nerd
 
 @chkspacegolf:
 		btst	#5,(OptionsBits2).w	; is nonstop space golf enabled?
 		beq.s	Obj01_Inhuman		; if not, branch
-		tst.b	($FFFFFF77).w
+		tst.b	(SpaceGolf).w
 		bne.s	Obj01_Inhuman
-		move.b	#1,($FFFFFF77).w	; enable space golf. have fun, I guess
-		jsr	SAP_LoadSonicPal	; load Sonic's antigrav palette
+		move.b	#1,(SpaceGolf).w	; enable space golf. have fun, I guess
+	;	jsr	SAP_LoadSonicPal	; load Sonic's antigrav palette
 
 Obj01_Inhuman:
-		tst.b	($FFFFFFE7).w		; is inhuman mode enabled?
+		tst.b	(Inhuman).w		; is inhuman mode enabled?
 		beq.s	Obj01_ChkInvin		; if not, branch	
 		move.b	#0,($FFFFFE2C).w	; make sure sonic has no shield
-		add.w	#$0100,($FFFFFB04)	; increase Sonic's palette (color 3)
-		add.w	#$0100,($FFFFFB06)	; increase Sonic's palette (color 4)
-		add.w	#$0100,($FFFFFB08)	; increase Sonic's palette (color 5)
+
+		; inhuman palette cycle
+		move.w	#$100,d0
+		add.w	d0,($FFFFFB04)	; increase Sonic's palette (color 3)
+		add.w	d0,($FFFFFB06)	; increase Sonic's palette (color 4)
+		add.w	d0,($FFFFFB08)	; increase Sonic's palette (color 5)
+	;	sub.w	d0,($FFFFFB0A)	; decrease Sonic's palette (color 6)
 		
 		; frantic mode ring drain in RP
 		frantic				; are we in frantic?
@@ -29279,7 +29302,7 @@ Boundary_Bottom_locret:
 BB_NotGHZ2:
 		cmpi.w	#$000,($FFFFFE10).w	; is level GHZ1?
 		bne.s	KillSonic_JMP		; if not, branch
-		tst.b	($FFFFFFE7).w		; is inhuman mode on?
+		tst.b	(Inhuman).w		; is inhuman mode on?
 		beq.s	BB_DoTele		; if not, branch
 		bra.s	KillSonic_JMP		; otherwise skip this to allow bouncing
 
@@ -29383,6 +29406,8 @@ FixLevel:
 		neg.w	d1			; make positive
 	@0:	cmpi.w	#$280,d1		; did we teleport further than the $280 pixels offscreen-limit?
 		bls.s	@1			; if not, do not reset OPL routine index to avoid overlapping objects loading
+		cmpi.w	#$302,($FFFFFE10).w	; skip for SAP because the platforms act as checkpoints
+		beq.s	@1
 		clr.w	($FFFFF76C).w		; reset OPL routine index to flush the level object RAM
 	@1:
 
@@ -29566,7 +29591,7 @@ Sonic_JumpDash:
 		bne.s	JD_NotMZ		; if not, branch
 		btst	#4,(OptionsBits).w	; is nonstop inhuman enabled?
 		bne.s	JD_NotMZ
-		tst.b	($FFFFFFE7).w		; is inhuman mode on?
+		tst.b	(Inhuman).w		; is inhuman mode on?
 		bne.w	JD_End			; if yes, branch
 
 JD_NotMZ:
@@ -29587,7 +29612,7 @@ JD_NotMZ:
 		beq.s	JD_NoWhiteFlash		; if yes, branch
 
 @contx:
-		tst.b	($FFFFFFE7).w		; is inhuman mode on?
+		tst.b	(Inhuman).w		; is inhuman mode on?
 		bne.s	@whiteflash		; if yes, branch
 		tst.b	($FFFFFE2D).w		; is invincibility mode on?
 		beq.s	JD_NoWhiteFlash		; if not, branch
@@ -29800,7 +29825,7 @@ Sonic_DoubleJump:
 		move.b	#%11,($FFFFFFEB).w	; set double jump flag
 
 		move.w	#$A0,d0			; set jumping sound		
-		tst.b	($FFFFFFE7).w		; is inhuman mode on?
+		tst.b	(Inhuman).w		; is inhuman mode on?
 		beq.s	DJ_PlaySound		; if not, branch
 		move.w	#$BC,d0			; set dash sound instead
 
@@ -29847,7 +29872,7 @@ DD_End:
 Sonic_SuperPeelOut:
 		cmpi.w	#$200,($FFFFFE10).w	; is level MZ1?
 		bne.s	SPO_NotMZ		; if not, branch
-		tst.b	($FFFFFFE7).w		; is inhuman mode on?
+		tst.b	(Inhuman).w		; is inhuman mode on?
 		bne.w	SPO_End			; if yes, disallow
 
 SPO_NotMZ:
@@ -29977,7 +30002,7 @@ Sonic_Spindash:
 		bne.s	Spdsh_NotMZ		; if not, branch
 		tst.b	($FFFFFF73).w		; P monitor broken?
 		bne.s	Spdsh_NotMZ		; if yes, branch
-		tst.b	($FFFFFFE7).w		; is inhuman mode on?
+		tst.b	(Inhuman).w		; is inhuman mode on?
 		bne.w	locret2_1AC8C		; if yes, branch
 
 Spdsh_NotMZ:
@@ -30131,13 +30156,13 @@ AF_UpBoost = $180
 
 ; Sonic_Antigrav:
 Sonic_AirFreeze:
-		tst.b	($FFFFFF77).w		; is antigrav enabled?
+		tst.b	(SpaceGolf).w		; is antigrav enabled?
 		beq.w	AM_End			; if not, branch
 		cmpi.w	#$302,($FFFFFE10).w
 		bne.s	@notsap
 		jsr	Sonic_Floor_SAP
 @notsap:
-	;	tst.b	($FFFFFFE7).w		; is inhuman mode enabled?
+	;	tst.b	(Inhuman).w		; is inhuman mode enabled?
 	;	bne.w	AM_End			; if yes, disallow air freeze
 		tst.b	WhiteFlashCounter	; is white flash flag set?
 		beq.s	@noflash		; if not, branch
@@ -30206,8 +30231,8 @@ AM_CPressed:
 		moveq	#1,d0			; set to something was pressed
 
 @EndInput:
-		move.b	($FFFFFE05).w,d0
-		andi.b	#%111,d0
+		moveq	#%111,d0
+		and.b	($FFFFFE0F).w,d0
 		bne.s	@0
 
 		cmpi.w 	#$F0, d3
@@ -30373,12 +30398,12 @@ AR_End:
 InhumanMode_Cooldown = 6*2
 
 Sonic_Fire:
-		tst.b	($FFFFFFE7).w		; is inhuman mode enabled?
+		tst.b	(Inhuman).w		; is inhuman mode enabled?
 		beq.s	@notinhuman		; if not, branch
 
-		cmpi.b	#2,($FFFFFFE7).w	; is cooldown set?
+		cmpi.b	#2,(Inhuman).w	; is cooldown set?
 		blo.s	@chkInhumanMode		; if not, check if we can fire a bullet
-		subq.b	#2,($FFFFFFE7).w	; sub 2 from cooldown (don't mess with first bit)
+		subq.b	#2,(Inhuman).w	; sub 2 from cooldown (don't mess with first bit)
 		rts				; prevent bullet spamming
 
 @notinhuman:
@@ -30415,7 +30440,7 @@ S_F_WithinTolerance:
 
 		move.w	#$C4,d0			; set sound $C4
 		jsr	PlaySFX	; play exploding bomb sound
-		ori.b	#InhumanMode_Cooldown+1,($FFFFFFE7).w ; set cooldown
+		ori.b	#InhumanMode_Cooldown+1,(Inhuman).w ; set cooldown
 S_F_RPRingCost:
 		frantic				; are we in frantic?
 		bne.s	S_F_End			; if yes, branch (this is the one time casual gets something exclusive)
@@ -30443,7 +30468,7 @@ Sonic_Jump:				; XREF: Obj01_MdNormal; Obj01_MdRoll
 		beq.w	locret_1348E	; if not, branch
 		andi.b	#$40,d0		; was specifically A pressed?
 		beq.s	@dojump		; if not, branch
-		tst.b	($FFFFFF77).w	; is antigrav enabled?
+		tst.b	(SpaceGolf).w	; is antigrav enabled?
 		bne.s	@dojump		; if yes, then and only then, allow jump on A
 		rts			; otherwise disallow jump to not interfere with other stuff
 
@@ -30488,7 +30513,7 @@ loc_1341C:
 		addq.w	#5,obY(a0)
 
 @alreadyrolling:
-		tst.b	($FFFFFF77).w		; is antigrav enabled?
+		tst.b	(SpaceGolf).w		; is antigrav enabled?
 		beq.s	locret_1348E		; if not, branch
 		btst	#6,($FFFFF603).w	; was specifically A pressed to jump?
 		beq.s	locret_1348E
@@ -30866,7 +30891,7 @@ SAP_LoadSonicPal:
 
 
 Sonic_Floor:				; XREF: Obj01_MdJump; Obj01_MdJump2
-		tst.b	($FFFFFF77).w		; is antigrav enabled?
+		tst.b	(SpaceGolf).w		; is antigrav enabled?
 		beq.s	@normal			; if not, branch
 		cmpi.w	#$302,($FFFFFE10).w	; are we in SAP?
 		bne.s	@normal
@@ -31199,7 +31224,7 @@ loc_1380C:
 		bsr	Sonic_Animate
 		bsr	LoadSonicDynPLC
 
-		tst.b	($FFFFFF77).w		; is antigrav enabled?
+		tst.b	(SpaceGolf).w		; is antigrav enabled?
 		beq.w	AM_End			; if not, branch
 		cmpi.w	#$302,($FFFFFE10).w
 		bne.s	@notsap
@@ -31641,7 +31666,7 @@ loc_13AFA:
 SAnim_Push:				; XREF: SAnim_RollJump
 		cmpi.w	#$302,($FFFFFE10).w
 		bne.s	@cont
-		tst.b	($FFFFFF77).w
+		tst.b	(SpaceGolf).w
 		beq.s	@cont
 		jsr	SAP_HitWall		; why would you push a blinking red wall you moron
 @cont:
@@ -31901,7 +31926,7 @@ Obj0A_Countdown:			; XREF: Obj0A_Index
 		tst.b 	($FFFFFFFE).w		; is the =P monitor enabled?
 		beq.w	locret_1408C		; if not, disable drowning
 		
-	;	tst.b	($FFFFFFE7).w		; is Sonic inhuman?
+	;	tst.b	(Inhuman).w		; is Sonic inhuman?
 	;	bne.w	locret_1408C		; if yes, disable drowning
 
 		subq.w	#1,$38(a0)
@@ -32118,7 +32143,7 @@ Obj38_DoStars:
 ; ===========================================================================
 
 Obj38_Shield:				; XREF: Obj38_Index
-		tst.b	($FFFFFFE7).w	; is inhuman mode enabled?
+		tst.b	(Inhuman).w	; is inhuman mode enabled?
 		bne.s	Obj38_RmvShield	; if yes, branch
 		tst.b	($FFFFFE2D).w	; does Sonic have invincibility?
 		bne.s	Obj38_RmvShield	; if yes, branch
@@ -32151,7 +32176,7 @@ Obj38_Delete:
 ; ===========================================================================
 
 Obj38_Stars:				; XREF: Obj38_Index
-		tst.b	($FFFFFFE7).w	; is inhuman mode enabled?
+		tst.b	(Inhuman).w	; is inhuman mode enabled?
 		beq.s	@cont		; if not, branch
 		cmpi.w	#$200,($FFFFFE10).w	; is level MZ1?
 		bne.s	@cont			; if yes, branch
@@ -35675,7 +35700,7 @@ Obj79_HitLamp:
 		beq.s	@notrp			; always allow in casual
 		cmpi.b	#3,obSubtype(a0)	; is this the checkpoint before the inhuman section?
 		bne.s	@notrp			; if not, branch
-		tst.b	($FFFFFFE7).w		; inhuman mode already active?
+		tst.b	(Inhuman).w		; inhuman mode already active?
 		bne.s	@disallow		; if yes, disallow cheesing
 		cmpi.w	#250,($FFFFFE20).w	; do you have at least 250 rings?
 		bhs.s	@notrp			; if yes, branch
@@ -37495,7 +37520,9 @@ Obj73_LoadBoss:				; XREF: Obj73_Main
 		move.b	#4,obRender(a1)
 		move.b	#$20,obActWid(a1)
 		move.l	a0,$34(a1)
+		bset	#7,obGfx(a1)		; make Eggman high plane now
 		dbf	d1,Obj73_Loop	; repeat sequence 2 more times
+		bset	#7,obGfx(a0)		; make Eggman high plane now
 
 Obj73_ShipMain:
 		moveq	#0,d0
@@ -37597,7 +37624,6 @@ Obj73_GoToArena:
 		clr.w	obVelX(a0)
 		clr.w	obVelY(a0)
 		bclr	#0,obStatus(a0)
-		bset	#7,obGfx(a0)		; make Eggman high plane now
 		bra.w	Obj73_ShipMainMain
 ; ===========================================================================
 ; ===========================================================================
@@ -39055,7 +39081,7 @@ Obj75_CheckSlam:
 		asr	obVelX(a0)
 		asr	obVelX(a0)
 		move.w	#Obj75_BaseY,obY(a0)
-		andi.w	#$FFFC,obX(a0)
+	;	andi.w	#$FFFC,obX(a0)
 
 		; make searchlights underneath eggman start blinking
 		moveq	#$36,d1			; leeway to account for eggman's arc (hand-picked)
@@ -41851,7 +41877,7 @@ Touch_Monitor:
 ; ===========================================================================
 
 Touch_Monitor_ChkBreak:
-		tst.b	($FFFFFF77).w		; is antigrav enabled?
+		tst.b	(SpaceGolf).w		; is antigrav enabled?
 		bne.s	@break_nobounce		; if yes, break open with no bounce
 		cmpi.b	#2,obAnim(a0)		; is Sonic rolling/jumping?
 		beq.s	@break			; if yes, break open
@@ -41883,7 +41909,7 @@ Touch_Monitor_End:
 ; ===========================================================================
 
 Touch_Enemy:				; XREF: Touch_ChkValue
-		tst.b	($FFFFFFE7).w	; is sonic immortal?
+		tst.b	(Inhuman).w	; is sonic immortal?
 		bne.s	Touch_KillOk	; if yes, branch
 		tst.b	($FFFFFE2D).w	; is Sonic invincible?
 		bne.s	Touch_KillOk	; if yes, branch
@@ -42029,7 +42055,7 @@ Touch_MakeHurt:
 
 
 HurtSonic:
-		tst.b	($FFFFFFE7).w	; is inhuman mode enabeld?
+		tst.b	(Inhuman).w	; is inhuman mode enabeld?
 		bne.w	Hurt_NoRings	; if yes, branch
 		tst.b	($FFFFFE2C).w	; does Sonic have any shields?
 		bne.s	Hurt_Shield	; if yes, branch
@@ -42091,7 +42117,7 @@ Hurt_Sound:
 
 Hurt_NoRings:
 	if DebugSurviveNoRings=1
-		tst.b	($FFFFFFE7).w	; has sonic destroyed a S monitor?
+		tst.b	(Inhuman).w	; has sonic destroyed a S monitor?
 		bne.s	KillSonic	; if yes, do the funny spinny thingy
 		
 		tst.w	($FFFFFFFA).w	; is debug mode	cheat on?
@@ -42116,7 +42142,7 @@ KillSonic:
 		clr.b	($FFFFFFAF).w		; clear automatic extended camera flag
 		move.w	#-$600,d0		; move sonic upwards (inhuman)
 		clr.b	($FFFFFE2D).w		; remove invincibility
-		tst.b	($FFFFFFE7).w		; is Inhuman Mode enabled?
+		tst.b	(Inhuman).w		; is Inhuman Mode enabled?
 		beq.s	Kill_DoKill		; if not, skip this stuff anyway
 		tst.b	($FFFFFFA1).w		; did Sonic die because of touching the boundary bottom?
 		beq.w	Kill_InhumanMode	; if not, don't stop the time counter / don't kill sonic
@@ -42177,7 +42203,7 @@ Kill_Normal:
 @moveup:
 		move.w	d0,obVelY(a0)		; move sonic upwards
 
-		tst.b	($FFFFFFE7).w		; has sonic destroyed a S monitor?
+		tst.b	(Inhuman).w		; has sonic destroyed a S monitor?
 		bne.s	KS_AllTheRest		; if yes, don't do anything with the X-velocity
 
 		move.w	obVelX(a0),d0		; get Sonic's X speed has he died
@@ -42216,7 +42242,7 @@ Kill_End:
 KillSonic_Inhuman:
 		lea	($FFFFD000).w,a0	; set self to Sonic
 		movea.l	a0,a2			; set killer to self
-		clr.b	($FFFFFFE7).w		; disable inhuman mode
+		clr.b	(Inhuman).w		; disable inhuman mode
 		bra.w	KillSonic		; get fucking trolled lmao
 ; ---------------------------------------------------------------------------
 
@@ -43054,6 +43080,11 @@ Obj09_Main:				; XREF: Obj09_Index
 		bset	#1,obStatus(a0)
 		move.w	obX(a0),($FFFFFF86).w	; copy starting X position to last checkoing X-pos
 		move.w	obY(a0),($FFFFFF88).w	; copy starting Y position to last checkoing Y-pos
+
+		btst	#5,(OptionsBits2).w	; is nonstop space golf enabled?
+		beq.s	Obj09_ChkDebug		; if not, branch
+		move.b	#1,(SpaceGolf).w	; enable space golf. have fun, I guess
+	;	jsr	SAP_LoadSonicPal	; load Sonic's antigrav palette
 ; ---------------------------------------------------------------------------
 
 Obj09_ChkDebug:				; XREF: Obj09_Index
@@ -43139,6 +43170,7 @@ Obj09_Display:				; XREF: Obj09_OnWall
 		jsr	Obj09_ChkItems_Collectible
 		jsr	Obj09_ChkItems_Solid
 		jsr	SpeedToPos
+		jsr	Sonic_AirFreeze
 
 		; ss camera shake
 		moveq	#0,d0			; no shake
@@ -43557,20 +43589,27 @@ Obj09_Fall:				; XREF: Obj09_OnWall; Obj09_InAir
 		tst.b	($FFFFFFBF).w
 		bne.s	O9F_Return
 
+		moveq	#$2A,d5			; fall speed in special stages
+		btst	#5,(OptionsBits2).w	; is nonstop space golf enabled?
+		beq.s	@fall			; if not, branch
+		moveq	#$2A/2,d5		; half gravity
+		btst	#6,($FFFFF602).w	; is A held?
+		beq.s	@fall			; if not, branch
+		moveq	#-$2A/2,d5		; reverse fall direction
+@fall:
 		move.l	obY(a0),d2
 		move.l	obX(a0),d3
 		move.b	($FFFFF780).w,d0
-	;	andi.b	#$FC,d0
 		jsr	(CalcSine).l
 		move.w	obVelX(a0),d4
 		ext.l	d4
 		asl.l	#8,d4
-		muls.w	#$2A,d0
+		muls.w	d5,d0
 		add.l	d4,d0
 		move.w	obVelY(a0),d4
 		ext.l	d4
 		asl.l	#8,d4
-		muls.w	#$2A,d1
+		muls.w	d5,d1
 		add.l	d4,d1
 		add.l	d0,d3
 		bsr	Obj09_Collision
@@ -44796,16 +44835,16 @@ Obj21_NoUpdate:
 @ringshud:
 		moveq	#2,d0			; set default ring frame to d0
 		tst.w	($FFFFFE20).w		; do you have any rings?
-		beq.s	Obj21_Flash2		; if not, always make ring counter flash
+		beq.s	Obj21_FlashNoRings	; if not, always make ring counter flash
 
 		; flash on drain
 		tst.b	$3A(a0)				; is intro animation for rings HUD done?
-		beq.s	Obj21_Cont			; if not, branch
+		beq.s	Obj21_SetRingFrame		; if not, branch
 		move.w	#$80+SCREEN_WIDTH-$31,obX(a0)	; fix X-position
 		move.w	$38(a0),obScreenY(a0)		; fix Y-position
 
 		tst.w	(FranticDrain).w
-		beq.s	Obj21_Cont
+		beq.s	Obj21_SetRingFrame
 		jsr	RandomNumber
 		andi.l	#$00030003,d0
 		subq.w	#2,d0
@@ -44813,29 +44852,30 @@ Obj21_NoUpdate:
 		swap	d0
 		subq.w	#2,d0
 		add.w	d0,obScreenY(a0)
-
 		moveq	#4,d0			; use pal line 3
-		bra.s	Obj21_Cont
+		bra.s	Obj21_SetRingFrame
 
-
-Obj21_Flash2:	
+Obj21_FlashNoRings:
 		ori.b	#1,($FFFFFE1D).w	; update ring counter
 		btst	#3,($FFFFFE05).w	; change the rings counter design every X frames
-		bne.s	Obj21_Cont		; if that time isn't over yet, branch
+		bne.s	Obj21_SetRingFrame	; if that time isn't over yet, branch
 
 		addq.w	#1,d0			; make ring counter flash (pal 3)
 		
-		moveq	#-2,d1			; alternate pal for MZ, SLZ, and SYZ
-		add.b	($FFFFFE10).w,d1
-		cmpi.b	#2,d1
-		bne.s	Obj21_Cont
-		addq.w	#1,d0			; make ring counter flash (pal 4)
+	;	moveq	#0,d1
+	;	move.b	($FFFFFE10).w,d1
+	;	cmpi.b	#2,d1
+	;	beq.s	@alt
+	;	bra.s	Obj21_SetRingFrame
+	;@alt:
+	;	addq.w	#1,d0			; make ring counter flash (pal 4)
 
-Obj21_Cont:
+Obj21_SetRingFrame:
 		move.b	d0,obFrame(a0)
 
 Obj21_BackupRings:
 		move.w	($FFFFFE20).w,$3E(a0)
+; ---------------------------------------------------------------------------
 
 Obj21_Display:
 		cmpi.b	#6,($FFFFD024).w	; is Sonic dying?
@@ -45035,7 +45075,7 @@ TimeOver:				; XREF: Hud_ChkTime
 		clr.b	($FFFFFE1E).w
 		lea	($FFFFD000).w,a0
 		movea.l	a0,a2
-		clr.b	($FFFFFFE7).w	; disable inhuman mode (to prevent softlocks)
+		clr.b	(Inhuman).w	; disable inhuman mode (to prevent softlocks)
 		bsr	KillSonic
 	;	move.b	#1,($FFFFFE1A).w
 		rts	

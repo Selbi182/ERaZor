@@ -159,8 +159,8 @@ Exit_GameplayStyleScreen:
 @showhint:
 		jsr	Pal_FadeFrom		; fade out palette to avoid visual glitches
 		jsr	ClearScreen		; clear screen
-		moveq	#$E,d0			; load FZ palette (cause tutorial boxes are built into SBZ)
-		jsr	PalLoad2		; load palette	
+		moveq	#$1D,d0			; load tutorial box palette...
+		jsr	PalLoad2		; ...directly
 		moveq	#$13,d0			; load warning text about revisiting the tutorial for frantic
 		jsr	TutorialBox_Display	; VLADIK => Display hint
 		jsr	Unset_TutorialVisited	; show FREE CANDY
@@ -274,8 +274,8 @@ Exit_StoryScreen:
 @clearobjram:	move.l	d0,(a1)+
 		dbf	d1,@clearobjram
 
-		moveq	#$E,d0			; load FZ palette (cause tutorial boxes are built into SBZ)
-		jsr	PalLoad2		; load palette
+		moveq	#$1D,d0			; load tutorial box palette...
+		jsr	PalLoad2		; ...directly
 
 		moveq	#$16,d0			; load text after beating the blackout challenge for the first time
 		jsr	TutorialBox_Display	; VLADIK => Display hint
@@ -297,8 +297,8 @@ Exit_CreditsScreen:
 @clearobjram:	move.l	d0,(a1)+
 		dbf	d1,@clearobjram
 
-		moveq	#$E,d0			; load FZ palette (cause tutorial boxes are built into SBZ)
-		jsr	PalLoad2		; load palette
+		moveq	#$1D,d0			; load tutorial box palette...
+		jsr	PalLoad2		; ...directly
 
 		btst	#0,(CarryOverData).w
 		beq.s	@checkfrantic
@@ -548,8 +548,8 @@ HubRing_LP:
 		jsr	Pal_FadeFrom		; fade out palette to avoid visual glitches
 		jsr	ClearScreen		; clear screen
 		clr.w	Blackbars.Height	; make sure box appears immediately
-		moveq	#$E,d0			; load FZ palette (cause tutorial boxes are built into SBZ)
-		jsr	PalLoad2		; load palette	
+		moveq	#$1D,d0			; load tutorial box palette...
+		jsr	PalLoad2		; ...directly
 		movem.l	(sp)+,a0/d7
 		moveq	#$11|_DH_WithBGFuzz,d0	; load warning text that black bars don't work in LP
 		jsr	Queue_TutorialBox_Display ; VLADIK => Display hint

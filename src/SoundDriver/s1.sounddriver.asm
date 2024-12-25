@@ -711,17 +711,6 @@ Sound_ExIndex:
 		bra.w	SpeedUpMusic		; $E2
 		bra.w	SlowDownMusic		; $E3
 		bra.w	StopAllSound		; $E4
-		if def(__DEBUG__)
-			rept 3
-				illegal
-				nop
-			endr
-		else
-			rept 3
-				rts
-				nop
-			endr
-		endif
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------

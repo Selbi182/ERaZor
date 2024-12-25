@@ -168,15 +168,16 @@ SoundDriverUpdate:
 		jsr	UpdateBGM(pc)
 
 		move.b	#$80,f_voice_selector(a6)			; Now at SFX tracks
+		lea	v_sfx_track_ram(a6), a5
 		moveq	#((v_sfx_fm_tracks_end-v_sfx_fm_tracks)/TrackSz)-1,d7	; 3 FM tracks (SFX)
 ; loc_71C04:
 .sfxfmloop:
-		adda.w	#TrackSz,a5
 		tst.b	TrackPlaybackControl(a5) ; Is track playing?
 		bpl.s	.sfxfmnext		; Branch if not
 		jsr	FMUpdateTrack(pc)
 ; loc_71C10:
 .sfxfmnext:
+		adda.w	#TrackSz,a5
 		dbf	d7,.sfxfmloop
 
 		moveq	#((v_sfx_psg_tracks_end-v_sfx_psg_tracks)/TrackSz)-1,d7 ; 3 PSG tracks (SFX)
@@ -2232,7 +2233,7 @@ cfFadeInToPrevious:
 		clr.b	f_1up_playing(a6)
 		MPCM_startZ80
 		addq.w	#8,sp		; Tamper return value so we don't return to caller
-		rts	
+		rts
 ; ===========================================================================
 ; loc_72B9E:
 cfSetTempoDivider:

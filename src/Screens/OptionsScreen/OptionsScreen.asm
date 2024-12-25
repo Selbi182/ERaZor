@@ -120,7 +120,7 @@ OptionsScreen:				; XREF: GameModeArray
 		lea	($FFFFD100).w,a0
 		move.b	#2,(a0)			; load ERaZor banner object
 		move.w	#$80+SCREEN_WIDTH/2-2,obX(a0)	; set X-position
-		move.w	#$84,obScreenY(a0)		; set Y-position
+		move.w	#$82,obScreenY(a0)		; set Y-position
 		bset	#7,obGfx(a0)		; make object high plane
 		DeleteQueue_Init
 		jsr	ObjectsLoad
@@ -399,9 +399,15 @@ Options_HandleUpDown:
 		; hint to press A for the extra details on specific options
 		moveq	#0,d0				; hide A hint by default
 		move.w	($FFFFFF82).w,d1		; get currently selection
-		cmpi.w	#3,d1				; Track Your Mistakes mode selected?
+	if def(__WIDESCREEN__)
+		cmpi.w	#1,d1				; Extended Widescreen Camera selected?
 		beq.s	@ahint				; if yes, show A hint
-		cmpi.w	#4,d1				; Speedrun Mode selected?
+	endif
+		cmpi.w	#2,d1				; Track Your Mistakes mode selected?
+		beq.s	@ahint				; if yes, show A hint
+		cmpi.w	#3,d1				; Speedrun Mode selected?
+		beq.s	@ahint				; if yes, show A hint
+		cmpi.w	#4,d1				; Palette Style selected?
 		beq.s	@ahint				; if yes, show A hint
 		; expand as necessary
 		bra.s	@redrawheader			; otherwise, hide A hint

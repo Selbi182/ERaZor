@@ -721,6 +721,13 @@ Hints_List:	; note: these IDs are 1-based
 		dc.l	Hint_9SequenceBreak		; $17
 		dc.l	Hint_Options_Autoskip		; $18
 		dc.l	Hint_Options_AlternateHUD	; $19
+		dc.l	Hint_Options_PaletteStyle	; $1A
+
+	if def(__WIDESCREEN__)
+		dc.l	Hint_Options_WidescreenExtCam	; $1B
+	else
+		dc.l	Hint_Null			; $1B
+	endif
 
 ; ---------------------------------------------------------------
 ; Hints Scripts
@@ -1500,7 +1507,7 @@ Hint_Options_Autoskip:
 		boxtxt	"WILL BE INSTANTLY"
 		boxtxt	"SKIPPED AS WELL."
 		boxtxt_line
-		boxtxt	"GREAT FOR REPLAYS"
+		boxtxt	"GREAT FOR REPLAYS,"
 		boxtxt	"AND VERY HIGHLY"
 		boxtxt	"RECOMMENDED FOR"
 		boxtxt	"speedruns!"
@@ -1536,6 +1543,30 @@ Hint_Options_AlternateHUD:
 		boxtxt	"WON'T ACTUALLY DIE!"
 		boxtxt_end
 
+
+	if def(__WIDESCREEN__)
+Hint_Options_WidescreenExtCam:
+		boxtxt	"widescreen-optimized"
+		boxtxt	"extended camera"
+		boxtxt_line
+		boxtxt	"DUE TO THE INCREASED"
+		boxtxt	"SCREEN SIZE, THIS"
+		boxtxt	"CAMERA MOVES A LOT"
+		boxtxt	"FASTER AND MAY CAUSE"
+		boxtxt	"MOTION SICKNESS!"
+		boxtxt_end
+	endif
+
+Hint_Options_PaletteStyle:
+		boxtxt	"palette style"
+		boxtxt_line
+		boxtxt	"CHOOSE BETWEEN THE"
+		boxtxt	"old-school PALETTES"
+		boxtxt	"USED IN ERAZOR FOR"
+		boxtxt	"FIFTEEN YEARS OR THE"
+		boxtxt	"BEAUTIFUL remasters"
+		boxtxt	"MADE BY JAVESIKE!"
+		boxtxt_end
 ;		 --------------------
 Hint_Options_FranticTutorial:
 		boxtxt	"RESPECT FOR GOING"

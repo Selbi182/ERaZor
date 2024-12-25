@@ -15,65 +15,65 @@ Options_MenuData:
  endif
 
 	; Difficulty
-	dcScreenPos	$E000, OpBaseY, OpBaseX		; start on-screen position
+	dcScreenPos	$E000, OpBaseY+0, OpBaseX	; start on-screen position
 	dc.l	Options_GameplayStyle_Redraw		; redraw handler
 	dc.l	Options_GameplayStyle_Handle		; update handler
 	
-	; Palette style
-	dcScreenPos	$E000, OpBaseY+2, OpBaseX	; start on-screen position
-	dc.l	Options_PaletteStyle_Redraw		; redraw handler
-	dc.l	Options_PaletteStyle_Handle		; update handler
 	; Extended camera
-	dcScreenPos	$E000, OpBaseY+3, OpBaseX	; start on-screen position
+	dcScreenPos	$E000, OpBaseY+2, OpBaseX	; start on-screen position
 	dc.l	Options_ExtendedCamera_Redraw		; redraw handler
 	dc.l	Options_ExtendedCamera_Handle		; update handler
 
 	; Arcade mode / Speedrun mode
-	dcScreenPos	$E000, OpBaseY+4, OpBaseX	; start on-screen position
+	dcScreenPos	$E000, OpBaseY+3, OpBaseX	; start on-screen position
 	dc.l	Options_Autoskip_Redraw			; redraw handler
 	dc.l	Options_Autoskip_Handle			; update handler
 	; Alternate HUD
-	dcScreenPos	$E000, OpBaseY+5, OpBaseX	; start on-screen position
+	dcScreenPos	$E000, OpBaseY+4, OpBaseX	; start on-screen position
 	dc.l	Options_AlternateHUD_Redraw		; redraw handler
 	dc.l	Options_AlternateHUD_Handle		; update handler
+	; Palette style
+	dcScreenPos	$E000, OpBaseY+5, OpBaseX	; start on-screen position
+	dc.l	Options_PaletteStyle_Redraw		; redraw handler
+	dc.l	Options_PaletteStyle_Handle		; update handler
 	
 	; Flashy lights
-	dcScreenPos	$E000, OpBaseY+6, OpBaseX	; start on-screen position
+	dcScreenPos	$E000, OpBaseY+7, OpBaseX	; start on-screen position
 	dc.l	Options_FlashyLights_Redraw		; redraw handler
 	dc.l	Options_FlashyLights_Handle		; update handler
 	; Camera shake
-	dcScreenPos	$E000, OpBaseY+7, OpBaseX	; start on-screen position
+	dcScreenPos	$E000, OpBaseY+8, OpBaseX	; start on-screen position
 	dc.l	Options_CameraShake_Redraw		; redraw handler
 	dc.l	Options_CameraShake_Handle		; update handler
 	; Audio mode
-	dcScreenPos	$E000, OpBaseY+8, OpBaseX	; start on-screen position
+	dcScreenPos	$E000, OpBaseY+9, OpBaseX	; start on-screen position
 	dc.l	Options_Audio_Redraw			; redraw handler
 	dc.l	Options_Audio_Handle			; update handler
 
 	; Black bars setup
-	dcScreenPos	$E000, OpBaseY+9, OpBaseX	; start on-screen position
+	dcScreenPos	$E000, OpBaseY+10, OpBaseX	; start on-screen position
 	dc.l	Options_BlackBarsMode_Redraw		; redraw handler
 	dc.l	Options_BlackBarsMode_Handle		; update handler
 
 	; E - Cinematic mode
-	dcScreenPos	$E000, OpBaseY+11, OpBaseX	; start on-screen position
+	dcScreenPos	$E000, OpBaseY+12, OpBaseX	; start on-screen position
 	dc.l	Options_CinematicMode_Redraw		; redraw handler
 	dc.l	Options_CinematicMode_Handle		; update handler
 	; R - Visual FX
-	dcScreenPos	$E000, OpBaseY+12, OpBaseX	; start on-screen position
+	dcScreenPos	$E000, OpBaseY+13, OpBaseX	; start on-screen position
 	dc.l	Options_ScreenEffects_Redraw		; redraw handler
 	dc.l	Options_ScreenEffects_Handle		; update handler
 	; Z - ERaZor Powers
-	dcScreenPos	$E000, OpBaseY+13, OpBaseX	; start on-screen position
+	dcScreenPos	$E000, OpBaseY+14, OpBaseX	; start on-screen position
 	dc.l	Options_NonstopInhuman_Redraw		; redraw handler
 	dc.l	Options_NonstopInhuman_Handle		; update handler
 
 	; Reset options
-	dcScreenPos	$E000, OpBaseY+15, OpBaseX	; start on-screen position
+	dcScreenPos	$E000, OpBaseY+16, OpBaseX	; start on-screen position
 	dc.l	Options_ResetOptions_Redraw		; redraw handler
 	dc.l	Options_ResetOptions_Handle		; update handler
 	; Reset game progress
-	dcScreenPos	$E000, OpBaseY+16, OpBaseX	; start on-screen position
+	dcScreenPos	$E000, OpBaseY+17, OpBaseX	; start on-screen position
 	dc.l	Options_DeleteSaveGame_Redraw		; redraw handler
 	dc.l	Options_DeleteSaveGame_Handle		; update handler
 
@@ -195,6 +195,12 @@ Options_ExtendedCamera_Handle:
 	andi.b	#$FC,d1			; is left, right, A, B, C, or Start pressed?
 	beq.w	@done			; if not, branch
 
+ if def(__WIDESCREEN__)
+	; hint on A
+	moveq	#$1B,d0				; ID for the explanation textbox
+	bsr	Options_HandleAHint		; show explanation textbox if A is pressed
+ endif
+
 	bchg	#0, OptionsBits		; toggle extended camera
 	bsr	Options_PlayRespectiveToggleSound
 	st.b	Options_RedrawCurrentItem
@@ -236,6 +242,10 @@ Options_PaletteStyle_Handle:
 	move.b	Joypad|Press,d1		; get button presses
 	andi.b	#$FC,d1			; is left, right, A, B, C, or Start pressed?
 	beq.w	@done			; if not, branch
+
+	; hint on A
+	moveq	#$1A,d0			; ID for the explanation textbox
+	bsr	Options_HandleAHint	; show explanation textbox if A is pressed
 
 	bchg	#4, OptionsBits2	; toggle palette style
 	bsr	Options_PlayRespectiveToggleSound

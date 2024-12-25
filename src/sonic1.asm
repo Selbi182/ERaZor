@@ -6334,8 +6334,19 @@ LevSz_StartLoc:				; XREF: LevelSizeLoad
 		jsr	Check_UnterhubFirst	; first Unterhub sequence active?
 		bne.s	@load			; if yes, always go to trophy gallery
 
+		btst	#4,(OptionsBits).w	; is nonstop inhuman enabled?
+		bne.s	@chkeasternudge		; if yes, branch
+		btst	#5,(OptionsBits2).w	; is nonstop space golf enabled?
+		beq.s	@chkcustom		; if not, branch
+	@chkeasternudge:
+		jsr	Check_HubEasterVisited	; has the player already visited the easter egg?
+		bne.s	@chkcustom		; if yes, branch
+		clr.b	(CarryOverData).w	; override custom spawn location
+		bra.s	@load			; always go to casual loc as a subtle nudge to the player until it's visited once
+
+	@chkcustom:
 		tst.b	(CarryOverData).w	; do we have a giant ring spawn location?
-		beq.s	@notcustom		; if not, branch
+		beq.s	@chkfrantic		; if not, branch
 		moveq	#0,d1			; clear d1
 		move.b	(CarryOverData).w,d1	; set custom index from carry-over data
 		subq.w	#1,d1			; offset by -1
@@ -6343,14 +6354,6 @@ LevSz_StartLoc:				; XREF: LevelSizeLoad
 		add.w	d1,d1			; ...then to long
 		addi.w	#7*4*4,d1		; go to the special Uberhub start locations (7th block, 4 entries per block, 4 bytes per entry)
 		bra.s	@load			; ignore other Uberhub special spawns
-
-	@notcustom:
-		btst	#4,(OptionsBits).w	; is nonstop inhuman enabled?
-		bne.s	@0			; if yes, branch
-		btst	#5,(OptionsBits2).w	; is nonstop space golf enabled?
-		beq.s	@chkfrantic		; if not, branch
-	@0:	jsr	Check_HubEasterVisited	; has the player already visited the easter egg?
-		beq.s	@load			; if not, always go to casual loc as a subtle nudge to the player
 
 	@chkfrantic:
 		frantic				; are we in frantic mode?
@@ -35712,6 +35715,7 @@ Obj79_HitLamp:
 		jsr	PlaySFX
 		move.w	#$DC,d0			; play nuh uh sound
 		jsr	PlaySFX
+		jsr	AddFail
 
 		jsr	SingleObjLoad
 		bne.w	locret_16F90

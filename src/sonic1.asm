@@ -7510,7 +7510,7 @@ off_71B2:
 		dc.w Resize_SYZ3end-off_71B2
 ; ===========================================================================
 
-Unterhub_BossStartX_Casual = $3200-8 ; used to be $2C00 but the natural progression wasn't as intuitive as I'd hoped
+Unterhub_BossStartX = $3200-8 ; used to be $2C00 but the natural progression wasn't as intuitive as I'd hoped
 
 ; Resize_Unterhub:
 Resize_SYZ3setup:

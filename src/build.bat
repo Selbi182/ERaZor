@@ -13,7 +13,7 @@ if exist s1erz.bin (
 	REM build with debug symbols
 	REM Debugger\convsym.exe Debugger\Generated\s1erz.sym s1erz.bin -a
 
-	REM build WITHOUT debug symbols
+	REM build debug symbols (optimized)
 	Debugger\convsym.exe Debugger/Generated/s1erz.sym s1erz.bin -tolower -inopt "/processLocals-" -a
 	echo Successfully built!
 ) else (

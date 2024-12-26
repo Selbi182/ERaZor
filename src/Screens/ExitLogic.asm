@@ -456,9 +456,9 @@ FindCurrentChapter:
 		dc.w	$300	; 2 - Special Place
 		dc.w	$200	; 3 - Ruined Place
 		dc.w	$101	; 4 - Labyrinthy Place
-		dc.w	$402	; 5 - Unterhub Place
-		dc.w	$401	; 6 - Unreal Place
-		dc.w	$301	; 7 - Scar Night Place
+		dc.w	$401	; 5 - Unreal Place
+		dc.w	$301	; 6 - Scar Night Place
+		dc.w	$402	; 7 - Unterhub Place
 		dc.w	$502	; 8 - Finalor Place
 		dc.w	-1	; None of the above
 		even
@@ -775,11 +775,11 @@ NextLevel_Array:
 		dc.w	$300	; Special Place
 		dc.w	$200	; Ruined Place
 		dc.w	$101	; Labyrinthy Place
-		dc.w	$402	; Unterhub Place
 		dc.w	$401	; Unreal Place
 		dc.w	$500	; Bomb Machine Cutscene
 		dc.w	$301	; Scar Night Place
 		dc.w	$302	; Star Agony Place
+		dc.w	$402	; Unterhub Place
 		dc.w	$502	; Finalor Place
 		dc.w	$601	; Ending Sequence
 	;	dc.w	$666	; Blackout Challenge
@@ -898,7 +898,7 @@ Check_JustFinishedFP:
 ; ---------------------------------------------------------------------------
 
 Check_UnterhubUnlocked:
-		moveq	#3,d0				; LP beaten?
+		moveq	#5,d0				; SNP/SAP beaten?
 		bsr	Check_LevelBeaten_Current	; (...only for pacing reasons)
 		beq.s	@no				; if not, branch
 		moveq	#2,d0				; RP beaten?

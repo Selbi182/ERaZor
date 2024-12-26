@@ -730,49 +730,10 @@ StoryText_5:	; text after beating Labyrinthy Place
 		ststxt	"BUSINESS FROM NOW ON,"
 		ststxt	"PINKY PROMISE!"
 		ststxt_line
-		ststxt	"HOWEVER, YOU'VE KILLED"
+		ststxt	"HOWEVER, YOU HAVE KILLED"
 		ststxt	"THE MIGHTY ^JAWS^ OF DESTINY"
 		ststxt	"AND THEREFORE MUST BE SERVED"
-		ststxt	"THE ULTIMATE PUNISHMENT."
-		dc.b	-1
-		even
-; ---------------------------------------------------------------------------
-
-StoryText_Unter: ; text after beating Unterhub Place
-		ststxt	"THE PROPHECIES COULDN'T"
-		ststxt	"HAVE PREPARED ME FOR THE"
-		ststxt	"ABSOLUTE TERRORS THIS"
-		ststxt	"UNHOLY REALM BENEATH OUR"
-		ststxt	"COZY HUB WORLD HAD IN"
-		ststxt	"STORE FOR HUMANITY."
-		ststxt	"IT'S A MIRACLE YOU EVEN"
-		ststxt	"MADE IT OUT ALIVE."
-		ststxt_line
-		ststxt	"EGGMAN WAS THERE,"
-		ststxt	"TOO, I GUESS."
-		ststxt_line
-		ststxt	"THERE'S NO HELPING IT,"
-		ststxt	"YOU'LL NEED MORE POWER!"
-		ststxt	"THE LAST EMERALDS AWAIT..."
-		dc.b	-1
-		even
-
-StoryText_UnterP: ; text after beating Unterhub Place without destroying the last Roller
-		ststxt	"PACIFIST BONUS FUN FACT"
-		ststxt_line
-		ststxt	"I'M SICK AND TIRED OF"
-		ststxt	"PEOPLE COMPLAINING ABOUT"
-		ststxt	"THE LABYRINTH ZONE BOSS,"
-		ststxt	"EVEN THOUGH THE REAL"
-		ststxt	"HORRORS ALREADY CAME IN"
-		ststxt	"SPRING YARD ZONE."
-		ststxt	"SO, THIS STAGE WAS MY WAY"
-		ststxt	"OF VISUALIZING WHAT FIGHTING"
-		ststxt	"THAT BOSS FELT LIKE WHEN"
-		ststxt	"I WAS LIKE SEVEN YEARS OLD."
-		ststxt_line
-		ststxt	"BUT ENOUGH TRAUMA TALK,"
-		ststxt	"THE LAST EMERALDS AWAIT..."
+		ststxt	"THE ULTIMATE PUNISHMENT!"
 		dc.b	-1
 		even
 ; ---------------------------------------------------------------------------
@@ -814,8 +775,6 @@ StoryText_6X:	; ($A) text after beating Unreal Place without touching any checkp
 		ststxt	"YOU'LL STILL GO TO SPACE."
 		dc.b	-1
 		even
-
-
 ; ---------------------------------------------------------------------------
 
 StoryText_7:	; text after beating Scar Night Place
@@ -832,8 +791,47 @@ StoryText_7:	; text after beating Scar Night Place
 		ststxt	"BY YOUR ANGELIC VOICE"
 		ststxt	"ONE LAST TIME!"
 		ststxt_line
-		ststxt	"IT IS THE FINAL STAGE"
-		ststxt	"AFTER ALL... RIGHT?"
+		ststxt	"AFTER ALL, YOU'VE GOT EVERY"
+		ststxt	"TROPHY NOW... RIGHT?"
+		dc.b	-1
+		even
+; ---------------------------------------------------------------------------
+
+StoryText_Unter: ; text after beating Unterhub Place
+		ststxt	"THE PROPHECIES COULDN'T"
+		ststxt	"HAVE PREPARED ME FOR THE"
+		ststxt	"ABSOLUTE TERRORS THIS"
+		ststxt	"UNHOLY REALM BENEATH OUR"
+		ststxt	"COZY HUB WORLD HAD IN"
+		ststxt	"STORE FOR HUMANITY."
+		ststxt	"IT'S A MIRACLE YOU EVEN"
+		ststxt	"MADE IT OUT ALIVE."
+		ststxt_line
+		ststxt	"EGGMAN WAS THERE, TOO."
+		ststxt_line
+		ststxt	"YOU'RE SO CLOSE TO THE END,"
+		ststxt	"YOU MUSTN'T GIVE UP NOW!"
+		ststxt	"I HOPE YOU'VE MASTERED"
+		ststxt	"THE TUTORIAL..."
+		dc.b	-1
+		even
+
+StoryText_UnterP: ; text after beating Unterhub Place without destroying the last Roller
+		ststxt	"PACIFIST BONUS FUN FACT"
+		ststxt_line
+		ststxt	"I'M SICK AND TIRED OF"
+		ststxt	"PEOPLE COMPLAINING ABOUT"
+		ststxt	"THE LABYRINTH ZONE BOSS,"
+		ststxt	"EVEN THOUGH THE REAL"
+		ststxt	"HORRORS ALREADY CAME IN"
+		ststxt	"SPRING YARD ZONE."
+		ststxt	"SO, THIS STAGE WAS MY WAY"
+		ststxt	"OF VISUALIZING WHAT FIGHTING"
+		ststxt	"THAT BOSS FELT LIKE WHEN"
+		ststxt	"I WAS LIKE SEVEN YEARS OLD."
+		ststxt_line
+		ststxt	"BUT ENOUGH TRAUMA TALK,"
+		ststxt	"THE FINALE AWAITS..."
 		dc.b	-1
 		even
 ; ---------------------------------------------------------------------------

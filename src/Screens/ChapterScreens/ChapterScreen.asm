@@ -8,9 +8,9 @@
 ; 2: Special Frustration
 ; 3: Inhuman Through The Ruins
 ; 4: Wet Pit Of Death
-; 5: Something Underneath
-; 6: Hover Into Your Frustration
-; 7: Watch The Night Explode
+; 5: Hover Into Your Frustration
+; 6: Watch The Night Explode
+; 7: Something Underneath
 ; 8: In The End
 ; ---------------------------------------------------------------------------
 Chapters_Total = 8

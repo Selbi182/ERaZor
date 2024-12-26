@@ -3363,11 +3363,11 @@ LevelMenuText:
 		dc.b	'2      SPECIAL PLACE    '
 		dc.b	'3      RUINED PLACE     '
 		dc.b	'4      LABYRINTHY PLACE '
-		dc.b	'5      UNTERHUB PLACE   '
-		dc.b	'6      UNREAL PLACE     '
+		dc.b	'5      UNREAL PLACE     '
 		dc.b	'SCENE  BOMB MACHINE     '
-		dc.b	'7-1    SCAR NIGHT PLACE '
-		dc.b	'7-2    STAR AGONY PLACE '
+		dc.b	'6-1    SCAR NIGHT PLACE '
+		dc.b	'6-2    STAR AGONY PLACE '
+		dc.b	'7      UNTERHUB PLACE   '
 		dc.b	'8-1    FINALOR PLACE    '
 		dc.b	'8-2    THE GREAT ESCAPE '
 		dc.b	'SCENE  THE END          '
@@ -3387,11 +3387,11 @@ LSelectPointers:
 		dc.w	$300	; Special Place
 		dc.w	$200	; Ruined Place
 		dc.w	$101	; Labyrinthy Place
-		dc.w	$402	; Unterhub Place
 		dc.w	$401	; Unreal Place
 		dc.w	$500	; Bomb Machine Cutscene
 		dc.w	$301	; Scar Night Place
 		dc.w	$302	; Star Agony Place
+		dc.w	$402	; Unterhub Place
 		dc.w	$502	; Finalor Place
 		dc.w	$503	; The Great Escape
 		dc.w	$601	; Ending Sequence
@@ -3433,10 +3433,10 @@ MainLevelArray:
 		dc.w	$300	; 4 - Special Place (yes, it uses an SLZ ID)
 		dc.w	$200	; 5 - Ruined Place
 		dc.w	$101	; 6 - Labyrinthy Place
-		dc.w	$402	; 7 - Unterhub Place
-		dc.w	$401	; 8 - Unreal Place (yes, it uses an SYZ ID)
-		dc.w	$301	; 9 - Scar Night Place
-		dc.w	$302	; A - Star Agony Place
+		dc.w	$401	; 7 - Unreal Place (yes, it uses an SYZ ID)
+		dc.w	$301	; 8 - Scar Night Place
+		dc.w	$302	; 9 - Star Agony Place
+		dc.w	$402	; A - Unterhub Place
 		dc.w	$502	; B - Finalor Place
 		; Blackout is treated separately
 		dc.w	-1	; None of the above
@@ -3451,9 +3451,9 @@ PlayLevelMusic:
 		jsr	FakeLevelID		; get main level ID and load it into d5
 		lea	(MusicList).l,a1	; load Playlist into a1
 		move.b	(a1,d5.w),d0		; get music ID
-		cmp.b	SoundDriverRAM+v_last_bgm,d0	; is last played music ID the same one as the one to be played?
+		cmp.b	SoundDriverRAM+v_last_bgm,d0 ; is last played music ID the same one as the one to be played?
 		beq.s	PLM_NoMusic		; if yes, don't restart music
-		bsr.w	PlayBGM		; play music
+		bsr.w	PlayBGM			; play music
 PLM_NoMusic:
 		rts				; return
 ; ---------------------------------------------------------------------------
@@ -3466,10 +3466,10 @@ MusicList:
 		dc.b	$89	; Special Place
 		dc.b	$83	; Ruined Place
 		dc.b	$82	; Labyrinthy Place
-		dc.b	$8E	; Unterhub Place
 		dc.b	$89	; Unreal Place
 		dc.b	$84	; Scar Night Place
 		dc.b	$84	; Star Agony Place
+		dc.b	$8E	; Unterhub Place
 		dc.b	$8D	; Finalor Place
 		even
 ; ---------------------------------------------------------------------------
@@ -10925,6 +10925,8 @@ Obj27_Main:				; XREF: Obj27_Index
 		tst.b 	($FFFFFFF9).w		; final section flag already enabled?
 		bne.s 	@notlz			; if yes, branch
 		move.b 	#1,($FFFFFFF9).w	; set final section flag
+		clr.b	(HUD_BossHealth).w
+		move.b	#1,($FFFFFE1C).w	; update lives
 
 		movem.l	d0-a3,-(sp)
 		jsr 	Pal_FadeOut 	; i guess this works????
@@ -15047,7 +15049,6 @@ Obj2C:					; XREF: Obj_Index
 ; ===========================================================================
 Obj2C_Index:	dc.w Obj2C_Main-Obj2C_Index
 		dc.w Obj2C_Bounce-Obj2C_Index
-		dc.w Obj2C_Delete-Obj2C_Index
 ; ===========================================================================
 
 Obj2C_Main:				; XREF: Obj2C_Index
@@ -15060,6 +15061,9 @@ Obj2C_Main:				; XREF: Obj2C_Index
 		move.b	#4,obPriority(a0)
 		move.b	#$10,obActWid(a0)
 		move.w	#-$60,obVelX(a0)	; move Jaws to the left
+
+		move.b	#99,(HUD_BossHealth).w	; scariest boss ever
+		move.b	#1,($FFFFFE1C).w	; update lives
 
 Obj2C_Bounce:				; XREF: Obj2C_Index
 		bsr.w	SpeedToPos
@@ -15091,13 +15095,24 @@ Obj2C_Animate:
 		lea	(Ani_obj2C).l,a1
 		bsr	AnimateSprite
 		bsr	SpeedToPos
-		bra.w	MarkObjGone
-; ===========================================================================
+		bsr.w	MarkObjGone
 
-Obj2C_Delete:
-		bsr	DeleteObject
-		rts
-; ===========================================================================		
+
+		move.w	obX(a0),d0
+		andi.w	#$FF80,d0
+		move.w	($FFFFF700).w,d1
+		subi.w	#$80,d1
+		andi.w	#$FF80,d1
+		sub.w	d1,d0
+		cmpi.w	#$280,d0
+		bls.s	@end
+		clr.b	(HUD_BossHealth).w
+		move.b	#1,($FFFFFE1C).w	; update lives
+
+@end:		rts
+
+
+; ===========================================================================
 Ani_obj2C:
 		include	"_anim\obj2C.asm"
 
@@ -19560,7 +19575,7 @@ Obj43_BounceBack:
 Obj43_Offscreen:
 		subq.w	#1,$30(a0)
 		bpl.s	@wait
-		move.w	#1*60+30,$30(a0)	; post-delay
+		move.w	#1*60+20,$30(a0)	; post-delay
 		addq.b	#2,ob2ndRout(a0)
 		bset	#3,($FFFFF7A7).w	; set Roller has gone far offscreen
 @wait:
@@ -27553,10 +27568,10 @@ Obj06_Locations:	;XXXX   YYYY
 		dc.w	$FFFF, $FFFF	; Special Place		(Unused)
 		dc.w	$1A80, $02AC	; Ruined Place
 		dc.w	$CCCC, $CCCC	; Labyrinthy Place	(Custom, see below)
-		dc.w	$2328, $0050	; Unterhub Place
 		dc.w	$FFFF, $FFFF	; Unreal Place		(Unused)
 		dc.w	$FFFF, $FFFF	; Scar Night Place 	(Unused)
 		dc.w	$20C0, $0580	; Star Agony Place
+		dc.w	$2328, $0050	; Unterhub Place
 		dc.w	$101E, $036C	; Finalor Place
 
 Obj06_Locations_LP:
@@ -29947,6 +29962,7 @@ SPO_PlaySound:
 		move.b	#0,($FFFFD1DC).w	; clear spindash dust animation
 		move.w	#$D3,d0			; peelout release sound
 		jsr	PlaySFX	; play it!
+	;	move.b	#8,($FFFFFFB2).w	; add some camera lag (old system didn't work anyway)
 ; ---------------------------------------------------------------------------
 
 SPO_PreEnd1:
@@ -30042,19 +30058,16 @@ loc2_1AC8E:
 
 loc2_1ACD0:
 		move.w	d1,obInertia(a0) 	; set new inertia
-		move.w	d1,d0			; get inertia
-		subi.w	#$800,d0		; subtract $800
-		add.w	d0,d0			; double it
-		andi.w	#$1F00,d0		; mask it against $1F00
-		neg.w	d0			; negate it
-		addi.w	#$2000,d0		; add $2000
-		move.w	d0,($FFFFEED0).w	; camera delay flag ($C904=On; $EEDo=Off)
 		btst	#0,obStatus(a0)		; is sonic facing right?
 		beq.s	loc2_1ACF4		; if not, branch
-		neg.w	obInertia(a0)			; negate inertia
-
+		neg.w	obInertia(a0)		; negate inertia
 loc2_1ACF4:
-		bset	#2,obStatus(a0)		; set unused (in s1) flag
+		bset	#2,obStatus(a0)		; set roll flag
+
+		tst.b	($FFFFFF73).w		; P monitor broken in RP?
+		bne.s	@nolag			; if yes, don't do lag to not throw you off
+		move.b	#16,($FFFFFFB2).w	; add some camera lag (old system didn't work anyway)
+@nolag:
 		clr.b	($FFFFFFAF).w		; clear camera shift flag
 		move.b	#0,($FFFFD1DC).w	; clear spindash dust animation
 		move.w	#$BC,d0			; spin release sound
@@ -45909,6 +45922,7 @@ Debug_Exit:
 		moveq	#0,d0
 		move.w	d0,($FFFFFE08).w ; deactivate debug mode
 		
+		move.b	#1,($FFFFFE1E).w ; start time counter
 		move.b	#1,($FFFFFE1F).w ; update score	counter
 		clr.w	obVelX(a0)	; clear x-speed
 		clr.w	obVelY(a0)	; clear y-speed

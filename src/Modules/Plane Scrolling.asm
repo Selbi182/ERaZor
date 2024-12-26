@@ -63,15 +63,22 @@ BgScroll_SLZ:				; XREF: BgScroll_Index
 ; ===========================================================================
  
 BgScroll_SYZ:				; XREF: BgScroll_Index
+		move.l	CamXPos, d0
+		asr.l	#3, d0
+		move.l	d0, CamXPos3
+
+		asr.l	#1, d0
+		move.l	d0, CamXPos2
+
+		move.l	CamXPos, d0
 		asl.l	#4,d0
 		move.l	d0,d2
 		asl.l	#1,d0
 		add.l	d2,d0
 		asr.l	#8,d0
 		addq.w	#1,d0
-		move.w	d0,($FFFFF70C).w
-		clr.l	($FFFFF708).w
-		rts	
+		move.w	d0,CamYPos2
+		rts
 ; ===========================================================================
  
 BgScroll_SBZ:				; XREF: BgScroll_Index

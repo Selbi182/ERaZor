@@ -431,7 +431,7 @@ Options_FlashyLights_Redraw:
 
 @Str_Mode00:	dc.b	'        NORMAL',0
 @Str_Mode01:	dc.b	'PHOTOSENSITIVE',0
-@Str_Mode10:	dc.b	'     INTENSIVE',0
+@Str_Mode10:	dc.b	'     EPILEPTIC',0
 		even
 
 ; ---------------------------------------------------------------------------
@@ -511,7 +511,7 @@ Options_CameraShake_Redraw:
 
 @Str_Mode00:	dc.b	'        NORMAL',0
 @Str_Mode01:	dc.b	'PHOTOSENSITIVE',0
-@Str_Mode10:	dc.b	'TOTALLY STUPID',0
+@Str_Mode10:	dc.b	'     EPILEPTIC',0
 		even
 
 
@@ -1088,6 +1088,8 @@ Options_ResetOptions_Handle:
 	move.b	#0,(CameraShake_Intensity).w
 	jsr	GenerateCameraShake
 	move.w	#0,($FFFFF618).w
+	moveq	#0,d0				; refresh pal directly
+	jsr	Options_LoadPal
 	jsr	WhiteFlash
 
 	move.b	#Options_DeleteSRAMInitialCount, Options_DeleteSRAMCounter

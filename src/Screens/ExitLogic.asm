@@ -580,6 +580,7 @@ HubRing_Escape:
 		moveq	#1,d0			; ...pre-collect checkpoint...
 		move.b	d0,($FFFFFE30).w	; ...before the...
 		move.b	d0,($FFFFFE31).w	; ...escape sequence
+		move.w	#3,(RelativeDeaths).w	; make sure checkpoint shows up immediately
 		rts
 ; ---------------------------------------------------------------------------
 

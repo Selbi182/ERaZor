@@ -65,7 +65,7 @@ DebugSurviveNoRings = 1
 DebugHudPermanent = 0
 ; ------------------------------------------------------
 DoorsAlwaysOpen = 0
-LowBossHP = 0
+LowBossHP = 1
 ; ======================================================
 	else
 ; BENCHMARK build settings (DO NOT CHANGE!)
@@ -3912,9 +3912,10 @@ Level_Delay:
 		jsr	BuildSprites
 		jsr	DeleteQueue_Execute
 		bsr	PLC_Execute
-		move.w	($FFFFD108).w,d0
-		cmp.w	($FFFFD130).w,d0	; has title card sequence finished?
-		bne.s	@titlecardloop		; if not, loop
+
+		tst.b	($FFFFD080+$34).w	; have title cards finished moving in?
+		beq.s	@titlecardloop		; if not, loop
+
 		tst.l	PLC_Pointer		; are there any items in the pattern load cue?
 		bne.s	@titlecardloop		; if yes, loop
 		move.b	#$C,VBlankRoutine	; run for one more frame to avoid hiccups in the title card
@@ -3977,11 +3978,6 @@ Level_Delay:
 		subq.b	#2,d4
 		bne	@fadefromblack
 ; ---------------------------------
-
-		addq.b	#2,($FFFFD0A4).w ; make	title card move
-		addq.b	#4,($FFFFD0E4).w ; make	title card move
-		addq.b	#4,($FFFFD124).w ; make	title card move
-		addq.b	#4,($FFFFD164).w ; make	title card move
 
 		; start loc adjustments for Uberhub
 		cmpi.w	#$400,($FFFFFE10).w	; are we in Uberhub?
@@ -6747,6 +6743,15 @@ off_6E4A:	dc.w Resize_GHZ3main-off_6E4A
 GHZ3Add = $2700
 
 Resize_GHZ3main:
+		cmpi.b	#2,($FFFFFFAA).w	; has flag after Crabmeat boss been set?
+		bne.s	@0			; if not, branch
+		cmpi.b	#$34,($FFFFD080).w	; have title cards already been deleted?
+		bne.s	@0			; if yes, branch
+		cmpi.b	#8,($FFFFD080+obRoutine).w ; are title cards moving out?
+		bhs.s	@0			; if yes, branch
+		clr.w	($FFFFD012).w		; kill Sonic's gravity to prolong the scene
+
+@0:
 		move.w	#$320,($FFFFF726).w	; set lower y-boundary
 
 		cmpi.w	#$1780+GHZ3Add,($FFFFF700).w	; has the camera reached $1780 on x-axis?
@@ -17228,8 +17233,9 @@ Obj34:					; XREF: Obj_Index
 ; ===========================================================================
 Obj34_Index:	dc.w Obj34_Setup-Obj34_Index
 		dc.w Obj34_ChkPos-Obj34_Index
+		dc.w Obj34_WaitForLevelInit-Obj34_Index
 		dc.w Obj34_Wait-Obj34_Index
-		dc.w Obj34_Wait-Obj34_Index
+		dc.w Obj34_MoveOff-Obj34_Index
 ; ===========================================================================
 
 Obj34_Setup:				; XREF: Obj34_Index
@@ -17256,10 +17262,6 @@ Obj34_Setup:				; XREF: Obj34_Index
 
 		movem.l	d7/a0,-(sp)
 		clr.w	($FFFFF76C).w			; reset OPL routine index
-	;	move.w	#$003,($FFFFFE10).w		; change level ID to GHZ4
-	;	jsr	LevelLayoutLoad			; load GHZ3 layout
-	;	move.w	#$002,($FFFFFE10).w		; change level ID to GHZ3
-
 		move.w	#$002,($FFFFFE10).w		; change level ID to GHZ3
 		jsr	LevelLayoutLoad			; load GHZ3 layout
 		movem.l	(sp)+,d7/a0
@@ -17296,7 +17298,7 @@ Obj34_Loop:
 		move.w	(a3),obX(a1)	; load start x-position
 		move.w	(a3)+,$32(a1)	; load finish x-position
 		move.w	(a3)+,$30(a1)	; load main x-position
-		move.w	#100,$3C(a1)	; set delay time for mid-level title cards (NHP->GHP, SNP->SAP)
+		move.w	#Obj34_PostMoveInDelay,$3C(a1)	; set delay time after title cards have moved in (NHP->GHP, SNP->SAP)
 		addq.b	#1,$3E(a0)
 		move.b	$3E(a0),$3F(a1)	; set ID
 		move.w	(a2)+,obScreenY(a1)
@@ -17318,6 +17320,7 @@ Obj34_Loop:
 Obj34_ActNumber:
 		cmpi.b	#TTL_ActNums,d0		; is act number on the loading schedule right now?
 		bne.s	Obj34_MakeSprite	; if not, branch
+
 		tst.b	(Blackout).w
 		bne.s	@act666
 		jsr	FakeLevelID		; get current level index
@@ -17366,9 +17369,10 @@ Obj34_NotSpecial2:
 		move.b	#$78,obActWid(a1)
 		move.b	#0,obRender(a1)
 		move.b	#0,obPriority(a1)
-		move.w	#50,obTimeFrame(a1)	; set time delay to 1 second (60)
 		lea	$40(a1),a1	; next object
 		dbf	d1,Obj34_Loop	; repeat sequence another 3 times
+
+Obj34_LoadSonicPal:
 		tst.b	(Blackout).w	; are we in the blackout challenge?
 		bne.s	Obj34_ChkPos	; if yes, don't ruin everything again lol
 		movem.l	d0-a7,-(sp)
@@ -17405,66 +17409,68 @@ Obj34_ChkPos:				; XREF: Obj34_Index
 
 Obj34_ChkPos_End:
 		move.w	obX(a0),d0
-		bmi.s	locret_C3D8
+		bmi.s	Obj34_DoNothing
 		cmpi.w	#$200,d0	; has item moved beyond	$200 on	x-axis?
-		bcc.s	locret_C3D8	; if yes, branch
+		bcc.s	Obj34_DoNothing	; if yes, branch
 		bra.w	Obj34_Display
 ; ===========================================================================
 
 Obj34_TargetOK:
-		cmpi.b	#$10,(GameMode).w	; are we in a Special Stage?
-		beq.s	@cont			; if yes, branch
-		cmpi.w	#$302,($FFFFFE10).w	; is current level SAP?
-		beq.s	@conto			; if yes, branch
-		cmpi.w	#$002,($FFFFFE10).w	; is current level GHP?
-		bne.s	Obj34_ChkPos_End	; if not, branch
-		cmpi.b	#2,($FFFFFFAA).w	; has flag after Crabmeat boss been set?
-		bne.s	Obj34_ChkPos_End	; if not, branch
-		clr.w	($FFFFD012).w		; kill Sonic's gravity to prolong the scene
-@cont:
-		cmpi.b	#1,$3F(a0)		; is current element the Zone Name?
-		bne.s	Obj34_ChkPos_End	; if not, branch
-@conto:
-		subq.w	#1,$3C(a0)		; sub 1 from delay
-		bpl.s	Obj34_ChkPos_End	; if time remains, branch
-
 		addq.b	#2,obRoutine(a0)
-		addq.b	#2,$24+$40(a0)
-		addq.b	#2,$24+$80(a0)
-		addq.b	#2,$24+$C0(a0)
-
-		cmpi.w	#$002,($FFFFFE10).w	; is current level GHP?
-		bne.s	Obj34_ChkPos_End	; if not, branch
-		cmpi.b	#2,($FFFFFFAA).w	; has flag after Crabmeat boss been set?
-		bne.s	Obj34_ChkPos_End	; if not, branch
-		move.b	#0,($FFFFF7CC).w	; unlock controls
-	;	move.w	#BlackBars.MaxHeight,BlackBars.TargetHeight ; set proper black bars height now
-
-		bra.s	Obj34_ChkPos_End
+		bra.w	Obj34_Display
 ; ===========================================================================
 
-locret_C3D8:
+Obj34_DoNothing:
 		rts	
 ; ===========================================================================
 
-Obj34_Wait:				; XREF: Obj34_Index
-		tst.w	($FFFFFE10).w
-		bne.s	Obj34_NotGHZ1
-		cmpi.w	#$0800,($FFFFF700).w ; has the camera reached $0A00 on x-axis?
-		bcc.s	Obj34_ChkPos2	; if yes, branch
-		bra.w	Obj34_Display
+Obj34_PostMoveInDelay	equ 42
 
-Obj34_NotGHZ1:
-		tst.w	obTimeFrame(a0)		; is time remaining zero?
-		bmi.s	Obj34_ChkPos2	; if yes, branch
-		subq.w	#1,obTimeFrame(a0)	; subtract 1 from time
+Obj34_WaitForLevelInit:
+		; wait until all four segments of the title cards have reached this spot
+		cmpi.b	#4,($FFFFD080+obRoutine).w	; level name
+		blo.s	@wait
+		cmpi.b	#4,($FFFFD0C0+obRoutine).w	; PLACE
+		blo.s	@wait
+		cmpi.b	#4,($FFFFD140+obRoutine).w	; oval
+		blo.s	@wait
+		move.b	#1,$34(a0)			; notify level loading logic that title cards have moved in
+
+		; act number is treated separately because it has a built-in delay anyway
+		cmpi.w	#$400,($FFFFFE10).w		; are we in Uberhub?
+		beq.s	@0				; if yes, don't wait for act number because it doesn't exist here
+		cmpi.b	#4,($FFFFD100+obRoutine).w	; act number
+		blo.s	@wait
+	@0:
+		subq.w	#1,$3C(a0)			; sub 1 from delay
+		bpl.w	Obj34_Display			; if time remains, branch
+		addq.b	#2,obRoutine(a0)		; go to Obj34_Wait
+@wait:
+		bra.w	Obj34_Display
+; ===========================================================================
+
+Obj34_Wait:				; XREF: Obj34_Index
+		tst.w	($FFFFFE10).w		; are we in NHP?
+		bne.s	@notnhp			; if not, branch
+		cmpi.w	#$0800,($FFFFF700).w	; has the camera reached $0800 on x-axis?
+		blo.s	@wait			; if not, wait
+@notnhp:
+		addq.b	#2,obRoutine(a0)	; go to Obj34_MoveOff
+
+		cmpi.w	#$002,($FFFFFE10).w	; is current level GHP?
+		bne.s	@wait			; if not, branch
+		cmpi.b	#2,($FFFFFFAA).w	; has flag after Crabmeat boss been set?
+		bne.s	@wait			; if not, branch
+		move.b	#0,($FFFFF7CC).w	; unlock controls now
+
+@wait:
 		bra.w	Obj34_Display
 ; ===========================================================================
 
 MoveOffSpeedX = 5
 MoveOffSpeedY = 1
 
-Obj34_ChkPos2:				; XREF: Obj34_Wait
+Obj34_MoveOff:				; XREF: Obj34_Wait
 		cmpi.b	#1,$3F(a0)	; is current object Zone Name?
 		bne.s	Obj34_NotIsZone	; if yes, branch
 		subq.w	#MoveOffSpeedY,obScreenY(a0)
@@ -17510,11 +17516,9 @@ Obj34_NotIsOval:
 HUDSpeed = 6
 
 Obj34_ChangeArt:			; XREF: Obj34_ChkPos2
-		cmpi.b	#4,obRoutine(a0)
-		bne.s	Obj34_Delete
-		cmpi.b	#1,$3F(a0)	; is current object Zone Name?
-		bne.s	Obj34_Delete	; if yes, branch
-		bsr	Obj34_LoadPostGraphics
+		cmpi.b	#1,$3F(a0)		; is current object Zone Name?
+		bne.s	Obj34_Delete		; if not, branch
+		bsr	Obj34_LoadPostGraphics	; load post-titlecard graphics now and only once
 
 Obj34_Delete:
 		cmpi.b	#$10,(GameMode).w	; is level special stage?
@@ -17532,12 +17536,6 @@ Obj34_Delete:
 		bne.s	@loadhud
 		cmpi.b	#$21,($FFFFD4C0).w
 		beq.s	Obj34_JustDelete
-
-	;	cmpi.w	#$002,($FFFFFE10).w	; are we in GHP?
-	;	beq.s	Obj34_JustDelete	; if yes, delete (<--- what???)
-	;	cmpi.b	#2,($FFFFFFAA).w	; has the crabmeat been defeated?
-	;	beq.s	Obj34_JustDelete	; if yes, delete
-
 @loadhud:
 		bsr	HUD_LoadObjects		; otherwise, load HUD
 
@@ -17596,9 +17594,7 @@ Obj34_DoDisplayX:
 
 Obj34_LoadPostGraphics:
 		moveq	#2,d0
-		jmp	(LoadPLC).l	; load explosion patterns
-	;	moveq	#$13,d0
-	;	jmp	(LoadPLC).l	; load star patterns
+		jmp	LoadPLC			; load explosion patterns
 
 ; ===========================================================================
 Obj34_ItemData:

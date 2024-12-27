@@ -276,6 +276,12 @@ CS_Loop:
 ; ---------------------------------------------------------------------------
 
 CS_Exit:
+		move.b	#$E4,d0
+		jsr	PlayCommand		; stop music in case it's still fading out
+		move.b	#2,VBlankRoutine
+		jsr	DelayProgram
+		
+
 	if Chapters_TestAll=1
 		addq.b	#1,(CurrentChapter).w	; go to next chapter ID
 		jmp	ChapterScreen		; reload chapter screen

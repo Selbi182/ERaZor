@@ -5,12 +5,16 @@ PLC_Pointer:		rs.l	1			; pointer to the ocurring entry in PLC list
 PLC_Slot_1:		rs.l	1
 PLC_Slot_2:		rs.l	1
 PLC_Slot_3:		rs.l	1
+PLC_Slot_4:		rs.l	1
 PLC_VRAMAddr:		rs.w	1			; VRAM destination address
 PLC_NumBlocks:		rs.w	1			; number of blocks to decompress
-PLC_LastBlockSize:	rs.w	1			; size of the last block to decompress (unused)
 PLC_ArtPtr:		rs.l	1			; pointer within compressed art
 
 PLC_RAM_End:		equ	__RS
+
+	if PLC_RAM_End-PLC_RAM>$20
+		inform 2, "PLC_RAM takes too much memory (>$20 bytes)"
+	endif
 
 ; --------------------------------------------------------------
 ; Subroutine to execute PLC list
@@ -62,8 +66,9 @@ PLC_LoadNextList:
 	move.l	(a0)+, (a1)+
 	move.l	(a0)+, (a1)+
 	move.l	(a0)+, (a1)+
+	move.l	(a0)+, (a1)+
 	moveq	#0, d0
-	move.l	d0, PLC_Slot_3		; clear out last slot
+	move.l	d0, PLC_Slot_4		; clear out last slot
 	;bra.s	PLC_ProcessQueue
 
 ; --------------------------------------------------------------
@@ -89,7 +94,6 @@ PLC_ProcessQueue:
 	and.w	#$F000, d2
 	rol.w	#4, d2					; d2 = number of blocks - 1
 	and.w	#$0FFF, d3				; d3 = size of the last block
-	move.w	d3, PLC_LastBlockSize			; save size
 	seq.b	d3					; d3 = 0 if size if non-zero, -1 otherwise
 	add.b	d3, d2					; reduce number of modules if the last module's size is zero ...
 
@@ -167,6 +171,8 @@ LoadPLC:
 	move.l	(a2)+, d0			; check slot_2
 	beq.s	@found
 	move.l	(a2)+, d0			; check slot_3
+	beq.s	@found
+	move.l	(a2)+, d0			; check slot_4
 	if def(__DEBUG__)
 		bne.s	LoadPLC_OutOfSlotsException
 	else
@@ -192,6 +198,7 @@ Debugger_PLC:
 	Console.WriteLine "%<pal2>Next 1: %<pal0>%<.l PLC_Slot_1 sym>"
 	Console.WriteLine "%<pal2>Next 2: %<pal0>%<.l PLC_Slot_2 sym>"
 	Console.WriteLine "%<pal2>Next 3: %<pal0>%<.l PLC_Slot_3 sym>"
+	Console.WriteLine "%<pal2>Next 4: %<pal0>%<.l PLC_Slot_4 sym>"
 
 	Console.WriteLine "%<endl>%<pal1>PLC State:"
 	Console.WriteLine "%<pal2>Handler: %<pal0>%<.l PLC_StreamHndl sym>"

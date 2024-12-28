@@ -471,6 +471,9 @@ BlackBars.GHP:
 		blo.s	@baseheightokay			; if not, branch
 		addq.w	#BlackBars.GrowSize,BlackBars.TargetHeight ; grow bars until we reach the minimum height
 @baseheightokay:
+		tst.b	($FFFFF7CC).w			; are controls locked?
+		bne.s	@timeleft			; if yes, branch
+
 		frantic					; are we in Frantic mode?
 		beq.s	@timeleft			; if not, branch
 	;	move.b	#BlackBars.GHPCasual,d0		; set casual reset time
@@ -3710,7 +3713,7 @@ Level_NotIntro:
 		bne.s	@fpcheckpoint		; if yes, branch
 		moveq	#$1F,d0
 		jsr	LoadPLC			; load FZ boss patterns
-		cmpi.w	#20,(RelativeDeaths).w	; did you already die 20 times?
+		cmpi.w	#FPBonusText_Entries,(RelativeDeaths).w	; did you exhaust all the bonus texts by sucking at video games?
 		blo.s	@notfinalor		; if not, branch
 		move.w	#$1780,d0		; fast forward the long corridor
 		add.w	d0,($FFFFD008).w	; you bloody noob
@@ -3824,11 +3827,13 @@ loc_3946:
 		ori.w	#2,($FFFFF7BE).w	; skip loading giant ring patterns (collides otherwise)
 
 @SBZcont:
+		tst.w	($FFFFFE10).w		; are we in NHP?
+		beq.s	@shoot			; if yes, branch
 		cmpi.b	#$4,($FFFFFE10).w
 		bne.s	Level_ChkWater
+@shoot:		move.w	#$800,($FFFFD012).w	; shoot Sonic down in Uberhub's intro
 		bset	#1,($FFFFD022).w
 		move.b	#2,($FFFFD01C).w
-		move.w	#$800,($FFFFD012).w	; shoot Sonic down in Uberhub's intro
 
 Level_ChkWater:
 		move.w	#0,($FFFFF602).w
@@ -5076,16 +5081,12 @@ SignpostArtLoad:			; XREF: Level
 		move.w	($FFFFFE10).w,d0	; get current Level ID
 		; GHP sign post is loaded from within boss
 		cmpi.w	#$200,d0		; is level RP?
-		beq.s	@rp			; if yes, branch
+		beq.s	Signpost_DoLoad		; if yes, branch
 		cmpi.w	#$101,d0		; is level LP?
 		beq.s	Signpost_DoLoad_NoLock	; if yes, branch (don't lock screen)
 		cmpi.w	#$302,d0		; is level SAP?
 		beq.s	Signpost_DoLoad_NoLock	; if yes, branch (don't lock screen)
 		rts				; otherwise, don't load
-@rp:
-		btst	#3,($FFFFF7A7).w	; is RP boss defeated?
-		bne.s	Signpost_DoLoad		; if yes, load art
-		rts				; wait until boss is defeated
 
 Signpost_DoLoad:
 		move.w	d1,($FFFFF728).w	; move left boundary to current screen position
@@ -5322,11 +5323,13 @@ SS_MainLoop:
 		bne.s	@disallowed		; if yes, disallow hard part skippers
 		frantic				; is frantic mode enabled?
 		beq.s	@dohardpartskip		; if not, allow hard part skippers
+		jsr	Check_BaseGameBeaten_Frantic ; frantic already beaten?
+		bne.s	@dohardpartskip		; if yes, unlock HPS branch
 @disallowed:
 		lea	($FFFFD000).w,a0	; load Sonic object
 		jsr	TouchGoalBlock		; respawn at last checkpoint
 		move.w	#$DC,d0			; play option disallowed sound
-		jsr	PlaySFX	; play sound	
+		jsr	PlaySFX			; play sound	
 		bra.s	SS_WaitVBlank		; skip
 
 @dohardpartskip:
@@ -6737,28 +6740,27 @@ Resize_GHZ3:
 ; ===========================================================================
 off_6E4A:	dc.w Resize_GHZ3main-off_6E4A
 		dc.w Resize_GHZ3boss-off_6E4A
+		dc.w Resize_GHZ3duringboss-off_6E4A
+		dc.w Resize_GHZ3bossdefeated-off_6E4A
 		dc.w Resize_GHZ3end-off_6E4A
 ; ===========================================================================
 
-GHZ3Add = $2700
-
 Resize_GHZ3main:
 		cmpi.b	#2,($FFFFFFAA).w	; has flag after Crabmeat boss been set?
-		bne.s	@0			; if not, branch
+		bne.s	@nottransition		; if not, branch
 		cmpi.b	#$34,($FFFFD080).w	; have title cards already been deleted?
-		bne.s	@0			; if yes, branch
+		bne.s	@nottransition		; if yes, branch
 		cmpi.b	#8,($FFFFD080+obRoutine).w ; are title cards moving out?
-		bhs.s	@0			; if yes, branch
+		bhs.s	@nottransition		; if yes, branch
 		clr.w	($FFFFD012).w		; kill Sonic's gravity to prolong the scene
+@nottransition:
 
-@0:
-		move.w	#$320,($FFFFF726).w	; set lower y-boundary
-
-		cmpi.w	#$1780+GHZ3Add,($FFFFF700).w	; has the camera reached $1780 on x-axis?
+		move.w	#$320,($FFFFF726).w		; set lower y-boundary
+		cmpi.w	#$1780,($FFFFF700).w		; near the GHZ1 S-tube?
 		bcs.s	locret_6E96			; if not, branch
 		move.w	#$400,($FFFFF726).w		; set lower y-boundary
 
-		cmpi.w	#$2838+$28+GHZ3Add-SCREEN_XCORR,($FFFFD008).w	; is Sonic near boss?
+		cmpi.w	#$2A60-SCREEN_XCORR,($FFFFD008).w	; is Sonic near boss?
 		bcc.s	loc_6E98			; if yes, branch
 		
 locret_6E96:
@@ -6766,39 +6768,66 @@ locret_6E96:
 ; ===========================================================================
 
 loc_6E98:
-		move.w	#$300,($FFFFF726).w
+		move.w	#$300,($FFFFF726).w		; bottom boundary
+		move.w	($FFFFF700).w,($FFFFF728).w
 		addq.b	#2,($FFFFF742).w
 		rts
 ; ===========================================================================
 
 Resize_GHZ3boss:
-		move.w	#$300,($FFFFF726).w
-		move.w	($FFFFF700).w,($FFFFF728).w
-
-		cmpi.w	#$2960+GHZ3Add-SCREEN_XCORR,($FFFFF700).w
+		cmpi.w	#$2B60-SCREEN_XCORR,($FFFFF700).w
 		bcs.s	locret_6EE8
 		jsr	SingleObjLoad
 		bne.s	loc_6ED0
 		move.b	#$3D,0(a1)	; load GHZ boss	object
-		move.w	#$2A00+GHZ3Add,obX(a1)
+		move.w	#$2C00,obX(a1)
 		move.w	#$400,obY(a1)
 
 loc_6ED0:
 		move.w	#$8C,d0
-		bsr	PlayBGM	; play boss music
-		move.b	#1,($FFFFF7AA).w ; lock	screen
+		bsr	PlayBGM			; play boss music
+
+		move.b	#1,($FFFFF7AA).w	; lock screen
+
 		addq.b	#2,($FFFFF742).w
 		moveq	#$11,d0
 		bsr.w	LoadPLC		; load boss patterns
 		move.w	BlackBars.BaseHeight,BlackBars.TargetHeight
-; ===========================================================================
 
 locret_6EE8:
 		rts	
 ; ===========================================================================
 
+Resize_GHZ3duringboss:
+		move.w	($FFFFF700).w,($FFFFF728).w
+		move.w	#$0240,($FFFFF72C).w	; top boundary
+		rts	
+; ===========================================================================
+
+Resize_GHZ3bossdefeated:	; called from boss object itself
+		addq.b	#2,($FFFFF742).w
+		clr.b	($FFFFF7AA).w		; unlock screen
+
+		move.w	#$94,d0
+		jsr	PlayBGM			; play GHZ music
+		move.b	#$E3,d0
+		jsr	PlayCommand		; resume music at regular speed
+		
+		moveq	#$12,d0
+		jsr	LoadPLC			; load signpost	patterns
+		lea	(@Spring).l, a1		; load spring graphics
+		jmp	LoadPLC_Direct
+
+; ---------------------------------------------------------------------------
+@Spring:	dc.l	ArtKospM_HSpring
+		dc.w	$A460
+		dc.w	-1
+; ===========================================================================
+
 Resize_GHZ3end:
 		move.w	($FFFFF700).w,($FFFFF728).w
+		move.w	#$0000,($FFFFF72C).w	; top boundary
+		move.w	#$2CE0,($FFFFF72A).w ; right boundary
 		rts
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -10202,8 +10231,8 @@ Obj1D_Explosions:
 ; ---------------------------------------------------------------------------
 ; Bonus texts spawning in Finalor Place after the player dies
 ; ---------------------------------------------------------------------------
-FPBonusText_Entries = 20
-FPBonusText_Length  = 4*7	; = 28
+FPBonusText_Entries equ 20
+FPBonusText_Length  equ 4*7	; = 28
 ; ---------------------------------------------------------------------------
 FPBonusTexts:	dc.b	"     OH, BACK SO SOON?      "
 		dc.b	"    WELCOME BACK, AGAIN!    "
@@ -11935,8 +11964,8 @@ Obj1F_BossDelete:
 		move.b	#2,($FFFFFFD4).w		; set flag 4, 2
 		move.b	#0,($FFFFF7AA).w		; unlock screen
 		move.b	#2,($FFFFFFAA).w		; set flag 1, 2
-		move.w	#$25C5,($FFFFF728).w		; set new left boundary
-		move.w	#$5060-SCREEN_XCORR,($FFFFF72A).w; set new right boundary
+		move.w	#$00C0,($FFFFF728).w		; set new left boundary
+		move.w	#$2B60-SCREEN_XCORR,($FFFFF72A).w; set new right boundary
 
 		move.b	#$DB,d0			; play epic explosion sound
 		jsr	PlaySFX
@@ -11945,7 +11974,7 @@ Obj1F_BossDelete:
 
 		; part two of the transition is (cruedly) done in Obj34 itself
 		lea	($FFFFD000).w,a1
-		move.w	#$3700,obX(a1)
+		move.w	#$12E8,obX(a1)		; adjusted to land exactly on the ring monitor if you hold right
 		move.w	#$0060,obY(a1)
 		move.w	#-$C80,obVelX(a1)	; weeeeeee
 		move.w	#0,obVelY(a1)
@@ -11959,10 +11988,7 @@ Obj1F_BossDelete:
 		move.b	#1,($FFFFFFEB).w	; set jumpdash flag
 		jsr	FixCamera
 		move.b	#1,(RedrawEverything).w
-
-		moveq	#0, d0
-		move.w	d0, ($FFFFF76C).w		; reset OPL routine index
-		move.w	d0, ($FFFFFE30).w		; clear any set level checkpoints
+		clr.w	($FFFFFE30).w		; clear any set level checkpoints
 
 		move.b	#$34,($FFFFD080).w 		; load title card object
 		move.b	#100,($FFFFD080+$30).w		; set delay before loading title cards
@@ -11970,11 +11996,18 @@ Obj1F_BossDelete:
 
 		movem.l	d0-d7/a1-a3,-(sp)
 		moveq	#3,d0
-		jsr	PalLoad2		; load Sonic palette
+		jsr	PalLoad2			; load Sonic palette
 		moveq	#$C,d0
-		jsr	PalLoad2	; load GHZ palette
+		jsr	PalLoad2			; load GHZ palette
 		jsr	WhiteFlash_Intense		; make mega white flash
 		movem.l	(sp)+,d0-d7/a1-a3
+
+		; load the actual layout now
+		movem.l	d7/a0,-(sp)
+		clr.w	($FFFFF76C).w			; reset OPL routine index
+		move.w	#$002,($FFFFFE10).w		; change level ID to GHZ3
+		jsr	LevelLayoutLoad			; load GHZ3 layout
+		movem.l	(sp)+,d7/a0
 		
 		move.b	#4,obRoutine(a0)		; delete crabmeat boss
 		rts
@@ -13746,13 +13779,13 @@ Obj4B_MoveOffScreen:			; XREF: Obj4B_Index
 
 		tst.b	($FFFFFF7D).w		; is ring moving up?
 		bne.s	@goinup			; if yes, branch
-		addi.w	#$10,obVelY(a0)		; move ring down
+		addi.w	#$30,obVelY(a0)		; move ring down
 		move.b	#2,$38(a0)		; spin slow
-		cmpi.w	#$340,obVelY(a0)	; has a certain downward velocity been reached?
+		cmpi.w	#$600,obVelY(a0)	; has a certain downward velocity been reached?
 		bmi.s	@updatepos		; if not, branch
 		move.b	#1,($FFFFFF7D).w	; make ring move upwards
 @goinup:
-		subi.w	#$50,obVelY(a0)		; move ring upwards
+		subi.w	#$E0,obVelY(a0)		; move ring upwards
 		move.b	#0,$38(a0)		; spin fast
 @updatepos:
 		jsr	SpeedToPos		; move giant ring
@@ -14964,9 +14997,7 @@ Obj2B_NotInhumanCrush:
 		move.w	obY(a0),obY(a1)
 		move.b	#2,obRoutine(a1)	; only load one explosion
 		move.b	#0,$30(a1)		; make explosion HARMFUL
-		move.b	#1,$31(a1)		; set mute flag
-		move.w	#$C4,d0			; play default explosion sound (MZ block smash)
-		jmp	PlaySFX
+		move.b	#0,$31(a1)		; play sfx
 @end:
 		rts	
 ; ===========================================================================
@@ -14986,8 +15017,8 @@ Map_obj2B:
 		
 ; ===========================================================================
 BossDefeated2:
-		move.b	($FFFFFE05).w,d0
-		andi.b	#7,d0
+		moveq	#7,d0
+		and.b	($FFFFFE05).w,d0
 		bne.s	locret_178A22
 		bsr	SingleObjLoad
 		bne.s	locret_178A22
@@ -17241,12 +17272,13 @@ Obj34_Index:	dc.w Obj34_Setup-Obj34_Index
 Obj34_Setup:				; XREF: Obj34_Index
 		cmpi.w	#$302,($FFFFFE10).w	; are we in SAP?
 		beq.s	@delayafterboss		; if yes, branch
-		tst.w	($FFFFFE10).w		; are we in NHP?
+		cmpi.w	#$002,($FFFFFE10).w	; are we in GHP?
 		bne.s	@regular		; if not, branch
 		cmpi.b	#2,($FFFFFFAA).w	; has the crabmeat boss been defeated?
 		bne.s	@regular		; if yes, do delay
 		clr.w	($FFFFD012).w		; kill Sonic's gravity to prolong the scene
-		jsr	FixCamera
+		jsr	FixCamera		; glue camera on Sonic as he flies through the air
+
 @delayafterboss:
 		tst.b	$30(a0)			; any time remaining on the delay?
 		beq.s	@regular		; if not, load title cards
@@ -17257,18 +17289,13 @@ Obj34_Setup:				; XREF: Obj34_Index
 		beq.s	@regular		; if not, branch
 
 		; transition from NHP to GHP (other part in Obj1F_BossDelete)
-		tst.w	($FFFFFE10).w		; are we in NHP?
-		bne.s	@notnhp			; if not, branch	
+		cmpi.w	#$002,($FFFFFE10).w	; are we in GHP?
+		bne.s	@notghp			; if not, branch	
+		cmpi.b	#2,($FFFFFFAA).w	; has the crabmeat boss been defeated?
+		bne.s	@notghp			; if not, branch
+		jsr	PlayLevelMusic		; play GHP music
 
-		movem.l	d7/a0,-(sp)
-		clr.w	($FFFFF76C).w			; reset OPL routine index
-		move.w	#$002,($FFFFFE10).w		; change level ID to GHZ3
-		jsr	LevelLayoutLoad			; load GHZ3 layout
-		movem.l	(sp)+,d7/a0
-
-		jsr	PlayLevelMusic
-
-@notnhp:
+@notghp:
 		btst	#2,(OptionsBits).w	; is "cinematic mode - disable HUD" enabled?
 		bne.s	@regular		; if yes, don't load title cards
 		lea	PLC_TitleCard, a1
@@ -17424,7 +17451,7 @@ Obj34_DoNothing:
 		rts	
 ; ===========================================================================
 
-Obj34_PostMoveInDelay	equ 42
+Obj34_PostMoveInDelay	equ 60
 
 Obj34_WaitForLevelInit:
 		; wait until all four segments of the title cards have reached this spot
@@ -17623,8 +17650,8 @@ Obj34_ItemData:
 Obj34_ConData:
 		dc.w $002F, $80+SCREEN_WIDTH/2		; Stage Name (e.g. NIGHT HILL)
 		dc.w $002F, $80+SCREEN_WIDTH/2+$19+3	; PLACE
-		dc.w $0413, $80+SCREEN_WIDTH/2+$34+4+5	; "ACT" text and Act Number
-		dc.w $0214, $80+SCREEN_WIDTH/2+$34	; Oval
+		dc.w $042F, $80+SCREEN_WIDTH/2+$34+4+5	; "ACT" text and Act Number
+		dc.w $002F, $80+SCREEN_WIDTH/2+$34	; Oval
 		even
 ; ===========================================================================
 
@@ -20564,6 +20591,9 @@ Obj0D_Float:
 ; ===========================================================================
 
 Obj0D_SonicRun:				; XREF: Obj0D_Index
+		cmpi.b	#6,($FFFFD024).w	; is Sonic dying?
+		bhs.w	locret_ECEE		; if yes, branch
+
 		tst.w	$30(a0)
 		beq.s	@cont
 		subq.w	#1,$30(a0)
@@ -21118,6 +21148,7 @@ Obj40_Action:				; XREF: Obj40_Index
 		jsr	obj40_Index2(pc,d1.w)
 		lea	(Ani_obj40).l,a1
 		bsr	AnimateSprite
+		bra.s	MarkObjGone
 
 ; ---------------------------------------------------------------------------
 ; Routine to mark an enemy/monitor/ring	as destroyed
@@ -24999,17 +25030,14 @@ Obj5F_BossDefeatedboss2:
 		move.b	#1,$30(a1)
 		move.b	#0,$31(a1)
 
-		jsr	(RandomNumber).l
-		move.w	d0,d1
-		moveq	#0,d1
-		move.b	d0,d1
-		lsr.b	#2,d1
-		subi.w	#$20,d1
-		add.w	d1,obX(a1)
-		lsr.w	#8,d0
-		lsr.b	#3,d0
+		jsr	RandomNumber
+		andi.l	#$000F000F,d0
+		subi.w	#8,d0
+		add.w	d0,obX(a1)
+		swap	d0
+		subi.w	#8,d0
 		add.w	d0,obY(a1)
-		subq.w	#8,obY(a1)
+
 		ori.b	#10,(CameraShake).w
 		bra.w	Obj5F_ShowBomb
 ; ===========================================================================
@@ -27472,8 +27500,11 @@ Obj06_ChkDist:
 		bhi.w	Obj06_Display		; if not, branch
 		move.b	#1,($FFFFFF74).w	; set spindash block flag
 
-		frantic	
-		bne.s	@noskiptext
+		frantic				; are we in frantic?
+		beq.s	@skiptext		; if not, always show skip text
+		jsr	Check_BaseGameBeaten_Frantic ; frantic already beaten?
+		beq.s	@noskiptext		; if not, don't allow HPS
+@skiptext:
 		move.b	#3,obFrame(a0)		; show "SKIP" text
 @noskiptext:
 
@@ -27488,9 +27519,10 @@ Obj06_ChkDist:
 		bne.w	Obj06_Display		; all buttons pressed? if not, branch
 		
 Obj06_DoHardPartSkip:
-
 		frantic				; are we in Frantic mode?
 		beq.s	@dohardpartskip		; if not, branch
+		jsr	Check_BaseGameBeaten_Frantic ; frantic already beaten?
+		bne.s	@dohardpartskip		; if yes, unlock HPS
 		jmp	TrollKill		; no hard part skippers for you
 ; ---------------------------------------------------------------------------
 
@@ -28339,8 +28371,10 @@ S_D_NotGHZ2:
 		clr.w	(FranticDrain).w	; clear frantic ring drain for casual mode
 		beq.s	S_D_AfterImage	 	; skip
 @franticdrain:
-		cmpi.b	#$34,($FFFFD080).w	; are title cards currently visible?
-		beq.s	S_D_AfterImage		; if yes, wait until they're gone
+		tst.b	($FFFFD4C0+$3A).w	; is Intro animation for rings HUD done?
+		beq.s	S_D_AfterImage		; if not, branch
+		tst.b	($FFFFF7CC).w		; are controls locked?
+		bne.s	S_D_AfterImage		; if yes, branch
 		tst.b	WhiteFlashCounter	; is a white flash currently in progres?
 		bne.s	S_D_AfterImage		; if yes, branch
 		move.w	($FFFFFE04).w,d0	; get level timer
@@ -28359,7 +28393,7 @@ S_D_NotGHZ2:
 @positive:
 		ori.b	#1,($FFFFFE1D).w	; update rings counter
 		move.w	#$A9,d0			; play blip ring sound...
-		jsr	PlaySFX	; ...to indicate the draining
+		jsr	PlaySFX			; ...to indicate the draining
 
 S_D_AfterImage:	
 		move.w	$30(a0),d0		; get remaining invulnerability frames
@@ -36370,7 +36404,7 @@ loopdashit:	cmpi.b	#$18,(a1)		; is current object a platform?
 
 		frantic
 		bne.s	@frantic
-		cmpi.w	#$50FD,obX(a1)	; middle platform in GHP boss
+		cmpi.w	#$2BFD,obX(a1)	; middle platform in GHP boss
 		beq.s	@cont		; you get to live
 @frantic:
 
@@ -36477,7 +36511,7 @@ Obj3D_ShipMove:				; XREF: Obj3D_ShipIndex
 		addq.b	#2,ob2ndRout(a0)
 		move.w	#$3F,$3C(a0)
 		move.w	#$400,obVelX(a0)	; move the ship	fast sideways
-		cmpi.w	#$2A00+GHZ3Add,$30(a0)
+		cmpi.w	#$2C00,$30(a0)
 		bne.s	Obj3D_Reverse
 		move.w	#$7F,$3C(a0)
 		move.w	#$100,obVelX(a0)	; move the ship	sideways
@@ -36531,26 +36565,11 @@ loc_17984:
 
 locret_179AA:
 	if LowBossHP=1
-		move.b	#1,($FFFFFE2D).w		; make Sonic invincible
+		move.b	#1,($FFFFFE2D).w	; make Sonic invincible
 	endif
-		move.w	#$94,d0
-		jsr	PlayBGM	; play GHZ music
-		move.b	#$E3,d0
-		jsr	PlayCommand	; resume music at regular speed
-		move.w	#$2AC0+GHZ3Add,($FFFFF72A).w
-		moveq	#$12,d0
-		jsr	LoadPLC2	; load signpost	patterns
-		clr.b	($FFFFF7AA).w
-		lea	@Spring(pc), a1	; load spring graphics
-		jsr	LoadPLC_Direct
+
+		addq.b	#2,($FFFFF742).w	; tell level resize index he's dead as shit
 		jmp	DeleteObject
-
-; ===========================================================================
-@Spring:
-	dc.l	ArtKospM_HSpring
-	dc.w	$A460
-	dc.w	-1
-
 ; ===========================================================================
 
 loc_179AC:				; XREF: Obj3D_ShipIndex
@@ -36594,7 +36613,7 @@ loc_179EE:
 loc_179F6:				; XREF: Obj3D_ShipIndex
 		move.w	#$400,obVelX(a0)
 		move.w	#-$40,obVelY(a0)
-		cmpi.w	#$2AC0+GHZ3Add,($FFFFF72A).w
+		cmpi.w	#$2AC0,($FFFFF72A).w
 		beq.s	loc_17A10
 		addq.w	#2,($FFFFF72A).w
 		bra.s	loc_17A16
@@ -36622,7 +36641,7 @@ Obj3D_FaceMain:				; XREF: Obj3D_Index
 		move.b	ob2ndRout(a1),d0
 		subq.b	#4,d0
 		bne.s	loc_17A3E
-		cmpi.w	#$2A00+GHZ3Add,$30(a1)
+		cmpi.w	#$2A00,$30(a1)
 		bne.s	loc_17A46
 		moveq	#4,d1
 
@@ -36946,12 +36965,12 @@ Obj48_Vanish:
 		
 		; prevent detached ball from moving offscreen
 		move.w	obX(a0),d0
-		move.w	#$5060-SCREEN_XCORR,d1
+		move.w	#$2B60-SCREEN_XCORR,d1
 		cmp.w	d1,d0
 		bhi.s	@cont
 		move.w	d1,obX(a0)
 @cont:
-		move.w	#$51A0+SCREEN_XCORR,d1
+		move.w	#$2CA0+SCREEN_XCORR,d1
 		cmp.w	d1,d0
 		blo.s	Obj48_Display4
 		move.w	d1,obX(a0)
@@ -38843,7 +38862,7 @@ Obj75_SlamThreshold = $C
 
 ; balance
 Obj75_CasualGoBackUpSpeed = -$200
-Obj75_FranticXGoBackUpBonusSpeed = $1C
+Obj75_FranticXGoBackUpBonusSpeed = $10
 Obj75_BossSpeed_Casual = $3D0
 Obj75_BossSpeed_Frantic = $3D0
 Obj75_BossHealth_Casual  = 12
@@ -39090,6 +39109,10 @@ Obj75_LastHitDealt:
 ; ===========================================================================
 
 Obj75_CheckSlam:
+
+		tst.b	obColType(a0)
+		beq.s	@slam
+
 		move.w	($FFFFD008).w,d0
 		sub.w	obX(a0),d0
 		bpl.s	@pos
@@ -39098,6 +39121,7 @@ Obj75_CheckSlam:
 		cmpi.w	#Obj75_SlamThreshold,d0
 		bhi.s	@end
 
+@slam:
 		; activate slam
 		move.b	#4,ob2ndRout(a0)	; set to slam down
 		move.w	#-$400,obVelY(a0)	; move eggman up a little before slam
@@ -39258,11 +39282,15 @@ Obj75_GoBackUp:
 @ok:
 		move.w	d0,obVelY(a0)
 
-		cmpi.w	#Obj75_BaseY,obY(a0)
-		bhi.w	Obj75_SlamEnd
+		cmpi.w	#Obj75_BaseY,obY(a0)		; has Eggman gone fully back up?
+		bhi.w	Obj75_SlamEnd			; if not, branch
 		move.b	#0,ob2ndRout(a0)
 		move.w	obY(a0),$38(a0)
 		move.w	obX(a0),$30(a0)
+
+		tst.b	$3E(a0)				; was Eggman still flashing from a hit?
+		beq.s	Obj75_SlamEnd			; if not, branch
+		move.b	#1,$3E(a0)			; reduce remaining flashing timer
 
 Obj75_SlamEnd:
 		jsr	SpeedToPos

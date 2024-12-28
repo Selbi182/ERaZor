@@ -890,20 +890,13 @@ Check_HubEasterVisited:
 		rts
 ; ---------------------------------------------------------------------------
 
-Check_JustFinishedFP:
-		btst	#6,(Doors_Casual).w		; has the player finished FP in casual?
-		beq.s	@end				; if not, branch
-		jsr	Check_BaseGameBeaten_Casual	; has the player beaten the base game in casual yet?
-		eori.b	#%00100,ccr			; invert Z flag for return value
-@end:		rts
-; ---------------------------------------------------------------------------
-
 Check_UnterhubUnlocked:
-		moveq	#5,d0				; SNP/SAP beaten?
-		bsr	Check_LevelBeaten_Current	; (...only for pacing reasons)
-		beq.s	@no				; if not, branch
-		moveq	#2,d0				; RP beaten?
-		bsr	Check_LevelBeaten_Current
+		moveq	#6-1,d0				; check if all 6 main trophies are collected
+@checknext:						; (...NHP/GHP, SP, RP, LP, UP, SNP/SAP)
+		bsr	Check_LevelBeaten_Current	; check if current level in d0 is beaten
+		beq.s	@no				; if not, requirement failed
+		subq.b	#1,d0				; check next level
+		bpl.s	@checknext			; continue checking for all
 @no:		rts
 
 Check_UnterhubFirst:

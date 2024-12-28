@@ -5,7 +5,7 @@
 
 		dc.w	$0010, $0020	; GHZ 1 (Night Hill Place)
 		dc.w	$0000, $01AC	; GHZ 2 (Intro Sequence)
-		dc.w	$2630, $03AC	; GHZ 3 (Green Hill Place)
+		dc.w	$0130, $03AC	; GHZ 3 (Green Hill Place)
 		dc.w	$0080, $00A8	; ghz 4
 
 		dc.w	$0078, $006E	; lz 1

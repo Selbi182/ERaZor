@@ -1002,7 +1002,7 @@ Hint_4:
 		boxtxt	"SOURCE CODE!"
 		boxtxt_line
 		boxtxt	"erazor:selbi:club"
-		boxtxt_pause
+		boxtxt_line
 		boxtxt	"THIS IS A REDIRECT"
 		boxtxt	"TO THE GITHUB REPO."
 		boxtxt_next
@@ -1010,7 +1010,9 @@ Hint_4:
 		boxtxt	"ALSO, DID YOU KNOW"
 		boxtxt	"THERE'S A SPECIAL" 
 		boxtxt	"widescreen_optimized"
-		boxtxt	"OF SONIC ERAZOR?" 
+		boxtxt	"MODIFICATION MADE" 
+		boxtxt	"FOR SONIC ERAZOR?" 
+		boxtxt_line
 		boxtxt	"GO TO THE SAME URL"
 		boxtxt	"FOR THE DOWNLOAD!"
 		boxtxt_next
@@ -1024,16 +1026,18 @@ Hint_4:
 		boxtxt	"AND NOW... HELLO AND"
 		boxtxt	"WELCOME TO THE"
 		boxtxt	"easter egg infodump!"
-		boxtxt_pause
+		boxtxt_line
 		boxtxt	"A BUNCH OF HIDDEN"
 		boxtxt	"BUTTON COMBINATIONS,"
 		boxtxt	"RANGING FROM HANDY"
-		boxtxt	"TO VERY SILLY."
+		boxtxt	"TO SILLY FUN."
 		boxtxt_next
 
+		boxtxt	"--- cheats ---"
+		boxtxt_next
 
 		boxtxt	"level select"
-		boxtxt_pause
+		boxtxt_line
 		boxtxt	"AT THE TITLE SCREEN,"
 		boxtxt	"CIRCLE THE d_pad"
 		boxtxt	"A FEW TIMES, THEN"
@@ -1043,7 +1047,7 @@ Hint_4:
 		boxtxt_next
 
 		boxtxt	"debug mode"
-		boxtxt_pause
+		boxtxt_line
 		boxtxt	"WHEN YOU'RE IN THE"
 		boxtxt	"FINAL PHASE OF THE"
 		boxtxt	"SELBI SCREEN, MASH"
@@ -1051,47 +1055,22 @@ Hint_4:
 		boxtxt	"TWENTY TIMES!"
 		boxtxt_next
 
-		boxtxt	"instant new game"
-		boxtxt_pause
-		boxtxt	"WHILE STARTING A NEW"
-		boxtxt	"GAME, HOLD a IN THE"
-		boxtxt	"DIFFICULTY SELECT TO"
-		boxtxt	"ENABLE arcade mode"
-		boxtxt	"AND START RIGHT IN"
-		boxtxt	"night hill place!"
+
+		boxtxt	"--- silly extras ---"
 		boxtxt_next
 
-		boxtxt	"abc skip - A"
-		boxtxt_pause
-		boxtxt	"YOU CAN SKIP MANY OF"
-		boxtxt	"THE SHORT CUTSCENES,"
-		boxtxt	"BY HOLDING a + b + c"
-		boxtxt	"AT ONCE! THIS ALSO"
-		boxtxt	"INCLUDES GIANT RING"
-		boxtxt	"ANIMATIONS."
-		boxtxt_next
-	
-		boxtxt	"abc skip - B"
-		boxtxt_pause
-		boxtxt	"IN CASUAL MODE, YOU"
-		boxtxt	"CAN ALSO INSTANTLY"
-		boxtxt	"SKIP A SPECIAL STAGE"
-		boxtxt	"BY HOLDING a + b + c"
-		boxtxt	"AT ONCE!"
-		boxtxt_next
-
-		boxtxt	"abc skip - C"
-		boxtxt_pause
-		boxtxt	"IF YOU'RE GETTING"
-		boxtxt	"TIRED OF ME..."
-		boxtxt	"YOU CAN SKIP THESE"
-		boxtxt	"SMALL ON-SCREEN"
-		boxtxt	"TEXTBOXES IN THE"
-		boxtxt	"SAME MANNER!"
+		boxtxt	"true_bs mode"
+		boxtxt_line
+		boxtxt	"GO TO THE DIFFICULTY"
+		boxtxt	"SELECT SCREEN AND"
+		boxtxt	"HOLD a THEN b THEN c"
+		boxtxt	"IN THAT EXACT ORDER!"
+		boxtxt	"IT'S REALLY HARD."
+		boxtxt	"AND REALLY STUPID."
 		boxtxt_next
 
 		boxtxt	"drunk special stages"
-		boxtxt_pause
+		boxtxt_line
 		boxtxt	"ENABLE motion blur"
 		boxtxt	"AND HOLD a + up/down"
 		boxtxt	"TO ROTATE A SPECIAL"
@@ -1100,14 +1079,48 @@ Hint_4:
 		boxtxt	"RIVETING VERTIGO!"
 		boxtxt_next
 
-		boxtxt	"true_bs mode"
-		boxtxt_pause
-		boxtxt	"GO TO THE DIFFICULTY"
-		boxtxt	"SELECT SCREEN AND"
-		boxtxt	"HOLD a THEN b THEN c"
-		boxtxt	"IN THAT EXACT ORDER!"
-		boxtxt	"IT'S REALLY HARD."
-		boxtxt	"AND REALLY STUPID."
+
+		boxtxt	"--- skips ---"
+		boxtxt_next
+
+		boxtxt	"quick arcade game"
+		boxtxt_line
+		boxtxt	"WHILE STARTING A NEW"
+		boxtxt	"GAME, HOLD a IN THE"
+		boxtxt	"DIFFICULTY SELECT TO"
+		boxtxt	"ENABLE arcade mode"
+		boxtxt	"AND START RIGHT IN"
+		boxtxt	"night hill place!"
+		boxtxt_next
+
+		boxtxt	"skip special stages"
+		boxtxt_line
+		boxtxt	"IN CASUAL MODE, YOU"
+		boxtxt	"CAN INSTANTLY SKIP"
+		boxtxt	"A SPECIAL STAGE"
+		boxtxt	"BY HOLDING a + b + c"
+		boxtxt	"AT ONCE! IN FRANTIC,"
+		boxtxt	"ONCE UNLOCKED."
+		boxtxt_next
+
+		boxtxt	"skip mini-cutscenes"
+		boxtxt_line
+		boxtxt	"YOU CAN SKIP MANY OF"
+		boxtxt	"THE SHORT CUTSCENES"
+		boxtxt	"BY HOLDING a + b + c"
+		boxtxt	"AT ONCE! THIS ALSO"
+		boxtxt	"INCLUDES GIANT RING"
+		boxtxt	"ANIMATIONS."
+		boxtxt_next
+
+		boxtxt	"dude, just shut up"
+		boxtxt_line
+		boxtxt	"YOU'RE GETTING"
+		boxtxt	"TIRED OF ME? FINE."
+		boxtxt	"YOU CAN SKIP THESE"
+		boxtxt	"SMALL ON-SCREEN"
+		boxtxt	"TEXTBOXES IF YOU"
+		boxtxt	"HOLD a + b + c!"
 		boxtxt_next
 
 
@@ -1626,6 +1639,11 @@ Hint_End_MotionBlurUnlock:
 		boxtxt	"OR, AS THE MOVIE"
 		boxtxt	"INDUSTRY WOULD SAY,"
 		boxtxt	"DEFINITELY HD!"
+		boxtxt_next
+
+		boxtxt	"hard part skippers"
+		boxtxt	"CAN NOW ALSO BE USED"
+		boxtxt	"IN frantic mode!"
 		boxtxt_end
 
 ;		 --------------------

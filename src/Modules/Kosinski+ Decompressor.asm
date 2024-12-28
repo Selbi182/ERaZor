@@ -14,9 +14,8 @@ KosPlusMDec_VRAM:
 	if def(__DEBUG__)
 		tst.b	VBlank_MusicOnly
 		bne.s	@interrupts_ok
-		move.w	sr, -(sp)
-		assert.b (sp), hs, #$26
-		addq.w	#2, sp
+		move.w	sr, d5
+		_assert.w d5, hs, #$2600
 	@interrupts_ok:
 	endif
 

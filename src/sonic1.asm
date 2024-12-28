@@ -5,7 +5,7 @@
 ; ------------------------------------------------------
 	if def(__BENCHMARK__)=0
 ; Vladik's Debugger
-;__DEBUG__: equ 1
+__DEBUG__: equ 1
 
 	else
 		; MD Replay state. Used for playing pre-recorded gameplay in benchmarks.
@@ -45267,9 +45267,8 @@ Hud_Base:				; XREF: Level; SS_EndLoop; EndingSequence
 		if def(__DEBUG__)
 			tst.b	VBlank_MusicOnly
 			bne.s	@interrupts_ok
-			move.w	sr, -(sp)
-			assert.b (sp), hs, #$26
-			addq.w	#2, sp
+			move.w	sr, d2
+			_assert.w d2, hs, #$2600
 		@interrupts_ok:
 		endif
 

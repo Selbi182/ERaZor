@@ -4023,7 +4023,6 @@ Level_StartGame:
 		clr.b	(CarryOverData).w	; clear any remaining carry-over data
 		bclr	#7,(GameMode).w		; clear pre-level sequence flag
 
-		
 ; ---------------------------------------------------------------------------
 ; Main level loop (when	all title card and loading sequences are finished)
 ; ---------------------------------------------------------------------------
@@ -7904,9 +7903,14 @@ Resize_FZEscape:
 
 		move.b	#7,(CameraShake_Intensity).w
 
-		; escape timer
-		move.l	#(0*$10000)|(90*$100)|00,($FFFFFE22).w	; set escape time to 90s (double speed in frantic effectively means 45s)
-		move.b	#1,($FFFFFE1E).w	; start time counter
+		; escape timer (+1s for the intro boom)
+		move.l	#(1*$10000)|(01*$100)|00,d0	; casual escape timer (100s)
+		frantic					; are we in frantic?
+		beq.s	@notfrantic			; if not, branch
+		move.l	#(0*$10000)|(46*$100)|00,d0	; frantic escape timer (45s)
+@notfrantic:
+		move.l	d0,($FFFFFE22).w		; set timer
+		move.b	#1,($FFFFFE1E).w		; start time counter
 
 		; update level stuff
 		move.w	#$0A00,d0		; replace laser barrier chunk
@@ -10952,34 +10956,6 @@ Obj27_Index:	dc.w Obj27_Main-Obj27_Index
 Obj27_Main:				; XREF: Obj27_Index
 		addq.b	#2,obRoutine(a0)
 
-		cmpi.w	#$101,($FFFFFE10).w	; are we in LZ?
-		bne.s	@notlz			; if not, branch
-		cmpi.b	#82,$36(a0)		; did we come here because of Jaws?
-		bne.s	@notlz			; if not, branch
-		tst.b 	($FFFFFFF9).w		; final section flag already enabled?
-		bne.s 	@notlz			; if yes, branch
-		move.b 	#1,($FFFFFFF9).w	; set final section flag
-		clr.b	(HUD_BossHealth).w
-		move.b	#1,($FFFFFE1C).w	; update lives
-
-		movem.l	d0-a3,-(sp)
-		jsr 	Pal_FadeOut 	; i guess this works????
-		moveq	#$17,d0
-		jsr	PalLoad3_Water	; load toxic water palette
-		jsr 	WhiteFlash
-		
-		move.w	#$E4,d0
-		jsr	PlayCommand			; stop music
-		
-		move.w	#$800,d0		; immediately make the water disappear to give the player some time to escape before the flooding
-		move.w	d0,($FFFFF646).w	; current water level
-		move.w	d0,($FFFFF648).w	; average water level
-		move.w	d0,($FFFFF64A).w	; target water level
-		
-		movem.l	(sp)+,d0-a3
-		bra.w	Obj27_FinishSetup
-
-@notlz:
 		cmpi.w	#$402,($FFFFFE10).w	; are we in unterhub?
 		bne.s	@notunterhub		; if not, branch
 		cmpi.b	#82,$36(a0)		; did we come here because of the last Roller?
@@ -15093,15 +15069,20 @@ Obj2C_Main:				; XREF: Obj2C_Index
 		move.l	#Map_obj2C,obMap(a0)
 		move.w	#$2486,obGfx(a0)
 		ori.b	#4,obRender(a0)
-		move.b	#$A,obColType(a0)
+	;	move.b	#$A,obColType(a0)
+		move.b	#$D7,obColType(a0)	; pretend it's a bumper
 		move.b	#4,obPriority(a0)
 		move.b	#$10,obActWid(a0)
 		move.w	#-$60,obVelX(a0)	; move Jaws to the left
 
-		move.b	#99,(HUD_BossHealth).w	; scariest boss ever
+		move.b	#42,(HUD_BossHealth).w	; scariest boss ever
 		move.b	#1,($FFFFFE1C).w	; update lives
+; ---------------------------------------------------------------------------
 
 Obj2C_Bounce:				; XREF: Obj2C_Index
+		tst.b	obColProp(a0)		; has Sonic touched Jaws?
+		bne.w	Obj2C_Killed		; if yes, branch
+
 		bsr.w	SpeedToPos
 		jsr	(ObjHitFloor).l
 		cmpi.w	#6,d1
@@ -15133,7 +15114,6 @@ Obj2C_Animate:
 		bsr	SpeedToPos
 		bsr.w	MarkObjGone
 
-
 		move.w	obX(a0),d0
 		andi.w	#$FF80,d0
 		move.w	($FFFFF700).w,d1
@@ -15149,6 +15129,53 @@ Obj2C_Animate:
 
 
 ; ===========================================================================
+
+Obj2C_Killed:
+		move.b 	#1,($FFFFFFF9).w	; set final section flag
+
+		move.w	#$E4,d0
+		jsr	PlayCommand		; stop music
+
+		clr.b	(HUD_BossHealth).w
+		move.b	#1,($FFFFFE1C).w	; update lives
+
+		movem.l	d7/a0-a3,-(sp)
+		jsr 	Pal_FadeOut 	; i guess this works????
+		jsr 	Pal_FadeOut 	; i guess this works????
+		jsr 	Pal_FadeOut 	; i guess this works????
+		frantic
+		bne.s	@0
+		jsr 	Pal_FadeOut 	; i guess this works????
+		jsr 	Pal_FadeOut 	; i guess this works????
+@0		moveq	#$17,d0
+		jsr	PalLoad3_Water	; load toxic water palette
+
+		jsr 	WhiteFlash_Intense
+		movem.l	(sp)+,d7/a0-a3
+			
+		move.w	#$800,d0		; give the player some time to escape before the flooding in casual
+		frantic				; are we in frantic?
+		beq.s	@setwater		; if not, branch
+		move.w	($FFFFF704).w,d0	; get current camera Y pos
+		addi.w	#SCREEN_HEIGHT,d0	; add screen height and use that as immedate water surface for frantic
+@setwater:
+		move.w	d0,($FFFFF646).w	; current water level
+		move.w	d0,($FFFFF648).w	; average water level
+		move.w	d0,($FFFFF64A).w	; target water level
+
+		neg.w	($FFFFD012).w
+		bset	#1,($FFFFD022).w
+		bset	#2,($FFFFD022).w
+		jsr	BounceJD		; bounce Sonic on homing
+
+		move.b	#$27,0(a0)		; change Jaws into an enemy explosion
+		move.b	#0,obRoutine(a0)
+
+		move.b	#$DF,d0
+		jmp	PlaySFX
+		rts
+; ===========================================================================
+
 Ani_obj2C:
 		include	"_anim\obj2C.asm"
 
@@ -28553,7 +28580,6 @@ Obj01_InWater:
 
 		bset	#6,obStatus(a0)
 		bne.s	locret_12D80
-	;	bsr	ResumeMusic
 		move.b	#$A,($FFFFD340).w ; load bubbles object	from Sonic's mouth
 		move.b	#$81,($FFFFD368).w
 
@@ -28562,12 +28588,7 @@ Obj01_InWater:
 		tst.b	($FFFFFFA5).w		; was sign post already touched?
 		bne.s	@noflood		; if yes, branch
 
-		move.w	#$D,($FFFFFE14).w	; slightly more lenient time for casual
-		frantic				; are we in frantic?
-		beq.s	@noflood		; if not, branch
-		move.w	#$B,($FFFFFE14).w	; force instant countdown when final thingy
-		move.w	#$92,d0
-		jsr	PlayBGM		; play countdown music immediately
+		move.w	#$D,($FFFFFE14).w	; air time during this section
 		
 @noflood:
 		move.w	#Sonic_TopSpeed_Water,($FFFFF760).w	; change Sonic's top speed
@@ -42054,8 +42075,8 @@ BounceJD:
 		bne.s	BounceJD_End		; if not, branch
 
 		clr.b	($FFFFFFEB).w		; if yes, clear jumpdash flag (make sonic jumpdash again)
-		move.w	#-$600,obVelY(a0)	; bounce Sonic upwards
-		clr.w	obVelX(a0)		; clear X-velocity (stop sonic horizontally)
+		move.w	#-$600,($FFFFD012).w	; bounce Sonic upwards
+		clr.w	($FFFFD010).w		; clear X-velocity (stop sonic horizontally)
 BounceJD_End:
 		rts				; return
 ; End of function BounceJD
@@ -44713,15 +44734,11 @@ Obj21_FZEscapeTimer:
 		tst.b	(FZEscape).w		; are we in the escape sequence?
 		beq.s	Obj21_AltSpeed		; if not, branch
 
-		; flash timer when less than 10 (real world) seconds remain
+		; flash timer when less than 10 seconds remain
 		tst.b	($FFFFFE23).w		; less than 100 seconds left?
 		bne.s	@noflash		; if not, branch
-		moveq	#10,d0			; flash below 10 seconds in casual
-		frantic				; are we in frantic?
-		beq.s	@0			; if not, branch
-		moveq	#20,d0			; flash below 20 seconds in frantic (cause double time)
-@0:		cmp.b	($FFFFFE24).w,d0	; less than X seconds left?
-		blo.s	@noflash		; if not, branch
+		cmpi.b	#10,($FFFFFE24).w	; less than 10 seconds left?
+		bhi.s	@noflash		; if not, branch
 		move.w	#$06CA,obGfx(a0)	; use palette line 1
 		ori.b	#1,($FFFFFE1E).w 	; update time counter
 		btst	#2,($FFFFFE05).w	; change the time counter palette every X frames
@@ -45056,11 +45073,7 @@ Hud_ChkTime:
 		bhi.w	TimeOver			; if yes, time over noob
 
 		moveq	#1,d0			; regular timer speed (1 tick per second; at 999 ticks, that's roughly 16 minutes)
-		frantic				; are we in frantic?
-		beq.s	@notfrantic		; if not, branch
-		moveq	#2,d0			; otherwise, triple regular timer speed (2 ticks per second; this changes the effective time limit to roughly 8 minutes)
-		
-@notfrantic:
+
 		cmpi.w	#$502,($FFFFFE10).w	; are we in FP?
 		bne.s	@notfzescape		; if not, branch
 		cmpi.b	#2,(FZEscape).w		; are we in the escape sequence?
@@ -45085,6 +45098,11 @@ Hud_ChkTime:
 		jmp	FZEscape_ScreenBoom	; ...nuke went off
 
 @notfzescape:
+		frantic				; are we in frantic?
+		beq.s	@notfrantic		; if not, branch
+		moveq	#2,d0			; otherwise, triple regular timer speed (2 ticks per second; this changes the effective time limit to roughly 8 minutes)
+		
+@notfrantic:
 		add.b	d0,-(a1)		; add to current timer
 		cmpi.b	#60,(a1)		; did we reach 60 frames?
 		blo.s	Hud_ChkLives		; if not, branch

@@ -9,6 +9,7 @@
 BlackBarsConfig_VRAM_Font:		equ	$8000
 
 BlackBarsConfig_ConsoleRAM:		equ	LevelLayout_FG		; borrow FG layout RAM
+BlackBarsConfig_ConsoleUSP:		equ	LevelLayout_FG+$3C	; .l
 BlackBarsConfig_SelectedItemId:		equ	LevelLayout_FG+$40	; .b
 BlackBarsConfig_RedrawUI:		equ	LevelLayout_FG+$41	; .b
 BlackBarsConfig_JoypadHeldTimers:	equ	LevelLayout_FG+$42	; .b
@@ -482,7 +483,7 @@ BlackBarsConfigScreen_GenerateSprites:
 BBCS_EnterConsole:	macro scratchReg
 	move.l	usp, \scratchReg
 	move.l	\scratchReg, -(sp)
-	lea	BlackBarsConfig_ConsoleRAM, \scratchReg
+	move.l	BlackBarsConfig_ConsoleUSP, \scratchReg
 	move.l	\scratchReg, usp
 	endm
 
@@ -498,7 +499,10 @@ BlackBarsConfigScreen_InitUI:
 	lea	-4(a5), a6
 	lea	@ConsoleConfig(pc), a1			; a1 = console config
 	lea	BlackBarsConfig_ConsoleRAM, a3		; a3 = console RAM
+	vram	$C000, d5				; d5 = base draw position
 	jsr	MDDBG__Console_InitShared
+	move.l	usp, a0
+	move.l	a0, BlackBarsConfig_ConsoleUSP
 
 	; Load font
 	vram	BlackBarsConfig_VRAM_Font, (a5)
@@ -506,18 +510,7 @@ BlackBarsConfigScreen_InitUI:
 	jmp	KosPlusMDec_VRAM
 
 ; ---------------------------------------------------------------
-@ArtDecodeTable:
-	dc.w	$0000, $0006, $0060, $0066	; decompression table for 6bpp nibbles
-	dc.w	$0600, $0606, $0660, $0666	; ''
-	dc.w	$6000, $6006, $6060, $6066	; ''
-	dc.w	$6600, $6606, $6660, $6666	; ''
-
-; ---------------------------------------------------------------
 @ConsoleConfig:
-	dcvram	$C000				; screen start address / plane nametable pointer
-	dcvram	$FC00				; HSRAM address
-	dc.w	$00				; VSRAM address
-
 	dc.w	40				; number of characters per line
 	dc.w	40				; number of characters on the first line (meant to be the same as the above)
 	dc.w	$8000|(BlackBarsConfig_VRAM_Font/$20)-('!'-1)	; base font pattern (tile id for ASCII $00 + palette flags)

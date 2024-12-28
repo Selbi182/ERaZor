@@ -3,6 +3,10 @@
 ; ---------------------------------------------------------------
 ; MD Debugger and Error Handler v.2.6
 ;
+;
+; Documentation, references and source code are available at:
+; - https://github.com/vladikcomper/md-modules
+;
 ; (c) 2016-2024, Vladikcomper
 ; ---------------------------------------------------------------
 ; Debugger definitions
@@ -109,6 +113,7 @@ setx	equ		$FA				; set x-position
 ; Screen appearence flags
 _eh_address_error	equ	$01		; use for address and bus errors only (tells error handler to display additional "Address" field)
 _eh_show_sr_usp		equ	$02		; displays SR and USP registers content on error screen
+_eh_hide_caller		equ	$04		; don't guess and print caller in the header (in SGDK and C/C++ projects naive caller detection isn't reliable)
 
 ; Advanced execution flags
 ; WARNING! For experts only, DO NOT USE them unless you know what you're doing
@@ -123,21 +128,45 @@ _eh_align_offset	equ	$80
 ; Macros
 ; ---------------------------------------------------------------
 
+
+	; Debugger macros will be semi-broken if whitespace isn't supported.
+	; Since version 2.6, MD Debugger recommends projects to set "/o ws+" option to avoid
+	; cryptic errors raised by assembler failing to register spaces between arguments.
+	if 1 &0
+		; This shows a warning currently. This may be changed to an error in future versions.
+		inform 1,"Please set /o ws+ assembly option in your build script to use MD Debugger macros"
+	endif
+
 ; ---------------------------------------------------------------
 ; Creates assertions for debugging
 ; ---------------------------------------------------------------
 ; EXAMPLES:
 ;	assert.b	d0, eq, #1		; d0 must be $01, or else crash
 ;	assert.w	d5, pl			; d5 must be positive
-;	assert.l	a1, hi, a0		; asert a1 > a0, or else crash
+;	assert.l	a1, hi, a0		; assert a1 > a0, or else crash
 ;	assert.b	(MemFlag).w, ne	; MemFlag must be set (non-zero)
 ;	assert.l	a0, eq, #Obj_Player, MyObjectsDebugger
+;
+; NOTICE:
+;	All "assert" saves and restores CCR so it's fully safe
+;	to use in-between any instructions.
+;	Use "_assert" instead if you deliberatly want to disbale
+;	this behavior and safe a few cycles.
 ; ---------------------------------------------------------------
 
-assert	macro	src, cond, dest, console_program
+assert:	macro	src, cond, dest, console_program
 	; Assertions only work in DEBUG builds
 	if def(__DEBUG__)
 		move.w	sr, -(sp)
+		_assert.\0	<\src>, <\cond>, <\dest>, <\console_program>
+		move.w	(sp)+, sr
+	endif
+	endm
+
+; Same as "assert", but doesn't save/restore CCR (can be used to save a few cycles)
+_assert:	macro	src, cond, dest, console_program
+	; Assertions only work in DEBUG builds
+	if def(__DEBUG__)
 	if strlen("\dest")
 		cmp.\0	\dest, \src
 	else
@@ -156,7 +185,6 @@ assert	macro	src, cond, dest, console_program
 	opt l-
 	@skip\@:
 	popo
-		move.w	(sp)+, sr
 	endif
 	endm
 
@@ -169,9 +197,7 @@ assert	macro	src, cond, dest, console_program
 ;	RaiseError	"Module crashed! Extra info:", YourMod_Debugger
 ; ---------------------------------------------------------------
 
-RaiseError &
-	macro	string, console_program, opts
-
+RaiseError:	macro	string, console_program, opts
 	pea		*(pc)				; this simulates M68K exception
 	move.w	sr, -(sp)			; ...
 	__FSTRING_GenerateArgumentsCode \string
@@ -209,17 +235,36 @@ RaiseError &
 ;	Console.Run	YourConsoleProgram
 ;	Console.Write "Hello "
 ;	Console.WriteLine "...world!"
-;	Console.SetXY #1, #4
 ;	Console.WriteLine "Your data is %<.b d0>"
 ;	Console.WriteLine "%<pal0>Your code pointer: %<.l a0 sym>"
+;	Console.SetXY #1, #4
+;	Console.SetXY d0, d1
+;	Console.Sleep #60 ; sleep for 1 second
+;	Console.Pause
+;
+; NOTICE:
+;	All "Console.*" calls save and restore CCR so they are fully
+;	safe to use in-between any instructions.
+;	Use "_Console.*" instead if you deliberatly want to disbale
+;	this behavior and safe a few cycles.
 ; ---------------------------------------------------------------
 
-Console &
-	macro
+Console:	macro
+	; "Console.Run" doesn't have to save/restore CCR, because it's a no-return
+	if strcmp("\0","run")|strcmp("\0","Run")
+		_Console.\0	<\1>, <\2>
 
-	if strcmp("\0","write")|strcmp("\0","writeline")|strcmp("\0","Write")|strcmp("\0","WriteLine")
+	; Other Console calls do save/restore CCR
+	else
 		move.w	sr, -(sp)
+		_Console.\0	<\1>, <\2>
+		move.w	(sp)+, sr
+	endif
+	endm
 
+; Same as "Console", but doesn't save/restore CCR (can be used to save a few cycles)
+_Console	macro
+	if strcmp("\0","write")|strcmp("\0","writeline")|strcmp("\0","Write")|strcmp("\0","WriteLine")
 		__FSTRING_GenerateArgumentsCode \1
 
 		pusho
@@ -246,8 +291,6 @@ Console &
 			move.l	(sp)+, a0
 		endif
 
-		move.w	(sp)+, sr
-
 		bra.w	@instr_end\@
 	@str\@:
 		__FSTRING_GenerateDecodedString \1
@@ -261,17 +304,12 @@ Console &
 		bra.s	*
 
 	elseif strcmp("\0","clear")|strcmp("\0","Clear")
-		move.w	sr, -(sp)
-		jsr		MDDBG__Console_Clear
-		move.w	(sp)+, sr
+		jsr		MDDBG__ErrorHandler_ClearConsole
 
 	elseif strcmp("\0","pause")|strcmp("\0","Pause")
-		move.w	sr, -(sp)
 		jsr		MDDBG__ErrorHandler_PauseConsole
-		move.w	(sp)+, sr
 
 	elseif strcmp("\0","sleep")|strcmp("\0","Sleep")
-		move.w	sr, -(sp)
 		move.w	d0, -(sp)
 		move.l	a0, -(sp)
 		move.w	\1, d0
@@ -289,22 +327,17 @@ Console &
 
 		move.l	(sp)+, a0
 		move.w	(sp)+, d0
-		move.w	(sp)+, sr
 
 	elseif strcmp("\0","setxy")|strcmp("\0","SetXY")
-		move.w	sr, -(sp)
 		movem.l	d0-d1, -(sp)
 		move.w	\2, -(sp)
 		move.w	\1, -(sp)
 		jsr		MDDBG__Console_SetPosAsXY_Stack
 		addq.w	#4, sp
 		movem.l	(sp)+, d0-d1
-		move.w	(sp)+, sr
 
 	elseif strcmp("\0","breakline")|strcmp("\0","BreakLine")
-		move.w	sr, -(sp)
 		jsr		MDDBG__Console_StartNewLine
-		move.w	(sp)+, sr
 
 	else
 		inform	2,"""\0"" isn't a member of ""Console"""
@@ -315,14 +348,32 @@ Console &
 ; ---------------------------------------------------------------
 ; KDebug integration interface
 ; ---------------------------------------------------------------
+; EXAMPLES:
+;	KDebug.WriteLine "Look in your debug console!"
+;	KDebug.WriteLine "Your D0 is %<.w d0>"
+;	KDebug.BreakPoint
+;	KDebug.StartTimer
+;	KDebug.EndTimer
+;
+; NOTICE:
+;	All "KDebug.*" calls save and restore CCR so they are fully
+;	safe to use in-between any instructions.
+;	Use "_KDebug.*" instead if you deliberatly want to disbale
+;	this behavior and safe a few cycles.
+; ---------------------------------------------------------------
 
-KDebug &
-	macro
+KDebug:	macro
+	if def(__DEBUG__)	; KDebug interface is only available in DEBUG builds
+		move.w	sr, -(sp)
+		_KDebug.\0	<\1>
+		move.w	(sp)+, sr
+	endif
+	endm
 
+; Same as "KDebug", but doesn't save/restore CCR (can be used to save a few cycles)
+_KDebug:	macro
 	if def(__DEBUG__)	; KDebug interface is only available in DEBUG builds
 	if strcmp("\0","write")|strcmp("\0","writeline")|strcmp("\0","Write")|strcmp("\0","WriteLine")
-		move.w	sr, -(sp)
-
 		__FSTRING_GenerateArgumentsCode \1
 
 		pusho
@@ -349,7 +400,6 @@ KDebug &
 			move.l	(sp)+, a0
 		endif
 
-		move.w	(sp)+, sr
 		bra.w	@instr_end\@
 	@str\@:
 		__FSTRING_GenerateDecodedString \1
@@ -358,24 +408,16 @@ KDebug &
 		popo	
 
 	elseif strcmp("\0","breakline")|strcmp("\0","BreakLine")
-		move.w	sr, -(sp)
 		jsr		MDDBG__KDebug_FlushLine
-		move.w	(sp)+, sr
 
 	elseif strcmp("\0","starttimer")|strcmp("\0","StartTimer")
-		move.w	sr, -(sp)
 		move.w	#$9FC0, ($C00004).l
-		move.w	(sp)+, sr
 
 	elseif strcmp("\0","endtimer")|strcmp("\0","EndTimer")
-		move.w	sr, -(sp)
 		move.w	#$9F00, ($C00004).l
-		move.w	(sp)+, sr
 
 	elseif strcmp("\0","breakpoint")|strcmp("\0","BreakPoint")
-		move.w	sr, -(sp)
 		move.w	#$9D00, ($C00004).l
-		move.w	(sp)+, sr
 
 	else
 		inform	2,"""\0"" isn't a member of ""KDebug"""
@@ -385,8 +427,7 @@ KDebug &
 	endm
 
 ; ---------------------------------------------------------------
-__ErrorMessage &
-	macro	string, opts
+__ErrorMessage:	macro	string, opts
 		__FSTRING_GenerateArgumentsCode \string
 		jsr		MDDBG__ErrorHandler
 		__FSTRING_GenerateDecodedString \string
@@ -401,18 +442,23 @@ __ErrorMessage &
 	endm
 
 ; ---------------------------------------------------------------
-__FSTRING_GenerateArgumentsCode &
-	macro	string
+__FSTRING_GenerateArgumentsCode:	macro string
 
 	__pos:	= instr(\string,'%<')		; token position
 	__stack:= 0						; size of actual stack
 	__sp:	= 0						; stack displacement
+
+	pusho
+	opt	ae-		; make sure "automatic even" is disabled as this disrupts string generation
 
 	; Parse string itself
 	while (__pos)
 
 		; Retrive expression in brackets following % char
     	__endpos:	= instr(__pos+1,\string,'>')
+    	if __endpos=0
+			inform 3,'Missing a closing bracket after %<'
+    	endif
     	__midpos:	= instr(__pos+5,\string,' ')
     	if (__midpos<1)|(__midpos>__endpos)
 			__midpos: = __endpos
@@ -424,6 +470,12 @@ __FSTRING_GenerateArgumentsCode &
 		if "\__type">>8="."
 			__operand:	substr	__pos+1+1,__midpos-1,\string			; .type ea
 			__param:	substr	__midpos+1,__endpos-1,\string			; param
+
+			if instr("\__operand","(sp)")|instr("\__operand","(SP)")
+				; Referring to (SP) may get unexpected results because stack is already shifted at this point
+				; Using -(SP) and (SP)+ will crash because of stack corruption.
+				inform 3,'Cannot use (SP) in a formatted string'
+			endif
 
 			if "\__type"=".b"
 				pushp	"move\__operand\,1(sp)"
@@ -442,7 +494,7 @@ __FSTRING_GenerateArgumentsCode &
 				__sp: = __sp+4
 
 			else
-				fatal 'Unrecognized type in string operand: %<\__substr>'
+				inform 3,'Unrecognized type in string operand: %<\__substr>'
 			endif
 		endif
 
@@ -455,11 +507,12 @@ __FSTRING_GenerateArgumentsCode &
 		\__command
 	endr
 
+	popo	; restore previous options
+
 	endm
 
 ; ---------------------------------------------------------------
-__FSTRING_GenerateDecodedString &
-	macro string
+__FSTRING_GenerateDecodedString:	macro string
 
 	__lpos:	= 1							; start position
 	__pos:	= instr(\string,'%<')		; token position
@@ -517,3 +570,30 @@ __FSTRING_GenerateDecodedString &
 	dc.b	0
 
 	endm
+
+; ---------------------------------------------------------------
+; MIT License
+; 
+; Copyright (c) 2016-2024 Vladikcomper
+; 
+; Permission is hereby granted, free of charge, to any person
+; obtaining a copy ; of this software and associated
+; documentation files (the "Software"), to deal in the Software 
+; without restriction, including without limitation the rights
+; to use, copy, modify, merge, publish, distribute, sublicense,
+; and/or sell copies of the Software, and to permit persons to
+; whom the Software is furnished to do so, subject to the
+; following conditions:
+; 
+; The above copyright notice and this permission notice shall be
+; included in all copies or substantial portions of the Software.
+; 
+; THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+; EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+; OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+; NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT 
+; HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+; WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+; FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+; OTHER DEALINGS IN THE SOFTWARE.
+; ---------------------------------------------------------------

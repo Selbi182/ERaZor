@@ -5,7 +5,7 @@
 ; ------------------------------------------------------
 	if def(__BENCHMARK__)=0
 ; Vladik's Debugger
-__DEBUG__: equ 1
+;__DEBUG__: equ 1
 
 	else
 		; MD Replay state. Used for playing pre-recorded gameplay in benchmarks.
@@ -3225,7 +3225,7 @@ LevelSelect_Palette:
 ; ---------------------------------------------------------------------------
 ; Subroutine to	change what you're selecting in the level select
 ; ---------------------------------------------------------------------------
-LevSel_Entries = 17
+LevSel_Entries = 18
 LevSel_LineLength = 24
 ; ---------------------------------------------------------------------------
 
@@ -3362,7 +3362,8 @@ LevelMenuText:
 		dc.b	'SCENE  ONE HOT DAY      '
 		dc.b	'0      TUTORIAL PLACE   '
 		dc.b	'1-1    NIGHT HILL PLACE '
-		dc.b	'1-2    GREEN HILL PLACE '
+		dc.b	'1-2    GREEN HILL 1     '
+		dc.b	'1-3    GREEN HILL 2     '
 		dc.b	'2      SPECIAL PLACE    '
 		dc.b	'3      RUINED PLACE     '
 		dc.b	'4      LABYRINTHY PLACE '
@@ -3386,7 +3387,8 @@ LSelectPointers:
 		dc.w	$001	; Intro Sequence
 		dc.w	$501	; Tutorial Place
 		dc.w	$000	; Night Hill Place
-		dc.w	$002	; Green Hill Place
+		dc.w	$002	; Green Hill Place 1
+		dc.w	$003	; Green Hill Place 2
 		dc.w	$300	; Special Place
 		dc.w	$200	; Ruined Place
 		dc.w	$101	; Labyrinthy Place
@@ -3433,6 +3435,7 @@ MainLevelArray:
 		dc.w	$501	; 1 - Tutorial Place (SBZ 2)
 		dc.w	$000	; 2 - Night Hill Place
 		dc.w	$002	; 3 - Green Hill Place
+		dc.w	$003	; 3 - Green Hill Place 2
 		dc.w	$300	; 4 - Special Place (yes, it uses an SLZ ID)
 		dc.w	$200	; 5 - Ruined Place
 		dc.w	$101	; 6 - Labyrinthy Place
@@ -3466,6 +3469,7 @@ MusicList:
 		dc.b	$87	; Tutorial Place (SBZ 2)
 		dc.b	$81	; Night Hill Place
 		dc.b	$86	; Green Hill Place
+		dc.b	$86	; Green Hill Place 2
 		dc.b	$89	; Special Place
 		dc.b	$83	; Ruined Place
 		dc.b	$82	; Labyrinthy Place
@@ -3666,11 +3670,13 @@ Level_NoPreTut:
 		bra.s	Level_NoMusic
 
 @notbombmachine:
+		cmpi.w	#$003,($FFFFFE10).w	; is level GHP2?
+		beq.s	@ghp
 		cmpi.w	#$002,($FFFFFE10).w	; is level GHP?
 		bne.s	@playregularlevelmusic	; if not, branch
 		cmpi.b	#4,($FFFFFE30).w	; did we hit the fourth checkpoint yet?
 		bne.s	@playregularlevelmusic	; if not, branch
-		move.b	#$94,d0			; play regular GHZ music
+@ghp:		move.b	#$94,d0			; play regular GHZ music
 		jsr	PlayBGM
 		bra.s	Level_NoMusic
 		
@@ -6671,7 +6677,7 @@ Resize_GHZ:				; XREF: Resize_Index
 Resize_GHZx:	dc.w Resize_GHZ1-Resize_GHZx
 		dc.w Resize_GHZ2-Resize_GHZx
 		dc.w Resize_GHZ3-Resize_GHZx
-		dc.w Resize_GHZ3-Resize_GHZx
+		dc.w Resize_GHZ4-Resize_GHZx
 ; ===========================================================================
 
 Resize_GHZ1:
@@ -6720,15 +6726,15 @@ Resize_GHZ2:
 @nopan:
 		move.w	#$100,($FFFFF726).w
 		cmpi.w	#$B00,($FFFFF700).w
-		blo.s	locret_6E96
+		blo.s	@end
 		move.w	#$210,($FFFFF726).w
 
 		cmpi.w	#$F00,($FFFFF700).w
-		bcs.s	locret_6E96
+		bcs.s	@end
 		cmpi.w	#$15E0,($FFFFF700).w
-		bcc.s	locret_6E96
+		bcc.s	@end
 		move.w	#$110,($FFFFF726).w		; alternate bottom boundary during the buzz bomber death
-		rts	
+@end:		rts	
 ; ===========================================================================
 
 Resize_GHZ3:
@@ -6756,9 +6762,26 @@ Resize_GHZ3main:
 
 		move.w	#$320,($FFFFF726).w		; set lower y-boundary
 		cmpi.w	#$1780,($FFFFF700).w		; near the GHZ1 S-tube?
-		bcs.s	locret_6E96			; if not, branch
+		bcs.w	locret_6E96			; if not, branch
 		move.w	#$400,($FFFFF726).w		; set lower y-boundary
 
+
+		cmpi.w	#$3D00,($FFFFF700).w		; in the waterfall transition?
+		bcs.w	locret_6E96			; if not, branch
+
+
+		; load the actual layout now
+		movem.l	d7/a0,-(sp)
+		clr.w	($FFFFF76C).w			; reset OPL routine index
+		move.w	#$003,($FFFFFE10).w		; change level ID to GHZ4
+		jsr	LevelLayoutLoad			; load GHZ4 layout
+		move.w	#$3D00,d0
+		sub.w	d0,($FFFFD008).w
+		move.b	#1,(RedrawEverything).w
+		jsr	WhiteFlash
+		movem.l	(sp)+,d7/a0
+
+	rts
 		cmpi.w	#$2A60-SCREEN_XCORR,($FFFFD008).w	; is Sonic near boss?
 		bcc.s	loc_6E98			; if yes, branch
 		
@@ -6828,6 +6851,28 @@ Resize_GHZ3end:
 		move.w	#$0000,($FFFFF72C).w	; top boundary
 		move.w	#$2CE0,($FFFFF72A).w ; right boundary
 		rts
+; ===========================================================================
+; ===========================================================================
+
+
+Resize_GHZ4:
+		moveq	#0,d0
+		move.b	($FFFFF742).w,d0
+		move.w	off_6E4Ax(pc,d0.w),d0
+		jmp	off_6E4Ax(pc,d0.w)
+; ===========================================================================
+off_6E4Ax:	dc.w Resize_GHZ4main-off_6E4Ax
+		dc.w Resize_GHZ4end-off_6E4Ax
+; ===========================================================================
+
+Resize_GHZ4main:
+		move.w	#$620,($FFFFF726).w		; set lower y-boundary
+		rts
+; ===========================================================================
+
+Resize_GHZ4end:
+		rts
+
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Labyrinth Zone dynamic screen	resizing
@@ -47111,6 +47156,7 @@ Level_GHZ3_1:	incbin	'LevelData/levels/ghz3-1.kosp'
 		dc.b 0,	0, 0, 0
 Level_GHZ3_2:	incbin	'LevelData/levels/ghz3-2.kosp'
 		even
+		dc.b 0,	0, 0, 0
 Level_GHZbg:	incbin	'LevelData/levels/ghzbg.kosp'
 		even
 byte_68F84:	dc.b 0,	0, 0, 0

@@ -637,8 +637,8 @@ PauseMusic:
 Play_Command:
 		cmp.b	#$E0, d7
 		blo.s	Play_IllegalId
-		cmp.b	#$E4, d7			; command ids ($E0...$E4)
-		bls.w	Sound_E0toE4			; ''
+		cmp.b	#$E7, d7			; command ids ($E0...$E7)
+		bls.w	Sound_E0toE7			; ''
 		bra.s	Play_IllegalId
 
 ; ---------------------------------------------------------------------------
@@ -698,7 +698,7 @@ Play_SFX:
 
 ; ===========================================================================
 
-Sound_E0toE4:
+Sound_E0toE7:
 		subi.b	#$E0, d7
 		and.w	#7, d7
 		add.w	d7, d7
@@ -712,6 +712,9 @@ Sound_ExIndex:
 		bra.w	SpeedUpMusic		; $E2
 		bra.w	SlowDownMusic		; $E3
 		bra.w	StopAllSound		; $E4
+		bra.w	StopBGM			; $E5 (additional command)
+		bra.w	StopSFX			; $E6 (additional command)
+		bra.w	StopSpecialSFX		; $E7 (additional command)
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -1150,34 +1153,6 @@ Sound_PlaySpecial:
 ; End of function PlaySoundID
 
 ; ===========================================================================
-; ---------------------------------------------------------------------------
-; Unused RAM addresses for FM and PSG channel variables used by the Special SFX
-; ---------------------------------------------------------------------------
-; The first block would have been used for overriding the music tracks
-; as they have a lower priority, just as they are in Sound_PlaySFX
-; The third block would be used to set up the Special SFX
-; The second block, however, is for the SFX tracks, which have a higher priority
-; and would be checked for if they're currently playing
-; If they are, then the third block would be used again, this time to mark
-; the new tracks as 'currently playing'
-
-; These were actually used in Moonwalker's driver (and other SMPS 68k Type 1a drivers)
-
-; BGMFM4PSG3RAM:
-;SpecSFX_BGMChannelRAM:
-		dc.l (SoundDriverRAM+v_music_fm4_track)&$FFFFFF
-		dc.l (SoundDriverRAM+v_music_psg3_track)&$FFFFFF
-; SFXFM4PSG3RAM:
-;SpecSFX_SFXChannelRAM:
-		dc.l (SoundDriverRAM+v_sfx_fm4_track)&$FFFFFF
-		dc.l (SoundDriverRAM+v_sfx_psg3_track)&$FFFFFF
-; SpecialSFXFM4PSG3RAM:
-;SpecSFX_SpecSFXChannelRAM:
-		dc.l (SoundDriverRAM+v_spcsfx_fm4_track)&$FFFFFF
-		dc.l (SoundDriverRAM+v_spcsfx_psg3_track)&$FFFFFF
-
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
 ; Snd_FadeOut1: Snd_FadeOutSFX: FadeOutSFX:
 StopSFX:
 		clr.b	v_sndprio(a6)		; Clear priority
@@ -1196,13 +1171,7 @@ StopSFX:
 		bne.s	.getfmpointer					; Branch if not
 		tst.b	v_spcsfx_fm4_track+TrackPlaybackControl(a6)	; Is special SFX playing?
 		bpl.s	.getfmpointer					; Branch if not
-	if FixBugs
 		movea.l	a5,a3
-	else
-		; DANGER! there is a missing 'movea.l a5,a3' here, without which the
-		; code is broken. It is dangerous to do a fade out when a GHZ waterfall
-		; is playing its sound!
-	endif
 		lea	v_spcsfx_fm4_track(a6),a5
 		movea.l	v_special_voice_ptr(a6),a1	; Get special voice pointer
 		bra.s	.gotfmpointer
@@ -1300,6 +1269,49 @@ StopSpecialSFX:
 ; End of function StopSpecialSFX
 
 ; ===========================================================================
+StopBGM:
+		assert.b f_voice_selector(a6), eq
+		lea	v_music_track_ram(a6),a5
+
+		; Stop DAC
+		tst.b	(a5)
+		bpl.s	.dac_done
+		MPCM_stopZ80
+		move.b	#Z_MPCM_COMMAND_STOP, MPCM_Z80_RAM+Z_MPCM_CommandInput
+		MPCM_startZ80
+		andi.b	#$7F, (a5)
+	.dac_done:
+		lea	TrackSz(a5), a5
+
+		; Stop FM
+		assert.w a5, eq, #SoundDriverRAM+v_music_fm_tracks
+		moveq	#6-1, d7			; 5 FM channels
+.fmloop:	tst.b	(a5)
+		bpl.s	.fm_next
+		move.b	#$7F, TrackVolume(a5)
+		jsr	SendVoiceTL(pc)
+		sf.b	TrackNoteOutput(a5)
+		jsr	FMNoteOff2(pc)
+		andi.b	#$7F, (a5)
+	.fm_next:
+		lea	TrackSz(a5), a5
+		dbf	d7, .fmloop
+
+		; Stop PSG
+		assert.w a5, eq, #SoundDriverRAM+v_music_psg_tracks
+		moveq	#3-1, d7			; 3 PSG tracks
+
+.psgloop:	tst.b	(a5)
+		bpl.s	.psg_next
+		jsr	PSGNoteOff(pc)
+		andi.b	#$7F, (a5)
+	.psg_next:
+		lea	TrackSz(a5), a5
+		dbf	d7, .psgloop
+		rts
+
+
+; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Fade out music
 ; ---------------------------------------------------------------------------
@@ -1324,7 +1336,7 @@ DoFadeOut:
 ; loc_72510:
 .continuefade:
 		subq.b	#1,v_fadeout_counter(a6)	; Update fade counter
-		beq.w	StopAllSound			; Branch if fade is done
+		beq.w	.finishfade			; Branch if fade is done
 		move.b	#3,v_fadeout_delay(a6)		; Reset fade delay
 
 		; Fade out DAC
@@ -1336,35 +1348,36 @@ DoFadeOut:
 		and.b	#$7F, (a5)			; Stop channel
 		bra.s	.dac_done
 
-.dac_update_volume:
+	.dac_update_volume:
 		move.b	TrackVolume(a5), d0
 		lsr.b	#3, d0
 		MPCM_stopZ80
 		move.b	d0, MPCM_Z80_RAM+Z_MPCM_VolumeInput
 		MPCM_startZ80
-.dac_done:
+	.dac_done:
 
+		; Fade out FM
 		lea	v_music_fm_tracks(a6),a5
 		moveq	#((v_music_fm_tracks_end-v_music_fm_tracks)/TrackSz)-1,d7	; 6 FM tracks
-; loc_72524:
+
 .fmloop:
 		tst.b	TrackPlaybackControl(a5)	; Is track playing?
 		bpl.s	.nextfm				; Branch if not
 		addq.b	#1,TrackVolume(a5)		; Increase volume attenuation
 		bpl.s	.sendfmtl			; Branch if still positive
 		bclr	#7,TrackPlaybackControl(a5)	; Stop track
+		bsr	FMNoteOff2			; Note off on track
 		bra.s	.nextfm
-; ===========================================================================
-; loc_72534:
-.sendfmtl:
+
+	.sendfmtl:
 		jsr	SendVoiceTL(pc)
-; loc_72538:
-.nextfm:
+	.nextfm:
 		adda.w	#TrackSz,a5
 		dbf	d7,.fmloop
 
+		; Fade out PSG
 		moveq	#((v_music_psg_tracks_end-v_music_psg_tracks)/TrackSz)-1,d7	; 3 PSG tracks
-; loc_72542:
+
 .psgloop:
 		tst.b	TrackPlaybackControl(a5)	; Is track playing?
 		bpl.s	.nextpsg			; branch if not
@@ -1373,17 +1386,20 @@ DoFadeOut:
 		blo.s	.sendpsgvol			; Branch if not
 		bclr	#7,TrackPlaybackControl(a5)	; Stop track
 		bra.s	.nextpsg
-; ===========================================================================
-; loc_72558:
-.sendpsgvol:
+
+	.sendpsgvol:
 		move.b	TrackVolume(a5),d6	; Store new volume attenuation
 		jsr	SetPSGVolume(pc)
-; loc_72560:
-.nextpsg:
+	.nextpsg:
 		adda.w	#TrackSz,a5
 		dbf	d7,.psgloop
+		rts
 
-		rts	
+; ===========================================================================
+.finishfade:
+		clr.b	v_fadeout_counter(a6)
+		clr.b	v_fadeout_delay(a6)
+		jmp	StopBGM(pc)
 ; End of function DoFadeOut
 
 
@@ -1431,26 +1447,25 @@ StopAllSound:
 		moveq	#0,d1		; FM3 normal mode, disable timers
 		jsr	WriteFMI(pc)
 		movea.l	a6,a0
-	if FixBugs
-		move.w	#((v_spcsfx_track_ram_end-v_startofvariables)/4)-1,d0	; Clear $400 bytes: all variables and track data
-	else
-		; DANGER! This should be clearing all variables and track data, but misses the last $10 bytes of v_spcsfx_psg3_Track.
-		move.w	#((v_spcsfx_track_ram_end-v_startofvariables-$10)/4)-1,d0	; Clear $390 bytes: all variables and most track data
-	endif
-
+		moveq	#(v_1up_ram_copy/(4*4))-1,d0	; Clear $400 bytes: all variables and track data
 		moveq	#0, d1
-; loc_725B6:
-.clearramloop:
-		move.l	d1, (a0)+
-		dbf	d0,.clearramloop
 
+	.clearramloop:
+		rept 4
+			move.l	d1, (a0)+
+		endr
+		dbf	d0,.clearramloop
+		rept (v_1up_ram_copy&$F)/4
+			move.l	d1, (a0)+
+		endr
+		assert.w a0, eq, #SoundDriverRAM+v_1up_ram_copy
+
+		assert.w d1, eq
 		MPCM_stopZ80
 		move.b	#Z_MPCM_COMMAND_STOP, MPCM_Z80_RAM+Z_MPCM_CommandInput ; stop DAC playback
+		move.b	d1, MPCM_Z80_RAM+Z_MPCM_VolumeInput	; reset normal samples volume
 		MPCM_startZ80
 
-		moveq	#0, d0
-		move.b	d0, v_bgm_input(a6)
-		move.l	d0, v_sfx_input(a6)		; clear all sound queue + `v_cmd_input`
 		jsr	FMSilenceAll(pc)
 		bra.w	PSGSilenceAll
 
@@ -1649,6 +1664,8 @@ FMNoteOff:
 		sf.b	TrackNoteOutput(a5)
 		btst	#4,TrackPlaybackControl(a5)	; Is 'do not attack next note' set?
 		bne.s	locret_72714			; Return if yes
+
+FMNoteOff2:
 		btst	#2,TrackPlaybackControl(a5)	; Is SFX overriding?
 		bne.s	locret_72714			; Return if yes
 ; loc_7270A:
@@ -1987,16 +2004,9 @@ SendPSGNoteOff:
 		move.b	TrackVoiceControl(a5),d0	; PSG channel to change
 		ori.b	#$1F,d0				; Maximum volume attenuation
 		move.b	d0,(psg_input).l
-	if FixBugs
-		; This is the same fix that S&K's driver uses:
 		cmpi.b	#$DF,d0				; Are stopping PSG3?
 		bne.s	locret_729B4
 		move.b	#$FF,(psg_input).l		; If so, stop noise channel while we're at it
-	else
-		; DANGER! If InitMusicPlayback doesn't silence all channels, there's the
-		; risk of music accidentally playing noise because it can't detect if
-		; the PSG4/noise channel needs muting on track initialisation.
-	endif
 
 locret_729B4:
 		rts	
@@ -2380,6 +2390,8 @@ SetVoice:
 		lsr.b	#1,d4		; Is bit set for this operator in the mask?
 		bcc.s	.sendtl		; Branch if not
 		add.b	d3,d1		; Include additional attenuation
+		bcc.s	.sendtl
+		moveq	#$7F,d1		; Clamp the volume attenuation on overflow
 ; loc_72C96:
 .sendtl:
 		jsr	(a3)
@@ -2413,14 +2425,7 @@ SendVoiceTL:
 		movea.l	v_voice_ptr(a6),a1	; Voice pointer
 		tst.b	f_voice_selector(a6)
 		beq.s	.gotvoiceptr
-	if FixBugs
 		movea.l	TrackVoicePtr(a5),a1
-	else
-		; DANGER! This uploads the wrong voice! It should have been a5 instead of a6!
-		; In Sonic 1's prototype, TrackVoicePtr was a global variable instead of a
-		; per-track variable, explaining why this uses a6 instead of a5.
-		movea.l	TrackVoicePtr(a6),a1
-	endif
 		tst.b	f_voice_selector(a6)
 		bmi.s	.gotvoiceptr
 		movea.l	v_special_voice_ptr(a6),a1
@@ -2450,7 +2455,9 @@ SendVoiceTL:
 		lsr.b	#1,d4		; Is bit set for this operator in the mask?
 		bcc.s	.senttl		; Branch if not
 		add.b	d3,d1		; Include additional attenuation
-		bcs.s	.senttl		; Branch on overflow
+		bcc.s	.sendtl
+		moveq	#$7F,d1		; Clamp the volume attenuation on overflow
+.sendtl:
 		jsr	WriteFMIorII(pc)
 ; loc_72D12:
 .senttl:

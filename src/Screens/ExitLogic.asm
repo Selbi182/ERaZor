@@ -638,7 +638,7 @@ Exit_Level:
 		cmpi.w	#$501,($FFFFFE10).w	; did we beat the tutorial?
 		beq.w	GTA_Tutorial		; if yes, branch
 
-		cmpi.w	#$002,($FFFFFE10).w	; did we beat NHP/GHP?
+		cmpi.w	#$003,($FFFFFE10).w	; did we beat NHP/GHP?
 		beq.w	GTA_NHPGHP		; if yes, branch
 
 		cmpi.w	#$300,($FFFFFE10).w	; did we beat Special Place?

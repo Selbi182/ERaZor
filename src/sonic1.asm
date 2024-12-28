@@ -407,9 +407,11 @@ BlackBars.SetState:
 @notmachine:
 		cmpi.w	#$001,d0			; are we in the intro cutscene?
 		beq.w	BlackBars_Intro			; if yes, branch
-		cmpi.w	#$002,d0			; are we in Green Hill Place?
+		cmpi.w	#$002,d0			; are we in Green Hill Place 1?
+		beq.s	@ghp				; if yes, branch
+		cmpi.w	#$003,d0			; are we in Green Hill Place 2?
 		bne.s	@notghp				; if not, branch
-		cmpi.b	#4,($FFFFFE30).w		; did we hit the final checkpoint yet?
+@ghp:		cmpi.b	#4,($FFFFFE30).w		; did we hit the final checkpoint yet?
 		bne.s	BlackBars.GHP			; if not, go to custom GHP black bars logic
 
 @notghp:
@@ -454,7 +456,7 @@ BlackBars_SetHeight:
 ; ===========================================================================
 
 ;BlackBars.GHPCasual  = 60*3
-BlackBars.GHPFrantic = 25
+BlackBars.GHPFrantic = 30
 ; ---------------------------------------------------------------------------
 
 BlackBars.GHP:
@@ -463,8 +465,22 @@ BlackBars.GHP:
 		cmpi.b	#6,($FFFFD024).w		; is Sonic dying?
 		bhs.s	BlackBars_Show			; if yes, show regular black bars
 
+		; reset black bars in waterfall
+		move.w	($FFFFD008).w,d0
+		move.w	($FFFFD00C).w,d1
+		jsr	Sub_FindChunkByCoordinate
+		cmpi.b	#$34,(a0)
+		bne.s	@notwaterfall
+		move.w	#BlackBars.MaxHeight,d0		; get fixed max height cause the stage is built around it
+		cmp.w	BlackBars.Height,d0		; are bars smaller than the base height?
+		bhi.s	@timeleft			; if not, branch
+		subq.w	#BlackBars.GrowSize,BlackBars.TargetHeight ; grow bars until we reach the minimum height
+		bra.s	@timeleft			; if not, branch
+
+@notwaterfall:
 		tst.b	($FFFFF7AA).w			; fighting against boss? (for 3P easter egg)
 		bne.s	@baseheightokay			; if yes, branch
+
 	;	move.w	BlackBars.BaseHeight,d0		; get base black bar height
 		move.w	#BlackBars.MaxHeight,d0		; get fixed max height cause the stage is built around it
 		cmp.w	BlackBars.Height,d0		; are bars smaller than the base height?
@@ -1103,11 +1119,6 @@ PalCycle_Title:				; XREF: TitleScreen
 ; ===========================================================================
 
 PalCycle_GHZ:				; XREF: PalCycle
-	;	cmpi.w	#$002,($FFFFFE10).w
-	;	bne.s	@0
-	;	cmpi.b	#4,($FFFFFE30).w
-	;	bne.s	locret_1990
-@0:
 		lea	(Pal_GHZCyc).l,a0
 
 loc_196A:				; XREF: PalCycle_Title
@@ -2247,18 +2258,22 @@ PissFilter:
 		bne.s	PissFilter_Do		; if yes, enable piss filter everywhere hooray
 
 		; GHP piss filter
+		move.w	($FFFFFE10).w,d2
 		move.b	(GameMode).w,d1		; get current game mode
 		andi.b	#$0F,d1			; include the level pre-sequence ($8C)
 		cmpi.b	#$C,d1			; are we in a level?
 		bne.s	PissFilter_End		; if not, don't do filer
-		cmpi.w	#$000,($FFFFFE10).w	; are we in Night Hill Place?
+		tst.w	d2			; are we in Night Hill Place?
 		bne.s	@notnhp			; if not, branch
 		cmpi.b	#2,($FFFFFFAA).w	; has the crabmeat boss been defeated?
 		beq.s	PissFilter_Do		; if yes, start contrast already
 		bra.s	PissFilter_End		; otherwise, don't
-@notnhp:	cmpi.w	#$002,($FFFFFE10).w	; are we in Green Hill Place?
+@notnhp:
+		cmpi.w	#$002,d2		; are we in Green Hill Place 1?
+		beq.s	@ghp			; if yes, branch
+		cmpi.w	#$003,d2		; are we in Green Hill Place 2?
 		bne.s	PissFilter_End		; if not, branch
-		cmpi.b	#4,($FFFFFE30).w	; did we hit the final checkpoint yet?
+@ghp:		cmpi.b	#4,($FFFFFE30).w	; did we hit the final checkpoint yet?
 		beq.s	PissFilter_End		; if yes, branch
 
 PissFilter_Do:
@@ -3434,16 +3449,16 @@ MainLevelArray:
 		dc.w	$400	; 0 - Uberhub
 		dc.w	$501	; 1 - Tutorial Place (SBZ 2)
 		dc.w	$000	; 2 - Night Hill Place
-		dc.w	$002	; 3 - Green Hill Place
-		dc.w	$003	; 3 - Green Hill Place 2
-		dc.w	$300	; 4 - Special Place (yes, it uses an SLZ ID)
-		dc.w	$200	; 5 - Ruined Place
-		dc.w	$101	; 6 - Labyrinthy Place
-		dc.w	$401	; 7 - Unreal Place (yes, it uses an SYZ ID)
-		dc.w	$301	; 8 - Scar Night Place
-		dc.w	$302	; 9 - Star Agony Place
-		dc.w	$402	; A - Unterhub Place
-		dc.w	$502	; B - Finalor Place
+		dc.w	$002	; 3 - Green Hill Place part 1
+		dc.w	$003	; 4 - Green Hill Place part 2
+		dc.w	$300	; 5 - Special Place (yes, it uses an SLZ ID)
+		dc.w	$200	; 6 - Ruined Place
+		dc.w	$101	; 7 - Labyrinthy Place
+		dc.w	$401	; 8 - Unreal Place (yes, it uses an SYZ ID)
+		dc.w	$301	; 9 - Scar Night Place
+		dc.w	$302	; A - Star Agony Place
+		dc.w	$402	; B - Unterhub Place
+		dc.w	$502	; C - Finalor Place
 		; Blackout is treated separately
 		dc.w	-1	; None of the above
 		even
@@ -3457,7 +3472,7 @@ PlayLevelMusic:
 		jsr	FakeLevelID		; get main level ID and load it into d5
 		lea	(MusicList).l,a1	; load Playlist into a1
 		move.b	(a1,d5.w),d0		; get music ID
-		cmp.b	SoundDriverRAM+v_last_bgm,d0 ; is last played music ID the same one as the one to be played?
+@play:		cmp.b	SoundDriverRAM+v_last_bgm,d0 ; is last played music ID the same one as the one to be played?
 		beq.s	PLM_NoMusic		; if yes, don't restart music
 		bsr.w	PlayBGM			; play music
 PLM_NoMusic:
@@ -3468,8 +3483,8 @@ MusicList:
 		dc.b	$85	; Uberhub Place (Overworld)
 		dc.b	$87	; Tutorial Place (SBZ 2)
 		dc.b	$81	; Night Hill Place
-		dc.b	$86	; Green Hill Place
-		dc.b	$86	; Green Hill Place 2
+		dc.b	$86	; Green Hill Place part 1
+		dc.b	$86	; Green Hill Place part 2
 		dc.b	$89	; Special Place
 		dc.b	$83	; Ruined Place
 		dc.b	$82	; Labyrinthy Place
@@ -3671,12 +3686,10 @@ Level_NoPreTut:
 
 @notbombmachine:
 		cmpi.w	#$003,($FFFFFE10).w	; is level GHP2?
-		beq.s	@ghp
-		cmpi.w	#$002,($FFFFFE10).w	; is level GHP?
 		bne.s	@playregularlevelmusic	; if not, branch
 		cmpi.b	#4,($FFFFFE30).w	; did we hit the fourth checkpoint yet?
 		bne.s	@playregularlevelmusic	; if not, branch
-@ghp:		move.b	#$94,d0			; play regular GHZ music
+		move.b	#$94,d0			; play regular GHZ music
 		jsr	PlayBGM
 		bra.s	Level_NoMusic
 		
@@ -6499,8 +6512,11 @@ MLB_NotBCut:
 		moveq	#$19,d0			; use blackened palette
 
 MLB_NotGHZ2:
-		cmpi.w	#$002,($FFFFFE10).w	; is level GHZ3?
+		cmpi.w	#$002,($FFFFFE10).w	; is level GHZ3 part 1?
+		beq.s	@ghp			; if yes, branch
+		cmpi.w	#$003,($FFFFFE10).w	; is level GHZ3 part 2?
 		bne.s	MLB_NotGHZ3		; if not, branch
+@ghp:
 		moveq	#$C,d0			; use GHZ3 palette
 
 MLB_NotGHZ3:
@@ -6744,10 +6760,6 @@ Resize_GHZ3:
 		jmp	off_6E4A(pc,d0.w)
 ; ===========================================================================
 off_6E4A:	dc.w Resize_GHZ3main-off_6E4A
-		dc.w Resize_GHZ3boss-off_6E4A
-		dc.w Resize_GHZ3duringboss-off_6E4A
-		dc.w Resize_GHZ3bossdefeated-off_6E4A
-		dc.w Resize_GHZ3end-off_6E4A
 ; ===========================================================================
 
 Resize_GHZ3main:
@@ -6780,29 +6792,49 @@ Resize_GHZ3main:
 		move.b	#1,(RedrawEverything).w
 		jsr	WhiteFlash
 		movem.l	(sp)+,d7/a0
-
-	rts
-		cmpi.w	#$2A60-SCREEN_XCORR,($FFFFD008).w	; is Sonic near boss?
-		bcc.s	loc_6E98			; if yes, branch
+		rts
 		
 locret_6E96:
+		rts
+; ===========================================================================
+; ===========================================================================
+
+Resize_GHZ4:
+		moveq	#0,d0
+		move.b	($FFFFF742).w,d0
+		move.w	off_6E4Ax(pc,d0.w),d0
+		jmp	off_6E4Ax(pc,d0.w)
+; ===========================================================================
+off_6E4Ax:	dc.w Resize_GHZ4main-off_6E4Ax
+		dc.w Resize_GHZ3boss-off_6E4Ax
+		dc.w Resize_GHZ3duringboss-off_6E4Ax
+		dc.w Resize_GHZ3bossdefeated-off_6E4Ax
+		dc.w Resize_GHZ3end-off_6E4Ax
+		dc.w Resize_GHZ4end-off_6E4Ax
+; ===========================================================================
+
+Resize_GHZ4main:
+		move.w	#$620,($FFFFF726).w		; set lower y-boundary
+		cmpi.w	#$3C60-SCREEN_XCORR,($FFFFD008).w	; is Sonic near boss?
+		bcc.s	loc_6E98			; if yes, branch
 		rts
 ; ===========================================================================
 
 loc_6E98:
 		move.w	#$300,($FFFFF726).w		; bottom boundary
+		move.w	#$3D60-SCREEN_XCORR,($FFFFF72A).w ; right boundary
 		move.w	($FFFFF700).w,($FFFFF728).w
 		addq.b	#2,($FFFFF742).w
 		rts
 ; ===========================================================================
 
 Resize_GHZ3boss:
-		cmpi.w	#$2B60-SCREEN_XCORR,($FFFFF700).w
+		cmpi.w	#$3D60-SCREEN_XCORR,($FFFFF700).w
 		bcs.s	locret_6EE8
 		jsr	SingleObjLoad
 		bne.s	loc_6ED0
 		move.b	#$3D,0(a1)	; load GHZ boss	object
-		move.w	#$2C00,obX(a1)
+		move.w	#$3E00,obX(a1)
 		move.w	#$400,obY(a1)
 
 loc_6ED0:
@@ -6849,24 +6881,7 @@ Resize_GHZ3bossdefeated:	; called from boss object itself
 Resize_GHZ3end:
 		move.w	($FFFFF700).w,($FFFFF728).w
 		move.w	#$0000,($FFFFF72C).w	; top boundary
-		move.w	#$2CE0,($FFFFF72A).w ; right boundary
-		rts
-; ===========================================================================
-; ===========================================================================
-
-
-Resize_GHZ4:
-		moveq	#0,d0
-		move.b	($FFFFF742).w,d0
-		move.w	off_6E4Ax(pc,d0.w),d0
-		jmp	off_6E4Ax(pc,d0.w)
-; ===========================================================================
-off_6E4Ax:	dc.w Resize_GHZ4main-off_6E4Ax
-		dc.w Resize_GHZ4end-off_6E4Ax
-; ===========================================================================
-
-Resize_GHZ4main:
-		move.w	#$620,($FFFFF726).w		; set lower y-boundary
+		move.w	#$3EB0,($FFFFF72A).w ; right boundary
 		rts
 ; ===========================================================================
 
@@ -11975,7 +11990,7 @@ SusSonic:
 ; ===========================================================================
 
 Obj1F_BossDelete:
-		clr.b	(HUD_BossHealth).w			; revert lives counter to normal
+		clr.b	(HUD_BossHealth).w		; revert lives counter to normal
 		ori.b	#1,($FFFFFE1C).w		; update lives counter (to reset it from the boss)
 		clr.l	($FFFFFE22).w			; clear time
 		ori.b	#1,($FFFFFE1E).w 		; update time counter
@@ -11986,12 +12001,12 @@ Obj1F_BossDelete:
 		move.b	#0,($FFFFF7AA).w		; unlock screen
 		move.b	#2,($FFFFFFAA).w		; set flag 1, 2
 		move.w	#$00C0,($FFFFF728).w		; set new left boundary
-		move.w	#$2B60-SCREEN_XCORR,($FFFFF72A).w; set new right boundary
+		move.w	#$3E80,($FFFFF72A).w		; set new right boundary
 
 		move.b	#$DB,d0			; play epic explosion sound
 		jsr	PlaySFX
 		move.l	#10000,d0		; add 100000 ...
-		jsr	AddPoints	; ... points
+		jsr	AddPoints		; ... points
 
 		; part two of the transition is (cruedly) done in Obj34 itself
 		lea	($FFFFD000).w,a1
@@ -17323,9 +17338,9 @@ Map_obj33:
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Object 34 - zone title cards
-TTL_Oval    = $0E
-TTL_Place   = $0F
-TTL_ActNums = $10
+TTL_Oval    = $0F
+TTL_Place   = $10
+TTL_ActNums = $11
 ; ---------------------------------------------------------------------------
 
 Obj34:					; XREF: Obj_Index
@@ -18376,7 +18391,6 @@ Obj3C_Solid:				; XREF: Obj3C_Index
 		move.w	#$20,d3
 		move.w	obX(a0),d4
 		bsr	SolidObject
-		btst	#5,obStatus(a0)
 		bne.s	Obj3C_ChkRoll
 
 locret_D180:
@@ -18386,6 +18400,14 @@ locret_D180:
 Obj3C_ChkRoll:				; XREF: Obj3C_Solid
 		tst.b	(Inhuman).w
 		bne.s	Obj3C_Ok
+
+		move.w	$30(a0),d0
+		bpl.s	@0
+		neg.w	d0
+@0:
+		cmpi.w	#$A00,d0
+		bhs.s	Obj3C_Ok
+
 		cmpi.w	#$001,($FFFFFE10).w	; is this GHZ2 (intro level)?
 		beq.s	Obj3C_Ok 		; if yes, branch
 		cmpi.b	#2,obAnim(a1)	; is Sonic rolling?
@@ -27664,7 +27686,8 @@ Obj06_Locations:	;XXXX   YYYY
 		dc.w	$FFFF, $FFFF	; Uberhub Place		(Unused)
 		dc.w	$101E, $036C	; Tutorial Place
 		dc.w	$18EA, $036C	; Night Hill Place
-		dc.w	$FFFF, $FFFF	; Green Hill Place	(Unused)
+		dc.w	$FFFF, $FFFF	; Green Hill Place 1	(Unused)
+		dc.w	$FFFF, $FFFF	; Green Hill Place 2	(Unused)
 		dc.w	$FFFF, $FFFF	; Special Place		(Unused)
 		dc.w	$1A80, $02AC	; Ruined Place
 		dc.w	$CCCC, $CCCC	; Labyrinthy Place	(Custom, see below)
@@ -27926,7 +27949,7 @@ Obj07_CheckVisible:
 @notuberhub:
 		cmpi.w	#$601,d0		; are we in the ending sequence?
 		beq.s	@yes			; if yes, branch
-		cmpi.w	#$002,d0		; are we in GHP?
+		cmpi.w	#$003,d0		; are we in GHP?
 		bne.s	@notghp			; if not, branch
 		cmpi.b	#4,($FFFFFE30).w	; did we hit the fourth checkpoint yet?
 		beq.s	@yes			; if yes, swag
@@ -28119,14 +28142,6 @@ Obj01_Main:				; XREF: Obj01_Index
 		move.b	#$18,obActWid(a0)
 		move.b	#4,obRender(a0)
 
-		cmpi.b	#$0,($FFFFFE10).w
-		bne.s	Obj01_M_NotGHZ2
-		cmpi.w	#$002,($FFFFFE10).w
-		beq.s	Obj01_M_NotGHZ2
-		bset	#2,obStatus(a0)
-		move.b	#2,obAnim(a0)
-
-Obj01_M_NotGHZ2:
 		cmpi.w	#$601,($FFFFFE10).w	; is this the ending sequence?
 		beq.s	Obj01_EndingSpeed	; if yes, use different speed
 		cmpi.w	#$001,($FFFFFE10).w	; is this the intro sequence?
@@ -28421,12 +28436,8 @@ S_D_TimerEmpty:
 		move.w	#Sonic_Acceleration,($FFFFF762).w	; restore Sonic's acceleration
 
 S_D_NotFZ:
-		cmpi.b	#$0,($FFFFFE10).w	; is zone GHZ?
+		cmpi.w	#$001,($FFFFFE10).w	; is level intro?
 		bne.s	S_D_NotGHZ2		; if not, branch
-		cmpi.w	#$002,($FFFFFE10).w	; is level GHZ3?
-		beq.s	S_D_NotGHZ2		; if yes, branch
-		
-S_D_BA_NotEmpty:
 		tst.b	($FFFFFFB8).w		; was flag already set?
 		bne.s	S_D_NotGHZ2		; if yes, branch
 		btst	#1,obStatus(a0)		; is Sonic on the ground?
@@ -31406,32 +31417,7 @@ Obj01_NotDrownAnim:
 		clr.b	(HUD_BossHealth).w
 		addq.b	#1,($FFFFFE1C).w ; update lives	counter
 		bsr	GameOver
-		
-		bra.s	Obj01_NoOF	; disabled the "laying face-first on floor for a bit" effect from death cause nobody was getting it
-		
-		cmpi.w	#$302,($FFFFFE10).w
-		beq.s	Obj01_NoOF
-		tst.w	obVelY(a0)		; is Sonic moving upwards?
-		bmi.s	Obj01_NoOF	; if yes, branch
-		cmpi.w	#$101,($FFFFFE10).w	; is level LZ2?
-		beq.s	Obj01_NoOF	; if yes, branch (too many walls to make the effect not suck)
-		cmpi.w	#$002,($FFFFFE10).w	; is level GHP?
-		beq.s	Obj01_NoOF	; if yes, branch
-		bsr	ObjHitFloor	; load from ObjHitFloor
-		add.w	#10,d1		; sub 10 from it
-		tst.w	d1		; did Sonic reached that position?
-		bpl.s	Obj01_NoOF	; if not, branch
-		move.w	#0,obVelX(a0)	; clear X-speed
-		subq.b	#1,($FFFFFFDD).w ; sub one from timer
-		bmi.s	Obj01_NoOFX	; is it over? if yes, branch
-		move.w	#0,obVelY(a0)	; clear Y-speed
-		move.b	#$2B,obAnim(a0)	; set anim to laying death on ground
-		bra.s	Obj01_NoOF
 
-Obj01_NoOFX:
-		move.b	#$2C,obAnim(a0)	; set anim to drowning 2
-
-Obj01_NoOF:
 		jsr	ObjectFall_Sonic
 		bsr	Sonic_RecordPos
 		bsr	Sonic_Animate
@@ -35790,7 +35776,7 @@ Obj79_HitLamp:
 		cmpi.w	#$10,d0
 		bcc.w	locret_16F90
 
-		cmpi.w	#$002,($FFFFFE10).w	; are we in GHP?
+		cmpi.w	#$003,($FFFFFE10).w	; are we in GHP?
 		beq.w	@endghpaction		; if yes, end the black bars action stuff
 
 		cmpi.w	#$200,($FFFFFE10).w	; are we in RP?
@@ -36577,7 +36563,7 @@ Obj3D_ShipMove:				; XREF: Obj3D_ShipIndex
 		addq.b	#2,ob2ndRout(a0)
 		move.w	#$3F,$3C(a0)
 		move.w	#$400,obVelX(a0)	; move the ship	fast sideways
-		cmpi.w	#$2C00,$30(a0)
+		cmpi.w	#$3E00,$30(a0)
 		bne.s	Obj3D_Reverse
 		move.w	#$7F,$3C(a0)
 		move.w	#$100,obVelX(a0)	; move the ship	sideways

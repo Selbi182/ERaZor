@@ -582,10 +582,10 @@ BlackBars_Ending:
 ; Main Game Loop, everything before this is only done on startup.
 ; ---------------------------------------------------------------------------
 
-MainGameLoop:
+MainGameLoop: jsr SaveSelectScreen
 		assert.w VBlankSubW, eq, #VBlank	; always default to standard VBlank
-		moveq	#0,d0				; clear d0
-		move.b	(GameMode).w,d0			; get current game mode
+		moveq	#$3C,d0
+		and.b	(GameMode).w,d0			; get current game mode
 		movea.l	GameModeArray(pc,d0.w),a1	; locate address in GameModeArray
 		KDebug.WriteLine "MainGameLoop(): Launching %<.l a1 sym>..."
 		jsr	(a1)				; enter game mode
@@ -611,6 +611,7 @@ GameModeArray:
 		dc.l	GameplayStyleScreen	; Gameplay Style Screen	($30)
 		dc.l	SoundTestScreen		; Sound Test Screen	($34)
 		dc.l	BlackBarsConfigScreen	; Black Bars Config	($38)
+		dc.l	SaveSelectScreen	; Save Select Screen	($3C)
 ; ---------------------------------------------------------------------------
 
 Deleted_Mode:
@@ -47350,6 +47351,7 @@ ObjPos_Null:	dc.w    $FFFF,$0000,$0000
 		include	"Screens/TutorialBox/TutorialBox.asm"
 		include	"Screens/GameplayStyleScreen/GameplayStyleScreen.asm"
 		include "Screens/BlackBarsConfigScreen/BlackBarsConfigScreen.asm"
+		include "Screens/SaveSelectScreen/SaveSelectScreen.asm"
 ; ---------------------------------------------------------------------------
 		
 ; Sound Driver (MegaPCM)

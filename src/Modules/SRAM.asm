@@ -1,164 +1,121 @@
+
+	include 'Modules/SRAM.defs.asm'
+
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; SRAM Loading Routine
-; ---------------------------------------------------------------------------
-; Format (note, SRAM can only be written to odd addresses):
-; 00 o1 00 o2  00 ch 00 d1  00 d2 00 l1  00 l2 00 r1  00 r2 00 s1  00 s2 00 s3  00 s4 00 cm  00 bb 00 mb  00 mg
-;    01    03     05    07     09    0B     0D    0F     11    13     15    17     19    1B     1D    1F     21
-;
-;  o1 = Options Bitset ($FFFFFF92)
-;  o2 = Options Bitset 2 ($FFFFFF94)
-;  ch = Current Chapter ($FFFFFFA7)
-;  d_ = Open Doors Bitset - Casual/Frantic  ($FFFFFF8A-FFFFFF8B)
-;  l_ = Lives (or Deaths rather, lol) ($FFFFFE12-FFFFFE13)
-;  r_ = Rings ($FFFFFE20-FFFFFE21)
-;  s_ = Score ($FFFFFE26-FFFFFE29)
-;  cm = Complete (Base Game / Blackout challenge) ($FFFFFF93)
-;  mb = Motion Blur (bit 0 of $FFFFFF91)
-;  bb = Black Bars Config (0 emu mode / 2 hardware mode) ($FFFFF5D2)
-;  mg = Magic Number (always set to 182, absence implies no SRAM)
-; ---------------------------------------------------------------------------
-SRAM_Options	= 1
-SRAM_Options2	= 2 + SRAM_Options
-SRAM_Chapter	= 2 + SRAM_Options2
-SRAM_Doors	= 2 + SRAM_Chapter ; 2 bytes
-SRAM_Lives	= 4 + SRAM_Doors ; 2 bytes
-SRAM_Rings	= 4 + SRAM_Lives ; 2 bytes
-SRAM_Score	= 4 + SRAM_Rings ; 4 bytes
-SRAM_Complete	= 8 + SRAM_Score
-SRAM_ScreenFuzz	= 2 + SRAM_Complete
-SRAM_BlackBars	= 2 + SRAM_ScreenFuzz
-
-SRAM_Exists	= 2 + SRAM_BlackBars
-SRAM_MagicNumber = 182
+; Load SRAM
 ; ---------------------------------------------------------------------------
 
 SRAM_Load:
-	KDebug.WriteLine "SRAM_Load()..."
-	; Supress SRAM if MD Replay takes over it
+	_KDebug.WriteLine "SRAM_Load()..."
+	clr.b	SaveSlotId		; use default save slot id (unless SRAM is alive and overrides it)
+
 	if def(__MD_REPLAY__)
 		rts
 	else
-		moveq	#0,d0					; clear d0
-		move.b	#1,($A130F1).l				; enable SRAM
-		lea	($200000).l,a1				; base of SRAM
-		cmpi.b	#SRAM_MagicNumber,SRAM_Exists(a1)	; does SRAM exist?
-		beq.s	SRAMFound				; if yes, branch
-		
-		bsr.s	SRAM_Reset				; reset any existing SRAM
-		bra.w	SRAMEnd
+		SRAMEnter
+		lea	SRAM_Start, a1
+		movep.l	SRAM_Magic(a1), d0
+		cmp.l	#_SRAM_ExpectedMagic, d0
+		bne	@ResetSRAM_and_LoadDefaults
 
-SRAMFound:
-		lea	($200000).l,a1				; base of SRAM
+		_KDebug.WriteLine "SRAM_Load(): Loading global data..."
 
-		move.b	SRAM_Options(a1),(OptionsBits).w	; load options flags
-		move.b	SRAM_Options2(a1),(OptionsBits2).w	; load options 2 flags
+		; Load global options
+		move.b	SRAM_GlobalOptions+SRAMOptions.OptionsBits1(a1), OptionsBits
+		move.b	SRAM_GlobalOptions+SRAMOptions.OptionsBits1(a1), OptionsBits2
+		moveq	#%11,d0
+		and.b	SRAM_GlobalOptions+SRAMOptions.ScreenFuzz(a1), d0
+		move.b	d0, ScreenFuzz
+		moveq	#%10, d0
+		and.b	SRAM_GlobalOptions+SRAMOptions.BlackBars(a1), d0
+		move.b	d0, BlackBars.HandlerId
 
-		move.b	SRAM_Chapter(a1),(CurrentChapter).w		; load current chapter
+		; Load global progress
+		move.b	SRAM_GlobalProgress(a1), Progress	; ### TODO: Correct this
 
-		movep.w	SRAM_Doors(a1),d0			; load...
-		move.w	d0,(Doors_Casual).w			; ...open doors bitsets (casual and frantic)
+		; Load selected save slot
+		moveq	#3, d0
+		and.b	SRAM_SelectedSlotId(a1), d0
+		_KDebug.WriteLine "SRAM_Load(): Loading slot data (slot=%<.b d0 dec>)..."
+		move.b	d0, SaveSlotId
+		beq.s	@LoadNoSaveData
+		mulu.w	#SRAMSlot.Size, d0
+		lea	SRAM_Slots-SRAMSlot.Size(a1, d0), a1
 
-		movep.w	SRAM_Lives(a1),d0			; load...
-		move.w	d0,($FFFFFE12).w			; ...lives/deaths counter
+		;movep.w	SRAMSlot.GameBits(a1), d0	; ### TODO
+		move.b	SRAMSlot.Chapter(a1), CurrentChapter
+		movep.w	SRAMSlot.Rings(a1), d0
+		move.w	d0, Rings
+		movep.w	SRAMSlot.Deaths(a1), d0
+		move.w	d0, Deaths
+		movep.l	SRAMSlot.Score(a1), d0
+		move.l	d0, Score
+		movep.w	SRAMSlot.Doors(a1), d0
+		move.w	d0, Doors_Casual			; ### TODO
+		bra.s	@LoadDone
 
-		movep.w	SRAM_Rings(a1),d0			; load...
-		move.w	d0,($FFFFFE20).w			; ...rings
+	@LoadNoSaveData:
+		moveq	#0, d0
+		move.b	d0, SaveSlotId
+		; ### TODO: SRAMSlot.GameBits ###
+		move.b	d0, CurrentChapter
+		move.w	d0, Doors_Casual			; ### TODO
+		move.w	d0, Deaths
+		move.w	d0, Rings
+		move.l	d0, Score
 
-		movep.l	SRAM_Score(a1),d0			; load...
-		move.l	d0,($FFFFFE26).w			; ...score
-
-		move.b	SRAM_Complete(a1),(Progress).w		; load game beaten state
-
-		move.b	SRAM_ScreenFuzz(a1),d0			; load motion blur flag
-		andi.b	#%11,d0					; mask it against the only bits we need
-		move.b	d0,(ScreenFuzz).w			; set motion blur flag
-
-		move.b	SRAM_BlackBars(a1),d0			; load black bars handler ID
-		andi.b	#%10,d0					; mask it against the only bit we need
-		move.b	d0,(BlackBars.HandlerId).w		; set handler ID
-
-SRAMEnd:
-		move.b	#0,($A130F1).l				; disable SRAM
+	@LoadDone:
+		SRAMLeave
 		rts
-	endif	; def(__MD_REPLAY__)=0
+
+	; ---------------------------------------------------------------------------
+	@ResetSRAM_and_LoadDefaults:
+		_KDebug.WriteLine "SRAM_Load(): Resetting and loading defaults..."
+
+		_assert.l a1, eq, #SRAM_Start
+
+		move.l	#_SRAM_ExpectedMagic, d0
+		movep.l	d0, SRAM_Magic(a1)
+
+		; Reset and save global options
+		jsr	Options_SetDefaults		; resets OptionBits, OptionBits2, ScreenFuzz
+		; WARNING! Doesn't reset Black Bars config!
+		move.b	OptionsBits, SRAM_GlobalOptions+SRAMOptions.OptionsBits1(a1)
+		move.b	OptionsBits2, SRAM_GlobalOptions+SRAMOptions.OptionsBits1(a1)
+		move.b	ScreenFuzz, SRAM_GlobalOptions+SRAMOptions.ScreenFuzz(a1)
+		move.b	BlackBars.HandlerId, SRAM_GlobalOptions+SRAMOptions.BlackBars(a1)
+
+		; Reset and save global progress
+		moveq	#0, d0
+		move.b	d0, Progress			; ### TODO: Correct this
+		move.b	Progress, SRAM_GlobalProgress(a1)
+
+		; Reset and save current slot id
+		move.b	d0, SaveSlotId
+		move.b	d0, SRAM_SelectedSlotId(a1)
+
+		; Clear slots
+		lea	SRAM_Slots(a1), a1
+		_assert.l d0, eq
+		rept SRAMSlot.Size*3/8
+			movep.l	d0, 0(a1)
+			addq.l	#8, a1
+		endr
+		rept (SRAMSlot.Size*3/2) & 3
+			move.b	d0, (a1)
+			addq.l	#2, a1
+		endr
+		_assert.l a1, eq, #SRAM_Start+SRAM_Size
+
+		bra	@LoadNoSaveData
+	endif
+
+
 ; ===========================================================================
-
-SRAM_Reset:
-	KDebug.WriteLine "SRAM_Reset()..."
-	if def(__MD_REPLAY__)
-		rts
-	else
-		; Fun fact: Did you know Kega initializes SRAM to $FF instead of $00?
-		; Thank me later, I just saved you hours.
-		moveq	#0,d0					; set d0 to 0
-		move.b	d0,SRAM_Options(a1)			; clear option flags
-		move.b	d0,SRAM_Options2(a1)			; clear option 2 flags
-		move.b	d0,SRAM_Chapter(a1)			; clear current chapter
-		movep.w	d0,SRAM_Doors(a1)			; clear open doors bitset
-		movep.w	d0,SRAM_Lives(a1)			; clear lives/deaths
-		movep.w	d0,SRAM_Rings(a1)			; clear rings
-		movep.l	d0,SRAM_Score(a1)			; clear score
-		move.b	d0,SRAM_Complete(a1)			; clear option flags
-		move.b	d0,SRAM_ScreenFuzz(a1)			; clear motion blur flag
-		move.b	d0,SRAM_BlackBars(a1)			; clear black bars flag
-	
-		jsr	Options_SetDefaults			; reset default options
-		move.b	(OptionsBits).w,SRAM_Options(a1)	; ^
-		move.b	(OptionsBits2).w,SRAM_Options2(a1)	; ^
-
-		move.b	#SRAM_MagicNumber,SRAM_Exists(a1) 	; set magic number ("SRAM exists")
-	endif	; def(__MD_REPLAY__)=0
-		
-ResetGameProgress:
-		KDebug.WriteLine "ResetGameProgress()..."
-		moveq	#0,d0
-		move.b	d0,(CurrentChapter).w			; clear current chapter
-		move.w	d0,(Doors_Casual).w			; clear open doors bitsets
-		move.w	d0,($FFFFFE12).w			; clear lives/deaths counter
-		move.w	d0,($FFFFFE20).w			; clear rings
-		move.l	d0,($FFFFFE26).w			; clear score
-		move.b	d0,(Progress).w				; clear game beaten state
-		rts
-; ===========================================================================
-
-SRAM_OptionsMenu_ResetGameProgress:
-		move.b	#1,($A130F1).l				; enable SRAM
-		lea	($200000).l,a1				; base of SRAM
-		moveq	#0,d0					; set d0 to 0
-		move.b	d0,SRAM_Chapter(a1)			; clear current chapter
-		movep.w	d0,SRAM_Doors(a1)			; clear open doors bitset
-		movep.w	d0,SRAM_Lives(a1)			; clear lives/deaths
-		movep.w	d0,SRAM_Rings(a1)			; clear rings
-		movep.l	d0,SRAM_Score(a1)			; clear score
-		move.b	d0,SRAM_Complete(a1)			; clear complete state
-		move.b	#0,($A130F1).l				; disable SRAM
-
-		; reset unlockable options, you cheater
-		bclr	#2,(OptionsBits).w			; disable no HUD mode
-		bclr	#3,(OptionsBits).w			; disable cinematic mode
-		move.b	d0,(ScreenFuzz).w			; disable visal FX
-		bclr	#4,(OptionsBits).w			; disable space golf
-		bclr	#5,(OptionsBits2).w			; disable true inhuman
-
-		bra	ResetGameProgress			; reset game progress in RAM too
 ; ---------------------------------------------------------------------------
-
-SRAM_OptionsMenu_ResetOptions:
-		move.b	#1,($A130F1).l				; enable SRAM
-		lea	($200000).l,a1				; base of SRAM
-		moveq	#0,d0					; set d0 to 0
-		move.b	d0,SRAM_Options(a1)			; clear option flags
-		move.b	d0,SRAM_Options2(a1)			; clear option 2 flags
-		move.b	d0,SRAM_ScreenFuzz(a1)			; clear motion blur flag
-		move.b	d0,SRAM_BlackBars(a1)			; clear black bars flag
-	
-		jsr	Options_SetDefaults			; reset default options
-		move.b	(OptionsBits).w,SRAM_Options(a1)	; ^
-		move.b	(OptionsBits2).w,SRAM_Options2(a1)	; ^
-		move.b	#0,($A130F1).l				; disable SRAM
-		rts
-; ===========================================================================
+; Save SRAM
+; ---------------------------------------------------------------------------
 
 SRAM_SaveNow:
 	KDebug.WriteLine "SRAM_SaveNow()..."
@@ -166,38 +123,47 @@ SRAM_SaveNow:
 	if def(__MD_REPLAY__)
 		rts
 	else
-		move.b	#1,($A130F1).l				; enable SRAM
-		lea	($200000).l,a1				; base of SRAM
-		cmpi.b	#SRAM_MagicNumber,SRAM_Exists(a1)	; does SRAM exist?
-		bne.s	SRAM_SaveNow_End			; if not, branch
-		
-		move.l	d0,-(sp)				; backup d0
-		moveq	#0,d0					; clear d0
-		move.b	(OptionsBits).w,d0			; move option flags to d0
-		move.b	d0,SRAM_Options(a1)			; backup option flags
-		move.b	(OptionsBits2).w,d0			; move option 2 flags to d0
-		move.b	d0,SRAM_Options2(a1)			; backup option 2 flags
-		move.b	(CurrentChapter).w,d0			; move current chapter to d0
-		move.b	d0,SRAM_Chapter(a1)			; backup current chapter
-		move.w	(Doors_Casual).w,d0			; move open doors bitset to d0
-		movep.w	d0,SRAM_Doors(a1)			; backup open doors bitset
-		move.w	($FFFFFE12).w,d0			; move lives/deaths to d0
-		movep.w	d0,SRAM_Lives(a1)			; backup lives/deaths
-		move.w	($FFFFFE20).w,d0			; move rings to d0
-		movep.w	d0,SRAM_Rings(a1)			; backup rings
-		move.l	($FFFFFE26).w,d0			; move score to d0
-		movep.l	d0,SRAM_Score(a1)			; backup score
-		move.b	(Progress).w,d0				; move game beaten state to d0
-		move.b	d0,SRAM_Complete(a1)			; backup option flags
-		move.b	(ScreenFuzz).w,d0			; move screen fuzz to d0
-		andi.b	#%11,d0					; mask it against the only bits we need
-		move.b	d0,SRAM_ScreenFuzz(a1)			; backup motion blur flag
-		move.b	BlackBars.HandlerId,d0			; move black bars flag to d0
-		andi.b	#%10,d0					; mask it against the only bit we need
-		move.b	d0,SRAM_BlackBars(a1)			; backup black bars flag
-		move.l	(sp)+,d0				; restore d0
+		SRAMEnter
+		lea	SRAM_Start, a1
 
-SRAM_SaveNow_End:
-		move.b	#0,($A130F1).l				; disable SRAM
+		; Don't save is SRAM is not supported
+		movep.l	SRAM_Magic(a1), d0
+		cmp.l	#_SRAM_ExpectedMagic, d0
+		bne	@SaveDone
+
+		move.b	OptionsBits, SRAM_GlobalOptions+SRAMOptions.OptionsBits1(a1)
+		move.b	OptionsBits2, SRAM_GlobalOptions+SRAMOptions.OptionsBits1(a1)
+		move.b	ScreenFuzz, SRAM_GlobalOptions+SRAMOptions.ScreenFuzz(a1)
+		move.b	BlackBars.HandlerId, SRAM_GlobalOptions+SRAMOptions.BlackBars(a1)
+
+		move.b	Progress, SRAM_GlobalProgress(a1)
+
+		moveq	#3, d0
+		and.b	SaveSlotId, d0
+		move.b	d0, SRAM_SelectedSlotId(a1)
+		beq.s	@SaveDone
+
+		; Save slot data
+		KDebug.WriteLine "SRAM_SaveNow(): Saving slot data (slot=%<.b d0 dec>)"
+		mulu.w	#SRAMSlot.Size, d0
+		lea	SRAM_Slots-SRAMSlot.Size(a1, d0), a1
+
+		; SRAMSlot.GameBits(a1)	; ### TODO
+		move.b	CurrentChapter, SRAMSlot.Chapter(a1)
+		move.w	Rings, d0
+		movep.w	d0, SRAMSlot.Rings(a1)
+		move.w	Deaths, d0
+		movep.w	d0, SRAMSlot.Deaths(a1)
+		move.l	Score, d0
+		movep.l	d0, SRAMSlot.Score(a1)
+		move.w	Doors_Casual, d0
+		movep.w	d0, SRAMSlot.Doors(a1)
+
+	@SaveDone:
+		SRAMLeave
 		rts
-	endif	; def(__MD_REPLAY__)=0
+	endif
+
+
+sram_optionsmenu_resetgameprogress: _unimplemented
+sram_optionsmenu_resetoptions: _unimplemented

@@ -40,7 +40,7 @@ SoundDriverRAM_End:	equ	$FFFFF5C0			;	End of SMPS RAM
 
 VBlankHndl:		equ	$FFFFF5C8			; l/w	Jump code for VInt
 VBlankSubW:		equ	$FFFFF5CA			; w	Word offset for VInt routine 
-*			equ	$FFFFF5CC			; b	<<FREE>>
+SaveSlotId:		equ	$FFFFF5CC			; b	Selected save slot id (0 = No Save)
 VDPDebugPortSet:	equ	$FFFFF5CD			; b	Set if VDP Debug port was tampered with
 BlackBars.Handler:	equ	$FFFFF5CE			; w	Pointer to Black Bars handler routines (depending on `BlackBars.HandlerId`)
 *			equ	$FFFFF5D0			; b	"Signpost patterns have been loaded" flag
@@ -135,6 +135,13 @@ VBlank_FrameCounter:	equ	$FFFFFE0C			; l	Global frame counter for VBlank (includ
 CurrentLevel:		equ	$FFFFFE10			; w	Current level ID
 CurrentZone:		equ	CurrentLevel+0			; b	Current zone index
 CurrentAct:		equ	CurrentLevel+1			; b	Current zone act (0..3)
+
+Deaths:			equ	$FFFFFE12			; w	Deaths
+
+Rings:			equ	$FFFFFE20			; w	Rings counter
+
+Score:			equ	$FFFFFE26			; l	Score
+
 
 FZEscape:		equ	$FFFFFEA0			; b	flag set during the Finalor Place escape
 FZFlashTimer:		equ	$FFFFFEA2			; b	timer for updating the FP palette during escape

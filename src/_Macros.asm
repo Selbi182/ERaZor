@@ -14,6 +14,7 @@ rseven	macro
 	endif
 	endm
 
+
 ; reserves memory determined by the file size, fails if file doesn't exist
 rsfile	macro *, filename
 	__rsfilesise: = filesize(\filename)
@@ -99,4 +100,10 @@ VBlank_UnsetMusicOnly:	macro
 	move.w	#$4EF8, HBlankHndl		; restore HBlank handler (`jmp xxx.w`)
 @done\@:
 	assert.b VBlank_MusicOnly, pl		; shouldn't underflow
+	endm
+
+; Decorator for unimplemented routines
+_unimplemented:	macro *
+\*:
+	RaiseError "Not Implemented"
 	endm

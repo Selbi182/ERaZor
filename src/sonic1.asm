@@ -6778,7 +6778,7 @@ Resize_GHZ3main:
 		move.w	#$400,($FFFFF726).w		; set lower y-boundary
 
 
-		cmpi.w	#$3D00,($FFFFF700).w		; in the waterfall transition?
+		cmpi.w	#$3D00,($FFFFD008).w		; in the waterfall transition?
 		bcs.w	locret_6E96			; if not, branch
 
 
@@ -6787,8 +6787,8 @@ Resize_GHZ3main:
 		clr.w	($FFFFF76C).w			; reset OPL routine index
 		move.w	#$003,($FFFFFE10).w		; change level ID to GHZ4
 		jsr	LevelLayoutLoad			; load GHZ4 layout
-		move.w	#$3D00,d0
-		sub.w	d0,($FFFFD008).w
+		subi.w	#$3D00-$200,($FFFFD008).w
+		jsr	FixCamera
 		move.b	#1,(RedrawEverything).w
 		jsr	WhiteFlash
 		movem.l	(sp)+,d7/a0
@@ -7131,8 +7131,8 @@ Resize_MZ1:
 
 		cmpi.w	#3*60+30,($FFFFFFAA).w
 		bne.s	@nostop
-		move.w	#$E4,d0
-		jsr	PlayCommand			; stop music	
+		move.w	#$E5,d0
+		jsr	PlayCommand		; stop music	
 @nostop
 		subq.w	#1,($FFFFFFAA).w	; sub from timer
 		bne.w	@end			; if time remains, branch
@@ -11927,7 +11927,7 @@ Obj1F_BossDefeated:
 		bne.s	@1				; if not, branch
 		move.b	#1,($FFFFFFD5).w		; set flag 3
 		clr.l	($FFFFF602).w			; clear any remaining button presses
-		move.b	#$E4,d0				; stop music (fade out causes glitches with the explosion sounds)
+		move.b	#$E0,d0				; fade out music
 		jsr	PlayCommand			; play it
 
 @1:
@@ -15193,7 +15193,7 @@ Obj2C_Animate:
 Obj2C_Killed:
 		move.b 	#1,($FFFFFFF9).w	; set final section flag
 
-		move.w	#$E4,d0
+		move.w	#$E5,d0
 		jsr	PlayCommand		; stop music
 
 		clr.b	(HUD_BossHealth).w
@@ -42269,7 +42269,7 @@ Kill_DoKill:
 		cmpi.b	#$18,(GameMode).w	; is this the ending sequence?
 		bne.s	SH_NotEnding		; if not, branch
 		move.w	#0,($FFFFF72A).w	; lock screen
-		move.b	#$E4,d0
+		move.b	#$E5,d0
 		jsr	PlayCommand			; stop music
 
 SH_NotEnding:

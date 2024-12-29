@@ -126,15 +126,19 @@ BlackBarsConfigScreen_MainLoop:
  if def(__WIDESCREEN__)
 	; pre-text for the widescreen version
 	moveq	#0,d0
-	tst.b	BlackBarsConfig_PreTextActive
-	beq.w	@chkbaseheightadjust
-	andi.b	#Start|A|C,Joypad|Press
-	beq.w	BlackBarsConfigScreen_MainLoop
+	tst.b	BlackBarsConfig_PreTextActive	; is pre-text currently active?
+	beq.w	@chkbaseheightadjust		; if not, branch
+	andi.b	#Start|A|C,Joypad|Press		; anything pressed?
+	beq.w	BlackBarsConfigScreen_MainLoop	; if not, loop
+
+	tst.b	(CarryOverData).w		; is next game mode set to be options screen?
+	bne.s	@SwapToBlackBarsSetup		; if yes, always switch to black bars setup
 	jsr	Check_FirstStart		; is this the first start of the game?
-	bne.s	@first				; if yes, swap to black bars setup
+	bne.s	@SwapToBlackBarsSetup		; if yes, swap to black bars setup
 	move.b	#1,BlackBarsConfig_Exiting	; otherwise, directly exit the screen to make it less annoying
-	bra.w	BlackBarsConfigScreen_MainLoop
- @first:
+	bra.w	BlackBarsConfigScreen_MainLoop	; loop to start
+ 
+ @SwapToBlackBarsSetup:
 	VBlank_SetMusicOnly
 	move.w	#$A9,d0
 	jsr	PlaySFX

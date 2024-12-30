@@ -7546,16 +7546,10 @@ Uberhub_UnterhubCutscene:
 		move.b	#$43,(a1)		; load roller enemy
 		move.b	#4,obRoutine(a1)	; set to cutscene routine
 
-		lea	(@PLC_Roller).l,a1
+		lea	(PLC_Roller).l,a1
 		jsr	LoadPLC_Direct
 @waitbegin:
 		rts
-; ---------------------------------------------------------------------------
-@PLC_Roller:
-		dc.l ArtKospM_Roller
-		dc.w $9700
-		dc.w $A820
-		dc.w -1
 ; ---------------------------------------------------------------------------
 
 @UnterhubCutscene_WaitRoller:
@@ -7618,11 +7612,17 @@ Uberhub_UnterhubCutscene:
 
 @UnterhubCutscene_End:
 		rts
+; ===========================================================================
+
+PLC_Roller:
+		dc.l ArtKospM_Roller
+		dc.w $9700
+		dc.w -1
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
 
 Resize_SYZ2:
-		nop
+		nop	; SYZ2 is Unreal Place
 		rts	
 ; ===========================================================================
 
@@ -12592,7 +12592,7 @@ Obj22_Action:				; XREF: Obj22_Index
 		bsr.w	AnimateSprite
 		cmpi.w	#$001,($FFFFFE10).w	; is level GHZ2 (intro cutscene)?
 		beq.w	DisplaySprite		; if yes, never delete
-		bra.w	MarkObjGone		; display and delete if offscren
+		jmp	MarkObjGone		; display and delete if offscren
 ; ===========================================================================
 Obj22_Index2:	dc.w Obj22_Move-Obj22_Index2
 		dc.w Obj22_ChkNrSonic-Obj22_Index2
@@ -19557,6 +19557,7 @@ Obj43_Index:	dc.w Obj43_Main-Obj43_Index
 		dc.w Obj43_Action-Obj43_Index
 ; ---------------------------------------------------------------------------
 		dc.w Obj43_UberhubCutscene-Obj43_Index
+		dc.w Obj43_RuinedPlaceEndCutscene-Obj43_Index
 ; ===========================================================================
 
 Obj43_Main:				; XREF: Obj43_Index
@@ -19575,7 +19576,6 @@ Obj43_Main:				; XREF: Obj43_Index
 		cmpi.b	#2,obSubtype(a0)
 		bne.s	Obj43_Action
 		move.b	#6,obColType(a0)	; only make the one destroyable that's actually meant to be destroyed
-
 ; ---------------------------------------------------------------------------
 
 Obj43_Action:				; XREF: Obj43_Index
@@ -19795,9 +19795,114 @@ Obj43_OffscreenFar:
 		jmp	DeleteObject		; delete the actual object
 @wait:
 		rts
+; ===========================================================================
+; ===========================================================================
+
+Obj43_RuinedPlaceEndCutscene:
+		moveq	#0,d0
+		move.b	ob2ndRout(a0),d0
+		move.w	Obj43_Index4(pc,d0.w),d1
+		jsr	obj43_Index4(pc,d1.w)
+		lea	(Ani_obj43).l,a1
+		bsr	AnimateSprite
+		bra.w	DisplaySprite
+; ===========================================================================
+Obj43_Index4:	dc.w Obj43_RPSetup-Obj43_Index4
+		dc.w Obj43_RPPreWait-Obj43_Index4
+		dc.w Obj43_RPDrop-Obj43_Index4
+		dc.w Obj43_RPStare-Obj43_Index4
+		dc.w Obj43_RPRollin-Obj43_Index4
+		dc.w Obj43_RPOffscreen-Obj43_Index4
+; ===========================================================================
+
+Obj43_RPSetup:
+		addq.b	#2,ob2ndRout(a0)
+
+		lea	(PLC_Roller).l,a1
+		jsr	LoadPLC_Direct
+
+		move.l	#Map_obj43,obMap(a0)
+		move.w	#$9700/$20,obGfx(a0)
+		bset	#7,obGfx(a0)		; make it high plane
+		move.b	#4,obRender(a0)
+		move.b	#4,obPriority(a0)
+		move.b	#$10,obActWid(a0)
+		move.b	#0,obColType(a0)
+
+		move.b	#2,obAnim(a0)		; rolling
+
+		move.w	#$2438,obX(a0)
+		move.w	#$00E0,obY(a0)
+
+		move.w	#0*60,$30(a0)		; pre-delay
 ; ---------------------------------------------------------------------------
 
+Obj43_RPPreWait:
+		subq.w	#1,$30(a0)
+		bpl.s	@wait
+		addq.b	#2,ob2ndRout(a0)
+		move.w	#$000,obVelX(a0)
+		move.w	#$000,obVelY(a0)
+		move.w	#$E0,d0
+		jsr	PlayCommand		; fade-out music
+@wait:		rts
+; ---------------------------------------------------------------------------
+
+Obj43_RPDrop:
+		jsr	SpeedToPos
+		addi.w	#$38,obVelY(a0)
+
+		cmpi.w	#$170,obY(a0)
+		blo.s	@waithitthefloor
+
+		jsr	ObjHitFloor
+		tst.w	d1			; has Roller hit the floor yet?
+		subi.w	#$C,d1
+		bpl.s	@waithitthefloor	; if not, wait
+		add.w	d1,obY(a0)
+		addq.b	#2,ob2ndRout(a0)
+		clr.w	obVelY(a0)
+		move.b	#0,obAnim(a0)		; standing
+		move.w	#3*60,$30(a0)		; stare time
+
+@waithitthefloor:
+		rts
+; ---------------------------------------------------------------------------
+
+Obj43_RPStare:
+		subq.w	#1,$30(a0)
+		bpl.s	@wait
+		addq.b	#2,ob2ndRout(a0)
+		move.w	#$100,obVelX(a0)	; slooow
+		move.w	#$000,obVelY(a0)
+		move.w	#$AB,d0
+		jsr	PlaySFX
+@wait:		rts
+; ---------------------------------------------------------------------------
+
+Obj43_RPRollin:
+		move.b	#2,obAnim(a0)		; rollin'
+		jsr	SpeedToPos		; keep rollin' baby
+
+		cmpi.w	#$2580+SCREEN_XCORR,obX(a0) ; made it off-screen yet?
+		blo.s	@wait			; if not, wait
+		addq.b	#2,ob2ndRout(a0)
+@wait:		rts
+
+; ---------------------------------------------------------------------------
+
+Obj43_RPOffscreen:
+		; end cutscene
+		bset	#5,($FFFFF7A7).w	; set Roller as deleted
+		jsr	PlayLevelMusic_Force	; restart music before entering level
+		jmp	DeleteObject		; delete the actual object
+@wait:
+		rts
+; ---------------------------------------------------------------------------
+
+
 ; ===========================================================================
+; ---------------------------------------------------------------------------
 Ani_obj43:
 		include	"_anim\obj43.asm"
 
@@ -20792,6 +20897,20 @@ Obj0D_SonicRun:				; XREF: Obj0D_Index
 		bcs.w	locret_ECEE
 
 loc_EC86:
+		cmpi.w	#$200,($FFFFFE10).w	; are we in RP?
+		bne.s	@notrp			; if not, branch
+
+		btst	#4,($FFFFF7A7).w	; has Roller scene already been started?
+		bne.s	@wait			; if yes, branch
+		jsr	SingleObjLoad
+		bne.s	@wait
+		bset	#4,($FFFFF7A7).w	; set scene as started
+		move.b	#$43,(a1)		; load roller enemy
+		move.b	#6,obRoutine(a1)	; set to RP cutscene routine
+	@wait:
+		btst	#5,($FFFFF7A7).w	; has the Roller been deleted?
+		beq.s	locret_ECEE		; if not, prolong exit
+@notrp:
 		addq.b	#2,obRoutine(a0)
 
 	if def(__BENCHMARK__)
@@ -28583,7 +28702,7 @@ S_D_AfterImage:
 		bne.s	Obj01_AfterImage	; ...every couple frames
 
 Obj01_Display:
-		bsr	DisplaySprite
+		jsr	DisplaySprite
 
 ; Start of Afterimage setup code
 Obj01_AfterImage:
@@ -37933,8 +38052,8 @@ Obj73_Defeated:				; XREF: Obj73_MainStuff
 ; ===========================================================================
 
 Obj73_ShipDel:
-		bset	#3,($FFFFF7A7).w	; set RP boss defeated
-		jmp	DeleteObject
+		bset	#3,($FFFFF7A7).w	; set RP boss defeated (opens door to signpost)
+		jmp	DeleteObject		; RIP Eggman
 ; ===========================================================================
 ; ===========================================================================
 

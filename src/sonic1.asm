@@ -455,8 +455,7 @@ BlackBars_SetHeight:
 		rts					; return
 ; ===========================================================================
 
-;BlackBars.GHPCasual  = 60*3
-BlackBars.GHPFrantic = 30
+BlackBars.GHPFrantic = 36
 ; ---------------------------------------------------------------------------
 
 BlackBars.GHP:
@@ -465,19 +464,6 @@ BlackBars.GHP:
 		cmpi.b	#6,($FFFFD024).w		; is Sonic dying?
 		bhs.s	BlackBars_Show			; if yes, show regular black bars
 
-		; reset black bars in waterfall
-		move.w	($FFFFD008).w,d0
-		move.w	($FFFFD00C).w,d1
-		jsr	Sub_FindChunkByCoordinate
-		cmpi.b	#$34,(a0)
-		bne.s	@notwaterfall
-		move.w	#BlackBars.MaxHeight,d0		; get fixed max height cause the stage is built around it
-		cmp.w	BlackBars.Height,d0		; are bars smaller than the base height?
-		bhi.s	@timeleft			; if not, branch
-		subq.w	#BlackBars.GrowSize,BlackBars.TargetHeight ; grow bars until we reach the minimum height
-		bra.s	@timeleft			; if not, branch
-
-@notwaterfall:
 		tst.b	($FFFFF7AA).w			; fighting against boss? (for 3P easter egg)
 		bne.s	@baseheightokay			; if yes, branch
 
@@ -490,13 +476,23 @@ BlackBars.GHP:
 		tst.b	($FFFFF7CC).w			; are controls locked?
 		bne.s	@timeleft			; if yes, branch
 
+		; black bars closing in in frantic GHP
 		frantic					; are we in Frantic mode?
 		beq.s	@timeleft			; if not, branch
-	;	move.b	#BlackBars.GHPCasual,d0		; set casual reset time
-	;	frantic					; are we in Frantic mode?
-	;	beq.s	@notfrantic			; if not, branch
-		moveq	#BlackBars.GHPFrantic,d0	; set frantic reset time
-@notfrantic:	move.b	d0,BlackBars.GHPTimerReset	; set reset time
+
+		move.w	($FFFFD008).w,d0		; reset black bars in waterfall
+		move.w	($FFFFD00C).w,d1
+		jsr	Sub_FindChunkByCoordinate
+		cmpi.b	#$34,(a0)
+		bne.s	@notwaterfall
+		move.w	#BlackBars.MaxHeight,d0		; get fixed max height cause the stage is built around it
+		cmp.w	BlackBars.Height,d0		; are bars smaller than the base height?
+		bhi.s	@timeleft			; if not, branch
+		subq.w	#BlackBars.GrowSize,BlackBars.TargetHeight ; grow bars until we reach the minimum height
+		bra.s	@timeleft			; if not, branch
+
+	@notwaterfall:
+		move.b	#BlackBars.GHPFrantic,BlackBars.GHPTimerReset ; set reset time
 		subq.b	#1,BlackBars.GHPTimer		; sub 1 from grow interval timer
 		bhi.s	@timeleft			; if time is left, branch
 		move.b	BlackBars.GHPTimerReset,BlackBars.GHPTimer ; reset grow interval timer
@@ -506,7 +502,7 @@ BlackBars.GHP:
 		blo.s	@noscreenkill			; if not, branch
 		jmp	KillSonic_Inhuman		; hecking kill Sonic, even in nonstop inhuman
 
-@noscreenkill:
+	@noscreenkill:
 		move.w	#$BB,d0				; play...
 		jsr	PlaySFX		; ...badump sound		
 
@@ -3241,7 +3237,7 @@ LevelSelect_Palette:
 ; Subroutine to	change what you're selecting in the level select
 ; ---------------------------------------------------------------------------
 LevSel_Entries = 18
-LevSel_LineLength = 24
+LevSel_LineLength = 26
 ; ---------------------------------------------------------------------------
 
 LevSelControls:				; XREF: LevelSelect
@@ -3289,12 +3285,14 @@ LevSelControls:				; XREF: LevelSelect
 ; Subroutine to load level select text
 ; ---------------------------------------------------------------------------
 
+LevelSelectVDP = $618E0003
+
 LevSelTextLoad:				; XREF: TitleScreen
 		lea	(LevelMenuText).l,a1
 		lea	VDP_Data,a6
-		move.l	#$62100003,d4	; screen position (text)
+		move.l	#LevelSelectVDP,d4	; screen position (text)
 		move.w	#$E680,d3	; VRAM setting
-		moveq	#$14,d1		; number of lines of text
+		moveq	#LevSel_Entries-1,d1		; number of lines of text
 
 loc_34FE:
 		move.l	d4,4(a6)
@@ -3305,24 +3303,18 @@ loc_34FE:
 		moveq	#0,d0
 		move.w	($FFFFFF82).w,d0
 		move.w	d0,d1
-		move.l	#$62100003,d4
+		move.l	#LevelSelectVDP,d4
 		lsl.w	#7,d0
 		swap	d0
 		add.l	d0,d4
 		lea	(LevelMenuText).l,a1
-		lsl.w	#3,d1
-		move.w	d1,d0
-		add.w	d1,d1
-		add.w	d0,d1
+
+		mulu.w	#LevSel_LineLength,d1
+
 		adda.w	d1,a1
 		move.w	#$C680,d3
 		move.l	d4,4(a6)
-		bsr	LevSel_ChgLine
-		rts	
-; End of function LevSelTextLoad
-
-
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+		; fallthrough
 
 LevSel_ChgLine:				; XREF: LevSelTextLoad
 		moveq	#LevSel_LineLength-1,d2	; number of characters per line
@@ -3364,7 +3356,7 @@ loc_3598:				; XREF: LevSel_ChgLine
 		move.w	d0,(a6)
 		dbf	d2,loc_3588
 		rts	
-; End of function LevSel_ChgLine
+; End of function LevSelTextLoad
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -3373,24 +3365,24 @@ loc_3598:				; XREF: LevSel_ChgLine
 
 LevelMenuText:
 
-		dc.b	'HOME   UBERHUB PLACE    '
-		dc.b	'SCENE  ONE HOT DAY      '
-		dc.b	'0      TUTORIAL PLACE   '
-		dc.b	'1-1    NIGHT HILL PLACE '
-		dc.b	'1-2    GREEN HILL 1     '
-		dc.b	'1-3    GREEN HILL 2     '
-		dc.b	'2      SPECIAL PLACE    '
-		dc.b	'3      RUINED PLACE     '
-		dc.b	'4      LABYRINTHY PLACE '
-		dc.b	'5      UNREAL PLACE     '
-		dc.b	'SCENE  BOMB MACHINE     '
-		dc.b	'6-1    SCAR NIGHT PLACE '
-		dc.b	'6-2    STAR AGONY PLACE '
-		dc.b	'7      UNTERHUB PLACE   '
-		dc.b	'8-1    FINALOR PLACE    '
-		dc.b	'8-2    THE GREAT ESCAPE '
-		dc.b	'SCENE  THE END          '
-		dc.b	'XXX    BLACKOUT         '
+		dc.b	'HOME    UBERHUB PLACE     '
+		dc.b	'SCENE   ONE HOT DAY       '
+		dc.b	'0       TUTORIAL PLACE    '
+		dc.b	'1-1     NIGHT HILL PLACE  '
+		dc.b	'1-2-1   GREEN HILL PLACE 1'
+		dc.b	'1-2-2   GREEN HILL PLACE 2'
+		dc.b	'2       SPECIAL PLACE     '
+		dc.b	'3       RUINED PLACE      '
+		dc.b	'4       LABYRINTHY PLACE  '
+		dc.b	'5       UNREAL PLACE      '
+		dc.b	'SCENE   BOMB MACHINE      '
+		dc.b	'6-1     SCAR NIGHT PLACE  '
+		dc.b	'6-2     STAR AGONY PLACE  '
+		dc.b	'7       UNTERHUB PLACE    '
+		dc.b	'8-1     FINALOR PLACE     '
+		dc.b	'8-2     THE GREAT ESCAPE  '
+		dc.b	'SCENE   THE END           '
+		dc.b	'XXX     BLACKOUT CHALLENGE'
 
 		rept 21-LevSel_Entries ; padding
 		dc.b	'                        '
@@ -3797,6 +3789,14 @@ loc_3946:
 		moveq	#0,d0
 		bsr	LoadPLC			; (re-)load standard patterns 1
 
+		cmpi.w	#$200,($FFFFFE10).w	; are we in RP?
+		bne.s	@notrp			; if not, branch
+		btst	#4,(OptionsBits).w	; is nonstop inhuman enabled?
+		beq.s	@notrp			; if not, branch
+		lea	Obj2E_SpikesBlood, a1	; immediately load bloody spikes because the respective code...
+		jsr	LoadPLC_Direct		; ... can't be triggered from this mode
+
+@notrp:
 		cmpi.b	#$4,($FFFFFE10).w	; are we in Uberhub?
 		bne.s	@notuberhub		; if not, branch
 		move.b	#0,($FFFFFF7F).w	; set intro tube flag
@@ -5100,12 +5100,16 @@ SignpostArtLoad:			; XREF: Level
 		move.w	($FFFFFE10).w,d0	; get current Level ID
 		; GHP sign post is loaded from within boss
 		cmpi.w	#$200,d0		; is level RP?
-		beq.s	Signpost_DoLoad		; if yes, branch
+		beq.s	@rp			; if yes, branch
 		cmpi.w	#$101,d0		; is level LP?
 		beq.s	Signpost_DoLoad_NoLock	; if yes, branch (don't lock screen)
 		cmpi.w	#$302,d0		; is level SAP?
 		beq.s	Signpost_DoLoad_NoLock	; if yes, branch (don't lock screen)
 		rts				; otherwise, don't load
+
+@rp:
+		tst.b	($FFFFF7A7).w		; any lava sequence stuff already run?
+		beq.s	Signpost_Exit		; if not, don't load yet
 
 Signpost_DoLoad:
 		move.w	d1,($FFFFF728).w	; move left boundary to current screen position
@@ -6797,13 +6801,11 @@ Resize_GHZ3main:
 		bcs.w	locret_6E96			; if not, branch
 
 		movem.l	d7/a0,-(sp)
+		subi.w	#$3D00-SCREEN_WIDTH,($FFFFD008).w ; teleport Sonic back
 		clr.w	($FFFFF76C).w			; reset OPL routine index
 		move.w	#$003,($FFFFFE10).w		; change level ID to GHZ4
 		jsr	LevelLayoutLoad			; load GHZ4 layout
 
-		subi.w	#$3D00-SCREEN_WIDTH,($FFFFD008).w	; teleport Sonic back
-
-		jsr	FixCamera
 		move.b	#1,(RedrawEverything).w
 		jsr	WhiteFlash
 		movem.l	(sp)+,d7/a0
@@ -6820,10 +6822,9 @@ Resize_GHZ4:
 		jmp	off_6E4Ax(pc,d0.w)
 ; ===========================================================================
 off_6E4Ax:	dc.w Resize_GHZ4main-off_6E4Ax
-		dc.w Resize_GHZ3boss-off_6E4Ax
-		dc.w Resize_GHZ3duringboss-off_6E4Ax
-		dc.w Resize_GHZ3bossdefeated-off_6E4Ax
-		dc.w Resize_GHZ3end-off_6E4Ax
+		dc.w Resize_GHZ4boss-off_6E4Ax
+		dc.w Resize_GHZ4duringboss-off_6E4Ax
+		dc.w Resize_GHZ4bossdefeated-off_6E4Ax
 		dc.w Resize_GHZ4end-off_6E4Ax
 ; ===========================================================================
 
@@ -6864,7 +6865,7 @@ Resize_GHZ4main:
 		rts
 ; ===========================================================================
 
-Resize_GHZ3boss:
+Resize_GHZ4boss:
 		cmpi.w	#$3C60-SCREEN_XCORR,($FFFFF700).w
 		bcs.s	locret_6EE8
 		jsr	SingleObjLoad
@@ -6888,13 +6889,13 @@ locret_6EE8:
 		rts	
 ; ===========================================================================
 
-Resize_GHZ3duringboss:
+Resize_GHZ4duringboss:
 		move.w	($FFFFF700).w,($FFFFF728).w
 		move.w	#$0240,($FFFFF72C).w	; top boundary
 		rts	
 ; ===========================================================================
 
-Resize_GHZ3bossdefeated:	; called from boss object itself
+Resize_GHZ4bossdefeated:	; called from boss object itself
 		addq.b	#2,($FFFFF742).w
 		clr.b	($FFFFF7AA).w		; unlock screen
 
@@ -6914,15 +6915,12 @@ Resize_GHZ3bossdefeated:	; called from boss object itself
 		dc.w	-1
 ; ===========================================================================
 
-Resize_GHZ3end:
+Resize_GHZ4end:
 		move.w	($FFFFF700).w,($FFFFF728).w
 		move.w	#$0000,($FFFFF72C).w	; top boundary
 		move.w	#$3E00,($FFFFF72A).w ; right boundary
 		rts
-; ===========================================================================
 
-Resize_GHZ4end:
-		rts
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -10011,6 +10009,8 @@ loc_8486:				; XREF: Obj53_Collapse
 loc_84AA:
 		jsr	SingleObjLoad
 		bne.s	loc_84F2
+		jsr	CheckObjectRamNearlyExhausted	; are we close to loading up the RAM?
+		bhi.w	loc_84F2			; if yes, abandon spawning more sprites
 		addq.w	#5,a3
 
 loc_84B2:
@@ -11289,7 +11289,7 @@ Obj3F_PlaySound:
 	else
 		move.w	#$D7,d0			; play boring ass baby explosion sound
 	endif
-		jmp	PlaySFX
+		jmp	PlaySFX_Once		; yeah... there IS a thing a too many explosions
 
 Obj3F_NoSound:
 		rts			; return (don't play sound)
@@ -12052,7 +12052,7 @@ Obj1F_BossDelete:
 		move.b	#2,($FFFFFFD4).w		; set flag 4, 2
 		move.b	#0,($FFFFF7AA).w		; unlock screen
 		move.b	#2,($FFFFFFAA).w		; set flag 1, 2
-		move.w	#0,($FFFFF728).w		; set new left boundary
+		move.w	#$00C0,($FFFFF728).w		; set new left boundary (cutting off the hidden area to the left unless you die)
 		move.w	#$3E80,($FFFFF72A).w		; set new right boundary
 
 		move.b	#$DB,d0			; play epic explosion sound
@@ -13322,9 +13322,8 @@ Obj37_Start:	subq.w	#1,d5		; adjusgt for loop
 Obj37_Loop:
 		bsr	SingleObjLoad
 		bne.w	Obj37_ResetCounter
-
-		cmpi.w	#$D800+(($60-10)*$40),a1
-		bhi.w	Obj37_ResetCounter
+		jsr	CheckObjectRamNearlyExhausted	; are we close to loading up the RAM?
+		bhi.w	Obj37_ResetCounter		; if yes, abandon spawning more rings
 
 Obj37_MakeRings:			; XREF: Obj37_CountRings
 		move.b	#$37,0(a1)	; load another bouncing ring object
@@ -14556,8 +14555,8 @@ Obj2E_ChkS:
 @noob:
 		jsr	WhiteFlash		; do white flash to distract from all the stuff happening here
 
-		tst.b	(Inhuman).w		; was inhuman mode already on?
-		bne.s	@notruinedplace		; if yes, branch
+	;	tst.b	(Inhuman).w		; was inhuman mode already on?
+	;	bne.s	@notruinedplace		; if yes, branch
 
 		movem.l	d0-a1,-(sp)		; backup
 
@@ -18539,6 +18538,8 @@ SmashObject:				; XREF: Obj3C_Smash
 Smash_Loop:
 		bsr	SingleObjLoad
 		bne.s	Smash_PlaySnd
+		jsr	CheckObjectRamNearlyExhausted	; are we close to loading up the RAM?
+		bhi.s	Smash_PlaySnd			; if yes, abandon spawning more sprites
 		addq.w	#5,a3
 
 Smash_LoadFrag:				; XREF: SmashObject
@@ -18947,13 +18948,13 @@ SingleObjLoad:
 		lea	($FFFFD800).w,a1 ; start address for object RAM
 		moveq	#$5F,d0
 
-loc_DA94:
+SingleObjLoad_Loop:
 		tst.b	(a1)		; is object RAM	slot empty?
-		beq.s	locret_DAA0	; if yes, branch
+		beq.s	SingleObjLoad_End	; if yes, branch
 		lea	$40(a1),a1	; goto next object RAM slot
-		dbf	d0,loc_DA94	; repeat $60 times
+		dbf	d0,SingleObjLoad_Loop	; repeat $60 times
 
-locret_DAA0:
+SingleObjLoad_End:
 		assert.w a1, lo, #$F000, Debugger_ObjSlots
 		rts	
 ; End of function SingleObjLoad
@@ -18968,32 +18969,42 @@ SingleObjLoad2:
 		sub.w	a0,d0
 		lsr.w	#6,d0
 		subq.w	#1,d0
-		bcs.s	locret_DABC
+		bcs.s	SingleObjLoad2_End
 
-loc_DAB0:
+SingleObjLoad2_Loop:
 		tst.b	(a1)
-		beq.s	locret_DABC
+		beq.s	SingleObjLoad2_End
 		lea	$40(a1),a1
-		dbf	d0,loc_DAB0
+		dbf	d0,SingleObjLoad2_Loop
 
-locret_DABC:
+SingleObjLoad2_End:
 		rts	
 ; End of function SingleObjLoad2
+; ---------------------------------------------------------------------------
 
 	if def(__DEBUG__)
 Debugger_ObjSlots:
-	Console.WriteLine "%<pal1>Objects IDs in slots:%<pal0>"
-	Console.Write "%<setw,39>"       ; format slots table nicely ...
+		Console.WriteLine "%<pal1>Objects IDs in slots:%<pal0>"
+		Console.Write "%<setw,39>"       ; format slots table nicely ...
 
-	lea	Objects, a0
-	move.w	#(Objects_End-Objects)/$40-1, d0
- 
-	@DisplayObjSlot:
-		Console.Write "%<.b (a0)> "
-		lea	$40(a0), a0
-		dbf	d0, @DisplayObjSlot
-	rts
+		lea	Objects, a0
+		move.w	#(Objects_End-Objects)/$40-1, d0
+	 
+		@DisplayObjSlot:
+			Console.Write "%<.b (a0)> "
+			lea	$40(a0), a0
+			dbf	d0, @DisplayObjSlot
+		rts
 	endif
+; ---------------------------------------------------------------------------
+
+; assumes a1 currently holds the result of a SingleObjLoad request
+CheckObjectRamNearlyExhausted:
+		; are we 8 objects or less away from exhausting the object RAM?
+		ReservedForObjectRAM: = 8
+		cmpi.w	#$D800+(($60-ReservedForObjectRAM)*$40),a1
+		rts	; bhi = true
+
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -21255,7 +21266,7 @@ Map_obj4C:
 Map_obj4E:
 		include	"_maps\obj4E.asm"
 
-; ===========================================================================zz
+; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Object 40 - Moto Bug enemy (GHZ)
 ; ---------------------------------------------------------------------------
@@ -21284,21 +21295,29 @@ Obj40_Main:				; XREF: Obj40_Index
 		move.b	#4,obPriority(a0)
 		move.b	#$14,obActWid(a0)
 		tst.b	obAnim(a0)		; is object a smoke trail?
-		bne.s	Obj40_SetSmoke	; if yes, branch
+		bne.s	Obj40_SetSmoke		; if yes, branch
 		move.b	#$E,obHeight(a0)
 		move.b	#8,obWidth(a0)
 		move.b	#$C,obColType(a0)
-		bsr	ObjectFall
-		jsr	ObjHitFloor
-		tst.w	d1
-		bpl.s	locret_F68A
-		add.w	d1,obY(a0)	; match	object's position with the floor
+
+		moveq	#8,d4			; max floor-find attempts so we don't freeze
+@gluetofloor:
+		jsr	ObjHitFloor		
+		tst.w	d1			; hit the floor yet?
+		bmi.s	@hitfloor		; if yes, branch
+		addi.w	#$10,obY(a0)		; lower Motobug
+		dbf	d4,@gluetofloor		; retry
+		bra.w	Obj40_Delete		; if we didn't find a floor after all retries, too bad
+
+	@hitfloor:
+		add.w	d1,obY(a0)		; match	object's position with the floor
 		move.w	#0,obVelY(a0)
 		addq.b	#2,obRoutine(a0)
 		bchg	#0,obStatus(a0)
 
 locret_F68A:
-		rts	
+	;	rts	
+		bra.w	Obj40_Action		; make sure Motobug doesn't appear one frame too late
 ; ===========================================================================
 
 Obj40_SetSmoke:				; XREF: Obj40_Main
@@ -24660,6 +24679,9 @@ Obj5E_Fuse:				; XREF: Obj5E_Index
 
 		jsr	SingleObjLoad
 		bne.s	@nobonussparkles
+		jsr	CheckObjectRamNearlyExhausted	; are we close to loading up the RAM?
+		bhi.s	@nobonussparkles		; if yes, abandon spawning more
+
 		move.b	#$5E,0(a1)	; load fuse object (bonus sparkles)
 		move.w	obX(a0),obX(a1)
 		move.w	obY(a0),obY(a1)
@@ -30181,6 +30203,8 @@ Sonic_Spindash:
 
 		cmpi.w	#$200,($FFFFFE10).w	; is level MZ1?
 		bne.s	Spdsh_NotMZ		; if not, branch
+		btst	#4,(OptionsBits).w	; is nonstop inhuman enabled?
+		bne.s	Spdsh_NotMZ		; if yes, branch
 		tst.b	($FFFFFF73).w		; P monitor broken?
 		bne.s	Spdsh_NotMZ		; if yes, branch
 		tst.b	(Inhuman).w		; is inhuman mode on?

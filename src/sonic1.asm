@@ -65,7 +65,7 @@ DebugSurviveNoRings = 1
 DebugHudPermanent = 0
 ; ------------------------------------------------------
 DoorsAlwaysOpen = 0
-LowBossHP = 1
+LowBossHP = 0
 ; ======================================================
 	else
 ; BENCHMARK build settings (DO NOT CHANGE!)
@@ -3772,8 +3772,9 @@ Level_NotIntro:
 ; ===========================================================================
 
 Level_NoTitleCard:
+		move.b	#1,($FFFFD080+$34).w	; mark title cards as already loaded
 		moveq	#3,d0
-		bsr	PalLoad2	; load Sonic's palette line
+		bsr	PalLoad2		; load Sonic's palette line
 
 Level_TtlCard:
 		; Place Place Place easter egg in levels

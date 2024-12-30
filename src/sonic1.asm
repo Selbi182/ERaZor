@@ -3460,6 +3460,11 @@ MainLevelArray:
 ; Subroutine to play level music.
 ; ---------------------------------------------------------------------------
 
+PlayLevelMusic_Force:
+		clr.b	SoundDriverRAM+v_last_bgm ; play music even if it was already played previously
+		; fallthrough
+; --------------------------------------- ------------------------------------
+
 PlayLevelMusic:
 		jsr	FakeLevelID		; get main level ID and load it into d5
 		lea	(MusicList).l,a1	; load Playlist into a1
@@ -3599,12 +3604,11 @@ Level_LZWaterSetup:
 		move.b	#2,($FFFFD01C).w
 		move.w	#$800,($FFFFD012).w
 @nointronyoom:
-		frantic
-		beq.s	@0
-		cmpi.b	#1,($FFFFFF97).w
-		bne.s	@0
-		move.b	#0,($FFFFFF97).w	; reset first checkpoint in frantic
-@0:
+		cmpi.b	#1,($FFFFFF97).w	; was only first checkpoint already collected?
+		bne.s	@0			; if not, branch
+		move.b	#0,($FFFFFF97).w	; reset first checkpoint
+@0
+
 		move.l	#WaterTransition_LZ,($FFFFF610).w
 		move.w	#$8014,(a6)
 		moveq	#0,d0
@@ -7606,7 +7610,8 @@ Uberhub_UnterhubCutscene:
 
 		addq.b	#2,($FFFFF742).w	; end cutscene
 		move.b	#0,($FFFFF7CC).w	; unlock controls
-		jsr	PlayLevelMusic
+		jsr	PlayLevelMusic_Force
+
 @waitdelete:
 		rts
 ; ---------------------------------------------------------------------------
@@ -11076,7 +11081,7 @@ Obj27_Main:				; XREF: Obj27_Index
 		bne.s	@notunterhub		; if yes, branch
 		bset	#2,($FFFFF7A7).w	; set Roller has been killed, you monster
 	
-		jsr	PlayLevelMusic		; restart regular music
+		jsr	PlayLevelMusic_Force	; restart regular music
 		movem.l	d0-a3,-(sp)
 		moveq	#$1A,d0
 		jsr	PalLoad2		; reload regular Unterhub pallete
@@ -17449,7 +17454,7 @@ Obj34_Setup:				; XREF: Obj34_Index
 		bne.s	@notghp			; if not, branch	
 		cmpi.b	#2,($FFFFFFAA).w	; has the crabmeat boss been defeated?
 		bne.s	@notghp			; if not, branch
-		jsr	PlayLevelMusic		; play GHP music
+		jsr	PlayLevelMusic_Force	; play GHP music
 
 @notghp:
 		btst	#2,(OptionsBits).w	; is "cinematic mode - disable HUD" enabled?
@@ -25180,8 +25185,6 @@ Obj5F_BossDefeatedmain:
 		move.w	#180,($FFFFFF78).w
 		move.w	#80,($FFFFFF7A).w
 
-		clr.w	($FFFFFF8C).w
-		clr.w	($FFFFFF8E).w
 		clr.b	($FFFFFFEB).w
 
 		bset	#0,($FFFFD022).w
@@ -28646,7 +28649,7 @@ Obj01_ChkInvin:
 		bne.w	Obj01_RmvInvin	; change to bne.w
 		cmpi.w	#$C,($FFFFFE14).w
 		bcs.w	Obj01_RmvInvin	; change to bcs.w
-		jsr	PlayLevelMusic	; restart level music
+		jsr	PlayLevelMusic_Force	; restart level music
 Obj01_RmvInvin:
 		move.b	#0,($FFFFFE2D).w ; cancel invincibility
 		
@@ -29783,8 +29786,11 @@ WhiteFlash_Restore:
 
 
 	
+; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Subroutine to perform a JumpDash / Homing Attack
+; ---------------------------------------------------------------------------
+Jumpdash_Speed	equ	$A00
 ; ---------------------------------------------------------------------------
 
 Sonic_JumpDash:
@@ -29838,7 +29844,7 @@ JD_NotInhuman:
 		jsr	PlaySFX		; play jumpdash sound
 
 JD_SetSpeed1:
-		move.w	#$A00,d0		; set normal jumpdash speed
+		move.w	#Jumpdash_Speed,d0	; set normal jumpdash speed
 		tst.b	($FFFFFE2E).w		; do you have speed shoes?
 		beq.s	JD_SetSpeed2		; if not, branch
 		move.w	#Sonic_TopSpeed+$600,d0	; set speed shoes jumpdash speed
@@ -29856,7 +29862,7 @@ JD_Move:
 		move.w	d0,obVelX(a0)		; move sonic forward (X-velocity)
 		clr.w	obVelY(a0)		; clear Y-velocity to move sonic directly down
 
-		bsr.s	Sonic_HomingAttack	; check if homing attack is possible
+		bra.s	Sonic_HomingAttack	; check if homing attack is possible
 
 JD_End:
 		rts				; return or cancel jumpdash
@@ -29873,16 +29879,15 @@ JD_End:
 ; upwards after hitting something and making monitors destroyable from any angle.
 ; -------------------------------------------------------------------------------
 Homing_Distance_X = $A0
-Homing_Distance_Y = $80
+Homing_Distance_Y = $A0
+Homing_YAbortThreshold = -$600
 ; -------------------------------------------------------------------------------
 
 Sonic_HomingAttack:
-		clr.w	($FFFFFF8C).w		; clear X-distance storer
-		clr.w	($FFFFFF8E).w		; clear Y-distance storer
-
+		clr.w	($FFFFFF8C).w		; clear distance storer
 		movem.l	d0-a3,-(sp)		; backup d0 to a3
 		lea	($FFFFD800).w,a1	; set a1 to level object RAM
-		moveq	#$5F,d2			; set d2 to $5F ($D800 to $F000 = $60 objects)
+		moveq	#$60-1,d2		; set d2 to $5F ($D800 to $F000 = $60 objects)
 
 ; -------------------------------------------------------------------------------
 SH_ObjectLoop:
@@ -29890,12 +29895,13 @@ SH_ObjectLoop:
 
 SH_EnemyLoop:
 		tst.b	(a2)			; is current entry $FF (end of array)?
-		bmi.w	SH_NoEnemy		; if yes, branch
+		bmi.w	SH_NextObject		; if yes, branch
 		move.b	(a1),d0			; move current object ID to d0
-		beq.w	SH_NoEnemy		; if it's not a set object, loop
+		beq.w	SH_NextObject		; if it's not a set object, loop
 		cmp.b	(a2)+,d0		; is current object a valid object?
 		bne.s	SH_EnemyLoop		; if not, loop
 
+SH_SpecialObjects:
 		cmpi.b	#$22,(a1)		; was selected object a buzz bomber
 		bne.s	SH_NoBuzz		; if not, branch
 		cmpi.w	#$000,($FFFFFE10).w	; is level GHZ1?
@@ -29904,65 +29910,69 @@ SH_EnemyLoop:
 		bpl.s	SH_NoBuzz		; if yes, branch
 		cmpi.w	#$1300,obX(a0)		; is Sonic before the X-location $1300?
 		bmi.s	SH_NoBuzz		; if yes, branch
-		bra.w	SH_NoEnemy		; otherwise, skip object
-
-SH_NoBuzz:
+		bra.w	SH_NextObject		; otherwise, skip object
+	SH_NoBuzz:
 		cmpi.b	#$26,(a1)		; was selected object a monitor?
 		bne.s	SH_NoMonitor		; if not, branch
 		cmpi.b	#$1,($FFFFFE10).w	; is level LZ?
-		beq.w	SH_NoEnemy		; if yes, branch
+		beq.w	SH_NextObject		; if yes, branch
 		cmpi.b	#2,obRoutine(a1)	; is monitor unbroken and active?
-		bne.s	SH_NoEnemy		; if not, skip
-
-SH_NoMonitor:
+		bne.w	SH_NextObject		; if not, skip
+	SH_NoMonitor:
 		cmpi.b	#$1F,(a1)		; was selected object a crabmeat?
 		bne.s	SH_NoCrabMeat		; if not, branch
 		cmpi.b	#6,obRoutine(a1)		; is object an exploding ball?
 		blt.s	SH_NoCrabMeat		; if not, brank
-		bra.s	SH_NoEnemy		; otherwise, skip object
-
-SH_NoCrabMeat:
+		bra.s	SH_NextObject		; otherwise, skip object
+	SH_NoCrabMeat:
 		cmpi.b	#$43,(a1)		; was selected object a Roller?
-		bne.s	SH_NoRoller		; if not, branch
+		bne.s	SH_CheckRoughDistance	; if not, branch
 		cmpi.b	#2,obSubtype(a1)	; is this the one meant to be destroyed?
-		beq.s	SH_NoRoller		; if yes, branch
-		bra.s	SH_NoEnemy		; otherwise, skip object
+		bne.s	SH_NextObject		; if not, skip object
 
-SH_NoRoller:
+SH_CheckRoughDistance:
 		move.w	obX(a1),d3		; load current X-pos into d3
 		sub.w	obX(a0),d3		; substract Sonic's X-pos from it
 		bpl.s	SH_XPositive		; if result it positive, branch
 		btst	#0,obStatus(a0)		; is Sonic looking at the target?
-		beq.s	SH_NoEnemy		; if not, branch
+		beq.s	SH_NextObject		; if not, branch
 		neg.w	d3			; otherwise, negate it
 		bra.s	SH_DirectionOK		; skip
-
-SH_XPositive:
+	SH_XPositive:
 		btst	#0,obStatus(a0)		; is Sonic looking at the target?
-		bne.s	SH_NoEnemy		; if not, branch
+		bne.s	SH_NextObject		; if not, branch
 
-SH_DirectionOK:
+	SH_DirectionOK:
 		cmpi.w	#Homing_Distance_X,d3	; is Sonic within X distance of that object?
-		bgt.s	SH_NoEnemy		; if not, branch
+		bhi.s	SH_NextObject		; if not, branch
 
 		move.w	obY(a1),d4		; load current Y-pos into d3
 		sub.w	obY(a0),d4		; substract Sonic's Y-pos from it
 		bpl.s	SH_YPositive		; if result it positive, branch
 		neg.w	d4			; negate it
-
-SH_YPositive:
+	SH_YPositive:
 		cmpi.w	#Homing_Distance_Y,d4	; is Sonic within Y distance of that object?
-		bgt.s	SH_NoEnemy		; if not, branch
+		bgt.s	SH_NextObject		; if not, branch
 
-		cmp.w	($FFFFFF8C).w,d3	; is stored X-distance smaller than distance of current enemy?
-		blt.s	SH_NoEnemy		; if yes, branch
-		cmp.w	($FFFFFF8E).w,d4	; is stored Y-distance smaller than distance of current enemy?
-		blt.s	SH_NoEnemy		; if yes, branch
-		move.w	d3,($FFFFFF8C).w	; store X-pos
-		move.w	d4,($FFFFFF8E).w	; store Y-pos
+SH_CheckPreciseDistance:
+		; to find the closest target, all we need to do is keep track of which object
+		; has the lowest squared distance (faster than actual distance and the square doesn't matter here):
+		move.w	obX(a1),d3
+		sub.w	obX(a0),d3
+		add.w	d3,d3
+    		move.w	obY(a1),d4
+		sub.w	obY(a0),d4
+		add.w	d4,d4
+		add.w	d4,d3			; d3 = (x_target - x_sonic)^2 + (y_target - y_sonic)^2
+		bpl.s	SH_CheckCloser
+		neg.w	d3
+	SH_CheckCloser:
+		cmp.w	($FFFFFF8C).w,d3	; is new distance smaller than a previously found target?
+		blt.s	SH_NextObject		; if not, branch
+		move.w	d3,($FFFFFF8C).w	; store new distance
 		movea.l	a1,a3			; save RAM position of current enemy
 
-SH_NoEnemy:
+SH_NextObject:
 		adda.l	#$40,a1			; increase pointer by $40 (next object)
 		dbf	d2,SH_ObjectLoop	; loop
 ; -------------------------------------------------------------------------------
@@ -29982,12 +29992,16 @@ SH_NotGHZ1:
 		sub.w	obY(a0),d2		; sub Sonic's Y-pos from it
 		jsr	CalcAngle		; calculate the angle
 		jsr	CalcSine		; calculate the sine
-		muls.w	#$A00,d0		; multiply result 1 by $900 (this line is for the Y-speed)
-		muls.w	#$A00,d1		; multiply result 2 by $900 (this line is for the X-speed)
+		muls.w	#Jumpdash_Speed,d0	; multiply result 1 by $900 (this line is for the Y-speed)
+		muls.w	#Jumpdash_Speed,d1	; multiply result 2 by $900 (this line is for the X-speed)
 		asr.l	#8,d0			; align the results to the correct position in the bitfield ...
 		asr.l	#8,d1			; ... (e.g. 00000000xxxxxxxxxxxxxxxx00000000 to 0000000000000000xxxxxxxxxxxxxxxx)
-		move.w	d1,obVelX(a0)		; set final result to Sonic's X-speed
+
+		cmpi.w	#Homing_YAbortThreshold,d0 ; is resulting Y-speed very fast upwards?
+		ble.s	SH_Return		; if yes, abort homing attack because homing straight up is really damn awkward
+
 		move.w	d0,obVelY(a0)		; set final result to Sonic's Y-speed
+		move.w	d1,obVelX(a0)		; set final result to Sonic's X-speed
 
 SH_Return:
 		movem.l	(sp)+,d0-a3		; restore d0 to a3
@@ -30057,8 +30071,8 @@ DJ_End:
 
 Sonic_DownDash:
 		move.w	#$BC,d0			; set jumpdash sound
-		jsr	PlaySFX		; play jumpadsh sound
-		move.w	#$A00,obVelY(a0)	; set normal down dash speed
+		jsr	PlaySFX			; play jumpadsh sound
+		move.w	#Jumpdash_Speed,obVelY(a0) ; set normal down dash speed
 		btst	#6,obStatus(a0)		; is Sonic underwater?
 		beq.s	DD_End			; if not, branch
 		move.w	#$600,obVelY(a0)	; set underwater down dash speed
@@ -32265,7 +32279,7 @@ locret_1408C:
 
 
 ResumeMusic:				; XREF: Obj64_Wobble; Sonic_Water; Obj0A_ReduceAir
-		jsr	PlayLevelMusic
+		jsr	PlayLevelMusic_Force
 
 loc_140AC:
 		move.w	#$1E,($FFFFFE14).w

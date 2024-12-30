@@ -7556,9 +7556,6 @@ Uberhub_UnterhubCutscene:
 		btst	#0,($FFFFF7A7).w	; has the Roller collected the spike trophy?
 		beq.s	@waitcollect		; if not, wait
 
-		bset	#0,($FFFFF602).w	; force up press
-		move.w	#$60,($FFFFF73E).w	; reset looking up/down
-
 		btst	#1,($FFFFF7A7).w	; has the Roller hit the floor?
 		beq.s	@waitcollect		; if not, wait
 		bclr	#0,($FFFFF602).w	; clear up press again
@@ -19684,7 +19681,7 @@ Obj43_Setup:
 		move.b	#2,obAnim(a0)		; rolling
 
 		move.w	#$0280,obX(a0)
-		move.w	#$0310,obY(a0)
+		move.w	#$030E,obY(a0)
 
 		move.w	#2*60,$30(a0)		; pre-delay
 ; ---------------------------------------------------------------------------
@@ -19698,22 +19695,36 @@ Obj43_PreWait:
 		bset	#0,($FFFFF7A7).w	; set Roller as initiated
 		move.w	#$AB,d0
 		jsr	PlaySFX
+		move.w	#30,$30(a0)		; delay at spike trophy
 @wait:		rts
 ; ---------------------------------------------------------------------------
 
 Obj43_StealSpikeTrophy:
-		jsr	SpeedToPos
-		addi.w	#$38,obVelY(a0)
-
 		cmpi.w	#$370,obX(a0)		; at the spike trophy yet?
 		blo.s	@waitsteal		; if not, wait
 
+		bset	#0,($FFFFF602).w	; force up press
+		move.w	#$60,($FFFFF73E).w	; reset looking up/down
+
+		; keep him stuck at the spike a bit
+		subq.w	#1,$30(a0)
+		bmi.s	@steal
+	;	btst	#0,($FFFFFE05).w
+	;	bne.s	@0
+		move.w	#$80+$47,d0
+		jsr	PlaySFX_Once
+@0		rts
+
+@steal:
 		addq.b	#2,ob2ndRout(a0)
 		move.w	#$A6,d0
-		jsr	PlaySFX	; play spike sound (foreshadowing)
-		bsr	StealSpikeTrophy
-@waitsteal:	rts
-
+		jsr	PlaySFX			; play spike sound (foreshadowing)
+		bra	StealSpikeTrophy
+@waitsteal:
+		jsr	SpeedToPos
+		addi.w	#$38,obVelY(a0)
+		rts
+; ---------------------------------------------------------------------------
 
 StealSpikeTrophy:
 		lea	($FFFFD800).w,a1
@@ -19728,7 +19739,6 @@ StealSpikeTrophy:
 		rts
 @deletetrophy:
 		jmp	DeleteObject2		; delete the trophy
-
 ; ---------------------------------------------------------------------------
 
 Obj43_HitFloor:
@@ -19770,7 +19780,7 @@ Obj43_BounceBack:
 		bset	#2,($FFFFF7A7).w	; set Roller has gone offscreen below
 		clr.w	obVelX(a0)
 		clr.w	obVelY(a0)
-		move.w	#1*60+30,$30(a0)	; post-delay
+		move.w	#1*60+20,$30(a0)	; post-delay
 
 @waitoffscreen:
 		rts
@@ -19799,6 +19809,9 @@ Obj43_OffscreenFar:
 ; ===========================================================================
 
 Obj43_RuinedPlaceEndCutscene:
+		cmpi.b	#A|B|C,Joypad|Held
+		beq.w	Obj43_RPOffscreen
+
 		moveq	#0,d0
 		move.b	ob2ndRout(a0),d0
 		move.w	Obj43_Index4(pc,d0.w),d1
@@ -19813,6 +19826,7 @@ Obj43_Index4:	dc.w Obj43_RPSetup-Obj43_Index4
 		dc.w Obj43_RPStare-Obj43_Index4
 		dc.w Obj43_RPRollin-Obj43_Index4
 		dc.w Obj43_RPOffscreen-Obj43_Index4
+		dc.w Obj43_RPEnd-Obj43_Index4
 ; ===========================================================================
 
 Obj43_RPSetup:
@@ -19834,7 +19848,9 @@ Obj43_RPSetup:
 		move.w	#$2438,obX(a0)
 		move.w	#$00E0,obY(a0)
 
-		move.w	#0*60,$30(a0)		; pre-delay
+		move.w	#30,$30(a0)		; pre-delay
+		move.w	#$E0,d0
+		jsr	PlayCommand		; fade-out music
 ; ---------------------------------------------------------------------------
 
 Obj43_RPPreWait:
@@ -19843,8 +19859,6 @@ Obj43_RPPreWait:
 		addq.b	#2,ob2ndRout(a0)
 		move.w	#$000,obVelX(a0)
 		move.w	#$000,obVelY(a0)
-		move.w	#$E0,d0
-		jsr	PlayCommand		; fade-out music
 @wait:		rts
 ; ---------------------------------------------------------------------------
 
@@ -19856,8 +19870,7 @@ Obj43_RPDrop:
 		blo.s	@waithitthefloor
 
 		jsr	ObjHitFloor
-		tst.w	d1			; has Roller hit the floor yet?
-		subi.w	#$C,d1
+		subi.w	#$C,d1			; has Roller hit the floor yet?
 		bpl.s	@waithitthefloor	; if not, wait
 		add.w	d1,obY(a0)
 		addq.b	#2,ob2ndRout(a0)
@@ -19875,7 +19888,7 @@ Obj43_RPStare:
 		addq.b	#2,ob2ndRout(a0)
 		move.w	#$100,obVelX(a0)	; slooow
 		move.w	#$000,obVelY(a0)
-		move.w	#$AB,d0
+		move.w	#$AB,d0			; the iconic swish
 		jsr	PlaySFX
 @wait:		rts
 ; ---------------------------------------------------------------------------
@@ -19894,9 +19907,11 @@ Obj43_RPRollin:
 Obj43_RPOffscreen:
 		; end cutscene
 		bset	#5,($FFFFF7A7).w	; set Roller as deleted
+		addq.b	#2,ob2ndRout(a0)
 		jsr	PlayLevelMusic_Force	; restart music before entering level
-		jmp	DeleteObject		; delete the actual object
-@wait:
+
+Obj43_RPEnd:
+	;	jmp	DeleteObject		; delete the actual object
 		rts
 ; ---------------------------------------------------------------------------
 
@@ -42485,6 +42500,7 @@ Kill_DoKill:
 		movem.l	(sp)+,d7/a1-a3
 		jsr	Pal_MakeBlackWhite	; turn palette black and white
 		move.w	#$000,($FFFFFB22).w	; force a specific color to always be black (boss flashing)
+	;	move.w	#$000,($FFFFFB40).w	; force a specific color to always be black (background)
 		
 	;	move.w	($FFFFF700).w,($FFFFF728).w	; lock left screen position
 	;	move.w	($FFFFF700).w,($FFFFF72A).w	; lock right screen position		

@@ -492,6 +492,7 @@ Credits_Page6:
 Credits_Page7:
 		crdtxt	"                    "
 		crdtxt	"                    "
+		crdtxt	"                    "
 		crdtxt	"additional          "
 		crdtxt	"                    "
 		crdtxt	"beta testing        "
@@ -499,9 +500,8 @@ Credits_Page7:
 		crdtxt	"                    "
 		crdtxt	"NEONSYNTH           "
 		crdtxt	"                    "
-		crdtxt	"TONGARA             "
+		crdtxt	"ZAKKU               "
 		crdtxt	"                    "
-		crdtxt	"PEANUT NOCEDA       "
 		crdtxt	"                    "
 		crdtxt	"                    "
 

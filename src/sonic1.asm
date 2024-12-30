@@ -65,7 +65,7 @@ DebugSurviveNoRings = 1
 DebugHudPermanent = 0
 ; ------------------------------------------------------
 DoorsAlwaysOpen = 0
-LowBossHP = 0
+LowBossHP = 1
 ; ======================================================
 	else
 ; BENCHMARK build settings (DO NOT CHANGE!)
@@ -6764,6 +6764,7 @@ off_6E4A:	dc.w Resize_GHZ3main-off_6E4A
 ; ===========================================================================
 
 Resize_GHZ3main:
+		; level transition from NHP to GHP part 1
 		cmpi.b	#2,($FFFFFFAA).w	; has flag after Crabmeat boss been set?
 		bne.s	@nottransition		; if not, branch
 		cmpi.b	#$34,($FFFFD080).w	; have title cards already been deleted?
@@ -6773,27 +6774,39 @@ Resize_GHZ3main:
 		clr.w	($FFFFD012).w		; kill Sonic's gravity to prolong the scene
 @nottransition:
 
-		move.w	#$320,($FFFFF726).w		; set lower y-boundary
-		cmpi.w	#$1780,($FFFFF700).w		; near the GHZ1 S-tube?
-		bcs.w	locret_6E96			; if not, branch
-		move.w	#$400,($FFFFF726).w		; set lower y-boundary
+		; camera stuff during GHP part 1
+		move.w	($FFFFF700).w,d0		; get Cam X pos
+		move.w	#$420,d1			; Y boundary at GHP start
 
+		cmpi.w	#$0090,d0
+		blo.s	@setbottom
+		move.w	#$320,d1
 
+		cmpi.w	#$1780,d0
+		blo.s	@setbottom
+		move.w	#$440,d1
+
+		cmpi.w	#$3900,d0
+		blo.s	@setbottom
+		move.w	#$310,d1
+@setbottom:
+		move.w	d1,($FFFFF726).w		; set lower y-boundary
+
+		; level transition of GHP part 1 and 2 around the waterfall section
 		cmpi.w	#$3D00,($FFFFD008).w		; in the waterfall transition?
 		bcs.w	locret_6E96			; if not, branch
 
-
-		; load the actual layout now
 		movem.l	d7/a0,-(sp)
 		clr.w	($FFFFF76C).w			; reset OPL routine index
 		move.w	#$003,($FFFFFE10).w		; change level ID to GHZ4
 		jsr	LevelLayoutLoad			; load GHZ4 layout
-		subi.w	#$3D00-$200,($FFFFD008).w
+
+		subi.w	#$3D00-SCREEN_WIDTH,($FFFFD008).w	; teleport Sonic back
+
 		jsr	FixCamera
 		move.b	#1,(RedrawEverything).w
 		jsr	WhiteFlash
 		movem.l	(sp)+,d7/a0
-		rts
 		
 locret_6E96:
 		rts
@@ -6815,27 +6828,49 @@ off_6E4Ax:	dc.w Resize_GHZ4main-off_6E4Ax
 ; ===========================================================================
 
 Resize_GHZ4main:
-		move.w	#$620,($FFFFF726).w		; set lower y-boundary
-		cmpi.w	#$3C60-SCREEN_XCORR,($FFFFD008).w	; is Sonic near boss?
-		bcc.s	loc_6E98			; if yes, branch
-		rts
-; ===========================================================================
+		; camera stuff during GHP part 2
+		move.w	($FFFFF700).w,d0		; get Cam X pos
+		move.w	#$310,d1			; Y boundary in waterfall transition
 
-loc_6E98:
-		move.w	#$300,($FFFFF726).w		; bottom boundary
-		move.w	#$3D60-SCREEN_XCORR,($FFFFF72A).w ; right boundary
-		move.w	($FFFFF700).w,($FFFFF728).w
+		cmpi.w	#$680,d0
+		blo.s	@setbottom
+		move.w	#$520,d1
+
+		cmpi.w	#$E80,d0
+		blo.s	@setbottom
+		move.w	#$420,d1
+
+		cmpi.w	#$1A00,d0
+		blo.s	@setbottom
+		move.w	#$5E0,d1
+
+		cmpi.w	#$2580,d0
+		blo.s	@setbottom
+		move.w	#$420,d1
+
+		cmpi.w	#$3A80,d0
+		blo.s	@setbottom
+		move.w	#$300,d1
+@setbottom:
+		move.w	d1,($FFFFF726).w		; set lower y-boundary
+
+		; load GHP boss at end of level
+		cmpi.w	#$3C60-SCREEN_XCORR,($FFFFD008).w	; is Sonic near boss?
+		blo.s	@end					; if not, branch
 		addq.b	#2,($FFFFF742).w
+		move.w	#$3C60-SCREEN_XCORR,($FFFFF72A).w 	; right boundary
+		move.w	($FFFFF700).w,($FFFFF728).w		; lock left boundary
+@end:
 		rts
 ; ===========================================================================
 
 Resize_GHZ3boss:
-		cmpi.w	#$3D60-SCREEN_XCORR,($FFFFF700).w
+		cmpi.w	#$3C60-SCREEN_XCORR,($FFFFF700).w
 		bcs.s	locret_6EE8
 		jsr	SingleObjLoad
 		bne.s	loc_6ED0
 		move.b	#$3D,0(a1)	; load GHZ boss	object
-		move.w	#$3E00,obX(a1)
+		move.w	#$3D00,obX(a1)
 		move.w	#$400,obY(a1)
 
 loc_6ED0:
@@ -6882,7 +6917,7 @@ Resize_GHZ3bossdefeated:	; called from boss object itself
 Resize_GHZ3end:
 		move.w	($FFFFF700).w,($FFFFF728).w
 		move.w	#$0000,($FFFFF72C).w	; top boundary
-		move.w	#$3EB0,($FFFFF72A).w ; right boundary
+		move.w	#$3E00,($FFFFF72A).w ; right boundary
 		rts
 ; ===========================================================================
 
@@ -8127,6 +8162,18 @@ Obj11_Index:	dc.w Obj11_Main-Obj11_Index, Obj11_Action-Obj11_Index
 ; ===========================================================================
 
 Obj11_Main:				; XREF: Obj11_Index
+		move.w	($FFFFF704).w,d0
+		sub.w	obY(a0),d0
+		bpl.s	@0
+		neg.w	d0
+@0:		cmpi.w	#SCREEN_HEIGHT,d0
+		blo.s	@load
+		jsr	SimpleOffscreenCheck
+		bhi.w	Obj11_Delete2
+		rts
+
+
+@load:
 		addq.b	#2,obRoutine(a0)
 		move.l	#Map_obj11,obMap(a0)
 		move.w	#$438E,obGfx(a0)
@@ -9725,6 +9772,9 @@ Obj1A_Main:				; XREF: Obj1A_Index
 		bset	#4,obRender(a0)
 
 Obj1A_ChkTouch:				; XREF: Obj1A_Index
+		tst.w	($FFFFFE08).w		; is debug mode active?
+		bne.s	Obj1A_JustDisplay	; if yes, branch
+
 		tst.b	$3A(a0)		; has Sonic touched the	platform?
 		beq.s	Obj1A_Slope	; if not, branch
 		tst.b	$38(a0)		; has time reached zero?
@@ -9735,6 +9785,7 @@ Obj1A_Slope:
 		move.w	#$30,d1
 		lea	(Obj1A_SlopeData).l,a2
 		bsr	SlopeObject
+Obj1A_JustDisplay:
 		jmp	MarkObjGone
 ; ===========================================================================
 
@@ -12001,7 +12052,7 @@ Obj1F_BossDelete:
 		move.b	#2,($FFFFFFD4).w		; set flag 4, 2
 		move.b	#0,($FFFFF7AA).w		; unlock screen
 		move.b	#2,($FFFFFFAA).w		; set flag 1, 2
-		move.w	#$00C0,($FFFFF728).w		; set new left boundary
+		move.w	#0,($FFFFF728).w		; set new left boundary
 		move.w	#$3E80,($FFFFF72A).w		; set new right boundary
 
 		move.b	#$DB,d0			; play epic explosion sound
@@ -13256,7 +13307,7 @@ Obj37_CountRings:			; XREF: Obj37_Index
 		movea.l	a0,a1			; no need to load in one more ring when the current object already is one
 		move.w	#BouncyRingValue,d4	; used for the bouncy angle
 
-		moveq	#6,d5		; set ring bounce count to 6 for destroyed objects
+		moveq	#4,d5		; set ring bounce count to 6 for destroyed objects
 		tst.b	$35(a0)		; was object loaded by destroying a monitor or badnik?
 		bne.s	Obj37_Start	; if yes, branch
 
@@ -13271,6 +13322,9 @@ Obj37_Start:	subq.w	#1,d5		; adjusgt for loop
 Obj37_Loop:
 		bsr	SingleObjLoad
 		bne.w	Obj37_ResetCounter
+
+		cmpi.w	#$D800+(($60-10)*$40),a1
+		bhi.w	Obj37_ResetCounter
 
 Obj37_MakeRings:			; XREF: Obj37_CountRings
 		move.b	#$37,0(a1)	; load another bouncing ring object
@@ -14406,11 +14460,11 @@ Obj2E_ChkShoes:
 		cmpi.b	#3,d0		; does monitor contain speed shoes?
 		bne.s	Obj2E_ChkShield
 		move.b	#1,($FFFFFE2E).w	; set shoes flag
+		bset	#2,(ScreenFuzz).w	; enable temporary screen fuzz effect
 
 		cmpi.w	#$502,($FFFFFE10).w	; are we in FP?
 		bne.s	@notfp			; if not, branch
 		move.w	#180*60,($FFFFD034).w	; give Sonic speed shoes for the escape (3 minutes, enough for the whole escape)
-		bset	#2,(ScreenFuzz).w	; enable temporary screen fuzz for the final moments
 		move.w	#$D3,d0			; play some sound
 		jmp	PlaySFX			; do nothing else
 
@@ -14989,6 +15043,9 @@ Obj2B_Main:				; XREF: Obj2B_Index
 		move.b	#$10,obActWid(a0)
 		move.w	#-$700,obVelY(a0)	; set vertical speed
 		move.w	obY(a0),$30(a0)	
+		jsr	RandomNumber
+		move.w	d0,$32(a0)	; used for random explosion deviation
+; ---------------------------------------------------------------------------
 
 Obj2B_ChgSpeed:				; XREF: Obj2B_Index	
 		lea	(Ani_obj2B).l,a1
@@ -15017,16 +15074,21 @@ Obj2B_ChgAni:
 Obj2B_NotInhumanCrush:
 		move.b	#1,obAnim(a0)	; use fast animation
 
+		moveq	#0,d0
+		move.w	$32(a0),d0
+		add.w	($FFFFFE04).w,d0
+		and.w	#7,d0
+		bne.s	@end
+
+
 		move.w	($FFFFD00C).w,d0
 		sub.w	obY(a0),d0
 		bpl.s	@0
 		neg.w	d0
-@0:		cmpi.w	#SCREEN_HEIGHT*2+$40,d0	; is fishy vertically near Sonic?
-		bhi.s	@end			; if not, branch
+@0:		cmpi.w	#SCREEN_HEIGHT,d0	; is fishy vertically near Sonic?
+		bhi.s	@justsound		; if not, branch
 
-		moveq	#7,d0
-		and.w	($FFFFFE04).w,d0
-		bne.s	@end
+
 		bsr	SingleObjLoad
 		bne.s	@end
 		move.b	#$3F,0(a1)		; load explosion object
@@ -15034,7 +15096,14 @@ Obj2B_NotInhumanCrush:
 		move.w	obY(a0),obY(a1)
 		move.b	#2,obRoutine(a1)	; only load one explosion
 		move.b	#0,$30(a1)		; make explosion HARMFUL
-		move.b	#0,$31(a1)		; play sfx
+		move.b	#1,$31(a1)		; mute explosion
+
+@justsound:
+		tst.b	($FFFFF7CC).w		; are controls still locked?
+		bne.s	@end			; if yes, don't play sound
+		move.w	#$C4,d0
+		jsr	PlaySFX
+
 @end:
 		rts	
 ; ===========================================================================
@@ -18497,6 +18566,7 @@ loc_D268:
 		dbf	d1,Smash_Loop
 
 Smash_PlaySnd:
+		ori.b	#10,(CameraShake).w     	; normal camera shake
 		move.w	#$CB,d0
 		jmp	PlaySFX ;	play smashing sound
 ; End of function SmashObject
@@ -21257,18 +21327,11 @@ SimpleOffscreenCheck:
 		andi.w	#$FF80,d1
 		sub.w	d1,d0
 		cmpi.w	#$280,d0
-		bhi.w	DeleteObject
-		bra.w	DisplaySprite
+		rts	; bhi = offscreen, bls = onscreen
 ; ---------------------------------------------------------------------------
 
 MarkObjGone:
-		move.w	obX(a0),d0
-		andi.w	#$FF80,d0
-		move.w	($FFFFF700).w,d1
-		subi.w	#$80,d1
-		andi.w	#$FF80,d1
-		sub.w	d1,d0
-		cmpi.w	#$280,d0
+		bsr	SimpleOffscreenCheck
 		bhi.w	Mark_ChkGone
 		bra.w	DisplaySprite
 ; ===========================================================================
@@ -28589,7 +28652,10 @@ Obj01_ChkShoes:
 		move.w	#Sonic_TopSpeed,($FFFFF760).w		; restore Sonic's speed
 		move.w	#Sonic_Acceleration,($FFFFF762).w	; restore Sonic's acceleration
 		move.w	#Sonic_Deceleration,($FFFFF764).w	; restore Sonic's deceleration
-		clr.b	($FFFFFE2E).w
+		clr.b	($FFFFFE2E).w		; cancel speed shoes
+		bclr	#2,(ScreenFuzz).w	; disable temporay screen fuzz
+		move.w	#$E3,d0
+		jmp	PlayCommand	; resume music at regular speed
 
 Obj01_ExitChk:
 		rts
@@ -29784,7 +29850,8 @@ JD_End:
 ; of other things spread around the disassembly, stopping and moving Sonic
 ; upwards after hitting something and making monitors destroyable from any angle.
 ; -------------------------------------------------------------------------------
-Homing_Distance = $A0
+Homing_Distance_X = $A0
+Homing_Distance_Y = $80
 ; -------------------------------------------------------------------------------
 
 Sonic_HomingAttack:
@@ -29853,7 +29920,7 @@ SH_XPositive:
 		bne.s	SH_NoEnemy		; if not, branch
 
 SH_DirectionOK:
-		cmpi.w	#Homing_Distance,d3	; is Sonic within X distance of that object?
+		cmpi.w	#Homing_Distance_X,d3	; is Sonic within X distance of that object?
 		bgt.s	SH_NoEnemy		; if not, branch
 
 		move.w	obY(a1),d4		; load current Y-pos into d3
@@ -29862,7 +29929,7 @@ SH_DirectionOK:
 		neg.w	d4			; negate it
 
 SH_YPositive:
-		cmpi.w	#Homing_Distance,d4	; is Sonic within Y distance of that object?
+		cmpi.w	#Homing_Distance_Y,d4	; is Sonic within Y distance of that object?
 		bgt.s	SH_NoEnemy		; if not, branch
 
 		cmp.w	($FFFFFF8C).w,d3	; is stored X-distance smaller than distance of current enemy?
@@ -29917,11 +29984,11 @@ SH_Return2:
 SH_Objects:
 		dc.b	$55	; Basaran
 		dc.b	$26	; all monitors except Eggman
-		dc.b	$40	; Motobug
-		dc.b	$2B	; Chopper
 		dc.b	$22	; Buzz Bomber
+		dc.b	$40	; Motobug
+	;	dc.b	$2B	; Chopper
 		dc.b	$1F	; Crabmeat (including the boss)
-		dc.b	$1E	; Ball Hog
+	;	dc.b	$1E	; Ball Hog
 		dc.b	$2C	; Jaws
 		dc.b	$43	; Roller
 	;	dc.b	$50	; Yadrin, disabled because he's so spikey :c
@@ -36564,7 +36631,7 @@ Obj3D_ShipMove:				; XREF: Obj3D_ShipIndex
 		addq.b	#2,ob2ndRout(a0)
 		move.w	#$3F,$3C(a0)
 		move.w	#$400,obVelX(a0)	; move the ship	fast sideways
-		cmpi.w	#$3E00,$30(a0)
+		cmpi.w	#$3D00,$30(a0)
 		bne.s	Obj3D_Reverse
 		move.w	#$7F,$3C(a0)
 		move.w	#$100,obVelX(a0)	; move the ship	sideways
@@ -37018,12 +37085,12 @@ Obj48_Vanish:
 		
 		; prevent detached ball from moving offscreen
 		move.w	obX(a0),d0
-		move.w	#$2B60-SCREEN_XCORR,d1
+		move.w	#$3C60-SCREEN_XCORR,d1
 		cmp.w	d1,d0
 		bhi.s	@cont
 		move.w	d1,obX(a0)
 @cont:
-		move.w	#$2CA0+SCREEN_XCORR,d1
+		move.w	#$3DA0+SCREEN_XCORR,d1
 		cmp.w	d1,d0
 		blo.s	Obj48_Display4
 		move.w	d1,obX(a0)

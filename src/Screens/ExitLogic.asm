@@ -686,6 +686,8 @@ GTA_SP:		moveq	#1,d0			; unlock second door
 
 GTA_RP:		moveq	#2,d0			; unlock third door
 		bsr	Set_DoorOpen
+		moveq	#7,d0			; set Unterhub as NOT beaten
+		bsr	Set_DoorClosed		; (...only required to not sequence break replays)
 		move.b	#4,(StoryTextID).w	; set number for text to 4
 		bra.w	RunStory
 
@@ -976,6 +978,16 @@ Set_DoorOpen:
 		beq.s	@notfrantic		; if not, branch
 		bset	d0,(Doors_Frantic).w	; unlock door (frantic)
 @notfrantic:	rts
+; ---------------------------------------------------------------------------
+
+Set_DoorClosed:
+		frantic				; are we in frantic?
+		bne.s	@frantic		; if yes, branch
+		bclr	d0,(Doors_Casual).w	; close door (casual)
+		rts
+@frantic:
+		bclr	d0,(Doors_Frantic).w	; close door (frantic)
+		rts
 ; ---------------------------------------------------------------------------
 
 Set_BaseGameDone:

@@ -1723,12 +1723,12 @@ Hint_Options_TrueBS:
 		boxtxt	"- NO RINGS"
 		boxtxt	"- NO CHECKPOINTS"
 		boxtxt	"- NO GOOD MONITORS"
-		boxtxt	"- NO SPEED IMMUNITY"
-		boxtxt	"- NO STORY"
-		boxtxt	"- NO SENSE"
+		boxtxt	"  EXCEPT SHIELDS"
+		boxtxt	"- NO IMMUNITY WHEN"
+		boxtxt	"  RUNNING FAST"
 		boxtxt_next
 
-		boxtxt	"no special reward"
+		boxtxt	"NO SPECIAL REWARD"
 		boxtxt	"AWAITS YOU AT THE"
 		boxtxt	"END EITHER. AND NO,"
 		boxtxt	"THIS ISN'T REVERSE"

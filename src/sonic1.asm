@@ -60,12 +60,12 @@ USE_NEW_BUILDSPRITES:	equ	1	; New BuildSprites system is still faster than S1's,
 QuickLevelSelect = 0
 QuickLevelSelect_ID = $200
 ; ------------------------------------------------------
-DebugModeDefault = 1
+DebugModeDefault = 0
 DebugSurviveNoRings = 1
 DebugHudPermanent = 0
 ; ------------------------------------------------------
 DoorsAlwaysOpen = 0
-LowBossHP = 1
+LowBossHP = 0
 ; ======================================================
 	else
 ; BENCHMARK build settings (DO NOT CHANGE!)
@@ -5195,7 +5195,7 @@ loc_463C:
 		beq.s	@skull			; if not, use skulls
 		bra.s	@notskull		; otherwise, keep it old school
 @notblackout:
-		btst	#3,(OptionsBits2).w	; intense cam shake enabled?
+		tst.b	(PlacePlacePlace).w	; easter egg flag set?
 		beq.s	@notskull		; if not, branch
 @skull		moveq	#$1B,d0
 		bsr	PLC_ExecuteOnce		; load unique blackout challenge patterns (skull)
@@ -17455,7 +17455,7 @@ Obj34_Setup:				; XREF: Obj34_Index
 		jsr	PlayLevelMusic_Force	; play GHP music
 
 @notghp:
-		btst	#2,(OptionsBits).w	; is "cinematic mode - disable HUD" enabled?
+		btst	#2,(OptionsBits).w	; is "disable HUD" enabled?
 		bne.s	@regular		; if yes, don't load title cards
 		lea	PLC_TitleCard, a1
 		jmp	LoadPLC_Direct
@@ -17770,7 +17770,7 @@ Obj34_Display:
 		rts				; otherwise don't display act number
 
 Obj34_DoDisplay:
-		btst	#2,(OptionsBits).w	; is "cinematic mode - disable HUD" enabled?
+		btst	#2,(OptionsBits).w	; is "disable HUD" enabled?
 		beq.s	Obj34_DoDisplayX	; if not, branch
 		rts
 
@@ -19811,7 +19811,7 @@ Obj43_OffscreenFar:
 
 Obj43_RuinedPlaceEndCutscene:
 		cmpi.b	#A|B|C,Joypad|Held
-		beq.w	Obj43_RPOffscreen
+		beq.w	Obj43_RPEndCutscene
 
 		moveq	#0,d0
 		move.b	ob2ndRout(a0),d0
@@ -19942,10 +19942,10 @@ Obj43_RPJumpOff:
 Obj43_RPOffscreen:
 		bsr	ObjectFall
 		bsr	SpeedToPos
-
-		; end cutscene
 		cmpi.w	#$800,obY(a0)
 		blo.s	Obj43_RPEnd
+
+Obj43_RPEndCutscene:
 		bset	#5,($FFFFF7A7).w	; set Roller as deleted
 		addq.b	#2,ob2ndRout(a0)
 		jsr	PlayLevelMusic_Force	; restart music before entering level
@@ -36402,12 +36402,16 @@ Obj7D_SoundStopper:
 		move.b	#1,($FFFFFFA5).w	; move HUD off screen
 		bset	#2,(ScreenFuzz).w	; enable temporary screen fuzz
 
+		; prevent cheating when attempting the blackout challenge for the first time
 		jsr	Check_BlackoutFirst	; is this the first attempt at the blackout challenge?
 		beq.s	@del			; if not, branch
+		bclr	#4,(OptionsBits).w	; disable true inhuman
+		clr.b	(Inhuman).w
+		bclr	#5,(OptionsBits2).w	; disable space golf
+		clr.b	(SpaceGolf).w
+		bclr	#3,(OptionsBits).w	; disable "cinematic mode - black bars"
 		bclr	#0,(ScreenFuzz).w	; disable permanent motion blur
 		bclr	#1,(ScreenFuzz).w	; disable piss filter
-		bclr	#2,(OptionsBits).w	; disable "cinematic mode - disable HUD"
-		bclr	#3,(OptionsBits).w	; disable "cinematic mode - black bars"
 
 @del:
 		jmp	DeleteObject
@@ -43570,7 +43574,7 @@ Obj09_Display:				; XREF: Obj09_OnWall
 		tst.b	(CameraShake).w		; is camera shake currently active?
 		beq.s	@nocamshake		; if not, branch
 		subq.b	#1,(CameraShake).w	; subtract one from timer
-		btst	#3,(OptionsBits2).w	; intense cam shake enabled?
+		tst.b	(PlacePlacePlace).w	; easter egg flag set?
 		beq.s	@nocamshake		; if not, branch
 		jsr	RandomNumber
 		andi.l	#$000F000F,d0
@@ -44467,15 +44471,15 @@ TouchGoal_Unreal:
 		move.b	#$30,($FF25CA).l
 
 TouchGoal_PlaySound:
-		btst	#3,(OptionsBits2).w	; intense cam shake enabled?
+		tst.b	(PlacePlacePlace).w	; easter egg flag enabled?
 		bne.s	TouchGoal_MegaSound	; if yes, branch
 		move.w	#$C3,d0			; play giant ring sound by default
-		jmp	PlaySFX	; play selected sound
+		jmp	PlaySFX			; play selected sound
 
 TouchGoal_MegaSound:
-		ori.b	#10,(CameraShake).w     ; normal camera shake
+		ori.b	#12,(CameraShake).w     ; normal camera shake
 		move.w	#$B9,d0			; play annoying crumbling sound instead
-		jsr	PlaySFX		; play sound
+		jsr	PlaySFX			; play sound
 		move.w	#$DB,d0			; play annoying crumbling sound instead
 		jmp	PlaySFX
 ; ===========================================================================
@@ -45074,7 +45078,7 @@ Obj21_Display2:
 		cmpi.b	#6,($FFFFD024).w	; is Sonic dying?
 		bhs.s	@displayhud		; if yes, branch
 
-		btst	#2,(OptionsBits).w	; is "cinematic mode - disable HUD" enabled?
+		btst	#2,(OptionsBits).w	; is "disable HUD" enabled?
 		bne.s	@dontdisplay		; if yes, don't render HUD
 		tst.b	($FFFFF7CC).w		; are controls locked?
 		beq.s	@displayhud		; if yes, don't render HUD either
@@ -45273,7 +45277,7 @@ Obj21_Display:
 		cmpi.b	#6,($FFFFD024).w	; is Sonic dying?
 		bhs.s	@cont			; if yes, branch
 
-		btst	#2,(OptionsBits).w	; is "cinematic mode - disable HUD" enabled?
+		btst	#2,(OptionsBits).w	; is "disable HUD" enabled?
 		bne.s	@cont2			; if yes, don't render HUD
 		tst.b	($FFFFF7CC).w		; are controls locked?
 		beq.s	@cont			; if yes, don't render HUD either

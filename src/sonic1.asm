@@ -19605,8 +19605,7 @@ Obj43_Wait:
 		neg.w	d0
 @1:
 		cmpi.w	#$30,d0			; is Sonic within $10 pixels of that object?
-		bhi.w	@notdecoy		; if not, branch
-		bra.s	@Obj43_JumpOff
+		bls.s	Obj43_JumpOff		; if yes, make Roller jump off
 
 @notdecoy:
 		; the one at the boss start
@@ -19617,18 +19616,19 @@ Obj43_Wait:
 		btst	#1,($FFFFD022).w	; is Sonic in air?
 		bne.s	@end			; if yes, wait
 		subq.b	#1,$30(a0)		; countdown delay
-		bpl.s	@end			; if time remains, branch
+		bmi.s	Obj43_JumpOff		; if timer expired, jump off
 
-@Obj43_JumpOff:
+@end:		rts
+; ===========================================================================
+
+Obj43_JumpOff:
 		addq.b	#2,ob2ndRout(a0)
 		move.w	#$80,obVelX(a0)
 		move.w	#-$500,obVelY(a0)
-		move.b	#0,obColType(a0)
-		move.w	#$AB,d0
-		jsr	PlaySFX
+		move.b	#0,obColType(a0)	; make sure it cannot be destroyed
 		move.b	#1,obAnim(a0)
-
-@end:		rts
+		move.w	#$AB,d0
+		jmp	PlaySFX
 ; ===========================================================================
 
 Obj43_Jump:
@@ -19823,8 +19823,17 @@ Obj43_RuinedPlaceEndCutscene:
 Obj43_Index4:	dc.w Obj43_RPSetup-Obj43_Index4
 		dc.w Obj43_RPPreWait-Obj43_Index4
 		dc.w Obj43_RPDrop-Obj43_Index4
+
 		dc.w Obj43_RPStare-Obj43_Index4
 		dc.w Obj43_RPRollin-Obj43_Index4
+		dc.w Obj43_RPStare-Obj43_Index4
+		dc.w Obj43_RPRollin-Obj43_Index4
+		dc.w Obj43_RPStare-Obj43_Index4
+		dc.w Obj43_RPRollin-Obj43_Index4
+
+		dc.w Obj43_RPLongStare-Obj43_Index4
+		dc.w Obj43_RPJumpOff-Obj43_Index4
+
 		dc.w Obj43_RPOffscreen-Obj43_Index4
 		dc.w Obj43_RPEnd-Obj43_Index4
 ; ===========================================================================
@@ -19857,8 +19866,8 @@ Obj43_RPPreWait:
 		subq.w	#1,$30(a0)
 		bpl.s	@wait
 		addq.b	#2,ob2ndRout(a0)
-		move.w	#$000,obVelX(a0)
-		move.w	#$000,obVelY(a0)
+		clr.w	obVelX(a0)
+		clr.w	obVelY(a0)
 @wait:		rts
 ; ---------------------------------------------------------------------------
 
@@ -19875,8 +19884,8 @@ Obj43_RPDrop:
 		add.w	d1,obY(a0)
 		addq.b	#2,ob2ndRout(a0)
 		clr.w	obVelY(a0)
-		move.b	#0,obAnim(a0)		; standing
-		move.w	#3*60,$30(a0)		; stare time
+		move.b	#3,obAnim(a0)		; uncurl
+		move.w	#1*60,$30(a0)		; stare time
 
 @waithitthefloor:
 		rts
@@ -19886,32 +19895,61 @@ Obj43_RPStare:
 		subq.w	#1,$30(a0)
 		bpl.s	@wait
 		addq.b	#2,ob2ndRout(a0)
-		move.w	#$100,obVelX(a0)	; slooow
-		move.w	#$000,obVelY(a0)
+		move.w	#$CC,obVelX(a0)		; slooow
+		clr.w	obVelY(a0)
 		move.w	#$AB,d0			; the iconic swish
 		jsr	PlaySFX
+		move.b	#1,obAnim(a0)		; rollin'
 @wait:		rts
 ; ---------------------------------------------------------------------------
 
 Obj43_RPRollin:
-		move.b	#2,obAnim(a0)		; rollin'
 		jsr	SpeedToPos		; keep rollin' baby
 
-		cmpi.w	#$2580+SCREEN_XCORR,obX(a0) ; made it off-screen yet?
-		blo.s	@wait			; if not, wait
+		subq.w	#2,obVelX(a0)		; slow Roller down
+		bpl.s	@stillrollin		; if speed is still positive, branch
+		addq.b	#2,ob2ndRout(a0)	; uncurl and stare again
+		clr.w	obVelY(a0)
+		move.b	#3,obAnim(a0)		; uncurl
+		move.w	#1*60,$30(a0)		; stare time
+
+@stillrollin:
+		cmpi.w	#$38,obVelX(a0)		; is Roller moving really slow?
+		bgt.s	@fastenough		; if not, branch
+		move.b	#0,obAniFrame(a0)	; stop rolling animation when very slow
+@fastenough:
+		rts
+; ---------------------------------------------------------------------------
+
+Obj43_RPLongStare:
+		addq.w	#1,$30(a0)
+		cmpi.w	#4*60,$30(a0)		; stare for a very long time
+		blt.s	@wait
 		addq.b	#2,ob2ndRout(a0)
 @wait:		rts
+; ---------------------------------------------------------------------------
 
+Obj43_RPJumpOff:
+		addq.b	#2,ob2ndRout(a0)
+		move.w	#$80,obVelX(a0)
+		move.w	#-$500,obVelY(a0)
+		move.b	#2,obAnim(a0)
+		move.w	#$A9,d0
+		jsr	PlaySFX
 ; ---------------------------------------------------------------------------
 
 Obj43_RPOffscreen:
+		bsr	ObjectFall
+		bsr	SpeedToPos
+
 		; end cutscene
+		cmpi.w	#$800,obY(a0)
+		blo.s	Obj43_RPEnd
 		bset	#5,($FFFFF7A7).w	; set Roller as deleted
 		addq.b	#2,ob2ndRout(a0)
 		jsr	PlayLevelMusic_Force	; restart music before entering level
 
 Obj43_RPEnd:
-	;	jmp	DeleteObject		; delete the actual object
 		rts
 ; ---------------------------------------------------------------------------
 
@@ -45195,7 +45233,7 @@ Obj21_NoUpdate:
 		swap	d0
 		subq.w	#2,d0
 		add.w	d0,obScreenY(a0)
-		moveq	#4,d0			; use pal line 3
+		moveq	#3,d0			; use pal line 2
 		bra.s	Obj21_SetRingFrame
 
 Obj21_FlashNoRings:

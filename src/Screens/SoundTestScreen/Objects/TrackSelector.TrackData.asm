@@ -252,7 +252,7 @@
 @SoundB8_Name:		@str 'SPIKES HAVE MOVED... AGAIN', @descMaxLen
 @SoundB9_Name:		@str 'YOU BROKE SOMETHING BIG TIME', @descMaxLen
 @SoundBA_Name:		@str 'YOU TOUCHED GRA- I MEAN GLASS', @descMaxLen
-@SoundBB_Name:		@str 'A FLAPPY DOOR HAS OPENED', @descMaxLen
+@SoundBB_Name:		@str 'BA-DUMP', @descMaxLen
 @SoundBC_Name:		@str 'YOU DASHED', @descMaxLen
 @SoundBD_Name:		@str 'A STOMPER HAS STOMPED', @descMaxLen
 @SoundBE_Name:		@str 'YOU ARE SPINNING', @descMaxLen

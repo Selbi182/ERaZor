@@ -591,8 +591,8 @@ MiscRing_IntroEnd:
 
 HubRing_Options:
 		st.b	($FFFFFF82).w		; set default selected entry
-		move.b	#$30,(GameMode).w	; load GameplayStyleScreen
-		move.b	#1,(CarryOverData).w	; return to options menu from there again
+		clr.b	($FFFFFF84).w
+		move.b	#$24,(GameMode).w	; go straight to options
 		rts
 
 HubRing_SoundTest:

@@ -1008,9 +1008,9 @@ Options_DeleteSaveGame_Redraw:
 	move.b	Options_DeleteSRAMCounter, d0
 	lea	@Str_DeleteSRAMCountDown(pc,d0), a1
  if def(__WIDESCREEN__)
-	Options_PipeString a4, "RESET GAME PROGRESS                %<.l a1 str>", OpLength
+	Options_PipeString a4, "RESET GAME PROGRESS             %<.l a1 str>", OpLength
  else
-	Options_PipeString a4, "RESET GAME PROGRESS      %<.l a1 str>", OpLength
+	Options_PipeString a4, "RESET GAME PROGRESS   %<.l a1 str>", OpLength
  endif
 	rts
 
@@ -1080,9 +1080,9 @@ Options_ResetOptions_Redraw:
 	move.b	Options_DeleteSRAMCounter, d0
 	lea	@Str_DeleteSRAMCountDown(pc,d0), a1
  if def(__WIDESCREEN__)
-	Options_PipeString a4, "RESET OPTIONS                      %<.l a1 str>", OpLength
+	Options_PipeString a4, "RESET OPTIONS                   %<.l a1 str>", OpLength
  else
-	Options_PipeString a4, "RESET OPTIONS            %<.l a1 str>", OpLength
+	Options_PipeString a4, "RESET OPTIONS         %<.l a1 str>", OpLength
  endif
 	rts
 

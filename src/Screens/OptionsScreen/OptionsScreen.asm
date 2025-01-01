@@ -10,7 +10,7 @@
 
 Options_Music = $99
 
-Options_DeleteSRAMInitialCount = 5
+Options_DeleteSRAMInitialCount = 8
 
 Options_VRAM = $8570
 Options_StringBufferSize = 40+1
@@ -262,8 +262,9 @@ Options_SelectExit:
 Options_SetDefaults:
 		move.b	#DefaultOptions,(OptionsBits).w		; load default options
 		move.b	#DefaultOptions2,(OptionsBits2).w	; load default options 2
-		clr.b	(ScreenFuzz).w
-		rts
+		clr.b	(ScreenFuzz).w				; clear visual fx
+		clr.b	(BlackBars.HandlerId).w			; reset black bars to emulator mode
+		jmp	BlackBars.SetHandler			; update handler
 
 ; ===========================================================================
 

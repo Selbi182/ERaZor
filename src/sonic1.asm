@@ -374,7 +374,7 @@ NullInt:
 
 ; BlackBars::
 BlackBars.GrowSize = 2
-BlackBars.MaxHeight = 32
+BlackBars.DefaultBaseHeight = 32
 
 	include	"Modules/BlackBars.asm"
 
@@ -460,35 +460,36 @@ BlackBars.GHPFrantic = 36
 
 BlackBars.GHP:
 		tst.w	($FFFFF63A).w			; is game paused?
-		bne.s	@timeleft			; if yes, don't affect height
+		bne.w	@timeleft			; if yes, don't affect height
 		cmpi.b	#6,($FFFFD024).w		; is Sonic dying?
 		bhs.s	BlackBars_Show			; if yes, show regular black bars
 
 		tst.b	($FFFFF7AA).w			; fighting against boss? (for 3P easter egg)
 		bne.s	@baseheightokay			; if yes, branch
 
-	;	move.w	BlackBars.BaseHeight,d0		; get base black bar height
-		move.w	#BlackBars.MaxHeight,d0		; get fixed max height cause the stage is built around it
+		move.w	BlackBars.BaseHeight,d0		; get current base black bars height
 		cmp.w	BlackBars.Height,d0		; are bars smaller than the base height?
-		blo.s	@baseheightokay			; if not, branch
+		blt.s	@baseheightokay			; if not, branch
 		addq.w	#BlackBars.GrowSize,BlackBars.TargetHeight ; grow bars until we reach the minimum height
 @baseheightokay:
-		tst.b	($FFFFF7CC).w			; are controls locked?
-		bne.s	@timeleft			; if yes, branch
 
 		; black bars closing in in frantic GHP
 		frantic					; are we in Frantic mode?
 		beq.s	@timeleft			; if not, branch
+		tst.b	($FFFFF7CC).w			; are controls locked?
+		bne.s	@timeleft			; if yes, branch
 
 		move.w	($FFFFD008).w,d0		; reset black bars in waterfall
 		move.w	($FFFFD00C).w,d1
 		jsr	Sub_FindChunkByCoordinate
-		cmpi.b	#$34,(a0)
-		bne.s	@notwaterfall
-		move.w	#BlackBars.MaxHeight,d0		; get fixed max height cause the stage is built around it
+		cmpi.b	#$34,(a0)			; is Sonic standing in the unique waterfall chunk?
+		bne.s	@notwaterfall			; if not, branch
+		move.w	BlackBars.BaseHeight,d0		; get current base black bars height
 		cmp.w	BlackBars.Height,d0		; are bars smaller than the base height?
-		bhi.s	@timeleft			; if not, branch
+		bgt.s	@timeleft			; if not, branch
 		subq.w	#BlackBars.GrowSize,BlackBars.TargetHeight ; grow bars until we reach the minimum height
+		bpl.s	@timeleft			; if still positive, branch
+		move.w	#0,BlackBars.TargetHeight	; make sure we don't underflow
 		bra.s	@timeleft			; if not, branch
 
 	@notwaterfall:
@@ -28559,24 +28560,31 @@ Obj01_Control_Cont:				; Simulated Peelout
 		bsr	Sonic_Jump			; perform a jump
 
 Obj01_PeeloutCancel:
+		cmpi.w	#$402,($FFFFFE10).w		; is level Unterhub?
+		bne.s	@notunterhub			; if not, branch
+		tst.b	($FFFFFE30).w			; starting from a checkpoint?
+		bne.s	Obj01_SimulatedPeelout_LevelOk	; if yes, do peelout to make run to boss faster
+@notunterhub:
 		tst.b	($FFFFFE30).w			; are we restarting from a checkpoint?
 		bne.s	Obj01_EndOfCutscenesX		; if yes, branch
-		cmpi.w	#$601,($FFFFFE10).w		; is this the ending sequence?
+		cmpi.b	#4,($FFFFFE10).w		; is zone SYZ?
+		beq.s	Obj01_EndOfCutscenesX		; if yes, branch
+		move.w	($FFFFFE10).w,d0		; get current level
+		beq.s	Obj01_EndOfCutscenesX		; is level GHZ1? if yes, branch
+		cmpi.w	#$601,d0			; is this the ending sequence?
 		beq.w	Obj01_EndOfCutscenesX		; if yes, branch
-		cmpi.w	#$000,($FFFFFE10).w		; is level GHZ1?
+		cmpi.w	#$001,d0			; is level GHZ2?
 		beq.s	Obj01_EndOfCutscenesX		; if yes, branch
-		cmpi.w	#$001,($FFFFFE10).w		; is level GHZ2?
+		cmpi.w	#$200,d0			; is level MZ1?
 		beq.s	Obj01_EndOfCutscenesX		; if yes, branch
-		cmpi.b	#$4,($FFFFFE10).w		; is level SYZ?
+		cmpi.w	#$101,d0			; is level LZ2?
 		beq.s	Obj01_EndOfCutscenesX		; if yes, branch
-		cmpi.w	#$200,($FFFFFE10).w		; is level MZ1?
+		cmpi.w	#$302,d0			; is level SLZ3?
 		beq.s	Obj01_EndOfCutscenesX		; if yes, branch
-		cmpi.w	#$101,($FFFFFE10).w		; is level LZ2?
+		cmpi.w	#$501,d0			; is level SBZ2?
 		beq.s	Obj01_EndOfCutscenesX		; if yes, branch
-		cmpi.w	#$302,($FFFFFE10).w		; is level SLZ3?
-		beq.s	Obj01_EndOfCutscenesX		; if yes, branch
-		cmpi.w	#$501,($FFFFFE10).w		; is level SBZ2?
-		beq.s	Obj01_EndOfCutscenesX		; if yes, branch
+
+Obj01_SimulatedPeelout_LevelOk:
 		cmpi.b	#2,($FFFFFFD3).w		; was flag in "Obj01_CancelIntroPO" set?
 		beq.s	Obj01_EndOfCutscenesX		; if yes, branch
 		cmpi.b	#1,($FFFFFFD3).w		; is title card off-screen?
@@ -30074,6 +30082,9 @@ SH_EnemyLoop:
 		bne.s	SH_EnemyLoop		; if not, loop
 
 SH_SpecialObjects:
+		tst.b	obColType(a1)		; is target even destroyable?
+		beq.w	SH_NextObject		; if not, not a valid target anyway
+
 		cmpi.b	#$22,(a1)		; was selected object a buzz bomber
 		bne.s	SH_NoBuzz		; if not, branch
 		cmpi.w	#$000,($FFFFFE10).w	; is level GHZ1?

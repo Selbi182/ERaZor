@@ -140,14 +140,9 @@ Exit_TitleScreen:
 ; ===========================================================================
 
 Exit_GameplayStyleScreen:
-		bsr	CheckEnable_PlacePlacePlace ; see if PLACE PLACE PLACE
-
 		tst.b	(CarryOverData).w	; is next game mode set to be options screen?
 		beq.s	@firststart		; if not, assume this is the first start of the game
 		clr.b	(CarryOverData).w	; clear carried-over data now no matter what
-
-		tst.b	(PlacePlacePlace).w	; is true-BS mode active?
-		bne.s	@showhint		; if yes, always show hint because it's gonna be the stupid text anyway lol
 
 		frantic				; was the screen exited with frantic enabled?
 		beq.s	@nohint			; if not, branch
@@ -596,15 +591,8 @@ MiscRing_IntroEnd:
 
 HubRing_Options:
 		st.b	($FFFFFF82).w		; set default selected entry
-
-		tst.b	(PlacePlacePlace).w	; is true-BS mode already enabled?
-		bne.s	@straighttooptions	; if yes, skip gameplay style screen
 		move.b	#$30,(GameMode).w	; load GameplayStyleScreen
 		move.b	#1,(CarryOverData).w	; return to options menu from there again
-		rts
-	@straighttooptions:
-		clr.b	($FFFFFF84).w
-		move.b	#$24,(GameMode).w	; go straight to options
 		rts
 
 HubRing_SoundTest:
@@ -949,21 +937,6 @@ Toggle_BaseGameBeaten_Frantic:
 Toggle_BlackoutBeaten:
 		bchg	#State_Blackout,(Progress).w	; to unlock nonstop inhuman
 		rts
-
-; ===========================================================================
-; ---------------------------------------------------------------------------
-; PLACE PLACE PLACE easter egg
-; ---------------------------------------------------------------------------
-
-CheckEnable_PlacePlacePlace:
-		cmpi.b	#A+B+C,Joypad|Held	; exactly ABC held?
-		bne.s	@noenable		; if not, branch
-		move.b	#1,(PlacePlacePlace).w	; enable PLACE PLACE PLACE
-		bset	#5,(OptionsBits).w	; force-enable frantic mode
-		bclr	#4,(OptionsBits).w	; force-disable nonstop inhuman
-		bclr	#5,(OptionsBits2).w	; force-disable space golf
-		bclr	#1,(OptionsBits).w	; force-disable Speedrun Mode
-@noenable:	rts
 
 
 ; ===========================================================================

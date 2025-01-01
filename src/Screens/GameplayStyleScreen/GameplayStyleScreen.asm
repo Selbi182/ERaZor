@@ -19,6 +19,7 @@ GameplayStyleScreen:
 		move.w	#$8720,(a6)
 		clr.b	($FFFFF64E).w
 		jsr	ClearScreen
+		move.w	#0,BlackBars.Height
 
 		lea	($FFFFD000).w,a1
 		moveq	#0,d0

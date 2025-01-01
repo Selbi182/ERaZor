@@ -91,6 +91,7 @@ OptionsScreen:				; XREF: GameModeArray
 		move.w	#$8720, (a6)
 		clr.b	($FFFFF64E).w
 		jsr	ClearScreen
+		move.w	#0,BlackBars.Height
 
 		; Clear object RAM
 		lea	Objects, a1
@@ -415,6 +416,16 @@ Options_HandleUpDown:
 		jsr	Check_BaseGameBeaten_Casual	; has the player beaten base game in casual?
 		bne.s	@ahint				; if yes, show A hint
 	@notcinematic:
+		cmpi.w	#10,d1				; ERaZor Powers selected?
+		bne.s	@notpowers			; if not, branch
+		jsr	Check_BaseGameBeaten_Frantic	; has the player beaten base game in frantic?
+		bne.s	@ahint				; if yes, show A hint
+	@notpowers:
+		cmpi.w	#11,d1				; True-BS selected?
+		bne.s	@nottruebs			; if not, branch
+		jsr	Check_BlackoutBeaten		; has the player beaten the Blackout Challenge
+		bne.s	@ahint				; if yes, show A hint
+	@nottruebs:
 
 		; expand as necessary
 		bra.s	@redrawheader			; otherwise, hide A hint

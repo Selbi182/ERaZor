@@ -41,18 +41,22 @@ BackgroundEffects_Update:
 		rts
 ; ===========================================================================
 
+
 ; Background palette rotation
 BackgroundEffects_PalCycle:
-		moveq	#3, d0
-		and.w	($FFFFFE0E).w,d0	; get V-blank timer (AND $3)
+		move.w	($FFFFFE0E).w,d0	; get V-blank timer
+		divu.w	#4,d0
+		andi.l	#$FFFF0000,d0
 		bne.w	@bgpalend
-
-		tst.b	WhiteFlashCounter	; don't do when white flash is active to prevent fuckery
-		bne.w	@bgpalend
+		addq.b	#1,($FFFFFF85).w	; increase timer
 
 		moveq	#0,d0
-		move.l	#BG_Mask_Colors,d2
+		move.l	#Options_BGCycleColors_BW,d2
 		movea.l	d2,a1
+		move.b	($FFFFFF85).w,d0	; get timer
+		andi.w	#$3F,d0
+		add.w	d0,d0
+		adda.w	d0,a1
 
 		lea	($FFFFFB02).w,a2
 		moveq	#10-1,d6	; 10 colors
@@ -97,19 +101,48 @@ BackgroundEffects_PalCycle:
 @bgpalend:
 		rts
 ; ---------------------------------------------------------------------------
-BG_Mask_Colors:
-		dc.w	$000
-		dc.w	$000
-		dc.w	$222
+Options_BGCycleColors_BW:
 		dc.w	$222
 		dc.w	$444
 		dc.w	$666
 		dc.w	$888
 		dc.w	$AAA
 		dc.w	$CCC
+		dc.w	$EEE
+		dc.w	$EEE
 		dc.w	$CCC
-		dc.w	$EEE
-		dc.w	$EEE
+		dc.w	$AAA
+		dc.w	$888
+		dc.w	$666
+		dc.w	$444
+		dc.w	$222
+
+	rept $40-14
+		dc.w	$222
+	endr
+		dc.w	  -1
+		even
+
+Options_BGCycleColors:
+		dc.w	$000
+		dc.w	$000
+		dc.w	$200
+		dc.w	$420
+		dc.w	$640
+		dc.w	$860
+		dc.w	$880
+		
+		dc.w	$680
+		dc.w	$680
+		
+		dc.w	$880
+		dc.w	$880
+		dc.w	$680
+		dc.w	$460
+		dc.w	$240
+		dc.w	$020
+		dc.w	$220
+
 		dc.w	  -1
 		even
 ; ---------------------------------------------------------------------------

@@ -97,6 +97,7 @@ TutorialBox:
 		lea	Hints_List,a1
 		moveq	#$3F, d0
 		and.b	TutorialBoxId, d0
+		move.b	d0,d1
 		andi.w	#$FF,d0
 		add.w	d0,d0
 		add.w	d0,d0
@@ -104,6 +105,10 @@ TutorialBox:
 		
 		tst.b	(PlacePlacePlace).w		; PLACE PLACE PLACE?
 		beq.s	@noeaster			; if not, branch
+		cmpi.b	#4,d1				; is this the Uberhub easter egg
+		beq.s	@noeaster			; if yes, keep using normal text
+		cmpi.b	#$18,d1				; is this an options hint text?
+		bhs.s	@noeaster			; if yes, keep using normal texts
 		move.l	#Hint_Place,char_pos(a0)	; PLACE PLACE PLACE!
 @noeaster:
 		
@@ -699,7 +704,7 @@ Hints_List:	; note: these IDs are 1-based
 		dc.l	Hint_1				; $01
 		dc.l	Hint_2				; $02
 		dc.l	Hint_3				; $03
-		dc.l	Hint_4				; $04
+		dc.l	Hint_UberhubEasterEgg		; $04
 		dc.l	Hint_FZEscape			; $05
 		dc.l	Hint_6				; $06
 		dc.l	Hint_7				; $07
@@ -716,8 +721,8 @@ Hints_List:	; note: these IDs are 1-based
 		dc.l	Hint_End_BlackoutTeaser		; $12
 		dc.l	Hint_Options_FranticTutorial	; $13
 		dc.l	Hint_End_CinematicUnlock	; $14
-		dc.l	Hint_End_MotionBlurUnlock	; $15
-		dc.l	Hint_End_NonstopInhumanUnlock	; $16
+		dc.l	Hint_End_ErazorPowersUnlock	; $15
+		dc.l	Hint_End_TrueBSUnlock		; $16
 		dc.l	Hint_9SequenceBreak		; $17
 		dc.l	Hint_Options_Autoskip		; $18
 		dc.l	Hint_Options_AlternateHUD	; $19
@@ -728,6 +733,8 @@ Hints_List:	; note: these IDs are 1-based
 		dc.l	Hint_Null			; $1B
 	endif
 		dc.l	Hint_Options_CinematicMode	; $1C
+		dc.l	Hint_Options_ErazorPowers	; $1D
+		dc.l	Hint_Options_TrueBS		; $1E
 
 ; ---------------------------------------------------------------
 ; Hints Scripts
@@ -976,7 +983,7 @@ Hint_3:
 		boxtxt_end
 
 ;		 --------------------
-Hint_4:
+Hint_UberhubEasterEgg:
 		boxtxt	"0Adw193q4HG5!'%q)/%4"
 		boxtxt	"8ETRqZ91/D')we03()a)"
 		boxtxt	"8%4mh/vq%cio!7e$cr/("
@@ -1033,9 +1040,6 @@ Hint_4:
 		boxtxt	"TO SILLY FUN."
 		boxtxt_next
 
-		boxtxt	"--- cheats ---"
-		boxtxt_next
-
 		boxtxt	"level select"
 		boxtxt_line
 		boxtxt	"AT THE TITLE SCREEN,"
@@ -1055,18 +1059,14 @@ Hint_4:
 		boxtxt	"TWENTY TIMES!"
 		boxtxt_next
 
-
-		boxtxt	"--- silly extras ---"
-		boxtxt_next
-
-		boxtxt	"true_bs mode"
+		boxtxt	"quick arcade game"
 		boxtxt_line
-		boxtxt	"GO TO THE DIFFICULTY"
-		boxtxt	"SELECT SCREEN AND"
-		boxtxt	"HOLD a THEN b THEN c"
-		boxtxt	"IN THAT EXACT ORDER!"
-		boxtxt	"IT'S REALLY HARD."
-		boxtxt	"AND REALLY STUPID."
+		boxtxt	"WHILE STARTING A NEW"
+		boxtxt	"GAME, HOLD a IN THE"
+		boxtxt	"DIFFICULTY SELECT TO"
+		boxtxt	"ENABLE arcade mode"
+		boxtxt	"AND START RIGHT IN"
+		boxtxt	"night hill place!"
 		boxtxt_next
 
 		boxtxt	"drunk special stages"
@@ -1077,20 +1077,6 @@ Hint_4:
 		boxtxt	"STAGE AROUND WITHOUT"
 		boxtxt	"AFFECTING GRAVITY."
 		boxtxt	"RIVETING VERTIGO!"
-		boxtxt_next
-
-
-		boxtxt	"--- skips ---"
-		boxtxt_next
-
-		boxtxt	"quick arcade game"
-		boxtxt_line
-		boxtxt	"WHILE STARTING A NEW"
-		boxtxt	"GAME, HOLD a IN THE"
-		boxtxt	"DIFFICULTY SELECT TO"
-		boxtxt	"ENABLE arcade mode"
-		boxtxt	"AND START RIGHT IN"
-		boxtxt	"night hill place!"
 		boxtxt_next
 
 		boxtxt	"skip special stages"
@@ -1544,6 +1530,15 @@ Hint_Options_AlternateHUD:
 		boxtxt	"COUNTER AS WELL."
 		boxtxt	"DON'T WORRY, YOU"
 		boxtxt	"WON'T ACTUALLY DIE!"
+		boxtxt_next
+
+		boxtxt	"disable hud"
+		boxtxt_line
+		boxtxt	"OR IF YOU DON'T CARE"
+		boxtxt	"ABOUT ANY OF THIS,"
+		boxtxt	"YOU CAN ALSO DISABLE"
+		boxtxt	"THE TITLE CARDS AND"
+		boxtxt	"HUD ENTIRELY!"
 		boxtxt_end
 
 
@@ -1569,17 +1564,6 @@ Hint_Options_PaletteStyle:
 		boxtxt	"FIFTEEN YEARS OR THE"
 		boxtxt	"BEAUTIFUL remasters"
 		boxtxt	"MADE BY JAVESIKE!"
-		boxtxt_end
-
-Hint_Options_CinematicMode:
-		boxtxt	"adjust black bars"
-		boxtxt_line
-		boxtxt	"GO TO THE BLACK BARS"
-		boxtxt	"SETUP SCREEN AND"
-		boxtxt	"HOLD b + up/down TO"
-		boxtxt	"ADJUST THE HEIGHT!"
-		boxtxt	"TO RESET, HOLD b AND"
-		boxtxt	"THEN PRESS start."
 		boxtxt_end
 
 ;		 --------------------
@@ -1627,28 +1611,41 @@ Hint_End_CinematicUnlock:
 		boxtxt	"THE ULTIMATE FUN"
 		boxtxt	"WITH A THIRD OF THE"
 		boxtxt	"SCREEN IN BLACK!"
-		boxtxt_end
+		boxtxt_next
 
-;		 --------------------
-Hint_End_MotionBlurUnlock:
-		boxtxt	"r FOR RADICAL"
-		boxtxt_line
-		boxtxt	"YOU HAVE UNLOCKED"
-		boxtxt	"visual fx!"
+		boxtxt	"IT ALSO COMES WITH"
+		boxtxt	"visual fx OPTIONS,"
+		boxtxt	"LIKE MOTION BLUR!"
 		boxtxt_pause
 		boxtxt	"OR, AS THE MOVIE"
 		boxtxt	"INDUSTRY WOULD SAY,"
 		boxtxt	"DEFINITELY HD!"
+		boxtxt_end
+
+Hint_Options_CinematicMode:
+		boxtxt	"cinematic effects"
+		boxtxt_line
+		boxtxt	"MIX AND MATCH THE"
+		boxtxt	"VARIOUS EFFECTS AND"
+		boxtxt	"FILTERS YOU SAW"
+		boxtxt	"DURING YOUR JOURNEY!"
+		boxtxt	"NOW YOU CAN ALSO BE"
+		boxtxt	"MICHAEL BAY!"
 		boxtxt_next
 
-		boxtxt	"hard part skippers"
-		boxtxt	"CAN NOW ALSO BE USED"
-		boxtxt	"IN frantic mode!"
+		boxtxt	"black bars BONUS TIP"
+		boxtxt_line
+		boxtxt	"GO TO THE BLACK BARS"
+		boxtxt	"SETUP SCREEN AND"
+		boxtxt	"HOLD b + up/down TO"
+		boxtxt	"ADJUST THE HEIGHT!"
+		boxtxt	"TO RESET, HOLD b AND"
+		boxtxt	"THEN PRESS start."
 		boxtxt_end
 
 ;		 --------------------
-Hint_End_NonstopInhumanUnlock:
-		boxtxt	"z FOR ZENITH"
+Hint_End_ErazorPowersUnlock:
+		boxtxt	"r FOR RADICAL"
 		boxtxt_line
 		boxtxt	"YOU HAVE UNLOCKED"
 		boxtxt	"erAzOR powers!"
@@ -1656,6 +1653,99 @@ Hint_End_NonstopInhumanUnlock:
 		boxtxt	"ALL HAIL OUR NEW"
 		boxtxt	"OVERLORD! MAY THE"
 		boxtxt	"GODS HAVE MERCY."
+		boxtxt_next
+
+		boxtxt	"hard part skippers"
+		boxtxt	"CAN NOW ALSO BE USED"
+		boxtxt	"IN frantic mode!"
+		boxtxt_end
+
+Hint_Options_ErazorPowers:
+		boxtxt	"true inhuman mode"
+		boxtxt_line
+		boxtxt	"INHUMAN MODE WITHOUT"
+		boxtxt	"THE ANNOYING BURDEN"
+		boxtxt	"OF BEING ALLERGIC TO"
+		boxtxt	"SPIKES AND FEELING"
+		boxtxt	"YOUR RINGS VANISHING"
+		boxtxt	"FROM YOUR POCKET!"
+		boxtxt_next
+
+		boxtxt	"IT'S BASICALLY JUST"
+		boxtxt	"AN actual GODMODE."
+		boxtxt_line
+		boxtxt	"NOTHING, NOT EVEN"
+		boxtxt	"BOTTOMLESS PITS OR"
+		boxtxt	"GETTING CRUSHED,"
+		boxtxt	"CAN KILL YOU!"
+		boxtxt_next
+
+		boxtxt	"space golf mode"
+		boxtxt_line
+		boxtxt	"THE UNIQUE FLYING"
+		boxtxt	"ABILITY SEEN IN"
+		boxtxt	"EVERYONE'S FAVORITE"
+		boxtxt	"ERAZOR LEVEL,"
+		boxtxt_line
+		boxtxt	"STAR AGONY PLACE!"
+		boxtxt_next
+
+		boxtxt	"UNFORTUNATELY, NO"
+		boxtxt	"BLUE PALETTE CYCLE"
+		boxtxt	"DUE TO LIMITATIONS."
+		boxtxt_line
+		boxtxt	"DEFINITELY MUCH LESS"
+		boxtxt	"USEFUL THAN INHUMAN,"
+		boxtxt	"BUT IT MIGHT BE FUN"
+		boxtxt	"IN A CHALLENGE RUN!"
+		boxtxt_next
+
+		boxtxt	"both"
+		boxtxt_pause
+		boxtxt	"...WHAT?"
+		boxtxt_end
+
+;		 --------------------
+Hint_End_TrueBSUnlock:
+		boxtxt	"z FOR ZENITH"
+		boxtxt_line
+		boxtxt	"YOU HAVE UNLOCKED"
+		boxtxt	"true_bs mode!"
+		boxtxt_pause
+		boxtxt	"DYING WON'T BE A"
+		boxtxt	"CHOICE ANYMORE, IT'S"
+		boxtxt	"THE NEW NORMAL!"
+		boxtxt_end
+
+Hint_Options_TrueBS:
+		boxtxt	"true_bs mode"
+		boxtxt_line
+		boxtxt	"- NO RINGS"
+		boxtxt	"- NO CHECKPOINTS"
+		boxtxt	"- NO GOOD MONITORS"
+		boxtxt	"- NO SPEED IMMUNITY"
+		boxtxt	"- NO STORY"
+		boxtxt	"- NO SENSE"
+		boxtxt_next
+
+		boxtxt	"no special reward"
+		boxtxt	"AWAITS YOU AT THE"
+		boxtxt	"END EITHER. AND NO,"
+		boxtxt	"THIS ISN'T REVERSE"
+		boxtxt	"PSYCHOLOGY, THIS"
+		boxtxt	"MODE REALLY IS JUST"
+		boxtxt	"FOR BRAGGING RIGHTS"
+		boxtxt	"AND NOTHING ELSE!"
+		boxtxt_next
+
+		boxtxt	"THAT SAID, IT HAS"
+		boxtxt	"BEEN PLAYTESTED AND"
+		boxtxt	"IS FULLY BEATABLE!"
+		boxtxt_pause
+		boxtxt	"...IF YOU GOT THE"
+		boxtxt	"ENDURANCE."
+		boxtxt_pause
+		boxtxt	"AND BRAIN CELLS."
 		boxtxt_end
 
 ; ---------------------------------------------------------------

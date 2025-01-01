@@ -241,7 +241,7 @@ BlackBars_AdjustBaseHeight_Direct:
 ; ---------------------------------------------------------------
 
 BlackBars_AdjustBaseHeight_Reset:
-	move.w	#BlackBars.MaxHeight,d2
+	move.w	#BlackBars.DefaultBaseHeight,d2
 	bra.s	BlackBars_AdjustBaseHeight_Direct
 ; ---------------------------------------------------------------
 ; ===============================================================

@@ -15,6 +15,7 @@ Obj21_Mappings:
 		dc.w	Obj21_Fumbles-Obj21_Mappings	; [$8]
 		dc.w	Obj21_Boss-Obj21_Mappings	; [$9]
 		dc.w	Obj21_ScoreTime-Obj21_Mappings	; [$A]
+		dc.w	Obj21_TimeEscape-Obj21_Mappings	; [$B]
 ; --------------------------------------------------------------------------------
 
 Obj21_Blank	dc.b 0
@@ -68,6 +69,11 @@ Obj21_Time:	dc.b 4
 		dc.b $F8, $01, $80, $28, $07	; First digit of Timer
 		dc.b $F8, $05, $80, $2C, $0F	; Second and third digit of Timer
 
+Obj21_TimeEscape: dc.b 3
+		dc.b $F9, $09, $80, $10, $E4	; TIM
+		dc.b $F9, $01, $80, $16, $FA	; E
+
+		dc.b $F8, $05, $80, $2C, $0B	; Second and third digit of Timer
 
 Obj21_Deaths:	dc.b 6
 		dc.b $F8, $01, $80, $24, $C8	; the 10s digit from the score counter

@@ -60,7 +60,7 @@ USE_NEW_BUILDSPRITES:	equ	1	; New BuildSprites system is still faster than S1's,
 QuickLevelSelect = 0
 QuickLevelSelect_ID = $200
 ; ------------------------------------------------------
-DebugModeDefault = 0
+DebugModeDefault = 1
 DebugSurviveNoRings = 1
 DebugHudPermanent = 0
 ; ------------------------------------------------------
@@ -912,9 +912,6 @@ PauseGame:				; XREF: Level_MainLoop; et al
 		btst	#7,($FFFFF605).w	; is Start button pressed?
 		beq.w	Pause_DoNothing		; if not, branch
 Paused:
-		tst.w	($FFFFFE10).w		; are we in NHP?
-		beq.w	PG_DoPause		; if yes, allow pausing (for the intro scene)
-
 		; skip cutscenes
 		cmpi.w	#$500,($FFFFFE10).w	; is this the bomb machine cutscene?
 		bne.s	@notmachine		; if not, branch
@@ -930,21 +927,13 @@ PG_CheckAllowed:
 		beq.w	Pause_DoNothing		; if not, disallow pausing
 		cmpi.b	#$10,(GameMode).w	; are we in a special stage?
 		beq.s	PG_SSPause		; if yes, branch
-		cmpi.b	#$18,(GameMode).w	; is this the ending sequence?
-		beq.s	PG_DoPause		; if yes, branch
-		cmpi.w	#$501,($FFFFFE10).w	; are we in the tutorial?
-		beq.s	PG_DoPause		; if yes, branch
-		tst.b	($FFFFD040).w		; is HUD already loaded?
-		bne.s	PG_DoPause		; if yes, allow to pause
-		tst.b	(FZEscape).w		; are we in the FZ escape sequence?
-		bne.s	PG_DoPause		; if yes, allow to pause
-		rts				; otherwise, disallow pausing
+		bra.s	PG_DoPause		; otherwise, regular pause
 ; ===========================================================================
 
 PG_SSPause:
 		btst	#7,($FFFFF605).w	; is Start button pressed?
 		beq.s	PG_DoPause		; if not, branch
-		move.w	#$8014,VDP_Ctrl	; enable h-ints for the black bars
+		move.w	#$8014,VDP_Ctrl		; enable h-ints for the black bars
 
 PG_DoPause:
 		move.w	#1,($FFFFF63A).w	; freeze time
@@ -7141,10 +7130,11 @@ Resize_MZ1:
 		cmpi.w	#$560,($FFFFD00C).w
 		blo.s	@end
 
-		move.b	#1,(Inhuman).w	; enable inhuman mode in case it wasn't alread
+		move.b	#1,(Inhuman).w		; enable inhuman mode in case it wasn't already
+		move.b	#1,($FFFFFFA5).w	; move HUD off screen
 
 		move.w	#$9E,d0
-		jsr	PlayBGM	; play final boss music for the meme
+		jsr	PlayBGM			; play final boss music for the meme
 
 		addq.b	#2,($FFFFF742).w
 		bset	#0,($FFFFF7A7).w	; start lava droppers
@@ -7193,6 +7183,9 @@ Resize_MZ1:
 	@next:
 		lea	$40(a1),a1
 		dbf	d0,@deleteblocks
+
+		move.b	#0,($FFFFFFA5).w	; reset HUD
+		jsr	HUD_LoadObjects
 
 		move.w	#$9D,d0			; play ending sequence music for the meme
 		jmp	PlayBGM
@@ -8001,7 +7994,7 @@ Resize_FZEscape:
 		move.b	#7,(CameraShake_Intensity).w
 
 		; escape timer (+1s for the intro boom)
-		move.l	#(1*$10000)|(01*$100)|00,d0	; casual escape timer (100s)
+		move.l	#(1*$10000)|(00*$100)|00,d0	; casual escape timer (99s)
 		frantic					; are we in frantic?
 		beq.s	@notfrantic			; if not, branch
 		move.l	#(0*$10000)|(46*$100)|00,d0	; frantic escape timer (45s)
@@ -9112,7 +9105,7 @@ Obj18_Main:				; XREF: Obj18_Index
 @notending:
 		frantic
 		beq.s	@notfrantic
-		cmpi.w	#$50FD,obX(a0)	; middle platform in GHP boss
+		cmpi.w	#$3D00,obX(a0)	; middle platform in GHP boss
 		bne.s	@notfrantic
 
 @delete:
@@ -19565,7 +19558,7 @@ Obj43_Main:				; XREF: Obj43_Index
 		move.w	#$9700/$20,obGfx(a0)
 		bset	#7,obGfx(a0)		; make it high plane
 		move.b	#4,obRender(a0)
-		move.b	#4,obPriority(a0)
+		move.b	#0,obPriority(a0)
 		move.b	#$10,obActWid(a0)
 
 		move.b	#10,$30(a0)	; delay before jump (for the one before the boss)
@@ -19675,7 +19668,7 @@ Obj43_Setup:
 		move.w	#$9700/$20,obGfx(a0)
 		bset	#7,obGfx(a0)		; make it high plane
 		move.b	#4,obRender(a0)
-		move.b	#4,obPriority(a0)
+		move.b	#0,obPriority(a0)
 		move.b	#$10,obActWid(a0)
 		move.b	#0,obColType(a0)
 
@@ -19781,7 +19774,7 @@ Obj43_BounceBack:
 		bset	#2,($FFFFF7A7).w	; set Roller has gone offscreen below
 		clr.w	obVelX(a0)
 		clr.w	obVelY(a0)
-		move.w	#1*60+20,$30(a0)	; post-delay
+		move.w	#1*60,$30(a0)	; post-delay
 
 @waitoffscreen:
 		rts
@@ -19790,7 +19783,7 @@ Obj43_BounceBack:
 Obj43_Offscreen:
 		subq.w	#1,$30(a0)
 		bpl.s	@wait
-		move.w	#1*60+20,$30(a0)	; post-delay
+		move.w	#1*60,$30(a0)	; post-delay
 		addq.b	#2,ob2ndRout(a0)
 		bset	#3,($FFFFF7A7).w	; set Roller has gone far offscreen
 @wait:
@@ -19849,7 +19842,7 @@ Obj43_RPSetup:
 		move.w	#$9700/$20,obGfx(a0)
 		bset	#7,obGfx(a0)		; make it high plane
 		move.b	#4,obRender(a0)
-		move.b	#4,obPriority(a0)
+		move.b	#0,obPriority(a0)
 		move.b	#$10,obActWid(a0)
 		move.b	#0,obColType(a0)
 
@@ -19932,7 +19925,7 @@ Obj43_RPLongStare:
 
 Obj43_RPJumpOff:
 		addq.b	#2,ob2ndRout(a0)
-		move.w	#$80,obVelX(a0)
+		move.w	#$40,obVelX(a0)
 		move.w	#-$500,obVelY(a0)
 		move.b	#2,obAnim(a0)
 		move.w	#$A9,d0
@@ -21123,7 +21116,7 @@ Obj4D_MakeLava:				; XREF: Obj4D_Main
 		move.w	obX(a0),obX(a1)
 		move.w	obY(a0),obY(a1)
 		move.b	obSubtype(a0),obSubtype(a1)
-		move.b	#7,obPriority(a1)
+		move.b	#0,obPriority(a1)
 	;	bset	#7,obGfx(a1)		; make it high plane
 		move.b	#5,obAnim(a1)
 		tst.b	obSubtype(a0)
@@ -36749,7 +36742,7 @@ loopdashit:	cmpi.b	#$18,(a1)		; is current object a platform?
 
 		frantic
 		bne.s	@frantic
-		cmpi.w	#$2BFD,obX(a1)	; middle platform in GHP boss
+		cmpi.w	#$3D00,obX(a1)	; middle platform in GHP boss
 		beq.s	@cont		; you get to live
 @frantic:
 
@@ -37996,6 +37989,7 @@ Obj73_GoToArena:
 
 Obj73_CircleAccel = 2
 
+; from bottom left to top left
 Obj73_GoingInCircles1:
 		move.w	obVelX(a0),d0
 		addq.w	#Obj73_CircleAccel,d0
@@ -38024,6 +38018,7 @@ Obj73_GoingInCircles1:
 		bra.w	Obj73_MainStuff
 ; ===========================================================================
 
+; from top left to top right
 Obj73_GoingInCircles2:
 		move.w	obVelY(a0),d0
 		addq.w	#Obj73_CircleAccel,d0
@@ -38051,10 +38046,11 @@ Obj73_GoingInCircles2:
 		bra.w	Obj73_MainStuff
 ; ===========================================================================
 
+; from top right to bottom left
 Obj73_GoingInCircles3:
 		move.w	obVelX(a0),d0
 		addq.w	#Obj73_CircleAccel,d0
-		cmpi.w	#$40,d0
+		cmpi.w	#$20,d0
 		bge.s	@nox
 		move.w	d0,obVelX(a0)
 @nox:
@@ -38078,6 +38074,7 @@ Obj73_GoingInCircles3:
 		bra.w	Obj73_MainStuff
 ; ===========================================================================
 
+; from bottom right to bottom left
 Obj73_GoingInCircles4:
 		move.w	obVelY(a0),d0
 		subq.w	#Obj73_CircleAccel,d0
@@ -39395,14 +39392,16 @@ Obj75_CheckFlash:
 		ble.s	Obj75_LastHitDealt	; if yes, branch
 
 loc_1923A:
+		tst.b	WhiteFlashCounter
+		bne.s	@noflash
 		lea	($FFFFFB22).w,a1
 		moveq	#0,d0
 		tst.w	(a1)
-		bne.s	loc_19248
+		bne.s	@0
 		move.w	#$EEE,d0
+@0:		move.w	d0,(a1)
 
-loc_19248:
-		move.w	d0,(a1)
+@noflash:
 		subq.b	#1,$3E(a0)
 		bne.s	locret_19256
 		move.b	#$F,obColType(a0)
@@ -43820,7 +43819,7 @@ Obj09_JumpHeight:				; XREF: Obj09_InAir
 		btst	#7,obStatus(a0)		; did Sonic jump or is he just falling or hit by a bumper?
 		beq.s	locret_1BBB4		; if not, branch to return
 		move.b	($FFFFF780).w,d0	; get SS angle
-		andi.b	#$FC,d0
+	;	andi.b	#$FC,d0
 		neg.b	d0
 		subi.b	#$40,d0
 		jsr	(CalcSine).l			
@@ -43834,7 +43833,7 @@ Obj09_JumpHeight:				; XREF: Obj09_InAir
 		cmpi.w	#$400,d1		; compare the combined speed with the jump release speed
 		ble.s	locret_1BBB4		; if it's less, branch to return
 		move.b	($FFFFF780).w,d0
-		andi.b	#$FC,d0
+	;	andi.b	#$FC,d0
 		neg.b	d0
 		subi.b	#$40,d0
 		jsr	(CalcSine).l
@@ -43948,7 +43947,7 @@ Obj09_EasterEggSpecial:
 		move.l	obY(a0),d2
 		move.l	obX(a0),d3
 		move.b	($FFFFF780).w,d0
-		andi.b	#$FC,d0
+	;	andi.b	#$FC,d0
 		jsr	(CalcSine).l
 	;	move.w	obVelX(a0),d4
 		moveq	#0,d4
@@ -45058,6 +45057,8 @@ Obj21_Delete2:
 Obj21_FZEscapeTimer:
 		tst.b	(FZEscape).w		; are we in the escape sequence?
 		beq.s	Obj21_AltSpeed		; if not, branch
+
+		move.b	#$B,obFrame(a0)		; use two-digit frame
 
 		; flash timer when less than 10 seconds remain
 		tst.b	($FFFFFE23).w		; less than 100 seconds left?

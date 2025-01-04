@@ -50,11 +50,14 @@ BackgroundEffects_PalCycle:
 		bne.w	@bgpalend
 		addq.b	#1,($FFFFFF85).w	; increase timer
 
-		moveq	#0,d0
+		tst.b	WhiteFlashCounter	; whiteflash in progress?
+		bne.w	@bgpalend		; if yes, branch
+
 		move.l	#Options_BGCycleColors_BW,d2
 		movea.l	d2,a1
+		moveq	#0,d0
 		move.b	($FFFFFF85).w,d0	; get timer
-		andi.w	#$3F,d0
+		andi.w	#$1F,d0
 		add.w	d0,d0
 		adda.w	d0,a1
 
@@ -109,6 +112,8 @@ Options_BGCycleColors_BW:
 		dc.w	$AAA
 		dc.w	$CCC
 		dc.w	$EEE
+		dc.w	$CCC
+		dc.w	$CCC
 		dc.w	$EEE
 		dc.w	$CCC
 		dc.w	$AAA
@@ -117,7 +122,7 @@ Options_BGCycleColors_BW:
 		dc.w	$444
 		dc.w	$222
 
-	rept $40-14
+	rept $20-16
 		dc.w	$222
 	endr
 		dc.w	  -1

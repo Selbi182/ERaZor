@@ -281,7 +281,7 @@ Options_AlternateHUD_Redraw:
 @Str_Mode01:	dc.b	'     TOTAL TIME',0
 @Str_Mode10:	dc.b	' TOTAL MISTAKES',0
 @Str_Mode11:	dc.b	'TIME + MISTAKES',0
-@Str_ModeXX:	dc.b	'    DISABLE HUD',0
+@Str_ModeXX:	dc.b	'DISABLE ALL HUD',0
 		even
 
 ; ---------------------------------------------------------------------------
@@ -443,6 +443,9 @@ Options_FlashyLights_Handle:
 	move.b	Joypad|Press,d1			; get button presses
 	andi.b	#$FC,d1				; is left, right, A, B, C, or Start pressed?
 	beq.w	@ret				; if not, branch
+
+	tst.b	WhiteFlashCounter		; whiteflash in progress?
+	bne.w	@ret				; if yes, prevent change to avoid the palette getting stuck
 
 	moveq	#0,d0
 	move.b	OptionsBits,d0

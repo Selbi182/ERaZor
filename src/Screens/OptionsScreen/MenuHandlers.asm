@@ -23,7 +23,6 @@ Options_MenuData:
 	dcScreenPos	$E000, OpBaseY+2, OpBaseX	; start on-screen position
 	dc.l	Options_ExtendedCamera_Redraw		; redraw handler
 	dc.l	Options_ExtendedCamera_Handle		; update handler
-
 	; Arcade mode / Speedrun mode
 	dcScreenPos	$E000, OpBaseY+3, OpBaseX	; start on-screen position
 	dc.l	Options_Autoskip_Redraw			; redraw handler
@@ -36,7 +35,7 @@ Options_MenuData:
 	dcScreenPos	$E000, OpBaseY+5, OpBaseX	; start on-screen position
 	dc.l	Options_PaletteStyle_Redraw		; redraw handler
 	dc.l	Options_PaletteStyle_Handle		; update handler
-	
+
 	; Flashy lights
 	dcScreenPos	$E000, OpBaseY+7, OpBaseX	; start on-screen position
 	dc.l	Options_FlashyLights_Redraw		; redraw handler
@@ -49,24 +48,23 @@ Options_MenuData:
 	dcScreenPos	$E000, OpBaseY+9, OpBaseX	; start on-screen position
 	dc.l	Options_Audio_Redraw			; redraw handler
 	dc.l	Options_Audio_Handle			; update handler
-
 	; Black bars setup
 	dcScreenPos	$E000, OpBaseY+10, OpBaseX	; start on-screen position
 	dc.l	Options_BlackBarsMode_Redraw		; redraw handler
 	dc.l	Options_BlackBarsMode_Handle		; update handler
 
-	; E - Cinematic mode
+	; E - Cinematic effects
 	dcScreenPos	$E000, OpBaseY+12, OpBaseX	; start on-screen position
-	dc.l	Options_CinematicMode_Redraw		; redraw handler
-	dc.l	Options_CinematicMode_Handle		; update handler
-	; R - Visual FX
+	dc.l	Options_CinematicEffects_Redraw		; redraw handler
+	dc.l	Options_CinematicEffects_Handle		; update handler
+	; R - ERaZor powers
 	dcScreenPos	$E000, OpBaseY+13, OpBaseX	; start on-screen position
-	dc.l	Options_ScreenEffects_Redraw		; redraw handler
-	dc.l	Options_ScreenEffects_Handle		; update handler
-	; Z - ERaZor Powers
+	dc.l	Options_ErazorPowers_Redraw		; redraw handler
+	dc.l	Options_ErazorPowers_Handle		; update handler
+	; Z - True-BS mode
 	dcScreenPos	$E000, OpBaseY+14, OpBaseX	; start on-screen position
-	dc.l	Options_NonstopInhuman_Redraw		; redraw handler
-	dc.l	Options_NonstopInhuman_Handle		; update handler
+	dc.l	Options_TrueBSMode_Redraw		; redraw handler
+	dc.l	Options_TrueBSMode_Handle		; update handler
 
 	; Reset options
 	dcScreenPos	$E000, OpBaseY+16, OpBaseX	; start on-screen position
@@ -99,11 +97,6 @@ Options_MenuData_NumItems:	equ	(Options_MenuData_End-Options_MenuData)/10
 ; ---------------------------------------------------------------------------
 
 Options_GameplayStyle_Redraw:
-	tst.b	(PlacePlacePlace).w	; is easter egg flag set?
-	beq.s	@noteaster		; if not, branch
-	lea	@Str_Option3(pc), a1
-	bra.s	@0
-@noteaster:
 	lea	@Str_Option1(pc), a1
 	moveq	#1<<5, d0
 	and.b	OptionsBits, d0
@@ -122,7 +115,6 @@ Options_GameplayStyle_Redraw:
 ; ---------------------------------------------------------------------------
 @Str_Option1:	dc.b	' CASUAL', 0
 @Str_Option2:	dc.b	'FRANTIC', 0
-@Str_Option3:	dc.b	'TRUE-BS', 0
 	even
 
 ; ---------------------------------------------------------------------------
@@ -135,29 +127,17 @@ Options_GameplayStyle_Handle:
 	andi.b	#$F0,d1			; is A, B, C, or Start pressed?
 	beq.s	@ret			; if not, branch
 
-	tst.b	(PlacePlacePlace).w	; is easter egg flag set?
-	beq.s	@noteaster		; if not, branch
-	clr.b	(PlacePlacePlace).w	; clear easter egg flag
-	bclr	#5,OptionsBits		; set to casual
-	move.w	#$DF,d0			; jester explosion sound
-	jsr	PlaySFX
-	move.w	#$E3,d0			; regular speed
-	jsr	PlayCommand
-	bra.s	@redraw
-
-@noteaster:
 	btst	#6,d1			; is specifically A pressed?
 	beq.s	@gss			; if not, branch
 	tst.w	($FFFFFFFA).w		; is debug mode enabled?
-	bne.s	@quicktoggle		; if yes, quick toggle
+	beq.s	@gss			; if not, branch
+	bchg	#5, OptionsBits		; quick toggle gameplay style
+	bsr	Options_PlayRespectiveToggleSound
+	bra.s	@redraw
 
 @gss:
 	moveq	#1,d0			; set to GameplayStyleScreen
 	jmp	Exit_OptionsScreen
-
-@quicktoggle:
-	bchg	#5, OptionsBits		; toggle gameplay style
-	bsr	Options_PlayRespectiveToggleSound
 
 @redraw:
 	st.b	Options_RedrawCurrentItem
@@ -277,6 +257,10 @@ Options_AlternateHUD_Redraw:
 	beq.s	@1
 	addq.b	#2,d0
 @1:
+	btst	#2, OptionsBits		; is HUD disabled?
+	beq.s	@2			; if not, branch
+	moveq	#4,d0
+@2:
 	add.w	d0, d0
 	add.w	d0, d0				; d0 = ModeId * 4
 	movea.l	@AltHUDList(pc,d0), a1
@@ -291,12 +275,13 @@ Options_AlternateHUD_Redraw:
 
 ; ---------------------------------------------------------------------------
 @AltHUDList:
-	dc.l	@Str_Mode00,@Str_Mode01,@Str_Mode10,@Str_Mode11
+	dc.l	@Str_Mode00,@Str_Mode01,@Str_Mode10,@Str_Mode11,@Str_ModeXX
 
 @Str_Mode00:	dc.b	'            OFF',0
-@Str_Mode01:	dc.b	'  SCORE>SECONDS',0
-@Str_Mode10:	dc.b	'  DEATHS>ERRORS',0
-@Str_Mode11:	dc.b	'           BOTH',0
+@Str_Mode01:	dc.b	'     TOTAL TIME',0
+@Str_Mode10:	dc.b	' TOTAL MISTAKES',0
+@Str_Mode11:	dc.b	'TIME + MISTAKES',0
+@Str_ModeXX:	dc.b	'DISABLE ALL HUD',0
 		even
 
 ; ---------------------------------------------------------------------------
@@ -320,16 +305,32 @@ Options_AlternateHUD_Handle:
 	beq.s	@1
 	bset	#1,d0
 @1
+	btst	#2, OptionsBits		; is HUD disabled?
+	beq.s	@2			; if not, branch
+	moveq	#%111,d0
+@2:
 	btst	#iLeft, Joypad|Press		; is left pressed?
 	bne.s	@selectPrevious			; if yes, branch
 	addq.w	#1, d0				; use next mode
 	bra.s	@finalize
 
 @selectPrevious:
+	btst	#2,d0
+	beq.s	@bla
+	moveq	#%100,d0
+@bla:
 	subq.w	#1, d0				; use previous mode
 
 @finalize:
-	andi.w	#%11, d0			; wrap modes
+	andi.w	#%111, d0			; wrap modes
+
+	bclr	#2,(OptionsBits).w	
+	btst	#2,d0
+	beq.s	@2x
+	bset	#2,(OptionsBits).w
+	moveq	#0,d0
+@2x	
+
 
 	bclr	#6,(OptionsBits2).w	
 	btst	#0,d0
@@ -442,6 +443,9 @@ Options_FlashyLights_Handle:
 	move.b	Joypad|Press,d1			; get button presses
 	andi.b	#$FC,d1				; is left, right, A, B, C, or Start pressed?
 	beq.w	@ret				; if not, branch
+
+	tst.b	WhiteFlashCounter		; whiteflash in progress?
+	bne.w	@ret				; if yes, prevent change to avoid the palette getting stuck
 
 	moveq	#0,d0
 	move.b	OptionsBits,d0
@@ -652,41 +656,42 @@ Options_Audio_Handle:
 @ret:	rts
 
 
-
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; "CINEMATIC MODE" redraw function
+; "CINEMATIC EFFECTS" redraw function
 ; ---------------------------------------------------------------------------
 ; INPUT:
 ;	a4	= `Options_DrawText_Normal` or `Options_DrawText_Highlighted`
 ; ---------------------------------------------------------------------------
 
-Options_CinematicMode_Redraw:	
+Options_CinematicEffects_Redraw:	
 	moveq	#0,d0
-	btst	#2, OptionsBits		; is HUD disabled?
-	beq.s	@0			; if not, branch
-	addq.b	#1,d0
-@0:
-	btst	#3, OptionsBits		; is cinematic mode (black bars) enabled?
+	btst	#3,(OptionsBits).w	; is cinematic mode (black bars) enabled?
 	beq.s	@1			; if not, branch
-	addq.b	#2,d0
+	addq.b	#1,d0
 @1:
+	btst	#0,(ScreenFuzz).w	; is permanent motion blur enabled?
+	beq.s	@2			; if not, branch
+	addq.b	#2,d0
+@2:
+	btst	#1,(ScreenFuzz).w	; is piss filter enabled?
+	beq.s	@3			; if not, branch
+	addq.b	#4,d0
+@3:
 	add.w	d0, d0
 	add.w	d0, d0				; d0 = ModeId * 4
 	movea.l	@CinematicModeList(pc,d0), a1
 
 	lea	@Str_Cinematic_Locked(pc), a0
 	jsr	Check_BaseGameBeaten_Casual	; has the player beaten base game in casual?
-	beq.s	@2				; if not, branch
+	beq.s	@4				; if not, branch
 	lea	@Str_Cinematic_Normal(pc), a0
-@2:
-
+@4:
  if def(__WIDESCREEN__)
-	Options_PipeString a4, "%<.l a0 str>             %<.l a1 str>", OpLength
+	Options_PipeString a4, "%<.l a0 str>           %<.l a1 str>", OpLength
  else
-	Options_PipeString a4, "%<.l a0 str>   %<.l a1 str>", OpLength
+	Options_PipeString a4, "%<.l a0 str> %<.l a1 str>", OpLength
  endif
-
 	rts
 
 ; ---------------------------------------------------------------------------
@@ -698,19 +703,24 @@ Options_CinematicMode_Redraw:
 	even
 
 @CinematicModeList:
-	dc.l	@Str_Mode00,@Str_Mode01,@Str_Mode10,@Str_Mode11
+	dc.l	@Str_Mode000,@Str_Mode001,@Str_Mode010,@Str_Mode011
+	dc.l	@Str_Mode100,@Str_Mode101,@Str_Mode110,@Str_Mode111
 
-@Str_Mode00:	dc.b	'        OFF',0
-@Str_Mode01:	dc.b	'DISABLE HUD',0
-@Str_Mode10:	dc.b	' BLACK BARS',0
-@Str_Mode11:	dc.b	'       BOTH',0
+@Str_Mode000:	dc.b	'          OFF',0
+@Str_Mode001:	dc.b	'   BLACK BARS',0
+@Str_Mode010:	dc.b	'  MOTION BLUR',0
+@Str_Mode011:	dc.b	'  BARS + BLUR',0
+@Str_Mode100:	dc.b	'  PISS FILTER',0
+@Str_Mode101:	dc.b	'BARS + FILTER',0
+@Str_Mode110:	dc.b	'BLUR + FILTER',0
+@Str_Mode111:	dc.b	'   EVERYTHING',0
 		even
 
 ; ---------------------------------------------------------------------------
-; "CINEMATIC MODE" handle function
+; "CINEMATIC Effects" handle function
 ; ---------------------------------------------------------------------------
 
-Options_CinematicMode_Handle:
+Options_CinematicEffects_Handle:
 	move.b	Joypad|Press,d1		; get button presses
 	andi.b	#$FC,d1			; is left, right, A, B, C, or Start pressed?
 	beq.w	@ret			; if not, branch
@@ -733,105 +743,19 @@ Options_CinematicMode_Handle:
 	moveq	#$1C,d0				; ID for the explanation textbox
 	bsr	Options_HandleAHint		; show explanation textbox if A is pressed
 
-	moveq	#0,d0
-	move.b	OptionsBits,d0
-	lsr.b	#2,d0
-	andi.b	#%11, d0
-@repeat:
-	btst	#iLeft, Joypad|Press		; is left pressed?
-	bne.s	@selectPrevious			; if yes, branch
-	addq.b	#1, d0				; use next mode
-	bra.s	@finalize
-@selectPrevious:
-	subq.b	#1, d0				; use previous mode
-@finalize:
-	andi.b	#%11, d0			; wrap modes
-
-	move.b	d0,d1
-	lsl.b	#2,d0
-	
-	bclr	#2,OptionsBits
-	bclr	#3,OptionsBits
-	or.b	d0,OptionsBits
-
-	tst.b	d0
-	bsr	Options_PlayRespectiveToggleSound
-	st.b	Options_RedrawCurrentItem
-
-@ret:	rts
-
-
-
-; ===========================================================================
-; ---------------------------------------------------------------------------
-; "SCREEN EFFECTS" redraw function
-; ---------------------------------------------------------------------------
-; INPUT:
-;	a4	= `Options_DrawText_Normal` or `Options_DrawText_Highlighted`
-; ---------------------------------------------------------------------------
-
-Options_ScreenEffects_Redraw:
-	moveq	#0,d0
-	move.b	(ScreenFuzz).w,d0
-	add.w	d0, d0
-	add.w	d0, d0				; d0 = ModeId * 4
-	movea.l	@ScreenEffectsTextList(pc,d0), a1
-
-	lea	@Str_ScreenEffects_Locked(pc), a0
-	jsr	Check_BaseGameBeaten_Frantic	; has the player beaten base game in frantic?
-	beq.s	@0				; if not, branch
-	lea	@Str_ScreenEffects_Normal(pc), a0
-@0:
-
- if def(__WIDESCREEN__)
-	Options_PipeString a4, "%<.l a0 str>             %<.l a1 str>", OpLength
- else
-	Options_PipeString a4, "%<.l a0 str>   %<.l a1 str>", OpLength
- endif
-
-	rts
-
-; ---------------------------------------------------------------------------
-@Str_ScreenEffects_Normal:
-	dc.b	'R VISUAL FX     ', 0
-
-@Str_ScreenEffects_Locked:
-	dc.b	'R ?????? ??     ', 0
-	even
-
-@ScreenEffectsTextList:
-	dc.l	@Str_Mode00,@Str_Mode01,@Str_Mode10,@Str_Mode11
-
-@Str_Mode00:	dc.b	'        OFF',0
-@Str_Mode01:	dc.b	'MOTION BLUR',0
-@Str_Mode10:	dc.b	'PISS FILTER',0
-@Str_Mode11:	dc.b	'       BOTH',0
-		even
-
-; ---------------------------------------------------------------------------
-; "MOTION BLUR" handle function
-; ---------------------------------------------------------------------------
-
-Options_ScreenEffects_Handle:
-	move.b	Joypad|Press,d1			; get button presses
-	andi.b	#$FC,d1				; is left, right, A, B, C, or Start pressed?
-	beq.w	@ret				; if not, branch
-
-	tst.w	($FFFFFFFA).w			; is debug mode enabled?
-	beq.s	@nodebugunlock			; if not, branch
-	cmpi.b	#$70,($FFFFF604).w		; is exactly ABC held?
-	bne.s	@nodebugunlock			; if not, branch
-	jsr	Toggle_BaseGameBeaten_Frantic	; toggle frantic beaten state to toggle the unlock for motion blur
-	clr.b	(ScreenFuzz).w			; make sure option doesn't stay accidentally enabled
-	st.b	Options_RedrawCurrentItem
-	rts
-
-@nodebugunlock:		
-	jsr	Check_BaseGameBeaten_Frantic	; has the player beaten the base game in frantic?
-	beq.w	Options_PlayDisallowedSound	; if not, cineamtic mode is disallowed
 
 	moveq	#0,d0
-	move.b	(ScreenFuzz).w,d0
+	btst	#3,(OptionsBits).w
+	beq.s	@0
+	bset	#0,d0
+@0	btst	#0,(ScreenFuzz).w
+	beq.s	@1
+	bset	#1,d0
+@1	btst	#1,(ScreenFuzz).w
+	beq.s	@2
+	bset	#2,d0
+@2
+
 	btst	#iLeft, Joypad|Press		; is left pressed?
 	bne.s	@selectPrevious			; if yes, branch
 	addq.w	#1, d0				; use next mode
@@ -841,25 +765,42 @@ Options_ScreenEffects_Handle:
 	subq.w	#1, d0				; use previous mode
 
 @finalize:
-	andi.w	#%11, d0			; wrap modes
-	move.b	d0,(ScreenFuzz).w
-	st.b	Options_RedrawCurrentItem
+	andi.w	#%111, d0			; wrap modes
+
+	bclr	#3,(OptionsBits).w	
+	btst	#0,d0
+	beq.s	@0x
+	bset	#3,(OptionsBits).w
+@0x
+	bclr	#0,(ScreenFuzz).w
+	btst	#1,d0
+	beq.s	@1x
+	bset	#0,(ScreenFuzz).w
+@1x
+	bclr	#1,(ScreenFuzz).w
+	btst	#2,d0
+	beq.s	@2x
+	bset	#1,(ScreenFuzz).w
+@2x
 
 	tst.b	d0				; check if current selection is OFF
 	eori.b	#%00100,ccr			; invert Z flag (play off sound for off, on for anything else)
 	bsr	Options_PlayRespectiveToggleSound
+
+	st.b	Options_RedrawCurrentItem
 
 	moveq	#0,d0				; refresh pal directly
 	jmp	Options_LoadPal
 
 @ret:	rts
 
+
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; "NONSTOP INHUMAN" redraw function
+; "ERAZOR POWERS" redraw function
 ; ---------------------------------------------------------------------------
 
-Options_NonstopInhuman_Redraw:
+Options_ErazorPowers_Redraw:
 	moveq	#0,d0
 	btst	#4, OptionsBits		; is true inhuman enabled?
 	beq.s	@0
@@ -874,7 +815,7 @@ Options_NonstopInhuman_Redraw:
 	movea.l	@ErazorPowerTextList(pc,d0), a1
 
 	lea	@Str_ErazorPower_Locked(pc), a0
-	jsr	Check_BlackoutBeaten		; has the player beaten all levels in frantic?
+	jsr	Check_BaseGameBeaten_Frantic	; has the player beaten the base game in frantic?
 	beq.s	@2				; if not, branch
 	lea	@Str_ErazorPower_Normal(pc), a0
 @2:
@@ -889,10 +830,10 @@ Options_NonstopInhuman_Redraw:
 
 ; ---------------------------------------------------------------------------
 @Str_ErazorPower_Normal:
-	dc.b	'Z ERAZOR POWERS', 0
+	dc.b	'R ERAZOR POWERS', 0
 
 @Str_ErazorPower_Locked:
-	dc.b	'Z ?????? ??????', 0
+	dc.b	'R ?????? ??????', 0
 	even
 
 @ErazorPowerTextList:
@@ -904,30 +845,32 @@ Options_NonstopInhuman_Redraw:
 @Str_Mode11:	dc.b	'    ...BOTH?',0
 		even
 
-
 ; ---------------------------------------------------------------------------
-; "NONSTOP INHUMAN" handle function
+; "ERAZOR POWERS" handle function
 ; ---------------------------------------------------------------------------
 
-Options_NonstopInhuman_Handle:
+Options_ErazorPowers_Handle:
 	move.b	Joypad|Press,d1		; get button presses
 	andi.b	#$FC,d1			; is left, right, A, B, C, or Start pressed?
 	beq.w	@ret			; if not, branch
 
-	tst.w	($FFFFFFFA).w		; is debug mode enabled?
-	beq.s	@nodebugunlock		; if not, branch
-	cmpi.b	#$70,($FFFFF604).w	; is exactly ABC held?
-	bne.s	@nodebugunlock		; if not, branch
-	jsr	Toggle_BlackoutBeaten	; toggle blackout challenge beaten state to toggle the unlock for nonstop inhuman
-	bclr	#4,(OptionsBits).w	; make sure option doesn't stay accidentally enabled
-	bclr	#5,(OptionsBits2).w	; make sure option doesn't stay accidentally enabled
+	tst.w	($FFFFFFFA).w			; is debug mode enabled?
+	beq.s	@nodebugunlock			; if not, branch
+	cmpi.b	#$70,($FFFFF604).w		; is exactly ABC held?
+	bne.s	@nodebugunlock			; if not, branch
+	jsr	Toggle_BaseGameBeaten_Frantic	; toggle frantic beaten state to toggle the unlock for ERaZor Powers
+	bclr	#4,(OptionsBits).w		; make sure option doesn't stay accidentally enabled
+	bclr	#5,(OptionsBits2).w		; make sure option doesn't stay accidentally enabled
 	st.b	Options_RedrawCurrentItem
 	rts
 
-@nodebugunlock:
-	jsr	Check_BlackoutBeaten		; has the player specifically beaten the blackout challenge?
-	beq.w	Options_PlayDisallowedSound	; if not, branch
+@nodebugunlock:		
+	jsr	Check_BaseGameBeaten_Frantic	; has the player beaten the base game in frantic?
+	beq.w	Options_PlayDisallowedSound	; if not, disallowed
 
+	; hint on A
+	moveq	#$1D,d0				; ID for the explanation textbox
+	bsr	Options_HandleAHint		; show explanation textbox if A is pressed
 
 	moveq	#0,d0
 	btst	#4,(OptionsBits).w
@@ -968,6 +911,91 @@ Options_NonstopInhuman_Handle:
 @ret:	rts
 
 
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; "TRUE-BS MODE" redraw function
+; ---------------------------------------------------------------------------
+; INPUT:
+;	a4	= `Options_DrawText_Normal` or `Options_DrawText_Highlighted`
+; ---------------------------------------------------------------------------
+
+Options_TrueBSMode_Redraw:
+	moveq	#0,d0
+	tst.b	(PlacePlacePlace).w	; true-BS mode enabled?
+	beq.s	@0			; if not, branch
+	addq.b	#1,d0
+@0:
+	add.w	d0, d0
+	add.w	d0, d0				; d0 = ModeId * 4
+	movea.l	@TrueBSModeTextList(pc,d0), a1
+
+	lea	@Str_TrueBSMode_Locked(pc), a0
+	jsr	Check_BlackoutBeaten		; has the player beaten the blackout challenge?
+	beq.s	@1				; if not, branch
+	lea	@Str_TrueBSMode_Normal(pc), a0
+@1:
+
+ if def(__WIDESCREEN__)
+	Options_PipeString a4, "%<.l a0 str>                     %<.l a1 str>", OpLength
+ else
+	Options_PipeString a4, "%<.l a0 str>           %<.l a1 str>", OpLength
+ endif
+
+	rts
+
+; ---------------------------------------------------------------------------
+@Str_TrueBSMode_Normal:
+	dc.b	'Z TRUE-BS MODE', 0
+
+@Str_TrueBSMode_Locked:
+	dc.b	'Z ???? ?? ????', 0
+	even
+
+@TrueBSModeTextList:
+	dc.l	@Str_Mode00,@Str_Mode01
+
+@Str_Mode00:	dc.b	'  OFF',0
+@Str_Mode01:	dc.b	'PLACE',0
+		even
+
+; ---------------------------------------------------------------------------
+; "TRUE-BS MODE" handle function
+; ---------------------------------------------------------------------------
+
+Options_TrueBSMode_Handle:
+	move.b	Joypad|Press,d1			; get button presses
+	andi.b	#$FC,d1				; is left, right, A, B, C, or Start pressed?
+	beq.w	@ret				; if not, branch
+
+	tst.w	($FFFFFFFA).w			; is debug mode enabled?
+	beq.s	@nodebugunlock			; if not, branch
+	cmpi.b	#$70,($FFFFF604).w		; is exactly ABC held?
+	bne.s	@nodebugunlock			; if not, branch
+	jsr	Toggle_BlackoutBeaten		; toggle blackout challenge beaten state to toggle the unlock for nonstop inhuman
+	clr.b	(PlacePlacePlace).w		; make sure option doesn't stay accidentally enabled
+	st.b	Options_RedrawCurrentItem
+	rts
+
+@nodebugunlock:		
+	jsr	Check_BlackoutBeaten		; has the player beaten the blackout challenge?
+	beq.w	Options_PlayDisallowedSound	; if not, disallowed
+
+	; hint on A
+	moveq	#$1E,d0				; ID for the explanation textbox
+	bsr	Options_HandleAHint		; show explanation textbox if A is pressed
+
+	move.w	#$E3,d0				; resume at regular speed
+	andi.b	#1,(PlacePlacePlace).w		; mask to first bit only
+	eori.b	#1,(PlacePlacePlace).w		; toggle True-BS mode
+	beq.s	@on
+	move.w	#$E2,d0				; speed up music
+@on:	jsr	PlayCommand
+
+	tst.b	(PlacePlacePlace).w
+	eori.b	#%00100,ccr			; invert Z flag (play off sound for off, on for anything else)
+	bsr	Options_PlayRespectiveToggleSound
+	st.b	Options_RedrawCurrentItem
+@ret:	rts
 
 
 ; ===========================================================================
@@ -983,9 +1011,9 @@ Options_DeleteSaveGame_Redraw:
 	move.b	Options_DeleteSRAMCounter, d0
 	lea	@Str_DeleteSRAMCountDown(pc,d0), a1
  if def(__WIDESCREEN__)
-	Options_PipeString a4, "RESET GAME PROGRESS                %<.l a1 str>", OpLength
+	Options_PipeString a4, "RESET GAME PROGRESS             %<.l a1 str>", OpLength
  else
-	Options_PipeString a4, "RESET GAME PROGRESS      %<.l a1 str>", OpLength
+	Options_PipeString a4, "RESET GAME PROGRESS   %<.l a1 str>", OpLength
  endif
 	rts
 
@@ -1055,9 +1083,9 @@ Options_ResetOptions_Redraw:
 	move.b	Options_DeleteSRAMCounter, d0
 	lea	@Str_DeleteSRAMCountDown(pc,d0), a1
  if def(__WIDESCREEN__)
-	Options_PipeString a4, "RESET OPTIONS                      %<.l a1 str>", OpLength
+	Options_PipeString a4, "RESET OPTIONS                   %<.l a1 str>", OpLength
  else
-	Options_PipeString a4, "RESET OPTIONS            %<.l a1 str>", OpLength
+	Options_PipeString a4, "RESET OPTIONS         %<.l a1 str>", OpLength
  endif
 	rts
 
@@ -1248,6 +1276,7 @@ Options_HandleAHint:
 	moveq	#0,d0			; play option toggled on sound
 	bsr	Options_PlayRespectiveToggleSound
 
+	andi.w	#~$2000,($FFFFD100+obGfx).w
 	jsr 	Pal_FadeOut		; darken background...
 	jsr 	Pal_FadeOut		; ...twice
 	moveq	#$1D,d0			; load tutorial box palette...
@@ -1258,6 +1287,7 @@ Options_HandleAHint:
 
 	moveq	#0,d0			; refresh options pal directly
 	jsr	Options_LoadPal
+	ori.w	#$2000,($FFFFD100+obGfx).w
 
 	addq.l	#4,sp			; skip remaining stuff in the option handler
 @end:

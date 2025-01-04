@@ -5,7 +5,7 @@
 	dc.w $0000, $0300, $0060
 	dc.w $0004, $02C0, $1E40	; GHZ 2
 	dc.w $0000, $0100, $0060
-	dc.w $0004, $00C0, $3E80;$2B60-SCREEN_XCORR	; GHZ 3
+	dc.w $0004, $0000, $3E80;$2B60-SCREEN_XCORR	; GHZ 3
 	dc.w $0000, $0410, $0060
 	dc.w $0004, $0000, $3D60-SCREEN_XCORR	; GHZ 4
 	dc.w $0000, $0600, $0060

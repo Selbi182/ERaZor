@@ -2,41 +2,41 @@
 ; Sprite mappings - output from ClownMapEd - Sonic 1/CD format
 ; --------------------------------------------------------------------------------
 
-CME_0057C589:
-	dc.w	CME_0057C589_0-CME_0057C589
-	dc.w	CME_0057C589_1-CME_0057C589
-	dc.w	CME_0057C589_2-CME_0057C589
-	dc.w	CME_0057C589_3-CME_0057C589
-	dc.w	CME_0057C589_4-CME_0057C589
-	dc.w	CME_0057C589_5-CME_0057C589
-	dc.w	CME_0057C589_6-CME_0057C589
-	dc.w	CME_0057C589_7-CME_0057C589
-	dc.w	CME_0057C589_8-CME_0057C589
-	dc.w	CME_0057C589_9-CME_0057C589
-	dc.w	CME_0057C589_A-CME_0057C589
-	dc.w	CME_0057C589_B-CME_0057C589
-	dc.w	CME_0057C589_C-CME_0057C589
-	dc.w	CME_0057C589_D-CME_0057C589
-	dc.w	CME_0057C589_E-CME_0057C589
-	dc.w	CME_0057C589_F-CME_0057C589
-	dc.w	CME_0057C589_10-CME_0057C589
-	dc.w	CME_0057C589_11-CME_0057C589
-	dc.w	CME_0057C589_12-CME_0057C589
-	dc.w	CME_0057C589_13-CME_0057C589
-	dc.w	CME_0057C589_14-CME_0057C589
-	dc.w	CME_0057C589_15-CME_0057C589
-	dc.w	CME_0057C589_16-CME_0057C589
-	dc.w	CME_0057C589_17-CME_0057C589
-	dc.w	CME_0057C589_18-CME_0057C589
-	dc.w	CME_0057C589_19-CME_0057C589
-	dc.w	CME_0057C589_1A-CME_0057C589
-	dc.w	CME_0057C589_1B-CME_0057C589
-	dc.w	CME_0057C589_1C-CME_0057C589
-	dc.w	CME_0057C589_1D-CME_0057C589
-	dc.w	CME_0057C589_1E-CME_0057C589
-	dc.w	CME_0057C589_1F-CME_0057C589
+CME_779F8795:
+	dc.w	CME_779F8795_0-CME_779F8795
+	dc.w	CME_779F8795_1-CME_779F8795
+	dc.w	CME_779F8795_2-CME_779F8795
+	dc.w	CME_779F8795_3-CME_779F8795
+	dc.w	CME_779F8795_4-CME_779F8795
+	dc.w	CME_779F8795_5-CME_779F8795
+	dc.w	CME_779F8795_6-CME_779F8795
+	dc.w	CME_779F8795_7-CME_779F8795
+	dc.w	CME_779F8795_8-CME_779F8795
+	dc.w	CME_779F8795_9-CME_779F8795
+	dc.w	CME_779F8795_A-CME_779F8795
+	dc.w	CME_779F8795_B-CME_779F8795
+	dc.w	CME_779F8795_C-CME_779F8795
+	dc.w	CME_779F8795_D-CME_779F8795
+	dc.w	CME_779F8795_E-CME_779F8795
+	dc.w	CME_779F8795_F-CME_779F8795
+	dc.w	CME_779F8795_10-CME_779F8795
+	dc.w	CME_779F8795_11-CME_779F8795
+	dc.w	CME_779F8795_12-CME_779F8795
+	dc.w	CME_779F8795_13-CME_779F8795
+	dc.w	CME_779F8795_14-CME_779F8795
+	dc.w	CME_779F8795_15-CME_779F8795
+	dc.w	CME_779F8795_16-CME_779F8795
+	dc.w	CME_779F8795_17-CME_779F8795
+	dc.w	CME_779F8795_18-CME_779F8795
+	dc.w	CME_779F8795_19-CME_779F8795
+	dc.w	CME_779F8795_1A-CME_779F8795
+	dc.w	CME_779F8795_1B-CME_779F8795
+	dc.w	CME_779F8795_1C-CME_779F8795
+	dc.w	CME_779F8795_1D-CME_779F8795
+	dc.w	CME_779F8795_1E-CME_779F8795
+	dc.w	CME_779F8795_1F-CME_779F8795
 
-CME_0057C589_0:
+CME_779F8795_0:
 	dc.b	9
 
 	dc.b	-8
@@ -84,7 +84,7 @@ CME_0057C589_0:
 	dc.w	$0004
 	dc.b	60
 
-CME_0057C589_1:
+CME_779F8795_1:
 	dc.b	8
 
 	dc.b	-8
@@ -127,7 +127,7 @@ CME_0057C589_1:
 	dc.w	$0026
 	dc.b	60
 
-CME_0057C589_2:
+CME_779F8795_2:
 	dc.b	9
 
 	dc.b	-8
@@ -175,7 +175,7 @@ CME_0057C589_2:
 	dc.w	$0026
 	dc.b	60
 
-CME_0057C589_3:
+CME_779F8795_3:
 	dc.b	9
 
 	dc.b	-8
@@ -223,7 +223,7 @@ CME_0057C589_3:
 	dc.w	$0026
 	dc.b	60
 
-CME_0057C589_4:
+CME_779F8795_4:
 	dc.b	11
 
 	dc.b	-8
@@ -281,7 +281,7 @@ CME_0057C589_4:
 	dc.w	$0039
 	dc.b	-8
 
-CME_0057C589_5:
+CME_779F8795_5:
 	dc.b	7
 
 	dc.b	-8
@@ -319,7 +319,7 @@ CME_0057C589_5:
 	dc.w	$0026
 	dc.b	60
 
-CME_0057C589_6:
+CME_779F8795_6:
 	dc.b	6
 
 	dc.b	-8
@@ -352,7 +352,7 @@ CME_0057C589_6:
 	dc.w	$000C
 	dc.b	60
 
-CME_0057C589_7:
+CME_779F8795_7:
 	dc.b	10
 
 	dc.b	-8
@@ -405,7 +405,7 @@ CME_0057C589_7:
 	dc.w	$0049
 	dc.b	60
 
-CME_0057C589_8:
+CME_779F8795_8:
 	dc.b	6
 
 	dc.b	-8
@@ -438,7 +438,7 @@ CME_0057C589_8:
 	dc.w	$0026
 	dc.b	60
 
-CME_0057C589_9:
+CME_779F8795_9:
 	dc.b	9
 
 	dc.b	-8
@@ -486,7 +486,7 @@ CME_0057C589_9:
 	dc.w	$0041
 	dc.b	60
 
-CME_0057C589_A:
+CME_779F8795_A:
 	dc.b	9
 
 	dc.b	-8
@@ -534,7 +534,7 @@ CME_0057C589_A:
 	dc.w	$0049
 	dc.b	60
 
-CME_0057C589_B:
+CME_779F8795_B:
 	dc.b	8
 
 	dc.b	-8
@@ -577,7 +577,7 @@ CME_0057C589_B:
 	dc.w	$0004
 	dc.b	60
 
-CME_0057C589_C:
+CME_779F8795_C:
 	dc.b	7
 
 	dc.b	-8
@@ -615,7 +615,7 @@ CME_0057C589_C:
 	dc.w	$0039
 	dc.b	60
 
-CME_0057C589_D:
+CME_779F8795_D:
 	dc.b	19
 
 	dc.b	-36
@@ -713,7 +713,7 @@ CME_0057C589_D:
 	dc.w	$003D
 	dc.b	80
 
-CME_0057C589_E:
+CME_779F8795_E:
 	dc.b	2
 
 	dc.b	-8
@@ -726,7 +726,7 @@ CME_0057C589_E:
 	dc.w	$0031
 	dc.b	3
 
-CME_0057C589_F:
+CME_779F8795_F:
 	dc.b	13
 
 	dc.b	-28
@@ -794,7 +794,7 @@ CME_0057C589_F:
 	dc.w	$007C
 	dc.b	-20
 
-CME_0057C589_10:
+CME_779F8795_10:
 	dc.b	5
 
 	dc.b	-8
@@ -822,7 +822,7 @@ CME_0057C589_10:
 	dc.w	$0010
 	dc.b	19
 
-CME_0057C589_11:
+CME_779F8795_11:
 	dc.b	5
 
 	dc.b	-10
@@ -850,7 +850,7 @@ CME_0057C589_11:
 	dc.w	$0053
 	dc.b	-32
 
-CME_0057C589_12:
+CME_779F8795_12:
 	dc.b	6
 
 	dc.b	-10
@@ -863,16 +863,6 @@ CME_0057C589_12:
 	dc.w	$005B
 	dc.b	32
 
-	dc.b	0
-	dc.b	$00
-	dc.w	$0095
-	dc.b	17
-
-	dc.b	0
-	dc.b	$00
-	dc.w	$0063
-	dc.b	24
-
 	dc.b	-2
 	dc.b	$0D
 	dc.w	$0051
@@ -883,23 +873,23 @@ CME_0057C589_12:
 	dc.w	$0059
 	dc.b	-8
 
-CME_0057C589_13:
+	dc.b	2
+	dc.b	$00
+	dc.w	$0095
+	dc.b	16
+
+	dc.b	2
+	dc.b	$00
+	dc.w	$0095
+	dc.b	22
+
+CME_779F8795_13:
 	dc.b	6
 
 	dc.b	-10
 	dc.b	$02
 	dc.w	$005B
 	dc.b	7
-
-	dc.b	0
-	dc.b	$00
-	dc.w	$0095
-	dc.b	17
-
-	dc.b	0
-	dc.b	$00
-	dc.w	$0063
-	dc.b	24
 
 	dc.b	-10
 	dc.b	$06
@@ -916,23 +906,23 @@ CME_0057C589_13:
 	dc.w	$0059
 	dc.b	-8
 
-CME_0057C589_14:
+	dc.b	2
+	dc.b	$00
+	dc.w	$0095
+	dc.b	16
+
+	dc.b	2
+	dc.b	$00
+	dc.w	$0095
+	dc.b	22
+
+CME_779F8795_14:
 	dc.b	6
 
 	dc.b	-10
 	dc.b	$02
 	dc.w	$005B
 	dc.b	7
-
-	dc.b	0
-	dc.b	$00
-	dc.w	$0095
-	dc.b	17
-
-	dc.b	0
-	dc.b	$00
-	dc.w	$0063
-	dc.b	24
 
 	dc.b	-2
 	dc.b	$0D
@@ -949,7 +939,17 @@ CME_0057C589_14:
 	dc.w	$0064
 	dc.b	32
 
-CME_0057C589_15:
+	dc.b	2
+	dc.b	$00
+	dc.w	$0095
+	dc.b	16
+
+	dc.b	2
+	dc.b	$00
+	dc.w	$0095
+	dc.b	22
+
+CME_779F8795_15:
 	dc.b	3
 
 	dc.b	-10
@@ -967,7 +967,7 @@ CME_0057C589_15:
 	dc.w	$0059
 	dc.b	-8
 
-CME_0057C589_16:
+CME_779F8795_16:
 	dc.b	3
 
 	dc.b	-10
@@ -985,7 +985,7 @@ CME_0057C589_16:
 	dc.w	$0059
 	dc.b	-8
 
-CME_0057C589_17:
+CME_779F8795_17:
 	dc.b	3
 
 	dc.b	-10
@@ -1003,7 +1003,7 @@ CME_0057C589_17:
 	dc.w	$0059
 	dc.b	-8
 
-CME_0057C589_18:
+CME_779F8795_18:
 	dc.b	3
 
 	dc.b	-10
@@ -1021,18 +1021,13 @@ CME_0057C589_18:
 	dc.w	$0059
 	dc.b	-8
 
-CME_0057C589_19:
+CME_779F8795_19:
 	dc.b	6
 
 	dc.b	0
 	dc.b	$00
 	dc.w	$0095
-	dc.b	23
-
-	dc.b	0
-	dc.b	$00
-	dc.w	$0063
-	dc.b	30
+	dc.b	24
 
 	dc.b	-10
 	dc.b	$02
@@ -1054,18 +1049,13 @@ CME_0057C589_19:
 	dc.w	$008F
 	dc.b	7
 
-CME_0057C589_1A:
-	dc.b	6
-
 	dc.b	0
 	dc.b	$00
 	dc.w	$0095
-	dc.b	23
+	dc.b	29
 
-	dc.b	0
-	dc.b	$00
-	dc.w	$0063
-	dc.b	30
+CME_779F8795_1A:
+	dc.b	6
 
 	dc.b	-10
 	dc.b	$06
@@ -1087,7 +1077,17 @@ CME_0057C589_1A:
 	dc.w	$008F
 	dc.b	7
 
-CME_0057C589_1B:
+	dc.b	0
+	dc.b	$00
+	dc.w	$0095
+	dc.b	24
+
+	dc.b	0
+	dc.b	$00
+	dc.w	$0095
+	dc.b	29
+
+CME_779F8795_1B:
 	dc.b	3
 
 	dc.b	-10
@@ -1105,7 +1105,7 @@ CME_0057C589_1B:
 	dc.w	$0059
 	dc.b	-8
 
-CME_0057C589_1C:
+CME_779F8795_1C:
 	dc.b	5
 
 	dc.b	-10
@@ -1133,7 +1133,7 @@ CME_0057C589_1C:
 	dc.w	$0059
 	dc.b	-8
 
-CME_0057C589_1D:
+CME_779F8795_1D:
 	dc.b	5
 
 	dc.b	-9
@@ -1161,7 +1161,7 @@ CME_0057C589_1D:
 	dc.w	$0059
 	dc.b	-8
 
-CME_0057C589_1E:
+CME_779F8795_1E:
 	dc.b	5
 
 	dc.b	-10
@@ -1189,7 +1189,7 @@ CME_0057C589_1E:
 	dc.w	$0059
 	dc.b	-8
 
-CME_0057C589_1F:
+CME_779F8795_1F:
 	dc.b	11
 
 	dc.b	-16

@@ -14,7 +14,7 @@ BlackBars.Reset:
 	KDebug.WriteLine "BlackBars.Reset()..."
 	move.w	#NullInt,HBlankSubW				; don't run any code during HInt
 	move.w	#0,BlackBars.Height				; set current height to 0
-	move.w	#BlackBars.MaxHeight,BlackBars.BaseHeight	; set base height to default
+	move.w	#BlackBars.DefaultBaseHeight,BlackBars.BaseHeight ; set base height to default
 	move.w	BlackBars.BaseHeight,BlackBars.TargetHeight	; set target height to default
 	move.l	#$8ADF8ADF, BlackBars.FirstHCnt			; + BlackBars.SecondHCnt
 	rts

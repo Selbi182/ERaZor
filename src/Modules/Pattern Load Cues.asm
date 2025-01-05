@@ -102,11 +102,6 @@ PLC_ProcessQueue:
 
 ; --------------------------------------------------------------
 PLC_DecompressArt:
-	if def(__DEBUG__)
-		movea.l	(sp), a1
-		KDebug.WriteLine "PLC_DecompressArt(): block=%<.l PLC_ArtPtr sym>, pos=%<.l PLC_Pointer sym>, caller=%<.l a1 sym>"
-	endif
-
 	lea	Art_Buffer, a1				; a1 = decompression buffer
 	move.l	PLC_ArtPtr, a0				; a0 = compressed art ptr
 							; a1 = destination buffer

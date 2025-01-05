@@ -43,8 +43,7 @@ StartLevel:
 	if def(__BENCHMARK__)
 		bra.w	ReturnToSegaScreen
 	endif
-
-		jsr	SRAM_SaveSelectedSlotId	; save our progress now
+		jsr	SRAMCache_SaveGlobalsAndSelectedSlotId
 
 		move.b	#1,($FFFFFFE9).w	; set fade-out in progress flag
 		clr.w	($FFFFFE30).w		; clear any set level checkpoints
@@ -76,8 +75,8 @@ Start_FirstGameMode:
 	if def(__WIDESCREEN__)=0 ; always start in the black bars screen in widescreen mode because it has important info
 		bsr	ReturnToSegaScreen	; set first game mode to Sega Screen
 
-		bsr	Check_FirstStart	; is this the first time the game is being played?
-		beq.s	@skip			; if not, go straight to Sega screen
+		bsr	Check_BlackBarsConfigured
+		bne.s	@skip
 
 		; Emulator detection to autoskip the screen for known faulty behavior (primarily in Kega)
 		; Inspired by: https://github.com/DevsArchive/genesis-emulator-detector
@@ -105,6 +104,7 @@ ReturnToSegaScreen:
 ; ===========================================================================
 
 Exit_BlackBarsScreen:
+		bsr	Set_BlackBarsConfigured
 		tst.b	(CarryOverData).w	; is next game mode set to be options screen?
 		beq.s	ReturnToSegaScreen	; if not, assume this is the first start of the game
 		clr.b	(CarryOverData).w	; clear carried-over data now no matter what
@@ -394,7 +394,7 @@ Exit_EndingSequence:
 @finish:
 		move.b	d1,(CarryOverData).w	; set which texts to display after the credits
  
-		jsr	SRAM_SaveSelectedSlotId	; save now
+		jsr	SRAMCache_SaveGlobalsAndSelectedSlotId	; ### TODO: optimize
 		jsr	Pal_CutToBlack		; fill remaining palette to black for a smooth transition
 		move.w	#0,BlackBars.Height	; reset black bars
 		move.b	#$2C,(GameMode).w	; set scene to $2C (new credits)
@@ -785,7 +785,7 @@ NextLevel_Array:
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Subtroutines to ease coordinating the game progress (casual/frantic)
+; Subroutines to ease coordinating the game progress (casual/frantic)
 ; (NOTE: Frantic takes priority over Casual in all instances!)
 ; ---------------------------------------------------------------------------
 Doors_All	= %11111111
@@ -794,6 +794,7 @@ State_BaseGame_Frantic	= 1
 State_Blackout          = 2
 State_TutorialVisited   = 3
 State_HubEasterVisited  = 4
+State_BlackBarsConfigured = 7
 ; ---------------------------------------------------------------------------
 
 Check_FirstStart:
@@ -883,6 +884,13 @@ Check_TutorialVisited:
 Check_HubEasterVisited:
 		btst	#State_HubEasterVisited, SlotProgress
 		rts
+
+; ---------------------------------------------------------------------------
+
+Check_BlackBarsConfigured:
+		btst	#State_BlackBarsConfigured, GlobalProgress
+		rts
+
 ; ---------------------------------------------------------------------------
 
 Check_UnterhubUnlocked:
@@ -928,7 +936,7 @@ UnlockEverything: _unimplemented	; TODO: Implement properly
 		bsr	Set_TutorialVisited		; set tutorial visited
 		bsr	Set_HubEasterVisited		; set Uberhub easter egg as visited
 		move.b	#8,(CurrentChapter).w		; set to final chapter
-		jmp	SRAM_SaveSelectedSlotId		; overwrite SRAM
+		;jmp	SRAMCache_SaveGlobalsAndSelectedSlotId		; overwrite SRAM
 
 ; cheats called from options screen
 Toggle_BaseGameBeaten_Casual:
@@ -965,6 +973,11 @@ Set_DoorClosed:
 		rts
 @frantic:
 		bclr	d0,(Doors_Frantic).w	; close door (frantic)
+		rts
+; ---------------------------------------------------------------------------
+
+Set_BlackBarsConfigured:
+		bset	#State_BlackBarsConfigured, GlobalProgress
 		rts
 ; ---------------------------------------------------------------------------
 

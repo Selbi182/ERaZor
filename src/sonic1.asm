@@ -288,7 +288,7 @@ GameClrRAM:	move.l	d7,(a6)+
 
 		bsr	VDPSetupGame
 		bsr	JoypadInit
-		bsr.w	SRAMCache_Init
+		bsr.w	SRAMCache_Init	; TODO: Don't init on soft reset
 
 		move.b	($A10001).l,d0
 		andi.b	#$C0,d0

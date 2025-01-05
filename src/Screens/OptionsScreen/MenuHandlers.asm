@@ -1011,9 +1011,9 @@ Options_DeleteSaveGame_Redraw:
 	move.b	Options_DeleteSRAMCounter, d0
 	lea	@Str_DeleteSRAMCountDown(pc,d0), a1
  if def(__WIDESCREEN__)
-	Options_PipeString a4, "RESET GAME PROGRESS             %<.l a1 str>", OpLength
+	Options_PipeString a4, "DELETE ALL DATA                 %<.l a1 str>", OpLength
  else
-	Options_PipeString a4, "RESET GAME PROGRESS   %<.l a1 str>", OpLength
+	Options_PipeString a4, "DELETE ALL DATA       %<.l a1 str>", OpLength
  endif
 	rts
 
@@ -1062,12 +1062,10 @@ Options_DeleteSaveGame_Handle:
 	jsr	DelayProgram		; ''
 	bra.s	@delete_fadeoutloop	; loop
 
-@delete_fadeoutend: _unimplemented
-	;jsr	SRAM_SaveSelectedSlotId
-	;jsr	SRAM_OptionsMenu_ResetGameProgress ; reset game progress without affecting options
-	;moveq	#-1,d0			; return to Sega Screen
-	;jmp	Exit_OptionsScreen
-
+@delete_fadeoutend:
+	jsr	SRAMCache_ResetEverythingToDefaults
+	moveq	#-1,d0			; return to Sega Screen
+	jmp	Exit_OptionsScreen
 
 
 ; ===========================================================================
@@ -1108,9 +1106,8 @@ Options_ResetOptions_Handle:
 	st.b	Options_RedrawCurrentItem
 @ret	rts
 
-@dodelete: _unimplemented
-	;jsr	SRAM_SaveSelectedSlotId
-	;jsr	SRAM_OptionsMenu_ResetOptions ; reset options
+@dodelete:
+	jsr	Options_SetDefaults
 
 	ori.b	#30,(CameraShake).w
 	move.b	#0,(CameraShake_Intensity).w

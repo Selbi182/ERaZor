@@ -86,6 +86,13 @@ SRAMCache_Init:
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
+; Resets everything to defaults
+; ---------------------------------------------------------------------------
+
+SRAMCache_ResetEverythingToDefaults:	equ	@LoadDefaults
+
+; ===========================================================================
+; ---------------------------------------------------------------------------
 ; Commits SRAM cache contents to SRAM
 ; ---------------------------------------------------------------------------
 
@@ -257,6 +264,3 @@ SRAMCache_SaveGlobals2:
 	move.b	BlackBars.HandlerId,	SRAMCache.GlobalOptions+SaveOptions.BlackBars
 	move.b	GlobalProgress,		SRAMCache.GlobalProgress
 	rts
-
-sram_optionsmenu_resetgameprogress: _unimplemented
-sram_optionsmenu_resetoptions: _unimplemented

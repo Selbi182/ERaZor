@@ -1062,11 +1062,11 @@ Options_DeleteSaveGame_Handle:
 	jsr	DelayProgram		; ''
 	bra.s	@delete_fadeoutloop	; loop
 
-@delete_fadeoutend:
-	jsr	SRAM_SaveNow
-	jsr	SRAM_OptionsMenu_ResetGameProgress ; reset game progress without affecting options
-	moveq	#-1,d0			; return to Sega Screen
-	jmp	Exit_OptionsScreen
+@delete_fadeoutend: _unimplemented
+	;jsr	SRAM_SaveSelectedSlotId
+	;jsr	SRAM_OptionsMenu_ResetGameProgress ; reset game progress without affecting options
+	;moveq	#-1,d0			; return to Sega Screen
+	;jmp	Exit_OptionsScreen
 
 
 
@@ -1108,9 +1108,9 @@ Options_ResetOptions_Handle:
 	st.b	Options_RedrawCurrentItem
 @ret	rts
 
-@dodelete:
-	jsr	SRAM_SaveNow
-	jsr	SRAM_OptionsMenu_ResetOptions ; reset options
+@dodelete: _unimplemented
+	;jsr	SRAM_SaveSelectedSlotId
+	;jsr	SRAM_OptionsMenu_ResetOptions ; reset options
 
 	ori.b	#30,(CameraShake).w
 	move.b	#0,(CameraShake_Intensity).w

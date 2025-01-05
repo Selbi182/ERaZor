@@ -20,41 +20,60 @@ SRAMLeave:	macro
 	endm
 
 ; --------------------------
-; SRAM Save Slot structure
+; Save Slot structure
 ; --------------------------
 
 			rsreset
-SRAMSlot.GameBits:	rsp.b	1	; Slot State (Created/Not), Difficulty (Casual, Frantic), Mode (Arcade / Story), Beaten (Base Game / Blackout)
-SRAMSlot.Chapter:	rsp.w	1	; Chapter
-SRAMSlot.Rings:		rsp.w	1	; Ringage
-SRAMSlot.Deaths:	rsp.w	1	; Deaths
-SRAMSlot.Score:		rsp.l	1	; Game score
-SRAMSlot.Doors:		rsp.w	1	; Open doors bitfield
+SaveSlot.Progress:	rs.b	1	; Slot State (Created/Not), Difficulty (Casual, Frantic), Mode (Arcade / Story), Beaten (Base Game / Blackout), Tutorial Visted, Hub easter egg visited
+SaveSlot.Chapter:	rs.b	1	; Chapter
+SaveSlot.Rings:		rs.w	1	; Ringage
+SaveSlot.Deaths:	rs.w	1	; Deaths
+SaveSlot.Score:		rs.l	1	; Game score
+SaveSlot.Doors:		rs.w	1	; Open doors bitfield
+SaveSlot.Size:		equ	__rs
 
-SRAMSlot.Size:		equ	__rs
-
+	if SaveSlot.Size&1
+		inform 2, "SaveSlot.Size must be even (got \#SaveSlot.Size)"
+	endif
 
 ; ---------------------------
-; SRAM Options structure
+; Save Options structure
 ; ---------------------------
-			rsreset
-SRAMOptions.OptionsBits1:rsp.b	1	; => (OptionsBits).w
-SRAMOptions.OptionsBits2:rsp.b	1	; => (OptionsBits2).w
-SRAMOptions.ScreenFuzz: rsp.b	1	; => (ScreenFuzz).w
-SRAMOptions.BlackBars:	rsp.b	1	; => (BlackBars.HandlerId).w
-SRAMOptions.Size	equ	__rs
+				rsreset
+SaveOptions.OptionsBits1:	rs.b	1	; => (OptionsBits).w
+SaveOptions.OptionsBits2:	rs.b	1	; => (OptionsBits2).w
+SaveOptions.ScreenFuzz: 	rs.b	1	; => (ScreenFuzz).w
+SaveOptions.BlackBars:		rs.b	1	; => (BlackBars.HandlerId).w
+SaveOptions.Size:		equ	__rs
+
+	if SaveOptions.Size&1
+		inform 2, "SaveSlot.Size must be even (got \#SaveSlot.Size)"
+	endif
 
 ; --------------------------
+; SRAM Cache layout
+; --------------------------
+
+				rsset	SRAMCache_RAM
+SRAMCache.GlobalOptions:	rs.b	SaveOptions.Size	; Global game option bitfield
+SRAMCache.GlobalProgress:	rs.b	1			; Game beaten (Causal / Frantic / Blackout)
+SRAMCache.SelectedSlotId:	rs.b	1			; Selected slot (0 = No Save, 1..3 = Slots 1..3)
+SRAMCache.Slots:		rs.b	SaveSlot.Size*3		; 3 slots
+SRAMCache.Size:			equ	__rs-SRAMCache_RAM
+
+	if SRAMCache.Size&1
+		inform 2, "SRAMCache.Size must be even (got \#SaveSlot.Size)"
+	endif
+	if SRAMCache_RAM+SRAMCache.Size > SRAMCache_RAM_End
+		inform 2, "SRAMCache structure is too big"
+	endif
+
+; --------------
 ; SRAM layout
-; --------------------------
+; --------------
 
-			rsreset
-SRAM_Magic:		rsp.l	1			; SRAM magic string (if not set, SRAM is re-initialized)
-SRAM_GlobalOptions:	rs.b	SRAMOptions.Size	; Global game option bitfield
-SRAM_GlobalProgress:	rsp.b	1			; Game beaten (Causal / Frantic / Blackout)
-SRAM_SelectedSlotId:	rsp.b	1			; Selected slot (0 = No Save, 1..3 = Slots 1..3)
-SRAM_Slots:		rs.b	SRAMSlot.Size*3		; 3 slots
+				rsreset
+SRAM_Magic:			rsp.l	1			; SRAM magic string (if not set, SRAM is re-initialized)
+SRAM_Data:			rsp.b	SRAMCache.Size		; copied to `SRAMCache_RAM`
 
-SRAM_Size:		equ	__rs
-
-_SRAM_ExpectedMagic:	equ	'Ver0'
+_SRAM_ExpectedMagic:		equ	'Ver0'

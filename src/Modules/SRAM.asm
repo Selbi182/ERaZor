@@ -3,167 +3,231 @@
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Load SRAM
+; Initializes SRAM cache
 ; ---------------------------------------------------------------------------
 
-SRAM_Load:
-	_KDebug.WriteLine "SRAM_Load()..."
-	clr.b	SaveSlotId		; use default save slot id (unless SRAM is alive and overrides it)
+SRAMCache_Init:
+	_KDebug.WriteLine "SRAMCache_Init()..."
 
 	if def(__MD_REPLAY__)
 		rts
 	else
+		@sram:	equr	a1
+		@cache:	equr	a2	; WARNING! Don't change register (optimized for `SRAMCache_ClearSlot`)
+		@var0:	equr	d0
+
+		lea	SRAM_Start, @sram
+		lea	SRAMCache_RAM, @cache
+
 		SRAMEnter
-		lea	SRAM_Start, a1
-		movep.l	SRAM_Magic(a1), d0
-		cmp.l	#_SRAM_ExpectedMagic, d0
-		bne	@ResetSRAM_and_LoadDefaults
+		movep.l	SRAM_Magic(@sram), @var0
+		cmp.l	#_SRAM_ExpectedMagic, @var0
+		bne	@LeaveSRAM_and_LoadDefaults
 
-		_KDebug.WriteLine "SRAM_Load(): Loading global data..."
+		_KDebug.WriteLine "SRAMCache_Init(): Copying data to SRAM cache..."
 
-		; Load global options
-		move.b	SRAM_GlobalOptions+SRAMOptions.OptionsBits1(a1), OptionsBits
-		move.b	SRAM_GlobalOptions+SRAMOptions.OptionsBits1(a1), OptionsBits2
-		moveq	#%11,d0
-		and.b	SRAM_GlobalOptions+SRAMOptions.ScreenFuzz(a1), d0
-		move.b	d0, ScreenFuzz
-		moveq	#%10, d0
-		and.b	SRAM_GlobalOptions+SRAMOptions.BlackBars(a1), d0
-		move.b	d0, BlackBars.HandlerId
-
-		; Load global progress
-		move.b	SRAM_GlobalProgress(a1), Progress	; ### TODO: Correct this
-
-		; Load selected save slot
-		moveq	#3, d0
-		and.b	SRAM_SelectedSlotId(a1), d0
-		_KDebug.WriteLine "SRAM_Load(): Loading slot data (slot=%<.b d0 dec>)..."
-		move.b	d0, SaveSlotId
-		beq.s	@LoadNoSaveData
-		mulu.w	#SRAMSlot.Size, d0
-		lea	SRAM_Slots-SRAMSlot.Size(a1, d0), a1
-
-		;movep.w	SRAMSlot.GameBits(a1), d0	; ### TODO
-		move.b	SRAMSlot.Chapter(a1), CurrentChapter
-		movep.w	SRAMSlot.Rings(a1), d0
-		move.w	d0, Rings
-		movep.w	SRAMSlot.Deaths(a1), d0
-		move.w	d0, Deaths
-		movep.l	SRAMSlot.Score(a1), d0
-		move.l	d0, Score
-		movep.w	SRAMSlot.Doors(a1), d0
-		move.w	d0, Doors_Casual			; ### TODO
-		bra.s	@LoadDone
-
-	@LoadNoSaveData:
-		moveq	#0, d0
-		move.b	d0, SaveSlotId
-		; ### TODO: SRAMSlot.GameBits ###
-		move.b	d0, CurrentChapter
-		move.w	d0, Doors_Casual			; ### TODO
-		move.w	d0, Deaths
-		move.w	d0, Rings
-		move.l	d0, Score
-
-	@LoadDone:
+		@offset: = 0
+		rept SRAMCache.Size / 4
+			movep.l	SRAM_Data+@offset(@sram), @var0
+			move.l	@var0, (@cache)+
+			@offset: = @offset + 4*2	; next LONG in SRAM
+		endr
+		rept SRAMCache.Size & 3 ; copy any leftover bytes that didn't fit longwords
+			move.b	SRAM_Data+@offset(@sram), (@cache)+
+			@offset: = @offset + 1*2	; next BYTE in SRAM
+		endr
 		SRAMLeave
+
 		rts
 
 	; ---------------------------------------------------------------------------
-	@ResetSRAM_and_LoadDefaults:
-		_KDebug.WriteLine "SRAM_Load(): Resetting and loading defaults..."
+	@LeaveSRAM_and_LoadDefaults:
+		SRAMLeave
+	endif	; def(__MD_REPLAY__)
 
-		_assert.l a1, eq, #SRAM_Start
+	@LoadDefaults:
+		_KDebug.WriteLine "SRAMCache_Init(): Loading defaults..."
 
-		move.l	#_SRAM_ExpectedMagic, d0
-		movep.l	d0, SRAM_Magic(a1)
+		_assert.l @sram, eq, #SRAM_Start
+		_assert.w @cache, eq, #SRAMCache_RAM
 
 		; Reset and save global options
-		jsr	Options_SetDefaults		; resets OptionBits, OptionBits2, ScreenFuzz
-		; WARNING! Doesn't reset Black Bars config!
-		move.b	OptionsBits, SRAM_GlobalOptions+SRAMOptions.OptionsBits1(a1)
-		move.b	OptionsBits2, SRAM_GlobalOptions+SRAMOptions.OptionsBits1(a1)
-		move.b	ScreenFuzz, SRAM_GlobalOptions+SRAMOptions.ScreenFuzz(a1)
-		move.b	BlackBars.HandlerId, SRAM_GlobalOptions+SRAMOptions.BlackBars(a1)
+		jsr	Options_SetDefaults	; resets OptionBits, OptionBits2, ScreenFuzz
+						; WARNING! Doesn't reset Black Bars config!
+		move.b	OptionsBits, 		SRAMCache.GlobalOptions + SaveOptions.OptionsBits1(@cache)
+		move.b	OptionsBits2, 		SRAMCache.GlobalOptions + SaveOptions.OptionsBits1(@cache)
+		move.b	ScreenFuzz, 		SRAMCache.GlobalOptions + SaveOptions.ScreenFuzz(@cache)
+		move.b	BlackBars.HandlerId, 	SRAMCache.GlobalOptions + SaveOptions.BlackBars(@cache)
 
 		; Reset and save global progress
-		moveq	#0, d0
-		move.b	d0, Progress			; ### TODO: Correct this
-		move.b	Progress, SRAM_GlobalProgress(a1)
+		moveq	#0, @var0
+		move.b	@var0, GlobalProgress			; ### TODO: Correct this
+		move.b	GlobalProgress, SRAMCache.GlobalProgress(@cache)
 
 		; Reset and save current slot id
-		move.b	d0, SaveSlotId
-		move.b	d0, SRAM_SelectedSlotId(a1)
+		move.b	@var0, SRAMCache.SelectedSlotId(@cache)
 
 		; Clear slots
-		lea	SRAM_Slots(a1), a1
-		_assert.l d0, eq
-		rept SRAMSlot.Size*3/8
-			movep.l	d0, 0(a1)
-			addq.l	#8, a1
+		lea	SRAMCache.Slots(@cache), @cache
+		rept 3
+			bsr	SRAMCache_ClearSlot
 		endr
-		rept (SRAMSlot.Size*3/2) & 3
-			move.b	d0, (a1)
-			addq.l	#2, a1
-		endr
-		_assert.l a1, eq, #SRAM_Start+SRAM_Size
-
-		bra	@LoadNoSaveData
-	endif
-
+		_assert.w @cache, eq, #SRAMCache_RAM+SRAMCache.Size
+		rts
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Save SRAM
+; Commits SRAM cache contents to SRAM
 ; ---------------------------------------------------------------------------
 
-SRAM_SaveNow:
-	KDebug.WriteLine "SRAM_SaveNow()..."
+SRAMCache_Commit:
+	KDebug.WriteLine "SRAMCache_Commit()..."
 	; Supress SRAM if MD Replay takes over it
 	if def(__MD_REPLAY__)
 		rts
 	else
+		@sram:	equr	a1
+		@cache:	equr	a2
+		@var0:	equr	d0
+
+		lea	SRAM_Start, @sram
+		lea	SRAMCache_RAM, @cache
+
 		SRAMEnter
-		lea	SRAM_Start, a1
+		moveq	#-1, @var0
+		movep.l	@var0, SRAM_Magic(@sram)	; invalidate SRAM magic until transation is complete
+							; avoids corruption if console is turned off in the middle of copying
+		@offset: = 0
+		rept SRAMCache.Size / 4
+			move.l	(@cache)+, @var0
+			movep.l	@var0, SRAM_Data+@offset(@sram)
+			@offset: = @offset + 4*2	; next LONG in SRAM
+		endr
+		rept SRAMCache.Size & 3 ; commit any leftover bytes that didn't fit longwords
+			move.b	(@cache)+, SRAM_Data+@offset(@sram)
+			@offset: = @offset + 1*2	; next BYTE in SRAM
+		endr
 
-		; Don't save is SRAM is not supported
-		movep.l	SRAM_Magic(a1), d0
-		cmp.l	#_SRAM_ExpectedMagic, d0
-		bne	@SaveDone
-
-		move.b	OptionsBits, SRAM_GlobalOptions+SRAMOptions.OptionsBits1(a1)
-		move.b	OptionsBits2, SRAM_GlobalOptions+SRAMOptions.OptionsBits1(a1)
-		move.b	ScreenFuzz, SRAM_GlobalOptions+SRAMOptions.ScreenFuzz(a1)
-		move.b	BlackBars.HandlerId, SRAM_GlobalOptions+SRAMOptions.BlackBars(a1)
-
-		move.b	Progress, SRAM_GlobalProgress(a1)
-
-		moveq	#3, d0
-		and.b	SaveSlotId, d0
-		move.b	d0, SRAM_SelectedSlotId(a1)
-		beq.s	@SaveDone
-
-		; Save slot data
-		KDebug.WriteLine "SRAM_SaveNow(): Saving slot data (slot=%<.b d0 dec>)"
-		mulu.w	#SRAMSlot.Size, d0
-		lea	SRAM_Slots-SRAMSlot.Size(a1, d0), a1
-
-		; SRAMSlot.GameBits(a1)	; ### TODO
-		move.b	CurrentChapter, SRAMSlot.Chapter(a1)
-		move.w	Rings, d0
-		movep.w	d0, SRAMSlot.Rings(a1)
-		move.w	Deaths, d0
-		movep.w	d0, SRAMSlot.Deaths(a1)
-		move.l	Score, d0
-		movep.l	d0, SRAMSlot.Score(a1)
-		move.w	Doors_Casual, d0
-		movep.w	d0, SRAMSlot.Doors(a1)
-
-	@SaveDone:
+		move.l	#_SRAM_ExpectedMagic, @var0
+		movep.l	@var0, SRAM_Magic(@sram)	; mark SRAM magic valid
 		SRAMLeave
 		rts
 	endif
 
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Gets pointer to currently selected Save slot data
+; ---------------------------------------------------------------------------
+; OUTPUT:
+;	a2	= Pointer to Save Slot structure
+;	ccr	= Z=1 if "No Save" slot is selected
+; ---------------------------------------------------------------------------
+
+SRAMCache_GetSelectedSlotData:
+	move.b	SRAMCache.SelectedSlotId, d0
+
+SRAMCache_GetSlotData:	; INPUT: d0.b - Slot
+	_assert.b d0, ls, #3
+
+	and.w	#3, d0
+	beq.s	@ret
+	subq.w	#1, d0
+	mulu.w	#SRAMCache.Size, d0
+	add.w	#SRAMCache.Slots, d0
+	movea.w	d0, a2
+@ret:	rts
+
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Sets currently selected slot id
+; ---------------------------------------------------------------------------
+; INPUT:
+;	d0	.b 	- Slot Id
+; ---------------------------------------------------------------------------
+
+SRAMCache_SetSelectedSlotId:
+	_assert.b d0, ls, #3
+
+	move.b	d0, SRAMCache.SelectedSlotId
+	rts
+
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Clears currently selected slot id
+; ---------------------------------------------------------------------------
+
+SRAMCache_ClearSelectedSlotId:
+	bsr	SRAMCache_GetSelectedSlotData	; a2 = Slot data, Z = is "No Save" slot
+	beq	SRAMCache_Clear_NoSlot		; skip if slot is "No Save"
+
+SRAMCache_ClearSlot:	; INPUT: a2 = Slot data
+	assert.w a2, hs, #SRAMCache.Slots
+	assert.w a2, ls, #SRAMCache.Slots + SRAMCache.Size*(3-1)
+
+	moveq	#0, d0
+	rept SaveSlot.Size / 4
+		move.l	d0, (a2)+
+	endr
+	rept SaveSlot.Size & 3
+		move.b	d0, (a2)+
+	endr
+
+SRAMCache_Clear_NoSlot:
+	rts
+
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Loads currently selected slot id
+; ---------------------------------------------------------------------------
+
+SRAMCache_LoadSelectedSlotId:
+	bsr	SRAMCache_GetSelectedSlotData	; a2 = Slot data, Z = is "No Save" slot
+	beq	SRAMCache_Load_NoSaveSlot	; skip if slot is "No Save"
+
+SRAMCache_LoadSlot:	; INPUT: a2 = Slot data
+	assert.w a2, hs, #SRAMCache.Slots
+	assert.w a2, ls, #SRAMCache.Slots + SRAMCache.Size*(3-1)
+
+	move.b	SaveSlot.Progress(a2), SlotProgress
+	move.b	SaveSlot.Chapter(a2), CurrentChapter
+	move.w	SaveSlot.Rings(a2), Rings
+	move.w	SaveSlot.Deaths(a2), Deaths
+	move.l	SaveSlot.Score(a2), Score
+	move.w	SaveSlot.Doors(a2), Doors_Casual	; FIXME
+	rts
+
+SRAMCache_Load_NoSaveSlot:
+	move.b	#0, SlotProgress		; FIXME: Slot created bit?
+	move.b	#0, CurrentChapter
+	move.w	#0, Rings
+	move.w	#0, Deaths
+	move.l	#0, Score
+	move.w	#0, Doors_Casual	; FIXME
+	rts
+
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Saves currently selected slot id
+; ---------------------------------------------------------------------------
+
+SRAM_SaveSelectedSlotId:
+	bsr	SRAMCache_GetSelectedSlotData	; a2 = Slot data, Z = is "No Save" slot
+	beq	SRAMCache_Save_NoSaveSlot	; skip if slot is "No Save"
+
+SRAM_SaveSlot:	; INPUT: a2 = Slot data
+	assert.w a2, hs, #SRAMCache.Slots
+	assert.w a2, ls, #SRAMCache.Slots + SRAMCache.Size*(3-1)
+
+	move.b	SlotProgress, SaveSlot.Progress(a2)
+	move.b	CurrentChapter, SaveSlot.Chapter(a2)
+	move.w	Rings, SaveSlot.Rings(a2)
+	move.w	Deaths, SaveSlot.Deaths(a2)
+	move.l	Score, SaveSlot.Score(a2)
+	move.w	Doors_Casual, SaveSlot.Doors(a2)	; FIXME
+	jsr	SRAMCache_Commit
+
+SRAMCache_Save_NoSaveSlot:
+	rts
 
 sram_optionsmenu_resetgameprogress: _unimplemented
 sram_optionsmenu_resetoptions: _unimplemented

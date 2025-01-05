@@ -10,9 +10,8 @@ LevelLayout_BG:		equ 	LevelLayout_RAM+$200		;	BG level layout (A600-A7FF)
 
 DrawBuffer_RAM:		equ	$FFFFA800			;	draw buffer RAM (A800-AB7F)
 LevelRend_RAM:		equ	$FFFFAB80			;	level renderer RAM (AB80-AB98)
-
-*			equ	$FFFFAB98			;	<<<FOR SALE>>> a rare RAM real eastate surounded by luxorious Level renderer and Sprite queue
-								;	Get your offer today for full AB98-AC00 chunk! Contact Vladikcomper.
+SRAMCache_RAM:		equ	$FFFFAB98			;	SRAM cache RAM (AB98-AC00)
+SRAMCache_RAM_End:	equ	$FFFFAC00			;
 
 Sprites_Queue:		equ	$FFFFAC00			;	object sprites queued for display (AC00-AFFF)
 Art_Buffer: 		equ 	$FFFFB000			;	Art buffer, used for decompression and transfers (B000-C000)
@@ -40,7 +39,7 @@ SoundDriverRAM_End:	equ	$FFFFF5C0			;	End of SMPS RAM
 
 VBlankHndl:		equ	$FFFFF5C8			; l/w	Jump code for VInt
 VBlankSubW:		equ	$FFFFF5CA			; w	Word offset for VInt routine 
-SaveSlotId:		equ	$FFFFF5CC			; b	Selected save slot id (0 = No Save)
+*			equ	$FFFFF5CC			; b	<<FREE>>
 VDPDebugPortSet:	equ	$FFFFF5CD			; b	Set if VDP Debug port was tampered with
 BlackBars.Handler:	equ	$FFFFF5CE			; w	Pointer to Black Bars handler routines (depending on `BlackBars.HandlerId`)
 *			equ	$FFFFF5D0			; b	"Signpost patterns have been loaded" flag
@@ -165,9 +164,10 @@ SpaceGolf		equ	$FFFFFF77			; b	space golf / antigrav in Star Agony Place
 
 Doors_Casual		equ	$FFFFFF8A			; b	bit field for beaten levels in casual
 Doors_Frantic		equ	$FFFFFF8B			; b	bit field for beaten levels in frantic
+SlotProgress		equ	$FFFFFF90			; b	bit field for save slot-local game progress
 ScreenFuzz		equ	$FFFFFF91			; b	enables cinematic screen fuzz
 OptionsBits		equ	$FFFFFF92			; b	bit field for the user options
-Progress		equ	$FFFFFF93			; b	bit field for overall game state (bit 0 - base game // bit 1 - blackout)
+GlobalProgress		equ	$FFFFFF93			; b	bit field for overall game state (bit 0 - base game // bit 1 - blackout)
 OptionsBits2		equ	$FFFFFF94			; b	second bit field for the user options
 
 StoryTextID		equ	$FFFFFF9E			; b	current story text ID

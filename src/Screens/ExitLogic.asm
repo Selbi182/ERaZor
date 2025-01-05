@@ -44,7 +44,7 @@ StartLevel:
 		bra.w	ReturnToSegaScreen
 	endif
 
-		jsr	SRAM_SaveNow		; save our progress now
+		jsr	SRAM_SaveSelectedSlotId	; save our progress now
 
 		move.b	#1,($FFFFFFE9).w	; set fade-out in progress flag
 		clr.w	($FFFFFE30).w		; clear any set level checkpoints
@@ -130,6 +130,10 @@ Exit_SelbiSplash:
 ; ===========================================================================
 
 Exit_TitleScreen:
+		move.b	#$3C, GameMode		; save select screen
+		rts
+
+Exit_SaveSelectScreen:
 		bsr	Check_FirstStart	; is this the first time the game is being played?
 		beq.w	ReturnToUberhub_Chapter	; if not, go to Uberhub (and always show chapter screen)
 		
@@ -137,6 +141,7 @@ Exit_TitleScreen:
 		move.b	#0,(CurrentChapter).w	; set chapter to 0 (so screen gets displayed once NHP is entered for the first time)
 		move.b	#$30,(GameMode).w	; for the first time, set to Gameplay Style Screen (which then starts the intro cutscene)
 		rts
+
 ; ===========================================================================
 
 Exit_GameplayStyleScreen:
@@ -389,7 +394,7 @@ Exit_EndingSequence:
 @finish:
 		move.b	d1,(CarryOverData).w	; set which texts to display after the credits
  
-		jsr	SRAM_SaveNow		; save now
+		jsr	SRAM_SaveSelectedSlotId	; save now
 		jsr	Pal_CutToBlack		; fill remaining palette to black for a smooth transition
 		move.w	#0,BlackBars.Height	; reset black bars
 		move.b	#$2C,(GameMode).w	; set scene to $2C (new credits)
@@ -838,25 +843,25 @@ Check_AllLevelsBeaten_Frantic:
 Check_BaseGameBeaten_Any:
 		bsr	Check_BaseGameBeaten_Casual
 		bne.s	@end
-		bsr	Check_BaseGameBeaten_Frantic
+		bra	Check_BaseGameBeaten_Frantic
 @end:		rts
 
 Check_BaseGameBeaten_Both:
 		bsr	Check_BaseGameBeaten_Casual
 		beq.s	@end
-		bsr	Check_BaseGameBeaten_Frantic
+		bra	Check_BaseGameBeaten_Frantic
 @end:		rts
 
 Check_BaseGameBeaten_Casual:
-		btst	#State_BaseGame_Casual,(Progress).w
+		btst	#State_BaseGame_Casual, GlobalProgress
 		rts
 Check_BaseGameBeaten_Frantic:
-		btst	#State_BaseGame_Frantic,(Progress).w
+		btst	#State_BaseGame_Frantic, GlobalProgress
 		rts
 ; ---------------------------------------------------------------------------
 
 Check_BlackoutBeaten:
-		btst	#State_Blackout,(Progress).w
+		btst	#State_Blackout, GlobalProgress
 		rts
 
 Check_BlackoutUnlocked:
@@ -871,12 +876,12 @@ Check_BlackoutFirst:
 ; ---------------------------------------------------------------------------
 
 Check_TutorialVisited:
-		btst	#State_TutorialVisited,(Progress).w
+		btst	#State_TutorialVisited, SlotProgress
 		rts
 ; ---------------------------------------------------------------------------
 
 Check_HubEasterVisited:
-		btst	#State_HubEasterVisited,(Progress).w
+		btst	#State_HubEasterVisited, SlotProgress
 		rts
 ; ---------------------------------------------------------------------------
 
@@ -913,7 +918,7 @@ Check_UnterhubBeaten:
 ; ---------------------------------------------------------------------------
 
 ; cheat called from Selbi Screen
-UnlockEverything:
+UnlockEverything: _unimplemented	; TODO: Implement properly
 		move.b	#Doors_All,d0			; unlock all doors...
 		move.b	d0,(Doors_Casual).w		; ...in casual...
 		move.b	d0,(Doors_Frantic).w		; ...and frantic
@@ -923,19 +928,19 @@ UnlockEverything:
 		bsr	Set_TutorialVisited		; set tutorial visited
 		bsr	Set_HubEasterVisited		; set Uberhub easter egg as visited
 		move.b	#8,(CurrentChapter).w		; set to final chapter
-		jmp	SRAM_SaveNow			; overwrite SRAM
+		jmp	SRAM_SaveSelectedSlotId		; overwrite SRAM
 
 ; cheats called from options screen
 Toggle_BaseGameBeaten_Casual:
-		bchg	#State_BaseGame_Casual,(Progress).w	; to unlock cinematic mode
+		bchg	#State_BaseGame_Casual, GlobalProgress	; to unlock cinematic mode
 		rts
 
 Toggle_BaseGameBeaten_Frantic:
-		bchg	#State_BaseGame_Frantic,(Progress).w	; to unlock motion blur
+		bchg	#State_BaseGame_Frantic, GlobalProgress	; to unlock motion blur
 		rts
 
 Toggle_BlackoutBeaten:
-		bchg	#State_Blackout,(Progress).w	; to unlock nonstop inhuman
+		bchg	#State_Blackout, GlobalProgress	; to unlock nonstop inhuman
 		rts
 
 
@@ -970,29 +975,32 @@ Set_BaseGameDone:
 		rts
 
 Set_BaseGameDone_Frantic:
-		bset	#State_BaseGame_Frantic,(Progress).w	; you have beaten the base game in frantic, congrats
+		bset	#State_BaseGame_Frantic, SlotProgress	; you have beaten the base game in frantic, congrats
+		bset	#State_BaseGame_Frantic, GlobalProgress	; ''
 		; also set in casual
 
 Set_BaseGameDone_Casual:
-		bset	#State_BaseGame_Casual,(Progress).w	; you have beaten the base game in casual, congrats
+		bset	#State_BaseGame_Casual, SlotProgress	; you have beaten the base game in casual, congrats
+		bset	#State_BaseGame_Casual, GlobalProgress	; ''
 		rts
 ; ---------------------------------------------------------------------------
 
 Set_BlackoutDone:
-		bset	#State_Blackout,(Progress).w	; you have beaten the blackout challenge, mad respect
+		bset	#State_Blackout, SlotProgress	; you have beaten the blackout challenge, mad respect
+		bset	#State_Blackout, GlobalProgress	; ''
 		rts
 ; ---------------------------------------------------------------------------
 
 Set_TutorialVisited:
-		bset	#State_TutorialVisited,(Progress).w
+		bset	#State_TutorialVisited, SlotProgress
 		rts
 Unset_TutorialVisited:
-		bclr	#State_TutorialVisited,(Progress).w
+		bclr	#State_TutorialVisited, SlotProgress
 		rts
 ; ---------------------------------------------------------------------------
 
 Set_HubEasterVisited:
-		bset	#State_HubEasterVisited,(Progress).w
+		bset	#State_HubEasterVisited, SlotProgress
 		rts
 
 ; ---------------------------------------------------------------------------

@@ -288,11 +288,7 @@ GameClrRAM:	move.l	d7,(a6)+
 
 		bsr	VDPSetupGame
 		bsr	JoypadInit
-		if def(__MD_REPLAY__)=0
-			bsr.w	SRAM_Load
-		else
-			bsr.w	ResetGameProgress
-		endif
+		bsr.w	SRAMCache_Init
 
 		move.b	($A10001).l,d0
 		andi.b	#$C0,d0
@@ -579,7 +575,7 @@ BlackBars_Ending:
 ; Main Game Loop, everything before this is only done on startup.
 ; ---------------------------------------------------------------------------
 
-MainGameLoop: jsr SaveSelectScreen
+MainGameLoop:
 		assert.w VBlankSubW, eq, #VBlank	; always default to standard VBlank
 		moveq	#$3C,d0
 		and.b	(GameMode).w,d0			; get current game mode

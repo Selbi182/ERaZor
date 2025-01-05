@@ -90,7 +90,6 @@ BlackBarsConfigScreen:
 	move.w	#$CCC,($FFFFFB8E).w
 	
 	move.w	#$000,($FFFFFBC0).w	; BG color
-	
 
 	VBlank_UnsetMusicOnly
 	display_enable
@@ -107,7 +106,6 @@ BlackBarsConfigScreen_MainLoop:
 	move.b	#4, VBlankRoutine
 	jsr	DelayProgram
 
-	jsr	RandomNumber			; better RNG please
 	jsr	BlackBarsConfigScreen_MoveCamera
 	DeleteQueue_Init
 	jsr	ObjectsLoad

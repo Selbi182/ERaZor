@@ -226,6 +226,9 @@ STS_FadeOutScreen:
 		bsr	StoryScreen_CenterText	; center text one last time
 		move.b	#16,(STS_FinalPhase).w	; set fadeout time (using a RAM address we don't need at this point anymore) 
 		
+		move.b	#1,($FFFFFFE9).w	; set flag that fade-out is in progress
+	;	move.w	#$8C81|$00,VDP_Ctrl		; disable shadow/highlight mode (SH mode)
+
 		cmpi.b	#8,(StoryTextID).w	; is this the ending sequence?
 		beq.s	@finalfadeout		; if yes, don't fade out music
 		move.w	#$E0,d0

@@ -326,11 +326,13 @@ Options_IntialDraw:
 ; ===========================================================================
 
 Options_RedrawHeader:
+		moveq	#-1,d1					; don't do anything with the < stuff
 		lea	Options_DrawText_Normal(pc), a4
 		lea	@ItemData_Header_Plain(pc), a0
 
 		tst.b	Options_HasAHint
 		beq.s	@draw
+		moveq	#-1,d1					; don't do anything with the < stuff
 		lea	Options_DrawText_Highlighted(pc), a4
 		lea	@ItemData_Header_AHint(pc), a0
 @draw:
@@ -513,9 +515,11 @@ Options_RedrawAllMenuItems:
 Options_RedrawMenuItem:
 		KDebug.WriteLine "Options_RedrawMenuItem(): id=%<.w d0 dec>"
 
+		moveq	#0,d1					; don't render >
 		lea	Options_DrawText_Normal(pc), a4		; use normal drawer
 		cmp.w	($FFFFFF82).w, d0			; is current item selected?
 		bne.s	@0					; if not, branch
+		moveq	#1,d1					; render >
 		lea	Options_DrawText_Highlighted(pc), a4	; use highlighted drawer
 	@0:	Options_GetMenuItem d0, a0			; a0 = item pointer
 
@@ -544,6 +548,7 @@ Options_HandleMenuItem:
 
 Options_DrawText_Highlighted:
 		move.w	#$4000, d6				; use palette line 3
+
 		bra.s	Options_DrawText2
 
 ; ---------------------------------------------------------------------------
@@ -554,8 +559,26 @@ Options_DrawText2:
 		clr.b	(a0)+					; finalize buffer
 
 		lea	Options_StringBuffer, a0
-		Options_AllocateInVRAMBufferPool a1, #Options_StringBufferSize*2
+		Options_AllocateInVRAMBufferPool a1, #Options_StringBufferSize*2+2*2
 		move.l	a1, -(sp)
+
+		; > cursor on selected option
+		tst.b	d1					; check state for the pre-part
+		bmi.s	@no					; if negative, don't do anything
+		beq.s	@off					; if zero, render two spaces
+@on:
+		moveq	#'>'*2,d7
+		move.w  Options_CharToTile-$20*2(pc, d7), d7
+		or.w	d6,d7					; apply palette
+		move.w	d7, (a1)+				; put '>' tile
+		bra.s	@1
+@off:
+		moveq	#' '*2,d7
+		move.w  Options_CharToTile-$20*2(pc, d7), (a1)+	; put ' ' tile
+	@1:
+		moveq	#' '*2,d7
+		move.w  Options_CharToTile-$20*2(pc, d7), (a1)+	; put ' ' tile
+@no:
 
 		KDebug.WriteLine "Options_DrawText(): str='%<.l a0 str>'"
 

@@ -9,9 +9,9 @@ Options_MenuData:
 	OpBaseY: = 6
  if def(__WIDESCREEN__)
 	OpBaseX: = 0
-	OpLength: = 30+10
+	OpLength: = 30+6
  else
- 	OpBaseX: = 5
+ 	OpBaseX: = 3
 	OpLength: = 30
  endif
 
@@ -94,7 +94,7 @@ Options_MenuData_NumItems:	equ	(Options_MenuData_End-Options_MenuData)/10
 ; "GAMEPLAY STYLE" redraw function
 ; ---------------------------------------------------------------------------
 ; INPUT:
-;	a4	= `Options_DrawText_Normal` or `Options_DrawText_Highlighted`
+;	a4	= `Options_DrawMenuItem_Normal` or `Options_DrawMenuItem_Highlighted`
 ; ---------------------------------------------------------------------------
 
 Options_GameplayStyle_Redraw:
@@ -106,7 +106,7 @@ Options_GameplayStyle_Redraw:
 @0:
 
  if def(__WIDESCREEN__)
-	Options_PipeString a4, "DIFFICULTY                       %<.l a1 str>", OpLength
+	Options_PipeString a4, "DIFFICULTY                   %<.l a1 str>", OpLength
  else
 	Options_PipeString a4, "DIFFICULTY             %<.l a1 str>", OpLength
  endif
@@ -149,7 +149,7 @@ Options_GameplayStyle_Handle:
 ; "EXTENDED CAMERA" redraw function
 ; ---------------------------------------------------------------------------
 ; INPUT:
-;	a4	= `Options_DrawText_Normal` or `Options_DrawText_Highlighted`
+;	a4	= `Options_DrawMenuItem_Normal` or `Options_DrawMenuItem_Highlighted`
 ; ---------------------------------------------------------------------------
 
 Options_ExtendedCamera_Redraw:
@@ -160,7 +160,7 @@ Options_ExtendedCamera_Redraw:
 @0:
 
  if def(__WIDESCREEN__)
-	Options_PipeString a4, "EXTENDED WIDESCREEN CAMERA           %<.l a1 str>", OpLength
+	Options_PipeString a4, "EXTENDED WIDESCREEN CAMERA       %<.l a1 str>", OpLength
  else
 	Options_PipeString a4, "EXTENDED CAMERA            %<.l a1 str>", OpLength
  endif
@@ -193,7 +193,7 @@ Options_ExtendedCamera_Handle:
 ; "PALETTE STYLE" redraw function
 ; ---------------------------------------------------------------------------
 ; INPUT:
-;	a4	= `Options_DrawText_Normal` or `Options_DrawText_Highlighted`
+;	a4	= `Options_DrawMenuItem_Normal` or `Options_DrawMenuItem_Highlighted`
 ; ---------------------------------------------------------------------------
 
 Options_PaletteStyle_Redraw:
@@ -204,7 +204,7 @@ Options_PaletteStyle_Redraw:
 @0:
 
  if def(__WIDESCREEN__)
-	Options_PipeString a4, "PALETTE STYLE                 %<.l a1 str>", OpLength
+	Options_PipeString a4, "PALETTE STYLE             %<.l a1 str>", OpLength
  else
 	Options_PipeString a4, "PALETTE STYLE       %<.l a1 str>", OpLength
  endif
@@ -245,7 +245,7 @@ Options_PaletteStyle_Handle:
 ; "ALTERNATE HUD" redraw function
 ; ---------------------------------------------------------------------------
 ; INPUT:
-;	a4	= `Options_DrawText_Normal` or `Options_DrawText_Highlighted`
+;	a4	= `Options_DrawMenuItem_Normal` or `Options_DrawMenuItem_Highlighted`
 ; ---------------------------------------------------------------------------
 
 Options_AlternateHUD_Redraw:
@@ -267,7 +267,7 @@ Options_AlternateHUD_Redraw:
 	movea.l	@AltHUDList(pc,d0), a1
 
  if def(__WIDESCREEN__)
-	Options_PipeString a4, "ALTERNATE HUD            %<.l a1 str>", OpLength
+	Options_PipeString a4, "ALTERNATE HUD        %<.l a1 str>", OpLength
  else
 	Options_PipeString a4, "ALTERNATE HUD  %<.l a1 str>", OpLength
  endif
@@ -358,7 +358,7 @@ Options_AlternateHUD_Handle:
 ; "AUTOSKIP" redraw function
 ; ---------------------------------------------------------------------------
 ; INPUT:
-;	a4	= `Options_DrawText_Normal` or `Options_DrawText_Highlighted`
+;	a4	= `Options_DrawMenuItem_Normal` or `Options_DrawMenuItem_Highlighted`
 ; ---------------------------------------------------------------------------
 
 Options_Autoskip_Redraw:
@@ -369,7 +369,7 @@ Options_Autoskip_Redraw:
 @0:
 
  if def(__WIDESCREEN__)
-	Options_PipeString a4, "ARCADE MODE                          %<.l a1 str>", OpLength
+	Options_PipeString a4, "ARCADE MODE                      %<.l a1 str>", OpLength
  else
 	Options_PipeString a4, "ARCADE MODE                %<.l a1 str>", OpLength
  endif
@@ -402,7 +402,7 @@ Options_Autoskip_Handle:
 ; "PHOTOSENSITIVE MODE" redraw function
 ; ---------------------------------------------------------------------------
 ; INPUT:
-;	a4	= `Options_DrawText_Normal` or `Options_DrawText_Highlighted`
+;	a4	= `Options_DrawMenuItem_Normal` or `Options_DrawMenuItem_Highlighted`
 ; ---------------------------------------------------------------------------
 
 Options_FlashyLights_Redraw:
@@ -420,7 +420,7 @@ Options_FlashyLights_Redraw:
 	movea.l	@FlashyLightsList(pc,d0), a1
 
  if def(__WIDESCREEN__)
-	Options_PipeString a4, "FLASHING LIGHTS           %<.l a1 str>", OpLength
+	Options_PipeString a4, "FLASHING LIGHTS       %<.l a1 str>", OpLength
  else
 	Options_PipeString a4, "FLASHY LIGHTS   %<.l a1 str>", OpLength
  endif
@@ -485,7 +485,7 @@ Options_FlashyLights_Handle:
 ; "CAMERA SHAKING" redraw function
 ; ---------------------------------------------------------------------------
 ; INPUT:
-;	a4	= `Options_DrawText_Normal` or `Options_DrawText_Highlighted`
+;	a4	= `Options_DrawMenuItem_Normal` or `Options_DrawMenuItem_Highlighted`
 ; ---------------------------------------------------------------------------
 
 Options_CameraShake_Redraw:
@@ -503,7 +503,7 @@ Options_CameraShake_Redraw:
 	movea.l	@CameraShakeList(pc,d0), a1
 
  if def(__WIDESCREEN__)
-	Options_PipeString a4, "CAMERA SHAKING            %<.l a1 str>", OpLength
+	Options_PipeString a4, "CAMERA SHAKING        %<.l a1 str>", OpLength
  else
 	Options_PipeString a4, "CAMERA SHAKE    %<.l a1 str>", OpLength
  endif
@@ -571,7 +571,7 @@ Options_CameraShake_Handle:
 ; "AUDIO" redraw function
 ; ---------------------------------------------------------------------------
 ; INPUT:
-;	a4	= `Options_DrawText_Normal` or `Options_DrawText_Highlighted`
+;	a4	= `Options_DrawMenuItem_Normal` or `Options_DrawMenuItem_Highlighted`
 ; ---------------------------------------------------------------------------
 
 Options_Audio_Redraw:
@@ -589,7 +589,7 @@ Options_Audio_Redraw:
 	movea.l	@AudioList(pc,d0), a1
 
  if def(__WIDESCREEN__)
-	Options_PipeString a4, "AUDIO MODE                 %<.l a1 str>", OpLength
+	Options_PipeString a4, "AUDIO MODE             %<.l a1 str>", OpLength
  else
 	Options_PipeString a4, "AUDIO MODE       %<.l a1 str>", OpLength
  endif
@@ -662,7 +662,7 @@ Options_Audio_Handle:
 ; "CINEMATIC EFFECTS" redraw function
 ; ---------------------------------------------------------------------------
 ; INPUT:
-;	a4	= `Options_DrawText_Normal` or `Options_DrawText_Highlighted`
+;	a4	= `Options_DrawMenuItem_Normal` or `Options_DrawMenuItem_Highlighted`
 ; ---------------------------------------------------------------------------
 
 Options_CinematicEffects_Redraw:	
@@ -689,7 +689,7 @@ Options_CinematicEffects_Redraw:
 	lea	@Str_Cinematic_Normal(pc), a0
 @4:
  if def(__WIDESCREEN__)
-	Options_PipeString a4, "%<.l a0 str>           %<.l a1 str>", OpLength
+	Options_PipeString a4, "%<.l a0 str>       %<.l a1 str>", OpLength
  else
 	Options_PipeString a4, "%<.l a0 str> %<.l a1 str>", OpLength
  endif
@@ -822,7 +822,7 @@ Options_ErazorPowers_Redraw:
 @2:
 
  if def(__WIDESCREEN__)
-	Options_PipeString a4, "%<.l a0 str>             %<.l a1 str>", OpLength
+	Options_PipeString a4, "%<.l a0 str>         %<.l a1 str>", OpLength
  else
 	Options_PipeString a4, "%<.l a0 str>   %<.l a1 str>", OpLength
  endif
@@ -917,7 +917,7 @@ Options_ErazorPowers_Handle:
 ; "TRUE-BS MODE" redraw function
 ; ---------------------------------------------------------------------------
 ; INPUT:
-;	a4	= `Options_DrawText_Normal` or `Options_DrawText_Highlighted`
+;	a4	= `Options_DrawMenuItem_Normal` or `Options_DrawMenuItem_Highlighted`
 ; ---------------------------------------------------------------------------
 
 Options_TrueBSMode_Redraw:
@@ -937,7 +937,7 @@ Options_TrueBSMode_Redraw:
 @1:
 
  if def(__WIDESCREEN__)
-	Options_PipeString a4, "%<.l a0 str>                     %<.l a1 str>", OpLength
+	Options_PipeString a4, "%<.l a0 str>                 %<.l a1 str>", OpLength
  else
 	Options_PipeString a4, "%<.l a0 str>           %<.l a1 str>", OpLength
  endif
@@ -1004,7 +1004,7 @@ Options_TrueBSMode_Handle:
 ; "DELETE SAVE GAME" redraw function
 ; ---------------------------------------------------------------------------
 ; INPUT:
-;	a4	= `Options_DrawText_Normal` or `Options_DrawText_Highlighted`
+;	a4	= `Options_DrawMenuItem_Normal` or `Options_DrawMenuItem_Highlighted`
 ; ---------------------------------------------------------------------------
 
 Options_DeleteSaveGame_Redraw:
@@ -1012,7 +1012,7 @@ Options_DeleteSaveGame_Redraw:
 	move.b	Options_DeleteSRAMCounter, d0
 	lea	@Str_DeleteSRAMCountDown(pc,d0), a1
  if def(__WIDESCREEN__)
-	Options_PipeString a4, "DELETE ALL DATA                 %<.l a1 str>", OpLength
+	Options_PipeString a4, "DELETE ALL DATA             %<.l a1 str>", OpLength
  else
 	Options_PipeString a4, "DELETE ALL DATA       %<.l a1 str>", OpLength
  endif
@@ -1074,7 +1074,7 @@ Options_DeleteSaveGame_Handle:
 ; "DELETE SAVE GAME" redraw function
 ; ---------------------------------------------------------------------------
 ; INPUT:
-;	a4	= `Options_DrawText_Normal` or `Options_DrawText_Highlighted`
+;	a4	= `Options_DrawMenuItem_Normal` or `Options_DrawMenuItem_Highlighted`
 ; ---------------------------------------------------------------------------
 
 Options_ResetOptions_Redraw:
@@ -1082,7 +1082,7 @@ Options_ResetOptions_Redraw:
 	move.b	Options_DeleteSRAMCounter, d0
 	lea	@Str_DeleteSRAMCountDown(pc,d0), a1
  if def(__WIDESCREEN__)
-	Options_PipeString a4, "RESET OPTIONS                   %<.l a1 str>", OpLength
+	Options_PipeString a4, "RESET OPTIONS               %<.l a1 str>", OpLength
  else
 	Options_PipeString a4, "RESET OPTIONS         %<.l a1 str>", OpLength
  endif
@@ -1137,7 +1137,7 @@ Options_ResetOptions_Handle:
 ; "BLACK BARS MODE" redraw function
 ; ---------------------------------------------------------------------------
 ; INPUT:
-;	a4	= `Options_DrawText_Normal` or `Options_DrawText_Highlighted`
+;	a4	= `Options_DrawMenuItem_Normal` or `Options_DrawMenuItem_Highlighted`
 ; ---------------------------------------------------------------------------
 
 Options_BlackBarsMode_Redraw:
@@ -1148,7 +1148,7 @@ Options_BlackBarsMode_Redraw:
 @0:
 
  if def(__WIDESCREEN__)
-	Options_PipeString a4, "BLACK BARS SETUP                %<.l a1 str>", OpLength
+	Options_PipeString a4, "BLACK BARS SETUP            %<.l a1 str>", OpLength
  else
 	Options_PipeString a4, "BLACK BARS SETUP      %<.l a1 str>", OpLength
  endif
@@ -1193,7 +1193,7 @@ Options_BlackBarsMode_Handle:
 ; "EXIT OPTIONS" redraw function
 ; ---------------------------------------------------------------------------
 ; INPUT:
-;	a4	= `Options_DrawText_Normal` or `Options_DrawText_Highlighted`
+;	a4	= `Options_DrawMenuItem_Normal` or `Options_DrawMenuItem_Highlighted`
 ; ---------------------------------------------------------------------------
 
 Options_Exit_Redraw:
@@ -1201,7 +1201,7 @@ Options_Exit_Redraw:
 	bne.s	@firststart
 
  if def(__WIDESCREEN__)
-	Options_PipeString a4, "        SAVE + EXIT OPTIONS MENU        ", OpLength
+	Options_PipeString a4, "      SAVE + EXIT OPTIONS MENU        ", OpLength
 	rts
   	@firststart:
 	Options_PipeString a4, "               START GAME               ", OpLength

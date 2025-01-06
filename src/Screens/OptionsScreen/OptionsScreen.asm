@@ -334,16 +334,15 @@ Options_RedrawHeader:
 		beq.s	@draw
 		lea	Options_DrawText_Highlighted(pc), a4
 		lea	@ItemData_Header_AHint(pc), a0
-@draw:
-		bra	Options_RedrawMenuItem_Direct
+@draw:		bra	Options_RedrawMenuItem_Direct
 
 ; ---------------------------------------------------------------------------
 @ItemData_Header_Plain:
 		dcScreenPos $C000, 4, 1		; start on-screen position
-		dc.l	@DrawHeaderPlain		; redraw handler
+		dc.l	@DrawHeaderPlain	; redraw handler
 @ItemData_Header_AHint:
 		dcScreenPos $C000, 4, 1		; start on-screen position
-		dc.l	@DrawHeaderAHint		; redraw handler
+		dc.l	@DrawHeaderAHint	; redraw handler
 ; ---------------------------------------------------------------------------
 @DrawHeaderPlain:
 		Options_PipeString a4, '<------------------------------------>'
@@ -514,10 +513,10 @@ Options_RedrawAllMenuItems:
 Options_RedrawMenuItem:
 		KDebug.WriteLine "Options_RedrawMenuItem(): id=%<.w d0 dec>"
 
-		lea	Options_DrawText_Normal(pc), a4		; use normal drawer
+		lea	Options_DrawMenuItem_Normal(pc), a4	; use normal drawer
 		cmp.w	($FFFFFF82).w, d0			; is current item selected?
 		bne.s	@0					; if not, branch
-		lea	Options_DrawText_Highlighted(pc), a4	; use highlighted drawer
+		lea	Options_DrawMenuItem_Highlighted(pc), a4; use highlighted drawer
 	@0:	Options_GetMenuItem d0, a0			; a0 = item pointer
 
 Options_RedrawMenuItem_Direct:
@@ -552,12 +551,30 @@ Options_DrawText_Normal:
 		move.w	#$6000, d6				; use palette line 4
 
 Options_DrawText2:
+		Options_AllocateInVRAMBufferPool a1, #Options_StringBufferSize*2
+		move.l	a1, -(sp)
+		bra	Options_DrawText_Cont
+
+; ---------------------------------------------------------------------------
+Options_DrawMenuItem_Highlighted:
+		move.w	#$4000, d6				; use palette line 3
+		move.l	#(Options_VRAM+$E|$4000)<<16, d7	; use "> " cursor ('>' with palette line 3 + empty tile)
+		bra	Options_DrawMenuItem_Cont
+
+; ---------------------------------------------------------------------------
+Options_DrawMenuItem_Normal:
+		move.w	#$6000, d6				; use palette line 4
+		moveq	#0, d7					; use "  " cursor (2 empty tiles)
+
+Options_DrawMenuItem_Cont:
+		Options_AllocateInVRAMBufferPool a1, #Options_StringBufferSize*2+2*2	; +2 tiles for cursor
+		move.l	a1, -(sp)
+		move.l	d7, (a1)+				; draw cursor (2 tiles)
+
+Options_DrawText_Cont:
 		clr.b	(a0)+					; finalize buffer
 
 		lea	Options_StringBuffer, a0
-		Options_AllocateInVRAMBufferPool a1, #Options_StringBufferSize*2
-		move.l	a1, -(sp)
-
 		KDebug.WriteLine "Options_DrawText(): str='%<.l a0 str>'"
 
 		moveq	#0, d7

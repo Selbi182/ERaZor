@@ -27515,11 +27515,15 @@ Obj02_DE_No:
 Obj02_Transparent:
 		addq.b	#2,obRoutine(a0)		; set to "Obj02_TransDisplay"
 		move.l	#Map_Obj02_Trans,obMap(a0)	; load mappings
-		move.b	#0,obPriority(a0)		; set priority
+		move.b	#7,obPriority(a0)		; set priority
 		move.b	#0,obRender(a0)			; set render flag
 		move.w	#$6000|($3000/$20),obGfx(a0)	; set art, use fourth palette line
 
 Obj02_TransDisplay:
+		tst.b	($FFFFFFE9).w
+		beq.s	@0
+		rts
+@0:
 		jmp	DisplaySprite			; jump to DisplaySprite
 
 
@@ -45405,7 +45409,12 @@ AddPoints_Timer:
 		btst	#6,(OptionsBits2).w	; is speedrun timer enabled?
 		beq.s	locret_1C6B6		; if not, nothing to do
 		moveq	#10,d0			; add 100 points to simulate a second
-		bra.s	AddPoints_Force		; apply score
+		frantic				; are we in frantic mode?
+		beq.s	AddPoints_Force		; if not, branch
+
+		btst	#0,-1(a0)
+		beq.s	AddPoints_Force		; apply score
+		rts
 ; End of function AddPoints
 
 ; ---------------------------------------------------------------------------

@@ -613,6 +613,13 @@ Deleted_Mode:
 		else
 			jmp	ReturnToUberhub		; we somehow ended up in a deleted game mode, immediately go back to Uberhub
 		endif
+
+; ---------------------------------------------------------------------------
+Debugger_RestoreLastGameMode:
+		movea.l	0, sp
+		bsr	VDPSetupGame		; restore Sonic 1 VDP settings
+		jmp	MainGameLoop
+
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
 

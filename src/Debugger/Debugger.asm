@@ -28,7 +28,7 @@ DEBUGGER__SHOW_SR_USP:					equ		0		; 0 = OFF (default), 1 = ON
 ; Use 0 to disable button, use debugger's entry point otherwise.
 DEBUGGER__EXTENSIONS__BTN_A_DEBUGGER:	equ		MDDBG__Debugger_AddressRegisters	; display address register symbols
 DEBUGGER__EXTENSIONS__BTN_B_DEBUGGER:	equ		MDDBG__Debugger_Backtrace			; display exception backtrace
-DEBUGGER__EXTENSIONS__BTN_C_DEBUGGER:	equ		0		; disabled
+DEBUGGER__EXTENSIONS__BTN_C_DEBUGGER:	equ		Debugger_RestoreLastGameMode		; disabled
 
 ; Selects between 24-bit (compact) and 32-bit (full) offset format.
 ; This affects offset format next to the symbols in the exception screen header.

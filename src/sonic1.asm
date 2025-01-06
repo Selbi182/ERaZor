@@ -65,7 +65,7 @@ DebugSurviveNoRings = 1
 DebugHudPermanent = 0
 ; ------------------------------------------------------
 DoorsAlwaysOpen = 0
-LowBossHP = 0
+LowBossHP = 1
 ; ======================================================
 	else
 ; BENCHMARK build settings (DO NOT CHANGE!)
@@ -483,6 +483,7 @@ BlackBars.GHP:
 		move.w	BlackBars.BaseHeight,d0		; get current base black bars height
 		cmp.w	BlackBars.Height,d0		; are bars smaller than the base height?
 		bgt.s	@timeleft			; if not, branch
+		andi.w	#$FFFE,BlackBars.TargetHeight	; make even
 		subq.w	#BlackBars.GrowSize,BlackBars.TargetHeight ; grow bars until we reach the minimum height
 		bpl.s	@timeleft			; if still positive, branch
 		move.w	#0,BlackBars.TargetHeight	; make sure we don't underflow
@@ -1717,6 +1718,7 @@ loc_1E5C:
 		bsr.s	Pal_FadeOut
 		dbf	d4,loc_1E5C
 
+		move.w	#$8C81|$00,VDP_Ctrl			; disable shadow/highlight mode (SH mode)
 		move.b	#0,($FFFFFFE9).w	; unset flag that fade-out is in progress
 		rts	
 ; ===========================================================================
@@ -5529,6 +5531,7 @@ Blackout_RotationSpeed2 = $1C0
 BlackoutChallenge:
 	;	cmpi.b	#2,($FFFFFE57).w	; are we in part 2?
 	;	beq.w	@blackoutcontrols	; if yes, no longer apply palette
+
 		tst.b	WhiteFlashCounter		; is white flash counter empty?
 		bne.w	@blackoutcontrols	; if yes, branch
 
@@ -5659,6 +5662,10 @@ PalCycle_SS:				; XREF: loc_DA6; SpecialStage
 		moveq	#0,d0
 		move.b	(a0)+,d0
 		bmi.s	loc_49E8
+
+		tst.b	WhiteFlashCounter	; is white flash counter empty?
+		bne.s	locret_49E6		; if not, don't affect palette
+
 		lea	(SSAB_PaletteBG).l,a1
 		adda.w	d0,a1
 		lea	($FFFFFB4E).w,a2
@@ -5683,10 +5690,13 @@ loc_49F4:
 		andi.w	#$7F,d0
 		bclr	#0,d0
 		beq.s	loc_4A18
+		tst.b	WhiteFlashCounter	; is white flash counter empty?
+		bne.s	loc_4A18		; if not, don't affect palette
 		lea	($FFFFFB6E).w,a2
 		move.l	(a1),(a2)+
 		move.l	obMap(a1),(a2)+
 		move.l	obX(a1),(a2)+
+
 
 loc_4A18:
 		adda.w	#$C,a1
@@ -5701,8 +5711,12 @@ loc_4A2E:
 		add.w	d0,d0
 		add.w	d1,d0
 		adda.w	d0,a1
+		tst.b	WhiteFlashCounter	; is white flash counter empty?
+		bne.s	@end			; if not, don't affect palette
 		move.l	(a1)+,(a2)+
 		move.w	(a1)+,(a2)+
+
+@end:
 		rts	
 ; End of function PalCycle_SS
 
@@ -8905,7 +8919,7 @@ Obj15_DelLoop:
 		lsl.w	#6,d0
 		addi.l	#$FFD000,d0
 		movea.l	d0,a1
-		bsr	DeleteObject2
+		jsr	DeleteObject2
 		dbf	d2,Obj15_DelLoop ; repeat for length of	chain
 		rts	
 ; ===========================================================================
@@ -12066,7 +12080,7 @@ Obj1F_BossDelete:
 
 		; part two of the transition is (cruedly) done in Obj34 itself
 		lea	($FFFFD000).w,a1
-		move.w	#$12E8,obX(a1)		; adjusted to land exactly on the ring monitor if you hold right
+		move.w	#$1318,obX(a1)		; adjusted to land exactly on the ring monitor if you hold right
 		move.w	#$0060,obY(a1)
 		move.w	#-$C80,obVelX(a1)	; weeeeeee
 		move.w	#0,obVelY(a1)
@@ -15083,7 +15097,12 @@ Obj2B_NotInhumanCrush:
 		and.w	#7,d0
 		bne.s	@end
 
+		cmpi.b	#2,($FFFFFFAA).w	; has flag after Crabmeat boss been set?
+		bne.s	@nottransition		; if not, branch
+		cmpi.b	#$34,($FFFFD080).w	; have title cards already been deleted?
+		beq.s	@end			; if yes, branch
 
+@nottransition:
 		move.w	($FFFFD00C).w,d0
 		sub.w	obY(a0),d0
 		bpl.s	@0
@@ -22384,7 +22403,7 @@ Obj52_02_Wait:
 Obj52_Type03:				; XREF: Obj52_TypeIndex
 		moveq	#0,d3
 		move.b	obActWid(a0),d3
-		bsr	ObjHitWallRight
+		jsr	ObjHitWallRight
 		tst.w	d1		; has the platform hit a wall?
 		bmi.s	Obj52_03_End	; if yes, branch
 		addq.w	#1,obX(a0)	; move platform	to the right
@@ -22400,7 +22419,7 @@ Obj52_03_End:
 Obj52_Type05:				; XREF: Obj52_TypeIndex
 		moveq	#0,d3
 		move.b	obActWid(a0),d3
-		bsr	ObjHitWallRight
+		jsr	ObjHitWallRight
 		tst.w	d1		; has the platform hit a wall?
 		bmi.s	Obj52_05_End	; if yes, branch
 		addq.w	#1,obX(a0)	; move platform	to the right
@@ -27406,14 +27425,17 @@ UMadBro_YEnd	= $158
 ; --------------------------------------------------------------------------
 
 Obj02:
-		moveq	#0,d0			; clear d0
-		move.b	obRoutine(a0),d0	; move routine counter to d0
-		move.w	Obj02_Index(pc,d0.w),d1 ; move the index to d1
-		jmp	Obj02_Index(pc,d1.w)	; find out the current position in the index
+		moveq	#0,d0				; clear d0
+		move.b	obRoutine(a0),d0		; move routine counter to d0
+		move.w	Obj02_Index(pc,d0.w),d1 	; move the index to d1
+		jmp	Obj02_Index(pc,d1.w)		; find out the current position in the index
 ; ===========================================================================
-Obj02_Index:	dc.w Obj02_Setup-Obj02_Index	; Set up the object (art etc.)	[$0]
-		dc.w Obj02_Display-Obj02_Index	; Display Sprite		[$2]
-		dc.w Obj02_DisplayE-Obj02_Index	; Display End Sprite		[$4]
+Obj02_Index:	dc.w Obj02_Setup-Obj02_Index		; Set up the object (art etc.)	[$0]
+		dc.w Obj02_Display-Obj02_Index		; Display Sprite		[$2]
+		dc.w Obj02_DisplayEnding-Obj02_Index	; Display End Sprite		[$4]
+; --------------------------------------------------------------------------
+		dc.w Obj02_Transparent-Obj02_Index	; Set up transparent sprite	[$6]
+		dc.w Obj02_TransDisplay-Obj02_Index	; Display transparent sprite	[$8]
 ; ===========================================================================
 
 Obj02_Setup:
@@ -27429,8 +27451,8 @@ Obj02_Setup:
 		move.l	#Map_Obj02_End,obMap(a0)	; load mappings
 		move.w	#UMadBro_X,obX(a0)		; set X-position
 		move.w	#UMadBro_YStart,obScreenY(a0)	; set Y-position
-		addq.b	#2,obRoutine(a0)		; set to "Obj02_DisplayE"
-		bra.w	Obj02_DisplayE
+		addq.b	#2,obRoutine(a0)		; set to "Obj02_DisplayEnding"
+		bra.w	Obj02_DisplayEnding
 
 Obj02_NotEnding:
 		cmpi.b	#$20,(GameMode).w		; is screen mode story screen?
@@ -27479,7 +27501,7 @@ Obj02_Display:
 		jmp	DisplaySprite			; jump to DisplaySprite
 ; ===========================================================================
 
-Obj02_DisplayE:
+Obj02_DisplayEnding:
 		cmpi.b	#6,($FFFFD024).w		; is Sonic dying?
 		blt.s	Obj02_DE_No			; if not, branch
 		cmpi.w	#UMadBro_YEnd,obScreenY(a0)	; has target location been reached?
@@ -27490,6 +27512,19 @@ Obj02_DE_No:
 		jmp	DisplaySprite			; jump to DisplaySprite
 ; ===========================================================================
 
+Obj02_Transparent:
+		addq.b	#2,obRoutine(a0)		; set to "Obj02_TransDisplay"
+		move.l	#Map_Obj02_Trans,obMap(a0)	; load mappings
+		move.b	#0,obPriority(a0)		; set priority
+		move.b	#0,obRender(a0)			; set render flag
+		move.w	#$6000|($3000/$20),obGfx(a0)	; set art, use fourth palette line
+
+Obj02_TransDisplay:
+		jmp	DisplaySprite			; jump to DisplaySprite
+
+
+; ===========================================================================
+
 ; ---------------------------------------------------------------------------
 ; Sprite mappings - ERaZor Banner
 ; ---------------------------------------------------------------------------
@@ -27497,6 +27532,30 @@ Map_Obj02:
 		include	"_maps\ERaZor.asm"
 Map_Obj02_End:
 		include	"_maps\UMadBro.asm"
+
+Map_Obj02_Trans:
+		dc.w	@0-Map_Obj02_Trans
+
+@x: = -(32*4)
+@y: = -32
+@incr: = 32
+
+@0:		dc.b	4*5
+
+		@j: = 0
+		rept	4
+			@i: = 0
+			rept	5
+				dc.b	@y+(@j*@incr)
+				dc.b	$0F
+				dc.w	$0000
+				dc.b	@x+(@i*@incr)
+				@i: = @i + 1
+			endr
+			@j: = @j + 1
+		endr
+		even
+
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
 
@@ -28155,11 +28214,12 @@ Obj07_Animate:
 		andi.w	#$FF80,d1
 		sub.w	d1,d0
 		cmpi.w	#$280,d0
-		bhi.w	DeleteObject
+		bhi.s	@del
 		tst.w	($FFFFFE02).w		; is level set to restart?
 		beq.w	@0			; if not, branch
 		tst.b	($FFFFF600).w		; are we in level pre sequence?
-		bmi.w	DeleteObject		; if yes, delete
+		bpl.s	@0			; if not, branch
+@del:		jmp	DeleteObject		; if yes, delete
 @0:
 		bsr	Obj07_CheckVisible
 		bne.s	@dodisplay

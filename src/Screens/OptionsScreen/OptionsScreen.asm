@@ -90,6 +90,8 @@ OptionsScreen:				; XREF: GameModeArray
 		move.w	#$9200, (a6)
 		move.w	#$8B07, (a6)
 		move.w	#$8720, (a6)
+		move.w	#$8C81|$08,(a6)	; enable shadow/highlight mode (SH mode)
+
 		clr.b	($FFFFF64E).w
 		jsr	ClearScreen
 		move.w	#0,BlackBars.Height
@@ -124,6 +126,34 @@ OptionsScreen:				; XREF: GameModeArray
 		move.w	#$80+SCREEN_WIDTH/2-2,obX(a0)	; set X-position
 		move.w	#$82,obScreenY(a0)		; set Y-position
 		bset	#7,obGfx(a0)		; make object high plane
+
+
+		; transparent sprites squeezed in between plane A and B to properly display the text in SH mode
+		lea	($FFFFD140).w,a0
+		move.b	#2,(a0)
+		move.b	#6,obRoutine(a0)
+		move.w	#$80+SCREEN_WIDTH/2-32,obX(a0)
+		move.w	#$B0,obScreenY(a0)
+
+		adda.w	#$40,a0
+		move.b	#2,(a0)
+		move.b	#6,obRoutine(a0)
+		move.w	#$80+SCREEN_WIDTH/2+(32*5)-32,obX(a0)
+		move.w	#$B0,obScreenY(a0)
+
+		adda.w	#$40,a0
+		move.b	#2,(a0)
+		move.b	#6,obRoutine(a0)
+		move.w	#$80+SCREEN_WIDTH/2-32,obX(a0)
+		move.w	#$B0+(32*4),obScreenY(a0)
+
+		adda.w	#$40,a0
+		move.b	#2,(a0)
+		move.b	#6,obRoutine(a0)
+		move.w	#$80+SCREEN_WIDTH/2+(32*5)-32,obX(a0)
+		move.w	#$B0+(32*4),obScreenY(a0)
+
+
 		DeleteQueue_Init
 		jsr	ObjectsLoad
 		jsr	BuildSprites
@@ -152,6 +182,19 @@ OptionsScreen:				; XREF: GameModeArray
 		move.w 	#$EC,($FFFFD000+obScreenY).w
 
 @cont:
+		vram	$3000
+		lea	VDP_Data,a6
+		moveq	#-1,d0
+		move.w	#$10-1,d1
+@transparent:
+		rept	8*2
+		move.w	d0,(a6)
+		endr
+		dbf	d1,@transparent
+
+		move.w	#0,BlackBars.Height	; make sure black bars are fully gone
+		
+
 		jsr	BackgroundEffects_Setup
 		move.w	#$806,(BGThemeColor).w	; set theme color for background effects
 
@@ -198,7 +241,7 @@ OptionsScreen_MainLoop:
 		bsr	Options_SelectedLinePalCycle
 		jsr	WhiteFlash_Restore
 
-		move.w	#0,($FFFFF618).w
+		move.w	#0,($FFFFF616).w
 		moveq	#0,d0			; no shake
 		tst.b	(CameraShake).w		; is camera shake currently active?
 		beq.s	@nocamshake		; if not, branch
@@ -212,7 +255,7 @@ OptionsScreen_MainLoop:
 		beq.s	@1			; if not, branch
 		add.w	d1,d1
 	@1:
-		add.w	d1,($FFFFF618).w	; set to VSRAM
+		add.w	d1,($FFFFF616).w	; set to VSRAM
 @nocamshake:
 
 		cmp.b	#$24, GameMode				; are we still running Options gamemode?
@@ -296,10 +339,10 @@ Options_RedrawHeader:
 
 ; ---------------------------------------------------------------------------
 @ItemData_Header_Plain:
-		dcScreenPos $E000, 4, 1		; start on-screen position
+		dcScreenPos $C000, 4, 1		; start on-screen position
 		dc.l	@DrawHeaderPlain		; redraw handler
 @ItemData_Header_AHint:
-		dcScreenPos $E000, 4, 1		; start on-screen position
+		dcScreenPos $C000, 4, 1		; start on-screen position
 		dc.l	@DrawHeaderAHint		; redraw handler
 ; ---------------------------------------------------------------------------
 @DrawHeaderPlain:

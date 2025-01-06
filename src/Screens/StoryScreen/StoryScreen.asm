@@ -16,22 +16,22 @@ STS_FinalPhase:		rs.b 1
 ; general values
 STS_BaseRow = 7
 STS_BaseCol = 6
-STS_VRAMBase = $60000003|($800000*STS_BaseRow)|($20000*STS_BaseCol)
+STS_VRAMBase = $40000003|($800000*STS_BaseRow)|($20000*STS_BaseCol)
 STS_VRAMSettings = $8000|$6000|($D000/$20)
 
 ; "Press Start..." text
 STS_PressStartButton_Row = STS_BaseRow + STS_LinesTotal - 2
-STS_PressStart_VRAMBase = $60000003|($800000*STS_PressStartButton_Row)|($20000*STS_BaseCol)
+STS_PressStart_VRAMBase = $40000003|($800000*STS_PressStartButton_Row)|($20000*STS_BaseCol)
 STS_PressStart_VRAMSettings = $8000|$4000|($D000/$20)
 
 ; lines at top and bottom
 STS_DrawnLine_Extra	= 4
 	if def(__WIDESCREEN__)
 STS_DrawnLine_Length	= 8+STS_LineLength+STS_DrawnLine_Extra-1
-STS_VRAMBase_Line 	= $60000003
+STS_VRAMBase_Line 	= $40000003
 	else
 STS_DrawnLine_Length	= STS_LineLength+STS_DrawnLine_Extra-1
-STS_VRAMBase_Line 	= $60000003|($20000*(STS_BaseCol-(STS_DrawnLine_Extra/2)))
+STS_VRAMBase_Line 	= $40000003|($20000*(STS_BaseCol-(STS_DrawnLine_Extra/2)))
 	endif
 STS_TopLine_Offset	= STS_BaseRow-2
 STS_BottomLine_Offset	= STS_TopLine_Offset+STS_LinesTotal-2
@@ -54,6 +54,9 @@ StoryTextScreen:				; XREF: GameModeArray
 		move.w	#$9200,(a6)
 		move.w	#$8B07,(a6)
 		move.w	#$8720,(a6)
+		
+		move.w	#$8C81|$08,(a6)	; enable shadow/highlight mode (SH mode)
+
 		clr.b	($FFFFF64E).w
 		jsr	ClearScreen
 
@@ -73,6 +76,33 @@ STS_ClrObjRam:	move.l	d0,(a1)+
 		move.w	#$87,obScreenY(a0)		; set Y-position
 		bset	#7,obGfx(a0)		; otherwise make object high plane
 
+
+		; transparent sprites squeezed in between plane A and B to properly display the text in SH mode
+		lea	($FFFFD140).w,a0
+		move.b	#2,(a0)
+		move.b	#6,obRoutine(a0)
+		move.w	#$80+SCREEN_WIDTH/2-32,obX(a0)
+		move.w	#$B0,obScreenY(a0)
+
+		adda.w	#$40,a0
+		move.b	#2,(a0)
+		move.b	#6,obRoutine(a0)
+		move.w	#$80+SCREEN_WIDTH/2+(32*5)-32,obX(a0)
+		move.w	#$B0,obScreenY(a0)
+
+		adda.w	#$40,a0
+		move.b	#2,(a0)
+		move.b	#6,obRoutine(a0)
+		move.w	#$80+SCREEN_WIDTH/2-32,obX(a0)
+		move.w	#$B0+(32*4),obScreenY(a0)
+
+		adda.w	#$40,a0
+		move.b	#2,(a0)
+		move.b	#6,obRoutine(a0)
+		move.w	#$80+SCREEN_WIDTH/2+(32*5)-32,obX(a0)
+		move.w	#$B0+(32*4),obScreenY(a0)
+
+
 		DeleteQueue_Init
 		jsr	ObjectsLoad
 		jsr	BuildSprites
@@ -84,6 +114,15 @@ STS_ClrObjRam:	move.l	d0,(a1)+
 		move.w	#$28F,d1
 STS_LoadText:	move.w	(a5)+,(a6)
 		dbf	d1,STS_LoadText		 ; load uncompressed text patterns
+
+		vram	$3000
+		moveq	#-1,d0
+		move.w	#$10-1,d1
+@transparent:
+		rept	8*2
+		move.w	d0,(a6)
+		endr
+		dbf	d1,@transparent
 
 		jsr	BackgroundEffects_Setup
 
@@ -108,7 +147,7 @@ STS_ClrScroll:	move.l	d0,(a1)+
 		move.l	d0,($FFFFF616).w
 
 		lea	VDP_Data,a6
-		move.l	#$60000003,VDP_Ctrl
+		move.l	#$40000003,VDP_Ctrl
 		move.w	#$3FF,d1
 STS_ClrVram:	move.l	d0,(a6)
 		dbf	d1,STS_ClrVram		; fill VRAM with 0
@@ -174,6 +213,7 @@ StoryScreen_MainLoop:
 		jsr	DelayProgram		; ''
 		bsr	StoryText_WriteFull	; write the complete text
 		move.b	#1,(STS_FullyWritten).w	; make sure "fully-written" flag remains set
+		bsr	StoryScreen_CenterText	; center entire text before writing it
 		bra.w	StoryScreen_MainLoop	; loop
 ; ---------------------------------------------------------------------------
 
@@ -208,8 +248,9 @@ STS_FadeOutScreen:
 		btst	#0,d2				; are we on an odd row?
 		beq.s	@notodd				; if not, branch
 		neg.w	d0
-@notodd:	rept 8
-		add.l	d0,(a0)+			; write to h-scroll buffer (plane B)
+@notodd:	swap	d0
+		rept 8
+		add.l	d0,(a0)+			; write to h-scroll buffer (plane A)
 		endr 
 		dbf	d2,@loopout			; loop
 		
@@ -224,6 +265,8 @@ STS_FadeOutScreen:
 
 STS_ExitScreen:
 		bsr	STS_ClearFlags
+
+		move.w	#$8C81|$00,VDP_Ctrl		; disable shadow/highlight mode (SH mode)
 
 		moveq	#0,d0
 		move.b	(StoryTextID).w,d0	; remember screen ID we came from in d0
@@ -335,8 +378,8 @@ STS_CenterCurrentLine:
 		add.w	d0,d0				; ...by 4
 		
 		rept	8				; 8 scanlines (one row)
-		addq.w	#2,a0				; skip A-plane
 		move.w	d0,(a0)+			; write offset to scroll buffer
+		addq.w	#2,a0				; skip B-plane
 		endr					; rept end
 		rts					; return
 
@@ -517,13 +560,14 @@ StoryScreen_CenterText:
 		addq.l	#1,d2				; increase 1 to center alignment counter
 		subq.b	#1,d3				; subtract one remaining line length limit to check
 		bhi.s	@findlineend			; loop until we found the end, or move on if it's a blank line
+		moveq	#0,d2				; blank lines need no centering
 
 @writescroll:
 		lsl.l	#2,d2				; multiply by 4px per space
 		
 		rept	8				; 8 scanlines (one row)
-		addq.w	#2,a0				; skip A-plane
 		move.w	d2,(a0)+			; write offset to scroll buffer
+		addq.w	#2,a0				; skip B-plane
 		endr					; rept end
 		adda.w	d0,a1				; go to next line
 		dbf	d1,@centertextloop		; loop

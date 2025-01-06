@@ -9,7 +9,7 @@ BackgroundEffects_Setup:
 		move.w	#$8B03,VDP_Ctrl	; set scrolling mode to H: per-scanline // V: whole screen
 
 		lea	VDP_Data, a6
-		vram	$C000, 4(a6)		; set VDP to VRAM and start at C000 (location of Plane A nametable)
+		vram	$E000, 4(a6)		; set VDP to VRAM and start at E000 (location of Plane B nametable)
 
 		move.l	#$00020002, d6
 		moveq	#$40*$20/$80-1, d1	; cover the entire 512x256 pixel plane (64x32 tiles, 128 tile steps)
@@ -48,7 +48,7 @@ BackgroundEffects_PalCycle:
 		divu.w	#4,d0
 		andi.l	#$FFFF0000,d0
 		bne.w	@bgpalend
-		addq.b	#1,($FFFFFF85).w	; increase timer
+	;	addq.b	#1,($FFFFFF85).w	; increase timer
 
 		tst.b	WhiteFlashCounter	; whiteflash in progress?
 		bne.w	@bgpalend		; if yes, branch
@@ -57,7 +57,7 @@ BackgroundEffects_PalCycle:
 		movea.l	d2,a1
 		moveq	#0,d0
 		move.b	($FFFFFF85).w,d0	; get timer
-		andi.w	#$1F,d0
+		andi.w	#$F,d0
 		add.w	d0,d0
 		adda.w	d0,a1
 
@@ -108,6 +108,25 @@ Options_BGCycleColors_BW:
 		dc.w	$222
 		dc.w	$444
 		dc.w	$666
+		dc.w	$666
+		dc.w	$888
+		dc.w	$AAA
+		dc.w	$AAA
+		dc.w	$CCC
+		dc.w	$CCC
+		dc.w	$AAA
+		dc.w	$AAA
+		dc.w	$888
+		dc.w	$666
+		dc.w	$666
+		dc.w	$444
+		dc.w	$444
+		dc.w	  -1
+
+		dc.w	$222
+		dc.w	$222
+		dc.w	$444
+		dc.w	$666
 		dc.w	$888
 		dc.w	$AAA
 		dc.w	$CCC
@@ -120,12 +139,6 @@ Options_BGCycleColors_BW:
 		dc.w	$888
 		dc.w	$666
 		dc.w	$444
-		dc.w	$222
-
-	rept $20-16
-		dc.w	$222
-	endr
-		dc.w	  -1
 		even
 
 Options_BGCycleColors:
@@ -170,8 +183,8 @@ BackgroundEffects_Deformation:
 @0:
 
 		addi.w	#$20,d2			; manual adjustment cause I fucked up the art import
-		move.w	d2,(a1)+
 		addq.w	#2,a1
+		move.w	d2,(a1)+
 		dbf	d3,@scroll
 		rts
 ; ---------------------------------------------------------------------------
@@ -180,7 +193,7 @@ BackgroundEffects_Deformation:
 BackgroundEffects_VScroll:
 		move.w	($FFFFFE0E).w,d1
 		neg.w	d1
-		move.w	d1,($FFFFF616).w	; set plane-A VSRAM (yes, not plane B)
+		move.w	d1,($FFFFF618).w	; set plane-B VSRAM
 		rts
 	
 ; ---------------------------------------------------------------------------

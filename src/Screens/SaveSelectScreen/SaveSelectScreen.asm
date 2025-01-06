@@ -7,7 +7,7 @@
 ; -----------------------------------------------------------------------------
 
 SaveSelect_VRAM_Font:		equ	$4000
-SaveSelect_FG_VRAM:		equ	$8000
+SaveSelect_FG_VRAM:		equ	$C000
 
 SaveSelect_ConsoleRAM:		equ	LevelLayout_FG		; borrow FG layout RAM
 SaveSelect_SelectedSlotId:	equ	LevelLayout_FG+$3C	; .b
@@ -27,7 +27,7 @@ SaveSelectScreen:
 	lea	VDP_Ctrl, a6
 	move.w	#$8004, (a6)
 	move.w	#$8230, (a6)
-	move.w	#$8400|(SaveSelect_FG_VRAM/$2000), (a6)
+	move.w	#$8407, (a6)
 	move.w	#$9001, (a6)
 	move.w	#$9200, (a6)
 	move.w	#$8B03, (a6)

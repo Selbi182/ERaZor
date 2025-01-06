@@ -35,18 +35,18 @@ Options_HasAHint:		rs.b	1
 
 ; ---------------------------------------------------------------------------
 ; All options are kept in a single byte to save space (it's all flags anyway)
-; RAM location: $FFFFFF92
+; RAM location: `OptionsBits`
 ;  bit 0 = Extended Camera
-;  bit 1 = Speedrun Mode (Skip Uberhub / Skip Story Texts)
+;  bit 1 = <<UNUSED>>
 ;  bit 2 = Disable HUD
 ;  bit 3 = Cinematic Mode (black bars)
 ;  bit 4 = Nonstop Inhuman Mode
-;  bit 5 = Difficulty (0 - Casual // 1 - Frantic)
+;  bit 5 = <<UNUSED>>
 ;  bit 6 = Max White Flash
 ;  bit 7 = Photosensitive Mode (Screen Flash set to weak)
 ; ---------------------------------------------------------------------------
 ; Second options bitfield
-; RAM location: $FFFFFF94
+; RAM location: `OptionsBits2`
 ;  bit 0 = Disable Music
 ;  bit 1 = Disable SFX
 ;  bit 2 = Weak Camera Shake
@@ -56,10 +56,11 @@ Options_HasAHint:		rs.b	1
 ;  bit 6 = Alt HUD - Total Seconds for Score
 ;  bit 7 = Alt HUD - Errors for Deaths
 ; ---------------------------------------------------------------------------
-; Screen Effects are kept in a separate address: $FFFFFF91
-; bit 0 = piss filter
-; bit 1 = motion blur
-; ---------------------------------------------------------------------------
+; Screen Effects
+; RAM location: `ScreenFuzz`
+;  bit 0 = piss filter
+;  bit 1 = motion blur
+
 ; Default options when starting the game for the first time
 	if def(__WIDESCREEN__)
 DefaultOptions  = %00000000	; extended camera not needed in widescreen
@@ -414,17 +415,17 @@ Options_HandleUpDown:
 
 		cmpi.w	#9,d1				; Cinematic Mode selected?
 		bne.s	@notcinematic			; if not, branch
-		jsr	Check_BaseGameBeaten_Casual	; has the player beaten base game in casual?
+		jsr	CheckGlobal_BaseGameBeaten_Casual; has the player beaten base game in casual?
 		bne.s	@ahint				; if yes, show A hint
 	@notcinematic:
 		cmpi.w	#10,d1				; ERaZor Powers selected?
 		bne.s	@notpowers			; if not, branch
-		jsr	Check_BaseGameBeaten_Frantic	; has the player beaten base game in frantic?
+		jsr	CheckGlobal_BaseGameBeaten_Frantic; has the player beaten base game in frantic?
 		bne.s	@ahint				; if yes, show A hint
 	@notpowers:
 		cmpi.w	#11,d1				; True-BS selected?
 		bne.s	@nottruebs			; if not, branch
-		jsr	Check_BlackoutBeaten		; has the player beaten the Blackout Challenge
+		jsr	CheckGlobal_BlackoutBeaten	; has the player beaten the Blackout Challenge
 		bne.s	@ahint				; if yes, show A hint
 	@nottruebs:
 

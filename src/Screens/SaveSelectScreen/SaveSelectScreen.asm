@@ -66,6 +66,16 @@ SaveSelectScreen:
 	move.b	#Options_Music, d0
 	jsr	PlayBGM
 
+	jsr	BackgroundEffects_Update
+	; Copy BG palette to fade in buffer ###
+	lea	Pal_Active+2, a0
+	lea	Pal_Target+2, a1
+	move.l	(a0)+, (a1)+
+	move.l	(a0)+, (a1)+
+	move.l	(a0)+, (a1)+
+	move.l	(a0)+, (a1)+
+	move.l	(a0)+, (a1)+
+
 	jsr	Pal_FadeTo
 	assert.b VBlank_MusicOnly, eq
 	; fallthrough
@@ -95,13 +105,7 @@ SaveSelect_Exit:
 ; ---------------------------------------------------------------------------
 
 SaveSelect_InitUI:
-	; Initialize console subsystem (MD Debugger)
-	lea	VDP_Ctrl, a5
-	lea	-4(a5), a6
-	lea	@ConsoleConfig(pc), a1			; a1 = console config
-	lea	SaveSelect_ConsoleRAM, a3		; a3 = console RAM
-	vram	SaveSelect_FG_VRAM, d5			; d5 = base draw position
-	jsr	MDDBG__Console_InitShared
+	bsr	SaveSelect_InitConsole
 
 	; Load palette
 	lea	Pal_Target+$20, a0
@@ -114,11 +118,25 @@ SaveSelect_InitUI:
 	rept 8/2
 		move.l	(a1)+, (a0)+
 	endr
+	lea	Pal_Target+$60, a0
+	lea	@PaletteData_Header(pc), a1
+	rept 8/2
+		move.l	(a1)+, (a0)+
+	endr
 
 	; Load font
 	vram	SaveSelect_VRAM_Font, (a5)
 	lea	BBCS_ArtKospM_Font(pc), a0		; ### TODO: Replace or dedup
 	jmp	KosPlusMDec_VRAM
+
+SaveSelect_InitConsole:	equ *
+	; Initialize console subsystem (MD Debugger)
+	lea	VDP_Ctrl, a5
+	lea	-4(a5), a6
+	lea	@ConsoleConfig(pc), a1			; a1 = console config
+	lea	SaveSelect_ConsoleRAM, a3		; a3 = console RAM
+	vram	SaveSelect_FG_VRAM, d5			; d5 = base draw position
+	jmp	MDDBG__Console_InitShared
 
 ; ---------------------------------------------------------------
 @ConsoleConfig:
@@ -135,8 +153,20 @@ SaveSelect_InitUI:
 @PaletteData_Normal:
 	dc.w	$0000, $0444/2, $0EEE/2, $0EEE/2, $0EEE/2, $0EEE/2, $0CCC/2, $0AAA/2
 
+@PaletteData_Header:
+	dc.w	$0000, $0422, $0E88, $0E88, $0E88, $0E88, $0C66, $0A44
+
 ; ---------------------------------------------------------------------------
+SaveSelect_FullRedraw:
+	jsr	SaveSelect_InitConsole
+
 SaveSelect_InitialDraw:
+	_Console.SetXY #12, #1
+	_Console.Write "%<pal3>- SAVE SELECT -"
+
+	_Console.SetXY #6, #26
+	_Console.Write "%<pal3>- START: SELECT, B: DELETE -"
+
 	@slot_id: = 0
 	rept 4
 		moveq	#@slot_id, d0
@@ -159,28 +189,41 @@ SaveSelect_DrawSlot:
 	lea	@Cursor_Normal(pc), a1		; use no cursor
 @cursor_done:
 
-	moveq	#4, d1				; Y-position for "No Save"
+	moveq	#3, d1				; Y-position for "No Save"
 	tst.b	d0				; are we "No Save"?
 	beq	@draw_no_save			; if yes, branch
 	moveq	#0, d1
 	move.b	d0, d1
 	mulu.w	#7, d1
+	subq.w	#1, d1
 
 	move.w	d0, -(sp)
 	jsr	SRAMCache_GetSlotData		; INPUT: d0 = Slot id, OUTPUT: a2 = Slot data
 	move.w 	(sp)+, d0
 
-	; TODO: Empty slots
+	btst	#SlotState_Created, SaveSlot.Progress(a2)
+	beq	@draw_empty
 
 	; TODO: Difficulty
 	lea	@Difficulty_Casual(pc), a3
+	btst	#SlotState_Difficulty, SaveSlot.Progress(a2)
+	beq.s	@difficulty_done
+	lea	@Difficulty_Frantic(pc), a3
+@difficulty_done:
 
 	; Draw "Slot X"
 	_Console.SetXY #1, d1
 	_Console.Write "%<.l a1 str>SLOT %<.b d0 dec>%<setx,12>%<.l a3 str>%<endl>%<endl>%<setx,4>"
-	_Console.Write "DEATHS: %<.w SaveSlot.Deaths(a2) dec>%<endl>"
-	_Console.Write "SCORE: %<.l SaveSlot.Score(a2) dec>%<endl>"
+	_Console.Write "DEATHS: %<.w SaveSlot.Deaths(a2) dec>           %<endl>"
+	_Console.Write "SCORE: %<.l SaveSlot.Score(a2) dec>             %<endl>"
 	_Console.Write "DOORS: %<.w SaveSlot.Doors(a2) bin>"
+	rts
+
+@draw_empty:
+	; Draw "Empty"
+	_Console.SetXY #1, d1
+	_Console.Write "%<.l a1 str>SLOT %<.b d0 dec>%<setx,12>%<endl>%<endl>%<setx,4>"
+	_Console.Write "EMPTY"
 	rts
 
 @draw_no_save:
@@ -240,9 +283,10 @@ SaveSelect_HandleUI:
 
 @ClearSelection:
 	move.b	d7, d0
-	jsr	SRAMCache_ClearSlot
+	jsr	SRAMCache_GetSlotData		; INPUT: d0 = Slot id, OUTPUT: a2 = Slot data
+	jsr	SRAMCache_ClearSlot		; INPUT: a2 = Slot data
 	move.b	d7, d0
-	jsr	SaveSelect_DrawSlot		; re-draw unselected slot
+	bsr	SaveSelect_FullRedraw		; ### FIXME: Redraw this slot only
 	moveq	#$FFFFFFC3, d0
 	jmp	PlaySFX
 

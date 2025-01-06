@@ -98,8 +98,8 @@ Options_MenuData_NumItems:	equ	(Options_MenuData_End-Options_MenuData)/10
 
 Options_GameplayStyle_Redraw:
 	lea	@Str_Option1(pc), a1
-	moveq	#1<<5, d0
-	and.b	OptionsBits, d0
+	moveq	#1<<SlotState_Difficulty, d0
+	and.b	SlotProgress, d0
 	beq.s	@0
 	lea	@Str_Option2(pc), a1
 @0:
@@ -131,7 +131,7 @@ Options_GameplayStyle_Handle:
 	beq.s	@gss			; if not, branch
 	tst.w	($FFFFFFFA).w		; is debug mode enabled?
 	beq.s	@gss			; if not, branch
-	bchg	#5, OptionsBits		; quick toggle gameplay style
+	bchg	#SlotState_Difficulty, SlotProgress	; quick toggle gameplay style
 	bsr	Options_PlayRespectiveToggleSound
 	bra.s	@redraw
 
@@ -683,7 +683,7 @@ Options_CinematicEffects_Redraw:
 	movea.l	@CinematicModeList(pc,d0), a1
 
 	lea	@Str_Cinematic_Locked(pc), a0
-	jsr	Check_BaseGameBeaten_Casual	; has the player beaten base game in casual?
+	jsr	CheckGlobal_BaseGameBeaten_Casual; has the player beaten base game in casual?
 	beq.s	@4				; if not, branch
 	lea	@Str_Cinematic_Normal(pc), a0
 @4:
@@ -729,14 +729,14 @@ Options_CinematicEffects_Handle:
 	beq.s	@nodebugunlock		; if not, branch
 	cmpi.b	#$70,($FFFFF604).w	; is exactly ABC held?
 	bne.s	@nodebugunlock		; if not, branch
-	jsr	Toggle_BaseGameBeaten_Casual	; toggle base game beaten in casual state to toggle the unlock for cinematic mode
+	jsr	ToggleGlobal_BaseGameBeaten_Casual ; toggle base game beaten in casual state to toggle the unlock for cinematic mode
 	bclr	#3,(OptionsBits).w	; make sure option doesn't stay accidentally enabled
 	bclr	#2,(OptionsBits).w	; make sure option doesn't stay accidentally enabled
 	st.b	Options_RedrawCurrentItem
 	rts
 
 @nodebugunlock:
-	jsr	Check_BaseGameBeaten_Casual	; has the player beaten the base game in casual?
+	jsr	CheckGlobal_BaseGameBeaten_Casual; has the player beaten the base game in casual?
 	beq.w	Options_PlayDisallowedSound	; if not, branch
 
 	; hint on A
@@ -815,7 +815,7 @@ Options_ErazorPowers_Redraw:
 	movea.l	@ErazorPowerTextList(pc,d0), a1
 
 	lea	@Str_ErazorPower_Locked(pc), a0
-	jsr	Check_BaseGameBeaten_Frantic	; has the player beaten the base game in frantic?
+	jsr	CheckGlobal_BaseGameBeaten_Frantic	; has the player beaten the base game in frantic?
 	beq.s	@2				; if not, branch
 	lea	@Str_ErazorPower_Normal(pc), a0
 @2:
@@ -858,14 +858,14 @@ Options_ErazorPowers_Handle:
 	beq.s	@nodebugunlock			; if not, branch
 	cmpi.b	#$70,($FFFFF604).w		; is exactly ABC held?
 	bne.s	@nodebugunlock			; if not, branch
-	jsr	Toggle_BaseGameBeaten_Frantic	; toggle frantic beaten state to toggle the unlock for ERaZor Powers
+	jsr	ToggleGlobal_BaseGameBeaten_Frantic	; toggle frantic beaten state to toggle the unlock for ERaZor Powers
 	bclr	#4,(OptionsBits).w		; make sure option doesn't stay accidentally enabled
 	bclr	#5,(OptionsBits2).w		; make sure option doesn't stay accidentally enabled
 	st.b	Options_RedrawCurrentItem
 	rts
 
 @nodebugunlock:		
-	jsr	Check_BaseGameBeaten_Frantic	; has the player beaten the base game in frantic?
+	jsr	CheckGlobal_BaseGameBeaten_Frantic	; has the player beaten the base game in frantic?
 	beq.w	Options_PlayDisallowedSound	; if not, disallowed
 
 	; hint on A
@@ -930,7 +930,7 @@ Options_TrueBSMode_Redraw:
 	movea.l	@TrueBSModeTextList(pc,d0), a1
 
 	lea	@Str_TrueBSMode_Locked(pc), a0
-	jsr	Check_BlackoutBeaten		; has the player beaten the blackout challenge?
+	jsr	CheckGlobal_BlackoutBeaten	; has the player beaten the blackout challenge?
 	beq.s	@1				; if not, branch
 	lea	@Str_TrueBSMode_Normal(pc), a0
 @1:
@@ -971,13 +971,13 @@ Options_TrueBSMode_Handle:
 	beq.s	@nodebugunlock			; if not, branch
 	cmpi.b	#$70,($FFFFF604).w		; is exactly ABC held?
 	bne.s	@nodebugunlock			; if not, branch
-	jsr	Toggle_BlackoutBeaten		; toggle blackout challenge beaten state to toggle the unlock for nonstop inhuman
+	jsr	ToggleGlobal_BlackoutBeaten	; toggle blackout challenge beaten state to toggle the unlock for nonstop inhuman
 	clr.b	(PlacePlacePlace).w		; make sure option doesn't stay accidentally enabled
 	st.b	Options_RedrawCurrentItem
 	rts
 
 @nodebugunlock:		
-	jsr	Check_BlackoutBeaten		; has the player beaten the blackout challenge?
+	jsr	CheckGlobal_BlackoutBeaten	; has the player beaten the blackout challenge?
 	beq.w	Options_PlayDisallowedSound	; if not, disallowed
 
 	; hint on A

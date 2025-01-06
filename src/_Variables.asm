@@ -181,6 +181,7 @@ ExtCamShift		equ	$FFFFFFCE			; w	current signed pixel offset for the extended ca
 
 Inhuman			equ	$FFFFFFE7			; b	flag when Inhuman Mode is enabled
 
+*			equ	$FFFFFFE9			; b	Fade out in progress flag
 	if def(__MD_REPLAY__)
 ; WARNING! MD Replay conflicts with SMPS RAM, but SMPS is disabled when `__MD_REPLAY__` is set
 ; __MD_REPLAY__ = 'rec'

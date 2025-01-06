@@ -84,8 +84,8 @@ dcScreenPos: macros	baseVRAMAddress, row, column
 	dc.w	(\baseVRAMAddress)+(\row)*$80+(\column)*2
 
 ; Test if Frantic Mode is enabled in the gameplay style options
-frantic macro
-	btst	#5,(OptionsBits).w	; 0 = casual // 1 = frantic
+frantic: macro
+	btst	#SlotState_Difficulty, SlotProgress	; 0 = casual // 1 = frantic
 	endm
 
 ; Diable VBlank, update sound driver only

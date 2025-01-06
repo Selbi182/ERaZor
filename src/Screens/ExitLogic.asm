@@ -75,7 +75,7 @@ Start_FirstGameMode:
 	if def(__WIDESCREEN__)=0 ; always start in the black bars screen in widescreen mode because it has important info
 		bsr	ReturnToSegaScreen	; set first game mode to Sega Screen
 
-		bsr	Check_BlackBarsConfigured
+		bsr	CheckGlobal_BlackBarsConfigured
 		bne.s	@skip
 
 		; Emulator detection to autoskip the screen for known faulty behavior (primarily in Kega)
@@ -104,7 +104,8 @@ ReturnToSegaScreen:
 ; ===========================================================================
 
 Exit_BlackBarsScreen:
-		bsr	Set_BlackBarsConfigured
+		bsr	SetGlobal_BlackBarsConfigured
+		jsr	SRAMCache_SaveGlobals
 		tst.b	(CarryOverData).w	; is next game mode set to be options screen?
 		beq.s	ReturnToSegaScreen	; if not, assume this is the first start of the game
 		clr.b	(CarryOverData).w	; clear carried-over data now no matter what
@@ -134,8 +135,8 @@ Exit_TitleScreen:
 		rts
 
 Exit_SaveSelectScreen:
-		bsr	Check_FirstStart	; is this the first time the game is being played?
-		beq.w	ReturnToUberhub_Chapter	; if not, go to Uberhub (and always show chapter screen)
+		bsr	CheckSlot_FirstStart	; is this the first time the game is being played?
+		bne.w	ReturnToUberhub_Chapter	; if not, go to Uberhub (and always show chapter screen)
 		
 		; first launch
 		move.b	#0,(CurrentChapter).w	; set chapter to 0 (so screen gets displayed once NHP is entered for the first time)
@@ -145,6 +146,8 @@ Exit_SaveSelectScreen:
 ; ===========================================================================
 
 Exit_GameplayStyleScreen:
+		pea	SRAMCache_SaveSelectedSlotId		; save current slot data
+		bset	#SlotState_Created, SlotProgress	; mark slot as created/started
 		tst.b	(CarryOverData).w	; is next game mode set to be options screen?
 		beq.s	@firststart		; if not, assume this is the first start of the game
 		clr.b	(CarryOverData).w	; clear carried-over data now no matter what
@@ -163,7 +166,7 @@ Exit_GameplayStyleScreen:
 		jsr	PalLoad2		; ...directly
 		moveq	#$13,d0			; load warning text about revisiting the tutorial for frantic
 		jsr	TutorialBox_Display	; VLADIK => Display hint
-		jsr	Unset_TutorialVisited	; show FREE CANDY
+		jsr	UnsetSlot_TutorialVisited	; show FREE CANDY
 
 @nohint:
 		move.b	#$24,(GameMode).w	; we came from the options menu, return to it
@@ -363,7 +366,7 @@ Exit_EndingSequence:
 
 		frantic				; did we beat the game in frantic?
 		bne.s	@showfrantictext	; if yes, branch
-		bsr	Check_BaseGameBeaten_Frantic ; is a player who already beat frantic for some reason revisitng the end in casual?
+		bsr	CheckSlot_BaseGameBeaten_Frantic ; is a player who already beat frantic for some reason revisitng the end in casual?
 		bne.s	@showfrantictext	; if yes, show frantic text anyway
 		bset	#0,d1			; load text after beating the game in casual mode
 		bra.s	@checkcinematicunlock	; skip
@@ -372,14 +375,14 @@ Exit_EndingSequence:
 		bset	#1,d1			; load text after beating the game in frantic mode
 
 	@checkcinematicunlock:
-		bsr	Check_BaseGameBeaten_Casual ; have you already beaten the base game in casual?
+		bsr	CheckSlot_BaseGameBeaten_Casual ; have you already beaten the base game in casual?
 		bne.s	@checkmotionblur	; if yes, branch
 		bset	#2,d1			; load Cinematic Mode unlock text
 		
 	@checkmotionblur:
 		frantic				; was the game beaten in frantic?
 		beq.s	@markgameasbeaten	; if not, branch
-		bsr	Check_BaseGameBeaten_Frantic ; have you already beaten the base game in frantic?
+		bsr	CheckSlot_BaseGameBeaten_Frantic ; have you already beaten the base game in frantic?
 		bne.s	@markgameasbeaten	; if yes, branch
 		bset	#3,d1			; load Motion Blur unlock text
 		
@@ -387,7 +390,7 @@ Exit_EndingSequence:
 		bsr	Set_BaseGameDone	; you have beaten the base game, congrats (casual only or frantic with casual)
 
 	@checkblackoutteaser:
-		bsr	Check_BlackoutFirst	; has the player unlocked but not beaten the blackout challenge?
+		bsr	CheckSlot_BlackoutFirst	; has the player unlocked but not beaten the blackout challenge?
 		beq.s	@finish			; if not, branch
 		bset	#4,d1			; load Blackout Challenge teaser text
 
@@ -425,8 +428,9 @@ RunChapter:
 		cmp.b	(CurrentChapter).w,d5	; compare currently saved chapter number to fake level ID
 		blt.s	@nochapter		; if this is a chapter from a level we already visited, skip chapter screen
 		move.b	d5,(CurrentChapter).w	; we've entered a new level, update progress chapter ID
+		jsr	SRAMCache_SaveSelectedSlotId
 
-		bsr	Check_BaseGameBeaten_Any ; has the player already beaten the base game (of either mode)?
+		bsr	CheckSlot_BaseGameBeaten_Any ; has the player already beaten the base game (of either mode)?
 		bne.s	@nochapter		; if yes, no longer display chapter screens
 		btst	#1,(OptionsBits).w	; is Speedrun Mode enabled?
 		bne.s	@nochapter		; if yes, start level straight away
@@ -605,7 +609,7 @@ HubRing_SoundTest:
 		rts
 
 HubRing_Tutorial:
-		bsr	Set_TutorialVisited	; the FUN begins
+		bsr	SetSlot_TutorialVisited	; the FUN begins
 		move.w	#$501,($FFFFFE10).w	; set level to SBZ2
 		bra.w	StartLevel
 
@@ -668,25 +672,25 @@ GTA_Tutorial:	btst	#1,(OptionsBits).w	; is Speedrun Mode enabled?
 		bra.w	ReturnToUberhub		; if not, return to Uberhub
 
 GTA_NHPGHP:	moveq	#0,d0			; unlock first door
-		bsr	Set_DoorOpen
+		bsr	SetSlot_DoorOpen
 		move.b	#2,(StoryTextID).w	; set number for text to 2
 		bra.w	RunStory
 
 GTA_SP:		moveq	#1,d0			; unlock second door
-		bsr	Set_DoorOpen
+		bsr	SetSlot_DoorOpen
 		move.b	#3,(StoryTextID).w	; set number for text to 3
 		bra.w	RunStory
 
 GTA_RP:		moveq	#2,d0			; unlock third door
-		bsr	Set_DoorOpen
+		bsr	SetSlot_DoorOpen
 		moveq	#7,d0			; set Unterhub as NOT beaten
-		bsr	Set_DoorClosed		; (...only required to not sequence break replays)
+		bsr	SetSlot_DoorClosed	; (...only required to not sequence break replays)
 		move.b	#4,(StoryTextID).w	; set number for text to 4
 		bra.w	RunStory
 
 GTA_Unterhub:	
 		moveq	#7,d0			; set Unterhub as beaten
-		bsr	Set_DoorOpen
+		bsr	SetSlot_DoorOpen
 		move.b	#$C,(StoryTextID).w	; set number for text to $C
 		btst	#2,($FFFFF7A7).w	; did you kill the Roller?
 		bne.w	RunStory		; if yes, run normal story
@@ -694,12 +698,12 @@ GTA_Unterhub:
 		bra.w	RunStory
 
 GTA_LP:		moveq	#3,d0			; unlock fourth door
-		bsr	Set_DoorOpen
+		bsr	SetSlot_DoorOpen
 		move.b	#5,(StoryTextID).w	; set number for text to 5
 		bra.w	RunStory
 
 GTA_UP:		moveq	#4,d0			; open fifth door
-		bsr	Set_DoorOpen
+		bsr	SetSlot_DoorOpen
 		move.b	#6,(StoryTextID).w	; set number for text to 6
 		tst.w	(RelativeDeaths).w	; zero death run?
 		bne.w	RunStory		; if not, regular text
@@ -707,16 +711,16 @@ GTA_UP:		moveq	#4,d0			; open fifth door
 		bra.w	RunStory
 
 GTA_SNPSAP:	moveq	#5,d0			; unlock sixth door
-		bsr	Set_DoorOpen
+		bsr	SetSlot_DoorOpen
 		move.b	#7,(StoryTextID).w	; set number for text to 7
 		bra.w	RunStory
 
 GTA_FP:		moveq	#6,d0			; unlock seventh door (door to the credits)
-		bsr	Set_DoorOpen
-		bsr	Set_TutorialVisited	; set tutorial visited now in case it wasn't already
+		bsr	SetSlot_DoorOpen
+		bsr	SetSlot_TutorialVisited	; set tutorial visited now in case it wasn't already
 		btst	#1,(OptionsBits).w	; is Speedrun Mode enabled?		
 		beq.s	@fromtutorialring	; if not, branch
-		jsr	Check_AllLevelsBeaten_Current ; has the player beaten all levels?
+		jsr	CheckSlot_AllLevelsBeaten_Current ; has the player beaten all levels?
 		bne.w	HubRing_Ending		; if yes, go straight to the ending
 @fromtutorialring:
 		move.b	#4,(CarryOverData).w	; set that we came from the tutorial
@@ -725,11 +729,11 @@ GTA_FP:		moveq	#6,d0			; unlock seventh door (door to the credits)
 
 GTA_Blackout:	
 		clr.b	($FFFFFFA0).w		; set to no post-text to display
-		jsr	Check_BlackoutBeaten	; has the player already beaten the blackout challenge?
+		jsr	CheckSlot_BlackoutBeaten; has the player already beaten the blackout challenge?
 		bne.s	@alreadybeaten		; if yes, branch
 		bset	#0,($FFFFFFA0).w	; display nonstop inhuman unlock after story text screen
 @alreadybeaten:
-		jsr	Set_BlackoutDone	; you have beaten the blackout challenge, mad respect
+		jsr	Set_BlackoutBeaten	; you have beaten the blackout challenge, mad respect
 		clr.b	(Blackout).w		; clear blackout special stage flag
 		move.b	#5,(CarryOverData).w	; set that we came from the blackout challenge
 		move.b	#9,(StoryTextID).w	; set number for text to 9 (final congratulations)
@@ -788,132 +792,164 @@ NextLevel_Array:
 ; Subroutines to ease coordinating the game progress (casual/frantic)
 ; (NOTE: Frantic takes priority over Casual in all instances!)
 ; ---------------------------------------------------------------------------
-Doors_All	= %11111111
-State_BaseGame_Casual	= 0
-State_BaseGame_Frantic	= 1
-State_Blackout          = 2
-State_TutorialVisited   = 3
-State_HubEasterVisited  = 4
-State_BlackBarsConfigured = 7
+
+Doors_All:				equ	%11111111
+
+; RAM Location: `GlobalProgress`
+GlobalState_BaseGameBeaten_Casual:	equ	0
+GlobalState_BaseGameBeaten_Frantic:	equ	1
+GlobalState_BlackoutBeaten:		equ	2
+GlobalState_BlackBarsConfigured:	equ	7
+
+; RAM Location: `SlotProgress`
+SlotState_BaseGameBeaten_Casual:	equ	0
+SlotState_BaseGameBeaten_Frantic:	equ	1
+SlotState_BlackoutBeaten:		equ	2
+SlotState_Difficulty:			equ	3	; 0 = casual, 1 = frantic
+SlotState_TutorialVisited: 		equ	4
+SlotState_HubEasterVisited:		equ	5
+SlotState_Created:			equ	7	; 0 = empty slot, 1 = occupied slot
 ; ---------------------------------------------------------------------------
 
-Check_FirstStart:
-		tst.w	(Doors_Casual).w		; check if any levels at all have been beaten yet (.w because frantic comes next)
-		bne.s	@end				; if yes, no need to check for the tutorial
-		bsr	Check_TutorialVisited		; did you at least visit the tutorial yet?
-
-@end:
-		eori.b	#%00100,ccr			; invert Z flag
+CheckSlot_FirstStart:
+		btst	#SlotState_Created, SlotProgress
 		rts
+
 ; ---------------------------------------------------------------------------
 
 		; d0 = bit we want to test
-Check_LevelBeaten_Current:
+CheckSlot_LevelBeaten_Current:
 		frantic					; are we in frantic?
-		bne.s	Check_LevelBeaten_Frantic	; if yes, branch
+		bne.s	CheckSlot_LevelBeaten_Frantic	; if yes, branch
 
-Check_LevelBeaten_Casual:
-		btst	d0,(Doors_Casual).w		; check if door is open (casual)
+CheckSlot_LevelBeaten_Casual:
+		btst	d0, Doors_Casual		; check if door is open (casual)
 		rts
 
-Check_LevelBeaten_Frantic:
-		btst	d0,(Doors_Frantic).w		; check if door is open (frantic)
+CheckSlot_LevelBeaten_Frantic:
+		btst	d0, Doors_Frantic		; check if door is open (frantic)
 		rts
 ; ---------------------------------------------------------------------------
 
-Check_AllLevelsBeaten_Current:
+CheckSlot_AllLevelsBeaten_Current:
 		frantic					; are we in frantic?
 		bne.s	@frantic			; if yes, branch
-	 	bsr	Check_AllLevelsBeaten_Casual	; all levels legitimately beaten in casusal?
+	 	bsr	CheckSlot_AllLevelsBeaten_Casual; all levels legitimately beaten in casusal?
 		rts
 @frantic:
-		bsr	Check_AllLevelsBeaten_Frantic	; all levels legitimately beaten in frantic?
+		bsr	CheckSlot_AllLevelsBeaten_Frantic; all levels legitimately beaten in frantic?
 		rts
 
-Check_AllLevelsBeaten_Casual:
-		cmpi.b	#Doors_All,(Doors_Casual).w	; check if all doors have been unlocked (casual)
+CheckSlot_AllLevelsBeaten_Casual:
+		cmpi.b	#Doors_All, Doors_Casual	; check if all doors have been unlocked (casual)
 		eori.b	#%00100,ccr			; invert Z flag
 		rts
 
-Check_AllLevelsBeaten_Frantic:
-		cmpi.b	#Doors_All,(Doors_Frantic).w	; check if all doors have been unlocked (frantic)
+CheckSlot_AllLevelsBeaten_Frantic:
+		cmpi.b	#Doors_All, Doors_Frantic	; check if all doors have been unlocked (frantic)
 		eori.b	#%00100,ccr			; invert Z flag
 		rts
 ; ---------------------------------------------------------------------------
 
-Check_BaseGameBeaten_Any:
-		bsr	Check_BaseGameBeaten_Casual
+CheckGlobal_BaseGameBeaten_Any:
+		bsr	CheckGlobal_BaseGameBeaten_Casual
 		bne.s	@end
-		bra	Check_BaseGameBeaten_Frantic
+		bra	CheckGlobal_BaseGameBeaten_Frantic
 @end:		rts
 
-Check_BaseGameBeaten_Both:
-		bsr	Check_BaseGameBeaten_Casual
+CheckGlobal_BaseGameBeaten_Both:
+		bsr	CheckGlobal_BaseGameBeaten_Casual
 		beq.s	@end
-		bra	Check_BaseGameBeaten_Frantic
+		bra	CheckGlobal_BaseGameBeaten_Frantic
 @end:		rts
 
-Check_BaseGameBeaten_Casual:
-		btst	#State_BaseGame_Casual, GlobalProgress
+CheckGlobal_BaseGameBeaten_Casual:
+		btst	#GlobalState_BaseGameBeaten_Casual, GlobalProgress
 		rts
-Check_BaseGameBeaten_Frantic:
-		btst	#State_BaseGame_Frantic, GlobalProgress
+
+CheckGlobal_BaseGameBeaten_Frantic:
+		btst	#GlobalState_BaseGameBeaten_Frantic, GlobalProgress
 		rts
+
+CheckGlobal_BlackoutBeaten:
+		btst	#GlobalState_BlackoutBeaten, GlobalProgress
+		rts
+
+CheckGlobal_BlackoutUnlocked: 	equ CheckGlobal_BaseGameBeaten_Both
 ; ---------------------------------------------------------------------------
 
-Check_BlackoutBeaten:
-		btst	#State_Blackout, GlobalProgress
+CheckSlot_BaseGameBeaten_Any:
+		bsr	CheckSlot_BaseGameBeaten_Casual
+		bne.s	@end
+		bra	CheckSlot_BaseGameBeaten_Frantic
+@end:		rts
+
+CheckSlot_BaseGameBeaten_Both:
+		bsr	CheckSlot_BaseGameBeaten_Casual
+		beq.s	@end
+		bra	CheckSlot_BaseGameBeaten_Frantic
+@end:		rts
+
+CheckSlot_BaseGameBeaten_Casual:
+		btst	#SlotState_BaseGameBeaten_Casual, SlotProgress
 		rts
 
-Check_BlackoutUnlocked:
-		bra.s	Check_BaseGameBeaten_Both
+CheckSlot_BaseGameBeaten_Frantic:
+		btst	#SlotState_BaseGameBeaten_Frantic, SlotProgress
+		rts
 
-Check_BlackoutFirst:
-		bsr	Check_BlackoutUnlocked	; is the blackout challenge unlocked?
-		beq.s	@end			; if not, branch
-		bsr	Check_BlackoutBeaten	; have you already beaten the blackout challenge?		
-		eori.b	#%00100,ccr		; invert Z flag
+CheckSlot_BlackoutBeaten:
+		btst	#SlotState_BlackoutBeaten, SlotProgress
+		rts
+
+CheckSlot_BlackoutUnlocked: 	equ CheckSlot_BaseGameBeaten_Both
+
+; ---------------------------------------------------------------------------
+
+CheckSlot_BlackoutFirst:
+		bsr	CheckSlot_BlackoutUnlocked	; is the blackout challenge unlocked?
+		beq.s	@end				; if not, branch
+		bsr	CheckSlot_BlackoutBeaten	; have you already beaten the blackout challenge?		
+		eori.b	#%00100,ccr			; invert Z flag
 @end:		rts
 ; ---------------------------------------------------------------------------
 
-Check_TutorialVisited:
-		btst	#State_TutorialVisited, SlotProgress
+CheckSlot_TutorialVisited:
+		btst	#SlotState_TutorialVisited, SlotProgress
 		rts
 ; ---------------------------------------------------------------------------
 
-Check_HubEasterVisited:
-		btst	#State_HubEasterVisited, SlotProgress
+CheckSlot_HubEasterVisited:
+		btst	#SlotState_HubEasterVisited, SlotProgress
 		rts
-
 ; ---------------------------------------------------------------------------
 
-Check_BlackBarsConfigured:
-		btst	#State_BlackBarsConfigured, GlobalProgress
+CheckGlobal_BlackBarsConfigured:
+		btst	#GlobalState_BlackBarsConfigured, GlobalProgress
 		rts
-
 ; ---------------------------------------------------------------------------
 
-Check_UnterhubUnlocked:
+CheckSlot_UnterhubUnlocked:
 		moveq	#6-1,d0				; check if all 6 main trophies are collected
 @checknext:						; (...NHP/GHP, SP, RP, LP, UP, SNP/SAP)
-		bsr	Check_LevelBeaten_Current	; check if current level in d0 is beaten
+		bsr	CheckSlot_LevelBeaten_Current	; check if current level in d0 is beaten
 		beq.s	@no				; if not, requirement failed
 		subq.b	#1,d0				; check next level
 		bpl.s	@checknext			; continue checking for all
 @no:		rts
 
-Check_UnterhubFirst:
-		bsr	Check_UnterhubUnlocked		; even unlocked?
+CheckSlot_UnterhubFirst:
+		bsr	CheckSlot_UnterhubUnlocked	; even unlocked?
 		beq.s	@no				; if not, branch
-		bsr	Check_UnterhubBeaten		; Unterhub NOT beaten?
+		bsr	CheckSlot_UnterhubBeaten	; Unterhub NOT beaten?
 		eori.b	#%00100,ccr			; invert Z flag
 @no:		rts
 
-Check_UnterhubBeaten:
-		bsr	Check_UnterhubUnlocked		; Unterhub eben unlocked?
+CheckSlot_UnterhubBeaten:
+		bsr	CheckSlot_UnterhubUnlocked	; Unterhub eben unlocked?
 		beq.s	@no				; if not, branch
 		moveq	#7,d0				; Unterhub beaten?
-		bsr	Check_LevelBeaten_Current
+		bsr	CheckSlot_LevelBeaten_Current
 @no:		rts
 
 ; ---------------------------------------------------------------------------
@@ -927,28 +963,28 @@ Check_UnterhubBeaten:
 
 ; cheat called from Selbi Screen
 UnlockEverything: _unimplemented	; TODO: Implement properly
-		move.b	#Doors_All,d0			; unlock all doors...
-		move.b	d0,(Doors_Casual).w		; ...in casual...
-		move.b	d0,(Doors_Frantic).w		; ...and frantic
-		bsr	Set_BaseGameDone_Casual		; unlock cinematic mode
-		bsr	Set_BaseGameDone_Frantic	; unlock motion blur
-		bsr	Set_BlackoutDone		; unlock nonstop inhuman
-		bsr	Set_TutorialVisited		; set tutorial visited
-		bsr	Set_HubEasterVisited		; set Uberhub easter egg as visited
-		move.b	#8,(CurrentChapter).w		; set to final chapter
+		;moveq	#$FFFFFF00|Doors_All, d0	; unlock all doors...
+		;move.b	d0, Doors_Casual		; ...in casual...
+		;move.b	d0, Doors_Frantic		; ...and frantic
+		;bsr	Set_BaseGameDone_Casual		; unlock cinematic mode
+		;bsr	Set_BaseGameDone_Frantic	; unlock motion blur
+		;bsr	Set_BlackoutBeaten		; unlock nonstop inhuman
+		;bsr	Set_TutorialVisited		; set tutorial visited
+		;bsr	Set_HubEasterVisited		; set Uberhub easter egg as visited
+		;move.b	#8,(CurrentChapter).w		; set to final chapter
 		;jmp	SRAMCache_SaveGlobalsAndSelectedSlotId		; overwrite SRAM
 
 ; cheats called from options screen
-Toggle_BaseGameBeaten_Casual:
-		bchg	#State_BaseGame_Casual, GlobalProgress	; to unlock cinematic mode
+ToggleGlobal_BaseGameBeaten_Casual:
+		bchg	#GlobalState_BaseGameBeaten_Casual, GlobalProgress	; to unlock cinematic mode
 		rts
 
-Toggle_BaseGameBeaten_Frantic:
-		bchg	#State_BaseGame_Frantic, GlobalProgress	; to unlock motion blur
+ToggleGlobal_BaseGameBeaten_Frantic:
+		bchg	#GlobalState_BaseGameBeaten_Frantic, GlobalProgress	; to unlock motion blur
 		rts
 
-Toggle_BlackoutBeaten:
-		bchg	#State_Blackout, GlobalProgress	; to unlock nonstop inhuman
+ToggleGlobal_BlackoutBeaten:
+		bchg	#GlobalState_BlackoutBeaten, GlobalProgress		; to unlock nonstop inhuman
 		rts
 
 
@@ -957,63 +993,63 @@ Toggle_BlackoutBeaten:
 ; Subroutines to update and save game progression
 ; ---------------------------------------------------------------------------
 
-Set_DoorOpen:
+SetSlot_DoorOpen:
 		; d0 = door bit index we want to open
-		bset	d0,(Doors_Casual).w	; unlock door (casual)
+		bset	d0, Doors_Casual	; unlock door (casual)
 		frantic				; are we in frantic?
 		beq.s	@notfrantic		; if not, branch
-		bset	d0,(Doors_Frantic).w	; unlock door (frantic)
+		bset	d0, Doors_Frantic	; unlock door (frantic)
 @notfrantic:	rts
 ; ---------------------------------------------------------------------------
 
-Set_DoorClosed:
+SetSlot_DoorClosed:
 		frantic				; are we in frantic?
 		bne.s	@frantic		; if yes, branch
-		bclr	d0,(Doors_Casual).w	; close door (casual)
+		bclr	d0, Doors_Casual	; close door (casual)
 		rts
 @frantic:
-		bclr	d0,(Doors_Frantic).w	; close door (frantic)
+		bclr	d0, Doors_Frantic	; close door (frantic)
 		rts
 ; ---------------------------------------------------------------------------
 
-Set_BlackBarsConfigured:
-		bset	#State_BlackBarsConfigured, GlobalProgress
+SetGlobal_BlackBarsConfigured:
+		bset	#GlobalState_BlackBarsConfigured, GlobalProgress
 		rts
 ; ---------------------------------------------------------------------------
 
 Set_BaseGameDone:
-		bsr	Set_BaseGameDone_Casual
+		bsr	Set_BaseGameBeaten_Casual
 		frantic
-		bne.s	Set_BaseGameDone_Frantic
+		bne.s	Set_BaseGameBeaten_Frantic
 		rts
 
-Set_BaseGameDone_Frantic:
-		bset	#State_BaseGame_Frantic, SlotProgress	; you have beaten the base game in frantic, congrats
-		bset	#State_BaseGame_Frantic, GlobalProgress	; ''
+Set_BaseGameBeaten_Frantic:
+		bset	#SlotState_BaseGameBeaten_Frantic, SlotProgress		; you have beaten the base game in frantic, congrats
+		bset	#GlobalState_BaseGameBeaten_Frantic, GlobalProgress	; ''
 		; also set in casual
 
-Set_BaseGameDone_Casual:
-		bset	#State_BaseGame_Casual, SlotProgress	; you have beaten the base game in casual, congrats
-		bset	#State_BaseGame_Casual, GlobalProgress	; ''
+Set_BaseGameBeaten_Casual:
+		bset	#SlotState_BaseGameBeaten_Casual, SlotProgress		; you have beaten the base game in casual, congrats
+		bset	#GlobalState_BaseGameBeaten_Casual, GlobalProgress	; ''
 		rts
 ; ---------------------------------------------------------------------------
 
-Set_BlackoutDone:
-		bset	#State_Blackout, SlotProgress	; you have beaten the blackout challenge, mad respect
-		bset	#State_Blackout, GlobalProgress	; ''
+Set_BlackoutBeaten:
+		bset	#SlotState_BlackoutBeaten, SlotProgress			; you have beaten the blackout challenge, mad respect
+		bset	#GlobalState_BlackoutBeaten, GlobalProgress		; ''
 		rts
 ; ---------------------------------------------------------------------------
 
-Set_TutorialVisited:
-		bset	#State_TutorialVisited, SlotProgress
+SetSlot_TutorialVisited:
+		bset	#SlotState_TutorialVisited, SlotProgress
 		rts
-Unset_TutorialVisited:
-		bclr	#State_TutorialVisited, SlotProgress
+UnsetSlot_TutorialVisited:
+		bclr	#SlotState_TutorialVisited, SlotProgress
 		rts
 ; ---------------------------------------------------------------------------
 
-Set_HubEasterVisited:
-		bset	#State_HubEasterVisited, SlotProgress
+SetSlot_HubEasterVisited:
+		bset	#SlotState_HubEasterVisited, SlotProgress
 		rts
 
 ; ---------------------------------------------------------------------------

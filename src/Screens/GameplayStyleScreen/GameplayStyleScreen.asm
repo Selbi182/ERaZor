@@ -129,7 +129,7 @@ GSS_MainLoop:
 		jsr	BuildSprites
 		jsr	DeleteQueue_Execute
 
-		move.b	($FFFFF605).w,d1	; get button presses
+		move.b	Joypad|Press,d1		; get button presses
 		btst	#0,d1			; specifically up pressed?
 		bne.s	@uppress		; if yes, branch
 		btst	#1,d1			; specifically down pressed?
@@ -137,12 +137,12 @@ GSS_MainLoop:
 		bra.s	@NoUpdate		; skip
 
 @uppress:
-		bclr 	#5,(OptionsBits).w 	; set to casual (technically, "disable frantic")
+		bclr 	#SlotState_Difficulty, SlotProgress 	; set to casual (technically, "disable frantic")
 		beq.s	@NoUpdate		; was it already set to casual? if so, no update
 		bra.s	@update			; otherwise, refresh screen
 
 @downpress:
-		bset 	#5,(OptionsBits).w 	; enable frantic
+		bset 	#SlotState_Difficulty, SlotProgress 	; enable frantic
 		bne.s	@NoUpdate		; was it already set to frantic? if so, no update
 
 @update:

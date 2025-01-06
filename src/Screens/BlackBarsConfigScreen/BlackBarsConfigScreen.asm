@@ -131,8 +131,8 @@ BlackBarsConfigScreen_MainLoop:
 
 	tst.b	(CarryOverData).w		; is next game mode set to be options screen?
 	bne.s	@SwapToBlackBarsSetup		; if yes, always switch to black bars setup
-	jsr	Check_FirstStart		; is this the first start of the game?
-	bne.s	@SwapToBlackBarsSetup		; if yes, swap to black bars setup
+	jsr	CheckGlobal_BlackBarsConfigured	; have we already configured black bars upon first boot?
+	beq.s	@SwapToBlackBarsSetup		; if yes, swap to black bars setup
 	move.b	#1,BlackBarsConfig_Exiting	; otherwise, directly exit the screen to make it less annoying
 	bra.w	BlackBarsConfigScreen_MainLoop	; loop to start
  

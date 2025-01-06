@@ -582,6 +582,9 @@ MainGameLoop:
 		movea.l	GameModeArray(pc,d0.w),a1	; locate address in GameModeArray
 		KDebug.WriteLine "MainGameLoop(): Launching %<.l a1 sym>..."
 		jsr	(a1)				; enter game mode
+		if def(__DEBUG__)
+			jsr	SRAMCache_SanityCheck	; catch any SRAM inconsistencies after the last mode
+		endif
 		bra	MainGameLoop			; if we're here, we exited the game mode; load new one
 
 ; ===========================================================================
@@ -1358,8 +1361,8 @@ PalCycle_SYZ:				; XREF: PalCycle
 		; palcycle protection for the trophy gallery
 		tst.b	($FFFFFE11).w		; are we in Uberhub?
 		bne.s	@dopalcycle		; if not, this isn't necessary
-		jsr	Check_FirstStart	; have any levels been beaten yet?
-		bne.s	@dopalcycle		; if not, this isn't necessary
+		jsr	CheckSlot_FirstStart	; have any levels been beaten yet?
+		beq.s	@dopalcycle		; if not, this isn't necessary
 		move.w	($FFFFF700).w,d1	; get camera X pos
 		cmpi.w	#$01B0-(SCREEN_XCORR*2),d1	; trophy gallery out of sight to the left?
 		bls.s	@dopalcycle		; if yes, branch
@@ -3149,10 +3152,10 @@ LevelSelect:
 		beq.s	LevelSelect		; if not, loop
 
 		; quick casual/frantic toggle with A
-		andi.b	#$40,($FFFFF605).w	; was specifically A pressed?
+		andi.b	#A,($FFFFF605).w	; was specifically A pressed?
 		beq.s	LevelSelect_DoSelect	; if not, start level
 		move.w	#$DA,d0			; set option off sound
-		bchg	#5,(OptionsBits).w	; toggle gameplay style
+		bchg	#SlotState_Difficulty, SlotProgress	; toggle gameplay style
 		bne.s	@playsound		; if it's now set to casual, branch
 		move.w	#$D9,d0			; set option on sound
 @playsound:	jsr	PlaySFX	; play it
@@ -3191,6 +3194,7 @@ LevelSelect_DoSelect:
 		
 		move.b	#1,(DyingFlag).w ; skip tutorial introduction text
 
+		move.b	#0, SRAMCache.SelectedSlotId	; use "No Save" slot for level
 		jmp	StartLevel	; otherwise, start level normally
 
 ; jumpers, cause the exit logic is too far out of range
@@ -3964,7 +3968,7 @@ Level_Delay:
 		beq.s	@nosonicload		; if yes, don't load Sonic because he doesn't exist here
 		cmpi.w	#$400,($FFFFFE10).w	; are we in Uberhub?
 		bne.s	@sonicload		; if not, load Sonic
-		jsr	Check_UnterhubFirst	; is Unterhub cutscene currently set to be played?
+		jsr	CheckSlot_UnterhubFirst	; is Unterhub cutscene currently set to be played?
 		bne.s	@sonicload		; if yes, branch
 		tst.b	(CarryOverData).w	; was a special giant ring spawn location set?
 		bne.s	@nosonicload		; if yes, don't load Sonic
@@ -4005,7 +4009,7 @@ Level_Delay:
 		; start loc adjustments for Uberhub
 		cmpi.w	#$400,($FFFFFE10).w	; are we in Uberhub?
 		bne.s	Level_StartGame		; if not, branch
-		jsr	Check_UnterhubFirst	; is Unterhub cutscene currently set to be played?
+		jsr	CheckSlot_UnterhubFirst	; is Unterhub cutscene currently set to be played?
 		bne.s	Level_StartGame		; if yes, branch
 		tst.b	(CarryOverData).w	; was a special giant ring spawn location set?
 		beq.s	Level_StartGame		; if not, branch
@@ -5344,7 +5348,7 @@ SS_MainLoop:
 		bne.s	@disallowed		; if yes, disallow hard part skippers
 		frantic				; is frantic mode enabled?
 		beq.s	@dohardpartskip		; if not, allow hard part skippers
-		jsr	Check_BaseGameBeaten_Frantic ; frantic already beaten?
+		jsr	CheckSlot_BaseGameBeaten_Frantic ; frantic already beaten?
 		bne.s	@dohardpartskip		; if yes, unlock HPS branch
 @disallowed:
 		lea	($FFFFD000).w,a0	; load Sonic object
@@ -6350,7 +6354,7 @@ LevSz_StartLoc:				; XREF: LevelSizeLoad
 		cmpi.w	#$400,($FFFFFE10).w	; is this Uberhub place?
 		bne.s 	@load			; if not, branch
 
-		jsr	Check_UnterhubFirst	; first Unterhub sequence active?
+		jsr	CheckSlot_UnterhubFirst	; first Unterhub sequence active?
 		bne.s	@load			; if yes, always go to trophy gallery
 
 		btst	#4,(OptionsBits).w	; is nonstop inhuman enabled?
@@ -6358,7 +6362,7 @@ LevSz_StartLoc:				; XREF: LevelSizeLoad
 		btst	#5,(OptionsBits2).w	; is nonstop space golf enabled?
 		beq.s	@chkcustom		; if not, branch
 	@chkeasternudge:
-		jsr	Check_HubEasterVisited	; has the player already visited the easter egg?
+		jsr	CheckSlot_HubEasterVisited; has the player already visited the easter egg?
 		bne.s	@chkcustom		; if yes, branch
 		clr.b	(CarryOverData).w	; override custom spawn location
 		bra.s	@load			; always go to casual loc as a subtle nudge to the player until it's visited once
@@ -7511,7 +7515,7 @@ Resize_SYZ1:
 ; ---------------------------------------------------------------------------
 
 Uberhub_UnterhubCutscene:
-		jsr	Check_UnterhubFirst
+		jsr	CheckSlot_UnterhubFirst
 		beq.s	@end
 		moveq	#0,d0
 		move.b	($FFFFF742).w,d0
@@ -9093,9 +9097,9 @@ Obj18_Main:				; XREF: Obj18_Index
 		bne.s	@notuberhub		; if not, branch
 		cmpi.w	#$0380,obX(a0)		; is this the platform to Unterhub?
 		bne.s	@notuberhub		; if not, branch
-		jsr	Check_UnterhubBeaten	; Unterhub already beaten?
+		jsr	CheckSlot_UnterhubBeaten; Unterhub already beaten?
 		bne.s	@notuberhub		; if yes, always show
-		jsr	Check_UnterhubUnlocked	; Unterhub unlocked?
+		jsr	CheckSlot_UnterhubUnlocked; Unterhub unlocked?
 		beq.s	@delete			; if not, delete entrance
 		tst.b	($FFFFFF7F).w		; are we done with the intro tube sequence?
 		beq.s	@delete			; if not, delete
@@ -9139,7 +9143,7 @@ Obj18_NotLZ:
 		tst.b	obSubtype(a0)		; is this the platform that shoots down?
 		bne.s	@notfp			; if not, branch
 		moveq	#6,d0			; has the player beaten FP already?
-		jsr	Check_LevelBeaten_Current
+		jsr	CheckSlot_LevelBeaten_Current
 		bne.w	Obj18_NotSYZ			; if yes, display platform
 		jmp	DeleteObject		; otherwise, delete
 
@@ -10536,7 +10540,7 @@ Obj2A_Main:				; XREF: Obj2A_Index
 	if DoorsAlwaysOpen=1
 		bra.s	@soundstopper
 	endif
-		jsr	Check_BlackoutUnlocked	; check if all levels are beaten in frantic
+		jsr	CheckSlot_BlackoutUnlocked; check if all levels are beaten in frantic
 		beq.s	@nosoundstopper		; if not, don't load sound stopper
 @soundstopper:
 		bsr	SingleObjLoad
@@ -10618,7 +10622,7 @@ Obj2A_OpenShut:				; XREF: Obj2A_Index
 		bpl.s	@notblackoutdoor		; if not, branch
 		cmpi.b	#-1,obSubtype(a0)		; is this a simple one-way door?
 		beq.w	@onewaydoor			; if this door's subtype is 0, treat it as a simple one-way door	
-		jsr	Check_BlackoutUnlocked		; check if all levels in frantic are beaten
+		jsr	CheckSlot_BlackoutUnlocked	; check if all levels in frantic are beaten
 		beq.w	Obj2A_Animate			; if not, keep door locked
 		tst.b	$30(a0)				; has sound stopper been passed?
 		beq.s	Obj2A_Green			; if not, keep door open
@@ -10634,7 +10638,7 @@ Obj2A_OpenShut:				; XREF: Obj2A_Index
 		cmpi.b	#2,d0				; is this the door after RP?
 		bne.s	@notpostrp			; if not, branch
 		move.l	d0,-(sp)
-		jsr	Check_UnterhubFirst		; are we in the Unterhub sequence?
+		jsr	CheckSlot_UnterhubFirst		; are we in the Unterhub sequence?
 		bne.s	@shutoff
 		move.l	(sp)+,d0
 		bra.s	@notpostrp
@@ -10645,12 +10649,12 @@ Obj2A_OpenShut:				; XREF: Obj2A_Index
 @notpostrp:
 		cmpi.b	#6,d0				; is this the final door (FP|end)?
 		bne.s	@notfinaldoor			; if not, branch
-		jsr	Check_AllLevelsBeaten_Current	; only unlock final door after all levels have been legitimately beaten
+		jsr	CheckSlot_AllLevelsBeaten_Current	; only unlock final door after all levels have been legitimately beaten
 		bne.s	Obj2A_Green			; if all levels are beaten, unlock door
 		bra.w	Obj2A_Animate			; otherwise, keep door locked
 		
 @notfinaldoor:
-		jsr	Check_LevelBeaten_Casual	; check if the level is beaten (casual or frantic)
+		jsr	CheckSlot_LevelBeaten_Casual	; check if the level is beaten (casual or frantic)
 		beq.s	Obj2A_Animate			; if the required level hasn't been beaten, keep door locked
 
 Obj2A_Green:
@@ -13606,7 +13610,7 @@ Obj4B_Main:				; XREF: Obj4B_Index
 		cmpi.b	#GRing_GreenHill,d1	; is this a ring leading to Green Hill Place (NHP act 2)?
 		bne.s	@firstnhpring		; if not, branch
 @chknhp:	moveq	#0,d0			; has the player beaten this level before?
-		jsr	Check_LevelBeaten_Current
+		jsr	CheckSlot_LevelBeaten_Current
 		bne.w	Obj4B_Main_Cont		; if yes, show both rings
 		jmp	DeleteObject		; otherwise, delete this ring
 @firstnhpring:
@@ -13621,7 +13625,7 @@ Obj4B_Main:				; XREF: Obj4B_Index
 		cmpi.b	#GRing_StarAgony,d1	; is this a ring leading to Star Agony Place (SNP act 2)?
 		bne.s	@firstsnpring		; if not, branch
 @chksnp:	moveq	#5,d0			; has the player beaten this level before?
-		jsr	Check_LevelBeaten_Current
+		jsr	CheckSlot_LevelBeaten_Current
 		bne.s	Obj4B_Main_Cont		; if yes, show both rings
 		jmp	DeleteObject		; otherwise, delete this ring
 @firstsnpring:
@@ -13636,7 +13640,7 @@ Obj4B_Main:				; XREF: Obj4B_Index
 		cmpi.b	#GRing_Finalor_Escape,d1 ; is this a ring leading to Finalor Place (escape)?
 		bne.s	@firstfpring		; if not, branch
 @chkfp:		moveq	#6,d0			; has the player beaten this level before?
-		jsr	Check_LevelBeaten_Current
+		jsr	CheckSlot_LevelBeaten_Current
 		bne.s	Obj4B_Main_Cont		; if yes, show both rings
 		jmp	DeleteObject		; otherwise, delete this ring
 @firstfpring:
@@ -13646,23 +13650,23 @@ Obj4B_Main:				; XREF: Obj4B_Index
 
 @adjustfirst:
 		andi.b	#$F,obSubtype(a0)	; limit to main subtype
-		jsr	Check_LevelBeaten_Current ; check if level in d0 is beaten
+		jsr	CheckSlot_LevelBeaten_Current ; check if level in d0 is beaten
 		beq.s	Obj4B_Main_Cont		; if not, display this ring instead of the other two
 		jmp	DeleteObject		; otherwise, delete this ring
 
 @chkend:
 		cmpi.b	#GRing_Ending,d1	; is this the first ring leading to the ending sequence?
 		bne.s	@notend			; if not, branch
-		jsr	Check_AllLevelsBeaten_Current
+		jsr	CheckSlot_AllLevelsBeaten_Current
 		beq.s	@okcool
 		bra.s	Obj4B_Main_Cont
 @notend:
 		cmpi.b	#GRing_Blackout,d1	; is this the first ring leading to the blackout challenge?
 		bne.s	Obj4B_Main_Cont		; if not, branch
-		jsr	Check_BlackoutUnlocked
+		jsr	CheckSlot_BlackoutUnlocked
 		bne.s	Obj4B_Main_Cont
 @okcool:
-	;	jsr	Check_BlackoutBeaten	; has the player beaten the blackout challenge?
+	;	jsr	CheckSlot_BlackoutBeaten	; has the player beaten the blackout challenge?
 	;	bne.s	Obj4B_Main_Cont		; if yes, we can assume they beat the rest of the game too
 		move.b	#7,(a0)			; idk how you made it here but gg
 		move.b	#0,obRoutine(a0)	; set to init routine
@@ -20404,9 +20408,9 @@ Obj12_CheckGameState:
 @normaltrophy:
 		cmpi.b	#2,d1			; is this the RP trophy?
 		bne.s	@notrp			; if not, branch
-		jsr	Check_UnterhubBeaten	; has Unterhub already been beaten?
+		jsr	CheckSlot_UnterhubBeaten; has Unterhub already been beaten?
 		bne.s	@impaled		; if yes, branch
-		jsr	Check_UnterhubFirst	; are we in the Unterhub sequence?
+		jsr	CheckSlot_UnterhubFirst	; are we in the Unterhub sequence?
 		beq.s	@notrp			; if not, branch
 		btst	#4,($FFFFF7A7).w	; has the Roller been deleted?
 		bne.w	@delete			; if yes, delete spike as well
@@ -20432,21 +20436,21 @@ Obj12_CheckGameState:
 @checkbeaten:
 		moveq	#0,d0
 		move.b	d1,d0
-		jsr	Check_LevelBeaten_Frantic
+		jsr	CheckSlot_LevelBeaten_Frantic
 		beq.s	@regular		; if not, branch
 @ggtrophy:	move.w	#EmblemGfx_Frantic,obGfx(a0)
 		move.b	#1,$30(a0)		; use frantic frame
 		bra.s	Obj12_Init		; display
 @regular:
-		jsr	Check_LevelBeaten_Casual
+		jsr	CheckSlot_LevelBeaten_Casual
 		bne.s	Obj12_Init		; if yes, branch
 @delete:	jmp	DeleteObject		; not even that? you suck. no trophies for you.
 ; ---------------------------------------------------------------------------
 
 Obj12_CheckBlackout:
-		jsr	Check_BlackoutUnlocked	; is the blackout challenge even unlocked?
-		beq.s	@end			; if not, branch
-		jsr	Check_BlackoutBeaten	; has the player beaten the blackout challenge?
+		jsr	CheckSlot_BlackoutUnlocked	; is the blackout challenge even unlocked?
+		beq.s	@end				; if not, branch
+		jsr	CheckSlot_BlackoutBeaten	; has the player beaten the blackout challenge?
 @end:		rts
 ; ---------------------------------------------------------------------------
 		
@@ -27559,7 +27563,7 @@ Obj03_Setup:
 @noeaster:
 		cmpi.b	#7,obSubtype(a0)	; is this the tutorial entrance?
 		bne.s	@regular		; if not, branch
-		jsr	Check_TutorialVisited
+		jsr	CheckSlot_TutorialVisited
 		bne.w	Obj03_Display
 		move.b	#$10,obFrame(a0)	; FUN FUN FUN
 		frantic
@@ -27589,14 +27593,14 @@ Obj03_Setup:
 		tst.b	obSubtype(a0)		; is this the GHZ sign?
 		bne.s	@notghz			; if not, branch
 		moveq	#0,d0			; has the player beaten this level before?
-		jsr	Check_LevelBeaten_Current
+		jsr	CheckSlot_LevelBeaten_Current
 		beq.s	@notghz			; if not, branch
 		move.b	#$12,obFrame(a1)	; use "GREEN HILL" frame
 @notghz:
 		cmpi.b	#5,obSubtype(a0)	; is this the SLZ sign?
 		bne.s	Obj03_Display		; if not, branch
 		moveq	#5,d0			; has the player beaten this level before?
-		jsr	Check_LevelBeaten_Current
+		jsr	CheckSlot_LevelBeaten_Current
 		beq.s	Obj03_Display		; if not, branch
 		move.b	#$13,obFrame(a1)	; use "STAR AGONY" frame
 ; ---------------------------------------------------------------------------
@@ -27855,7 +27859,7 @@ Obj06_ChkDist:
 
 		frantic				; are we in frantic?
 		beq.s	@skiptext		; if not, always show skip text
-		jsr	Check_BaseGameBeaten_Frantic ; frantic already beaten?
+		jsr	CheckSlot_BaseGameBeaten_Frantic ; frantic already beaten?
 		beq.s	@noskiptext		; if not, don't allow HPS
 @skiptext:
 		move.b	#3,obFrame(a0)		; show "SKIP" text
@@ -27874,7 +27878,7 @@ Obj06_ChkDist:
 Obj06_DoHardPartSkip:
 		frantic				; are we in Frantic mode?
 		beq.s	@dohardpartskip		; if not, branch
-		jsr	Check_BaseGameBeaten_Frantic ; frantic already beaten?
+		jsr	CheckSlot_BaseGameBeaten_Frantic ; frantic already beaten?
 		bne.s	@dohardpartskip		; if yes, unlock HPS
 		jmp	TrollKill		; no hard part skippers for you
 ; ---------------------------------------------------------------------------
@@ -28086,7 +28090,7 @@ UberhubEasteregg:
 		moveq	#$FFFFFFB9,d0		; play huge crumble sound...
 		jsr	PlaySFX	; ...for bonus atmosphere
 
-		jmp	Set_HubEasterVisited	; set easter egg as visited
+		jmp	SetSlot_HubEasterVisited	; set easter egg as visited
 ; ===========================================================================
 
 
@@ -36400,7 +36404,7 @@ Obj7D_SoundStopper:
 		bset	#2,(ScreenFuzz).w	; enable temporary screen fuzz
 
 		; prevent cheating when attempting the blackout challenge for the first time
-		jsr	Check_BlackoutFirst	; is this the first attempt at the blackout challenge?
+		jsr	CheckSlot_BlackoutFirst	; is this the first attempt at the blackout challenge?
 		beq.s	@del			; if not, branch
 		bclr	#4,(OptionsBits).w	; disable true inhuman
 		clr.b	(Inhuman).w

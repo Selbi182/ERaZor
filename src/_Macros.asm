@@ -54,6 +54,21 @@ ints_pop	macro
 	move.w	(sp)+,sr
 	endm
 
+
+; Implements popcnt instruction (x86)
+popcnt:	macro srcReg, destReg, scratchReg
+	moveq	#0, \destReg		; cnt=0
+	tst.\0	\srcReg
+	beq.s	@done\@
+@loop\@:
+	addq.w	#1, \destReg		; cnt++
+	move.\0	\srcReg, \scratchReg
+	subq.\0	#1, \scratchReg		; n = n - 1
+	and.\0	\scratchReg, \srcReg	; n &= n - 1
+	bne.s	@loop\@
+@done\@:
+	endm
+
 ; DMA copy data from 68K (ROM/RAM) to the VRAM
 vramWrite:	macro source, len, dest
 	lea	VDP_Ctrl, a5

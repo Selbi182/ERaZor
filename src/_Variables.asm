@@ -25,7 +25,7 @@ DMAQueuePos:		equ	$FFFFC8FC			; .w	DMA queue position pointer
 *			equ	$FFFFC8FE			; .w	<<<FREE>>>
 PalCache_PauseEffect:	equ	$FFFFC900			;	Palette cache for pause effect (C900-C9FF)
 PalCache_FlashEffect:	equ	$FFFFCA00			;	Palette cache for flash effect (CA00-CAFF)
-Sonic_PosArray		equ	$FFFFCB00			;	Sonic's previous positions array (CB00-CBFF)
+Sonic_PosArray:		equ	$FFFFCB00			;	Sonic's previous positions array (CB00-CBFF)
 HSRAM_Buffer:		equ	$FFFFCC00			;	Horizontal scroll RAM buffer
 HSRAM_Buffer_End:	equ	HSRAM_Buffer+240*4
 ScrollBlocks_Buffer:	equ	$FFFFCFC0			;	Buffer for scrolling 16x16 blocks ($20 blocks)
@@ -43,7 +43,7 @@ VBlankSubW:		equ	$FFFFF5CA			; w	Word offset for VInt routine
 VDPDebugPortSet:	equ	$FFFFF5CD			; b	Set if VDP Debug port was tampered with
 BlackBars.Handler:	equ	$FFFFF5CE			; w	Pointer to Black Bars handler routines (depending on `BlackBars.HandlerId`)
 *			equ	$FFFFF5D0			; b	"Signpost patterns have been loaded" flag
-DyingFlag		equ	$FFFFF5D1			; b	Flag set while Sonic is currently dying
+DyingFlag:		equ	$FFFFF5D1			; b	Flag set while Sonic is currently dying
 BlackBars.HandlerId:	equ	$FFFFF5D2			; b	Black Bars handler id (also sets `BlackBars.Handler`)
 RedrawEverything:	equ	$FFFFF5D3			; b	Flag used to redraw the entire screen after teleporting
 FranticDrain:		equ	$FFFFF5D4			; w	Rings to be drained in frantic mode
@@ -75,9 +75,9 @@ DemoTimer:		equ	$FFFFF614			; w	Timer for demos, decremented by certain VBlank r
 
 VBlankRoutine:		equ	$FFFFF62A			; b	VBlank routine id
 
-RingFrame		equ	$FFFFF640			; b	current synchronized smooth ring frame
-RingFrame_Timer		equ	$FFFFF641			; b	time until next smooth ring frame change
-RingFrame2		equ	$FFFFF642			; b	current synchronized smooth ring frame for lost rings (no timer; updates every frame)
+RingFrame:		equ	$FFFFF640			; b	current synchronized smooth ring frame
+RingFrame_Timer:	equ	$FFFFF641			; b	time until next smooth ring frame change
+RingFrame2:		equ	$FFFFF642			; b	current synchronized smooth ring frame for lost rings (no timer; updates every frame)
 
 *			equ	$FFFFF644			; w	<<FOR SALE>>
 
@@ -147,39 +147,39 @@ FZFlashTimer:		equ	$FFFFFEA2			; b	timer for updating the FP palette during esca
 FZFlashColor:		equ	$FFFFFEA4			; w	FP palette increment counter
 
 
-Blackout		equ	$FFFFFF5F			; b	flag when Blackout Challenge is currently active
+Blackout:		equ	$FFFFFF5F			; b	flag when Blackout Challenge is currently active
 
-CameraShake		equ	$FFFFFF60			; b	duration timer for the camera shake, 0 implies no active cam shake
-CameraShake_Intensity	equ	$FFFFFF61			; b	maximum cam shake offset distance, in pixels
-CameraShake_XOffset	equ	$FFFFFF62			; w	current camera shake X offset 
-CameraShake_YOffset	equ	$FFFFFF64			; w	current camera shake Y offset
+CameraShake:		equ	$FFFFFF60			; b	duration timer for the camera shake, 0 implies no active cam shake
+CameraShake_Intensity:	equ	$FFFFFF61			; b	maximum cam shake offset distance, in pixels
+CameraShake_XOffset:	equ	$FFFFFF62			; w	current camera shake X offset 
+CameraShake_YOffset:	equ	$FFFFFF64			; w	current camera shake Y offset
 
-HUD_BossHealth		equ	$FFFFFF68			; b	current health of a boss to be displayed instead of the HUD deaths counter
+HUD_BossHealth:		equ	$FFFFFF68			; b	current health of a boss to be displayed instead of the HUD deaths counter
 
-TutorialBoxId		equ	$FFFFFF6E			; b	requested tutorial box id
+TutorialBoxId:		equ	$FFFFFF6E			; b	requested tutorial box id
 
-BossHealth		equ	$FFFFFF75			; b	current health of a boss (not used by all bosses!)
+BossHealth:		equ	$FFFFFF75			; b	current health of a boss (not used by all bosses!)
 
-SpaceGolf		equ	$FFFFFF77			; b	space golf / antigrav in Star Agony Place
+SpaceGolf:		equ	$FFFFFF77			; b	space golf / antigrav in Star Agony Place
 
-Doors_Casual		equ	$FFFFFF8A			; b	bit field for beaten levels in casual
-Doors_Frantic		equ	$FFFFFF8B			; b	bit field for beaten levels in frantic
-SlotProgress		equ	$FFFFFF90			; b	bit field for save slot-local game progress
-ScreenFuzz		equ	$FFFFFF91			; b	enables cinematic screen fuzz
-OptionsBits		equ	$FFFFFF92			; b	bit field for the user options
-GlobalProgress		equ	$FFFFFF93			; b	bit field for overall game state (bit 0 - base game // bit 1 - blackout)
-OptionsBits2		equ	$FFFFFF94			; b	second bit field for the user options
+Doors_Casual:		equ	$FFFFFF8A			; b	bit field for beaten levels in casual
+Doors_Frantic:		equ	$FFFFFF8B			; b	bit field for beaten levels in frantic
+SlotProgress:		equ	$FFFFFF90			; b	bit field for save slot-local game progress
+ScreenFuzz:		equ	$FFFFFF91			; b	enables cinematic screen fuzz
+OptionsBits:		equ	$FFFFFF92			; b	bit field for the user options
+GlobalProgress:		equ	$FFFFFF93			; b	bit field for overall game state (bit 0 - base game // bit 1 - blackout)
+OptionsBits2:		equ	$FFFFFF94			; b	second bit field for the user options
 
-StoryTextID		equ	$FFFFFF9E			; b	current story text ID
-CurrentChapter		equ	$FFFFFFA7			; b	current chapter ID
+StoryTextID:		equ	$FFFFFF9E			; b	current story text ID
+CurrentChapter:		equ	$FFFFFFA7			; b	current chapter ID
 
-WhiteFlashCounter	equ	$FFFFFFB1			; b	number of remaining frames a white flash is still in progress
+WhiteFlashCounter:	equ	$FFFFFFB1			; b	number of remaining frames a white flash is still in progress
 
-RelativeDeaths		equ	$FFFFFFCA			; w	number of deaths since the player started the current level
+RelativeDeaths:		equ	$FFFFFFCA			; w	number of deaths since the player started the current level
 
-ExtCamShift		equ	$FFFFFFCE			; w	current signed pixel offset for the extended camera
+ExtCamShift:		equ	$FFFFFFCE			; w	current signed pixel offset for the extended camera
 
-Inhuman			equ	$FFFFFFE7			; b	flag when Inhuman Mode is enabled
+Inhuman:		equ	$FFFFFFE7			; b	flag when Inhuman Mode is enabled
 
 *			equ	$FFFFFFE9			; b	Fade out in progress flag
 	if def(__MD_REPLAY__)

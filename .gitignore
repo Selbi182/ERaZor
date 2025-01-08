@@ -37,7 +37,7 @@ Sonic 1 Disassembly UNTOUCHED.lnk
 /s1Hivebrain OM3
 /src/artkosp/*.png
 *.png
-/src/s1erz.wide.bin
+/src/s1erz_wide.bin
 /src/s1erz.bin
 /misc
 /.vscode

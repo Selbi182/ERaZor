@@ -37,7 +37,7 @@ QueueDMATransfer:
 	movep.l	d1, DMAEntry.Source(a1)				; Write source address; the useless top byte will be overwritten later
 	moveq	#0,d0						; We need a zero on d0
 
-	if Use128kbSafeDMA<>0
+	if (Use128kbSafeDMA<>0)|(FailOn128kbBoundaryCross<>0)
 		; Detect if transfer crosses 128KB boundary
 		; Using sub+sub instead of move+add handles the following edge cases:
 		; (1) d3.w == 0 => 128kB transfer
@@ -53,8 +53,12 @@ QueueDMATransfer:
 		; d1.w + d3.w > $10000.
 		sub.w	d3,d0					; Using sub instead of move and add allows checking edge cases
 		sub.w	d1,d0					; Does the transfer cross over to the next 128kB block?
-		bcs.s	@doubletransfer				; Branch if yes
-	endif	; Use128kbSafeDMA
+		if Use128kbSafeDMA<>0
+			bcs.s	@doubletransfer				; Branch if yes
+		else
+			bcs.s	@except128kbCross			; Branch if yes
+		endif
+	endif	; Use128kbSafeDMA || FailOn128kbBoundaryCross
 	; It does not cross a 128kB boundary. So just finish writing it.
 	movep.w	d3,DMAEntry.Size(a1)			; Write DMA length, overwriting useless top byte of source address
 
@@ -71,6 +75,12 @@ QueueDMATransfer:
 		ints_pop
 	endif ;UseVIntSafeDMA=1
 	rts
+; ---------------------------------------------------------------------------
+	if FailOn128kbBoundaryCross<>0
+@except128kbCross:
+	add.l	d1, d1 ; restore source address
+	RaiseError "DMA 128K boundary cross: %<endl>src=%<.l d1 sym>, sizew=%<.w d3>"
+	endif
 ; ---------------------------------------------------------------------------
 	if Use128kbSafeDMA<>0
 @doubletransfer:

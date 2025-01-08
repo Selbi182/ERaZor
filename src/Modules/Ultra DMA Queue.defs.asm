@@ -27,6 +27,10 @@ UseRAMSourceSafeDMA = 1&(AssumeSourceAddressIsRAMSafe=0)
 ; the job in situations where you can't align it in ROM.
 Use128kbSafeDMA = 0
 
+; This option forces the game to report an exception if DMA crosses a 128kb
+; boundary. Only available in DEBUG builds and if `Use128kbSafeDMA` isn't used.
+FailOn128kbBoundaryCross = 1&(Use128kbSafeDMA=0)&def(__DEBUG__)
+
 ; Option to mask interrupts while updating the DMA queue. This fixes many race
 ; conditions in the DMA funcion, but it costs 46(6/1) cycles. The better way to
 ; handle these race conditions would be to make unsafe callers (such as S3&K's

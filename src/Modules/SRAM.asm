@@ -339,5 +339,5 @@ SRAMCache_SanityCheck:
 	RaiseError "SRAM cache desync:%<endl>addr=%<.w a0 sym>, cached=%<.w d0>, actual=%<.w (a0)>", SRAMCache_Debugger
 
 @desync_long:
-	RaiseError "SRAM cache desync:%<endl>addr=%<.w a0 sym>, cached=%<.w d0>, actual=%<.w (a0)>", SRAMCache_Debugger
+	RaiseError "SRAM cache desync:%<endl>addr=%<.w a0 sym>, cached=%<.l d0>, actual=%<.l (a0)>", SRAMCache_Debugger
 

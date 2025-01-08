@@ -113,8 +113,8 @@ QueueStaticDMA macro src,length,dest
 	movea.w	DMAQueuePos, a1
 	cmpa.w	#DMAQueuePos, a1
 	beq.s	@done\@					; Return if there's no more room in the buffer
-	@len\@: setDmaLength \length
-	@src\@: setDmaSource \src
+	@len\@: setDmaLength (\length)
+	@src\@: setDmaSource (\src)
 	move.b	#(@len\@>>8)&$FF, DMAEntry.SizeH(a1)	; Write top byte of size/2
 	move.l	#((@len\@&$FF)<<24)|@src\@, d0		; Set d0 to bottom byte of size/2 and the low 3 bytes of source/2
 	movep.l	d0, DMAEntry.SizeL(a1)			; Write it all to the queue

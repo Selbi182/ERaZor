@@ -5219,10 +5219,16 @@ SS_ClrRam2:	move.l	d0,(a1)+
 		dbf	d1,SS_ClrRam2	; clear	variables
 
 		lea	($FFFFAA00).w,a1
-		moveq	#0,d0
-		move.w	#$7F,d1
-SS_ClrNemRam:	move.l	d0,(a1)+
-		dbf	d1,SS_ClrNemRam	; clear	BG buffer
+		;moveq	#0,d0		-- OPTIMIZED OUT
+		moveq	#$28/4-1,d1
+@clr_bubble_x:	move.l	d0,(a1)+
+		dbf	d1,@clr_bubble_x
+
+		lea	($FFFFAB00).w,a1
+		;moveq	#0,d0		-- OPTIMIZED OUT
+		moveq	#$1C/4-1,d1
+@clr_cloud_x:	move.l	d0,(a1)+
+		dbf	d1,@clr_cloud_x
 
 		lea	PLC_TitleCard, a1
 		jsr	LoadPLC_Direct

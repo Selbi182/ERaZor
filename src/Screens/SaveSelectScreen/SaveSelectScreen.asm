@@ -238,7 +238,7 @@ SaveSelect_DrawSlot_\#__slotId:
 	; Draw "No Slot"
 	if __slotId = 0
 		__baseX: = 2
-		__baseY: = 4
+		__baseY: = 5
 
 		lea	SaveSelect_DrawText_Highlighted(pc), a4		; use highlighted font
 		tst.b	SaveSelect_SelectedSlotId			; are we selected slot?
@@ -251,7 +251,7 @@ SaveSelect_DrawSlot_\#__slotId:
 	; Draw "Slot X"
 	else
 		__baseX: = 2
-		__baseY: = __slotId*7-1
+		__baseY: = __slotId*6+2
 		__slotRAM: = SRAMCache.Slots+(__slotId-1)*SaveSlot.Size
 
 		lea	SaveSelect_DrawText_Highlighted(pc), a4			; use highlighted font
@@ -259,22 +259,39 @@ SaveSelect_DrawSlot_\#__slotId:
 		beq.s	@0							; if yes, branch
 		lea	SaveSelect_DrawText_Normal(pc), a4			; use normal font
 	@0:
-		btst	#SlotState_Created, SaveSlot.Progress+(__slotRAM)	; are we empty slot?
+		move.b	SaveSlot.Progress+(__slotRAM), d5
+		btst	#SlotState_Created, d5					; are we empty slot?
 		beq	@emptySlot						; if yes, branch
 
-		lea	SaveSelect_StrDifficulty_Casual(pc), a3
-		btst	#SlotState_Difficulty, SaveSlot.Progress+(__slotRAM)
-		beq.s	@1
-		lea	SaveSelect_StrDifficulty_Frantic(pc), a3
+		lea	SaveSelect_StrTbl_Chapters(pc), a5
+		moveq	#$F, d0
+		and.b	SaveSlot.Chapter+(__slotRAM), d0			; d0 = chapter
+		add.w	d0, d0
+		add.w	d0, d0
+		movea.l	(a5, d0), a5						; a5 = chapter text
+
+		move.b	SaveSlot.Doors+(__slotRAM), d3				; use casual doors
+		lea	SaveSelect_StrDifficulty_Casual(pc), a3			; use "casual" text
+		btst	#SlotState_Difficulty, d5				; are we frantic?
+		beq.s	@1							; if not, branch
+		move.b	SaveSlot.Doors+1+(__slotRAM), d3			; use frantic doors
+		lea	SaveSelect_StrDifficulty_Frantic(pc), a3		; use "frantic" text
 	@1:
-		SaveSelect_WriteString	a4, __baseX, __baseY,		"SLOT \#__slotId      %<.l a3 str>"
-		SaveSelect_WriteString	a4, __baseX+2, __baseY+2,	"DEATHS: %<.w SaveSlot.Deaths+(__slotRAM) dec>"
-		SaveSelect_WriteString	a4, __baseX+2, __baseY+3,	"SCORE: %<.l SaveSlot.Score+(__slotRAM) dec>"
-		SaveSelect_WriteString	a4, __baseX+2, __baseY+4,	"DOORS: %<.w SaveSlot.Doors+(__slotRAM) bin>"
+		and.b	#%1111111, d3						; don't count "Unterhub" as a separate trophy
+		popcnt.b d3, d4, d0						; d4 = number of 1's in d3 (`popcnt` is a x86_64 instruction)
+		btst	#SlotState_BlackoutBeaten, d5				; did we beat blackout?
+		beq.s	@2							; if not, branch
+		addq.b	#1, d4							; count that as +1 trophy
+	@2:
+		SaveSelect_WriteString a4, __baseX, __baseY,		"SLOT \#__slotId: %<.l a5 str>"
+		SaveSelect_WriteString a4, __baseX+2, __baseY+2,	"DEATHS: %<.w SaveSlot.Deaths+(__slotRAM) dec>"
+		SaveSelect_WriteString a4, __baseX+2, __baseY+3,	"SCORE: %<.l SaveSlot.Score+(__slotRAM) dec>"
+		SaveSelect_WriteString a4, __baseX+20, __baseY+2,	"%<.l a3 str>"	; CASUAL / FRANTIC
+		SaveSelect_WriteString a4, __baseX+20, __baseY+3,	"TROPHIES: %<.b d4 dec>/7"
 		rts
 
 	@emptySlot:
-		SaveSelect_WriteString a4, __baseX, __baseY,		"SLOT \#__slotId"
+		SaveSelect_WriteString a4, __baseX, __baseY,		"SLOT \#__slotId:"
 		SaveSelect_WriteString a4, __baseX+2, __baseY+2,	"EMPTY"
 		rts
 	endif
@@ -308,12 +325,11 @@ SaveSelect_ClearSlot_\#__slotId:
 
 	else
 		__baseX: = 2
-		__baseY: = __slotId*7-1
+		__baseY: = __slotId*6+2
 
-		QueueStaticDMA SaveSelect_EmptyTiles, 40-2*2, SaveSelect_VRAM_FG+((__baseY)*$80)+((__baseX)*2)
-		QueueStaticDMA SaveSelect_EmptyTiles, 40-2*2, SaveSelect_VRAM_FG+((__baseY+2)*$80)+((__baseX)*2)
-		QueueStaticDMA SaveSelect_EmptyTiles, 40-2*2, SaveSelect_VRAM_FG+((__baseY+3)*$80)+((__baseX)*2)
-		QueueStaticDMA SaveSelect_EmptyTiles, 40-2*2, SaveSelect_VRAM_FG+((__baseY+4)*$80)+((__baseX)*2)
+		QueueStaticDMA SaveSelect_EmptyTiles, (40-4)*2, SaveSelect_VRAM_FG+((__baseY)*$80)+((__baseX)*2)
+		QueueStaticDMA SaveSelect_EmptyTiles, (40-4)*2, SaveSelect_VRAM_FG+((__baseY+2)*$80)+((__baseX)*2)
+		QueueStaticDMA SaveSelect_EmptyTiles, (40-4)*2, SaveSelect_VRAM_FG+((__baseY+3)*$80)+((__baseX)*2)
 		rts
 	endif
 
@@ -326,10 +342,27 @@ SaveSelect_EmptyTiles:
 
 ; ---------------------------------------------------------------------------
 SaveSelect_StrDifficulty_Casual:
-	dc.b	' CASUAL', 0
+	dc.b	'CASUAL', 0
 
 SaveSelect_StrDifficulty_Frantic:
 	dc.b	'FRANTIC', 0
+	even
+
+SaveSelect_StrTbl_Chapters:
+	dc.l	@0, @1, @2, @3
+	dc.l	@4, @5, @6, @7
+	dc.l	@8, @N, @N, @N
+	dc.l	@N, @N, @N, @N
+@0:	dc.b	'ONE HOT DAY', 0
+@1:	dc.b	'RUN TO THE HILLS', 0
+@2:	dc.b	'SPECIAL FRUSTRATION', 0
+@3:	dc.b	'INHUMAN THROUGH THE RUINS', 0
+@4:	dc.b	'WET PIT OF DEATH', 0
+@5:	dc.b	'HOVER INTO YOUR FRUSTRATION', 0
+@6:	dc.b	'WATCH THE NIGHT EXPLODE', 0
+@7:	dc.b	'SOMETHING UNDERNEATH', 0
+@8:	dc.b	'IN THE END', 0
+@N:	dc.b	0	; invalid/fallback
 	even
 
 ; ---------------------------------------------------------------------------

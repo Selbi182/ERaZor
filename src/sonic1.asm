@@ -47385,6 +47385,27 @@ ArtKospM_EndSonic:	incbin	artkosp\endsonic.kospm	; ending sequence Sonic
 ;		even
 ;ArtKospM_EndStH:	incbin	artkosp\endtext.kospm	; ending sequence "Sonic the Hedgehog" text
 ;		even
+
+; ---------------------------------------------------------------------------
+; Animated uncompressed graphics
+; ---------------------------------------------------------------------------
+Art_GhzWater:	incbin	artunc\ghzwater.bin	; GHZ waterfall
+		even
+Art_GhzFlower1:	incbin	artunc\ghzflowl.bin	; GHZ large flower
+		even
+Art_GhzFlower2:	incbin	artunc\ghzflows.bin	; GHZ small flower
+		even
+Art_MzLava1:	incbin	artunc\mzlava1.bin	; MZ lava surface
+		even
+Art_MzLava2:	incbin	artunc\mzlava2.bin	; MZ lava
+		even
+Art_MzTorch:	incbin	artunc\mztorch.bin	; MZ torch in background
+		even
+Art_Ring:	incbin	artunc\RingsSmooth.bin	; smooth ring animations from the 2013 decomps
+		even
+Art_Weed:	incbin	artunc\weed.bin
+		even
+
 ; ---------------------------------------------------------------------------
 ; Collision data
 ; ---------------------------------------------------------------------------
@@ -47422,25 +47443,6 @@ SS_Blackout_Part1:
 		even
 SS_Blackout_Part2:
 		incbin	LevelData\sslayout\Blackout-Part2.bin
-		even
-; ---------------------------------------------------------------------------
-; Animated uncompressed graphics
-; ---------------------------------------------------------------------------
-Art_GhzWater:	incbin	artunc\ghzwater.bin	; GHZ waterfall
-		even
-Art_GhzFlower1:	incbin	artunc\ghzflowl.bin	; GHZ large flower
-		even
-Art_GhzFlower2:	incbin	artunc\ghzflows.bin	; GHZ small flower
-		even
-Art_MzLava1:	incbin	artunc\mzlava1.bin	; MZ lava surface
-		even
-Art_MzLava2:	incbin	artunc\mzlava2.bin	; MZ lava
-		even
-Art_MzTorch:	incbin	artunc\mztorch.bin	; MZ torch in background
-		even
-Art_Ring:	incbin	artunc\RingsSmooth.bin	; smooth ring animations from the 2013 decomps
-		even
-Art_Weed:	incbin	artunc\weed.bin
 		even
 
 ;Art_RingFlash:	incbin	artunc\ringflash.bin	; ring flash that appears when you enter a giant ring

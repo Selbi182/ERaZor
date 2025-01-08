@@ -6,13 +6,32 @@
 ; (c) 2024, vladikcomper
 ; -----------------------------------------------------------------------------
 
+	include	'Screens/SaveSelectScreen/Macros.asm'
+
+; -----------------------------------------------------------------------------
+
 SaveSelect_VRAM_Font:		equ	$4000
-SaveSelect_FG_VRAM:		equ	$C000
+SaveSelect_VRAM_Header:		equ	$A000
+SaveSelect_VRAM_FG:		equ	$C000
+SaveSelect_Pat_Font:		equ	$8000|(SaveSelect_VRAM_Font/$20)-('!'-1)
 
-SaveSelect_ConsoleRAM:		equ	LevelLayout_FG		; borrow FG layout RAM
-SaveSelect_SelectedSlotId:	equ	LevelLayout_FG+$3C	; .b
-SaveSelect_ExitFlag:		equ	LevelLayout_FG+$3D	; .b
+; -----------------------------------------------------------------------------
+SaveSelect_StringBufferSize = 40+1
+SaveSelect_CanaryValue = $F00D
 
+; -----------------------------------------------------------------------------
+SaveSelectScreen_RAM:		equ	$FFFF8000
+
+				rsset	SaveSelectScreen_RAM
+SaveSelect_StringBuffer:	rs.b	SaveSelect_StringBufferSize+(SaveSelect_StringBufferSize&1)
+SaveSelect_StringBufferCanary:	rs.w	1
+SaveSelect_StringScreenPos:	rs.w	1
+SaveSelect_VRAMBufferPoolPtr:	rs.w	1
+SaveSelect_SelectedSlotId:	rs.b	1
+SaveSelect_ExitFlag:		rs.b	1
+SaveSelectScreen_RAM.Size:	equ	__rs-SaveSelectScreen_RAM
+
+; -----------------------------------------------------------------------------
 SaveSelectScreen:
 	moveq	#$FFFFFFE0, d0
 	jsr	PlayCommand
@@ -47,15 +66,30 @@ SaveSelectScreen:
 
 	assert.w a1, eq, #Objects_End
 
+	; Clear screen RAM
+	lea	SaveSelectScreen_RAM, a1
+	moveq	#0, d0
+	moveq	#SaveSelectScreen_RAM.Size/4-1, d1
+
+	@clear_screen_ram_loop:
+		move.l	d0, (a1)+
+		dbf	d1, @clear_screen_ram_loop
+
+	rept SaveSelectScreen_RAM.Size&3
+		move.b	d0, (a1)+
+	endr
+	assert.w a1, eq, #SaveSelectScreen_RAM+SaveSelectScreen_RAM.Size
+
+	; Init screen variables
+	SaveSelect_ResetVRAMBufferPool
+	move.w	#SaveSelect_CanaryValue, SaveSelect_StringBufferCanary
+	move.b	SRAMCache.SelectedSlotId, SaveSelect_SelectedSlotId	; use last save slot ...
+	bne.s	@default_slot_ok					; ...
+	move.b	#1, SaveSelect_SelectedSlotId				; ... unless it's "NO SAVE", then suggest Slot 1
+@default_slot_ok:
+
 	jsr	BackgroundEffects_Setup
 	move.w	#$824,(BGThemeColor).w	; set theme color for background effects
-
-	; Load last used save slot (unless it's "NO SAVE", then suggest Slot 1)
-	move.b	SRAMCache.SelectedSlotId, SaveSelect_SelectedSlotId
-	bne.s	@default_slot_ok
-	move.b	#1, SaveSelect_SelectedSlotId
-@default_slot_ok:
-	clr.b	SaveSelect_ExitFlag
 
 	jsr	SaveSelect_InitUI
 	jsr	SaveSelect_InitialDraw
@@ -85,29 +119,52 @@ SaveSelectScreen:
 ; ---------------------------------------------------------------------------
 
 SaveSelect_MainLoop:
-	move.b	#4, VBlankRoutine
-	move.l	#SaveSelect_HandleUI, VBlankCallback
+	move.l	#@FlushVRAMBufferPool, VBlankCallback
+	move.b	#2, VBlankRoutine
 	jsr	DelayProgram
 
+	assert.w SaveSelect_VRAMBufferPoolPtr, eq, #Art_Buffer			; VRAM buffer pool should be reset by the beginning of the frame
+	assert.w SaveSelect_StringBufferCanary, eq, #SaveSelect_CanaryValue	; guard against buffer overflows
+
 	jsr	BackgroundEffects_Update
+	bsr	SaveSelect_HandleUI
 
 	tst.b	SaveSelect_ExitFlag			; are we exiting?
-	beq.s	SaveSelect_MainLoop			; if not, branch
+	beq	SaveSelect_MainLoop			; if not, branch
 
-SaveSelect_Exit:
 	; TODO: Exit to title screen?
 	move.b	SaveSelect_SelectedSlotId, SRAMCache.SelectedSlotId
 	jsr	SRAMCache_LoadSelectedSlotId		; load game from selected slot
 	jmp	Exit_SaveSelectScreen
 
 ; ---------------------------------------------------------------------------
+@FlushVRAMBufferPool:
+	SaveSelect_ResetVRAMBufferPool
+	rts
+
+; ---------------------------------------------------------------------------
 ; UI Routines
 ; ---------------------------------------------------------------------------
 
 SaveSelect_InitUI:
-	bsr	SaveSelect_InitConsole
+	; Load all compressed graphics
+	lea	@PLC_List(pc), a1
+	jsr	LoadPLC_Direct
+	jsr	PLC_ExecuteOnce_Direct
 
-	; Load palette
+	; Load header mappings (### TODO: Replace this placeholder)
+	lea	SoundTest_Header_MapEni, a0
+	lea	$FF0000, a1
+	move.w	#$8000|$6000|(SaveSelect_VRAM_Header/$20), d0
+	jsr	EniDec
+
+	vram	SaveSelect_VRAM_FG+$80+10*2, d0
+	lea	$FF0000, a1
+	moveq	#20-1, d1
+	moveq	#2-1, d2
+	jsr	ShowVDPGraphics
+
+	; Load palette (### TODO: Improve code and palettes)
 	lea	Pal_Target+$20, a0
 	lea	@PaletteData_Highlighted(pc), a1
 	rept 8/2
@@ -123,30 +180,9 @@ SaveSelect_InitUI:
 	rept 8/2
 		move.l	(a1)+, (a0)+
 	endr
-
-	; Load font
-	vram	SaveSelect_VRAM_Font, (a5)
-	lea	BBCS_ArtKospM_Font(pc), a0		; ### TODO: Replace or dedup
-	jmp	KosPlusMDec_VRAM
-
-SaveSelect_InitConsole:	equ *
-	; Initialize console subsystem (MD Debugger)
-	lea	VDP_Ctrl, a5
-	lea	-4(a5), a6
-	lea	@ConsoleConfig(pc), a1			; a1 = console config
-	lea	SaveSelect_ConsoleRAM, a3		; a3 = console RAM
-	vram	SaveSelect_FG_VRAM, d5			; d5 = base draw position
-	jmp	MDDBG__Console_InitShared
+	rts
 
 ; ---------------------------------------------------------------
-@ConsoleConfig:
-	dc.w	40				; number of characters per line
-	dc.w	40				; number of characters on the first line (meant to be the same as the above)
-	dc.w	$8000|(SaveSelect_VRAM_Font/$20)-('!'-1)	; base font pattern (tile id for ASCII $00 + palette flags)
-	dc.w	$80				; size of screen row (in bytes)
-
-	dc.w	$2000/$20-1			; size of screen (in tiles - 1)
-
 @PaletteData_Highlighted:
 	dc.w	$0000, $0444, $0EEE, $0EEE, $0EEE, $0EEE, $0CCC, $0AAA
 
@@ -156,95 +192,189 @@ SaveSelect_InitConsole:	equ *
 @PaletteData_Header:
 	dc.w	$0000, $0422, $0E88, $0E88, $0E88, $0E88, $0C66, $0A44
 
+; ---------------------------------------------------------------
+@PLC_List:
+	dc.l	BBCS_ArtKospM_Font
+	dc.w	SaveSelect_VRAM_Font
+
+	dc.l	SoundTest_Header_Tiles_KospM	; ###
+	dc.w	SaveSelect_VRAM_Header
+
+	dc.w	-1	; end marker
+
 ; ---------------------------------------------------------------------------
-SaveSelect_FullRedraw:
-	jsr	SaveSelect_InitConsole
-
 SaveSelect_InitialDraw:
-	_Console.SetXY #12, #1
-	_Console.Write "%<pal3>- SAVE SELECT -"
+	; Draw hints
+	lea	SaveSelect_DrawText_Inactive(pc), a4
+	SaveSelect_WriteString a4, 6, 26, "- START: SELECT, B: DELETE -"
 
-	_Console.SetXY #6, #26
-	_Console.Write "%<pal3>- START: SELECT, B: DELETE -"
-
-	@slot_id: = 0
-	rept 4
-		moveq	#@slot_id, d0
-		bsr	SaveSelect_DrawSlot
-		@slot_id: = @slot_id+1 ; next slot
-	endr
-	rts
+	; Redraw all slots
+	bsr	SaveSelect_DrawSlot_0
+	bsr	SaveSelect_DrawSlot_1
+	bsr	SaveSelect_DrawSlot_2
+	bra	SaveSelect_DrawSlot_3
 
 ; ---------------------------------------------------------------------------
 ; INPUT:
-;	d0 - Slot Id
+;	d0 .b	- Slot Id
 ; ---------------------------------------------------------------------------
 
 SaveSelect_DrawSlot:
-	_assert.b d0, ls, #3
+	and.w	#3, d0
+	add.w	d0, d0
+	add.w	d0, d0
+	movea.l	@tbl(pc,d0), a0
+	jmp	(a0)
 
-	lea	@Cursor_Selected(pc), a1	; use selected cursor
-	cmp.b	SaveSelect_SelectedSlotId, d0	; are we selected slot?
-	beq.s	@cursor_done
-	lea	@Cursor_Normal(pc), a1		; use no cursor
-@cursor_done:
+@tbl:	dc.l	SaveSelect_DrawSlot_0	; "NO SAVE"
+	dc.l	SaveSelect_DrawSlot_1	; "SLOT 1"
+	dc.l	SaveSelect_DrawSlot_2	; "SLOT 2"
+	dc.l	SaveSelect_DrawSlot_3	; "SLOT 3"
 
-	moveq	#3, d1				; Y-position for "No Save"
-	tst.b	d0				; are we "No Save"?
-	beq	@draw_no_save			; if yes, branch
-	moveq	#0, d1
-	move.b	d0, d1
-	mulu.w	#7, d1
-	subq.w	#1, d1
+__slotId: = 0
 
-	move.w	d0, -(sp)
-	jsr	SRAMCache_GetSlotData		; INPUT: d0 = Slot id, OUTPUT: a2 = Slot data
-	move.w 	(sp)+, d0
+	rept 4
+SaveSelect_DrawSlot_\#__slotId:
+	; Draw "No Slot"
+	if __slotId = 0
+		__baseX: = 2
+		__baseY: = 4
 
-	btst	#SlotState_Created, SaveSlot.Progress(a2)
-	beq	@draw_empty
-
-	; TODO: Difficulty
-	lea	@Difficulty_Casual(pc), a3
-	btst	#SlotState_Difficulty, SaveSlot.Progress(a2)
-	beq.s	@difficulty_done
-	lea	@Difficulty_Frantic(pc), a3
-@difficulty_done:
+		lea	SaveSelect_DrawText_Highlighted(pc), a4		; use highlighted font
+		tst.b	SaveSelect_SelectedSlotId			; are we selected slot?
+		beq.s	@0						; if yes, branch
+		lea	SaveSelect_DrawText_Normal(pc), a4		; use normal font
+	@0:
+		SaveSelect_WriteString a4, __baseX, __baseY, "NO SAVE"
+		rts
 
 	; Draw "Slot X"
-	_Console.SetXY #1, d1
-	_Console.Write "%<.l a1 str>SLOT %<.b d0 dec>%<setx,12>%<.l a3 str>%<endl>%<endl>%<setx,4>"
-	_Console.Write "DEATHS: %<.w SaveSlot.Deaths(a2) dec>           %<endl>"
-	_Console.Write "SCORE: %<.l SaveSlot.Score(a2) dec>             %<endl>"
-	_Console.Write "DOORS: %<.w SaveSlot.Doors(a2) bin>"
-	rts
+	else
+		__baseX: = 2
+		__baseY: = __slotId*7-1
+		__slotRAM: = SRAMCache.Slots+(__slotId-1)*SaveSlot.Size
 
-@draw_empty:
-	; Draw "Empty"
-	_Console.SetXY #1, d1
-	_Console.Write "%<.l a1 str>SLOT %<.b d0 dec>%<setx,12>%<endl>%<endl>%<setx,4>"
-	_Console.Write "EMPTY"
-	rts
+		lea	SaveSelect_DrawText_Highlighted(pc), a4			; use highlighted font
+		cmp.b	#__slotId, SaveSelect_SelectedSlotId			; are we selected slot?
+		beq.s	@0							; if yes, branch
+		lea	SaveSelect_DrawText_Normal(pc), a4			; use normal font
+	@0:
+		btst	#SlotState_Created, SaveSlot.Progress+(__slotRAM)	; are we empty slot?
+		beq	@emptySlot						; if yes, branch
 
-@draw_no_save:
-	; Draw "No Save"
-	_Console.SetXY #1, d1
-	_Console.Write "%<.l a1 str>NO SAVE"
-	rts
+		lea	SaveSelect_StrDifficulty_Casual(pc), a3
+		btst	#SlotState_Difficulty, SaveSlot.Progress+(__slotRAM)
+		beq.s	@1
+		lea	SaveSelect_StrDifficulty_Frantic(pc), a3
+	@1:
+		SaveSelect_WriteString	a4, __baseX, __baseY,		"SLOT \#__slotId      %<.l a3 str>"
+		SaveSelect_WriteString	a4, __baseX+2, __baseY+2,	"DEATHS: %<.w SaveSlot.Deaths+(__slotRAM) dec>"
+		SaveSelect_WriteString	a4, __baseX+2, __baseY+3,	"SCORE: %<.l SaveSlot.Score+(__slotRAM) dec>"
+		SaveSelect_WriteString	a4, __baseX+2, __baseY+4,	"DOORS: %<.w SaveSlot.Doors+(__slotRAM) bin>"
+		rts
+
+	@emptySlot:
+		SaveSelect_WriteString a4, __baseX, __baseY,		"SLOT \#__slotId"
+		SaveSelect_WriteString a4, __baseX+2, __baseY+2,	"EMPTY"
+		rts
+	endif
+
+	__slotId: = __slotId+1
+	endr
 
 ; ---------------------------------------------------------------------------
-@Cursor_Selected:
-	dc.b	pal1, '> ', 0
+; INPUT:
+;	d0 .b	- Slot Id
+; ---------------------------------------------------------------------------
 
-@Cursor_Normal:
-	dc.b	pal2, '  ', 0
+SaveSelect_ClearSlot:
+	and.w	#3, d0
+	add.w	d0, d0
+	add.w	d0, d0
+	movea.l	@tbl(pc,d0), a0
+	jmp	(a0)
 
-@Difficulty_Casual:
+@tbl:	dc.l	SaveSelect_ClearSlot_0	; "NO SAVE"
+	dc.l	SaveSelect_ClearSlot_1	; "SLOT 1"
+	dc.l	SaveSelect_ClearSlot_2	; "SLOT 2"
+	dc.l	SaveSelect_ClearSlot_3	; "SLOT 3"
+
+__slotId: = 0
+
+	rept 4
+SaveSelect_ClearSlot_\#__slotId:
+	if __slotId = 0
+		rts
+
+	else
+		__baseX: = 2
+		__baseY: = __slotId*7-1
+
+		QueueStaticDMA SaveSelect_EmptyTiles, 40-2*2, SaveSelect_VRAM_FG+((__baseY)*$80)+((__baseX)*2)
+		QueueStaticDMA SaveSelect_EmptyTiles, 40-2*2, SaveSelect_VRAM_FG+((__baseY+2)*$80)+((__baseX)*2)
+		QueueStaticDMA SaveSelect_EmptyTiles, 40-2*2, SaveSelect_VRAM_FG+((__baseY+3)*$80)+((__baseX)*2)
+		QueueStaticDMA SaveSelect_EmptyTiles, 40-2*2, SaveSelect_VRAM_FG+((__baseY+4)*$80)+((__baseX)*2)
+		rts
+	endif
+
+	__slotId: = __slotId+1
+	endr
+
+; ---------------------------------------------------------------------------
+SaveSelect_EmptyTiles:
+	dcb.b	$80, 0
+
+; ---------------------------------------------------------------------------
+SaveSelect_StrDifficulty_Casual:
 	dc.b	' CASUAL', 0
 
-@Difficulty_Frantic:
+SaveSelect_StrDifficulty_Frantic:
 	dc.b	'FRANTIC', 0
 	even
+
+; ---------------------------------------------------------------------------
+SaveSelect_DrawText_Inactive:
+	move.w	#$6000, d1				; use palette line 3
+	bra.s	SaveSelect_DrawText_Cont
+
+SaveSelect_DrawText_Highlighted:
+	move.w	#$2000, d1				; use palette line 1
+	bra.s	SaveSelect_DrawText_Cont
+
+SaveSelect_DrawText_Normal:
+	move.w	#$4000, d1				; use palette line 2
+
+SaveSelect_DrawText_Cont:
+	SaveSelect_AllocateInVRAMBufferPool a1, #SaveSelect_StringBufferSize*2
+	move.l	a1, -(sp)
+
+	clr.b	(a0)+					; finalize buffer
+	lea	SaveSelect_StringBuffer, a0
+
+	add.w	#SaveSelect_Pat_Font, d1
+	moveq	#0, d7
+	move.b	(a0)+, d7				; d7 = char
+	beq.s	@done
+
+	@loop:	add.w	d1, d7
+		move.w	d7, (a1)+				; send tile
+		moveq	#0, d7
+		move.b	(a0)+, d7				; d7 = char
+		bne.s	@loop
+
+	move.l	(sp)+, d1				; d1 = source pointer
+	andi.l	#$FFFFFF, d1
+	move.w	SaveSelect_StringScreenPos, d2		; d2 = destination VRAM
+	move.l	d1, d3
+	sub.l	a1, d3
+	neg.w	d3					; d3 = transfer size
+	lsr.w	d3					; d3 = transfer size (words)
+	jsr	QueueDMATransfer
+
+@done:
+	moveq	#0, d7
+	subq.w	#1, d7					; return C=1
+	rts
 
 ; ---------------------------------------------------------------------------
 
@@ -258,7 +388,7 @@ SaveSelect_HandleUI:
 	bne.s	@PreviousSelection
 	btst	#iDown, d0
 	bne.s	@NextSelection
-	rts
+@ret	rts
 
 @NextSelection:
 	move.b	d7, d0
@@ -283,10 +413,13 @@ SaveSelect_HandleUI:
 
 @ClearSelection:
 	move.b	d7, d0
+	beq	@ret				; if slot is empty, bail
 	jsr	SRAMCache_GetSlotData		; INPUT: d0 = Slot id, OUTPUT: a2 = Slot data
 	jsr	SRAMCache_ClearSlot		; INPUT: a2 = Slot data
 	move.b	d7, d0
-	bsr	SaveSelect_FullRedraw		; ### FIXME: Redraw this slot only
+	bsr	SaveSelect_ClearSlot		; clear all lines on this slot
+	move.b	d7, d0
+	bsr	SaveSelect_DrawSlot		; redraw slot
 	moveq	#$FFFFFFC3, d0
 	jmp	PlaySFX
 

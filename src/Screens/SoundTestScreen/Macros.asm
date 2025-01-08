@@ -6,7 +6,7 @@
 ;	flushFunctionOp - function used to flush string (always `a4`)
 ;	string - formatted string (MD Debugger syntax)
 ;	bufferSize (optional) - limit max string len (minus null-terminator)
-;	vramScreenPosOp (options) - VRAM offset for start on-screen position
+;	vramScreenPosOp (optional) - VRAM offset for start on-screen position
 ; ---------------------------------------------------------------------------
 
 SoundTest_DrawFormattedString:	macro	flushFunctionOp, string, bufferSize, vramScreenPosOp

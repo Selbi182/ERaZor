@@ -96,7 +96,7 @@ SoundTestScreen:
 	vram	SoundTest_PlaneA_VRAM+$80+10*2, d0
 	lea	$FF0000, a1
 	moveq	#20-1, d1
-	moveq	#3-1, d2
+	moveq	#2-1, d2
 	jsr	ShowVDPGraphics
 
 	; Draw top separator

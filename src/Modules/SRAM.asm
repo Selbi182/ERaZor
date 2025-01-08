@@ -281,24 +281,24 @@ SRAMCache_SaveGlobals2:
 ; ---------------------------------------------------------------------------
 
 SRAMCache_Debugger:
-	_Console.WriteLine "%<pal1>GLOBALS:%<pal0>"
-	_Console.WriteLine "optionsBits1=%<pal2>%<.b SRAMCache.GlobalOptions+SaveOptions.OptionsBits1 bin>%<pal0>"
-	_Console.WriteLine "optionsBits2=%<pal2>%<.b SRAMCache.GlobalOptions+SaveOptions.OptionsBits2 bin>%<pal0>"
-	_Console.WriteLine "screenFuzz=%<pal2>%<.b SRAMCache.GlobalOptions+SaveOptions.ScreenFuzz>%<pal0>, blackBars=%<pal2>%<.b SRAMCache.GlobalOptions+SaveOptions.BlackBars>%<pal0>"
-	_Console.WriteLine "globalProgress=%<pal2>%<.b SRAMCache.GlobalProgress bin>%<pal0>"
+	_Console.WriteLine "%<pal1>GLOBALS (CACHED/ACTUAL):%<pal0>"
+	_Console.WriteLine "optionsBits1=%<pal2>%<.b SRAMCache.GlobalOptions+SaveOptions.OptionsBits1 bin>%<pal0>/%<pal2>%<.b OptionsBits bin>%<pal0>"
+	_Console.WriteLine "optionsBits2=%<pal2>%<.b SRAMCache.GlobalOptions+SaveOptions.OptionsBits2 bin>%<pal0>/%<pal2>%<.b OptionsBits2 bin>%<pal0>"
+	_Console.WriteLine "screenFuzz=%<pal2>%<.b SRAMCache.GlobalOptions+SaveOptions.ScreenFuzz>%<pal0>/%<pal2>%<.b ScreenFuzz>%<pal0>, blackBars=%<pal2>%<.b SRAMCache.GlobalOptions+SaveOptions.BlackBars>/%<pal2>%<.b BlackBars.HandlerId>%<pal0>"
+	_Console.WriteLine "globalProgress=%<pal2>%<.b SRAMCache.GlobalProgress bin>%<pal0>/%<pal2>%<.b GlobalProgress bin>%<pal0>"
 	_Console.WriteLine "selectedSlotId=%<pal2>%<.b SRAMCache.SelectedSlotId> %<pal3>(SLOT %<.b SRAMCache.SelectedSlotId dec>)"
 
-	@slot_id: = 1
-	@slot_ptr: = SRAMCache.Slots
-	rept 3
-		_Console.WriteLine "%<pal1,endl>SLOT \#@slot_id\:%<pal0>"
-		_Console.WriteLine "progress=%<pal2>%<.b @slot_ptr+SaveSlot.Progress bin>%<pal0>, chapter=%<pal2>%<.b @slot_ptr+SaveSlot.Chapter>%<pal0>"
-		_Console.WriteLine "rings=%<pal2>%<.w @slot_ptr+SaveSlot.Rings dec>%<pal0>, deaths=%<pal2>%<.w @slot_ptr+SaveSlot.Deaths dec>%<pal0>, score=%<pal2>%<.l @slot_ptr+SaveSlot.Score dec>%<pal0>"
-		_Console.WriteLine "doors=%<pal2>%<.w @slot_ptr+SaveSlot.Doors bin>%<pal0>"
+	bsr	SRAMCache_GetSelectedSlotData	; a2 = slot data
+	beq	@NoSlot
 
-		@slot_id: = @slot_id + 1
-		@slot_ptr: = @slot_ptr + SaveSlot.Size
-	endr
+	_Console.WriteLine "%<pal1,endl>SLOT %<.b SRAMCache.SelectedSlotId dec> (CACHED/ACTUAL):%<pal0>"
+	_Console.WriteLine "progress=%<pal2>%<.b SaveSlot.Progress(a2) bin>%<pal0>/%<pal2>%<.b SlotProgress bin>%<pal0>"
+	_Console.WriteLine "chapter=%<pal2>%<.b SaveSlot.Chapter(a2) dec>%<pal0>/%<pal2>%<.b CurrentChapter dec>%<pal0>"
+	_Console.WriteLine "rings=%<pal2>%<.w SaveSlot.Rings(a2) dec>%<pal0>/%<pal2>%<.w Rings dec>%<pal0>, deaths=%<pal2>%<.w SaveSlot.Deaths(a2) dec>%<pal0>/%<pal2>%<.w Deaths dec>%<pal0>"
+	_Console.WriteLine "score=%<pal2>%<.l SaveSlot.Score(a2) dec>%<pal0>/%<pal2>%<.l Score dec>%<pal0>"
+	_Console.WriteLine "doors=%<pal2>%<.w SaveSlot.Doors(a2)>%<pal0>/%<pal2>%<.w Doors_Casual>%<pal0>"
+
+@NoSlot:
 	rts
 
 ; ===========================================================================

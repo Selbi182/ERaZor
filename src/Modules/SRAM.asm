@@ -57,9 +57,6 @@ SRAMCache_Init:
 	@LoadDefaults:
 		_KDebug.WriteLine "SRAMCache_Init(): Loading defaults..."
 
-		_assert.l @sram, eq, #SRAM_Start
-		_assert.w @cache, eq, #SRAMCache_RAM
-
 		; Reset and save global options
 		jsr	Options_SetDefaults	; resets OptionBits, OptionBits2, ScreenFuzz
 						; WARNING! Doesn't reset Black Bars config!

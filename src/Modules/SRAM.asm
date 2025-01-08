@@ -333,11 +333,11 @@ SRAMCache_SanityCheck:
 
 ; ---------------------------------------------------------------------------
 @desync_byte:
-	RaiseError "SRAM cache desync:%<endl>addr=%<.w a0>, cached=%<.b d0>, actual=%<.b (a0)>", SRAMCache_Debugger
+	RaiseError "SRAM cache desync:%<endl>addr=%<.w a0 sym>, cached=%<.b d0>, actual=%<.b (a0)>", SRAMCache_Debugger
 
 @desync_word:
-	RaiseError "SRAM cache desync:%<endl>addr=%<.w a0>, cached=%<.w d0>, actual=%<.w (a0)>", SRAMCache_Debugger
+	RaiseError "SRAM cache desync:%<endl>addr=%<.w a0 sym>, cached=%<.w d0>, actual=%<.w (a0)>", SRAMCache_Debugger
 
 @desync_long:
-	RaiseError "SRAM cache desync:%<endl>addr=%<.w a0>, cached=%<.w d0>, actual=%<.w (a0)>", SRAMCache_Debugger
+	RaiseError "SRAM cache desync:%<endl>addr=%<.w a0 sym>, cached=%<.w d0>, actual=%<.w (a0)>", SRAMCache_Debugger
 

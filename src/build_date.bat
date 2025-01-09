@@ -19,4 +19,4 @@ REM Rename the output file
 set outputFileNormal="Sonic ERaZor 8 - Test Build [%currentDate%].bin"
 set outputFileWide="Sonic ERaZor 8 WIDE - Test Build [%currentDate%].bin"
 ren s1erz.bin %outputFileNormal%
-ren s1erz.wide.bin %outputFileWide%
+ren s1erz_wide.bin %outputFileWide%

@@ -1188,6 +1188,7 @@ StopSFX:
 .gotfmpointer:
 		bclr	#2,TrackPlaybackControl(a5)	; Clear 'SFX is overriding' bit
 		bset	#1,TrackPlaybackControl(a5)	; Set 'track at rest' bit
+		moveq	#0,d0
 		move.b	TrackVoiceIndex(a5),d0	; Current voice
 		jsr	SetVoice(pc)
 		movea.l	a3,a5
@@ -2343,6 +2344,7 @@ cfSetVoice:
 
 ; sub_72C4E:
 SetVoice:
+		_assert.w d0, lo, #$100		; voice id should be 0..$FF
 		move.w	d0, d1
 		bmi.s	.havevoiceptr
 		add.w	d0,d0			; d0 = 2x

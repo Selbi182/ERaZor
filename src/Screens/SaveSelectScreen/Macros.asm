@@ -59,3 +59,30 @@ SaveSelect_AllocateInVRAMBufferPool:	macro	ptrOperand, allocSizeOperand
 	add.w	\allocSizeOperand, SaveSelect_VRAMBufferPoolPtr
 	assert.w SaveSelect_VRAMBufferPoolPtr, ls, #Art_Buffer_End
 	endm
+
+; ---------------------------------------------------------------------------
+; Creates a dynamic object
+; ---------------------------------------------------------------------------
+
+SaveSelect_CreateObject: macro objPointerOp
+	jsr	SingleObjLoad
+	if def(__DEBUG__)
+		beq.s	@ok\@
+		RaiseError "Out of object slots"
+	@ok\@:
+	endif
+	move.b	#$8D, (a1)
+	move.l	\objPointerOp, $3C(a1)
+	endm
+
+; ---------------------------------------------------------------------------
+SaveSelect_CreateChildObject: macro objPointerOp
+	jsr	SingleObjLoad2
+	if def(__DEBUG__)
+		beq.s	@ok\@
+		RaiseError "Out of object slots"
+	@ok\@:
+	endif
+	move.b	#$8D, (a1)
+	move.l	\objPointerOp, $3C(a1)
+	endm

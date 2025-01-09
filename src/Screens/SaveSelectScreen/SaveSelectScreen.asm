@@ -7,29 +7,7 @@
 ; -----------------------------------------------------------------------------
 
 	include	'Screens/SaveSelectScreen/Macros.asm'
-
-; -----------------------------------------------------------------------------
-
-SaveSelect_VRAM_Font:		equ	$4000
-SaveSelect_VRAM_Header:		equ	$A000
-SaveSelect_VRAM_FG:		equ	$C000
-SaveSelect_Pat_Font:		equ	$8000|(SaveSelect_VRAM_Font/$20)-('!'-1)
-
-; -----------------------------------------------------------------------------
-SaveSelect_StringBufferSize = 40+1
-SaveSelect_CanaryValue = $F00D
-
-; -----------------------------------------------------------------------------
-SaveSelectScreen_RAM:		equ	$FFFF8000
-
-				rsset	SaveSelectScreen_RAM
-SaveSelect_StringBuffer:	rs.b	SaveSelect_StringBufferSize+(SaveSelect_StringBufferSize&1)
-SaveSelect_StringBufferCanary:	rs.w	1
-SaveSelect_StringScreenPos:	rs.w	1
-SaveSelect_VRAMBufferPoolPtr:	rs.w	1
-SaveSelect_SelectedSlotId:	rs.b	1
-SaveSelect_ExitFlag:		rs.b	1
-SaveSelectScreen_RAM.Size:	equ	__rs-SaveSelectScreen_RAM
+	include	'Screens/SaveSelectScreen/Variables.asm'
 
 ; -----------------------------------------------------------------------------
 SaveSelectScreen:
@@ -47,6 +25,7 @@ SaveSelectScreen:
 	move.w	#$8004, (a6)
 	move.w	#$8230, (a6)
 	move.w	#$8407, (a6)
+	move.w	#$8C81+8, (a6)	; enable S&H
 	move.w	#$9001, (a6)
 	move.w	#$9200, (a6)
 	move.w	#$8B03, (a6)
@@ -94,6 +73,9 @@ SaveSelectScreen:
 	jsr	SaveSelect_InitUI
 	jsr	SaveSelect_InitialDraw
 
+	; Setup objects
+	SaveSelect_CreateObject #SaveSelect_Obj_SlotOverlays
+
 	VBlank_UnsetMusicOnly
 	display_enable
 
@@ -109,6 +91,11 @@ SaveSelectScreen:
 	move.l	(a0)+, (a1)+
 	move.l	(a0)+, (a1)+
 	move.l	(a0)+, (a1)+
+
+	DeleteQueue_Init
+	jsr	ObjectsLoad
+	jsr	BuildSprites
+	jsr	DeleteQueue_Execute
 
 	jsr	Pal_FadeTo
 	assert.b VBlank_MusicOnly, eq
@@ -129,18 +116,30 @@ SaveSelect_MainLoop:
 	jsr	BackgroundEffects_Update
 	bsr	SaveSelect_HandleUI
 
+	DeleteQueue_Init
+	jsr	ObjectsLoad
+	jsr	BuildSprites
+	jsr	DeleteQueue_Execute
+
 	tst.b	SaveSelect_ExitFlag			; are we exiting?
 	beq	SaveSelect_MainLoop			; if not, branch
 
 	; TODO: Exit to title screen?
 	move.b	SaveSelect_SelectedSlotId, SRAMCache.SelectedSlotId
 	jsr	SRAMCache_LoadSelectedSlotId		; load game from selected slot
+	move.w	#$8C81, VDP_Ctrl			; disable S&H
 	jmp	Exit_SaveSelectScreen
 
 ; ---------------------------------------------------------------------------
 @FlushVRAMBufferPool:
 	SaveSelect_ResetVRAMBufferPool
 	rts
+
+; ---------------------------------------------------------------------------
+; Objects
+; ---------------------------------------------------------------------------
+
+	include	"Screens/SaveSelectScreen/Objects/SlotOverlays.asm"
 
 ; ---------------------------------------------------------------------------
 ; UI Routines
@@ -152,10 +151,85 @@ SaveSelect_InitUI:
 	jsr	LoadPLC_Direct
 	jsr	PLC_ExecuteOnce_Direct
 
-	; Load header mappings (### TODO: Replace this placeholder)
-	lea	SoundTest_Header_MapEni, a0
+	lea	VDP_Ctrl, a5
+	lea	VDP_Data, a6
+
+	; ### UI borders
+	vram	SaveSelect_VRAM_UI_Borders, VDP_Ctrl
+	lea	@UIBorders, a0
+	moveq	#(@UIBorders_End-@UIBorders)/4-1, d0
+	@l:	move.l	(a0)+, (a6)
+		dbf	d0, @l
+
+	; ### Dummy HL
+	vram	SaveSelect_VRAM_DummyHL, VDP_Ctrl
+	lea	@DummyHL, a0
+	moveq	#(@DummyHL_End-@DummyHL)/4-1, d0
+	@l2:	move.l	(a0)+, (a6)
+		dbf	d0, @l2
+
+	; Clear-fill Plane A
+	@vdp_data:	equr	a6
+	@fill_value:	equr	d0
+
+	vram	SaveSelect_VRAM_FG, (a5)
+	move.l	#$80008000, @fill_value
+	move.w	#$1000/$20-1, d6
+	
+	@clear_plane_a_loop:
+		rept $20/4
+			move.l	@fill_value, (@vdp_data)
+		endr
+		dbf	d6, @clear_plane_a_loop
+
+	; UI ###
+	move.w	#$8F80, (a5)
+
+	vram	SaveSelect_VRAM_FG+$80*4+1*2, (a5)
+	move.w	#$8000|$6000|(SaveSelect_VRAM_UI_Borders/$20)+1, (a6)
+	move.w	#$8000|$6000|(SaveSelect_VRAM_UI_Borders/$20), (a6)
+	move.w	#$8000|$1000|$6000|(SaveSelect_VRAM_UI_Borders/$20)+1, (a6)
+	rept 3
+		move.w	#$8000|$6000|(SaveSelect_VRAM_UI_Borders/$20)+1, (a6)
+		move.w	#$8000|$6000|(SaveSelect_VRAM_UI_Borders/$20), (a6)
+		move.w	#$8000|$6000|(SaveSelect_VRAM_UI_Borders/$20), (a6)
+		move.w	#$8000|$6000|(SaveSelect_VRAM_UI_Borders/$20), (a6)
+		move.w	#$8000|$6000|(SaveSelect_VRAM_UI_Borders/$20), (a6)
+		move.w	#$8000|$1000|$6000|(SaveSelect_VRAM_UI_Borders/$20)+1, (a6)
+	endr
+
+	vram	SaveSelect_VRAM_FG+$80*4+(40-2)*2, (a5)
+	move.w	#$8000|$0800|$6000|(SaveSelect_VRAM_UI_Borders/$20)+1, (a6)
+	move.w	#$8000|$0800|$6000|(SaveSelect_VRAM_UI_Borders/$20), (a6)
+	move.w	#$8000|$0800|$1000|$6000|(SaveSelect_VRAM_UI_Borders/$20)+1, (a6)
+	rept 3
+		move.w	#$8000|$0800|$6000|(SaveSelect_VRAM_UI_Borders/$20)+1, (a6)
+		move.w	#$8000|$0800|$6000|(SaveSelect_VRAM_UI_Borders/$20), (a6)
+		move.w	#$8000|$0800|$6000|(SaveSelect_VRAM_UI_Borders/$20), (a6)
+		move.w	#$8000|$0800|$6000|(SaveSelect_VRAM_UI_Borders/$20), (a6)
+		move.w	#$8000|$0800|$6000|(SaveSelect_VRAM_UI_Borders/$20), (a6)
+		move.w	#$8000|$0800|$1000|$6000|(SaveSelect_VRAM_UI_Borders/$20)+1, (a6)
+	endr
+	move.w	#$8F02, (a5)
+
+	vram	SaveSelect_VRAM_FG+$80*4+2*2, (a5)
+	bsr	@DrawTopBorder
+	vram	SaveSelect_VRAM_FG+$80*6+2*2, (a5)
+	bsr	@DrawBottomBorder
+
+	@y: = 7
+	rept 3
+		vram	SaveSelect_VRAM_FG+$80*@y+2*2, (a5)
+		bsr	@DrawTopBorder
+		vram	SaveSelect_VRAM_FG+$80*(@y+5)+2*2, (a5)
+		bsr	@DrawBottomBorder
+		@y: = @y + 6
+	endr
+
+	; Load header mappings
+	lea	SaveSelect_Header_MapEni, a0
 	lea	$FF0000, a1
-	move.w	#$8000|$6000|(SaveSelect_VRAM_Header/$20), d0
+	move.w	#$8000|$4000|(SaveSelect_VRAM_Header/$20), d0
 	jsr	EniDec
 
 	vram	SaveSelect_VRAM_FG+$80+10*2, d0
@@ -164,40 +238,90 @@ SaveSelect_InitUI:
 	moveq	#2-1, d2
 	jsr	ShowVDPGraphics
 
-	; Load palette (### TODO: Improve code and palettes)
+	; Load FG palettes
 	lea	Pal_Target+$20, a0
-	lea	@PaletteData_Highlighted(pc), a1
-	rept 8/2
-		move.l	(a1)+, (a0)+
+	lea	@PaletteData(pc), a1
+	moveq	#(@PaletteData_End-@PaletteData)/16-1, d0
+	@loop:
+		rept 16/4
+			move.l	(a1)+, (a0)+
+		endr
+		dbf	d0, @loop
+
+	rts
+
+; ---------------------------------------------------------------
+@DrawTopBorder:
+	rept 40-4
+		move.w	#$8000|$6000|(SaveSelect_VRAM_UI_Borders/$20)+2, (a6)
 	endr
-	lea	Pal_Target+$40, a0
-	lea	@PaletteData_Normal(pc), a1
-	rept 8/2
-		move.l	(a1)+, (a0)+
-	endr
-	lea	Pal_Target+$60, a0
-	lea	@PaletteData_Header(pc), a1
-	rept 8/2
-		move.l	(a1)+, (a0)+
+	rts
+
+@DrawBottomBorder:
+	rept 40-4
+		move.w	#$8000|$1000|$6000|(SaveSelect_VRAM_UI_Borders/$20)+2, (a6)
 	endr
 	rts
 
 ; ---------------------------------------------------------------
-@PaletteData_Highlighted:
+@UIBorders:
+	; Left border
+	rept 8
+		dc.l	$88000000
+	endr
+
+	; Top-left Corner
+	dc.l	$00000000
+	dc.l	$00000000
+	dc.l	$88888888
+	dc.l	$88888888
+	dc.l	$88000000
+	dc.l	$88000000
+	dc.l	$88000000
+	dc.l	$88000000
+
+	; Top border
+	dc.l	$00000000
+	dc.l	$00000000
+	dc.l	$88888888
+	dc.l	$88888888
+	dc.l	$00000000
+	dc.l	$00000000
+	dc.l	$00000000
+	dc.l	$00000000	
+
+@UIBorders_End:
+
+; ---------------------------------------------------------------
+@DummyHL:
+	rept 4*4
+		rept 8
+			dc.l	$FFFFFFFF
+		endr
+	endr
+@DummyHL_End:
+
+; ---------------------------------------------------------------
+@PaletteData:
+	; Line 1
 	dc.w	$0000, $0444, $0EEE, $0EEE, $0EEE, $0EEE, $0CCC, $0AAA
+	dc.w	$0000, $0004, $0204, $0006, $0206, $0008, $0E0E, $0E0E	; original header palette (unused)
 
-@PaletteData_Normal:
+	; Line 2
 	dc.w	$0000, $0444/2, $0EEE/2, $0EEE/2, $0EEE/2, $0EEE/2, $0CCC/2, $0AAA/2
+	dc.w	$0000, $0888, $0ACC, $0CCC, $0ECC, $0EEE, $0E0E, $0E0E
 
-@PaletteData_Header:
+	; Line 3
 	dc.w	$0000, $0422, $0E88, $0E88, $0E88, $0E88, $0C66, $0A44
+	dc.w	$0000, $0CCC, $0E0E, $0E0E, $0E0E, $0E0E, $0E0E, $0E0E	; UI borders
+@PaletteData_End:
 
 ; ---------------------------------------------------------------
 @PLC_List:
 	dc.l	BBCS_ArtKospM_Font
 	dc.w	SaveSelect_VRAM_Font
 
-	dc.l	SoundTest_Header_Tiles_KospM	; ###
+	dc.l	SaveSelect_Header_Tiles_KospM
 	dc.w	SaveSelect_VRAM_Header
 
 	dc.w	-1	; end marker
@@ -460,3 +584,12 @@ SaveSelect_HandleUI:
 	st.b	SaveSelect_ExitFlag
 	moveq	#$FFFFFFC3, d0
 	jmp	PlaySFX
+
+; ---------------------------------------------------------------------------
+SaveSelect_Header_Tiles_KospM:
+	incbin	"Screens/SaveSelectScreen/Data/Header_Tiles.kospm"
+	even
+
+SaveSelect_Header_MapEni:
+	incbin	"Screens/SaveSelectScreen/Data/Header_Map.eni"
+	even

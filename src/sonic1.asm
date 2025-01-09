@@ -3858,6 +3858,7 @@ loc_3946:
 @shoot:		move.w	#$800,($FFFFD012).w	; shoot Sonic down in Uberhub's intro
 		bset	#1,($FFFFD022).w
 		move.b	#2,($FFFFD01C).w
+		move.b	#1,($FFFFF7CC).w		; lock controls
 
 Level_ChkWater:
 		move.w	#0,($FFFFF602).w

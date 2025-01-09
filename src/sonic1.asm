@@ -7398,7 +7398,7 @@ Resize_SLZ2end:
 
 Resize_SLZ3:
 		move.w	#0,($FFFFF72C).w	; reset upper level boundary
-		move.w	#$620,($FFFFF726).w	; bottom boundary
+		move.w	#$624,($FFFFF726).w	; bottom boundary
 
 		move.w	($FFFFF728).w,d0	; get left boundary
 		cmpi.w	#$E00,d0		; is it at the target value yet?
@@ -24452,6 +24452,9 @@ Obj71_Solid:				; XREF: Obj71_Index
 		bne.s	@notsap			; if not, branch
 		cmpi.b	#$72,obSubtype(a0)	; is this the one for the door?
 		beq.s	@pmonitor		; if yes, branch
+		
+		cmpi.b	#$51,obSubtype(a0)	; is this a reinforcement block for nonstop inhuman?
+		bne.s	@notsap			; if not, branch
 		tst.b	(SpaceGolf).w		; is antigrav enabled?
 		bne.s	Obj71_ChkDel		; if yes, disable block
 		bra.s	@notsap

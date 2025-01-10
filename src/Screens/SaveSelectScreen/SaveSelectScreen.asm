@@ -67,10 +67,10 @@ SaveSelectScreen:
 	move.b	#1, SaveSelect_SelectedSlotId				; ... unless it's "NO SAVE", then suggest Slot 1
 @default_slot_ok:
 
-	jsr	BackgroundEffects_Setup
-	move.w	#$824,(BGThemeColor).w	; set theme color for background effects
-
 	jsr	SaveSelect_InitUI
+	move.w	#$824,(BGThemeColor).w					; set theme color for background effects
+	jsr	BackgroundEffects_Setup
+
 	jsr	SaveSelect_InitialDraw
 
 	; Setup objects
@@ -81,16 +81,6 @@ SaveSelectScreen:
 
 	move.b	#Options_Music, d0
 	jsr	PlayBGM
-
-	jsr	BackgroundEffects_Update
-	; Copy BG palette to fade in buffer ###
-	lea	Pal_Active+2, a0
-	lea	Pal_Target+2, a1
-	move.l	(a0)+, (a1)+
-	move.l	(a0)+, (a1)+
-	move.l	(a0)+, (a1)+
-	move.l	(a0)+, (a1)+
-	move.l	(a0)+, (a1)+
 
 	DeleteQueue_Init
 	jsr	ObjectsLoad
@@ -110,6 +100,8 @@ SaveSelect_MainLoop:
 	move.b	#2, VBlankRoutine
 	jsr	DelayProgram
 
+	addq.w	#1, GameFrame
+
 	assert.w SaveSelect_VRAMBufferPoolPtr, eq, #Art_Buffer			; VRAM buffer pool should be reset by the beginning of the frame
 	assert.w SaveSelect_StringBufferCanary, eq, #SaveSelect_CanaryValue	; guard against buffer overflows
 
@@ -127,6 +119,7 @@ SaveSelect_MainLoop:
 	; TODO: Exit to title screen?
 	move.b	SaveSelect_SelectedSlotId, SRAMCache.SelectedSlotId
 	jsr	SRAMCache_LoadSelectedSlotId		; load game from selected slot
+	jsr	Pal_FadeFrom
 	move.w	#$8C81, VDP_Ctrl			; disable S&H
 	jmp	Exit_SaveSelectScreen
 

@@ -129,6 +129,8 @@ DH_MainLoop:
 		move.b	#4,VBlankRoutine
 		jsr	DelayProgram
 
+		addq.w	#1, GameFrame
+
 		; Apply BG effects if respective bits are set
 		move.b	TutorialBoxId, d0	; is "own background" bit set?
 		bpl.s	@0			; if not, branch

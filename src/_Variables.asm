@@ -129,6 +129,8 @@ Pal_Target:		equ	$FFFFFB80			; ~	Target palette for fading
 ObjectSpawnTable:	equ	$FFFFFC00			;	Object respawn status table
 ObjectSpawnTable_End:	equ	$FFFFFD00			;
 
+GameFrame:		equ	$FFFFFE04			; w
+
 VBlank_FrameCounter:	equ	$FFFFFE0C			; l	Global frame counter for VBlank (includes lag frames)
 
 CurrentLevel:		equ	$FFFFFE10			; w	Current level ID

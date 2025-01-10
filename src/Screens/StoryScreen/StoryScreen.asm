@@ -124,8 +124,6 @@ STS_LoadText:	move.w	(a5)+,(a6)
 		endr
 		dbf	d1,@transparent
 
-		jsr	BackgroundEffects_Setup
-
 		moveq	#$14,d0
 		jsr	PalLoad1		; load level select pallet
 
@@ -165,6 +163,8 @@ STS_ClrVram:	move.l	d0,(a6)
 		move.w	StoryScreen_BGColors(pc,d0.w),d0
 		move.w	d0,(BGThemeColor).w	; set theme color for background effects
 
+		jsr	BackgroundEffects_Setup
+
 		jsr	Pal_FadeTo
 		bra.s	StoryScreen_MainLoop
 ; ---------------------------------------------------------------------------
@@ -194,6 +194,9 @@ StoryScreen_MainLoop:
 		move.b	#$1C,VBlankRoutine
 		DeleteQueue_Init
 		jsr	DelayProgram
+
+		addq.w	#1, GameFrame
+
 		jsr	ObjectsLoad
 		jsr	DeleteQueue_Execute
 		jsr	BuildSprites

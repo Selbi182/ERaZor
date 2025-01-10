@@ -27,7 +27,9 @@ BackgroundEffects_Setup:
 		jsr	KosPlusMDec_VRAM
 
 		VBlank_UnsetMusicOnly
-		rts
+		bsr	BackgroundEffects_PalCycle_Setup
+		bsr	BackgroundEffects_Deformation
+		bra	BackgroundEffects_VScroll
 
 ; ---------------------------------------------------------------------------
 
@@ -40,11 +42,15 @@ BackgroundEffects_Update:
 		move.l	(sp)+,a2
 		rts
 ; ===========================================================================
-
+BackgroundEffects_PalCycle_Setup:
+		lea	Pal_Target+2, a2
+		bra.s	BackgroundEffects_PalCycle_Cont
 
 ; Background palette rotation
 BackgroundEffects_PalCycle:
-		move.w	($FFFFFE0E).w,d0	; get V-blank timer
+		lea	Pal_Active+2, a2
+
+		move.w	GameFrame,d0		; get V-blank timer
 		divu.w	#4,d0
 		andi.l	#$FFFF0000,d0
 		bne.w	@bgpalend
@@ -53,6 +59,7 @@ BackgroundEffects_PalCycle:
 		tst.b	WhiteFlashCounter	; whiteflash in progress?
 		bne.w	@bgpalend		; if yes, branch
 
+BackgroundEffects_PalCycle_Cont: equ *
 		move.l	#Options_BGCycleColors_BW,d2
 		movea.l	d2,a1
 		moveq	#0,d0
@@ -61,7 +68,6 @@ BackgroundEffects_PalCycle:
 		add.w	d0,d0
 		adda.w	d0,a1
 
-		lea	($FFFFFB02).w,a2
 		moveq	#10-1,d6	; 10 colors
 @bgpalcycle:
 		move.w	BGThemeColor,d0 ; get theme color
@@ -167,7 +173,7 @@ Options_BGCycleColors:
 
 ; Background deformation (the main effect)
 BackgroundEffects_Deformation:
-		move.w	($FFFFFE0E).w,d6	; get timer
+		move.w	GameFrame,d6		; get timer
 		asr.w	#1,d6
 
 		lea	($FFFFCC00).w,a1
@@ -191,7 +197,7 @@ BackgroundEffects_Deformation:
 
 ; V-Scroll
 BackgroundEffects_VScroll:
-		move.w	($FFFFFE0E).w,d1
+		move.w	GameFrame,d1
 		neg.w	d1
 		move.w	d1,($FFFFF618).w	; set plane-B VSRAM
 		rts

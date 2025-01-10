@@ -126,19 +126,20 @@ OptionsScreen:				; XREF: GameModeArray
 		dbf	d1,@transparent
 
 		move.w	#0,BlackBars.Height	; make sure black bars are fully gone
-		
-
-		jsr	BackgroundEffects_Setup
-		move.w	#$806,(BGThemeColor).w	; set theme color for background effects
 
 		moveq	#1,d0			; load to fade-in buffer
 		bsr	Options_LoadPal
+
+		move.w	#$806,(BGThemeColor).w	; set theme color for background effects
+		jsr	BackgroundEffects_Setup
 
 		clr.b	Options_Exiting
 		jsr	Options_InitState
 		jsr	Options_IntialDraw
 		VBlank_UnsetMusicOnly
 		display_enable
+
+		assert.l Pal_Target+2, ne
 
 		jsr	Pal_FadeTo
 
@@ -155,6 +156,8 @@ OptionsScreen_MainLoop:
 		move.l	#@FlushVRAMBufferPool, VBlankCallback
 		move.b	#2,VBlankRoutine
 		jsr	DelayProgram
+
+		addq.w	#1, GameFrame
 
 		assert.w Options_VRAMBufferPoolPtr, eq, #Art_Buffer		; VRAM buffer pool should be reset by the beginning of the frame
 		assert.w Options_StringBufferCanary, eq, #Options_CanaryValue	; guard against buffer overflows

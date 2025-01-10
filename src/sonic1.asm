@@ -27530,10 +27530,6 @@ Obj02_Transparent:
 		move.w	#$6000|($3000/$20),obGfx(a0)	; set art, use fourth palette line
 
 Obj02_TransDisplay:
-		tst.b	($FFFFFFE9).w
-		beq.s	@0
-		rts
-@0:
 		jmp	DisplaySprite			; jump to DisplaySprite
 
 

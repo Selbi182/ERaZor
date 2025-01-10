@@ -43,6 +43,7 @@ StartLevel:
 	if def(__BENCHMARK__)
 		bra.w	ReturnToSegaScreen
 	endif
+		bclr	#SlotOptions2_MotionBlurTemp, SlotOptions2
 		jsr	SRAMCache_SaveGlobalsAndSelectedSlotId
 
 		move.b	#1,($FFFFFFE9).w	; set fade-out in progress flag

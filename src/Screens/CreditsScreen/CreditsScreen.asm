@@ -2,7 +2,7 @@
 ; ---------------------------------------------------------------------------
 ; Credits Screens
 ; ---------------------------------------------------------------------------
-Credits_Page equ $FFFFFF91 ; b
+Credits_Page equ $FFFFF779 ; b
 Credits_Scroll equ $FFFFFFA0 ; w
 
 Credits_Pages = 12

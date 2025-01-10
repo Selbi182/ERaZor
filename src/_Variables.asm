@@ -102,7 +102,7 @@ CamXShift:		equ	$FFFFF73A			; w	Camera X shift from the previous frame (FG, 8.8 
 CamYShift:		equ	$FFFFF73C			; w	Camera Y shift from the previous frame (FG, 8.8 fixed)
 
 SonicLookUpDownTimer:	equ	$FFFFF778			; b	Timer for camera delay when looking up/down
-*			equ	$FFFFF779			; b 	<<FREE>>
+*Credits_Page:		equ	$FFFFF779			; b 	See `CreditsScreen.asm`
 *			equ	$FFFFF77A			; b 	<<FREE>>
 *			equ	$FFFFF77B			; b 	<<FREE>>
 *			equ	$FFFFF77C			; l	<<FREE>>

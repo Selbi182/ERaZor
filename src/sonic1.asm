@@ -83,6 +83,8 @@ DebugHudPermanent = 0
 		include	"Modules/MD Replay.asm"
 		include "Modules/DeleteObjectQueue.defs.asm"
 		include	"Modules/Ultra DMA Queue.defs.asm"
+		include "Screens/OptionsScreen/Variables.asm"
+		include "Screens/OptionsScreen/Macros.asm"
 
 ; ------------------------------------------------------
 
@@ -419,7 +421,7 @@ BlackBars.SetState:
 		bne.s	BlackBars_Show			; if yes, always enable
 		cmpi.b	#6,($FFFFD024).w		; is Sonic dying?
 		bhs.s	BlackBars_Show			; if yes, branch
-		btst	#3,(OptionsBits).w		; is cinematic mode (black bars) enabled?
+		btst	#SlotOptions_CinematicBlackBars, SlotOptions	; is cinematic mode (black bars) enabled?
 		bne.s	BlackBars_Show			; if yes, always enable
 
 		cmpi.w	#$400,d0			; are we in Uberhub?
@@ -861,16 +863,16 @@ PlayCommand:
 
 ; ---------------------------------------------------------------------------
 PlayBGM:
-		btst	#0, (OptionsBits2).w		; is music disabled?
-		bne.s	Play_Return			; if yes, branch
+		btst	#GlobalOptions_DisableBGM, GlobalOptions
+		bne.s	Play_Return
 		move.b	d0, SoundDriverRAM+v_bgm_input.w
 Play_Return:
 		rts
 
 ; ---------------------------------------------------------------------------
 PlaySFX:
-		btst	#1,(OptionsBits2).w	; are sfx disabled?
-		bne.s	Play_Return		; if yes, branch
+		btst	#GlobalOptions_DisableSFX, GlobalOptions
+		bne.s	Play_Return
 		tst.b	SoundDriverRAM+v_sfx_input.w
 		bne.s	@next_1
 		move.b	d0, SoundDriverRAM+v_sfx_input.w
@@ -881,8 +883,7 @@ PlaySFX:
 		move.b	d0, SoundDriverRAM+v_sfx_input_next_1.w
 		rts
 
-@next_2:
-		tst.b	SoundDriverRAM+v_sfx_input_next_2.w
+@next_2:	tst.b	SoundDriverRAM+v_sfx_input_next_2.w
 		bne.s	@queue_overflow
 		move.b	d0, SoundDriverRAM+v_sfx_input_next_2.w
 		rts
@@ -891,7 +892,6 @@ PlaySFX:
 		KDebug.WriteLine "PlaySFX(): Sound queue overflow (curr=%<.b SoundDriverRAM+v_sfx_input>, next1=%<.b SoundDriverRAM+v_sfx_input_next_1>, next2=%<.b SoundDriverRAM+v_sfx_input_next_2>)"
 		rts
 ; ---------------------------------------------------------------------------
-
 PlaySFX_Once:
 		; check if sfx was already queued
 		cmp.b	SoundDriverRAM+v_sfx_input.w, d0
@@ -951,7 +951,7 @@ PG_DoPause:
 		move.b	#1,($FFFFF003).w	; pause music
 
 		moveq	#%1100,d0
-		and.b	OptionsBits2,d0
+		and.b	GlobalOptions,d0
 		cmpi.b	#%1100,d0		; check if camera shake is set to disabled
 		beq.s	Pause_MainLoop		; if yes, don't do grayscale
 		jsr	Pal_MakeBlackWhite	; make palette grayscale while game is paused
@@ -990,7 +990,7 @@ Pause_Restore:
 		move.b	#$80,($FFFFF003).w	; something with music
 
 		moveq	#%1100,d0		
-		and.b	OptionsBits2,d0
+		and.b	GlobalOptions,d0
 		cmpi.b	#%1100,d0		; check if camera shake is set to disabled
 		beq.s	Pause_DoNothing		; if yes, branch
 		lea	Pal_Water_Active,a0	; get palette
@@ -1259,7 +1259,7 @@ PalCycle_SAP:
 		cylen: = 8
 		move.w	#$2780,($FFFFD000+obGfx).w	; force Sonic to use palette line 2
 		lea	($FFFFFB20).w,a2		; set start location
-		btst	#1,(ScreenFuzz).w		; is piss enabled?
+		btst	#SlotOptions2_PissFilter, SlotOptions2		; is piss enabled?
 		beq.s	@notcinematic			; if not, branch
 		move.w	#$0780,($FFFFD000+obGfx).w	; welp
 		lea	Pal_Active,a2		; have fun with the eyesore
@@ -1341,7 +1341,7 @@ BuzzWirePal:
 		andi.b	#$00E,d1
 		move.b	d1,d0
 
-		btst	#6,(OptionsBits).w	; is max white flash enabled?
+		btst	#GlobalOptions_ScreenFlash_Intense, GlobalOptions	; is max white flash enabled?
 		beq.s	@endwire		; if not, branch
 		btst	#0,($FFFFFE05).w
 		beq.s	@endwire
@@ -2123,10 +2123,10 @@ Pal_Sega2:	incbin	palette\sega2.bin
 ; Subroutines to load pallets
 ; ---------------------------------------------------------------------------
 LoadPalPointer:
-		lea	(PalPointers_Classic).l,a1	; use classic palettes
-		btst	#4,(OptionsBits2).w		; are remastered palettes enabled?
-		beq.s	@end				; if not, branch
-		lea	(PalPointers_Remastered).l,a1	; use remastered palettes
+		lea	PalPointers_Classic(pc), a1		; use classic palettes
+		btst	#SlotOptions_NewPalettes, SlotOptions	; are remastered palettes enabled?
+		beq.s	@end					; if not, branch
+		lea	PalPointers_Remastered(pc), a1		; use remastered palettes
 @end:		
 		lsl.w	#3,d0
 		adda.w	d0,a1
@@ -2249,7 +2249,7 @@ ColorBoostG = $4
 
 ; ContrastBoost:
 PissFilter:
-		btst	#1,(ScreenFuzz).w	; is piss filter enabled?
+		btst	#SlotOptions2_PissFilter, SlotOptions2	; is piss filter enabled?
 		bne.s	PissFilter_Do		; if yes, enable piss filter everywhere hooray
 
 		; GHP piss filter
@@ -2748,7 +2748,7 @@ Sega_WaitPallet:
 ; ---------------------------------------------------------------------------
 
 Sega_SegaChant:
-		btst	#1,(OptionsBits2).w	; are sfx disabled?
+		btst	#GlobalOptions_DisableSFX, GlobalOptions ; are sfx disabled?
 		bne.s	@noangel		; if yes, no chant
 		move.b	#$E1,d0			; play "SEGA" sound...
 		bsr	PlayCommand	 	; ...featuring the beautiful voice of yours truly
@@ -3795,7 +3795,7 @@ loc_3946:
 
 		cmpi.w	#$200,($FFFFFE10).w	; are we in RP?
 		bne.s	@notrp			; if not, branch
-		btst	#4,(OptionsBits).w	; is nonstop inhuman enabled?
+		btst	#SlotOptions_NonstopInhuman, SlotOptions ; is nonstop inhuman enabled?
 		beq.s	@notrp			; if not, branch
 		lea	Obj2E_SpikesBlood, a1	; immediately load bloody spikes because the respective code...
 		jsr	LoadPLC_Direct		; ... can't be triggered from this mode
@@ -4604,10 +4604,10 @@ GenerateCameraShake:
 		move.b	(CurrentRandomNumber).w,d0	; get a random number (will be used for X shake)
 		move.b	(CurrentRandomNumber+1).w,d1	; get a different random number (will be used for Y shake)
 
-		btst	#2,(OptionsBits2).w		; is weak camera shake enabled?
-		bne.s	@photosensitive			; if yes, branch
-		btst	#3,(OptionsBits2).w		; is intense camera shake enabled?
-		bne.s	@stupid				; if yes, enjoy the eye massage
+		btst	#GlobalOptions_CameraShake_Weak, GlobalOptions	; is weak camera shake enabled?
+		bne.s	@photosensitive					; if yes, branch
+		btst	#GlobalOptions_CameraShake_Intense, GlobalOptions; is intense camera shake enabled?
+		bne.s	@stupid						; if yes, enjoy the eye massage
 		moveq	#0,d2				; clear d2
 		move.b	(CameraShake_Intensity).w,d2	; get currently set camera shake intensity
 		bhi.s	@intensityset			; if it's already set, branch
@@ -4615,7 +4615,7 @@ GenerateCameraShake:
 		bra.s	@updateram
 	@photosensitive:
 		moveq	#CamShake_PhotosensitiveIntensity,d2 ; use reduced intensity
-		btst	#3,(OptionsBits2).w		; is intense camera shake enabled as well?
+		btst	#GlobalOptions_CameraShake_Intense, GlobalOptions		; is intense camera shake enabled as well?
 		beq.s	@updateram			; if not, branch
 		moveq	#0,d2				; otherwise, that means OFF
 		bra.s	@updateram
@@ -4677,8 +4677,8 @@ UndoCameraShake:
 ; ---------------------------------------------------------------------------
 
 CinematicScreenFuzz:
-		moveq	#%101,d0		; ignore piss filter
-		and.b	(ScreenFuzz).w,d0	; is permanent or temporary screen fuzz enabled?
+		moveq	#%101, d0		; ignore piss filter
+		and.b	SlotOptions2, d0	; is permanent or temporary screen fuzz enabled?
 		beq.w	CinematicScreenFuzz_End	; if not, branch
 
 		; calculate the exact amount of lines we need, minus ones occupied by black bars
@@ -4857,7 +4857,7 @@ ClearEverySpecialFlag:
 		move.b	d0,(Inhuman).w
 		move.b	d0,($FFFFFFEB).w
 		move.b	d0,($FFFFFFF9).w
-		bclr	#2,(ScreenFuzz).w
+		bclr	#SlotOptions2_MotionBlurTemp, SlotOptions2
 		rts
 ; End of function ClearEverySpecialFlag
 	
@@ -5378,7 +5378,7 @@ SS_MainLoop:
 		; remove bumpers when pressing A in nonstop inhuman mode
 		btst	#6,($FFFFF603).w	; was A pressed this frame?
 		beq.s	SS_WaitVBlank		; if not, branch
-		btst	#4,(OptionsBits).w	; is nonstop inhuman enabled?
+		btst	#SlotOptions_NonstopInhuman, SlotOptions	; is nonstop inhuman enabled?
 		beq.s	SS_WaitVBlank		; if not, branch
 
 
@@ -5417,7 +5417,7 @@ SS_WaitVBlank:
 		jsr	ObjectsLoad
 
 		; stage rotation for motion blur
-		btst	#0,(ScreenFuzz).w	; is permanent motion blur enabled?
+		btst	#SlotOptions2_MotionBlur, SlotOptions2	; is permanent motion blur enabled?
 		beq.s	@norotate		; if not, branch
 		
 		move.b	($FFFFF602).w,d1	; get held buttons
@@ -6138,7 +6138,7 @@ End_MainLoop:
 		bsr	PCL_Load		; pal cycle while alive
 
 @checkeaster:
-	;	btst	#4,(OptionsBits).w	; is nonstop inhuman enabled?
+	;	btst	#SlotOptions_NonstopInhuman, SlotOptions	; is nonstop inhuman enabled?
 	;	beq.s	@checkfadeout		; if not, branch	
 		cmpi.w	#$800,($FFFFF602).w	; moving to the right?
 		bne.s	@checkfadeout		; if not, branch
@@ -6378,10 +6378,10 @@ LevSz_StartLoc:				; XREF: LevelSizeLoad
 		jsr	CheckSlot_UnterhubFirst	; first Unterhub sequence active?
 		bne.s	@load			; if yes, always go to trophy gallery
 
-		btst	#4,(OptionsBits).w	; is nonstop inhuman enabled?
-		bne.s	@chkeasternudge		; if yes, branch
-		btst	#5,(OptionsBits2).w	; is nonstop space golf enabled?
-		beq.s	@chkcustom		; if not, branch
+		btst	#SlotOptions_NonstopInhuman, SlotOptions; is nonstop inhuman enabled?
+		bne.s	@chkeasternudge				; if yes, branch
+		btst	#SlotOptions_SpaceGolf, SlotOptions	; is nonstop space golf enabled?
+		beq.s	@chkcustom				; if not, branch
 	@chkeasternudge:
 		jsr	CheckSlot_HubEasterVisited; has the player already visited the easter egg?
 		bne.s	@chkcustom		; if yes, branch
@@ -9335,7 +9335,7 @@ Obj18_NoMovingPlatforms:
 		cmpi.w	#$302,($FFFFFE10).w	; is level SAP?
 		bne.s	Obj18_NoCheckpoint	; if not, branch
 		move.b	#0,($FFFFF7CC).w	; unlock controls
-		btst	#4,(OptionsBits).w	; is nonstop inhuman enabled?
+		btst	#SlotOptions_NonstopInhuman, SlotOptions	; is nonstop inhuman enabled?
 		bne.s	@nonstop		; if yes, branch
 		move.b	#1,(SpaceGolf).w	; make sure antigrav stays enabled
 @nonstop:
@@ -9346,7 +9346,7 @@ Obj18_NoMovingPlatforms:
 		jsr	PlaySFX
 		frantic				; is frantic mode enabled?
 		beq.s	@notfirstcheckpoint	; if not, branch
-		btst	#4,(OptionsBits).w	; is nonstop inhuman enabled?
+		btst	#SlotOptions_NonstopInhuman, SlotOptions	; is nonstop inhuman enabled?
 		bne.s	@notfirstcheckpoint	; if yes, branch
 		move.w	#$B5,d0			; play ring sound
 		jsr	PlaySFX
@@ -12160,7 +12160,7 @@ loc_17F70X:
 ; ===========================================================================
 
 Obj1F_Flashing:
-		btst	#7,(OptionsBits).w	; is photosensitive mode enabled?
+		btst	#GlobalOptions_ScreenFlash_Weak, GlobalOptions	; is photosensitive mode enabled?
 		bne.s	Obj1F_NoFlash		; if yes, no flash
 		tst.b	(DyingFlag).w		; is Sonic dying?
 		bne.s	Obj1F_NoFlash		; if yes, disable flash
@@ -12280,7 +12280,7 @@ loc_17F70XX:
 ; ===========================================================================
 
 Obj1F_Flashing2:
-		btst	#7,(OptionsBits).w	; is photosensitive mode enabled?
+		btst	#GlobalOptions_ScreenFlash_Weak, GlobalOptions	; is photosensitive mode enabled?
 		bne.s	Obj1F_NoFlash2		; if yes, no flash
 		tst.b	(DyingFlag).w		; is Sonic dying?
 		bne.s	Obj1F_NoFlash2		; if yes, disable flash
@@ -13817,7 +13817,7 @@ Obj4B_Collect:				; XREF: Obj4B_Index
 		cmpi.b	#GRing_Labyrinthy,obSubtype(a0)	; is this the ring to Labyrinthy Place?
 		beq.w	Obj4B_Exit			; if yes, skip all the ring stuff and go straight to the stage
 
-		btst	#1,(ScreenFuzz).w	; is piss enabled?
+		btst	#SlotOptions2_PissFilter, SlotOptions2	; is piss enabled?
 		bne.s	@NoPaletteChange	; don't change the palette
 		lea	(Pal_SYZGray).l,a3
 		lea 	($FFFFFB20).w,a4
@@ -13944,7 +13944,7 @@ FZEscape_ScreenBoom:
 		jsr	DelayProgram
 		dbf	d5,@WaitLoop
 
-		bclr	#2,(ScreenFuzz).w	; clear temporary screen fuzz flag
+		bclr	#SlotOptions2_MotionBlurTemp, SlotOptions2	; clear temporary screen fuzz flag
 
 		tst.b	($FFFFD000).w		; already jumped into the ring?
 		bne.s	@end			; if not, branch
@@ -14001,7 +14001,7 @@ Obj_SAPEasterEgg:
 		ori.b	#1,($FFFFFE1D).w	; update rings counter
 		
 		move.b	#$96,d0			; restart regular music
-	;	btst	#4,(OptionsBits).w	; is nonstop inhuman enabled?
+	;	btst	#SlotOptions_NonstopInhuman, SlotOptions	; is nonstop inhuman enabled?
 	;	beq.s	@play			; if not, branch
 	;	move.b	#$84,d0			; restart lame default music	
 @play:		jsr	PlayBGM
@@ -14403,7 +14403,7 @@ Obj2E_Main:				; XREF: Obj2E_Index
 Obj2E_Move:				; XREF: Obj2E_Index
 		cmpi.b	#1,obAnim(a0)		; is the eggman monitor?
 		bne.s	@noteggman		; if yes, branch
-		btst	#4,(OptionsBits).w	; is nonstop inhuman enabled?
+		btst	#SlotOptions_NonstopInhuman, SlotOptions	; is nonstop inhuman enabled?
 		bne.s	@conty			; if yes, branch
 		move.b	#1,($FFFFFF73).w	; lol
 @noteggman:
@@ -14484,7 +14484,7 @@ Obj2E_ChkShoes:
 		cmpi.b	#3,d0		; does monitor contain speed shoes?
 		bne.s	Obj2E_ChkShield
 		move.b	#1,($FFFFFE2E).w	; set shoes flag
-		bset	#2,(ScreenFuzz).w	; enable temporary screen fuzz effect
+		bset	#SlotOptions2_MotionBlurTemp, SlotOptions2	; enable temporary screen fuzz effect
 
 		cmpi.w	#$502,($FFFFFE10).w	; are we in FP?
 		bne.s	@notfp			; if not, branch
@@ -16819,7 +16819,7 @@ loc_BDD6:
 
 		bra.s	@notnonstopinhuman
 
-		btst	#4,(OptionsBits).w	; is nonstop inhuman enabled?
+		btst	#SlotOptions_NonstopInhuman, SlotOptions	; is nonstop inhuman enabled?
 		beq.s	@notnonstopinhuman	; if not, branch	
 		move.b	#$3F,0(a0)		; change switch into explodion (no double fun allowed, sorry)
 		move.b	#0,obRoutine(a0)	; set to initial routine
@@ -16909,7 +16909,7 @@ Obj32_Display:
 ; ===========================================================================
 
 ChangePaletteRP:
-		btst	#1,(ScreenFuzz).w		; is piss filter enabled?
+		btst	#SlotOptions2_PissFilter, SlotOptions2		; is piss filter enabled?
 		bne.s 	@FuckNo				; accomodate for piss filter
 
 		lea 	($FFFFFB48).w, a2
@@ -17482,7 +17482,7 @@ Obj34_Setup:				; XREF: Obj34_Index
 		jsr	PlayLevelMusic_Force	; play GHP music
 
 @notghp:
-		btst	#2,(OptionsBits).w	; is "disable HUD" enabled?
+		btst	#SlotOptions_NoHUD, SlotOptions	; is "disable HUD" enabled?
 		bne.s	@regular		; if yes, don't load title cards
 		lea	PLC_TitleCard, a1
 		jmp	LoadPLC_Direct
@@ -17797,7 +17797,7 @@ Obj34_Display:
 		rts				; otherwise don't display act number
 
 Obj34_DoDisplay:
-		btst	#2,(OptionsBits).w	; is "disable HUD" enabled?
+		btst	#SlotOptions_NoHUD, SlotOptions	; is "disable HUD" enabled?
 		beq.s	Obj34_DoDisplayX	; if not, branch
 		rts
 
@@ -18190,7 +18190,7 @@ Obj36_Hurt:				; XREF: Obj36_SideWays; Obj36_Upright
 		beq.w	Obj36_NotInhuman2	; if not, branch
 		cmpi.w	#$200,($FFFFFE10).w	; is level MZ1?
 		bne.w	Obj36_NotInhuman2	; if not, branch
-		btst	#4,(OptionsBits).w	; is nonstop inhuman enabled?
+		btst	#SlotOptions_NonstopInhuman, SlotOptions	; is nonstop inhuman enabled?
 		bne.w	Obj36_NotInhuman2	; if yes, branch
 
 		tst.b	(PlacePlacePlace).w		; PLACE PLACE PLACE?
@@ -18225,7 +18225,7 @@ Obj36_Hurt:				; XREF: Obj36_SideWays; Obj36_Upright
 		clr.b	($FFFFFF6C).w		; clear the "switch has been pressed" flags
 		btst	#1, d0
 		beq.s	@cont2
-		btst	#3, OptionsBits		; is cinematic HUD enabled?
+		btst	#SlotOptions_CinematicBlackBars, SlotOptions		; is cinematic HUD enabled?
 		bne.s 	@cont2				; palette never changed, branch
 		jsr	RestorePaletteRP
 
@@ -20502,7 +20502,7 @@ Obj12_Animate:
 @sonicexists:
 		tst.b	$30(a0)				; frantic frame set?
 		beq.s	@sway				; if not, branch
-		btst	#7,(OptionsBits).w		; is photosensitive mode enabled?
+		btst	#GlobalOptions_ScreenFlash_Weak, GlobalOptions		; is photosensitive mode enabled?
 		beq.s	@doflash			; if not, branch
 		move.w	#EmblemGfx_Frantic,obGfx(a0)	; use alternate offset for frantic frames
 		bra.s	@sway				; don't flash
@@ -27611,7 +27611,7 @@ Obj03_Setup:
 		bne.s	@nottut			; if not, branch
 		move.w	#($7400/$20),obGfx(a0)	; use alternate mappings
 		bset	#7,obGfx(a0)		; make it high plane
-		btst	#1,(OptionsBits).w	; is Speedrun Mode enabled?
+		btst	#SlotOptions2_ArcadeMode, SlotOptions2	; is Arcade Mode enabled?
 		beq.s	@nottut			; if not, branch
 		move.b	#$E,obFrame(a0)		; show "SKIP TUTORIAL" text instead of "EXIT TUTORIAL"
 @nottut:
@@ -27692,7 +27692,7 @@ Obj03_Display:
 		bclr	#5,obGfx(a0)		; use first palette row
 		btst	#1,($FFFFFE05).w	; is this an odd frame?
 		beq.s	@notodd			; if not, branch
-		btst	#7,(OptionsBits).w	; is photosensitive mode enabled?
+		btst	#GlobalOptions_ScreenFlash_Weak, GlobalOptions	; is photosensitive mode enabled?
 		bne.s	@notodd			; if yes, branch
 		bset	#5,obGfx(a0)		; use second palette row (gives a slight flicker effect)
 @notodd:
@@ -27731,7 +27731,7 @@ Obj03_BackgroundColor:
 		movea.w	d0, a1				; a1 = target palette pointer
 		swap	d0				; d0 = base color
 
-		btst	#7,(OptionsBits).w		; is photosensitive mode enabled?
+		btst	#GlobalOptions_ScreenFlash_Weak, GlobalOptions		; is photosensitive mode enabled?
 		bne.s	@photosensitiveMode		; if yes, branch
 	
 		moveq	#0,d1
@@ -28847,12 +28847,12 @@ Obj01_JD_Minus:
 
 ; Start of S monitor code
 Obj01_ChkS:
-		btst	#4,(OptionsBits).w	; is nonstop inhuman enabled?
+		btst	#SlotOptions_NonstopInhuman, SlotOptions	; is nonstop inhuman enabled?
 		beq.s	@chkspacegolf		; if not, branch
 		ori.b	#1,(Inhuman).w 	; enable inhuman mode automatically. have fun, nerd
 
 @chkspacegolf:
-		btst	#5,(OptionsBits2).w	; is nonstop space golf enabled?
+		btst	#SlotOptions_SpaceGolf, SlotOptions	; is nonstop space golf enabled?
 		beq.s	Obj01_Inhuman		; if not, branch
 		tst.b	(SpaceGolf).w
 		bne.s	Obj01_Inhuman
@@ -28878,7 +28878,7 @@ Obj01_Inhuman:
 		bne.s	Obj01_ChkInvin		; if not, branch
 		btst	#1,($FFFFD022).w	; is sonic airborne?
 		bne.s	Obj01_ChkInvin		; if yes, branch
-		btst	#4,(OptionsBits).w	; is nonstop inhuman enabled?
+		btst	#SlotOptions_NonstopInhuman, SlotOptions	; is nonstop inhuman enabled?
 		bne.s	Obj01_ChkInvin		; if yes, branch
 
 		move.w	($FFFFFE04).w,d0	; get level timer
@@ -28933,7 +28933,7 @@ Obj01_ChkShoes:
 		move.w	#Sonic_Acceleration,($FFFFF762).w	; restore Sonic's acceleration
 		move.w	#Sonic_Deceleration,($FFFFF764).w	; restore Sonic's deceleration
 		clr.b	($FFFFFE2E).w		; cancel speed shoes
-		bclr	#2,(ScreenFuzz).w	; disable temporay screen fuzz
+		bclr	#SlotOptions2_MotionBlurTemp, SlotOptions2	; disable temporay screen fuzz
 		move.w	#$E3,d0
 		jmp	PlayCommand	; resume music at regular speed
 
@@ -29930,14 +29930,14 @@ WhiteFlash_Intensity_Intense = 7
 
 WhiteFlash_Intense:
 		moveq	#WhiteFlash_Intensity_Intense,d5 ; do a mega white flash no matter what
-		btst	#7,(OptionsBits).w		 ; is photosensitive mode enabled?
+		btst	#GlobalOptions_ScreenFlash_Weak, GlobalOptions		 ; is photosensitive mode enabled?
 		beq.s	WhiteFlash_Custom		 ; if not, branch
 		moveq	#WhiteFlash_Intensity_Default,d5 ; reduced, but not nothing
 		bra.s	WhiteFlash_Custom		 ; use predefined intensity
 ; ---------------------------------------------------------------------------
 WhiteFlash_Weak:
 		moveq	#WhiteFlash_Intensity_Low,d5	 ; do a weak white flash
-		btst	#7,(OptionsBits).w		 ; is photosensitive mode enabled?
+		btst	#GlobalOptions_ScreenFlash_Weak, GlobalOptions		 ; is photosensitive mode enabled?
 		beq.s	WhiteFlash_Custom		 ; if not, branch
 		; otherwise use default settings
 ; ---------------------------------------------------------------------------
@@ -29947,7 +29947,7 @@ WhiteFlash:
 WhiteFlash_Custom:
 		tst.b	WhiteFlashCounter	; is white flash already active?
 		bne.w	WF_SetFlashCounter	; if yes, just refresh the counter but don't do anything else
-		btst	#7,(OptionsBits).w	; is photosensitive mode enabled?
+		btst	#GlobalOptions_ScreenFlash_Weak, GlobalOptions	; is photosensitive mode enabled?
 		bne.w	WF_SetFlashCounter	; if yes, don't do flashy lights either
 
 		lea	Pal_Water_Active,a3	; load palette location to a3
@@ -29968,7 +29968,7 @@ WhiteFlash_Custom:
 		bra.s	@wfintensity		; skip regular stuff
 
 	@regular:
-		btst	#6,(OptionsBits).w	; is max white flash enabled?
+		btst	#GlobalOptions_ScreenFlash_Intense, GlobalOptions	; is max white flash enabled?
 		beq.s	@chkboost		; if not, branch
 		moveq	#WhiteFlash_Intensity_Intense,d4 ; bit boost (<-- just a bit, sure :V)
 		bra.w	@wfintensity		; branch
@@ -30029,7 +30029,7 @@ WhiteFlash_Restore:
 		tst.b	(DyingFlag).w		; was death flag set?
 		bne.w	@end			; if yes, don't mess with the palette, already made grayscale
 
-		btst	#7,(OptionsBits).w	; is photosensitive mode enabled?
+		btst	#GlobalOptions_ScreenFlash_Weak, GlobalOptions	; is photosensitive mode enabled?
 		bne.s	@end			; if yes, branch
 		lea	Pal_Water_Active,a4	; load palette location to a4
 		lea	PalCache_FlashEffect,a3	; load backed up palette to a3
@@ -30051,7 +30051,7 @@ Jumpdash_Speed	equ	$A00
 Sonic_JumpDash:
 		cmpi.w	#$200,($FFFFFE10).w	; is level MZ1?
 		bne.s	JD_NotMZ		; if not, branch
-		btst	#4,(OptionsBits).w	; is nonstop inhuman enabled?
+		btst	#SlotOptions_NonstopInhuman, SlotOptions	; is nonstop inhuman enabled?
 		bne.s	JD_NotMZ
 		tst.b	(Inhuman).w		; is inhuman mode on?
 		bne.w	JD_End			; if yes, branch
@@ -30068,7 +30068,7 @@ JD_NotMZ:
 		move.b	#1,($FFFFFFEB).w	; if not, set jumpdash flag
 		tst.b	($FFFFF7AA).w		; is boss mode on?
 		bne.s	JD_NoWhiteFlash		; if yes, branch
-		btst	#4,(OptionsBits).w	; is nonstop inhuman enabled?
+		btst	#SlotOptions_NonstopInhuman, SlotOptions	; is nonstop inhuman enabled?
 		bne.s	@contx
 		cmpi.w	#$200,($FFFFFE10).w	; is level MZ1?
 		beq.s	JD_NoWhiteFlash		; if yes, branch
@@ -30475,7 +30475,7 @@ Sonic_Spindash:
 
 		cmpi.w	#$200,($FFFFFE10).w	; is level MZ1?
 		bne.s	Spdsh_NotMZ		; if not, branch
-		btst	#4,(OptionsBits).w	; is nonstop inhuman enabled?
+		btst	#SlotOptions_NonstopInhuman, SlotOptions	; is nonstop inhuman enabled?
 		bne.s	Spdsh_NotMZ		; if yes, branch
 		tst.b	($FFFFFF73).w		; P monitor broken?
 		bne.s	Spdsh_NotMZ		; if yes, branch
@@ -30640,7 +30640,7 @@ Sonic_AirFreeze:
 	;	bne.w	AM_End			; if yes, disallow air freeze
 		tst.b	WhiteFlashCounter	; is white flash flag set?
 		beq.s	@noflash		; if not, branch
-		btst	#5,(OptionsBits2).w	; is nonstop space golf enabled?
+		btst	#SlotOptions_SpaceGolf, SlotOptions	; is nonstop space golf enabled?
 		bne.s	@noflash		; if yes, branch
 		bra.s	@release		; force release
 
@@ -30920,7 +30920,7 @@ S_F_RPRingCost:
 		bne.s	S_F_End			; if yes, branch (this is the one time casual gets something exclusive)
 		cmpi.w	#$200,($FFFFFE10).w	; are we in RP?
 		bne.s	S_F_End			; if not branch
-		btst	#4,(OptionsBits).w	; is nonstop inhuman enabled?
+		btst	#SlotOptions_NonstopInhuman, SlotOptions	; is nonstop inhuman enabled?
 		bne.s	S_F_End			; if yes, branch
 		ori.b	#1,($FFFFFE1D).w	; update ring counter
 		subq.w	#1,($FFFFFE20).w	; sub 1 ring
@@ -31193,9 +31193,9 @@ SAP_HitWall:
 
 		cmpi.b	#$1A,obAnim(a0)			; check if in hurt animation
 		beq.w	SAP_Teleport			; if yes, always teleport (hurt after getting hit by shrapnel)
-		btst	#4,(OptionsBits).w		; is nonstop inhuman enabled?
+		btst	#SlotOptions_NonstopInhuman, SlotOptions		; is nonstop inhuman enabled?
 		bne.s	@buzzwire			; if yes, branch
-		btst	#5,(OptionsBits2).w		; is space golf enabled?
+		btst	#SlotOptions_SpaceGolf, SlotOptions		; is space golf enabled?
 		bne.s	@buzzwire			; if yes, branch
 		cmpi.b	#SAPTeleport_Trigger,(CameraShake).w ; is a bunch of camera shake already stored?
 		bhs.w	SAP_Teleport			; if yes, teleport
@@ -31346,7 +31346,7 @@ SAP_Teleport:
 SAP_LoadSonicPal:
 		; load antigrav palette for Sonic
 		moveq	#$11,d0			; load Sonic's antigrav palette line in palette line 2
-		btst	#1,(ScreenFuzz).w	; is piss enabled?
+		btst	#SlotOptions2_PissFilter, SlotOptions2	; is piss enabled?
 		beq.s	@loadpal		; if not, branch
 		moveq	#$10,d0			; load it into palette line 1 instead
 @loadpal:
@@ -31826,9 +31826,9 @@ AddDeath2:
 ; ---------------------------------------------------------------------------
 
 AddFail:
-		btst	#7,(OptionsBits2).w	; is Count-All-Fumbles Mode enabled?
-		beq.s	@end			; if not, nothing to do
-		tst.b	WhiteFlashCounter		; is white flash flag set?
+		btst	#SlotOptions_AltHUD_ShowErrors, SlotOptions	; is Count-All-Fumbles Mode enabled?
+		beq.s	@end						; if not, nothing to do
+		tst.b	WhiteFlashCounter	; is white flash flag set?
 		bne.s	@end
 		bra	AddDeath2		; add one death to track fail
 @end:		rts
@@ -36475,18 +36475,18 @@ Obj7D_SoundStopper:
 		movea.l	$30(a0),a1		; get saved RAM address of the door
 		move.b	#1,$30(a1)		; turn the door red
 		move.b	#1,($FFFFFFA5).w	; move HUD off screen
-		bset	#2,(ScreenFuzz).w	; enable temporary screen fuzz
+		bset	#SlotOptions2_MotionBlurTemp, SlotOptions2	; enable temporary screen fuzz
 
 		; prevent cheating when attempting the blackout challenge for the first time
 		jsr	CheckSlot_BlackoutFirst	; is this the first attempt at the blackout challenge?
 		beq.s	@del			; if not, branch
-		bclr	#4,(OptionsBits).w	; disable true inhuman
+		bclr	#SlotOptions_NonstopInhuman, SlotOptions	; disable true inhuman
 		clr.b	(Inhuman).w
-		bclr	#5,(OptionsBits2).w	; disable space golf
+		bclr	#SlotOptions_SpaceGolf, SlotOptions	; disable space golf
 		clr.b	(SpaceGolf).w
-		bclr	#3,(OptionsBits).w	; disable "cinematic mode - black bars"
-		bclr	#0,(ScreenFuzz).w	; disable permanent motion blur
-		bclr	#1,(ScreenFuzz).w	; disable piss filter
+		bclr	#SlotOptions_CinematicBlackBars, SlotOptions	; disable "cinematic mode - black bars"
+		bclr	#SlotOptions2_MotionBlur, SlotOptions2	; disable permanent motion blur
+		bclr	#SlotOptions2_PissFilter, SlotOptions2	; disable piss filter
 
 @del:
 		jmp	DeleteObject
@@ -36839,7 +36839,7 @@ loopdashit:	cmpi.b	#$18,(a1)		; is current object a platform?
 Obj3D_ShipFlash:
 		tst.b	(DyingFlag).w		; is Sonic dying?
 		bne.s	@noflash		; if yes, disable flash
-		btst	#7,(OptionsBits).w	; is photosensitive mode enabled?
+		btst	#GlobalOptions_ScreenFlash_Weak, GlobalOptions	; is photosensitive mode enabled?
 		bne.s	@noflash		; if yes, branch
 		
 		lea	($FFFFFB22).w,a1 ; load	2nd palette, 2nd	entry
@@ -41274,7 +41274,7 @@ loc_1A514:
 		moveq	#3,d0
 		cmpi.b	#10,obColProp(a1)
 		bhi.s	@nopinch
-		btst	#7,(OptionsBits).w	; is photosensitive mode enabled?
+		btst	#GlobalOptions_ScreenFlash_Weak, GlobalOptions	; is photosensitive mode enabled?
 		bne.s	@nopinch		; if yes, branch
 		moveq	#2,d0
 @nopinch:
@@ -42671,7 +42671,7 @@ Kill_Normal:
 		jsr	Sonic_ResetOnFloor	; do all the shit which is in Sonic_ResetOnFloor
 		bset	#1,obStatus(a0)		; make sonic to be in the air
 
-		btst	#4,(OptionsBits).w	; is nonstop inhuman enabled?
+		btst	#SlotOptions_NonstopInhuman, SlotOptions	; is nonstop inhuman enabled?
 		beq.s	@moveup			; if not, branch
 		btst	#1,obStatus(a2)		; is killer object vertically flipped?
 		beq.s	@moveup			; if not, branch
@@ -42852,7 +42852,7 @@ loc_1B2E4:
 		move.b	d0,$200(a1)
 
 		; goal block animation
-		btst	#7,(OptionsBits).w	; is photosensitive mode enabled?
+		btst	#GlobalOptions_ScreenFlash_Weak, GlobalOptions	; is photosensitive mode enabled?
 		beq.s	@regular		; if not, branch
 		moveq	#1,d0			; force to white goal block
 @regular:
@@ -42871,7 +42871,7 @@ loc_1B2E4:
 		bra.s	@notblackout		; skip
 
 @part2:
-		btst	#7,(OptionsBits).w	; is photosensitive mode enabled?
+		btst	#GlobalOptions_ScreenFlash_Weak, GlobalOptions	; is photosensitive mode enabled?
 		bne.s	@lightup		; if yes, no flash
 		moveq	#3,d0
 	;	btst	#5,($FFFFF602).w	; is C held?
@@ -43559,7 +43559,7 @@ Obj09_Main:				; XREF: Obj09_Index
 		move.w	obX(a0),($FFFFFF86).w	; copy starting X position to last checkoing X-pos
 		move.w	obY(a0),($FFFFFF88).w	; copy starting Y position to last checkoing Y-pos
 
-		btst	#5,(OptionsBits2).w	; is nonstop space golf enabled?
+		btst	#SlotOptions_SpaceGolf, SlotOptions	; is nonstop space golf enabled?
 		beq.s	Obj09_ChkDebug		; if not, branch
 		move.b	#1,(SpaceGolf).w	; enable space golf. have fun, I guess
 	;	jsr	SAP_LoadSonicPal	; load Sonic's antigrav palette
@@ -43606,7 +43606,7 @@ SS_NoTeleport:
 		move.w	d0,obVelY(a0)
 		
 @notlocked:
-		btst	#4,(OptionsBits).w	; is nonstop inhuman enabled?
+		btst	#SlotOptions_NonstopInhuman, SlotOptions	; is nonstop inhuman enabled?
 		beq.s	@notnonstopinhuman	; if not, branch
 		add.w	#$0100,($FFFFFB04)	; increase Sonic's palette (color 3)
 		add.w	#$0100,($FFFFFB06)	; increase Sonic's palette (color 4)
@@ -44068,7 +44068,7 @@ Obj09_Fall:				; XREF: Obj09_OnWall; Obj09_InAir
 		bne.s	O9F_Return
 
 		moveq	#$2A,d5			; fall speed in special stages
-		btst	#5,(OptionsBits2).w	; is nonstop space golf enabled?
+		btst	#SlotOptions_SpaceGolf, SlotOptions	; is nonstop space golf enabled?
 		beq.s	@fall			; if not, branch
 		moveq	#$2A/2,d5		; half gravity
 		btst	#6,($FFFFF602).w	; is A held?
@@ -44231,7 +44231,7 @@ Obj09_ColCheck:				; XREF: Obj09_Collision
 		rts			; block is not solid
 
 @goalradius:		
- 		btst	#4,(OptionsBits).w	; is nonstop inhuman enabled?
+ 		btst	#SlotOptions_NonstopInhuman, SlotOptions	; is nonstop inhuman enabled?
 		bne.s	@setsolid		; if yes, make sure we don't suck by this alternate collision
 		tst.b	$31(a0)				; has goal already been touched?
 		bne.s	@notsolid			; if so, bypass another check
@@ -44485,7 +44485,7 @@ Obj09_RadiusGoal:
 Obj09_ChkGOAL:
 		cmpi.b	#$27,d0			; is the item a	"GOAL"?
 		bne.w	Obj09_ChkBumper		; if not, branch
- 		btst	#4,(OptionsBits).w	; is nonstop inhuman enabled?
+ 		btst	#SlotOptions_NonstopInhuman, SlotOptions	; is nonstop inhuman enabled?
 		bne.w	Obj09_DoBumper		; if yes, convert goal block into bumber
 		bsr.s	Obj09_RadiusGoal		; has Sonic touched the goal?
 		bls.s	Obj09_TouchGoal			; if so, branch
@@ -44594,7 +44594,7 @@ Obj09_DoBumper:
 
 		tst.b	($FFFFFFBF).w		; Unreal Place floating challenge enabled?
 		beq.s	@notnonstopinhuman	; if not, branch
-		btst	#4,(OptionsBits).w	; is nonstop inhuman enabled?
+		btst	#SlotOptions_NonstopInhuman, SlotOptions	; is nonstop inhuman enabled?
 		beq.s	@notnonstopinhuman	; if not, branch
 		clr.w	obVelX(a0)		; clear Sonic's X velocity
 		clr.w	obInertia(a0)		; clear Sonic's inertia
@@ -44826,7 +44826,7 @@ Obj09_NoReplace2:
 Obj09_GoalNotSolid:
 		moveq	#0,d4			; clear d4
 
-		btst	#7,(OptionsBits).w	; is photosensitive mode enabled?
+		btst	#GlobalOptions_ScreenFlash_Weak, GlobalOptions	; is photosensitive mode enabled?
 		bne.s	@noflash		; if yes, no flash
 		movem.l	d7/a1-a3,-(sp)
 		tst.b	(Blackout).w		; is this the blackout blackout special stage?
@@ -45045,7 +45045,7 @@ Obj21_ChkScore:
 		move.w	#$80+$45,$36(a0)		; set target X-position
 		move.w	#$80+SCREEN_WIDTH+$11,obX(a0)	; set start X-position
 		move.b	#1,obFrame(a0)		; use SCORE frame
-		btst	#6,(OptionsBits2).w	; is speedrun timer enabled?
+		btst	#SlotOptions_AltHUD_ShowSeconds, SlotOptions	; is speedrun timer enabled?
 		beq.w	Obj21_FrameSelected	; if not, branch
 		move.b	#$A,obFrame(a0)		; use SECS frame instead
 		bra.w	Obj21_FrameSelected	; skip
@@ -45161,7 +45161,7 @@ Obj21_Display2:
 		cmpi.b	#6,($FFFFD024).w	; is Sonic dying?
 		bhs.s	@displayhud		; if yes, branch
 
-		btst	#2,(OptionsBits).w	; is "disable HUD" enabled?
+		btst	#SlotOptions_NoHUD, SlotOptions	; is "disable HUD" enabled?
 		bne.s	@dontdisplay		; if yes, don't render HUD
 		tst.b	($FFFFF7CC).w		; are controls locked?
 		beq.s	@displayhud		; if yes, don't render HUD either
@@ -45286,7 +45286,7 @@ Obj21_NoUpdate:
 		bne.s	@plural			; if not, branch
 		moveq	#7,d0			; use DEATH frame
 @plural:	
-		btst	#7,(OptionsBits2).w	; is Track-All-Fails Mode enabled?
+		btst	#SlotOptions_AltHUD_ShowErrors, SlotOptions	; is Track-All-Fails Mode enabled?
 		beq.s	@chkbosshud		; if not, branch
 		moveq	#8,d0			; use FUMBLES frame
 @chkbosshud:
@@ -45360,7 +45360,7 @@ Obj21_Display:
 		cmpi.b	#6,($FFFFD024).w	; is Sonic dying?
 		bhs.s	@cont			; if yes, branch
 
-		btst	#2,(OptionsBits).w	; is "disable HUD" enabled?
+		btst	#SlotOptions_NoHUD, SlotOptions	; is "disable HUD" enabled?
 		bne.s	@cont2			; if yes, don't render HUD
 		tst.b	($FFFFF7CC).w		; are controls locked?
 		beq.s	@cont			; if yes, don't render HUD either
@@ -45390,7 +45390,7 @@ Map_obj21:
 
 
 AddPoints:
-		btst	#6,(OptionsBits2).w	; is speedrun timer enabled?
+		btst	#SlotOptions_AltHUD_ShowSeconds, SlotOptions	; is speedrun timer enabled?
 		bne.s	locret_1C6B6		; if yes, disable regular score system
 
 AddPoints_Force:
@@ -45416,7 +45416,7 @@ locret_1C6B6:
 ; ---------------------------------------------------------------------------
 
 AddPoints_Timer:
-		btst	#6,(OptionsBits2).w	; is speedrun timer enabled?
+		btst	#SlotOptions_AltHUD_ShowSeconds, SlotOptions	; is speedrun timer enabled?
 		beq.s	locret_1C6B6		; if not, nothing to do
 		moveq	#10,d0			; add 100 points to simulate a second
 		frantic				; are we in frantic mode?

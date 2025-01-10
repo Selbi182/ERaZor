@@ -4,73 +4,6 @@
 ; (c) Selbi
 ; ---------------------------------------------------------------------------
 
-	include	"Screens/OptionsScreen/Macros.asm"
-
-; ---------------------------------------------------------------------------
-
-Options_Music = $99
-
-Options_DeleteSRAMInitialCount = 8
-
-Options_VRAM = $8570
-Options_StringBufferSize = 40+1
-
-	if def(__DEBUG__)
-Options_CanaryValue = $BEEF
-	endif
-
-Options_RAM:	equ	$FFFF8000
-
-	rsset	Options_RAM
-Options_StringBuffer:		rs.b	Options_StringBufferSize+(Options_StringBufferSize&1)
-	if def(__DEBUG__)
-Options_StringBufferCanary:	rs.w	1			; DEBUG builds only
-	endif
-Options_VRAMStartScreenPos:	rs.w	1
-Options_VRAMBufferPoolPtr:	rs.w	1
-Options_DeleteSRAMCounter:	rs.b	1
-Options_RedrawCurrentItem:	rs.b	1
-Options_Exiting:		rs.b	1
-Options_HasAHint:		rs.b	1
-
-; ---------------------------------------------------------------------------
-; All options are kept in a single byte to save space (it's all flags anyway)
-; RAM location: `OptionsBits`
-;  bit 0 = Extended Camera
-;  bit 1 = <<UNUSED>>
-;  bit 2 = Disable HUD
-;  bit 3 = Cinematic Mode (black bars)
-;  bit 4 = Nonstop Inhuman Mode
-;  bit 5 = <<UNUSED>>
-;  bit 6 = Max White Flash
-;  bit 7 = Photosensitive Mode (Screen Flash set to weak)
-; ---------------------------------------------------------------------------
-; Second options bitfield
-; RAM location: `OptionsBits2`
-;  bit 0 = Disable Music
-;  bit 1 = Disable SFX
-;  bit 2 = Weak Camera Shake
-;  bit 3 = Intense Camera Shake
-;  bit 4 = Classic/Remasterd Palettes
-;  bit 5 = Space Golf/Antigrav Mode
-;  bit 6 = Alt HUD - Total Seconds for Score
-;  bit 7 = Alt HUD - Errors for Deaths
-; ---------------------------------------------------------------------------
-; Screen Effects
-; RAM location: `ScreenFuzz`
-;  bit 0 = piss filter
-;  bit 1 = motion blur
-
-; Default options when starting the game for the first time
-	if def(__WIDESCREEN__)
-DefaultOptions  = %00000000	; extended camera not needed in widescreen
-	else
-DefaultOptions  = %00000001
-	endif
-
-DefaultOptions2 = %00010000	; remastered palettes
-; ---------------------------------------------------------------------------
-
 OptionsScreen:				; XREF: GameModeArray
 		moveq	#$FFFFFFE0, d0
 		jsr	PlayCommand
@@ -251,8 +184,8 @@ OptionsScreen_MainLoop:
 	@do:
 		jsr	GenerateCameraShake
 		move.w	(CameraShake_XOffset).w,d1
-		btst	#3, OptionsBits2	; intense cam shake also enabled?
-		beq.s	@1			; if not, branch
+		btst	#GlobalOptions_CameraShake_Intense, GlobalOptions
+		beq.s	@1
 		add.w	d1,d1
 	@1:
 		add.w	d1,($FFFFF616).w	; set to VSRAM
@@ -304,11 +237,19 @@ Options_SelectExit:
 ; ---------------------------------------------------------------------------
 
 Options_SetDefaults:
-		move.b	#DefaultOptions,(OptionsBits).w		; load default options
-		move.b	#DefaultOptions2,(OptionsBits2).w	; load default options 2
-		clr.b	(ScreenFuzz).w				; clear visual fx
-		clr.b	(BlackBars.HandlerId).w			; reset black bars to emulator mode
-		jmp	BlackBars.SetHandler			; update handler
+		bsr.s	Options_SetSlotDefaults
+		; fallthrough
+
+Options_SetGlobalDefaults:
+		move.b	#Default_GlobalOptions, GlobalOptions
+		clr.b	BlackBars.HandlerId
+		jmp	BlackBars.SetHandler
+
+; ---------------------------------------------------------------------------
+Options_SetSlotDefaults:
+		move.b	#Default_SlotOptions, SlotOptions
+		clr.b	SlotOptions2
+		rts
 
 ; ===========================================================================
 

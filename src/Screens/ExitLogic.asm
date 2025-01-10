@@ -21,17 +21,17 @@
 
 ReturnToUberhub:
 		; instantly
-		move.w	#$400,($FFFFFE10).w	; set level to Uberhub
-		bra.s	StartLevel		; start level
+		move.w	#$400, CurrentLevel			; set level to Uberhub
+		bra.s	StartLevel				; start level
 
 ReturnToUberhub_Chapter:
-		move.w	#$400,($FFFFFE10).w	; set level to Uberhub
-		btst	#1,(OptionsBits).w	; is Speedrun Mode enabled?
-		bne.s	StartLevel		; if yes, skip chapter screen
+		move.w	#$400, CurrentLevel			; set level to Uberhub
+		btst	#SlotOptions2_ArcadeMode, SlotOptions2	; is Arcade Mode enabled?
+		bne.s	StartLevel				; if yes, skip chapter screen
 
 		; show chapter screen first
-		move.b	#$28,(GameMode).w	; set to chapters screen
-		rts				; return to MainGameLoop
+		move.b	#$28, GameMode				; set to chapters screen
+		rts						; return to MainGameLoop
 
 
 ; ===========================================================================
@@ -49,10 +49,10 @@ StartLevel:
 		clr.w	($FFFFFE30).w		; clear any set level checkpoints
 		clr.w	(RelativeDeaths).w	; clear relative death counter now that we have entered a new level
 
-		move.w	($FFFFFE10).w,d0	; get level ID
-		cmpi.w	#$300,d0		; set to Special Place?
+		move.w	CurrentLevel, d0	; get level ID
+		cmpi.w	#$300, d0		; set to Special Place?
 		beq.s	@startspecial		; if yes, branch
-		cmpi.w	#$401,d0		; set to Unreal Place / Blackout Challenge?
+		cmpi.w	#$401, d0		; set to Unreal Place / Blackout Challenge?
 		beq.s	@startspecial		; if yes, branch
 		
 		; regular level
@@ -184,10 +184,10 @@ Exit_GameplayStyleScreen:
 
 @speedrun:
 		jsr 	WhiteFlash
-		bset	#1,(OptionsBits).w	; enable Speedrun Mode
-		move.w	#$D3,d0			; play peelout release sound
+		bset	#SlotOptions2_ArcadeMode, SlotOptions2	; enable Arcade Mode
+		move.w	#$D3,d0					; play peelout release sound
 		jsr	PlaySFX
-		bra.w	HubRing_NHP		; go straight to NHP
+		bra.w	HubRing_NHP				; go straight to NHP
 ; ===========================================================================
 
 Exit_OptionsScreen:
@@ -236,7 +236,7 @@ Exit_SoundTestScreen:
 ; ===========================================================================
 
 Exit_ChapterScreen:
-		cmpi.w	#$001,($FFFFFE10).w	; is this the intro cutscene?
+		cmpi.w	#$001,CurrentLevel	; is this the intro cutscene?
 		beq.w	Exit_OneHotDay		; if yes, start intro cutscene (and music)
 		move.w	#$000,($FFFFFB02).w	; keep a specific color black to avoid flicker
 		bra.w	StartLevel		; otherwise, start level set in FE10 normally
@@ -250,8 +250,8 @@ Exit_StoryScreen:
 		beq.s	@postblackout		; if yes, branch
 
 		; regular story screen
-		btst	#1,(OptionsBits).w	; is Speedrun Mode enabled?
-		bne.w	SkipUberhub		; if yes, automatically go to the next level in order
+		btst	#SlotOptions2_ArcadeMode, SlotOptions2	; is Arcade Mode enabled?
+		bne.w	SkipUberhub				; if yes, automatically go to the next level in order
 
 		cmpi.b	#1,d0			; is this the intro cutscene?
 		bne.w	ReturnToUberhub		; if not, return to Uberhub
@@ -346,7 +346,7 @@ Exit_CreditsScreen:
 Exit_OneHotDay:
 		move.b	#$95,d0			; play intro cutscene music
 		jsr	PlayBGM
-		move.w	#$001,($FFFFFE10).w	; load intro cutscene
+		move.w	#$001, CurrentLevel	; load intro cutscene
 		bra.w	StartLevel		; start level
 ; ===========================================================================
 
@@ -357,7 +357,7 @@ Exit_IntroCutscene:
 
 Exit_BombMachineCutscene:
 		jsr	Pal_FadeFrom
-		move.w	#$301,($FFFFFE10).w	; set level to Scar Night Place
+		move.w	#$301, CurrentLevel	; set level to Scar Night Place
 		bra.w	StartLevel		; start level
 ; ===========================================================================
 
@@ -387,7 +387,7 @@ Exit_EndingSequence:
 		bset	#3,d1			; load Motion Blur unlock text
 		
 @markgameasbeaten:
-		bsr	Set_BaseGameDone	; you have beaten the base game, congrats (casual only or frantic with casual)
+		bsr	Set_BaseGameBeaten	; you have beaten the base game, congrats (casual only or frantic with casual)
 
 	@checkblackoutteaser:
 		bsr	CheckSlot_BlackoutFirst	; has the player unlocked but not beaten the blackout challenge?
@@ -418,11 +418,11 @@ RunChapter:
 		bmi.s	@nochapter		; if not, something has gone terribly wrong
 		addq.b	#1,d5			; chapters are 1-based
 
-		cmpi.w	#$301,($FFFFFE10).w	; set to Scar Night Place?
+		cmpi.w	#$301, CurrentLevel	; set to Scar Night Place?
 		bne.s	@checkid		; if not, branch
 		frantic				; are we in frantic?
 		beq.s	@checkid		; if not, branch. big boy bombs only in big boy game modes
-		move.w	#$500,($FFFFFE10).w	; start bomb machine cutscene
+		move.w	#$500, CurrentLevel	; start bomb machine cutscene
 
 @checkid:
 		cmp.b	(CurrentChapter).w,d5	; compare currently saved chapter number to fake level ID
@@ -430,10 +430,10 @@ RunChapter:
 		move.b	d5,(CurrentChapter).w	; we've entered a new level, update progress chapter ID
 		jsr	SRAMCache_SaveSelectedSlotId
 
-		bsr	CheckSlot_BaseGameBeaten_Any ; has the player already beaten the base game (of either mode)?
-		bne.s	@nochapter		; if yes, no longer display chapter screens
-		btst	#1,(OptionsBits).w	; is Speedrun Mode enabled?
-		bne.s	@nochapter		; if yes, start level straight away
+		bsr	CheckSlot_BaseGameBeaten_Any		; has the player already beaten the base game (of either mode)?
+		bne.s	@nochapter				; if yes, no longer display chapter screens
+		btst	#SlotOptions2_ArcadeMode, SlotOptions2	; is Arcade Mode enabled?
+		bne.s	@nochapter				; if yes, start level straight away
 
 		move.b	#$28,(GameMode).w	; new chapter discovered, run chapters screen
 		rts
@@ -449,7 +449,7 @@ FindCurrentChapter:
 		addq.w	#1,d5			; increase d5
 		move.w	(a1)+,d3		; get next level ID and load it into d3
 		bmi.s	@error			; end of the list? quit loop
-		cmp.w	($FFFFFE10).w,d3	; does it match with the current ID?
+		cmp.w	CurrentLevel,d3	; does it match with the current ID?
 		bne.s	@loop			; if not, loop
 		rts
 @error:
@@ -470,10 +470,10 @@ FindCurrentChapter:
 ; ===========================================================================
 
 RunStory:
-		btst	#1,(OptionsBits).w	; is Speedrun Mode enabled?
-		beq.s	RunStory_Force		; if not, run story as usual
-		move.b	(StoryTextID).w,d0	; copy story ID to d0 (needed for Exit_StoryScreen)
-		bra.w	Exit_StoryScreen	; auto-skip story screen
+		btst	#SlotOptions2_ArcadeMode, SlotOptions2	; is Arcade Mode enabled?
+		beq.s	RunStory_Force				; if not, run story as usual
+		move.b	(StoryTextID).w,d0			; copy story ID to d0 (needed for Exit_StoryScreen)
+		bra.w	Exit_StoryScreen			; auto-skip story screen
 
 RunStory_Force:
 		move.b	#$20,(GameMode).w	; start Story Screen
@@ -487,14 +487,14 @@ RunStory_Force:
 
 ; d0 = ID of the giant ring we jumped into (Uberhub only)
 Exit_GiantRing:
-		cmpi.w	#$400,($FFFFFE10).w	; did we jump into a ring from Uberhub?
+		cmpi.w	#$400, CurrentLevel	; did we jump into a ring from Uberhub?
 		beq.s	Exit_UberhubRing	; if yes, go to its logic
 
-		cmpi.w	#$001,($FFFFFE10).w	; is level intro cutscene?
+		cmpi.w	#$001, CurrentLevel	; is level intro cutscene?
 		beq.w	MiscRing_IntroEnd	; if yes, branch
-		cmpi.w	#$402,($FFFFFE10).w	; did we beat Unterhub?
+		cmpi.w	#$402, CurrentLevel	; did we beat Unterhub?
 		beq.w	Exit_Level		; if yes, consider this a beaten level
-		cmpi.b	#5,($FFFFFE10).w	; is this the a ring in the tutorial/Finalor?
+		cmpi.b	#5, CurrentZone		; is this the a ring in the tutorial/Finalor?
 		beq.w	Exit_Level		; if yes, consider this a beaten level
 
 		bra.w	ReturnToUberhub		; otherwise something went wrong, return to Uberhub as fallback
@@ -532,22 +532,22 @@ GRing_Misc:	dc.w	ReturnToUberhub-GRing_Exits	; invalid ring
 		dc.w	HubRing_Unterhub-GRing_Exits
 ; ===========================================================================
 
-HubRing_NHP:	move.w	#$000,($FFFFFE10).w	; set level to GHZ1
+HubRing_NHP:	move.w	#$000, CurrentLevel	; set level to GHZ1
 		bra.w	RunChapter
 
-HubRing_GHP:	move.w	#$002,($FFFFFE10).w	; set level to GHZ3
+HubRing_GHP:	move.w	#$002, CurrentLevel	; set level to GHZ3
 		bra.w	StartLevel		; no chapter
 
-HubRing_SP:	move.w	#$300,($FFFFFE10).w	; set level to Special Stage
+HubRing_SP:	move.w	#$300, CurrentLevel	; set level to Special Stage
 		clr.b	(Blackout).w		; clear blackout special stage flag
 		bra.w	RunChapter
 
-HubRing_RP:	move.w	#$200,($FFFFFE10).w	; set level to MZ1
+HubRing_RP:	move.w	#$200, CurrentLevel	; set level to MZ1
 		bra.w	RunChapter
 
 HubRing_LP:
-		btst	#3,(OptionsBits).w	; are black bars (cinematic mode) enabled?
-		beq.s	@nobars			; if not, branch
+		btst	#SlotOptions_CinematicBlackBars, SlotOptions	; are black bars (cinematic mode) enabled?
+		beq.s	@nobars						; if not, branch
 		movem.l	a0/d7,-(sp)
 		jsr	Pal_FadeFrom		; fade out palette to avoid visual glitches
 		jsr	ClearScreen		; clear screen
@@ -558,28 +558,28 @@ HubRing_LP:
 		moveq	#$11|_DH_WithBGFuzz,d0	; load warning text that black bars don't work in LP
 		jsr	Queue_TutorialBox_Display ; VLADIK => Display hint
 @nobars:
-		move.w	#$101,($FFFFFE10).w	; set level to LZ2
+		move.w	#$101, CurrentLevel	; set level to LZ2
 		bra.w	RunChapter
 
 HubRing_Unterhub:
-		move.w	#$402,($FFFFFE10).w	; set level to SYZ3
+		move.w	#$402, CurrentLevel	; set level to SYZ3
 		bra.w	RunChapter
 
-HubRing_UP:	move.w	#$401,($FFFFFE10).w	; set level to Special Stage 2
+HubRing_UP:	move.w	#$401, CurrentLevel	; set level to Special Stage 2
 		clr.b	(Blackout).w		; clear blackout special stage flag
 		bra.w	RunChapter
 
-HubRing_SNP:	move.w	#$301,($FFFFFE10).w	; set level to SLZ2
+HubRing_SNP:	move.w	#$301, CurrentLevel	; set level to SLZ2
 		bra.w	RunChapter
 
-HubRing_SAP:	move.w	#$302,($FFFFFE10).w	; set level to SLZ3
+HubRing_SAP:	move.w	#$302, CurrentLevel	; set level to SLZ3
 		bra.w	StartLevel		; no chapter
 
-HubRing_FP:	move.w	#$502,($FFFFFE10).w	; set level to FZ
+HubRing_FP:	move.w	#$502, CurrentLevel	; set level to FZ
 		bra.w	RunChapter
 
 HubRing_Escape:
-		move.w	#$502,($FFFFFE10).w	; set level to FZ
+		move.w	#$502, CurrentLevel	; set level to FZ
 		bsr	StartLevel		; start level normally and then...
 		moveq	#1,d0			; ...pre-collect checkpoint...
 		move.b	d0,($FFFFFE30).w	; ...before the...
@@ -590,7 +590,7 @@ HubRing_Escape:
 
 HubRing_IntroStart:
 		move.b	#1,($FFFFFFE9).w	; set fade-out in progress flag
-		move.w	#$001,($FFFFFE10).w	; set to intro cutscene (this also controls the start of the intro cutscene itself)
+		move.w	#$001, CurrentLevel	; set to intro cutscene (this also controls the start of the intro cutscene itself)
 		move.b	#$28,(GameMode).w	; load chapters screen for intro cutscene ("One Hot Day...")
 		rts				; this is the only text screen not affected by Skip Story Texts
 
@@ -610,7 +610,7 @@ HubRing_SoundTest:
 
 HubRing_Tutorial:
 		bsr	SetSlot_TutorialVisited	; the FUN begins
-		move.w	#$501,($FFFFFE10).w	; set level to SBZ2
+		move.w	#$501, CurrentLevel	; set level to SBZ2
 		bra.w	StartLevel
 
 HubRing_Ending:
@@ -620,8 +620,8 @@ HubRing_Ending:
 		bra.w	RunStory
 
 HubRing_Blackout:
-		bclr	#2,(ScreenFuzz).w	; clear temporary screen fuzz flag
-		move.w	#$401,($FFFFFE10).w	; set level to Unreal
+		bclr	#SlotOptions2_MotionBlurTemp, SlotOptions2	; clear temporary screen fuzz flag
+		move.w	#$401, CurrentLevel	; set level to Unreal
 		move.b	#1,(Blackout).w		; set Blackout Challenge flag
 		bra.w	StartLevel		; good luck
 
@@ -632,41 +632,41 @@ HubRing_Blackout:
 
 ; GotThroughAct:
 Exit_Level:
-		cmpi.w	#$501,($FFFFFE10).w	; did we beat the tutorial?
+		cmpi.w	#$501, CurrentLevel	; did we beat the tutorial?
 		beq.w	GTA_Tutorial		; if yes, branch
 
-		cmpi.w	#$003,($FFFFFE10).w	; did we beat NHP/GHP?
+		cmpi.w	#$003, CurrentLevel	; did we beat NHP/GHP?
 		beq.w	GTA_NHPGHP		; if yes, branch
 
-		cmpi.w	#$300,($FFFFFE10).w	; did we beat Special Place?
+		cmpi.w	#$300, CurrentLevel	; did we beat Special Place?
 		beq.w	GTA_SP			; if yes, branch
 
-		cmpi.w	#$200,($FFFFFE10).w	; did we beat RP?
+		cmpi.w	#$200, CurrentLevel	; did we beat RP?
 		beq.w	GTA_RP			; if yes, branch
 
-		cmpi.w	#$402,($FFFFFE10).w	; did we beat Unterhub?
+		cmpi.w	#$402, CurrentLevel	; did we beat Unterhub?
 		beq.w	GTA_Unterhub		; if yes, branch
 
-		cmpi.w	#$101,($FFFFFE10).w	; did we beat LP?
+		cmpi.w	#$101, CurrentLevel	; did we beat LP?
 		beq.w	GTA_LP			; if yes, branch
 
-		cmpi.w	#$401,($FFFFFE10).w	; did we beat Unreal Place?
+		cmpi.w	#$401, CurrentLevel	; did we beat Unreal Place?
 		bne.s	@notunreal		; if not, branch
 		tst.b	(Blackout).w		; is this the blackout special stage?
 		beq.w	GTA_UP			; if not, you've beaten UP
 		bra.w	GTA_Blackout		; otherwise, you've beaten blackout
 
 @notunreal:
-		cmpi.w	#$302,($FFFFFE10).w	; did we beat SNP/SAP?
+		cmpi.w	#$302, CurrentLevel	; did we beat SNP/SAP?
 		beq.w	GTA_SNPSAP		; if yes, branch
 		
-		cmpi.w	#$502,($FFFFFE10).w	; did we beat FP?
+		cmpi.w	#$502, CurrentLevel	; did we beat FP?
 		beq.w	GTA_FP			; if yes, branch
 
 		bra.w	ReturnToUberhub		; uhh idk how this could ever happen, but just in case
 ; ---------------------------------------------------------------------------
 
-GTA_Tutorial:	btst	#1,(OptionsBits).w	; is Speedrun Mode enabled?	
+GTA_Tutorial:	btst	#SlotOptions2_ArcadeMode, SlotOptions2	; is Arcade Mode enabled?	
 		bne.w	HubRing_NHP		; if yes, go straight to NHP
 		move.b	#4,(CarryOverData).w	; set that we came from the tutorial
 		bra.w	ReturnToUberhub		; if not, return to Uberhub
@@ -715,13 +715,13 @@ GTA_SNPSAP:	moveq	#5,d0			; unlock sixth door
 		move.b	#7,(StoryTextID).w	; set number for text to 7
 		bra.w	RunStory
 
-GTA_FP:		moveq	#6,d0			; unlock seventh door (door to the credits)
+GTA_FP:		moveq	#6,d0					; unlock seventh door (door to the credits)
 		bsr	SetSlot_DoorOpen
-		bsr	SetSlot_TutorialVisited	; set tutorial visited now in case it wasn't already
-		btst	#1,(OptionsBits).w	; is Speedrun Mode enabled?		
-		beq.s	@fromtutorialring	; if not, branch
-		jsr	CheckSlot_AllLevelsBeaten_Current ; has the player beaten all levels?
-		bne.w	HubRing_Ending		; if yes, go straight to the ending
+		bsr	SetSlot_TutorialVisited			; set tutorial visited now in case it wasn't already
+		btst	#SlotOptions2_ArcadeMode, SlotOptions2	; is Arcade Mode enabled?		
+		beq.s	@fromtutorialring			; if not, branch
+		jsr	CheckSlot_AllLevelsBeaten_Current	; has the player beaten all levels?
+		bne.w	HubRing_Ending				; if yes, go straight to the ending
 @fromtutorialring:
 		move.b	#4,(CarryOverData).w	; set that we came from the tutorial
 		bra.w	ReturnToUberhub		; return to Uberhub
@@ -746,8 +746,8 @@ GTA_Blackout:
 ; ---------------------------------------------------------------------------
 
 SkipUberhub:
-		move.w	($FFFFFE10).w,d1	; get level number of the level we just beat
-		lea	(NextLevel_Array).l,a1	; load the next level array
+		move.w	CurrentLevel, d1	; get level number of the level we just beat
+		lea	NextLevel_Array(pc), a1	; load the next level array
 @autonextlevelloop:
 		move.w	(a1)+,d2		; get the current level ID in the list (and increase pointer to next)
 		tst.w	d2			; reached end of list?
@@ -764,7 +764,7 @@ SkipUberhub:
 		move.w	(a1)+,d2		; skip cutscene in casual
 
 @startlevel:	
-		move.w	d2,($FFFFFE10).w	; write next level in list to level ID RAM
+		move.w	d2, CurrentLevel	; write next level in list to level ID RAM
 		bra.w	RunChapter		; start the level, potentially play a chapter screen
 
 NextLevel_Array:
@@ -966,8 +966,8 @@ UnlockEverything: _unimplemented	; TODO: Implement properly
 		;moveq	#$FFFFFF00|Doors_All, d0	; unlock all doors...
 		;move.b	d0, Doors_Casual		; ...in casual...
 		;move.b	d0, Doors_Frantic		; ...and frantic
-		;bsr	Set_BaseGameDone_Casual		; unlock cinematic mode
-		;bsr	Set_BaseGameDone_Frantic	; unlock motion blur
+		;bsr	Set_BaseGameBeaten_Casual		; unlock cinematic mode
+		;bsr	Set_BaseGameBeaten_Frantic	; unlock motion blur
 		;bsr	Set_BlackoutBeaten		; unlock nonstop inhuman
 		;bsr	Set_TutorialVisited		; set tutorial visited
 		;bsr	Set_HubEasterVisited		; set Uberhub easter egg as visited
@@ -1017,7 +1017,7 @@ SetGlobal_BlackBarsConfigured:
 		rts
 ; ---------------------------------------------------------------------------
 
-Set_BaseGameDone:
+Set_BaseGameBeaten:
 		bsr	Set_BaseGameBeaten_Casual
 		frantic
 		bne.s	Set_BaseGameBeaten_Frantic

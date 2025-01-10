@@ -159,7 +159,7 @@ DH_Continue:
 	;	beq.s	@noflicker		; if yes, don't do flicker cause it collides with the ERaZor banner
 		move.w	($FFFFFE0E).w,d0
 		lsl.w	#4,d0
-		btst	#7,(OptionsBits).w	; photosensitive mode?
+		btst	#GlobalOptions_ScreenFlash_Weak, GlobalOptions	; photosensitive mode?
 		beq.s	@normal			; if not, branch
 		lsr.w	#1,d0			; reduce flashing speed
 @normal:

@@ -39,14 +39,11 @@ SRAMCache_Init:
 		endr
 		SRAMLeave
 
-		; Load globals
-		move.b	SRAMCache.GlobalOptions + SaveOptions.OptionsBits1, OptionsBits
-		move.b	SRAMCache.GlobalOptions + SaveOptions.OptionsBits2, OptionsBits2
-		move.b	SRAMCache.GlobalOptions + SaveOptions.ScreenFuzz, ScreenFuzz
-		move.b	SRAMCache.GlobalOptions + SaveOptions.BlackBars, BlackBars.HandlerId
-		move.b	SRAMCache.GlobalProgress, GlobalProgress
-		
-		; Load last slot data (should be redundant, but satisfies sanity checks)
+		; Load globals and slot data
+		move.b	SRAMCache.GlobalOptions, 	GlobalOptions
+		move.b	SRAMCache.GlobalProgress,	GlobalProgress
+		move.b	SRAMCache.BlackBars, 		BlackBars.HandlerId
+
 		bra	SRAMCache_LoadSelectedSlotId
 
 	; ---------------------------------------------------------------------------
@@ -58,20 +55,14 @@ SRAMCache_Init:
 		_KDebug.WriteLine "SRAMCache_Init(): Loading defaults..."
 
 		; Reset and save global options
-		jsr	Options_SetDefaults	; resets OptionBits, OptionBits2, ScreenFuzz
-						; WARNING! Doesn't reset Black Bars config!
-		move.b	OptionsBits, 		SRAMCache.GlobalOptions + SaveOptions.OptionsBits1
-		move.b	OptionsBits2, 		SRAMCache.GlobalOptions + SaveOptions.OptionsBits2
-		move.b	ScreenFuzz, 		SRAMCache.GlobalOptions + SaveOptions.ScreenFuzz
-		move.b	BlackBars.HandlerId, 	SRAMCache.GlobalOptions + SaveOptions.BlackBars
-
-		; Reset and save global progress
 		moveq	#0, @var0
-		move.b	@var0, GlobalProgress			; ### TODO: Correct this
-		move.b	GlobalProgress, SRAMCache.GlobalProgress
+		move.b	@var0, GlobalProgress
+		jsr	Options_SetGlobalDefaults	; resets GlobalOptions, BlackBars.HandlerId
 
-		; Reset and save current slot id
-		move.b	@var0, SRAMCache.SelectedSlotId
+		move.b	GlobalOptions,		SRAMCache.GlobalOptions
+		move.b	GlobalProgress,		SRAMCache.GlobalProgress
+		move.b	BlackBars.HandlerId, 	SRAMCache.BlackBars
+		move.b	@var0, 			SRAMCache.SelectedSlotId
 
 		; Clear slots
 		@slots:	equr	a2		; WARNING! Don't change (optimized for `SRAMCache_ClearSlot`)
@@ -80,8 +71,10 @@ SRAMCache_Init:
 		rept 3
 			bsr	SRAMCache_ClearSlot
 		endr
+
 		_assert.w @slots, eq, #SRAMCache_RAM+SRAMCache.Size
-		rts
+
+		bra	SRAMCache_LoadSelectedSlotId
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -187,6 +180,8 @@ SRAMCache_ClearSlot:	; INPUT: a2 = Slot data
 		move.b	d0, (a2)+
 	endr
 
+	move.b	#Default_SlotOptions, SaveSlot.Options-SaveSlot.Size(a2)
+
 SRAMCache_Clear_NoSlot:
 	rts
 
@@ -205,23 +200,29 @@ SRAMCache_LoadSlot:	; INPUT: a2 = Slot data
 	assert.w a2, hs, #SRAMCache.Slots
 	assert.w a2, ls, #SRAMCache.Slots + SRAMCache.Size*(3-1)
 
-	move.b	SaveSlot.Progress(a2), SlotProgress
-	move.b	SaveSlot.Chapter(a2), CurrentChapter
-	move.w	SaveSlot.Rings(a2), Rings
-	move.w	SaveSlot.Deaths(a2), Deaths
-	move.l	SaveSlot.Score(a2), Score
-	move.w	SaveSlot.Doors(a2), Doors_Casual	; FIXME
+	move.b	SaveSlot.Progress(a2), 		SlotProgress
+	move.b	SaveSlot.Options(a2), 		SlotOptions
+	move.b	SaveSlot.Options2(a2), 		SlotOptions2
+	move.b	SaveSlot.Chapter(a2), 		CurrentChapter
+	move.w	SaveSlot.Rings(a2), 		Rings
+	move.w	SaveSlot.Deaths(a2), 		Deaths
+	move.l	SaveSlot.Score(a2), 		Score
+	move.w	SaveSlot.Doors(a2), 		Doors
+
 	KDebug.WriteLine "SRAMCache_LoadSlot(): Loaded data (progress=%<.b SaveSlot.Progress(a2)>, chapter=%<.b SaveSlot.Chapter(a2)>, doors=%<.w SaveSlot.Doors(a2)>...)"
 	rts
 
 SRAMCache_Load_NoSaveSlot:
 	KDebug.WriteLine "SRAMCache_LoadSlot(): Loading 'no save' data..."
-	move.b	#0, SlotProgress		; FIXME: Slot created bit?
-	move.b	#0, CurrentChapter
-	move.w	#0, Rings
-	move.w	#0, Deaths
-	move.l	#0, Score
-	move.w	#0, Doors_Casual	; FIXME
+
+	move.b	#0,			SlotProgress
+	move.b	#Default_SlotOptions,	SlotOptions
+	move.b	#0,			SlotOptions2
+	move.b	#0,			CurrentChapter
+	move.w	#0,			Rings
+	move.w	#0,			Deaths
+	move.l	#0,			Score
+	move.w	#0,			Doors
 	rts
 
 ; ===========================================================================
@@ -239,12 +240,14 @@ SRAMCache_SaveSlot:	; INPUT: a2 = Slot data
 	assert.w a2, hs, #SRAMCache.Slots
 	assert.w a2, ls, #SRAMCache.Slots + SRAMCache.Size*(3-1)
 
-	move.b	SlotProgress, SaveSlot.Progress(a2)
+	move.b	SlotProgress,	SaveSlot.Progress(a2)
+	move.b	SlotOptions,	SaveSlot.Options(a2)
+	move.b	SlotOptions2, 	SaveSlot.Options2(a2)
 	move.b	CurrentChapter, SaveSlot.Chapter(a2)
-	move.w	Rings, SaveSlot.Rings(a2)
-	move.w	Deaths, SaveSlot.Deaths(a2)
-	move.l	Score, SaveSlot.Score(a2)
-	move.w	Doors_Casual, SaveSlot.Doors(a2)	; FIXME
+	move.w	Rings,		SaveSlot.Rings(a2)
+	move.w	Deaths,		SaveSlot.Deaths(a2)
+	move.l	Score,		SaveSlot.Score(a2)
+	move.w	Doors, 		SaveSlot.Doors(a2)
 
 	KDebug.WriteLine "SRAMCache_SaveSlot(): Saved data (progress=%<.b SaveSlot.Progress(a2)>, chapter=%<.b SaveSlot.Chapter(a2)>, doors=%<.w SaveSlot.Doors(a2)>...)"
 	jmp	SRAMCache_Commit	; commit to SRAM
@@ -254,23 +257,24 @@ SRAMCache_Save_NoSaveSlot:
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Saves global options
+; Saves global options and slot data
 ; ---------------------------------------------------------------------------
 
 SRAMCache_SaveGlobalsAndSelectedSlotId:
-	pea	SRAMCache_SaveSelectedSlotId(pc)	; also commits to SRAM
-	bra.s	SRAMCache_SaveGlobals2
+	move.b	GlobalOptions,		SRAMCache.GlobalOptions
+	move.b	GlobalProgress,		SRAMCache.GlobalProgress
+	move.b	BlackBars.HandlerId,	SRAMCache.BlackBars
+	bra	SRAMCache_SaveSelectedSlotId	; also commits to SRAM
+
+; ---------------------------------------------------------------------------
+; Saves global options only
+; ---------------------------------------------------------------------------
 
 SRAMCache_SaveGlobals:
-	pea	SRAMCache_Commit(pc)	; commit to SRAM once we're done
-
-SRAMCache_SaveGlobals2:
-	move.b	OptionsBits,		SRAMCache.GlobalOptions+SaveOptions.OptionsBits1
-	move.b	OptionsBits2,		SRAMCache.GlobalOptions+SaveOptions.OptionsBits2
-	move.b	ScreenFuzz, 		SRAMCache.GlobalOptions+SaveOptions.ScreenFuzz
-	move.b	BlackBars.HandlerId,	SRAMCache.GlobalOptions+SaveOptions.BlackBars
+	move.b	GlobalOptions,		SRAMCache.GlobalOptions
 	move.b	GlobalProgress,		SRAMCache.GlobalProgress
-	rts
+	move.b	BlackBars.HandlerId,	SRAMCache.BlackBars
+	bra	SRAMCache_Commit
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -279,10 +283,9 @@ SRAMCache_SaveGlobals2:
 
 SRAMCache_Debugger:
 	_Console.WriteLine "%<pal1>GLOBALS (CACHED/ACTUAL):%<pal0>"
-	_Console.WriteLine "optionsBits1=%<pal2>%<.b SRAMCache.GlobalOptions+SaveOptions.OptionsBits1 bin>%<pal0>/%<pal2>%<.b OptionsBits bin>%<pal0>"
-	_Console.WriteLine "optionsBits2=%<pal2>%<.b SRAMCache.GlobalOptions+SaveOptions.OptionsBits2 bin>%<pal0>/%<pal2>%<.b OptionsBits2 bin>%<pal0>"
-	_Console.WriteLine "screenFuzz=%<pal2>%<.b SRAMCache.GlobalOptions+SaveOptions.ScreenFuzz>%<pal0>/%<pal2>%<.b ScreenFuzz>%<pal0>, blackBars=%<pal2>%<.b SRAMCache.GlobalOptions+SaveOptions.BlackBars>/%<pal2>%<.b BlackBars.HandlerId>%<pal0>"
+	_Console.WriteLine "globalOptions=%<pal2>%<.b SRAMCache.GlobalOptions bin>%<pal0>/%<pal2>%<.b GlobalOptions bin>%<pal0>"
 	_Console.WriteLine "globalProgress=%<pal2>%<.b SRAMCache.GlobalProgress bin>%<pal0>/%<pal2>%<.b GlobalProgress bin>%<pal0>"
+	_Console.WriteLine "blackBars=%<pal2>%<.b SRAMCache.BlackBars>/%<pal2>%<.b BlackBars.HandlerId>%<pal0>"
 	_Console.WriteLine "selectedSlotId=%<pal2>%<.b SRAMCache.SelectedSlotId> %<pal3>(SLOT %<.b SRAMCache.SelectedSlotId dec>)"
 
 	bsr	SRAMCache_GetSelectedSlotData	; a2 = slot data
@@ -290,10 +293,12 @@ SRAMCache_Debugger:
 
 	_Console.WriteLine "%<pal1,endl>SLOT %<.b SRAMCache.SelectedSlotId dec> (CACHED/ACTUAL):%<pal0>"
 	_Console.WriteLine "progress=%<pal2>%<.b SaveSlot.Progress(a2) bin>%<pal0>/%<pal2>%<.b SlotProgress bin>%<pal0>"
+	_Console.WriteLine "options=%<pal2>%<.b SaveSlot.Options(a2) bin>%<pal0>/%<pal2>%<.b SlotOptions bin>%<pal0>"
+	_Console.WriteLine "options2=%<pal2>%<.b SaveSlot.Options2(a2) bin>%<pal0>/%<pal2>%<.b SlotOptions2 bin>%<pal0>"
 	_Console.WriteLine "chapter=%<pal2>%<.b SaveSlot.Chapter(a2) dec>%<pal0>/%<pal2>%<.b CurrentChapter dec>%<pal0>"
 	_Console.WriteLine "rings=%<pal2>%<.w SaveSlot.Rings(a2) dec>%<pal0>/%<pal2>%<.w Rings dec>%<pal0>, deaths=%<pal2>%<.w SaveSlot.Deaths(a2) dec>%<pal0>/%<pal2>%<.w Deaths dec>%<pal0>"
 	_Console.WriteLine "score=%<pal2>%<.l SaveSlot.Score(a2) dec>%<pal0>/%<pal2>%<.l Score dec>%<pal0>"
-	_Console.WriteLine "doors=%<pal2>%<.w SaveSlot.Doors(a2)>%<pal0>/%<pal2>%<.w Doors_Casual>%<pal0>"
+	_Console.WriteLine "doors=%<pal2>%<.w SaveSlot.Doors(a2)>%<pal0>/%<pal2>%<.w Doors>%<pal0>"
 
 @NoSlot:
 	rts
@@ -311,20 +316,50 @@ SRAMCache_SanityCheck:
 		bne	\failLoc
 	endm
 
-	@cmpm.b	OptionsBits,		SRAMCache.GlobalOptions+SaveOptions.OptionsBits1,	a0, d0, @desync_byte
-	@cmpm.b	OptionsBits2,		SRAMCache.GlobalOptions+SaveOptions.OptionsBits2,	a0, d0, @desync_byte
-	@cmpm.b	ScreenFuzz, 		SRAMCache.GlobalOptions+SaveOptions.ScreenFuzz,		a0, d0, @desync_byte
-	@cmpm.b	BlackBars.HandlerId, 	SRAMCache.GlobalOptions+SaveOptions.BlackBars,		a0, d0, @desync_byte
+	@chkbits: macro src, scratchAReg, scratchDReg, bits, failLoc
+		@supported_bits\@: equbits \bits
+		@unsupported_bits\@: equ (~@supported_bits\@)&$FF
+		lea	\src, \scratchAReg
+		move.b	(\scratchAReg), \scratchDReg
+		and.b	#@unsupported_bits\@, \scratchDReg
+		bne	\failLoc
+	endm
+
+	@chkbits GlobalOptions, a0, d0, <GlobalOptions_DisableBGM, &
+					 GlobalOptions_DisableSFX, &
+					 GlobalOptions_CameraShake_Weak, &
+					 GlobalOptions_CameraShake_Intense, &
+					 GlobalOptions_ScreenFlash_Intense, &
+					 GlobalOptions_ScreenFlash_Weak>, @unsupportedbits
+
+	@chkbits SlotOptions, a0, d0,   <SlotOptions_ExtendedCamera, &
+					 SlotOptions_NewPalettes, &
+					 SlotOptions_NoHUD, &
+					 SlotOptions_CinematicBlackBars, &
+					 SlotOptions_NonstopInhuman, &
+					 SlotOptions_SpaceGolf, &
+					 SlotOptions_AltHUD_ShowSeconds, &
+					 SlotOptions_AltHUD_ShowErrors>, @unsupportedbits
+
+	@chkbits SlotOptions2, a0, d0,  <SlotOptions2_MotionBlur, &
+					 SlotOptions2_PissFilter, &
+					 SlotOptions2_ArcadeMode>, @unsupportedbits
+
+	@cmpm.b	GlobalOptions,		SRAMCache.GlobalOptions,	a0, d0, @desync_byte
+	@cmpm.b	GlobalProgress,		SRAMCache.GlobalProgress,	a0, d0, @desync_byte
+	@cmpm.b	BlackBars.HandlerId, 	SRAMCache.BlackBars,		a0, d0, @desync_byte
 
 	bsr	SRAMCache_GetSelectedSlotData	; a2 = Slot data, Z = is "No Save" slot
 	beq	@ret				; skip if slot is "No Save"
 
 	@cmpm.b	SlotProgress,	SaveSlot.Progress(a2),	a0, d0, @desync_byte
+	@cmpm.b	SlotOptions,	SaveSlot.Options(a2),	a0, d0, @desync_byte
+	@cmpm.b	SlotOptions2,	SaveSlot.Options2(a2),	a0, d0, @desync_byte
 	@cmpm.b	CurrentChapter,	SaveSlot.Chapter(a2),	a0, d0, @desync_byte
 	@cmpm.w	Rings,		SaveSlot.Rings(a2),	a0, d0, @desync_word
 	@cmpm.w	Deaths,		SaveSlot.Deaths(a2),	a0, d0, @desync_word
 	@cmpm.l	Score,		SaveSlot.Score(a2),	a0, d0, @desync_long
-	@cmpm.w	Doors_Casual,	SaveSlot.Doors(a2),	a0, d0, @desync_word
+	@cmpm.w	Doors,		SaveSlot.Doors(a2),	a0, d0, @desync_word
 
 @ret	rts
 
@@ -338,3 +373,5 @@ SRAMCache_SanityCheck:
 @desync_long:
 	RaiseError "SRAM cache desync:%<endl>addr=%<.w a0 sym>, cached=%<.l d0>, actual=%<.l (a0)>", SRAMCache_Debugger
 
+@unsupportedbits:
+	RaiseError "Unsupported bits in a bitfield:%<endl>addr=%<.w a0 sym>, val=%<.b (a0) bin>, bits=%<.b d0 bin>", SRAMCache_Debugger

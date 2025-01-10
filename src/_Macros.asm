@@ -14,6 +14,15 @@ rseven	macro
 	endif
 	endm
 
+; sets given bit numbers
+equbits: macro *
+	@value\@: = 0
+	rept narg
+		@value\@: = @value\@|(1<<(\1))
+		shift
+	endr
+\*:	equ	@value\@
+	endm
 
 ; reserves memory determined by the file size, fails if file doesn't exist
 rsfile	macro *, filename

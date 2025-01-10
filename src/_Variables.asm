@@ -162,13 +162,14 @@ BossHealth:		equ	$FFFFFF75			; b	current health of a boss (not used by all bosse
 
 SpaceGolf:		equ	$FFFFFF77			; b	space golf / antigrav in Star Agony Place
 
-Doors_Casual:		equ	$FFFFFF8A			; b	bit field for beaten levels in casual
-Doors_Frantic:		equ	$FFFFFF8B			; b	bit field for beaten levels in frantic
+Doors:			equ	$FFFFFF8A			; w	bit field for beaten levels
+Doors_Casual:		equ	Doors+0				; b	bit field for beaten levels in casual
+Doors_Frantic:		equ	Doors+1				; b	bit field for beaten levels in frantic
 SlotProgress:		equ	$FFFFFF90			; b	bit field for save slot-local game progress
-ScreenFuzz:		equ	$FFFFFF91			; b	enables cinematic screen fuzz
-OptionsBits:		equ	$FFFFFF92			; b	bit field for the user options
-GlobalProgress:		equ	$FFFFFF93			; b	bit field for overall game state (bit 0 - base game // bit 1 - blackout)
-OptionsBits2:		equ	$FFFFFF94			; b	second bit field for the user options
+SlotOptions:		equ	$FFFFFF91			; b	bit field for the save slot options
+SlotOptions2:		equ	$FFFFFF92			; b	bit field for secondary slot options (screen fuzz, arcade mode)
+GlobalProgress:		equ	$FFFFFF93			; b	bit field for overall game progress
+GlobalOptions:		equ	$FFFFFF94			; b	bit field for overall game options
 
 StoryTextID:		equ	$FFFFFF9E			; b	current story text ID
 CurrentChapter:		equ	$FFFFFFA7			; b	current chapter ID

@@ -37,7 +37,7 @@ SaveSelect_Obj_SlotOverlays:
 @Maps:	dc.w	@Frame_NoSave-@Maps
 	dc.w	@Frame_NoSave_Part2-@Maps
 	dc.w	@Frame_NormalSlot-@Maps
-	dc.w	@Frame_NormalSlot_Part2-@Maps;###
+	dc.w	@Frame_NormalSlot_Part2-@Maps
 
 @Frame_NoSave:
 	dc.b	8

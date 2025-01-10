@@ -347,13 +347,12 @@ SaveSelect_DrawSlot:
 	and.w	#3, d0
 	add.w	d0, d0
 	add.w	d0, d0
-	movea.l	@tbl(pc,d0), a0
-	jmp	(a0)
+	jmp	@tbl(pc,d0)
 
-@tbl:	dc.l	SaveSelect_DrawSlot_0	; "NO SAVE"
-	dc.l	SaveSelect_DrawSlot_1	; "SLOT 1"
-	dc.l	SaveSelect_DrawSlot_2	; "SLOT 2"
-	dc.l	SaveSelect_DrawSlot_3	; "SLOT 3"
+@tbl:	bra.w	SaveSelect_DrawSlot_0	; "NO SAVE"
+	bra.w	SaveSelect_DrawSlot_1	; "SLOT 1"
+	bra.w	SaveSelect_DrawSlot_2	; "SLOT 2"
+	bra.w	SaveSelect_DrawSlot_3	; "SLOT 3"
 
 __slotId: = 0
 
@@ -432,13 +431,12 @@ SaveSelect_ClearSlot:
 	and.w	#3, d0
 	add.w	d0, d0
 	add.w	d0, d0
-	movea.l	@tbl(pc,d0), a0
-	jmp	(a0)
+	jmp	@tbl(pc,d0)
 
-@tbl:	dc.l	SaveSelect_ClearSlot_0	; "NO SAVE"
-	dc.l	SaveSelect_ClearSlot_1	; "SLOT 1"
-	dc.l	SaveSelect_ClearSlot_2	; "SLOT 2"
-	dc.l	SaveSelect_ClearSlot_3	; "SLOT 3"
+@tbl:	bra.w	SaveSelect_ClearSlot_0	; "NO SAVE"
+	bra.w	SaveSelect_ClearSlot_1	; "SLOT 1"
+	bra.w	SaveSelect_ClearSlot_2	; "SLOT 2"
+	bra.w	SaveSelect_ClearSlot_3	; "SLOT 3"
 
 __slotId: = 0
 

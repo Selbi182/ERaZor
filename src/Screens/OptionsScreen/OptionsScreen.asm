@@ -130,16 +130,17 @@ OptionsScreen:				; XREF: GameModeArray
 		moveq	#1,d0			; load to fade-in buffer
 		bsr	Options_LoadPal
 
+		tst.b	($FFFFFF84).w
+		bne.s	@nobg
 		move.w	#$806,(BGThemeColor).w	; set theme color for background effects
 		jsr	BackgroundEffects_Setup
+@nobg:
 
 		clr.b	Options_Exiting
 		jsr	Options_InitState
 		jsr	Options_IntialDraw
 		VBlank_UnsetMusicOnly
 		display_enable
-
-		assert.l Pal_Target+2, ne
 
 		jsr	Pal_FadeTo
 

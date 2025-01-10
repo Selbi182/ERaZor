@@ -1245,6 +1245,7 @@ StopSpecialSFX:
 		tst.b	TrackPlaybackControl(a5)	; Is track playing?
 		bpl.s	.fadedfm			; Branch if not
 		movea.l	v_voice_ptr(a6),a1		; Voice pointer
+		moveq	#0, d0
 		move.b	TrackVoiceIndex(a5),d0		; Current voice
 		jsr	SetVoice(pc)
 ; loc_724AE:
@@ -2317,6 +2318,7 @@ cfStopSpecialFM4:
 		movea.l	v_voice_ptr(a6),a1		; Voice pointer
 		bclr	#2,TrackPlaybackControl(a5)	; Clear 'SFX is overriding' bit
 		bset	#1,TrackPlaybackControl(a5)	; Set 'track at rest' bit
+		moveq	#0, d0
 		move.b	TrackVoiceIndex(a5),d0		; Current voice
 		jsr	SetVoice(pc)
 		movea.l	a3,a5

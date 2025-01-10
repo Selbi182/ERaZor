@@ -103,7 +103,7 @@ frantic: macro
 	btst	#SlotState_Difficulty, SlotProgress	; 0 = casual // 1 = frantic
 	endm
 
-; Diable VBlank, update sound driver only
+; Disable VBlank, update sound driver only
 VBlank_SetMusicOnly:	macro
 	addq.b	#1, VBlank_MusicOnly
 	move.w	#$4E73, HBlankHndl		; override HBlank handler with `rte`

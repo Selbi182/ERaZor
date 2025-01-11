@@ -274,26 +274,42 @@ Options_IntialDraw:
 Options_RedrawHeader:
 		lea	Options_DrawText_Normal(pc), a4
 		lea	@ItemData_Header_Plain(pc), a0
-
 		tst.b	Options_HasAHint
 		beq.s	@draw
 		lea	Options_DrawText_Highlighted(pc), a4
 		lea	@ItemData_Header_AHint(pc), a0
-@draw:		bra	Options_RedrawMenuItem_Direct
+@draw:		bsr	Options_RedrawMenuItem_Direct
+
+		lea	Options_DrawText_Normal(pc), a4
+		lea	@ItemData_Header_Middle(pc), a0
+		bsr	Options_RedrawMenuItem_Direct
+
+		lea	Options_DrawText_Normal(pc), a4
+		lea	@ItemData_Header_Bottom(pc), a0
+		bra	Options_RedrawMenuItem_Direct
 
 ; ---------------------------------------------------------------------------
 @ItemData_Header_Plain:
-		dcScreenPos $C000, 4, 1		; start on-screen position
+		dcScreenPos $C000, 4, 0		; start on-screen position
 		dc.l	@DrawHeaderPlain	; redraw handler
 @ItemData_Header_AHint:
-		dcScreenPos $C000, 4, 1		; start on-screen position
+		dcScreenPos $C000, 4, 0		; start on-screen position
 		dc.l	@DrawHeaderAHint	; redraw handler
+
+@ItemData_Header_Middle:
+		dcScreenPos $C000, 16, 0	; start on-screen position
+		dc.l	@DrawHeaderPlain	; redraw handler
+
+@ItemData_Header_Bottom:
+		dcScreenPos $C000, 23, 0	; start on-screen position
+		dc.l	@DrawHeaderPlain	; redraw handler
+
 ; ---------------------------------------------------------------------------
 @DrawHeaderPlain:
-		Options_PipeString a4, '<------------------------------------>'
+		Options_PipeString a4, '----------------------------------------'
 		rts
 @DrawHeaderAHint:
-		Options_PipeString a4, '<--------PRESS _` FOR DETAILS-------->'
+		Options_PipeString a4, '----------PRESS _` FOR DETAILS----------'
 		rts
 
 ; ===========================================================================
@@ -400,17 +416,17 @@ Options_HandleUpDown:
 		cmpi.w	#4,d1				; Palette Style selected?
 		beq.s	@ahint				; if yes, show A hint
 
-		cmpi.w	#9,d1				; Cinematic Mode selected?
+		cmpi.w	#5,d1				; Cinematic Mode selected?
 		bne.s	@notcinematic			; if not, branch
 		jsr	CheckGlobal_BaseGameBeaten_Casual; has the player beaten base game in casual?
 		bne.s	@ahint				; if yes, show A hint
 	@notcinematic:
-		cmpi.w	#10,d1				; ERaZor Powers selected?
+		cmpi.w	#6,d1				; ERaZor Powers selected?
 		bne.s	@notpowers			; if not, branch
 		jsr	CheckGlobal_BaseGameBeaten_Frantic; has the player beaten base game in frantic?
 		bne.s	@ahint				; if yes, show A hint
 	@notpowers:
-		cmpi.w	#11,d1				; True-BS selected?
+		cmpi.w	#7,d1				; True-BS selected?
 		bne.s	@nottruebs			; if not, branch
 		jsr	CheckGlobal_BlackoutBeaten	; has the player beaten the Blackout Challenge
 		bne.s	@ahint				; if yes, show A hint

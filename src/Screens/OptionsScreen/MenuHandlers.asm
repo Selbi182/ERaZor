@@ -6,7 +6,7 @@
 
 Options_MenuData:
 	OpBaseDest: = $C000
-	OpBaseY: = 6
+	OpBaseY: = 5
  if def(__WIDESCREEN__)
 	OpBaseX: = 0
 	OpLength: = 30+6
@@ -15,69 +15,75 @@ Options_MenuData:
 	OpLength: = 30
  endif
 
+; slot-specific options
+
 	; Difficulty
 	dcScreenPos	OpBaseDest, OpBaseY+0, OpBaseX	; start on-screen position
 	dc.l	Options_GameplayStyle_Redraw		; redraw handler
 	dc.l	Options_GameplayStyle_Handle		; update handler
 	
 	; Extended camera
-	dcScreenPos	OpBaseDest, OpBaseY+2, OpBaseX	; start on-screen position
+	dcScreenPos	OpBaseDest, OpBaseY+1, OpBaseX	; start on-screen position
 	dc.l	Options_ExtendedCamera_Redraw		; redraw handler
 	dc.l	Options_ExtendedCamera_Handle		; update handler
 	; Arcade mode / Speedrun mode
-	dcScreenPos	OpBaseDest, OpBaseY+3, OpBaseX	; start on-screen position
+	dcScreenPos	OpBaseDest, OpBaseY+2, OpBaseX	; start on-screen position
 	dc.l	Options_Autoskip_Redraw			; redraw handler
 	dc.l	Options_Autoskip_Handle			; update handler
 	; Alternate HUD
-	dcScreenPos	OpBaseDest, OpBaseY+4, OpBaseX	; start on-screen position
+	dcScreenPos	OpBaseDest, OpBaseY+3, OpBaseX	; start on-screen position
 	dc.l	Options_AlternateHUD_Redraw		; redraw handler
 	dc.l	Options_AlternateHUD_Handle		; update handler
 	; Palette style
-	dcScreenPos	OpBaseDest, OpBaseY+5, OpBaseX	; start on-screen position
+	dcScreenPos	OpBaseDest, OpBaseY+4, OpBaseX	; start on-screen position
 	dc.l	Options_PaletteStyle_Redraw		; redraw handler
 	dc.l	Options_PaletteStyle_Handle		; update handler
 
-	; Flashy lights
-	dcScreenPos	OpBaseDest, OpBaseY+7, OpBaseX	; start on-screen position
-	dc.l	Options_FlashyLights_Redraw		; redraw handler
-	dc.l	Options_FlashyLights_Handle		; update handler
-	; Camera shake
-	dcScreenPos	OpBaseDest, OpBaseY+8, OpBaseX	; start on-screen position
-	dc.l	Options_CameraShake_Redraw		; redraw handler
-	dc.l	Options_CameraShake_Handle		; update handler
-	; Audio mode
-	dcScreenPos	OpBaseDest, OpBaseY+9, OpBaseX	; start on-screen position
-	dc.l	Options_Audio_Redraw			; redraw handler
-	dc.l	Options_Audio_Handle			; update handler
-	; Black bars setup
-	dcScreenPos	OpBaseDest, OpBaseY+10, OpBaseX	; start on-screen position
-	dc.l	Options_BlackBarsMode_Redraw		; redraw handler
-	dc.l	Options_BlackBarsMode_Handle		; update handler
-
 	; E - Cinematic effects
-	dcScreenPos	OpBaseDest, OpBaseY+12, OpBaseX	; start on-screen position
+	dcScreenPos	OpBaseDest, OpBaseY+6, OpBaseX	; start on-screen position
 	dc.l	Options_CinematicEffects_Redraw		; redraw handler
 	dc.l	Options_CinematicEffects_Handle		; update handler
 	; R - ERaZor powers
-	dcScreenPos	OpBaseDest, OpBaseY+13, OpBaseX	; start on-screen position
+	dcScreenPos	OpBaseDest, OpBaseY+7, OpBaseX	; start on-screen position
 	dc.l	Options_ErazorPowers_Redraw		; redraw handler
 	dc.l	Options_ErazorPowers_Handle		; update handler
 	; Z - True-BS mode
-	dcScreenPos	OpBaseDest, OpBaseY+14, OpBaseX	; start on-screen position
+	dcScreenPos	OpBaseDest, OpBaseY+8, OpBaseX	; start on-screen position
 	dc.l	Options_TrueBSMode_Redraw		; redraw handler
 	dc.l	Options_TrueBSMode_Handle		; update handler
 
-	; Reset options
-	dcScreenPos	OpBaseDest, OpBaseY+16, OpBaseX	; start on-screen position
-	dc.l	Options_ResetOptions_Redraw		; redraw handler
-	dc.l	Options_ResetOptions_Handle		; update handler
-	; Reset game progress
-	dcScreenPos	OpBaseDest, OpBaseY+17, OpBaseX	; start on-screen position
-	dc.l	Options_DeleteSaveGame_Redraw		; redraw handler
-	dc.l	Options_DeleteSaveGame_Handle		; update handler
+	; Reset slot-specifc options
+	dcScreenPos	OpBaseDest, OpBaseY+10, OpBaseX	; start on-screen position
+	dc.l	Options_ResetLocalOptions_Redraw	; redraw handler
+	dc.l	Options_ResetLocalOptions_Handle	; update handler
 
-	; Save & exit options
-	dcScreenPos	OpBaseDest, OpBaseY+19, OpBaseX	; start on-screen position
+; global options
+
+	; Flashy lights
+	dcScreenPos	OpBaseDest, OpBaseY+12, OpBaseX	; start on-screen position
+	dc.l	Options_FlashyLights_Redraw		; redraw handler
+	dc.l	Options_FlashyLights_Handle		; update handler
+	; Camera shake
+	dcScreenPos	OpBaseDest, OpBaseY+13, OpBaseX	; start on-screen position
+	dc.l	Options_CameraShake_Redraw		; redraw handler
+	dc.l	Options_CameraShake_Handle		; update handler
+	; Audio mode
+	dcScreenPos	OpBaseDest, OpBaseY+14, OpBaseX	; start on-screen position
+	dc.l	Options_Audio_Redraw			; redraw handler
+	dc.l	Options_Audio_Handle			; update handler
+	; Black bars setup
+	dcScreenPos	OpBaseDest, OpBaseY+15, OpBaseX	; start on-screen position
+	dc.l	Options_BlackBarsMode_Redraw		; redraw handler
+	dc.l	Options_BlackBarsMode_Handle		; update handler
+
+	; Reset global options
+	dcScreenPos	OpBaseDest, OpBaseY+17, OpBaseX	; start on-screen position
+	dc.l	Options_ResetGlobalOptions_Redraw	; redraw handler
+	dc.l	Options_ResetGlobalOptions_Handle	; update handler
+
+
+	; Save & exit options / Start game
+	dcScreenPos	OpBaseDest, OpBaseY+20, OpBaseX	; start on-screen position
 	dc.l	Options_Exit_Redraw			; redraw handler
 	dc.l	Options_Exit_Handle			; update handler
 
@@ -956,22 +962,23 @@ Options_TrueBSMode_Handle:
 @ret:	rts
 
 
+
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; "DELETE SAVE GAME" redraw function
+; "RESET LOCAL OPTIONS" redraw function
 ; ---------------------------------------------------------------------------
 ; INPUT:
 ;	a4	= `Options_DrawMenuItem_Normal` or `Options_DrawMenuItem_Highlighted`
 ; ---------------------------------------------------------------------------
 
-Options_DeleteSaveGame_Redraw:
+Options_ResetLocalOptions_Redraw:
 	moveq	#0, d0
 	move.b	Options_DeleteSRAMCounter, d0
 	lea	@Str_DeleteSRAMCountDown(pc,d0), a1
  if def(__WIDESCREEN__)
-	Options_PipeString a4, "DELETE ALL DATA             %<.l a1 str>", OpLength
+	Options_PipeString a4, "RESET SLOT OPTIONS             %<.l a1 str>", OpLength
  else
-	Options_PipeString a4, "DELETE ALL DATA       %<.l a1 str>", OpLength
+	Options_PipeString a4, "RESET SLOT OPTIONS       %<.l a1 str>", OpLength
  endif
 	rts
 
@@ -982,7 +989,7 @@ Options_DeleteSaveGame_Redraw:
 	even
 
 ; ---------------------------------------------------------------------------
-Options_DeleteSaveGame_Handle:
+Options_ResetLocalOptions_Handle:
 	move.b	Joypad|Press,d1		; get button presses
 	andi.b	#$FC,d1			; is left, right, A, B, C, or Start pressed?
 	beq.w	@ret			; if not, return
@@ -995,53 +1002,40 @@ Options_DeleteSaveGame_Handle:
 @ret	rts
 
 @dodelete:
-	ints_disable
-	move.w	#90,($FFFFFF82).w	; set fade-out sequence time to 90 frames
+	jsr	Options_SetSlotDefaults
 
-@delete_fadeoutloop:
-	subq.w	#1,($FFFFFF82).w	; subtract 1 from remaining time
-	bmi.s	@delete_fadeoutend	; is time over? end fade-out sequence
-	
-	jsr	RandomNumber		; get new random number
-	lea	($FFFFCC00).w,a1	; load scroll buffer address
-	move.w	#223,d2			; do it for all 224 lines
-@0	jsr	CalcSine		; further randomize the offset after every line
-	move.l	d1,(a1)+		; dump to scroll buffer
-	dbf	d2,@0			; repeat
-	
-	move.w	($FFFFFF82).w,d0	; get remaining time
-	andi.w	#7,d0			; only trigger every 7th frame
-	bne.s	@1			; is it not a 7th frame?, branch
-	jsr	Pal_FadeOut		; partially fade-out palette
-	move.b	#$C4,d0			; play explosion sound
-	jsr	PlaySFX	; ''
+	ori.b	#30,(CameraShake).w
+	move.b	#0,(CameraShake_Intensity).w
+	jsr	GenerateCameraShake
+	move.w	#0,($FFFFF618).w
+	moveq	#0,d0				; refresh pal directly
+	jsr	Options_LoadPal
+	jsr	WhiteFlash
 
-@1	move.b	#2,VBlankRoutine	; run V-Blank
-	jsr	DelayProgram		; ''
-	bra.s	@delete_fadeoutloop	; loop
+	move.b	#Options_DeleteSRAMInitialCount, Options_DeleteSRAMCounter
+	jsr	Options_RedrawAllMenuItems
 
-@delete_fadeoutend:
-	jsr	SRAMCache_ResetEverythingToDefaults
-	moveq	#-1,d0			; return to Sega Screen
-	jmp	Exit_OptionsScreen
+	move.b	#$B9,d0			; play explosion sound
+	jmp	PlaySFX
+
 
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; "DELETE SAVE GAME" redraw function
+; "RESET GLOBAL OPTIONS" redraw function
 ; ---------------------------------------------------------------------------
 ; INPUT:
 ;	a4	= `Options_DrawMenuItem_Normal` or `Options_DrawMenuItem_Highlighted`
 ; ---------------------------------------------------------------------------
 
-Options_ResetOptions_Redraw:
+Options_ResetGlobalOptions_Redraw:
 	moveq	#0, d0
 	move.b	Options_DeleteSRAMCounter, d0
 	lea	@Str_DeleteSRAMCountDown(pc,d0), a1
  if def(__WIDESCREEN__)
-	Options_PipeString a4, "RESET OPTIONS               %<.l a1 str>", OpLength
+	Options_PipeString a4, "RESET GLOBAL OPTIONS           %<.l a1 str>", OpLength
  else
-	Options_PipeString a4, "RESET OPTIONS         %<.l a1 str>", OpLength
+	Options_PipeString a4, "RESET GLOBAL OPTIONS     %<.l a1 str>", OpLength
  endif
 	rts
 
@@ -1052,7 +1046,7 @@ Options_ResetOptions_Redraw:
 	even
 
 ; ---------------------------------------------------------------------------
-Options_ResetOptions_Handle:
+Options_ResetGlobalOptions_Handle:
 	move.b	Joypad|Press,d1		; get button presses
 	andi.b	#$FC,d1			; is left, right, A, B, C, or Start pressed?
 	beq.w	@ret			; if not, return
@@ -1065,7 +1059,7 @@ Options_ResetOptions_Handle:
 @ret	rts
 
 @dodelete:
-	jsr	Options_SetDefaults
+	jsr	Options_SetGlobalDefaults
 
 	ori.b	#30,(CameraShake).w
 	move.b	#0,(CameraShake_Intensity).w

@@ -1,7 +1,7 @@
 
 Options_Music = $99
 
-Options_DeleteSRAMInitialCount = 8
+Options_DeleteSRAMInitialCount = 5
 
 Options_VRAM = $8570
 Options_StringBufferSize = 40+1

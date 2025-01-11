@@ -200,6 +200,50 @@ OptionsScreen_MainLoop:
 		add.w	d1,($FFFFF616).w	; set to VSRAM
 @nocamshake:
 
+
+		; indent block when a Reset option is selected
+		lea	($FFFFCC00).w,a1
+		move.w	#224-1,d3
+		moveq	#0,d0
+	@clearscroll:
+		move.w	d0,(a1)+
+		addq.w	#2,a1
+		dbf	d3,@clearscroll
+
+		move.w	Options_IndentTimer,d0
+		addq.w	#1,Options_IndentTimer
+		cmpi.w	#4,Options_IndentTimer
+		blt.s	@0
+		move.w	#4,Options_IndentTimer
+@0:
+
+		cmpi.w	#8,($FFFFFF82).w		; Reset Slot Options?
+		beq.s	@indenttop
+		cmpi.w	#13,($FFFFFF82).w		; Reset Global Options?
+		beq.s	@indentbottom
+		clr.w	Options_IndentTimer
+		bra.s	@ChkLoop
+
+@indenttop:
+		lea	($FFFFCC00+(5*4*8)).w,a1
+		move.w	#(10*8)-1,d3
+	@scroll:
+		move.w	d0,(a1)+
+		addq.w	#2,a1
+		dbf	d3,@scroll
+
+		bra.s	@ChkLoop
+
+@indentbottom:
+		lea	($FFFFCC00+(17*4*8)).w,a1
+		move.w	#(5*8)-1,d3
+	@scroll2:
+		move.w	d0,(a1)+
+		addq.w	#2,a1
+		dbf	d3,@scroll2
+
+
+@ChkLoop:
 		cmp.b	#$24, GameMode				; are we still running Options gamemode?
 		beq	OptionsScreen_MainLoop			; if yes, loop
 		rts						; exit options menu

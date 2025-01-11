@@ -97,7 +97,7 @@ OptionsScreen:				; XREF: GameModeArray
 		move.b	#Options_Music,d0	; play Options screen music (Spark Mandrill)
 		jsr	PlayBGM
 		move.w	#$E3,d0			; regular music speed
-		tst.b	(PlacePlacePlace).w	; is easter egg flag enabled?
+		btst	#SlotOptions2_PlacePlacePlace, SlotOptions2	; is easter egg flag enabled?
 		beq.s	@play			; if not, branch
 		move.w	#$E2,d0			; speed up music
 @play:		jsr	PlayCommand

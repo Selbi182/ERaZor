@@ -397,7 +397,7 @@ STS_CenterCurrentLine:
 
 StoryScreen_WritePressStart:
 		lea	(STS_Continue).l,a1		; load "Press Start..." text to a1
-		tst.b	(PlacePlacePlace).w		; PLACE PLACE PLACE?
+		btst	#SlotOptions2_PlacePlacePlace, SlotOptions2		; PLACE PLACE PLACE?
 		beq.s	@normal				; if not, branch
 		lea	(STS_ContPlace).l,a1		; load dumb text
 @normal:
@@ -647,7 +647,7 @@ StoryText_Load:
 		moveq	#0,d0				; clear d0
 		move.b	(StoryTextID).w,d0 		; get ID for the current text we want to display
 
-		tst.b	(PlacePlacePlace).w		; PLACE PLACE PLACE?
+		btst	#SlotOptions2_PlacePlacePlace, SlotOptions2		; PLACE PLACE PLACE?
 		beq.s	@normal				; if not, branch
 		lea	(StoryText_Place).l,a1		; PLACE PLACE PLACE!
 		cmpi.b	#9,d0				; is this the blackout challenge?

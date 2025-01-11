@@ -333,7 +333,7 @@ Credits_LoadPage:
 		add.w	d0,d0				; ...for long alignment
 		movea.l	CreditsMaps_Index(pc,d0.w),a0	; load credits page into a0
 
-		tst.b	(PlacePlacePlace).w		; PLACE PLACE PLACE?
+		btst	#SlotOptions2_PlacePlacePlace, SlotOptions2		; PLACE PLACE PLACE?
 		beq.s	@end				; if not, branch
 		lea	(Credits_PlacePlacePlace).l,a0	; PLACE PLACE PLACE!
 @end:		rts

@@ -56,6 +56,7 @@ Options_HasAHint:		rs.b	1
 	SlotOptions2_PissFilter:		equ	1
 	SlotOptions2_MotionBlurTemp:		equ	2
 	SlotOptions2_ArcadeMode:		equ	3
+	SlotOptions2_PlacePlacePlace:		equ	4
 
 ; Default options when starting the game for the first time
 	if def(__WIDESCREEN__)

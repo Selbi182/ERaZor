@@ -891,10 +891,10 @@ Options_TrueBSMode_Redraw:
 	beq.s	@0				; if not, branch
 	lea	@Str_TrueBSMode_Normal(pc), a0
 @0:
-	moveq	#0,d0
-	tst.b	(PlacePlacePlace).w		; true-BS mode enabled?
-	beq.s	@1				; if not, branch
-	moveq	#4,d0
+	moveq	#0, d0
+	btst	#SlotOptions2_PlacePlacePlace, SlotOptions2
+	beq.s	@1
+	moveq	#4, d0
 @1:
 
  if def(__WIDESCREEN__)
@@ -924,16 +924,15 @@ Options_TrueBSMode_Redraw:
 ; ---------------------------------------------------------------------------
 
 Options_TrueBSMode_Handle:
-	move.b	Joypad|Press,d1			; get button presses
-	andi.b	#$FC,d1				; is left, right, A, B, C, or Start pressed?
+	moveq	#$FFFFFF00|(Left|Right|A|B|C|Start), d1
+	and.b	Joypad|Press, d1		; is left, right, A, B, C, or Start pressed?
 	beq.w	@ret				; if not, branch
 
 	tst.w	($FFFFFFFA).w			; is debug mode enabled?
 	beq.s	@nodebugunlock			; if not, branch
-	cmpi.b	#$70,($FFFFF604).w		; is exactly ABC held?
+	cmpi.b	#A|B|C, Joypad|Held		; is exactly ABC held?
 	bne.s	@nodebugunlock			; if not, branch
 	jsr	ToggleGlobal_BlackoutBeaten	; toggle blackout challenge beaten state to toggle the unlock for nonstop inhuman
-	clr.b	(PlacePlacePlace).w		; make sure option doesn't stay accidentally enabled
 	st.b	Options_RedrawCurrentItem
 	rts
 
@@ -945,15 +944,13 @@ Options_TrueBSMode_Handle:
 	moveq	#$1E,d0				; ID for the explanation textbox
 	bsr	Options_HandleAHint		; show explanation textbox if A is pressed
 
-	move.w	#$E3,d0				; resume at regular speed
-	andi.b	#1,(PlacePlacePlace).w		; mask to first bit only
-	eori.b	#1,(PlacePlacePlace).w		; toggle True-BS mode
-	beq.s	@on
-	move.w	#$E2,d0				; speed up music
+	moveq	#$FFFFFFE3,d0			; resume at regular speed
+	bchg	#SlotOptions2_PlacePlacePlace, SlotOptions2
+	bne.s	@on
+	moveq	#$FFFFFFE2,d0			; speed up music
 @on:	jsr	PlayCommand
 
-	tst.b	(PlacePlacePlace).w
-	eori.b	#%00100,ccr			; invert Z flag (play off sound for off, on for anything else)
+	btst	#SlotOptions2_PlacePlacePlace, SlotOptions2
 	bsr	Options_PlayRespectiveToggleSound
 	st.b	Options_RedrawCurrentItem
 @ret:	rts
@@ -1208,8 +1205,14 @@ Options_PlayDisallowedSound:
 ; ---------------------------------------------------------------------------
 Options_PlayRespectiveToggleSound:
 	beq.s	@toggleOn
+
+@toggleOff:
 	move.w	#$DA,d0			; play option toggled off sound
 	jmp	PlaySFX
+
+; ---------------------------------------------------------------------------
+Options_PlayRespectiveToggleSound2: equ *
+	bne.s	@toggleOff
 
 @toggleOn:
 	move.w	#$D9,d0			; play option toggled on sound

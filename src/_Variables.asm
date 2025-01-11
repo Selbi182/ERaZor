@@ -48,7 +48,7 @@ BlackBars.HandlerId:	equ	$FFFFF5D2			; b	Black Bars handler id (also sets `Black
 RedrawEverything:	equ	$FFFFF5D3			; b	Flag used to redraw the entire screen after teleporting
 FranticDrain:		equ	$FFFFF5D4			; w	Rings to be drained in frantic mode
 BGThemeColor:		equ	$FFFFF5D6			; w	Background color used for the BG effects for the story screens, etc.
-PlacePlacePlace:	equ	$FFFFF5D8			; b	PLACE PLACE PLACE
+*			equ	$FFFFF5D8			; b	<<FREE>>
 VBlank_MusicOnly:	equ	$FFFFF5D9			; b		
 VBlank_NonLagFrameCounter:	equ	$FFFFF5DC		; l	
 VSyncWaitTicks_64bit:	equ	$FFFFF5E0			; 2l	Full 64-bit version of: Ticks counter for VSync loop (`DelayProgram`)

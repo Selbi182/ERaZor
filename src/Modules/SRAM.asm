@@ -309,6 +309,7 @@ SRAMCache_Debugger:
 ; ---------------------------------------------------------------------------
 
 SRAMCache_SanityCheck:
+	; Check that `src` matches `dest`, branch to `failLoc` otherwise
 	@cmpm:	macro src, dest, scratchAReg, scratchDReg, failLoc
 		lea	\src, \scratchAReg
 		move.\0	\dest, \scratchDReg
@@ -316,6 +317,7 @@ SRAMCache_SanityCheck:
 		bne	\failLoc
 	endm
 
+	; Check that only supported bits are ever set, branch to `failLoc` otherwise
 	@chkbits: macro src, scratchAReg, scratchDReg, bits, failLoc
 		@supported_bits\@: equbits \bits
 		@unsupported_bits\@: equ (~@supported_bits\@)&$FF
@@ -343,7 +345,8 @@ SRAMCache_SanityCheck:
 
 	@chkbits SlotOptions2, a0, d0,  <SlotOptions2_MotionBlur, &
 					 SlotOptions2_PissFilter, &
-					 SlotOptions2_ArcadeMode>, @unsupportedbits
+					 SlotOptions2_ArcadeMode, &
+					 SlotOptions2_PlacePlacePlace>, @unsupportedbits
 
 	@cmpm.b	GlobalOptions,		SRAMCache.GlobalOptions,	a0, d0, @desync_byte
 	@cmpm.b	GlobalProgress,		SRAMCache.GlobalProgress,	a0, d0, @desync_byte

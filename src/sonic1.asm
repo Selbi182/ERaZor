@@ -3592,7 +3592,7 @@ Level_ClrVars3:	move.l	d0,(a1)+
 		bra.s	Level_LoadPal		; branch
 
 Level_LZWaterSetup:
-		tst.b	(PlacePlacePlace).w	; PLACE PLACE PLACE?
+		btst	#SlotOptions2_PlacePlacePlace, SlotOptions2	; PLACE PLACE PLACE?
 		beq.s	@noeasteregg		; if not, branch
 		clr.b	($FFFFFF97).w		; clear the lamp post counter if we're not in Labyrinth Zone
 		clr.b	($FFFFFFFE).w		; clear =P monitor flag
@@ -3774,7 +3774,7 @@ Level_NoTitleCard:
 
 Level_TtlCard:
 		; Place Place Place easter egg in levels
-		tst.b	(PlacePlacePlace).w	; PLACE PLACE PLACE?
+		btst	#SlotOptions2_PlacePlacePlace, SlotOptions2	; PLACE PLACE PLACE?
 		beq.s	@noeasteregg		; if not, branch
 		clr.w	($FFFFFE20).w		; clear rings
 		move.w	#$E2,d0			; speed up music
@@ -5047,7 +5047,7 @@ SmoothRingsAnimate_Delay = 3
 
 SmoothRingsAnimate:
 		move.l	#Art_Ring,d4
-		tst.b	(PlacePlacePlace).w
+		btst	#SlotOptions2_PlacePlacePlace, SlotOptions2
 		beq.s	@noeaster
 		move.l	#Art_Weed,d4
 @noeaster:
@@ -5191,11 +5191,11 @@ loc_463C:
 
 		tst.b	(Blackout).w		; is this the blackout special stage?
 		beq.s	@notblackout		; if not, branch
-		tst.b	(PlacePlacePlace).w	; easter egg flag set?
+		btst	#SlotOptions2_PlacePlacePlace, SlotOptions2	; easter egg flag set?
 		beq.s	@skull			; if not, use skulls
 		bra.s	@notskull		; otherwise, keep it old school
 @notblackout:
-		tst.b	(PlacePlacePlace).w	; easter egg flag set?
+		btst	#SlotOptions2_PlacePlacePlace, SlotOptions2	; easter egg flag set?
 		beq.s	@notskull		; if not, branch
 @skull		moveq	#$1B,d0
 		bsr	PLC_ExecuteOnce		; load unique blackout challenge patterns (skull)
@@ -5271,7 +5271,7 @@ SS_ClrRam2:	move.l	d0,(a1)+
 
 		; Place Place Place easter egg in special stages
 		move.b	#$E3,d0			; resume at normal speed
-		tst.b	(PlacePlacePlace).w	; PLACE PLACE PLACE?
+		btst	#SlotOptions2_PlacePlacePlace, SlotOptions2	; PLACE PLACE PLACE?
 		beq.s	@noeasteregg		; if not, branch
 		bsr	SS_RemoveAllCheckpoints
 		move.w	#$E2,d0			; speed up music
@@ -9206,7 +9206,7 @@ Obj18_NotSYZ:
 		bne.s	Obj18_NotSLZ
 		move.l	#Map_obj18b,obMap(a0) ; SLZ specific code
 		move.w	#$44E0,obGfx(a0)
-		tst.b	(PlacePlacePlace).w	; is easter egg flag set?
+		btst	#SlotOptions2_PlacePlacePlace, SlotOptions2	; is easter egg flag set?
 		bne.w	DeleteObject		; if yes, branch
 
 Obj18_NotSLZ:
@@ -10153,7 +10153,7 @@ Obj1C_Main:				; XREF: Obj1C_Index
 	@notAhint:
 		cmpi.b	#4,obSubtype(a0)	; is this the ring tutorial?
 		bne.s	@not25			; if not, branch
-		tst.b	(PlacePlacePlace).w
+		btst	#SlotOptions2_PlacePlacePlace, SlotOptions2
 		beq.w	DeleteObject
 	@not25:
 		cmpi.b	#5,obSubtype(a0)	; is this the 250 ring message?
@@ -10443,7 +10443,7 @@ Obj1D_BonusText_Main:
 		lea	(FPBonusTexts).l,a1	; load text
 		adda.w	d0,a1			; set final starting offset for entry
 
-		tst.b	(PlacePlacePlace).w	; is easter egg flag set?
+		btst	#SlotOptions2_PlacePlacePlace, SlotOptions2	; is easter egg flag set?
 		beq.s	@noteaster		; if not, branch
 		lea	(FPBonusTexts_Place).l,a1
 
@@ -13112,7 +13112,7 @@ Obj25_PosData:	dc.b $10, 0		; horizontal tight
 ; ===========================================================================
 
 Obj25_Main:				; XREF: Obj25_Index
-		tst.b	(PlacePlacePlace).w	; is easter egg flag set?
+		btst	#SlotOptions2_PlacePlacePlace, SlotOptions2	; is easter egg flag set?
 		bne.w	DeleteObject		; if yes, branch
 
 		lea	($FFFFFC00).w,a2
@@ -13319,7 +13319,7 @@ Obj37_Index:	dc.w Obj37_CountRings-Obj37_Index
 ; ===========================================================================
 
 Obj37_CountRings:			; XREF: Obj37_Index
-		tst.b	(PlacePlacePlace).w	; is easter egg flag set?
+		btst	#SlotOptions2_PlacePlacePlace, SlotOptions2	; is easter egg flag set?
 		beq.s	@noteaster		; if not, branch
 		tst.b	$35(a0)			; was object loaded by destroying a monitor or badnik?
 		bne.w	Obj37_Delete		; if yes, branch
@@ -13760,7 +13760,7 @@ Obj4B_YPositive:
 		cmpi.w	#$302,($FFFFFE10).w	; is this Star Agony Place? (easter egg ring)
 		bne.w	@notsap			; if not, branch
 
-		tst.b	(PlacePlacePlace).w
+		btst	#SlotOptions2_PlacePlacePlace, SlotOptions2
 		beq.s	@load_easteregg
 		jmp	TrollKill
 
@@ -14157,7 +14157,7 @@ Obj26_Index:	dc.w Obj26_Main-Obj26_Index
 ; ===========================================================================
 
 Obj26_Main:				; XREF: Obj26_Index
-		tst.b	(PlacePlacePlace).w	; easter egg?
+		btst	#SlotOptions2_PlacePlacePlace, SlotOptions2	; easter egg?
 		beq.s	@chkfp			; if not, branch
 		cmpi.b	#3,obSubtype(a0)	; check if a good monitor...
 		blo.s	@chkfp			; ...meaning shields, rings...
@@ -14573,7 +14573,7 @@ Obj2E_ChkS:
 		bne.s	@notruinedplace		; if not, branch
 	;	frantic
 	;	beq.s	@noob
-		tst.b	(PlacePlacePlace).w
+		btst	#SlotOptions2_PlacePlacePlace, SlotOptions2
 		bne.s	@noob
 		addi.w	#100,($FFFFFE20).w	; give 100 rings
 		ori.b	#1,($FFFFFE1D).w	; update rings counter
@@ -14639,7 +14639,7 @@ Obj2E_ChkP:
 		bne.s	@checkslz		; if not, branch
 	;	frantic				; are we in frantic?
 	;	beq.s	@noob			; if not, branch
-		tst.b	(PlacePlacePlace).w
+		btst	#SlotOptions2_PlacePlacePlace, SlotOptions2
 		bne.s	@noob
 		addi.w	#100,($FFFFFE20).w	; you made it here, give 100 rings
 		ori.b	#1,($FFFFFE1D).w	; update rings counter	
@@ -17497,7 +17497,7 @@ Obj34_Setup:				; XREF: Obj34_Index
 		bne.s	Obj34_LoadConfig	; if not, branch
 		tst.b	(Blackout).w		; is this the blackout blackout special stage?
 		beq.s	Obj34_LoadConfig	; if not, branch
-		tst.b	(PlacePlacePlace).w	; is true-BS mode enabled?
+		btst	#SlotOptions2_PlacePlacePlace, SlotOptions2	; is true-BS mode enabled?
 		bne.s	Obj34_LoadConfig	; if yes, display title card anyway for the meme
 		jmp	DeleteObject		; delete title card in non true-BS blackout
 
@@ -17554,7 +17554,7 @@ Obj34_ActNumber:
 Obj34_MakeSprite:
 		move.b	d0,obFrame(a1)		; display frame	number d0
 
-		tst.b	(PlacePlacePlace).w	; is easter egg flag set?
+		btst	#SlotOptions2_PlacePlacePlace, SlotOptions2	; is easter egg flag set?
 		beq.s	@noeasteregg		; if not, branch
 		cmpi.b	#4,$3F(a1)		; is current object the Oval?
 		beq.s	@noeasteregg		; if yes, branch
@@ -18193,7 +18193,7 @@ Obj36_Hurt:				; XREF: Obj36_SideWays; Obj36_Upright
 		btst	#SlotOptions_NonstopInhuman, SlotOptions	; is nonstop inhuman enabled?
 		bne.w	Obj36_NotInhuman2	; if yes, branch
 
-		tst.b	(PlacePlacePlace).w		; PLACE PLACE PLACE?
+		btst	#SlotOptions2_PlacePlacePlace, SlotOptions2		; PLACE PLACE PLACE?
 		bne.s	@kill				; if yes, git gud
 		frantic					; are we in frantic mode?
 		beq.s	@noringdrain			; if not, branch
@@ -20488,7 +20488,7 @@ Obj12_Init:
 		move.b	#6,obPriority(a0)
 		move.b	#$40,obHeight(a0)
 		move.w	obY(a0),$32(a0)		; used for the sway
-		tst.b	(PlacePlacePlace).w	; easter egg flag enabled?
+		btst	#SlotOptions2_PlacePlacePlace, SlotOptions2	; easter egg flag enabled?
 		beq.s	Obj12_Animate		; if not, branch
 		ori.b	#%11,obRender(a0)	; mirror and flip
 ; ---------------------------------------------------------------------------
@@ -20688,7 +20688,7 @@ Obj47_Index:	dc.w Obj47_Main-Obj47_Index
 Obj47_Main:				; XREF: Obj47_Index
 		cmpi.b	#4,($FFFFFE10).w
 		bne.s	@noeaster
-		tst.b	(PlacePlacePlace).w
+		btst	#SlotOptions2_PlacePlacePlace, SlotOptions2
 		beq.s	@noeaster
 		move.b	#7,(a0) ; same effect, totally different vibe
 		rts
@@ -27622,7 +27622,7 @@ Obj03_Setup:
 @notunterhub:
 
 		; "PLACE" text on level signs
-		tst.b	(PlacePlacePlace).w	; easter egg flag enabled?
+		btst	#SlotOptions2_PlacePlacePlace, SlotOptions2	; easter egg flag enabled?
 		beq.s	@noeaster		; if not, branch
 		ori.b	#%11,obRender(a0)	; mirror and flip
 		cmpi.b	#7,obSubtype(a0)	; is this a regular level sign? (for an act)
@@ -31281,7 +31281,7 @@ SAP_Teleport:
 		bset	#1,obStatus(a0)			; set status to be airborne
 
 		addq.w	#1,(FranticDrain).w		; add one ring to drain
-		tst.b	(PlacePlacePlace).w		; PLACE PLACE PLACE?
+		btst	#SlotOptions2_PlacePlacePlace, SlotOptions2		; PLACE PLACE PLACE?
 		bne.s	@kill				; if yes, git gud
 		frantic					; are we in frantic mode?
 		beq.s	@resetstuff			; if not, never kill
@@ -36066,7 +36066,7 @@ Obj79_Index:	dc.w Obj79_Main-Obj79_Index
 ; ===========================================================================
 
 Obj79_Main:				; XREF: Obj79_Index
-		tst.b	(PlacePlacePlace).w	; is easter egg flag set?
+		btst	#SlotOptions2_PlacePlacePlace, SlotOptions2	; is easter egg flag set?
 		bne.s	@delete			; if yes, no checkpoints for you ever
 
 		frantic
@@ -36781,7 +36781,7 @@ Obj3D_MainStuff:
 	;	jsr	AddPoints	; ... points
 		move.b	obColProp(a0),(HUD_BossHealth).w	; copy lives to HUD boss health counter
 
-		tst.b	(PlacePlacePlace).w
+		btst	#SlotOptions2_PlacePlacePlace, SlotOptions2
 		beq.s	@noeasteregg
 		cmpi.w	#6,BlackBars.Height
 		bls.s	@noeasteregg
@@ -39329,7 +39329,7 @@ Obj75_Main:				; XREF: Obj75_Index
 		frantic
 		beq.s	@notfrantic
 		moveq	#Obj75_BossHealth_Frantic,d0
-		tst.b	(PlacePlacePlace).w	; is easter egg flag set?
+		btst	#SlotOptions2_PlacePlacePlace, SlotOptions2	; is easter egg flag set?
 		beq.s	@notfrantic		; if not, branch
 		moveq	#Obj75_BossHealth_Frantic*2,d0
 @notfrantic:
@@ -40503,7 +40503,7 @@ Obj85_ObjData2:	dc.b 2,	0, 4, $20, $19	; routine num, animation, sprite priority
 Obj85_Main:				; XREF: Obj85_Index
 		move.b	#1,(CameraShake_Intensity).w	; start the boss with reduced camera shake intensity
 
-		tst.b	(PlacePlacePlace).w
+		btst	#SlotOptions2_PlacePlacePlace, SlotOptions2
 		beq.s	@noeasteregg
 		move.b	#7,(CameraShake_Intensity).w
 @noeasteregg:
@@ -40563,7 +40563,7 @@ loc_19E5A:
 	if LowBossHP=1
 		move.b	#0,obColProp(a0)	; set number of	hits to	1
 	else
-	;	tst.b	(PlacePlacePlace).w
+	;	btst	#SlotOptions2_PlacePlacePlace, SlotOptions2
 	;	beq.s	@noeasteregg
 	;	move.w	#100,d0				; set number of	hits (ur mom)
 	;	bra.s	@notfrantic
@@ -41323,7 +41323,7 @@ loc_1A57E:				; XREF: Obj84_Index
 		movea.l	$34(a0),a1
 		cmpi.b	#10,obColProp(a1)
 		bls.s	@pinch
-		tst.b	(PlacePlacePlace).w
+		btst	#SlotOptions2_PlacePlacePlace, SlotOptions2
 		bne.s	@pinch
 		move.w	off_1A590(pc,d0.w),d0
 		jsr	off_1A590(pc,d0.w)
@@ -42394,7 +42394,7 @@ Touch_Enemy:				; XREF: Touch_ChkValue
 		beq.w	Touch_KillOk	; if yes, branch
 		cmpi.b	#2,obAnim(a0)	; is Sonic rolling?
 		beq.w	Touch_KillOk	; if yes, branch
-		tst.b	(PlacePlacePlace).w	; PLACE PLACE PLACE?
+		btst	#SlotOptions2_PlacePlacePlace, SlotOptions2	; PLACE PLACE PLACE?
 		bne.w	Touch_ChkHurt		; if yes, branch
 		cmpi.w	#$402,($FFFFFE10).w	; Unterhub?
 		beq.w	Touch_ChkHurt		; if yes, branch
@@ -43651,7 +43651,7 @@ Obj09_Display:				; XREF: Obj09_OnWall
 		tst.b	(CameraShake).w		; is camera shake currently active?
 		beq.s	@nocamshake		; if not, branch
 		subq.b	#1,(CameraShake).w	; subtract one from timer
-		tst.b	(PlacePlacePlace).w	; easter egg flag set?
+		btst	#SlotOptions2_PlacePlacePlace, SlotOptions2	; easter egg flag set?
 		beq.s	@nocamshake		; if not, branch
 		jsr	RandomNumber
 		andi.l	#$000F000F,d0
@@ -44345,7 +44345,7 @@ Obj09_ChkEmer:
 		addq.b	#1,($FFFFFE57).w ; add 1 to number of emeralds
 
 		cmpi.b	#4,($FFFFFE57).w ; do you have all the emeralds?
-		beq.s	Emershit
+		beq	Emershit
 		cmpi.w	#$401,($FFFFFE10).w	; is this Unreal Place?
 		bne.w	Obj09_EmerNotAll
 		cmpi.b	#2,($FFFFFE57).w ; do you have all the emeralds?
@@ -44360,13 +44360,13 @@ Obj09_ChkEmer:
 		movem.l	a0-a2,-(sp)
 		lea	(SS_Blackout_Part2).l,a0 ; load part 2 blackout layout
 		jsr	SS_LoadLevel
-		tst.b	(PlacePlacePlace).w
+		btst	#SlotOptions2_PlacePlacePlace, SlotOptions2
 		beq.s	@0
 		jsr	SS_RemoveAllCheckpoints
 @0:		movem.l	(sp)+,a0-a2
 
 		movem.l	d7/a0-a3,-(sp)
-		tst.b	(PlacePlacePlace).w
+		btst	#SlotOptions2_PlacePlacePlace, SlotOptions2
 		bne.s	@1
 		moveq	#3,d0			; brighten up this place by...
 		jsr	PalLoad2		; ...loading Sonic's palette
@@ -44548,7 +44548,7 @@ TouchGoal_Unreal:
 		move.b	#$30,($FF25CA).l
 
 TouchGoal_PlaySound:
-		tst.b	(PlacePlacePlace).w	; easter egg flag enabled?
+		btst	#SlotOptions2_PlacePlacePlace, SlotOptions2	; easter egg flag enabled?
 		bne.s	TouchGoal_MegaSound	; if yes, branch
 		move.w	#$C3,d0			; play giant ring sound by default
 		jmp	PlaySFX			; play selected sound

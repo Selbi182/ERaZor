@@ -103,7 +103,7 @@ TutorialBox:
 		add.w	d0,d0
 		move.l	-4(a1,d0.w),char_pos(a0)	; load hint text
 		
-		tst.b	(PlacePlacePlace).w		; PLACE PLACE PLACE?
+		btst	#SlotOptions2_PlacePlacePlace, SlotOptions2		; PLACE PLACE PLACE?
 		beq.s	@noeaster			; if not, branch
 		cmpi.b	#4,d1				; is this the Uberhub easter egg
 		beq.s	@noeaster			; if yes, keep using normal text

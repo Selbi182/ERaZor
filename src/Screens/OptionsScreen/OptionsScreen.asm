@@ -50,15 +50,20 @@ OptionsScreen:				; XREF: GameModeArray
 		; Load ERZ banner art
 		lea	VDP_Data, a6
 		move.l	#$64000002,4(a6)
-		lea	ArtKospM_ERaZorNoBG, a0
+		lea	ArtKospM_OptionsHeader, a0
 		jsr	KosPlusMDec_VRAM
 
 		; Load objects
 		lea	($FFFFD100).w,a0
-		move.b	#2,(a0)			; load ERaZor banner object
+		move.b	#2,(a0)				; load ERaZor banner object
+		move.b	#2,obRoutine(a0)		; set to "Obj02_Display"
+		move.l	#Maps_OptionsHeader,obMap(a0)	; load mappings
+		move.b	#0,obPriority(a0)		; set priority
+		move.b	#0,obRender(a0)			; set render flag
+		move.w	#$6520,obGfx(a0)		; set art, use fourth palette line
+		bset	#7,obGfx(a0)			; make object high plane
 		move.w	#$80+SCREEN_WIDTH/2-2,obX(a0)	; set X-position
-		move.w	#$82,obScreenY(a0)		; set Y-position
-		bset	#7,obGfx(a0)		; make object high plane
+		move.w	#$80,obScreenY(a0)		; set Y-position
 
 
 		; transparent sprites squeezed in between plane A and B to properly display the text in SH mode
@@ -657,4 +662,17 @@ Options_SelectedLinePalCycle:
 
 Options_TextArt:
 		incbin	Screens\OptionsScreen\Options_TextArt.bin
+		even
+
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Options header art (KosPM)
+; ---------------------------------------------------------------------------
+
+ArtKospM_OptionsHeader:
+		incbin	Screens\OptionsScreen\Options_Header.kospm
+		even
+
+Maps_OptionsHeader:
+		include	"Screens\OptionsScreen\Options_Header.asm"
 		even

@@ -3382,7 +3382,7 @@ LevelMenuText:
 		dc.b	'8-1     FINALOR PLACE     '
 		dc.b	'8-2     THE GREAT ESCAPE  '
 		dc.b	'SCENE   THE END           '
-		dc.b	'XXX     BLACKOUT CHALLENGE'
+		dc.b	'666     BLACKOUT CHALLENGE'
 
 		rept 21-LevSel_Entries ; padding
 		dc.b	'                        '
@@ -19975,6 +19975,9 @@ Obj43_RPOffscreen:
 Obj43_RPEndCutscene:
 		bset	#5,($FFFFF7A7).w	; set Roller as deleted
 		addq.b	#2,ob2ndRout(a0)
+
+		btst	#SlotOptions2_ArcadeMode, SlotOptions2	; is Arcade Mode enabled?
+		bne.s	Obj43_RPEnd				; if yes, don't play music
 		jsr	PlayLevelMusic_Force	; restart music before entering level
 
 Obj43_RPEnd:

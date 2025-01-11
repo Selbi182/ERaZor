@@ -772,7 +772,7 @@ NextLevel_Array:
 		dc.w	$001	; Intro Cutscene
 		dc.w	$501	; Tutorial Place
 		dc.w	$000	; Night Hill Place
-		dc.w	$002	; Green Hill Place
+		dc.w	$003	; Green Hill Place (part 2)
 		dc.w	$300	; Special Place
 		dc.w	$200	; Ruined Place
 		dc.w	$101	; Labyrinthy Place
@@ -780,6 +780,7 @@ NextLevel_Array:
 		dc.w	$500	; Bomb Machine Cutscene
 		dc.w	$301	; Scar Night Place
 		dc.w	$302	; Star Agony Place
+		dc.w	$400	; Uberhub Place (for the cutscene)
 		dc.w	$402	; Unterhub Place
 		dc.w	$502	; Finalor Place
 		dc.w	$601	; Ending Sequence

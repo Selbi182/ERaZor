@@ -1091,16 +1091,6 @@ Hint_UberhubEasterEgg:
 		boxtxt	"ONCE UNLOCKED."
 		boxtxt_next
 
-		boxtxt	"skip mini-cutscenes"
-		boxtxt_line
-		boxtxt	"YOU CAN SKIP MANY OF"
-		boxtxt	"THE SHORT CUTSCENES"
-		boxtxt	"BY HOLDING a + b + c"
-		boxtxt	"AT ONCE! THIS ALSO"
-		boxtxt	"INCLUDES GIANT RING"
-		boxtxt	"ANIMATIONS."
-		boxtxt_next
-
 		boxtxt	"dude, just shut up"
 		boxtxt_line
 		boxtxt	"YOU'RE GETTING"
@@ -1502,6 +1492,16 @@ Hint_Options_Autoskip:
 		boxtxt	"AND VERY HIGHLY"
 		boxtxt	"RECOMMENDED FOR"
 		boxtxt	"speedruns!"
+		boxtxt_next
+
+		boxtxt	"bonus tip"
+		boxtxt_line
+		boxtxt	"YOU CAN SKIP MANY OF"
+		boxtxt	"THE SHORT CUTSCENES"
+		boxtxt	"BY HOLDING a + b + c"
+		boxtxt	"AT ONCE! THIS ALSO"
+		boxtxt	"INCLUDES GIANT RING"
+		boxtxt	"ANIMATIONS."
 		boxtxt_end
 
 Hint_Options_AlternateHUD:
@@ -1724,7 +1724,7 @@ Hint_Options_TrueBS:
 		boxtxt_line
 		boxtxt	"- NO RINGS"
 		boxtxt	"- NO CHECKPOINTS"
-		boxtxt	"- NO GOOD MONITORS"
+		boxtxt	"- NO GOOD MONITORS,"
 		boxtxt	"  EXCEPT SHIELDS"
 		boxtxt	"- NO IMMUNITY WHEN"
 		boxtxt	"  RUNNING FAST"

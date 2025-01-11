@@ -6,7 +6,7 @@
 
 Options_MenuData:
 	OpBaseDest: = $C000
-	OpBaseY: = 5
+	OpBaseY: = 6
  if def(__WIDESCREEN__)
 	OpBaseX: = 0
 	OpLength: = 30+6
@@ -52,32 +52,33 @@ Options_MenuData:
 	dc.l	Options_TrueBSMode_Redraw		; redraw handler
 	dc.l	Options_TrueBSMode_Handle		; update handler
 
-	; Reset slot-specifc options
-	dcScreenPos	OpBaseDest, OpBaseY+10, OpBaseX	; start on-screen position
-	dc.l	Options_ResetLocalOptions_Redraw	; redraw handler
-	dc.l	Options_ResetLocalOptions_Handle	; update handler
-
 ; global options
 
 	; Flashy lights
-	dcScreenPos	OpBaseDest, OpBaseY+12, OpBaseX	; start on-screen position
+	dcScreenPos	OpBaseDest, OpBaseY+10, OpBaseX	; start on-screen position
 	dc.l	Options_FlashyLights_Redraw		; redraw handler
 	dc.l	Options_FlashyLights_Handle		; update handler
 	; Camera shake
-	dcScreenPos	OpBaseDest, OpBaseY+13, OpBaseX	; start on-screen position
+	dcScreenPos	OpBaseDest, OpBaseY+11, OpBaseX	; start on-screen position
 	dc.l	Options_CameraShake_Redraw		; redraw handler
 	dc.l	Options_CameraShake_Handle		; update handler
 	; Audio mode
-	dcScreenPos	OpBaseDest, OpBaseY+14, OpBaseX	; start on-screen position
+	dcScreenPos	OpBaseDest, OpBaseY+12, OpBaseX	; start on-screen position
 	dc.l	Options_Audio_Redraw			; redraw handler
 	dc.l	Options_Audio_Handle			; update handler
 	; Black bars setup
-	dcScreenPos	OpBaseDest, OpBaseY+15, OpBaseX	; start on-screen position
+	dcScreenPos	OpBaseDest, OpBaseY+13, OpBaseX	; start on-screen position
 	dc.l	Options_BlackBarsMode_Redraw		; redraw handler
 	dc.l	Options_BlackBarsMode_Handle		; update handler
 
+
+	; Reset slot-specifc options
+	dcScreenPos	OpBaseDest, OpBaseY+15, OpBaseX	; start on-screen position
+	dc.l	Options_ResetLocalOptions_Redraw	; redraw handler
+	dc.l	Options_ResetLocalOptions_Handle	; update handler
+
 	; Reset global options
-	dcScreenPos	OpBaseDest, OpBaseY+17, OpBaseX	; start on-screen position
+	dcScreenPos	OpBaseDest, OpBaseY+16, OpBaseX	; start on-screen position
 	dc.l	Options_ResetGlobalOptions_Redraw	; redraw handler
 	dc.l	Options_ResetGlobalOptions_Handle	; update handler
 
@@ -712,9 +713,13 @@ Options_CinematicEffects_Handle:
 	beq.s	@nodebugunlock		; if not, branch
 	cmpi.b	#$70,($FFFFF604).w	; is exactly ABC held?
 	bne.s	@nodebugunlock		; if not, branch
-	jsr	ToggleGlobal_BaseGameBeaten_Casual 		; toggle base game beaten in casual state to toggle the unlock for cinematic mode
+	jsr	ToggleGlobal_BaseGameBeaten_Casual  ; toggle base game beaten in casual state to toggle the unlock for cinematic mode
+	bclr	#SlotOptions_CinematicBlackBars, SlotOptions
+	bclr	#SlotOptions2_MotionBlur, SlotOptions2
+	bclr	#SlotOptions2_PissFilter, SlotOptions2
 	st.b	Options_RedrawCurrentItem
-	rts
+	moveq	#0,d0				; refresh pal directly
+	jmp	Options_LoadPal
 
 @nodebugunlock:
 	jsr	CheckGlobal_BaseGameBeaten_Casual	; has the player beaten the base game in casual?
@@ -957,6 +962,7 @@ Options_TrueBSMode_Handle:
 @on:	jsr	PlayCommand
 
 	btst	#SlotOptions2_PlacePlacePlace, SlotOptions2
+	eori.b	#%00100,ccr			; invert Z flag (play off sound for off, on for anything else)
 	bsr	Options_PlayRespectiveToggleSound
 	st.b	Options_RedrawCurrentItem
 @ret:	rts
@@ -1231,7 +1237,6 @@ Options_HandleAHint:
 	moveq	#0,d0			; play option toggled on sound
 	bsr	Options_PlayRespectiveToggleSound
 
-	andi.w	#~$2000,($FFFFD100+obGfx).w
 	jsr 	Pal_FadeOut		; darken background...
 	jsr 	Pal_FadeOut		; ...twice
 	moveq	#$1D,d0			; load tutorial box palette...
@@ -1242,7 +1247,6 @@ Options_HandleAHint:
 
 	moveq	#0,d0			; refresh options pal directly
 	jsr	Options_LoadPal
-	ori.w	#$2000,($FFFFD100+obGfx).w
 
 	addq.l	#4,sp			; skip remaining stuff in the option handler
 @end:

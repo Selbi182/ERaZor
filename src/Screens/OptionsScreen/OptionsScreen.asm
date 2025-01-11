@@ -21,9 +21,13 @@ OptionsScreen:				; XREF: GameModeArray
 		move.w	#$8407, (a6)
 		move.w	#$9001, (a6)
 		move.w	#$9200, (a6)
-		move.w	#$8B07, (a6)
+		move.w	#$8B03, (a6)
 		move.w	#$8720, (a6)
+
+		tst.b	($FFFFFF84).w
+		bne.s	@nosh
 		move.w	#$8C81|$08,(a6)	; enable shadow/highlight mode (SH mode)
+@nosh:
 
 		clr.b	($FFFFF64E).w
 		jsr	ClearScreen
@@ -63,10 +67,11 @@ OptionsScreen:				; XREF: GameModeArray
 		move.w	#$6520,obGfx(a0)		; set art, use fourth palette line
 		bset	#7,obGfx(a0)			; make object high plane
 		move.w	#$80+SCREEN_WIDTH/2-2,obX(a0)	; set X-position
-		move.w	#$80,obScreenY(a0)		; set Y-position
-
+		move.w	#$7F,obScreenY(a0)		; set Y-position
 
 		; transparent sprites squeezed in between plane A and B to properly display the text in SH mode
+		tst.b	($FFFFFF84).w
+		bne.s	@nosprites
 		lea	($FFFFD140).w,a0
 		move.b	#2,(a0)
 		move.b	#6,obRoutine(a0)
@@ -90,7 +95,7 @@ OptionsScreen:				; XREF: GameModeArray
 		move.b	#6,obRoutine(a0)
 		move.w	#$80+SCREEN_WIDTH/2+(32*5)-32,obX(a0)
 		move.w	#$B0+(32*4),obScreenY(a0)
-
+@nosprites:
 
 		DeleteQueue_Init
 		jsr	ObjectsLoad
@@ -144,6 +149,7 @@ OptionsScreen:				; XREF: GameModeArray
 		clr.b	Options_Exiting
 		jsr	Options_InitState
 		jsr	Options_IntialDraw
+
 		VBlank_UnsetMusicOnly
 		display_enable
 
@@ -211,13 +217,13 @@ OptionsScreen_MainLoop:
 		dbf	d3,@clearscroll
 
 		move.w	Options_IndentTimer,d0
-		addq.w	#1,Options_IndentTimer
-		cmpi.w	#4,Options_IndentTimer
-		blt.s	@0
-		move.w	#4,Options_IndentTimer
+		subq.w	#1,Options_IndentTimer
+		cmpi.w	#-4,Options_IndentTimer
+		bge.s	@0
+		move.w	#-4,Options_IndentTimer
 @0:
 
-		cmpi.w	#8,($FFFFFF82).w		; Reset Slot Options?
+		cmpi.w	#12,($FFFFFF82).w		; Reset Slot Options?
 		beq.s	@indenttop
 		cmpi.w	#13,($FFFFFF82).w		; Reset Global Options?
 		beq.s	@indentbottom
@@ -226,7 +232,7 @@ OptionsScreen_MainLoop:
 
 @indenttop:
 		lea	($FFFFCC00+(5*4*8)).w,a1
-		move.w	#(10*8)-1,d3
+		move.w	#(10*8)+4-1,d3
 	@scroll:
 		move.w	d0,(a1)+
 		addq.w	#2,a1
@@ -235,7 +241,7 @@ OptionsScreen_MainLoop:
 		bra.s	@ChkLoop
 
 @indentbottom:
-		lea	($FFFFCC00+(17*4*8)).w,a1
+		lea	($FFFFCC00+(16*4*8)-$10).w,a1
 		move.w	#(5*8)-1,d3
 	@scroll2:
 		move.w	d0,(a1)+
@@ -329,9 +335,9 @@ Options_RedrawHeader:
 		lea	@ItemData_Header_AHint(pc), a0
 @draw:		bsr	Options_RedrawMenuItem_Direct
 
-		lea	Options_DrawText_Normal(pc), a4
-		lea	@ItemData_Header_Middle(pc), a0
-		bsr	Options_RedrawMenuItem_Direct
+	;	lea	Options_DrawText_Normal(pc), a4
+	;	lea	@ItemData_Header_Middle(pc), a0
+	;	bsr	Options_RedrawMenuItem_Direct
 
 		lea	Options_DrawText_Normal(pc), a4
 		lea	@ItemData_Header_Bottom(pc), a0
@@ -350,7 +356,7 @@ Options_RedrawHeader:
 		dc.l	@DrawHeaderPlain	; redraw handler
 
 @ItemData_Header_Bottom:
-		dcScreenPos $C000, 23, 0	; start on-screen position
+		dcScreenPos $C000, 24, 0	; start on-screen position
 		dc.l	@DrawHeaderPlain	; redraw handler
 
 ; ---------------------------------------------------------------------------
@@ -492,6 +498,7 @@ Options_HandleUpDown:
 		bsr	Options_RedrawHeader		; redraw header accordingly
 
 @playsound:
+		clr.w	Options_IndentTimer
 		move.b	#$D8,d0				; play move sound
 		jmp	PlaySFX
 

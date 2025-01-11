@@ -23,6 +23,7 @@ Options_DeleteSRAMCounter:	rs.b	1
 Options_RedrawCurrentItem:	rs.b	1
 Options_Exiting:		rs.b	1
 Options_HasAHint:		rs.b	1
+Options_IndentTimer:		rs.w	1
 
 ; ---------------------------------------------------------------------------
 ; Global options bitfield

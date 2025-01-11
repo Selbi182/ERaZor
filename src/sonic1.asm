@@ -65,7 +65,7 @@ DebugSurviveNoRings = 1
 DebugHudPermanent = 0
 ; ------------------------------------------------------
 DoorsAlwaysOpen = 0
-LowBossHP = 1
+LowBossHP = 0
 ; ======================================================
 	else
 ; BENCHMARK build settings (DO NOT CHANGE!)
@@ -24572,7 +24572,8 @@ Obj5D_Action:				; XREF: Obj5D_Index
 		moveq	#0,d0
 	@ok:
 		move.w	d0,d1
-		lsl.w	#2,d0
+		add.w	d1,d0
+		add.w	d1,d0
 
 @notfrantic:
 		add.w	d1,d0

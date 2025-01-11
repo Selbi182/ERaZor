@@ -107,6 +107,7 @@ SaveSelect_MainLoop:
 
 	jsr	BackgroundEffects_Update
 	bsr	SaveSelect_HandleUI
+	bsr	SaveSelect_HandlePaletteEffects
 
 	DeleteQueue_Init
 	jsr	ObjectsLoad
@@ -147,13 +148,6 @@ SaveSelect_InitUI:
 	lea	VDP_Ctrl, a5
 	lea	VDP_Data, a6
 
-	; ### UI borders
-	vram	SaveSelect_VRAM_UI_Borders, VDP_Ctrl
-	lea	@UIBorders, a0
-	moveq	#(@UIBorders_End-@UIBorders)/4-1, d0
-	@l:	move.l	(a0)+, (a6)
-		dbf	d0, @l
-
 	; ### Dummy HL
 	vram	SaveSelect_VRAM_DummyHL, VDP_Ctrl
 	lea	@DummyHL, a0
@@ -161,74 +155,16 @@ SaveSelect_InitUI:
 	@l2:	move.l	(a0)+, (a6)
 		dbf	d0, @l2
 
-	; Clear-fill Plane A
-	@vdp_data:	equr	a6
-	@fill_value:	equr	d0
-
-	vram	SaveSelect_VRAM_FG, (a5)
-	move.l	#$80008000, @fill_value
-	move.w	#$1000/$20-1, d6
-	
-	@clear_plane_a_loop:
-		rept $20/4
-			move.l	@fill_value, (@vdp_data)
-		endr
-		dbf	d6, @clear_plane_a_loop
-
-	; UI ###
-	move.w	#$8F80, (a5)
-
-	vram	SaveSelect_VRAM_FG+$80*4+1*2, (a5)
-	move.w	#$8000|$6000|(SaveSelect_VRAM_UI_Borders/$20)+1, (a6)
-	move.w	#$8000|$6000|(SaveSelect_VRAM_UI_Borders/$20), (a6)
-	move.w	#$8000|$1000|$6000|(SaveSelect_VRAM_UI_Borders/$20)+1, (a6)
-	rept 3
-		move.w	#$8000|$6000|(SaveSelect_VRAM_UI_Borders/$20)+1, (a6)
-		move.w	#$8000|$6000|(SaveSelect_VRAM_UI_Borders/$20), (a6)
-		move.w	#$8000|$6000|(SaveSelect_VRAM_UI_Borders/$20), (a6)
-		move.w	#$8000|$6000|(SaveSelect_VRAM_UI_Borders/$20), (a6)
-		move.w	#$8000|$6000|(SaveSelect_VRAM_UI_Borders/$20), (a6)
-		move.w	#$8000|$1000|$6000|(SaveSelect_VRAM_UI_Borders/$20)+1, (a6)
-	endr
-
-	vram	SaveSelect_VRAM_FG+$80*4+(40-2)*2, (a5)
-	move.w	#$8000|$0800|$6000|(SaveSelect_VRAM_UI_Borders/$20)+1, (a6)
-	move.w	#$8000|$0800|$6000|(SaveSelect_VRAM_UI_Borders/$20), (a6)
-	move.w	#$8000|$0800|$1000|$6000|(SaveSelect_VRAM_UI_Borders/$20)+1, (a6)
-	rept 3
-		move.w	#$8000|$0800|$6000|(SaveSelect_VRAM_UI_Borders/$20)+1, (a6)
-		move.w	#$8000|$0800|$6000|(SaveSelect_VRAM_UI_Borders/$20), (a6)
-		move.w	#$8000|$0800|$6000|(SaveSelect_VRAM_UI_Borders/$20), (a6)
-		move.w	#$8000|$0800|$6000|(SaveSelect_VRAM_UI_Borders/$20), (a6)
-		move.w	#$8000|$0800|$6000|(SaveSelect_VRAM_UI_Borders/$20), (a6)
-		move.w	#$8000|$0800|$1000|$6000|(SaveSelect_VRAM_UI_Borders/$20)+1, (a6)
-	endr
-	move.w	#$8F02, (a5)
-
-	vram	SaveSelect_VRAM_FG+$80*4+2*2, (a5)
-	bsr	@DrawTopBorder
-	vram	SaveSelect_VRAM_FG+$80*6+2*2, (a5)
-	bsr	@DrawBottomBorder
-
-	@y: = 7
-	rept 3
-		vram	SaveSelect_VRAM_FG+$80*@y+2*2, (a5)
-		bsr	@DrawTopBorder
-		vram	SaveSelect_VRAM_FG+$80*(@y+5)+2*2, (a5)
-		bsr	@DrawBottomBorder
-		@y: = @y + 6
-	endr
-
-	; Load header mappings
-	lea	SaveSelect_Header_MapEni, a0
+	; Load and draw base UI elements (header + borders)
+	lea	SaveSelect_UI_MapEni, a0
 	lea	$FF0000, a1
-	move.w	#$8000|$4000|(SaveSelect_VRAM_Header/$20), d0
+	move.w	#$8000|$6000|(SaveSelect_VRAM_UIElements/$20), d0
 	jsr	EniDec
 
-	vram	SaveSelect_VRAM_FG+$80+10*2, d0
+	vram	SaveSelect_VRAM_FG, d0
 	lea	$FF0000, a1
-	moveq	#20-1, d1
-	moveq	#2-1, d2
+	moveq	#40-1, d1
+	moveq	#28-1, d2
 	jsr	ShowVDPGraphics
 
 	; Load FG palettes
@@ -244,48 +180,6 @@ SaveSelect_InitUI:
 	rts
 
 ; ---------------------------------------------------------------
-@DrawTopBorder:
-	rept 40-4
-		move.w	#$8000|$6000|(SaveSelect_VRAM_UI_Borders/$20)+2, (a6)
-	endr
-	rts
-
-@DrawBottomBorder:
-	rept 40-4
-		move.w	#$8000|$1000|$6000|(SaveSelect_VRAM_UI_Borders/$20)+2, (a6)
-	endr
-	rts
-
-; ---------------------------------------------------------------
-@UIBorders:
-	; Left border
-	rept 8
-		dc.l	$88000000
-	endr
-
-	; Top-left Corner
-	dc.l	$00000000
-	dc.l	$00000000
-	dc.l	$88888888
-	dc.l	$88888888
-	dc.l	$88000000
-	dc.l	$88000000
-	dc.l	$88000000
-	dc.l	$88000000
-
-	; Top border
-	dc.l	$00000000
-	dc.l	$00000000
-	dc.l	$88888888
-	dc.l	$88888888
-	dc.l	$00000000
-	dc.l	$00000000
-	dc.l	$00000000
-	dc.l	$00000000	
-
-@UIBorders_End:
-
-; ---------------------------------------------------------------
 @DummyHL:
 	rept 4*4
 		rept 8
@@ -296,17 +190,17 @@ SaveSelect_InitUI:
 
 ; ---------------------------------------------------------------
 @PaletteData:
-	; Line 1
+	; Line 1 - Highlighted text
 	dc.w	$0000, $0444, $0EEE, $0EEE, $0EEE, $0EEE, $0CCC, $0AAA
-	dc.w	$0000, $0004, $0204, $0006, $0206, $0008, $0E0E, $0E0E	; original header palette (unused)
+	dc.w	$0E0E, $0E0E, $0E0E, $0E0E, $0E0E, $0E0E, $0E0E, $0E0E
 
-	; Line 2
+	; Line 2 - Normal text
 	dc.w	$0000, $0444/2, $0EEE/2, $0EEE/2, $0EEE/2, $0EEE/2, $0CCC/2, $0AAA/2
-	dc.w	$0000, $0888, $0ACC, $0CCC, $0ECC, $0EEE, $0E0E, $0E0E
+	dc.w	$0E0E, $0E0E, $0E0E, $0E0E, $0E0E, $0E0E, $0E0E, $0E0E
 
-	; Line 3
-	dc.w	$0000, $0422, $0E88, $0E88, $0E88, $0E88, $0C66, $0A44
-	dc.w	$0000, $0CCC, $0E0E, $0E0E, $0E0E, $0E0E, $0E0E, $0E0E	; UI borders
+	; Line 3 - UI elements
+	dc.w	$0000, $0422, $0E8A, $0E8A, $0EAA, $0E8A, $0C68, $0846	; UI small font
+	dc.w	$0000, $0000, $0000, $0000, $0000, $0EEE, $0AAA, $0E0E	; UI borders + header
 @PaletteData_End:
 
 ; ---------------------------------------------------------------
@@ -314,8 +208,8 @@ SaveSelect_InitUI:
 	dc.l	BBCS_ArtKospM_Font
 	dc.w	SaveSelect_VRAM_Font
 
-	dc.l	SaveSelect_Header_Tiles_KospM
-	dc.w	SaveSelect_VRAM_Header
+	dc.l	SaveSelect_UI_Tiles_KospM
+	dc.w	SaveSelect_VRAM_UIElements
 
 	dc.w	-1	; end marker
 
@@ -353,7 +247,7 @@ __slotId: = 0
 SaveSelect_DrawSlot_\#__slotId:
 	; Draw "No Slot"
 	if __slotId = 0
-		__baseX: = 2
+		__baseX: = 3
 		__baseY: = 5
 
 		lea	SaveSelect_DrawText_Highlighted(pc), a4		; use highlighted font
@@ -366,7 +260,7 @@ SaveSelect_DrawSlot_\#__slotId:
 
 	; Draw "Slot X"
 	else
-		__baseX: = 2
+		__baseX: = 3
 		__baseY: = __slotId*6+2
 		__slotRAM: = SRAMCache.Slots+(__slotId-1)*SaveSlot.Size
 
@@ -379,12 +273,6 @@ SaveSelect_DrawSlot_\#__slotId:
 		btst	#SlotState_Created, d5					; are we empty slot?
 		beq	@emptySlot						; if yes, branch
 
-		lea	SaveSelect_StrTbl_Chapters(pc), a5
-		moveq	#$F, d0
-		and.b	SaveSlot.Chapter+(__slotRAM), d0			; d0 = chapter
-		add.w	d0, d0
-		add.w	d0, d0
-		movea.l	(a5, d0), a5						; a5 = chapter text
 
 		move.b	SaveSlot.Doors+(__slotRAM), d3				; use casual doors
 		lea	SaveSelect_StrDifficulty_Casual(pc), a3			; use "casual" text
@@ -393,17 +281,34 @@ SaveSelect_DrawSlot_\#__slotId:
 		move.b	SaveSlot.Doors+1+(__slotRAM), d3			; use frantic doors
 		lea	SaveSelect_StrDifficulty_Frantic(pc), a3		; use "frantic" text
 	@1:
-		and.b	#%1111111, d3						; don't count "Unterhub" as a separate trophy
 		popcnt.b d3, d4, d0						; d4 = number of 1's in d3 (`popcnt` is a x86_64 instruction)
 		btst	#SlotState_BlackoutBeaten, d5				; did we beat blackout?
 		beq.s	@2							; if not, branch
 		addq.b	#1, d4							; count that as +1 trophy
 	@2:
+		lea	SaveSelect_StrTbl_Chapters(pc), a5
+		moveq	#$F, d0
+		and.b	SaveSlot.Chapter+(__slotRAM), d0			; d0 = chapter
+		add.w	d0, d0
+		add.w	d0, d0
+		btst	#SlotOptions2_PlacePlacePlace, SaveSlot.Options2+(__slotRAM)
+		bne.w	@3
+		movea.l	(a5, d0), a5						; a5 = chapter text
+
 		SaveSelect_WriteString a4, __baseX, __baseY,		"SLOT \#__slotId: %<.l a5 str>"
 		SaveSelect_WriteString a4, __baseX+2, __baseY+2,	"DEATHS: %<.w SaveSlot.Deaths+(__slotRAM) dec>"
 		SaveSelect_WriteString a4, __baseX+2, __baseY+3,	"SCORE: %<.l SaveSlot.Score+(__slotRAM) dec>"
-		SaveSelect_WriteString a4, __baseX+20, __baseY+2,	"%<.l a3 str>"	; CASUAL / FRANTIC
-		SaveSelect_WriteString a4, __baseX+20, __baseY+3,	"TROPHIES: %<.b d4 dec>/7"
+		SaveSelect_WriteString a4, __baseX+19, __baseY+2,	"TROPHIES: %<.b d4 dec>/8"
+		SaveSelect_WriteString a4, __baseX+19, __baseY+3,	"%<.l a3 str>"	; CASUAL / FRANTIC
+		rts
+
+	@3:	movea.l	$40(a5, d0), a5						; a5 = chapter text
+
+		SaveSelect_WriteString a4, __baseX, __baseY,		"SLOT \#__slotId: %<.l a5 str>"
+		SaveSelect_WriteString a4, __baseX+2, __baseY+2,	"PLACE: %<.w SaveSlot.Deaths+(__slotRAM) dec>"
+		SaveSelect_WriteString a4, __baseX+2, __baseY+3,	"PLACE: %<.l SaveSlot.Score+(__slotRAM) dec>"
+		SaveSelect_WriteString a4, __baseX+19, __baseY+2,	"PLACE: %<.b d4 dec>/8"
+		SaveSelect_WriteString a4, __baseX+19, __baseY+3,	"PLACE PLACE"	; CASUAL / FRANTIC
 		rts
 
 	@emptySlot:
@@ -439,12 +344,12 @@ SaveSelect_ClearSlot_\#__slotId:
 		rts
 
 	else
-		__baseX: = 2
+		__baseX: = 3
 		__baseY: = __slotId*6+2
 
-		QueueStaticDMA SaveSelect_EmptyTiles, (40-4)*2, SaveSelect_VRAM_FG+((__baseY)*$80)+((__baseX)*2)
-		QueueStaticDMA SaveSelect_EmptyTiles, (40-4)*2, SaveSelect_VRAM_FG+((__baseY+2)*$80)+((__baseX)*2)
-		QueueStaticDMA SaveSelect_EmptyTiles, (40-4)*2, SaveSelect_VRAM_FG+((__baseY+3)*$80)+((__baseX)*2)
+		QueueStaticDMA SaveSelect_EmptyTiles, (40-6)*2, SaveSelect_VRAM_FG+((__baseY)*$80)+((__baseX)*2)
+		QueueStaticDMA SaveSelect_EmptyTiles, (40-6)*2, SaveSelect_VRAM_FG+((__baseY+2)*$80)+((__baseX)*2)
+		QueueStaticDMA SaveSelect_EmptyTiles, (40-6)*2, SaveSelect_VRAM_FG+((__baseY+3)*$80)+((__baseX)*2)
 		rts
 	endif
 
@@ -464,10 +369,16 @@ SaveSelect_StrDifficulty_Frantic:
 	even
 
 SaveSelect_StrTbl_Chapters:
-	dc.l	@0, @1, @2, @3
+	dc.l	@0, @1, @2, @3		; Normal versions
 	dc.l	@4, @5, @6, @7
 	dc.l	@8, @N, @N, @N
 	dc.l	@N, @N, @N, @N
+
+	dc.l	@0p, @1p, @2p, @3p	; Place Place Place versions
+	dc.l	@4p, @5p, @6p, @7p
+	dc.l	@8p, @N, @N, @N
+	dc.l	@N, @N, @N, @N
+
 @0:	dc.b	'ONE HOT DAY', 0
 @1:	dc.b	'RUN TO THE HILLS', 0
 @2:	dc.b	'SPECIAL FRUSTRATION', 0
@@ -477,6 +388,17 @@ SaveSelect_StrTbl_Chapters:
 @6:	dc.b	'WATCH THE NIGHT EXPLODE', 0
 @7:	dc.b	'SOMETHING UNDERNEATH', 0
 @8:	dc.b	'IN THE END', 0
+
+@0p:	dc.b	'ONE PLACE DAY', 0
+@1p:	dc.b	'PLACE TO THE PLACE', 0
+@2p:	dc.b	'PLACIAL PLACESTATION', 0
+@3p:	dc.b	'INPLACE THROUGH THE PLACE', 0
+@4p:	dc.b	'PLACE PLACE OF PLACE', 0
+@5p:	dc.b	'PLACE INTO YOUR PLACESTATION', 0
+@6p:	dc.b	'PLACE THE PLACE EXPLACE', 0
+@7p:	dc.b	'PLACING UNDERPLACE', 0
+@8p:	dc.b	'IN THE PLACE', 0
+
 @N:	dc.b	0	; invalid/fallback
 	even
 
@@ -525,6 +447,71 @@ SaveSelect_DrawText_Cont:
 	rts
 
 ; ---------------------------------------------------------------------------
+; Update palette to highlight current selection
+; ---------------------------------------------------------------------------
+
+SaveSelect_HandlePaletteEffects:
+
+	@var0:		equr	d0
+	@var1:		equr	d1
+	@slot_active:	equr	d5		; active color/slot
+	@slot_cnt:	equr	d6		; color/slot counter
+
+	@palette: 	equr	a0
+
+	lea	Pal_Active+$70, @palette			; 
+	moveq	#4-1, @slot_active
+	sub.b	SaveSelect_SelectedSlotId, @slot_active
+	moveq	#4-1, @slot_cnt
+
+	@update_color_loop:
+		cmp.w	@slot_active, @slot_cnt
+		beq.s	@update_color_active
+
+	; ---------------------------------------------------------------------------
+*	@update_color_inactive:
+		move.b	(@palette)+, @var0		; blue
+		beq.s	@i0
+		subq.b	#2, -1(@palette)
+	@i0:	move.b	(@palette)+, @var0		; green/red
+		beq.s	@inext
+		moveq	#$E, @var1
+		and.b	@var0, @var1
+		beq.s	@i2
+		subq.b	#2, @var1
+	@i2:	and.b	#$E0, @var0
+		beq.s	@i3
+		sub.b	#$20, @var0
+	@i3:	or.b	@var1, @var0
+		move.b	@var0, -1(@palette)
+	@inext:	dbf	@slot_cnt, @update_color_loop
+		rts
+
+	; ---------------------------------------------------------------------------
+	@update_color_active:
+		move.b	(@palette)+, @var0		; blue
+		cmp.b	#$E, @var0
+		beq.s	@a0
+		addq.b	#2, -1(@palette)
+	@a0:	move.b	(@palette), @var0		; green/red
+		moveq	#$E, @var1
+		and.b	@var0, @var1
+		cmp.b	#$E, @var1
+		beq.s	@a2
+		addq.b	#2, @var1
+	@a2:	and.b	#$E0, @var0
+		cmp.b	#$E0, @var0
+		beq.s	@a3
+		add.b	#$20, @var0
+	@a3:	or.b	@var1, @var0
+		move.b	@var0, (@palette)+
+		dbf	@slot_cnt, @update_color_loop
+
+	rts
+
+; ---------------------------------------------------------------------------
+; Subroutine to handle/control UI
+; ---------------------------------------------------------------------------
 
 SaveSelect_HandleUI:
 	move.b	SaveSelect_SelectedSlotId, d7	; d7 = previous selection
@@ -538,6 +525,7 @@ SaveSelect_HandleUI:
 	bne.s	@NextSelection
 @ret	rts
 
+; ---------------------------------------------------------------------------
 @NextSelection:
 	move.b	d7, d0
 	addq.b	#1, d0
@@ -577,10 +565,10 @@ SaveSelect_HandleUI:
 	jmp	PlaySFX
 
 ; ---------------------------------------------------------------------------
-SaveSelect_Header_Tiles_KospM:
-	incbin	"Screens/SaveSelectScreen/Data/Header_Tiles.kospm"
+SaveSelect_UI_Tiles_KospM:
+	incbin	"Screens/SaveSelectScreen/Data/ScreenUI_Tiles.kospm"
 	even
 
-SaveSelect_Header_MapEni:
-	incbin	"Screens/SaveSelectScreen/Data/Header_Map.eni"
+SaveSelect_UI_MapEni:
+	incbin	"Screens/SaveSelectScreen/Data/ScreenUI_Map.eni"
 	even

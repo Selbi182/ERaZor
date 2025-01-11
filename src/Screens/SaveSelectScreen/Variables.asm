@@ -4,9 +4,8 @@
 				rsset	$20
 SaveSelect_VRAM_BG:		rsfile	'Screens/FuzzyBG.unc'
 SaveSelect_VRAM_Font:		rsfile	'Screens/BlackBarsConfigScreen/Font.unc'
-SaveSelect_VRAM_Header:		rsfile	'Screens/SaveSelectScreen/Data/Header_Tiles.unc'
+SaveSelect_VRAM_UIElements:	rsfile	'Screens/SaveSelectScreen/Data/ScreenUI_Tiles.unc'
 SaveSelect_VRAM_DummyHL:	rs.b	4*4*$20
-SaveSelect_VRAM_UI_Borders:	rs.b	$100	; ###
 
 SaveSelect_VRAM_FG:		equ	$C000
 

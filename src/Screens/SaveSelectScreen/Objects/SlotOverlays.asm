@@ -10,10 +10,10 @@ SaveSelect_Obj_SlotOverlays:
 ; ---------------------------------------------------------------------------
 @Overlay:
 	move.b	#0, obFrame(a0)
-	move.w	#$80+8+2+$80, obX(a0)
+	move.w	#$80+16+2+$80, obX(a0)
 	SaveSelect_CreateChildObject #@Init
 	move.b	#1, obFrame(a1)
-	move.w	#$80+8+2+$100, obX(a1)
+	move.w	#$80+16+2+$100, obX(a1)
 	move.w	obSubtype(a0), obSubtype(a1)
 
 @Init:	move.w	#$6000|(SaveSelect_VRAM_DummyHL/$20), obGfx(a0)
@@ -51,9 +51,8 @@ SaveSelect_Obj_SlotOverlays:
 	dc.b	0, %1101, 0, 0, $60
 
 @Frame_NoSave_Part2:
-	dc.b	2
+	dc.b	1
 	dc.b	0, %1101, 0, 0, 0-4
-	dc.b	0, %0101, 0, 0, $20-4
 
 @Frame_NormalSlot:
 	dc.b	16
@@ -75,11 +74,9 @@ SaveSelect_Obj_SlotOverlays:
 	dc.b	$20, %1100, 0, 0, $60
 
 @Frame_NormalSlot_Part2:
-	dc.b	4
+	dc.b	2
 	dc.b	0, %1111, 0, 0, 0-4
-	dc.b	0, %0111, 0, 0, $20-4
 	dc.b	$20, %1100, 0, 0, 0-4
-	dc.b	$20, %0100, 0, 0, $20-4
 
 	even
 

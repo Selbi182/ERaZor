@@ -3369,8 +3369,8 @@ LevelMenuText:
 		dc.b	'SCENE   ONE HOT DAY       '
 		dc.b	'0       TUTORIAL PLACE    '
 		dc.b	'1-1     NIGHT HILL PLACE  '
-		dc.b	'1-2-1   GREEN HILL PLACE 1'
-		dc.b	'1-2-2   GREEN HILL PLACE 2'
+		dc.b	'1-2     GREEN HILL PLACE 1'
+		dc.b	'1-3     GREEN HILL PLACE 2'
 		dc.b	'2       SPECIAL PLACE     '
 		dc.b	'3       RUINED PLACE      '
 		dc.b	'4       LABYRINTHY PLACE  '
@@ -3394,8 +3394,8 @@ LSelectPointers:
 		dc.w	$001	; Intro Sequence
 		dc.w	$501	; Tutorial Place
 		dc.w	$000	; Night Hill Place
-		dc.w	$002	; Green Hill Place 1
-		dc.w	$003	; Green Hill Place 2
+		dc.w	$002	; Green Hill Place part 1
+		dc.w	$003	; Green Hill Place part 2
 		dc.w	$300	; Special Place
 		dc.w	$200	; Ruined Place
 		dc.w	$101	; Labyrinthy Place
@@ -15234,7 +15234,7 @@ Obj2C_Main:				; XREF: Obj2C_Index
 		move.b	#$10,obActWid(a0)
 		move.w	#-$60,obVelX(a0)	; move Jaws to the left
 
-		move.b	#42,(HUD_BossHealth).w	; scariest boss ever
+		move.b	#99,(HUD_BossHealth).w	; scariest boss ever
 		move.b	#1,($FFFFFE1C).w	; update lives
 ; ---------------------------------------------------------------------------
 
@@ -27689,20 +27689,17 @@ Obj03_Display:
 
 @chkfilter:
 		bclr	#5,obGfx(a0)		; use first palette row
+		tst.b	($FFFFFF7F).w		; are we done falling down the intro tube?
+		beq.s	@notodd			; if not, branch
 		btst	#1,($FFFFFE05).w	; is this an odd frame?
 		beq.s	@notodd			; if not, branch
 		btst	#GlobalOptions_ScreenFlash_Weak, GlobalOptions	; is photosensitive mode enabled?
 		bne.s	@notodd			; if yes, branch
 		bset	#5,obGfx(a0)		; use second palette row (gives a slight flicker effect)
 @notodd:
-		tst.b	($FFFFFF7F).w		; are we done falling down the intro tube?
-		beq.s	@chkDelete		; if not, don't display
-	;	tst.b	obRender(a0)		; is object on-screen?
-	;	bmi.s	@bg			; if yes, do bg color
-	;	cmpi.b	#6,obSubtype(a0)	; is this the FP sign?
-	;	beq.s	@bg			; if yes, update color early because the sign is huge
-	;	bra.s	@chkDelete		; otherwise skip color update
-	@bg:
+		tst.b	WhiteFlashCounter	; is white flash counter empty?
+		bne.s	@chkDelete		; if not, branch (to prevent the white getting stuck)
+
 		bsr.s	Obj03_BackgroundColor	; update background color
 
 @chkDelete:

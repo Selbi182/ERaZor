@@ -1166,7 +1166,7 @@ StopSFX:
 		moveq	#0,d3
 		move.b	TrackVoiceControl(a5),d3	; Get voice control bits
 		bmi.s	.trackpsg			; Branch if PSG
-		jsr	FMNoteOff(pc)
+		jsr	FMNoteOff2(pc)
 		cmpi.b	#4,d3						; Is this FM4?
 		bne.s	.getfmpointer					; Branch if not
 		tst.b	v_spcsfx_fm4_track+TrackPlaybackControl(a6)	; Is special SFX playing?
@@ -1666,8 +1666,6 @@ FMNoteOff:
 		sf.b	TrackNoteOutput(a5)
 		btst	#4,TrackPlaybackControl(a5)	; Is 'do not attack next note' set?
 		bne.s	locret_72714			; Return if yes
-
-FMNoteOff2:
 		btst	#2,TrackPlaybackControl(a5)	; Is SFX overriding?
 		bne.s	locret_72714			; Return if yes
 ; loc_7270A:
@@ -1676,6 +1674,10 @@ SendFMNoteOff:
 		move.b	TrackVoiceControl(a5),d1	; Note off to this channel
 		bra.w	WriteFMI
 ; ===========================================================================
+FMNoteOff2:
+		sf.b	TrackNoteOutput(a5)
+		btst	#2,TrackPlaybackControl(a5)	; Is SFX overriding?
+		beq.s	SendFMNoteOff			; Return if yes
 
 locret_72714:
 		rts	

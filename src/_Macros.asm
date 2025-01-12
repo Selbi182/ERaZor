@@ -24,11 +24,18 @@ equbits: macro *
 \*:	equ	@value\@
 	endm
 
+; A one-liner to insert instructions in DEBUG builds
+ifdebug: macro
+	if def(__DEBUG__)
+		\_
+	endif
+	endm
+
 ; reserves memory determined by the file size, fails if file doesn't exist
 rsfile	macro *, filename
 	__rsfilesise: = filesize(\filename)
 	if __rsfilesise = -1
-		inform 3, "File \filename not found!"
+		inform 3, "File not found: '%s'", \filename
 	endif
 \*:	rs.b	__rsfilesise
 	endm

@@ -10,10 +10,10 @@ SaveSelect_Obj_SlotOverlays:
 ; ---------------------------------------------------------------------------
 @Overlay:
 	move.b	#0, obFrame(a0)
-	move.w	#$80+16+2+$80, obX(a0)
+	move.w	#$80+SCREEN_XCORR+16+2+$80, obX(a0)
 	Screen_CreateChildObject #@Init
 	move.b	#1, obFrame(a1)
-	move.w	#$80+16+2+$100, obX(a1)
+	move.w	#$80+SCREEN_XCORR+16+2+$100, obX(a1)
 	move.w	obSubtype(a0), obSubtype(a1)
 
 @Init:	move.w	#$6000|(SaveSelect_VRAM_SH_Shadow/$20), obGfx(a0)

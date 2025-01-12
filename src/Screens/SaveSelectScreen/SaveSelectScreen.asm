@@ -147,30 +147,34 @@ SaveSelect_InitUI:
 	jsr	LoadPLC_Direct
 	jsr	PLC_ExecuteOnce_Direct
 
-	lea	VDP_Ctrl, a5
-	lea	VDP_Data, a6
-
 	; Load and draw base UI elements (header + borders)
-	lea	SaveSelect_UI_MapEni, a0
+	lea	SaveSelect_UI_MapKosp, a0
 	lea	$FF0000, a1
-	move.w	#$8000|$6000|(SaveSelect_VRAM_UIElements/$20), d0
-	jsr	EniDec
+	jsr	KosPlusDec
+	_assert.l a1, eq, #$FF1000	; decompressed art should be 4 KiB
 
-	vram	SaveSelect_VRAM_FG, d0
-	lea	$FF0000, a1
-	moveq	#40-1, d1
-	moveq	#28-1, d2
-	jsr	ShowVDPGraphics
+	@pat: = $8000|$6000|(SaveSelect_VRAM_UIElements/$20)
+	
+	lea	$FF0000, a0
+	move.l	#(@pat)<<16|(@pat), d0
+	moveq	#($1000/(8*4))-1, d1
+	@loop:
+		rept 8
+			add.l	d0, (a0)+
+		endr
+		dbf	d1, @loop
+
+	vramWrite $FF0000, $1000, SaveSelect_VRAM_FG
 
 	; Load FG palettes
 	lea	Pal_Target+$20, a0
 	lea	@PaletteData(pc), a1
 	moveq	#(@PaletteData_End-@PaletteData)/16-1, d0
-	@loop:
+	@loop2:
 		rept 16/4
 			move.l	(a1)+, (a0)+
 		endr
-		dbf	d0, @loop
+		dbf	d0, @loop2
 
 	rts
 
@@ -373,7 +377,7 @@ SaveSelect_StrTbl_Chapters:
 @2:	dc.b	'SPECIAL FRUSTRATION', 0
 @3:	dc.b	'INHUMAN THROUGH THE RUINS', 0
 @4:	dc.b	'WET PIT OF DEATH', 0
-@5:	dc.b	'HOVER INTO YOUR FRUSTRATION', 0
+@5:	dc.b	'HOVER INTO FRUSTRATION', 0
 @6:	dc.b	'WATCH THE NIGHT EXPLODE', 0
 @7:	dc.b	'SOMETHING UNDERNEATH', 0
 @8:	dc.b	'IN THE END', 0
@@ -383,7 +387,7 @@ SaveSelect_StrTbl_Chapters:
 @2p:	dc.b	'PLACIAL PLACESTATION', 0
 @3p:	dc.b	'INPLACE THROUGH THE PLACE', 0
 @4p:	dc.b	'PLACE PLACE OF PLACE', 0
-@5p:	dc.b	'PLACE INTO YOUR PLACESTATION', 0
+@5p:	dc.b	'PLACE INTO PLACETATION', 0
 @6p:	dc.b	'PLACE THE PLACE EXPLACE', 0
 @7p:	dc.b	'PLACING UNDERPLACE', 0
 @8p:	dc.b	'IN THE PLACE', 0
@@ -577,6 +581,6 @@ SaveSelect_UI_Tiles_KospM:
 	incbin	"Screens/SaveSelectScreen/Data/ScreenUI_Tiles.kospm"
 	even
 
-SaveSelect_UI_MapEni:
-	incbin	"Screens/SaveSelectScreen/Data/ScreenUI_Map.eni"
+SaveSelect_UI_MapKosp:
+	incbin	"Screens/SaveSelectScreen/Data/ScreenUI_Map.kosp"
 	even

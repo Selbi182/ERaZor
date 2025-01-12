@@ -163,7 +163,7 @@ OptionsScreen_MainLoop:
 
 @indenttop:
 		lea	($FFFFCC00+(5*4*8)).w,a1
-		move.w	#(10*8)+4-1,d3
+		move.w	#(9*8)+4-1,d3
 	@scroll:
 		move.w	d0,(a1)+
 		addq.w	#2,a1
@@ -172,8 +172,8 @@ OptionsScreen_MainLoop:
 		bra.s	@ChkLoop
 
 @indentbottom:
-		lea	($FFFFCC00+(16*4*8)-$10).w,a1
-		move.w	#(6*8)-1,d3
+		lea	($FFFFCC00+(15*4*8)-$10).w,a1
+		move.w	#(7*8)-1,d3
 	@scroll2:
 		move.w	d0,(a1)+
 		addq.w	#2,a1
@@ -478,27 +478,27 @@ Options_HandleUpDown:
 		moveq	#0,d0				; hide A hint by default
 		move.w	($FFFFFF82).w,d1		; get current selection
 	if def(__WIDESCREEN__)
-		cmpi.w	#1,d1				; Extended Widescreen Camera selected?
+		cmpi.w	#7,d1				; Extended Widescreen Camera selected?
 		beq.s	@ahint				; if yes, show A hint
 	endif
-		cmpi.w	#2,d1				; Arcade Mode selected?
+		cmpi.w	#1,d1				; Arcade Mode selected?
 		beq.s	@ahint				; if yes, show A hint
-		cmpi.w	#3,d1				; Alternate HUD selected?
+		cmpi.w	#2,d1				; Alternate HUD selected?
 		beq.s	@ahint				; if yes, show A hint
-		cmpi.w	#4,d1				; Palette Style selected?
+		cmpi.w	#3,d1				; Palette Style selected?
 		beq.s	@ahint				; if yes, show A hint
 
-		cmpi.w	#5,d1				; Cinematic Mode selected?
+		cmpi.w	#4,d1				; Cinematic Mode selected?
 		bne.s	@notcinematic			; if not, branch
 		jsr	CheckGlobal_BaseGameBeaten_Casual; has the player beaten base game in casual?
 		bne.s	@ahint				; if yes, show A hint
 	@notcinematic:
-		cmpi.w	#6,d1				; ERaZor Powers selected?
+		cmpi.w	#5,d1				; ERaZor Powers selected?
 		bne.s	@notpowers			; if not, branch
 		jsr	CheckGlobal_BaseGameBeaten_Frantic; has the player beaten base game in frantic?
 		bne.s	@ahint				; if yes, show A hint
 	@notpowers:
-		cmpi.w	#7,d1				; True-BS selected?
+		cmpi.w	#6,d1				; True-BS selected?
 		bne.s	@nottruebs			; if not, branch
 		jsr	CheckGlobal_BlackoutBeaten	; has the player beaten the Blackout Challenge
 		bne.s	@ahint				; if yes, show A hint

@@ -331,12 +331,12 @@ SRAMCache_SanityCheck:
 					 GlobalOptions_DisableSFX, &
 					 GlobalOptions_CameraShake_Weak, &
 					 GlobalOptions_CameraShake_Intense, &
+					 GlobalOptions_ExtendedCamera, &
 					 GlobalOptions_PeeloutStyle, &
 					 GlobalOptions_ScreenFlash_Intense, &
 					 GlobalOptions_ScreenFlash_Weak>, @unsupportedbits
 
-	@chkbits SlotOptions, a0, d0,   <SlotOptions_ExtendedCamera, &
-					 SlotOptions_NewPalettes, &
+	@chkbits SlotOptions, a0, d0,   <SlotOptions_NewPalettes, &
 					 SlotOptions_NoHUD, &
 					 SlotOptions_CinematicBlackBars, &
 					 SlotOptions_NonstopInhuman, &

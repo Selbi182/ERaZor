@@ -33,7 +33,8 @@ Options_IndentTimer:		rs.w	1
 	GlobalOptions_DisableSFX:		equ	1
 	GlobalOptions_CameraShake_Weak:		equ	2
 	GlobalOptions_CameraShake_Intense:	equ	3
-	GlobalOptions_PeeloutStyle:	 	equ	4
+	GlobalOptions_ExtendedCamera:		equ	4
+	GlobalOptions_PeeloutStyle:	 	equ	5
 	GlobalOptions_ScreenFlash_Intense:	equ	6
 	GlobalOptions_ScreenFlash_Weak:		equ	7
 
@@ -41,7 +42,6 @@ Options_IndentTimer:		rs.w	1
 ; Slot-specific options bitfield
 ; RAM location: `SlotOptions`
 ; Bits:
-	SlotOptions_ExtendedCamera:		equ	0
 	SlotOptions_NewPalettes:		equ	1
 	SlotOptions_NoHUD:			equ	2
 	SlotOptions_CinematicBlackBars:		equ	3
@@ -62,9 +62,9 @@ Options_IndentTimer:		rs.w	1
 
 ; Default options when starting the game for the first time
 	if def(__WIDESCREEN__)
-Default_GlobalOptions:	equbits	; no bits to set
+Default_GlobalOptions:	equbits	; no extended camera by default in widescreen
 Default_SlotOptions:	equbits	SlotOptions_NewPalettes
 	else
-Default_GlobalOptions:	equbits	; no bits to set
-Default_SlotOptions:	equbits	SlotOptions_ExtendedCamera, SlotOptions_NewPalettes
+Default_GlobalOptions:	equbits	GlobalOptions_ExtendedCamera
+Default_SlotOptions:	equbits	SlotOptions_NewPalettes
 	endif

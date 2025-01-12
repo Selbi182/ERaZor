@@ -15,44 +15,46 @@ Options_MenuData:
 	OpLength: = 30
  endif
 
+
 ; slot-specific options
 
 	; Difficulty
 	dcScreenPos	OpBaseDest, OpBaseY+0, OpBaseX	; start on-screen position
 	dc.l	Options_GameplayStyle_Redraw		; redraw handler
 	dc.l	Options_GameplayStyle_Handle		; update handler	
-	; Extended camera
-	dcScreenPos	OpBaseDest, OpBaseY+1, OpBaseX	; start on-screen position
-	dc.l	Options_ExtendedCamera_Redraw		; redraw handler
-	dc.l	Options_ExtendedCamera_Handle		; update handle
 	; Arcade mode / Speedrun mode
-	dcScreenPos	OpBaseDest, OpBaseY+2, OpBaseX	; start on-screen position
+	dcScreenPos	OpBaseDest, OpBaseY+1, OpBaseX	; start on-screen position
 	dc.l	Options_Autoskip_Redraw			; redraw handler
 	dc.l	Options_Autoskip_Handle			; update handler
 	; Alternate HUD
-	dcScreenPos	OpBaseDest, OpBaseY+3, OpBaseX	; start on-screen position
+	dcScreenPos	OpBaseDest, OpBaseY+2, OpBaseX	; start on-screen position
 	dc.l	Options_AlternateHUD_Redraw		; redraw handler
 	dc.l	Options_AlternateHUD_Handle		; update handler
 	; Palette style
-	dcScreenPos	OpBaseDest, OpBaseY+4, OpBaseX	; start on-screen position
+	dcScreenPos	OpBaseDest, OpBaseY+3, OpBaseX	; start on-screen position
 	dc.l	Options_PaletteStyle_Redraw		; redraw handler
 	dc.l	Options_PaletteStyle_Handle		; update handler
 
 	; E - Cinematic effects
-	dcScreenPos	OpBaseDest, OpBaseY+6, OpBaseX	; start on-screen position
+	dcScreenPos	OpBaseDest, OpBaseY+5, OpBaseX	; start on-screen position
 	dc.l	Options_CinematicEffects_Redraw		; redraw handler
 	dc.l	Options_CinematicEffects_Handle		; update handler
 	; R - ERaZor powers
-	dcScreenPos	OpBaseDest, OpBaseY+7, OpBaseX	; start on-screen position
+	dcScreenPos	OpBaseDest, OpBaseY+6, OpBaseX	; start on-screen position
 	dc.l	Options_ErazorPowers_Redraw		; redraw handler
 	dc.l	Options_ErazorPowers_Handle		; update handler
 	; Z - True-BS mode
-	dcScreenPos	OpBaseDest, OpBaseY+8, OpBaseX	; start on-screen position
+	dcScreenPos	OpBaseDest, OpBaseY+7, OpBaseX	; start on-screen position
 	dc.l	Options_TrueBSMode_Redraw		; redraw handler
 	dc.l	Options_TrueBSMode_Handle		; update handler
 
+
 ; global options
 
+	; Extended camera
+	dcScreenPos	OpBaseDest, OpBaseY+9, OpBaseX	; start on-screen position
+	dc.l	Options_ExtendedCamera_Redraw		; redraw handler
+	dc.l	Options_ExtendedCamera_Handle		; update handle
 	; Peelout style
 	dcScreenPos	OpBaseDest, OpBaseY+10, OpBaseX	; start on-screen position
 	dc.l	Options_PeeloutStyle_Redraw		; redraw handler
@@ -75,16 +77,16 @@ Options_MenuData:
 	dc.l	Options_BlackBarsMode_Handle		; update handler
 
 
+; misc options
+
 	; Reset slot-specifc options
 	dcScreenPos	OpBaseDest, OpBaseY+16, OpBaseX	; start on-screen position
 	dc.l	Options_ResetLocalOptions_Redraw	; redraw handler
 	dc.l	Options_ResetLocalOptions_Handle	; update handler
-
 	; Reset global options
 	dcScreenPos	OpBaseDest, OpBaseY+17, OpBaseX	; start on-screen position
 	dc.l	Options_ResetGlobalOptions_Redraw	; redraw handler
 	dc.l	Options_ResetGlobalOptions_Handle	; update handler
-
 
 	; Save & exit options / Start game
 	dcScreenPos	OpBaseDest, OpBaseY+20, OpBaseX	; start on-screen position
@@ -162,7 +164,7 @@ Options_GameplayStyle_Handle:
 
 Options_ExtendedCamera_Redraw:
 	lea	Options_Str_Off(pc), a1
-	btst	#SlotOptions_ExtendedCamera, SlotOptions
+	btst	#GlobalOptions_ExtendedCamera, GlobalOptions
 	beq.s	@0
 	lea	Options_Str_On(pc), a1
 @0:
@@ -190,7 +192,7 @@ Options_ExtendedCamera_Handle:
 	bsr	Options_HandleAHint		; show explanation textbox if A is pressed
  endif
 
-	bchg	#SlotOptions_ExtendedCamera, SlotOptions
+	bchg	#GlobalOptions_ExtendedCamera, GlobalOptions
 	bsr	Options_PlayRespectiveToggleSound
 	st.b	Options_RedrawCurrentItem
 @done:	rts
@@ -406,19 +408,30 @@ Options_AlternateHUD_Handle:
 ; ---------------------------------------------------------------------------
 
 Options_Autoskip_Redraw:
-	lea	Options_Str_Off(pc), a1
+	lea	@Str_Off(pc), a1
 	btst	#SlotOptions2_ArcadeMode, SlotOptions2
 	beq.s	@0
-	lea	Options_Str_On(pc), a1
+	lea	@Str_OnWithoutStory(pc), a1
 @0:
 
  if def(__WIDESCREEN__)
-	Options_PipeString a4, "ARCADE MODE                      %<.l a1 str>", OpLength
+	Options_PipeString a4, "ARCADE MODE            %<.l a1 str>", OpLength
  else
-	Options_PipeString a4, "ARCADE MODE                %<.l a1 str>", OpLength
+	Options_PipeString a4, "ARCADE MODE      %<.l a1 str>", OpLength
  endif
 
 	rts
+
+@Str_Off:
+	dc.b	'          OFF', 0
+	even
+@Str_OnWithStory:
+	dc.b	'   ON - STORY', 0
+	even
+@Str_OnWithoutStory:
+	dc.b	'ON - NO STORY', 0
+	even
+
 
 ; ---------------------------------------------------------------------------
 ; "AUTOSKIP" handle function
@@ -960,7 +973,7 @@ Options_TrueBSMode_Redraw:
 	dc.b	'Z TRUE-BS MODE', 0
 
 @Str_TrueBSMode_Locked:
-	dc.b	'Z ???? ?? ????', 0
+	dc.b	'Z ????-?? ????', 0
 	even
 
 @TrueBSModeTextList:

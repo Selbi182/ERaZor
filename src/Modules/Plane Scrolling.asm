@@ -1168,7 +1168,7 @@ S_H_NoEnding:
 ; ===========================================================================
 
 S_H_ExtendedCamera:
-		btst	#SlotOptions_ExtendedCamera, SlotOptions	; is extended camera enabled?
+		btst	#GlobalOptions_ExtendedCamera, GlobalOptions	; is extended camera enabled?
 		beq.w	S_H_NoExtendedCam	; if not, you're lame and old-fashioned but k
 
 		tst.b	(SpaceGolf).w		; is antigrav enabled?

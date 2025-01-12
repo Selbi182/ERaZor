@@ -200,7 +200,7 @@
 @Music98_Name:		@str 'CRABMEAT BOSS', @titleMaxLen
 @Music98_Source:	@str 'SONIC ADVANCE 3 / BOSS - PINCH', @descMaxLen
 
-@Music99_Name:		@str 'TUTORIAL INTRODUCTION', @titleMaxLen
+@Music99_Name:		@str 'MENUS / TUTORIAL INTRO', @titleMaxLen
 @Music99_Source:	@str 'MEGA MAN 5 / DARK MAN/PROTO MAN STAGES', @descMaxLen
 
 @Music9A_Name:		@str 'UNREAL PLACE', @titleMaxLen

@@ -24,9 +24,9 @@ OptionsScreen:				; XREF: GameModeArray
 		move.w	#$8B03, (a6)
 		move.w	#$8720, (a6)
 
-		tst.b	($FFFFFF84).w
-		bne.s	@nosh
-		move.w	#$8C81|$08,(a6)	; enable shadow/highlight mode (SH mode)
+	;	tst.b	Options_FirstStartFlag
+	;	bne.s	@nosh
+	;	move.w	#$8C81|$08,(a6)	; enable shadow/highlight mode (SH mode)
 @nosh:
 
 		clr.b	($FFFFF64E).w
@@ -226,11 +226,11 @@ Options_SelectExit:
 ; ---------------------------------------------------------------------------
 
 Options_SetupBackground:
-		tst.b	($FFFFFF84).w		; first time?
+		tst.b	Options_FirstStartFlag	; first time?
 		bne	@SetupStarfieldBG	; if yes, branch
 
 *@SetupFuzzyBG:
-		move.w	#$806,(BGThemeColor).w	; set theme color for background effects
+		move.w	#$600,(BGThemeColor).w	; set theme color for background effects
 		jsr	BackgroundEffects_Setup
 
 		; Load SH shadow overlay art
@@ -239,6 +239,7 @@ Options_SetupBackground:
 		jsr	KosPlusMDec_VRAM
 
 		; transparent sprites squeezed in between plane A and B to properly display the text in SH mode
+		rts
 		lea	($FFFFD140).w,a0
 		move.b	#2,(a0)
 		move.b	#6,obRoutine(a0)
@@ -282,7 +283,7 @@ Options_SetupBackground:
 ; ---------------------------------------------------------------------------
 
 Options_HandleBackground:
-		tst.b	($FFFFFF84).w		; first time?
+		tst.b	Options_FirstStartFlag	; first time?
 		bne.s	@HandleStarfieldBG	; if yes, branch
 		jmp	BackgroundEffects_Update
 
@@ -295,7 +296,7 @@ Options_HandleBackground:
 ; ---------------------------------------------------------------------------
 
 Options_PlayMenuTheme:
-		tst.b	($FFFFFF84).w			; first time?
+		tst.b	Options_FirstStartFlag		; first time?
 		bne.s	@ret				; no music
 
 		moveq	#$FFFFFF00|Options_Music, d0	; play Options screen music (Spark Mandrill)
@@ -696,8 +697,8 @@ Options_LoadPal:
 		moveq	#2,d0		; load level select palette
 		jsr	(a2)
 
-		tst.b	($FFFFFF84).w	; first time?
-		beq.s	@nostars	; if not, branch
+		tst.b	Options_FirstStartFlag	; first time?
+		beq.s	@nostars		; if not, branch
 		lea	@Star_Palette(pc), a0
 		lea	$10(a4), a1
 		rept 8/2

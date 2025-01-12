@@ -31,14 +31,16 @@ Obj21_Score:	dc.b 6
 		dc.b $F8, $01, $80, $26, $20	; faked zero
 		dc.b $F8, $01, $80, $26, $28	; faked zero
 
-Obj21_ScoreTime:dc.b 6
+Obj21_ScoreTime:dc.b 8
 		dc.b $F9, $01, $80, $00, $C8	; S
 		dc.b $F9, $01, $80, $16, $D0	; E
 		dc.b $F9, $01, $80, $02, $D8	; C
 		dc.b $F9, $01, $80, $00, $E0	; S
 
-		dc.b $F8, $0D, $80, $18, $EA	; First part of Score Counter
-		dc.b $F8, $05, $80, $20, $0A	; Second part of Score Counter
+		dc.b $F8, $01, $80, $1A, $F2	; First part of Score Counter
+		dc.b $F8, $05, $80, $1C, $FA	; Second part of Score Counter
+		dc.b $F9, $00, $81, $0C+3, $0A	; '
+		dc.b $F8, $05, $80, $20, $12	; Third part of Score Counter
 
 
 Obj21_Rings:	dc.b 4

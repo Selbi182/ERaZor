@@ -30162,8 +30162,8 @@ Homing_YAbortThreshold = -$600
 ; -------------------------------------------------------------------------------
 
 Sonic_HomingAttack:
-		clr.w	($FFFFFF8C).w		; clear distance storer
 		movem.l	d0-a3,-(sp)		; backup d0 to a3
+		moveq	#0,d5			; clear distance storer
 		lea	($FFFFD800).w,a1	; set a1 to level object RAM
 		moveq	#$60-1,d2		; set d2 to $5F ($D800 to $F000 = $60 objects)
 
@@ -30248,9 +30248,9 @@ SH_CheckPreciseDistance:
 		bpl.s	SH_CheckCloser
 		neg.w	d3
 	SH_CheckCloser:
-		cmp.w	($FFFFFF8C).w,d3	; is new distance smaller than a previously found target?
+		cmp.w	d5,d3			; is new distance smaller than a previously found target?
 		blt.s	SH_NextObject		; if not, branch
-		move.w	d3,($FFFFFF8C).w	; store new distance
+		move.w	d3,d5			; store new distance
 		movea.l	a1,a3			; save RAM position of current enemy
 
 SH_NextObject:
@@ -30258,7 +30258,7 @@ SH_NextObject:
 		dbf	d2,SH_ObjectLoop	; loop
 ; -------------------------------------------------------------------------------
 
-		tst.w	($FFFFFF8C).w		; was any enemy found?
+		tst.w	d5			; was any enemy found?
 		beq.s	SH_Return		; if not, use normal jumpdash
 		suba.l	#$40,a1			; decrease pointer by $40, because it got increased one more time before leaving the loop
 		cmpi.w	#$000,($FFFFFE10).w	; is level GHZ1?
@@ -45418,10 +45418,6 @@ Map_obj21:
 
 
 AddPoints:
-		btst	#SlotOptions_AltHUD_ShowSeconds, SlotOptions	; is speedrun timer enabled?
-		bne.s	locret_1C6B6		; if yes, disable regular score system
-
-AddPoints_Force:
 		move.b	#1,($FFFFFE1F).w ; set score counter to	update
 		lea	($FFFFFFC0).w,a2
 		lea	($FFFFFE26).w,a3
@@ -45441,18 +45437,6 @@ loc_1C6AC:
 
 locret_1C6B6:
 		rts
-; ---------------------------------------------------------------------------
-
-AddPoints_Timer:
-		btst	#SlotOptions_AltHUD_ShowSeconds, SlotOptions	; is speedrun timer enabled?
-		beq.s	locret_1C6B6		; if not, nothing to do
-		moveq	#10,d0			; add 100 points to simulate a second
-		frantic				; are we in frantic mode?
-		beq.s	AddPoints_Force		; if not, branch
-
-		btst	#0,-1(a0)
-		beq.s	AddPoints_Force		; apply score
-		rts
 ; End of function AddPoints
 
 ; ---------------------------------------------------------------------------
@@ -45470,13 +45454,18 @@ HudUpdate:
 	endif
 		bne.w	HudDebug	; if yes, branch
 
-		tst.b	($FFFFFE1F).w	; does the score need updating?
-		beq.s	Hud_ChkRings	; if not, branch
+		tst.b	($FFFFFE1F).w		; does the score need updating?
+		beq.s	Hud_ChkRings		; if not, branch
 		clr.b	($FFFFFE1F).w
-		move.l	#$5C800003,d0	; set VRAM address
-		move.l	($FFFFFE26).w,d1 ; load	score
-		bsr	Hud_Score
 		ori.b	#1,($FFFFFE1C).w	; update lives counter as well to display the third digit properly
+
+		move.l	($FFFFFE26).w,d1	; load	score
+		btst	#SlotOptions_AltHUD_ShowSeconds, SlotOptions ; is speedrun timer enabled?
+		beq.s	@noalt			; if not, branch
+		move.l	(SlotTime).w,d1		; use slot timer instead
+@noalt:
+		move.l	#$5C800003,d0		; set VRAM address
+		bsr	Hud_Score
 
 Hud_ChkRings:
 		tst.b	($FFFFFE1D).w	; does the ring	counter	need updating?
@@ -45523,7 +45512,7 @@ Hud_ChkTime:
 @fzescapetimer:
 		sub.b	d0,-(a1)		; sub from current timer
 		tst.b	(a1)			; did we reach 60 frames?
-		bpl.s	Hud_ChkLives		; if not, branch
+		bpl.w	Hud_ChkLives		; if not, branch
 		move.b	#60,(a1)		; reset frame counter
 
 		subq.b	#1,-(a1)		; sub 1 from seconds
@@ -45549,8 +45538,20 @@ Hud_ChkTime:
 		blo.s	Hud_ChkLives		; if not, branch
 		move.b	#0,(a1)			; clear frame counter
 
-		jsr	AddPoints_Timer
+		; a second has passed
+		ori.b	#1,($FFFFFE1F).w	; update score
 
+		lea	(SlotTime+4).w,a2
+		addq.b	#1,-(a2)		; add 1 second
+		cmpi.b	#60,(a2)		; did we reach 60 seconds?
+		blo.s	@0		; if not, branch
+		move.b	#0,(a2)			; clear seconds counter
+		addq.b	#1,-(a2)		; add 1 to minutes
+		cmpi.w	#999,-(a2)		; did we reach 999 minutes?
+		blo.s	@0		; if not, branch
+		move.w	#999,(a2)		; set minutes to 999
+
+@0:
 		addq.b	#1,-(a1)		; add 1 to seconds
 		cmpi.b	#100,(a1)		; did we reach 100 seconds?
 		blo.s	Hud_TimeUpdate		; if not, branch

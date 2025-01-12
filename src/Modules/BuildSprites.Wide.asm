@@ -180,7 +180,7 @@ BuildSprites:
 
 	moveq	#0, @piece_cnt
 	btst	#5, @render			; is raw mappings bit set?
-	bne.s	@DrawSprite_Cont ;####			; if yes, branch
+	bne.s	@DrawSprite			; if yes, branch
 
 	;moveq	#0, @var0			-- OPTIMIZED OUT
 	move.b	obFrame(@obj), @var0		; get mapping frame
@@ -194,17 +194,6 @@ BuildSprites:
 
 ; ==============================================================
 @DrawSprite:
-	; ###
-	if def(__DEBUG__)
-		;movem.l	a1-a3/d0-d3, -(sp)
-		;move.l	@maps, d1
-		;jsr	MDDBG__GetSymbolByOffset
-		;add.w	d0, d1
-		;assert.w d1, eq, #1, @Debugger_Object	; mappings should point to a proper symbol
-		;movem.l	(sp)+, a1-a3/d0-d3
-	endif
-
-@DrawSprite_Cont:
 	@base_pat:	equr	@obj
 	@pat:		equr	@render
 

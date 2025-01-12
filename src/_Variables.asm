@@ -75,6 +75,8 @@ DemoTimer:		equ	$FFFFF614			; w	Timer for demos, decremented by certain VBlank r
 
 VBlankRoutine:		equ	$FFFFF62A			; b	VBlank routine id
 
+RandomSeed:		equ	$FFFFF636			; l	Seed used by `RandomNumber` subroutine
+
 RingFrame:		equ	$FFFFF640			; b	current synchronized smooth ring frame
 RingFrame_Timer:	equ	$FFFFF641			; b	time until next smooth ring frame change
 RingFrame2:		equ	$FFFFF642			; b	current synchronized smooth ring frame for lost rings (no timer; updates every frame)

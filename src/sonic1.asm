@@ -2471,13 +2471,12 @@ DelayProgram:			; XREF: PauseGame
 
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 
-CurrentRandomNumber equ	$FFFFF636
-
 RandomNumber:
-		move.l	(CurrentRandomNumber).w,d1
-		bne.s	loc_29C0
-		move.l	#$2A6D365A,d1
-loc_29C0:
+		move.l	RandomSeed, d1
+		bne.s	@seed_ok
+		move.l	#$2A6D365A, d1
+@seed_ok:
+
 		move.l	d1,d0
 		asl.l	#2,d1
 		add.l	d0,d1
@@ -2486,10 +2485,9 @@ loc_29C0:
 		move.w	d1,d0
 		swap	d1
 		add.w	d1,d0
-
 		move.w	d0,d1
 		swap	d1
-		move.l	d1,(CurrentRandomNumber).w
+		move.l	d1, RandomSeed
 		rts
 ; End of function RandomNumber
 
@@ -4601,8 +4599,8 @@ GenerateCameraShake:
 		moveq	#0,d0				; clear d0
 		moveq	#0,d1				; clear d1
 
-		move.b	(CurrentRandomNumber).w,d0	; get a random number (will be used for X shake)
-		move.b	(CurrentRandomNumber+1).w,d1	; get a different random number (will be used for Y shake)
+		move.b	(RandomSeed).w,d0	; get a random number (will be used for X shake)
+		move.b	(RandomSeed+1).w,d1	; get a different random number (will be used for Y shake)
 
 		btst	#GlobalOptions_CameraShake_Weak, GlobalOptions	; is weak camera shake enabled?
 		bne.s	@photosensitive					; if yes, branch
@@ -4692,7 +4690,7 @@ CinematicScreenFuzz:
 		add.w	d2,d2			; double again (4 bytes per scanline)
 		adda.w	d2,a1			; adjust offset
 
-		move.l	CurrentRandomNumber,d2	; get current random number
+		move.l	RandomSeed,d2	; get current random number
 
 		moveq	#0,d3			; clear d3
 		move.b	($FFFFF73A).w,d3	; get number of pixels scrolled horizontally since the previous frame
@@ -11262,7 +11260,7 @@ Obj3F_Main2:
 		move.w	#$5A0,obGfx(a0)
 		move.b	#4,obRender(a0)
 
-		move.b	CurrentRandomNumber,d0
+		move.b	RandomSeed,d0
 		andi.b	#%01,d0
 		or.b	d0,obRender(a0)
 
@@ -40623,7 +40621,7 @@ loc_19E90:				; XREF: off_19E80
 		jsr	PlayBGM	; play FZ boss music
 
 loc_19EA2:
-		addq.l	#1,(CurrentRandomNumber).w
+		addq.l	#1,(RandomSeed).w
 		rts	
 ; ===========================================================================
 
@@ -40698,7 +40696,7 @@ loc_19F48:
 ; ===========================================================================
 
 loc_19F50:
-		addq.w	#7,(CurrentRandomNumber).w
+		addq.w	#7,(RandomSeed).w
 		cmpi.b	#2,($FFFFD01C).w	; is Sonic rolling?
 		bne.s	loc_19F48		; if not, branch
 		move.w	#$300,d0		; bounce velocity for Sonic after hitting the capsule

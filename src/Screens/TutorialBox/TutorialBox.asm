@@ -1039,7 +1039,7 @@ Hint_UberhubEasterEgg:
 		boxtxt	"A BUNCH OF HIDDEN"
 		boxtxt	"BUTTON COMBINATIONS,"
 		boxtxt	"RANGING FROM HANDY"
-		boxtxt	"TO SILLY FUN."
+		boxtxt	"TO VERY RANDOM."
 		boxtxt_next
 
 		boxtxt	"level select"
@@ -1061,14 +1061,34 @@ Hint_UberhubEasterEgg:
 		boxtxt	"TWENTY TIMES!"
 		boxtxt_next
 
-		boxtxt	"quick arcade game"
+		boxtxt	"unlock everything"
+		boxtxt	"in save slot three"
+		boxtxt_line
+		boxtxt	"ENTER THE DEBUG MODE"
+		boxtxt	"CHEAT A SECOND TIME,"
+		boxtxt	"VIA pause + a WHILE"
+		boxtxt	"IN 0BERHUB PLACE."
+		boxtxt	"CANNOT BE UNDONE!"
+		boxtxt_next
+
+		boxtxt	"quick new game"
 		boxtxt_line
 		boxtxt	"WHILE STARTING A NEW"
-		boxtxt	"GAME, HOLD a IN THE"
-		boxtxt	"DIFFICULTY SELECT TO"
-		boxtxt	"ENABLE arcade mode"
+		boxtxt	"GAME, HOLD a + start"
+		boxtxt	"IN THE OPTIONS MENU"
+		boxtxt	"TO SKIP THE INTRO"
 		boxtxt	"AND START RIGHT IN"
 		boxtxt	"night hill place!"
+		boxtxt_next
+
+		boxtxt	"skip special stages"
+		boxtxt_line
+		boxtxt	"IN CASUAL MODE, YOU"
+		boxtxt	"CAN INSTANTLY SKIP"
+		boxtxt	"A SPECIAL STAGE"
+		boxtxt	"BY HOLDING a + b + c"
+		boxtxt	"AT ONCE! IN FRANTIC,"
+		boxtxt	"ONCE BEATEN."
 		boxtxt_next
 
 		boxtxt	"drunk special stages"
@@ -1079,16 +1099,6 @@ Hint_UberhubEasterEgg:
 		boxtxt	"STAGE AROUND WITHOUT"
 		boxtxt	"AFFECTING GRAVITY."
 		boxtxt	"RIVETING VERTIGO!"
-		boxtxt_next
-
-		boxtxt	"skip special stages"
-		boxtxt_line
-		boxtxt	"IN CASUAL MODE, YOU"
-		boxtxt	"CAN INSTANTLY SKIP"
-		boxtxt	"A SPECIAL STAGE"
-		boxtxt	"BY HOLDING a + b + c"
-		boxtxt	"AT ONCE! IN FRANTIC,"
-		boxtxt	"ONCE UNLOCKED."
 		boxtxt_next
 
 		boxtxt	"dude, just shut up"

@@ -1229,7 +1229,7 @@ Options_Exit_Redraw:
 
 Options_Exit_Handle:
 	move.b	Joypad|Press,d1		; get button presses
-	andi.b	#$FC,d1			; is left, right, A, B, C, or Start pressed?
+	andi.b	#$BC,d1			; is left, right, B, C, or Start pressed? (not A)
 	beq.w	@done			; if not, branch
 
 	; randomize background color on left/right

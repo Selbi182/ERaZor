@@ -175,20 +175,10 @@ Exit_GameplayStyleScreen:
 ; ---------------------------------------------------------------------------	
 
 @firststart:
-		btst	#6,($FFFFF604).w	; was A held as we exited?
-		bne.s	@speedrun		; if yes, branch
 		move.b	#1,Options_FirstStartFlag
 		move.b	#$24,(GameMode).w	; go to options menu
 		st.b	($FFFFFF82).w		; set default selected entry
 		rts
-; ---------------------------------------------------------------------------	
-
-@speedrun:
-		jsr 	WhiteFlash
-		bset	#SlotOptions2_ArcadeMode, SlotOptions2	; enable Arcade Mode
-		move.w	#$D3,d0					; play peelout release sound
-		jsr	PlaySFX
-		bra.w	HubRing_NHP				; go straight to NHP
 ; ===========================================================================
 
 Exit_OptionsScreen:
@@ -219,6 +209,9 @@ Exit_OptionsScreen:
 
 @firststart:
 		clr.b	Options_FirstStartFlag
+		cmpi.b	#A|Start,Joypad|Held	; was A+Start held as we exited?
+		beq.s	@speedrun		; if yes, quick arcade game
+
 		move.w	#$C3,d0			; play giant ring sound
 		jsr	PlaySFX	
 		jsr 	WhiteFlash
@@ -229,6 +222,13 @@ Exit_OptionsScreen:
 		subq.b	#1,d0
 		bne.s 	@Wait
 		bra.w	HubRing_IntroStart	; start the intro cutscene
+; ---------------------------------------------------------------------------
+
+@speedrun:
+		jsr 	WhiteFlash
+		move.w	#$D3,d0			; play peelout release sound
+		jsr	PlaySFX
+		bra.w	HubRing_NHP		; go straight to NHP
 ; ===========================================================================
 
 Exit_SoundTestScreen:

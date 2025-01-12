@@ -1134,7 +1134,7 @@ Options_ResetGlobalOptions_Handle:
 
 	move.b	#$B9,d0			; play explosion sound
 	jsr	PlaySFX
-	tst.b	($FFFFFF84).w
+	tst.b	Options_FirstStartFlag
 	bne.s	@firststart
 	move.b	#Options_Music,d0
 	jsr	PlayBGM
@@ -1207,7 +1207,7 @@ Options_BlackBarsMode_Handle:
 ; ---------------------------------------------------------------------------
 
 Options_Exit_Redraw:
-	tst.b	($FFFFFF84).w
+	tst.b	Options_FirstStartFlag
 	bne.s	@firststart
 
  if def(__WIDESCREEN__)
@@ -1229,7 +1229,7 @@ Options_Exit_Redraw:
 
 Options_Exit_Handle:
 	move.b	Joypad|Press,d1		; get button presses
-	andi.b	#$FC,d1			; is left, right, A, B, C, or Start pressed?
+	andi.b	#$BC,d1			; is left, right, B, C, or Start pressed? (not A)
 	beq.w	@done			; if not, branch
 
 	; randomize background color on left/right

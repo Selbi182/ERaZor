@@ -175,20 +175,10 @@ Exit_GameplayStyleScreen:
 ; ---------------------------------------------------------------------------	
 
 @firststart:
-		btst	#6,($FFFFF604).w	; was A held as we exited?
-		bne.s	@speedrun		; if yes, branch
-		move.b	#1,($FFFFFF84).w
-		move.b	#$24,(GameMode).w
+		move.b	#1,Options_FirstStartFlag
+		move.b	#$24,(GameMode).w	; go to options menu
 		st.b	($FFFFFF82).w		; set default selected entry
 		rts
-; ---------------------------------------------------------------------------	
-
-@speedrun:
-		jsr 	WhiteFlash
-		bset	#SlotOptions2_ArcadeMode, SlotOptions2	; enable Arcade Mode
-		move.w	#$D3,d0					; play peelout release sound
-		jsr	PlaySFX
-		bra.w	HubRing_NHP				; go straight to NHP
 ; ===========================================================================
 
 Exit_OptionsScreen:
@@ -211,14 +201,17 @@ Exit_OptionsScreen:
 		rts
 
 @default:
-		tst.b	($FFFFFF84).w
+		tst.b	Options_FirstStartFlag
 		bne.s	@firststart
 		move.b	#3,(CarryOverData).w	; set that we came from the options menu
 		bra.w	ReturnToUberhub		; return to Uberhub in all other cases
 ; ---------------------------------------------------------------------------
 
 @firststart:
-		clr.b	($FFFFFF84).w
+		clr.b	Options_FirstStartFlag
+		cmpi.b	#A|Start,Joypad|Held	; was A+Start held as we exited?
+		beq.s	@speedrun		; if yes, quick arcade game
+
 		move.w	#$C3,d0			; play giant ring sound
 		jsr	PlaySFX	
 		jsr 	WhiteFlash
@@ -229,6 +222,13 @@ Exit_OptionsScreen:
 		subq.b	#1,d0
 		bne.s 	@Wait
 		bra.w	HubRing_IntroStart	; start the intro cutscene
+; ---------------------------------------------------------------------------
+
+@speedrun:
+		jsr 	WhiteFlash
+		move.w	#$D3,d0			; play peelout release sound
+		jsr	PlaySFX
+		bra.w	HubRing_NHP		; go straight to NHP
 ; ===========================================================================
 
 Exit_SoundTestScreen:
@@ -608,7 +608,7 @@ MiscRing_IntroEnd:
 
 HubRing_Options:
 		st.b	($FFFFFF82).w		; set default selected entry
-		clr.b	($FFFFFF84).w
+		clr.b	Options_FirstStartFlag
 		move.b	#$24,(GameMode).w	; go straight to options
 		rts
 
@@ -970,17 +970,19 @@ CheckSlot_UnterhubBeaten:
 ; ---------------------------------------------------------------------------
 
 ; cheat called from Selbi Screen
-UnlockEverything: _unimplemented	; TODO: Implement properly
-		;moveq	#$FFFFFF00|Doors_All, d0	; unlock all doors...
-		;move.b	d0, Doors_Casual		; ...in casual...
-		;move.b	d0, Doors_Frantic		; ...and frantic
-		;bsr	Set_BaseGameBeaten_Casual		; unlock cinematic mode
-		;bsr	Set_BaseGameBeaten_Frantic	; unlock motion blur
-		;bsr	Set_BlackoutBeaten		; unlock nonstop inhuman
-		;bsr	Set_TutorialVisited		; set tutorial visited
-		;bsr	Set_HubEasterVisited		; set Uberhub easter egg as visited
-		;move.b	#8,(CurrentChapter).w		; set to final chapter
-		;jmp	SRAMCache_SaveGlobalsAndSelectedSlotId		; overwrite SRAM
+UnlockEverything:
+		moveq	#$FFFFFF00|Doors_All, d0	; unlock all doors...
+		move.b	d0, Doors_Casual		; ...in casual...
+		move.b	d0, Doors_Frantic		; ...and frantic
+		bsr	Set_BaseGameBeaten_Casual	; unlock cinematic mode
+		bsr	Set_BaseGameBeaten_Frantic	; unlock motion blur
+		bsr	Set_BlackoutBeaten		; unlock nonstop inhuman
+		bsr	SetSlot_TutorialVisited		; set tutorial visited
+		bsr	SetSlot_HubEasterVisited	; set Uberhub easter egg as visited
+		move.b	#8,(CurrentChapter).w		; set to final chapter
+
+		move.b	#3, SRAMCache.SelectedSlotId	; save to slot 3	
+		jmp	SRAMCache_SaveGlobalsAndSelectedSlotId
 
 ; cheats called from options screen
 ToggleGlobal_BaseGameBeaten_Casual:

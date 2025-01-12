@@ -6148,6 +6148,12 @@ End_MainLoop:
 		move.w	#1,($FFFFFE02).w	; start credits to not softlock in nonstop inhuman
 
 @checkfadeout:
+		cmpi.b	#A|B|C,Joypad|Held		; exactly ABC held?
+		bne.s	@noskip				; if not, branch
+		jsr	Pal_FadeFrom			; smooth fadeout
+		bra.s	@exit				; skip ending sequence
+
+	@noskip:
 		cmpi.w	#$400,($FFFFFE10).w		; has the player forcibly exited the cutscene?
 		bne.s	@checkend			; if not, branch
 		rts					; exit this game mode normally
@@ -6157,7 +6163,7 @@ End_MainLoop:
 		beq.w	End_MainLoop			; if not, loop
 		cmpi.w	#224/2-2,BlackBars.Height	; did black bars finish covering up the screen?
 		blo.w	End_MainLoop			; if not, loop
-		jmp	Exit_EndingSequence		; go to credits screen
+@exit:		jmp	Exit_EndingSequence		; go to credits screen
 
 ; ---------------------------------------------------------------------------
 ; Subroutine controlling Sonic on the ending sequence

@@ -3,13 +3,13 @@
 ; Screen Exit Logic and Game Progress Coordination
 ; ---------------------------------------------------------------------------
 ; BOOT
-; (Black Bars Screen) > Sega Screen > Selbi Screen > Title Screen > GameplayStyleScreen or Uberhub
+; (Black Bars Screen) > Sega Screen > Selbi Screen > Title Screen > Save Select
 ; 
 ; FIRST START
-; GameplayStyleScreen > One Hot Day... > Story Screen > Uberhub > NHP Ring > Chapter Screen > NHP
+; Save Select > GameplayStyleScreen > Options > One Hot Day... > Story Screen > Uberhub
 ; 
 ; MAIN LEVEL CYCLE
-; Uberhub Level Ring > Chapter Screen > Level > Story Screen > Uberhub
+; Uberhub Level Ring > Chapter Screen > Level > Story Screen > Uberhub or Next Level
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
 
@@ -132,8 +132,9 @@ Exit_SelbiSplash:
 ; ===========================================================================
 
 Exit_TitleScreen:
-		move.b	#$3C, GameMode		; save select screen
+		move.b	#$3C,(GameMode).w	; go to save select screen
 		rts
+; ===========================================================================
 
 Exit_SaveSelectScreen:
 		bsr	CheckSlot_FirstStart	; is this the first time the game is being played?
@@ -143,7 +144,6 @@ Exit_SaveSelectScreen:
 		move.b	#0,(CurrentChapter).w	; set chapter to 0 (so screen gets displayed once NHP is entered for the first time)
 		move.b	#$30,(GameMode).w	; for the first time, set to Gameplay Style Screen (which then starts the intro cutscene)
 		rts
-
 ; ===========================================================================
 
 Exit_GameplayStyleScreen:
@@ -331,12 +331,19 @@ Exit_CreditsScreen:
 		btst	#4,(CarryOverData).w
 		beq.s	@restartfromcredits
 		move.b	#$E0,d0
-		jsr	PlayCommand				; fade out music to set the atmosphere
+		jsr	PlayCommand		; fade out music to set the atmosphere
 		moveq	#$12,d0			; load Blackout Challenge teaser text
 		jsr	TutorialBox_Display	; VLADIK => Display hint
-		
+
 @restartfromcredits:
 		clr.b	(CarryOverData).w	; clear carried-over data now no matter what
+
+		btst	#SlotOptions2_ArcadeMode, SlotOptions2	; is Arcade Mode enabled?
+		beq.s	@dorestart		; if not, branch
+		jsr	CheckSlot_BlackoutUnlocked
+		bne.w	HubRing_Blackout	; if yes, automatically go to the black out challenge
+
+@dorestart:
 		bra.w	ReturnToSegaScreen	; restart game from Sega Screen
 
 ; ===========================================================================
@@ -689,15 +696,6 @@ GTA_RP:		moveq	#2,d0			; unlock third door
 		move.b	#4,(StoryTextID).w	; set number for text to 4
 		bra.w	RunStory
 
-GTA_Unterhub:	
-		moveq	#7,d0			; set Unterhub as beaten
-		bsr	SetSlot_DoorOpen
-		move.b	#$C,(StoryTextID).w	; set number for text to $C
-		btst	#2,($FFFFF7A7).w	; did you kill the Roller?
-		bne.w	RunStory		; if yes, run normal story
-		move.b	#$D,(StoryTextID).w	; use pacifist story instead
-		bra.w	RunStory
-
 GTA_LP:		moveq	#3,d0			; unlock fourth door
 		bsr	SetSlot_DoorOpen
 		move.b	#5,(StoryTextID).w	; set number for text to 5
@@ -714,6 +712,14 @@ GTA_UP:		moveq	#4,d0			; open fifth door
 GTA_SNPSAP:	moveq	#5,d0			; unlock sixth door
 		bsr	SetSlot_DoorOpen
 		move.b	#7,(StoryTextID).w	; set number for text to 7
+		bra.w	RunStory
+
+GTA_Unterhub:	moveq	#7,d0			; set Unterhub as beaten
+		bsr	SetSlot_DoorOpen
+		move.b	#$C,(StoryTextID).w	; set number for text to $C
+		btst	#2,($FFFFF7A7).w	; did you kill the Roller?
+		bne.w	RunStory		; if yes, run normal story
+		move.b	#$D,(StoryTextID).w	; use pacifist story instead
 		bra.w	RunStory
 
 GTA_FP:		moveq	#6,d0					; unlock seventh door (door to the credits)
@@ -738,7 +744,7 @@ GTA_Blackout:
 		clr.b	(Blackout).w		; clear blackout special stage flag
 		move.b	#5,(CarryOverData).w	; set that we came from the blackout challenge
 		move.b	#9,(StoryTextID).w	; set number for text to 9 (final congratulations)
-		bra.w	RunStory_Force		; show story screen even if they are disabled
+		bra.w	RunStory		; show story screen
 
 
 ; ===========================================================================

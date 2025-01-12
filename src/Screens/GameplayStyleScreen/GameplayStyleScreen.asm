@@ -2,6 +2,15 @@
 ; Gameplay Style Screen (Casual Mode / Frantic Mode)
 ; ---------------------------------------------------------------------------
 
+; VRAM layout
+				rsset $00
+GameplayStyle_VRAM_Difficulty:	rsfile	'Screens/GameplayStyleScreen/Tiles_Difficulty.unc'
+GameplayStyle_VRAM_Stars:	rsfile	'Screens/_common/Data/Stars_Tiles.unc'
+
+GameplayStyle_VRAM_FG:		equ	$C000
+
+; ---------------------------------------------------------------------------
+
 GameplayStyleScreen:
 		move.b	#$E0,d0
 		jsr	PlayCommand			; fade out music
@@ -46,30 +55,21 @@ GameplayStyleScreen:
 @clearvsram:	move.w	d0,(a0)
 		dbf	d1,@clearvsram
 
-		move.l	#$40000000,VDP_Ctrl		; load art
-		lea	VDP_Data,a6
-		lea	(ArtKospM_Difficulty).l,a0
-		jsr	KosPlusMDec_VRAM
+		; Load all compressed graphics
+		lea	GGS_PLCList(pc), a1
+		jsr	LoadPLC_Direct
+		jsr	PLC_ExecuteOnce_Direct
 
-		vram	$2000
-		lea	VDP_Data,a6
-		lea	(ArtKospM_PixelStars).l,a0
-		jsr	KosPlusMDec_VRAM
+		; Load mappings
+		lea	MapEni_Difficulty(pc), a0	; load maps
+		lea	$FF0000, a1
+		move.w	#$8000, d0
+		jsr	EniDec
 
-		lea	(Map_Difficulty).l,a1		; load maps
-		move.l	#$40000003,d0
+		vram	GameplayStyle_VRAM_FG, d0
 		moveq	#$27,d1
 		moveq	#$1B,d2
-		lea	VDP_Ctrl,a4
-		move.l	#$800000,d4
-@row:		move.l	d0,(a4)			; set VDP to VRam write mode
-		move.w	d1,d3			; reload number of columns
-@column:	move.w	(a1)+,d5		; load mapping
-		ori.w	#$8000,d5		; make high-plane
-		move.w	d5,(a6)			; dump map to VDP map slot
-		dbf	d3,@column		; repeat til columns have dumped
-		add.l	d4,d0			; increae to next row on VRam
-		dbf	d2,@row			; repeat til all rows have dumped
+		jsr	ShowVDPGraphics
 
 	if def(__WIDESCREEN__)
 		; making the screen slightly nicer in widescreen mode
@@ -77,13 +77,13 @@ GameplayStyleScreen:
 		moveq	#SCREEN_XCORR,d0
 		neg.w	d0
 		swap	d0
-		move.w	#224-1,d1
-@wideadjust:
-		move.l	d0,(a1)+
-		cmpi.w	#112,d1
-		bne.s	@next
+		moveq	#112-1,d1
+	@loop0:	move.l	d0,(a1)+
+		dbf	d1,@loop0
 		neg.l	d0
-@next:		dbf	d1,@wideadjust
+		moveq	#112-1,d1
+	@loop1:	move.l	d0,(a1)+
+		dbf	d1,@loop1
 	endif
 
 		moveq	#1,d0			; write palette to fade-in palette buffer
@@ -92,21 +92,30 @@ GameplayStyleScreen:
 		display_enable
 		jsr	Pal_FadeTo			; fade in
 
-		move.b	#$8B,($FFFFD000).w		; load star object
-		move.b	#0,($FFFFD000+obRoutine).w
-		move.w 	#$80+SCREEN_WIDTH/2,($FFFFD000+obX).w		; horizontally center emitter
-		move.w 	#$EC,($FFFFD000+obScreenY).w			; set emitter to top of screen
+		move	#GameplayStyle_VRAM_Stars/$20, d4	; art pointer
+		moveq	#78-1, d6				; num stars - 1
+		jsr	Screen_GenerateStarfieldObjects
 
 		bra.s	GSS_MainLoop
+
+; ===========================================================================
+GGS_PLCList:
+		dc.l	ArtKospM_Difficulty
+		dc.w	GameplayStyle_VRAM_Difficulty
+
+		dc.l	Screens_Stars_ArtKospM
+		dc.w	GameplayStyle_VRAM_Stars
+
+		dc.w	-1	; end marker
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; d0 = 0 FB00 / 1 FB80
 GSS_LoadPal:
-		lea	(Pal_Difficulty_Casual).l,a1	; load casual palette
+		lea	Pal_Difficulty_Casual(pc),a1	; load casual palette
 		frantic
 		beq.s	@loadpal
-		lea	(Pal_Difficulty_Frantic).l,a1	; load frantic palette
+		lea	Pal_Difficulty_Frantic(pc),a1	; load frantic palette
 @loadpal:
 		moveq	#8-1,d1	
 		lea	Pal_Active,a2
@@ -168,17 +177,18 @@ GSS_MainLoop:
 ArtKospM_Difficulty:
 		incbin	"Screens/GameplayStyleScreen/Tiles_Difficulty.kospm"
 		even
-Map_Difficulty:
-		incbin	"Screens/GameplayStyleScreen/Maps_Difficulty.bin"
-		even
-ArtKospM_PixelStars:	
-		incbin	"Screens/GameplayStyleScreen/Tiles_Stars.kospm"
+MapEni_Difficulty:
+		incbin	"Screens/GameplayStyleScreen/Maps_Difficulty.eni"
 		even
 
 Pal_Difficulty_Casual:
-		;	bg	casual		    frantic		stars		    unused
-		dc.w	$0200,  $0EEE,$0CAA,$0800,  $0444,$0222,$0000,  $0EEE,$0666,$0844,  0,0,0,0,0,0
+		;	bg	casual		    frantic
+		dc.w	$0200,  $0EEE,$0CAA,$0800,  $0444,$0222,$0000, 0
+		;	stars
+		dc.w	$0CEE,$0ACC,$08AA,$0888,$0688,$0666,$0444,$0222
 Pal_Difficulty_Frantic:
-		dc.w	$0002,  $0444,$0222,$0000,  $0EEE,$0AAC,$0008,  $0EEE,$0666,$0448,  0,0,0,0,0,0
+		dc.w	$0002,  $0444,$0222,$0000,  $0EEE,$0AAC,$0008, 0
+		;	stars
+		dc.w	$0EEE,$0CCE,$0AAC,$088A,$0888,$0666,$0444,$0222
 		even
 ; ===========================================================================

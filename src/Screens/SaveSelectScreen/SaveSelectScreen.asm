@@ -150,13 +150,6 @@ SaveSelect_InitUI:
 	lea	VDP_Ctrl, a5
 	lea	VDP_Data, a6
 
-	; ### Dummy HL
-	vram	SaveSelect_VRAM_DummyHL, VDP_Ctrl
-	lea	@DummyHL, a0
-	moveq	#(@DummyHL_End-@DummyHL)/4-1, d0
-	@l2:	move.l	(a0)+, (a6)
-		dbf	d0, @l2
-
 	; Load and draw base UI elements (header + borders)
 	lea	SaveSelect_UI_MapEni, a0
 	lea	$FF0000, a1
@@ -182,15 +175,6 @@ SaveSelect_InitUI:
 	rts
 
 ; ---------------------------------------------------------------
-@DummyHL:
-	rept 4*4
-		rept 8
-			dc.l	$FFFFFFFF
-		endr
-	endr
-@DummyHL_End:
-
-; ---------------------------------------------------------------
 @PaletteData:
 	; Line 1 - Highlighted text
 	dc.w	$0000, $0444, $0EEE, $0EEE, $0EEE, $0EEE, $0CCC, $0AAA
@@ -212,6 +196,9 @@ SaveSelect_InitUI:
 
 	dc.l	SaveSelect_UI_Tiles_KospM
 	dc.w	SaveSelect_VRAM_UIElements
+
+	dc.l	Screens_SH_Shadow_ArtKospM
+	dc.w	SaveSelect_VRAM_SH_Shadow
 
 	dc.w	-1	; end marker
 

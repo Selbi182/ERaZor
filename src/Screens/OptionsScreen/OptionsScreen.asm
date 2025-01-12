@@ -69,82 +69,17 @@ OptionsScreen:				; XREF: GameModeArray
 		move.w	#$80+SCREEN_WIDTH/2-2,obX(a0)	; set X-position
 		move.w	#$7F,obScreenY(a0)		; set Y-position
 
-		; transparent sprites squeezed in between plane A and B to properly display the text in SH mode
-		tst.b	($FFFFFF84).w
-		bne.s	@nosprites
-		lea	($FFFFD140).w,a0
-		move.b	#2,(a0)
-		move.b	#6,obRoutine(a0)
-		move.w	#$80+SCREEN_WIDTH/2-32,obX(a0)
-		move.w	#$B0,obScreenY(a0)
-
-		adda.w	#$40,a0
-		move.b	#2,(a0)
-		move.b	#6,obRoutine(a0)
-		move.w	#$80+SCREEN_WIDTH/2+(32*5)-32,obX(a0)
-		move.w	#$B0,obScreenY(a0)
-
-		adda.w	#$40,a0
-		move.b	#2,(a0)
-		move.b	#6,obRoutine(a0)
-		move.w	#$80+SCREEN_WIDTH/2-32,obX(a0)
-		move.w	#$B0+(32*4),obScreenY(a0)
-
-		adda.w	#$40,a0
-		move.b	#2,(a0)
-		move.b	#6,obRoutine(a0)
-		move.w	#$80+SCREEN_WIDTH/2+(32*5)-32,obX(a0)
-		move.w	#$B0+(32*4),obScreenY(a0)
-@nosprites:
+		moveq	#1,d0			; load to fade-in buffer
+		bsr	Options_LoadPal
+		bsr	Options_SetupBackground
 
 		DeleteQueue_Init
 		jsr	ObjectsLoad
 		jsr	BuildSprites
 		jsr	DeleteQueue_Execute
 
-		tst.b	($FFFFFF84).w
-		bne.s	@firststart
-		move.b	#Options_Music,d0	; play Options screen music (Spark Mandrill)
-		jsr	PlayBGM
-		move.w	#$E3,d0			; regular music speed
-		btst	#SlotOptions2_PlacePlacePlace, SlotOptions2	; is easter egg flag enabled?
-		beq.s	@play			; if not, branch
-		move.w	#$E2,d0			; speed up music
-@play:		jsr	PlayCommand
-		bra.s	@cont
-
-@firststart:
-		vram	$2000
-		lea	VDP_Data,a6
-		lea	(ArtKospM_PixelStars).l,a0
-		jsr	KosPlusMDec_VRAM
-
-		move.b	#$8B,($FFFFD000).w		; load star object
-		move.b	#0,($FFFFD000+obRoutine).w
-		move.w 	#$80+SCREEN_WIDTH/2,($FFFFD000+obX).w		; horizontally center emitter
-		move.w 	#$EC,($FFFFD000+obScreenY).w
-
-@cont:
-		vram	$3000
-		lea	VDP_Data,a6
-		moveq	#-1,d0
-		move.w	#$10-1,d1
-@transparent:
-		rept	8*2
-		move.w	d0,(a6)
-		endr
-		dbf	d1,@transparent
-
+		jsr	Options_PlayMenuTheme
 		move.w	#0,BlackBars.Height	; make sure black bars are fully gone
-
-		moveq	#1,d0			; load to fade-in buffer
-		bsr	Options_LoadPal
-
-		tst.b	($FFFFFF84).w
-		bne.s	@nobg
-		move.w	#$806,(BGThemeColor).w	; set theme color for background effects
-		jsr	BackgroundEffects_Setup
-@nobg:
 
 		clr.b	Options_Exiting
 		jsr	Options_InitState
@@ -181,10 +116,7 @@ OptionsScreen_MainLoop:
 		jsr	DeleteQueue_Execute
 		jsr	PLC_Execute
 
-		tst.b	($FFFFFF84).w
-		bne.s	@nobg
-		jsr	BackgroundEffects_Update
-@nobg:
+		jsr	Options_HandleBackground
 		jsr	ERZBanner_PalCycle
 		bsr	Options_SelectedLinePalCycle
 		jsr	WhiteFlash_Restore
@@ -290,6 +222,93 @@ Options_InitState:
 Options_SelectExit:
 		move.w	#Options_MenuData_NumItems-1, ($FFFFFF82).w
 		rts
+
+; ---------------------------------------------------------------------------
+; Subroutine to setup options menu background
+; ---------------------------------------------------------------------------
+
+Options_SetupBackground:
+		tst.b	($FFFFFF84).w		; first time?
+		bne	@SetupStarfieldBG	; if yes, branch
+
+*@SetupFuzzyBG:
+		move.w	#$806,(BGThemeColor).w	; set theme color for background effects
+		jsr	BackgroundEffects_Setup
+
+		; Load SH shadow overlay art
+		vram	$3000
+		lea	Screens_SH_Shadow_ArtKospM, a0
+		jsr	KosPlusMDec_VRAM
+
+		; transparent sprites squeezed in between plane A and B to properly display the text in SH mode
+		lea	($FFFFD140).w,a0
+		move.b	#2,(a0)
+		move.b	#6,obRoutine(a0)
+		move.w	#$80+SCREEN_WIDTH/2-32,obX(a0)
+		move.w	#$B0,obScreenY(a0)
+
+		adda.w	#$40,a0
+		move.b	#2,(a0)
+		move.b	#6,obRoutine(a0)
+		move.w	#$80+SCREEN_WIDTH/2+(32*5)-32,obX(a0)
+		move.w	#$B0,obScreenY(a0)
+
+		adda.w	#$40,a0
+		move.b	#2,(a0)
+		move.b	#6,obRoutine(a0)
+		move.w	#$80+SCREEN_WIDTH/2-32,obX(a0)
+		move.w	#$B0+(32*4),obScreenY(a0)
+
+		adda.w	#$40,a0
+		move.b	#2,(a0)
+		move.b	#6,obRoutine(a0)
+		move.w	#$80+SCREEN_WIDTH/2+(32*5)-32,obX(a0)
+		move.w	#$B0+(32*4),obScreenY(a0)
+		rts
+
+; ---------------------------------------------------------------------------
+@SetupStarfieldBG:
+		; Load star tiles
+		vram	$2000
+		lea	Screens_Stars_ArtKospM, a0
+		jsr	KosPlusMDec_VRAM
+
+		; Generate stars
+		move	#$2000/$20, d4				; art pointer
+		moveq	#78-1, d6				; num stars - 1
+		jmp	Screen_GenerateStarfieldObjects
+
+
+; ---------------------------------------------------------------------------
+; Subroutine to handle/update BG
+; ---------------------------------------------------------------------------
+
+Options_HandleBackground:
+		tst.b	($FFFFFF84).w		; first time?
+		bne.s	@HandleStarfieldBG	; if yes, branch
+		jmp	BackgroundEffects_Update
+
+; ---------------------------------------------------------------------------
+@HandleStarfieldBG:
+		rts				; BG handles itself
+
+; ---------------------------------------------------------------------------
+; Plays options menu theme
+; ---------------------------------------------------------------------------
+
+Options_PlayMenuTheme:
+		tst.b	($FFFFFF84).w			; first time?
+		bne.s	@ret				; no music
+
+		moveq	#$FFFFFF00|Options_Music, d0	; play Options screen music (Spark Mandrill)
+		jsr	PlayBGM
+		moveq	#$FFFFFFE3, d0			; regular music speed
+		btst	#SlotOptions2_PlacePlacePlace, SlotOptions2	; is easter egg flag enabled?
+		beq.s	@play				; if not, branch
+		moveq	#$FFFFFFE2, d0			; speed up music
+@play:		jmp	PlayCommand
+
+@ret		rts
 
 ; ---------------------------------------------------------------------------
 ; Resets everything to defaults
@@ -669,32 +688,33 @@ Options_CharToTile:
 ; ---------------------------------------------------------------------------
 
 Options_LoadPal:
+		lea	Pal_Target, a4
+		lea	PalLoad1, a2	; => Pal_Target
 		tst.b	d0
-		bne.s	@tobuffer
+		bne.s	@ptrs_ok
+		lea	Pal_Active, a4
+		lea	PalLoad2, a2	; => Pal_Target
+@ptrs_ok:
 		moveq	#2,d0		; load level select palette
-		jsr	PalLoad2
+		jsr	(a2)
 
-		movem.l	a1-a2, -(sp)		; backup d0 to a2
+		tst.b	($FFFFFF84).w	; first time?
+		beq.s	@nostars	; if not, branch
+		lea	@Star_Palette(pc), a0
+		lea	$10(a4), a1
+		rept 8/2
+			move.l	(a0)+, (a1)+
+		endr
+@nostars:
 		lea	Pal_ERaZorBanner, a1	; set ERaZor banner's palette pointer
-		lea	$FFFFFBA0-$80, a2		; set palette location
+		lea	$20(a4), a2		; set palette location
 		rept 8
 			move.l	(a1)+, (a2)+
 		endr
-		movem.l	(sp)+, a1-a2		; restore d0 to a2
 		rts
 
-@tobuffer:
-		moveq	#2,d0		; load level select palette
-		jsr	PalLoad1
-
-		movem.l	a1-a2, -(sp)		; backup d0 to a2
-		lea	Pal_ERaZorBanner, a1	; set ERaZor banner's palette pointer
-		lea	$FFFFFBA0, a2		; set palette location
-		rept 8
-			move.l	(a1)+, (a2)+
-		endr
-		movem.l	(sp)+, a1-a2		; restore d0 to a2
-		rts
+; ---------------------------------------------------------------------------
+@Star_Palette:	dc.w	$0CEE,$0ACC,$08AA,$0888,$0688,$0666,$0444,$0222
 
 ; ---------------------------------------------------------------------------
 ; Palette cycle for highlighted menu item

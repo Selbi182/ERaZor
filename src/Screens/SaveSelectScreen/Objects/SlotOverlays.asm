@@ -16,7 +16,7 @@ SaveSelect_Obj_SlotOverlays:
 	move.w	#$80+16+2+$100, obX(a1)
 	move.w	obSubtype(a0), obSubtype(a1)
 
-@Init:	move.w	#$6000|(SaveSelect_VRAM_DummyHL/$20), obGfx(a0)
+@Init:	move.w	#$6000|(SaveSelect_VRAM_SH_Shadow/$20), obGfx(a0)
 	move.l	#@Maps, obMap(a0)
 	move.w	obSubtype(a0), d0
 	add.w	d0, d0

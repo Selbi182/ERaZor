@@ -630,10 +630,7 @@ Options_Audio_Handle:
 	jsr	DelayProgram
 	bra.s	@1
 @0:
-	tst.b	($FFFFFF84).w
-	bne.s	@1
-	move.b	#Options_Music,d0
-	jsr	PlayBGM
+	jsr	Options_PlayMenuTheme
 @1:
 
 	moveq	#%11,d1
@@ -1161,7 +1158,7 @@ Options_Exit_Redraw:
 	Options_PipeString a4, "      SAVE + EXIT OPTIONS MENU        ", OpLength
 	rts
   	@firststart:
-	Options_PipeString a4, "               START GAME               ", OpLength
+	Options_PipeString a4, "             START GAME               ", OpLength
  else
 	Options_PipeString a4, "   SAVE + EXIT OPTIONS MENU   ", OpLength
 	rts

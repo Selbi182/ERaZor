@@ -514,6 +514,8 @@ FMUpdateFreq:
 		move.b	TrackDetune(a5),d0 	; Get detune value
 		ext.w	d0
 		add.w	d0,d6				; Add note frequency
+		btst	#1,(a5); 		; Is modulation active?
+		bne.s	locret_71E48 	; if not branch			
 		btst	#2,TrackPlaybackControl(a5)	; Is track being overridden?
 		bne.s	locret_71E48			; Return if so
 		move.w	d6,d1

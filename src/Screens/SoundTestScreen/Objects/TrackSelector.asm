@@ -15,8 +15,8 @@ obST_MaxTrack	= $E4
 
 SoundTest_Obj_TrackSelector:
 	; Create box overlay and arrow sub-objects
-	SoundTest_CreateChildObject #SoundTest_Obj_TrackSelector_Overlay
-	SoundTest_CreateChildObject #SoundTest_Obj_TrackSelector_Arrows
+	Screen_CreateChildObject #SoundTest_Obj_TrackSelector_Overlay
+	Screen_CreateChildObject #SoundTest_Obj_TrackSelector_Arrows
 
 	; Initialize object now
 	moveq	#$FFFFFF81, d0			; play initial music
@@ -194,7 +194,7 @@ SoundTest_Obj_TrackSelector_Arrows:
 
 	@char_to_tile:	equr	a2
 
-	SoundTest_CreateChildObject #@Init	; a1 = right arror
+	Screen_CreateChildObject #@Init	; a1 = right arror
 	lea	SoundTest_CharToTile(pc), @char_to_tile
 	move.w	('>'-$20)*2(@char_to_tile), obGfx(a1)	; right arrow settings
 	move.w	#$80+(SCREEN_WIDTH+SoundTest_Visualizer_Width*8)/2-12, obX(a1)	; ''
@@ -220,7 +220,7 @@ SoundTest_Obj_TrackSelector_Arrows:
 ; ---------------------------------------------------------------------------
 
 SoundTest_Obj_TrackSelector_Overlay:
-	SoundTest_CreateChildObject #@Init	; a1 = secondary sprite
+	Screen_CreateChildObject #@Init	; a1 = secondary sprite
 	move.w	#$80+(SCREEN_WIDTH-SoundTest_Visualizer_Width*8)/2+$80, obX(a0)		; X-position for the main sprite
 	move.w	#$80+(SCREEN_WIDTH-SoundTest_Visualizer_Width*8)/2+$100, obX(a1)	; X-position for the secondary sprite
 	move.b	#1, obFrame(a1)			; secondary sprite frame

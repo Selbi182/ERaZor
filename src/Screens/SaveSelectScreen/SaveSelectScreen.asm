@@ -60,7 +60,7 @@ SaveSelectScreen:
 	assert.w a1, eq, #SaveSelectScreen_RAM+SaveSelectScreen_RAM.Size
 
 	; Init screen variables
-	SaveSelect_ResetVRAMBufferPool
+	Screen_PoolReset SaveSelect_VRAMBufferPoolPtr, Art_Buffer, Art_Buffer_End
 	move.w	#SaveSelect_CanaryValue, SaveSelect_StringBufferCanary
 	move.b	SRAMCache.SelectedSlotId, SaveSelect_SelectedSlotId	; use last save slot ...
 	bne.s	@default_slot_ok					; ...
@@ -74,7 +74,7 @@ SaveSelectScreen:
 	jsr	SaveSelect_InitialDraw
 
 	; Setup objects
-	SaveSelect_CreateObject #SaveSelect_Obj_SlotOverlays
+	Screen_CreateObject #SaveSelect_Obj_SlotOverlays
 
 	VBlank_UnsetMusicOnly
 	display_enable
@@ -126,7 +126,7 @@ SaveSelect_MainLoop:
 
 ; ---------------------------------------------------------------------------
 @FlushVRAMBufferPool:
-	SaveSelect_ResetVRAMBufferPool
+	Screen_PoolReset SaveSelect_VRAMBufferPoolPtr, Art_Buffer, Art_Buffer_End
 	rts
 
 ; ---------------------------------------------------------------------------
@@ -196,7 +196,7 @@ SaveSelect_InitUI:
 
 	; Line 2 - Normal text
 	dc.w	$0000, $0444/2, $0EEE/2, $0EEE/2, $0EEE/2, $0EEE/2, $0CCC/2, $0AAA/2
-	dc.w	$0E0E, $0E0E, $0E0E, $0E0E, $0E0E, $0E0E, $0E0E, $0E0E
+	dc.w	$0CEE, $0ACC, $08AA, $0888, $0688, $0666, $0444, $0222
 
 	; Line 3 - UI elements
 	dc.w	$0000, $0422, $0E8A, $0E8A, $0EAA, $0E8A, $0C68, $0846	; UI small font
@@ -415,7 +415,7 @@ SaveSelect_DrawText_Normal:
 	move.w	#$4000, d1				; use palette line 2
 
 SaveSelect_DrawText_Cont:
-	SaveSelect_AllocateInVRAMBufferPool a1, #SaveSelect_StringBufferSize*2
+	Screen_PoolAllocate a1, SaveSelect_VRAMBufferPoolPtr, #SaveSelect_StringBufferSize*2
 	move.l	a1, -(sp)
 
 	clr.b	(a0)+					; finalize buffer

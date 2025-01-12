@@ -4,7 +4,7 @@
 ; -----------------------------------------------------------------------------
 
 SoundTest_Obj_VisualizerOverlay:
-	SoundTest_CreateChildObject #@Init	; generate secondary sprite (becase we can't cover more than 256 pixels)
+	Screen_CreateChildObject #@Init	; generate secondary sprite (becase we can't cover more than 256 pixels)
 	move.w	#$80+(SCREEN_WIDTH-SoundTest_Visualizer_Width*8)/2+$80, obX(a0)		; X-position for the main sprite
 	move.w	#$80+(SCREEN_WIDTH-SoundTest_Visualizer_Width*8)/2+$100, obX(a1)	; X-position for the secondary sprite
 	move.b	#1, obFrame(a1)			; set secondary sprite frame

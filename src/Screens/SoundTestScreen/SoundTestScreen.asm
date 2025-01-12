@@ -63,9 +63,9 @@ SoundTestScreen:
 	jsr	LoadPLC_Direct
 	jsr	PLC_ExecuteOnce_Direct
 
-	SoundTest_CreateObject #SoundTest_Obj_TrackSelector
-	SoundTest_CreateObject #SoundTest_Obj_VisualizerOverlay
-	SoundTest_CreateObject #SoundTest_Obj_VisualizerPaletteEffect
+	Screen_CreateObject #SoundTest_Obj_TrackSelector
+	Screen_CreateObject #SoundTest_Obj_VisualizerOverlay
+	Screen_CreateObject #SoundTest_Obj_VisualizerPaletteEffect
 	jsr	SoundTest_CreateNoteEmitters
 
 	; Load/render Plane B
@@ -127,7 +127,7 @@ SoundTestScreen:
 	move.b	#$10, SoundTest_FadeCounter		; prepare fade in
 
 	; Screen init
-	SoundTest_ResetVRAMBufferPool
+	Screen_PoolReset SoundTest_VRAMBufferPoolPtr, Art_Buffer, Art_Buffer_End
 	sf.b	SoundTest_ExitFlag
 	jsr	SoundTest_VDeform_Init
 	jsr	SoundTest_Visualizer_Init
@@ -755,7 +755,7 @@ SoundTest_DrawText:
 	clr.b	(a0)+					; finalize buffer
 
 	lea	SoundTest_StringBuffer, a0
-	SoundTest_AllocateInVRAMBufferPool a1, #SoundTest_StringBufferSize*2
+	Screen_PoolAllocate a1, SoundTest_VRAMBufferPoolPtr, #SoundTest_StringBufferSize*2
 	move.l	a1, -(sp)
 
 	moveq	#0, d7

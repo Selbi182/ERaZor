@@ -36,27 +36,6 @@ Options_PipeString:	macro	flushFunctionOperand, string, bufferSize
 	endm
 
 ; ---------------------------------------------------------------------------
-; Resets (flushes) VRAM buffer pool pointer
-; ---------------------------------------------------------------------------
-
-Options_ResetVRAMBufferPool:	macros
-	move.w	#Art_Buffer, Options_VRAMBufferPoolPtr
-
-; ---------------------------------------------------------------------------
-; Allocates given number of bytes on VRAM buffer pool (poor man's `malloc`)
-; ---------------------------------------------------------------------------
-; ARGUMENTS:
-;	ptrOperand - operand to load allocated memory to
-;	allocSizeOperand - number of bytes to allocate
-; ---------------------------------------------------------------------------
-
-Options_AllocateInVRAMBufferPool:	macro	ptrOperand, allocSizeOperand
-	move.w	Options_VRAMBufferPoolPtr, \ptrOperand
-	add.w	\allocSizeOperand, Options_VRAMBufferPoolPtr
-	assert.w Options_VRAMBufferPoolPtr, ls, #Art_Buffer_End
-	endm
-
-; ---------------------------------------------------------------------------
 ; Loads menu item data by id
 ; ---------------------------------------------------------------------------
 ; ARGUMENTS:

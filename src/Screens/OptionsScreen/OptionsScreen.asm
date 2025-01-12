@@ -256,7 +256,7 @@ OptionsScreen_MainLoop:
 
 ; ---------------------------------------------------------------------------
 @FlushVRAMBufferPool:
-		Options_ResetVRAMBufferPool
+		Screen_PoolReset Options_VRAMBufferPoolPtr, Art_Buffer, Art_Buffer_End
 		rts
 
 ; ---------------------------------------------------------------------------
@@ -264,7 +264,7 @@ OptionsScreen_MainLoop:
 ; ---------------------------------------------------------------------------
 
 Options_InitState:
-		Options_ResetVRAMBufferPool
+		Screen_PoolReset Options_VRAMBufferPoolPtr, Art_Buffer, Art_Buffer_End
 
 		if def(__DEBUG__)
 			move.w	#Options_CanaryValue, Options_StringBufferCanary
@@ -568,7 +568,7 @@ Options_DrawText_Normal:
 		move.w	#$6000, d6				; use palette line 4
 
 Options_DrawText2:
-		Options_AllocateInVRAMBufferPool a1, #Options_StringBufferSize*2
+		Screen_PoolAllocate a1, Options_VRAMBufferPoolPtr, #Options_StringBufferSize*2
 		move.l	a1, -(sp)
 		bra	Options_DrawText_Cont
 
@@ -584,7 +584,7 @@ Options_DrawMenuItem_Normal:
 		moveq	#0, d7					; use "  " cursor (2 empty tiles)
 
 Options_DrawMenuItem_Cont:
-		Options_AllocateInVRAMBufferPool a1, #Options_StringBufferSize*2+2*2	; +2 tiles for cursor
+		Screen_PoolAllocate a1, Options_VRAMBufferPoolPtr, #Options_StringBufferSize*2+2*2	; +2 tiles for cursor
 		move.l	a1, -(sp)
 		move.l	d7, (a1)+				; draw cursor (2 tiles)
 

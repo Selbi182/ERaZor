@@ -2,20 +2,9 @@
 ; ---------------------------------------------------------------------------
 ; Credits Screens
 ; ---------------------------------------------------------------------------
-Credits_Page equ $FFFFF779 ; b
-Credits_Scroll equ $FFFFFFA0 ; w
 
-Credits_Pages = 12
-Credits_Lines = 14
-Credits_LineLength = 20
-StartDelay = 150
+		include	"Screens/CreditsScreen/Variables.asm"
 
-Credits_ScrollTime = $1C0
-Credits_FastThreshold = $60
-Credits_SpeedSlow = 1
-Credits_SpeedFast = 32
-
-Credits_InvertDirection = 1
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
 
@@ -23,7 +12,7 @@ CreditsScreen:
 		move.b	#$97,d0
 		jsr	PlayBGM				; play credits music
 	;	jsr	Pal_FadeFrom
-		
+
 		; for a smooth transition from the ending sequence black bars
 		jsr	Pal_CutToBlack
 		move.b	#$18,VBlankRoutine
@@ -35,39 +24,28 @@ CreditsScreen:
 		move.w	#$8230,(a6)
 		move.w	#$8720,(a6)
 		move.w	#$8407,(a6)
-		move.w	#$8B07,(a6)
+		move.w	#$8B03,(a6)
 		move.w	#$9001,(a6)
 		jsr	ClearScreen
 
-		move.l	#$40000010,(a6)
-		lea	VDP_Data,a0
-		moveq	#0,d0
-		moveq	#40-1,d1
-@clearvsram:	move.w	d0,(a0)
-		dbf	d1,@clearvsram
-
-		vram	$0000
-		lea	(ArtKospM_Credits).l,a0			; load address of compressed art
-		jsr	KosPlusMDec_VRAM			; decompress and dump
-
-		vram	$2000
-		lea	VDP_Data,a6
-		lea	(ArtKospM_PixelStars).l,a0
-		jsr	KosPlusMDec_VRAM
-		VBlank_UnsetMusicOnly
-
-		lea	($FFFFFB80).w,a1
-		lea	(Pal_Credits).l,a0
+		lea	Pal_Target, a1
+		lea	Pal_Credits(pc), a0
 		moveq	#$20-1,d1
 @loadpal:	move.l	(a0)+,(a1)+
-		dbf	d1,@loadpal
+		dbf	d1, @loadpal
 
-		lea	($FFFFD000).w,a1
+		lea	Objects,a1
 		moveq	#0,d0
 		move.w	#$7FF,d1
 @clrobjram:	move.l	d0,(a1)+
-		dbf	d1,@clrobjram
+		dbf	d1, @clrobjram
 
+		; Load all compressed graphics
+		lea	Credits_PLC(pc), a1
+		jsr	LoadPLC_Direct
+		jsr	PLC_ExecuteOnce_Direct
+
+		VBlank_UnsetMusicOnly
 		display_enable
 		jsr	Pal_FadeTo
 
@@ -77,10 +55,9 @@ CreditsScreen:
 		bsr	CS_ScrollMappings			; pre-center first page
 		move.w	#0,(Credits_Scroll).w			; clear scroll again
 
-		move.b	#$8B,($FFFFD000).w			; load starfield generator
-		move.b	#0,($FFFFD000+obRoutine).w		; set to emitter
-		move.w 	#$80+SCREEN_WIDTH/2,($FFFFD000+obX).w		; horizontally center emitter
-		move.w 	#$EC,($FFFFD000+obScreenY).w			; set emitter to top of screen
+		move	#Credits_VRAM_Stars/$20, d4		; art pointer
+		moveq	#78-1, d6				; num stars - 1
+		jsr	Screen_GenerateStarfieldObjects
 
 		; opening delay to sync the screen to the music and prespawn some stars
 		move.w	#StartDelay,d0
@@ -167,13 +144,24 @@ Credits_EndLoop:
 		jmp	Exit_CreditsScreen			; exit screen
 
 ; ===========================================================================
+Credits_PLC:
+		dc.l	ArtKospM_Credits
+		dc.w	Credits_VRAM_Font
+
+		dc.l	Screens_Stars_ArtKospM
+		dc.w	Credits_VRAM_Stars
+
+		dc.w	-1	; end marker
+
+
+; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Scrolling and text centering
 ; ---------------------------------------------------------------------------
 
 CS_ScrollMappings:
 		; scroll top and bottom chunks of the screen
-		lea	($FFFFCC00).w,a1		; load scroll buffer address
+		lea	HSRAM_Buffer,a1			; load scroll buffer address
 		moveq	#0,d0				; clear d0
 		move.w	#Credits_ScrollTime/2,d0	; pre-center
 		sub.w	(Credits_Scroll).w,d0		; load X scroll position
@@ -181,43 +169,47 @@ CS_ScrollMappings:
 		neg.w	d0				; negate direction
 	endif
 		swap	d0				; send left
-		move.w	#$60-1,d1			; set repeat times
-@scrolltop:	move.l	d0,(a1)+			; dump to scroll buffer
+		moveq	#$60/$10-1,d1			; set repeat times
+@scrolltop:	
+		rept $10
+			move.l	d0,(a1)+			; dump to scroll buffer
+		endr
 		dbf	d1,@scrolltop			; repeat til all scanlines are written to
 
 		swap	d0				; send right
 		neg.w	d0				; negate direction
 		swap	d0				; send left
-		move.w	#$80-1,d1			; set repeat times
-@scrollbottom:	move.l	d0,(a1)+			; dump to scroll buffer
+		moveq	#$80/$10-1,d1			; set repeat times
+@scrollbottom:
+		rept $10
+			move.l	d0,(a1)+			; dump to scroll buffer
+		endr
 		dbf	d1,@scrollbottom		; repeat til all scanlines are written to
 ; ---------------------------------------------------------------------------
 
 		; horizontal centering
 		bsr	Credits_LoadPage		; load current page into a0
-		lea	($FFFFCC00).w,a1		; set up H-scroll buffer to the point where the main text is located
+		lea	HSRAM_Buffer,a1			; set up H-scroll buffer to the point where the main text is located
 
-		move.w	#Credits_LineLength,d0		; set line length
 		moveq	#Credits_Lines-1,d1		; set default loop count of line count
 @centertextloop:
 		moveq	#0,d2				; clear d2
-		movea.l	a0,a2				; create copy of text address
-		adda.w	d0,a2				; add line length to the offset (so we start at the end)
-		moveq	#Credits_LineLength,d3		; make sure we don't exceed the line limit (for blank lines)
+		lea	Credits_LineLength(a0), a2	; create copy of text address
+		moveq	#Credits_LineLength-1,d3	; make sure we don't exceed the line limit (for blank lines)
 @findlineend:	tst.b	-(a2)				; is current character a space?
 		bne.s	@writescroll			; if not, we found the end of the line, branch
-		addq.l	#1,d2				; increase 1 to center alignment counter
-		subq.b	#1,d3				; subtract one remaining line length limit to check
-		bhi.s	@findlineend			; loop until we found the end, or move on if it's a blank line
+		addq.w	#1,d2				; increase 1 to center alignment counter
+		dbf	d3,@findlineend
 
 @writescroll:
-		lsl.l	#3,d2				; multiply by 8px per space
+		lsl.w	#3,d2				; multiply by 8px per space
 		swap	d2				; send to plane A
+		move.l	(a1), d0
+		add.l	d2, d0
 		rept	16				; 16 scanlines (one row)
-		add.l	d2,(a1)+			; write offset to scroll buffer
+			move.l	d0, (a1)+			; write offset to scroll buffer
 		endr					; rept end
-		adda.w	d0,a0				; go to next line
-		adda.w	#2,a0				; + line end marker skip
+		lea	Credits_LineLength+2(a0), a0	; go to next line + line end marker skip
 		dbf	d1,@centertextloop		; loop
 		rts					; return
 
@@ -295,10 +287,9 @@ Pal_Credits:
 		dc.w	0
 		; - header top
 		dc.w	$0422,$0ECC,$0A88	
-		dc.w	0,0
+		dc.w	0,0,0
 		; - stars
-		dc.w	$EEE,$666,$444
-		dc.w	0,0,0,0,0,0
+		dc.w	$0CEE,$0ACC,$08AA,$0888,$0688,$0666,$0444,$0222
 
 		; line 2 - header bottom
 		dc.w	0,0

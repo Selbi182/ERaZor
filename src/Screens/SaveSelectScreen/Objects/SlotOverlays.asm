@@ -2,7 +2,7 @@
 SaveSelect_Obj_SlotOverlays:
 	moveq	#4-1, d6
 	@CreateOverlays:
-		SaveSelect_CreateChildObject #@Overlay
+		Screen_CreateChildObject #@Overlay
 		move.w	d6,obSubtype(a1)
 		dbf	d6, @CreateOverlays
 	jmp	DeleteObject
@@ -11,7 +11,7 @@ SaveSelect_Obj_SlotOverlays:
 @Overlay:
 	move.b	#0, obFrame(a0)
 	move.w	#$80+16+2+$80, obX(a0)
-	SaveSelect_CreateChildObject #@Init
+	Screen_CreateChildObject #@Init
 	move.b	#1, obFrame(a1)
 	move.w	#$80+16+2+$100, obX(a1)
 	move.w	obSubtype(a0), obSubtype(a1)

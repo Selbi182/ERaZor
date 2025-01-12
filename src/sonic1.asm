@@ -83,6 +83,7 @@ DebugHudPermanent = 0
 		include	"Modules/MD Replay.asm"
 		include "Modules/DeleteObjectQueue.defs.asm"
 		include	"Modules/Ultra DMA Queue.defs.asm"
+		include "Screens/_common/Macros.asm"
 		include "Screens/OptionsScreen/Variables.asm"
 		include "Screens/OptionsScreen/Macros.asm"
 
@@ -47739,6 +47740,7 @@ ObjPos_Null:	dc.w    $FFFF,$0000,$0000
 		; must be before the screen includes because they are quite hefty
 ; ---------------------------------------------------------------------------
 ; Screens
+		include	"Screens/_common/Includes.asm"
 		include "Screens/ExitLogic.asm"
 		include "Screens/BackgroundEffects.asm"
 		include "Screens/SelbiSplash/SelbiSplash.asm"

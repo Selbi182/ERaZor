@@ -47,7 +47,7 @@ SoundTest_CreateNoteEmitters:
 	; fallthrough
 
 	@create_emitters_loop:
-		SoundTest_CreateObject #SoundTest_Obj_NoteEmitter
+		Screen_CreateObject #SoundTest_Obj_NoteEmitter
 		move.b	@layer, obPriority(a1)
 		move.w	@note_addr, obSTNoteAddr(a1)
 		move.w	@note_type, obSTNoteType(a1)
@@ -192,7 +192,7 @@ SoundTest_Obj_NoteEmitter:
 
 ; ---------------------------------------------------------------------------
 @MakeFadeoutSprite:
-	SoundTest_CreateChildObject #@ObjRoutine_FadeoutSprite	; a1 = object
+	Screen_CreateChildObject #@ObjRoutine_FadeoutSprite	; a1 = object
 
 	; Inherit all object properties
 	move.w	obGfx(a0), obGfx(a1)

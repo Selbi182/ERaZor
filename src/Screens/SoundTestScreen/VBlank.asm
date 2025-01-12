@@ -65,7 +65,7 @@ SoundTest_VBlank:
 	move.l	d1, SoundTest_VisualizerBufferDest
 	jsr	SoundTest_Visualizer_TransferPixelBufferToVRAM
 
-@0:	SoundTest_ResetVRAMBufferPool
+@0:	Screen_PoolReset SoundTest_VRAMBufferPoolPtr, Art_Buffer, Art_Buffer_End
 
 	; Transfer Vscroll/HScroll
 	move.l	SoundTest_VScrollBufferPtrSwapper, d0	; perform a buffer swap

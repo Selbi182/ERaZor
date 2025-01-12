@@ -116,12 +116,15 @@ SaveSelect_MainLoop:
 	jsr	BuildSprites
 	jsr	DeleteQueue_Execute
 
+	; exit save select
 	tst.b	SaveSelect_ExitFlag			; are we exiting?
-	beq	SaveSelect_MainLoop			; if not, branch
+	beq	SaveSelect_MainLoop			; if not, loop
 
-	; TODO: Exit to title screen?
+	tst.b	WhiteFlashCounter			; white flash still active?
+	bne	SaveSelect_MainLoop			; if yes, wait
 	move.b	SaveSelect_SelectedSlotId, SRAMCache.SelectedSlotId
 	jsr	SRAMCache_LoadSelectedSlotId		; load game from selected slot
+	jsr	Pal_FadeFrom
 	jsr	Pal_FadeFrom
 	move.w	#$8C81, VDP_Ctrl			; disable S&H
 	jmp	Exit_SaveSelectScreen
@@ -306,7 +309,7 @@ SaveSelect_DrawSlot_\#__slotId:
 
 	@emptySlot:
 		SaveSelect_WriteString a4, __baseX, __baseY,		"SLOT \#__slotId:"
-		SaveSelect_WriteString a4, __baseX+2, __baseY+2,	"EMPTY"
+		SaveSelect_WriteString a4, __baseX+2, __baseY+2,	"CREATE NEW SAVE"
 		rts
 	endif
 
@@ -510,14 +513,19 @@ SaveSelect_HandleUI:
 	move.b	SaveSelect_SelectedSlotId, d7	; d7 = previous selection
 	
 	move.b	Joypad|Press, d0
-	bmi.s	@PlayCurrentSlot		; start pressed? confirm slot selection
+	bmi.w	@PlayCurrentSlot		; start pressed? confirm slot selection
 
+	cmpi.b	#B, d0				; exactly B pressed?
+	beq.s	@0				; if yes, branch
 	cmpi.b	#C, d0				; exactly C pressed?
 	bne.s	@notc				; if not, branch
-	cmp.b	Joypad|Held, d0			; exactly C held?
+@0	cmp.b	Joypad|Held, d0			; exactly C held?
 	beq.s	@PlayCurrentSlot		; if yes, also confirm slot selection
 @notc:
 
+	; handle delete on ABC
+	tst.b	d7				; is No Save selected?
+	beq.s	@nodel				; if yes, branch
 	moveq	#A|B|C, d1
 	and.b	d0, d1
 	beq.s	@nodel
@@ -573,6 +581,7 @@ SaveSelect_HandleUI:
 
 @PlayCurrentSlot:
 	st.b	SaveSelect_ExitFlag
+	jsr	WhiteFlash
 	moveq	#$FFFFFFC3, d0
 	jmp	PlaySFX
 

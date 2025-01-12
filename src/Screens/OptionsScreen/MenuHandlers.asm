@@ -20,12 +20,11 @@ Options_MenuData:
 	; Difficulty
 	dcScreenPos	OpBaseDest, OpBaseY+0, OpBaseX	; start on-screen position
 	dc.l	Options_GameplayStyle_Redraw		; redraw handler
-	dc.l	Options_GameplayStyle_Handle		; update handler
-	
+	dc.l	Options_GameplayStyle_Handle		; update handler	
 	; Extended camera
 	dcScreenPos	OpBaseDest, OpBaseY+1, OpBaseX	; start on-screen position
 	dc.l	Options_ExtendedCamera_Redraw		; redraw handler
-	dc.l	Options_ExtendedCamera_Handle		; update handler
+	dc.l	Options_ExtendedCamera_Handle		; update handle
 	; Arcade mode / Speedrun mode
 	dcScreenPos	OpBaseDest, OpBaseY+2, OpBaseX	; start on-screen position
 	dc.l	Options_Autoskip_Redraw			; redraw handler
@@ -54,31 +53,35 @@ Options_MenuData:
 
 ; global options
 
-	; Flashy lights
+	; Peelout style
 	dcScreenPos	OpBaseDest, OpBaseY+10, OpBaseX	; start on-screen position
+	dc.l	Options_PeeloutStyle_Redraw		; redraw handler
+	dc.l	Options_PeeloutStyle_Handle		; update handler
+	; Flashy lights
+	dcScreenPos	OpBaseDest, OpBaseY+11, OpBaseX	; start on-screen position
 	dc.l	Options_FlashyLights_Redraw		; redraw handler
 	dc.l	Options_FlashyLights_Handle		; update handler
 	; Camera shake
-	dcScreenPos	OpBaseDest, OpBaseY+11, OpBaseX	; start on-screen position
+	dcScreenPos	OpBaseDest, OpBaseY+12, OpBaseX	; start on-screen position
 	dc.l	Options_CameraShake_Redraw		; redraw handler
 	dc.l	Options_CameraShake_Handle		; update handler
 	; Audio mode
-	dcScreenPos	OpBaseDest, OpBaseY+12, OpBaseX	; start on-screen position
+	dcScreenPos	OpBaseDest, OpBaseY+13, OpBaseX	; start on-screen position
 	dc.l	Options_Audio_Redraw			; redraw handler
 	dc.l	Options_Audio_Handle			; update handler
 	; Black bars setup
-	dcScreenPos	OpBaseDest, OpBaseY+13, OpBaseX	; start on-screen position
+	dcScreenPos	OpBaseDest, OpBaseY+14, OpBaseX	; start on-screen position
 	dc.l	Options_BlackBarsMode_Redraw		; redraw handler
 	dc.l	Options_BlackBarsMode_Handle		; update handler
 
 
 	; Reset slot-specifc options
-	dcScreenPos	OpBaseDest, OpBaseY+15, OpBaseX	; start on-screen position
+	dcScreenPos	OpBaseDest, OpBaseY+16, OpBaseX	; start on-screen position
 	dc.l	Options_ResetLocalOptions_Redraw	; redraw handler
 	dc.l	Options_ResetLocalOptions_Handle	; update handler
 
 	; Reset global options
-	dcScreenPos	OpBaseDest, OpBaseY+16, OpBaseX	; start on-screen position
+	dcScreenPos	OpBaseDest, OpBaseY+17, OpBaseX	; start on-screen position
 	dc.l	Options_ResetGlobalOptions_Redraw	; redraw handler
 	dc.l	Options_ResetGlobalOptions_Handle	; update handler
 
@@ -243,6 +246,46 @@ Options_PaletteStyle_Handle:
 @done:	rts
 
 
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; "PEELOUT STYLE" redraw function
+; ---------------------------------------------------------------------------
+; INPUT:
+;	a4	= `Options_DrawText_Normal` or `Options_DrawText_Highlighted`
+; ---------------------------------------------------------------------------
+
+Options_PeeloutStyle_Redraw:
+	lea	@Str_UPandA(pc), a1
+	btst	#GlobalOptions_PeeloutStyle, GlobalOptions
+	beq.s	@0
+	lea	@Str_UPandABC(pc), a1
+@0:
+ if def(__WIDESCREEN__)
+	Options_PipeString a4, "SUPER PEEL-OUT STYLE         %<.l a1 str>", OpLength
+ else
+	Options_PipeString a4, "PEEL-OUT STYLE         %<.l a1 str>", OpLength
+ endif
+	rts
+
+@Str_UPandA:
+	dc.b	'  ^ + A', 0
+	even
+@Str_UPandABC:
+	dc.b	'^ + ABC', 0
+	even
+
+; ---------------------------------------------------------------------------
+; "PEELOUT STYLE" handle function
+; ---------------------------------------------------------------------------
+
+Options_PeeloutStyle_Handle:
+	move.b	Joypad|Press,d1		; get button presses
+	andi.b	#$FC,d1			; is left, right, A, B, C, or Start pressed?
+	beq.w	@done			; if not, branch
+	bchg	#GlobalOptions_PeeloutStyle, GlobalOptions ; toggle peelout style
+	bsr	Options_PlayRespectiveToggleSound
+	st.b	Options_RedrawCurrentItem
+@done:	rts
 
 
 ; ===========================================================================

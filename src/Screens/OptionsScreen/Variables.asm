@@ -33,6 +33,7 @@ Options_IndentTimer:		rs.w	1
 	GlobalOptions_DisableSFX:		equ	1
 	GlobalOptions_CameraShake_Weak:		equ	2
 	GlobalOptions_CameraShake_Intense:	equ	3
+	GlobalOptions_PeeloutStyle:	 	equ	4
 	GlobalOptions_ScreenFlash_Intense:	equ	6
 	GlobalOptions_ScreenFlash_Weak:		equ	7
 

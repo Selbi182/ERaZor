@@ -138,7 +138,6 @@ OptionsScreen_MainLoop:
 		add.w	d1,($FFFFF616).w	; set to VSRAM
 @nocamshake:
 
-
 		; indent block when a Reset option is selected
 		lea	($FFFFCC00).w,a1
 		move.w	#224-1,d3
@@ -155,9 +154,9 @@ OptionsScreen_MainLoop:
 		move.w	#-4,Options_IndentTimer
 @0:
 
-		cmpi.w	#12,($FFFFFF82).w		; Reset Slot Options?
+		cmpi.w	#13,($FFFFFF82).w		; Reset Slot Options?
 		beq.s	@indenttop
-		cmpi.w	#13,($FFFFFF82).w		; Reset Global Options?
+		cmpi.w	#14,($FFFFFF82).w		; Reset Global Options?
 		beq.s	@indentbottom
 		clr.w	Options_IndentTimer
 		bra.s	@ChkLoop
@@ -174,12 +173,11 @@ OptionsScreen_MainLoop:
 
 @indentbottom:
 		lea	($FFFFCC00+(16*4*8)-$10).w,a1
-		move.w	#(5*8)-1,d3
+		move.w	#(6*8)-1,d3
 	@scroll2:
 		move.w	d0,(a1)+
 		addq.w	#2,a1
 		dbf	d3,@scroll2
-
 
 @ChkLoop:
 		cmp.b	#$24, GameMode				; are we still running Options gamemode?
@@ -375,7 +373,7 @@ Options_RedrawHeader:
 		dc.l	@DrawHeaderPlain	; redraw handler
 
 @ItemData_Header_Bottom:
-		dcScreenPos $C000, 24, 0	; start on-screen position
+		dcScreenPos $C000, 25, 0	; start on-screen position
 		dc.l	@DrawHeaderPlain	; redraw handler
 
 ; ---------------------------------------------------------------------------
@@ -483,9 +481,9 @@ Options_HandleUpDown:
 		cmpi.w	#1,d1				; Extended Widescreen Camera selected?
 		beq.s	@ahint				; if yes, show A hint
 	endif
-		cmpi.w	#2,d1				; Track Your Mistakes mode selected?
+		cmpi.w	#2,d1				; Arcade Mode selected?
 		beq.s	@ahint				; if yes, show A hint
-		cmpi.w	#3,d1				; Speedrun Mode selected?
+		cmpi.w	#3,d1				; Alternate HUD selected?
 		beq.s	@ahint				; if yes, show A hint
 		cmpi.w	#4,d1				; Palette Style selected?
 		beq.s	@ahint				; if yes, show A hint

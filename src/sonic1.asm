@@ -30381,7 +30381,12 @@ SPO_NotMZ:
 		beq.s	SPO_Simulated		; if yes, branch
 		cmpi.b	#7,obAnim(a0)		; is anim looking up?
 		bne.w	SPO_End			; if not, return
+
 		moveq	#A,d0			; check exclusively for A
+		btst	#GlobalOptions_PeeloutStyle, GlobalOptions
+		beq.s	@onlyA			; branch if peelout style is set accordingly
+		moveq	#A|B|C,d0		; check for A, B, or C
+@onlyA:
 		and.b	($FFFFF603).w,d0	; pressing a required button?
 		beq.w	SPO_End			; if not, return
 

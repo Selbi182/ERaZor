@@ -892,7 +892,7 @@ Hint_1:
 		boxtxt	" SPIN DASH"
 		boxtxt_line
 		boxtxt	" ^ + a"
-		boxtxt	" A SUPER PEEL OUT"
+		boxtxt	" A SUPER PEEL-OUT"
 		boxtxt	" THAT DOESN'T SUCK"
 		boxtxt_next
 

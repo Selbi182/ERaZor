@@ -331,6 +331,7 @@ SRAMCache_SanityCheck:
 					 GlobalOptions_DisableSFX, &
 					 GlobalOptions_CameraShake_Weak, &
 					 GlobalOptions_CameraShake_Intense, &
+					 GlobalOptions_PeeloutStyle, &
 					 GlobalOptions_ScreenFlash_Intense, &
 					 GlobalOptions_ScreenFlash_Weak>, @unsupportedbits
 
@@ -368,12 +369,15 @@ SRAMCache_SanityCheck:
 
 ; ---------------------------------------------------------------------------
 @desync_byte:
+	rts
 	RaiseError "SRAM cache desync:%<endl>addr=%<.w a0 sym>, cached=%<.b d0>, actual=%<.b (a0)>", SRAMCache_Debugger
 
 @desync_word:
+	rts
 	RaiseError "SRAM cache desync:%<endl>addr=%<.w a0 sym>, cached=%<.w d0>, actual=%<.w (a0)>", SRAMCache_Debugger
 
 @desync_long:
+	rts
 	RaiseError "SRAM cache desync:%<endl>addr=%<.w a0 sym>, cached=%<.l d0>, actual=%<.l (a0)>", SRAMCache_Debugger
 
 @unsupportedbits:

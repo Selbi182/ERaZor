@@ -62,8 +62,8 @@ Options_IndentTimer:		rs.w	1
 ; Default options when starting the game for the first time
 	if def(__WIDESCREEN__)
 Default_GlobalOptions:	equbits	; no bits to set
-Default_SlotOptions:	equbits	SlotOptions_ExtendedCamera, SlotOptions_NewPalettes
+Default_SlotOptions:	equbits	SlotOptions_NewPalettes
 	else
 Default_GlobalOptions:	equbits	; no bits to set
-Default_SlotOptions:	equbits	SlotOptions_NewPalettes
+Default_SlotOptions:	equbits	SlotOptions_ExtendedCamera, SlotOptions_NewPalettes
 	endif

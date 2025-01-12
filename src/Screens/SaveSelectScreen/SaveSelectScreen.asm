@@ -217,7 +217,7 @@ SaveSelect_InitUI:
 SaveSelect_InitialDraw:
 	; Draw hints
 	lea	SaveSelect_DrawText_Inactive(pc), a4
-	SaveSelect_WriteString a4, 6, 26, "- START: SELECT, B: DELETE -"
+	SaveSelect_WriteString a4, 6, 26, "-  A > B > C: DELETE SLOT  -"
 
 	; Redraw all slots
 	bsr	SaveSelect_DrawSlot_0
@@ -515,10 +515,19 @@ SaveSelect_HandlePaletteEffects:
 
 SaveSelect_HandleUI:
 	move.b	SaveSelect_SelectedSlotId, d7	; d7 = previous selection
+	
+	moveq	#0,d0
 	move.b	Joypad|Press, d0
-	bmi.s	@PlayCurrentSlot
-	btst	#iB, d0
-	bne.s	@ClearSelection
+	bmi.s	@PlayCurrentSlot		; start pressed? confirm slot selection
+	cmpi.b	#C, d0				; exactly C pressed?
+	bne.s	@0
+	cmpi.b	#C, Joypad|Held			; exactly C held?
+	beq.s	@PlayCurrentSlot		; if yes, also confirm slot selection
+@0
+	cmpi.b	#A|B|C, Joypad|Held		; exactly A+B+C held?
+	beq.s	@DeleteSelectedSlot		; if yes, delete selected slot
+
+	; handle up/down
 	btst	#iUp, d0
 	bne.s	@PreviousSelection
 	btst	#iDown, d0
@@ -547,7 +556,7 @@ SaveSelect_HandleUI:
 	moveq	#$FFFFFFD8, d0
 	jmp	PlaySFX
 
-@ClearSelection:
+@DeleteSelectedSlot:
 	move.b	d7, d0
 	beq	@ret				; if slot is empty, bail
 	jsr	SRAMCache_GetSlotData		; INPUT: d0 = Slot id, OUTPUT: a2 = Slot data

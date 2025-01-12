@@ -65,7 +65,7 @@ DebugSurviveNoRings = 1
 DebugHudPermanent = 0
 ; ------------------------------------------------------
 DoorsAlwaysOpen = 0
-LowBossHP = 0
+LowBossHP = 1
 ; ======================================================
 	else
 ; BENCHMARK build settings (DO NOT CHANGE!)
@@ -9302,6 +9302,13 @@ Obj18_OnPlatform:				; XREF: Obj18_Index
 		clr.w	($FFFFD010).w		; clear Sonic's X speed
 		clr.w	($FFFFD014).w		; clear Sonic's inertia
 		
+		move.b	#30,$3C(a0)		; disable interaction for a bit
+		bset	#1,($FFFFD022).w
+	;	bset	#2,($FFFFD022).w
+		bclr	#3,($FFFFD022).w
+		move.b	#1,($FFFFFFEB).w	; set jumpdash flag
+		move.b	#1,($FFFFFFAD).w
+
 		jsr	SingleObjLoad		; load explosion object
 		bne.s	Obj18_SYZEnd
 		move.b	#$3F,(a1)
@@ -9309,11 +9316,7 @@ Obj18_OnPlatform:				; XREF: Obj18_Index
 		move.w	obY(a0),obY(a1)
 		move.b	#1,$30(a1)
 		move.b	#0,$31(a1)
-		bclr	#3,($FFFFD022).w
-		bset	#1,($FFFFD022).w
-		move.b	#1,($FFFFFFAD).w	; set jumpdash flag
-		move.w	obY(a0),d0
-		move.b	#30,$3C(a0)
+
 
 Obj18_SYZEnd:
 		rts
@@ -10668,6 +10671,14 @@ Obj2A_OpenShut:				; XREF: Obj2A_Index
 		bra.w	Obj2A_Animate			; if yes, shut off access until you beat it
 
 @notpostrp:
+
+		cmpi.b	#7,d0				; is this the pre-final door (SAP|FP)?
+		bne.s	@notprefinaldoor			; if not, branch
+		jsr	CheckSlot_LevelBeaten_Current	; check if the level is beaten (specifically for current to prevent cheesing)
+		bne.s	Obj2A_Green			; if all levels are beaten, unlock door
+		bra.w	Obj2A_Animate			; if the required level hasn't been beaten, keep door locked
+		
+@notprefinaldoor:
 		cmpi.b	#6,d0				; is this the final door (FP|end)?
 		bne.s	@notfinaldoor			; if not, branch
 		jsr	CheckSlot_AllLevelsBeaten_Current	; only unlock final door after all levels have been legitimately beaten
@@ -27927,6 +27938,8 @@ Obj06_ChkDist:
 		bhi.w	Obj06_Display		; if not, branch
 		move.b	#1,($FFFFFF74).w	; set spindash block flag
 
+		btst	#SlotOptions2_PlacePlacePlace, SlotOptions2 ; PLACE PLACE PLACE?
+		bne.s	@noskiptext		; if yes, lol
 		frantic				; are we in frantic?
 		beq.s	@skiptext		; if not, always show skip text
 		jsr	CheckSlot_BaseGameBeaten_Frantic ; frantic already beaten?
@@ -27946,11 +27959,13 @@ Obj06_ChkDist:
 		bne.w	Obj06_Display		; all buttons pressed? if not, branch
 		
 Obj06_DoHardPartSkip:
+		btst	#SlotOptions2_PlacePlacePlace, SlotOptions2 ; PLACE PLACE PLACE?
+		bne.s	@kill			; if yes, lol
 		frantic				; are we in Frantic mode?
 		beq.s	@dohardpartskip		; if not, branch
 		jsr	CheckSlot_BaseGameBeaten_Frantic ; frantic already beaten?
 		bne.s	@dohardpartskip		; if yes, unlock HPS
-		jmp	TrollKill		; no hard part skippers for you
+@kill:		jmp	TrollKill		; no hard part skippers for you
 ; ---------------------------------------------------------------------------
 
 @dohardpartskip:
@@ -28862,12 +28877,18 @@ Obj01_Inhuman:
 		move.b	#0,($FFFFFE2C).w	; make sure sonic has no shield
 
 		; inhuman palette cycle
+		tst.b	($FFFFFFA5).w		; is HUD set to be offscreen?
+		beq.s	@0			; if not, branch
+		cmpi.w	#$200,($FFFFFE10).w	; are we in RP?
+		beq.s	@1			; if yes, disable palcycle during lavadrop scen
+	@0:
 		move.w	#$100,d0
 		add.w	d0,($FFFFFB04)	; increase Sonic's palette (color 3)
 		add.w	d0,($FFFFFB06)	; increase Sonic's palette (color 4)
 		add.w	d0,($FFFFFB08)	; increase Sonic's palette (color 5)
 	;	sub.w	d0,($FFFFFB0A)	; decrease Sonic's palette (color 6)
-		
+	@1:
+
 		; frantic mode ring drain in RP
 		frantic				; are we in frantic?
 		beq.s	Obj01_ChkInvin		; if not, branch

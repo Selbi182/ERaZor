@@ -309,14 +309,21 @@ FMUpdateTrack:
 		bne.s	.notegoing			; Branch if it hasn't expired
 		bclr	#4,TrackPlaybackControl(a5)	; Clear 'do not attack next note' bit
 		jsr	FMDoNext(pc)
+		btst	#1,TrackPlaybackControl(a5)	; If resting, return
+		bne.s	.locret
 		jsr	FMPrepareNote(pc)
 		bra.w	FMNoteOn
 ; ===========================================================================
 ; loc_71CE0:
 .notegoing:
+		btst	#1,TrackPlaybackControl(a5)	; If resting, return
+		bne.s	.locret
 		jsr	NoteTimeoutUpdate(pc)
 		jsr	DoModulation(pc)
 		bra.w	FMUpdateFreq
+
+.locret
+		rts
 ; End of function FMUpdateTrack
 
 

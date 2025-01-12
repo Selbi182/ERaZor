@@ -2442,16 +2442,16 @@ Pal_Black:		incbin	palette\black.bin
 Pal_TutorialBox:	incbin	palette\tutorialbox.bin
 
 ; ---------------------------------------------------------------------------
-; Subroutine to	delay the program by ($FFFFF62A) frames
+; Subroutine to	perform a VSync
 ; ---------------------------------------------------------------------------
 
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 
 
-DelayProgram:			; XREF: PauseGame
-		move	#$2300,sr	; enable interrupts
+DelayProgram:
+		move	#$2300, sr			; enable interrupts
 		movem.l	d0-d2, -(sp)
-		movem.l	VSyncWaitTicks_64bit, d0-d1	; load 64-bit number
+		movem.l	VSyncWaitTicks_64bit, d0-d1	; load a 64-bit number
 		moveq	#0, d2
 
 	@WaitVBlank:

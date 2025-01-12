@@ -124,6 +124,7 @@ SaveSelect_MainLoop:
 	bne	SaveSelect_MainLoop			; if yes, wait
 	move.b	SaveSelect_SelectedSlotId, SRAMCache.SelectedSlotId
 	jsr	SRAMCache_LoadSelectedSlotId		; load game from selected slot
+	jsr	SRAMCache_Commit
 	jsr	Pal_FadeFrom
 	jsr	Pal_FadeFrom
 	move.w	#$8C81, VDP_Ctrl			; disable S&H
@@ -212,14 +213,29 @@ SaveSelect_InitUI:
 ; ---------------------------------------------------------------------------
 SaveSelect_InitialDraw:
 	; Draw hints
-	lea	SaveSelect_DrawText_Inactive(pc), a4
-	SaveSelect_WriteString a4, 6, 26, "-  A > B > C: DELETE SLOT  -"
+	bsr	SaveSelect_DrawBottomHint
 
 	; Redraw all slots
 	bsr	SaveSelect_DrawSlot_0
 	bsr	SaveSelect_DrawSlot_1
 	bsr	SaveSelect_DrawSlot_2
 	bra	SaveSelect_DrawSlot_3
+; ---------------------------------------------------------------------------
+
+SaveSelect_DrawBottomHint:
+	lea	SaveSelect_DrawText_Inactive(pc), a4
+	tst.b	SaveSelect_SelectedSlotId		; No Save selected?
+	beq.s	@nosave					; if yes, branch
+
+	SaveSelect_WriteString a4, 6, 26, "-  A > B > C: DELETE SLOT  -"
+	rts
+@nosave:
+	SaveSelect_WriteString a4, 6, 26, "A > B > C : RESET EVERYTHING"
+	rts
+@empty:
+	SaveSelect_WriteString a4, 6, 26, "                            "
+	rts
+
 
 ; ---------------------------------------------------------------------------
 ; INPUT:
@@ -516,24 +532,25 @@ SaveSelect_HandleUI:
 	bmi.w	@PlayCurrentSlot		; start pressed? confirm slot selection
 
 	cmpi.b	#B, d0				; exactly B pressed?
-	beq.s	@0				; if yes, branch
+	beq.s	@chksingle			; if yes, branch
 	cmpi.b	#C, d0				; exactly C pressed?
-	bne.s	@notc				; if not, branch
-@0	cmp.b	Joypad|Held, d0			; exactly C held?
-	beq.s	@PlayCurrentSlot		; if yes, also confirm slot selection
-@notc:
+	bne.s	@notbc				; if not, branch
+@chksingle:
+	cmp.b	Joypad|Held, d0			; exactly C held?
+	beq.w	@PlayCurrentSlot		; if yes, also confirm slot selection
+@notbc:
 
 	; handle delete on ABC
-	tst.b	d7				; is No Save selected?
-	beq.s	@nodel				; if yes, branch
 	moveq	#A|B|C, d1
 	and.b	d0, d1
 	beq.s	@nodel
 	moveq	#$FFFFFFA9, d0
 	jsr	PlaySFX
 	cmpi.b	#A|B|C, Joypad|Held		; exactly A+B+C held?
-	beq.s	@DeleteSelectedSlot		; if yes, delete selected slot
-	rts
+	bne.s	@ret				; if not, branch
+	tst.b	d7				; is No Save selected?
+	beq.s	@DeleteEverything		; if yes, delete everything
+	bra.s	@DeleteSelectedSlot		; if yes, delete selected slot
 @nodel:
 
 	; handle up/down
@@ -563,9 +580,11 @@ SaveSelect_HandleUI:
 @UpdateSelection2:
 	move.b	d7, d0
 	jsr	SaveSelect_DrawSlot		; re-draw unselected slot
+	jsr	SaveSelect_DrawBottomHint
 	moveq	#$FFFFFFD8, d0
 	jmp	PlaySFX
 
+; ---------------------------------------------------------------------------
 @DeleteSelectedSlot:
 	move.b	d7, d0
 	beq	@ret				; if slot is empty, bail
@@ -579,6 +598,40 @@ SaveSelect_HandleUI:
 	moveq	#$FFFFFFDF, d0
 	jmp	PlaySFX
 
+; ---------------------------------------------------------------------------
+@DeleteEverything:
+	ints_disable
+	move.b	#90,SaveSelect_ExitFlag	; set fade-out sequence time to 90 frames
+
+@delete_fadeoutloop:
+	subq.b	#1,SaveSelect_ExitFlag	; subtract 1 from remaining time
+	bmi.s	@delete_fadeoutend	; is time over? end fade-out sequence
+	
+	jsr	RandomNumber		; get new random number
+	lea	($FFFFCC00).w,a1	; load scroll buffer address
+	move.w	#223,d2			; do it for all 224 lines
+@0	jsr	CalcSine		; further randomize the offset after every line
+	move.l	d1,(a1)+		; dump to scroll buffer
+	dbf	d2,@0			; repeat
+	
+	moveq	#7,d0			; only trigger every 7th frame
+	and.b	SaveSelect_ExitFlag,d0	; get remaining time
+	bne.s	@1			; is it not a 7th frame?, branch
+	jsr	Pal_FadeOut		; partially fade-out palette
+	move.b	#$C4,d0			; play explosion sound
+	jsr	PlaySFX	; ''
+
+@1	move.b	#2,VBlankRoutine	; run V-Blank
+	jsr	DelayProgram		; ''
+	bra.s	@delete_fadeoutloop	; loop
+
+@delete_fadeoutend:
+	jsr	SRAMCache_ResetEverythingToDefaults ; delete the actual SRAM now
+	addq.l	#4,sp			; skip return address
+	jmp	Start_FirstGameMode	; restart game
+
+
+; ---------------------------------------------------------------------------
 @PlayCurrentSlot:
 	st.b	SaveSelect_ExitFlag
 	jsr	WhiteFlash

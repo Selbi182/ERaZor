@@ -1144,13 +1144,18 @@ Sound_PlaySpecial:
 		tst.b	v_sfx_fm4_track+TrackPlaybackControl(a6)	; Is track playing?
 		bpl.s	.doneoverride					; Branch if not
 		bset	#2,v_spcsfx_fm4_track+TrackPlaybackControl(a6)	; Set 'SFX is overriding' bit
-		rts
 
 ; loc_723A6:
 .doneoverride:
 		tst.b	v_sfx_psg3_track+TrackPlaybackControl(a6)	; Is track playing?
-		bpl.s	.locret						; Branch if not
+		bpl.s	.PSG3NotOverrided				; Branch if not
 		bset	#2,v_spcsfx_psg3_track+TrackPlaybackControl(a6)	; Set 'SFX is overriding' bit
+		; BUGFIX backported from the Clone driver:
+		; The original driver made the mistake of silencing PSG3 when the
+		; SFX track is using it, not the Special SFX
+		rts
+
+.PSG3NotOverrided:
 		ori.b	#$1F,d4						; Command to silence channel
 		move.b	d4,(psg_input).l
 		bchg	#5,d4			; Command to silence noise channel

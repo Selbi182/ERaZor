@@ -26,7 +26,7 @@ ReturnToUberhub:
 
 ReturnToUberhub_Chapter:
 		move.w	#$400, CurrentLevel			; set level to Uberhub
-		btst	#SlotOptions2_ArcadeMode, SlotOptions2	; is Arcade Mode enabled?
+		btst	#SlotOptions2_NoStory, SlotOptions2	; is no-story mode enabled?
 		bne.s	StartLevel				; if yes, skip chapter screen
 
 		; show chapter screen first
@@ -442,7 +442,7 @@ RunChapter:
 
 		bsr	CheckSlot_BaseGameBeaten_Any		; has the player already beaten the base game (of either mode)?
 		bne.s	@nochapter				; if yes, no longer display chapter screens
-		btst	#SlotOptions2_ArcadeMode, SlotOptions2	; is Arcade Mode enabled?
+		btst	#SlotOptions2_NoStory, SlotOptions2	; is no-story mode enabled?
 		bne.s	@nochapter				; if yes, start level straight away
 
 		move.b	#$28,(GameMode).w	; new chapter discovered, run chapters screen
@@ -480,7 +480,7 @@ FindCurrentChapter:
 ; ===========================================================================
 
 RunStory:
-		btst	#SlotOptions2_ArcadeMode, SlotOptions2	; is Arcade Mode enabled?
+		btst	#SlotOptions2_NoStory, SlotOptions2	; is no-story mode enabled?
 		beq.s	RunStory_Force				; if not, run story as usual
 		move.b	(StoryTextID).w,d0			; copy story ID to d0 (needed for Exit_StoryScreen)
 		bra.w	Exit_StoryScreen			; auto-skip story screen
@@ -961,6 +961,14 @@ CheckSlot_UnterhubBeaten:
 		moveq	#7,d0				; Unterhub beaten?
 		bsr	CheckSlot_LevelBeaten_Current
 @no:		rts
+
+; ---------------------------------------------------------------------------
+
+Check_FullArcadeMode:
+		btst	#SlotOptions2_NoStory, SlotOptions2
+		beq.s	@end
+		btst	#SlotOptions2_ArcadeMode, SlotOptions2
+@end:		rts
 
 ; ---------------------------------------------------------------------------
 ; ===========================================================================

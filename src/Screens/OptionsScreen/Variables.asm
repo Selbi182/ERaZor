@@ -59,8 +59,8 @@ Options_IndentTimer:		rs.w	1
 	SlotOptions2_PissFilter:		equ	1
 	SlotOptions2_MotionBlurTemp:		equ	2
 	SlotOptions2_ArcadeMode:		equ	3
-	SlotOptions2_PlacePlacePlace:		equ	4
-*	SlotOptions2_Unused:			equ	5
+	SlotOptions2_NoStory:			equ	4
+	SlotOptions2_PlacePlacePlace:		equ	5
 *	SlotOptions2_Unused:			equ	6
 *	SlotOptions2_Unused:			equ	7
 

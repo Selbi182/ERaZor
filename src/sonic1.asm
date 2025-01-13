@@ -3662,9 +3662,11 @@ Level_GetBgm:
 		cmpi.w	#$501,($FFFFFE10).w	; are we starting the tutorial?
 		bne.s	Level_NoPreTut		; if not, branch
 		
+		btst	#SlotOptions2_NoStory, SlotOptions2 ; is no-story enabled?
+		bne.s	Level_NoPreTut		; if yes, don't play intro text
 		tst.b	(DyingFlag).w		; did the player die?
 		bne.s	Level_NoPreTut		; if yes, don't replay intro text
-		
+
 		move.w	#0,BlackBars.Height	; prevent black screen for the first few frames
 
 		move.b	#$99,d0			; play introduction music
@@ -20024,14 +20026,13 @@ Obj43_RPEndCutscene:
 		bset	#5,($FFFFF7A7).w	; set Roller as deleted
 		addq.b	#2,ob2ndRout(a0)
 
-		btst	#SlotOptions2_ArcadeMode, SlotOptions2	; is Arcade Mode enabled?
-		bne.s	Obj43_RPEnd				; if yes, don't play music
+		jsr	Check_FullArcadeMode	; is full arcade mode on?
+		bne.s	Obj43_RPEnd		; if yes, don't play music so it doesn't bleed into LP
 		jsr	PlayLevelMusic_Force	; restart music before entering level
 
 Obj43_RPEnd:
 		rts
 ; ---------------------------------------------------------------------------
-
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------

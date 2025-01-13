@@ -1081,6 +1081,16 @@ Hint_UberhubEasterEgg:
 		boxtxt	"night hill place!"
 		boxtxt_next
 
+		boxtxt	"skip mini-cutscenes"
+		boxtxt_line
+		boxtxt	"YOU CAN SKIP MANY OF"
+		boxtxt	"THE SHORT CUTSCENES"
+		boxtxt	"BY HOLDING a + b + c"
+		boxtxt	"AT ONCE! THIS ALSO"
+		boxtxt	"INCLUDES GIANT RING"
+		boxtxt	"ANIMATIONS."
+		boxtxt_end
+
 		boxtxt	"skip special stages"
 		boxtxt_line
 		boxtxt	"IN CASUAL MODE, YOU"
@@ -1487,6 +1497,7 @@ Hint_End_BlackoutTeaser:
 Hint_Options_Autoskip:
 		boxtxt	"arcade mode"
 		boxtxt_line
+		boxtxt	"WHEN ENABLED, YOU'LL"
 		boxtxt	"GO STRAIGHT TO THE"
 		boxtxt	"NEXT LEVEL AFTER"
 		boxtxt	"BEATING ONE, INSTEAD"
@@ -1494,24 +1505,14 @@ Hint_Options_Autoskip:
 		boxtxt	"0BERHUB PLACE!"
 		boxtxt_next
 
-		boxtxt	"ALL STORY SCREENS"
-		boxtxt	"WILL BE INSTANTLY"
-		boxtxt	"SKIPPED AS WELL."
+		boxtxt	"YOU CAN ALSO CHOOSE"
+		boxtxt	"TO SKIP ALL STORY"
+		boxtxt	"AND CHAPTER SCREENS."
 		boxtxt_line
 		boxtxt	"GREAT FOR REPLAYS,"
 		boxtxt	"AND VERY HIGHLY"
 		boxtxt	"RECOMMENDED FOR"
 		boxtxt	"speedruns!"
-		boxtxt_next
-
-		boxtxt	"bonus tip"
-		boxtxt_line
-		boxtxt	"YOU CAN SKIP MANY OF"
-		boxtxt	"THE SHORT CUTSCENES"
-		boxtxt	"BY HOLDING a + b + c"
-		boxtxt	"AT ONCE! THIS ALSO"
-		boxtxt	"INCLUDES GIANT RING"
-		boxtxt	"ANIMATIONS."
 		boxtxt_end
 
 Hint_Options_AlternateHUD:

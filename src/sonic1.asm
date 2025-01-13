@@ -478,18 +478,29 @@ BlackBars.GHP:
 		tst.b	($FFFFF7CC).w			; are controls locked?
 		bne.s	@timeleft			; if yes, branch
 
-		move.w	($FFFFD008).w,d0		; reset black bars in waterfall
+		move.w	($FFFFD008).w,d0		; reset black bars in waterfall chunk
 		move.w	($FFFFD00C).w,d1
 		jsr	Sub_FindChunkByCoordinate
 		cmpi.b	#$34,(a0)			; is Sonic standing in the unique waterfall chunk?
 		bne.s	@notwaterfall			; if not, branch
+
+		moveq	#$3F,d0
+		and.b	($FFFFFE05).w,d0
+		bne.s	@0
+		move.w	#$D0,d0				; play waterfall sfx
+		jsr	PlaySFX
+	@0:
 		move.w	BlackBars.BaseHeight,d0		; get current base black bars height
 		cmp.w	BlackBars.Height,d0		; are bars smaller than the base height?
 		bgt.s	@timeleft			; if not, branch
-		andi.w	#$FFFE,BlackBars.TargetHeight	; make even
-		subq.w	#BlackBars.GrowSize,BlackBars.TargetHeight ; grow bars until we reach the minimum height
-		bpl.s	@timeleft			; if still positive, branch
-		move.w	#0,BlackBars.TargetHeight	; make sure we don't underflow
+
+		move.w	BlackBars.TargetHeight,d1
+		andi.w	#$FFFE,d1	; make even
+		subq.w	#BlackBars.GrowSize,d1 ; shrink bars until we reach the minimum height
+		bpl.s	@waterfall			; if still positive, branch
+		moveq	#0,d1	; make sure we don't underflow
+	@waterfall:
+		move.w	d1,BlackBars.TargetHeight	; make sure we don't underflow
 		bra.s	@timeleft			; if not, branch
 
 	@notwaterfall:
@@ -4042,6 +4053,7 @@ Level_Delay:
 		bne.s	Level_StartGame		; if not, branch
 	@spinni:
 		move.b	#$25,($FFFFD01C).w	; inhuman spin animation
+		bset	#0,($FFFFD022).w	; make Sonic face left
 
 Level_StartGame:
 		clr.b	(CarryOverData).w	; clear any remaining carry-over data
@@ -5127,6 +5139,7 @@ Signpost_Exit:
 		rts	
 ; End of function SignpostArtLoad
 
+
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Special Stage
@@ -5139,6 +5152,8 @@ SpecialStage:				; XREF: GameModeArray
 
 		tst.b	(Blackout).w	; is this the blackout special stage?
 		beq.s	@notblackout	; if not, branch
+
+		bsr	Blackout_PreventCheating
 		
 		clr.b	($FFFFFFD0).w	; disable distortion effect
 		clr.b	(CameraShake).w	; disable screen shake effect
@@ -5587,6 +5602,17 @@ BlackoutChallenge:
 @setspeed:
 		move.w	d0,($FFFFF782).w			; set new rotation speed
 		rts
+; ---------------------------------------------------------------------------
+
+Blackout_PreventCheating:
+		jsr	CheckSlot_BlackoutFirst	; is this the first attempt at the blackout challenge?
+		beq.s	@end			; if not, branch
+		bclr	#SlotOptions_NonstopInhuman, SlotOptions	; disable true inhuman
+		clr.b	(Inhuman).w
+		bclr	#SlotOptions_SpaceGolf, SlotOptions	; disable space golf
+		clr.b	(SpaceGolf).w
+@end:		rts
+
 ; ---------------------------------------------------------------------------
 
 ; ---------------------------------------------------------------------------
@@ -12103,7 +12129,7 @@ Obj1F_BossDelete:
 
 		; part two of the transition is (cruedly) done in Obj34 itself
 		lea	($FFFFD000).w,a1
-		move.w	#$1318,obX(a1)		; adjusted to land exactly on the ring monitor if you hold right
+		move.w	#$1318-(SCREEN_XCORR*2),obX(a1)		; adjusted to land exactly on the ring monitor if you hold right
 		move.w	#$0060,obY(a1)
 		move.w	#-$C80,obVelX(a1)	; weeeeeee
 		move.w	#0,obVelY(a1)
@@ -31219,8 +31245,8 @@ SAPTeleport_Trigger   = 90
 SAP_HitWall:
 		jsr	AddFail				; add one fail no matter what
 
-		cmpi.b	#$1A,obAnim(a0)			; check if in hurt animation
-		beq.w	SAP_Teleport			; if yes, always teleport (hurt after getting hit by shrapnel)
+	;	cmpi.b	#$1A,obAnim(a0)			; check if in hurt animation
+	;	beq.w	SAP_Teleport			; if yes, always teleport (hurt after getting hit by shrapnel)
 		btst	#SlotOptions_NonstopInhuman, SlotOptions		; is nonstop inhuman enabled?
 		bne.s	@buzzwire			; if yes, branch
 		btst	#SlotOptions_SpaceGolf, SlotOptions		; is space golf enabled?
@@ -36503,20 +36529,8 @@ Obj7D_SoundStopper:
 		movea.l	$30(a0),a1		; get saved RAM address of the door
 		move.b	#1,$30(a1)		; turn the door red
 		move.b	#1,($FFFFFFA5).w	; move HUD off screen
-		bset	#SlotOptions2_MotionBlurTemp, SlotOptions2	; enable temporary screen fuzz
-
-		; prevent cheating when attempting the blackout challenge for the first time
-		jsr	CheckSlot_BlackoutFirst	; is this the first attempt at the blackout challenge?
-		beq.s	@del			; if not, branch
-		bclr	#SlotOptions_NonstopInhuman, SlotOptions	; disable true inhuman
-		clr.b	(Inhuman).w
-		bclr	#SlotOptions_SpaceGolf, SlotOptions	; disable space golf
-		clr.b	(SpaceGolf).w
-		bclr	#SlotOptions_CinematicBlackBars, SlotOptions	; disable "cinematic mode - black bars"
-		bclr	#SlotOptions2_MotionBlur, SlotOptions2	; disable permanent motion blur
-		bclr	#SlotOptions2_PissFilter, SlotOptions2	; disable piss filter
-
-@del:
+		bset	#SlotOptions2_MotionBlurTemp, SlotOptions2 ; enable temporary screen fuzz
+		jsr	Blackout_PreventCheating ; disabled inhuman mode etc. if the stage wasn't beaten yet
 		jmp	DeleteObject
 
 @end:
@@ -45541,6 +45555,7 @@ Hud_ChkTime:
 		; a second has passed
 		ori.b	#1,($FFFFFE1F).w	; update score
 
+; TODO WIP speedrun timer overhaul
 		lea	(SlotTime+4).w,a2
 		addq.b	#1,-(a2)		; add 1 second
 		cmpi.b	#60,(a2)		; did we reach 60 seconds?

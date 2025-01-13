@@ -51,7 +51,38 @@ BgScroll_LZ:				; XREF: BgScroll_Index
 ; ===========================================================================
  
 BgScroll_MZ:				; XREF: BgScroll_Index
-		rts	
+		moveq	#0, d0				;
+		move.w	CamXpos, d0			;
+		swap	d0				;
+
+		move.l	d0, d1				; Layer 1 - interior
+		asr.l	#2, d1				; ''
+		move.l	d1, d2				; ''
+		add.l	d2, d2				; ''
+		add.l	d2, d1				; ''
+		move.l	d1, CamXpos2			; ''
+
+		move.l	d0, d1				; Layer 2 - bushes
+		asr.l	#1, d1				; ''
+		move.l	d1, CamXpos3			; ''
+
+		move.l	d0, d1				; Layer 3 - mountains
+		asr.l	#2, d1				; ''
+		move.l	d1, CamXpos4			; ''
+
+		move.w	#$200, d0			; start with 512px, ignoring 2 chunks
+		move.w	CamYPos, d1
+		subi.w	#$1C8, d1			; 0% scrolling when y <= 56px 
+		bcs.s	@noYscroll
+		move.w	d1,d2
+		add.w	d1,d1
+		add.w	d2,d1
+		asr.w	#2,d1
+		add.w	d1,d0
+
+	@noYscroll:
+		move.w	d0, CamYPos2
+		rts
 ; ===========================================================================
  
 BgScroll_SLZ:				; XREF: BgScroll_Index

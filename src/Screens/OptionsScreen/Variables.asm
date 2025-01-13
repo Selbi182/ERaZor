@@ -42,6 +42,7 @@ Options_IndentTimer:		rs.w	1
 ; Slot-specific options bitfield
 ; RAM location: `SlotOptions`
 ; Bits:
+*	SlotOptions_Unused:			equ	0
 	SlotOptions_NewPalettes:		equ	1
 	SlotOptions_NoHUD:			equ	2
 	SlotOptions_CinematicBlackBars:		equ	3
@@ -59,6 +60,9 @@ Options_IndentTimer:		rs.w	1
 	SlotOptions2_MotionBlurTemp:		equ	2
 	SlotOptions2_ArcadeMode:		equ	3
 	SlotOptions2_PlacePlacePlace:		equ	4
+*	SlotOptions2_Unused:			equ	5
+*	SlotOptions2_Unused:			equ	6
+*	SlotOptions2_Unused:			equ	7
 
 ; Default options when starting the game for the first time
 	if def(__WIDESCREEN__)

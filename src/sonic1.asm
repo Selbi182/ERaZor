@@ -484,21 +484,21 @@ BlackBars.GHP:
 		cmpi.b	#$34,(a0)			; is Sonic standing in the unique waterfall chunk?
 		bne.s	@notwaterfall			; if not, branch
 
-		moveq	#$3F,d0
-		and.b	($FFFFFE05).w,d0
-		bne.s	@0
-		move.w	#$D0,d0				; play waterfall sfx
-		jsr	PlaySFX
-	@0:
 		move.w	BlackBars.BaseHeight,d0		; get current base black bars height
 		cmp.w	BlackBars.Height,d0		; are bars smaller than the base height?
 		bgt.s	@timeleft			; if not, branch
+		beq.s	@nosfx				; don't play sound once fully reset
+		btst	#0,($FFFFFE05).w
+		beq.s	@nosfx
+		move.w	#$AA,d0				; play water splash sound
+		jsr	PlaySFX
+	@nosfx:
 
-		move.w	BlackBars.TargetHeight,d1
-		andi.w	#$FFFE,d1	; make even
-		subq.w	#BlackBars.GrowSize,d1 ; shrink bars until we reach the minimum height
+		move.w	BlackBars.TargetHeight,d1	; get current black bars height
+		andi.w	#$FFFE,d1			; make even to avoid flicker
+		subq.w	#BlackBars.GrowSize,d1 		; shrink bars until we reach the minimum height
 		bpl.s	@waterfall			; if still positive, branch
-		moveq	#0,d1	; make sure we don't underflow
+		moveq	#0,d1				; make sure we don't underflow
 	@waterfall:
 		move.w	d1,BlackBars.TargetHeight	; make sure we don't underflow
 		bra.s	@timeleft			; if not, branch
@@ -904,6 +904,12 @@ PlaySFX:
 		KDebug.WriteLine "PlaySFX(): Sound queue overflow (curr=%<.b SoundDriverRAM+v_sfx_input>, next1=%<.b SoundDriverRAM+v_sfx_input_next_1>, next2=%<.b SoundDriverRAM+v_sfx_input_next_2>)"
 		rts
 ; ---------------------------------------------------------------------------
+PlaySFX_Force:
+		; overwrites the first entry in the queue no matter what
+		clr.b	SoundDriverRAM+v_sfx_input.w
+		bra.w	PlaySFX
+; ---------------------------------------------------------------------------
+
 PlaySFX_Once:
 		; check if sfx was already queued
 		cmp.b	SoundDriverRAM+v_sfx_input.w, d0
@@ -13969,7 +13975,7 @@ Obj4B_Exit:
 
 FZEscape_ScreenBoom:
 		move.w	#$DD,d0			; play super massive boom sound
-		jsr	PlaySFX	; yea
+		jsr	PlaySFX_Force		; yea
 
 		move.l	a0,-(sp)		; backup to stack
 		jsr	Pal_CutToWhite		; instantly turn screen white
@@ -25192,6 +25198,8 @@ Obj5F_Action:				; XREF: Obj5F_Index
 		frantic				; are we in frantic?
 		beq.s	@notfrantic		; if not, branch
 		cmpi.b	#99,(BossHealth).w
+		bhs.s	@notfrantic
+		cmpi.w	#100,($FFFFD030).w	; adjusted so that only 2 health are regained
 		bhs.s	@notfrantic
 		addq.b	#1,(BossHealth).w	; regen one HP per bounce
 		move.b	(BossHealth).w,(HUD_BossHealth).w ; update boss health in HUD
@@ -37153,6 +37161,8 @@ Obj3D_FaceDel:
 Obj3D_FlameMain:			; XREF: Obj3D_Index
 		move.b	#7,obAnim(a0)
 		movea.l	$34(a0),a1
+		cmpi.b	#$3D,(a1)
+		bne.s	Obj3D_FlameDel
 		cmpi.b	#$C,ob2ndRout(a1)
 		bne.s	loc_17A96
 		move.b	#$B,obAnim(a0)

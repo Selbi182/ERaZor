@@ -344,6 +344,8 @@ Exit_CreditsScreen:
 		bne.w	HubRing_Blackout	; if yes, automatically go to the black out challenge
 
 @dorestart:
+		tst.b	SRAMCache.SelectedSlotId ; are we playing in a "No Save" run?
+		beq.w	ReturnToUberhub_Chapter	; if yes, return to Uberhub so no progress is lost
 		bra.w	ReturnToSegaScreen	; restart game from Sega Screen
 
 ; ===========================================================================

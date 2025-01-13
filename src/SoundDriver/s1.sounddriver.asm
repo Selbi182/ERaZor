@@ -183,16 +183,15 @@ SoundDriverUpdate:
 		moveq	#((v_sfx_psg_tracks_end-v_sfx_psg_tracks)/TrackSz)-1,d7 ; 3 PSG tracks (SFX)
 ; loc_71C16:
 .sfxpsgloop:
-		adda.w	#TrackSz,a5
 		tst.b	TrackPlaybackControl(a5) ; Is track playing?
 		bpl.s	.sfxpsgnext		; Branch if not
 		jsr	PSGUpdateTrack(pc)
 ; loc_71C22:
 .sfxpsgnext:
-		dbf	d7,.sfxpsgloop
-		
-		move.b	#$40,f_voice_selector(a6) ; Now at special SFX tracks
 		adda.w	#TrackSz,a5
+		dbf	d7,.sfxpsgloop
+
+		move.b	#$40,f_voice_selector(a6) ; Now at special SFX tracks
 		tst.b	TrackPlaybackControl(a5) ; Is track playing?
 		bpl.s	.specfmdone		; Branch if not
 		jsr	FMUpdateTrack(pc)
@@ -1145,6 +1144,8 @@ Sound_PlaySpecial:
 		tst.b	v_sfx_fm4_track+TrackPlaybackControl(a6)	; Is track playing?
 		bpl.s	.doneoverride					; Branch if not
 		bset	#2,v_spcsfx_fm4_track+TrackPlaybackControl(a6)	; Set 'SFX is overriding' bit
+		rts
+
 ; loc_723A6:
 .doneoverride:
 		tst.b	v_sfx_psg3_track+TrackPlaybackControl(a6)	; Is track playing?

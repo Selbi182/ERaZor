@@ -469,7 +469,12 @@ StoryText_WriteFull:
 		tst.b	(STS_FinalPhase).w		; did we already write the final text?
 		bne.s	@finished			; if yes, branch
 		move.b	#1,(STS_FinalPhase).w		; set "final phase" flag
+
 		lea	(STS_Continue).l,a1		; load "Press Start..." text to a1
+		btst	#SlotOptions2_PlacePlacePlace, SlotOptions2 ; PLACE PLACE PLACE?
+		beq.s	@normal				; if not, branch
+		lea	(STS_ContPlace).l,a1		; load dumb text
+@normal:
 		move.w	#STS_PressStart_VRAMSettings,d3	; use red palette line
 		move.l	#STS_PressStart_VRAMBase,d4	; adjust position
 		bra.w	@nextline			; write the line

@@ -27,9 +27,9 @@ Music91_DAC:
 	smpsCall            Music91_Call03
 	smpsCall            Music91_Call04
 	smpsCall            Music91_Call05
+	smpsJump Music91_DAC
 	smpsCall            Music91_Call06
 	smpsCall            Music91_Call07
-	smpsJump Music91_DAC
 
 Music91_Call00:
 	dc.b	$90, $04, nRst, $02, nRst
@@ -131,10 +131,10 @@ Music91_FM1:
 	smpsCall            Music91_Call1A
 	smpsCall            Music91_Call1B
 	smpsCall            Music91_Call1C
+	smpsJump Music91_FM1
 	smpsCall            Music91_Call19
 	smpsCall            Music91_Call1A
 	smpsCall            Music91_Call1D
-	smpsJump Music91_FM1
 
 Music91_Call19:
 	dc.b	nFs3, $0C, nB3, $04, nB3, $20, nB3, $04, nCs4, nEb4, nE4, nCs4
@@ -182,10 +182,10 @@ Music91_FM2:
 	smpsCall            Music91_Call15
 	smpsCall            Music91_Call16
 	smpsCall            Music91_Call17
+	smpsJump Music91_FM2
 	smpsCall            Music91_Call14
 	smpsCall            Music91_Call15
 	smpsCall            Music91_Call18
-	smpsJump Music91_FM2
 
 Music91_Call14:
 	dc.b	nFs3, $0C, nB3, $04, nB3, $20, nB3, $04, nCs4, nEb4, nE4, nCs4
@@ -230,9 +230,9 @@ Music91_FM3:
 	smpsCall            Music91_Call10
 	smpsCall            Music91_Call11
 	smpsCall            Music91_Call12
+	smpsJump Music91_FM3
 	smpsCall            Music91_Call10
 	smpsCall            Music91_Call13
-	smpsJump Music91_FM3
 
 Music91_Call10:
 	dc.b	nFs3, $02, nB3, nEb4, nFs4, nB3, nEb4, nFs4, nB4, nEb4, $02, nFs4
@@ -286,9 +286,9 @@ Music91_FM4:
 	smpsCall            Music91_Call0C
 	smpsCall            Music91_Call0D
 	smpsCall            Music91_Call0E
+	smpsJump Music91_FM4
 	smpsCall            Music91_Call0C
 	smpsCall            Music91_Call0F
-	smpsJump Music91_FM4
 
 Music91_Call0C:
 	dc.b	nRst, $02, nFs3, $02, nB3, nEb4, nFs4, nB3, nEb4, nFs4, nB4, nEb4
@@ -344,9 +344,9 @@ Music91_FM5:
 	smpsCall            Music91_Call08
 	smpsCall            Music91_Call09
 	smpsCall            Music91_Call0A
+	smpsJump Music91_FM5
 	smpsCall            Music91_Call08
 	smpsCall            Music91_Call0B
-	smpsJump Music91_FM5
 
 Music91_Call08:
 	dc.b	nB1, $04, nB1, nB1, nB1, nB1, nB1, nB1, nB1, nB1, nB1, nB1
@@ -384,11 +384,11 @@ Music91_PSG1:
 	smpsCall            Music91_Call1F
 	smpsCall            Music91_Call20
 	smpsCall            Music91_Call21
+	smpsJump Music91_PSG1
 	smpsCall            Music91_Call22
 	smpsCall            Music91_Call1F
 	smpsCall            Music91_Call20
 	smpsCall            Music91_Call21
-	smpsJump            Music91_PSG1
 
 Music91_Call1E:
 	dc.b	nEb4, $20, smpsNoAttack, $10, nEb4, $08, nEb4, nE4, $20, smpsNoAttack, $20

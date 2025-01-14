@@ -953,6 +953,26 @@ PauseGame:				; XREF: Level_MainLoop; et al
 		beq.w	Pause_DoNothing		; if not, branch
 Paused:
 		; skip cutscenes
+		cmpi.w	#$400,($FFFFFE10).w	; is this Uberhub Place?
+		bne.s	@notuberhub		; if not, branch
+		cmpi.b	#2,($FFFFF742).w
+		blo.s	@notuberhub
+		cmpi.b	#6,($FFFFF742).w
+		bhs.s	@notuberhub
+		move.l	a0,-(sp)
+		moveq	#0,d1			; chunk X coordinate to destroy
+		lea	($FFFFD800).w,a0
+		moveq	#$40-1,d0
+@findroller:	
+		cmpi.b	#$43,(a0)		; is current object the Roller bot?
+		bne.s	@next			; if not, branch
+		move.b	#1,$34(a0)		; set cutscene skip flag
+@next		lea	$40(a0),a0
+		dbf	d0,@findroller
+		move.l	(sp)+,a0
+		rts
+
+@notuberhub:
 		cmpi.w	#$500,($FFFFFE10).w	; is this the bomb machine cutscene?
 		bne.s	@notmachine		; if not, branch
 		jmp	Exit_BombMachineCutscene
@@ -19749,7 +19769,11 @@ Obj43_Jump:
 
 Obj43_UberhubCutscene:
 		cmpi.b	#A|B|C,Joypad|Held
-		bne.s	@run
+		bne.s	@noskip
+		move.b	#1,$34(a0)
+@noskip:
+		tst.b	$34(a0)
+		beq.s	@run
 		cmpi.b	#4,obRoutine(a0)
 		bhi.s	@allgood
 		bsr	StealSpikeTrophy

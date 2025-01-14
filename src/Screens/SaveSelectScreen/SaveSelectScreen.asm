@@ -79,7 +79,7 @@ SaveSelectScreen:
 	VBlank_UnsetMusicOnly
 	display_enable
 
-	move.b	#Options_Music, d0
+	move.b	#SaveSelect_Music, d0
 	jsr	PlayBGM
 
 	DeleteQueue_Init

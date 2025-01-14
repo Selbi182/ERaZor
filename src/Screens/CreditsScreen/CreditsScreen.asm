@@ -322,12 +322,12 @@ Pal_Credits_Frantic:
 		dc.w	$000			
 		dc.w	0
 		; - header top
-		dc.w	$0424,$0CAC,$0A8A
+		dc.w	$0224,$0CCE,$088A
 		dc.w	0,0,0,0,0,0,0,0,0,0,0
 
 		; line 2 - header bottom
 		dc.w	0,0
-		dc.w	$0404,$0C8C,$0A6A
+		dc.w	$0004,$0AAE,$066A
 		dc.w	0,0,0,0,0,0,0,0,0,0,0
 
 		; line 3 - main content top

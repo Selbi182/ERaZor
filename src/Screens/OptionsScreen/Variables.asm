@@ -1,5 +1,5 @@
 
-Options_Music = $99
+Options_Music = $91
 
 Options_DeleteSRAMInitialCount = 5
 

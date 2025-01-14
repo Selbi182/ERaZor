@@ -14224,7 +14224,10 @@ Obj26_Main:				; XREF: Obj26_Index
 		cmpi.b	#6,obSubtype(a0)	; ...invicibility...
 		bhi.s	@chkfp			; ...or shoes (for FP)
 		cmpi.b	#4,obSubtype(a0)	; shield monitor?
-		beq.s	@chkfp			; if yes, make an exception
+		bne.s	@makeuseless		; if not, branch
+		cmpi.w	#$301,($FFFFFE10).w	; are we in SNP?
+		bne.s	@chkfp			; if not, make an exception
+	@makeuseless:
 		move.b	#2,obSubtype(a0)	; change into a useless =P monitor
 		bra.s	@init			; skip
 
@@ -39361,6 +39364,7 @@ Obj75_BossSpeed_Casual = $3D0
 Obj75_BossSpeed_Frantic = $3D0
 Obj75_BossHealth_Casual  = 12
 Obj75_BossHealth_Frantic = 16
+Obj75_BossHealth_TrueBS = 30
 ; ---------------------------------------------------------------------------
 
 Obj75:					; XREF: Obj_Index
@@ -39399,14 +39403,16 @@ Obj75_Main:				; XREF: Obj75_Index
 		move.b	#$F,obColType(a0)
 		clr.w	obInertia(a0)
 
+		btst	#SlotOptions2_PlacePlacePlace, SlotOptions2	; is easter egg flag set?
+		beq.s	@nottruebs		; if not, branch
+		moveq	#Obj75_BossHealth_TrueBS,d0
+		bra.s	@notfrantic
+	@nottruebs:
 		moveq	#Obj75_BossHealth_Casual,d0
 		frantic
 		beq.s	@notfrantic
 		moveq	#Obj75_BossHealth_Frantic,d0
-		btst	#SlotOptions2_PlacePlacePlace, SlotOptions2	; is easter egg flag set?
-		beq.s	@notfrantic		; if not, branch
-		moveq	#Obj75_BossHealth_Frantic*2,d0
-@notfrantic:
+	@notfrantic:
 		if LowBossHP=1
 			moveq	#1,d0
 		endif

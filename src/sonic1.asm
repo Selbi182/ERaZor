@@ -5437,6 +5437,7 @@ SS_WaitVBlank:
 		move.w	($FFFFF604).w,($FFFFF602).w
 		DeleteQueue_Init
 		jsr	ObjectsLoad
+		jsr	AddTime		; add time
 
 		; stage rotation for motion blur
 		btst	#SlotOptions2_MotionBlur, SlotOptions2	; is permanent motion blur enabled?
@@ -45443,6 +45444,10 @@ Map_obj21:
 
 
 AddPoints:
+		btst	#SlotOptions_AltHUD_ShowSeconds, SlotOptions	; is speedrun timer enabled?
+		bne.s	locret_1C6B6		; if yes, disable regular score system
+
+AddPoints_Force:
 		move.b	#1,($FFFFFE1F).w ; set score counter to	update
 		lea	($FFFFFFC0).w,a2
 		lea	($FFFFFE26).w,a3
@@ -45462,6 +45467,15 @@ loc_1C6AC:
 
 locret_1C6B6:
 		rts
+; ---------------------------------------------------------------------------
+
+AddPoints_Timer:
+		btst	#SlotOptions_AltHUD_ShowSeconds, SlotOptions	; is speedrun timer enabled?
+		beq.s	locret_1C6B6	; if not, nothing to do
+		tst.b	($FFFFF7CC).w	; are controls locked?
+		bne.s	locret_1C6B6	; if yes, nothing to do
+		moveq	#10,d0			; add 100 points to simulate a second
+		bra.s	AddPoints_Force		; apply score
 ; End of function AddPoints
 
 ; ---------------------------------------------------------------------------
@@ -45485,10 +45499,6 @@ HudUpdate:
 		ori.b	#1,($FFFFFE1C).w	; update lives counter as well to display the third digit properly
 
 		move.l	($FFFFFE26).w,d1	; load	score
-		btst	#SlotOptions_AltHUD_ShowSeconds, SlotOptions ; is speedrun timer enabled?
-		beq.s	@noalt			; if not, branch
-		move.l	(SlotTime).w,d1		; use slot timer instead
-@noalt:
 		move.l	#$5C800003,d0		; set VRAM address
 		bsr	Hud_Score
 
@@ -45513,82 +45523,13 @@ loc_1C6E4:
 
 Hud_ChkTime:
 		tst.b	($FFFFFE1E).w	; does the time	need updating?
-		beq.w	Hud_ChkLives	; if not, branch
-		tst.w	($FFFFF63A).w	; is the game paused?
-		bne.w	Hud_ChkLives	; if yes, branch
-		tst.b	($FFFFF7CC).w	; are controls locked?
-		bne.w	Hud_ChkLives	; if yes, branch
-		cmpi.w	#$400,($FFFFFE10).w ; is level SYZ1?
-		beq.w	Hud_ChkLives	; if yes, branch
-	;	cmpi.w	#$501,($FFFFFE10).w ; is level SBZ1?
-	;	beq.w	Hud_ChkLives	; if yes, branch
+		beq.s	Hud_ChkLives	; if not, branch
+		cmpi.w	#$400,($FFFFFE10).w ; are we in Uberhub?
+		beq.s	Hud_ChkLives	; if yes, don't update time
 
-		lea	($FFFFFE22).w,a1
-		cmpi.l	#(9*$10000)|(99*$100),(a1)+	; is the time 999? ($96300)
-		bhi.w	TimeOver			; if yes, time over noob
+		bsr	AddTime		; add time
+		beq.s	Hud_ChkLives	; if return value was 0, no time HUD update necessary
 
-		moveq	#1,d0			; regular timer speed (1 tick per second; at 999 ticks, that's roughly 16 minutes)
-
-		cmpi.w	#$502,($FFFFFE10).w	; are we in FP?
-		bne.s	@notfzescape		; if not, branch
-		cmpi.b	#2,(FZEscape).w		; are we in the escape sequence?
-		beq.s	@fzescapetimer		; if yes, branch
-		bra.s	@notfzescape		; skip
-@fzescapetimer:
-		sub.b	d0,-(a1)		; sub from current timer
-		tst.b	(a1)			; did we reach 60 frames?
-		bpl.w	Hud_ChkLives		; if not, branch
-		move.b	#60,(a1)		; reset frame counter
-
-		subq.b	#1,-(a1)		; sub 1 from seconds
-		tst.b	(a1)			; did we underflow seconds?
-		bpl.s	Hud_TimeUpdate		; if not, branch
-		move.b	#99,(a1)		; reset seconds to 99
-
-		subq.b	#1,-(a1)		; sub 1 from minutes counter
-		tst.b	(a1)			; did we underflow minutes?
-		bpl.s	Hud_TimeUpdate		; if not, branch
-
-		bsr.w	TimeOver		; rip sonic...
-		jmp	FZEscape_ScreenBoom	; ...nuke went off
-
-@notfzescape:
-		frantic				; are we in frantic?
-		beq.s	@notfrantic		; if not, branch
-		moveq	#2,d0			; otherwise, triple regular timer speed (2 ticks per second; this changes the effective time limit to roughly 8 minutes)
-		
-@notfrantic:
-		add.b	d0,-(a1)		; add to current timer
-		cmpi.b	#60,(a1)		; did we reach 60 frames?
-		blo.s	Hud_ChkLives		; if not, branch
-		move.b	#0,(a1)			; clear frame counter
-
-		; a second has passed
-		ori.b	#1,($FFFFFE1F).w	; update score
-
-; TODO WIP speedrun timer overhaul
-		lea	(SlotTime+4).w,a2
-		addq.b	#1,-(a2)		; add 1 second
-		cmpi.b	#60,(a2)		; did we reach 60 seconds?
-		blo.s	@0		; if not, branch
-		move.b	#0,(a2)			; clear seconds counter
-		addq.b	#1,-(a2)		; add 1 to minutes
-		cmpi.w	#999,-(a2)		; did we reach 999 minutes?
-		blo.s	@0		; if not, branch
-		move.w	#999,(a2)		; set minutes to 999
-
-@0:
-		addq.b	#1,-(a1)		; add 1 to seconds
-		cmpi.b	#100,(a1)		; did we reach 100 seconds?
-		blo.s	Hud_TimeUpdate		; if not, branch
-		move.b	#0,(a1)			; set seconds to 0
-
-		addq.b	#1,-(a1)		; add 1 to minutes counter
-		cmpi.b	#9,(a1)			; are we at 9 minutes?
-		blo.s	Hud_TimeUpdate		; if not, branch
-		move.b	#9,(a1)			; force to not exceed 9 minutes
-
-Hud_TimeUpdate:
 		move.l	#$5E400003,d0
 		moveq	#0,d1
 		move.b	($FFFFFE23).w,d1 ; load	minutes
@@ -45677,6 +45618,83 @@ HudDb_ChkBonus:
 HudDb_End:
 		rts	
 ; End of function HudUpdate
+
+; ---------------------------------------------------------------------------
+
+AddTime:
+		tst.w	($FFFFF63A).w	; is the game paused?
+		bne.w	@noupdate	; if yes, branch
+		tst.b	($FFFFF7CC).w	; are controls locked?
+		bne.w	@noupdate	; if yes, branch
+
+		lea	($FFFFFE22+4).w,a1	; load time (+4 as it's read backwards)
+		cmpi.b	#$C,(GameMode).w	; are we in a regular level?
+		bne.s	@notlevel		; if not, branch
+		cmpi.l	#(9*$10000)|(99*$100)|30,-4(a1)	; is the time 999 (plus a little)?
+		bls.w	@notlevel			; if not, branch
+		addq.l	#4,sp				; skip return address
+		bra.w	TimeOver			; if yes, time over noob
+@notlevel:
+		cmpi.w	#$502,($FFFFFE10).w	; are we in FP?
+		bne.s	@regulartimer		; if not, branch
+		cmpi.b	#2,(FZEscape).w		; are we in the escape sequence?
+		beq.s	@fpescapetimer		; if yes, go to the custom timer logic
+
+@regulartimer:
+		moveq	#1,d0			; regular timer speed (1 tick per second; at 999 ticks, that's roughly 16 minutes)
+		frantic				; are we in frantic?
+		beq.s	@notfrantic		; if not, branch
+		moveq	#2,d0			; otherwise, double regular timer speed (2 ticks per second; this changes the effective time limit to roughly 8 minutes)
+	@notfrantic:
+	
+		add.b	d0,-(a1)		; add to current timer
+		cmpi.b	#60,(a1)		; did we reach 60 frames?
+		blo.s	@noupdate		; if not, branch
+		move.b	#0,(a1)			; clear frame counter
+
+		jsr	AddPoints_Timer		; a second has passed
+
+		addq.b	#1,-(a1)		; add 1 to seconds
+		cmpi.b	#100,(a1)		; did we reach 100 seconds?
+		blo.s	@update			; if not, branch
+		move.b	#0,(a1)			; set seconds to 0
+
+		addq.b	#1,-(a1)		; add 1 to minutes counter
+		cmpi.b	#9,(a1)			; are we at 9 minutes?
+		blo.s	@update			; if not, branch
+		move.b	#9,(a1)			; force to not exceed 9 minutes
+
+@update:	moveq	#1,d0			; update time HUD
+		rts
+
+@noupdate:	moveq	#0,d0			; don't update time HUD
+		rts
+
+; ---------------------------------------------------------------------------
+
+@fpescapetimer:
+		moveq	#1,d0			; 1 second speed for both casual and frantic
+
+		sub.b	d0,-(a1)		; sub from current timer
+		tst.b	(a1)			; did we reach 60 frames?
+		bpl.w	@noupdate		; if not, branch
+		move.b	#60,(a1)		; reset frame counter
+
+		jsr	AddPoints_Timer		; a second has passed
+
+		subq.b	#1,-(a1)		; sub 1 from seconds
+		tst.b	(a1)			; did we underflow seconds?
+		bpl.s	@update			; if not, branch
+		move.b	#99,(a1)		; reset seconds to 99
+
+		subq.b	#1,-(a1)		; sub 1 from minutes counter
+		tst.b	(a1)			; did we underflow minutes?
+		bpl.s	@update			; if not, branch
+
+		bsr.w	TimeOver		; rip sonic...
+		jsr	FZEscape_ScreenBoom	; ...nuke went off
+		addq.l	#4,sp			; skip return address
+		rts
 
 ; ---------------------------------------------------------------------------
 ; Subroutine to	load "0" on the	HUD

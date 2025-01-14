@@ -1089,7 +1089,7 @@ Hint_UberhubEasterEgg:
 		boxtxt	"AT ONCE! THIS ALSO"
 		boxtxt	"INCLUDES GIANT RING"
 		boxtxt	"ANIMATIONS."
-		boxtxt_end
+		boxtxt_next
 
 		boxtxt	"skip special stages"
 		boxtxt_line
@@ -1526,7 +1526,7 @@ Hint_Options_AlternateHUD:
 		boxtxt	"YOUR PLAYSTYLE!"
 		boxtxt_next
 
-		boxtxt	"score TO seconds"
+		boxtxt	"total secs"
 		boxtxt_line
 		boxtxt	"REPLACES THE SCORE"
 		boxtxt	"IN THE TOP LEFT WITH"
@@ -1535,7 +1535,7 @@ Hint_Options_AlternateHUD:
 		boxtxt	"YOUR JOURNEY!"
 		boxtxt_next
 
-		boxtxt	"deaths TO errors"
+		boxtxt	"total mistakes"
 		boxtxt_line
 		boxtxt	"GETTING TELEPORTED"
 		boxtxt	"OR HURT WILL GET"
@@ -1545,13 +1545,24 @@ Hint_Options_AlternateHUD:
 		boxtxt	"WON'T ACTUALLY DIE!"
 		boxtxt_next
 
-		boxtxt	"disable hud"
+		boxtxt	"BOTH OPTIONS ARE AS"
+		boxtxt	"USEFUL AS YOU CAN"
+		boxtxt	"PROBABLY IMAGINE,"
+		boxtxt	"PRIMARILY MADE FOR"
+		boxtxt	"SPEEDRUNNING."
 		boxtxt_line
-		boxtxt	"OR IF YOU DON'T CARE"
-		boxtxt	"ABOUT ANY OF THIS,"
+		boxtxt	"BUT THERE'S ONE"
+		boxtxt	"MORE CHOICE..."
+		boxtxt_next
+
+		boxtxt	"disable all hud"
+		boxtxt_line
 		boxtxt	"YOU CAN ALSO DISABLE"
 		boxtxt	"THE TITLE CARDS AND"
-		boxtxt	"HUD ENTIRELY!"
+		boxtxt	"HUD ENTIRELY FOR A"
+		boxtxt	"CINEMATIC VIBE!"
+		boxtxt	"BUT THIS WILL MAKE"
+		boxtxt	"THE GAME HARDER."
 		boxtxt_end
 
 

@@ -86,7 +86,7 @@ GameplayStyleScreen:
 		dbf	d1,@loop1
 	endif
 
-		moveq	#1,d0			; write palette to fade-in palette buffer
+		lea	Pal_Target, a2			; write palette to fade-in palette buffer
 		bsr	GSS_LoadPal
 		VBlank_UnsetMusicOnly
 		display_enable
@@ -96,7 +96,7 @@ GameplayStyleScreen:
 		moveq	#78-1, d6				; num stars - 1
 		jsr	Screen_GenerateStarfieldObjects
 
-		bra.s	GSS_MainLoop
+		bra	GSS_MainLoop
 
 ; ===========================================================================
 GGS_PLCList:
@@ -110,21 +110,24 @@ GGS_PLCList:
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; d0 = 0 FB00 / 1 FB80
+; a2 = Pal_Active / Pal_Target
 GSS_LoadPal:
-		lea	Pal_Difficulty_Casual(pc),a1	; load casual palette
+		assert.w a2, hs, #Pal_Active
+		assert.w a2, ls, #Pal_Target
+
+		moveq	#STARFIELD_PAL_ID_BLUE, d2
+		lea	Pal_Difficulty_Casual(pc), a1	; load casual palette
 		frantic
 		beq.s	@loadpal
-		lea	Pal_Difficulty_Frantic(pc),a1	; load frantic palette
-@loadpal:
-		moveq	#8-1,d1	
-		lea	Pal_Active,a2
-		tst.b	d0
-		beq.s	@PalLoop
-		adda.w	#$80,a2
-@PalLoop:	move.l	(a1)+,(a2)+
-		dbf	d1,@PalLoop
-		rts
+		moveq	#STARFIELD_PAL_ID_RED, d2
+		lea	Pal_Difficulty_Frantic(pc), a1	; load frantic palette
+
+	@loadpal:
+		rept 8/2
+			move.l	(a1)+, (a2)+
+		endr
+		jmp	Screen_LoadStarfieldPalette	; INPUT: d2, a2
+
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
 
@@ -159,7 +162,7 @@ GSS_MainLoop:
 		bne.s	@NoUpdate		; was it already set to frantic? if so, no update
 
 @update:
-		moveq	#0,d0			; write palette directly
+		lea	Pal_Active,a2		; write palette directly
 		bsr	GSS_LoadPal		; refresh palette
 		move.w	#$D8,d0			; play option toggle sound
 		jsr	PlaySFX
@@ -184,11 +187,6 @@ MapEni_Difficulty:
 Pal_Difficulty_Casual:
 		;	bg	casual		    frantic
 		dc.w	$0200,  $0EEE,$0CAA,$0800,  $0444,$0222,$0000, 0
-		;	stars
-		dc.w	$0CEE,$0ACC,$08AA,$0888,$0688,$0666,$0444,$0222
 Pal_Difficulty_Frantic:
 		dc.w	$0002,  $0444,$0222,$0000,  $0EEE,$0AAC,$0008, 0
-		;	stars
-		dc.w	$0EEE,$0CCE,$0AAC,$088A,$0888,$0666,$0444,$0222
-		even
 ; ===========================================================================

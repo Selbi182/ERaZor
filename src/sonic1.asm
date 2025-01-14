@@ -2369,7 +2369,7 @@ PalPointers_Classic:
 	;    palette		RAM   length/2-1
 	dc.l Pal_SegaBG,	$FB00 001F	; $00
 	dc.l PalC_Title,	$FB00 001F	; $01
-	dc.l PalC_LevelSel,	$FB00 001F	; $02
+	dc.l PalC_Options,	$FB00 001F	; $02
 	dc.l PalC_Sonic,	$FB00 0007	; $03
 	dc.l PalC_GHZ,		$FB20 0017	; $04
 	dc.l PalC_LZ2,		$FB20 0017	; $05
@@ -2397,13 +2397,15 @@ PalPointers_Classic:
 	dc.l PalC_SYZ_UnterBoss,$FB20 0017	; $1B
 	dc.l PalC_SpecialUnreal,$FB00 001F	; $1C
 	dc.l Pal_TutorialBox,	$FB20 0005	; $1D
+	dc.l PalC_Options,	$FB00 001F	; $1E
+	dc.l PalC_Options,	$FB00 001F	; $1F
 	even
 
 PalPointers_Remastered:
 	;    palette		RAM   length/2-1
 	dc.l Pal_SegaBG,	$FB00 001F	; $00
 	dc.l PalR_Title,	$FB00 001F	; $01
-	dc.l PalR_LevelSel,	$FB00 001F	; $02
+	dc.l PalR_OptionsCasual,$FB00 001F	; $02
 	dc.l PalR_Sonic,	$FB00 0007	; $03
 	dc.l PalR_GHZ,		$FB20 0017	; $04
 	dc.l PalR_LZ2,		$FB20 0017	; $05
@@ -2431,6 +2433,8 @@ PalPointers_Remastered:
 	dc.l PalR_SYZ_UnterBoss,$FB20 0017	; $1B
 	dc.l PalR_SpecialUnreal,$FB00 001F	; $1C
 	dc.l Pal_TutorialBox,	$FB20 0005	; $1D
+	dc.l PalR_OptionsCasual,$FB00 001F	; $1E
+	dc.l PalR_OptionsFrantic,$FB00 001F	; $1F
 	even
 
 ; ---------------------------------------------------------------------------
@@ -2440,7 +2444,7 @@ PalPointers_Remastered:
 
 ; Classic palettes
 PalC_Title:		incbin	palette\Classic\title.bin
-PalC_LevelSel:		incbin	Screens\OptionsScreen\Options_Pal_Classic.bin
+PalC_Options:		incbin	Screens\OptionsScreen\Options_Pal_Classic.bin
 PalC_Sonic:		incbin	palette\Classic\sonic.bin
 PalC_GHZ:		incbin	palette\Classic\ghz.bin
 PalC_LZ2:		incbin	palette\Classic\lz2.bin
@@ -2464,7 +2468,8 @@ PalC_SpecialUnreal:	incbin	palette\Classic\special_unreal.bin
 
 ; Remastered palettes by Javesike
 PalR_Title:		incbin	palette\Remastered\title.bin
-PalR_LevelSel:		incbin	Screens\OptionsScreen\Options_Pal_Remastered.bin
+PalR_OptionsCasual:	include	Screens\OptionsScreen\Options_Pal_Remastered_Casual.asm
+PalR_OptionsFrantic:	include	Screens\OptionsScreen\Options_Pal_Remastered_Frantic.asm
 PalR_Sonic:		incbin	palette\Remastered\sonic.bin
 PalR_GHZ:		incbin	palette\Remastered\ghz.bin
 PalR_LZ2:		incbin	palette\Remastered\lz2.bin

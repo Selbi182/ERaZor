@@ -688,22 +688,27 @@ Options_CharToTile:
 
 Options_LoadPal:
 		lea	Pal_Target, a4
-		lea	PalLoad1, a2	; => Pal_Target
+		lea	PalLoad1, a3	; => Pal_Target
 		tst.b	d0
 		bne.s	@ptrs_ok
 		lea	Pal_Active, a4
-		lea	PalLoad2, a2	; => Pal_Target
+		lea	PalLoad2, a3	; => Pal_Target
 @ptrs_ok:
-		moveq	#2,d0		; load level select palette
-		jsr	(a2)
+		moveq	#$1E, d0	; use casual options palette
+		frantic
+		beq.s	@0
+		moveq	#$1F, d0	; use frantic options palette
+	@0:	jsr	(a3)
 
 		tst.b	Options_FirstStartFlag	; first time?
 		beq.s	@nostars		; if not, branch
-		lea	@Star_Palette(pc), a0
-		lea	$10(a4), a1
-		rept 8/2
-			move.l	(a0)+, (a1)+
-		endr
+		moveq	#STARFIELD_PAL_ID_BLUE, d2
+		frantic
+		beq.s	@1
+		moveq	#STARFIELD_PAL_ID_RED, d2
+	@1:	lea	$10(a4), a2
+		jsr	Screen_LoadStarfieldPalette
+
 @nostars:
 		lea	Pal_ERaZorBanner, a1	; set ERaZor banner's palette pointer
 		lea	$20(a4), a2		; set palette location
@@ -712,8 +717,6 @@ Options_LoadPal:
 		endr
 		rts
 
-; ---------------------------------------------------------------------------
-@Star_Palette:	dc.w	$0CEE,$0ACC,$08AA,$0888,$0688,$0666,$0444,$0222
 
 ; ---------------------------------------------------------------------------
 ; Palette cycle for highlighted menu item

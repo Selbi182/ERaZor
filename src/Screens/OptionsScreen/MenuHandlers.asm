@@ -142,6 +142,8 @@ Options_GameplayStyle_Handle:
 	beq.s	@gss			; if not, branch
 	bchg	#SlotState_Difficulty, SlotProgress	; quick toggle gameplay style
 	bsr	Options_PlayRespectiveToggleSound
+	moveq	#0, d0
+	bsr	Options_LoadPal		; reload palette
 	st.b	Options_RedrawCurrentItem
 @ret:	rts
 

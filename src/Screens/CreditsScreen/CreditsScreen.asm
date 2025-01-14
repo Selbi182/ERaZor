@@ -29,10 +29,21 @@ CreditsScreen:
 		jsr	ClearScreen
 
 		lea	Pal_Target, a1
-		lea	Pal_Credits(pc), a0
+		lea	Pal_Credits_Casual(pc), a0
+		frantic
+		beq.s	@0
+		lea	Pal_Credits_Frantic(pc), a0
+@0:
 		moveq	#$20-1,d1
 @loadpal:	move.l	(a0)+,(a1)+
 		dbf	d1, @loadpal
+
+		moveq	#STARFIELD_PAL_ID_BLUE, d2
+		frantic
+		beq.s	@1
+		moveq	#STARFIELD_PAL_ID_RED, d2
+@1:		lea	Pal_Target+$10, a2
+		jsr	Screen_LoadStarfieldPalette
 
 		lea	Objects,a1
 		moveq	#0,d0
@@ -280,16 +291,14 @@ CS_WriteChar:
 ; (single 0's are unused colors)
 ; ---------------------------------------------------------------------------
 
-Pal_Credits:
+Pal_Credits_Casual:
 		; line 1
 		; - bg color
 		dc.w	$000			
 		dc.w	0
 		; - header top
-		dc.w	$0422,$0ECC,$0A88	
-		dc.w	0,0,0
-		; - stars
-		dc.w	$0CEE,$0ACC,$08AA,$0888,$0688,$0666,$0444,$0222
+		dc.w	$0422,$0ECC,$0A88
+		dc.w	0,0,0,0,0,0,0,0,0,0,0
 
 		; line 2 - header bottom
 		dc.w	0,0
@@ -305,7 +314,32 @@ Pal_Credits:
 		dc.w	0,0
 		dc.w	$0222,$0AAA,$0888
 		dc.w	0,0,0,0,0,0,0,0,0,0,0
-		even
+
+; ---------------------------------------------------------------------------
+Pal_Credits_Frantic:
+		; line 1
+		; - bg color
+		dc.w	$000			
+		dc.w	0
+		; - header top
+		dc.w	$0424,$0CAC,$0A8A
+		dc.w	0,0,0,0,0,0,0,0,0,0,0
+
+		; line 2 - header bottom
+		dc.w	0,0
+		dc.w	$0404,$0C8C,$0A6A
+		dc.w	0,0,0,0,0,0,0,0,0,0,0
+
+		; line 3 - main content top
+		dc.w	0,0
+		dc.w	$0444,$0EEE,$0AAA
+		dc.w	0,0,0,0,0,0,0,0,0,0,0
+
+		; line 4 - main content bottom
+		dc.w	0,0
+		dc.w	$0222,$0AAA,$0888
+		dc.w	0,0,0,0,0,0,0,0,0,0,0
+
 
 
 ; ---------------------------------------------------------------------------

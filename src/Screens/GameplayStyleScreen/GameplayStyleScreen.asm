@@ -141,7 +141,11 @@ GSS_MainLoop:
 		move.b	Joypad|Press,d1		; get button presses
 		btst	#0,d1			; specifically up pressed?
 		bne.s	@uppress		; if yes, branch
+		btst	#2,d1			; specifically left pressed?
+		bne.s	@uppress		; if yes, branch
 		btst	#1,d1			; specifically down pressed?
+		bne.s	@downpress		; if yes, branch
+		btst	#3,d1			; specifically right pressed?
 		bne.s	@downpress		; if yes, branch
 		bra.s	@NoUpdate		; skip
 
@@ -161,12 +165,8 @@ GSS_MainLoop:
 		jsr	PlaySFX
 
 @NoUpdate:
-		move.b	Joypad|Press,d0
-		andi.b	#Start|B|C,d0		; is B, C, or Start pressed?
-		beq.s	GSS_MainLoop		; if not, loop
-		cmp.b	Joypad|Held,d0		; was only this one button pressed?
-		beq.s	@exit			; if yes, exit
-		andi.b	#Start|C,d0		; was specifically Start or C pressed?
+		moveq	#$FFFFFF00|Start|A|B|C,d0 ; is A, B, C, or Start pressed?
+		and.b	Joypad|Press,d0
 		beq.s	GSS_MainLoop		; if not, loop
 @exit:
 		jmp	Exit_GameplayStyleScreen

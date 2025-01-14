@@ -9425,6 +9425,8 @@ Obj18_NoMovingPlatforms:
 		tst.b	obFrame(a0)		; has checkpoint already been touched?
 		bne.s	Obj18_NoCheckpoint	; if yes, branch
 		move.b	#1,obFrame(a0)		; set checkpoint flag
+		move.w	#2500,d0		; add 2500 ...
+		jsr	AddPoints		; ... points
 		move.b	#$A1,d0			; play checkpoint sound
 		jsr	PlaySFX
 		frantic				; is frantic mode enabled?
@@ -14014,6 +14016,8 @@ Obj4B_Exit:
 		tst.b	(FZEscape).w		; is this also the Finalor escape sequence?
 		beq.s	@exitfromring		; if not, branch (double check just in case)
 		bsr.s	FZEscape_ScreenBoom	; hooray you've escaped
+		move.l	#18200,d0		; add 182000 ...
+		jsr	AddPoints		; ... points
 
 @exitfromring:
 		moveq	#0,d0			; clear d0
@@ -14609,7 +14613,8 @@ Obj2E_ChkShield:
 		tst.b	($FFFFFE2C).w		; is sonic already having a shield?
 		beq.s	Obj2E_Shield_NoBonus	; if not, branch
 		addi.b	#25,($FFFFFE2C).w	; add 25 bonus rings (controlled in Obj01_ChkShield)
-		rts				; do nothing else
+		move.w	#250,d0			; add 2500 ...
+		jmp	AddPoints		; ... points
 
 Obj2E_Shield_NoBonus:
 		move.b	#1,($FFFFFE2C).w	; give Sonic a shield	
@@ -14635,6 +14640,9 @@ Obj2E_ChkInvinc:
 		move.b	#$38,($FFFFD2C0).w ; load stars	object ($3804)
 		move.b	#4,($FFFFD2DC).w
 
+		move.w	#250,d0			; add 2500 ...
+		jsr	AddPoints		; ... points
+
 		tst.b	($FFFFF7AA).w	; is boss mode on?
 		bne.s	Obj2E_NoMusic	; if yes, branch
 		move.w	#$91,d0
@@ -14650,6 +14658,9 @@ Obj2E_ChkRings:
 		bne.w	Obj2E_ChkS
 		addi.w	#$A,($FFFFFE20).w ; add	10 rings to the	number of rings	you have
 		ori.b	#1,($FFFFFE1D).w ; update the ring counter
+
+		move.w	#100,d0			; add 1000 ...
+		jsr	AddPoints		; ... points
 
 		move.w	#$B5,d0
 		jmp	PlaySFX		; play ring sound
@@ -15429,9 +15440,10 @@ Obj2C_Killed:
 		move.b	#$27,0(a0)		; change Jaws into an enemy explosion
 		move.b	#0,obRoutine(a0)
 
+		move.w	#6900,d0		; add 6900 ...
+		jsr	AddPoints		; ... points
 		move.b	#$DF,d0
 		jmp	PlaySFX
-		rts
 ; ===========================================================================
 
 Ani_obj2C:
@@ -24438,6 +24450,8 @@ Obj0B_BreakPole:
 		ori.b	#10,(CameraShake).w	; camera shaking
 		move.w	#$DF,d0			; jester explosion sound
 		jsr	PlaySFX
+		move.w	#4200,d0		; add 4200 ...
+		jsr	AddPoints		; ... points
 		tst.b	obSubtype(a0)		; is this a cosmetic-only pole?
 		bmi.s	Obj0B_BreakPole_NoSound	; if yes, branch
 		jsr	WhiteFlash
@@ -36333,7 +36347,7 @@ Obj79_HitLamp:
 	;	move.b	d2,($FFFFFF97).w	; copy subtype to checkpoint counter
 
 @hitrest:
-		move.w	#10000,d0		; add 100000 ...
+		move.w	#1000,d0		; add 10000 ...
 		jsr	AddPoints	; ... points
 
 		addq.b	#2,obRoutine(a0)
@@ -37586,7 +37600,7 @@ locret_178A2:
 BossDamageSound:
 		move.w	#$AC,d0
 		jsr	PlaySFX	;play boss damage sound
-		moveq	#10,d0			; add 100 ...
+		moveq	#100,d0			; add 1000 ...
 		jmp	AddPoints		; ... points
 ; End of function BossDamageSound
 
@@ -45520,21 +45534,14 @@ AddPoints:
 
 AddPoints_Force:
 		move.b	#1,($FFFFFE1F).w ; set score counter to	update
-		lea	($FFFFFFC0).w,a2
+
 		lea	($FFFFFE26).w,a3
 		add.l	d0,(a3)		; add d0*10 to the score
-		move.l	#999999,d1
-		cmp.l	(a3),d1		; are we below the score limit?
-		bhi.w	loc_1C6AC	; if yes, branch
-	;	move.l	d1,(a3)		; reset	score to 999999
-		move.l	#0,(a3)		; reset	score to 0
-		move.l	d1,(a2)
 
-loc_1C6AC:
-		move.l	(a3),d0
-		cmp.l	(a2),d0
-		bcs.w	locret_1C6B6
-		move.l	d0,(a2)
+		move.l	#999990,d1	; NOTE: the last digit is used as the third digit of the death counter!
+		cmp.l	(a3),d1		; are we below the score limit?
+		bhi.w	locret_1C6B6	; if yes, branch
+		move.l	d1,(a3)		; reset	score to 9999900
 
 locret_1C6B6:
 		rts

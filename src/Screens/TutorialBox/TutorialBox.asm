@@ -939,8 +939,8 @@ Hint_2:
 		boxtxt	"WILL ALSO reset THE"
 		boxtxt	"COOLDOWN, SO YOU CAN"
 		boxtxt	"CHAIN MULTIPLE JUMPS"
-		boxtxt	"TOGETHER BEFORE YOU"
-		boxtxt	"HIT THE FLOOR AGAIN!"
+		boxtxt	"BEFORE YOU HIT THE"
+		boxtxt	"FLOOR AGAIN!"
 		boxtxt_pause
 
 		dc.b	_frantic
@@ -1531,7 +1531,7 @@ Hint_Options_AlternateHUD:
 		boxtxt	"REPLACES THE SCORE"
 		boxtxt	"IN THE TOP LEFT WITH"
 		boxtxt	"THE total seconds"
-		boxtxt	"AQUIRED THROUGHOUT"
+		boxtxt	"ACQUIRED THROUGHOUT"
 		boxtxt	"YOUR JOURNEY!"
 		boxtxt_next
 

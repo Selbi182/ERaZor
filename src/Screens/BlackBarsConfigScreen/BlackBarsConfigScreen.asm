@@ -596,8 +596,8 @@ BlackBarsConfigScreen_WriteText_WidescreenInfo:
 	Console.Write '      "GENESIS PLUS GX WIDE"%<endl>'
 	Console.Write '   CORE AVAILABLE FOR RETROARCH'
 	Console.Write "%<endl>%<endl>"
-	Console.Write "  AND IT WILL BE A SUPER AWKWARD%<endl>"
-	Console.Write "EXPERIENCE FOR ANY OTHER EMULATOR!"
+	Console.Write "   AND IT WILL BE SUPER AWKWARD%<endl>"
+	Console.Write " IF PLAYED ON ANY OTHER EMULATOR!"
 	Console.Write "%<endl>"
 	Console.Write "    VISIT THIS URL TO DOWNLOAD%<endl>"
 	Console.Write "     THE REGULAR 4:3 VERSION:"

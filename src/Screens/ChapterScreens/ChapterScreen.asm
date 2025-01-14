@@ -53,6 +53,10 @@ CS_ClrObjRam:	move.l	d0,(a1)+
 		VBlank_SetMusicOnly
 		move.l	#$40200000, VDP_Ctrl
 		lea	ArtKospM_ChapterHeader, a0
+		btst	#SlotOptions2_PlacePlacePlace, SlotOptions2		; PLACE PLACE PLACE?
+		beq.s	@0
+		lea	ArtKospM_ChapterHeader_Place, a0
+@0
 		jsr	KosPlusMDec_VRAM
 
 		lea	MapEni_ChapterHeader(pc), a0	; load chapter header
@@ -353,6 +357,9 @@ MapScreen2_Column:
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ArtKospM_ChapterHeader:	incbin	"Screens/ChapterScreens/Tiles_ChapterHeader.kospm"
+			even
+ArtKospM_ChapterHeader_Place:
+			incbin	"Screens/ChapterScreens/Tiles_ChapterHeader_Place.kospm"
 			even
 MapEni_ChapterHeader:	incbin	"Screens/ChapterScreens/Maps_ChapterHeader.eni"
 			even

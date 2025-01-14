@@ -134,25 +134,20 @@ Options_GameplayStyle_Redraw:
 ; ---------------------------------------------------------------------------
 
 Options_GameplayStyle_Handle:
-	moveq	#$FFFFFF00|(A|B|C|Start), d1
-	and.b	Joypad|Press, d1	; is A, B, C, or Start pressed?
+	moveq	#$FFFFFF00|(Left|Right|A|B|C|Start), d1
+	and.b	Joypad|Press, d1	; is left, right, A, B, C, or Start pressed?
 	beq.s	@ret			; if not, branch
 
-	btst	#iA, d1			; is specifically A pressed?
-	beq.s	@gss			; if not, branch
-	tst.w	($FFFFFFFA).w		; is debug mode enabled?
+	and.b	#Left|Right, d1		; is specifically left or right pressed?
 	beq.s	@gss			; if not, branch
 	bchg	#SlotState_Difficulty, SlotProgress	; quick toggle gameplay style
 	bsr	Options_PlayRespectiveToggleSound
-	bra.s	@redraw
+	st.b	Options_RedrawCurrentItem
+@ret:	rts
 
 @gss:
 	moveq	#1,d0			; set to GameplayStyleScreen
 	jmp	Exit_OptionsScreen
-
-@redraw:
-	st.b	Options_RedrawCurrentItem
-@ret:	rts
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------

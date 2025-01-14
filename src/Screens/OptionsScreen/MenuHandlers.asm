@@ -22,18 +22,18 @@ Options_MenuData:
 	dcScreenPos	OpBaseDest, OpBaseY+0, OpBaseX	; start on-screen position
 	dc.l	Options_GameplayStyle_Redraw		; redraw handler
 	dc.l	Options_GameplayStyle_Handle		; update handler	
-	; Arcade mode / Speedrun mode
+	; Palette style
 	dcScreenPos	OpBaseDest, OpBaseY+1, OpBaseX	; start on-screen position
+	dc.l	Options_PaletteStyle_Redraw		; redraw handler
+	dc.l	Options_PaletteStyle_Handle		; update handler
+	; Arcade mode / Speedrun mode
+	dcScreenPos	OpBaseDest, OpBaseY+2, OpBaseX	; start on-screen position
 	dc.l	Options_Autoskip_Redraw			; redraw handler
 	dc.l	Options_Autoskip_Handle			; update handler
 	; Alternate HUD
-	dcScreenPos	OpBaseDest, OpBaseY+2, OpBaseX	; start on-screen position
+	dcScreenPos	OpBaseDest, OpBaseY+3, OpBaseX	; start on-screen position
 	dc.l	Options_AlternateHUD_Redraw		; redraw handler
 	dc.l	Options_AlternateHUD_Handle		; update handler
-	; Palette style
-	dcScreenPos	OpBaseDest, OpBaseY+3, OpBaseX	; start on-screen position
-	dc.l	Options_PaletteStyle_Redraw		; redraw handler
-	dc.l	Options_PaletteStyle_Handle		; update handler
 
 	; E - Cinematic effects
 	dcScreenPos	OpBaseDest, OpBaseY+5, OpBaseX	; start on-screen position
@@ -326,9 +326,9 @@ Options_AlternateHUD_Redraw:
 	dc.l	@Str_Mode00,@Str_Mode01,@Str_Mode10,@Str_Mode11,@Str_ModeXX
 
 @Str_Mode00:	dc.b	'            OFF',0
-@Str_Mode01:	dc.b	'     TOTAL TIME',0
+@Str_Mode01:	dc.b	'     TOTAL SECS',0
 @Str_Mode10:	dc.b	' TOTAL MISTAKES',0
-@Str_Mode11:	dc.b	'TIME + MISTAKES',0
+@Str_Mode11:	dc.b	'SECS + MISTAKES',0
 @Str_ModeXX:	dc.b	'DISABLE ALL HUD',0
 		even
 
@@ -411,25 +411,28 @@ Options_Autoskip_Redraw:
 	lea	@Str_Off(pc), a1
 	btst	#SlotOptions2_ArcadeMode, SlotOptions2
 	beq.s	@0
+	lea	@Str_OnWithStory(pc), a1
+	btst	#SlotOptions2_NoStory, SlotOptions2
+	beq.s	@0
 	lea	@Str_OnWithoutStory(pc), a1
 @0:
 
  if def(__WIDESCREEN__)
-	Options_PipeString a4, "ARCADE MODE            %<.l a1 str>", OpLength
+	Options_PipeString a4, "ARCADE MODE          %<.l a1 str>", OpLength
  else
-	Options_PipeString a4, "ARCADE MODE      %<.l a1 str>", OpLength
+	Options_PipeString a4, "ARCADE MODE    %<.l a1 str>", OpLength
  endif
 
 	rts
 
 @Str_Off:
-	dc.b	'          OFF', 0
+	dc.b	'            OFF', 0
 	even
 @Str_OnWithStory:
-	dc.b	'   ON - STORY', 0
+	dc.b	'ON - WITH STORY', 0
 	even
 @Str_OnWithoutStory:
-	dc.b	'ON - NO STORY', 0
+	dc.b	'ON - SKIP STORY', 0
 	even
 
 
@@ -446,7 +449,29 @@ Options_Autoskip_Handle:
 	moveq	#$18,d0				; ID for the explanation textbox
 	bsr	Options_HandleAHint		; show explanation textbox if A is pressed
 
-	bchg	#SlotOptions2_ArcadeMode, SlotOptions2
+	moveq	#0, d0
+	move.b	SlotOptions2, d0
+	lsr.b	#SlotOptions2_ArcadeMode, d0
+	andi.b	#%11, d0
+@repeat:
+	btst	#iLeft, Joypad|Press		; is left pressed?
+	beq.s	@selectPrevious			; if NOT, branch (so with story comes before no story)
+	subq.b	#1, d0				; use next mode
+	bra.s	@finalize
+@selectPrevious:
+	addq.b	#1, d0				; use previous mode
+@finalize:
+	andi.b	#%11, d0			; wrap modes
+	cmpi.b	#%10, d0			; is just no-story selected?
+	beq.s	@repeat				; this is an illegal state, repeat button input
+
+	lsl.b	#SlotOptions2_ArcadeMode, d0	
+	bclr	#SlotOptions2_ArcadeMode, SlotOptions2
+	bclr	#SlotOptions2_NoStory, SlotOptions2
+	or.b	d0, SlotOptions2
+
+	tst.b	d0				; check if current selection is OFF
+	eori.b	#%00100,ccr			; invert Z flag (play off sound for off, on for anything else)
 	bsr	Options_PlayRespectiveToggleSound
 	st.b	Options_RedrawCurrentItem
 

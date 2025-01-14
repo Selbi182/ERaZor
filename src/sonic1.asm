@@ -478,18 +478,29 @@ BlackBars.GHP:
 		tst.b	($FFFFF7CC).w			; are controls locked?
 		bne.s	@timeleft			; if yes, branch
 
-		move.w	($FFFFD008).w,d0		; reset black bars in waterfall
+		move.w	($FFFFD008).w,d0		; reset black bars in waterfall chunk
 		move.w	($FFFFD00C).w,d1
 		jsr	Sub_FindChunkByCoordinate
 		cmpi.b	#$34,(a0)			; is Sonic standing in the unique waterfall chunk?
 		bne.s	@notwaterfall			; if not, branch
+
 		move.w	BlackBars.BaseHeight,d0		; get current base black bars height
 		cmp.w	BlackBars.Height,d0		; are bars smaller than the base height?
 		bgt.s	@timeleft			; if not, branch
-		andi.w	#$FFFE,BlackBars.TargetHeight	; make even
-		subq.w	#BlackBars.GrowSize,BlackBars.TargetHeight ; grow bars until we reach the minimum height
-		bpl.s	@timeleft			; if still positive, branch
-		move.w	#0,BlackBars.TargetHeight	; make sure we don't underflow
+		beq.s	@nosfx				; don't play sound once fully reset
+		btst	#0,($FFFFFE05).w
+		beq.s	@nosfx
+		move.w	#$AA,d0				; play water splash sound
+		jsr	PlaySFX
+	@nosfx:
+
+		move.w	BlackBars.TargetHeight,d1	; get current black bars height
+		andi.w	#$FFFE,d1			; make even to avoid flicker
+		subq.w	#BlackBars.GrowSize,d1 		; shrink bars until we reach the minimum height
+		bpl.s	@waterfall			; if still positive, branch
+		moveq	#0,d1				; make sure we don't underflow
+	@waterfall:
+		move.w	d1,BlackBars.TargetHeight	; make sure we don't underflow
 		bra.s	@timeleft			; if not, branch
 
 	@notwaterfall:
@@ -893,6 +904,12 @@ PlaySFX:
 		KDebug.WriteLine "PlaySFX(): Sound queue overflow (curr=%<.b SoundDriverRAM+v_sfx_input>, next1=%<.b SoundDriverRAM+v_sfx_input_next_1>, next2=%<.b SoundDriverRAM+v_sfx_input_next_2>)"
 		rts
 ; ---------------------------------------------------------------------------
+PlaySFX_Force:
+		; overwrites the first entry in the queue no matter what
+		clr.b	SoundDriverRAM+v_sfx_input.w
+		bra.w	PlaySFX
+; ---------------------------------------------------------------------------
+
 PlaySFX_Once:
 		; check if sfx was already queued
 		cmp.b	SoundDriverRAM+v_sfx_input.w, d0
@@ -3645,9 +3662,11 @@ Level_GetBgm:
 		cmpi.w	#$501,($FFFFFE10).w	; are we starting the tutorial?
 		bne.s	Level_NoPreTut		; if not, branch
 		
+		btst	#SlotOptions2_NoStory, SlotOptions2 ; is no-story enabled?
+		bne.s	Level_NoPreTut		; if yes, don't play intro text
 		tst.b	(DyingFlag).w		; did the player die?
 		bne.s	Level_NoPreTut		; if yes, don't replay intro text
-		
+
 		move.w	#0,BlackBars.Height	; prevent black screen for the first few frames
 
 		move.b	#$99,d0			; play introduction music
@@ -4042,6 +4061,7 @@ Level_Delay:
 		bne.s	Level_StartGame		; if not, branch
 	@spinni:
 		move.b	#$25,($FFFFD01C).w	; inhuman spin animation
+		bset	#0,($FFFFD022).w	; make Sonic face left
 
 Level_StartGame:
 		clr.b	(CarryOverData).w	; clear any remaining carry-over data
@@ -5127,6 +5147,7 @@ Signpost_Exit:
 		rts	
 ; End of function SignpostArtLoad
 
+
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Special Stage
@@ -5139,6 +5160,8 @@ SpecialStage:				; XREF: GameModeArray
 
 		tst.b	(Blackout).w	; is this the blackout special stage?
 		beq.s	@notblackout	; if not, branch
+
+		bsr	Blackout_PreventCheating
 		
 		clr.b	($FFFFFFD0).w	; disable distortion effect
 		clr.b	(CameraShake).w	; disable screen shake effect
@@ -5414,6 +5437,7 @@ SS_WaitVBlank:
 		move.w	($FFFFF604).w,($FFFFF602).w
 		DeleteQueue_Init
 		jsr	ObjectsLoad
+		jsr	AddTime		; add time
 
 		; stage rotation for motion blur
 		btst	#SlotOptions2_MotionBlur, SlotOptions2	; is permanent motion blur enabled?
@@ -5587,6 +5611,17 @@ BlackoutChallenge:
 @setspeed:
 		move.w	d0,($FFFFF782).w			; set new rotation speed
 		rts
+; ---------------------------------------------------------------------------
+
+Blackout_PreventCheating:
+		jsr	CheckSlot_BlackoutFirst	; is this the first attempt at the blackout challenge?
+		beq.s	@end			; if not, branch
+		bclr	#SlotOptions_NonstopInhuman, SlotOptions	; disable true inhuman
+		clr.b	(Inhuman).w
+		bclr	#SlotOptions_SpaceGolf, SlotOptions	; disable space golf
+		clr.b	(SpaceGolf).w
+@end:		rts
+
 ; ---------------------------------------------------------------------------
 
 ; ---------------------------------------------------------------------------
@@ -9258,6 +9293,8 @@ Obj18_Arrows:
 
 		moveq	#0,d2		; no arrows
 		movea.l	$36(a0),a1
+		tst.b	($FFFFD000).w
+		beq.s	@cont
 		cmpi.b	#4,obRoutine(a1)
 		bne.s	@cont
 		tst.b	$3F(a1)
@@ -11877,8 +11914,8 @@ Obj1F_Main:				; XREF: Obj1F_Index
 		move.b	#3,obPriority(a0)
 		
 		move.b	#6,obColType(a0)		; use normal touch response
-		cmpi.w	#$000,($FFFFFE10).w	; is level GHZ1?
-		bne.s	Obj01_NotGHZ1_Main2	; if not, branch
+		tst.w	($FFFFFE10).w			; is level GHZ1?
+		bne.s	Obj01_NotGHZ1_Main2		; if not, branch
 		clr.b	($FFFFFFD5).w
 		move.b	#$F,obColType(a0)		; use boss touch response
 	if LowBossHP=1
@@ -11895,17 +11932,22 @@ Obj1F_Main:				; XREF: Obj1F_Index
 
 Obj01_NotGHZ1_Main2:
 		move.b	#$15,obActWid(a0)
-		bsr	ObjectFall
-		jsr	ObjHitFloor
-		tst.w	d1
-		bpl.s	locret_955A
-		add.w	d1,obY(a0)
-		move.b	d3,obAngle(a0)
 		move.w	#0,obVelY(a0)
-		addq.b	#2,obRoutine(a0)
 
-locret_955A:
-		rts
+		moveq	#8,d4			; max floor-find attempts so we don't freeze
+@gluetofloor:
+		jsr	ObjHitFloor		
+		tst.w	d1			; hit the floor yet?
+		bmi.s	@hitfloor		; if yes, branch
+		addi.w	#$10,obY(a0)		; lower Crabmeat
+		dbf	d4,@gluetofloor		; retry
+		bra.w	Obj1F_Delete		; if we didn't find a floor after all retries, too bad
+
+	@hitfloor:
+		add.w	d1,obY(a0)		; match	object's position with the floor
+		move.b	d3,obAngle(a0)
+		addq.b	#2,obRoutine(a0)
+		; fallthrough
 ; ===========================================================================
 
 Obj1F_Action:				; XREF: Obj1F_Index
@@ -12103,7 +12145,7 @@ Obj1F_BossDelete:
 
 		; part two of the transition is (cruedly) done in Obj34 itself
 		lea	($FFFFD000).w,a1
-		move.w	#$1318,obX(a1)		; adjusted to land exactly on the ring monitor if you hold right
+		move.w	#$1318-(SCREEN_XCORR*2),obX(a1)		; adjusted to land exactly on the ring monitor if you hold right
 		move.w	#$0060,obY(a1)
 		move.w	#-$C80,obVelX(a1)	; weeeeeee
 		move.w	#0,obVelY(a1)
@@ -12395,8 +12437,8 @@ locret_96B6:
 ; ===========================================================================
 
 Obj1F_Delete:				; XREF: Obj1F_Index
-		bsr	DeleteObject
-		rts	
+		bra.w	DeleteObject
+
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Sub-object - missile that the	Crabmeat throws
@@ -13943,7 +13985,7 @@ Obj4B_Exit:
 
 FZEscape_ScreenBoom:
 		move.w	#$DD,d0			; play super massive boom sound
-		jsr	PlaySFX	; yea
+		jsr	PlaySFX_Force		; yea
 
 		move.l	a0,-(sp)		; backup to stack
 		jsr	Pal_CutToWhite		; instantly turn screen white
@@ -19992,14 +20034,13 @@ Obj43_RPEndCutscene:
 		bset	#5,($FFFFF7A7).w	; set Roller as deleted
 		addq.b	#2,ob2ndRout(a0)
 
-		btst	#SlotOptions2_ArcadeMode, SlotOptions2	; is Arcade Mode enabled?
-		bne.s	Obj43_RPEnd				; if yes, don't play music
+		jsr	Check_FullArcadeMode	; is full arcade mode on?
+		bne.s	Obj43_RPEnd		; if yes, don't play music so it doesn't bleed into LP
 		jsr	PlayLevelMusic_Force	; restart music before entering level
 
 Obj43_RPEnd:
 		rts
 ; ---------------------------------------------------------------------------
-
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -25167,6 +25208,8 @@ Obj5F_Action:				; XREF: Obj5F_Index
 		beq.s	@notfrantic		; if not, branch
 		cmpi.b	#99,(BossHealth).w
 		bhs.s	@notfrantic
+		cmpi.w	#100,($FFFFD030).w	; adjusted so that only 2 health are regained
+		bhs.s	@notfrantic
 		addq.b	#1,(BossHealth).w	; regen one HP per bounce
 		move.b	(BossHealth).w,(HUD_BossHealth).w ; update boss health in HUD
 		move.b	#1,($FFFFFE1C).w	; update lives
@@ -29888,7 +29931,9 @@ FixLevel:
 		neg.w	d1			; make positive
 	@0:	cmpi.w	#$280,d1		; did we teleport further than the $280 pixels offscreen-limit?
 		bls.s	@1			; if not, do not reset OPL routine index to avoid overlapping objects loading
-		cmpi.w	#$302,($FFFFFE10).w	; skip for SAP because the platforms act as checkpoints
+		move.w	($FFFFFE10).w,d1	; get current level
+		beq.s	@1			; don't reset OPL for NHP
+		cmpi.w	#$302,d1		; skip for SAP because the platforms act as checkpoints
 		beq.s	@1
 		clr.w	($FFFFF76C).w		; reset OPL routine index to flush the level object RAM
 	@1:
@@ -31219,8 +31264,8 @@ SAPTeleport_Trigger   = 90
 SAP_HitWall:
 		jsr	AddFail				; add one fail no matter what
 
-		cmpi.b	#$1A,obAnim(a0)			; check if in hurt animation
-		beq.w	SAP_Teleport			; if yes, always teleport (hurt after getting hit by shrapnel)
+	;	cmpi.b	#$1A,obAnim(a0)			; check if in hurt animation
+	;	beq.w	SAP_Teleport			; if yes, always teleport (hurt after getting hit by shrapnel)
 		btst	#SlotOptions_NonstopInhuman, SlotOptions		; is nonstop inhuman enabled?
 		bne.s	@buzzwire			; if yes, branch
 		btst	#SlotOptions_SpaceGolf, SlotOptions		; is space golf enabled?
@@ -36503,20 +36548,8 @@ Obj7D_SoundStopper:
 		movea.l	$30(a0),a1		; get saved RAM address of the door
 		move.b	#1,$30(a1)		; turn the door red
 		move.b	#1,($FFFFFFA5).w	; move HUD off screen
-		bset	#SlotOptions2_MotionBlurTemp, SlotOptions2	; enable temporary screen fuzz
-
-		; prevent cheating when attempting the blackout challenge for the first time
-		jsr	CheckSlot_BlackoutFirst	; is this the first attempt at the blackout challenge?
-		beq.s	@del			; if not, branch
-		bclr	#SlotOptions_NonstopInhuman, SlotOptions	; disable true inhuman
-		clr.b	(Inhuman).w
-		bclr	#SlotOptions_SpaceGolf, SlotOptions	; disable space golf
-		clr.b	(SpaceGolf).w
-		bclr	#SlotOptions_CinematicBlackBars, SlotOptions	; disable "cinematic mode - black bars"
-		bclr	#SlotOptions2_MotionBlur, SlotOptions2	; disable permanent motion blur
-		bclr	#SlotOptions2_PissFilter, SlotOptions2	; disable piss filter
-
-@del:
+		bset	#SlotOptions2_MotionBlurTemp, SlotOptions2 ; enable temporary screen fuzz
+		jsr	Blackout_PreventCheating ; disabled inhuman mode etc. if the stage wasn't beaten yet
 		jmp	DeleteObject
 
 @end:
@@ -37139,6 +37172,8 @@ Obj3D_FaceDel:
 Obj3D_FlameMain:			; XREF: Obj3D_Index
 		move.b	#7,obAnim(a0)
 		movea.l	$34(a0),a1
+		cmpi.b	#$3D,(a1)
+		bne.s	Obj3D_FlameDel
 		cmpi.b	#$C,ob2ndRout(a1)
 		bne.s	loc_17A96
 		move.b	#$B,obAnim(a0)
@@ -45418,6 +45453,10 @@ Map_obj21:
 
 
 AddPoints:
+		btst	#SlotOptions_AltHUD_ShowSeconds, SlotOptions	; is speedrun timer enabled?
+		bne.s	locret_1C6B6		; if yes, disable regular score system
+
+AddPoints_Force:
 		move.b	#1,($FFFFFE1F).w ; set score counter to	update
 		lea	($FFFFFFC0).w,a2
 		lea	($FFFFFE26).w,a3
@@ -45437,6 +45476,15 @@ loc_1C6AC:
 
 locret_1C6B6:
 		rts
+; ---------------------------------------------------------------------------
+
+AddPoints_Timer:
+		btst	#SlotOptions_AltHUD_ShowSeconds, SlotOptions	; is speedrun timer enabled?
+		beq.s	locret_1C6B6	; if not, nothing to do
+		tst.b	($FFFFF7CC).w	; are controls locked?
+		bne.s	locret_1C6B6	; if yes, nothing to do
+		moveq	#10,d0			; add 100 points to simulate a second
+		bra.s	AddPoints_Force		; apply score
 ; End of function AddPoints
 
 ; ---------------------------------------------------------------------------
@@ -45460,10 +45508,6 @@ HudUpdate:
 		ori.b	#1,($FFFFFE1C).w	; update lives counter as well to display the third digit properly
 
 		move.l	($FFFFFE26).w,d1	; load	score
-		btst	#SlotOptions_AltHUD_ShowSeconds, SlotOptions ; is speedrun timer enabled?
-		beq.s	@noalt			; if not, branch
-		move.l	(SlotTime).w,d1		; use slot timer instead
-@noalt:
 		move.l	#$5C800003,d0		; set VRAM address
 		bsr	Hud_Score
 
@@ -45488,81 +45532,13 @@ loc_1C6E4:
 
 Hud_ChkTime:
 		tst.b	($FFFFFE1E).w	; does the time	need updating?
-		beq.w	Hud_ChkLives	; if not, branch
-		tst.w	($FFFFF63A).w	; is the game paused?
-		bne.w	Hud_ChkLives	; if yes, branch
-		tst.b	($FFFFF7CC).w	; are controls locked?
-		bne.w	Hud_ChkLives	; if yes, branch
-		cmpi.w	#$400,($FFFFFE10).w ; is level SYZ1?
-		beq.w	Hud_ChkLives	; if yes, branch
-	;	cmpi.w	#$501,($FFFFFE10).w ; is level SBZ1?
-	;	beq.w	Hud_ChkLives	; if yes, branch
+		beq.s	Hud_ChkLives	; if not, branch
+		cmpi.w	#$400,($FFFFFE10).w ; are we in Uberhub?
+		beq.s	Hud_ChkLives	; if yes, don't update time
 
-		lea	($FFFFFE22).w,a1
-		cmpi.l	#(9*$10000)|(99*$100),(a1)+	; is the time 999? ($96300)
-		bhi.w	TimeOver			; if yes, time over noob
+		bsr	AddTime		; add time
+		beq.s	Hud_ChkLives	; if return value was 0, no time HUD update necessary
 
-		moveq	#1,d0			; regular timer speed (1 tick per second; at 999 ticks, that's roughly 16 minutes)
-
-		cmpi.w	#$502,($FFFFFE10).w	; are we in FP?
-		bne.s	@notfzescape		; if not, branch
-		cmpi.b	#2,(FZEscape).w		; are we in the escape sequence?
-		beq.s	@fzescapetimer		; if yes, branch
-		bra.s	@notfzescape		; skip
-@fzescapetimer:
-		sub.b	d0,-(a1)		; sub from current timer
-		tst.b	(a1)			; did we reach 60 frames?
-		bpl.w	Hud_ChkLives		; if not, branch
-		move.b	#60,(a1)		; reset frame counter
-
-		subq.b	#1,-(a1)		; sub 1 from seconds
-		tst.b	(a1)			; did we underflow seconds?
-		bpl.s	Hud_TimeUpdate		; if not, branch
-		move.b	#99,(a1)		; reset seconds to 99
-
-		subq.b	#1,-(a1)		; sub 1 from minutes counter
-		tst.b	(a1)			; did we underflow minutes?
-		bpl.s	Hud_TimeUpdate		; if not, branch
-
-		bsr.w	TimeOver		; rip sonic...
-		jmp	FZEscape_ScreenBoom	; ...nuke went off
-
-@notfzescape:
-		frantic				; are we in frantic?
-		beq.s	@notfrantic		; if not, branch
-		moveq	#2,d0			; otherwise, triple regular timer speed (2 ticks per second; this changes the effective time limit to roughly 8 minutes)
-		
-@notfrantic:
-		add.b	d0,-(a1)		; add to current timer
-		cmpi.b	#60,(a1)		; did we reach 60 frames?
-		blo.s	Hud_ChkLives		; if not, branch
-		move.b	#0,(a1)			; clear frame counter
-
-		; a second has passed
-		ori.b	#1,($FFFFFE1F).w	; update score
-
-		lea	(SlotTime+4).w,a2
-		addq.b	#1,-(a2)		; add 1 second
-		cmpi.b	#60,(a2)		; did we reach 60 seconds?
-		blo.s	@0		; if not, branch
-		move.b	#0,(a2)			; clear seconds counter
-		addq.b	#1,-(a2)		; add 1 to minutes
-		cmpi.w	#999,-(a2)		; did we reach 999 minutes?
-		blo.s	@0		; if not, branch
-		move.w	#999,(a2)		; set minutes to 999
-
-@0:
-		addq.b	#1,-(a1)		; add 1 to seconds
-		cmpi.b	#100,(a1)		; did we reach 100 seconds?
-		blo.s	Hud_TimeUpdate		; if not, branch
-		move.b	#0,(a1)			; set seconds to 0
-
-		addq.b	#1,-(a1)		; add 1 to minutes counter
-		cmpi.b	#9,(a1)			; are we at 9 minutes?
-		blo.s	Hud_TimeUpdate		; if not, branch
-		move.b	#9,(a1)			; force to not exceed 9 minutes
-
-Hud_TimeUpdate:
 		move.l	#$5E400003,d0
 		moveq	#0,d1
 		move.b	($FFFFFE23).w,d1 ; load	minutes
@@ -45651,6 +45627,83 @@ HudDb_ChkBonus:
 HudDb_End:
 		rts	
 ; End of function HudUpdate
+
+; ---------------------------------------------------------------------------
+
+AddTime:
+		tst.w	($FFFFF63A).w	; is the game paused?
+		bne.w	@noupdate	; if yes, branch
+		tst.b	($FFFFF7CC).w	; are controls locked?
+		bne.w	@noupdate	; if yes, branch
+
+		lea	($FFFFFE22+4).w,a1	; load time (+4 as it's read backwards)
+		cmpi.b	#$C,(GameMode).w	; are we in a regular level?
+		bne.s	@notlevel		; if not, branch
+		cmpi.l	#(9*$10000)|(99*$100)|30,-4(a1)	; is the time 999 (plus a little)?
+		bls.w	@notlevel			; if not, branch
+		addq.l	#4,sp				; skip return address
+		bra.w	TimeOver			; if yes, time over noob
+@notlevel:
+		cmpi.w	#$502,($FFFFFE10).w	; are we in FP?
+		bne.s	@regulartimer		; if not, branch
+		cmpi.b	#2,(FZEscape).w		; are we in the escape sequence?
+		beq.s	@fpescapetimer		; if yes, go to the custom timer logic
+
+@regulartimer:
+		moveq	#1,d0			; regular timer speed (1 tick per second; at 999 ticks, that's roughly 16 minutes)
+		frantic				; are we in frantic?
+		beq.s	@notfrantic		; if not, branch
+		moveq	#2,d0			; otherwise, double regular timer speed (2 ticks per second; this changes the effective time limit to roughly 8 minutes)
+	@notfrantic:
+	
+		add.b	d0,-(a1)		; add to current timer
+		cmpi.b	#60,(a1)		; did we reach 60 frames?
+		blo.s	@noupdate		; if not, branch
+		move.b	#0,(a1)			; clear frame counter
+
+		jsr	AddPoints_Timer		; a second has passed
+
+		addq.b	#1,-(a1)		; add 1 to seconds
+		cmpi.b	#100,(a1)		; did we reach 100 seconds?
+		blo.s	@update			; if not, branch
+		move.b	#0,(a1)			; set seconds to 0
+
+		addq.b	#1,-(a1)		; add 1 to minutes counter
+		cmpi.b	#9,(a1)			; are we at 9 minutes?
+		blo.s	@update			; if not, branch
+		move.b	#9,(a1)			; force to not exceed 9 minutes
+
+@update:	moveq	#1,d0			; update time HUD
+		rts
+
+@noupdate:	moveq	#0,d0			; don't update time HUD
+		rts
+
+; ---------------------------------------------------------------------------
+
+@fpescapetimer:
+		moveq	#1,d0			; 1 second speed for both casual and frantic
+
+		sub.b	d0,-(a1)		; sub from current timer
+		tst.b	(a1)			; did we reach 60 frames?
+		bpl.w	@noupdate		; if not, branch
+		move.b	#60,(a1)		; reset frame counter
+
+		jsr	AddPoints_Timer		; a second has passed
+
+		subq.b	#1,-(a1)		; sub 1 from seconds
+		tst.b	(a1)			; did we underflow seconds?
+		bpl.s	@update			; if not, branch
+		move.b	#99,(a1)		; reset seconds to 99
+
+		subq.b	#1,-(a1)		; sub 1 from minutes counter
+		tst.b	(a1)			; did we underflow minutes?
+		bpl.s	@update			; if not, branch
+
+		bsr.w	TimeOver		; rip sonic...
+		jsr	FZEscape_ScreenBoom	; ...nuke went off
+		addq.l	#4,sp			; skip return address
+		rts
 
 ; ---------------------------------------------------------------------------
 ; Subroutine to	load "0" on the	HUD

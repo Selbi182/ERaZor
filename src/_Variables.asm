@@ -171,7 +171,7 @@ Options_FirstStartFlag:	equ	$FFFFFF84			; b	flag set when the options menu is ac
 Doors:			equ	$FFFFFF8A			; w	bit field for beaten levels
 Doors_Casual:		equ	Doors+0				; b	bit field for beaten levels in casual
 Doors_Frantic:		equ	Doors+1				; b	bit field for beaten levels in frantic
-SlotTime:		equ	$FFFFFF8C			; l	playtime for current slot
+
 SlotProgress:		equ	$FFFFFF90			; b	bit field for save slot-local game progress
 SlotOptions:		equ	$FFFFFF91			; b	bit field for the save slot options
 SlotOptions2:		equ	$FFFFFF92			; b	bit field for secondary slot options (screen fuzz, arcade mode)

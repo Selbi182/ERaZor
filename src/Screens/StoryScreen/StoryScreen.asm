@@ -171,17 +171,17 @@ STS_ClrVram:	move.l	d0,(a6)
 
 StoryScreen_BGColors:
 		dc.w	$0E0	; after intro cutscene
-		dc.w	$2E4	; after NHP/GHP
-		dc.w	$E2E	; after SP
+		dc.w	$4E6	; after NHP/GHP
+		dc.w	$E4E	; after SP
 		dc.w	$02E	; after RP
 		dc.w	$EA2	; after LP
 		dc.w	$E2A	; after UP
-		dc.w	$E02	; after SNP/SAP
-		dc.w	$000	; before ending sequence
+		dc.w	$E04	; after SNP/SAP
+		dc.w	$444	; before ending sequence
 		dc.w	$00E	; after blackout
 		dc.w	$0EE	; after beating Unreal Place without touching any checkpoints
 		dc.w	$0EE	; after beating the blackout challenge in true-BS mode
-		dc.w	$E28	; after beating Unterhub Place
+		dc.w	$EC6	; after beating Unterhub Place TODO
 		dc.w	$0EE	; after beating Unterhub Place without destroying the last Roller
 		even
 
@@ -469,7 +469,12 @@ StoryText_WriteFull:
 		tst.b	(STS_FinalPhase).w		; did we already write the final text?
 		bne.s	@finished			; if yes, branch
 		move.b	#1,(STS_FinalPhase).w		; set "final phase" flag
+
 		lea	(STS_Continue).l,a1		; load "Press Start..." text to a1
+		btst	#SlotOptions2_PlacePlacePlace, SlotOptions2 ; PLACE PLACE PLACE?
+		beq.s	@normal				; if not, branch
+		lea	(STS_ContPlace).l,a1		; load dumb text
+@normal:
 		move.w	#STS_PressStart_VRAMSettings,d3	; use red palette line
 		move.l	#STS_PressStart_VRAMBase,d4	; adjust position
 		bra.w	@nextline			; write the line

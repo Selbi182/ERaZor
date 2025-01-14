@@ -347,6 +347,7 @@ SRAMCache_SanityCheck:
 	@chkbits SlotOptions2, a0, d0,  <SlotOptions2_MotionBlur, &
 					 SlotOptions2_PissFilter, &
 					 SlotOptions2_ArcadeMode, &
+					 SlotOptions2_NoStory, &
 					 SlotOptions2_PlacePlacePlace>, @unsupportedbits
 
 	@cmpm.b	GlobalOptions,		SRAMCache.GlobalOptions,	a0, d0, @desync_byte

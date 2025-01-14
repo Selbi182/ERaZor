@@ -498,7 +498,7 @@ LevelRenderer_DrawLayout:
 
 	; Calculate number of rows to render within this layer ...
 	sub.w   d5, d1                              ; d1 = Y-end - Y-start = Draw height
-	bmi.s   @layer_done_cont                    ; if "Draw height" < 0, branch
+	bls.w   @layer_done_cont                    ; if "Draw height" <= 0, branch
 	lsr.w   #3, d1                              ; d1 = Number of rows to draw
 	subq.w  #1, d1                              ; d1 = Number of rows to draw - 1
 	cmp.w   d6, d1                              ; d1 = Min("Number of rows to draw - 1", "Height - 1")
@@ -658,7 +658,7 @@ LevelRenderer_DrawLayout_RAMBuffered:
 
 	; Calculate number of rows to render within this layer ...
 	sub.w   d5, d1                              ; d1 = Y-end - Y-start = Draw height
-	bmi.w   @layer_done_cont                    ; if "Draw height" < 0, branch
+	bls.w   @layer_done_cont                    ; if "Draw height" <= 0, branch
 	lsr.w   #3, d1                              ; d1 = Number of rows to draw
 	subq.w  #1, d1                              ; d1 = Number of rows to draw - 1
 	cmp.w   d6, d1                              ; d1 = Min("Number of rows to draw - 1", "Height - 1")

@@ -1,11 +1,13 @@
 ; /======================================================\
 ; |                     Sonic ERaZor                     |
+; |                 (C) Selbi 2010-2025                  |
+; | With huge contributions & support from  vladikcomper |
 ; \======================================================/
 
 ; ------------------------------------------------------
 	if def(__BENCHMARK__)=0
 ; Vladik's Debugger
-__DEBUG__: equ 1
+;__DEBUG__: equ 1
 
 	else
 		; MD Replay state. Used for playing pre-recorded gameplay in benchmarks.
@@ -58,9 +60,9 @@ USE_NEW_BUILDSPRITES:	equ	1	; New BuildSprites system is still faster than S1's,
 ; $502 - Finalor Place
 	if def(__BENCHMARK__)=0
 QuickLevelSelect = 0
-QuickLevelSelect_ID = $200
+QuickLevelSelect_ID = -1
 ; ------------------------------------------------------
-DebugModeDefault = 1
+DebugModeDefault = 0
 DebugSurviveNoRings = 1
 DebugHudPermanent = 0
 ; ------------------------------------------------------
@@ -2440,7 +2442,6 @@ PalPointers_Remastered:
 ; ---------------------------------------------------------------------------
 ; Palette data includes
 ; ---------------------------------------------------------------------------
-; TODO once we're getting close to release, remove unchanged duplicates again
 
 ; Classic palettes
 PalC_Title:		incbin	palette\Classic\title.bin

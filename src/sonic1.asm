@@ -65,7 +65,7 @@ DebugSurviveNoRings = 1
 DebugHudPermanent = 0
 ; ------------------------------------------------------
 DoorsAlwaysOpen = 0
-LowBossHP = 1
+LowBossHP = 0
 ; ======================================================
 	else
 ; BENCHMARK build settings (DO NOT CHANGE!)
@@ -37970,7 +37970,8 @@ Obj77_Display:
 ; ---------------------------------------------------------------------------
 ; Object 73 - Eggman (MZ)
 ; ---------------------------------------------------------------------------
-Obj73_BossHealth = 16
+Obj73_BossHealth_Casual  = 12
+Obj73_BossHealth_Frantic = 16
 ; ---------------------------------------------------------------------------
 
 Obj73:					; XREF: Obj_Index
@@ -37995,7 +37996,11 @@ Obj73_Main:				; XREF: Obj73_Index
 		move.w	obY(a0),$38(a0)
 		move.b	#$F,obColType(a0)
 
-		moveq	#Obj73_BossHealth,d0		; set number of hits
+		moveq	#Obj73_BossHealth_Casual,d0	; set number of casual hits
+		frantic
+		beq.s	@notfrantic
+		moveq	#Obj73_BossHealth_Frantic,d0	; set number of frantic hits
+@notfrantic:
 		if LowBossHP=1
 			moveq	#1,d0
 		endif

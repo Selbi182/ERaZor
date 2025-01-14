@@ -403,9 +403,9 @@ Credits_Page2:
 		crdtxt	"                    "
 		crdtxt	"and blast processing"
 	else
-		crdtxt	"blast processing and"
+		crdtxt	"blast processing    "
 		crdtxt	"                    "
-		crdtxt	"sound test screen   "
+		crdtxt	"and sound test      "
 	endif
 		crdtxt	"                    "
 		crdtxt	"                    "
@@ -488,9 +488,9 @@ Credits_Page7:
 		crdtxt	"                    "
 		crdtxt	"                    "
 		crdtxt	"                    "
-		crdtxt	"                    "
-		crdtxt	"                    "
 		crdtxt	"NEONSYNTH           "
+		crdtxt	"                    "
+		crdtxt	"AKA SONICVAAN       "
 		crdtxt	"                    "
 		crdtxt	"                    "
 		crdtxt	"                    "

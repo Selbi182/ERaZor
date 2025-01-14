@@ -303,13 +303,20 @@ SaveSelect_DrawSlot_\#__slotId:
 		and.b	SaveSlot.Chapter+(__slotRAM), d0			; d0 = chapter
 		add.w	d0, d0
 		add.w	d0, d0
+
+		move.l	SaveSlot.Score+(__slotRAM), d1				; multiply score by 10 because the HUD fakes a 0
+		move.l	d1, d2
+		asl.l	#3, d1
+		asl.l	#1, d2
+		add.l	d2, d1							; d1 = score * 10
+
 		btst	#SlotOptions2_PlacePlacePlace, SaveSlot.Options2+(__slotRAM)
 		bne.w	@3
 		movea.l	(a5, d0), a5						; a5 = chapter text
 
 		SaveSelect_WriteString a4, __baseX, __baseY,		"SLOT \#__slotId: %<.l a5 str>"
 		SaveSelect_WriteString a4, __baseX+2, __baseY+2,	"DEATHS: %<.w SaveSlot.Deaths+(__slotRAM) dec>"
-		SaveSelect_WriteString a4, __baseX+2, __baseY+3,	"SCORE: %<.l SaveSlot.Score+(__slotRAM) dec>"
+		SaveSelect_WriteString a4, __baseX+2, __baseY+3,	"SCORE: %<.l d1 dec>"
 		SaveSelect_WriteString a4, __baseX+19, __baseY+2,	"TROPHIES: %<.b d4 dec>/8"
 		SaveSelect_WriteString a4, __baseX+19, __baseY+3,	"%<.l a3 str>"	; CASUAL / FRANTIC
 		rts
@@ -318,7 +325,7 @@ SaveSelect_DrawSlot_\#__slotId:
 
 		SaveSelect_WriteString a4, __baseX, __baseY,		"SLOT \#__slotId: %<.l a5 str>"
 		SaveSelect_WriteString a4, __baseX+2, __baseY+2,	"PLACE: %<.w SaveSlot.Deaths+(__slotRAM) dec>"
-		SaveSelect_WriteString a4, __baseX+2, __baseY+3,	"PLACE: %<.l SaveSlot.Score+(__slotRAM) dec>"
+		SaveSelect_WriteString a4, __baseX+2, __baseY+3,	"PLACE: %<.l d1 dec>"
 		SaveSelect_WriteString a4, __baseX+19, __baseY+2,	"PLACE: %<.b d4 dec>/8"
 		SaveSelect_WriteString a4, __baseX+19, __baseY+3,	"PLACE PLACE"	; CASUAL / FRANTIC
 		rts

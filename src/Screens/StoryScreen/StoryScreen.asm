@@ -696,7 +696,7 @@ STS_ContPlace:	ststxt	"~~~PLACE~PLACE~TO~PLACE...~~"
 StoryText_1:	; text after intro cutscene
 		ststxt	"ONE DAY, THE SPIKED SUCKER"
 		ststxt	"RETURNED TO THE HILLS"
-		ststxt	"FOR OLD TIME'S SAKE."
+		ststxt	"FOR OLD TIMES' SAKE."
 		ststxt_line
 		ststxt	"WHEN SUDDENLY..."
 		ststxt	"EXPLOSIONS! EVERYWHERE!"
@@ -837,7 +837,7 @@ StoryText_7:	; text after beating Scar Night Place
 		ststxt	"WHEN I PLAY BUZZ WIRE GAMES,"
 		ststxt	"I ALSO SCREAM IN EXCITEMENT!"
 		ststxt	"BUT I'M REALLY STARTING"
-		ststxt	"TO GET CONCERNEND ABOUT"
+		ststxt	"TO GET CONCERNED ABOUT"
 		ststxt	"YOUR VOCAL CORDS."
 		ststxt_line
 		ststxt	"AFTER ALL, THE FINALE IS"

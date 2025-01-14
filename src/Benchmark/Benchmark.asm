@@ -1,7 +1,7 @@
 
 ; =============================================================================
 ; -----------------------------------------------------------------------------
-; Sonic 1 ERaZor Benchmarking program
+; Sonic ERaZor 8 Benchmarking program
 ;
 ; (c) 2024, vladikcomper
 ; -----------------------------------------------------------------------------
@@ -12,7 +12,7 @@ Benchmark:
 ; -----------------------------------------------------------------------------
 @self:
 	Console.SetXY #1, #1
-	Console.WriteLine "%<pal1>Sonic 1 ERaZor Self-Benchmark%<endl>"
+	Console.WriteLine "%<pal1>Sonic ERaZor 8 Self-Benchmark%<endl>"
 
 	; Reset VSyncWaitTicks (64-bit integer) just in case
 	moveq	#0, d0

@@ -4,6 +4,7 @@
 ; this one is optimised from the original, but with the more rom-intensive
 ; speedups locked behind some flags down below
 ; ---------------------------------------------------------------------------
+; created by Malachi
 ; proper ASM68K support added by OrionNavattan
 _Eni_Assembler:		equ 0	; ASM68K = 0, AS = 1
 ; ---------------------------------------------------------------------------

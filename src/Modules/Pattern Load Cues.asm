@@ -1,4 +1,12 @@
 
+; --------------------------------------------------------------
+; Custom Kosinski+ based PLC system
+;
+; Ported from Sonic 1 Blastless engine
+; --------------------------------------------------------------
+; (c) Vladikcomper
+; --------------------------------------------------------------
+
 			rsset	PLC_RAM
 PLC_StreamHndl:		rs.l	1			; stream handler for the PLC
 PLC_Pointer:		rs.l	1			; pointer to the ocurring entry in PLC list

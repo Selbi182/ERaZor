@@ -1,4 +1,14 @@
 
+; ===============================================================
+; ---------------------------------------------------------------
+; Module for handling custom draw requests
+;
+; A stripped-down version from Sonic 1 Blastless engine
+; ---------------------------------------------------------------
+; (c) Vladikcomper
+; ---------------------------------------------------------------
+
+
 			rsset	DrawBuffer_RAM
 DrawBufferPos:		rs.w    1
 DrawBuffer:		rs.b    $380-4  
@@ -10,7 +20,6 @@ DrawBuffer_RAM_Size     equ     __rs-DrawBuffer_RAM
 		inform 3, 'Draw buffer RAM structure takes too much memory (>$380 bytes)'
 	endif
 
-; ===============================================================
 ; ---------------------------------------------------------------
 ; Subroutine to execute draw requests
 ; ---------------------------------------------------------------

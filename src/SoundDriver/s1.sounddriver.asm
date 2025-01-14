@@ -2723,7 +2723,7 @@ Music8F:	incbin	sound\music8F.bin
 		even
 Music90:	include	"sound\DalekSam\MMX3_IntroStage.asm"
 		even
-Music91:	incbin	sound\music91.bin
+Music91:	include	sound\music91.asm
 		even
 Music92:	incbin	sound\music92.bin
 		even

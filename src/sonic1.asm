@@ -7758,7 +7758,7 @@ Resize_SYZ3main:
 		addq.b	#2,($FFFFF742).w
 		move.w	#Unterhub_BossStartX-$28,($FFFFF72A).w	; right boundary right at the boss start (to snap the extended camera)
 
-		cmpi.w	#3,(RelativeDeaths).w	; did player die at least thrice already?
+		cmpi.w	#2,(RelativeDeaths).w	; did player die at least twice already?
 		bhs.s	locret_71CE		; if yes, skip rollerbot scene
 
 		jsr	SingleObjLoad
@@ -19714,6 +19714,11 @@ Obj43_Main:				; XREF: Obj43_Index
 
 		move.b	#10,$30(a0)	; delay before jump (for the one before the boss)
 
+		tst.b	obSubtype(a0)		; is this a decoy Rollerbot?
+		bne.s	@notdecoy		; if not, branch
+		tst.b	($FFFFFE30).w		; are we restarting from the checkpoint?
+		bne.w	DeleteObject		; if yes, delete decoys
+@notdecoy
 		move.b	#0,obColType(a0)
 		cmpi.b	#2,obSubtype(a0)
 		bne.s	Obj43_Action
@@ -19734,8 +19739,8 @@ Obj43_Index2:	dc.w Obj43_Wait-Obj43_Index2
 ; ===========================================================================
 
 Obj43_Wait:
-		tst.b	obSubtype(a0)
-		bne.s	@notdecoy
+		tst.b	obSubtype(a0)		; is this a decoy Rollerbot?
+		bne.s	@notdecoy		; if not, branch
 
 		move.w	($FFFFD008).w,d0	; get Sonic's X-pos
 		sub.w	obX(a0),d0		; substract the X-pos from the current object from it
@@ -20811,6 +20816,11 @@ Obj47_Index:	dc.w Obj47_Main-Obj47_Index
 Obj47_Main:				; XREF: Obj47_Index
 		cmpi.b	#4,($FFFFFE10).w
 		bne.s	@noeaster
+		frantic
+		beq.s	@0
+		tst.b	obSubtype(a0)
+		bmi.w	DeleteObject
+@0:
 		btst	#SlotOptions2_PlacePlacePlace, SlotOptions2
 		beq.s	@noeaster
 		move.b	#7,(a0) ; same effect, totally different vibe
@@ -36215,7 +36225,7 @@ Obj79_Main:				; XREF: Obj79_Index
 		beq.s	@nodelete
 		cmpi.w	#$502,($FFFFFE10).w
 		bne.s	@nodelete
-		cmpi.w	#3,(RelativeDeaths).w	; did player make it here with less than three deaths?
+		cmpi.w	#2,(RelativeDeaths).w	; did player make it here with less than two deaths?
 		bhs.s	@nodelete		; if not, show checkpoint. otherwise, show me what you got
 @delete:	addq.l	#4,sp			; prevent sprite rendering
 		jmp	DeleteObject
@@ -39454,7 +39464,7 @@ Obj75_ObjData:	dc.b 2,	0, 5		; routine number, animation, priority
 Obj75_Main:				; XREF: Obj75_Index
 		move.w	($FFFFD008).w,d0
 
-		cmpi.w	#3,(RelativeDeaths).w	; did player die at least thrice already?
+		cmpi.w	#2,(RelativeDeaths).w	; did player die at least twice already?
 		bhs.s	@fast			; if yes, fast forward scene
 		subi.w	#Obj75_BaseXOffset,d0
 		bra.s	@setx

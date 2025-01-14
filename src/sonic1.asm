@@ -870,6 +870,13 @@ WaitForVDP:
 ; ---------------------------------------------------------------------------
 
 PlayCommand:
+		; never slow down music in true-BS mode
+		btst	#SlotOptions2_PlacePlacePlace, SlotOptions2
+		beq.s	@normal
+		cmpi.b	#$E3,d0
+		beq.s	Play_Return
+
+@normal:
 		move.b	d0, SoundDriverRAM+v_cmd_input.w
 		rts	
 
@@ -878,6 +885,13 @@ PlayBGM:
 		btst	#GlobalOptions_DisableBGM, GlobalOptions
 		bne.s	Play_Return
 		move.b	d0, SoundDriverRAM+v_bgm_input.w
+
+		; speed up music in true-BS mode
+		btst	#SlotOptions2_PlacePlacePlace, SlotOptions2
+		beq.s	Play_Return
+		moveq	#$FFFFFFE2,d0
+		bra.w	PlayCommand
+
 Play_Return:
 		rts
 
@@ -7799,6 +7813,8 @@ Resize_SYZ3boss:
 	;	bne.s	@frantic		; if yes, branch
 		btst	#0,($FFFFF7A7).w	; has final hit been dealt?
 		beq.s	@frantic		; if not, branch
+		btst	#SlotOptions2_PlacePlacePlace, SlotOptions2	; is easter egg flag set?
+		bne.s	@frantic		; if yes, branch
 		move.w	#$2A4,($FFFFF726).w	; lower boundary just enough to allow noobs not to die
 @frantic:
 		btst	#1,($FFFFF7A7).w	; has boss been defeated and deleted?
@@ -37975,6 +37991,7 @@ Obj77_Display:
 ; ---------------------------------------------------------------------------
 Obj73_BossHealth_Casual  = 12
 Obj73_BossHealth_Frantic = 16
+Obj73_BossHealth_TrueBS  = 30
 ; ---------------------------------------------------------------------------
 
 Obj73:					; XREF: Obj_Index
@@ -37999,11 +38016,16 @@ Obj73_Main:				; XREF: Obj73_Index
 		move.w	obY(a0),$38(a0)
 		move.b	#$F,obColType(a0)
 
+		btst	#SlotOptions2_PlacePlacePlace, SlotOptions2	; is easter egg flag set?
+		beq.s	@nottruebs		; if not, branch
+		moveq	#Obj73_BossHealth_TrueBS,d0
+		bra.s	@notfrantic
+	@nottruebs:
 		moveq	#Obj73_BossHealth_Casual,d0	; set number of casual hits
 		frantic
 		beq.s	@notfrantic
 		moveq	#Obj73_BossHealth_Frantic,d0	; set number of frantic hits
-@notfrantic:
+	@notfrantic:
 		if LowBossHP=1
 			moveq	#1,d0
 		endif
@@ -39589,6 +39611,9 @@ Obj75_LastHitDealt:
 		dbf	d0,@loop
 
 		; remove skull chunks on last hit as the camera is now going back down
+		btst	#SlotOptions2_PlacePlacePlace, SlotOptions2	; is easter egg flag set?
+		bne.s	@end			; if yes, don't remove
+
 		move.l	a0,-(sp)
 		move.b	#$80,(RedrawEverything).w ; redraw everything without affecting the camera
 		jsr	WhiteFlash
@@ -39607,7 +39632,7 @@ Obj75_LastHitDealt:
 		addi.w	#$100,d3
 		dbf	d4,@clearskulls
 		move.l	(sp)+,a0
-		rts
+@end:		rts
 ; ===========================================================================
 
 Obj75_CheckSlam:

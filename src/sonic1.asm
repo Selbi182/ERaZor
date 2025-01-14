@@ -9293,6 +9293,8 @@ Obj18_Arrows:
 
 		moveq	#0,d2		; no arrows
 		movea.l	$36(a0),a1
+		tst.b	($FFFFD000).w
+		beq.s	@cont
 		cmpi.b	#4,obRoutine(a1)
 		bne.s	@cont
 		tst.b	$3F(a1)
@@ -11912,8 +11914,8 @@ Obj1F_Main:				; XREF: Obj1F_Index
 		move.b	#3,obPriority(a0)
 		
 		move.b	#6,obColType(a0)		; use normal touch response
-		cmpi.w	#$000,($FFFFFE10).w	; is level GHZ1?
-		bne.s	Obj01_NotGHZ1_Main2	; if not, branch
+		tst.w	($FFFFFE10).w			; is level GHZ1?
+		bne.s	Obj01_NotGHZ1_Main2		; if not, branch
 		clr.b	($FFFFFFD5).w
 		move.b	#$F,obColType(a0)		; use boss touch response
 	if LowBossHP=1
@@ -11930,17 +11932,22 @@ Obj1F_Main:				; XREF: Obj1F_Index
 
 Obj01_NotGHZ1_Main2:
 		move.b	#$15,obActWid(a0)
-		bsr	ObjectFall
-		jsr	ObjHitFloor
-		tst.w	d1
-		bpl.s	locret_955A
-		add.w	d1,obY(a0)
-		move.b	d3,obAngle(a0)
 		move.w	#0,obVelY(a0)
-		addq.b	#2,obRoutine(a0)
 
-locret_955A:
-		rts
+		moveq	#8,d4			; max floor-find attempts so we don't freeze
+@gluetofloor:
+		jsr	ObjHitFloor		
+		tst.w	d1			; hit the floor yet?
+		bmi.s	@hitfloor		; if yes, branch
+		addi.w	#$10,obY(a0)		; lower Crabmeat
+		dbf	d4,@gluetofloor		; retry
+		bra.w	Obj1F_Delete		; if we didn't find a floor after all retries, too bad
+
+	@hitfloor:
+		add.w	d1,obY(a0)		; match	object's position with the floor
+		move.b	d3,obAngle(a0)
+		addq.b	#2,obRoutine(a0)
+		; fallthrough
 ; ===========================================================================
 
 Obj1F_Action:				; XREF: Obj1F_Index
@@ -12430,8 +12437,8 @@ locret_96B6:
 ; ===========================================================================
 
 Obj1F_Delete:				; XREF: Obj1F_Index
-		bsr	DeleteObject
-		rts	
+		bra.w	DeleteObject
+
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Sub-object - missile that the	Crabmeat throws
@@ -29924,7 +29931,9 @@ FixLevel:
 		neg.w	d1			; make positive
 	@0:	cmpi.w	#$280,d1		; did we teleport further than the $280 pixels offscreen-limit?
 		bls.s	@1			; if not, do not reset OPL routine index to avoid overlapping objects loading
-		cmpi.w	#$302,($FFFFFE10).w	; skip for SAP because the platforms act as checkpoints
+		move.w	($FFFFFE10).w,d1	; get current level
+		beq.s	@1			; don't reset OPL for NHP
+		cmpi.w	#$302,d1		; skip for SAP because the platforms act as checkpoints
 		beq.s	@1
 		clr.w	($FFFFF76C).w		; reset OPL routine index to flush the level object RAM
 	@1:

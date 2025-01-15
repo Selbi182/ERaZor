@@ -69,7 +69,7 @@ SaveSelectScreen:
 
 	jsr	SaveSelect_InitUI
 	jsr	SaveSelect_InitialDraw
-	jsr	SaveSelect_HandleBG_Forced	; force-render Plane C the first time
+	jsr	SaveSelect_InitialHandleBG	; force-render Plane C the first time
 
 	; Setup objects
 	Screen_CreateObject #SaveSelect_Obj_SlotOverlays
@@ -135,64 +135,48 @@ SaveSelect_MainLoop:
 
 
 ; ---------------------------------------------------------------------------
-; Renders a cool looking BG
-; ---------------------------------------------------------------------------
-
-SaveSelect_HandleBG:
-	moveq	#1, d0
-	and.w	GameFrame,d0
-	bne.s	@ret
-	addq.w	#1, $FFFF618
-	subq.w	#1, HSRAM_Buffer+2
-
-SaveSelect_HandleBG_Forced: equ *
-	moveq	#$1F, d0
-	move.w	GameFrame, d2
-	lsr.w	#2, d2
-	btst	#1, GameFrame+1
-	beq.s	@0
-	addq.w	#1, d2
-@0
-	and.w	d2, d0
-	sub.w	#$1F, d0
-	neg.w	d0
-	mulu.w	#4*4*$20, d0
-	lea	SaveSelect_BG_C(pc), a0
-	lea	SaveSelect_BG_C_Shadow(pc), a6
-	adda.w	d0, a0
-	adda.w	d0, a6
-
-	move.l	a0, d1
-	move.w	#$20*5, d2
-	moveq	#4*$20/2, d3
-	jsr	QueueDMATransfer
-
-	move.l	a6, d1
-	move.w	#$20*(5+4*4+4), d2
-	moveq	#4*$20/2, d3
-	jsr	QueueDMATransfer
-
-	adda.w	#4*$20, a0
-	adda.w	#4*$20, a6
-	
-	move.l	a0, d1
-	move.w	#$20*(5+8), d2
-	move.w	#(4*4-4)*$20/2, d3
-	jsr	QueueDMATransfer
-
-	move.l	a6, d1
-	move.w	#$20*(5+8+4*4+4), d2
-	move.w	#(4*4-4)*$20/2, d3
-	jmp	QueueDMATransfer
-
-@ret	rts
-
-
-; ---------------------------------------------------------------------------
 ; Objects
 ; ---------------------------------------------------------------------------
 
 	include	"Screens/SaveSelectScreen/Objects/SlotOverlays.asm"
+
+
+; ---------------------------------------------------------------------------
+; Renders a cool looking BG on the third scrollable layer (BG C)
+; ---------------------------------------------------------------------------
+
+SaveSelect_InitialHandleBG:
+	move.w	#-1, SaveSelect_BG_C_PrevFrame	; force BG C redraw
+
+; ---------------------------------------------------------------------------
+SaveSelect_HandleBG:
+	; Calculate BG B position (relative to time)
+	move.w	GameFrame, d0
+	lsr.w	d0
+	move.w	d0, VSRAM_Buffer+2
+	move.w	d0, d1
+	neg.w	d1			; d1 = -GameFrame/2
+	move.w	d1, HSRAM_Buffer+2
+
+	; Calculate BG C position (relative to time)
+	; INPUT: d1 = -GameFrame/2
+	lsr.w	d0
+	add.w	d1, d0
+	and.w	#$1F, d0
+	ror.w	#16-10, d0
+
+	; Render BG C frame
+	cmp.w	SaveSelect_BG_C_PrevFrame, d0	; is this frame rendered?
+	beq.s	@ret				; if yes, branch
+	move.w	d0, SaveSelect_BG_C_PrevFrame
+	move.l	#SaveSelectScreen_BG_C_Buffer, d1
+	add.w	d0, d1				; d1 = $FF0000 + FrameOffset
+	move.w	#SaveSelect_VRAM_BG_C, d2
+	move.w	#SaveSelect_BG_C_FrameSize/2, d3
+	jmp	QueueDMATransfer
+
+@ret:	rts
+
 
 ; ---------------------------------------------------------------------------
 ; UI Routines
@@ -207,10 +191,10 @@ SaveSelect_InitUI:
 	; Load BG B
 	lea	SaveSelect_BG_B_MapEni(pc), a0
 	lea	$FF0000, a1
-	moveq	#SaveSelect_VRAM_BG/$20, d0
+	moveq	#SaveSelect_VRAM_BG_B/$20, d0
 	jsr	EniDec
 
-	vramWrite $FF0000, $1000, SaveSelect_VRAM_BGPlane
+	vramWrite $FF0000, $1000, SaveSelect_VRAM_PlaneB
 
 	; Load and draw base UI elements (header + borders)
 	lea	SaveSelect_UI_MapKosp(pc), a0
@@ -229,7 +213,14 @@ SaveSelect_InitUI:
 		endr
 		dbf	d1, @loop
 
-	vramWrite $FF0000, $1000, SaveSelect_VRAM_FG
+	vramWrite $FF0000, $1000, SaveSelect_VRAM_PlaneA
+
+	; Load BG C buffer
+	; WARNING! This sound stay at the bottom so we don't overwrite BG C buffer ($FF0000)!
+	lea	SaveSelect_BG_C_Tiles_Kosp, a0
+	lea	SaveSelectScreen_BG_C_Buffer, a1
+	jsr	KosPlusDec
+	_assert.l a1, eq, #$FF8000	; decompressed data should be 32 KiB
 
 	; Load palettes
 	lea	Pal_Target, a0
@@ -264,7 +255,7 @@ SaveSelect_InitUI:
 ; ---------------------------------------------------------------
 @PLC_List:
 	dc.l	SaveSelect_BG_B_Tiles_KospM
-	dc.w	SaveSelect_VRAM_BG
+	dc.w	SaveSelect_VRAM_BG_B
 
 	dc.l	BBCS_ArtKospM_Font
 	dc.w	SaveSelect_VRAM_Font
@@ -433,9 +424,9 @@ SaveSelect_ClearSlot_\#__slotId:
 		__baseX: = 3
 		__baseY: = __slotId*6+2
 
-		QueueStaticDMA SaveSelect_EmptyTiles, (40-6)*2, SaveSelect_VRAM_FG+((__baseY)*$80)+((__baseX)*2)
-		QueueStaticDMA SaveSelect_EmptyTiles, (40-6)*2, SaveSelect_VRAM_FG+((__baseY+2)*$80)+((__baseX)*2)
-		QueueStaticDMA SaveSelect_EmptyTiles, (40-6)*2, SaveSelect_VRAM_FG+((__baseY+3)*$80)+((__baseX)*2)
+		QueueStaticDMA SaveSelect_EmptyTiles, (40-6)*2, SaveSelect_VRAM_PlaneA+((__baseY)*$80)+((__baseX)*2)
+		QueueStaticDMA SaveSelect_EmptyTiles, (40-6)*2, SaveSelect_VRAM_PlaneA+((__baseY+2)*$80)+((__baseX)*2)
+		QueueStaticDMA SaveSelect_EmptyTiles, (40-6)*2, SaveSelect_VRAM_PlaneA+((__baseY+3)*$80)+((__baseX)*2)
 		rts
 	endif
 
@@ -730,10 +721,7 @@ SaveSelect_BG_B_MapEni:
 	incbin	"Screens/SaveSelectScreen/Data/BG_B_Map.eni"
 	even
 
-SaveSelect_BG_C:
-	incbin	"Screens/SaveSelectScreen/Data/BG_C_Tiles.unc"
-	even
-
-SaveSelect_BG_C_Shadow:
-	incbin	"Screens/SaveSelectScreen/Data/BG_C_Tiles_Shadow.unc"
+; ---------------------------------------------------------------------------
+SaveSelect_BG_C_Tiles_Kosp:
+	incbin	"Screens/SaveSelectScreen/Data/BG_C_Tiles.kosp"
 	even

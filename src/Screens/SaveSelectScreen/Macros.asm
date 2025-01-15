@@ -15,7 +15,7 @@ SaveSelect_WriteString:	macro	flushFunctionOperand, startX, startY, string, buff
 		elseif '\flushFunctionOperand'<>'a4'
 			inform 3, "Only a4 is supported as input flush function operand"
 		endif
-		move.w	#SaveSelect_VRAM_FG+((startY)*$80)+((startX)*2), SaveSelect_StringScreenPos
+		move.w	#SaveSelect_VRAM_PlaneA+((startY)*$80)+((startX)*2), SaveSelect_StringScreenPos
 		__FSTRING_GenerateArgumentsCode \string
 		movem.l	a0-a2/d7, -(sp)
 		lea	SaveSelect_StringBuffer, a0	; a0 = buffer

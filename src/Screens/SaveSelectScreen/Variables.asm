@@ -17,6 +17,7 @@ SaveSelect_VRAM_PlaneB:		equ	$E000
 ; -----------------------------------------------------------------------------
 SaveSelect_Pat_BG_B:		equ	$6000|(SaveSelect_VRAM_BG_B/$20)
 SaveSelect_Pat_Font:		equ	(SaveSelect_VRAM_Font/$20)-('!'-1)
+SaveSelect_Pat_UIElements:	equ	$8000|$6000|(SaveSelect_VRAM_UIElements/$20)
 
 ; -----------------------------------------------------------------------------
 SaveSelect_StringBufferSize = 40+1

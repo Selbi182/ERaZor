@@ -196,22 +196,11 @@ SaveSelect_InitUI:
 
 	vramWrite $FF0000, $1000, SaveSelect_VRAM_PlaneB
 
-	; Load and draw base UI elements (header + borders)
-	lea	SaveSelect_UI_MapKosp(pc), a0
+	; Load base UI elements (header + borders)
+	lea	SaveSelect_UI_MapEni(pc), a0
 	lea	$FF0000, a1
-	jsr	KosPlusDec
-	_assert.l a1, eq, #$FF1000	; decompressed art should be 4 KiB
-
-	@pat: = $8000|$6000|(SaveSelect_VRAM_UIElements/$20)
-	
-	lea	$FF0000, a0
-	move.l	#(@pat)<<16|(@pat), d0
-	moveq	#($1000/(8*4))-1, d1
-	@loop:
-		rept 8
-			add.l	d0, (a0)+
-		endr
-		dbf	d1, @loop
+	move.w	#SaveSelect_Pat_UIElements, d0
+	jsr	EniDec
 
 	vramWrite $FF0000, $1000, SaveSelect_VRAM_PlaneA
 
@@ -721,8 +710,8 @@ SaveSelect_UI_Tiles_KospM:
 	incbin	"Screens/SaveSelectScreen/Data/ScreenUI_Tiles.kospm"
 	even
 
-SaveSelect_UI_MapKosp:
-	incbin	"Screens/SaveSelectScreen/Data/ScreenUI_Map.kosp"
+SaveSelect_UI_MapEni:
+	incbin	"Screens/SaveSelectScreen/Data/ScreenUI_Map.eni"
 	even
 
 ; ---------------------------------------------------------------------------

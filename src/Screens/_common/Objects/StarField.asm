@@ -18,7 +18,58 @@ __Screen_StarField_WithConsts:	macro
 	@MIN_Z_POS:	equ	$100
 	@INV_Z_RES:	equ	2	; inverse Z table step resolution (bits)
 	@FRM_Z_RES:	equ	4	; Z-to-frame table step resolution (bits)
+	@SPREAD_MUL:	equ	15	; spead multiplier
+	@SPREAD_DIV:	equ	8	; spead divider
 	endm
+
+; -----------------------------------------------------------------------------
+; Helper function to load starfield palette
+; -----------------------------------------------------------------------------
+
+STARFIELD_PAL_ID_BLUE:	equ	0
+STARFIELD_PAL_ID_RED:	equ	4
+
+Screen_LoadStarfieldDefaultPalette:
+	moveq	#0, d2
+
+Screen_LoadStarfieldPalette:
+
+	; ---------
+	; INPUT
+	; ---------
+
+	@id:		equr	d2	; palette type (0 = blue, 1 = red)
+	@dest:		equr	a2	; destination palette
+
+	assert.w @dest, hs, #Pal_Water_Active
+	assert.w @dest, lo, #Pal_Target+$80
+
+	; -----------------
+	; USED REGISTERS
+	; -----------------
+
+	@src:		equr	a1
+
+	movea.l	@PalettePointers(pc, @id), @src
+	ifdebug	bsr.s @ValidateSrcPointer
+
+	rept 8/2
+		move.l	(@src)+, (@dest)+
+	endr
+	rts
+
+; -----------------------------------------------------------------------------
+@PalettePointers:
+	dc.l	$E0000000|@Blue, $E0000000|@Red
+@Blue:	dc.w	$0EEE, $0ECC, $0CAA, $0A88, $0866, $0644, $0422, $0200
+@Red:	dc.w	$0EEE, $0ECE, $0CAC, $0A8A, $0868, $0646, $0424, $0202
+
+; -----------------------------------------------------------------------------
+@ValidateSrcPointer:
+	assert.l @src, hi, #$E0000000	; pointer is valid if MSB is $E0
+	assert.l @src, lo, #$E0FFFFFF	; ''
+	rts
+
 
 ; -----------------------------------------------------------------------------
 ; Subroutine to generate starfield objects
@@ -52,8 +103,8 @@ Screen_GenerateStarfieldObjects:
 	_assert.w @obj_cnt, ls, #78-1	; shouldn't generate more than 78 sprites
 
 	moveq	#$20, @val_render
-	move.w	#SCREEN_WIDTH/2, @xpos_base
-	moveq	#SCREEN_HEIGHT/2, @ypos_base
+	move.w	#@SPREAD_MUL*SCREEN_WIDTH/(2*@SPREAD_DIV), @xpos_base
+	move.w	#@SPREAD_MUL*SCREEN_HEIGHT/(2*@SPREAD_DIV), @ypos_base
 	lea	RandomNumber, @random
 	lea	Screen_Obj_StarFieldStar(pc), @obj_ptr
 	lea	Screen_Obj_StarField_Sprite(pc), @val_maps
@@ -65,29 +116,29 @@ Screen_GenerateStarfieldObjects:
 		move.w	@val_gfx, @obBaseGfx(a1)
 		move.l	@val_maps, obMap(a1)
 
-		; Generate random raw X-position within -SCREEN_WIDTH/2 .. SCREEN_WIDTH/2
+		; Generate random raw X-position within: -SCREEN_WIDTH/2 .. SCREEN_WIDTH/2 (x @SPREAD_MUL/@SPREAD_DIV)
 		jsr	(@random)
 		swap	d0
 		clr.w	d0
 		swap	d0
-		divu.w	#SCREEN_WIDTH, d0
+		divu.w	#@SPREAD_MUL*SCREEN_WIDTH/@SPREAD_DIV, d0
 		ifdebug	trapv
-		swap	d0			; X = rand() % SCREEN_WIDTH
-		sub.w	@xpos_base, d0		; X = rand() % SCREEN_WIDTH - SCREEN_WIDTH/2
+		swap	d0			; X = rand() % SCREEN_WIDTH  (x @SPREAD_MUL/@SPREAD_DIV)
+		sub.w	@xpos_base, d0		; X = rand() % SCREEN_WIDTH - SCREEN_WIDTH/2  (x @SPREAD_MUL/@SPREAD_DIV)
 		move.w	d0, @obXRaw(a1)
 
-		; Generate random raw Y-position within: -SCREEN_HEIGHT/2 .. SCREEN_HEIGHT/2
+		; Generate random raw Y-position within: -SCREEN_HEIGHT/2 .. SCREEN_HEIGHT/2 (x @SPREAD_MUL/@SPREAD_DIV)
 		jsr	(@random)
 		swap	d0
 		clr.w	d0
 		swap	d0
-		divu.w	#SCREEN_HEIGHT, d0
+		divu.w	#@SPREAD_MUL*SCREEN_HEIGHT/@SPREAD_DIV, d0
 		ifdebug	trapv
-		swap	d0			; Y = rand() % SCREEN_HEIGHT
-		sub.w	@ypos_base, d0		; Y = rand() % SCREEN_HEIGHT - SCREEN_HEIGHT/2
+		swap	d0			; Y = rand() % SCREEN_HEIGHT (x @SPREAD_MUL/@SPREAD_DIV)
+		sub.w	@ypos_base, d0		; Y = rand() % SCREEN_HEIGHT - SCREEN_HEIGHT/2 (x @SPREAD_MUL/@SPREAD_DIV)
 		move.w	d0, @obYRaw(a1)
 
-		; Generate random raw Z-position within $100..$600
+		; Generate random raw Z-position within: @MIN_Z_POS..@MAX_Z_POS
 		jsr	(@random)
 		swap	d0
 		clr.w	d0
@@ -199,7 +250,11 @@ Screen_Obj_StarField_GetFrameAndPriority:
 	@Z: = 0
 
 	while @Z <= @MAX_Z_POS
-		@frame: = ((7*(@Z<<8))/@MAX_Z_POS)>>8
+		if @Z>=$100
+			@frame: = ((7*((@Z-$100)<<8))/(@MAX_Z_POS-$100))>>8
+		else
+			@frame: = 0
+		endif
 		@priority: = 7 - @frame
 
 		@return @frame, @priority
@@ -241,26 +296,26 @@ Screen_Obj_StarFieldStar_Reset:
 	__Screen_StarField_WithObVars	; define @obXRaw, @obYRaw etc in this scope
 	__Screen_StarField_WithConsts
 
-	; Generate random raw X-position within -SCREEN_WIDTH/2 .. SCREEN_WIDTH/2
+	; Generate random raw X-position within -SCREEN_WIDTH/2 .. SCREEN_WIDTH/2 (x @SPREAD_MUL/@SPREAD_DIV)
 	jsr	RandomNumber
 	swap	d0
 	clr.w	d0
 	swap	d0
-	divu.w	#SCREEN_WIDTH, d0
+	divu.w	#@SPREAD_MUL*SCREEN_WIDTH/@SPREAD_DIV, d0
 	ifdebug	trapv
-	swap	d0			; X = rand() % SCREEN_WIDTH
-	sub.w	#SCREEN_WIDTH/2, d0	; X = rand() % SCREEN_WIDTH - SCREEN_WIDTH/2
+	swap	d0						; X = rand() % SCREEN_WIDTH (x @SPREAD_MUL/@SPREAD_DIV)
+	sub.w	#@SPREAD_MUL*SCREEN_WIDTH/(2*@SPREAD_DIV), d0	; X = rand() % SCREEN_WIDTH - SCREEN_WIDTH/2 (x @SPREAD_MUL/@SPREAD_DIV)
 	move.w	d0, @obXRaw(a0)
 
-	; Generate random raw Y-position within: -SCREEN_HEIGHT/2 .. SCREEN_HEIGHT/2
+	; Generate random raw Y-position within: -SCREEN_HEIGHT/2 .. SCREEN_HEIGHT/2 (x @SPREAD_MUL/@SPREAD_DIV)
 	jsr	RandomNumber
 	swap	d0
 	clr.w	d0
 	swap	d0
-	divu.w	#SCREEN_HEIGHT, d0
+	divu.w	#@SPREAD_MUL*SCREEN_HEIGHT/@SPREAD_DIV, d0
 	ifdebug	trapv
-	swap	d0			; Y = rand() % SCREEN_HEIGHT
-	sub.w	#SCREEN_HEIGHT/2, d0	; Y = rand() % SCREEN_HEIGHT - SCREEN_HEIGHT/2
+	swap	d0						; Y = rand() % SCREEN_HEIGHT (x @SPREAD_MUL/@SPREAD_DIV)
+	sub.w	#@SPREAD_MUL*SCREEN_HEIGHT/(2*@SPREAD_DIV), d0	; Y = rand() % SCREEN_HEIGHT - SCREEN_HEIGHT/2 (x @SPREAD_MUL/@SPREAD_DIV)
 	move.w	d0, @obYRaw(a0)
 
 	; Reset Z-position

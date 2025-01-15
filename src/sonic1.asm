@@ -1,11 +1,13 @@
 ; /======================================================\
 ; |                     Sonic ERaZor                     |
+; |                 (C) Selbi 2010-2025                  |
+; | With huge contributions & support from  vladikcomper |
 ; \======================================================/
 
 ; ------------------------------------------------------
 	if def(__BENCHMARK__)=0
 ; Vladik's Debugger
-__DEBUG__: equ 1
+;__DEBUG__: equ 1
 
 	else
 		; MD Replay state. Used for playing pre-recorded gameplay in benchmarks.
@@ -58,9 +60,9 @@ USE_NEW_BUILDSPRITES:	equ	1	; New BuildSprites system is still faster than S1's,
 ; $502 - Finalor Place
 	if def(__BENCHMARK__)=0
 QuickLevelSelect = 0
-QuickLevelSelect_ID = $200
+QuickLevelSelect_ID = -1
 ; ------------------------------------------------------
-DebugModeDefault = 1
+DebugModeDefault = 0
 DebugSurviveNoRings = 1
 DebugHudPermanent = 0
 ; ------------------------------------------------------
@@ -870,6 +872,13 @@ WaitForVDP:
 ; ---------------------------------------------------------------------------
 
 PlayCommand:
+		; never slow down music in true-BS mode
+		btst	#SlotOptions2_PlacePlacePlace, SlotOptions2
+		beq.s	@normal
+		cmpi.b	#$E3,d0
+		beq.s	Play_Return
+
+@normal:
 		move.b	d0, SoundDriverRAM+v_cmd_input.w
 		rts	
 
@@ -878,6 +887,13 @@ PlayBGM:
 		btst	#GlobalOptions_DisableBGM, GlobalOptions
 		bne.s	Play_Return
 		move.b	d0, SoundDriverRAM+v_bgm_input.w
+
+		; speed up music in true-BS mode
+		btst	#SlotOptions2_PlacePlacePlace, SlotOptions2
+		beq.s	Play_Return
+		moveq	#$FFFFFFE2,d0
+		bra.w	PlayCommand
+
 Play_Return:
 		rts
 
@@ -939,6 +955,26 @@ PauseGame:				; XREF: Level_MainLoop; et al
 		beq.w	Pause_DoNothing		; if not, branch
 Paused:
 		; skip cutscenes
+		cmpi.w	#$400,($FFFFFE10).w	; is this Uberhub Place?
+		bne.s	@notuberhub		; if not, branch
+		cmpi.b	#2,($FFFFF742).w
+		blo.s	@notuberhub
+		cmpi.b	#6,($FFFFF742).w
+		bhs.s	@notuberhub
+		move.l	a0,-(sp)
+		moveq	#0,d1			; chunk X coordinate to destroy
+		lea	($FFFFD800).w,a0
+		moveq	#$40-1,d0
+@findroller:	
+		cmpi.b	#$43,(a0)		; is current object the Roller bot?
+		bne.s	@next			; if not, branch
+		move.b	#1,$34(a0)		; set cutscene skip flag
+@next		lea	$40(a0),a0
+		dbf	d0,@findroller
+		move.l	(sp)+,a0
+		rts
+
+@notuberhub:
 		cmpi.w	#$500,($FFFFFE10).w	; is this the bomb machine cutscene?
 		bne.s	@notmachine		; if not, branch
 		jmp	Exit_BombMachineCutscene
@@ -2335,7 +2371,7 @@ PalPointers_Classic:
 	;    palette		RAM   length/2-1
 	dc.l Pal_SegaBG,	$FB00 001F	; $00
 	dc.l PalC_Title,	$FB00 001F	; $01
-	dc.l PalC_LevelSel,	$FB00 001F	; $02
+	dc.l PalC_Options,	$FB00 001F	; $02
 	dc.l PalC_Sonic,	$FB00 0007	; $03
 	dc.l PalC_GHZ,		$FB20 0017	; $04
 	dc.l PalC_LZ2,		$FB20 0017	; $05
@@ -2363,13 +2399,15 @@ PalPointers_Classic:
 	dc.l PalC_SYZ_UnterBoss,$FB20 0017	; $1B
 	dc.l PalC_SpecialUnreal,$FB00 001F	; $1C
 	dc.l Pal_TutorialBox,	$FB20 0005	; $1D
+	dc.l PalC_Options,	$FB00 001F	; $1E
+	dc.l PalC_Options,	$FB00 001F	; $1F
 	even
 
 PalPointers_Remastered:
 	;    palette		RAM   length/2-1
 	dc.l Pal_SegaBG,	$FB00 001F	; $00
 	dc.l PalR_Title,	$FB00 001F	; $01
-	dc.l PalR_LevelSel,	$FB00 001F	; $02
+	dc.l PalR_OptionsCasual,$FB00 001F	; $02
 	dc.l PalR_Sonic,	$FB00 0007	; $03
 	dc.l PalR_GHZ,		$FB20 0017	; $04
 	dc.l PalR_LZ2,		$FB20 0017	; $05
@@ -2397,16 +2435,17 @@ PalPointers_Remastered:
 	dc.l PalR_SYZ_UnterBoss,$FB20 0017	; $1B
 	dc.l PalR_SpecialUnreal,$FB00 001F	; $1C
 	dc.l Pal_TutorialBox,	$FB20 0005	; $1D
+	dc.l PalR_OptionsCasual,$FB00 001F	; $1E
+	dc.l PalR_OptionsFrantic,$FB00 001F	; $1F
 	even
 
 ; ---------------------------------------------------------------------------
 ; Palette data includes
 ; ---------------------------------------------------------------------------
-; TODO once we're getting close to release, remove unchanged duplicates again
 
 ; Classic palettes
 PalC_Title:		incbin	palette\Classic\title.bin
-PalC_LevelSel:		incbin	Screens\OptionsScreen\Options_Pal_Classic.bin
+PalC_Options:		incbin	Screens\OptionsScreen\Options_Pal_Classic.bin
 PalC_Sonic:		incbin	palette\Classic\sonic.bin
 PalC_GHZ:		incbin	palette\Classic\ghz.bin
 PalC_LZ2:		incbin	palette\Classic\lz2.bin
@@ -2430,7 +2469,8 @@ PalC_SpecialUnreal:	incbin	palette\Classic\special_unreal.bin
 
 ; Remastered palettes by Javesike
 PalR_Title:		incbin	palette\Remastered\title.bin
-PalR_LevelSel:		incbin	Screens\OptionsScreen\Options_Pal_Remastered.bin
+PalR_OptionsCasual:	include	Screens\OptionsScreen\Options_Pal_Remastered_Casual.asm
+PalR_OptionsFrantic:	include	Screens\OptionsScreen\Options_Pal_Remastered_Frantic.asm
 PalR_Sonic:		incbin	palette\Remastered\sonic.bin
 PalR_GHZ:		incbin	palette\Remastered\ghz.bin
 PalR_LZ2:		incbin	palette\Remastered\lz2.bin
@@ -7718,7 +7758,7 @@ Resize_SYZ3main:
 		addq.b	#2,($FFFFF742).w
 		move.w	#Unterhub_BossStartX-$28,($FFFFF72A).w	; right boundary right at the boss start (to snap the extended camera)
 
-		cmpi.w	#3,(RelativeDeaths).w	; did player die at least thrice already?
+		cmpi.w	#2,(RelativeDeaths).w	; did player die at least twice already?
 		bhs.s	locret_71CE		; if yes, skip rollerbot scene
 
 		jsr	SingleObjLoad
@@ -7799,6 +7839,8 @@ Resize_SYZ3boss:
 	;	bne.s	@frantic		; if yes, branch
 		btst	#0,($FFFFF7A7).w	; has final hit been dealt?
 		beq.s	@frantic		; if not, branch
+		btst	#SlotOptions2_PlacePlacePlace, SlotOptions2	; is easter egg flag set?
+		bne.s	@frantic		; if yes, branch
 		move.w	#$2A4,($FFFFF726).w	; lower boundary just enough to allow noobs not to die
 @frantic:
 		btst	#1,($FFFFF7A7).w	; has boss been defeated and deleted?
@@ -9389,6 +9431,8 @@ Obj18_NoMovingPlatforms:
 		tst.b	obFrame(a0)		; has checkpoint already been touched?
 		bne.s	Obj18_NoCheckpoint	; if yes, branch
 		move.b	#1,obFrame(a0)		; set checkpoint flag
+		move.w	#2500,d0		; add 2500 ...
+		jsr	AddPoints		; ... points
 		move.b	#$A1,d0			; play checkpoint sound
 		jsr	PlaySFX
 		frantic				; is frantic mode enabled?
@@ -13978,6 +14022,8 @@ Obj4B_Exit:
 		tst.b	(FZEscape).w		; is this also the Finalor escape sequence?
 		beq.s	@exitfromring		; if not, branch (double check just in case)
 		bsr.s	FZEscape_ScreenBoom	; hooray you've escaped
+		move.l	#18200,d0		; add 182000 ...
+		jsr	AddPoints		; ... points
 
 @exitfromring:
 		moveq	#0,d0			; clear d0
@@ -14224,7 +14270,10 @@ Obj26_Main:				; XREF: Obj26_Index
 		cmpi.b	#6,obSubtype(a0)	; ...invicibility...
 		bhi.s	@chkfp			; ...or shoes (for FP)
 		cmpi.b	#4,obSubtype(a0)	; shield monitor?
-		beq.s	@chkfp			; if yes, make an exception
+		bne.s	@makeuseless		; if not, branch
+		cmpi.w	#$301,($FFFFFE10).w	; are we in SNP?
+		bne.s	@chkfp			; if not, make an exception
+	@makeuseless:
 		move.b	#2,obSubtype(a0)	; change into a useless =P monitor
 		bra.s	@init			; skip
 
@@ -14570,7 +14619,8 @@ Obj2E_ChkShield:
 		tst.b	($FFFFFE2C).w		; is sonic already having a shield?
 		beq.s	Obj2E_Shield_NoBonus	; if not, branch
 		addi.b	#25,($FFFFFE2C).w	; add 25 bonus rings (controlled in Obj01_ChkShield)
-		rts				; do nothing else
+		move.w	#250,d0			; add 2500 ...
+		jmp	AddPoints		; ... points
 
 Obj2E_Shield_NoBonus:
 		move.b	#1,($FFFFFE2C).w	; give Sonic a shield	
@@ -14596,6 +14646,9 @@ Obj2E_ChkInvinc:
 		move.b	#$38,($FFFFD2C0).w ; load stars	object ($3804)
 		move.b	#4,($FFFFD2DC).w
 
+		move.w	#250,d0			; add 2500 ...
+		jsr	AddPoints		; ... points
+
 		tst.b	($FFFFF7AA).w	; is boss mode on?
 		bne.s	Obj2E_NoMusic	; if yes, branch
 		move.w	#$91,d0
@@ -14611,6 +14664,9 @@ Obj2E_ChkRings:
 		bne.w	Obj2E_ChkS
 		addi.w	#$A,($FFFFFE20).w ; add	10 rings to the	number of rings	you have
 		ori.b	#1,($FFFFFE1D).w ; update the ring counter
+
+		move.w	#100,d0			; add 1000 ...
+		jsr	AddPoints		; ... points
 
 		move.w	#$B5,d0
 		jmp	PlaySFX		; play ring sound
@@ -15390,9 +15446,10 @@ Obj2C_Killed:
 		move.b	#$27,0(a0)		; change Jaws into an enemy explosion
 		move.b	#0,obRoutine(a0)
 
+		move.w	#6900,d0		; add 6900 ...
+		jsr	AddPoints		; ... points
 		move.b	#$DF,d0
 		jmp	PlaySFX
-		rts
 ; ===========================================================================
 
 Ani_obj2C:
@@ -19657,6 +19714,11 @@ Obj43_Main:				; XREF: Obj43_Index
 
 		move.b	#10,$30(a0)	; delay before jump (for the one before the boss)
 
+		tst.b	obSubtype(a0)		; is this a decoy Rollerbot?
+		bne.s	@notdecoy		; if not, branch
+		tst.b	($FFFFFE30).w		; are we restarting from the checkpoint?
+		bne.w	DeleteObject		; if yes, delete decoys
+@notdecoy
 		move.b	#0,obColType(a0)
 		cmpi.b	#2,obSubtype(a0)
 		bne.s	Obj43_Action
@@ -19677,8 +19739,8 @@ Obj43_Index2:	dc.w Obj43_Wait-Obj43_Index2
 ; ===========================================================================
 
 Obj43_Wait:
-		tst.b	obSubtype(a0)
-		bne.s	@notdecoy
+		tst.b	obSubtype(a0)		; is this a decoy Rollerbot?
+		bne.s	@notdecoy		; if not, branch
 
 		move.w	($FFFFD008).w,d0	; get Sonic's X-pos
 		sub.w	obX(a0),d0		; substract the X-pos from the current object from it
@@ -19730,7 +19792,11 @@ Obj43_Jump:
 
 Obj43_UberhubCutscene:
 		cmpi.b	#A|B|C,Joypad|Held
-		bne.s	@run
+		bne.s	@noskip
+		move.b	#1,$34(a0)
+@noskip:
+		tst.b	$34(a0)
+		beq.s	@run
 		cmpi.b	#4,obRoutine(a0)
 		bhi.s	@allgood
 		bsr	StealSpikeTrophy
@@ -20750,6 +20816,11 @@ Obj47_Index:	dc.w Obj47_Main-Obj47_Index
 Obj47_Main:				; XREF: Obj47_Index
 		cmpi.b	#4,($FFFFFE10).w
 		bne.s	@noeaster
+		frantic
+		beq.s	@0
+		tst.b	obSubtype(a0)
+		bmi.w	DeleteObject
+@0:
 		btst	#SlotOptions2_PlacePlacePlace, SlotOptions2
 		beq.s	@noeaster
 		move.b	#7,(a0) ; same effect, totally different vibe
@@ -24395,6 +24466,8 @@ Obj0B_BreakPole:
 		ori.b	#10,(CameraShake).w	; camera shaking
 		move.w	#$DF,d0			; jester explosion sound
 		jsr	PlaySFX
+		move.w	#4200,d0		; add 4200 ...
+		jsr	AddPoints		; ... points
 		tst.b	obSubtype(a0)		; is this a cosmetic-only pole?
 		bmi.s	Obj0B_BreakPole_NoSound	; if yes, branch
 		jsr	WhiteFlash
@@ -36152,7 +36225,7 @@ Obj79_Main:				; XREF: Obj79_Index
 		beq.s	@nodelete
 		cmpi.w	#$502,($FFFFFE10).w
 		bne.s	@nodelete
-		cmpi.w	#3,(RelativeDeaths).w	; did player make it here with less than three deaths?
+		cmpi.w	#2,(RelativeDeaths).w	; did player make it here with less than two deaths?
 		bhs.s	@nodelete		; if not, show checkpoint. otherwise, show me what you got
 @delete:	addq.l	#4,sp			; prevent sprite rendering
 		jmp	DeleteObject
@@ -36290,7 +36363,7 @@ Obj79_HitLamp:
 	;	move.b	d2,($FFFFFF97).w	; copy subtype to checkpoint counter
 
 @hitrest:
-		move.w	#10000,d0		; add 100000 ...
+		move.w	#1000,d0		; add 10000 ...
 		jsr	AddPoints	; ... points
 
 		addq.b	#2,obRoutine(a0)
@@ -37543,7 +37616,7 @@ locret_178A2:
 BossDamageSound:
 		move.w	#$AC,d0
 		jsr	PlaySFX	;play boss damage sound
-		moveq	#10,d0			; add 100 ...
+		moveq	#100,d0			; add 1000 ...
 		jmp	AddPoints		; ... points
 ; End of function BossDamageSound
 
@@ -37972,6 +38045,7 @@ Obj77_Display:
 ; ---------------------------------------------------------------------------
 Obj73_BossHealth_Casual  = 12
 Obj73_BossHealth_Frantic = 16
+Obj73_BossHealth_TrueBS  = 30
 ; ---------------------------------------------------------------------------
 
 Obj73:					; XREF: Obj_Index
@@ -37996,11 +38070,16 @@ Obj73_Main:				; XREF: Obj73_Index
 		move.w	obY(a0),$38(a0)
 		move.b	#$F,obColType(a0)
 
+		btst	#SlotOptions2_PlacePlacePlace, SlotOptions2	; is easter egg flag set?
+		beq.s	@nottruebs		; if not, branch
+		moveq	#Obj73_BossHealth_TrueBS,d0
+		bra.s	@notfrantic
+	@nottruebs:
 		moveq	#Obj73_BossHealth_Casual,d0	; set number of casual hits
 		frantic
 		beq.s	@notfrantic
 		moveq	#Obj73_BossHealth_Frantic,d0	; set number of frantic hits
-@notfrantic:
+	@notfrantic:
 		if LowBossHP=1
 			moveq	#1,d0
 		endif
@@ -39361,6 +39440,7 @@ Obj75_BossSpeed_Casual = $3D0
 Obj75_BossSpeed_Frantic = $3D0
 Obj75_BossHealth_Casual  = 12
 Obj75_BossHealth_Frantic = 16
+Obj75_BossHealth_TrueBS = 30
 ; ---------------------------------------------------------------------------
 
 Obj75:					; XREF: Obj_Index
@@ -39384,7 +39464,7 @@ Obj75_ObjData:	dc.b 2,	0, 5		; routine number, animation, priority
 Obj75_Main:				; XREF: Obj75_Index
 		move.w	($FFFFD008).w,d0
 
-		cmpi.w	#3,(RelativeDeaths).w	; did player die at least thrice already?
+		cmpi.w	#2,(RelativeDeaths).w	; did player die at least twice already?
 		bhs.s	@fast			; if yes, fast forward scene
 		subi.w	#Obj75_BaseXOffset,d0
 		bra.s	@setx
@@ -39399,14 +39479,16 @@ Obj75_Main:				; XREF: Obj75_Index
 		move.b	#$F,obColType(a0)
 		clr.w	obInertia(a0)
 
+		btst	#SlotOptions2_PlacePlacePlace, SlotOptions2	; is easter egg flag set?
+		beq.s	@nottruebs		; if not, branch
+		moveq	#Obj75_BossHealth_TrueBS,d0
+		bra.s	@notfrantic
+	@nottruebs:
 		moveq	#Obj75_BossHealth_Casual,d0
 		frantic
 		beq.s	@notfrantic
 		moveq	#Obj75_BossHealth_Frantic,d0
-		btst	#SlotOptions2_PlacePlacePlace, SlotOptions2	; is easter egg flag set?
-		beq.s	@notfrantic		; if not, branch
-		moveq	#Obj75_BossHealth_Frantic*2,d0
-@notfrantic:
+	@notfrantic:
 		if LowBossHP=1
 			moveq	#1,d0
 		endif
@@ -39583,6 +39665,9 @@ Obj75_LastHitDealt:
 		dbf	d0,@loop
 
 		; remove skull chunks on last hit as the camera is now going back down
+		btst	#SlotOptions2_PlacePlacePlace, SlotOptions2	; is easter egg flag set?
+		bne.s	@end			; if yes, don't remove
+
 		move.l	a0,-(sp)
 		move.b	#$80,(RedrawEverything).w ; redraw everything without affecting the camera
 		jsr	WhiteFlash
@@ -39601,7 +39686,7 @@ Obj75_LastHitDealt:
 		addi.w	#$100,d3
 		dbf	d4,@clearskulls
 		move.l	(sp)+,a0
-		rts
+@end:		rts
 ; ===========================================================================
 
 Obj75_CheckSlam:
@@ -45465,21 +45550,14 @@ AddPoints:
 
 AddPoints_Force:
 		move.b	#1,($FFFFFE1F).w ; set score counter to	update
-		lea	($FFFFFFC0).w,a2
+
 		lea	($FFFFFE26).w,a3
 		add.l	d0,(a3)		; add d0*10 to the score
-		move.l	#999999,d1
-		cmp.l	(a3),d1		; are we below the score limit?
-		bhi.w	loc_1C6AC	; if yes, branch
-	;	move.l	d1,(a3)		; reset	score to 999999
-		move.l	#0,(a3)		; reset	score to 0
-		move.l	d1,(a2)
 
-loc_1C6AC:
-		move.l	(a3),d0
-		cmp.l	(a2),d0
-		bcs.w	locret_1C6B6
-		move.l	d0,(a2)
+		move.l	#999990,d1	; NOTE: the last digit is used as the third digit of the death counter!
+		cmp.l	(a3),d1		; are we below the score limit?
+		bhi.w	locret_1C6B6	; if yes, branch
+		move.l	d1,(a3)		; reset	score to 9999900
 
 locret_1C6B6:
 		rts

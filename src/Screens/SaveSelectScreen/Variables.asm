@@ -1,6 +1,8 @@
 
 ; -----------------------------------------------------------------------------
 
+SaveSelect_Music:		equ	$99
+
 				rsset	$20
 SaveSelect_VRAM_BG:		rsfile	'Screens/FuzzyBG.unc'
 SaveSelect_VRAM_Font:		rsfile	'Screens/BlackBarsConfigScreen/Font.unc'

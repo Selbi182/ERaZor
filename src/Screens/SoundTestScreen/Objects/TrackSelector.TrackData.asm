@@ -176,7 +176,7 @@
 @Music90_Name:		@str 'THE GREAT ESCAPE', @titleMaxLen
 @Music90_Source:	@str 'MEGA MAN X3 / OPENING STAGE', @descMaxLen
 
-@Music91_Name:		@str 'INVINCIBILITY', @titleMaxLen
+@Music91_Name:		@str 'INVINCIBILITY / OPTIONS', @titleMaxLen
 @Music91_Source:	@str 'DANGEROUS SEED / ENDING THEME', @descMaxLen
 
 @Music92_Name:		@str 'FUN IN LABYRINTHY PLACE', @titleMaxLen
@@ -200,7 +200,7 @@
 @Music98_Name:		@str 'CRABMEAT BOSS', @titleMaxLen
 @Music98_Source:	@str 'SONIC ADVANCE 3 / BOSS - PINCH', @descMaxLen
 
-@Music99_Name:		@str 'MENUS / TUTORIAL INTRO', @titleMaxLen
+@Music99_Name:		@str 'TUTORIAL INTRO / SAVES', @titleMaxLen
 @Music99_Source:	@str 'MEGA MAN 5 / DARK MAN/PROTO MAN STAGES', @descMaxLen
 
 @Music9A_Name:		@str 'UNREAL PLACE', @titleMaxLen

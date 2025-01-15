@@ -24,11 +24,6 @@ OptionsScreen:				; XREF: GameModeArray
 		move.w	#$8B03, (a6)
 		move.w	#$8720, (a6)
 
-	;	tst.b	Options_FirstStartFlag
-	;	bne.s	@nosh
-	;	move.w	#$8C81|$08,(a6)	; enable shadow/highlight mode (SH mode)
-@nosh:
-
 		clr.b	($FFFFF64E).w
 		jsr	ClearScreen
 		move.w	#0,BlackBars.Height
@@ -116,7 +111,6 @@ OptionsScreen_MainLoop:
 		jsr	DeleteQueue_Execute
 		jsr	PLC_Execute
 
-		jsr	Options_HandleBackground
 		jsr	ERZBanner_PalCycle
 		bsr	Options_SelectedLinePalCycle
 		jsr	WhiteFlash_Restore
@@ -226,47 +220,6 @@ Options_SelectExit:
 ; ---------------------------------------------------------------------------
 
 Options_SetupBackground:
-		tst.b	Options_FirstStartFlag	; first time?
-		bne	@SetupStarfieldBG	; if yes, branch
-
-*@SetupFuzzyBG:
-		move.w	#$600,(BGThemeColor).w	; set theme color for background effects
-		jsr	BackgroundEffects_Setup
-
-		; Load SH shadow overlay art
-		vram	$3000
-		lea	Screens_SH_Shadow_ArtKospM, a0
-		jsr	KosPlusMDec_VRAM
-
-		; transparent sprites squeezed in between plane A and B to properly display the text in SH mode
-		rts
-		lea	($FFFFD140).w,a0
-		move.b	#2,(a0)
-		move.b	#6,obRoutine(a0)
-		move.w	#$80+SCREEN_WIDTH/2-32,obX(a0)
-		move.w	#$B0,obScreenY(a0)
-
-		adda.w	#$40,a0
-		move.b	#2,(a0)
-		move.b	#6,obRoutine(a0)
-		move.w	#$80+SCREEN_WIDTH/2+(32*5)-32,obX(a0)
-		move.w	#$B0,obScreenY(a0)
-
-		adda.w	#$40,a0
-		move.b	#2,(a0)
-		move.b	#6,obRoutine(a0)
-		move.w	#$80+SCREEN_WIDTH/2-32,obX(a0)
-		move.w	#$B0+(32*4),obScreenY(a0)
-
-		adda.w	#$40,a0
-		move.b	#2,(a0)
-		move.b	#6,obRoutine(a0)
-		move.w	#$80+SCREEN_WIDTH/2+(32*5)-32,obX(a0)
-		move.w	#$B0+(32*4),obScreenY(a0)
-		rts
-
-; ---------------------------------------------------------------------------
-@SetupStarfieldBG:
 		; Load star tiles
 		vram	$2000
 		lea	Screens_Stars_ArtKospM, a0
@@ -276,20 +229,6 @@ Options_SetupBackground:
 		move	#$2000/$20, d4				; art pointer
 		moveq	#78-1, d6				; num stars - 1
 		jmp	Screen_GenerateStarfieldObjects
-
-
-; ---------------------------------------------------------------------------
-; Subroutine to handle/update BG
-; ---------------------------------------------------------------------------
-
-Options_HandleBackground:
-		tst.b	Options_FirstStartFlag	; first time?
-		bne.s	@HandleStarfieldBG	; if yes, branch
-		jmp	BackgroundEffects_Update
-
-; ---------------------------------------------------------------------------
-@HandleStarfieldBG:
-		rts				; BG handles itself
 
 ; ---------------------------------------------------------------------------
 ; Plays options menu theme
@@ -482,11 +421,11 @@ Options_HandleUpDown:
 		cmpi.w	#7,d1				; Extended Widescreen Camera selected?
 		beq.s	@ahint				; if yes, show A hint
 	endif
-		cmpi.w	#1,d1				; Arcade Mode selected?
+		cmpi.w	#1,d1				; Palette Style selected?
 		beq.s	@ahint				; if yes, show A hint
-		cmpi.w	#2,d1				; Alternate HUD selected?
+		cmpi.w	#2,d1				; Arcade Mode selected?
 		beq.s	@ahint				; if yes, show A hint
-		cmpi.w	#3,d1				; Palette Style selected?
+		cmpi.w	#3,d1				; Alternate HUD selected?
 		beq.s	@ahint				; if yes, show A hint
 
 		cmpi.w	#4,d1				; Cinematic Mode selected?
@@ -688,23 +627,25 @@ Options_CharToTile:
 
 Options_LoadPal:
 		lea	Pal_Target, a4
-		lea	PalLoad1, a2	; => Pal_Target
+		lea	PalLoad1, a3	; => Pal_Target
 		tst.b	d0
 		bne.s	@ptrs_ok
 		lea	Pal_Active, a4
-		lea	PalLoad2, a2	; => Pal_Target
+		lea	PalLoad2, a3	; => Pal_Target
 @ptrs_ok:
-		moveq	#2,d0		; load level select palette
-		jsr	(a2)
+		moveq	#$1E, d0	; use casual options palette
+		frantic
+		beq.s	@0
+		moveq	#$1F, d0	; use frantic options palette
+	@0:	jsr	(a3)
 
-		tst.b	Options_FirstStartFlag	; first time?
-		beq.s	@nostars		; if not, branch
-		lea	@Star_Palette(pc), a0
-		lea	$10(a4), a1
-		rept 8/2
-			move.l	(a0)+, (a1)+
-		endr
-@nostars:
+		moveq	#STARFIELD_PAL_ID_BLUE, d2
+		frantic
+		beq.s	@1
+		moveq	#STARFIELD_PAL_ID_RED, d2
+	@1:	lea	$10(a4), a2
+		jsr	Screen_LoadStarfieldPalette
+
 		lea	Pal_ERaZorBanner, a1	; set ERaZor banner's palette pointer
 		lea	$20(a4), a2		; set palette location
 		rept 8
@@ -712,8 +653,6 @@ Options_LoadPal:
 		endr
 		rts
 
-; ---------------------------------------------------------------------------
-@Star_Palette:	dc.w	$0CEE,$0ACC,$08AA,$0888,$0688,$0666,$0444,$0222
 
 ; ---------------------------------------------------------------------------
 ; Palette cycle for highlighted menu item

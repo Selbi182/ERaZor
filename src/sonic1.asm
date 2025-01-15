@@ -59,15 +59,15 @@ USE_NEW_BUILDSPRITES:	equ	1	; New BuildSprites system is still faster than S1's,
 ; $302 - Star Agony Place
 ; $502 - Finalor Place
 	if def(__BENCHMARK__)=0
-QuickLevelSelect = 0
-QuickLevelSelect_ID = -1
+QuickLevelSelect = 1
+QuickLevelSelect_ID = $001
 ; ------------------------------------------------------
-DebugModeDefault = 0
+DebugModeDefault = 1
 DebugSurviveNoRings = 1
 DebugHudPermanent = 0
 ; ------------------------------------------------------
 DoorsAlwaysOpen = 0
-LowBossHP = 0
+LowBossHP = 1
 ; ======================================================
 	else
 ; BENCHMARK build settings (DO NOT CHANGE!)
@@ -7023,7 +7023,7 @@ Resize_GHZ4bossdefeated:	; called from boss object itself
 Resize_GHZ4end:
 		move.w	($FFFFF700).w,($FFFFF728).w
 		move.w	#$0000,($FFFFF72C).w	; top boundary
-		move.w	#$3E00,($FFFFF72A).w ; right boundary
+		move.w	#$3E00-SCREEN_XCORR,($FFFFF72A).w ; right boundary
 		rts
 
 
@@ -13837,6 +13837,8 @@ Obj4B_Animate:				; XREF: Obj4B_Index
 		beq.w	Obj4B_DontCollect
 
 @nointro:
+		cmpi.b	#6,($FFFFD024).w	; is Sonic dying?
+		bhs.w	Obj4B_DontCollect	; if yes, disable collection
 		tst.b	$3C(a0)
 		bne.w	Obj4B_DontCollect
 		tst.w	($FFFFFE08).w
@@ -27668,6 +27670,22 @@ Obj02_Transparent:
 		move.w	#$6000|($3000/$20),obGfx(a0)	; set art, use fourth palette line
 
 Obj02_TransDisplay:
+		move.b	Joypad|Held,d0
+		btst	#iUp,d0
+		beq.s	@0
+		subq.w	#1,obScreenY(a0)
+@0		btst	#iDown,d0
+		beq.s	@1
+		addq.w	#1,obScreenY(a0)
+@1
+		btst	#iLeft,d0
+		beq.s	@2
+		subq.w	#1,obX(a0)
+@2
+		btst	#iRight,d0
+		beq.s	@3
+		addq.w	#1,obX(a0)
+@3
 		jmp	DisplaySprite			; jump to DisplaySprite
 
 
@@ -27684,16 +27702,18 @@ Map_Obj02_End:
 Map_Obj02_Trans:
 		dc.w	@0-Map_Obj02_Trans
 
-@x: = -(32*4)
-@y: = -32
+@xrept: = 6
+@yrept: = 6
+@x: = -128
+@y: = -128
 @incr: = 32
 
-@0:		dc.b	4*5
+@0:		dc.b	@xrept*@yrept
 
 		@j: = 0
-		rept	4
+		rept	@yrept
 			@i: = 0
-			rept	5
+			rept	@xrept
 				dc.b	@y+(@j*@incr)
 				dc.b	$0F
 				dc.w	$0000
@@ -36883,13 +36903,21 @@ Obj3D_ShipIndex:dc.w Obj3D_ShipStart-Obj3D_ShipIndex
 ; ===========================================================================
 
 Obj3D_ShipStart:			; XREF: Obj3D_ShipIndex
-		move.b	#1,($FFFFF7CC).w		; lock controls
-		clr.l	($FFFFF602).w			; clear any remaining button presses
+		move.b	#1,($FFFFF7CC).w	; lock controls
+		clr.l	($FFFFF602).w		; clear any remaining button presses
 		move.w	#-$100,obVelY(a0)	; move ship up
 		bsr	BossMove
-		cmpi.w	#$338,$38(a0)
-		bne.s	Obj3D_MainStuff
-		move.w	#0,obVelY(a0)	; stop ship
+
+		; force Sonic to look at the Eggman
+		bset	#0,($FFFFD022).w
+		move.w	($FFFFD008).w,d0
+		cmp.w	obX(a0),d0
+		bcc.s	@0
+		bclr	#0,($FFFFD022).w
+@0:
+		cmpi.w	#$338,$38(a0)		; reached target height yet?
+		bgt.s	Obj3D_MainStuff		; if not, wait
+		move.w	#0,obVelY(a0)		; stop ship
 		addq.b	#2,ob2ndRout(a0)	; goto next routine
 
 Obj3D_MainStuff:

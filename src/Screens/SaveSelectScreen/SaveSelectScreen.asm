@@ -28,7 +28,7 @@ SaveSelectScreen:
 	move.w	#$8C81+8, (a6)	; enable S&H
 	move.w	#$9001, (a6)
 	move.w	#$9200, (a6)
-	move.w	#$8B03, (a6)
+	move.w	#$8B00, (a6)
 	move.w	#$8720, (a6)
 	jsr	ClearScreen
 
@@ -68,10 +68,8 @@ SaveSelectScreen:
 @default_slot_ok:
 
 	jsr	SaveSelect_InitUI
-	move.w	#$824,(BGThemeColor).w					; set theme color for background effects
-	jsr	BackgroundEffects_Setup
-
 	jsr	SaveSelect_InitialDraw
+	jsr	SaveSelect_HandleBG_Forced	; force-render Plane C the first time
 
 	; Setup objects
 	Screen_CreateObject #SaveSelect_Obj_SlotOverlays
@@ -107,8 +105,8 @@ SaveSelect_MainLoop:
 	assert.w SaveSelect_VRAMBufferPoolPtr, eq, #Art_Buffer			; VRAM buffer pool should be reset by the beginning of the frame
 	assert.w SaveSelect_StringBufferCanary, eq, #SaveSelect_CanaryValue	; guard against buffer overflows
 
-	jsr	BackgroundEffects_Update
 	bsr	SaveSelect_HandleUI
+	bsr	SaveSelect_HandleBG
 	bsr	SaveSelect_HandlePaletteEffects
 
 	DeleteQueue_Init
@@ -135,6 +133,61 @@ SaveSelect_MainLoop:
 	Screen_PoolReset SaveSelect_VRAMBufferPoolPtr, Art_Buffer, Art_Buffer_End
 	rts
 
+
+; ---------------------------------------------------------------------------
+; Renders a cool looking BG
+; ---------------------------------------------------------------------------
+
+SaveSelect_HandleBG:
+	moveq	#1, d0
+	and.w	GameFrame,d0
+	bne.s	@ret
+	addq.w	#1, $FFFF618
+	subq.w	#1, HSRAM_Buffer+2
+
+SaveSelect_HandleBG_Forced: equ *
+	moveq	#$1F, d0
+	move.w	GameFrame, d2
+	lsr.w	#2, d2
+	btst	#1, GameFrame+1
+	beq.s	@0
+	addq.w	#1, d2
+@0
+	and.w	d2, d0
+	sub.w	#$1F, d0
+	neg.w	d0
+	mulu.w	#4*4*$20, d0
+	lea	SaveSelect_BG_C(pc), a0
+	lea	SaveSelect_BG_C_Shadow(pc), a6
+	adda.w	d0, a0
+	adda.w	d0, a6
+
+	move.l	a0, d1
+	move.w	#$20*5, d2
+	moveq	#4*$20/2, d3
+	jsr	QueueDMATransfer
+
+	move.l	a6, d1
+	move.w	#$20*(5+4*4+4), d2
+	moveq	#4*$20/2, d3
+	jsr	QueueDMATransfer
+
+	adda.w	#4*$20, a0
+	adda.w	#4*$20, a6
+	
+	move.l	a0, d1
+	move.w	#$20*(5+8), d2
+	move.w	#(4*4-4)*$20/2, d3
+	jsr	QueueDMATransfer
+
+	move.l	a6, d1
+	move.w	#$20*(5+8+4*4+4), d2
+	move.w	#(4*4-4)*$20/2, d3
+	jmp	QueueDMATransfer
+
+@ret	rts
+
+
 ; ---------------------------------------------------------------------------
 ; Objects
 ; ---------------------------------------------------------------------------
@@ -151,8 +204,16 @@ SaveSelect_InitUI:
 	jsr	LoadPLC_Direct
 	jsr	PLC_ExecuteOnce_Direct
 
+	; Load BG B
+	lea	SaveSelect_BG_B_MapEni(pc), a0
+	lea	$FF0000, a1
+	moveq	#SaveSelect_VRAM_BG/$20, d0
+	jsr	EniDec
+
+	vramWrite $FF0000, $1000, SaveSelect_VRAM_BGPlane
+
 	; Load and draw base UI elements (header + borders)
-	lea	SaveSelect_UI_MapKosp, a0
+	lea	SaveSelect_UI_MapKosp(pc), a0
 	lea	$FF0000, a1
 	jsr	KosPlusDec
 	_assert.l a1, eq, #$FF1000	; decompressed art should be 4 KiB
@@ -170,8 +231,8 @@ SaveSelect_InitUI:
 
 	vramWrite $FF0000, $1000, SaveSelect_VRAM_FG
 
-	; Load FG palettes
-	lea	Pal_Target+$20, a0
+	; Load palettes
+	lea	Pal_Target, a0
 	lea	@PaletteData(pc), a1
 	moveq	#(@PaletteData_End-@PaletteData)/16-1, d0
 	@loop2:
@@ -184,6 +245,9 @@ SaveSelect_InitUI:
 
 ; ---------------------------------------------------------------
 @PaletteData:
+	; Line 0 - Background
+	include	"Screens/SaveSelectScreen/Data/BG_B_Palette.asm"
+
 	; Line 1 - Highlighted text
 	dc.w	$0000, $0444, $0EEE, $0EEE, $0EEE, $0EEE, $0CCC, $0AAA
 	dc.w	$0E0E, $0E0E, $0E0E, $0E0E, $0E0E, $0E0E, $0E0E, $0E0E
@@ -199,6 +263,9 @@ SaveSelect_InitUI:
 
 ; ---------------------------------------------------------------
 @PLC_List:
+	dc.l	SaveSelect_BG_B_Tiles_KospM
+	dc.w	SaveSelect_VRAM_BG
+
 	dc.l	BBCS_ArtKospM_Font
 	dc.w	SaveSelect_VRAM_Font
 
@@ -652,4 +719,21 @@ SaveSelect_UI_Tiles_KospM:
 
 SaveSelect_UI_MapKosp:
 	incbin	"Screens/SaveSelectScreen/Data/ScreenUI_Map.kosp"
+	even
+
+; ---------------------------------------------------------------------------
+SaveSelect_BG_B_Tiles_KospM:
+	incbin	"Screens/SaveSelectScreen/Data/BG_B_Tiles.kospm"
+	even
+
+SaveSelect_BG_B_MapEni:
+	incbin	"Screens/SaveSelectScreen/Data/BG_B_Map.eni"
+	even
+
+SaveSelect_BG_C:
+	incbin	"Screens/SaveSelectScreen/Data/BG_C_Tiles.unc"
+	even
+
+SaveSelect_BG_C_Shadow:
+	incbin	"Screens/SaveSelectScreen/Data/BG_C_Tiles_Shadow.unc"
 	even

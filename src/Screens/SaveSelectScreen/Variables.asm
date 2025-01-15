@@ -4,12 +4,14 @@
 SaveSelect_Music:		equ	$99
 
 				rsset	$20
-SaveSelect_VRAM_BG:		rsfile	'Screens/FuzzyBG.unc'
+SaveSelect_VRAM_BG:		rsfile	'Screens/SaveSelectScreen/Data/BG_B_Tiles.unc'
+				rs.b	(4*4+8)*$20 ; ###
 SaveSelect_VRAM_Font:		rsfile	'Screens/BlackBarsConfigScreen/Font.unc'
 SaveSelect_VRAM_UIElements:	rsfile	'Screens/SaveSelectScreen/Data/ScreenUI_Tiles.unc'
 SaveSelect_VRAM_SH_Shadow:	rsfile	'Screens/_common/Data/SH_Shadow_Tiles.unc'
 
 SaveSelect_VRAM_FG:		equ	$C000
+SaveSelect_VRAM_BGPlane:	equ	$E000
 
 ; -----------------------------------------------------------------------------
 SaveSelect_Pat_Font:		equ	$8000|(SaveSelect_VRAM_Font/$20)-('!'-1)

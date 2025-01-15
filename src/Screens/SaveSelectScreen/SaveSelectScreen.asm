@@ -191,7 +191,7 @@ SaveSelect_InitUI:
 	; Load BG B
 	lea	SaveSelect_BG_B_MapEni(pc), a0
 	lea	$FF0000, a1
-	moveq	#SaveSelect_VRAM_BG_B/$20, d0
+	move.w	#SaveSelect_Pat_BG_B, d0
 	jsr	EniDec
 
 	vramWrite $FF0000, $1000, SaveSelect_VRAM_PlaneB
@@ -236,19 +236,20 @@ SaveSelect_InitUI:
 
 ; ---------------------------------------------------------------
 @PaletteData:
-	; Line 0 - Background
-	include	"Screens/SaveSelectScreen/Data/BG_B_Palette.asm"
-
-	; Line 1 - Highlighted text
-	dc.w	$0000, $0444, $0EEE, $0EEE, $0EEE, $0EEE, $0CCC, $0AAA
+	; Line 0 - Slot text (white)
+	dc.w	$0000, $0000, $0EEE, $0EEE, $0EEE, $0EEE, $0CCC, $0AAA
 	dc.w	$0E0E, $0E0E, $0E0E, $0E0E, $0E0E, $0E0E, $0E0E, $0E0E
 
-	; Line 2 - Normal text
-	dc.w	$0000, $0444/2, $0EEE/2, $0EEE/2, $0EEE/2, $0EEE/2, $0CCC/2, $0AAA/2
-	dc.w	$0CEE, $0ACC, $08AA, $0888, $0688, $0666, $0444, $0222
+	; Line 1 - Slot text (yellow)
+	dc.w	$0000, $0000, $04EE, $04EE, $06EE, $04EE, $02CC, $00AA
+	dc.w	$0E0E, $0E0E, $0E0E, $0E0E, $0E0E, $0E0E, $0E0E, $0E0E
 
-	; Line 3 - UI elements
-	dc.w	$0000, $0422, $0E8A, $0E8A, $0EAA, $0E8A, $0C68, $0846	; UI small font
+	; Line 2 - UI label text + Header text
+	dc.w	$0000, $0000, $08EE, $08EE, $0AEE, $08EE, $06CC, $04AA	; highlighted yellow
+	dc.w	$0E0E, $0E0E, $0E0E, $0E0E, $0E0E, $0E0E, $0E0E, $0E0E
+
+	; Line 3 - Backgrounds
+	dc.w	$0000, $0462, $0462, $0682, $0824, $0A46, $0804/2, $0C48/2
 	dc.w	$0000, $0000, $0000, $0000, $0000, $0EEE, $0AAA, $0E0E	; UI borders + header
 @PaletteData_End:
 
@@ -257,7 +258,7 @@ SaveSelect_InitUI:
 	dc.l	SaveSelect_BG_B_Tiles_KospM
 	dc.w	SaveSelect_VRAM_BG_B
 
-	dc.l	BBCS_ArtKospM_Font
+	dc.l	Screens_MenuFont_ArtKospM
 	dc.w	SaveSelect_VRAM_Font
 
 	dc.l	SaveSelect_UI_Tiles_KospM
@@ -281,7 +282,7 @@ SaveSelect_InitialDraw:
 ; ---------------------------------------------------------------------------
 
 SaveSelect_DrawBottomHint:
-	lea	SaveSelect_DrawText_Inactive(pc), a4
+	lea	SaveSelect_DrawText_UILabel(pc), a4
 	tst.b	SaveSelect_SelectedSlotId		; No Save selected?
 	beq.s	@nosave					; if yes, branch
 
@@ -320,12 +321,12 @@ SaveSelect_DrawSlot_\#__slotId:
 		__baseX: = 3
 		__baseY: = 5
 
-		lea	SaveSelect_DrawText_Highlighted(pc), a4		; use highlighted font
+		lea	SaveSelect_DrawText_ActiveSlot(pc), a4		; use highlighted drawer
 		tst.b	SaveSelect_SelectedSlotId			; are we selected slot?
 		beq.s	@0						; if yes, branch
-		lea	SaveSelect_DrawText_Normal(pc), a4		; use normal font
+		lea	SaveSelect_DrawText_InactiveSlot(pc), a4	; use normal drawer
 	@0:
-		SaveSelect_WriteString a4, __baseX, __baseY, "NO SAVE"
+		SaveSelect_WriteString a4, __baseX, __baseY, "%<pal1>NO SAVE"
 		rts
 
 	; Draw "Slot X"
@@ -334,15 +335,14 @@ SaveSelect_DrawSlot_\#__slotId:
 		__baseY: = __slotId*6+2
 		__slotRAM: = SRAMCache.Slots+(__slotId-1)*SaveSlot.Size
 
-		lea	SaveSelect_DrawText_Highlighted(pc), a4			; use highlighted font
+		lea	SaveSelect_DrawText_ActiveSlot(pc), a4			; use highlighted drawer
 		cmp.b	#__slotId, SaveSelect_SelectedSlotId			; are we selected slot?
 		beq.s	@0							; if yes, branch
-		lea	SaveSelect_DrawText_Normal(pc), a4			; use normal font
+		lea	SaveSelect_DrawText_InactiveSlot(pc), a4		; use normal drawer
 	@0:
 		move.b	SaveSlot.Progress+(__slotRAM), d5
 		btst	#SlotState_Created, d5					; are we empty slot?
 		beq	@emptySlot						; if yes, branch
-
 
 		move.b	SaveSlot.Doors+(__slotRAM), d3				; use casual doors
 		lea	SaveSelect_StrDifficulty_Casual(pc), a3			; use "casual" text
@@ -363,34 +363,34 @@ SaveSelect_DrawSlot_\#__slotId:
 		add.w	d0, d0
 
 		move.l	SaveSlot.Score+(__slotRAM), d1				; multiply score by 10 because the HUD fakes a 0
+		add.l	d1, d1							; 2x
 		move.l	d1, d2
-		asl.l	#3, d1
-		asl.l	#1, d2
-		add.l	d2, d1							; d1 = score * 10
+		lsl.l	#2, d1							; 8x
+		add.l	d2, d1							; 10x
 
 		btst	#SlotOptions2_PlacePlacePlace, SaveSlot.Options2+(__slotRAM)
 		bne.w	@3
 		movea.l	(a5, d0), a5						; a5 = chapter text
 
-		SaveSelect_WriteString a4, __baseX, __baseY,		"SLOT \#__slotId: %<.l a5 str>"
-		SaveSelect_WriteString a4, __baseX+2, __baseY+2,	"DEATHS: %<.w SaveSlot.Deaths+(__slotRAM) dec>"
-		SaveSelect_WriteString a4, __baseX+2, __baseY+3,	"SCORE: %<.l d1 dec>"
-		SaveSelect_WriteString a4, __baseX+19, __baseY+2,	"TROPHIES: %<.b d4 dec>/8"
-		SaveSelect_WriteString a4, __baseX+19, __baseY+3,	"%<.l a3 str>"	; CASUAL / FRANTIC
+		SaveSelect_WriteString a4, __baseX, __baseY,		"%<pal1>SLOT \#__slotId: %<pal0>%<.l a5 str>"
+		SaveSelect_WriteString a4, __baseX+2, __baseY+2,	"%<pal1>DEATHS: %<pal0>%<.w SaveSlot.Deaths+(__slotRAM) dec>"
+		SaveSelect_WriteString a4, __baseX+2, __baseY+3,	"%<pal1>SCORE: %<pal0>%<.l d1 dec>"
+		SaveSelect_WriteString a4, __baseX+19, __baseY+2,	"%<pal1>TROPHIES: %<pal0>%<.b d4 dec>/8"
+		SaveSelect_WriteString a4, __baseX+19, __baseY+3,	"%<pal1>%<.l a3 str>"	; CASUAL / FRANTIC
 		rts
 
-	@3:	movea.l	$40(a5, d0), a5						; a5 = chapter text
+	@3:	movea.l	$40(a5, d0), a5						; a5 = place place
 
-		SaveSelect_WriteString a4, __baseX, __baseY,		"SLOT \#__slotId: %<.l a5 str>"
-		SaveSelect_WriteString a4, __baseX+2, __baseY+2,	"PLACE: %<.w SaveSlot.Deaths+(__slotRAM) dec>"
-		SaveSelect_WriteString a4, __baseX+2, __baseY+3,	"PLACE: %<.l d1 dec>"
-		SaveSelect_WriteString a4, __baseX+19, __baseY+2,	"PLACE: %<.b d4 dec>/8"
-		SaveSelect_WriteString a4, __baseX+19, __baseY+3,	"PLACE PLACE"	; CASUAL / FRANTIC
+		SaveSelect_WriteString a4, __baseX, __baseY,		"%<pal1>SLOT \#__slotId: %<pal0>%<.l a5 str>"
+		SaveSelect_WriteString a4, __baseX+2, __baseY+2,	"%<pal1>PLACE: %<pal0>%<.w SaveSlot.Deaths+(__slotRAM) dec>"
+		SaveSelect_WriteString a4, __baseX+2, __baseY+3,	"%<pal1>PLACE: %<pal0>%<.l d1 dec>"
+		SaveSelect_WriteString a4, __baseX+19, __baseY+2,	"%<pal1>PLACE: %<pal0>%<.b d4 dec>/8"
+		SaveSelect_WriteString a4, __baseX+19, __baseY+3,	"%<pal1>PLACE PLACE"
 		rts
 
 	@emptySlot:
-		SaveSelect_WriteString a4, __baseX, __baseY,		"SLOT \#__slotId:"
-		SaveSelect_WriteString a4, __baseX+2, __baseY+2,	"CREATE NEW SAVE"
+		SaveSelect_WriteString a4, __baseX, __baseY,		"%<pal1>SLOT \#__slotId:"
+		SaveSelect_WriteString a4, __baseX+2, __baseY+2,	"%<pal1>CREATE NEW SAVE"
 		rts
 	endif
 
@@ -480,16 +480,17 @@ SaveSelect_StrTbl_Chapters:
 	even
 
 ; ---------------------------------------------------------------------------
-SaveSelect_DrawText_Inactive:
-	move.w	#$6000, d1				; use palette line 3
+SaveSelect_DrawText_UILabel:
+	move.w	#$4000|$8000, d1			; use palette line 2 / normal intensity
 	bra.s	SaveSelect_DrawText_Cont
 
-SaveSelect_DrawText_Highlighted:
-	move.w	#$2000, d1				; use palette line 1
+SaveSelect_DrawText_ActiveSlot:
+	move.w	#$8000, d1				; use palette line 1 / normal intensity
 	bra.s	SaveSelect_DrawText_Cont
 
-SaveSelect_DrawText_Normal:
-	move.w	#$4000, d1				; use palette line 2
+SaveSelect_DrawText_InactiveSlot:
+	moveq	#0, d1					; use palette line 1 / shadowed
+	;fallthrough
 
 SaveSelect_DrawText_Cont:
 	Screen_PoolAllocate a1, SaveSelect_VRAMBufferPoolPtr, #SaveSelect_StringBufferSize*2
@@ -502,12 +503,14 @@ SaveSelect_DrawText_Cont:
 	moveq	#0, d7
 	move.b	(a0)+, d7				; d7 = char
 	beq.s	@done
+	bmi.s	@flag
 
 	@loop:	add.w	d1, d7
 		move.w	d7, (a1)+				; send tile
 		moveq	#0, d7
-		move.b	(a0)+, d7				; d7 = char
-		bne.s	@loop
+	@next:	move.b	(a0)+, d7				; d7 = char
+		bgt.s	@loop					; if d7 = 00..7F, branch
+		bmi.s	@flag
 
 	move.l	(sp)+, d1				; d1 = source pointer
 	andi.l	#$FFFFFF, d1
@@ -522,6 +525,16 @@ SaveSelect_DrawText_Cont:
 	moveq	#0, d7
 	subq.w	#1, d7					; return C=1
 	rts
+
+@flag:	sub.b	#pal0, d7				; pal0?
+	beq.s	@pal0
+	subq.b	#pal1-pal0, d7				; pal1?
+	bne.s	@next
+@pal1:	or.w	#$2000, d1
+	bra.s	@next
+
+@pal0:	andi.w	#~$2000, d1
+	bra.s	@next
 
 ; ---------------------------------------------------------------------------
 ; Update palette to highlight current selection

@@ -3733,7 +3733,7 @@ Level_GetBgm:
 
 		moveq	#$1D,d0			; load tutorial box palette...
 		jsr	PalLoad2		; ...directly
-		move.w	#$EC0,(BGThemeColor).w	; set theme color for background effects
+		move.w	#$8E0,(BGThemeColor).w	; set theme color for background effects
 
 		moveq	#10|_DH_WithOwnBG,d0	; VLADIK => Load hint number
 		jsr	TutorialBox_Display	; VLADIK => Display hint

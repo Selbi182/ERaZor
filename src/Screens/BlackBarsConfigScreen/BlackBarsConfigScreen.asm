@@ -508,7 +508,7 @@ BlackBarsConfigScreen_InitUI:
 
 	; Load font
 	vram	BlackBarsConfig_VRAM_Font, (a5)
-	lea	BBCS_ArtKospM_Font(pc), a0
+	lea	Screens_MenuFont_ArtKospM, a0
 	jmp	KosPlusMDec_VRAM
 
 ; ---------------------------------------------------------------
@@ -640,11 +640,4 @@ BlackBarsConfigScreen_WriteText_WidescreenInfo:
 	rts
  endif
 ; ---------------------------------------------------------------
-; ===============================================================
-
-
-; ===============================================================
-BBCS_ArtKospM_Font:
-	incbin	Screens\BlackBarsConfigScreen\Font.kospm
-	even
 ; ===============================================================

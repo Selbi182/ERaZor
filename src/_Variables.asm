@@ -72,6 +72,9 @@ Joypad:			equ	$FFFFF604			; w
 SMPS_PAL_Timer:		equ	$FFFFF608			; b	Timer for SMPS PAL optimization
 
 DemoTimer:		equ	$FFFFF614			; w	Timer for demos, decremented by certain VBlank routines until zero
+VSRAM_Buffer:		equ	$FFFFF616			;	Verical Scroll RAM (VSRAM) buffer
+VSRAM_PlaneA:		equ	VSRAM_Buffer+0			; w
+VSRAM_PlaneB:		equ	VSRAM_Buffer+2			; w
 
 VBlankRoutine:		equ	$FFFFF62A			; b	VBlank routine id
 

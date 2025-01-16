@@ -2464,7 +2464,7 @@ PalPointers_Remastered:
 
 ; Classic palettes
 PalC_Title:		incbin	palette\Classic\title.bin
-PalC_Options:		incbin	Screens\OptionsScreen\Options_Pal_Classic.bin
+PalC_Options:		incbin	Screens\OptionsScreen\Data\Options_Pal_Classic.bin
 PalC_Sonic:		incbin	palette\Classic\sonic.bin
 PalC_GHZ:		incbin	palette\Classic\ghz.bin
 PalC_LZ2:		incbin	palette\Classic\lz2.bin
@@ -2488,8 +2488,8 @@ PalC_SpecialUnreal:	incbin	palette\Classic\special_unreal.bin
 
 ; Remastered palettes by Javesike
 PalR_Title:		incbin	palette\Remastered\title.bin
-PalR_OptionsCasual:	include	Screens\OptionsScreen\Options_Pal_Remastered_Casual.asm
-PalR_OptionsFrantic:	include	Screens\OptionsScreen\Options_Pal_Remastered_Frantic.asm
+PalR_OptionsCasual:	include	Screens\OptionsScreen\Data\Options_Pal_Remastered_Casual.asm
+PalR_OptionsFrantic:	include	Screens\OptionsScreen\Data\Options_Pal_Remastered_Frantic.asm
 PalR_Sonic:		incbin	palette\Remastered\sonic.bin
 PalR_GHZ:		incbin	palette\Remastered\ghz.bin
 PalR_LZ2:		incbin	palette\Remastered\lz2.bin

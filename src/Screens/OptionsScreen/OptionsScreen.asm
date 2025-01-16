@@ -41,15 +41,14 @@ OptionsScreen:				; XREF: GameModeArray
 
 		assert.w a1, eq, #Objects_End
 
-		; Load options text art
-		@vram_dest: = $AE00
-
-		vramWrite Options_TextArt, filesize("Screens/OptionsScreen/Options_TextArt.bin"), @vram_dest
+		; Load options font art
+		vram	$AE00, VDP_Ctrl
+		lea	ArtKospM_Options_MenuFont(pc), a0
+		jsr	KosPlusMDec_VRAM
 
 		; Load ERZ banner art
-		lea	VDP_Data, a6
-		move.l	#$64000002,4(a6)
-		lea	ArtKospM_OptionsHeader, a0
+		move.l	#$64000002, VDP_Ctrl
+		lea	ArtKospM_Options_Header(pc), a0
 		jsr	KosPlusMDec_VRAM
 
 		; Load objects
@@ -664,24 +663,19 @@ Options_SelectedLinePalCycle:
 		jmp	GenericPalCycle_Red
 ; ---------------------------------------------------------------------------
 
-; ===========================================================================
-; ---------------------------------------------------------------------------
-; Options font (uncompressed)
-; ---------------------------------------------------------------------------
-
-Options_TextArt:
-		incbin	Screens\OptionsScreen\Options_TextArt.bin
-		even
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Options header art (KosPM)
+; Options art (KosPM)
 ; ---------------------------------------------------------------------------
 
-ArtKospM_OptionsHeader:
-		incbin	Screens\OptionsScreen\Options_Header.kospm
+ArtKospM_Options_Header:
+		incbin	"Screens/OptionsScreen/Data/Options_Header_Tiles.kospm"
 		even
+
+ArtKospM_Options_MenuFont:
+		incbin	"Screens/OptionsScreen/Data/MenuFont.kospm"
 
 Maps_OptionsHeader:
-		include	"Screens\OptionsScreen\Options_Header.asm"
+		include	"Screens/OptionsScreen/Data/Options_Header_SpriteMap.asm"
 		even

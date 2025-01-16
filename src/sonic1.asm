@@ -62,7 +62,7 @@ USE_NEW_BUILDSPRITES:	equ	1	; New BuildSprites system is still faster than S1's,
 QuickLevelSelect = 0
 QuickLevelSelect_ID = -1
 ; ------------------------------------------------------
-DebugModeDefault = 0
+DebugModeDefault = 1
 DebugSurviveNoRings = 1
 DebugHudPermanent = 0
 ; ------------------------------------------------------
@@ -42546,8 +42546,12 @@ Touch_Monitor_ChkBreak:
 
 		btst	#1,obStatus(a0)		; is Sonic in air?
 		bne.s	Touch_Monitor_End	; if yes, no speed break
+
 		cmpi.w	#$502,($FFFFFE10).w	; are we in FP?
-		beq.s	Touch_Monitor_End	; if yes, disallow speed break
+		bne.s	@notfp			; if not, branch
+		tst.b	(FZEscape).w		; are we in the escape sequence?
+		beq.s	Touch_Monitor_End	; if not, disallow speed break for the =P monitor
+	@notfp:
 		move.w	obInertia(a0),d0	; move Sonic's interia to d0
 		bpl.s	@chkspeed		; if positive, branch
 		neg.w	d0			; otherwie negate d0
@@ -45505,8 +45509,8 @@ Obj21_NoUpdate:
 		move.w	#$80+SCREEN_WIDTH-$31,obX(a0)	; fix X-position
 		move.w	$38(a0),obScreenY(a0)		; fix Y-position
 
-		tst.w	(FranticDrain).w
-		beq.s	Obj21_SetRingFrame
+		tst.w	(FranticDrain).w		; are any rings set to be drained?
+		beq.s	@noshake			; if not, no shake
 		jsr	RandomNumber
 		andi.l	#$00030003,d0
 		subq.w	#2,d0
@@ -45514,8 +45518,17 @@ Obj21_NoUpdate:
 		swap	d0
 		subq.w	#2,d0
 		add.w	d0,obScreenY(a0)
-		moveq	#3,d0			; use pal line 2
+		moveq	#3,d0				; use pal line 2
 		bra.s	Obj21_SetRingFrame
+
+@noshake:
+		tst.b	(Inhuman).w			; is inhuman mode on?
+		beq.s	Obj21_SetRingFrame		; if not, branch
+		cmpi.w	#$200,($FFFFFE10).w		; are we in RP?
+		bne.s	Obj21_SetRingFrame		; if not, branch
+		cmpi.w	#25,($FFFFFE20).w		; do we have more than 25 rings?
+		bhi.s	Obj21_SetRingFrame		; if yes, branch
+		; otherwise, already start blinking to signal low ring count
 
 Obj21_FlashNoRings:
 		ori.b	#1,($FFFFFE1D).w	; update ring counter

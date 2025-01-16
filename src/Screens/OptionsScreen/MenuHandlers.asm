@@ -669,7 +669,7 @@ Options_Audio_Redraw:
 @Str_Mode00:	dc.b	'       NORMAL',0
 @Str_Mode01:	dc.b	'DISABLE MUSIC',0
 @Str_Mode10:	dc.b	'  DISABLE SFX',0
-@Str_Mode11:	dc.b	'TOTAL SILENCE',0
+@Str_Mode11:	dc.b	' DEAD SILENCE',0
 		even
 
 ; ---------------------------------------------------------------------------

@@ -307,12 +307,12 @@ Pal_Credits_Casual:
 
 		; line 3 - main content top
 		dc.w	0,0
-		dc.w	$0444,$0EEE,$0AAA
+		dc.w	$0644,$0EEE,$0CAA
 		dc.w	0,0,0,0,0,0,0,0,0,0,0
 
 		; line 4 - main content bottom
 		dc.w	0,0
-		dc.w	$0222,$0AAA,$0888
+		dc.w	$0422,$0CAA,$0A88
 		dc.w	0,0,0,0,0,0,0,0,0,0,0
 
 ; ---------------------------------------------------------------------------
@@ -322,22 +322,22 @@ Pal_Credits_Frantic:
 		dc.w	$000			
 		dc.w	0
 		; - header top
-		dc.w	$0224,$0CCE,$088A
+		dc.w	$0226,$0CCE,$088C
 		dc.w	0,0,0,0,0,0,0,0,0,0,0
 
 		; line 2 - header bottom
 		dc.w	0,0
-		dc.w	$0004,$0AAE,$066A
+		dc.w	$0006,$0AAE,$066C
 		dc.w	0,0,0,0,0,0,0,0,0,0,0
 
 		; line 3 - main content top
 		dc.w	0,0
-		dc.w	$0444,$0EEE,$0AAA
+		dc.w	$0446,$0EEE,$0AAC
 		dc.w	0,0,0,0,0,0,0,0,0,0,0
 
 		; line 4 - main content bottom
 		dc.w	0,0
-		dc.w	$0222,$0AAA,$0888
+		dc.w	$0224,$0AAC,$088A
 		dc.w	0,0,0,0,0,0,0,0,0,0,0
 
 
@@ -518,14 +518,14 @@ Credits_Page7:
 		crdtxt	"                    "
 		crdtxt	"                    "
 		crdtxt	"                    "
-		crdtxt	"og beta testing     "
+		crdtxt	"legacy              "
 		crdtxt	"                    "
+		crdtxt	"beta testing        "
 		crdtxt	"                    "
 		crdtxt	"                    "
 		crdtxt	"NEONSYNTH           "
 		crdtxt	"                    "
 		crdtxt	"AKA SONICVAAN       "
-		crdtxt	"                    "
 		crdtxt	"                    "
 		crdtxt	"                    "
 		crdtxt	"                    "

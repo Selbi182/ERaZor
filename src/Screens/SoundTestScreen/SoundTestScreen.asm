@@ -796,7 +796,7 @@ SoundTest_CharToTile:
 @return: macros value
 	dc.w \value
 
-	@char:	= $20	; ignore ASCII codes $00..$1F, those are control character we'll never use
+	@char:	= $20	; ignore ASCII codes $00..$1F, those are control characters we'll never use
 	while (@char < $80)
 		if @char = ' '
 			@return $8000|$4000

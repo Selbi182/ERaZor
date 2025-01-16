@@ -280,9 +280,6 @@ SaveSelect_DrawBottomHint:
 @nosave:
 	SaveSelect_WriteString a4, 6, 26, "A > B > C : RESET EVERYTHING"
 	rts
-@empty:
-	SaveSelect_WriteString a4, 6, 26, "                            "
-	rts
 
 
 ; ---------------------------------------------------------------------------
@@ -668,35 +665,54 @@ SaveSelect_HandleUI:
 ; ---------------------------------------------------------------------------
 @DeleteEverything:
 	ints_disable
+	move.w	#$8B03, VDP_Ctrl	; switch to per-line Horizontal scrolling
 	move.b	#90,SaveSelect_ExitFlag	; set fade-out sequence time to 90 frames
 
 @delete_fadeoutloop:
 	subq.b	#1,SaveSelect_ExitFlag	; subtract 1 from remaining time
-	bmi.s	@delete_fadeoutend	; is time over? end fade-out sequence
-	
+	bmi	@delete_fadeoutend	; is time over? end fade-out sequence
+
+	moveq	#2, d4			; d4 = effect intensity (higher)
+	cmp.b	#80,SaveSelect_ExitFlag
+	blo.s	@0
+	moveq	#3, d4			; d4 = effect intensity (lower)
+@0:
 	jsr	RandomNumber		; get new random number
-	lea	($FFFFCC00).w,a1	; load scroll buffer address
-	move.w	#223,d2			; do it for all 224 lines
-@0	jsr	CalcSine		; further randomize the offset after every line
-	move.l	d1,(a1)+		; dump to scroll buffer
-	dbf	d2,@0			; repeat
-	
+	lea	HSRAM_Buffer, a1	; load scroll buffer address
+	lea	CalcSine, a2
+	move.w	#224/8-1, d3		; do it for all 224 lines
+@loop:	
+	rept 8
+		jsr	(a2)			; further randomize the offset after every line
+		asr.w	d4, d1
+		move.w	d1, d2
+		asr.w	d4, d2
+		move.w	d2, (a1)+
+		move.w	d1, (a1)+
+	endr
+	dbf	d3, @loop
+
+	jsr	RandomNumber
+	and.w	#7, d0
+	add.w	d0, VSRAM_PlaneB
+	lsr.w	#1, d0
+	move.w	d0, VSRAM_PlaneA
+
 	moveq	#7,d0			; only trigger every 7th frame
 	and.b	SaveSelect_ExitFlag,d0	; get remaining time
 	bne.s	@1			; is it not a 7th frame?, branch
 	jsr	Pal_FadeOut		; partially fade-out palette
 	move.b	#$C4,d0			; play explosion sound
-	jsr	PlaySFX	; ''
+	jsr	PlaySFX			; ''
 
 @1	move.b	#2,VBlankRoutine	; run V-Blank
 	jsr	DelayProgram		; ''
-	bra.s	@delete_fadeoutloop	; loop
+	bra	@delete_fadeoutloop	; loop
 
 @delete_fadeoutend:
 	jsr	SRAMCache_ResetEverythingToDefaults ; delete the actual SRAM now
 	addq.l	#4,sp			; skip return address
 	jmp	Start_FirstGameMode	; restart game
-
 
 ; ---------------------------------------------------------------------------
 @PlayCurrentSlot:

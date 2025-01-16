@@ -323,7 +323,7 @@ Options_AlternateHUD_Redraw:
 	dc.l	@Str_Mode00,@Str_Mode01,@Str_Mode10,@Str_Mode11,@Str_ModeXX
 
 @Str_Mode00:	dc.b	'            OFF',0
-@Str_Mode01:	dc.b	'     TOTAL SECS',0
+@Str_Mode01:	dc.b	'  TOTAL SECONDS',0
 @Str_Mode10:	dc.b	' TOTAL MISTAKES',0
 @Str_Mode11:	dc.b	'SECS + MISTAKES',0
 @Str_ModeXX:	dc.b	'DISABLE ALL HUD',0

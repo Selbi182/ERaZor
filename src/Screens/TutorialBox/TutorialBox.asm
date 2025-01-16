@@ -1526,7 +1526,7 @@ Hint_Options_AlternateHUD:
 		boxtxt	"YOUR PLAYSTYLE!"
 		boxtxt_next
 
-		boxtxt	"total secs"
+		boxtxt	"total seconds"
 		boxtxt_line
 		boxtxt	"REPLACES THE SCORE"
 		boxtxt	"IN THE TOP LEFT WITH"

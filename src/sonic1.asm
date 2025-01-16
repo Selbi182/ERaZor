@@ -281,19 +281,40 @@ SetupValues:	dc.w $8000		; VDP register start number
 
 GameProgram:
 		ints_disable
+		btst	#6, $A1000D			; first time?
+		bne.s	@SRAM_ready
+		bsr.w	SRAMCache_Init			; setup SRAM cache
+@SRAM_ready:
 		
-		; super mega ultra clear the entire RAM from start to finish
+		; super mega ultra clear the entire RAM from start to finish,
+		; except for SRAM Cache memory.
 		; (used to clear just 0000-FDFF, updated to go to FFFF)
 		; (this was done to avoid RAM inconsistencies from soft reboots)
-		lea	($FF0000).l,a6
+		lea	$FFFF0000, a6
 		moveq	#0,d7
-		move.w	#($10000/4)-1,d6	
-GameClrRAM:	move.l	d7,(a6)+
-		dbf	d6,GameClrRAM
+		move.w	#(SRAMCache_RAM&$FFFF)/4-1, d6
+@clr_part1:	move.l	d7, (a6)+
+		dbf	d6, @clr_part1
+		if SRAMCache_RAM&2
+			move.w	d7, (a6)+
+		endif
+		if SRAMCache_RAM&1
+			move.b	d7, (a6)+
+		endif
+		_assert.l a6, eq, #SRAMCache_RAM
+
+		lea	SRAMCache_RAM_End, a6
+		move.w	#($FFFFFFFF+1-SRAMCache_RAM_End)/4-1, d6
+@clr_part2:	move.l	d7, (a6)+
+		dbf	d6, @clr_part2
+		_assert.w a6, eq, #0
+
+		ifdebug jsr SRAMCache_SanityCheck_CacheState
 
 		bsr	VDPSetupGame
 		bsr	JoypadInit
-		bsr.w	SRAMCache_Init	; TODO: Don't init on soft reset
+		jsr	SRAMCache_LoadGlobals_And_SelectedSlotId
+		ifdebug jsr SRAMCache_SanityCheck
 
 		move.b	($A10001).l,d0
 		andi.b	#$C0,d0
@@ -599,9 +620,7 @@ MainGameLoop:
 		movea.l	GameModeArray(pc,d0.w),a1	; locate address in GameModeArray
 		KDebug.WriteLine "MainGameLoop(): Launching %<.l a1 sym>..."
 		jsr	(a1)				; enter game mode
-		if def(__DEBUG__)
-			jsr	SRAMCache_SanityCheck	; catch any SRAM inconsistencies after the last mode
-		endif
+		ifdebug jsr SRAMCache_SanityCheck_CacheState	; catch any SRAM inconsistencies after the last mode
 		bra	MainGameLoop			; if we're here, we exited the game mode; load new one
 
 ; ===========================================================================

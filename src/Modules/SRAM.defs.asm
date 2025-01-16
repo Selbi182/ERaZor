@@ -56,11 +56,12 @@ SRAMCache.BlackBars:		rs.b	1			; Black bars handler (Emulator / Hardware)
 SRAMCache.SelectedSlotId:	rs.b	1			; Selected slot (0 = No Save, 1..3 = Slots 1..3)
 SRAMCache.Slots:		rs.b	SaveSlot.Size*3		; 3 slots
 SRAMCache.Size:			equ	__rs-SRAMCache_RAM
+SRAMCache.Canary:		rs.w	1			; canary value (detects memory corruption)
 
-	if SRAMCache.Size&1
+	if (SRAMCache.Size+2)&1
 		inform 2, "SRAMCache.Size must be even (got \#SaveSlot.Size)"
 	endif
-	if SRAMCache_RAM+SRAMCache.Size > SRAMCache_RAM_End
+	if SRAMCache_RAM+2+SRAMCache.Size > SRAMCache_RAM_End
 		inform 2, "SRAMCache structure is too big"
 	endif
 
@@ -73,3 +74,4 @@ SRAM_Magic:			rsp.l	1			; SRAM magic string (if not set, SRAM is re-initialized)
 SRAM_Data:			rsp.b	SRAMCache.Size		; copied to `SRAMCache_RAM`
 
 _SRAM_ExpectedMagic:		equ	'ERZ8'
+_SRAMCache_ExpectedCanary:	equ	$BEEF

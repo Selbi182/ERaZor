@@ -21,6 +21,8 @@ SRAMCache_Init:
 		@sram:	equr	a1
 		@var0:	equr	d0
 
+		move.w	#_SRAMCache_ExpectedCanary, SRAMCache.Canary
+
 		lea	SRAM_Start, @sram
 
 		SRAMEnter
@@ -45,6 +47,7 @@ SRAMCache_Init:
 		endr
 		SRAMLeave
 
+	@LoadGlobals_And_SelectedSlotId:
 		; Load globals and slot data
 		move.b	SRAMCache.GlobalOptions, 	GlobalOptions
 		move.b	SRAMCache.GlobalProgress,	GlobalProgress
@@ -88,6 +91,12 @@ SRAMCache_Init:
 ; ---------------------------------------------------------------------------
 
 SRAMCache_ResetEverythingToDefaults:	equ	@LoadDefaults
+
+
+; ---------------------------------------------------------------------------
+; Resets everything to defaults
+; ---------------------------------------------------------------------------
+SRAMCache_LoadGlobals_And_SelectedSlotId:	equ	@LoadGlobals_And_SelectedSlotId
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -311,17 +320,15 @@ SRAMCache_Debugger:
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; (In)sanity checker
+; (In)sanity checkers
 ; ---------------------------------------------------------------------------
 
 SRAMCache_SanityCheck:
-	; Check that `src` matches `dest`, branch to `failLoc` otherwise
-	@cmpm:	macro src, dest, scratchAReg, scratchDReg, failLoc
-		lea	\src, \scratchAReg
-		move.\0	\dest, \scratchDReg
-		cmp.\0	(\scratchAReg), \scratchDReg
-		bne	\failLoc
-	endm
+	bsr	SRAMCache_SanityCheck_CacheState
+	bra	SRAMCache_SanityCheck_CacheToMemorySync
+
+; ---------------------------------------------------------------------------
+SRAMCache_SanityCheck_CacheState:
 
 	; Check that only supported bits are ever set, branch to `failLoc` otherwise
 	@chkbits: macro src, scratchAReg, scratchDReg, bits, failLoc
@@ -332,6 +339,8 @@ SRAMCache_SanityCheck:
 		and.b	#@unsupported_bits\@, \scratchDReg
 		bne	\failLoc
 	endm
+
+	_assert.w SRAMCache.Canary, eq, #_SRAMCache_ExpectedCanary
 
 	@chkbits GlobalOptions, a0, d0, <GlobalOptions_DisableBGM, &
 					 GlobalOptions_DisableSFX, &
@@ -355,6 +364,22 @@ SRAMCache_SanityCheck:
 					 SlotOptions2_ArcadeMode, &
 					 SlotOptions2_NoStory, &
 					 SlotOptions2_PlacePlacePlace>, @unsupportedbits
+	rts
+
+; ---------------------------------------------------------------------------
+@unsupportedbits:
+	RaiseError "Unsupported bits in a bitfield:%<endl>addr=%<.w a0 sym>, val=%<.b (a0) bin>, bits=%<.b d0 bin>", SRAMCache_Debugger
+
+; ---------------------------------------------------------------------------
+SRAMCache_SanityCheck_CacheToMemorySync:
+
+	; Check that `src` matches `dest`, branch to `failLoc` otherwise
+	@cmpm:	macro src, dest, scratchAReg, scratchDReg, failLoc
+		lea	\src, \scratchAReg
+		move.\0	\dest, \scratchDReg
+		cmp.\0	(\scratchAReg), \scratchDReg
+		bne	\failLoc
+	endm
 
 	@cmpm.b	GlobalOptions,		SRAMCache.GlobalOptions,	a0, d0, @desync_byte
 	@cmpm.b	GlobalProgress,		SRAMCache.GlobalProgress,	a0, d0, @desync_byte
@@ -376,16 +401,10 @@ SRAMCache_SanityCheck:
 
 ; ---------------------------------------------------------------------------
 @desync_byte:
-	rts
 	RaiseError "SRAM cache desync:%<endl>addr=%<.w a0 sym>, cached=%<.b d0>, actual=%<.b (a0)>", SRAMCache_Debugger
 
 @desync_word:
-	rts
 	RaiseError "SRAM cache desync:%<endl>addr=%<.w a0 sym>, cached=%<.w d0>, actual=%<.w (a0)>", SRAMCache_Debugger
 
 @desync_long:
-	rts
 	RaiseError "SRAM cache desync:%<endl>addr=%<.w a0 sym>, cached=%<.l d0>, actual=%<.l (a0)>", SRAMCache_Debugger
-
-@unsupportedbits:
-	RaiseError "Unsupported bits in a bitfield:%<endl>addr=%<.w a0 sym>, val=%<.b (a0) bin>, bits=%<.b d0 bin>", SRAMCache_Debugger

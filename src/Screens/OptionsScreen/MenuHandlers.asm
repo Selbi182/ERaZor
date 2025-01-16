@@ -626,7 +626,7 @@ Options_CameraShake_Handle:
 	ori.b	#30,(CameraShake).w
 	move.b	#0,(CameraShake_Intensity).w
 	jsr	GenerateCameraShake
-	move.w	#0,($FFFFF618).w
+	move.w	#0,VSRAM_PlaneB
 
 	st.b	Options_RedrawCurrentItem
 
@@ -1088,7 +1088,7 @@ Options_ResetLocalOptions_Handle:
 	ori.b	#30,(CameraShake).w
 	move.b	#0,(CameraShake_Intensity).w
 	jsr	GenerateCameraShake
-	move.w	#0,($FFFFF618).w
+	move.w	#0,VSRAM_PlaneB
 	moveq	#0,d0				; refresh pal directly
 	jsr	Options_LoadPal
 	jsr	WhiteFlash
@@ -1145,7 +1145,7 @@ Options_ResetGlobalOptions_Handle:
 	ori.b	#30,(CameraShake).w
 	move.b	#0,(CameraShake_Intensity).w
 	jsr	GenerateCameraShake
-	move.w	#0,($FFFFF618).w
+	move.w	#0,VSRAM_PlaneB
 	moveq	#0,d0				; refresh pal directly
 	jsr	Options_LoadPal
 	jsr	WhiteFlash

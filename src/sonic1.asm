@@ -749,7 +749,7 @@ VDP_ClrCRAM:
 		move.w	d0,(a1)
 		dbf	d7,VDP_ClrCRAM	; clear	the CRAM
 
-		clr.l	($FFFFF616).w
+		clr.l	VSRAM_Buffer
 		clr.l	($FFFFF61A).w
 		move.l	d1,-(sp)
 		lea	VDP_Ctrl,a5
@@ -818,7 +818,7 @@ loc_1314:
 		bne.s	loc_1314
 
 		move.w	#$8F02,(a5)
-		move.l	#0,($FFFFF616).w
+		move.l	#0,VSRAM_Buffer
 		move.l	#0,($FFFFF61A).w
 		lea	($FFFFF800).w,a1
 		moveq	#0,d0
@@ -828,7 +828,7 @@ loc_133A:
 		move.l	d0,(a1)+
 		dbf	d1,loc_133A
 
-		lea	($FFFFCC00).w,a1
+		lea	HSRAM_Buffer,a1
 		moveq	#0,d0
 		move.w	#$100-1,d1
 
@@ -2735,7 +2735,7 @@ SegaScreen:				; XREF: GameModeArray
 		clr.b	($FFFFF64E).w
 		bsr	ClearScreen
 
-		lea	($FFFFCC00).w,a1
+		lea	HSRAM_Buffer,a1
 		moveq	#0,d0
 		move.w	#224-1,d1
 @clearscroll:	move.l	d0,(a1)+
@@ -2787,7 +2787,7 @@ Sega_WaitFrames:
 ; ---------------------------------------------------------------------------
 
 Sega_WaitPallet:
-		lea	($FFFFCC00).w,a1
+		lea	HSRAM_Buffer,a1
 		moveq	#0,d0
 		move.w	#224-1,d1
 @clearscroll:	move.l	d0,(a1)+
@@ -2796,7 +2796,7 @@ Sega_WaitPallet:
 		tst.b	($FFFFF635).w
 		bne.s	@noearlyfuckery
 
-		lea	($FFFFCC00).w,a1
+		lea	HSRAM_Buffer,a1
 		move.w	#224-1,d3
 		move.w	($FFFFF632).w,d1
 		add.w	d1,d1
@@ -3095,12 +3095,12 @@ LevelSelect_Load:
 
 		bsr	LevelSelect_Palette
 
-		lea	($FFFFCC00).w,a1
+		lea	HSRAM_Buffer,a1
 		moveq	#0,d0
 		move.w	#$DF,d1
 @clearscroll:	move.l	d0,(a1)+
 		dbf	d1,@clearscroll
-		move.l	d0,($FFFFF616).w
+		move.l	d0,VSRAM_Buffer
 		
 		move	#$2700,sr
 		lea	VDP_Data,a6
@@ -3167,7 +3167,7 @@ Title_YAdjust:
 		bls.s	@sety
 		moveq	#@TitleYAdjust,d0
 @sety:		move.w	d0,($FFFFD030).w
-		move.w	d0,($FFFFF616).w
+		move.w	d0,VSRAM_PlaneA
 		rts
 
 ; ===========================================================================
@@ -4766,7 +4766,7 @@ CinematicScreenFuzz:
 		add.w	d2,d2			; double (there are two black bars)
 		sub.w	d2,d1			; sub that from total scanlines to fuzz
 		bmi.w	CinematicScreenFuzz_End	; if result underflowed, skip
-		lea	($FFFFCC00).w,a1	; get h-scroll buffer
+		lea	HSRAM_Buffer,a1	; get h-scroll buffer
 		add.w	d2,d2			; double again (4 bytes per scanline)
 		adda.w	d2,a1			; adjust offset
 
@@ -4862,7 +4862,7 @@ Fuzz_TutBox:
 		move.w	($FFFFFE0E).w,d5 	; get V-blank frame counter (we can't use FE04 here cause we're trapped)
 		sub.w	d3,d5			; sub tut box center offset
 
-		lea	($FFFFCC00).w,a1	; scroll location
+		lea	HSRAM_Buffer,a1	; scroll location
 		move.w	#(224/2)-1,d2		; how many lines we want
 @loop:
 		move.b	d5,d0			; get current seed
@@ -5757,7 +5757,7 @@ PalCycle_SS:				; XREF: loc_DA6; SpecialStage
 		move.w	d0,(a6)
 
 		move.l	#$40000010,VDP_Ctrl
-		move.l	($FFFFF616).w,VDP_Data
+		move.l	VSRAM_Buffer,VDP_Data
 
 		moveq	#0,d0
 		move.b	(a0)+,d0
@@ -5981,7 +5981,7 @@ SS_BGAnimate:				; XREF: SpecialStage
 		move.w	($FFFFF7A0).w,d0
 		bne.s	loc_4BF6
 		move.w	#0,($FFFFF70C).w
-		move.w	($FFFFF70C).w,($FFFFF618).w
+		move.w	($FFFFF70C).w,VSRAM_PlaneB
 
 loc_4BF6:
 		cmpi.w	#8,d0
@@ -5990,7 +5990,7 @@ loc_4BF6:
 		bne.s	loc_4C10
 		addq.w	#1,($FFFFF718).w
 		addq.w	#1,($FFFFF70C).w
-		move.w	($FFFFF70C).w,($FFFFF618).w
+		move.w	($FFFFF70C).w,VSRAM_PlaneB
 
 loc_4C10:
 		moveq	#0,d0
@@ -6038,7 +6038,7 @@ loc_4C74:
 		lea	(byte_4CC4).l,a2
 
 loc_4C7E:
-		lea	($FFFFCC00).w,a1
+		lea	HSRAM_Buffer,a1
 		move.w	($FFFFF718).w,d0
 		neg.w	d0
 		swap	d0
@@ -27649,11 +27649,11 @@ Obj02_Display:
 @title:
 		move.w	$32(a0),d0
 		moveq	#$F,d1
-		and.w	($FFFFF616).w,d1
+		and.w	VSRAM_PlaneA,d1
 		beq.s	@0
 		subq.b	#1,d0
 @0:
-		sub.w	($FFFFF616).w,d0
+		sub.w	VSRAM_PlaneA,d0
 		move.w	d0,obScreenY(a0)
 
 

@@ -114,7 +114,7 @@ OptionsScreen_MainLoop:
 		bsr	Options_SelectedLinePalCycle
 		jsr	WhiteFlash_Restore
 
-		move.w	#0,($FFFFF616).w
+		move.w	#0,VSRAM_PlaneA
 		moveq	#0,d0			; no shake
 		tst.b	(CameraShake).w		; is camera shake currently active?
 		beq.s	@nocamshake		; if not, branch
@@ -128,11 +128,11 @@ OptionsScreen_MainLoop:
 		beq.s	@1
 		add.w	d1,d1
 	@1:
-		add.w	d1,($FFFFF616).w	; set to VSRAM
+		add.w	d1,VSRAM_PlaneA	; set to VSRAM
 @nocamshake:
 
 		; indent block when a Reset option is selected
-		lea	($FFFFCC00).w,a1
+		lea	HSRAM_Buffer,a1
 		move.w	#224-1,d3
 		moveq	#0,d0
 	@clearscroll:

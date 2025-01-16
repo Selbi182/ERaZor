@@ -42,7 +42,7 @@ GameplayStyleScreen:
 @ClrPal:	move.l	d0,(a1)+
 		dbf	d1,@ClrPal
 
-		lea	($FFFFCC00).w,a1
+		lea	HSRAM_Buffer,a1
 		moveq	#0,d0
 		move.w	#224-1,d1
 @clearscroll:	move.l	d0,(a1)+
@@ -73,7 +73,7 @@ GameplayStyleScreen:
 
 	if def(__WIDESCREEN__)
 		; making the screen slightly nicer in widescreen mode
-		lea	($FFFFCC00).w,a1
+		lea	HSRAM_Buffer,a1
 		moveq	#SCREEN_XCORR,d0
 		neg.w	d0
 		swap	d0

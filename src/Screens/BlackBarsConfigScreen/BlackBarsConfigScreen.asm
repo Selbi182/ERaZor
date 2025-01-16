@@ -306,7 +306,7 @@ BlackBarsConfigScreen_InitCamera:
 ; ---------------------------------------------------------------
 
 BlackBarsConfigScreen_DeformBG:
-	move.w	CamYpos2, ($FFFFF618).w	; update plane B vs-ram
+	move.w	CamYpos2, VSRAM_PlaneB	; update plane B vs-ram
 
 	lea	HSRAM_Buffer, a1
 

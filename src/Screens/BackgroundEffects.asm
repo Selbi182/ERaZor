@@ -176,7 +176,7 @@ BackgroundEffects_Deformation:
 		move.w	GameFrame,d6		; get timer
 		asr.w	#1,d6
 
-		lea	($FFFFCC00).w,a1
+		lea	HSRAM_Buffer,a1
 		move.w	#224-1,d3
 @scroll:
 		move.w	d6,d2			; get timer
@@ -199,7 +199,7 @@ BackgroundEffects_Deformation:
 BackgroundEffects_VScroll:
 		move.w	GameFrame,d1
 		neg.w	d1
-		move.w	d1,($FFFFF618).w	; set plane-B VSRAM
+		move.w	d1,VSRAM_PlaneB	; set plane-B VSRAM
 		rts
 	
 ; ---------------------------------------------------------------------------

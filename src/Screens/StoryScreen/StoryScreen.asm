@@ -146,12 +146,12 @@ STS_LoadText:	move.w	(a5)+,(a6)
 
 		bsr	STS_ClearFlags
 
-		lea	($FFFFCC00).w,a1
+		lea	HSRAM_Buffer,a1
 		moveq	#0,d0
 		move.w	#$DF,d1
 STS_ClrScroll:	move.l	d0,(a1)+
 		dbf	d1,STS_ClrScroll	; fill scroll data with 0
-		move.l	d0,($FFFFF616).w
+		move.l	d0,VSRAM_Buffer
 
 		lea	VDP_Data,a6
 		move.l	#$40000003,VDP_Ctrl

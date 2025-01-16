@@ -167,8 +167,8 @@ DeformBgLayer2:
 		add.w	d0,d0
 		move.w	Deform_Index(pc,d0.w),d0
 		jsr	Deform_Index(pc,d0.w)		; do background deformation now
-		move.w	CamYpos, ($FFFFF616).w	; set plane A vs-ram
-		move.w	CamYpos2, ($FFFFF618).w	; set plane B vs-ram
+		move.w	CamYpos, VSRAM_PlaneA	; set plane A vs-ram
+		move.w	CamYpos2, VSRAM_PlaneB	; set plane B vs-ram
 
 DeformBgLayer_Done:
 		rts
@@ -366,7 +366,7 @@ Deform_GHZ:
 
 
 Deform_TS:				; XREF: Deform_Index
-		lea	($FFFFCC00).w,a1	; set a1 to horizontal scroll buffer
+		lea	HSRAM_Buffer,a1	; set a1 to horizontal scroll buffer
 		moveq	#0,d0
 
 		move.w	($FFFFD008).w,d0	; load screen's X position
@@ -457,8 +457,8 @@ Deform_LZ:
 		lsl.l	#8-1, d0		; d0 = CamYShift / 2 (16.16 fixed)
 		add.l	d0, CamYPos2
 
-		move.w	($FFFFF70C).w,($FFFFF618).w
-		lea	($FFFFCC00).w,a1
+		move.w	($FFFFF70C).w,VSRAM_PlaneB
+		lea	HSRAM_Buffer,a1
 		move.w	#224-1,d1
 		if SCREEN_XDISP
 			moveq	#SCREEN_XDISP, d0
@@ -497,10 +497,10 @@ Deform_LZ_Extended:
 		lsl.l	#8-1, d0		; d0 = CamYShift / 2 (16.16 fixed)
 		add.l	d0, CamYPos2
 
-		move.w	($FFFFF70C).w,($FFFFF618).w	; load 'Cam_BG_Y' into VSRAM buffer
+		move.w	($FFFFF70C).w,VSRAM_PlaneB	; load 'Cam_BG_Y' into VSRAM buffer
 
 		; Setup scroll value
-		lea	($FFFFCC00).w,a1
+		lea	HSRAM_Buffer,a1
 		if SCREEN_XDISP
 			moveq	#SCREEN_XDISP, d0
 			sub.w	CamXpos, d0
@@ -806,9 +806,9 @@ DSLZ_PosX = $000
 
 Deform_SLZ:
 		move.w	#DSLZ_Pos,($FFFFF70C).w
-		move.w	($FFFFF70C).w,($FFFFF618).w
+		move.w	($FFFFF70C).w,VSRAM_PlaneB
 
-		lea	($FFFFCC00).w,a1	; load beginning address of horizontal scroll buffer to a1
+		lea	HSRAM_Buffer,a1	; load beginning address of horizontal scroll buffer to a1
 		if SCREEN_XDISP
 			moveq	#SCREEN_XDISP, d4
 			sub.w	CamXpos, d4		; load FG screen's X position
@@ -882,7 +882,7 @@ SLZ_DeformLoop_1:
 ; ===========================================================================
 
 Deform_All:				; CODE XREF: Deform_MZ+F4?j
-		lea	($FFFFCC00).w,a1
+		lea	HSRAM_Buffer,a1
 		move.w	#$E,d1
 		move.w	($FFFFF700).w,d0
 		neg.w	d0
@@ -1088,9 +1088,9 @@ DFZ_Pos = $120
 
 Deform_FZ:
 		move.w	#DFZ_Pos,($FFFFF70C).w		; force vertical background position in place
-		move.w	($FFFFF70C).w,($FFFFF618).w 
+		move.w	($FFFFF70C).w,VSRAM_PlaneB 
 
-		lea	($FFFFCC00).w,a1	; load beginning address of horizontal scroll buffer to a1
+		lea	HSRAM_Buffer,a1	; load beginning address of horizontal scroll buffer to a1
 		if SCREEN_XDISP
 			moveq	#SCREEN_XDISP, d4
 			sub.w	CamXpos, d4		; load FG screen's X position

@@ -62,7 +62,7 @@ USE_NEW_BUILDSPRITES:	equ	1	; New BuildSprites system is still faster than S1's,
 QuickLevelSelect = 0
 QuickLevelSelect_ID = -1
 ; ------------------------------------------------------
-DebugModeDefault = 1
+DebugModeDefault = 0
 DebugSurviveNoRings = 1
 DebugHudPermanent = 0
 ; ------------------------------------------------------

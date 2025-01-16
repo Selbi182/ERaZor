@@ -76,32 +76,41 @@ STS_ClrObjRam:	move.l	d0,(a1)+
 		move.w	#$87,obScreenY(a0)		; set Y-position
 		bset	#7,obGfx(a0)		; otherwise make object high plane
 
-
 		; transparent sprites squeezed in between plane A and B to properly display the text in SH mode
+		@blockSize: = 32
+		@transWidth: = 5*@blockSize
+		@transXLeft: = $80+(SCREEN_WIDTH/2)-@blockSize
+		@transXRight: = @transXLeft+@transWidth
+		@transY: = $124
+
 		lea	($FFFFD140).w,a0
 		move.b	#2,(a0)
 		move.b	#6,obRoutine(a0)
-		move.w	#$80+SCREEN_WIDTH/2-32,obX(a0)
-		move.w	#$B0,obScreenY(a0)
+		move.w	#@transXLeft,obX(a0)
+		move.w	#@transY,obScreenY(a0)
 
 		adda.w	#$40,a0
 		move.b	#2,(a0)
 		move.b	#6,obRoutine(a0)
-		move.w	#$80+SCREEN_WIDTH/2+(32*5)-32,obX(a0)
-		move.w	#$B0,obScreenY(a0)
+		move.w	#@transXRight,obX(a0)
+		move.w	#@transY,obScreenY(a0)
+
+	if def(__WIDESCREEN__)
+		; additional strips for the the left and right side
+		adda.w	#$40,a0
+		move.b	#2,(a0)
+		move.b	#6,obRoutine(a0)
+		move.w	#@transXLeft-@blockSize,obX(a0)
+		move.w	#@transY,obScreenY(a0)
+		move.b	#1,obFrame(a0)
 
 		adda.w	#$40,a0
 		move.b	#2,(a0)
 		move.b	#6,obRoutine(a0)
-		move.w	#$80+SCREEN_WIDTH/2-32,obX(a0)
-		move.w	#$B0+(32*4),obScreenY(a0)
-
-		adda.w	#$40,a0
-		move.b	#2,(a0)
-		move.b	#6,obRoutine(a0)
-		move.w	#$80+SCREEN_WIDTH/2+(32*5)-32,obX(a0)
-		move.w	#$B0+(32*4),obScreenY(a0)
-
+		move.w	#@transXRight+@transWidth,obX(a0)
+		move.w	#@transY,obScreenY(a0)
+		move.b	#1,obFrame(a0)
+	endif
 
 		DeleteQueue_Init
 		jsr	ObjectsLoad

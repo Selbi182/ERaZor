@@ -27670,22 +27670,6 @@ Obj02_Transparent:
 		move.w	#$6000|($3000/$20),obGfx(a0)	; set art, use fourth palette line
 
 Obj02_TransDisplay:
-		move.b	Joypad|Held,d0
-		btst	#iUp,d0
-		beq.s	@0
-		subq.w	#1,obScreenY(a0)
-@0		btst	#iDown,d0
-		beq.s	@1
-		addq.w	#1,obScreenY(a0)
-@1
-		btst	#iLeft,d0
-		beq.s	@2
-		subq.w	#1,obX(a0)
-@2
-		btst	#iRight,d0
-		beq.s	@3
-		addq.w	#1,obX(a0)
-@3
 		jmp	DisplaySprite			; jump to DisplaySprite
 
 
@@ -27701,8 +27685,9 @@ Map_Obj02_End:
 
 Map_Obj02_Trans:
 		dc.w	@0-Map_Obj02_Trans
+		dc.w	@1-Map_Obj02_Trans
 
-@xrept: = 6
+@xrept: = 5
 @yrept: = 6
 @x: = -128
 @y: = -128
@@ -27724,6 +27709,18 @@ Map_Obj02_Trans:
 		endr
 		even
 
+
+@1:		dc.b	@yrept
+
+		@j: = 0
+		rept	@yrept
+				dc.b	@y+(@j*@incr)
+				dc.b	$0F
+				dc.w	$0000
+				dc.b	@x
+			@j: = @j + 1
+		endr
+		even
 ; ---------------------------------------------------------------------------
 ; ===========================================================================
 

@@ -86,6 +86,8 @@ RingFrame2:		equ	$FFFFF642			; b	current synchronized smooth ring frame for lost
 
 *			equ	$FFFFF644			; w	<<FOR SALE>>
 
+SMPS_Running:		equ	$FFFFF64F			; b	"SMPS running flag"
+
 PLC_RAM:		equ	$FFFFF680			;	PLC system variables (F680-F69E)
 
 ; == WARNING! F700 - F7FF is cleared upon Level initialization! ==

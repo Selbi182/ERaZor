@@ -63,11 +63,11 @@ VBlank_Exit:				; XREF: VBlank_LagFrame
 	if def(__BENCHMARK__)=0
 UpdateSoundDriver:
 		ints_enable			; enable interrupts (we can accept horizontal interrupts from now on)
-		tst.b	($FFFFF64F).w		; is SMPS currently running?
+		tst.b	SMPS_Running		; is SMPS currently running?
 		bne.s	@end			; if yes, branch
-		move.b	#1,($FFFFF64F).w	; set "SMPS running flag"
+		move.b	#1, SMPS_Running	; set "SMPS running flag"
 		jsr	SoundDriverUpdate	; run SMPS
-		clr.b	($FFFFF64F).w		; reset "SMPS running flag"
+		clr.b	SMPS_Running		; reset "SMPS running flag"
 @end:		rts
 	endif
 

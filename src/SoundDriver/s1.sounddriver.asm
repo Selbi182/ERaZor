@@ -2470,11 +2470,12 @@ SendVoiceTL:
 ; loc_72D02:
 .sendtlloop:
 		move.b	(a2)+,d0
-		move.b	(a1)+,d1
+		moveq	#$7F,d1
+		and.b	(a1)+,d1
 		lsr.b	#1,d4		; Is bit set for this operator in the mask?
 		bcc.s	.senttl		; Branch if not
 		add.b	d3,d1		; Include additional attenuation
-		bcc.s	.sendtl
+		bpl.s	.sendtl
 		moveq	#$7F,d1		; Clamp the volume attenuation on overflow
 .sendtl:
 		jsr	WriteFMIorII(pc)

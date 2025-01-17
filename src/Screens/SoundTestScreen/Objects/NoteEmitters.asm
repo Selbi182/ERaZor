@@ -64,7 +64,7 @@ SoundTest_CreateNoteEmitters:
 
 SoundTest_Obj_NoteEmitter:
 
-	@base_y_pos: = $80+32+SoundTest_Visualizer_Height*8
+	@base_y_pos: = $80+32+SoundTest_Visualizer_Height*8-1
 
 	@source_note:	equr	a3
 

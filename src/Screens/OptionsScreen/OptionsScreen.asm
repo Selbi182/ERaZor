@@ -46,22 +46,22 @@ OptionsScreen:				; XREF: GameModeArray
 		lea	ArtKospM_Options_MenuFont(pc), a0
 		jsr	KosPlusMDec_VRAM
 
-		; Load ERZ banner art
+		; Load options header text
 		move.l	#$64000002, VDP_Ctrl
 		lea	ArtKospM_Options_Header(pc), a0
 		jsr	KosPlusMDec_VRAM
 
-		; Load objects
-		lea	($FFFFD100).w,a0
-		move.b	#2,(a0)				; load ERaZor banner object
-		move.b	#2,obRoutine(a0)		; set to "Obj02_Display"
-		move.l	#Maps_OptionsHeader,obMap(a0)	; load mappings
-		move.b	#0,obPriority(a0)		; set priority
-		move.b	#0,obRender(a0)			; set render flag
-		move.w	#$6520,obGfx(a0)		; set art, use fourth palette line
-		bset	#7,obGfx(a0)			; make object high plane
-		move.w	#$80+SCREEN_WIDTH/2-2,obX(a0)	; set X-position
-		move.w	#$7F,obScreenY(a0)		; set Y-position
+		; Draw options header text
+		lea	Mapeni_Options_Header(pc), a0
+		lea	$FF0000, a1
+		move.w	#$6520, d0
+		jsr	EniDec
+
+		vram	$C092, d0
+		lea	$FF0000, a1
+		moveq	#22-1, d1
+		moveq	#3-1, d2
+		jsr	ShowVDPGraphics
 
 		moveq	#1,d0			; load to fade-in buffer
 		bsr	Options_LoadPal
@@ -687,6 +687,6 @@ ArtKospM_Options_Header:
 ArtKospM_Options_MenuFont:
 		incbin	"Screens/OptionsScreen/Data/MenuFont.kospm"
 
-Maps_OptionsHeader:
-		include	"Screens/OptionsScreen/Data/Options_Header_SpriteMap.asm"
+MapEni_Options_Header:
+		incbin	"Screens/OptionsScreen/Data/Options_Header_Map.eni"
 		even

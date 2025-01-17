@@ -398,12 +398,11 @@ Options_HandleUpDown:
 		move.w	(sp)+, d0
 		bsr	Options_RedrawMenuItem		; redraw previously selected item
 
-		bsr	Options_HandleReloadAHint
+		bsr	Options_HandleReloadAHint	; reload A-hit ID and redraw header if necessary
 
 		clr.w	Options_IndentTimer
 		moveq	#$FFFFFFD8, d0			; play move sound
-		jmp	PlaySFX
-
+		jsr	PlaySFX
 		moveq	#1, d0				; return Z=0
 	@ReturnZ:
 		rts
@@ -414,14 +413,14 @@ Options_HandleUpDown:
 ; ---------------------------------------------------------------------------
 
 Options_HandleReloadAHint:
-		tst.b	Options_AHintID
+		tst.b	Options_AHintID		; => Z=0 if set, Z=1 if unset
 		sne.b	d7
-		bsr	Options_ReloadAHintID
+		bsr	Options_ReloadAHintID	; => Z=0 if set, Z=1 if unset
 		sne.b	d0
 		eor.b	d7, d0
 		beq.s	@noredraw
 		KDebug.WriteLine "Options_HandleReloadAHint(): Must redraw header..."
-		bra	Options_RedrawHeader		; redraw header `Options_AHintID` went from zero to non-zero (or vice-versa)
+		bra	Options_RedrawHeader		; redraw header if `Options_AHintID` went from zero to non-zero (or vice-versa)
 
 @noredraw:	rts
 
@@ -438,7 +437,7 @@ Options_ReloadAHintID:
 		jsr	(a1)					; => d0 = A-hint
 	@0:	KDebug.WriteLine "Options_ReloadAHintID(): id=%<.b d0>"
 		move.b	d0, Options_AHintID			; set A-hint ID
-		rts
+		rts	; return the result of `move.b d0, ...`
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -523,6 +522,9 @@ Options_HandleMenuItem:
 ; further flushes because some registers are trashed.
 ; ---------------------------------------------------------------------------
 
+
+; ---------------------------------------------------------------------------
+; Standard drawers (no decorations)
 Options_DrawText_Highlighted:
 		move.w	#$4000, d6				; use palette line 3
 		bra.s	Options_DrawText2
@@ -537,6 +539,7 @@ Options_DrawText2:
 		bra	Options_DrawText_Cont
 
 ; ---------------------------------------------------------------------------
+; Standard menu items (with "> " decoration if highlighted)
 Options_DrawMenuItem_Highlighted:
 		move.w	#$4000, d6				; use palette line 3
 		move.l	#(Options_VRAM+$E|$4000)<<16, d7	; use "> " cursor ('>' with palette line 3 + empty tile)

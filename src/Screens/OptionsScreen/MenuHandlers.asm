@@ -105,8 +105,13 @@ Options_MenuData:
 	dc.l	Options_ResetGlobalOptions_Handle	; update handler
 	dc.l	0					; get A-hint ID (0 = no hint)
 
+Options_MenuData_Item_Exit:
 	; Save & exit options / Start game
-	dcScreenPos	OpBaseDest, OpBaseY+20, OpBaseX	; start on-screen position
+ if def(__WIDESCREEN__)
+	dcScreenPos	OpBaseDest, OpBaseY+20, OpBaseX+6	; start on-screen position
+ else
+	dcScreenPos	OpBaseDest, OpBaseY+20, OpBaseX+3	; start on-screen position
+ endif
 	dc.l	Options_Exit_Redraw			; redraw handler
 	dc.l	Options_Exit_Handle			; update handler
 	dc.l	0					; get A-hint ID (0 = no hint)
@@ -427,15 +432,13 @@ Options_Autoskip_Redraw:
  else
 	Options_PipeString a4, "ARCADE MODE    %<.l a1 str>", OpLength
  endif
-
 	rts
 
+; ---------------------------------------------------------------------------
 @Str_Off:
 	dc.b	'            OFF', 0
-	even
 @Str_OnWithStory:
 	dc.b	'ON - WITH STORY', 0
-	even
 @Str_OnWithoutStory:
 	dc.b	'ON - SKIP STORY', 0
 	even
@@ -1184,13 +1187,10 @@ Options_ResetGlobalOptions_Handle:
 	move.b	#Options_DeleteSRAMInitialCount, Options_DeleteSRAMCounter
 	jsr	Options_RedrawAllMenuItems
 
-
 	move.b	#$B9,d0			; play explosion sound
 	jsr	PlaySFX
-	tst.b	Options_FirstStartFlag
-	bne.s	@firststart
-	move.b	#Options_Music,d0
-	jsr	PlayBGM
+	jmp	Options_PlayMenuTheme
+
 @firststart:
 	rts
 
@@ -1260,44 +1260,59 @@ Options_BlackBarsMode_Handle:
 ; ---------------------------------------------------------------------------
 
 Options_Exit_Redraw:
-	tst.b	Options_FirstStartFlag
+
+	@menuItemId:	equ	(Options_MenuData_Item_Exit-Options_MenuData)/14
+
+	@lstr:	equr	a3
+	@rstr:	equr	a5
+
+	; Replace drawer because this menu item is special
+	lea	@noCursor(pc), @lstr
+	movea.l	@lstr, @rstr
+	lea	Options_DrawText_Normal(pc), a4
+	cmp.w	#@menuItemId, ($FFFFFF82).w		; are we selected?
+	bne.s	@0					; if not, branch
+	lea	@leftCursor(pc), @lstr
+	lea	@rightCursor(pc), @rstr
+	lea	Options_DrawText_Highlighted(pc), a4
+@0:
+	tst.b	Options_FirstStartFlag			; first time?
 	bne.s	@firststart
 
- if def(__WIDESCREEN__)
-	Options_PipeString a4, "      SAVE + EXIT OPTIONS MENU        ", OpLength
+	Options_PipeString a4, "%<.l @lstr str> SAVE + EXIT OPTIONS MENU %<.l @rstr str>", OpLength
 	rts
-  	@firststart:
-	Options_PipeString a4, "             START GAME               ", OpLength
- else
-	Options_PipeString a4, "   SAVE + EXIT OPTIONS MENU   ", OpLength
+
+@firststart:
+	add.w	#7*2, Options_VRAMStartScreenPos	; correct position (re-center)
+	Options_PipeString a4, "%<.l @lstr str> START GAME %<.l @rstr str>", OpLength
 	rts
-	@firststart:
-	Options_PipeString a4, "          START GAME          ", OpLength
- endif
-	rts
+
+; ---------------------------------------------------------------------------
+@leftCursor:
+	dc.b	'>', 0
+@rightCursor:
+	dc.b	'<', 0
+@noCursor:
+	dc.b	' ', 0
+	even
 
 ; ---------------------------------------------------------------------------
 ; "EXIT OPTIONS" handle function
 ; ---------------------------------------------------------------------------
 
 Options_Exit_Handle:
-	move.b	Joypad|Press,d1		; get button presses
-	andi.b	#$BC,d1			; is left, right, B, C, or Start pressed? (not A)
-	beq.w	@done			; if not, branch
+	moveq	#$FFFFFF00|Start|B|C|Left|Right, d1
+	and.b	Joypad|Press, d1			; is left, right, B, C, or Start pressed? (not A)
+	beq.w	@done					; if not, branch
 
-	; randomize background color on left/right
-	andi.b	#$C,d1
-	beq.s	@exit
-	jsr	RandomNumber
-	andi.w	#$EEE,d0
-	move.w	d0,(BGThemeColor).w
-	move.w	#$A9,d0			; play blip sound
-	jmp	PlaySFX
+	andi.b	#Left|Right,d1				; left or right only?
+	beq.s	@exit					; if not, branch
+	moveq	#$FFFFFFA9,d0				; play blip sound
+	jmp	PlaySFX					; ''
 
 @exit:
-	st.b	Options_Exiting		; exit options menu
+	st.b	Options_Exiting				; exit options menu
 @done:	rts
-
 
 
 ; ---------------------------------------------------------------------------

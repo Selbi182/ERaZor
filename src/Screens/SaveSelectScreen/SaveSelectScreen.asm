@@ -85,6 +85,7 @@ SaveSelectScreen:
 	jsr	BuildSprites
 	jsr	DeleteQueue_Execute
 
+	clr.b	WhiteFlashCounter	; undo any white flashes from previous screens
 	jsr	Pal_FadeTo
 	assert.b VBlank_MusicOnly, eq
 	; fallthrough

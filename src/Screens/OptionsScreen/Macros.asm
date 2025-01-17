@@ -44,7 +44,7 @@ Options_PipeString:	macro	flushFunctionOperand, string, bufferSize
 ; ---------------------------------------------------------------------------
 
 Options_GetMenuItem:	macro	idReg, ptrReg
-	mulu.w	#10, \idReg
+	mulu.w	#14, \idReg
 	lea	Options_MenuData(pc), \ptrReg
 	adda.w	\idReg, \ptrReg
 	endm

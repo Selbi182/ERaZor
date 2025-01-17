@@ -14,15 +14,13 @@ Options_RAM:	equ	$FFFF8000
 
 	rsset	Options_RAM
 Options_StringBuffer:		rs.b	Options_StringBufferSize+(Options_StringBufferSize&1)
-	if def(__DEBUG__)
-Options_StringBufferCanary:	rs.w	1			; DEBUG builds only
-	endif
+Options_StringBufferCanary:	rs.w	1
 Options_VRAMStartScreenPos:	rs.w	1
 Options_VRAMBufferPoolPtr:	rs.w	1
 Options_DeleteSRAMCounter:	rs.b	1
 Options_RedrawCurrentItem:	rs.b	1
 Options_Exiting:		rs.b	1
-Options_HasAHint:		rs.b	1
+Options_AHintID:		rs.b	1
 Options_IndentTimer:		rs.w	1
 
 ; ---------------------------------------------------------------------------

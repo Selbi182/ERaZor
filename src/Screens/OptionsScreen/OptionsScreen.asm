@@ -189,30 +189,23 @@ OptionsScreen_MainLoop:
 Options_InitState:
 		Screen_PoolReset Options_VRAMBufferPoolPtr, Art_Buffer, Art_Buffer_End
 
-		if def(__DEBUG__)
-			move.w	#Options_CanaryValue, Options_StringBufferCanary
-		endif
+		move.w	#Options_CanaryValue, Options_StringBufferCanary
 
 		; Clear stuff
 		moveq	#0, d0
- 		move.b	d0, ($FFFFFF95).w
-		move.w	d0, ($FFFFFF96).w
-		move.b	d0, ($FFFFFF98).w
+ 		move.b	d0, ($FFFFFF95).w	; force-kill flag
+		move.w	d0, ($FFFFFF96).w	; Sonic on spring flag
+		move.b	d0, ($FFFFFF98).w	; simulated peelout flag
 		move.w	d0, ($FFFFFFB8).w
-		move.b	d0, Options_HasAHint
 		move.w	#21,($FFFFFF9A).w
 
 		move.b	#Options_DeleteSRAMInitialCount, Options_DeleteSRAMCounter
 
 		tst.w	($FFFFFF82).w		; is a valid selection in memory?
-		bpl.s	@end			; if yes, use that
-		bsr	Options_SelectExit	; otherwise select the exit entry by default
-@end:		rts
+		bpl.s	@0			; if yes, use that
+		move.w	#Options_MenuData_NumItems-1, ($FFFFFF82).w ; otherwise select the exit entry by default
+@0:		bra	Options_ReloadAHintID	; load A-hint ID for this item
 ; ---------------------------------------------------------------------------
-
-Options_SelectExit:
-		move.w	#Options_MenuData_NumItems-1, ($FFFFFF82).w
-		rts
 
 ; ---------------------------------------------------------------------------
 ; Subroutine to setup options menu background
@@ -275,51 +268,46 @@ Options_SetSlotDefaults:
 ; ---------------------------------------------------------------------------
 
 Options_IntialDraw:
-		; Render header and tool tip
+		; Render header
 		bsr	Options_RedrawHeader
+
+		; Render footer
+		lea	Options_DrawText_Normal(pc), a4
+		lea	Options_ItemData_Footer(pc), a0
+		bsr	Options_RedrawMenuItem_Direct
 
 		; Render all interactive menu items
 		bra	Options_RedrawAllMenuItems
-; ===========================================================================
 
+; ---------------------------------------------------------------------------
 Options_RedrawHeader:
 		lea	Options_DrawText_Normal(pc), a4
-		lea	@ItemData_Header_Plain(pc), a0
-		tst.b	Options_HasAHint
-		beq.s	@draw
+		lea	Options_ItemData_Header_Plain(pc), a0
+		tst.b	Options_AHintID
+		beq	Options_RedrawMenuItem_Direct
 		lea	Options_DrawText_Highlighted(pc), a4
-		lea	@ItemData_Header_AHint(pc), a0
-@draw:		bsr	Options_RedrawMenuItem_Direct
-
-	;	lea	Options_DrawText_Normal(pc), a4
-	;	lea	@ItemData_Header_Middle(pc), a0
-	;	bsr	Options_RedrawMenuItem_Direct
-
-		lea	Options_DrawText_Normal(pc), a4
-		lea	@ItemData_Header_Bottom(pc), a0
+		lea	Options_ItemData_Header_AHint(pc), a0
 		bra	Options_RedrawMenuItem_Direct
 
 ; ---------------------------------------------------------------------------
-@ItemData_Header_Plain:
+Options_ItemData_Header_Plain:
 		dcScreenPos $C000, 4, 0		; start on-screen position
-		dc.l	@DrawHeaderPlain	; redraw handler
-@ItemData_Header_AHint:
+		dc.l	Options_DrawHeaderPlain	; redraw handler
+
+Options_ItemData_Header_AHint:
 		dcScreenPos $C000, 4, 0		; start on-screen position
-		dc.l	@DrawHeaderAHint	; redraw handler
+		dc.l	Options_DrawHeaderAHint	; redraw handler
 
-@ItemData_Header_Middle:
-		dcScreenPos $C000, 16, 0	; start on-screen position
-		dc.l	@DrawHeaderPlain	; redraw handler
-
-@ItemData_Header_Bottom:
+Options_ItemData_Footer:
 		dcScreenPos $C000, 25, 0	; start on-screen position
-		dc.l	@DrawHeaderPlain	; redraw handler
+		dc.l	Options_DrawHeaderPlain	; redraw handler
 
 ; ---------------------------------------------------------------------------
-@DrawHeaderPlain:
+Options_DrawHeaderPlain:
 		Options_PipeString a4, '----------------------------------------'
 		rts
-@DrawHeaderAHint:
+
+Options_DrawHeaderAHint:
 		Options_PipeString a4, '----------PRESS _` FOR DETAILS----------'
 		rts
 
@@ -330,15 +318,19 @@ Options_RedrawHeader:
 
 Options_HandleUpdate:
 		bsr	Options_HandleUpDown
-		
+		bne.s	@done				; if something was changed, branch
+		bsr	Options_HandleAHint
+		bne.s	@done				; if A-hint was handled, branch
+
 		move.w	($FFFFFF82).w, d0
 		bsr.w	Options_HandleMenuItem		; handle currently selected menu item
-		
+
 		tst.b	Options_Exiting			; was exiting flag set?
 		bne.s	@HandleExit			; if yes, exit options screen
 		tst.b	Options_RedrawCurrentItem	; was redraw flag set?
 		beq.s	@done				; if not, branch
 		sf.b	Options_RedrawCurrentItem	; reset flag
+		bsr	Options_HandleReloadAHint	; reload A-hint ID in case it's dynamic
 		move.w	($FFFFFF82).w, d0
 		bra.w	Options_RedrawMenuItem		; redraw current menu item
 @done:		rts
@@ -369,14 +361,10 @@ Options_HandleUpDown:
 		move.w	($FFFFFF82).w, @current_selection	; get current selection
 		move.w	@current_selection, @prev_selection	; remember previous selection now
 
-		cmpi.b	#Start,Joypad|Held
-		beq.s	@MoveSelectionToLast
-
-		moveq	#Up|Down, @joypad
-		and.b	Joypad|Press, @joypad			; Up or Down pressed?
-		beq	@Done					; if not, branch
-
-
+		moveq	#$FFFFFF00|Start|Up|Down, @joypad
+		and.b	Joypad|Press, @joypad			; Start, Up or Down pressed?
+		bmi.s	@MoveSelectionToLast			; if Start, branch
+		beq	@ReturnZ				; if nothing, branch
 		lsr.w	@joypad					; Up pressed?
 		bcc.s	@MoveSelectionDown			; if not, branch
 
@@ -399,66 +387,86 @@ Options_HandleUpDown:
 	@UpdateSelection:
 		KDebug.WriteLine "Setting selection: %<.w d0>"
 		move.w	@current_selection, ($FFFFFF82).w	; set new selection
-
-		cmp.w	@current_selection, @prev_selection
-		beq.w	@Done
-		bclr	#iStart,Joypad|Press
-		assert.w @current_selection, ne, @prev_selection
+		cmp.w	@current_selection, @prev_selection	; nothing has changed?
+		beq.w	@ReturnZ				; if yes, branch
 
 		; Always reset SRAM delete counter
 		move.b	#Options_DeleteSRAMInitialCount, Options_DeleteSRAMCounter
 
 		move.w	@prev_selection, -(sp)
-		jsr	Options_RedrawMenuItem		; redraw current item
+		bsr	Options_RedrawMenuItem		; redraw current item
 		move.w	(sp)+, d0
-		jsr	Options_RedrawMenuItem		; redraw previously selected item
+		bsr	Options_RedrawMenuItem		; redraw previously selected item
 
-		; hint to press A for the extra details on specific options
-		moveq	#0,d0				; hide A hint by default
-		move.w	($FFFFFF82).w,d1		; get current selection
-	if def(__WIDESCREEN__)
-		cmpi.w	#7,d1				; Extended Widescreen Camera selected?
-		beq.s	@ahint				; if yes, show A hint
-	endif
-		cmpi.w	#1,d1				; Palette Style selected?
-		beq.s	@ahint				; if yes, show A hint
-		cmpi.w	#2,d1				; Arcade Mode selected?
-		beq.s	@ahint				; if yes, show A hint
-		cmpi.w	#3,d1				; Alternate HUD selected?
-		beq.s	@ahint				; if yes, show A hint
+		bsr	Options_HandleReloadAHint
 
-		cmpi.w	#4,d1				; Cinematic Mode selected?
-		bne.s	@notcinematic			; if not, branch
-		jsr	CheckGlobal_BaseGameBeaten_Casual; has the player beaten base game in casual?
-		bne.s	@ahint				; if yes, show A hint
-	@notcinematic:
-		cmpi.w	#5,d1				; ERaZor Powers selected?
-		bne.s	@notpowers			; if not, branch
-		jsr	CheckGlobal_BaseGameBeaten_Frantic; has the player beaten base game in frantic?
-		bne.s	@ahint				; if yes, show A hint
-	@notpowers:
-		cmpi.w	#6,d1				; True-BS selected?
-		bne.s	@nottruebs			; if not, branch
-		jsr	CheckGlobal_BlackoutBeaten	; has the player beaten the Blackout Challenge
-		bne.s	@ahint				; if yes, show A hint
-	@nottruebs:
-
-		; expand as necessary
-		bra.s	@redrawheader			; otherwise, hide A hint
-
-	@ahint:
-		moveq	#1,d0				; show A hint
-
-	@redrawheader:
-		move.b	d0,Options_HasAHint		; set state of A hint flag
-		bsr	Options_RedrawHeader		; redraw header accordingly
-
-@playsound:
 		clr.w	Options_IndentTimer
-		move.b	#$D8,d0				; play move sound
+		moveq	#$FFFFFFD8, d0			; play move sound
 		jmp	PlaySFX
 
-	@Done:	rts
+		moveq	#1, d0				; return Z=0
+	@ReturnZ:
+		rts
+
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Reloads A-hint ID for menu it and redraws header tooltip if necessary
+; ---------------------------------------------------------------------------
+
+Options_HandleReloadAHint:
+		tst.b	Options_AHintID
+		sne.b	d7
+		bsr	Options_ReloadAHintID
+		sne.b	d0
+		eor.b	d7, d0
+		beq.s	@noredraw
+		KDebug.WriteLine "Options_HandleReloadAHint(): Must redraw header..."
+		bra	Options_RedrawHeader		; redraw header `Options_AHintID` went from zero to non-zero (or vice-versa)
+
+@noredraw:	rts
+
+; ---------------------------------------------------------------------------
+; Loads A-hint ID
+; ---------------------------------------------------------------------------
+
+Options_ReloadAHintID:
+		move.w	($FFFFFF82).w, d0
+		Options_GetMenuItem d0, a0			; a0 = item pointer
+		move.l	10(a0), d0				; d0 = A-hint
+		bpl.s	@0					; if A-hint ID is not a dynamic function, branch
+		movea.l	d0, a1					; call dynamic A-hint getter
+		jsr	(a1)					; => d0 = A-hint
+	@0:	KDebug.WriteLine "Options_ReloadAHintID(): id=%<.b d0>"
+		move.b	d0, Options_AHintID			; set A-hint ID
+		rts
+
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Handler for bonus information when pressing A (specific options only)
+; ---------------------------------------------------------------------------
+
+Options_HandleAHint:
+		btst	#iA,Joypad|Press	; is A pressed?
+		beq.s	@returnZ		; if not, branch
+		tst.b	Options_AHintID		; do we have an A hint to handle?
+		beq.s	@returnZ		; if not, branch
+
+		moveq	#$FFFFFFD9,d0		; play toggle on sound
+		jsr	PlaySFX
+		jsr 	Pal_FadeOut		; darken background...
+		jsr 	Pal_FadeOut		; ...twice
+		moveq	#$1D,d0			; load tutorial box palette...
+		jsr	PalLoad2		; ...directly
+
+		move.b	Options_AHintID, d0	; restore ID
+		jsr	TutorialBox_Display	; VLADIK => Display hint
+
+		moveq	#0, d0			; refresh options pal directly
+		jmp	Options_LoadPal
+
+		moveq	#1, d0			; return Z=0
+@returnZ:	rts
+
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------

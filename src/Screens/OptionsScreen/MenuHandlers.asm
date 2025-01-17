@@ -21,33 +21,38 @@ Options_MenuData:
 	; Difficulty
 	dcScreenPos	OpBaseDest, OpBaseY+0, OpBaseX	; start on-screen position
 	dc.l	Options_GameplayStyle_Redraw		; redraw handler
-	dc.l	Options_GameplayStyle_Handle		; update handler	
+	dc.l	Options_GameplayStyle_Handle		; update handler
+	dc.l	0					; get A-hint ID (0 = no hint)
 	; Palette style
 	dcScreenPos	OpBaseDest, OpBaseY+1, OpBaseX	; start on-screen position
 	dc.l	Options_PaletteStyle_Redraw		; redraw handler
 	dc.l	Options_PaletteStyle_Handle		; update handler
+	dc.l	$1A					; get A-hint ID (0 = no hint)
 	; Arcade mode / Speedrun mode
 	dcScreenPos	OpBaseDest, OpBaseY+2, OpBaseX	; start on-screen position
 	dc.l	Options_Autoskip_Redraw			; redraw handler
 	dc.l	Options_Autoskip_Handle			; update handler
+	dc.l	$18					; get A-hint ID (0 = no hint)
 	; Alternate HUD
 	dcScreenPos	OpBaseDest, OpBaseY+3, OpBaseX	; start on-screen position
 	dc.l	Options_AlternateHUD_Redraw		; redraw handler
 	dc.l	Options_AlternateHUD_Handle		; update handler
-
+	dc.l	$19					; get A-hint ID (0 = no hint)
 	; E - Cinematic effects
 	dcScreenPos	OpBaseDest, OpBaseY+5, OpBaseX	; start on-screen position
 	dc.l	Options_CinematicEffects_Redraw		; redraw handler
 	dc.l	Options_CinematicEffects_Handle		; update handler
+	dc.l	$80000000|Options_CinematicEffects_GetAHintID ; get A-hint ID (0 = no hint)
 	; R - ERaZor powers
 	dcScreenPos	OpBaseDest, OpBaseY+6, OpBaseX	; start on-screen position
 	dc.l	Options_ErazorPowers_Redraw		; redraw handler
 	dc.l	Options_ErazorPowers_Handle		; update handler
+	dc.l	$80000000|Options_ErazorPowers_GetAHintID ; get A-hint ID (0 = no hint)
 	; Z - True-BS mode
 	dcScreenPos	OpBaseDest, OpBaseY+7, OpBaseX	; start on-screen position
 	dc.l	Options_TrueBSMode_Redraw		; redraw handler
 	dc.l	Options_TrueBSMode_Handle		; update handler
-
+	dc.l	$80000000|Options_TrueBSMode_GetAHintID ; get A-hint ID (0 = no hint)
 
 ; global options
 
@@ -55,26 +60,36 @@ Options_MenuData:
 	dcScreenPos	OpBaseDest, OpBaseY+9, OpBaseX	; start on-screen position
 	dc.l	Options_ExtendedCamera_Redraw		; redraw handler
 	dc.l	Options_ExtendedCamera_Handle		; update handle
+ if def(__WIDESCREEN__)
+	dc.l	$1B					; get A-hint ID (0 = no hint)
+ else
+	dc.l	0					; get A-hint ID (0 = no hint)
+ endif
 	; Peelout style
 	dcScreenPos	OpBaseDest, OpBaseY+10, OpBaseX	; start on-screen position
 	dc.l	Options_PeeloutStyle_Redraw		; redraw handler
 	dc.l	Options_PeeloutStyle_Handle		; update handler
+	dc.l	0					; get A-hint ID (0 = no hint)
 	; Flashy lights
 	dcScreenPos	OpBaseDest, OpBaseY+11, OpBaseX	; start on-screen position
 	dc.l	Options_FlashyLights_Redraw		; redraw handler
 	dc.l	Options_FlashyLights_Handle		; update handler
+	dc.l	0					; get A-hint ID (0 = no hint)
 	; Camera shake
 	dcScreenPos	OpBaseDest, OpBaseY+12, OpBaseX	; start on-screen position
 	dc.l	Options_CameraShake_Redraw		; redraw handler
 	dc.l	Options_CameraShake_Handle		; update handler
+	dc.l	0					; get A-hint ID (0 = no hint)
 	; Audio mode
 	dcScreenPos	OpBaseDest, OpBaseY+13, OpBaseX	; start on-screen position
 	dc.l	Options_Audio_Redraw			; redraw handler
 	dc.l	Options_Audio_Handle			; update handler
+	dc.l	0					; get A-hint ID (0 = no hint)
 	; Black bars setup
 	dcScreenPos	OpBaseDest, OpBaseY+14, OpBaseX	; start on-screen position
 	dc.l	Options_BlackBarsMode_Redraw		; redraw handler
 	dc.l	Options_BlackBarsMode_Handle		; update handler
+	dc.l	0					; get A-hint ID (0 = no hint)
 
 
 ; misc options
@@ -83,22 +98,29 @@ Options_MenuData:
 	dcScreenPos	OpBaseDest, OpBaseY+16, OpBaseX	; start on-screen position
 	dc.l	Options_ResetLocalOptions_Redraw	; redraw handler
 	dc.l	Options_ResetLocalOptions_Handle	; update handler
+	dc.l	0					; get A-hint ID (0 = no hint)
 	; Reset global options
 	dcScreenPos	OpBaseDest, OpBaseY+17, OpBaseX	; start on-screen position
 	dc.l	Options_ResetGlobalOptions_Redraw	; redraw handler
 	dc.l	Options_ResetGlobalOptions_Handle	; update handler
+	dc.l	0					; get A-hint ID (0 = no hint)
 
 	; Save & exit options / Start game
 	dcScreenPos	OpBaseDest, OpBaseY+20, OpBaseX	; start on-screen position
 	dc.l	Options_Exit_Redraw			; redraw handler
 	dc.l	Options_Exit_Handle			; update handler
+	dc.l	0					; get A-hint ID (0 = no hint)
 
 
 Options_MenuData_End:
 
 ; ---------------------------------------------------------------------------
 
-Options_MenuData_NumItems:	equ	(Options_MenuData_End-Options_MenuData)/10
+Options_MenuData_NumItems:	equ	(Options_MenuData_End-Options_MenuData)/14
+
+	if (Options_MenuData_End-Options_MenuData)%14
+		inform 2, "Options Menu Data corruption"
+	endif
 
 
 ; ===========================================================================
@@ -183,12 +205,6 @@ Options_ExtendedCamera_Handle:
 	andi.b	#$FC,d1			; is left, right, A, B, C, or Start pressed?
 	beq.s	@done			; if not, branch
 
- if def(__WIDESCREEN__)
-	; hint on A
-	moveq	#$1B,d0				; ID for the explanation textbox
-	bsr	Options_HandleAHint		; show explanation textbox if A is pressed
- endif
-
 	bchg	#GlobalOptions_ExtendedCamera, GlobalOptions
 	bsr	Options_PlayRespectiveToggleSound
 	st.b	Options_RedrawCurrentItem
@@ -230,10 +246,6 @@ Options_PaletteStyle_Handle:
 	move.b	Joypad|Press,d1		; get button presses
 	andi.b	#$FC,d1			; is left, right, A, B, C, or Start pressed?
 	beq.w	@done			; if not, branch
-
-	; hint on A
-	moveq	#$1A,d0			; ID for the explanation textbox
-	bsr	Options_HandleAHint	; show explanation textbox if A is pressed
 
 	bchg	#SlotOptions_NewPalettes, SlotOptions
 	bsr	Options_PlayRespectiveToggleSound
@@ -338,10 +350,6 @@ Options_AlternateHUD_Handle:
 	andi.b	#$FC,d1				; is left, right, A, B, C, or Start pressed?
 	beq.w	@ret				; if not, branch
 
-	; hint on A
-	moveq	#$19,d0				; ID for the explanation textbox
-	bsr	Options_HandleAHint		; show explanation textbox if A is pressed
-
 	moveq	#0,d0
 	btst	#SlotOptions_AltHUD_ShowSeconds, SlotOptions
 	beq.s	@0
@@ -441,10 +449,6 @@ Options_Autoskip_Handle:
 	move.b	Joypad|Press,d1			; get button presses
 	andi.b	#$FC,d1				; is left, right, A, B, C, or Start pressed?
 	beq.w	@ret				; if not, branch
-
-	; hint on A
-	moveq	#$18,d0				; ID for the explanation textbox
-	bsr	Options_HandleAHint		; show explanation textbox if A is pressed
 
 	moveq	#0, d0
 	move.b	SlotOptions2, d0
@@ -800,10 +804,6 @@ Options_CinematicEffects_Handle:
 	jsr	CheckGlobal_BaseGameBeaten_Casual	; has the player beaten the base game in casual?
 	beq.w	Options_PlayDisallowedSound		; if not, branch
 
-	; hint on A
-	moveq	#$1C,d0				; ID for the explanation textbox
-	bsr	Options_HandleAHint		; show explanation textbox if A is pressed
-
 	moveq	#0,d0
 	btst	#SlotOptions_CinematicBlackBars, SlotOptions
 	beq.s	@0
@@ -852,6 +852,19 @@ Options_CinematicEffects_Handle:
 
 @ret:	rts
 
+; ---------------------------------------------------------------------------
+; "CINEMATIC Effects" dynamic A-hit ID getter
+; ---------------------------------------------------------------------------
+
+Options_CinematicEffects_GetAHintID:
+	jsr	CheckGlobal_BaseGameBeaten_Casual	; has the player beaten the base game in casual?
+	beq.w	@nohint					; if not, branch
+	moveq	#$1C, d0
+	rts
+
+@nohint:
+	moveq	#0, d0
+	rts
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -921,10 +934,6 @@ Options_ErazorPowers_Handle:
 	jsr	CheckGlobal_BaseGameBeaten_Frantic	; has the player beaten the base game in frantic?
 	beq.w	Options_PlayDisallowedSound	; if not, disallowed
 
-	; hint on A
-	moveq	#$1D,d0				; ID for the explanation textbox
-	bsr	Options_HandleAHint		; show explanation textbox if A is pressed
-
 	moveq	#0,d0
 	btst	#SlotOptions_NonstopInhuman, SlotOptions
 	beq.s	@0
@@ -961,6 +970,20 @@ Options_ErazorPowers_Handle:
 	bsr	Options_PlayRespectiveToggleSound
 
 @ret:	rts
+
+; ---------------------------------------------------------------------------
+; "ERAZOR POWERS" get A-hit ID dynamic function
+; ---------------------------------------------------------------------------
+
+Options_ErazorPowers_GetAHintID:
+	jsr	CheckGlobal_BaseGameBeaten_Frantic	; has the player beaten the base game in frantic?
+	beq.s	@nohint					; if not, branch
+	moveq	#$1D,d0					; ID for the explanation textbox
+	rts
+
+@nohint:
+	moveq	#0, d0
+	rts
 
 
 ; ===========================================================================
@@ -1026,10 +1049,6 @@ Options_TrueBSMode_Handle:
 	jsr	CheckGlobal_BlackoutBeaten	; has the player beaten the blackout challenge?
 	beq.w	Options_PlayDisallowedSound	; if not, disallowed
 
-	; hint on A
-	moveq	#$1E,d0				; ID for the explanation textbox
-	bsr	Options_HandleAHint		; show explanation textbox if A is pressed
-
 	moveq	#$FFFFFFE3,d0			; resume at regular speed
 	bchg	#SlotOptions2_PlacePlacePlace, SlotOptions2
 	bne.s	@on
@@ -1042,7 +1061,19 @@ Options_TrueBSMode_Handle:
 	st.b	Options_RedrawCurrentItem
 @ret:	rts
 
+; ---------------------------------------------------------------------------
+; "TRUE-BS MODE" get A-hint ID dynamic function
+; ---------------------------------------------------------------------------
 
+Options_TrueBSMode_GetAHintID:
+	jsr	CheckGlobal_BlackoutBeaten	; has the player beaten the blackout challenge?
+	beq.s	@nohint
+	moveq	#$1E, d0			; ID for the explanation textbox
+	rts
+
+@nohint:
+	moveq	#0, d0
+	rts
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -1202,7 +1233,7 @@ Options_BlackBarsMode_Handle:
  	andi.b	#$F0,d1				; is A, B, C, or Start pressed?
 	beq.w	@ret				; if not, branch
 
-	btst	#6,d1				; is specifically A pressed?
+	btst	#iA,d1				; is specifically A pressed?
 	beq.s	@gotosetupscreen		; if not, branch
 	tst.w	($FFFFFFFA).w			; is debug mode enabled?
 	beq.s	@gotosetupscreen		; if not, branch
@@ -1297,35 +1328,6 @@ Options_PlayRespectiveToggleSound2: equ *
 Options_Str_On:	dc.b	' ON', 0
 Options_Str_Off:dc.b	'OFF', 0
 	even
-
-; ===========================================================================
-; ---------------------------------------------------------------------------
-; Handler for bonus information when pressing A (specific options only)
-; ---------------------------------------------------------------------------
-
-Options_HandleAHint:
-	btst	#6,Joypad|Press		; is specifically A pressed?
-	beq.s	@end			; if not, branch
-
-	move.l	d0,-(sp)		; backup ID
-
-	moveq	#0,d0			; play option toggled on sound
-	bsr	Options_PlayRespectiveToggleSound
-
-	jsr 	Pal_FadeOut		; darken background...
-	jsr 	Pal_FadeOut		; ...twice
-	moveq	#$1D,d0			; load tutorial box palette...
-	jsr	PalLoad2		; ...directly
-
-	move.l	(sp)+,d0		; restore ID
-	jsr	TutorialBox_Display	; VLADIK => Display hint
-
-	moveq	#0,d0			; refresh options pal directly
-	jsr	Options_LoadPal
-
-	addq.l	#4,sp			; skip remaining stuff in the option handler
-@end:
-	rts
 
 ; ---------------------------------------------------------------------------
 ; ===========================================================================

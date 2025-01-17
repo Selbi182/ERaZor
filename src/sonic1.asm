@@ -17683,7 +17683,7 @@ Obj34_ActNumber:
 		beq.s	@notfp
 	;	tst.w	(RelativeDeaths).w
 	;	bne.s	@notfp
-		addq.b	#2,d0			; if you came here without a single relative death, you are a cheater
+		addq.b	#1,d0			; if you came here without a single relative death, you are a cheater
 @notfp:
 		bra.s	Obj34_MakeSprite	; skip
 

@@ -14,9 +14,24 @@ obST_MaxTrack	= $E4
 ; ---------------------------------------------------------------------------
 
 SoundTest_Obj_TrackSelector:
-	; Create box overlay and arrow sub-objects
+	; Create box overlay sub-object
 	Screen_CreateChildObject #SoundTest_Obj_TrackSelector_Overlay
-	Screen_CreateChildObject #SoundTest_Obj_TrackSelector_Arrows
+
+	; Draw arrows upon init (these are static and won't be redrawn)
+	@vdp_data:	equr	a5
+	@base_pat:	equ	$8000|$4000|(SoundTest_Font_VRAM/$20)
+
+	VBlank_SetMusicOnly
+	lea	VDP_Data, @vdp_data
+	vram	SoundTest_PlaneA_VRAM+24*$80, VDP_Ctrl-VDP_Data(@vdp_data)
+	move.l	#((@base_pat+$32)<<16)|(@base_pat+$33), (@vdp_data)
+	if def(__WIDESCREEN__)
+		vram	SoundTest_PlaneA_VRAM+24*$80+(4+34)*2, VDP_Ctrl-VDP_Data(@vdp_data)
+	else
+		vram	SoundTest_PlaneA_VRAM+24*$80+(4+29)*2, VDP_Ctrl-VDP_Data(@vdp_data)
+	endif
+	move.l	#((@base_pat+$34)<<16)|(@base_pat+$35), (@vdp_data)
+	VBlank_UnsetMusicOnly
 
 	; Initialize object now
 	moveq	#$FFFFFF81, d0			; play initial music
@@ -185,35 +200,6 @@ SoundTest_Obj_TrackSelector:
 ; ---------------------------------------------------------------------------
 @TrackLineData:
 	include	"Screens/SoundTestScreen/Objects/TrackSelector.TrackData.asm"
-
-; ---------------------------------------------------------------------------
-; Subobject: Arrow keys
-; ---------------------------------------------------------------------------
-
-SoundTest_Obj_TrackSelector_Arrows:
-
-	@char_to_tile:	equr	a2
-
-	Screen_CreateChildObject #@Init	; a1 = right arror
-	lea	SoundTest_CharToTile(pc), @char_to_tile
-	move.w	('>'-$20)*2(@char_to_tile), obGfx(a1)	; right arrow settings
-	move.w	#$80+(SCREEN_WIDTH+SoundTest_Visualizer_Width*8)/2-12, obX(a1)	; ''
-	move.w	('<'-$20)*2(@char_to_tile), obGfx(a0)	; left arrow settings
-	move.w	#$80+(SCREEN_WIDTH-SoundTest_Visualizer_Width*8)/2+4, obX(a0)	; ''
-
-@Init:
-	move.b	#1<<5, obRender(a0)		; sprite piece mode
-	move.l	#@Sprite, obMap(a0)
-	move.w	#$80+224-8*4-4, obScreenY(a0)
-	move.l	#@Main, obCodePtr(a0)
-
-@Main:
-	jmp	DisplaySprite
-
-; ---------------------------------------------------------------------------
-@Sprite:
-	dc.b	0, %0000, 0, 0, 0
-	even
 
 ; ---------------------------------------------------------------------------
 ; Subobject: Shadowed box overlay

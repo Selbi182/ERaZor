@@ -1304,7 +1304,7 @@ StopBGM:
 .fmloop:	tst.b	(a5)
 		bpl.s	.fm_next
 		move.b	#$7F, TrackVolume(a5)
-		jsr	SendVoiceTL(pc)
+		jsr	SilenceFM(pc)
 		sf.b	TrackNoteOutput(a5)
 		jsr	FMNoteOff2(pc)
 		andi.b	#$7F, (a5)
@@ -2485,6 +2485,19 @@ SendVoiceTL:
 .locret:
 		rts	
 ; End of function SendVoiceTL
+
+; ===========================================================================
+SilenceFM:
+		lea	FMInstrumentTLTable(pc),a2
+		moveq	#$7F, d1
+		move.b	(a2)+, d0
+		jsr	WriteFMIorII(pc)
+		move.b	(a2)+, d0
+		jsr	WriteFMIorII(pc)
+		move.b	(a2)+, d0
+		jsr	WriteFMIorII(pc)
+		move.b	(a2)+, d0
+		jmp	WriteFMIorII(pc)
 
 ; ===========================================================================
 ; byte_72D18:

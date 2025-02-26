@@ -9,7 +9,8 @@
 ; ===========================================================================
 
 CreditsScreen:
-		move.b	#$97,d0
+		move.b	#$91,d0
+	;	move.b	#$97,d0
 		jsr	PlayBGM				; play credits music
 	;	jsr	Pal_FadeFrom
 

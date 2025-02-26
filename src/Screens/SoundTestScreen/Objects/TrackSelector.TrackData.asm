@@ -146,13 +146,13 @@
 @Music86_Name:		@str 'GREEN HILL PLACE', @titleMaxLen
 @Music86_Source:	@str 'MEGA MAN X / SPARK MANDRILL', @descMaxLen
 
-@Music87_Name:		@str 'TUTORIAL PLACE', @titleMaxLen
+@Music87_Name:		@str '-DMCA- TUTORIAL PLACE', @titleMaxLen
 @Music87_Source:	@str 'NINJA GAIDEN / STAGE 4-2', @descMaxLen
 
 @Music88_Name:		@str 'SPECIAL STAGE CLEAR', @titleMaxLen
 @Music88_Source:	@str "SONIC THE HEDGEHOG 1 / YEAH, IT'S THE SAME", @descMaxLen
 
-@Music89_Name:		@str 'SPECIAL PLACE', @titleMaxLen
+@Music89_Name:		@str 'SPECIAL PLACE / TUTORIAL', @titleMaxLen
 @Music89_Source:	@str 'TECMO WRESTLING / HIDDEN TRACK', @descMaxLen
 
 @Music8A_Name:		@str 'TITLE SCREEN', @titleMaxLen
@@ -176,7 +176,7 @@
 @Music90_Name:		@str 'THE GREAT ESCAPE', @titleMaxLen
 @Music90_Source:	@str 'MEGA MAN X3 / OPENING STAGE', @descMaxLen
 
-@Music91_Name:		@str 'INVINCIBILITY / OPTIONS', @titleMaxLen
+@Music91_Name:		@str 'SORTA EVERYTHING ELSE', @titleMaxLen
 @Music91_Source:	@str 'DANGEROUS SEED / ENDING THEME', @descMaxLen
 
 @Music92_Name:		@str 'FUN IN LABYRINTHY PLACE', @titleMaxLen
@@ -194,7 +194,7 @@
 @Music96_Name:		@str 'STAR AGONY PLACE', @titleMaxLen
 @Music96_Source:	@str 'THUNDER FORCE III / STAGE 7: ORN BASE', @descMaxLen
 
-@Music97_Name:		@str 'CREDITS', @titleMaxLen
+@Music97_Name:		@str '-DMCA- CREDITS', @titleMaxLen
 @Music97_Source:	@str 'GUNDAM WING: ENDLESS DUEL / RHYTHM EMOTION', @descMaxLen
 
 @Music98_Name:		@str 'CRABMEAT BOSS', @titleMaxLen

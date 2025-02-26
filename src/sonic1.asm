@@ -118,8 +118,8 @@ StartOfRom:
 
 Date:		dc.b '(C) SELBI 2025  ' ; Release date
 	if def(__WIDESCREEN__)
-Title_Local:	dc.b 'Sonic ERaZor 8 - Widescreen Edition             ' ; Domestic name
-Title_Int:	dc.b 'Sonic ERaZor 8 - Widescreen Edition             ' ; International name
+Title_Local:	dc.b 'Sonic ERaZor 8 - Widescreen (DMCA-friendly)     ' ; Domestic name
+Title_Int:	dc.b 'Sonic ERaZor 8 - Widescreen (DMCA-friendly)     ' ; International name
 	else
 Title_Local:	dc.b 'Sonic ERaZor 8                                  ' ; Domestic name
 Title_Int:	dc.b 'Sonic ERaZor 8                                  ' ; International name
@@ -3553,7 +3553,8 @@ PLM_NoMusic:
 
 MusicList:
 		dc.b	$85	; Uberhub Place (Overworld)
-		dc.b	$87	; Tutorial Place (SBZ 2)
+	;	dc.b	$87	; Tutorial Place (SBZ 2)
+		dc.b	$89	; Tutorial Place (SBZ 2)
 		dc.b	$81	; Night Hill Place
 		dc.b	$86	; Green Hill Place part 1
 		dc.b	$86	; Green Hill Place part 2

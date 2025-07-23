@@ -129,10 +129,10 @@ BlackBarsConfigScreen_MainLoop:
 	andi.b	#Start|A|C,Joypad|Press		; anything pressed?
 	beq.w	BlackBarsConfigScreen_MainLoop	; if not, loop
 
-	tst.b	(CarryOverData).w		; is next game mode set to be options screen?
-	bne.s	@SwapToBlackBarsSetup		; if yes, always switch to black bars setup
-	jsr	CheckGlobal_BlackBarsConfigured	; have we already configured black bars upon first boot?
-	beq.s	@SwapToBlackBarsSetup		; if yes, swap to black bars setup
+	;tst.b	(CarryOverData).w		; is next game mode set to be options screen?
+	;bne.s	@SwapToBlackBarsSetup		; if yes, always switch to black bars setup
+	;jsr	CheckGlobal_BlackBarsConfigured	; have we already configured black bars upon first boot?
+	;beq.s	@SwapToBlackBarsSetup		; if yes, swap to black bars setup
 	move.b	#1,BlackBarsConfig_Exiting	; otherwise, directly exit the screen to make it less annoying
 	bra.w	BlackBarsConfigScreen_MainLoop	; loop to start
  
@@ -589,52 +589,23 @@ BlackBarsConfigScreen_WriteText_WidescreenInfo:
 	Console.SetXY #3, #6
 	Console.Write "%<pal2>----------------------------------%<pal0>"
 	Console.Write "%<endl>%<endl>"
-	Console.Write "  THIS IS A SPECIAL 16:9 VERSION%<endl>"
-	Console.Write "   OF THIS ROM HACK EXCLUSIVELY%<endl>"
-	Console.Write "AND SPECIFICALLY OPTIMIZED FOR THE"
-	Console.Write "%<endl>%<endl>"
-	Console.Write '      "GENESIS PLUS GX WIDE"%<endl>'
-	Console.Write '   CORE AVAILABLE FOR RETROARCH'
-	Console.Write "%<endl>%<endl>"
-	Console.Write "   AND IT WILL BE SUPER AWKWARD%<endl>"
-	Console.Write " IF PLAYED ON ANY OTHER EMULATOR!"
+	Console.Write "  WHAT YOU'RE PLAYING RIGHT NOW%<endl>"
+	Console.Write " MAY LOOK LIKE A CUSTOM FAN GAME,%<endl>"
+	Console.Write "BUT IT'S STILL A REAL MEGA DRIVE%<endl>"
+	Console.Write "     ROM HACK UNDER THE HOOD,%<endl>"
+	Console.Write "  RUNNING ON A MODIFIED EMULATOR,%<endl>"
+	Console.Write " BUNDLED RIGHT INTO THIS PACKAGE.%<endl>"
 	Console.Write "%<endl>"
-	Console.Write "    VISIT THIS URL TO DOWNLOAD%<endl>"
-	Console.Write "     THE REGULAR 4:3 VERSION:"
-	Console.Write "%<endl>%<endl>"
-	Console.Write " HTTPS://SELBI.HAPISAN.COM/ERAZOR"
+	Console.Write "  SPECIFICALLY, IT USES A FORK OF%<endl>"
+	Console.Write " HEYJOEWAY'S SONIC 2 COMMUNITY CUT%<endl>"
+	Console.Write "   STANDALONE EMULATOR BUILD.%<endl>"
 	Console.Write "%<endl>%<endl>"
 	Console.Write "%<pal2>----------------------------------%<pal0>"
 
 	Console.SetXY #5, #24
-	Console.Write "   FOR THE BEST EXPERIENCE, %<endl>"
-	Console.Write "DISABLE SPRITE LIMITS AS WELL!"
 
-
-	; this text overflows to the left and right, making it invisible in 4:3 mode
-	Console.SetXY #-4, #6
-	Console.Write "  %<pal2>IF%<endl>%<endl>"
-	Console.Write " YOU%<endl>%<endl>"
-	Console.Write " CAN%<endl>%<endl>"
-	Console.Write "READ%<endl>%<endl>"
-	Console.Write "THIS%<endl>%<endl>"
-	Console.Write " YOU%<endl>%<endl>"
-	Console.Write " ARE%<endl>%<endl>"
-	Console.Write "GOOD%<endl>%<endl>"
-	Console.Write "  TO%<endl>%<endl>"
-	Console.Write " GO!%<pal0>"
-
-	Console.SetXY #40, #5
-	Console.Write "%<pal2>IF%<endl>%<endl>"
-	Console.Write "YOU%<endl>%<endl>"
-	Console.Write "CAN%<endl>%<endl>"
-	Console.Write "READ%<endl>%<endl>"
-	Console.Write "THIS%<endl>%<endl>"
-	Console.Write "YOU%<endl>%<endl>"
-	Console.Write "ARE%<endl>%<endl>"
-	Console.Write "GOOD%<endl>%<endl>"
-	Console.Write "TO%<endl>%<endl>"
-	Console.Write "GO!%<pal0>"
+	Console.Write "   ENJOY THE RIDE! AND REMEMBER,%<endl>"
+	Console.Write "      WINNERS DON'T USE GENS!"
 	
 	BBCS_LeaveConsole a0
 	rts

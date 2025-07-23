@@ -73,26 +73,26 @@ StartLevel:
 ; ---------------------------------------------------------------------------
 
 Start_FirstGameMode:
-	if def(__WIDESCREEN__)=0 ; always start in the black bars screen in widescreen mode because it has important info
-		bsr	ReturnToSegaScreen	; set first game mode to Sega Screen
+;	if def(__WIDESCREEN__)=0 ; always start in the black bars screen in widescreen mode because it has important info
+;		bsr	ReturnToSegaScreen	; set first game mode to Sega Screen
 
-		bsr	CheckGlobal_BlackBarsConfigured
-		bne.s	@skip
+;		bsr	CheckGlobal_BlackBarsConfigured
+;		bne.s	@skip
 
 		; Emulator detection to autoskip the screen for known faulty behavior (primarily in Kega)
 		; Inspired by: https://github.com/DevsArchive/genesis-emulator-detector
-		lea	VDP_Debug, a0
-		move.w	#1, (a0)		; Write to the VDP debug register (for BlastEm detection)
-		ori.b	#0, d0
-		move.w	(a0), d0		; Read VDP debug register
-		move.w	#0, (a0)		; Reset VDP debug register
-		ori.b	#0, d0
-		cmpi.w	#-1, d0			; Did it return -1?
-		beq.w	@skip			; If so, then Kega Fusion has been detected
-		cmpi.w	#1, d0			; Did it return what it was last written?
-		beq.s	@skip			; If so, then an old version of BlastEm has been detected
-	endif
-
+;		lea	VDP_Debug, a0
+;		move.w	#1, (a0)		; Write to the VDP debug register (for BlastEm detection)
+;		ori.b	#0, d0
+;		move.w	(a0), d0		; Read VDP debug register
+;		move.w	#0, (a0)		; Reset VDP debug register
+;		ori.b	#0, d0
+;		cmpi.w	#-1, d0			; Did it return -1?
+;		beq.w	@skip			; If so, then Kega Fusion has been detected
+;		cmpi.w	#1, d0			; Did it return what it was last written?
+;		beq.s	@skip			; If so, then an old version of BlastEm has been detected
+;	endif
+;
 		move.b	#$38,(GameMode).w	; set to Black Bars configuration screen
 		move.b	#0,(CarryOverData).w	; set next game mode to be Sega screen
 @skip:

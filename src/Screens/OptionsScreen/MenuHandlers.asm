@@ -1211,17 +1211,17 @@ Options_BlackBarsMode_Redraw:
 @0:
 
  if def(__WIDESCREEN__)
-	Options_PipeString a4, "BLACK BARS SETUP            %<.l a1 str>", OpLength
+	Options_PipeString a4, "DMCA-FRIENDLY MODE          %<.l a1 str>", OpLength
  else
-	Options_PipeString a4, "BLACK BARS SETUP      %<.l a1 str>", OpLength
+	Options_PipeString a4, "DMCA-FRIENDLY MODE    %<.l a1 str>", OpLength
  endif
 	rts
 
 @Str_BlackBars_Emulator:
-	dc.b	'EMULATOR', 0
+	dc.b	'     OFF', 0
 
 @Str_BlackBars_Hardware:
-	dc.b	'HARDWARE', 0
+	dc.b	'      ON', 0
 	even
 
 ; ---------------------------------------------------------------------------

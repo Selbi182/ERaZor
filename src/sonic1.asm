@@ -62,7 +62,7 @@ USE_NEW_BUILDSPRITES:	equ	1	; New BuildSprites system is still faster than S1's,
 QuickLevelSelect = 0
 QuickLevelSelect_ID = -1
 ; ------------------------------------------------------
-DebugModeDefault = 0
+DebugModeDefault = 1
 DebugSurviveNoRings = 1
 DebugHudPermanent = 0
 ; ------------------------------------------------------
@@ -118,8 +118,8 @@ StartOfRom:
 
 Date:		dc.b '(C) SELBI 2025  ' ; Release date
 	if def(__WIDESCREEN__)
-Title_Local:	dc.b 'Sonic ERaZor 8 - Widescreen (DMCA-friendly)     ' ; Domestic name
-Title_Int:	dc.b 'Sonic ERaZor 8 - Widescreen (DMCA-friendly)     ' ; International name
+Title_Local:	dc.b 'Sonic ERaZor 8 - Widescreen (Standalone)        ' ; Domestic name
+Title_Int:	dc.b 'Sonic ERaZor 8 - Widescreen (Standalone)        ' ; International name
 	else
 Title_Local:	dc.b 'Sonic ERaZor 8                                  ' ; Domestic name
 Title_Int:	dc.b 'Sonic ERaZor 8                                  ' ; International name
@@ -3030,7 +3030,7 @@ Title_SonPalLoop:
 		move.b	#LevelSelect_DPadCheatCount,($FFFFFFE6).w ; level select cheat counter
 	if QuickLevelSelect=1 
 		if QuickLevelSelect_ID=-1
-		 bra.s	LevelSelect_Load
+		 bra.w	LevelSelect_Load
 		endif
 	endif
 		move.b	#$8A,d0		; play title screen music

@@ -67,7 +67,7 @@ DebugSurviveNoRings = 1
 DebugHudPermanent = 0
 ; ------------------------------------------------------
 DoorsAlwaysOpen = 0
-LowBossHP = 1
+LowBossHP = 0
 ; ======================================================
 	else
 ; BENCHMARK build settings (DO NOT CHANGE!)
@@ -3907,12 +3907,15 @@ loc_3946:
 		dc.w $6B40
 		dc.w -1
 ; ===========================================================================
-
-		
+	
 @notuberhub:
 		cmpi.w	#$302,($FFFFFE10).w		; is current level SAP?
 		bne.s	@notsap				; if not, branch
 		jsr	SAP_ResetChallengeObjects	; set up challenge objects
+		btst	#SlotOptions_SpaceGolf, SlotOptions
+		beq.s	@notsap
+		jsr	SAP_LoadSonicPal
+
 
 @notsap:
 		; bomb machine cutscene setup
@@ -25719,7 +25722,12 @@ Obj5F_BossDelete:
 		clr.w	($FFFFFE30).w			; clear any set level checkpoints
 
 		jsr	SAP_ResetChallengeObjects	; set up SAP challenge objects now
-		
+
+		btst	#SlotOptions_SpaceGolf, SlotOptions	; is nonstop space golf enabled?
+		beq.s	@notearly		; if not, branch
+		jsr	SAP_LoadSonicPal	; load Sonic's antigrav palette now
+	@notearly:
+
 		move.b	#$84,d0
 		jsr	PlayBGM
 
@@ -29009,11 +29017,23 @@ S_D_NotGHZ2:
 		bls.s	S_D_AfterImage		; if not, branch		
 		frantic				; are we in frantic mode?
 		bne.s	@franticdrain		; if yes, branch
+		btst	#SlotOptions2_PlacePlacePlace, SlotOptions2 ; are we in true-bs mode?
+		bne.s	@franticdrain		; if yes, enable drain system even for casual mode
 		clr.w	(FranticDrain).w	; clear frantic ring drain for casual mode
 		beq.s	S_D_AfterImage	 	; skip
 @franticdrain:
 		tst.b	($FFFFD4C0+$3A).w	; is Intro animation for rings HUD done?
-		beq.s	S_D_AfterImage		; if not, branch
+		bne.s	@huddone		; if yes, branch
+		btst	#SlotOptions_CinematicBlackBars, SlotOptions ; are cinematic black bars enabled?
+		bne.s	@huddone		; if yes, do drain anyway
+		move.w	CurrentLevel,d0		; get current level
+		cmpi.w	#$002,d0		; are we in Green Hill Place 1?
+		beq.s	@huddone		; if yes, branch
+		cmpi.w	#$003,d0		; are we in Green Hill Place 2?
+		bne.s	S_D_AfterImage		; if not, branch
+		; otherwise, do drain anyway to prevent glitches
+	@huddone:
+
 		tst.b	($FFFFF7CC).w		; are controls locked?
 		bne.s	S_D_AfterImage		; if yes, branch
 		tst.b	WhiteFlashCounter	; is a white flash currently in progres?
@@ -30862,6 +30882,8 @@ Sonic_AirFreeze:
 		beq.w	AM_End			; if not, branch
 		cmpi.w	#$302,($FFFFFE10).w
 		bne.s	@notsap
+		tst.b	($FFFFF7CC).w		; are controls locked?
+		bne.s	@notsap			; if yes, branch
 		jsr	Sonic_Floor_SAP
 @notsap:
 	;	tst.b	(Inhuman).w		; is inhuman mode enabled?
@@ -31423,8 +31445,8 @@ SAP_HitWall:
 	;	beq.w	SAP_Teleport			; if yes, always teleport (hurt after getting hit by shrapnel)
 		btst	#SlotOptions_NonstopInhuman, SlotOptions		; is nonstop inhuman enabled?
 		bne.s	@buzzwire			; if yes, branch
-		btst	#SlotOptions_SpaceGolf, SlotOptions		; is space golf enabled?
-		bne.s	@buzzwire			; if yes, branch
+	;	btst	#SlotOptions_SpaceGolf, SlotOptions		; is space golf enabled?
+	;	bne.s	@buzzwire			; if yes, branch
 		cmpi.b	#SAPTeleport_Trigger,(CameraShake).w ; is a bunch of camera shake already stored?
 		bhs.w	SAP_Teleport			; if yes, teleport
 		frantic					; are we in frantic?
@@ -31579,6 +31601,9 @@ SAP_LoadSonicPal:
 		moveq	#$10,d0			; load it into palette line 1 instead
 @loadpal:
 		movem.l	d7/a1-a3,-(sp)
+		move.l	d0,-(sp)
+		jsr	PalLoad1
+		move.l	(sp)+,d0
 		jsr	PalLoad2
 		movem.l	(sp)+,d7/a1-a3
 @nopal:
@@ -31596,8 +31621,10 @@ Sonic_Floor:				; XREF: Obj01_MdJump; Obj01_MdJump2
 		tst.b	(SpaceGolf).w		; is antigrav enabled?
 		beq.s	@normal			; if not, branch
 		cmpi.w	#$302,($FFFFFE10).w	; are we in SAP?
-		bne.s	@normal
-		rts
+		bne.s	@normal			; if not, branch
+		tst.b	($FFFFF7CC).w		; are controls locked?
+		bne.s	@normal			; if yes, branch
+		rts				; disable floor collision in favor of buzz wire stuff
 @normal:
 		move.w	obVelX(a0),d1
 		move.w	obVelY(a0),d2
@@ -31930,6 +31957,8 @@ loc_1380C:
 		beq.w	AM_End			; if not, branch
 		cmpi.w	#$302,($FFFFFE10).w
 		bne.s	@notsap
+		tst.b	($FFFFF7CC).w		; are controls locked?
+		bne.s	@notsap			; if yes, branch
 		jsr	Sonic_Floor_SAP
 @notsap:
 		rts
@@ -39571,6 +39600,7 @@ Obj75_Main:				; XREF: Obj75_Index
 		move.w	obY(a0),$38(a0)
 		move.b	#$F,obColType(a0)
 		clr.w	obInertia(a0)
+		clr.b	obSubtype(a0)
 
 		btst	#SlotOptions2_PlacePlacePlace, SlotOptions2	; is easter egg flag set?
 		beq.s	@nottruebs		; if not, branch
@@ -39714,6 +39744,7 @@ Obj75_CheckFlash:
 		bsr	BossDamageSound
 		move.b	obColProp(a0),(HUD_BossHealth).w
 		clr.b	($FFFFFFEB).w	; reset jumpdash flag to allow multiple double jumps
+		move.b	#1,obSubtype(a0)	; set external slam trigger
 
 		tst.b	obColProp(a0)		; does boss have zero lives now?
 		ble.s	Obj75_LastHitDealt	; if yes, branch
@@ -39744,6 +39775,7 @@ Obj75_ResetBlack:
 Obj75_LastHitDealt:
 		move.b	#8,ob2ndRout(a0)	; set to Obj75_BossDefeated
 		move.b	#0,obColType(a0)	; disable collission
+		clr.b	obSubtype(a0)
 		bsr	Obj75_ResetBlack
 
 		; reset any blinking searchlights
@@ -39783,9 +39815,10 @@ Obj75_LastHitDealt:
 ; ===========================================================================
 
 Obj75_CheckSlam:
-
-		tst.b	obColType(a0)
-		beq.s	@slam
+	;	tst.b	obColType(a0)		; is Eggman currently hurt?
+	;	beq.s	@slam			; if yes, force slam
+		tst.b	obSubtype(a0)		; was external slam trigger set?
+		bne.s	@slam			; if yes, activate
 
 		move.w	($FFFFD008).w,d0
 		sub.w	obX(a0),d0
@@ -39797,6 +39830,7 @@ Obj75_CheckSlam:
 
 @slam:
 		; activate slam
+		clr.b	obSubtype(a0)
 		move.b	#4,ob2ndRout(a0)	; set to slam down
 		move.w	#-$400,obVelY(a0)	; move eggman up a little before slam
 		asr	obVelX(a0)
@@ -39961,10 +39995,11 @@ Obj75_GoBackUp:
 		move.b	#0,ob2ndRout(a0)
 		move.w	obY(a0),$38(a0)
 		move.w	obX(a0),$30(a0)
+		clr.b	obSubtype(a0)
 
-		tst.b	$3E(a0)				; was Eggman still flashing from a hit?
-		beq.s	Obj75_SlamEnd			; if not, branch
-		move.b	#1,$3E(a0)			; reduce remaining flashing timer
+	;	tst.b	$3E(a0)				; was Eggman still flashing from a hit?
+	;	beq.s	Obj75_SlamEnd			; if not, branch
+	;	move.b	#1,$3E(a0)			; reduce remaining flashing timer
 
 Obj75_SlamEnd:
 		jsr	SpeedToPos

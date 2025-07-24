@@ -11,6 +11,7 @@ STS_FullyWritten:	rs.b 1
 STS_Row:		rs.b 1
 STS_Column:		rs.b 1
 STS_CurrentChar:	rs.w 1
+STS_CurrentFluffLine:	rs.w 1
 STS_FinalPhase:		rs.b 1
 
 ; general values
@@ -294,6 +295,7 @@ STS_ClearFlags:
 		move.b	d0,(STS_Row).w
 		move.b	d0,(STS_Column).w
 		move.w	d0,(STS_CurrentChar).w
+		move.w	d0,(STS_CurrentFluffLine).w
 		move.b	d0,(STS_FinalPhase).w
 		rts
 
@@ -307,6 +309,7 @@ StoryScreen_ContinueWriting:
 		bne.w	@writeend			; if yes, don't continue writing
 		tst.b	(STS_FinalPhase).w		; are we currently set to write the "Press Start..." text?
 		bne.w	StoryScreen_WritePressStart	; if yes, branch
+		addq.w	#1,(STS_CurrentFluffLine).w	; increase fluff line length
 		bsr	StoryScreen_DrawLines		; continue drawing the lines, if necessary
 
 @skipspaces:
@@ -320,7 +323,7 @@ StoryScreen_ContinueWriting:
 		bra.s	@skipspaces			; loop
 
 @notspace:
-		bpl.s	@dowrite			; did we reach the end of the text (-1)? if not, branch? if not, branch
+		bpl.s	@dowrite			; did we reach the end of the text (-1)? if not, branch
 
 		move.b	#1,(STS_FinalPhase).w		; set final phase flag
 		clr.w	(STS_CurrentChar).w		; reset current char counter
@@ -449,6 +452,7 @@ StoryText_WriteFull:
 		bsr	STS_ClearFlags			; make sure any previously written text doesn't interfere	
 		
 		move.w	#STS_DrawnLine_Length*2,(STS_CurrentChar).w ; full line (times 2 because its speed is halved)
+		move.w	(STS_CurrentChar).w,(STS_CurrentFluffLine).w ; full fluff lines
 		bsr	StoryScreen_DrawLines		; finish drawing lines
 		
 		bsr	StoryText_Load			; reload beginning of story text into a1
@@ -494,7 +498,7 @@ StoryText_WriteFull:
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Subroutine to draw the lines above and below text
+; Subroutine to draw the fluff lines above and below text
 ; ---------------------------------------------------------------------------
 
 StoryScreen_DrawLines:
@@ -511,7 +515,7 @@ StoryScreen_DrawLines:
 
 STS_DrawLine:
 		lea	VDP_Data,a6
-		move.w	(STS_CurrentChar).w,d1		; make line length match the currently drawn text...
+		move.w	(STS_CurrentFluffLine).w,d1	; get current fluff line length...
 		lsr.w	#1,d1				; ...with its speed cut in half
 		cmpi.w	#STS_DrawnLine_Length,d1	; are we at the maximum allowed line length?
 		bls.s	@nolimit			; if not, draw line with given length

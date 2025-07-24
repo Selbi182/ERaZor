@@ -453,6 +453,13 @@ RunChapter:
 ; ---------------------------------------------------------------------------
 
 FindCurrentChapter:
+		cmpi.w	#$500,CurrentLevel	; is this the bomb machine cutscene?
+		bne.s	@notbombmachine		; if not, branch
+		moveq	#5,d5			; force to use the SNP title cards
+		rts				; skip regular logic
+
+@notbombmachine
+
 		moveq	#-1,d5			; set d5 to -1 (it'll be 0)
 		lea	(@Chapters).l,a1	; set level array index to a1
 @loop:
@@ -466,14 +473,14 @@ FindCurrentChapter:
 		moveq	#-1,d5			; set d5 to "no result"
 		rts				; otherwise return
 
-@Chapters:	dc.w	$000	; 1 - Night Hill Place
-		dc.w	$300	; 2 - Special Place
-		dc.w	$200	; 3 - Ruined Place
-		dc.w	$101	; 4 - Labyrinthy Place
-		dc.w	$401	; 5 - Unreal Place
-		dc.w	$301	; 6 - Scar Night Place
-		dc.w	$402	; 7 - Unterhub Place
-		dc.w	$502	; 8 - Finalor Place
+@Chapters:	dc.w	$000	; 0 - Night Hill Place
+		dc.w	$300	; 1 - Special Place
+		dc.w	$200	; 2 - Ruined Place
+		dc.w	$101	; 3 - Labyrinthy Place
+		dc.w	$401	; 4 - Unreal Place
+		dc.w	$301	; 5 - Scar Night Place
+		dc.w	$402	; 6 - Unterhub Place
+		dc.w	$502	; 7 - Finalor Place
 		dc.w	-1	; None of the above
 		even
 

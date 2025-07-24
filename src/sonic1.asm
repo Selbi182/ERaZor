@@ -996,6 +996,8 @@ Paused:
 @notuberhub:
 		cmpi.w	#$500,($FFFFFE10).w	; is this the bomb machine cutscene?
 		bne.s	@notmachine		; if not, branch
+		btst	#7,(GameMode).w		; is fade-in still in progress?
+		bne.w	Pause_DoNothing		; if yes, prevent skip to mitigate visual glitches
 		jmp	Exit_BombMachineCutscene
 @notmachine:
 		cmpi.w	#$001,($FFFFFE10).w	; is level intro cutscene?
@@ -5215,7 +5217,7 @@ Signpost_Exit:
 SpecialStage:				; XREF: GameModeArray
 		bsr	PLC_ClearQueue
 		jsr	DrawBuffer_Clear
-		display_enable
+	;	display_enable
 
 		tst.b	(Blackout).w	; is this the blackout special stage?
 		beq.s	@notblackout	; if not, branch
@@ -5243,7 +5245,9 @@ SpecialStage:				; XREF: GameModeArray
 		bsr	Pal_MakeFlash
 
 @sssetup:
+		display_disable
 		VBlank_SetMusicOnly
+
 		lea	VDP_Ctrl,a6
 		move.w	#$8B03,(a6)
 		move.w	#$8AAF,($FFFFF624).w
@@ -7780,10 +7784,10 @@ Resize_SYZ3setup:
 ; ===========================================================================
 
 Resize_SYZ3main:
+		move.w	#Unterhub_BossStartX-$28-SCREEN_XCORR,($FFFFF72A).w	; right boundary right at the boss start (to snap the extended camera)
 		cmpi.w	#$23B0,($FFFFD008).w	; in the arena?
 		blo.s	locret_71CE		; if not, branch
 		addq.b	#2,($FFFFF742).w
-		move.w	#Unterhub_BossStartX-$28,($FFFFF72A).w	; right boundary right at the boss start (to snap the extended camera)
 
 		cmpi.w	#2,(RelativeDeaths).w	; did player die at least twice already?
 		bhs.s	locret_71CE		; if yes, skip rollerbot scene
@@ -37011,9 +37015,10 @@ Obj3D_MainStuff:
 
 		btst	#SlotOptions2_PlacePlacePlace, SlotOptions2
 		beq.s	@noeasteregg
-		cmpi.w	#6,BlackBars.Height
-		bls.s	@noeasteregg
 		subq.w	#6,BlackBars.TargetHeight
+		cmpi.w	#6,BlackBars.TargetHeight
+		bge.s	@noeasteregg
+		move.w	#6,BlackBars.TargetHeight
 @noeasteregg:
 
 		cmpi.b	#18,obColProp(a0)	; does boss have exactly 18 lives now?
@@ -38131,8 +38136,8 @@ Obj77_Display:
 ; ---------------------------------------------------------------------------
 ; Object 73 - Eggman (MZ)
 ; ---------------------------------------------------------------------------
-Obj73_BossHealth_Casual  = 12
-Obj73_BossHealth_Frantic = 16
+Obj73_BossHealth_Casual  = 16
+Obj73_BossHealth_Frantic = 20
 Obj73_BossHealth_TrueBS  = 30
 ; ---------------------------------------------------------------------------
 
@@ -44863,6 +44868,7 @@ Obj09_BumpSnd:
 		jmp	PlaySFX ;	play bumper sound
 ; ===========================================================================
 
+; also see Obj09_MakeGoalSolid
 Obj09_ChkW:
 		cmpi.b	#$26,d0 	; is the item a	W-block?
 		bne.s	Obj09_UPblock
@@ -45077,18 +45083,25 @@ Obj09_NoReplace2:
 Obj09_GoalNotSolid:
 		moveq	#0,d4			; clear d4
 
-		btst	#GlobalOptions_ScreenFlash_Weak, GlobalOptions	; is photosensitive mode enabled?
-		bne.s	@noflash		; if yes, no flash
 		movem.l	d7/a1-a3,-(sp)
+		btst	#GlobalOptions_ScreenFlash_Weak, GlobalOptions	; is photosensitive mode enabled?
+		beq.s	@nophoto		; if not, branch
+		tst.b	(Blackout).w		; is this the blackout blackout special stage?
+		beq.s	@noflash		; if not, branch
+		moveq	#3,d0			; brighten up this place by...
+		jsr	PalLoad2		; ...loading Sonic's palette
+		bra.s	@noflash		; no flash
+
+	@nophoto:
 		tst.b	(Blackout).w		; is this the blackout blackout special stage?
 		beq.s	@0			; if not, branch
 		moveq	#3,d0			; brighten up this place by...
 		jsr	PalLoad2		; ...loading Sonic's palette
-@0:
-		jsr	WhiteFlash_Intense	; do a mega flash here
+	@0:
+		jsr	WhiteFlash_Intense	; do a mega flash here		
+	@noflash:
 		movem.l	(sp)+,d7/a1-a3
-		
-@noflash:
+
 		move.b	#2,($FFFFFFD6).w	; make sure it doesn't happen again
 
 		tst.b	(Blackout).w		; is this the blackout blackout special stage?

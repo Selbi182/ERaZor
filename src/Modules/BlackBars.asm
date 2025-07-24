@@ -27,8 +27,9 @@ BlackBars.Reset:
 
 BlackBars.SetHandler:
 	KDebug.WriteLine "BlackBars.SetHandler(): id=%<.b BlackBars.HandlerId>"
-	moveq	#_BB_HandlerIdMask, d0
-	and.b	BlackBars.HandlerId, d0
+;	moveq	#_BB_HandlerIdMask, d0
+;	and.b	BlackBars.HandlerId, d0
+ moveq	#0,d0
 	move.w	BlackBars.HandlerList(pc, d0), BlackBars.Handler
 	rts
 

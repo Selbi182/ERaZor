@@ -905,6 +905,31 @@ PlayCommand:
 PlayBGM:
 		btst	#GlobalOptions_DisableBGM, GlobalOptions
 		bne.s	Play_Return
+
+		tst.b	DMCAMode	; is DMCA mode enabled?
+		beq.s	@nodmca		; if not, branch
+
+		; Tutorial DMCA
+		cmpi.b	#$87,d0
+		bne.s	@nottutorial
+		move.b	#$89,d0
+		bra.s	@nodmca
+	@nottutorial:
+
+		; Credits DMCA
+		cmpi.b	#$97,d0
+		bne.s	@notcredits
+		move.b	#$91,d0
+		bra.s	@nodmca
+	@notcredits:
+
+		; GHZ DMCA
+		cmpi.b	#$94,d0
+		bne.s	@notghz
+		move.b	#$9D,d0
+	@notghz:
+
+@nodmca:
 		move.b	d0, SoundDriverRAM+v_bgm_input.w
 
 		; speed up music in true-BS mode
@@ -3553,8 +3578,7 @@ PLM_NoMusic:
 
 MusicList:
 		dc.b	$85	; Uberhub Place (Overworld)
-	;	dc.b	$87	; Tutorial Place (SBZ 2)
-		dc.b	$89	; Tutorial Place (SBZ 2)
+		dc.b	$87	; Tutorial Place (SBZ 2)
 		dc.b	$81	; Night Hill Place
 		dc.b	$86	; Green Hill Place part 1
 		dc.b	$86	; Green Hill Place part 2

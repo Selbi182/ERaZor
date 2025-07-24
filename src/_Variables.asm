@@ -42,6 +42,7 @@ VBlankSubW:		equ	$FFFFF5CA			; w	Word offset for VInt routine
 *			equ	$FFFFF5CC			; b	<<FREE>>
 VDPDebugPortSet:	equ	$FFFFF5CD			; b	Set if VDP Debug port was tampered with
 BlackBars.Handler:	equ	$FFFFF5CE			; w	Pointer to Black Bars handler routines (depending on `BlackBars.HandlerId`)
+DMCAMode:		equ 	BlackBars.HandlerId ; this is such a dirty way lol
 *			equ	$FFFFF5D0			; b	"Signpost patterns have been loaded" flag
 DyingFlag:		equ	$FFFFF5D1			; b	Flag set while Sonic is currently dying
 BlackBars.HandlerId:	equ	$FFFFF5D2			; b	Black Bars handler id (also sets `BlackBars.Handler`)

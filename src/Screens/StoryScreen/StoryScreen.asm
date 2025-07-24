@@ -692,7 +692,7 @@ StoryText_Index:
 		dc.l	StoryText_UnterP; text after beating Unterhub Place without destroying the last Roller
 ; ---------------------------------------------------------------------------
 
-STS_Continue:	ststxt	"~PRESS~START~TO~CONTINUE...~"
+STS_Continue:	ststxt	"~PRESS~ENTER~TO~CONTINUE...~"
 		dc.b	-1
 		even
 

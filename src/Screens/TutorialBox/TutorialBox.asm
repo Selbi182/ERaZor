@@ -737,6 +737,7 @@ Hints_List:	; note: these IDs are 1-based
 		dc.l	Hint_Options_CinematicMode	; $1C
 		dc.l	Hint_Options_ErazorPowers	; $1D
 		dc.l	Hint_Options_TrueBS		; $1E
+		dc.l	Hint_Options_DMCAMode		; $1F
 
 ; ---------------------------------------------------------------
 ; Hints Scripts
@@ -1655,6 +1656,8 @@ Hint_Options_CinematicMode:
 		boxtxt	"DURING YOUR JOURNEY!"
 		boxtxt	"NOW YOU CAN ALSO BE"
 		boxtxt	"MICHAEL BAY!"
+	boxtxt_end
+
 		boxtxt_next
 
 		boxtxt	"black bars BONUS TIP"
@@ -1770,6 +1773,18 @@ Hint_Options_TrueBS:
 		boxtxt	"ENDURANCE."
 		boxtxt_pause
 		boxtxt	"AND BRAIN CELLS."
+		boxtxt_end
+
+
+Hint_Options_DMCAMode:
+		boxtxt	"dmca-friendly mode"
+		boxtxt_line
+		boxtxt	"ENABLING THIS MODE"
+		boxtxt	"REPLACES A FEW SONGS"
+		boxtxt	"THAT TEND TO GET"
+		boxtxt	"COPYRIGHT-CLAIMED"
+		boxtxt	"ON YOUTUBE WITH"
+		boxtxt	"SAFE VERSIONS!"
 		boxtxt_end
 
 ; ---------------------------------------------------------------

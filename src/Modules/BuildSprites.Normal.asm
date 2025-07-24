@@ -14,13 +14,13 @@ BuildSprites:				; XREF: TitleScreen; et al
 		lea	($FFFFAC00).w,a4
 		moveq	#7,d7
 
-		if def(__DEBUG__)
-			moveq	#_BB_HandlerIdMask, d1
-			and.b	BlackBars.HandlerId, d1
-			lea	BlackBars.HandlerList, a0
-			move.w	(a0, d1), d1
-			assert.w d1, eq, BlackBars.Handler, Debugger_BlackBars
-		endif
+	;	if def(__DEBUG__)
+	;		moveq	#_BB_HandlerIdMask, d1
+	;		and.b	BlackBars.HandlerId, d1
+	;		lea	BlackBars.HandlerList, a0
+	;		move.w	(a0, d1), d1
+	;		assert.w d1, eq, BlackBars.Handler, Debugger_BlackBars
+	;	endif
 
 		move.w	BlackBars.Handler, a0
 		jsr	_BB_BuildSpritesCallback(a0)

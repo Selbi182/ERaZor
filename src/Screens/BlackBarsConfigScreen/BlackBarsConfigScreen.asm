@@ -129,6 +129,7 @@ BlackBarsConfigScreen_MainLoop:
 	andi.b	#Start|A|C,Joypad|Press		; anything pressed?
 	beq.w	BlackBarsConfigScreen_MainLoop	; if not, loop
 
+	bra.s	@SwapToBlackBarsSetup
 	;tst.b	(CarryOverData).w		; is next game mode set to be options screen?
 	;bne.s	@SwapToBlackBarsSetup		; if yes, always switch to black bars setup
 	;jsr	CheckGlobal_BlackBarsConfigured	; have we already configured black bars upon first boot?
@@ -142,29 +143,30 @@ BlackBarsConfigScreen_MainLoop:
 	jsr	PlaySFX
 	jsr	ClearPlaneA
 	clr.b	BlackBarsConfig_PreTextActive
-	jsr	BlackBarsConfigScreen_WriteText
-	move.w	BlackBars.BaseHeight, BlackBars.Height
+	jsr	BlackBarsConfigScreen_WriteText_Controls
+;	jsr	BlackBarsConfigScreen_WriteText
+;	move.w	BlackBars.BaseHeight, BlackBars.Height
 	VBlank_UnsetMusicOnly
 	bra.w	BlackBarsConfigScreen_MainLoop
  endif
 
 @chkbaseheightadjust:
 	; adjust black bars base height on B + up/down
-	moveq	#0,d0
-	move.b	Joypad|Held,d0
-	btst	#iB,d0
-	beq.s	@chktoggle
-	btst	#iStart,Joypad|Press
-	bne.w	BlackBars_AdjustBaseHeight_Reset
-	andi.b	#Up|Down,d0
-	bne.w	BlackBars_AdjustBaseHeight
+	;moveq	#0,d0
+	;move.b	Joypad|Held,d0
+	;btst	#iB,d0
+	;beq.s	@chktoggle
+	;btst	#iStart,Joypad|Press
+	;bne.w	BlackBars_AdjustBaseHeight_Reset
+	;andi.b	#Up|Down,d0
+	;bne.w	BlackBars_AdjustBaseHeight
 
 @chktoggle:
 	; toggle selection on up/down
-	moveq	#0,d0
-	move.b	Joypad|Press,d0
-	andi.b	#Up|Down, d0
-	bne.s	@toggle
+	;moveq	#0,d0
+	;move.b	Joypad|Press,d0
+	;andi.b	#Up|Down, d0
+	;bne.s	@toggle
 	
 @chkexit:
 	; quit screen on other button press
@@ -174,7 +176,7 @@ BlackBarsConfigScreen_MainLoop:
 	move.w	#$A9,d0
 	jsr	PlaySFX
 	move.b	#1,BlackBarsConfig_Exiting	; set exiting flag
-	move.l	#BlackBarsConfigScreen_RedrawUI, VBlankCallback	; redraw one last time
+;	move.l	#BlackBarsConfigScreen_RedrawUI, VBlankCallback	; redraw one last time
 ; ---------------------------------------------------------------
 
 @exiting:
@@ -190,13 +192,13 @@ BlackBarsConfigScreen_MainLoop:
 	jmp	Exit_BlackBarsScreen		; exit to Sega screen
 ; ===============================================================
 
-@toggle:
-	move.w	#$D8,d0
-	jsr	PlaySFX
-	bchg	#1, BlackBars.HandlerId		; toggle selected option
-	jsr	BlackBars.SetHandler
-	move.l	#BlackBarsConfigScreen_RedrawUI, VBlankCallback	; defer redraw to VInt
-	bra.w	BlackBarsConfigScreen_MainLoop
+;@toggle:
+;	move.w	#$D8,d0
+;	jsr	PlaySFX
+;	bchg	#1, BlackBars.HandlerId		; toggle selected option
+;	jsr	BlackBars.SetHandler
+;	move.l	#BlackBarsConfigScreen_RedrawUI, VBlankCallback	; defer redraw to VInt
+;	bra.w	BlackBarsConfigScreen_MainLoop
 ; ===============================================================
 
 BlackBars_Adjust_Min = 0
@@ -466,8 +468,8 @@ BlackBarsConfigScreen_GenerateSprites:
 
 	move.b	($FFFFFEC3).w, obFrame(a0)
 
-	tst.b	BlackBarsConfig_PreTextActive
-	beq.s	@display
+	;tst.b	BlackBarsConfig_PreTextActive
+	;beq.s	@display
 	rts
 @display:
 	jmp	DisplaySprite
@@ -581,34 +583,77 @@ BlackBarsConfigScreen_RedrawUI:
 BlackBarsConfigScreen_WriteText_WidescreenInfo:
 	BBCS_EnterConsole a0
 
-	Console.SetXY #6, #2
-	Console.Write "        SONIC ERAZOR"
+	Console.SetXY #0, #2
+	Console.Write "              SONIC ERAZOR"
 	Console.Write "%<endl>%<endl>"
-	Console.Write "W  I  D  E  S  C  R  E  E  N"
+	Console.Write "      S  T  A  N  D  A  L  O  N  E"
 
-	Console.SetXY #3, #6
-	Console.Write "%<pal2>----------------------------------%<pal0>"
+	Console.SetXY #0, #6
+	Console.Write "%<pal2>----------------------------------------%<pal0>"
 	Console.Write "%<endl>%<endl>"
-	Console.Write "  WHAT YOU'RE PLAYING RIGHT NOW%<endl>"
-	Console.Write " MAY LOOK LIKE A CUSTOM FAN GAME,%<endl>"
-	Console.Write "BUT IT'S STILL A REAL MEGA DRIVE%<endl>"
-	Console.Write "     ROM HACK UNDER THE HOOD,%<endl>"
-	Console.Write "  RUNNING ON A MODIFIED EMULATOR,%<endl>"
-	Console.Write " BUNDLED RIGHT INTO THIS PACKAGE.%<endl>"
+	Console.Write "     THIS IS NOT A SONIC FAN GAME!%<endl>"
+	Console.Write "WELL, IT IS. BUT NOT IN THE USUAL SENSE.%<endl>"
 	Console.Write "%<endl>"
-	Console.Write "  SPECIFICALLY, IT USES A FORK OF%<endl>"
-	Console.Write " HEYJOEWAY'S SONIC 2 COMMUNITY CUT%<endl>"
-	Console.Write "   STANDALONE EMULATOR BUILD.%<endl>"
-	Console.Write "%<endl>%<endl>"
-	Console.Write "%<pal2>----------------------------------%<pal0>"
+	Console.Write "     SONIC ERAZOR IS A ROM HACK OF%<endl>"
+	Console.Write "    SONIC 1 FOR THE SEGA MEGA DRIVE.%<endl>"
+	Console.Write "%<endl>"
+	Console.Write "       THIS IS ACTUALLY A FORK OF%<endl>"
+	Console.Write "   HEYJOEWAY'S  SONIC 2 COMMUNITY CUT%<endl>"
+	Console.Write "     WIDESCREEN-OPTIMIZED EMULATOR,%<endl>"
+	Console.Write "      WHICH IN ITSELF IS A FORK OF%<endl>"
+	Console.Write "            GENESIS PLUS GX.%<endl>"
+	Console.Write "%<endl>"
+	Console.Write " OR IN SIMPLER WORDS, YOU'RE PLAYING ON%<endl>"
+	Console.Write "    A TURBO-CHARGED RETRO CONSOLE!%<endl>"
+	Console.Write "%<endl>"
+	Console.Write "%<pal2>----------------------------------------%<pal0>"
 
-	Console.SetXY #5, #24
+	Console.SetXY #0, #25
 
-	Console.Write "   ENJOY THE RIDE! AND REMEMBER,%<endl>"
-	Console.Write "      WINNERS DON'T USE GENS!"
+	;                                                      XXXXXXXXXXXXXX
+	Console.Write "       PRESS ENTER TO CONTINUE...%<endl>"
 	
 	BBCS_LeaveConsole a0
 	rts
+
+
+BlackBarsConfigScreen_WriteText_Controls:
+	BBCS_EnterConsole a0
+
+	Console.SetXY #0, #2
+	Console.Write "              SONIC ERAZOR"
+	Console.Write "%<endl>%<endl>"
+	Console.Write "         C  O  N  T  R  O  L  S"
+
+	Console.SetXY #0, #6
+	Console.Write "%<pal2>----------------------------------------%<pal0>"
+	Console.Write "%<endl>%<endl>"
+	Console.Write "      KEYBOARD KEY -> IN-GAME BUTTON%<endl>"
+	Console.Write "%<endl>"
+	Console.Write "                 A -> A%<endl>"
+	Console.Write "                 S -> B%<endl>"
+	Console.Write "                 D -> C%<endl>"
+	Console.Write "             ENTER -> START%<endl>"
+	Console.Write "        ARROW KEYS -> D-PAD%<endl>"
+	Console.Write "%<endl>"
+	Console.Write "               F11 -> TOGGLE FULLSCREEN%<endl>"
+	Console.Write "               TAB -> RESTART GAME%<endl>"
+	Console.Write "               ESC -> QUIT GAME%<endl>"
+	Console.Write "%<endl>"
+	Console.Write "   YOU CAN CUSTOMIZE YOUR BINDINGS IN%<endl>"
+	Console.Write "   THE ENCLOSED 'CONTROLS.JSON' FILE!%<endl>"
+	;                                                      XXXXXXXXXXXXXX
+	Console.Write "%<endl>"
+	Console.Write "%<pal2>----------------------------------------%<pal0>"
+
+	Console.SetXY #0, #25
+
+	Console.Write "       PRESS ENTER TO CONTINUE...%<endl>"
+	
+	BBCS_LeaveConsole a0
+	rts
+
+
  endif
 ; ---------------------------------------------------------------
 ; ===============================================================

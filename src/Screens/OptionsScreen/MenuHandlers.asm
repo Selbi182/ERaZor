@@ -89,7 +89,7 @@ Options_MenuData:
 	dcScreenPos	OpBaseDest, OpBaseY+14, OpBaseX	; start on-screen position
 	dc.l	Options_BlackBarsMode_Redraw		; redraw handler
 	dc.l	Options_BlackBarsMode_Handle		; update handler
-	dc.l	0					; get A-hint ID (0 = no hint)
+	dc.l	$80000000|Options_DMCA_GetAHintID ; get A-hint ID (0 = no hint)
 
 
 ; misc options
@@ -1225,31 +1225,24 @@ Options_BlackBarsMode_Redraw:
 	even
 
 ; ---------------------------------------------------------------------------
-; "BLACK BARS MODE" handle function
+; DMCA MODE
 ; ---------------------------------------------------------------------------
 
 Options_BlackBarsMode_Handle:
-	move.b	Joypad|Press,d1			; get button presses
- 	andi.b	#$F0,d1				; is A, B, C, or Start pressed?
+	moveq	#$FFFFFF00|(Left|Right|A|B|C|Start), d1
+	and.b	Joypad|Press, d1		; is left, right, A, B, C, or Start pressed?
 	beq.w	@ret				; if not, branch
 
-	btst	#iA,d1				; is specifically A pressed?
-	beq.s	@gotosetupscreen		; if not, branch
-	tst.w	($FFFFFFFA).w			; is debug mode enabled?
-	beq.s	@gotosetupscreen		; if not, branch
-
-@quicktoggle:
 	bchg	#1, BlackBars.HandlerId		; toggle black bars mode
 	bsr	Options_PlayRespectiveToggleSound
-	jsr	BlackBars.SetHandler
 	st.b	Options_RedrawCurrentItem
 @ret:	rts
 
-@gotosetupscreen:
-	moveq	#2,d0				; set to BlackBarsConfigScreen
-	jmp	Exit_OptionsScreen
 
 
+Options_DMCA_GetAHintID:
+	moveq	#$1F, d0			; ID for the explanation textbox
+	rts
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------

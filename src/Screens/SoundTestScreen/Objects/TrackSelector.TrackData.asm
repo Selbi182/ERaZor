@@ -159,7 +159,7 @@
 @Music8A_Source:	@str 'SUPER STREET FIGHTER II TURBO / OPENING SEQUENCE', @descMaxLen
 
 @Music8B_Name:		@str '=P MONITOR', @titleMaxLen
-@Music8B_Source:	@str 'THE ORIGINAL VERSION OF SONIC ERAZOR FROM 2010', @descMaxLen
+@Music8B_Source:	@str 'THE BETA VERSION OF SONIC ERAZOR FROM 2009', @descMaxLen
 
 @Music8C_Name:		@str 'GREEN HILL PLACE BOSS', @titleMaxLen
 @Music8C_Source:	@str 'SONIC ADVANCE 3 / CHAOS ANGEL ACT 1', @descMaxLen
@@ -213,7 +213,7 @@
 @Music9C_Source:	@str 'PULSEMAN / SHUTDOWN - DARK REMIX', @descMaxLen
 
 @Music9D_Name:		@str 'A WHOLESOME MINUTE', @titleMaxLen
-@Music9D_Source:	@str 'ZILLION PUSH / PUSH!', @descMaxLen
+@Music9D_Source:	@str 'ZILLION / PUSH!', @descMaxLen
 
 @Music9E_Name:		@str 'FINAL BOSS', @titleMaxLen
 @Music9E_Source:	@str 'SONIC THE HEDGEHOG 3 / FINAL BOSS... AS WELL', @descMaxLen

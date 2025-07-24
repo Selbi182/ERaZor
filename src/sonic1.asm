@@ -62,12 +62,12 @@ USE_NEW_BUILDSPRITES:	equ	1	; New BuildSprites system is still faster than S1's,
 QuickLevelSelect = 0
 QuickLevelSelect_ID = -1
 ; ------------------------------------------------------
-DebugModeDefault = 0
+DebugModeDefault = 1
 DebugSurviveNoRings = 1
 DebugHudPermanent = 0
 ; ------------------------------------------------------
 DoorsAlwaysOpen = 0
-LowBossHP = 0
+LowBossHP = 1
 ; ======================================================
 	else
 ; BENCHMARK build settings (DO NOT CHANGE!)
@@ -3030,7 +3030,7 @@ Title_SonPalLoop:
 		move.b	#LevelSelect_DPadCheatCount,($FFFFFFE6).w ; level select cheat counter
 	if QuickLevelSelect=1 
 		if QuickLevelSelect_ID=-1
-		 bra.s	LevelSelect_Load
+			bra.w	LevelSelect_Load
 		endif
 	endif
 		move.b	#$8A,d0		; play title screen music
@@ -7002,6 +7002,14 @@ loc_6ED0:
 		move.w	#$8C,d0
 		bsr	PlayBGM			; play boss music
 
+		; double load palette in case it glitched out during the checkpoint collection
+		movem.l	d0-d7/a1-a3,-(sp)
+		moveq	#3,d0
+		jsr	PalLoad2		; load Sonic palette
+		moveq	#$C,d0
+		jsr	PalLoad2	; load GHZ palette
+		movem.l	(sp)+,d0-d7/a1-a3
+
 		move.b	#1,($FFFFF7AA).w	; lock screen
 
 		addq.b	#2,($FFFFF742).w
@@ -8148,6 +8156,7 @@ Resize_FZEscape:
 		bset	#1,($FFFFD022).w
 		move.w	#-$480,($FFFFD012).w
 		move.w	#-$800,($FFFFD010).w
+		clr.b	($FFFFFEBC).w		; clear SPO flag
 		
 		; double boost when you're right of the prison
 		; so you don't get catapulted into the bottomless pit lol
@@ -17659,6 +17668,13 @@ Obj34_Loop:
 		bne.s	Obj34_ActNumber		; is it non-zero? then set it
 		jsr	FakeLevelID		; get current level index
 		move.b	d5,d0			; set fake level ID to frame (mappings are sorted accordingly)
+
+		cmpi.w	#$003,($FFFFFE10).w	; is this GHP part 2?
+		bne.s	@notghp2		; if not, branch
+		tst.b	($FFFFFE30).w		; has the checkpoint been collected yet?
+		bne.s	@notghp2		; if yes, branch (Greener Hill)
+		subq.b	#1,d0			; otherwise, keep normal title card (Green Hill)
+@notghp2:
 		cmpi.w	#$502,($FFFFFE10).w
 		bne.s	@notfp
 		tst.b	(FZEscape).w
@@ -17677,6 +17693,14 @@ Obj34_ActNumber:
 		jsr	FakeLevelID		; get current level index
 		moveq	#TTL_ActNums-1,d0	; set base offset for act number frames (-1 because of Uberhub)
 		add.b	d5,d0			; add ID to frame ID
+
+		cmpi.w	#$003,($FFFFFE10).w	; is this GHP part 2?
+		bne.s	@notghp2		; if not, branch
+		tst.b	($FFFFFE30).w		; has the checkpoint been collected yet?
+		bne.s	@notghp2		; if yes, branch (Greener Hill 1-3)
+		subq.b	#1,d0			; otherwise, keep normal title card (Green Hill 1-2)
+@notghp2:
+
 		cmpi.w	#$502,($FFFFFE10).w
 		bne.s	@notfp
 		tst.b	(FZEscape).w
@@ -18906,6 +18930,10 @@ ObjectFall_Sonic:
 		beq.w	@OFS_FallEnd		; if not, branch
 		tst.b	(DyingFlag).w		; is Sonic dying?
 		bne.w	@OFS_FallEnd		; if yes, make sure Sonic doesn't fly into orbit and never returns
+		cmpi.w	#$001,($FFFFFE10).w	; is this the intro cutscene?
+		beq.w	@OFS_FallEnd		; if yes, use regular gravity
+		cmpi.b	#$18,(GameMode).w	; is this the ending sequence?
+		beq.w	@OFS_FallEnd		; if yes, use regular gravity
 
 		subi.w	#Gravity,d3		; inverse gravity
 		btst	#6,($FFFFF602).w	; is A pressed?
@@ -21190,6 +21218,10 @@ Obj4C_Index:	dc.w Obj4C_Main-Obj4C_Index
 ; ===========================================================================
 
 Obj4C_Main:				; XREF: Obj4C_Index
+	if def(__WIDESCREEN__)
+		subi.w	#10,obX(a0)	; center lava in non-widescreen
+	endif
+
 		addq.b	#2,obRoutine(a0)
 		move.l	#Map_obj4C,obMap(a0)
 		move.w	#$E3A8,obGfx(a0)
@@ -24450,6 +24482,13 @@ Obj0B_Main:				; XREF: Obj0B_Index
 Obj0B_Action:				; XREF: Obj0B_Index
 		tst.b	obColProp(a0)		; has Sonic touched the	pole?
 		beq.s	@chkcol			; if not, branch
+
+		btst	#SlotOptions_SpaceGolf, SlotOptions	; is nonstop space golf enabled?
+		beq.s	@nogolf			; if not, branch
+		btst	#1,($FFFFFFE5).w		; is air freeze active?
+		bne.s	Obj0B_BreakPole		; if yes, break pole at any speed
+	@nogolf:
+
 		cmpi.b	#%01,($FFFFFFEB).w	; is Sonic jumpdashing (but not double jumping)?
 		bne.s	@chkcol			; if not, branch
 		move.w	($FFFFD000+obVelX).w,d0
@@ -29190,6 +29229,7 @@ Obj01_OutWater:
 		tst.b	($FFFFFFF9).w
 		bne.s	@noresumemusic
 		bsr	ResumeMusic
+
 @noresumemusic:
 		move.w	#Sonic_TopSpeed,($FFFFF760).w		; restore Sonic's speed
 		move.w	#Sonic_Acceleration,($FFFFF762).w	; restore Sonic's acceleration
@@ -29945,10 +29985,10 @@ BB_NotGHZ2:
 BB_DoTele:
 		tst.b	($FFFFFF95).w		; was forced-kill flag set?
 		bne.s	KillSonic_JMP		; if yes, branch
-		cmpi.w	#$18B0,($FFFFD008).w	; is Sonic past the X-location $18B0?
-		bpl.s	KillSonic_JMP		; if yes, branch
-		cmpi.w	#$1320,($FFFFD008).w	; is Sonic before the X-location $1320?
-		bmi.s	KillSonic_JMP		; if yes, branch
+		cmpi.w	#$1900,($FFFFD008).w	; is Sonic past the X-location $18B0?
+		bgt.s	KillSonic_JMP		; if yes, branch
+		cmpi.w	#$1300,($FFFFD008).w	; is Sonic before the X-location $1320?
+		blt.s	KillSonic_JMP		; if yes, branch
 		rts				; otherwise we're in the waterfall section, don't kill here
 ; ===========================================================================
 
@@ -32721,6 +32761,9 @@ locret_1408C:
 
 
 ResumeMusic:				; XREF: Obj64_Wobble; Sonic_Water; Obj0A_ReduceAir
+		cmpi.w	#$C,($FFFFFE14).w	; did countdown music start yet?
+		bhi.s	loc_140AC		; if not, don't restart music
+
 		jsr	PlayLevelMusic_Force
 
 loc_140AC:
@@ -36499,6 +36542,7 @@ Obj79_LoadInfo:				; XREF: LevelSizeLoad
 		move.w	($FFFFFE32).w,($FFFFD008).w	; x-pos
 		move.w	($FFFFFE34).w,($FFFFD00C).w	; y-pos
 		move.w	($FFFFFE36).w,($FFFFFE20).w	; rings
+		clr.w	($FFFFFE20).w			; clear rings after reset
 		move.l	($FFFFFE38).w,($FFFFFE22).w	; time
 		move.b	#59,($FFFFFE25).w		; reset milliseconds
 		subq.b	#1,($FFFFFE24).w		; sub 1 second
@@ -42554,7 +42598,11 @@ Touch_Monitor:
 
 Touch_Monitor_ChkBreak:
 		tst.b	(SpaceGolf).w		; is antigrav enabled?
-		bne.s	@break_nobounce		; if yes, break open with no bounce
+		beq.s	@nospacegolf		; if not, branch
+		cmpi.w	#$302,($FFFFFE10).w	; is current level SAP?
+		beq.s	@break_nobounce		; if yes, break monitor open with no bounce
+
+@nospacegolf:
 		cmpi.b	#2,obAnim(a0)		; is Sonic rolling/jumping?
 		beq.s	@break			; if yes, break open
 		cmpi.b	#$25,obAnim(a0)		; is death anim shown (inhuman mode)?

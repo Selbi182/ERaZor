@@ -74,9 +74,6 @@ SaveSelectScreen:
 	; Setup objects
 	Screen_CreateObject #SaveSelect_Obj_SlotOverlays
 
-	VBlank_UnsetMusicOnly
-	display_enable
-
 	move.b	#SaveSelect_Music, d0
 	jsr	PlayBGM
 
@@ -86,6 +83,10 @@ SaveSelectScreen:
 	jsr	DeleteQueue_Execute
 
 	clr.b	WhiteFlashCounter	; undo any white flashes from previous screens
+
+	VBlank_UnsetMusicOnly
+	display_enable
+
 	jsr	Pal_FadeTo
 	assert.b VBlank_MusicOnly, eq
 	; fallthrough
@@ -276,7 +277,7 @@ SaveSelect_DrawBottomHint:
 	tst.b	SaveSelect_SelectedSlotId		; No Save selected?
 	beq.s	@nosave					; if yes, branch
 
-	SaveSelect_WriteString a4, 6, 26, "-  A > B > C: DELETE SLOT  -"
+	SaveSelect_WriteString a4, 6, 26, "HOLD A > B > C : DELETE SLOT"
 	rts
 @nosave:
 	SaveSelect_WriteString a4, 6, 26, "A > B > C : RESET EVERYTHING"

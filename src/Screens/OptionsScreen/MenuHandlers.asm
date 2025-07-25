@@ -165,6 +165,13 @@ Options_GameplayStyle_Handle:
 	and.b	Joypad|Press, d1	; is left, right, A, B, C, or Start pressed?
 	beq.s	@ret			; if not, branch
 
+	jsr	CheckSlot_BaseGameBeaten_Casual ; has base game been beating in casual?
+	beq.s	@normal			; if not, branch
+	tst.b	(Doors_Frantic).w	; have any frantic levels been beaten yet?
+	beq.s	@gss			; if NOT, only this one time, force change to GSS screen
+@normal:
+
+	; quick toggle
 	and.b	#Left|Right, d1		; is specifically left or right pressed?
 	beq.s	@gss			; if not, branch
 	bchg	#SlotState_Difficulty, SlotProgress	; quick toggle gameplay style

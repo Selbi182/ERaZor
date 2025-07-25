@@ -686,11 +686,18 @@ Play_SFX:
 		moveq	#$7F, d0
 		and.b	d7, d0
 		move.b	-1(a0, d0), d2
+
+		tst.b	(Blackout).w
+		beq.s	.notblackout
+		cmpi.b	#$BB, d7
+		beq.s	.prio
+.notblackout:
+
 		cmp.b	v_sndprio(a6), d2
 		blo.s	.ignore_sound			; Ignore lower priority sound
 		tst.b	d2
 		bmi.s	.priority_done			; We don't want to change sound priority if it is negative
-		move.b	d2, v_sndprio(a6)
+.prio:		move.b	d2, v_sndprio(a6)
 .priority_done:
 
 		cmp.b	#$D0, d7

@@ -74,9 +74,6 @@ SaveSelectScreen:
 	; Setup objects
 	Screen_CreateObject #SaveSelect_Obj_SlotOverlays
 
-	VBlank_UnsetMusicOnly
-	display_enable
-
 	move.b	#SaveSelect_Music, d0
 	jsr	PlayBGM
 
@@ -86,6 +83,10 @@ SaveSelectScreen:
 	jsr	DeleteQueue_Execute
 
 	clr.b	WhiteFlashCounter	; undo any white flashes from previous screens
+
+	VBlank_UnsetMusicOnly
+	display_enable
+
 	jsr	Pal_FadeTo
 	assert.b VBlank_MusicOnly, eq
 	; fallthrough
@@ -276,7 +277,7 @@ SaveSelect_DrawBottomHint:
 	tst.b	SaveSelect_SelectedSlotId		; No Save selected?
 	beq.s	@nosave					; if yes, branch
 
-	SaveSelect_WriteString a4, 6, 26, "-  A > B > C: DELETE SLOT  -"
+	SaveSelect_WriteString a4, 6, 26, "HOLD A > B > C : DELETE SLOT"
 	rts
 @nosave:
 	SaveSelect_WriteString a4, 6, 26, "A > B > C : RESET EVERYTHING"
@@ -350,23 +351,42 @@ SaveSelect_DrawSlot_\#__slotId:
 		add.w	d0, d0
 
 		move.l	SaveSlot.Score+(__slotRAM), d1				; multiply score by 10 because the HUD fakes a 0
+		btst	#SlotOptions_AltHUD_ShowSeconds, SaveSlot.Options+(__slotRAM)
+		bne.s	@nofakezero
 		add.l	d1, d1							; 2x
 		move.l	d1, d2
 		lsl.l	#2, d1							; 8x
 		add.l	d2, d1							; 10x
+	@nofakezero:
 
 		btst	#SlotOptions2_PlacePlacePlace, SaveSlot.Options2+(__slotRAM)
-		bne.w	@3
+		bne.w	@place
 		movea.l	(a5, d0), a5						; a5 = chapter text
 
 		SaveSelect_WriteString a4, __baseX, __baseY,		"%<pal1>SLOT \#__slotId: %<pal0>%<.l a5 str>"
+
+		btst	#SlotOptions_AltHUD_ShowErrors, SaveSlot.Options+(__slotRAM)
+		bne.s	@mistakes
 		SaveSelect_WriteString a4, __baseX+2, __baseY+2,	"%<pal1>DEATHS: %<pal0>%<.w SaveSlot.Deaths+(__slotRAM) dec>"
+		bra.s	@cont0
+	@mistakes:
+		SaveSelect_WriteString a4, __baseX+2, __baseY+2,	"%<pal1>MISTAKES: %<pal0>%<.w SaveSlot.Deaths+(__slotRAM) dec>"
+	@cont0:
+
+		btst	#SlotOptions_AltHUD_ShowSeconds, SaveSlot.Options+(__slotRAM)
+		bne.s	@secs
 		SaveSelect_WriteString a4, __baseX+2, __baseY+3,	"%<pal1>SCORE: %<pal0>%<.l d1 dec>"
+		bra.s	@cont1
+	@secs:
+		SaveSelect_WriteString a4, __baseX+2, __baseY+3,	"%<pal1>SECONDS: %<pal0>%<.l d1 dec>"
+	@cont1:
+
 		SaveSelect_WriteString a4, __baseX+19, __baseY+2,	"%<pal1>TROPHIES: %<pal0>%<.b d4 dec>/8"
 		SaveSelect_WriteString a4, __baseX+19, __baseY+3,	"%<pal1>%<.l a3 str>"	; CASUAL / FRANTIC
 		rts
 
-	@3:	movea.l	$40(a5, d0), a5						; a5 = place place
+@place:
+		movea.l	$40(a5, d0), a5						; a5 = place place
 
 		SaveSelect_WriteString a4, __baseX, __baseY,		"%<pal1>SLOT \#__slotId: %<pal0>%<.l a5 str>"
 		SaveSelect_WriteString a4, __baseX+2, __baseY+2,	"%<pal1>PLACE: %<pal0>%<.w SaveSlot.Deaths+(__slotRAM) dec>"

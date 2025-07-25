@@ -62,7 +62,7 @@ USE_NEW_BUILDSPRITES:	equ	1	; New BuildSprites system is still faster than S1's,
 QuickLevelSelect = 0
 QuickLevelSelect_ID = -1
 ; ------------------------------------------------------
-DebugModeDefault = 1
+DebugModeDefault = 0
 DebugSurviveNoRings = 1
 DebugHudPermanent = 0
 ; ------------------------------------------------------
@@ -118,13 +118,13 @@ StartOfRom:
 
 Date:		dc.b '(C) SELBI 2025  ' ; Release date
 	if def(__WIDESCREEN__)
-Title_Local:	dc.b 'Sonic ERaZor 8 - Widescreen (Standalone)        ' ; Domestic name
-Title_Int:	dc.b 'Sonic ERaZor 8 - Widescreen (Standalone)        ' ; International name
+Title_Local:	dc.b 'Sonic ERaZor [v8.1-SWS]                         ' ; Domestic name
+Title_Int:	dc.b 'Sonic ERaZor [v8.1-SWS]                         ' ; International name
 	else
-Title_Local:	dc.b 'Sonic ERaZor 8                                  ' ; Domestic name
-Title_Int:	dc.b 'Sonic ERaZor 8                                  ' ; International name
+Title_Local:	dc.b 'Sonic ERaZor v8.1                               ' ; Domestic name
+Title_Int:	dc.b 'Sonic ERaZor v8.1                               ' ; International name
 	endif
-Serial:		dc.b 'SP 18201337-08' 	; Serial/version number
+Serial:		dc.b 'SP 18201337-81' 	; Serial/version number
 
 Checksum:	dc.w 0
 		dc.b 'J               '	; I/O support
@@ -1021,6 +1021,8 @@ Paused:
 @notuberhub:
 		cmpi.w	#$500,($FFFFFE10).w	; is this the bomb machine cutscene?
 		bne.s	@notmachine		; if not, branch
+		btst	#7,(GameMode).w		; is fade-in still in progress?
+		bne.w	Pause_DoNothing		; if yes, prevent skip to mitigate visual glitches
 		jmp	Exit_BombMachineCutscene
 @notmachine:
 		cmpi.w	#$001,($FFFFFE10).w	; is level intro cutscene?
@@ -3055,7 +3057,7 @@ Title_SonPalLoop:
 		move.b	#LevelSelect_DPadCheatCount,($FFFFFFE6).w ; level select cheat counter
 	if QuickLevelSelect=1 
 		if QuickLevelSelect_ID=-1
-		 bra.w	LevelSelect_Load
+			bra.w	LevelSelect_Load
 		endif
 	endif
 		move.b	#$8A,d0		; play title screen music
@@ -3931,11 +3933,14 @@ loc_3946:
 		dc.w -1
 ; ===========================================================================
 
-		
 @notuberhub:
 		cmpi.w	#$302,($FFFFFE10).w		; is current level SAP?
 		bne.s	@notsap				; if not, branch
 		jsr	SAP_ResetChallengeObjects	; set up challenge objects
+		btst	#SlotOptions_SpaceGolf, SlotOptions
+		beq.s	@notsap
+		jsr	SAP_LoadSonicPal
+
 
 @notsap:
 		; bomb machine cutscene setup
@@ -5240,7 +5245,7 @@ Signpost_Exit:
 SpecialStage:				; XREF: GameModeArray
 		bsr	PLC_ClearQueue
 		jsr	DrawBuffer_Clear
-		display_enable
+	;	display_enable
 
 		tst.b	(Blackout).w	; is this the blackout special stage?
 		beq.s	@notblackout	; if not, branch
@@ -5268,7 +5273,9 @@ SpecialStage:				; XREF: GameModeArray
 		bsr	Pal_MakeFlash
 
 @sssetup:
+		display_disable
 		VBlank_SetMusicOnly
+
 		lea	VDP_Ctrl,a6
 		move.w	#$8B03,(a6)
 		move.w	#$8AAF,($FFFFF624).w
@@ -7027,6 +7034,14 @@ loc_6ED0:
 		move.w	#$8C,d0
 		bsr	PlayBGM			; play boss music
 
+		; double load palette in case it glitched out during the checkpoint collection
+		movem.l	d0-d7/a1-a3,-(sp)
+		moveq	#3,d0
+		jsr	PalLoad2		; load Sonic palette
+		moveq	#$C,d0
+		jsr	PalLoad2	; load GHZ palette
+		movem.l	(sp)+,d0-d7/a1-a3
+
 		move.b	#1,($FFFFF7AA).w	; lock screen
 
 		addq.b	#2,($FFFFF742).w
@@ -7797,10 +7812,10 @@ Resize_SYZ3setup:
 ; ===========================================================================
 
 Resize_SYZ3main:
+		move.w	#Unterhub_BossStartX-$28-SCREEN_XCORR,($FFFFF72A).w	; right boundary right at the boss start (to snap the extended camera)
 		cmpi.w	#$23B0,($FFFFD008).w	; in the arena?
 		blo.s	locret_71CE		; if not, branch
 		addq.b	#2,($FFFFF742).w
-		move.w	#Unterhub_BossStartX-$28,($FFFFF72A).w	; right boundary right at the boss start (to snap the extended camera)
 
 		cmpi.w	#2,(RelativeDeaths).w	; did player die at least twice already?
 		bhs.s	locret_71CE		; if yes, skip rollerbot scene
@@ -8173,6 +8188,7 @@ Resize_FZEscape:
 		bset	#1,($FFFFD022).w
 		move.w	#-$480,($FFFFD012).w
 		move.w	#-$800,($FFFFD010).w
+		clr.b	($FFFFFEBC).w		; clear SPO flag
 		
 		; double boost when you're right of the prison
 		; so you don't get catapulted into the bottomless pit lol
@@ -17684,6 +17700,13 @@ Obj34_Loop:
 		bne.s	Obj34_ActNumber		; is it non-zero? then set it
 		jsr	FakeLevelID		; get current level index
 		move.b	d5,d0			; set fake level ID to frame (mappings are sorted accordingly)
+
+		cmpi.w	#$003,($FFFFFE10).w	; is this GHP part 2?
+		bne.s	@notghp2		; if not, branch
+		tst.b	($FFFFFE30).w		; has the checkpoint been collected yet?
+		bne.s	@notghp2		; if yes, branch (Greener Hill)
+		subq.b	#1,d0			; otherwise, keep normal title card (Green Hill)
+@notghp2:
 		cmpi.w	#$502,($FFFFFE10).w
 		bne.s	@notfp
 		tst.b	(FZEscape).w
@@ -17702,6 +17725,14 @@ Obj34_ActNumber:
 		jsr	FakeLevelID		; get current level index
 		moveq	#TTL_ActNums-1,d0	; set base offset for act number frames (-1 because of Uberhub)
 		add.b	d5,d0			; add ID to frame ID
+
+		cmpi.w	#$003,($FFFFFE10).w	; is this GHP part 2?
+		bne.s	@notghp2		; if not, branch
+		tst.b	($FFFFFE30).w		; has the checkpoint been collected yet?
+		bne.s	@notghp2		; if yes, branch (Greener Hill 1-3)
+		subq.b	#1,d0			; otherwise, keep normal title card (Green Hill 1-2)
+@notghp2:
+
 		cmpi.w	#$502,($FFFFFE10).w
 		bne.s	@notfp
 		tst.b	(FZEscape).w
@@ -18931,6 +18962,10 @@ ObjectFall_Sonic:
 		beq.w	@OFS_FallEnd		; if not, branch
 		tst.b	(DyingFlag).w		; is Sonic dying?
 		bne.w	@OFS_FallEnd		; if yes, make sure Sonic doesn't fly into orbit and never returns
+		cmpi.w	#$001,($FFFFFE10).w	; is this the intro cutscene?
+		beq.w	@OFS_FallEnd		; if yes, use regular gravity
+		cmpi.b	#$18,(GameMode).w	; is this the ending sequence?
+		beq.w	@OFS_FallEnd		; if yes, use regular gravity
 
 		subi.w	#Gravity,d3		; inverse gravity
 		btst	#6,($FFFFF602).w	; is A pressed?
@@ -21215,6 +21250,10 @@ Obj4C_Index:	dc.w Obj4C_Main-Obj4C_Index
 ; ===========================================================================
 
 Obj4C_Main:				; XREF: Obj4C_Index
+	if def(__WIDESCREEN__)
+		subi.w	#10,obX(a0)	; center lava in non-widescreen
+	endif
+
 		addq.b	#2,obRoutine(a0)
 		move.l	#Map_obj4C,obMap(a0)
 		move.w	#$E3A8,obGfx(a0)
@@ -24475,6 +24514,13 @@ Obj0B_Main:				; XREF: Obj0B_Index
 Obj0B_Action:				; XREF: Obj0B_Index
 		tst.b	obColProp(a0)		; has Sonic touched the	pole?
 		beq.s	@chkcol			; if not, branch
+
+		btst	#SlotOptions_SpaceGolf, SlotOptions	; is nonstop space golf enabled?
+		beq.s	@nogolf			; if not, branch
+		btst	#1,($FFFFFFE5).w		; is air freeze active?
+		bne.s	Obj0B_BreakPole		; if yes, break pole at any speed
+	@nogolf:
+
 		cmpi.b	#%01,($FFFFFFEB).w	; is Sonic jumpdashing (but not double jumping)?
 		bne.s	@chkcol			; if not, branch
 		move.w	($FFFFD000+obVelX).w,d0
@@ -25702,6 +25748,11 @@ Obj5F_BossDelete:
 
 		jsr	SAP_ResetChallengeObjects	; set up SAP challenge objects now
 		
+		btst	#SlotOptions_SpaceGolf, SlotOptions	; is nonstop space golf enabled?
+		beq.s	@notearly		; if not, branch
+		jsr	SAP_LoadSonicPal	; load Sonic's antigrav palette now
+	@notearly:
+
 		move.b	#$84,d0
 		jsr	PlayBGM
 
@@ -28991,11 +29042,23 @@ S_D_NotGHZ2:
 		bls.s	S_D_AfterImage		; if not, branch		
 		frantic				; are we in frantic mode?
 		bne.s	@franticdrain		; if yes, branch
+		btst	#SlotOptions2_PlacePlacePlace, SlotOptions2 ; are we in true-bs mode?
+		bne.s	@franticdrain		; if yes, enable drain system even for casual mode
 		clr.w	(FranticDrain).w	; clear frantic ring drain for casual mode
 		beq.s	S_D_AfterImage	 	; skip
 @franticdrain:
 		tst.b	($FFFFD4C0+$3A).w	; is Intro animation for rings HUD done?
-		beq.s	S_D_AfterImage		; if not, branch
+		bne.s	@huddone		; if yes, branch
+		btst	#SlotOptions_CinematicBlackBars, SlotOptions ; are cinematic black bars enabled?
+		bne.s	@huddone		; if yes, do drain anyway
+		move.w	CurrentLevel,d0		; get current level
+		cmpi.w	#$002,d0		; are we in Green Hill Place 1?
+		beq.s	@huddone		; if yes, branch
+		cmpi.w	#$003,d0		; are we in Green Hill Place 2?
+		bne.s	S_D_AfterImage		; if not, branch
+		; otherwise, do drain anyway to prevent glitches
+	@huddone:
+
 		tst.b	($FFFFF7CC).w		; are controls locked?
 		bne.s	S_D_AfterImage		; if yes, branch
 		tst.b	WhiteFlashCounter	; is a white flash currently in progres?
@@ -29215,6 +29278,7 @@ Obj01_OutWater:
 		tst.b	($FFFFFFF9).w
 		bne.s	@noresumemusic
 		bsr	ResumeMusic
+
 @noresumemusic:
 		move.w	#Sonic_TopSpeed,($FFFFF760).w		; restore Sonic's speed
 		move.w	#Sonic_Acceleration,($FFFFF762).w	; restore Sonic's acceleration
@@ -29970,10 +30034,10 @@ BB_NotGHZ2:
 BB_DoTele:
 		tst.b	($FFFFFF95).w		; was forced-kill flag set?
 		bne.s	KillSonic_JMP		; if yes, branch
-		cmpi.w	#$18B0,($FFFFD008).w	; is Sonic past the X-location $18B0?
-		bpl.s	KillSonic_JMP		; if yes, branch
-		cmpi.w	#$1320,($FFFFD008).w	; is Sonic before the X-location $1320?
-		bmi.s	KillSonic_JMP		; if yes, branch
+		cmpi.w	#$1900,($FFFFD008).w	; is Sonic past the X-location $18B0?
+		bgt.s	KillSonic_JMP		; if yes, branch
+		cmpi.w	#$1300,($FFFFD008).w	; is Sonic before the X-location $1320?
+		blt.s	KillSonic_JMP		; if yes, branch
 		rts				; otherwise we're in the waterfall section, don't kill here
 ; ===========================================================================
 
@@ -30843,6 +30907,8 @@ Sonic_AirFreeze:
 		beq.w	AM_End			; if not, branch
 		cmpi.w	#$302,($FFFFFE10).w
 		bne.s	@notsap
+		tst.b	($FFFFF7CC).w		; are controls locked?
+		bne.s	@notsap			; if yes, branch
 		jsr	Sonic_Floor_SAP
 @notsap:
 	;	tst.b	(Inhuman).w		; is inhuman mode enabled?
@@ -31404,8 +31470,8 @@ SAP_HitWall:
 	;	beq.w	SAP_Teleport			; if yes, always teleport (hurt after getting hit by shrapnel)
 		btst	#SlotOptions_NonstopInhuman, SlotOptions		; is nonstop inhuman enabled?
 		bne.s	@buzzwire			; if yes, branch
-		btst	#SlotOptions_SpaceGolf, SlotOptions		; is space golf enabled?
-		bne.s	@buzzwire			; if yes, branch
+	;	btst	#SlotOptions_SpaceGolf, SlotOptions		; is space golf enabled?
+	;	bne.s	@buzzwire			; if yes, branch
 		cmpi.b	#SAPTeleport_Trigger,(CameraShake).w ; is a bunch of camera shake already stored?
 		bhs.w	SAP_Teleport			; if yes, teleport
 		frantic					; are we in frantic?
@@ -31560,6 +31626,9 @@ SAP_LoadSonicPal:
 		moveq	#$10,d0			; load it into palette line 1 instead
 @loadpal:
 		movem.l	d7/a1-a3,-(sp)
+		move.l	d0,-(sp)
+		jsr	PalLoad1
+		move.l	(sp)+,d0
 		jsr	PalLoad2
 		movem.l	(sp)+,d7/a1-a3
 @nopal:
@@ -31577,8 +31646,10 @@ Sonic_Floor:				; XREF: Obj01_MdJump; Obj01_MdJump2
 		tst.b	(SpaceGolf).w		; is antigrav enabled?
 		beq.s	@normal			; if not, branch
 		cmpi.w	#$302,($FFFFFE10).w	; are we in SAP?
-		bne.s	@normal
-		rts
+		bne.s	@normal			; if not, branch
+		tst.b	($FFFFF7CC).w		; are controls locked?
+		bne.s	@normal			; if yes, branch
+		rts				; disable floor collision in favor of buzz wire stuff
 @normal:
 		move.w	obVelX(a0),d1
 		move.w	obVelY(a0),d2
@@ -31911,6 +31982,8 @@ loc_1380C:
 		beq.w	AM_End			; if not, branch
 		cmpi.w	#$302,($FFFFFE10).w
 		bne.s	@notsap
+		tst.b	($FFFFF7CC).w		; are controls locked?
+		bne.s	@notsap			; if yes, branch
 		jsr	Sonic_Floor_SAP
 @notsap:
 		rts
@@ -32746,6 +32819,9 @@ locret_1408C:
 
 
 ResumeMusic:				; XREF: Obj64_Wobble; Sonic_Water; Obj0A_ReduceAir
+		cmpi.w	#$C,($FFFFFE14).w	; did countdown music start yet?
+		bhi.s	loc_140AC		; if not, don't restart music
+
 		jsr	PlayLevelMusic_Force
 
 loc_140AC:
@@ -36524,6 +36600,7 @@ Obj79_LoadInfo:				; XREF: LevelSizeLoad
 		move.w	($FFFFFE32).w,($FFFFD008).w	; x-pos
 		move.w	($FFFFFE34).w,($FFFFD00C).w	; y-pos
 		move.w	($FFFFFE36).w,($FFFFFE20).w	; rings
+		clr.w	($FFFFFE20).w			; clear rings after reset
 		move.l	($FFFFFE38).w,($FFFFFE22).w	; time
 		move.b	#59,($FFFFFE25).w		; reset milliseconds
 		subq.b	#1,($FFFFFE24).w		; sub 1 second
@@ -36992,9 +37069,10 @@ Obj3D_MainStuff:
 
 		btst	#SlotOptions2_PlacePlacePlace, SlotOptions2
 		beq.s	@noeasteregg
-		cmpi.w	#6,BlackBars.Height
-		bls.s	@noeasteregg
 		subq.w	#6,BlackBars.TargetHeight
+		cmpi.w	#6,BlackBars.TargetHeight
+		bge.s	@noeasteregg
+		move.w	#6,BlackBars.TargetHeight
 @noeasteregg:
 
 		cmpi.b	#18,obColProp(a0)	; does boss have exactly 18 lives now?
@@ -38112,8 +38190,8 @@ Obj77_Display:
 ; ---------------------------------------------------------------------------
 ; Object 73 - Eggman (MZ)
 ; ---------------------------------------------------------------------------
-Obj73_BossHealth_Casual  = 12
-Obj73_BossHealth_Frantic = 16
+Obj73_BossHealth_Casual  = 16
+Obj73_BossHealth_Frantic = 20
 Obj73_BossHealth_TrueBS  = 30
 ; ---------------------------------------------------------------------------
 
@@ -39547,6 +39625,7 @@ Obj75_Main:				; XREF: Obj75_Index
 		move.w	obY(a0),$38(a0)
 		move.b	#$F,obColType(a0)
 		clr.w	obInertia(a0)
+		clr.b	obSubtype(a0)
 
 		btst	#SlotOptions2_PlacePlacePlace, SlotOptions2	; is easter egg flag set?
 		beq.s	@nottruebs		; if not, branch
@@ -39690,6 +39769,7 @@ Obj75_CheckFlash:
 		bsr	BossDamageSound
 		move.b	obColProp(a0),(HUD_BossHealth).w
 		clr.b	($FFFFFFEB).w	; reset jumpdash flag to allow multiple double jumps
+		move.b	#1,obSubtype(a0)	; set external slam trigger
 
 		tst.b	obColProp(a0)		; does boss have zero lives now?
 		ble.s	Obj75_LastHitDealt	; if yes, branch
@@ -39720,6 +39800,7 @@ Obj75_ResetBlack:
 Obj75_LastHitDealt:
 		move.b	#8,ob2ndRout(a0)	; set to Obj75_BossDefeated
 		move.b	#0,obColType(a0)	; disable collission
+		clr.b	obSubtype(a0)
 		bsr	Obj75_ResetBlack
 
 		; reset any blinking searchlights
@@ -39759,9 +39840,10 @@ Obj75_LastHitDealt:
 ; ===========================================================================
 
 Obj75_CheckSlam:
-
-		tst.b	obColType(a0)
-		beq.s	@slam
+	;	tst.b	obColType(a0)		; is Eggman currently hurt?
+	;	beq.s	@slam			; if yes, force slam
+		tst.b	obSubtype(a0)		; was external slam trigger set?
+		bne.s	@slam			; if yes, activate
 
 		move.w	($FFFFD008).w,d0
 		sub.w	obX(a0),d0
@@ -39773,6 +39855,7 @@ Obj75_CheckSlam:
 
 @slam:
 		; activate slam
+		clr.b	obSubtype(a0)
 		move.b	#4,ob2ndRout(a0)	; set to slam down
 		move.w	#-$400,obVelY(a0)	; move eggman up a little before slam
 		asr	obVelX(a0)
@@ -39937,10 +40020,11 @@ Obj75_GoBackUp:
 		move.b	#0,ob2ndRout(a0)
 		move.w	obY(a0),$38(a0)
 		move.w	obX(a0),$30(a0)
+		clr.b	obSubtype(a0)
 
-		tst.b	$3E(a0)				; was Eggman still flashing from a hit?
-		beq.s	Obj75_SlamEnd			; if not, branch
-		move.b	#1,$3E(a0)			; reduce remaining flashing timer
+	;	tst.b	$3E(a0)				; was Eggman still flashing from a hit?
+	;	beq.s	Obj75_SlamEnd			; if not, branch
+	;	move.b	#1,$3E(a0)			; reduce remaining flashing timer
 
 Obj75_SlamEnd:
 		jsr	SpeedToPos
@@ -42579,7 +42663,11 @@ Touch_Monitor:
 
 Touch_Monitor_ChkBreak:
 		tst.b	(SpaceGolf).w		; is antigrav enabled?
-		bne.s	@break_nobounce		; if yes, break open with no bounce
+		beq.s	@nospacegolf		; if not, branch
+		cmpi.w	#$302,($FFFFFE10).w	; is current level SAP?
+		beq.s	@break_nobounce		; if yes, break monitor open with no bounce
+
+@nospacegolf:
 		cmpi.b	#2,obAnim(a0)		; is Sonic rolling/jumping?
 		beq.s	@break			; if yes, break open
 		cmpi.b	#$25,obAnim(a0)		; is death anim shown (inhuman mode)?
@@ -44840,6 +44928,7 @@ Obj09_BumpSnd:
 		jmp	PlaySFX ;	play bumper sound
 ; ===========================================================================
 
+; also see Obj09_MakeGoalSolid
 Obj09_ChkW:
 		cmpi.b	#$26,d0 	; is the item a	W-block?
 		bne.s	Obj09_UPblock
@@ -45054,18 +45143,25 @@ Obj09_NoReplace2:
 Obj09_GoalNotSolid:
 		moveq	#0,d4			; clear d4
 
-		btst	#GlobalOptions_ScreenFlash_Weak, GlobalOptions	; is photosensitive mode enabled?
-		bne.s	@noflash		; if yes, no flash
 		movem.l	d7/a1-a3,-(sp)
+		btst	#GlobalOptions_ScreenFlash_Weak, GlobalOptions	; is photosensitive mode enabled?
+		beq.s	@nophoto		; if not, branch
+		tst.b	(Blackout).w		; is this the blackout blackout special stage?
+		beq.s	@noflash		; if not, branch
+		moveq	#3,d0			; brighten up this place by...
+		jsr	PalLoad2		; ...loading Sonic's palette
+		bra.s	@noflash		; no flash
+
+	@nophoto:
 		tst.b	(Blackout).w		; is this the blackout blackout special stage?
 		beq.s	@0			; if not, branch
 		moveq	#3,d0			; brighten up this place by...
 		jsr	PalLoad2		; ...loading Sonic's palette
 @0:
 		jsr	WhiteFlash_Intense	; do a mega flash here
+	@noflash:
 		movem.l	(sp)+,d7/a1-a3
 		
-@noflash:
 		move.b	#2,($FFFFFFD6).w	; make sure it doesn't happen again
 
 		tst.b	(Blackout).w		; is this the blackout blackout special stage?

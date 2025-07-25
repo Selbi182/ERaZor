@@ -530,7 +530,7 @@ BlackBarsConfigScreen_WriteText:
 	BBCS_EnterConsole a0
 
 	Console.SetXY #1, #2
-	Console.Write "!!! WRONG MODE, PICK THE OTHER ONE !!!"
+	Console.Write "! DOESN'T WORK - PICK THE OTHER MODE !"
 
 	Console.SetXY #12, #6
 	Console.Write "  SONIC ERAZOR%<endl>"

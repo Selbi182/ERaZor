@@ -1184,13 +1184,45 @@ PalCycle:	dc.w PalCycle_GHZ-PalCycle
 
 PalCycle_Title:				; XREF: TitleScreen
 		lea	(Pal_TitleCyc).l,a0
-		bra.s	loc_196A
+
+		subq.w	#1,($FFFFF634).w
+		bpl.s	@end
+		move.w	#4,($FFFFF634).w
+		move.w	($FFFFF632).w,d0
+		addq.w	#1,($FFFFF632).w
+		andi.w	#3,d0
+		lsl.w	#3,d0
+		lea	($FFFFFB50).w,a1
+		move.l	(a0,d0.w),d4
+		move.l	4(a0,d0.w),d5
+		move.l	d4,(a1)+
+		move.l	d5,(a1)+
+
+		; for the water cycle while dimmed
+		lea	($FFFFFB50+$80).w,a1
+		move.l	(a0,d0.w),d4
+		move.l	4(a0,d0.w),d5
+		move.l	d4,(a1)+		
+		move.l	d5,(a1)+
+
+		; dimming, gets triggered as soon as Sonic drops down
+		move.w	($FFFFD030).w,d0
+		neg.w	d0
+		addi.w	#16,d0
+		lsr.w	#1,d0
+		addq.w	#8,d0
+		cmpi.w	#16,d0
+		bhs.s	@end
+		lea	(Pal_Target+$40).w,a1
+		lea	(Pal_Active+$40).w,a2
+		moveq	#$10-1,d6
+		jsr	Pal_FadeAlpha_Black	; fade out first part
+@end:
+		rts
 ; ===========================================================================
 
 PalCycle_GHZ:				; XREF: PalCycle
 		lea	(Pal_GHZCyc).l,a0
-
-loc_196A:				; XREF: PalCycle_Title
 		subq.w	#1,($FFFFF634).w
 		bpl.s	locret_1990
 		move.w	#4,($FFFFF634).w
@@ -1201,7 +1233,7 @@ loc_196A:				; XREF: PalCycle_Title
 		lea	($FFFFFB50).w,a1
 		move.l	(a0,d0.w),d4
 		move.l	4(a0,d0.w),d5
-		
+
 		move.w	d4,d0
 		jsr	PissFilter 
 		move.w	d0,(a1)+
@@ -3168,8 +3200,10 @@ Title_YAdjust:
 		cmpi.w	#@TitleYAdjust,d0
 		bls.s	@sety
 		moveq	#@TitleYAdjust,d0
+
 @sety:		move.w	d0,($FFFFD030).w
 		move.w	d0,VSRAM_PlaneA
+
 		rts
 
 ; ===========================================================================

@@ -32,6 +32,8 @@ SaveSelectScreen:
 	move.w	#$8720, (a6)
 	jsr	ClearScreen
 
+	jsr	ClearVRAM	; dirty fix to get around an O flicking when transitioning from the title screen
+
 	; Clear object RAM
 	lea	Objects, a1
 	moveq	#0, d0

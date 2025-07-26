@@ -1231,13 +1231,16 @@ PalCycle_Title:				; XREF: TitleScreen
 		move.l	d5,(a1)+
 
 		; dimming, gets triggered as soon as Sonic drops down
-		move.w	($FFFFD030).w,d0
-		neg.w	d0
-		addi.w	#16,d0
-		lsr.w	#1,d0
-		addq.w	#8,d0
-		cmpi.w	#16,d0
-		bhs.s	@end
+		moveq	#16,d0
+		sub.w	($FFFFD030).w,d0
+		cmpi.w	#7,d0
+		bge.s	@nocap
+		moveq	#7,d0
+	@nocap:	cmpi.w	#16,d0
+		bge.s	@end
+
+		subq.w	#2,($FFFFF632).w	; make waterfalls go up now
+
 		lea	(Pal_Target+$40).w,a1
 		lea	(Pal_Active+$40).w,a2
 		moveq	#$10-1,d6

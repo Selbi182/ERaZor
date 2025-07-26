@@ -6899,7 +6899,7 @@ Resize_GHZ1:
 		bcc.w	Resize_GHZ3		; if yes, branch
 
 		move.w	#$300,($FFFFF726).w ; set lower	y-boundary
-		cmpi.w	#$12A0,($FFFFF700).w ; has the camera reached $1780 on x-axis?
+		cmpi.w	#$1230-SCREEN_XCORR,($FFFFF700).w ; has the camera reached $1230 on x-axis?
 		bcs.s	locret_6E08	; if not, branch
 		move.w	#$400,($FFFFF726).w ; set lower	y-boundary
 

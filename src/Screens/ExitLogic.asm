@@ -74,10 +74,10 @@ StartLevel:
 
 Start_FirstGameMode:
 ;	if def(__WIDESCREEN__)=0 ; always start in the black bars screen in widescreen mode because it has important info
-;		bsr	ReturnToSegaScreen	; set first game mode to Sega Screen
+		bsr	ReturnToSegaScreen	; set first game mode to Sega Screen
 
-;		bsr	CheckGlobal_BlackBarsConfigured
-;		bne.s	@skip
+		bsr	CheckGlobal_BlackBarsConfigured
+		bne.s	@skip
 
 		; Emulator detection to autoskip the screen for known faulty behavior (primarily in Kega)
 		; Inspired by: https://github.com/DevsArchive/genesis-emulator-detector
@@ -105,8 +105,8 @@ ReturnToSegaScreen:
 ; ===========================================================================
 
 Exit_BlackBarsScreen:
-		bsr	SetGlobal_BlackBarsConfigured
-		jsr	SRAMCache_SaveGlobals
+	;	bsr	SetGlobal_BlackBarsConfigured
+	;	jsr	SRAMCache_SaveGlobals
 		tst.b	(CarryOverData).w	; is next game mode set to be options screen?
 		beq.s	ReturnToSegaScreen	; if not, assume this is the first start of the game
 		clr.b	(CarryOverData).w	; clear carried-over data now no matter what
@@ -116,6 +116,7 @@ Exit_BlackBarsScreen:
 
 Exit_SegaScreen:
 		move.b	#$1C,(GameMode).w	; set to Selbi splash screen
+		rts
 
 		tst.w	($FFFFFFFA).w		; is debug mode enabled?
 		beq.s	@end			; if not, branch
@@ -209,6 +210,7 @@ Exit_OptionsScreen:
 
 @firststart:
 		clr.b	Options_FirstStartFlag
+
 		cmpi.b	#A|Start,Joypad|Held	; was A+Start held as we exited?
 		beq.s	@speedrun		; if yes, quick arcade game
 

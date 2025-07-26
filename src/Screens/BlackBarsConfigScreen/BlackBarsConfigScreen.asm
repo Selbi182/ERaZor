@@ -126,7 +126,7 @@ BlackBarsConfigScreen_MainLoop:
 	moveq	#0,d0
 	tst.b	BlackBarsConfig_PreTextActive	; is pre-text currently active?
 	beq.w	@chkbaseheightadjust		; if not, branch
-	andi.b	#Start|A|C,Joypad|Press		; anything pressed?
+	andi.b	#Start|A|B|C,Joypad|Press		; anything pressed?
 	beq.w	BlackBarsConfigScreen_MainLoop	; if not, loop
 
 	bra.s	@SwapToBlackBarsSetup
@@ -170,10 +170,20 @@ BlackBarsConfigScreen_MainLoop:
 	
 @chkexit:
 	; quit screen on other button press
+	moveq	#0,d0
 	move.b	Joypad|Press,d0
-	andi.b	#A|C|Start,d0
+	andi.b	#A|B|C|Start,d0
 	beq.w	BlackBarsConfigScreen_MainLoop
+
+	andi.b	#B,d0
+	beq.s	@notb
+	jsr	SetGlobal_BlackBarsConfigured
+	jsr	SRAMCache_SaveGlobals
+	move.w	#$D9,d0
+	bra.s	@sfx
+@notb:
 	move.w	#$A9,d0
+@sfx:
 	jsr	PlaySFX
 	move.b	#1,BlackBarsConfig_Exiting	; set exiting flag
 ;	move.l	#BlackBarsConfigScreen_RedrawUI, VBlankCallback	; redraw one last time
@@ -586,31 +596,28 @@ BlackBarsConfigScreen_WriteText_WidescreenInfo:
 	Console.SetXY #0, #2
 	Console.Write "              SONIC ERAZOR"
 	Console.Write "%<endl>%<endl>"
-	Console.Write "      S  T  A  N  D  A  L  O  N  E"
+	Console.Write "      Z E N I T H    E D I T I O N"
 
 	Console.SetXY #0, #6
 	Console.Write "%<pal2>----------------------------------------%<pal0>"
 	Console.Write "%<endl>%<endl>"
-	Console.Write "     THIS IS NOT A SONIC FAN GAME!%<endl>"
-	Console.Write "WELL, IT IS. BUT NOT IN THE USUAL SENSE.%<endl>"
 	Console.Write "%<endl>"
 	Console.Write "     SONIC ERAZOR IS A ROM HACK OF%<endl>"
 	Console.Write "    SONIC 1 FOR THE SEGA MEGA DRIVE.%<endl>"
 	Console.Write "%<endl>"
-	Console.Write "       THIS IS ACTUALLY A FORK OF%<endl>"
-	Console.Write "   HEYJOEWAY'S  SONIC 2 COMMUNITY CUT%<endl>"
-	Console.Write "     WIDESCREEN-OPTIMIZED EMULATOR,%<endl>"
-	Console.Write "      WHICH IN ITSELF IS A FORK OF%<endl>"
-	Console.Write "            GENESIS PLUS GX.%<endl>"
+	Console.Write "  THIS IS SPECIAL WIDESCREEN-OPTIMIZED%<endl>"
+	Console.Write "    VERSION OF THIS HACK, POWERED BY%<endl>"
+	Console.Write "  HEYJOEWAY'S  ""SONIC 2 COMMUNITY CUT""  %<endl>"
+	Console.Write " EMULATOR, FORKED FROM GENESIS PLUS GX.%<endl>"
 	Console.Write "%<endl>"
-	Console.Write " OR IN SIMPLER WORDS, YOU'RE PLAYING ON%<endl>"
-	Console.Write "    A TURBO-CHARGED RETRO CONSOLE!%<endl>"
+	Console.Write "THIS ISN'T JUST A CUSTOM SONIC FAN GAME,%<endl>"
+	Console.Write "   IT'S A TURBO-CHARGED RETRO CONSOLE!%<endl>"
+	Console.Write "%<endl>"
 	Console.Write "%<endl>"
 	Console.Write "%<pal2>----------------------------------------%<pal0>"
 
-	Console.SetXY #0, #25
+	Console.SetXY #0, #24
 
-	;                                                      XXXXXXXXXXXXXX
 	Console.Write "       PRESS ENTER TO CONTINUE...%<endl>"
 	
 	BBCS_LeaveConsole a0
@@ -623,7 +630,7 @@ BlackBarsConfigScreen_WriteText_Controls:
 	Console.SetXY #0, #2
 	Console.Write "              SONIC ERAZOR"
 	Console.Write "%<endl>%<endl>"
-	Console.Write "         C  O  N  T  R  O  L  S"
+	Console.Write "    D E F A U L T    C O N T R O L S"
 
 	Console.SetXY #0, #6
 	Console.Write "%<pal2>----------------------------------------%<pal0>"
@@ -640,15 +647,15 @@ BlackBarsConfigScreen_WriteText_Controls:
 	Console.Write "               TAB -> RESTART GAME%<endl>"
 	Console.Write "               ESC -> QUIT GAME%<endl>"
 	Console.Write "%<endl>"
-	Console.Write "   YOU CAN CUSTOMIZE YOUR BINDINGS IN%<endl>"
-	Console.Write "   THE ENCLOSED 'CONTROLS.JSON' FILE!%<endl>"
-	;                                                      XXXXXXXXXXXXXX
-	Console.Write "%<endl>"
 	Console.Write "%<pal2>----------------------------------------%<pal0>"
 
-	Console.SetXY #0, #25
+	Console.SetXY #0, #22
 
-	Console.Write "       PRESS ENTER TO CONTINUE...%<endl>"
+	Console.Write "      PRESS ""START"" TO CONTINUE...%<endl>"
+	Console.Write "%<endl>"
+	;                                                      XXXXXXXXXXXXXX
+	Console.Write "       PRESS ""B"" TO NOT SHOW THIS%<endl>"
+	Console.Write "          INFORMATION AGAIN...%<endl>"
 	
 	BBCS_LeaveConsole a0
 	rts

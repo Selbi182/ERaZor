@@ -118,8 +118,8 @@ StartOfRom:
 
 Date:		dc.b '(C) SELBI 2025  ' ; Release date
 	if def(__WIDESCREEN__)
-Title_Local:	dc.b 'Sonic ERaZor [v8.1-SWS]                         ' ; Domestic name
-Title_Int:	dc.b 'Sonic ERaZor [v8.1-SWS]                         ' ; International name
+Title_Local:	dc.b 'Sonic ERaZor: Zenith Edition                    ' ; Domestic name
+Title_Int:	dc.b 'Sonic ERaZor: Zenith Edition                    ' ; International name
 	else
 Title_Local:	dc.b 'Sonic ERaZor v8.1                               ' ; Domestic name
 Title_Int:	dc.b 'Sonic ERaZor v8.1                               ' ; International name
@@ -8207,6 +8207,10 @@ Resize_FZEscape:
 		frantic					; are we in frantic?
 		beq.s	@notfrantic			; if not, branch
 		move.l	#(0*$10000)|(46*$100)|00,d0	; frantic escape timer (45s)
+		btst	#SlotOptions2_PlacePlacePlace, SlotOptions2	; is easter egg flag set?
+		beq.s	@notfrantic			; if not, branch
+		add.l	#(1*$100)|00,d0			; one extra second to spare
+
 @notfrantic:
 		move.l	d0,($FFFFFE22).w		; set timer
 		move.b	#1,($FFFFFE1E).w		; start time counter

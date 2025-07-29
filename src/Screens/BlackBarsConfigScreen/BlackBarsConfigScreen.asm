@@ -70,15 +70,9 @@ BlackBarsConfigScreen:
 	jsr	BlackBarsConfigScreen_InitUI
 	move.b	#0, BlackBarsConfig_Exiting
 
-	if def(__WIDESCREEN__)
 		move.w	#0, BlackBars.Height
 		move.b	#1, BlackBarsConfig_PreTextActive
 		jsr	BlackBarsConfigScreen_WriteText_WidescreenInfo
-	else
-		move.w	BlackBars.BaseHeight, BlackBars.Height
-		move.b	#0, BlackBarsConfig_PreTextActive
-		jsr	BlackBarsConfigScreen_WriteText
-	endif
 
 	; Brighten up white palette for better legibility
 	move.w	#$EEE,d0
@@ -533,134 +527,6 @@ BlackBarsConfigScreen_InitUI:
 	dc.w	$2000/$20-1			; size of screen (in tiles - 1)
 
 ; ---------------------------------------------------------------
-; Redraws screen UI
-; ---------------------------------------------------------------
-
-BlackBarsConfigScreen_WriteText:
-	BBCS_EnterConsole a0
-
-	Console.SetXY #1, #2
-	Console.Write "! DOESN'T WORK - PICK THE OTHER MODE !"
-
-	Console.SetXY #12, #6
-	Console.Write "  SONIC ERAZOR%<endl>"
-	Console.Write "%<pal2>----------------%<pal0>%<endl>"
-	Console.Write "BLACK BARS SETUP"
-
-	Console.SetXY #4, #20
-	Console.Write "PICK THE FIRST IF YOU'RE UNSURE."
-	Console.Write "%<endl>%<endl>"
-	Console.Write "   BOTH BARS MUST BE VISIBLE!"
-
-	BBCS_LeaveConsole a0
-	; fallthrough
-; ---------------------------------------------------------------
-
-BlackBarsConfigScreen_RedrawUI:
-	BBCS_EnterConsole a0
-	Console.SetXY #6, #13
-	bsr	@write
-	BBCS_LeaveConsole a0
-	rts
-
-; ---------------------------------------------------------------
-@write:
-	tst.b	BlackBars.HandlerId	; is real hardware selected?
-	bne.w	@realhardware		; if yes, render alternate text
-	; fallthrough on emulators
-
-@emulators:
-	Console.Write "%<pal0>> OPTIMIZED FOR EMULATORS"
-	Console.Write "%<endl>%<endl>"
-	Console.Write "%<pal2>  OPTIMIZED FOR REAL HARDWARE"
-	rts
-
-@realhardware:
-	Console.Write "%<pal2>  OPTIMIZED FOR EMULATORS"
-	Console.Write "%<endl>%<endl>"	
-	tst.b	BlackBarsConfig_Exiting
-	bne.s	@hweaster
-	Console.Write "%<pal0>> OPTIMIZED FOR REAL HARDWARE"
-	rts
-@hweaster:
-	Console.Write '%<pal0>> "WINNERS DON''T USE GENS"   '
-	rts
-; ---------------------------------------------------------------
-; ===============================================================
-; ---------------------------------------------------------------
-
- if def(__WIDESCREEN__)
-BlackBarsConfigScreen_WriteText_WidescreenInfo:
-	BBCS_EnterConsole a0
-
-	Console.SetXY #0, #2
-	Console.Write "              SONIC ERAZOR"
-	Console.Write "%<endl>%<endl>"
-	Console.Write "      Z E N I T H    E D I T I O N"
-
-	Console.SetXY #0, #6
-	Console.Write "%<pal2>----------------------------------------%<pal0>"
-	Console.Write "%<endl>%<endl>"
-	Console.Write "%<endl>"
-	Console.Write "     SONIC ERAZOR IS A ROM HACK OF%<endl>"
-	Console.Write "    SONIC 1 FOR THE SEGA MEGA DRIVE.%<endl>"
-	Console.Write "%<endl>"
-	Console.Write "  THIS IS SPECIAL WIDESCREEN-OPTIMIZED%<endl>"
-	Console.Write "    VERSION OF THIS HACK, POWERED BY%<endl>"
-	Console.Write "  HEYJOEWAY'S  ""SONIC 2 COMMUNITY CUT""  %<endl>"
-	Console.Write " EMULATOR, FORKED FROM GENESIS PLUS GX.%<endl>"
-	Console.Write "%<endl>"
-	Console.Write "THIS ISN'T JUST A CUSTOM SONIC FAN GAME,%<endl>"
-	Console.Write "   IT'S A TURBO-CHARGED RETRO CONSOLE!%<endl>"
-	Console.Write "%<endl>"
-	Console.Write "%<endl>"
-	Console.Write "%<pal2>----------------------------------------%<pal0>"
-
-	Console.SetXY #0, #24
-
-	Console.Write "       PRESS ENTER TO CONTINUE...%<endl>"
-	
-	BBCS_LeaveConsole a0
-	rts
-
-
-BlackBarsConfigScreen_WriteText_Controls:
-	BBCS_EnterConsole a0
-
-	Console.SetXY #0, #2
-	Console.Write "              SONIC ERAZOR"
-	Console.Write "%<endl>%<endl>"
-	Console.Write "    D E F A U L T    C O N T R O L S"
-
-	Console.SetXY #0, #6
-	Console.Write "%<pal2>----------------------------------------%<pal0>"
-	Console.Write "%<endl>%<endl>"
-	Console.Write "      KEYBOARD KEY -> IN-GAME BUTTON%<endl>"
-	Console.Write "%<endl>"
-	Console.Write "                 A -> A%<endl>"
-	Console.Write "                 S -> B%<endl>"
-	Console.Write "                 D -> C%<endl>"
-	Console.Write "             ENTER -> START%<endl>"
-	Console.Write "        ARROW KEYS -> D-PAD%<endl>"
-	Console.Write "%<endl>"
-	Console.Write "               F11 -> TOGGLE FULLSCREEN%<endl>"
-	Console.Write "               TAB -> RESTART GAME%<endl>"
-	Console.Write "               ESC -> QUIT GAME%<endl>"
-	Console.Write "%<endl>"
-	Console.Write "%<pal2>----------------------------------------%<pal0>"
-
-	Console.SetXY #0, #22
-
-	Console.Write "      PRESS ""START"" TO CONTINUE...%<endl>"
-	Console.Write "%<endl>"
-	;                                                      XXXXXXXXXXXXXX
-	Console.Write "       PRESS ""B"" TO NOT SHOW THIS%<endl>"
-	Console.Write "          INFORMATION AGAIN...%<endl>"
-	
-	BBCS_LeaveConsole a0
-	rts
-
-
- endif
+; for the actual texts, see Localization.asm
 ; ---------------------------------------------------------------
 ; ===============================================================

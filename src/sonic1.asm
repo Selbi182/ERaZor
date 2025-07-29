@@ -48122,6 +48122,8 @@ ObjPos_Null:	dc.w    $FFFF,$0000,$0000
 		include	"Screens/GameplayStyleScreen/GameplayStyleScreen.asm"
 		include "Screens/BlackBarsConfigScreen/BlackBarsConfigScreen.asm"
 		include "Screens/SaveSelectScreen/SaveSelectScreen.asm"
+
+		include "Localization/Localization_EN.asm"
 ; ---------------------------------------------------------------------------
 		
 ; Sound Driver (MegaPCM)

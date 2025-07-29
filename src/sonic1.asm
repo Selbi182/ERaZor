@@ -27822,9 +27822,10 @@ Map_Obj02_End:
 Map_Obj02_Trans:
 		dc.w	@0-Map_Obj02_Trans
 		dc.w	@1-Map_Obj02_Trans
+		dc.w	@2-Map_Obj02_Trans
 
 @xrept: = 5
-@yrept: = 6
+@yrept: = 6-1
 @x: = -128
 @y: = -128
 @incr: = 32
@@ -27854,6 +27855,18 @@ Map_Obj02_Trans:
 				dc.b	$0F
 				dc.w	$0000
 				dc.b	@x
+			@j: = @j + 1
+		endr
+
+
+@2:		dc.b	@xrept
+
+		@j: = 0
+		rept	@xrept
+				dc.b	@y
+				dc.b	$0F
+				dc.w	$0000
+				dc.b	@x+(@j*@incr)
 			@j: = @j + 1
 		endr
 		even

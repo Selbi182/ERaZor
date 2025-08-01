@@ -21545,7 +21545,7 @@ Obj4E_Main2:				; XREF: Obj4E_Main
 		move.b	#1,obPriority(a1)
 		move.b	#0,obAnim(a1)
 		move.b	#$94,obColType(a1)
-		move.l	a0,$3C(a1)
+	;	move.l	a0,$3C(a1)
 
 loc_F0C8:
 		dbf	d1,Obj4E_Loop	; repeat sequence once
@@ -21554,88 +21554,92 @@ loc_F0C8:
 		move.b	#4,obFrame(a1)
 
 Obj4E_Action:				; XREF: Obj4E_Index
-		move.w	($FFFFD008).w,d0
-		sub.w	obX(a0),d0
-		bcc.s	Obj4E_ChkSonic
-		neg.w	d0
+	;	move.w	($FFFFD008).w,d0
+	;	sub.w	obX(a0),d0
+	;	bcc.s	Obj4E_ChkSonic
+	;	neg.w	d0
 
 Obj4E_ChkSonic:
-		cmpi.w	#$C0,d0		; is Sonic within $C0 pixels (x-axis)?
-		bcc.s	Obj4E_Move	; if not, branch
-		move.w	($FFFFD00C).w,d0
-		sub.w	obY(a0),d0
-		bcc.s	loc_F0F4
-		neg.w	d0
+	;	cmpi.w	#$C0,d0		; is Sonic within $C0 pixels (x-axis)?
+	;	bcc.s	Obj4E_Move	; if not, branch
+	;	move.w	($FFFFD00C).w,d0
+	;	sub.w	obY(a0),d0
+	;	bcc.s	loc_F0F4
+	;	neg.w	d0
 
 loc_F0F4:
-		cmpi.w	#$60,d0		; is Sonic within $60 pixels (y-axis)?
-		bcc.s	Obj4E_Move	; if not, branch
-		move.b	#1,$36(a0)	; set object to	move
-		bra.s	Obj4E_Solid
+	;	cmpi.w	#$60,d0		; is Sonic within $60 pixels (y-axis)?
+	;	bcc.s	Obj4E_Move	; if not, branch
+	;	move.b	#1,$36(a0)	; set object to	move
+	;	bra.s	Obj4E_Solid
 ; ===========================================================================
 
 Obj4E_Move:				; XREF: Obj4E_ChkSonic
-		tst.b	$36(a0)		; is object set	to move?
-		beq.s	Obj4E_Solid	; if not, branch
-		move.w	#$180,obVelX(a0)	; set object speed
-		subq.b	#2,obRoutine(a0)
+	;	tst.b	$36(a0)		; is object set	to move?
+	;	beq.s	Obj4E_Solid	; if not, branch
+	;	move.w	#$180,obVelX(a0)	; set object speed
+	;	subq.b	#2,obRoutine(a0)
 
 Obj4E_Solid:				; XREF: Obj4E_Index
-		move.w	#$2B,d1
-		move.w	#$18,d2
-		move.w	d2,d3
-		addq.w	#1,d3
-		move.w	obX(a0),d4
-		move.b	obRoutine(a0),d0
-		move.w	d0,-(sp)
-		bsr	SolidObject
-		move.w	(sp)+,d0
-		move.b	d0,obRoutine(a0)
-		cmpi.w	#$6A0,obX(a0)	; has object reached $6A0 on the x-axis?
-		bne.s	Obj4E_Animate	; if not, branch
-		clr.w	obVelX(a0)		; stop object moving
-		clr.b	$36(a0)
+	;	move.w	#$2B,d1
+	;	move.w	#$18,d2
+	;	move.w	d2,d3
+	;	addq.w	#1,d3
+	;	move.w	obX(a0),d4
+	;	move.b	obRoutine(a0),d0
+	;	move.w	d0,-(sp)
+	;	bsr	SolidObject
+	;	move.w	(sp)+,d0
+	;	move.b	d0,obRoutine(a0)
+	;	cmpi.w	#$6A0,obX(a0)	; has object reached $6A0 on the x-axis?
+	;	bne.s	Obj4E_Animate	; if not, branch
+	;;	clr.w	obVelX(a0)		; stop object moving
+	;	clr.b	$36(a0)
 
 Obj4E_Animate:
 		lea	(Ani_obj4E).l,a1
 		bsr	AnimateSprite
-		cmpi.b	#4,($FFFFD024).w
-		bcc.s	Obj4E_ChkDel
-		bsr	SpeedToPos
+	;	cmpi.b	#4,($FFFFD024).w
+	;	bcc.s	Obj4E_ChkDel
+	;	bsr	SpeedToPos
 
 Obj4E_ChkDel:
-		bsr	DisplaySprite
-		tst.b	$36(a0)
-		bne.s	locret_F17E
-		move.w	obX(a0),d0
-		andi.w	#$FF80,d0
-		move.w	($FFFFF700).w,d1
-		subi.w	#$80,d1
-		andi.w	#$FF80,d1
-		sub.w	d1,d0
-		cmpi.w	#$280,d0
-		bhi.s	Obj4E_ChkGone
+		jsr	SimpleOffscreenCheck
+		bhi.w	DeleteObject
+		bra.w	DisplaySprite
 
-locret_F17E:
-		rts	
+	;	bsr	DisplaySprite
+	;	tst.b	$36(a0)
+	;	bne.s	locret_F17E
+	;	move.w	obX(a0),d0
+	;	andi.w	#$FF80,d0
+	;	move.w	($FFFFF700).w,d1
+	;	subi.w	#$80,d1
+	;	andi.w	#$FF80,d1
+	;	sub.w	d1,d0
+	;	cmpi.w	#$280,d0
+	;	bhi.s	Obj4E_ChkGone
+
+;locret_F17E:
+;		rts	
 ; ===========================================================================
 
-Obj4E_ChkGone:				; XREF: Obj4E_ChkDel
-		lea	($FFFFFC00).w,a2
-		moveq	#0,d0
-		move.b	obRespawnNo(a0),d0
-		bclr	#7,obGfx(a2,d0.w)
-		move.b	#8,obRoutine(a0)
-		rts	
+;Obj4E_ChkGone:				; XREF: Obj4E_ChkDel
+	;	lea	($FFFFFC00).w,a2
+	;	moveq	#0,d0
+	;	move.b	obRespawnNo(a0),d0
+	;	bclr	#7,obGfx(a2,d0.w)
+	;	move.b	#8,obRoutine(a0)
+	;	rts	
 ; ===========================================================================
 
 Obj4E_Move2:				; XREF: Obj4E_Index
-		movea.l	$3C(a0),a1
-		cmpi.b	#8,obRoutine(a1)
-		beq.s	Obj4E_Delete
-		move.w	obX(a1),obX(a0)	; move rest of lava wall
-		subi.w	#$80,obX(a0)
-		bra.w	DisplaySprite
+	;	movea.l	$3C(a0),a1
+	;	cmpi.b	#8,obRoutine(a1)
+	;	beq.s	Obj4E_Delete
+	;	move.w	obX(a1),obX(a0)	; move rest of lava wall
+	;	subi.w	#$80,obX(a0)
+	;	bra.w	DisplaySprite
 ; ===========================================================================
 
 Obj4E_Delete:				; XREF: Obj4E_Index
@@ -30442,7 +30446,7 @@ SH_SpecialObjects:
 
 		cmpi.b	#$22,(a1)		; was selected object a buzz bomber
 		bne.s	SH_NoBuzz		; if not, branch
-		cmpi.w	#$000,($FFFFFE10).w	; is level GHZ1?
+		tst.w	($FFFFFE10).w		; is level GHZ1?
 		bne.s	SH_NoBuzz		; if not, branch
 		cmpi.w	#$1900,obX(a0)		; is Sonic past the X-location $1900?
 		bpl.s	SH_NoBuzz		; if yes, branch
@@ -30459,7 +30463,9 @@ SH_SpecialObjects:
 	SH_NoMonitor:
 		cmpi.b	#$1F,(a1)		; was selected object a crabmeat?
 		bne.s	SH_NoCrabMeat		; if not, branch
-		cmpi.b	#6,obRoutine(a1)		; is object an exploding ball?
+		tst.w	($FFFFFE10).w		; is level GHZ1?
+		beq.s	SH_NextObject		; if yes, it's the boss, disable homing
+		cmpi.b	#6,obRoutine(a1)	; is object an exploding ball?
 		blt.s	SH_NoCrabMeat		; if not, brank
 		bra.s	SH_NextObject		; otherwise, skip object
 	SH_NoCrabMeat:
@@ -30561,7 +30567,7 @@ SH_Objects:
 		dc.b	$22	; Buzz Bomber
 		dc.b	$40	; Motobug
 	;	dc.b	$2B	; Chopper
-		dc.b	$1F	; Crabmeat (including the boss)
+		dc.b	$1F	; Crabmeat (excluding the boss)
 	;	dc.b	$1E	; Ball Hog
 		dc.b	$2C	; Jaws
 		dc.b	$43	; Roller
@@ -31207,6 +31213,8 @@ S_F_RPRingCost:
 		bne.s	S_F_End			; if yes, branch (this is the one time casual gets something exclusive)
 		cmpi.w	#$200,($FFFFFE10).w	; are we in RP?
 		bne.s	S_F_End			; if not branch
+		tst.b	($FFFFFFA5).w		; is HUD off-screen (lava drop sequence)?
+		bne.s	S_F_End			; if yes, no drain for fairness
 		btst	#SlotOptions_NonstopInhuman, SlotOptions	; is nonstop inhuman enabled?
 		bne.s	S_F_End			; if yes, branch
 		ori.b	#1,($FFFFFE1D).w	; update ring counter
@@ -36611,8 +36619,13 @@ Obj79_LoadInfo:				; XREF: LevelSizeLoad
 		move.b	($FFFFFE31).w,($FFFFFE30).w	; checkpoint number
 		move.w	($FFFFFE32).w,($FFFFD008).w	; x-pos
 		move.w	($FFFFFE34).w,($FFFFD00C).w	; y-pos
+
 		move.w	($FFFFFE36).w,($FFFFFE20).w	; rings
-		clr.w	($FFFFFE20).w			; clear rings after reset
+		cmpi.w	#500,($FFFFFE20).w
+		ble.s	@fine
+		move.w	#500,($FFFFFE20).w		; limit respawn rings to 500
+@fine:
+
 		move.l	($FFFFFE38).w,($FFFFFE22).w	; time
 		move.b	#59,($FFFFFE25).w		; reset milliseconds
 		subq.b	#1,($FFFFFE24).w		; sub 1 second
@@ -45675,8 +45688,8 @@ Obj21_NoUpdate:
 		beq.s	Obj21_SetRingFrame		; if not, branch
 		cmpi.w	#$200,($FFFFFE10).w		; are we in RP?
 		bne.s	Obj21_SetRingFrame		; if not, branch
-		cmpi.w	#25,($FFFFFE20).w		; do we have more than 25 rings?
-		bhi.s	Obj21_SetRingFrame		; if yes, branch
+	;	cmpi.w	#25,($FFFFFE20).w		; do we have more than 25 rings?
+	;	bhi.s	Obj21_SetRingFrame		; if yes, branch
 		; otherwise, already start blinking to signal low ring count
 
 Obj21_FlashNoRings:

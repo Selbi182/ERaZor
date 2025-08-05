@@ -121,8 +121,8 @@ Date:		dc.b '(C) SELBI 2025  ' ; Release date
 Title_Local:	dc.b 'Sonic ERaZor: Zenith Edition                    ' ; Domestic name
 Title_Int:	dc.b 'Sonic ERaZor: Zenith Edition                    ' ; International name
 	else
-Title_Local:	dc.b 'Sonic ERaZor v8.1                               ' ; Domestic name
-Title_Int:	dc.b 'Sonic ERaZor v8.1                               ' ; International name
+Title_Local:	dc.b 'Sonic ERaZor 8.1                                ' ; Domestic name
+Title_Int:	dc.b 'Sonic ERaZor 8.1                                ' ; International name
 	endif
 Serial:		dc.b 'SP 18201337-81' 	; Serial/version number
 
@@ -18324,7 +18324,7 @@ Obj36_Solid:				; XREF: Obj36_Index
 		beq.s	Obj36_NotInhuman	; if not, branch
 		cmpi.w	#$200,($FFFFFE10).w	; are we in Ruined Place?
 		bne.s	Obj36_NotInhuman	; if not, branch
-		ori.w	#$6000,obGfx(a0)	; use palette line four from now now
+		ori.w	#$6000,obGfx(a0)	; use palette line four from now on
 
 Obj36_NotInhuman:
 		jsr	obj36_Type0x	; make the object move
@@ -18564,6 +18564,11 @@ Obj36_Type02:				; XREF: Obj36_TypeIndex
 
 ; moving spikes in the tutorial tube
 Obj36_Wait:
+		tst.b	(SpaceGolf).w
+		beq.s	@notspace
+		btst	#1,($FFFFD022).w
+		bne.s	@moveout		; if yes, always hide to 
+	@notspace:
 		cmpi.b	#%01,($FFFFFFEB).w	; is Sonic jumpdashing (but not double jumping)?
 		bne.s	@cycle			; if not, branch
 		cmpi.w	#$B00,($FFFFD012).w	; currently downdashing (going down very fast)?

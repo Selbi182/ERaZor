@@ -16994,11 +16994,15 @@ loc_BDD6:
 		movem.l	d7/a1-a3,-(sp)
 		moveq	#3,d0
 		jsr	PalLoad2		; load Sonic palette
-		
 		movem.l	(sp)+,d7/a1-a3
 @notinhuman:
 		move.b	#$A8,d0			; play upgrade sound
 		jsr	PlaySFX
+
+		jsr	SingleObjLoad
+		bne.w	Obj32_ShowPressed
+		move.b	#$39,(a1)		; load space golf arrows
+
 		bra.w	Obj32_ShowPressed
 ; ---------------------------------------------------------------------------
 
@@ -17029,9 +17033,12 @@ loc_BDD6:
 		move.b	#$96,d0			; play the sick music
 		jsr	PlayBGM		; hell yea
 		move.w	#-$1800,d1		; set first launch speed (needs to be different cause of the alternate gravity)
-		jsr	SAP_LoadSonicPal	; load Sonic's antigrav palette
+		jsr	SAP_LoadSonicPal
 
-@nopal:
+		jsr	SingleObjLoad
+		bne.s	@loadwarningsign
+		move.b	#$39,(a1)		; load space golf arrows
+
 	;	frantic				; is frantic mode enabled?
 	;	beq.s	@loadwarningsign	; if not, branch
 	;	addi.w	#100,($FFFFFE20).w	; be generous and give the brave troopers 100 extra rings
@@ -18049,11 +18056,114 @@ Obj34_ConData:
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Object 39 - Unusued (previously "GAME OVER" and "TIME OVER")
+; Object 39 - Space Golf arrows around Sonic
 ; ---------------------------------------------------------------------------
 
 Obj39:					; XREF: Obj_Index
+		moveq	#0,d0
+		move.b	obRoutine(a0),d0
+		move.w	Obj39_Index(pc,d0.w),d1
+		jmp	Obj39_Index(pc,d1.w)
+; ===========================================================================
+Obj39_Index:	dc.w Obj39_Setup-Obj39_Index
+		dc.w Obj39_Display-Obj39_Index
+; ===========================================================================
+
+Obj39_Setup:
+		addq.b	#2,obRoutine(a0)
+		move.l	#Map_SpaceGolfArrows,obMap(a0)
+		move.b	#$84,obRender(a0)
+		move.b	#2,obPriority(a0)
+		move.w	#$2000|($6980/$20),obGfx(a0)
+		cmpi.w	#$501,($FFFFFE10).w	; is this the tutorial?
+		bne.s	Obj39_Display		; if not, branch
+		move.w	#($7380/$20),obGfx(a0)
+; ---------------------------------------------------------------------------
+
+Obj39_Display:
+		tst.b	(SpaceGolf).w		; space golf even enabled?
+		beq.w	@delete			; if not, delete
+
+		cmpi.b	#2,($FFFFD000+obAnim).w	; rolling animation?
+		bne.s	@dontshow		; if not, branch
+
+		btst	#1,($FFFFFFE5).w	; space golf active with C held?
+		beq.s	@dontshow		; if not, special anim
+
+		moveq	#Up|Down|Left|Right,d0	; any D-Pad pressed?
+		and.b	Joypad|Held,d0		; I meant held
+		bne.s	@dpadpressed		; if yes, branch
+		bra.w	@specialanim
+
+@dontshow:
+		move.w	#0,obX(a0)		; complete move out of viewport when inactive...
+		move.w	#0,obY(a0)		; ...to avoid some rare visual glitches
+		rts				; don't render
+; ---------------------------------------------------------------------------
+
+; yeah this is ugly af, but I can't be arsed to clean this up
+@dpadpressed:
+		btst	#iUp,d0
+		beq.s	@0
+		moveq	#0,d1
+	@0:
+		btst	#iDown,d0
+		beq.s	@1
+		moveq	#4,d1
+	@1:
+		btst	#iLeft,d0
+		beq.s	@2
+		moveq	#6,d1
+	@2:
+		btst	#iRight,d0
+		beq.s	@3
+		moveq	#2,d1
+	@3:
+
+		cmpi.b	#Up|Left,d0
+		bne.s	@0x
+		moveq	#7,d1
+	@0x:
+		cmpi.b	#Up|Right,d0
+		bne.s	@1x
+		moveq	#1,d1
+	@1x:
+		cmpi.b	#Down|Left,d0
+		bne.s	@2x
+		moveq	#5,d1
+	@2x:
+		cmpi.b	#Down|Right,d0
+		bne.s	@3x
+		moveq	#3,d1
+	@3x:
+		move.b	d1,obFrame(a0)
+
+@dodisplay:
+		move.w	($FFFFD000+obX).w,obX(a0)
+		move.w	($FFFFD000+obY).w,obY(a0)
+		jmp	DisplaySprite
+; ---------------------------------------------------------------------------
+
+@specialanim:
+		; rotate in all 8 directions around Sonic while not holding a D-pad key
+		rts	; nice idea but was distracting af
+		moveq	#3,d0
+		and.b	($FFFFFE05).w,d0
+		bne.s	@dodisplay
+		addq.b	#1,obFrame(a0)
+		andi.b	#7,obFrame(a0)
+		bra.s	@dodisplay
+; ---------------------------------------------------------------------------
+
+@delete:
 		jmp	DeleteObject
+; ---------------------------------------------------------------------------
+
+Map_SpaceGolfArrows:
+		include	"_maps\SpaceGolfArrows.asm"
+		even
+; ---------------------------------------------------------------------------
+; ===========================================================================
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -28852,6 +28962,7 @@ Obj01_NotGHZ1_Main:				; Intro Cutscene of GHZ2
 		bne.w	Obj01_Control_Cont 		; if not, branch
 
 		move.b	#1,($FFFFF7CC).w		; lock controls
+		clr.w	($FFFFF602).w			; clear any remaining button presses
 		bset	#3,($FFFFF602).w		; force right press
 		bclr	#0,obStatus(a0)			; make Sonic face right
 
@@ -47105,6 +47216,8 @@ PLC_SLZ2:
 		dc.w $6600
 		dc.l ArtKospM_ACIcons		; A and C icons
 		dc.w $6880
+		dc.l ArtKospM_SpaceGolfArrows	; space golf arrows
+		dc.w $6980
 		dc.l ArtKospM_Fan		; fan
 		dc.w $7400
 		dc.l ArtKospM_Pylon		; foreground pylon
@@ -47160,6 +47273,8 @@ PLC_SBZ:
 		dc.w $6E80
 		dc.l ArtKospM_Switch		; switch
 		dc.w $7200
+		dc.l ArtKospM_SpaceGolfArrows	; space golf arrows
+		dc.w $7380
 		dc.l ArtKospM_LevelSigns	; level signs
 		dc.w $7400
 		dc.l ArtKospM_SbzDoor1		; door
@@ -47547,6 +47662,8 @@ ArtKospM_SLZPlatform:	incbin	artkosp\SLZPlatform.kospm	; SLZ platform
 ArtKospM_WarningSign:	incbin	artkosp\SLZWarningSign.kospm	; warning sign for bottomless pits
 		even
 ArtKospM_ACIcons:	incbin	artkosp\SLZACIcons.kospm	; A and C icons
+		even
+ArtKospM_SpaceGolfArrows:	incbin	artkosp\SpaceGolfArrows.kospm	; space golf arrows
 		even
 ArtKospM_GiantBomb:	incbin	artkosp\GiantBomb.kospm	; Giant Bomb
 		even
